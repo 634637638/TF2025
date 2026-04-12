@@ -1,0 +1,32 @@
+{
+  "name": "tf2025",
+  "version": "1.0.0",
+  "description": "TF2025 Fullstack Project",
+  "scripts": {
+    "dev": "concurrently --names \"BACKEND,FRONTEND\" --prefix name \"npm run backend\" \"npm run frontend\"",
+    "dev:all": "concurrently --names \"BACKEND,FRONTEND\" --prefix name \"npm run backend\" \"npm run frontend\"",
+    "dev:fixed": "node scripts/fix-ports.js",
+    "backend": "cd backend && npm run dev",
+    "frontend": "cd frontend && npm run dev",
+    "start": "concurrently --names \"BACKEND,FRONTEND\" --prefix name \"npm run backend\" \"npm run frontend\"",
+    "start:fixed": "node scripts/fix-ports.js",
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "stop": "node scripts/stop-ports.js",
+    "check-ports": "node scripts/check-ports.js"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "terser": "^5.46.0"
+  },
+  "dependencies": {
+    "@types/qrcode": "^1.5.6",
+    "axios": "^1.13.2",
+    "element-plus": "^2.11.8",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.0.2",
+    "mysql2": "^3.15.3",
+    "qrcode": "^1.5.4",
+    "validator": "^13.15.23",
+    "xlsx": "^0.18.5"
+  }
+}

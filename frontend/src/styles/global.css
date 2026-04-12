@@ -1,0 +1,978 @@
+/* 全局样式 */
+
+/* 重置样式 */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* 移动端安全区域适配 */
+@supports (padding: max(0px)) {
+  :root {
+    --safe-area-inset-top: env(safe-area-inset-top, 0px);
+    --safe-area-inset-right: env(safe-area-inset-right, 0px);
+    --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-area-inset-left: env(safe-area-inset-left, 0px);
+  }
+}
+
+html {
+  font-size: 14px;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-overflow-scrolling: touch; /* 平滑滚动 */
+}
+
+/* 移动端触摸优化 */
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+input, textarea, [contenteditable] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #333;
+  background-color: #f5f5f5;
+}
+
+/* 布局样式 */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 8px;
+
+  // 移动端进一步减小左右内边距
+  @media (max-width: 768px) {
+    padding: 0 4px;
+  }
+
+  @media (max-width: 480px) {
+    padding: 0 2px;
+  }
+
+  @media (max-width: 375px) {
+    padding: 0 2px;
+  }
+}
+
+.flex {
+  display: flex;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+/* 文本样式 */
+.text-center {
+  text-align: center;
+}
+
+.text-left {
+  text-align: left;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.text-primary {
+  color: #409eff;
+}
+
+.text-success {
+  color: #67c23a;
+}
+
+.text-warning {
+  color: #e6a23c;
+}
+
+.text-danger {
+  color: #f56c6c;
+}
+
+.text-info {
+  color: #909399;
+}
+
+.text-muted {
+  color: #c0c4cc;
+}
+
+.text-bold {
+  font-weight: 600;
+}
+
+.text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 间距工具类 */
+.m-0 { margin: 0; }
+.mt-1 { margin-top: 4px; }
+.mt-2 { margin-top: 8px; }
+.mt-3 { margin-top: 12px; }
+.mt-4 { margin-top: 16px; }
+.mt-5 { margin-top: 20px; }
+
+.mb-1 { margin-bottom: 4px; }
+.mb-2 { margin-bottom: 8px; }
+.mb-3 { margin-bottom: 12px; }
+.mb-4 { margin-bottom: 16px; }
+.mb-5 { margin-bottom: 20px; }
+
+.ml-1 { margin-left: 4px; }
+.ml-2 { margin-left: 8px; }
+.ml-3 { margin-left: 12px; }
+.ml-4 { margin-left: 16px; }
+.ml-5 { margin-left: 20px; }
+
+.mr-1 { margin-right: 4px; }
+.mr-2 { margin-right: 8px; }
+.mr-3 { margin-right: 12px; }
+.mr-4 { margin-right: 16px; }
+.mr-5 { margin-right: 20px; }
+
+.p-0 { padding: 0; }
+.p-1 { padding: 4px; }
+.p-2 { padding: 8px; }
+.p-3 { padding: 12px; }
+.p-4 { padding: 16px; }
+.p-5 { padding: 20px; }
+
+.pt-1 { padding-top: 4px; }
+.pt-2 { padding-top: 8px; }
+.pt-3 { padding-top: 12px; }
+.pt-4 { padding-top: 16px; }
+.pt-5 { padding-top: 20px; }
+
+.pb-1 { padding-bottom: 4px; }
+.pb-2 { padding-bottom: 8px; }
+.pb-3 { padding-bottom: 12px; }
+.pb-4 { padding-bottom: 16px; }
+.pb-5 { padding-bottom: 20px; }
+
+.pl-1 { padding-left: 4px; }
+.pl-2 { padding-left: 8px; }
+.pl-3 { padding-left: 12px; }
+.pl-4 { padding-left: 16px; }
+.pl-5 { padding-left: 20px; }
+
+.pr-1 { padding-right: 4px; }
+.pr-2 { padding-right: 8px; }
+.pr-3 { padding-right: 12px; }
+.pr-4 { padding-right: 16px; }
+.pr-5 { padding-right: 20px; }
+
+/* 按钮样式 */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.btn:focus {
+  outline: none;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background-color: #409eff;
+  border-color: #409eff;
+  color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #66b1ff;
+  border-color: #66b1ff;
+}
+
+.btn-success {
+  background-color: #67c23a;
+  border-color: #67c23a;
+  color: #fff;
+}
+
+.btn-success:hover:not(:disabled) {
+  background-color: #85ce61;
+  border-color: #85ce61;
+}
+
+.btn-warning {
+  background-color: #e6a23c;
+  border-color: #e6a23c;
+  color: #fff;
+}
+
+.btn-warning:hover:not(:disabled) {
+  background-color: #ebb563;
+  border-color: #ebb563;
+}
+
+.btn-danger {
+  background-color: #f56c6c;
+  border-color: #f56c6c;
+  color: #fff;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: #f78989;
+  border-color: #f78989;
+}
+
+.btn-secondary {
+  background-color: #909399;
+  border-color: #909399;
+  color: #fff;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: #a6a9ad;
+  border-color: #a6a9ad;
+}
+
+.btn-outline {
+  background-color: transparent;
+  border-color: #dcdfe6;
+  color: #606266;
+}
+
+.btn-outline:hover:not(:disabled) {
+  color: #409eff;
+  border-color: #409eff;
+  background-color: #ecf5ff;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.btn-lg {
+  padding: 12px 24px;
+  font-size: 16px;
+}
+
+/* 卡片样式 */
+.card {
+  background-color: #fff;
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12), 0 0 6px rgba(0, 0, 0, 0.04);
+}
+
+.card-header {
+  padding: 18px 20px;
+  border-bottom: 1px solid #ebeef5;
+  font-weight: 600;
+  color: #303133;
+}
+
+.card-body {
+  padding: 20px;
+}
+
+.card-footer {
+  padding: 12px 20px;
+  border-top: 1px solid #ebeef5;
+  background-color: #fafafa;
+}
+
+/* 表单样式 */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #606266;
+}
+
+.form-label.required::after {
+  content: '*';
+  color: #f56c6c;
+  margin-left: 4px;
+}
+
+.form-control {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 14px;
+  line-height: 1.4;
+  color: #606266;
+  background-color: #fff;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  transition: border-color 0.3s;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: #409eff;
+  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2);
+}
+
+.form-control:disabled {
+  background-color: #f5f7fa;
+  color: #c0c4cc;
+  cursor: not-allowed;
+}
+
+.form-control.is-error {
+  border-color: #f56c6c;
+}
+
+.form-error {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #f56c6c;
+}
+
+.invalid-feedback {
+  display: block;
+  width: 100%;
+  margin-top: 0.25rem;
+  font-size: 0.875em;
+  color: #dc3545;
+}
+
+/* 状态指示器 */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 12px;
+  white-space: nowrap;
+}
+
+.status-badge.status-active {
+  background-color: #f0f9ff;
+  color: #409eff;
+  border: 1px solid #b3d8ff;
+}
+
+.status-badge.status-inactive {
+  background-color: #fef0f0;
+  color: #f56c6c;
+  border: 1px solid #fbc4c4;
+}
+
+.status-badge.status-success {
+  background-color: #f0f9ff;
+  color: #67c23a;
+  border: 1px solid #c2e7b0;
+}
+
+.status-badge.status-warning {
+  background-color: #fdf6ec;
+  color: #e6a23c;
+  border: 1px solid #f5dab1;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .container {
+    padding: 0 16px;
+  }
+
+  .card-header,
+  .card-body,
+  .card-footer {
+    padding: 16px;
+  }
+
+  .btn-lg {
+    padding: 10px 20px;
+    font-size: 14px;
+  }
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* 动画类 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.slide-fade-enter-active {
+  transition: all 0.3s ease-out;
+}
+
+.slide-fade-leave-active {
+  transition: all 0.3s ease-in;
+}
+
+.slide-fade-enter-from {
+  transform: translateX(20px);
+  opacity: 0;
+}
+
+.slide-fade-leave-to {
+  transform: translateX(-20px);
+  opacity: 0;
+}
+
+/* Modal 样式 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  width: 90%;
+  max-width: 500px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.btn-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #6c757d;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-close:hover {
+  color: #495057;
+}
+
+.modal-body {
+  padding: 1rem;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-top: 1px solid #dee2e6;
+  background-color: #f8f9fa;
+}
+
+/* 移动端适配样式 */
+@media (max-width: 768px) {
+  /* 安全区域适配 */
+  .safe-area-top {
+    padding-top: var(--safe-area-inset-top);
+  }
+
+  .safe-area-bottom {
+    padding-bottom: var(--safe-area-inset-bottom);
+  }
+
+  .safe-area-left {
+    padding-left: var(--safe-area-inset-left);
+  }
+
+  .safe-area-right {
+    padding-right: var(--safe-area-inset-right);
+  }
+
+  /* 移动端按钮优化 */
+  .btn {
+    min-height: 44px; /* iOS推荐的最小触摸目标 */
+    padding: 12px 16px;
+  }
+
+  /* 移动端表单优化 */
+  .form-control {
+    min-height: 44px;
+    font-size: 16px; /* 防止iOS缩放 */
+  }
+
+  /* 移动端卡片适配 */
+  .card {
+    margin: 8px;
+    border-radius: 8px;
+  }
+
+  .card-header,
+  .card-body,
+  .card-footer {
+    padding: 16px;
+  }
+
+  /* 移动端导航优化 */
+  .mobile-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border-top: 1px solid #ebeef5;
+    z-index: 1000;
+    padding-bottom: var(--safe-area-inset-bottom);
+  }
+
+  /* 移动端模态框优化 */
+  .modal-overlay {
+    padding: 20px;
+  }
+
+  .modal-content {
+    margin: 0;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+  }
+
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 1rem;
+    border-top: 1px solid #dee2e6;
+    background-color: #f8f9fa;
+  }
+
+  /* 移动端表格优化 */
+  .responsive-table {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .responsive-table table {
+    min-width: 600px;
+  }
+
+  /* 移动端隐藏桌面端元素 */
+  .desktop-only {
+    display: none !important;
+  }
+
+  /* 移动端显示 */
+  .mobile-only {
+    display: block !important;
+  }
+}
+
+/* 平板适配 */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .tablet-only {
+    display: block !important;
+  }
+}
+
+/* 大屏幕适配 */
+@media (min-width: 1200px) {
+  /* 桌面端显示 */
+  .desktop-only {
+    display: block !important;
+  }
+
+  /* 移动端隐藏 */
+  .mobile-only {
+    display: none !important;
+  }
+}
+
+/* 高分辨率屏幕适配 */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .high-res-only {
+    display: block !important;
+  }
+}
+
+/* 横屏适配 */
+@media (orientation: landscape) and (max-height: 500px) {
+  .landscape-mobile {
+    padding-top: var(--safe-area-inset-top);
+  }
+}
+
+/* iOS Safari 特定优化 */
+@supports (-webkit-touch-callout: none) {
+  /* iOS Safari滚动优化 */
+  body {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* iOS Safari表单优化 */
+  input[type="text"],
+  input[type="password"],
+  input[type="email"],
+  input[type="tel"],
+  textarea,
+  select {
+    -webkit-appearance: none;
+    border-radius: 0;
+  }
+
+  /* iOS Safari按钮优化 */
+  .btn {
+    -webkit-appearance: none;
+  }
+}
+
+/* Android Chrome 特定优化 */
+@media screen and (-webkit-min-device-pixel-ratio: 0) and (min-resolution: .001dpcm) {
+  .android-only {
+    display: block !important;
+  }
+}
+
+/* 暗色模式支持 */
+@media (prefers-color-scheme: dark) {
+  .auto-dark {
+    color: #fff;
+    background-color: #1a1a1a;
+  }
+}
+
+/* 减少动画模式支持 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* 表格点击区域修复 */
+/* 修复表格单元格点击偏移问题 */
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+}
+
+table th,
+table td {
+  position: relative;
+  box-sizing: border-box;
+  height: auto;
+  min-height: 48px; /* 确保最小点击区域 */
+  vertical-align: middle;
+  line-height: 1.4;
+  padding: 12px 16px; /* 统一内边距 */
+  border: 1px solid transparent; /* 透明边框避免布局偏移 */
+  overflow: hidden; /* 防止内容溢出 */
+}
+
+/* 确保表格行高度一致 */
+table tr {
+  position: relative;
+}
+
+table tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+table tbody tr:hover {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+/* 修复表格内按钮的点击区域 */
+table .btn,
+table button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  min-width: 32px;
+  padding: 6px 12px;
+  margin: 0;
+  position: relative;
+  z-index: 2; /* 确保按钮在最上层 */
+  white-space: nowrap;
+  border: none;
+  cursor: pointer;
+}
+
+/* 修复表格内链接和可点击元素的点击区域 */
+table a,
+table [role="button"],
+table .clickable {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 4px 8px;
+  margin: 0;
+  position: relative;
+  z-index: 2;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+table a:hover,
+table [role="button"]:hover,
+table .clickable:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+}
+
+/* 确保所有单元格内的子元素正确响应点击 */
+table td > *,
+table th > * {
+  pointer-events: auto;
+}
+
+/* 修复可能的行高计算问题 */
+table td:empty,
+table th:empty {
+  min-height: 48px;
+  display: block;
+  content: "";
+}
+
+/* 特殊修复：针对Vue.js动态内容的点击区域 */
+table td .vue-component,
+table th .vue-component {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  width: 100%;
+}
+
+/* 移动端表格点击区域优化 */
+@media (max-width: 768px) {
+  table th,
+  table td {
+    min-height: 44px; /* 移动端最小点击区域 */
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+
+  table .btn,
+  table button {
+    min-height: 40px;
+    min-width: 40px;
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+}
+
+/* El-Plus Table 点击区域修复 */
+.el-table .el-table__row {
+  position: relative;
+}
+
+.el-table .cell {
+  line-height: 1.4;
+  padding: 8px 12px;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.el-table .el-table__header th {
+  padding: 12px 16px;
+  min-height: 48px;
+  line-height: 1.4;
+}
+
+/* 列表和卡片组件点击区域修复 */
+.list-item,
+.card-item,
+.el-list-item,
+.el-card {
+  position: relative;
+  min-height: 48px;
+  padding: 12px 16px;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.list-item:hover,
+.card-item:hover,
+.el-list-item:hover,
+.el-card:hover {
+  background-color: rgba(0, 0, 0, 0.02);
+  cursor: pointer;
+}
+
+/* 确保所有可交互元素有正确的点击区域 */
+.el-button,
+.el-link,
+.el-tag,
+.el-switch {
+  min-height: 32px;
+  min-width: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+/* 下拉菜单和选择器点击区域修复 */
+.el-dropdown-item,
+.el-select-dropdown__item {
+  min-height: 40px;
+  padding: 10px 16px;
+  line-height: 1.4;
+  display: flex;
+  align-items: center;
+}
+
+/* 菜单项点击区域修复 */
+.el-menu-item,
+.el-submenu__title {
+  min-height: 44px;
+  padding: 0 10px !important;
+  line-height: 44px;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+/* 菜单子项左对齐 */
+.el-menu .el-menu {
+  padding-left: 0 !important;
+  margin: 0 !important;
+}
+
+.el-menu .el-menu .el-menu-item,
+.el-menu .el-menu .el-submenu__title {
+  padding: 0 10px !important;
+  margin: 0 !important;
+}
+
+/* 对话框和抽屉按钮点击区域修复 */
+.el-dialog__footer .el-button,
+.el-drawer__footer .el-button {
+  min-height: 36px;
+  min-width: 80px;
+  padding: 8px 16px;
+}
+
+/* 表单控件点击区域修复 */
+.el-input__inner,
+.el-textarea__inner,
+.el-select .el-input__inner,
+.el-date-editor .el-input__inner,
+.el-date-editor .el-range-input,
+.el-input-number .el-input__inner {
+  min-height: 40px;
+  padding: 8px 12px;
+  line-height: 1.4;
+  box-sizing: border-box;
+}
+
+@media (max-width: 767px) {
+  .el-input__inner,
+  .el-textarea__inner,
+  .el-select .el-input__inner,
+  .el-select__selected-item,
+  .el-date-editor .el-input__inner,
+  .el-date-editor .el-range-input,
+  .el-input-number .el-input__inner {
+    font-size: 16px !important;
+  }
+}
+
+/* 修复Vue动态内容可能导致的点击区域问题 */
+.vue-component,
+.dynamic-content {
+  position: relative;
+  z-index: 1;
+}
+
+/* 确保所有可能的浮动元素不会影响点击 */
+.clearfix::after {
+  content: "";
+  display: table;
+  clear: both;
+}

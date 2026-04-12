@@ -1,0 +1,716 @@
+/* ================================
+   TF2025 全局响应式设计规范
+   最低适配宽度: 375px (iPhone SE)
+   适配所有手机终端设备
+   最后更新: 2025-12-20
+   ================================ */
+
+/* 导入统一模态框样式规范（包含渐变按钮样式） */
+@use '../assets/css/modal-styles.scss' as *;
+
+/* 基础断点定义 */
+:root {
+  /* 最小断点 - 小屏手机 */
+  --breakpoint-min: 375px;  /* iPhone SE, iPhone 12 Mini */
+
+  /* 小屏手机 */
+  --breakpoint-xs: 414px;  /* iPhone SE 2022, iPhone 12, 13 */
+
+  /* 中屏手机 */
+  --breakpoint-sm: 480px;  /* 大屏手机竖屏 */
+
+  /* 大屏手机 */
+  --breakpoint-md: 768px;  /* 平板竖屏/大屏手机横屏 */
+
+  /* 平板 */
+  --breakpoint-lg: 1024px; /* 平板横屏/小桌面 */
+
+  /* 桌面 */
+  --breakpoint-xl: 1200px; /* 标准桌面 */
+
+  /* 大桌面 */
+  --breakpoint-2xl: 1440px;
+}
+
+/* ================================
+   1. 核心适配原则
+   ================================ */
+
+/* 1.1 视口设置 */
+html {
+  /* 防止移动端缩放 */
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  /* 允许纵向滚动 */
+  overflow-x: hidden;
+  overflow-y: auto;
+  /* 滚动行为优化 */
+  -webkit-overflow-scrolling: touch;
+  min-height: 100%;
+}
+
+body {
+  /* 不能强制最小宽度，否则 360px 安卓机会天然产生横向滚动 */
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  /* 防止横向滚动 */
+  overflow-x: hidden;
+  /* 允许纵向滚动 */
+  overflow-y: auto;
+  /* 移除高度限制，改为最小高度 */
+  min-height: 100vh;
+}
+
+/* 1.2 布局容器 */
+.page-container {
+  width: 100%;
+  max-width: 100%;
+  min-height: 100vh;
+  /* 安全区域适配 */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  overflow-x: clip;
+}
+
+#app {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: clip;
+}
+
+/* ================================
+   2. 断点媒体查询
+   ================================ */
+
+/* iPhone SE (390x844) 及以上 - 最小适配 */
+@media (min-width: 390px) {
+  /* 基础样式在此处定义 */
+}
+
+/* 统一移动端样式 - 375px ~ 767px (所有手机，不包括iPad) */
+@media (max-width: 767px) {
+  /* 单列布局 - 所有手机统一 */
+  .grid-2,
+  .grid-3,
+  .grid-4 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* 隐藏桌面端元素 */
+  .desktop-only,
+  .tablet-only {
+    display: none !important;
+  }
+
+  /* 显示移动端元素 */
+  .mobile-only {
+    display: block !important;
+  }
+
+  /* 统一触摸优化 */
+  .btn,
+  .el-button {
+    min-height: 44px !important;
+    min-width: 44px !important;
+    margin: 4px;
+  }
+
+  /* 统一字体大小 */
+  h1 { font-size: 24px !important; }
+  h2 { font-size: 20px !important; }
+  h3 { font-size: 18px !important; }
+  h4 { font-size: 16px !important; }
+  p, span, input, select, textarea {
+    font-size: 16px !important; /* 16px防止iOS缩放 */
+  }
+
+  /* 表格统一为单列 */
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 模态框统一样式 - 保持居中 */
+  .modal,
+  .el-dialog {
+    width: 95vw !important;
+    max-width: none !important;
+    margin: auto !important;
+    border-radius: 12px;
+    position: relative !important;
+  }
+
+  /* 导航栏统一 */
+  .navbar {
+    height: 56px;
+  }
+
+  /* 侧边栏统一为抽屉式 */
+  .sidebar {
+    position: fixed;
+    width: 280px;
+    height: 100vh;
+    z-index: 1000;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+
+    &.open {
+      transform: translateX(0);
+    }
+  }
+}
+
+/* iPad 单独适配 - 768px ~ 1024px */
+@media (min-width: 768px) and (max-width: 1023px) {
+  /* iPad可以保留两列布局或其他特殊样式 */
+  .grid-2,
+  .grid-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .grid-4 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  /* iPad特殊元素 */
+  .tablet-only {
+    display: block !important;
+  }
+}
+
+/* 平板及以上 - 768px+ */
+@media (min-width: 768px) {
+  /* 恢复多列布局 */
+  .grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .grid-4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* ================================
+   3. 组件响应式规则
+   ================================ */
+
+/* 3.1 模态框 - 通用响应式适配 */
+.modal,
+.el-dialog,
+.modern-modal {
+  /* 移动端通用适配 - 375px及以上所有手机 */
+  @media (max-width: 767px) {
+    width: 95vw !important;
+    max-width: none !important;
+    max-height: 90vh;
+    margin: auto !important;
+    border-radius: 12px;
+
+    .modal-header,
+    .el-dialog__header,
+    .modern-modal-header {
+      padding: 16px 20px;
+    }
+
+    .modal-body,
+    .el-dialog__body,
+    .modern-modal-body {
+      padding: 16px 20px;
+      max-height: calc(90vh - 140px);
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .modal-footer,
+    .el-dialog__footer,
+    .modern-modal-footer {
+      padding: 16px 20px;
+    }
+  }
+
+  /* 小屏手机 - 375px到480px */
+  @media (max-width: 479px) {
+    width: 98vw !important;
+    max-height: 92vh;
+    border-radius: 8px;
+
+    .modal-header,
+    .el-dialog__header,
+    .modern-modal-header {
+      padding: 12px 16px;
+    }
+
+    .modal-body,
+    .el-dialog__body,
+    .modern-modal-body {
+      padding: 12px 16px;
+      max-height: calc(92vh - 120px);
+    }
+
+    .modal-footer,
+    .el-dialog__footer,
+    .modern-modal-footer {
+      padding: 12px 16px;
+    }
+  }
+}
+
+/* 3.2 表单 */
+.form-container {
+  /* 表单行布局 */
+  .form-row {
+    display: grid;
+    gap: 16px;
+
+    /* 默认单列 */
+    grid-template-columns: 1fr;
+
+    /* 小屏两列 */
+    @media (min-width: 480px) {
+      &.two-columns {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      &.three-columns {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+  }
+
+  /* 移动端表单适配 - 所有小屏手机 */
+  @media (max-width: 479px) {
+    .form-row {
+      grid-template-columns: 1fr !important;
+      gap: 12px;
+    }
+
+    .form-label {
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    /* 特殊两列布局（仅在内容允许时） */
+    .form-row.two-cols-mobile {
+      grid-template-columns: 1fr 1fr !important;
+      gap: 8px;
+    }
+  }
+}
+
+/* 3.3 表格 */
+.table-container {
+  /* 移动端表格适配 - 所有小屏手机 */
+  @media (max-width: 479px) {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+
+    table {
+      min-width: 600px;
+    }
+
+    /* 卡片式表格 */
+    &.mobile-card {
+      table {
+        display: block;
+        min-width: 100%;
+      }
+
+      thead {
+        display: none;
+      }
+
+      tbody {
+        display: block;
+      }
+
+      tr {
+        display: block;
+        margin-bottom: 16px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 12px;
+        background: white;
+      }
+
+      td {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border: none;
+
+        &:before {
+          content: attr(data-label);
+          font-weight: 600;
+          color: #6b7280;
+        }
+      }
+    }
+  }
+}
+
+/* 3.4 导航栏 */
+.navbar {
+  /* 390px 适配 */
+  @media (max-width: 479px) {
+    padding: 0 16px;
+    height: 56px;
+
+    .navbar-brand {
+      font-size: 18px;
+    }
+
+    .navbar-menu {
+      display: none;
+    }
+
+    .navbar-toggle {
+      display: block;
+    }
+  }
+}
+
+/* 3.5 侧边栏 */
+.sidebar {
+  /* 390px 适配 */
+  @media (max-width: 479px) {
+    position: fixed;
+    top: 0;
+    left: -100%;
+    width: 280px;
+    height: 100vh;
+    z-index: 1000;
+    transition: left 0.3s ease;
+
+    &.open {
+      left: 0;
+    }
+
+    .sidebar-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 999;
+    }
+  }
+}
+
+/* ================================
+   4. 工具类
+   ================================ */
+
+/* 显示/隐藏 */
+.mobile-only {
+  display: none;
+}
+
+@media (max-width: 479px) {
+  .mobile-only {
+    display: block;
+  }
+
+  .mobile-hidden {
+    display: none !important;
+  }
+}
+
+/* 间距调整 */
+.p-sm-mobile { padding: 8px; }
+.p-md-mobile { padding: 12px; }
+.p-lg-mobile { padding: 16px; }
+
+.m-sm-mobile { margin: 8px; }
+.m-md-mobile { margin: 12px; }
+.m-lg-mobile { margin: 16px; }
+
+/* 文字大小 */
+.text-xs-mobile { font-size: 11px; }
+.text-sm-mobile { font-size: 12px; }
+.text-base-mobile { font-size: 14px; }
+.text-lg-mobile { font-size: 16px; }
+
+/* ================================
+   5. Element Plus 组件适配
+   ================================ */
+
+/* 5.1 Dialog - 移动端通用适配 */
+@media (max-width: 767px) {
+  .el-dialog {
+    width: 95vw !important;
+    max-width: none !important;
+    margin: auto !important;
+    border-radius: 12px;
+  }
+
+  .el-dialog__header {
+    padding: 16px 20px !important;
+  }
+
+  .el-dialog__body {
+    padding: 20px !important;
+    max-height: calc(90vh - 140px);
+    overflow-y: auto;
+  }
+
+  .el-dialog__footer {
+    padding: 16px 20px !important;
+  }
+}
+
+/* 小屏手机特定适配 */
+@media (max-width: 479px) {
+  .el-dialog {
+    width: 98vw !important;
+    border-radius: 8px;
+  }
+
+  .el-dialog__header {
+    padding: 12px 16px !important;
+  }
+
+  .el-dialog__body {
+    padding: 16px !important;
+  }
+
+  .el-dialog__footer {
+    padding: 12px 16px !important;
+  }
+}
+
+/* 5.2 Form - 移动端通用适配 */
+@media (max-width: 767px) {
+  .el-form-item {
+    margin-bottom: 16px !important;
+  }
+
+  .el-form-item__label {
+    font-size: 14px !important;
+    line-height: 20px !important;
+  }
+
+  .el-input__wrapper {
+    min-height: 44px; /* iOS 触摸最小尺寸 */
+  }
+
+  .el-input__inner {
+    height: 44px !important;
+    font-size: 16px !important;
+  }
+
+  .el-select__selected-item,
+  .el-date-editor .el-input__inner,
+  .el-date-editor .el-range-input,
+  .el-textarea__inner,
+  .el-input-number .el-input__inner {
+    font-size: 16px !important;
+  }
+
+  .el-select {
+    width: 100% !important;
+  }
+
+  .el-date-editor {
+    width: 100% !important;
+  }
+
+  /* 两列表单布局 */
+  .el-form--inline .el-form-item {
+    margin-right: 0;
+    margin-bottom: 12px;
+  }
+}
+
+/* 小屏手机特定适配 */
+@media (max-width: 479px) {
+  .el-form-item {
+    margin-bottom: 12px !important;
+  }
+
+  .el-form-item__label {
+    font-size: 13px !important;
+  }
+
+  .el-input__inner {
+    font-size: 16px !important;
+  }
+
+  .el-select__selected-item,
+  .el-date-editor .el-input__inner,
+  .el-date-editor .el-range-input,
+  .el-textarea__inner,
+  .el-input-number .el-input__inner {
+    font-size: 16px !important;
+  }
+}
+
+/* 5.3 Table - 移动端通用适配 */
+@media (max-width: 767px) {
+  .el-table {
+    font-size: 12px !important;
+  }
+
+  .el-table th,
+  .el-table td {
+    padding: 8px 4px !important;
+  }
+
+  .el-table__cell {
+    word-break: break-all;
+  }
+
+  /* 表格操作列 */
+  .el-table .el-table__cell .el-button {
+    padding: 4px 8px;
+    font-size: 12px;
+    margin: 2px;
+  }
+}
+
+/* 小屏手机特定适配 */
+@media (max-width: 479px) {
+  .el-table {
+    font-size: 11px !important;
+  }
+
+  .el-table th,
+  .el-table td {
+    padding: 6px 2px !important;
+  }
+
+  .el-table .el-table__cell .el-button {
+    padding: 2px 6px;
+    font-size: 11px;
+    min-height: 32px;
+  }
+}
+
+/* 5.4 Button - 移动端通用适配 */
+@media (max-width: 767px) {
+  .el-button {
+    min-height: 44px; /* iOS 触摸最小尺寸 */
+    padding: 0 16px;
+    font-size: 14px;
+    margin: 4px; /* 增加间距避免误触 */
+  }
+
+  .el-button--small {
+    min-height: 36px;
+    font-size: 12px;
+    padding: 0 12px;
+  }
+
+  .el-button--large {
+    min-height: 48px;
+    padding: 0 20px;
+    font-size: 16px;
+  }
+
+  /* 按钮组 */
+  .el-button-group .el-button {
+    margin: 2px;
+  }
+}
+
+/* 小屏手机特定适配 */
+@media (max-width: 479px) {
+  .el-button {
+    min-height: 44px;
+    padding: 0 12px;
+    font-size: 13px;
+  }
+
+  .el-button--small {
+    min-height: 36px;
+    font-size: 11px;
+    padding: 0 8px;
+  }
+
+  .el-button--large {
+    min-height: 48px;
+    padding: 0 16px;
+    font-size: 15px;
+  }
+}
+
+/* ================================
+   6. 安全区域适配 (iPhone X+)
+   ================================ */
+
+.safe-area-padding {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-area-margin {
+  margin-top: env(safe-area-inset-top);
+  margin-bottom: env(safe-area-inset-bottom);
+}
+
+/* ================================
+   7. 横屏适配
+   ================================ */
+
+@media (max-width: 844px) and (orientation: landscape) {
+  /* iPhone SE 横屏适配 */
+  .modal {
+    max-height: 100vh;
+
+    .modal-body {
+      max-height: calc(100vh - 120px);
+    }
+  }
+
+  .navbar {
+    height: 48px;
+  }
+}
+
+/* ================================
+   8. 打印样式
+   ================================ */
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    min-width: auto;
+  }
+}
+
+/* ================================
+   9. 高对比度模式
+   ================================ */
+
+@media (prefers-contrast: high) {
+  .btn {
+    border: 2px solid currentColor;
+  }
+
+  a {
+    text-decoration: underline;
+  }
+}
+
+/* ================================
+   10. 减少动画偏好
+   ================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

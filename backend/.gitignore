@@ -1,0 +1,10 @@
+.env
+*.env
+ecosystem.config.js
+ecosystem.production.js
+cloud_schema.sql
+backups/
+logs/
+uploads/
+node_modules/
+*.pid

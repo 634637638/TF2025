@@ -1,0 +1,160 @@
+/**
+ * 全局权限提示样式
+ * 提供统一的权限不足提示视觉效果
+ */
+
+/* 权限通知样式 */
+.permission-notification {
+  border-left: 4px solid #f56c6c !important;
+
+  &.el-notification--warning {
+    border-left-color: #e6a23c !important;
+  }
+
+  &.el-notification--info {
+    border-left-color: #909399 !important;
+  }
+
+  .el-notification__group {
+    .el-notification__title {
+      font-weight: 600;
+      color: #303133;
+    }
+
+    .el-notification__content {
+      color: #606266;
+      line-height: 1.6;
+    }
+  }
+}
+
+/* 权限引导对话框样式 */
+.permission-guide-dialog {
+  .el-message-box__message {
+    text-align: left;
+    white-space: pre-line;
+    line-height: 1.8;
+    font-size: 14px;
+  }
+}
+
+/* 权限不足标签样式 */
+.permission-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  gap: 6px;
+
+  &.view {
+    background-color: #ecf5ff;
+    color: #409eff;
+    border: 1px solid #d9ecff;
+  }
+
+  &.create {
+    background-color: #f0f9ff;
+    color: #67c23a;
+    border: 1px solid #c2e7b0;
+  }
+
+  &.edit {
+    background-color: #fdf6ec;
+    color: #e6a23c;
+    border: 1px solid #f5dab1;
+  }
+
+  &.delete {
+    background-color: #fef0f0;
+    color: #f56c6c;
+    border: 1px solid #fbc4c4;
+  }
+
+  i {
+    font-size: 14px;
+  }
+}
+
+/* 权限提示气泡 */
+.permission-tooltip {
+  .el-tooltip__popper {
+    .permission-tooltip-content {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+
+      .tooltip-title {
+        font-weight: 600;
+        color: #303133;
+      }
+
+      .tooltip-permission {
+        font-family: monospace;
+        background: #f5f7fa;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+      }
+    }
+  }
+}
+
+/* 操作按钮禁用状态 */
+.permission-disabled-btn {
+  position: relative;
+
+  &:hover::after {
+    content: '🔒 权限不足';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 6px 12px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    font-size: 12px;
+    border-radius: 4px;
+    white-space: nowrap;
+    z-index: 9999;
+    pointer-events: none;
+  }
+}
+
+/* 权限加载状态 */
+.permission-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #909399;
+  font-size: 14px;
+
+  .el-icon {
+    animation: rotate 1s linear infinite;
+  }
+
+  @keyframes rotate {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .permission-notification {
+    .el-notification__group {
+      .el-notification__title {
+        font-size: 14px;
+      }
+
+      .el-notification__content {
+        font-size: 13px;
+      }
+    }
+  }
+}

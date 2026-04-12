@@ -1,0 +1,127 @@
+.pagination-container,
+.pagination-wrapper,
+.table-pagination,
+.pagination-section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.pagination-container,
+.pagination-wrapper,
+.table-pagination {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.pagination-container :where(.tf-pagination, .el-pagination),
+.pagination-wrapper :where(.tf-pagination, .el-pagination),
+.table-pagination :where(.tf-pagination, .el-pagination),
+.pagination-section :where(.tf-pagination, .el-pagination) {
+  width: 100%;
+  max-width: 100%;
+}
+
+:where(.pagination-container, .pagination-wrapper, .table-pagination, .pagination-section) :where(.el-pagination) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 0;
+  color: var(--el-text-color-regular);
+}
+
+:where(.pagination-container, .pagination-wrapper, .table-pagination, .pagination-section) :where(.el-pagination .btn-prev),
+:where(.pagination-container, .pagination-wrapper, .table-pagination, .pagination-section) :where(.el-pagination .btn-next),
+:where(.pagination-container, .pagination-wrapper, .table-pagination, .pagination-section) :where(.el-pager li) {
+  min-width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+:where(.pagination-container, .pagination-wrapper, .table-pagination, .pagination-section) :where(.el-pagination .btn-prev:hover),
+:where(.pagination-container, .pagination-wrapper, .table-pagination, .pagination-section) :where(.el-pagination .btn-next:hover),
+:where(.pagination-container, .pagination-wrapper, .table-pagination, .pagination-section) :where(.el-pager li:hover) {
+  color: var(--el-color-primary);
+}
+
+:where(.pagination-container, .pagination-wrapper, .table-pagination, .pagination-section) :where(.el-pager li.is-active) {
+  background: var(--el-color-primary);
+  color: #fff;
+}
+
+:where(.pagination-container, .pagination-wrapper, .table-pagination, .pagination-section) :where(.el-pagination__total),
+:where(.pagination-container, .pagination-wrapper, .table-pagination, .pagination-section) :where(.el-pagination__jump) {
+  margin: 0;
+  white-space: nowrap;
+}
+
+:where(.pagination-container, .pagination-wrapper, .table-pagination, .pagination-section) :where(.el-pagination__sizes .el-select),
+:where(.pagination-container, .pagination-wrapper, .table-pagination, .pagination-section) :where(.el-pagination__jump .el-input__wrapper) {
+  min-width: 92px;
+}
+
+@media (max-width: 768px) {
+  .pagination-container,
+  .pagination-wrapper,
+  .table-pagination,
+  .pagination-section {
+    margin-top: 8px;
+  }
+
+  :where(.pagination-container, .pagination-wrapper, .table-pagination, .pagination-section) :where(.el-pagination) {
+    gap: 6px;
+    padding: 4px 0;
+  }
+
+  :where(.pagination-container, .pagination-wrapper, .table-pagination, .pagination-section) :where(.el-pagination__total) {
+    width: auto;
+    text-align: center;
+  }
+
+  :where(.pagination-container, .pagination-wrapper, .table-pagination, .pagination-section) :where(.el-pagination__sizes),
+  :where(.pagination-container, .pagination-wrapper, .table-pagination, .pagination-section) :where(.el-pagination__jump) {
+    display: flex;
+    justify-content: center;
+    width: auto;
+    margin: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .pagination-container,
+  .pagination-wrapper,
+  .table-pagination,
+  .pagination-section {
+    margin-top: 6px;
+  }
+
+  :where(.pagination-container, .pagination-wrapper, .table-pagination, .pagination-section) :where(.el-pagination) {
+    gap: 4px;
+    padding: 2px 0;
+  }
+
+  :where(.pagination-container, .pagination-wrapper, .table-pagination, .pagination-section) :where(.el-pagination__sizes),
+  :where(.pagination-container, .pagination-wrapper, .table-pagination, .pagination-section) :where(.el-pagination__jump) {
+    width: auto;
+    max-width: 100%;
+  }
+
+  :where(.pagination-container, .pagination-wrapper, .table-pagination, .pagination-section) :where(.el-pagination__jump) {
+    display: none;
+  }
+
+  :where(.pagination-container, .pagination-wrapper, .table-pagination, .pagination-section) :where(.el-pagination .btn-prev),
+  :where(.pagination-container, .pagination-wrapper, .table-pagination, .pagination-section) :where(.el-pagination .btn-next),
+  :where(.pagination-container, .pagination-wrapper, .table-pagination, .pagination-section) :where(.el-pager li) {
+    min-width: 30px;
+    height: 30px;
+    font-size: 12px;
+  }
+}

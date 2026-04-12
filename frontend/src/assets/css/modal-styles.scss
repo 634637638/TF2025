@@ -1,0 +1,1048 @@
+/**
+ * 统一模态框样式规范
+ * 基于客户管理页面设计风格
+ *
+ * ==================== 重要问题记录与解决方案 ====================
+ *
+ * 【问题1】Element Plus el-dialog 白色边框问题
+ * ----------------------------------------------------------------
+ * 问题描述：
+ * 使用 Element Plus 的 el-dialog 组件时，对话框周围会出现白色边框/白色背景层，
+ * 即使设置了 background: transparent 也无法完全去除。
+ *
+ * 根本原因：
+ * Element Plus 的 el-dialog 组件会创建多个嵌套的包装元素：
+ * - .el-overlay (最外层遮罩)
+ * - .el-dialog__wrapper (对话框包装器)
+ * - .el-overlay-dialog (遮罩层对话框)
+ * - .el-dialog (实际对话框内容)
+ *
+ * 这些包装元素都有默认的白色背景样式，且由于 Element Plus 的样式优先级很高，
+ * 在 scoped 样式中很难覆盖。
+ *
+ * 解决方案：
+ * 1. 【推荐】使用自定义模态框替代 el-dialog
+ *    - 参考工资管理页面的实现方式
+ *    - 使用纯 HTML/CSS 创建模态框，不依赖 Element Plus
+ *    - 样式完全可控，无白色边框问题
+ *
+ * 2. 如果必须使用 el-dialog，需要在全局样式（非 scoped）中添加：
+ *    ```scss
+ *    // 全局样式文件中（如 styles.css）
+ *    .el-overlay,
+ *    .el-dialog__wrapper,
+ *    .el-overlay-dialog {
+ *      background-color: rgba(0, 0, 0, 0.5) !important;
+ *      background: rgba(0, 0, 0, 0.5) !important;
+ *      border: none !important;
+ *      outline: none !important;
+ *      box-shadow: none !important;
+ *    }
+ *    ```
+ *
+ * 【问题2】Vue scoped 样式无法覆盖模态框样式
+ * ----------------------------------------------------------------
+ * 问题描述：
+ * 在 Vue 组件中使用 scoped 样式时，自定义模态框的样式无法生效。
+ *
+ * 根本原因：
+ * Vue 的 scoped 样式通过添加唯一属性选择器来实现样式隔离。
+ * 但模态框是通过 v-if 条件渲染的，且通常挂载到 body 根级别，
+ * 不在组件的 DOM 树内，因此 scoped 样式无法匹配到模态框元素。
+ *
+ * 解决方案：
+ * 1. 将模态框相关样式放在非 scoped 的 style 块中
+ *    ```vue
+ *    <style lang="scss" scoped>
+ *    // 组件其他样式
+ *    </style>
+ *
+ *    <style lang="scss">
+ *    // 模态框样式 - 不使用 scoped
+ *    .modal-overlay { ... }
+ *    .modal-content { ... }
+ *    </style>
+ *    ```
+ *
+ * 2. 或者将模态框样式提取到全局样式文件中
+ *
+ * 【问题3】日期选择器时区和语言问题
+ * ----------------------------------------------------------------
+ * 问题描述：
+ * Element Plus 日期选择器默认使用 UTC 时区，且显示英文界面。
+ *
+ * 解决方案：
+ * 1. 在 main.ts 中配置全局语言包：
+ *    ```typescript
+ *    import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
+ *    app.use(ElementPlus, { locale: zhCn })
+ *    ```
+ *
+ * 2. 为日期选择器添加时区配置：
+ *    ```vue
+ *    <el-date-picker
+ *      v-model="formData.date"
+ *      type="datetime"
+ *      :timezone="'Asia/Shanghai'"
+ *      locale="zh-CN"
+ *    />
+ *    ```
+ *
+ * ==================== 最佳实践 ====================
+ *
+ * 1. 优先使用 MobileDialog 或统一收口后的 el-dialog，避免继续新增自定义 modal-overlay 实现
+ * 2. 模态框样式应放在全局样式文件或非 scoped style 块中
+ * 3. 全局配置 Element Plus 语言包和时区
+ * 4. 使用渐变色头部（#667eea -> #764ba2）保持视觉一致性
+ * 5. 确保遮罩层为半透明黑色 rgba(0, 0, 0, 0.5)
+ * 6. 所有包装元素必须设置 border: none 和 outline: none
+ */
+
+// ==================== 颜色变量 ====================
+:root {
+  // 主色调
+  --modal-primary-blue: #3b82f6;
+  --modal-primary-dark: #1d4ed8;
+  --modal-secondary-gray: #6b7280;
+  --modal-secondary-dark: #4b5563;
+
+  // 渐变色
+  --modal-header-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --modal-primary-gradient: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+
+  // 文字颜色
+  --modal-text-primary: #374151;
+  --modal-text-regular: #6b7280;
+  --modal-text-placeholder: #9ca3af;
+  --modal-text-white: #ffffff;
+
+  // 背景色
+  --modal-bg-light: #f9fafb;
+  --modal-bg-white: #ffffff !important;
+  --modal-border-color: #e5e7eb;
+
+  // 状态色
+  --modal-success: #10b981;
+  --modal-warning: #f59e0b;
+  --modal-danger: #ef4444;
+  --modal-info: #3b82f6;
+
+  // 阴影
+  --modal-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  --modal-button-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+  --modal-button-shadow-hover: 0 4px 8px rgba(59, 130, 246, 0.4);
+}
+
+// ==================== 基础模态框样式 ====================
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: modalFadeIn 0.3s ease-out;
+}
+
+.modal-content {
+  background: var(--modal-bg-white) #ffffff !important;
+  border-radius: 12px;
+  box-shadow: var(--modal-shadow);
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+// ==================== 模态框头部 ====================
+.modal-header {
+  background: var(--modal-header-gradient);
+  color: var(--modal-text-white);
+  padding: 20px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 12px 12px 0 0;
+
+  h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    i {
+      font-size: 20px;
+      opacity: 0.9;
+    }
+  }
+
+  .btn-close {
+    background: none;
+    border: none;
+    color: var(--modal-text-white);
+    font-size: 24px;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.2s ease;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    &:active {
+      transform: scale(0.95);
+    }
+  }
+}
+
+// ==================== 模态框内容区域 ====================
+.modal-body {
+  padding: 24px;
+  max-height: 60vh;
+  overflow-y: auto;
+  background: var(--modal-bg-white) #ffffff !important;
+
+  // 自定义滚动条
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+
+    &:hover {
+      background: #a8a8a8;
+    }
+  }
+}
+
+// ==================== 模态框底部 ====================
+.modal-footer {
+  background: var(--modal-bg-light);
+  padding: 20px 24px;
+  border-top: 1px solid var(--modal-border-color);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  border-radius: 0 0 12px 12px;
+}
+
+// ==================== 统一按钮样式 ====================
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 80px;
+  justify-content: center;
+  text-decoration: none;
+  box-sizing: border-box;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+
+  i {
+    font-size: 14px;
+  }
+
+  // 主要按钮（蓝色）
+  &.btn-primary {
+    background: var(--modal-primary-gradient);
+    color: var(--modal-text-white);
+    box-shadow: var(--modal-button-shadow);
+
+    &:hover:not(:disabled) {
+      background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+      transform: translateY(-1px);
+      box-shadow: var(--modal-button-shadow-hover);
+    }
+
+    &:active:not(:disabled) {
+      transform: translateY(0);
+    }
+  }
+
+  // 次要按钮（灰色）
+  &.btn-secondary {
+    background: var(--modal-secondary-gray);
+    color: var(--modal-text-white);
+
+    &:hover:not(:disabled) {
+      background: var(--modal-secondary-dark);
+      transform: translateY(-1px);
+    }
+
+    &:active:not(:disabled) {
+      transform: translateY(0);
+    }
+  }
+
+  // 成功按钮（绿色）
+  &.btn-success {
+    background: var(--modal-success);
+    color: var(--modal-text-white);
+
+    &:hover:not(:disabled) {
+      background: #059669;
+      transform: translateY(-1px);
+    }
+
+    &:active:not(:disabled) {
+      transform: translateY(0);
+    }
+  }
+
+  // 警告按钮（橙色）
+  &.btn-warning {
+    background: var(--modal-warning);
+    color: var(--modal-text-white);
+
+    &:hover:not(:disabled) {
+      background: #d97706;
+      transform: translateY(-1px);
+    }
+
+    &:active:not(:disabled) {
+      transform: translateY(0);
+    }
+  }
+
+  // 危险按钮（红色）
+  &.btn-danger {
+    background: var(--modal-danger);
+    color: var(--modal-text-white);
+
+    &:hover:not(:disabled) {
+      background: #dc2626;
+      transform: translateY(-1px);
+    }
+
+    &:active:not(:disabled) {
+      transform: translateY(0);
+    }
+  }
+
+  // 信息按钮
+  &.btn-info {
+    background: var(--modal-info);
+    color: var(--modal-text-white);
+
+    &:hover:not(:disabled) {
+      background: #2563eb;
+      transform: translateY(-1px);
+    }
+
+    &:active:not(:disabled) {
+      transform: translateY(0);
+    }
+  }
+
+  // 轮廓按钮
+  &.btn-outline-primary {
+    background: transparent;
+    color: var(--modal-primary-blue);
+    border: 2px solid var(--modal-primary-blue);
+
+    &:hover:not(:disabled) {
+      background: var(--modal-primary-blue);
+      color: var(--modal-text-white);
+      transform: translateY(-1px);
+    }
+  }
+
+  &.btn-outline-secondary {
+    background: transparent;
+    color: var(--modal-secondary-gray);
+    border: 2px solid var(--modal-secondary-gray);
+
+    &:hover:not(:disabled) {
+      background: var(--modal-secondary-gray);
+      color: var(--modal-text-white);
+      transform: translateY(-1px);
+    }
+  }
+}
+
+// ==================== 统一表单样式 ====================
+.form-group {
+  margin-bottom: 20px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: var(--modal-text-primary);
+    font-size: 14px;
+
+    .required {
+      color: var(--modal-danger);
+      margin-left: 4px;
+    }
+  }
+
+  .form-control {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid var(--modal-border-color);
+    border-radius: 8px;
+    font-size: 14px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    background: var(--modal-bg-white);
+    box-sizing: border-box;
+
+    &:focus {
+      outline: none;
+      border-color: var(--modal-primary-blue);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    &::placeholder {
+      color: var(--modal-text-placeholder);
+    }
+
+    &:disabled {
+      background: #f9fafb;
+      cursor: not-allowed;
+    }
+  }
+
+  textarea.form-control {
+    resize: vertical;
+    min-height: 80px;
+    font-family: inherit;
+    line-height: 1.5;
+  }
+
+  select.form-control {
+    cursor: pointer;
+    padding-right: 40px;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 12px center;
+    background-repeat: no-repeat;
+    background-size: 16px;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+  }
+
+  // 表单验证状态
+  .form-control.is-valid {
+    border-color: var(--modal-success);
+  }
+
+  .form-control.is-invalid {
+    border-color: var(--modal-danger);
+  }
+
+  .validation-message {
+    font-size: 12px;
+    color: var(--modal-danger);
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    i {
+      font-size: 12px;
+    }
+  }
+}
+
+// ==================== 表单布局 ====================
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+
+  &.full-width {
+    grid-template-columns: 1fr;
+  }
+
+  .form-group.full-width {
+    grid-column: 1 / -1;
+  }
+}
+
+// ==================== 动画效果 ====================
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-50px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes modalFadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes modalSlideOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-50px) scale(0.9);
+  }
+}
+
+// ==================== 响应式设计 ====================
+@media (max-width: 768px) {
+  .modal-content {
+    width: 95vw;
+    max-width: 95vw;
+    margin: 2.5vh auto;
+  }
+
+  .modal-header {
+    padding: 16px 20px;
+
+    h3 {
+      font-size: 16px;
+    }
+  }
+
+  .modal-body {
+    padding: 16px 20px;
+  }
+
+  .modal-footer {
+    padding: 16px 20px;
+    flex-wrap: wrap;
+    gap: 8px;
+
+    .btn {
+      min-width: 100px;
+      font-size: 13px;
+    }
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .form-group.full-width {
+    grid-column: 1;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-header {
+    padding: 12px 16px;
+
+    h3 {
+      font-size: 15px;
+      gap: 6px;
+
+      i {
+        font-size: 18px;
+      }
+    }
+
+    .btn-close {
+      width: 28px;
+      height: 28px;
+      font-size: 20px;
+    }
+  }
+
+  .modal-body {
+    padding: 12px 16px;
+  }
+
+  .modal-footer {
+    padding: 12px 16px;
+    flex-direction: column;
+
+    .btn {
+      width: 100%;
+      min-width: auto;
+    }
+  }
+
+  .form-control {
+    padding: 10px 12px;
+    font-size: 16px; // 防止iOS缩放
+  }
+}
+
+// ==================== 特殊变体 ====================
+
+// 宽屏模态框（用于表格、详情等）
+.modal-content.modal-wide {
+  max-width: 800px;
+}
+
+// 全屏模态框（移动端）
+.modal-content.modal-fullscreen {
+  width: 100vw;
+  height: 100vh;
+  max-width: 100vw;
+  max-height: 100vh;
+  border-radius: 0;
+  margin: 0;
+}
+
+// 深色主题支持
+@media (prefers-color-scheme: dark) {
+  :root {
+    --modal-text-primary: #e5e7eb;
+    --modal-text-regular: #d1d5db;
+    --modal-text-placeholder: #9ca3af;
+    --modal-bg-white: #1f2937;
+    --modal-bg-light: #374151;
+    --modal-border-color: #4b5563;
+  }
+}
+
+// 无障碍支持
+@media (prefers-reduced-motion: reduce) {
+  .modal-overlay,
+  .modal-content,
+  .btn {
+    animation: none;
+    transition: none;
+  }
+}
+
+// 高对比度模式
+@media (prefers-contrast: high) {
+  .btn {
+    border-width: 2px;
+  }
+
+  .form-control {
+    border-width: 2px;
+  }
+}
+
+// ==================== 工具类 ====================
+.modal-centered {
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-top {
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 10vh;
+}
+
+.modal-scrollable {
+  overflow-y: auto;
+}
+
+.btn-group {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+
+  &.right {
+    justify-content: flex-end;
+  }
+
+  &.center {
+    justify-content: center;
+  }
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-right {
+  text-align: right;
+}
+
+// ==================== Element Plus 全局按钮样式 ====================
+// 为所有 Element Plus 按钮添加统一的渐变样式和层次感
+// 与头部渐变标题形成上下对称的视觉效果
+.el-button {
+  min-width: 120px;
+  height: 44px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  border-radius: 8px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  border: none !important;
+
+  // 添加微妙的内阴影，增加立体感
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 50%;
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.15), transparent);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  // 悬停效果 - 向上移动 + 阴影 + 顶部高光
+  &:hover:not(:disabled) {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2), 0 2px 6px rgba(0, 0, 0, 0.1);
+
+    &::before {
+      opacity: 1;
+    }
+  }
+
+  // 点击效果 - 向下移动
+  &:active:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+
+  // 危险按钮（红色渐变）- 用于删除、取消打款等操作
+  &.el-button--danger {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25);
+
+    &:hover:not(:disabled) {
+      background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+      box-shadow: 0 8px 24px rgba(220, 38, 38, 0.4);
+    }
+
+    &:active:not(:disabled) {
+      background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+      box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+    }
+  }
+
+  // 主要按钮（紫色渐变）- 用于确认、提交等重要操作
+  &.el-button--primary {
+    background: linear-gradient(135deg, #7c3aed 0%, #9333ea 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(124, 58, 237, 0.25);
+
+    &:hover:not(:disabled) {
+      background: linear-gradient(135deg, #6d28d9 0%, #7e22ce 100%);
+      box-shadow: 0 8px 24px rgba(124, 58, 237, 0.4);
+    }
+
+    &:active:not(:disabled) {
+      background: linear-gradient(135deg, #5b21b6 0%, #6b21a8 100%);
+      box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
+    }
+  }
+
+  // 成功按钮（绿色渐变）- 用于保存、完成等操作
+  &.el-button--success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(5, 150, 105, 0.25);
+
+    &:hover:not(:disabled) {
+      background: linear-gradient(135deg, #059669 0%, #047857 100%);
+      box-shadow: 0 8px 24px rgba(5, 150, 105, 0.4);
+    }
+
+    &:active:not(:disabled) {
+      background: linear-gradient(135deg, #047857 0%, #065f46 100%);
+      box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
+    }
+  }
+
+  // 警告按钮（橙色渐变）- 用于需要注意的操作
+  &.el-button--warning {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(217, 119, 6, 0.25);
+
+    &:hover:not(:disabled) {
+      background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+      box-shadow: 0 8px 24px rgba(217, 119, 6, 0.4);
+    }
+
+    &:active:not(:disabled) {
+      background: linear-gradient(135deg, #b45309 0%, #92400e 100%);
+      box-shadow: 0 2px 8px rgba(217, 119, 6, 0.3);
+    }
+  }
+
+  // 信息按钮（浅蓝色渐变）
+  &.el-button--info {
+    background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
+
+    &:hover:not(:disabled) {
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4);
+    }
+
+    &:active:not(:disabled) {
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+    }
+  }
+
+  // 默认按钮（灰色渐变）- 用于取消、关闭等次要操作
+  &.el-button--default {
+    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(75, 85, 99, 0.2);
+
+    &:hover:not(:disabled) {
+      background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+      box-shadow: 0 8px 24px rgba(75, 85, 99, 0.35);
+    }
+
+    &:active:not(:disabled) {
+      background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+      box-shadow: 0 2px 8px rgba(75, 85, 99, 0.25);
+    }
+  }
+
+  // 纯文本按钮或链接按钮 - 保持原有样式但增加高度
+  &.el-button--text,
+  &[link] {
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    height: 36px !important;
+    line-height: 36px !important;
+    padding: 0 12px !important;
+    font-size: 14px !important;
+
+    &:hover:not(.el-button--primary) {
+      background: rgba(0, 0, 0, 0.05) !important;
+      transform: none !important;
+    }
+  }
+
+  // 明确的 link 属性按钮
+  &[link] {
+    min-width: auto !important;
+  }
+
+  // 禁用状态
+  &.is-disabled,
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+  }
+
+  // 多个按钮之间的间距
+  + .el-button {
+    margin-left: 12px;
+  }
+}
+
+// ==================== 操作列按钮样式 ====================
+// 为表格/卡片操作列的按钮提供稳定的展示效果
+.action-buttons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.action-buttons .el-button {
+  min-width: 80px;
+  height: 36px;
+  font-size: 14px;
+  padding: 0 16px;
+  flex: 1;
+  max-width: 100px;
+
+  // 移除悬停上移效果，保持稳定
+  &:hover:not(:disabled) {
+    transform: none !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+  }
+
+  &:active:not(:disabled) {
+    transform: none !important;
+  }
+
+  // 移除悬停高光效果
+  &::before {
+    display: none !important;
+  }
+
+  // 重置按钮间距，使用 flex gap
+  + .el-button {
+    margin-left: 0 !important;
+  }
+}
+
+// ==================== Element Plus 对话框底部样式 ====================
+.el-dialog__footer {
+  padding: 16px 20px !important;
+  background: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.02) 100%);
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+// ==================== 移动端适配 ====================
+@media (max-width: 767px) {
+  // 全局移动端按钮样式
+  .el-button {
+    min-width: 90px;
+    height: 40px;
+    font-size: 14px;
+    padding: 0 16px;
+
+    // 移动端减少悬停效果
+    &:hover:not(:disabled) {
+      transform: translateY(-1px);
+    }
+
+    &:active:not(:disabled) {
+      transform: translateY(0);
+    }
+  }
+
+  // 对话框底部特殊适配
+  .el-dialog__footer {
+    padding: 12px 16px !important;
+
+    .el-button {
+      min-width: 80px;
+      height: 36px;
+      font-size: 14px;
+
+      // 移动端减少悬停效果
+      &:hover:not(:disabled) {
+        transform: translateY(-1px);
+      }
+
+      &:active:not(:disabled) {
+        transform: translateY(0);
+      }
+    }
+
+    // 移动端按钮垂直排列
+    .el-button + .el-button {
+      margin-left: 0;
+      margin-top: 8px;
+    }
+
+    // 强制按钮垂直布局
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+// ==================== 深色主题支持 ====================
+@media (prefers-color-scheme: dark) {
+  :root {
+    --modal-text-primary: #e5e7eb;
+    --modal-text-regular: #d1d5db;
+    --modal-text-placeholder: #9ca3af;
+    --modal-bg-white: #1f2937;
+    --modal-bg-light: #374151;
+    --modal-border-color: #4b5563;
+  }
+}
+
+// ==================== 全局日期选择器统一样式 ====================
+// 解决日期选择器宽度过长的问题
+// 使用方式：在 el-date-picker 上添加 class="date-picker-compact"
+
+// 紧凑型日期选择器（推荐用于表单）
+.date-picker-compact {
+  width: 140px !important;
+}
+
+// 日期时间选择器（需要更多空间显示时间）
+.date-picker-datetime {
+  width: 180px !important;
+}
+
+// 全宽日期选择器（用于需要占满容器的场景）
+.date-picker-full {
+  width: 100% !important;
+}
+
+// 响应式适配
+@media (max-width: 767px) {
+  .date-picker-compact {
+    width: 120px !important;
+  }
+
+  .date-picker-datetime {
+    width: 160px !important;
+  }
+}
+
+// 全局修复：el-date-picker 在 form-item 内的默认宽度
+.el-form-item {
+  .el-date-editor.el-input,
+  .el-date-editor.el-input__wrapper {
+    width: 140px;
+  }
+}
+
+// 编辑对话框内的日期选择器统一宽度
+.el-dialog {
+  .el-date-editor.el-input,
+  .el-date-editor.el-input__wrapper {
+    width: 140px !important;
+  }
+}

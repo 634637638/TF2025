@@ -1,0 +1,72 @@
+/* 后台页面主体左右宽度统一
+ * 以综合查询页为基准，只区分桌面端 / 手机端两档。
+ */
+
+:root {
+  --admin-page-gap-x: 12px;
+  --admin-page-gap-y: 16px;
+  --admin-panel-gap: 16px;
+  --admin-panel-padding: 14px;
+  --admin-table-panel-padding-y: 16px;
+  --admin-table-panel-padding-x: 8px;
+}
+
+@media (max-width: 768px) {
+  :root {
+    --admin-page-gap-x: 2px;
+    --admin-page-gap-y: 8px;
+    --admin-panel-gap: 8px;
+    --admin-panel-padding: 6px;
+    --admin-table-panel-padding-y: 8px;
+    --admin-table-panel-padding-x: 2px;
+  }
+}
+
+.admin-page {
+  padding-inline: var(--admin-page-gap-x) !important;
+  padding-top: 24px !important;
+  padding-bottom: 0 !important;
+}
+
+.admin-page-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--admin-panel-gap);
+  width: 100%;
+  min-width: 0;
+}
+
+.admin-panel {
+  padding: var(--admin-panel-padding) !important;
+}
+
+.admin-table-panel {
+  padding: var(--admin-table-panel-padding-y) var(--admin-table-panel-padding-x) !important;
+}
+
+@media (max-width: 768px) {
+  .admin-page {
+    padding-top: 8px !important;
+  }
+
+  .admin-page .table-responsive {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .admin-page .table-responsive .table {
+    width: max-content !important;
+    min-width: 100% !important;
+    max-width: none !important;
+    table-layout: auto !important;
+  }
+
+  .admin-page .table-responsive .table th,
+  .admin-page .table-responsive .table td {
+    white-space: nowrap !important;
+  }
+}

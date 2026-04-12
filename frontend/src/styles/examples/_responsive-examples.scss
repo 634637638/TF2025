@@ -1,0 +1,284 @@
+// TF2025 响应式样式示例
+// 展示如何正确使用统一的样式系统
+
+// ==================== 基础示例 ====================
+
+// ✅ 推荐：使用 CSS 变量
+.example-good {
+  width: 100%;
+  max-width: var(--container-desktop);
+  padding: var(--spacing-md);
+  margin: var(--spacing-sm) 0;
+  font-size: var(--font-base);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+// ❌ 避免：硬编码数值
+.example-bad {
+  width: 100%;
+  max-width: 1024px; // 硬编码
+  padding: 16px;      // 硬编码
+  margin: 8px 0;       // 硬编码
+  font-size: 16px;     // 硬编码
+  border-radius: 6px;  // 硬编码
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); // 硬编码
+}
+
+// ==================== 响应式示例 ====================
+
+// ✅ 推荐：使用混入
+.responsive-component {
+  @include responsive-container;
+
+  // 移动端特殊样式
+  @include mobile-only {
+    .grid {
+      grid-template-columns: 1fr;
+      gap: var(--spacing-sm);
+    }
+  }
+
+  // 桌面端特殊样式
+  @include desktop-up {
+    .grid {
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--spacing-lg);
+    }
+  }
+}
+
+// ❌ 避免：重复的媒体查询
+.responsive-bad {
+  width: 100%;
+  max-width: 1024px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+@media (max-width: 767px) {
+  .responsive-bad {
+    padding: 12px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .responsive-bad {
+    padding: 24px;
+  }
+}
+
+// ==================== BEM 命名示例 ====================
+
+// ✅ 推荐：清晰的 BEM 结构
+.card {
+  background: var(--color-bg-white);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-lg);
+  transition: var(--transition-all-normal);
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+  }
+
+  &__title {
+    font-size: var(--font-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+
+    &--large {
+      font-size: var(--font-xl);
+    }
+  }
+
+  &__body {
+    color: var(--color-text-regular);
+    line-height: var(--line-height-normal);
+  }
+
+  &__footer {
+    margin-top: var(--spacing-lg);
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--color-border-light);
+  }
+
+  &--elevated {
+    box-shadow: var(--shadow-md);
+  }
+
+  &--clickable {
+    cursor: pointer;
+
+    &:hover {
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-2px);
+    }
+  }
+}
+
+// ==================== 组件变体示例 ====================
+
+// 按钮组件
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--spacing-md);
+  min-height: var(--touch-min);
+  font-size: var(--font-base);
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--border-radius);
+  transition: var(--transition-all-normal);
+  cursor: pointer;
+  border: none;
+  outline: none;
+
+  // 尺寸变体
+  &--small {
+    min-height: var(--button-height-small);
+    padding: 0 var(--spacing-sm);
+    font-size: var(--font-sm);
+  }
+
+  &--large {
+    min-height: var(--button-height-large);
+    padding: 0 var(--spacing-xl);
+    font-size: var(--font-lg);
+  }
+
+  // 类型变体
+  &--primary {
+    background: var(--color-primary);
+    color: var(--color-bg-white);
+
+    &:hover {
+      background: var(--color-primary-dark);
+    }
+  }
+
+  &--secondary {
+    background: transparent;
+    color: var(--color-primary);
+    border: 1px solid var(--color-primary);
+
+    &:hover {
+      background: var(--color-primary);
+      color: var(--color-bg-white);
+    }
+  }
+
+  // 状态变体
+  &--disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  &--loading {
+    color: transparent;
+    pointer-events: none;
+
+    &::after {
+      content: '';
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      border: 2px solid transparent;
+      border-top-color: currentColor;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+  }
+
+  // 响应式调整
+  @include mobile-only {
+    width: 100%;
+    margin-bottom: var(--spacing-sm);
+  }
+}
+
+// ==================== 布局示例 ====================
+
+// 页面布局
+.page-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+
+  &__header {
+    flex-shrink: 0;
+    background: var(--color-bg-white);
+    border-bottom: 1px solid var(--color-border-light);
+    @include safe-area($top: var(--spacing-sm));
+  }
+
+  &__content {
+    flex: 1;
+    padding: var(--spacing-lg);
+    @include safe-area($bottom: var(--spacing-sm));
+  }
+
+  &__footer {
+    flex-shrink: 0;
+    background: var(--color-bg-page);
+    padding: var(--spacing-md);
+    border-top: 1px solid var(--color-border-light);
+  }
+}
+
+// ==================== 动画示例 ====================
+
+// 淡入动画
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn var(--transition-normal);
+
+  @include reduced-motion {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+// ==================== 无障碍示例 ====================
+
+// 焦点样式
+.focus-visible {
+  &:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+
+    @include high-contrast {
+      outline-width: 3px;
+    }
+  }
+}
+
+// 跳过链接
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: var(--color-primary);
+  color: var(--color-bg-white);
+  padding: 8px;
+  text-decoration: none;
+  z-index: var(--z-maximum);
+  border-radius: var(--border-radius);
+
+  &:focus {
+    top: 6px;
+  }
+}

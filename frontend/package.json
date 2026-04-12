@@ -1,0 +1,45 @@
+{
+  "name": "tf2025-frontend",
+  "version": "1.0.0",
+  "description": "Frontend for TF2025 project with Vue 3 + TypeScript",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:debug": "vite build --config vite.config.debug.ts",
+    "audit:pagination": "node scripts/audit-pagination-usage.js",
+    "serve": "vite preview",
+    "start": "vite"
+  },
+  "dependencies": {
+    "@element-plus/icons-vue": "^2.3.2",
+    "@types/dompurify": "^3.0.5",
+    "@zxing/library": "^0.21.3",
+    "aos": "^3.0.0-beta.6",
+    "axios": "^1.4.0",
+    "dompurify": "^3.3.1",
+    "echarts": "^5.4.3",
+    "element-plus": "^2.11.8",
+    "heic2any": "^0.0.4",
+    "html2canvas": "^1.4.1",
+    "pdfjs-dist": "^5.5.207",
+    "pinia": "^3.0.4",
+    "swiper": "^12.1.2",
+    "v3-infinite-loading": "^1.3.2",
+    "vue": "^3.3.0",
+    "vue-router": "^4.2.0",
+    "vuedraggable": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vue": "^1.0.31",
+    "@vitejs/plugin-vue": "^6.0.3",
+    "@vue/tsconfig": "^0.8.1",
+    "sass": "^1.97.3",
+    "terser": "^5.46.1",
+    "typescript": "^5.0.0",
+    "unplugin-auto-import": "^21.0.0",
+    "unplugin-vue-components": "^31.0.0",
+    "vite": "^7.3.1",
+    "vite-plugin-compression": "^0.5.1"
+  }
+}

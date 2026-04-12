@@ -1,0 +1,253 @@
+/**
+ * TF2025 统一 Element Plus 表格样式
+ * 参考库存管理页面样式 - 深色渐变表头 + 统一字体大小颜色
+ */
+
+// ==================== 表格容器圆角 ====================
+
+.el-table {
+  // 表格外层容器圆角
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid #dee2e6 !important;
+
+  // 移除默认边框
+  &.el-table--border {
+    border: 1px solid #dee2e6 !important;
+
+    &::after,
+    .el-table__inner-wrapper::before {
+      display: none !important;
+    }
+  }
+
+  // 表格内部包装器
+  .el-table__inner-wrapper {
+    border-radius: 8px !important;
+    overflow: hidden !important;
+  }
+}
+
+// ==================== 表头样式 - 深色渐变（与库存管理一致） ====================
+
+.el-table__header-wrapper {
+  // 表头第一行圆角（顶部左右）
+  tr:first-child th:first-child {
+    border-top-left-radius: 8px !important;
+  }
+
+  tr:first-child th:last-child {
+    border-top-right-radius: 8px !important;
+  }
+}
+
+.el-table__header-wrapper th {
+  // 深色渐变背景 - 与销售管理完全一致
+  background: linear-gradient(135deg, #495057 0%, #343a40 100%) !important;
+  color: white !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;           // 销售管理使用 13px
+  padding: 12px 10px !important;        // 销售管理使用 12px 10px（最合适的高度）
+  text-align: center !important;
+  border-right: 1px solid #dee2e6 !important;
+  border-bottom: 2px solid #dee2e6 !important;
+  position: relative !important;
+  white-space: nowrap !important;
+  user-select: none;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;                // 销售管理使用 0.5px
+
+  .cell {
+    padding: 0 !important;
+    font-weight: 600 !important;
+    color: white !important;
+  }
+
+  // 渐变下划线效果 - 与销售管理完全一致
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+  }
+
+  &:hover {
+    background: linear-gradient(135deg, #495057 0%, #343a40 100%) !important;
+  }
+}
+
+// ==================== 表格单元格样式（与销售管理一致） ====================
+
+.el-table__body-wrapper td {
+  padding: 10px 8px !important;         // 销售管理使用 10px 8px
+  border-right: 1px solid #e9ecef !important;
+  border-bottom: 1px solid #e9ecef !important;
+  vertical-align: middle !important;
+  font-size: 13px !important;           // 销售管理使用 13px
+  color: #2c3e50 !important;            // 销售管理使用 #2c3e50
+  font-weight: 500 !important;
+  text-align: center !important;
+  position: relative !important;
+  white-space: nowrap !important;       // 销售管理使用 nowrap
+
+  .cell {
+    padding: 0 !important;
+  }
+}
+
+// ==================== 表格行样式 ====================
+
+.el-table__body-wrapper {
+  // 表格底部最后一行圆角
+  tr:last-child td:first-child {
+    border-bottom-left-radius: 8px !important;
+  }
+
+  tr:last-child td:last-child {
+    border-bottom-right-radius: 8px !important;
+  }
+}
+
+.el-table__body tr {
+  background: #ffffff;
+  // 移除 transition 以防止 v-show 切换时斑马效果闪烁
+  // transition: all 0.2s ease;
+
+  // 偶数行斑马纹 - 与库存管理完全一致
+  &:nth-child(even) {
+    background: #f8f9fa;
+
+    > td {
+      background: #f8f9fa;
+    }
+  }
+
+  // 悬停效果 - 与库存管理完全一致
+  &:hover > td {
+    background: #e3f2fd !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+
+  &.current-row > td {
+    background: #f0f9ff !important;
+  }
+
+  // 条纹行悬停效果
+  &.el-table__row--striped > td {
+    background: #f8f9fa;
+  }
+
+  &.el-table__row--striped:hover > td {
+    background: #e3f2fd !important;
+  }
+}
+
+// ==================== 空状态样式 ====================
+
+.el-table__empty-block {
+  background: #fff !important;
+  padding: 40px 0 !important;
+  min-height: auto !important;
+
+  .el-table__empty-text {
+    color: #909399 !important;
+    font-size: 14px !important;
+    line-height: 1.5;
+  }
+}
+
+// ==================== 表格内按钮样式 ====================
+
+// 操作列按钮统一样式 - 全局生效
+.action-buttons {
+  display: inline-flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: nowrap; // 确保按钮在一行显示，不换行
+  align-items: center;
+
+  // 统一操作按钮为 small 尺寸
+  .el-button {
+    height: 28px !important;
+    padding: 5px 10px !important;
+    font-size: 13px !important;
+    border-radius: 4px !important;
+    white-space: nowrap; // 防止按钮文字换行
+
+    i {
+      font-size: 14px !important;
+    }
+
+    span {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    // 移动端适配
+    @media (max-width: 768px) {
+      height: 32px !important;
+      padding: 6px 12px !important;
+      font-size: 12px !important;
+    }
+  }
+}
+
+.el-table {
+  // Link 按钮样式
+  .el-button--link {
+    padding: 6px 8px !important;
+    font-size: 14px !important;
+    transition: all 0.3s ease !important;
+
+    &:hover {
+      transform: translateY(-1px);
+    }
+
+    i {
+      font-size: 16px !important;
+    }
+  }
+
+  // 普通小型按钮
+  .el-button--small {
+    padding: 5px 10px !important;
+    font-size: 13px !important;
+    height: 28px !important;
+    border-radius: 4px !important;
+  }
+}
+
+// ==================== 价格列样式 ====================
+
+.el-table td.is-right .cell {
+  font-weight: 600;
+  color: #303133;
+}
+
+@media (max-width: 768px) {
+  .admin-page {
+    .el-table {
+      width: 100% !important;
+      max-width: 100% !important;
+    }
+
+    .el-table__body-wrapper,
+    .el-table__header-wrapper,
+    .el-table__footer-wrapper,
+    .el-table .el-scrollbar__wrap {
+      overflow-x: auto !important;
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-x: contain;
+    }
+
+    .el-table .cell {
+      white-space: nowrap !important;
+    }
+  }
+}

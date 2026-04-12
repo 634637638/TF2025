@@ -1,0 +1,304 @@
+// TF2025 响应式混入
+// 使用统一的断点配置
+
+// 使用 @use 导入断点变量（替代已废弃的 @import）
+@use '../../config/breakpoints.scss' as *;
+
+// 响应式媒体查询混入
+@mixin mobile-only {
+  @media (max-width: #{$breakpoint-mobile-max}) {
+    @content;
+  }
+}
+
+@mixin small-mobile-only {
+  @media (max-width: #{$breakpoint-small-mobile-max}) {
+    @content;
+  }
+}
+
+@mixin tablet-up {
+  @media (min-width: #{$breakpoint-tablet-min}) {
+    @content;
+  }
+}
+
+@mixin desktop-up {
+  @media (min-width: #{$breakpoint-desktop-min}) {
+    @content;
+  }
+}
+
+@mixin wide-up {
+  @media (min-width: #{$breakpoint-wide-min}) {
+    @content;
+  }
+}
+
+@mixin ultra-wide-up {
+  @media (min-width: #{$breakpoint-ultra-wide-min}) {
+    @content;
+  }
+}
+
+@mixin tablet-only {
+  @media (min-width: #{$breakpoint-tablet-min}) and (max-width: #{$breakpoint-tablet-max}) {
+    @content;
+  }
+}
+
+// 响应式容器混入
+@mixin responsive-container {
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 #{$spacing-md};
+
+  @include mobile-only {
+    padding: 0 #{$spacing-sm};
+  }
+
+  @include tablet-up {
+    max-width: #{$container-tablet};
+    padding: 0 #{$spacing-lg};
+  }
+
+  @include desktop-up {
+    max-width: #{$container-desktop};
+    padding: 0 #{$spacing-xl};
+  }
+
+  @include wide-up {
+    max-width: #{$container-wide};
+    padding: 0 #{$spacing-xxl};
+  }
+}
+
+// 响应式文本大小
+@mixin responsive-text($mobile-size, $desktop-size: null) {
+  font-size: $mobile-size;
+
+  @if $desktop-size {
+    @include desktop-up {
+      font-size: $desktop-size;
+    }
+  }
+}
+
+// 响应式间距
+@mixin responsive-spacing($property, $mobile-value, $desktop-value: null) {
+  #{$property}: $mobile-value;
+
+  @if $desktop-value {
+    @include desktop-up {
+      #{$property}: $desktop-value;
+    }
+  }
+}
+
+// 响应式显示/隐藏
+@mixin hide-on-mobile {
+  @include mobile-only {
+    display: none !important;
+  }
+}
+
+@mixin hide-on-tablet {
+  @include tablet-only {
+    display: none !important;
+  }
+}
+
+@mixin hide-on-desktop {
+  @include desktop-up {
+    display: none !important;
+  }
+}
+
+@mixin show-on-mobile {
+  display: none;
+
+  @include mobile-only {
+    display: block;
+  }
+}
+
+@mixin show-on-tablet {
+  display: none;
+
+  @include tablet-only {
+    display: block;
+  }
+}
+
+@mixin show-on-desktop {
+  display: none;
+
+  @include desktop-up {
+    display: block;
+  }
+}
+
+// 触摸设备优化
+@mixin touch-optimized {
+  @media (hover: none) and (pointer: coarse) {
+    @content;
+  }
+}
+
+// 高对比度模式
+@mixin high-contrast {
+  @media (prefers-contrast: high) {
+    @content;
+  }
+}
+
+// 减少动画模式
+@mixin reduced-motion {
+  @media (prefers-reduced-motion: reduce) {
+    @content;
+  }
+}
+
+// 暗色主题
+@mixin dark-theme {
+  @media (prefers-color-scheme: dark) {
+    @content;
+  }
+}
+
+// 安全区域适配
+@mixin safe-area($top: false, $right: false, $bottom: false, $left: false) {
+  @if $top {
+    padding-top: calc(#{$top} + env(safe-area-inset-top));
+  }
+
+  @if $right {
+    padding-right: calc(#{$right} + env(safe-area-inset-right));
+  }
+
+  @if $bottom {
+    padding-bottom: calc(#{$bottom} + env(safe-area-inset-bottom));
+  }
+
+  @if $left {
+    padding-left: calc(#{$left} + env(safe-area-inset-left));
+  }
+}
+
+// 最小触摸目标
+@mixin touch-target($size: 44px) {
+  min-width: $size;
+  min-height: $size;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// 网格响应式混入
+@mixin responsive-grid($columns: 1, $gap: $spacing-md) {
+  display: grid;
+  grid-template-columns: repeat($columns, 1fr);
+  gap: $gap;
+
+  @include tablet-up {
+    grid-template-columns: repeat(min($columns, 2), 1fr);
+  }
+
+  @include desktop-up {
+    grid-template-columns: repeat(min($columns, 3), 1fr);
+  }
+
+  @include wide-up {
+    grid-template-columns: repeat(min($columns, 4), 1fr);
+  }
+}
+
+// Flexbox 响应式混入
+@mixin responsive-flex($direction: row, $wrap: nowrap) {
+  display: flex;
+  flex-direction: $direction;
+  flex-wrap: $wrap;
+
+  @include mobile-only {
+    flex-direction: column;
+    flex-wrap: wrap;
+  }
+}
+
+// 悬浮操作按钮响应式
+@mixin fab-responsive {
+  position: fixed;
+  bottom: #{$spacing-xl};
+  right: #{$spacing-xl};
+  z-index: $z-fab;
+
+  @include mobile-only {
+    bottom: #{$spacing-lg};
+    right: #{$spacing-lg};
+  }
+}
+
+// 卡片响应式
+@mixin card-responsive {
+  background: $color-white;
+  border-radius: $border-radius-md;
+  box-shadow: $shadow-sm;
+  transition: all 0.3s ease;
+
+  @include mobile-only {
+    border-radius: $border-radius-sm;
+    box-shadow: $shadow-xs;
+  }
+
+  &:hover {
+    box-shadow: $shadow-md;
+
+    @include touch-optimized {
+      box-shadow: $shadow-sm;
+    }
+  }
+}
+
+// 表格响应式
+@mixin table-responsive {
+  width: 100%;
+  overflow-x: auto;
+
+  @include mobile-only {
+    display: block;
+    overflow-x: visible;
+
+    table {
+      display: block;
+    }
+
+    thead {
+      display: none;
+    }
+
+    tbody {
+      display: block;
+    }
+
+    tr {
+      display: block;
+      margin-bottom: $spacing-md;
+      border: 1px solid $border-color;
+      border-radius: $border-radius-sm;
+      padding: $spacing-sm;
+    }
+
+    td {
+      display: block;
+      text-align: right;
+      padding: $spacing-xs 0;
+
+      &::before {
+        content: attr(data-label);
+        float: left;
+        font-weight: $font-weight-medium;
+        color: $text-color-secondary;
+      }
+    }
+  }
+}
