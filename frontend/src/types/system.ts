@@ -3,6 +3,10 @@
  * 集中管理站点设置、配置、日志等相关类型
  */
 
+import type { Store } from './shared'
+
+export type { Store } from './shared'
+
 // ==================== 站点设置类型 ====================
 
 /**
@@ -367,33 +371,6 @@ export interface CacheStats {
  * 门店状态
  */
 export type StoreStatus = 0 | 1 | 'active' | 'inactive' | 'suspended'
-
-/**
- * 门店信息
- */
-export interface Store {
-  id: number
-  name: string
-  code: string
-  type?: 'retail' | 'wholesale' | 'service' | 'mixed'
-  province?: string
-  city?: string
-  district?: string
-  address?: string
-  location?: string // 兼容 location 或 address
-  phone?: string
-  contact_person?: string
-  manager_id?: number
-  manager_name?: string
-  manager?: string // 兼容 manager_name 或 manager
-  business_hours?: string
-  status: StoreStatus
-  is_default?: boolean
-  sort_order?: number
-  description?: string
-  created_at?: string
-  updated_at?: string
-}
 
 /**
  * 门店表单数据

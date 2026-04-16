@@ -4,6 +4,7 @@
  */
 
 import type { Ref } from 'vue'
+import type { Store, User } from './shared'
 
 // ===== 基础类型定义 =====
 
@@ -104,35 +105,6 @@ export interface Operator {
 }
 
 /**
- * 用户信息接口
- */
-export interface User {
-  id: number
-  username: string
-  name: string
-  role?: string | null  // 改为可选的字符串类型，支持数据库中的动态角色
-  roles?: string[]     // 添加角色数组字段
-  role_id?: number | null  // 主角色ID
-  role_ids?: number[]  // 角色ID数组
-  status: 'active' | 'inactive'
-  last_login?: string
-  employeeId?: string
-  position?: string
-  permissions?: string[]
-  email?: string
-  phone?: string
-  store_id?: number
-  store_ids?: number[]  // 添加多门店ID数组
-  stores?: Array<{     // 门店详细信息
-    store_id: number
-    store_name: string
-    is_primary: number
-  }>
-  created_at?: string
-  updated_at?: string
-}
-
-/**
  * 权限定义
  */
 export interface Permission {
@@ -188,22 +160,6 @@ export interface MenuItem {
 }
 
 // ===== 业务相关类型 =====
-
-/**
- * 店铺信息接口
- */
-export interface Store {
-  id: number
-  name: string
-  code: string
-  address?: string
-  phone?: string
-  manager_id?: number
-  manager_name?: string
-  status: number
-  created_at?: string
-  updated_at?: string
-}
 
 /**
  * 供应商信息接口
@@ -1944,6 +1900,8 @@ export type {
 /**
  * 系统设置相关类型
  */
+export type { Store, User } from './shared'
+
 export type {
   SiteSettings,
   ThemeSettings,

@@ -2,6 +2,8 @@
  * 统一API响应格式工具类
  * 合并 response.js 和 api-response.js，保持向后兼容
  */
+const ERROR_CODES = require('../constants/errorCodes');
+
 class ApiResponse {
   /**
    * 成功响应
@@ -163,7 +165,7 @@ class ApiResponse {
     return res.status(401).json({
       success: false,
       message,
-      code: 'UNAUTHORIZED',
+      code: ERROR_CODES.UNAUTHORIZED,
       timestamp: new Date().toISOString()
     });
   }
@@ -175,7 +177,7 @@ class ApiResponse {
     return res.status(403).json({
       success: false,
       message,
-      code: 'FORBIDDEN',
+      code: ERROR_CODES.FORBIDDEN,
       timestamp: new Date().toISOString()
     });
   }
@@ -187,7 +189,7 @@ class ApiResponse {
     return res.status(404).json({
       success: false,
       message,
-      code: 'NOT_FOUND',
+      code: ERROR_CODES.NOT_FOUND,
       timestamp: new Date().toISOString()
     });
   }
@@ -199,7 +201,7 @@ class ApiResponse {
     return res.status(400).json({
       success: false,
       message,
-      code: 'BAD_REQUEST',
+      code: ERROR_CODES.BAD_REQUEST,
       timestamp: new Date().toISOString()
     });
   }
@@ -211,7 +213,7 @@ class ApiResponse {
     const response = {
       success: false,
       message,
-      code: 'INTERNAL_SERVER_ERROR',
+      code: ERROR_CODES.INTERNAL_SERVER_ERROR,
       timestamp: new Date().toISOString()
     };
 

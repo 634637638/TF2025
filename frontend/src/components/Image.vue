@@ -168,7 +168,7 @@ const generateSmartUrl = (src: string): string[] => {
   const normalizedPath = normalizedSource.startsWith('/') ? normalizedSource : `/${normalizedSource}`
 
   const isHttpsPage = typeof window !== 'undefined' && window.location.protocol === 'https:'
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://v4.cn9527.cn:30000'
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || (typeof window !== 'undefined' ? window.location.origin : '')
 
   if (isHttpsPage) {
     // HTTPS页面：先尝试HTTP直连，降级到代理

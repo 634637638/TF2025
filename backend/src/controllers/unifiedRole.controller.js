@@ -1,24 +1,12 @@
 const log = require('../utils/log');
 const { clearRoleHierarchyCache } = require('../services/accessControl.service');
+const { getDatabase } = require('../config/database');
+const ApiResponse = require('../utils/response');
+const ERROR_CODES = require('../constants/errorCodes');
 /**
  * 统一角色管理控制器
  * 合并原有的角色管理和操作员管理功能
  */
-
-const mysql = require('mysql2/promise');
-
-// 创建数据库连接池
-const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 3306,
-  user: process.env.DB_USER || 'TF2025',
-  password: process.env.DB_PASSWORD || 'TF2025',
-  database: process.env.DB_NAME || 'TF2025',
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
-  charset: 'utf8mb4'
-});
 
 class UnifiedRoleController {
   /**
@@ -26,6 +14,7 @@ class UnifiedRoleController {
    */
   async getAllRoles(req, res) {
     try {
+      const pool = getDatabase();
       const { type, page = 1, limit = 50, search } = req.query;
 
       // 简化查询，先获取所有角色
@@ -70,9 +59,7 @@ class UnifiedRoleController {
       const offset = (parseInt(page) - 1) * parseInt(limit);
       const paginatedRoles = filteredRoles.slice(offset, offset + parseInt(limit));
 
-      res.json({
-        success: true,
-        data: paginatedRoles,
+      return ApiResponse.success(res, paginatedRoles, '获取角色列表成功', 200, {
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
@@ -82,11 +69,7 @@ class UnifiedRoleController {
       });
     } catch (error) {
       log.error('获取角色列表失败:', error);
-      res.status(500).json({
-        success: false,
-        message: '获取角色列表失败',
-        error: error.message
-      });
+      return ApiResponse.error(res, '获取角色列表失败', 500, ERROR_CODES.DATABASE_ERROR);
     }
   }
 
@@ -95,6 +78,7 @@ class UnifiedRoleController {
    */
   async getRoleById(req, res) {
     try {
+      const pool = getDatabase();
       const { id } = req.params;
 
       const query = `
@@ -110,10 +94,7 @@ class UnifiedRoleController {
       const [result] = await pool.execute(query, [id]);
 
       if (result.length === 0) {
-        return res.status(404).json({
-          success: false,
-          message: '角色不存在'
-        });
+        return ApiResponse.error(res, '角色不存在', 404, ERROR_CODES.NOT_FOUND);
       }
 
       // 获取角色权限
@@ -128,17 +109,10 @@ class UnifiedRoleController {
       const role = result[0];
       role.permissions = permissionsResult;
 
-      res.json({
-        success: true,
-        data: role
-      });
+      return ApiResponse.success(res, role, '获取角色详情成功');
     } catch (error) {
       log.error('获取角色详情失败:', error);
-      res.status(500).json({
-        success: false,
-        message: '获取角色详情失败',
-        error: error.message
-      });
+      return ApiResponse.error(res, '获取角色详情失败', 500, ERROR_CODES.DATABASE_ERROR);
     }
   }
 
@@ -146,6 +120,7 @@ class UnifiedRoleController {
    * 创建角色
    */
   async createRole(req, res) {
+    const pool = getDatabase();
     const connection = await pool.getConnection();
 
     try {
@@ -161,10 +136,7 @@ class UnifiedRoleController {
 
       // 验证必填字段
       if (!name || !description) {
-        return res.status(400).json({
-          success: false,
-          message: '角色名称和描述不能为空'
-        });
+        return ApiResponse.error(res, '角色名称和描述不能为空', 400, ERROR_CODES.VALIDATION_ERROR);
       }
 
       await connection.beginTransaction();
@@ -177,10 +149,7 @@ class UnifiedRoleController {
 
       if (existingRoleResult.length > 0) {
         await connection.rollback();
-        return res.status(400).json({
-          success: false,
-          message: '角色名称已存在'
-        });
+        return ApiResponse.error(res, '角色名称已存在', 400, ERROR_CODES.CONFLICT);
       }
 
       // 创建角色
@@ -219,19 +188,11 @@ class UnifiedRoleController {
 
       const [fullRoleResult] = await pool.execute(fullRoleQuery, [newRoleId]);
 
-      res.status(201).json({
-        success: true,
-        message: '角色创建成功',
-        data: fullRoleResult[0]
-      });
+      return ApiResponse.created(res, '角色创建成功', fullRoleResult[0]);
     } catch (error) {
       await connection.rollback();
       log.error('创建角色失败:', error);
-      res.status(500).json({
-        success: false,
-        message: '创建角色失败',
-        error: error.message
-      });
+      return ApiResponse.error(res, '创建角色失败', 500, ERROR_CODES.DATABASE_ERROR);
     } finally {
       connection.release();
     }
@@ -241,6 +202,7 @@ class UnifiedRoleController {
    * 更新角色
    */
   async updateRole(req, res) {
+    const pool = getDatabase();
     const connection = await pool.getConnection();
 
     try {
@@ -359,6 +321,7 @@ class UnifiedRoleController {
    * 删除角色
    */
   async deleteRole(req, res) {
+    const pool = getDatabase();
     const connection = await pool.getConnection();
 
     try {
@@ -428,6 +391,7 @@ class UnifiedRoleController {
    */
   async getRoleHierarchy(req, res) {
     try {
+      const pool = getDatabase();
       const query = `
         SELECT
           name,
@@ -461,6 +425,7 @@ class UnifiedRoleController {
    */
   async getUserRoles(req, res) {
     try {
+      const pool = getDatabase();
       const { userId } = req.params;
 
       const query = `
@@ -493,6 +458,7 @@ class UnifiedRoleController {
    * 分配用户角色
    */
   async assignUserRoles(req, res) {
+    const pool = getDatabase();
     const connection = await pool.getConnection();
 
     try {
@@ -571,6 +537,7 @@ class UnifiedRoleController {
    */
   async getRoleUsers(req, res) {
     try {
+      const pool = getDatabase();
       const { roleId } = req.params;
       const { page = 1, limit = 50 } = req.query;
 
@@ -632,6 +599,7 @@ class UnifiedRoleController {
    */
   async getUserStats(req, res) {
     try {
+      const pool = getDatabase();
       const query = `
         SELECT
           COUNT(DISTINCT u.id) as total_users,

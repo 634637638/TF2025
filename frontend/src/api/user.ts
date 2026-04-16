@@ -2,21 +2,7 @@
  * 用户管理 API 服务
  */
 import { unifiedApi } from '@/utils/unified-api'
-
-export interface User {
-  id: number
-  username: string
-  name?: string
-  email?: string
-  phone?: string
-  role?: string
-  status?: number | string
-  store_id?: number
-  salary_template_id?: number
-  group_name?: string
-  created_at?: string
-  updated_at?: string
-}
+import type { User } from '@/types'
 
 export interface UserFilters {
   page?: number
@@ -67,7 +53,7 @@ export const userApi = {
   /**
    * 创建用户
    */
-  createUser: (data: Partial<User> & { password: string }) => {
+  createUser: (data: Partial<User> & { password: string; salary_template_id?: number; group_name?: string }) => {
     return unifiedApi.post('/users', data)
   },
 

@@ -1826,7 +1826,40 @@ import { isValidMobilePhone, normalizeAppleId, normalizePersonName, normalizePho
 import { formatNumber, generateProductPlaceholder } from '@/utils/format'
 
 // 导入类型定义
-import type { Phone, Store, Operator, Supplier, Customer } from '@/types'
+import type { Phone, Store, Operator, Supplier, Customer, PhoneBrand, PhoneModel } from '@/types'
+
+interface BatchCustomer extends Customer {
+  apple_id?: string
+}
+
+interface InventorySummaryItem {
+  supplier_id?: number | string
+  supplier_name?: string
+  store_id?: number | string
+  store_name?: string
+  brand: string
+  model: string
+  color: string
+  memory: string
+  condition: string
+  quantity?: number
+}
+
+interface InventoryDetailItem {
+  id: number | string
+  supplier_name?: string
+  store_name?: string
+  brand?: string
+  model?: string
+  color?: string
+  memory?: string
+  imei?: string
+  serial_number?: string
+  purchase_cost?: number | string
+  Inventorytime?: string
+  inventory_days?: number
+  is_new?: boolean | number
+}
 
 // 使用 stores 和 composables
 const router = useRouter()
@@ -2183,8 +2216,8 @@ const batchSaleForm = reactive({
 })
 
 // 批量销售客户搜索相关
-const batchCustomerSearchResults = ref([])
-const selectedBatchCustomer = ref(null)
+const batchCustomerSearchResults = ref<BatchCustomer[]>([])
+const selectedBatchCustomer = ref<BatchCustomer | null>(null)
 const showBatchCustomerSearch = ref(false)
 const batchCustomerSearching = ref(false)
 const batchCustomerSearchTimeout = ref(null)
@@ -2195,13 +2228,13 @@ const batchCustomerSearchCache = ref(new Map())
 const availablePhones = ref<Phone[]>([])
 const stores = ref<Store[]>([])
 const operators = ref<Operator[]>([])
-const suppliers = ref<any[]>([])
-const brands = ref<any[]>([])  // 品牌对象数组，包含 id 和 name
-const brandsFull = ref<any[]>([])  // 存储完整的品牌数据（包含ID）
-const models = ref<any[]>([])  // 型号对象数组，包含 id 和 name
+const suppliers = ref<Supplier[]>([])
+const brands = ref<PhoneBrand[]>([])  // 品牌对象数组，包含 id 和 name
+const brandsFull = ref<PhoneBrand[]>([])  // 存储完整的品牌数据（包含ID）
+const models = ref<PhoneModel[]>([])  // 型号对象数组，包含 id 和 name
 const colors = ref<string[]>([])
 const memories = ref<string[]>([])
-const brandModels = ref<any[]>([])  // 存储当前品牌对应的型号列表（完整对象）
+const brandModels = ref<PhoneModel[]>([])  // 存储当前品牌对应的型号列表（完整对象）
 
 // 品牌名称字符串数组（用于筛选器）
 const brandNames = computed(() => brands.value.map(b => b.name))
@@ -2210,10 +2243,10 @@ const brandNames = computed(() => brands.value.map(b => b.name))
 const modelNames = computed(() => brandModels.value.map(m => m.name))
 
 // 库存统计数据
-const inventorySummary = ref<any[]>([])
+const inventorySummary = ref<InventorySummaryItem[]>([])
 const inventorySummaryLoading = ref(false)
 const inventoryDetailModal = ref(false)
-const inventoryDetailData = ref<any[]>([])
+const inventoryDetailData = ref<InventoryDetailItem[]>([])
 const inventoryDetailLoading = ref(false)
 
 // 库存统计表截图引用和状态
@@ -3080,7 +3113,7 @@ const getMemoryBadgeClass = (memory: string) => {
 }
 
 // 双击库存表行查看明细（优化版 - 使用专用 API）
-const showInventoryDetail = async (item: any) => {
+const showInventoryDetail = async (item: InventorySummaryItem) => {
 
   // 验证必需字段（brand 必需，其他可以为空）
   const requiredFields = ['brand']
@@ -3105,7 +3138,7 @@ const showInventoryDetail = async (item: any) => {
   try {
     // 使用优化的库存明细 API
     // 后端直接使用精确匹配并排序，避免 LIKE 查询
-    const params: any = {
+    const params: Record<string, string | number> = {
       supplier_id: item.supplier_id,
       store_id: item.store_id,
       brand: item.brand,

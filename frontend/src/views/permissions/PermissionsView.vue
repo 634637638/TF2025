@@ -834,6 +834,7 @@ import LogsPage from './page/LogsPage.vue'
 import RolePermissionsPage from './page/RolePermissionsPage.vue'
 import SharedSearchPanel from './page/SharedSearchPanel.vue'
 import type { PermissionLog } from '@/types/system'
+import type { User as BaseUser } from '@/types'
 import { logger } from '@/utils/logger'
 
 // 角色类型别名 - 兼容原有代码
@@ -856,14 +857,10 @@ type Role = {
 }
 
 // 用户类型别名 - 基于集中化的 User 类型扩展
-type User = {
-  id: number
-  username: string
-  name?: string
+type User = Omit<BaseUser, 'status' | 'roles'> & {
   full_name?: string
   role_id?: number
   status: number
-  last_login?: string
   roles?: Role[]
 }
 
