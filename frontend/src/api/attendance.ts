@@ -114,5 +114,12 @@ export const attendanceApi = {
    */
   getLeaveConfig: () => {
     return unifiedApi.get('/attendance/leave-config')
+  },
+
+  /**
+   * 获取考勤仪表盘汇总统计
+   */
+  getDashboardStats: () => {
+    return unifiedApi.get('/attendance/stats/dashboard')
   }
 }

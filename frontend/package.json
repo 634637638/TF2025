@@ -6,7 +6,6 @@
     "dev": "vite",
     "build": "vite build",
     "build:debug": "vite build --config vite.config.debug.ts",
-    "audit:pagination": "node scripts/audit-pagination-usage.js",
     "serve": "vite preview",
     "start": "vite"
   },
