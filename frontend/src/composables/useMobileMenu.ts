@@ -4,8 +4,7 @@
  */
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useMobile } from './useMobile'
-import { useMobileGestures } from './useMobile'
+import { useMobile } from './mobile'
 import { useAuthStore } from '@/stores/auth'
 import { unifiedApi } from '@/utils/unified-api'
 import type { MenuItem } from '@/types/menu'
@@ -35,7 +34,6 @@ export function useMobileMenu(config: MobileMenuConfig) {
   const router = useRouter()
   const authStore = useAuthStore()
   const { isMobile, isTablet, screenSize } = useMobile()
-  const { handleTouchStart, handleTouchEnd, isSwipeRight, isSwipeLeft } = useMobileGestures()
 
   // 菜单状态
   const isSlideMenuOpen = ref(false)

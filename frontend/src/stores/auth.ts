@@ -62,19 +62,44 @@ export const useAuthStore = defineStore('auth', () => {
   })
 
   const userRoles = computed<any[]>(() => {
-    if (!user.value?.roles) return []
-    return Array.isArray(user.value.roles) ? user.value.roles : [user.value.roles]
+    const roleSource = user.value?.roles ?? roles.value
+    if (!roleSource) return []
+    return Array.isArray(roleSource) ? roleSource : [roleSource]
   })
+
+  const getRoleTokens = (role: any): string[] => {
+    if (!role) return []
+
+    if (typeof role === 'string') {
+      return role
+        .split(',')
+        .map((token) => token.trim())
+        .filter(Boolean)
+    }
+
+    return [
+      role?.roleName,
+      role?.name,
+      role?.role_name,
+      role?.roleCode,
+      role?.code,
+      role?.role_code
+    ]
+      .flatMap((token) => typeof token === 'string'
+        ? token.split(',').map((item) => item.trim())
+        : [])
+      .filter((token): token is string => typeof token === 'string' && token.length > 0)
+  }
+
+  const getNormalizedRoleTokens = (): string[] => {
+    const roleTokens = userRoles.value.flatMap((role) => getRoleTokens(role))
+    return Array.from(new Set(roleTokens))
+  }
 
   
   const userRole = computed(() => {
-    const roles = userRoles.value
-    if (!roles.length) return undefined
-
-    const firstRole = roles[0] as any
-    return typeof firstRole === 'string'
-      ? firstRole
-      : (firstRole?.name || firstRole?.code || undefined)
+    const normalizedRoles = getNormalizedRoleTokens()
+    return normalizedRoles[0] || undefined
   })
 
   const userPermissions = computed(() => {
@@ -226,15 +251,15 @@ export const useAuthStore = defineStore('auth', () => {
     if (!isAuthenticated.value || !isActive.value) return false
 
     const roles = Array.isArray(role) ? role : [role]
-    const userRoleNames = userRoles.value.map(r => r.name || r)
+    const userRoleTokens = getNormalizedRoleTokens()
 
-    return roles.some(role => userRoleNames.includes(role))
+    return roles.some(roleName => userRoleTokens.includes(roleName))
   }
 
   const hasAnyRole = (roles: string[]): boolean => {
     if (!isAuthenticated.value || !isActive.value) return false
-    const userRoleNames = userRoles.value.map(r => typeof r === 'string' ? r : r.name || r)
-    return roles.some(role => userRoleNames.includes(role))
+    const userRoleTokens = getNormalizedRoleTokens()
+    return roles.some(role => userRoleTokens.includes(role))
   }
 
   const hasAnyPermission = (permissions: string[]): boolean => {

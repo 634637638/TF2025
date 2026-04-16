@@ -125,7 +125,7 @@
 <script setup lang="ts">
 import { ref, computed, type Component } from 'vue'
 import type { TableAction, TableColumn } from '@/types/component'
-import { useMobile } from '@/composables/useMobile'
+import { useMobile } from '@/composables/mobile'
 
 type TableRow = Record<string, unknown>
 type RowKey = string | number

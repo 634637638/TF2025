@@ -113,8 +113,8 @@ const initializeAuth = () => {
     }
   }
 
-  // 清理可能的dev-token残留（仅在开发环境）
-  if (import.meta.env.DEV) {
+  // 默认清理 dev-token 残留，只有显式开启本地开发旁路时才保留
+  if (!(import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEV_TOKEN_BYPASS === 'true')) {
     const devToken = storage.get<string>(AUTH_STORAGE_KEYS.DEV_TOKEN, 'local')
     if (devToken) {
       storage.remove(AUTH_STORAGE_KEYS.DEV_TOKEN, 'local')

@@ -621,7 +621,7 @@ import DraggableRow from '../../components/DraggableRow.vue'
 import { usePermissionToast } from '@/utils/permissionToastSimple'
 import { handleApiErrorWithPermission } from '@/utils/apiPermissionError'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
-import { useMobile } from '@/composables/useMobile'
+import { useMobile } from '@/composables/mobile'
 import type { Supplier } from '@/types/system'
 import { logger } from '@/utils/logger'
 

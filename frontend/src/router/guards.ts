@@ -6,7 +6,7 @@ import { useSiteSettingsStore } from '@/stores/siteSettings'
 import { ElMessage, ElNotification } from 'element-plus'
 import { unifiedApi as api } from '@/utils/unified-api'
 import { getRoutePermissions } from '@/constants/routePermissions'
-import { clearPersistedAuthData, getBackendDisconnectInfo } from '@/utils/auth-session'
+import { clearPersistedAuthData, getBackendDisconnectInfo, setBackendDisconnectedState } from '@/utils/auth-session'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { storage } from '@/services/storage'
 import { AUTH_STORAGE_KEYS, CACHE_STORAGE_KEYS, ROUTER_STORAGE_KEYS } from '@/constants/storage'
@@ -15,8 +15,41 @@ import { AUTH_STORAGE_KEYS, CACHE_STORAGE_KEYS, ROUTER_STORAGE_KEYS } from '@/co
 const REDIRECT_COOLDOWN_TIME = 3000 // 3秒内不重复跳转
 const ROLE_STATUS_CACHE_TIME = 5 * 60 * 1000
 const ROLE_STATUS_TIMEOUT = 5000
+const DEV_TOKEN_BYPASS_FLAG = 'true'
 let lastRoleStatusCheckAt = 0
 let roleStatusCheckPromise: Promise<void> | null = null
+
+function isLocalDevelopmentHost(): boolean {
+  const hostname = window.location.hostname
+  return hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname.startsWith('192.168.')
+}
+
+function isDevTokenBypassEnabled(): boolean {
+  return import.meta.env.DEV &&
+    isLocalDevelopmentHost() &&
+    import.meta.env.VITE_ENABLE_DEV_TOKEN_BYPASS === DEV_TOKEN_BYPASS_FLAG
+}
+
+function clearDevTokenArtifacts(): void {
+  const sessionToken = storage.get<string>(AUTH_STORAGE_KEYS.TOKEN, 'session')
+  const devToken = storage.get<string>(AUTH_STORAGE_KEYS.DEV_TOKEN, 'local')
+  const savedAuth = storage.getAuth()
+
+  if (sessionToken === 'dev-token') {
+    storage.remove(AUTH_STORAGE_KEYS.TOKEN, 'session')
+  }
+
+  if (devToken === 'dev-token') {
+    storage.remove(AUTH_STORAGE_KEYS.DEV_TOKEN, 'local')
+  }
+
+  if (savedAuth?.token === 'dev-token') {
+    storage.remove(AUTH_STORAGE_KEYS.AUTH, 'local')
+    storage.remove(AUTH_STORAGE_KEYS.AUTH_BACKUP, 'local')
+  }
+}
 
 /**
  * 检查是否可以执行跳转（防止短时间内重复跳转）
@@ -178,29 +211,46 @@ export class RouteGuards {
           return next()
         }
 
+        // 检查后端失联状态 - 改进：先尝试恢复连接再决定是否退出
         const disconnectInfo = getBackendDisconnectInfo()
         if (disconnectInfo.graceExceeded) {
-          clearPersistedAuthData({
-            notifyOtherWindows: false
-          })
+          // 宽限期超时时，先尝试检查后端健康状态
+          try {
+            const healthResponse = await api.get('/health', {
+              showLoading: false,
+              showError: false,
+              timeout: 5000  // 5秒超时
+            })
 
-          const loginPath = to.path.startsWith('/m') ? '/m/login' : '/login'
+            // 后端已恢复连接，清除失联状态并继续访问
+            if (healthResponse?.success) {
+              setBackendDisconnectedState(false)
+              // 继续后续认证检查，不强制退出
+            }
+          } catch (healthError) {
+            // 后端仍然无法连接，需要重新登录
+            clearPersistedAuthData({
+              notifyOtherWindows: false
+            })
 
-          if (canRedirect()) {
-            markRedirected()
-            ElNotification({
-              title: '连接已断开',
-              message: '后端失联超过1分钟，请重新登录后再继续操作',
-              type: 'warning',
-              duration: 4000,
-              position: 'top-right'
+            const loginPath = to.path.startsWith('/m') ? '/m/login' : '/login'
+
+            if (canRedirect()) {
+              markRedirected()
+              ElNotification({
+                title: '连接已断开',
+                message: '后端失联超过5分钟，请重新登录后再继续操作',
+                type: 'warning',
+                duration: 4000,
+                position: 'top-right'
+              })
+            }
+
+            return next({
+              path: loginPath,
+              query: { reason: 'backend_disconnected' }
             })
           }
-
-          return next({
-            path: loginPath,
-            query: { reason: 'backend_disconnected' }
-          })
         }
 
         // 获取store实例
@@ -241,31 +291,34 @@ export class RouteGuards {
           }
         }
 
-        // 开发环境特殊处理：确保认证状态已初始化
-        if (import.meta.env.DEV && !authStore.isAuthenticated) {
-          // 检查是否有开发环境token
+        // 开发环境 dev-token 特权默认禁用，只有显式环境开关才允许本地启用
+        if (!authStore.isAuthenticated) {
           const sessionToken = storage.get<string>(AUTH_STORAGE_KEYS.TOKEN, 'session')
           const devToken = storage.get<string>(AUTH_STORAGE_KEYS.DEV_TOKEN, 'local')
+          const hasDevTokenArtifacts = sessionToken === 'dev-token' || devToken === 'dev-token'
 
-          if (sessionToken === 'dev-token' || devToken === 'dev-token') {
-            // 直接设置认证状态
-            authStore.token = 'dev-token'
-            authStore.refreshToken = ''
-            authStore.user = {
-              id: 1,
-              username: 'sadmin',
-              name: 'boss',
-              email: 'admin@example.com',
-              phone: '13800138000',
-              status: 'active',
-              roles: ['dev_access'],
-              permissions: ['*'],
-              created_at: TimeUtil.now().toISOString(),
-              updated_at: TimeUtil.now().toISOString()
+          if (hasDevTokenArtifacts) {
+            if (!isDevTokenBypassEnabled()) {
+              clearDevTokenArtifacts()
+            } else {
+              authStore.token = 'dev-token'
+              authStore.refreshToken = ''
+              authStore.user = {
+                id: 999999,
+                username: 'dev_test_user',
+                name: '开发测试用户',
+                email: 'dev-test@localhost.local',
+                phone: '',
+                status: 'active',
+                roles: ['dev_test'],
+                permissions: ['*'],
+                created_at: TimeUtil.now().toISOString(),
+                updated_at: TimeUtil.now().toISOString()
+              }
+              authStore.permissions = ['*']
+              authStore.roles = [{ name: '开发测试角色', code: 'dev_test', permissions: ['*'] }]
+              authStore.lastActivity = Date.now()
             }
-            authStore.permissions = ['*']
-            authStore.roles = [{ name: 'dev_access', code: 'dev_access', permissions: ['*'] }]
-            authStore.lastActivity = Date.now()
           }
         }
 

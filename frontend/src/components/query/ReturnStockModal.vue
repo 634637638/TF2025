@@ -196,7 +196,7 @@ import { ValidationRules } from '@/composables'
 import { unifiedApi } from '@/utils/unified-api'
 import { TimeUtil } from '@/utils/time'
 import MobileDialog from '@/components/MobileDialog.vue'
-import { useMobile } from '@/composables/useMobile'
+import { useMobile } from '@/composables/mobile'
 import { logger } from '@/utils/logger'
 import type { ModelValueProps, ReturnDeviceInfo as DeviceInfo, SuccessEmits, UpdateModelValueEmits } from '@/types'
 

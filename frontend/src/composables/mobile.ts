@@ -3,9 +3,9 @@
  * 提供手机端特有功能的 Composition API 实现
  */
 
-import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick, type Ref } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick, readonly, type Ref } from 'vue'
 import { useAppStore } from '@/stores/app'
-import { BREAKPOINTS } from '@/config/breakpoints'
+import { BREAKPOINTS, BreakpointName, deviceType } from '@/config/breakpoints'
 import logger from '@/utils/logger'
 import type {
   DeviceInfo,
@@ -1079,20 +1079,242 @@ export function getMobileOptimizeConfig(): MobileOptimizeConfig {
   }
 }
 
+// ============ 统一响应式系统 ============
+
+/**
+ * 统一响应式状态接口
+ */
+export interface ResponsiveState {
+  screenWidth: number
+  screenHeight: number
+  viewportWidth: number
+  viewportHeight: number
+  isSmallMobile: boolean
+  isMobile: boolean
+  isTablet: boolean
+  isDesktop: boolean
+  isWide: boolean
+  isUltraWide: boolean
+  currentBreakpoint: BreakpointName
+  orientation: 'portrait' | 'landscape'
+  isTouchDevice: boolean
+  isIOS: boolean
+  isAndroid: boolean
+  devicePixelRatio: number
+  safeArea: {
+    top: number
+    right: number
+    bottom: number
+    left: number
+  }
+}
+
+// 全局响应式状态
+const responsiveState = ref<ResponsiveState>({
+  screenWidth: 1920,
+  screenHeight: 1080,
+  viewportWidth: 1920,
+  viewportHeight: 1080,
+  isSmallMobile: false,
+  isMobile: false,
+  isTablet: false,
+  isDesktop: true,
+  isWide: false,
+  isUltraWide: false,
+  currentBreakpoint: BreakpointName.DESKTOP,
+  orientation: 'landscape',
+  isTouchDevice: false,
+  isIOS: false,
+  isAndroid: false,
+  devicePixelRatio: 1,
+  safeArea: { top: 0, right: 0, bottom: 0, left: 0 }
+})
+
+// 更新响应式状态
+function updateResponsiveState() {
+  if (typeof window === 'undefined') return
+
+  const width = window.innerWidth
+  const height = window.innerHeight
+
+  responsiveState.value.screenWidth = window.screen.width
+  responsiveState.value.screenHeight = window.screen.height
+  responsiveState.value.viewportWidth = width
+  responsiveState.value.viewportHeight = height
+
+  responsiveState.value.isSmallMobile = deviceType.isSmallMobile(width)
+  responsiveState.value.isMobile = deviceType.isMobile(width)
+  responsiveState.value.isTablet = deviceType.isTablet(width)
+  responsiveState.value.isDesktop = deviceType.isDesktop(width)
+  responsiveState.value.isWide = deviceType.isWide(width)
+  responsiveState.value.isUltraWide = deviceType.isUltraWide(width)
+
+  responsiveState.value.currentBreakpoint = getCurrentBreakpoint(width)
+  responsiveState.value.orientation = width > height ? 'landscape' : 'portrait'
+
+  updateDeviceInfo()
+  updateSafeArea()
+}
+
+function getCurrentBreakpoint(width: number): BreakpointName {
+  if (width < BREAKPOINTS.SMALL_MOBILE_MAX) return BreakpointName.SMALL_MOBILE
+  if (width < BREAKPOINTS.MOBILE_MAX) return BreakpointName.MOBILE
+  if (width < BREAKPOINTS.TABLET_MIN) return BreakpointName.MOBILE
+  if (width < BREAKPOINTS.DESKTOP_MIN) return BreakpointName.TABLET
+  if (width < BREAKPOINTS.WIDE_MIN) return BreakpointName.DESKTOP
+  if (width < BREAKPOINTS.ULTRA_WIDE_MIN) return BreakpointName.WIDE
+  return BreakpointName.ULTRA_WIDE
+}
+
+function updateDeviceInfo() {
+  const ua = navigator.userAgent.toLowerCase()
+  responsiveState.value.isTouchDevice = 'ontouchend' in document
+  responsiveState.value.isIOS = /iphone|ipad|ipod/.test(ua)
+  responsiveState.value.isAndroid = /android/.test(ua)
+  responsiveState.value.devicePixelRatio = window.devicePixelRatio || 1
+}
+
+function updateSafeArea() {
+  const computedStyle = getComputedStyle(document.documentElement)
+  const top = parseInt(computedStyle.getPropertyValue('--safe-area-inset-top') || '0')
+  const right = parseInt(computedStyle.getPropertyValue('--safe-area-inset-right') || '0')
+  const bottom = parseInt(computedStyle.getPropertyValue('--safe-area-inset-bottom') || '0')
+  const left = parseInt(computedStyle.getPropertyValue('--safe-area-inset-left') || '0')
+  responsiveState.value.safeArea = { top, right, bottom, left }
+}
+
+/**
+ * 统一响应式 Composable
+ * 整合设备检测和响应式状态管理
+ */
+export function useResponsive() {
+  const update = () => updateResponsiveState()
+
+  onMounted(() => {
+    update()
+    window.addEventListener('resize', update, { passive: true })
+    window.addEventListener('orientationchange', update, { passive: true })
+  })
+
+  onUnmounted(() => {
+    window.removeEventListener('resize', update)
+    window.removeEventListener('orientationchange', update)
+  })
+
+  // 媒体查询工具
+  const mediaQuery = {
+    mobile: computed(() => responsiveState.value.isMobile),
+    tablet: computed(() => responsiveState.value.isTablet),
+    desktop: computed(() => responsiveState.value.isDesktop),
+    smallMobile: computed(() => responsiveState.value.isSmallMobile),
+    portrait: computed(() => responsiveState.value.orientation === 'portrait'),
+    landscape: computed(() => responsiveState.value.orientation === 'landscape'),
+    touch: computed(() => responsiveState.value.isTouchDevice)
+  }
+
+  return {
+    ...readonly(responsiveState),
+    mediaQuery,
+    BREAKPOINTS
+  }
+}
+
+/**
+ * 统一移动端检测 Composable
+ * 提供完整的移动端设备检测能力
+ */
+export function useMobile() {
+  const update = () => updateResponsiveState()
+
+  onMounted(() => {
+    update()
+    window.addEventListener('resize', update, { passive: true })
+    window.addEventListener('orientationchange', update, { passive: true })
+  })
+
+  onUnmounted(() => {
+    window.removeEventListener('resize', update)
+    window.removeEventListener('orientationchange', update)
+  })
+
+  // screenSize 对象（兼容旧版 API）
+  const screenSize = computed(() => ({
+    width: responsiveState.value.viewportWidth,
+    height: responsiveState.value.viewportHeight
+  }))
+
+  return {
+    // 响应式状态
+    isMobile: computed(() => responsiveState.value.isMobile),
+    isTablet: computed(() => responsiveState.value.isTablet),
+    isDesktop: computed(() => responsiveState.value.isDesktop),
+    isSmallMobile: computed(() => responsiveState.value.isSmallMobile),
+    screenSize,
+    screenWidth: computed(() => responsiveState.value.viewportWidth),
+    screenHeight: computed(() => responsiveState.value.viewportHeight),
+    orientation: computed(() => responsiveState.value.orientation),
+    breakpoint: computed(() => responsiveState.value.currentBreakpoint),
+
+    // 设备信息
+    isTouchDevice: computed(() => responsiveState.value.isTouchDevice),
+    isIOS: computed(() => responsiveState.value.isIOS),
+    isAndroid: computed(() => responsiveState.value.isAndroid),
+    devicePixelRatio: computed(() => responsiveState.value.devicePixelRatio),
+    safeArea: computed(() => responsiveState.value.safeArea),
+
+    // 方法
+    update,
+    refresh: update,
+    detectDeviceType: update,
+    getDeviceInfo: () => ({
+      userAgent: navigator.userAgent,
+      platform: navigator.platform,
+      isIOS: responsiveState.value.isIOS,
+      isAndroid: responsiveState.value.isAndroid,
+      isSafari: /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent),
+      isChrome: /Chrome/.test(navigator.userAgent)
+    }),
+    isTouchDeviceCheck: () => responsiveState.value.isTouchDevice,
+    getSafeAreaInsets: () => responsiveState.value.safeArea,
+
+    // 断点常量
+    breakpoints: {
+      mobile: BREAKPOINTS.MOBILE_MAX,
+      tablet: BREAKPOINTS.TABLET_MAX,
+      desktop: BREAKPOINTS.DESKTOP_MIN
+    }
+  }
+}
+
+// 获取全局响应式状态
+export function getGlobalResponsiveState() {
+  return responsiveState
+}
+
 // ============ 导出所有移动端 Composables ============
 
-// 为保持兼容性，添加 useMobileDetection 别名
+// 导出别名以保持兼容性
 export const useMobileDetection = useMobileDevice
+export const useMobileGesturesCompat = useMobileGestures
+
 
 export default {
+  // 核心功能
+  useResponsive,
+  useMobile,
   useMobileDevice,
   useMobileDetection,
   useMobileForm,
   useMobileGestures,
   useMobileViewport,
   useMobilePerformance,
+
+  // 工具函数
   isMobileBrowser,
   isWeChatBrowser,
   getMobileDeviceInfo,
-  getMobileOptimizeConfig
+  getMobileOptimizeConfig,
+
+  // 响应式状态
+  getGlobalResponsiveState
 }

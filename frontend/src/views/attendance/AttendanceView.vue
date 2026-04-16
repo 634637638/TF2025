@@ -83,29 +83,26 @@
               <div class="stat-label">本月加班</div>
             </div>
           </div>
+          <!-- 本月费用卡片 - 显示加班费和请假扣款汇总 -->
           <div v-if="canViewAttendanceField(attendanceStatsModuleKey, 'stats_pending_settlement')" class="stat-card">
             <div class="stat-icon orange">
-              <i class="fas fa-hourglass-end"></i>
+              <i class="fas fa-coins"></i>
             </div>
             <div class="stat-content">
-              <!-- 显示费用信息 -->
               <div class="stat-value">
-                <template v-if="stats.pendingOvertimePay > 0 || stats.pendingLeaveDeduction > 0">
-                  <span v-if="stats.pendingOvertimePay > 0" class="text-success">+¥{{ stats.pendingOvertimePay.toFixed(0) }}</span>
-                  <span v-if="stats.pendingLeaveDeduction > 0" class="text-danger">-¥{{ stats.pendingLeaveDeduction.toFixed(0) }}</span>
-                </template>
-                <template v-else>
-                  {{ stats.pending || 0 }}
-                </template>
+                <span v-if="stats.pendingOvertimePay > 0" class="text-success">+¥{{ stats.pendingOvertimePay.toFixed(0) }}</span>
+                <span v-if="stats.pendingOvertimePay > 0 && stats.pendingLeaveDeduction > 0" class="mx-1"></span>
+                <span v-if="stats.pendingLeaveDeduction > 0" class="text-danger">-¥{{ stats.pendingLeaveDeduction.toFixed(0) }}</span>
+                <span v-if="stats.pendingOvertimePay === 0 && stats.pendingLeaveDeduction === 0">¥0</span>
               </div>
-              <div class="stat-label">待结算</div>
+              <div class="stat-label">本月费用</div>
             </div>
           </div>
         </div>
 
         <!-- TAB 切换 -->
         <el-tabs v-model="activeTab" class="attendance-tabs" @tab-change="handleTabChange">
-          <!-- 所有考勤（管理员） -->
+          <!-- 所有考勤 -->
           <el-tab-pane label="所有考勤" name="all" v-if="canViewAllAttendance">
             <UnifiedSearchPanel
               v-model:expanded="searchExpanded"
@@ -542,7 +539,7 @@
         width="800px"
         dialog-class="attendance-form-dialog"
         :close-on-click-modal="false"
-        @close="dialogVisible = false"
+        @close="closeAttendanceDialog"
         :show-default-footer="false"
       >
         <el-form :model="formData" :rules="formRules" ref="formRef" label-width="100px" class="attendance-dialog-form">
@@ -736,7 +733,7 @@
         </el-form>
 
         <template #footer>
-          <el-button plain type="default" @click="dialogVisible = false" class="btn-sm">
+          <el-button plain type="default" @click="closeAttendanceDialog" class="btn-sm">
             <i class="fas fa-times mr-1"></i>取消
           </el-button>
           <el-button plain type="primary" @click="handleSubmit" :disabled="submitting" :loading="submitting" class="btn-sm">
@@ -846,7 +843,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from 'vue'
-import { ElMessage, ElMessageBox, ElConfigProvider, type FormRules } from 'element-plus'
+import { ElMessage, ElMessageBox, ElConfigProvider, type FormInstance, type FormRules } from 'element-plus'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { SuccessFilled, CircleCloseFilled } from '@element-plus/icons-vue'
 import { attendanceApi } from '@/api/attendance'
@@ -855,10 +852,11 @@ import { useAuthStore } from '@/stores/auth'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
-import { useMobile } from '@/composables/useMobile'
+import { useMobile } from '@/composables/mobile'
 import { useLoadingState } from '@/composables'
 import { unifiedApi } from '@/utils/unified-api'
 import { formatDate } from '@/utils/format'
+import { logger } from '@/utils/logger'
 import Pagination from '@/components/Pagination.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { PageHeader, PermissionDenied } from '@/components/base'
@@ -903,6 +901,28 @@ interface LeaveBalanceInfo {
   monthlyHistory?: LeaveHistoryItem[]
 }
 
+interface ExpandableAttendanceTableRef {
+  toggleRowExpansion: (row: AttendanceTableRow, expanded?: boolean) => void
+}
+
+type AttendanceTab = 'all' | 'my'
+
+const createDefaultAttendanceForm = (): AttendanceRecord => ({
+  id: undefined,
+  employee_id: undefined,
+  record_type: 'monthly_leave',
+  record_date: '',
+  leave_type: '',
+  leave_days: 1,
+  leave_reason: '',
+  overtime_hours: 2,
+  overtime_reason: '',
+  absent_days: 1,
+  absent_reason: '',
+  monthly_leave_days: 1,
+  status: 'pending'
+})
+
 // 配置中文语言环境
 const locale = zhCn
 // 权限检查
@@ -920,8 +940,11 @@ const salaryTemplatePermissions = usePagePermissions('salary-templates')
 const { init: initFieldPermissions } = fieldPermissions
 
 const authStore = useAuthStore()
-const canViewAllAttendance = computed(() => canView.value)
 const canViewOwnAttendance = computed(() => myAttendancePermissions.canView.value)
+const canViewAllAttendance = computed(() => (
+  canView.value ||
+  authStore.hasPermission('attendance:view:all')
+))
 const canCreateOwnAttendance = computed(() => myAttendancePermissions.canCreate.value)
 const canAccessPage = computed(() => canViewAllAttendance.value || canViewOwnAttendance.value)
 const canCreateRequest = computed(() => canCreatePermission.value || canCreateOwnAttendance.value)
@@ -944,15 +967,15 @@ const dialogVisible = ref(false)
 const detailDialogVisible = ref(false)
 const approveDialogVisible = ref(false)
 const dialogTitle = ref('')
-const attendanceTableRef = ref()
-const myAttendanceTableRef = ref()
+const attendanceTableRef = ref<ExpandableAttendanceTableRef | null>(null)
+const myAttendanceTableRef = ref<ExpandableAttendanceTableRef | null>(null)
 const mobileExpandedAttendanceId = ref<number | null>(null)
 const mobileExpandedMyAttendanceId = ref<number | null>(null)
 const lastTappedAttendanceId = ref<number | null>(null)
 const lastTappedAttendanceScope = ref<'all' | 'my' | null>(null)
 const lastTapTimestamp = ref(0)
-const formRef = ref()
-const activeTab = ref('my')
+const formRef = ref<FormInstance>()
+const activeTab = ref<AttendanceTab>('my')
 
 // 搜索相关状态
 const searchExpanded = ref(false)
@@ -1195,21 +1218,7 @@ const myPagination = reactive({
   total: 0
 })
 
-const formData = reactive<AttendanceRecord>({
-  id: undefined,
-  employee_id: undefined,
-  record_type: 'monthly_leave',
-  record_date: '',
-  leave_type: '',
-  leave_days: 1,
-  leave_reason: '',
-  overtime_hours: 2,
-  overtime_reason: '',
-  absent_days: 1,
-  absent_reason: '',
-  monthly_leave_days: 1,
-  status: 'pending'
-})
+const formData = reactive<AttendanceRecord>(createDefaultAttendanceForm())
 
 const formRules = computed(() => {
   const rules: FormRules = {
@@ -1255,12 +1264,16 @@ const loadData = async () => {
 
     if (response.data) {
       tableData.value = Array.isArray(response.data.records) ? response.data.records as AttendanceTableRow[] : []
-      pagination.total = parseInt(response.data.pagination?.total) || 0
+      pagination.total = parseInt(response.data.pagination?.total, 10) || 0
 
-      // 更新统计
-      updateStats(tableData.value)
-      // 加载待结算费用统计
-      loadPendingStats()
+      // 基础状态统计（基于当前页数据）
+      stats.value.total = response.data.pagination?.total || 0
+      stats.value.pending = tableData.value.filter((r) => r.status === 'pending').length
+      stats.value.approved = tableData.value.filter((r) => r.status === 'approved').length
+      stats.value.rejected = tableData.value.filter((r) => r.status === 'rejected').length
+
+      // 从后端获取仪表盘汇总统计
+      await loadDashboardStats()
     }
   } catch (error) {
     ElMessage.error('加载数据失败')
@@ -1284,19 +1297,60 @@ const loadMyData = async () => {
 
     if (response.data) {
       myTableData.value = Array.isArray(response.data.records) ? response.data.records as AttendanceTableRow[] : []
-      myPagination.total = parseInt(response.data.pagination?.total) || 0
+      myPagination.total = parseInt(response.data.pagination?.total, 10) || 0
 
       await loadLeaveBalance()
 
-      // 更新统计（基于我的考勤数据）
-      updateStats(myTableData.value)
-      // 加载待结算费用统计
-      loadPendingStats()
+      // 基础状态统计（基于当前页数据）
+      stats.value.total = response.data.pagination?.total || 0
+      stats.value.pending = myTableData.value.filter((r) => r.status === 'pending').length
+      stats.value.approved = myTableData.value.filter((r) => r.status === 'approved').length
+      stats.value.rejected = myTableData.value.filter((r) => r.status === 'rejected').length
+
+      // 从后端获取仪表盘汇总统计
+      await loadDashboardStats()
     }
   } catch (error) {
     ElMessage.error('加载数据失败')
   } finally {
     myLoading.value = false
+  }
+}
+
+// 从后端获取仪表盘汇总统计
+const loadDashboardStats = async () => {
+  try {
+    const response = await attendanceApi.getDashboardStats()
+    if (response.data) {
+      const dashboardData = response.data
+
+      // 更新上月统计
+      lastMonthStats.value = {
+        leaveDays: dashboardData.lastMonth?.leaveDays || 0,
+        overtimeHours: dashboardData.lastMonth?.overtimeHours || 0
+      }
+
+      // 更新本月统计
+      const monthlyLimit = Number(leaveBalance.value?.monthlyLimit || monthlyLeaveDays.value || 2)
+      const usedDays = dashboardData.currentMonth?.leaveDays || 0
+      const totalAvailable = leaveBalance.value?.available || monthlyLimit
+      const availableLeaveDays = Math.max(0, totalAvailable - usedDays)
+
+      currentMonthStats.value = {
+        availableLeaveDays: availableLeaveDays,
+        totalLeaveDays: totalAvailable,
+        leaveDays: dashboardData.currentMonth?.unpaidLeaveDays || 0,
+        overtimeHours: dashboardData.currentMonth?.overtimeHours || 0,
+        usedDays: usedDays,
+        isExhausted: availableLeaveDays === 0
+      }
+
+      // 更新待审批费用统计
+      stats.value.pendingOvertimePay = dashboardData.pending?.overtimePay || 0
+      stats.value.pendingLeaveDeduction = dashboardData.pending?.leaveDeduction || 0
+    }
+  } catch (error) {
+    logger.error('获取仪表盘统计失败:', error)
   }
 }
 
@@ -1312,6 +1366,29 @@ const handleMyPaginationChange = (page: number, pageSize: number) => {
   myPagination.page = page
   myPagination.size = pageSize
   loadMyData()
+}
+
+const resetAttendanceForm = () => {
+  Object.assign(formData, createDefaultAttendanceForm())
+  leaveDateRange.value = null
+  leaveStartDate.value = ''
+  leaveEndDate.value = ''
+  leaveBalance.value = null
+  formRef.value?.clearValidate()
+}
+
+const closeAttendanceDialog = () => {
+  dialogVisible.value = false
+  resetAttendanceForm()
+}
+
+const refreshActiveAttendanceData = async () => {
+  if (activeTab.value === 'all') {
+    await loadData()
+    return
+  }
+
+  await loadMyData()
 }
 
 const updateStats = (data: AttendanceTableRow[]) => {
@@ -1547,25 +1624,7 @@ const showCreateDialog = async () => {
   }
 
   dialogTitle.value = canManageAttendanceRecords.value ? '新增考勤记录' : '申请考勤'
-  Object.assign(formData, {
-    id: undefined,
-    employee_id: undefined,
-    record_type: 'monthly_leave',
-    record_date: '',
-    leave_type: '',
-    leave_days: 1,
-    leave_reason: '',
-    overtime_hours: 2,
-    overtime_reason: '',
-    absent_days: 1,
-    absent_reason: '',
-    monthly_leave_days: 1,
-    status: 'pending'
-  })
-  leaveDateRange.value = null
-  leaveStartDate.value = ''
-  leaveEndDate.value = ''
-  leaveBalance.value = null
+  resetAttendanceForm()
 
   // 加载员工列表和休假余额
   if (canManageAttendanceRecords.value) {
@@ -1610,6 +1669,122 @@ const loadLeaveConfig = async () => {
   }
 }
 
+const isAttendanceDialogCancelled = (error: unknown) =>
+  error === 'cancel' || error === 'close'
+
+const buildAttendanceSplitDateDetail = (
+  requestedDays: number,
+  monthlyLeaveDaysCount: number,
+  range: [string, string] | null
+) => {
+  if (!range || range.length !== 2) {
+    return ''
+  }
+
+  const startDate = new Date(range[0])
+  const dates: string[] = []
+
+  for (let i = 0; i < requestedDays; i++) {
+    const d = new Date(startDate)
+    d.setDate(d.getDate() + i)
+    const dateStr = `${d.getMonth() + 1}月${d.getDate()}日`
+    dates.push(`${dateStr}:${i < monthlyLeaveDaysCount ? '休假' : '请假'}`)
+  }
+
+  return `\n\n具体日期分配：\n${dates.join('\n')}`
+}
+
+const buildAttendanceSplitConfirmMessage = (
+  requestedDays: number,
+  availableDays: number,
+  monthlyLeaveDaysCount: number,
+  regularLeaveDaysCount: number,
+  range: [string, string] | null
+) => `本月可用休假天数：${availableDays}天
+申请天数：${requestedDays}天
+将自动创建：
+- 休假 ${monthlyLeaveDaysCount} 天（带薪，不扣工资）
+- 请假 ${regularLeaveDaysCount} 天（无薪，扣工资）${buildAttendanceSplitDateDetail(
+  requestedDays,
+  monthlyLeaveDaysCount,
+  range
+)}
+
+是否继续？`
+
+const createSplitAttendanceRecords = async (
+  submitData: AttendanceRecord,
+  requestedDays: number,
+  monthlyLeaveDaysCount: number,
+  regularLeaveDaysCount: number,
+  range: [string, string] | null
+) => {
+  if (range && range.length === 2) {
+    const startDate = new Date(range[0])
+
+    for (let i = 0; i < monthlyLeaveDaysCount; i++) {
+      const d = new Date(startDate)
+      d.setDate(d.getDate() + i)
+      await attendanceApi.createAttendanceRecord({
+        employee_id: submitData.employee_id,
+        record_type: 'monthly_leave',
+        record_date: formatDate(d),
+        monthly_leave_days: 1,
+        status: 'pending'
+      })
+    }
+
+    for (let i = monthlyLeaveDaysCount; i < requestedDays; i++) {
+      const d = new Date(startDate)
+      d.setDate(d.getDate() + i)
+      await attendanceApi.createAttendanceRecord({
+        employee_id: submitData.employee_id,
+        record_type: 'leave',
+        record_date: formatDate(d),
+        leave_type: '事假',
+        leave_days: 1,
+        leave_reason: '休假申请（超过休假天数，自动转为请假）',
+        status: 'pending'
+      })
+    }
+
+    return
+  }
+
+  if (monthlyLeaveDaysCount > 0) {
+    await attendanceApi.createAttendanceRecord({
+      ...submitData,
+      monthly_leave_days: monthlyLeaveDaysCount
+    })
+  }
+
+  if (regularLeaveDaysCount > 0) {
+    await attendanceApi.createAttendanceRecord({
+      employee_id: submitData.employee_id,
+      record_type: 'leave',
+      record_date: submitData.record_date,
+      leave_type: '事假',
+      leave_days: regularLeaveDaysCount,
+      leave_reason: `休假申请（超过休假天数${regularLeaveDaysCount}天，自动转为请假）`
+    })
+  }
+}
+
+const buildAttendanceSubmitSuccessMessage = (
+  monthlyLeaveDaysCount: number,
+  regularLeaveDaysCount: number
+) => {
+  if (monthlyLeaveDaysCount > 0 && regularLeaveDaysCount > 0) {
+    return `提交成功：休假${monthlyLeaveDaysCount}天，请假${regularLeaveDaysCount}天`
+  }
+
+  if (monthlyLeaveDaysCount > 0) {
+    return `提交成功：休假${monthlyLeaveDaysCount}天`
+  }
+
+  return `提交成功：请假${regularLeaveDaysCount}天`
+}
+
 const handleEdit = (row: AttendanceTableRow) => {
   if (!canEdit.value) {
     handleAttendanceNoPermission('edit')
@@ -1636,16 +1811,18 @@ const handleEdit = (row: AttendanceTableRow) => {
     const rangeDays = Math.max(toAttendanceNumber(row.monthly_leave_days, 1), 1)
     leaveStartDate.value = row.record_date || ''
     leaveEndDate.value = buildAttendanceEndDate(row.record_date, rangeDays)
+    syncLeaveDateRange()
   } else if (row.record_type === 'leave') {
     const rangeDays = Math.max(toAttendanceNumber(row.leave_days, 1), 1)
     leaveStartDate.value = row.record_date || ''
     leaveEndDate.value = buildAttendanceEndDate(row.record_date, rangeDays)
+    syncLeaveDateRange()
   } else {
+    // 加班记录直接使用 formData.record_date，不需要同步 leaveDateRange
     leaveStartDate.value = ''
     leaveEndDate.value = ''
     leaveDateRange.value = null
   }
-  syncLeaveDateRange()
   loadLeaveBalance(row.employee_id)
   dialogVisible.value = true
 }
@@ -1729,37 +1906,17 @@ const handleSubmit = async () => {
 
         // 如果申请天数超过本月可用天数，超过的部分转为请假
         if (requestedDays > availableDays) {
-          const monthlyLeaveDays = availableDays
-          const regularLeaveDays = requestedDays - availableDays
-
-          // 生成详细的日期分配说明
-          let dateDetail = ''
-          if (leaveDateRange.value && leaveDateRange.value.length === 2) {
-            const startDate = new Date(leaveDateRange.value[0])
-            const dates: string[] = []
-            for (let i = 0; i < requestedDays; i++) {
-              const d = new Date(startDate)
-              d.setDate(d.getDate() + i)
-              const dateStr = `${d.getMonth() + 1}月${d.getDate()}日`
-              if (i < monthlyLeaveDays) {
-                dates.push(`${dateStr}:休假`)
-              } else {
-                dates.push(`${dateStr}:请假`)
-              }
-            }
-            dateDetail = '\n\n具体日期分配：\n' + dates.join('\n')
-          }
-
-          const confirmMessage = `本月可用休假天数：${availableDays}天
-申请天数：${requestedDays}天
-将自动创建：
-- 休假 ${monthlyLeaveDays} 天（带薪，不扣工资）
-- 请假 ${regularLeaveDays} 天（无薪，扣工资）${dateDetail}
-
-是否继续？`
+          const monthlyLeaveDaysCount = availableDays
+          const regularLeaveDaysCount = requestedDays - availableDays
 
           await ElMessageBox.confirm(
-            confirmMessage,
+            buildAttendanceSplitConfirmMessage(
+              requestedDays,
+              availableDays,
+              monthlyLeaveDaysCount,
+              regularLeaveDaysCount,
+              leaveDateRange.value
+            ),
             '休假天数提示',
             {
               confirmButtonText: '继续',
@@ -1768,68 +1925,17 @@ const handleSubmit = async () => {
             }
           )
 
-          // 按日期分别创建记录
-          if (leaveDateRange.value && leaveDateRange.value.length === 2) {
-            // 有日期范围，按日期分别创建
-            const startDate = new Date(leaveDateRange.value[0])
+          await createSplitAttendanceRecords(
+            submitData,
+            requestedDays,
+            monthlyLeaveDaysCount,
+            regularLeaveDaysCount,
+            leaveDateRange.value
+          )
 
-            // 创建休假记录（前N天）
-            for (let i = 0; i < monthlyLeaveDays; i++) {
-              const d = new Date(startDate)
-              d.setDate(d.getDate() + i)
-              const dateStr = formatDate(d)
-              await attendanceApi.createAttendanceRecord({
-                employee_id: submitData.employee_id,
-                record_type: 'monthly_leave',
-                record_date: dateStr,
-                monthly_leave_days: 1,
-                status: 'pending'
-              })
-            }
-
-            // 创建请假记录（后N天）
-            for (let i = monthlyLeaveDays; i < requestedDays; i++) {
-              const d = new Date(startDate)
-              d.setDate(d.getDate() + i)
-              const dateStr = formatDate(d)
-              await attendanceApi.createAttendanceRecord({
-                employee_id: submitData.employee_id,
-                record_type: 'leave',
-                record_date: dateStr,
-                leave_type: '事假',
-                leave_days: 1,
-                leave_reason: `休假申请（超过休假天数，自动转为请假）`,
-                status: 'pending'
-              })
-            }
-          } else {
-            // 没有日期范围，按原来方式创建
-            if (monthlyLeaveDays > 0) {
-              await attendanceApi.createAttendanceRecord({
-                ...submitData,
-                monthly_leave_days: monthlyLeaveDays
-              })
-            }
-
-            if (regularLeaveDays > 0) {
-              await attendanceApi.createAttendanceRecord({
-                employee_id: submitData.employee_id,
-                record_type: 'leave',
-                record_date: submitData.record_date,
-                leave_type: '事假',
-                leave_days: regularLeaveDays,
-                leave_reason: `休假申请（超过休假天数${regularLeaveDays}天，自动转为请假）`
-              })
-            }
-          }
-
-          if (monthlyLeaveDays > 0 && regularLeaveDays > 0) {
-            ElMessage.success(`提交成功：休假${monthlyLeaveDays}天，请假${regularLeaveDays}天`)
-          } else if (monthlyLeaveDays > 0) {
-            ElMessage.success(`提交成功：休假${monthlyLeaveDays}天`)
-          } else {
-            ElMessage.success(`提交成功：请假${regularLeaveDays}天`)
-          }
+          ElMessage.success(
+            buildAttendanceSubmitSuccessMessage(monthlyLeaveDaysCount, regularLeaveDaysCount)
+          )
         } else {
           await attendanceApi.createAttendanceRecord(submitData)
           ElMessage.success('提交成功')
@@ -1842,14 +1948,10 @@ const handleSubmit = async () => {
         ElMessage.success('提交成功')
       }
 
-      dialogVisible.value = false
-      if (activeTab.value === 'all') {
-        loadData()
-      } else {
-        loadMyData()
-      }
+      closeAttendanceDialog()
+      await refreshActiveAttendanceData()
     } catch (error) {
-      if (error !== 'cancel') {
+      if (!isAttendanceDialogCancelled(error)) {
         ElMessage.error(formData.id ? '更新失败' : '提交失败')
       }
     } finally {
@@ -1858,7 +1960,7 @@ const handleSubmit = async () => {
   })
 }
 
-const handleApprove = async (row) => {
+const handleApprove = async (row: AttendanceTableRow) => {
   if (!canApprove.value) {
     handleAttendanceNoPermission('approve')
     return
@@ -1989,7 +2091,7 @@ const handleLeaveBoundaryChange = (boundary: 'start' | 'end', value: string | nu
   syncLeaveDateRange()
 }
 
-const handleDelete = async (row) => {
+const handleDelete = async (row: AttendanceTableRow) => {
   if (!canDelete.value) {
     handleAttendanceNoPermission('delete')
     return
@@ -2008,7 +2110,7 @@ const handleDelete = async (row) => {
   }
 }
 
-const handleCancel = async (row) => {
+const handleCancel = async (row: AttendanceTableRow) => {
   if (!canCreateOwnAttendance.value) {
     myAttendancePermissions.handleNoPermission('create')
     return
@@ -2020,7 +2122,8 @@ const handleCancel = async (row) => {
     ElMessage.success('已撤销')
     loadMyData()
   } catch (error) {
-    if (error !== 'cancel') {
+    if (!isAttendanceDialogCancelled(error)) {
+      logger.error('撤销申请失败:', error)
       ElMessage.error('撤销失败')
     }
   }
@@ -2040,7 +2143,7 @@ const getReasonText = (row: AttendanceTableRow) => {
   return '-'
 }
 
-const handleView = (row) => {
+const handleView = (row: AttendanceTableRow) => {
   if (activeTab.value === 'all' && !canViewAllAttendance.value) {
     handleAttendanceNoPermission('view')
     return
@@ -2207,6 +2310,28 @@ const loadEmployees = async () => {
     logger.error('加载员工列表失败:', error)
   }
 }
+
+watch(
+  [canViewAllAttendance, canViewOwnAttendance],
+  async ([canAll, canOwn], [prevCanAll, prevCanOwn]) => {
+    if (!canAll && !canOwn) {
+      return
+    }
+
+    syncVisibleAttendanceFilters()
+
+    if (canAll && !prevCanAll) {
+      activeTab.value = 'all'
+      await Promise.all([loadData(), loadEmployees()])
+      return
+    }
+
+    if (!canAll && canOwn && !prevCanOwn) {
+      activeTab.value = 'my'
+      await loadMyData()
+    }
+  }
+)
 
 onMounted(async () => {
   if (!canAccessPage.value) {

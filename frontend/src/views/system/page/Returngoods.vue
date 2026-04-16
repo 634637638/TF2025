@@ -314,7 +314,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { unifiedApi } from '@/utils/unified-api'
 import { useNotification } from '@/composables/useNotification'
-import { useMobile } from '@/composables/useMobile'
+import { useMobile } from '@/composables/mobile'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useLoadingState } from '@/composables'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'

@@ -282,7 +282,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { useMobile } from '@/composables/useMobile'
+import { useMobile } from '@/composables/mobile'
 import type { FormInstance, FormRules, UploadFile, UploadFiles } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import type { CancelEmits } from '@/types/component'

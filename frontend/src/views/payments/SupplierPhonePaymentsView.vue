@@ -904,7 +904,7 @@ import { useNotification } from '@/composables/useNotification';
 import { useImportExport } from '@/composables/useImportExport';
 import { usePagePermissions } from '@/composables/usePagePermissions';
 import { fieldPermissions } from '@/composables/useFieldPermissions';
-import { useMobile } from '@/composables/useMobile';
+import { useMobile } from '@/composables/mobile';
 import { useLoadingState } from '@/composables'
 import { useAuthStore } from '@/stores/auth';
 import Pagination from '@/components/Pagination.vue';

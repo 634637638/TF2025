@@ -388,7 +388,7 @@ import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { PermissionDenied, PageHeader } from '@/components/base'
 import { usePermissionToast } from '@/utils/permissionToastSimple'
 import { handleApiErrorWithPermission } from '@/utils/apiPermissionError'
-import { useMobile } from '@/composables/useMobile'
+import { useMobile } from '@/composables/mobile'
 import { logger } from '@/utils/logger'
 import type { Color } from '@/types'
 

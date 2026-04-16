@@ -19,7 +19,17 @@ import { useClipboard, ClipboardUtil } from './utils/useClipboard'
 import { useForm, ValidationRules } from './forms/useForm'
 import { useLoading, createLoading } from './useLoading'
 import { useImportExport } from './useImportExport'
-import { useMobileDetection as useMobileDetectionCompat, useMobileForm as useMobileFormCompat } from './mobile'
+import {
+  useResponsive,
+  useMobile,
+  useMobileDevice,
+  useMobileDetection,
+  useMobileForm,
+  useMobileGestures,
+  useMobileViewport,
+  useMobilePerformance,
+  getGlobalResponsiveState
+} from './mobile'
 
 // UI 功能
 export { useConfirm } from './ui/useConfirm'
@@ -45,7 +55,21 @@ export { useCart } from './useCart'
 
 // 认证
 export { useAuth } from './useAuth'
-export { useMobileDetection, useMobileForm } from './mobile'
+// 移动端 composables（统一导出）
+export {
+  useResponsive,
+  useMobile,
+  useMobileDevice,
+  useMobileDetection,
+  useMobileForm,
+  useMobileGestures,
+  useMobileViewport,
+  useMobilePerformance,
+  getGlobalResponsiveState
+} from './mobile'
+
+// 类型导出
+export type { ResponsiveState } from './mobile'
 
 // 类型导出
 export type { AsyncState } from './types'
@@ -127,8 +151,8 @@ export class ComposableToolkit {
           // 兼容性导出
           usePagination,
           useDebounce,
-          useMobileDetection: useMobileDetectionCompat,
-          useMobileForm: useMobileFormCompat
+          useMobileDetection,
+          useMobileForm
         }
       }
     }
@@ -211,11 +235,17 @@ export default {
   useForm,
   useImportExport,
 
-  // 兼容性 composables
+  // 移动端 composables
+  useResponsive,
+  useMobile,
+  useMobileDevice,
+  useMobileDetection,
+  useMobileForm,
+  useMobileGestures,
+
+  // 统一 composables
   usePagination,
   useDebounce,
-  useMobileDetection: useMobileDetectionCompat,
-  useMobileForm: useMobileFormCompat,
   validationRules,
 
   // 工具类

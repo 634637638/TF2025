@@ -680,8 +680,8 @@
             </div>
           </el-tab-pane>
 
-          <!-- 工资发放 -->
-          <el-tab-pane label="工资发放" name="payout" v-if="canViewSalaryRecords">
+          <!-- 工资计算 -->
+          <el-tab-pane label="工资计算" name="payout" v-if="canViewSalaryRecords">
             <UnifiedSearchPanel
               v-model:expanded="payoutSearchExpanded"
               :loading="payoutLoading"
@@ -996,8 +996,8 @@
             </div>
           </el-tab-pane>
 
-          <!-- 我的工资（所有用户） -->
-          <el-tab-pane label="我的工资" name="my" v-if="canViewOwnSalary">
+          <!-- 工资发放 -->
+          <el-tab-pane label="工资发放" name="my" v-if="canViewPayoutRecords">
             <UnifiedSearchPanel
               v-model:expanded="recordsSearchExpanded"
               :loading="myLoading"
@@ -1006,7 +1006,7 @@
             >
               <template #primary>
                 <el-input
-                  :placeholder="canViewTeamSalaryRecords && selectedViewEmployeeId ? `${getSelectedEmployeeName()}的工资记录` : '我的工资记录'"
+                  :placeholder="canViewTeamSalaryRecords && selectedViewEmployeeId ? `${getSelectedEmployeeName()}的工资发放记录` : '工资发放记录'"
                   disabled
                   class="cursor-default"
                 >
@@ -2208,7 +2208,7 @@ import { attendanceApi, type AttendanceRecord } from '@/api/attendance'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useRefreshData } from '@/composables/useRefreshData'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
-import { useMobile } from '@/composables/useMobile'
+import { useMobile } from '@/composables/mobile'
 import { useLoadingState, ValidationRules } from '@/composables'
 import { useAuthStore } from '@/stores/auth'
 import { unifiedApi } from '@/utils/unified-api'
@@ -2240,6 +2240,7 @@ const canDeleteSalaryRecord = computed(() => salaryRecordPermissions.canDelete.v
 const canApproveSalaryRecord = computed(() => salaryRecordPermissions.canApprove.value)
 const canManageSalaryRecord = computed(() => salaryRecordPermissions.canManage.value)
 const canViewOwnSalary = computed(() => mySalaryPermissions.canView.value)
+const canViewPayoutRecords = computed(() => canViewSalaryRecords.value || canViewOwnSalary.value)
 const canAccessSalaryPage = computed(() => (
   canViewSalaryTemplates.value ||
   canViewSalaryRecords.value ||
@@ -3019,9 +3020,11 @@ const loadTemplates = async () => {
   }
 }
 
-// 加载我的工资记录（只显示已发放的记录）
+// 加载工资发放记录
+// 管理员/有工资记录查看权限：查看全部或按员工筛选
+// 普通用户/仅有我的工资权限：只查看自己
 const loadMyRecords = async () => {
-  if (!canViewOwnSalary.value) {
+  if (!canViewPayoutRecords.value) {
     myRecords.value = []
     myPagination.total = 0
     return
@@ -3058,7 +3061,10 @@ const loadMyRecords = async () => {
       params.period_end = `${endYear}-${endMonth}-${daysInMonth}`
     }
 
-    const response = await salaryApi.getMySalaryRecords(params)
+    const response = canViewTeamSalaryRecords.value
+      ? await salaryApi.getSalaryRecords(params)
+      : await salaryApi.getMySalaryRecords(params)
+
     if (response.data) {
       // response.data 已经是 {records: [...], pagination: {...}}
       myRecords.value = response.data.records || []
@@ -5024,8 +5030,8 @@ const handleDeleteTemplate = async (row: any) => {
 
 // 工资记录操作
 const handleViewMyRecord = (row: any) => {
-  if (!canViewOwnSalary.value) {
-    error('您没有查看个人工资的权限')
+  if (!canViewPayoutRecords.value) {
+    error('您没有查看工资发放记录的权限')
     return
   }
 
@@ -5113,7 +5119,7 @@ const handleTabChange = async (tabName: string) => {
     // 加载工资记录
     loadPayoutList()
   } else if (tabName === 'my') {
-    if (!canViewOwnSalary.value) return
+    if (!canViewPayoutRecords.value) return
     await Promise.all([loadMyRecords(), loadMyStats()])
   }
 }
@@ -5156,7 +5162,7 @@ onMounted(async () => {
     activeTab.value = 'employees'
     const currentMonth = payoutMonth.value || employeeSalaryMonth.value
     await loadEmployeeList(currentMonth)
-  } else if (canViewOwnSalary.value) {
+  } else if (canViewPayoutRecords.value) {
     activeTab.value = 'my'
     await Promise.all([loadMyRecords(), loadMyStats()])
   }

@@ -150,7 +150,7 @@
 }
 
 .modal-content {
-  background: var(--modal-bg-white) #ffffff !important;
+  background: var(--modal-bg-white);
   border-radius: 12px;
   box-shadow: var(--modal-shadow);
   width: 90%;
@@ -215,7 +215,7 @@
   padding: 24px;
   max-height: 60vh;
   overflow-y: auto;
-  background: var(--modal-bg-white) #ffffff !important;
+  background: var(--modal-bg-white);
 
   // 自定义滚动条
   &::-webkit-scrollbar {

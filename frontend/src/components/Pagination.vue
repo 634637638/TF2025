@@ -99,7 +99,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { useMobile } from '@/composables/useMobile'
+import { useMobile } from '@/composables/mobile'
 
 interface Props {
   current?: number

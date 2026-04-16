@@ -775,7 +775,7 @@ import Pagination from '../../components/Pagination.vue'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { PageHeader } from '@/components/base'
-import { useMobile } from '@/composables/useMobile'
+import { useMobile } from '@/composables/mobile'
 import {
   Plus,
   Download,

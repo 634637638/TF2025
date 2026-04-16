@@ -149,6 +149,21 @@
                 <el-option label="白金会员" value="platinum" />
               </el-select>
           </div>
+
+          <!-- 注册日期范围筛选 -->
+          <div v-if="canViewField('created_at')" class="form-group filter-item" data-field="registerDate">
+              <el-date-picker
+                v-model="registerDateRange"
+                type="daterange"
+                range-separator="至"
+                start-placeholder="注册开始日期"
+                end-placeholder="注册结束日期"
+                value-format="YYYY-MM-DD"
+                format="YYYY-MM-DD"
+                clearable
+                @change="handleDateRangeChange"
+              />
+          </div>
         </UnifiedSearchPanel>
 
         <!-- 数据表格区域 -->
@@ -1006,7 +1021,7 @@ import { useCachedRequest, DEFAULT_CACHE_TTL } from '@/composables/usePageCache'
 import { useSearchHighlight } from '@/composables/useSearchHighlight'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
 import { unifiedApi } from '@/utils/unified-api'
-import { useMobile } from '@/composables/useMobile'
+import { useMobile } from '@/composables/mobile'
 import { ElSkeleton, ElEmpty, ElButton, ElMessageBox } from 'element-plus'
 import Pagination from '../../components/Pagination.vue'
 import CitySelector from '../../components/CitySelector.vue'
@@ -1407,6 +1422,9 @@ const filterValues = reactive({
 // 搜索相关状态
 const searchExpanded = ref(false)
 
+// 日期范围选择器变量
+const registerDateRange = ref<[string, string] | null>(null)
+
 // 客户类型配置（统一管理）
 const CUSTOMER_TYPES = [
   { value: 'individual', label: '个人客户', icon: 'fas fa-user' },
@@ -1622,9 +1640,23 @@ const handleSearch = () => {
   loadCustomers()
 }
 
+// 日期范围变化处理
+const handleDateRangeChange = (value: [string, string] | null) => {
+  if (value && value.length === 2) {
+    filterValues.registerDateStart = value[0]
+    filterValues.registerDateEnd = value[1]
+  } else {
+    filterValues.registerDateStart = ''
+    filterValues.registerDateEnd = ''
+  }
+  handleSearch()
+}
+
 const handleReset = () => {
   // 清空搜索关键词
   searchKeyword.value = ''
+  // 清空日期范围
+  registerDateRange.value = null
   // 清空筛选条件
   Object.keys(filterValues).forEach(key => {
     filterValues[key] = ''

@@ -192,7 +192,7 @@ import { ref, computed, watch } from 'vue'
 import { Printer, Download } from '@element-plus/icons-vue'
 
 // 导入全局Composables
-import { useMobile } from '@/composables/useMobile'
+import { useMobile } from '@/composables/mobile'
 import { useErrorHandler } from '@/composables/useErrorHandler'
 import { useNotification } from '@/composables/useNotification'
 import { useImportExport } from '@/composables/useImportExport'

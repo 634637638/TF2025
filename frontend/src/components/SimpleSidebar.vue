@@ -115,7 +115,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, useAttrs, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useMobile, useMobileGestures } from '../composables/useMobile'
+import { useMobile, useMobileGestures } from '../composables/mobile'
 import { useTheme } from '../composables/useTheme'
 import { useMenuWidth } from '../composables/useMenuWidth'
 import { useAuthStore } from '../stores/auth'

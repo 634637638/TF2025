@@ -130,7 +130,7 @@
 <script setup lang="ts">
 import { computed, watch, onUnmounted, useAttrs, useSlots, ref, nextTick, onMounted } from 'vue'
 import type { CancelEmits, CloseEmits, ConfirmEmits, UpdateModelValueEmits } from '@/types/component'
-import { useMobile } from '@/composables/useMobile'
+import { useMobile } from '@/composables/mobile'
 
 defineOptions({
   inheritAttrs: false

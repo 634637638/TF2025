@@ -435,64 +435,46 @@ import unifiedApi from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import { useAuthStore } from '@/stores/auth'
 import MobileDialog from '@/components/MobileDialog.vue'
-import { useMobile } from '@/composables/useMobile'
+import { useMobile } from '@/composables/mobile'
 import { onMounted, onUnmounted } from 'vue'
-import { TimeUtil, TIME_FORMATS } from '@/utils/time'
-import { isValidMobilePhone, normalizeAppleId, normalizePersonName, normalizePhoneDigits, resolveAppleAccountEmail } from '@/utils/security'
-import type { Supplier, Store } from '@/types/system'
-import type { ModelValueProps, SuccessEmits, UpdateModelValueEmits, User } from '@/types'
+import { isValidMobilePhone, normalizeAppleId, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
+import type { SuccessEmits, UpdateModelValueEmits } from '@/types'
 import { logger } from '@/utils/logger'
+import {
+  buildQuickSaleBrandModels,
+  buildQuickSaleCustomerClearedPatch,
+  buildQuickSaleCustomerPayload,
+  buildQuickSaleCustomerSearchResetState,
+  buildQuickSaleCustomerSelectionPatch,
+  buildQuickSaleSubmitPayload,
+  calculateQuickSaleSubsidyRemarks,
+  createDefaultQuickSaleForm,
+  createQuickSaleInitialPatch,
+  formatQuickSaleIMEI,
+  formatQuickSaleSerialNumber,
+  normalizeQuickSaleCustomerOption,
+  normalizeQuickSaleCustomerPhone,
+  sanitizeQuickSaleRemarks,
+  sanitizeQuickSalePriceInput,
+  shouldSearchQuickSaleCustomer,
+  toggleQuickSaleNoIMEIMode
+} from './quick-sale/helpers'
+import type {
+  BrandModelOption,
+  CustomerOption,
+  PriceField,
+  QuickSaleProps
+} from './quick-sale/types'
 
 // ==================== 类型定义 ====================
 
-interface Props extends ModelValueProps {
-  options: {
-    suppliers: Supplier[]
-    stores: Store[]
-    brands: string[]
-    colors: string[]
-    memories: string[]
-    users: User[]
-  }
-  initialData?: {
-    brand_id?: string
-    model_id?: string
-    color_id?: string
-    memory_id?: string
-    is_new?: string | number | boolean
-    imei?: string
-    serial_number?: string
-    supplier_id?: number | null
-    store_id?: number | null
-    purchase_price?: number | null
-    sale_price?: number | null
-  } | null
-}
-
-interface CustomerOption {
-  id: number
-  name: string
-  phone: string
-  apple_id: string
-  member_number: string
-}
-
-interface BrandModelOption {
-  name: string
-  status?: number
-  sort_order?: number
-}
-
-type PriceField = 'purchase_price' | 'sale_price'
-
-const props = defineProps<Props>()
+const props = defineProps<QuickSaleProps>()
 const emit = defineEmits<UpdateModelValueEmits & SuccessEmits>()
 
 // ==================== Composables ====================
 
 const { isMobile } = useMobile()
 const authStore = useAuthStore()
-const getTodayDate = () => TimeUtil.nowFormatted(TIME_FORMATS.DATE)
 
 // ==================== 响应式数据 ====================
 
@@ -505,30 +487,7 @@ const formRef = ref<FormInstance>()
 const submitting = ref(false)
 
 // 表单数据
-const formData = reactive({
-  brand_id: '',
-  model_id: '',
-  color_id: '',
-  memory_id: '',
-  is_new: '1',
-  imei: '',
-  serial_number: '',
-  supplier_id: null as number | null,
-  store_id: null as number | null,
-  purchase_price: null as number | null,
-  sale_price: null as number | null,
-  customer_name: '',
-  customer_phone: '',
-  apple_id: '',
-  stock_in_date: getTodayDate(),
-  stock_in_operator_id: authStore.user?.id || null,
-  sale_date: getTodayDate(),
-  sale_operator_id: authStore.user?.id || null,
-  payment_method: '',
-  payment_channel: '',
-  isNoIMEIMode: false,
-  remarks: ''
-})
+const formData = reactive(createDefaultQuickSaleForm(authStore.user?.id || null))
 
 // 可用型号列表
 const filteredModels = ref<string[]>([])
@@ -538,17 +497,27 @@ const customerLookupLoading = ref(false)
 const customerOptions = ref<CustomerOption[]>([])
 const foundCustomer = ref<CustomerOption | null>(null)
 const showCustomerSearchResults = ref(false)
-const customerSearchTimeout = ref<NodeJS.Timeout | null>(null)
+const customerSearchTimeout = ref<ReturnType<typeof window.setTimeout> | null>(null)
+const customerSearchRequestId = ref(0)
 
 const normalizeCustomerOption = (
   customer?: Partial<CustomerOption> & Record<string, unknown> | null
-): CustomerOption => ({
-  id: Number(customer?.id || 0),
-  name: normalizePersonName(customer?.name || '', 20),
-  phone: normalizeCustomerPhone(customer?.phone || ''),
-  apple_id: normalizeAppleId(customer?.apple_id || ''),
-  member_number: customer?.member_number || ''
-})
+): CustomerOption => normalizeQuickSaleCustomerOption(customer)
+
+const clearCustomerSearchTimeout = () => {
+  if (customerSearchTimeout.value) {
+    clearTimeout(customerSearchTimeout.value)
+    customerSearchTimeout.value = null
+  }
+}
+
+const applyCustomerSearchResetState = () => {
+  const resetState = buildQuickSaleCustomerSearchResetState()
+  customerOptions.value = resetState.options
+  foundCustomer.value = resetState.foundCustomer
+  showCustomerSearchResults.value = resetState.visible
+  customerLookupLoading.value = resetState.loading
+}
 
 const resetSubsidyPaymentSelection = (message?: string) => {
   if (message) {
@@ -656,12 +625,7 @@ const handleBrandChange = async () => {
     const response = await unifiedApi.get(apiUrl)
 
     if (response.success) {
-      // 过滤启用状态的型号并按排序字段排序
-      const modelList = Array.isArray(response.data) ? response.data as BrandModelOption[] : []
-      filteredModels.value = modelList
-        .filter((model) => model.status === 1)
-        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-        .map((model) => model.name)
+      filteredModels.value = buildQuickSaleBrandModels(response.data as BrandModelOption[] | null | undefined)
     }
   } catch (err) {
     filteredModels.value = []
@@ -677,18 +641,12 @@ const formatCustomerPhone = () => {
 }
 
 const normalizeCustomerPhone = (phone: unknown) => {
-  return normalizePhoneDigits(phone)
+  return normalizeQuickSaleCustomerPhone(phone)
 }
 
 // 格式化IMEI - 根据模式决定格式化规则
 const formatIMEI = () => {
-  if (formData.isNoIMEIMode) {
-    // 无IMEI模式：允许数字和字母，字母转大写
-    formData.imei = formData.imei.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 30)
-  } else {
-    // 标准模式：只允许数字，最多15位
-    formData.imei = formData.imei.replace(/[^\d]/g, '').slice(0, 15)
-  }
+  formData.imei = formatQuickSaleIMEI(formData.imei, formData.isNoIMEIMode)
 }
 
 const formatPriceInputValue = (value: number | null | undefined) => {
@@ -697,28 +655,19 @@ const formatPriceInputValue = (value: number | null | undefined) => {
 }
 
 const handlePriceInput = (field: PriceField, value: string) => {
-  const sanitized = String(value || '').replace(/[^\d]/g, '')
+  const sanitized = sanitizeQuickSalePriceInput(value)
   formData[field] = sanitized ? Number(sanitized) : null
 }
 
 // 启用无IMEI模式（双击IMEI输入框触发）
 const enableNoIMEIMode = () => {
-  // 切换模式
-  formData.isNoIMEIMode = !formData.isNoIMEIMode
-
-  if (formData.isNoIMEIMode) {
-    // 启用无IMEI模式：如果有序列号，自动填充IMEI
-    if (formData.serial_number) {
-      formData.imei = formData.serial_number
-    } else {
-      formData.imei = ''
-    }
-    ElMessage.success('已启用无IMEI模式，IMEI将支持字母+数字')
-  } else {
-    // 切换回标准模式：清空IMEI，重新输入15位纯数字
-    formData.imei = ''
-    ElMessage.info('已切换回标准IMEI模式，需要输入15位纯数字')
-  }
+  const toggleResult = toggleQuickSaleNoIMEIMode({
+    currentMode: formData.isNoIMEIMode,
+    serialNumber: formData.serial_number
+  })
+  formData.isNoIMEIMode = toggleResult.nextMode
+  formData.imei = toggleResult.nextIMEI
+  ElMessage[toggleResult.messageType](toggleResult.message)
 
   // 清除IMEI字段的验证错误，避免显示旧的错误提示
   if (formRef.value) {
@@ -728,21 +677,20 @@ const enableNoIMEIMode = () => {
 
 // 格式化序列号 - 只允许字母和数字，转大写，最多18位
 const formatSerialNumber = () => {
-  formData.serial_number = formData.serial_number.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 18)
+  formData.serial_number = formatQuickSaleSerialNumber(formData.serial_number)
 }
 
 // 支付方式变化处理
 const handlePaymentMethodChange = () => {
   // 如果选择了国补刷卡，检查金额是否超过6000
   if (formData.payment_method === 'subsidy_card') {
-    const salePrice = parseFloat(String(formData.sale_price)) || 0
-    if (salePrice > 6000) {
-      resetSubsidyPaymentSelection('销售金额超过6000元，无法使用国补刷卡，请重新选择支付方式')
+    const subsidyResult = calculateQuickSaleSubsidyRemarks(formData.sale_price)
+    if (subsidyResult.blocked) {
+      resetSubsidyPaymentSelection(subsidyResult.message)
       return
     }
     formData.payment_channel = 'subsidy_card'
-    // 立即计算备注
-    calculateSubsidyRemarks()
+    formData.remarks = subsidyResult.remarks
   } else {
     // 清空支付渠道和备注
     formData.payment_channel = ''
@@ -760,29 +708,17 @@ const handlePaymentChannelChange = () => {
 
 // 计算国补备注
 const calculateSubsidyRemarks = () => {
-  const salePrice = parseFloat(String(formData.sale_price)) || 0
-  if (salePrice <= 0) return
-
-  // 只有6000元以内才能参加国补
-  if (salePrice > 6000) {
-    // 清空国补刷卡选择
+  const subsidyResult = calculateQuickSaleSubsidyRemarks(formData.sale_price)
+  if (subsidyResult.blocked) {
     if (formData.payment_method === 'subsidy_card') {
-      resetSubsidyPaymentSelection('销售金额超过6000元，无法使用国补刷卡，请重新选择支付方式')
+      resetSubsidyPaymentSelection(subsidyResult.message)
       return
     }
     formData.remarks = ''
     return
   }
 
-  // 计算优惠金额：15%，最高优惠500元
-  const discount = Math.min(salePrice * 0.15, 500)
-  // 保留两位小数
-  const roundedDiscount = Math.round(discount * 100) / 100
-  // 计算实际支付金额
-  const actualPayment = Math.round((salePrice - roundedDiscount) * 100) / 100
-
-  // 设置备注：刷卡实际支付金额
-  formData.remarks = `刷卡实际支付${actualPayment}元`
+  formData.remarks = subsidyResult.remarks
 }
 
 // 格式化客户姓名 - 只允许中文、英文、空格，去除特殊字符
@@ -797,57 +733,58 @@ const formatAppleId = () => {
 
 // 格式化备注 - 防止XSS，移除HTML标签和特殊字符
 const formatRemarks = () => {
-  // 移除HTML标签和危险字符
-  formData.remarks = formData.remarks
-    .replace(/<[^>]*>/g, '') // 移除HTML标签
-    .replace(/["'<>]/g, '') // 移除引号和尖括号
-    .trim()
-    .slice(0, 200) // 限制长度
+  formData.remarks = sanitizeQuickSaleRemarks(formData.remarks)
 }
 
 // 处理客户手机号输入（带防抖和格式化）
 const handleCustomerPhoneInput = () => {
-  // 先格式化手机号
   formatCustomerPhone()
 
   const phone = formData.customer_phone.trim()
+  customerSearchRequestId.value += 1
 
   if (foundCustomer.value && normalizeCustomerPhone(foundCustomer.value.phone) !== phone) {
     foundCustomer.value = null
   }
 
   // 清除之前的超时
-  if (customerSearchTimeout.value) {
-    clearTimeout(customerSearchTimeout.value)
-  }
+  clearCustomerSearchTimeout()
 
   // 如果输入为空，清空搜索结果
   if (!phone) {
-    customerOptions.value = []
-    foundCustomer.value = null
+    applyCustomerSearchResetState()
     return
   }
 
   // 延迟搜索（防抖）
   customerSearchTimeout.value = setTimeout(async () => {
-    if (phone.length >= 3) {
+    if (shouldSearchQuickSaleCustomer(phone)) {
       await searchCustomers(phone)
     }
   }, 300)
 }
 
+const isActiveCustomerSearch = (query: string, requestId: number) =>
+  requestId === customerSearchRequestId.value &&
+  normalizeCustomerPhone(formData.customer_phone) === query
+
 // 远程搜索客户（模糊搜索，支持手机号和姓名）
 const searchCustomers = async (query: string) => {
-  if (!query || query.length < 3) {
+  if (!shouldSearchQuickSaleCustomer(query)) {
     customerOptions.value = []
     return
   }
 
+  const requestId = customerSearchRequestId.value
   customerLookupLoading.value = true
 
   try {
     // 始终使用模糊搜索接口（支持手机号和姓名的部分匹配）
     const response = await unifiedApi.get(`/sales/customers?search=${encodeURIComponent(query)}`)
+
+    if (!isActiveCustomerSearch(query, requestId)) {
+      return
+    }
 
     if (response.success) {
       customerOptions.value = extractResponseData<Array<Partial<CustomerOption> & Record<string, unknown>>>(response)
@@ -857,19 +794,22 @@ const searchCustomers = async (query: string) => {
     }
   } catch (err) {
     logger.error('搜索客户失败:', err)
-    customerOptions.value = []
+    if (isActiveCustomerSearch(query, requestId)) {
+      customerOptions.value = []
+    }
   } finally {
-    customerLookupLoading.value = false
+    if (isActiveCustomerSearch(query, requestId)) {
+      customerLookupLoading.value = false
+    }
   }
 }
 
 // 选择客户
 const selectCustomer = (customer: CustomerOption) => {
-  const normalizedCustomer = normalizeCustomerOption(customer)
-  formData.customer_phone = normalizedCustomer.phone
-  formData.customer_name = normalizedCustomer.name
-  formData.apple_id = normalizedCustomer.apple_id
-  foundCustomer.value = normalizedCustomer
+  const selectionState = buildQuickSaleCustomerSelectionPatch(customer)
+  customerSearchRequestId.value += 1
+  Object.assign(formData, selectionState.formPatch)
+  foundCustomer.value = selectionState.customer
   showCustomerSearchResults.value = false
   customerOptions.value = []
 
@@ -901,24 +841,7 @@ const createNewCustomer = async () => {
     customerLookupLoading.value = true
 
     // 后端会自动生成会员号，无需前端生成
-    const normalizedAppleId = normalizeAppleId(formData.apple_id)
-    const newCustomerData = {
-      name: formData.customer_name,
-      phone: formData.customer_phone,
-      apple_id: normalizedAppleId || null,
-      email: resolveAppleAccountEmail(normalizedAppleId),
-      gender: null,
-      birthday: null,
-      id_card: null,
-      address: null,
-      city: null,
-      province: null,
-      postal_code: null,
-      customer_type: 'individual',
-      vip_level: 'normal',
-      notes: `通过快速出库创建 - ${TimeUtil.nowFormatted(TIME_FORMATS.DATETIME)}`,
-      source: 'quick_sale'
-    }
+    const newCustomerData = buildQuickSaleCustomerPayload(formData)
 
     const response = await unifiedApi.post('/customers', newCustomerData)
 
@@ -928,12 +851,12 @@ const createNewCustomer = async () => {
 
     const newCustomer = response.data
 
-    // 更新表单数据，确保自动填入手机号、姓名、Apple ID 和会员号
-    const normalizedCustomer = normalizeCustomerOption(newCustomer)
-    formData.customer_phone = normalizedCustomer.phone
-    formData.customer_name = normalizedCustomer.name
-    formData.apple_id = normalizedCustomer.apple_id
-    foundCustomer.value = normalizedCustomer
+    const selectionState = buildQuickSaleCustomerSelectionPatch(
+      normalizeCustomerOption(newCustomer)
+    )
+    customerSearchRequestId.value += 1
+    Object.assign(formData, selectionState.formPatch)
+    foundCustomer.value = selectionState.customer
 
     // 隐藏搜索结果
     showCustomerSearchResults.value = false
@@ -945,7 +868,7 @@ const createNewCustomer = async () => {
       formRef.value.clearValidate('customer_name')
     }
 
-    ElMessage.success(`新客户 "${normalizedCustomer.name}" 创建成功`)
+    ElMessage.success(`新客户 "${selectionState.customer.name}" 创建成功`)
   } catch (err) {
     logger.error('创建客户失败:', err)
     ElMessage.error(err instanceof Error ? err.message : '创建客户失败')
@@ -956,68 +879,33 @@ const createNewCustomer = async () => {
 
 // 清空客户选择
 const handleCustomerClear = () => {
-  formData.customer_name = ''
-  formData.apple_id = ''
-  foundCustomer.value = null
-  customerOptions.value = []
-  showCustomerSearchResults.value = false
+  clearCustomerSearchTimeout()
+  customerSearchRequestId.value += 1
+  Object.assign(formData, buildQuickSaleCustomerClearedPatch())
+  applyCustomerSearchResetState()
 }
 
 // 重置表单
 const resetForm = () => {
-  Object.assign(formData, {
-    brand_id: '',
-    model_id: '',
-    color_id: '',
-    memory_id: '',
-    is_new: '1',
-    imei: '',
-    serial_number: '',
-    supplier_id: null,
-    store_id: null,
-    purchase_price: null,
-    sale_price: null,
-    customer_name: '',
-    customer_phone: '',
-    apple_id: '',
-    stock_in_date: getTodayDate(),
-    stock_in_operator_id: authStore.user?.id || null,
-    sale_date: getTodayDate(),
-    sale_operator_id: authStore.user?.id || null,
-    payment_method: '',
-    payment_channel: '',
-    isNoIMEIMode: false,
-    remarks: ''
-  })
+  clearCustomerSearchTimeout()
+  customerSearchRequestId.value += 1
+  Object.assign(formData, createDefaultQuickSaleForm(authStore.user?.id || null))
   filteredModels.value = []
-  foundCustomer.value = null
-  customerOptions.value = []
+  applyCustomerSearchResetState()
   formRef.value?.clearValidate()
 }
 
 const applyInitialData = async () => {
-  if (!props.initialData) return
+  const initialPatch = createQuickSaleInitialPatch(props.initialData)
+  if (!initialPatch) return
 
-  const initial = props.initialData
-
-  Object.assign(formData, {
-    brand_id: initial.brand_id || '',
-    color_id: initial.color_id || '',
-    memory_id: initial.memory_id || '',
-    is_new: initial.is_new === true || initial.is_new === 1 || initial.is_new === '1' ? '1' : '0',
-    imei: initial.imei || '',
-    serial_number: initial.serial_number || '',
-    supplier_id: initial.supplier_id ?? null,
-    store_id: initial.store_id ?? null,
-    purchase_price: initial.purchase_price ?? null,
-    sale_price: initial.sale_price ?? null
-  })
+  Object.assign(formData, initialPatch)
 
   if (formData.brand_id) {
     await handleBrandChange()
   }
 
-  formData.model_id = initial.model_id || ''
+  formData.model_id = initialPatch.model_id
 }
 
 // 提交表单
@@ -1034,42 +922,11 @@ const handleSubmit = async () => {
     if (!valid) return
 
     submitting.value = true
-    const normalizedCustomerPhone = normalizeCustomerPhone(formData.customer_phone)
-    const normalizedCustomerName = normalizePersonName(formData.customer_name, 20)
-    const normalizedAppleId = normalizeAppleId(formData.apple_id)
-
-    const response = await unifiedApi.post('/inventory/quick-sale', {
-      // 设备信息
-      brand: formData.brand_id,
-      model: formData.model_id,
-      color: formData.color_id,
-      memory: formData.memory_id,
-      is_new: parseInt(formData.is_new),
-      imei: String(formData.imei), // 确保是字符串
-      serial_number: formData.serial_number,
-      // 供应商和店铺
-      supplier_id: formData.supplier_id,
-      store_id: formData.store_id,
-      // 价格（确保 undefined 转换为 null）
-      purchase_price: formData.purchase_price ?? null,
-      sale_price: formData.sale_price ?? null,
-      // 客户信息
-      customer_name: normalizedCustomerName || '',
-      customer_phone: normalizedCustomerPhone,
-      apple_id: normalizedAppleId || '',
-      // 入库和销售信息
-      stock_in_date: formData.stock_in_date,
-      stock_in_operator_id: formData.stock_in_operator_id,
-      sale_date: formData.sale_date,
-      operator_id: formData.sale_operator_id,
-      payment_method: formData.payment_method || '现金',
-      remarks: formData.remarks || ''
-    })
+    const response = await unifiedApi.post('/inventory/quick-sale', buildQuickSaleSubmitPayload(formData))
 
     if (response.success) {
       ElMessage.success('快速出库成功！')
       emit('success')
-      resetForm()
       handleCancel()
     } else {
       ElMessage.error(response.message || '快速出库失败')
@@ -1140,6 +997,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  clearCustomerSearchTimeout()
   document.removeEventListener('click', handleClickOutside)
 })
 </script>

@@ -393,7 +393,7 @@ import { PermissionDenied, PageHeader } from '@/components/base'
 import { usePermissionToast } from '@/utils/permissionToastSimple'
 import { handleApiErrorWithPermission } from '@/utils/apiPermissionError'
 import { logger } from '@/utils/logger'
-import { useMobile } from '@/composables/useMobile'
+import { useMobile } from '@/composables/mobile'
 import type { Brand, Model } from '@/types'
 
 const router = useRouter()

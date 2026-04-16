@@ -1482,13 +1482,39 @@ declare module '@vue/runtime-core' {
 // ===== 缺失的重要类型定义 =====
 
 /**
+ * 分页配置接口
+ */
+export interface PaginationConfig {
+  page: number
+  pageSize: number
+  total: number
+  totalItems?: number
+}
+
+/**
  * 分页状态接口
  */
-export interface PaginationState {
-  page: number
-  limit: number
-  total: number
+export interface PaginationState extends PaginationConfig {
   totalPages: number
+  hasNext: boolean
+  hasPrev: boolean
+  first: number
+  last: number
+}
+
+/**
+ * 排序配置接口
+ */
+export interface SortConfig {
+  field: string
+  order: 'asc' | 'desc'
+}
+
+/**
+ * 过滤配置接口
+ */
+export interface FilterConfig {
+  [key: string]: unknown
 }
 
 /**
@@ -2080,7 +2106,7 @@ export type {
   DashboardConfig,
   DashboardLayout,
   WidgetConfig,
-  FilterConfig,
+  FilterConfig as AnalyticsFilterConfig,
   RealTimeData,
   RealTimeAlert,
   ExportConfig as AnalyticsExportConfig,

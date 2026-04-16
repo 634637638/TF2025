@@ -1,9 +1,18 @@
 /**
  * Composable工具包类型定义
+ * 复用全局类型定义，只定义 composables 专用类型
  */
 
 import type { Ref, ComputedRef } from 'vue'
 import type { Router } from 'vue-router'
+
+// 从全局类型导入重复定义
+export type {
+  PaginationState,
+  PaginationConfig,
+  SortConfig,
+  FilterConfig
+} from '@/types'
 
 /**
  * 通用异步状态
@@ -18,55 +27,19 @@ export interface AsyncState<T = any> {
 }
 
 /**
- * 分页配置
- */
-export interface PaginationConfig {
-  page: number
-  pageSize: number
-  total: number
-  totalItems?: number
-}
-
-/**
- * 分页状态
- */
-export interface PaginationState extends PaginationConfig {
-  totalPages: number
-  hasNext: boolean
-  hasPrev: boolean
-  first: number
-  last: number
-}
-
-/**
- * 排序配置
- */
-export interface SortConfig {
-  field: string
-  order: 'asc' | 'desc'
-}
-
-/**
- * 过滤配置
- */
-export interface FilterConfig {
-  [key: string]: any
-}
-
-/**
  * 列表状态
  */
 export interface ListState<T = any> {
   data: Ref<T[]>
-  pagination: Ref<PaginationState>
-  sort: Ref<SortConfig | null>
-  filter: Ref<FilterConfig>
+  pagination: Ref<import('@/types').PaginationState>
+  sort: Ref<import('@/types').SortConfig | null>
+  filter: Ref<import('@/types').FilterConfig>
   loading: Ref<boolean>
   error: Ref<string | null>
   refresh: () => Promise<void>
-  setPagination: (pagination: Partial<PaginationConfig>) => void
-  setSort: (sort: SortConfig | null) => void
-  setFilter: (filter: FilterConfig) => void
+  setPagination: (pagination: Partial<import('@/types').PaginationConfig>) => void
+  setSort: (sort: import('@/types').SortConfig | null) => void
+  setFilter: (filter: import('@/types').FilterConfig) => void
   nextPage: () => Promise<void>
   prevPage: () => Promise<void>
   gotoPage: (page: number) => Promise<void>

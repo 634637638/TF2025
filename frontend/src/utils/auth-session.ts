@@ -6,7 +6,7 @@
 import { AUTH_STORAGE_KEYS } from '@/constants/storage'
 import { storage } from '@/services/storage'
 
-export const BACKEND_DISCONNECT_GRACE_MS = 60 * 1000
+export const BACKEND_DISCONNECT_GRACE_MS = 5 * 60 * 1000  // 5分钟宽限期，给网络恢复更多时间
 
 interface ClearAuthOptions {
   notifyOtherWindows?: boolean

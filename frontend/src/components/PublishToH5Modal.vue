@@ -335,59 +335,43 @@ import { useAuthStore } from '@/stores/auth'
 import { unifiedApi as api } from '@/utils/unified-api'
 import { formatImageUrl } from '@/utils/format'
 import Image from './Image.vue'
-import { useMobile } from '@/composables/useMobile'
+import { useMobile } from '@/composables/mobile'
 import draggable from 'vuedraggable'
 import { logger } from '@/utils/logger'
 import type { ModelValueProps, SuccessEmits, UpdateModelValueEmits } from '@/types'
+import {
+  applyPublishConversionResults,
+  buildPublishInspectionForm,
+  buildPublishPreviewStateFromPending,
+  buildPublishPreviewStateFromUploaded,
+  buildConvertedPublishFile,
+  createDefaultPublishForm,
+  ensurePublishPendingFileUrl,
+  filterValidPublishFiles,
+  findUploadedVideoUrl,
+  getPublishUploadEndpoint,
+  getPublishUploadFieldName,
+  getNewPublishFiles,
+  getRemovedPublishFiles,
+  hasPublishMediaFiles,
+  isHeicFormat,
+  normalizePublishSalePrice,
+  resolvePublishIsNewPhone,
+  revokePendingFileUrls,
+  validatePublishMediaFile
+} from './publish-to-h5/helpers'
+import type {
+  HeicConverter,
+  MediaUploadOptions,
+  PendingUploadFile,
+  PublishFormState,
+  UploadResult,
+  UploadedMediaItem
+} from './publish-to-h5/types'
 
 interface Props extends ModelValueProps {
   phoneId: number | null
   isNew?: boolean // 是否全新机，true=全新机不需要验机配置
-}
-
-interface PublishFormState {
-  sale_price: number | null
-  condition_grade: string
-  battery_status: string | number | null
-  screen_condition: string
-  system_version: string
-  model_version: string
-  warranty_date: string
-  is_warranty_expired: boolean
-}
-
-interface UploadedMediaItem {
-  id: number
-  image_type: string
-  image_url: string
-  is_primary?: boolean | number
-}
-
-interface PendingUploadFile {
-  uid: string
-  name: string
-  raw?: File
-  status?: string
-  url?: string
-}
-
-interface HeicConverterOptions {
-  blob: Blob
-  toType: string
-  quality: number
-}
-
-type HeicConverter = (options: HeicConverterOptions) => Promise<Blob | Blob[]>
-
-interface MediaUploadOptions {
-  file: File
-  onError: (error: Error) => void
-  onSuccess: (response: unknown) => void
-}
-
-interface UploadResult {
-  success?: boolean
-  message?: string
 }
 
 const props = defineProps<Props>()
@@ -406,34 +390,24 @@ const visible = computed({
 // 监听对话框打开，自动加载数据
 watch(() => props.modelValue, async (isOpen) => {
   if (isOpen && props.phoneId) {
-    loadPhoneData()
+    await loadPhoneData()
   } else if (!isOpen) {
-    // 关闭时清空待上传文件
-    pendingFiles.value = []
-    isProcessingFiles.value = false
+    resetUploadState()
   }
 })
 
 // 监听 phoneId 变化，切换商品时清空待上传文件
-watch(() => props.phoneId, (newId, oldId) => {
+watch(() => props.phoneId, async (newId, oldId) => {
   if (newId && newId !== oldId) {
-    // 清空待上传文件列表
-    pendingFiles.value = []
-    isProcessingFiles.value = false
+    resetUploadState()
+    if (props.modelValue) {
+      await loadPhoneData()
+    }
   }
 })
 
 // 表单数据
-const form = ref<PublishFormState>({
-  sale_price: null,
-  condition_grade: '',
-  battery_status: null,
-  screen_condition: 'original',
-  system_version: '',
-  model_version: '',
-  warranty_date: '',
-  is_warranty_expired: false
-})
+const form = ref<PublishFormState>(createDefaultPublishForm())
 
 // 图片相关
 const images = ref<UploadedMediaItem[]>([])
@@ -469,7 +443,7 @@ const salePriceDisplayValue = computed({
     return value === null || value === undefined || value === '' ? '' : String(value)
   },
   set: (value: string) => {
-    form.value.sale_price = normalizeSalePrice(value)
+    form.value.sale_price = normalizePublishSalePrice(value)
   }
 })
 
@@ -478,18 +452,21 @@ const isBatteryNumeric = computed(() => {
   return val !== '' && !isNaN(Number(val))
 })
 
-const normalizeSalePrice = (value: string) => {
-  const sanitized = String(value || '')
-    .replace(/[^\d.]/g, '')
-    .replace(/(\..*)\./g, '$1')
-    .replace(/^(\d+)\.(\d{0,2}).*$/, '$1.$2')
+const resetUploadState = () => {
+  isProcessingFiles.value = false
+  processedFileUids.value.clear()
+  revokePendingFileUrls(pendingFiles.value)
+  pendingFiles.value = []
+}
 
-  if (!sanitized) {
-    return null
-  }
-
-  const parsed = Number(sanitized)
-  return Number.isFinite(parsed) ? parsed : null
+const resetPublishState = () => {
+  resetUploadState()
+  form.value = createDefaultPublishForm()
+  batteryDisplayValue.value = ''
+  isNewPhone.value = false
+  images.value = []
+  productVideo.value = ''
+  closeImagePreview()
 }
 
 // 处理电池输入
@@ -511,10 +488,7 @@ const handleBatteryInput = (value: string) => {
 const loadPhoneData = async () => {
   if (!props.phoneId) return
 
-  // 清空待上传文件列表（切换商品时重置）
-  pendingFiles.value = []
-  isProcessingFiles.value = false
-  processedFileUids.value.clear()
+  resetPublishState()
 
   // 显示加载状态
   loadingPhoneData.value = true
@@ -524,8 +498,7 @@ const loadPhoneData = async () => {
     const phoneRes = await api.get(`/phones/${props.phoneId}`)
     if (phoneRes.success && phoneRes.data) {
       // is_new 可能是 1, "1", true 或其他值，统一转换为布尔判断
-      const isNewValue = phoneRes.data.is_new
-      isNewPhone.value = isNewValue === 1 || isNewValue === '1' || isNewValue === true
+      isNewPhone.value = resolvePublishIsNewPhone(phoneRes.data.is_new, props.isNew)
 
       // 全新机提示
       if (isNewPhone.value) {
@@ -537,35 +510,20 @@ const loadPhoneData = async () => {
     if (!isNewPhone.value) {
       const inspectionRes = await api.get(`/phones/${props.phoneId}/inspection`)
       if (inspectionRes.success && inspectionRes.data) {
-        // 处理电池状态：可能是数字或字符串
-        let batteryValue: string | number | null = null
-        if (inspectionRes.data.battery_status !== null && inspectionRes.data.battery_status !== undefined && inspectionRes.data.battery_status !== '') {
-          batteryValue = inspectionRes.data.battery_status as string | number
-        }
-
-        form.value = {
-          sale_price: inspectionRes.data.sale_price ? Number(inspectionRes.data.sale_price) || null : null,
-          condition_grade: inspectionRes.data.condition_grade || '',
-          battery_status: batteryValue,
-          screen_condition: inspectionRes.data.screen_condition || 'original',
-          system_version: inspectionRes.data.system_version || '',
-          model_version: inspectionRes.data.model_version || '',
-          warranty_date: inspectionRes.data.warranty_date || '',
-          is_warranty_expired: Boolean(inspectionRes.data.is_warranty_expired)
-        }
-
-        // 设置电池显示值
-        batteryDisplayValue.value = batteryValue !== null ? String(batteryValue) : ''
+        const inspectionState = buildPublishInspectionForm(inspectionRes.data)
+        form.value = inspectionState.formData
+        batteryDisplayValue.value = inspectionState.batteryDisplayValue
       }
+    } else {
+      form.value = createDefaultPublishForm()
+      batteryDisplayValue.value = ''
     }
 
     // 加载图片
     const imagesRes = await api.get(`/phones/${props.phoneId}/images`)
     if (imagesRes.success && imagesRes.data) {
       images.value = imagesRes.data as UploadedMediaItem[]
-      // 查找视频
-      const video = images.value.find((img) => img.image_type === 'video')
-      productVideo.value = video ? video.image_url : ''
+      productVideo.value = findUploadedVideoUrl(images.value)
     }
   } catch (error) {
     logger.error('加载数据失败:', error)
@@ -579,13 +537,6 @@ const handleWarrantyExpiredChange = (checked: boolean) => {
   if (checked) {
     form.value.warranty_date = ''
   }
-}
-
-// 检测是否为 HEIC/HEIF 格式
-const isHeicFormat = (file: File) => {
-  const type = (file.type || '').toLowerCase()
-  const name = file.name.toLowerCase()
-  return type.includes('heic') || type.includes('heif') || name.endsWith('.heic') || name.endsWith('.heif')
 }
 
 const loadHeicConverter = async () => {
@@ -677,20 +628,12 @@ const handleFileChange = async (_file: PendingUploadFile, fileList: PendingUploa
     return
   }
 
-  // 获取已处理文件的 UID 集合（包括所有曾经处理过的文件）
-  const newFiles = fileList.filter(f => f.raw && !processedFileUids.value.has(f.uid))
+  const newFiles = getNewPublishFiles(fileList, processedFileUids.value)
 
   // 如果没有新文件，只是删除操作，同步 pendingFiles
   if (newFiles.length === 0) {
-    const validFiles = fileList.filter(f => {
-      if (f.raw) {
-        const isImage = f.raw.type?.startsWith('image/')
-        const isVideo = f.raw.type?.startsWith('video/')
-        return (isImage || isVideo)
-      }
-      return f.status === 'ready'
-    })
-    pendingFiles.value = validFiles
+    revokePendingFileUrls(getRemovedPublishFiles(pendingFiles.value, fileList))
+    pendingFiles.value = filterValidPublishFiles(fileList)
     return
   }
 
@@ -701,17 +644,9 @@ const handleFileChange = async (_file: PendingUploadFile, fileList: PendingUploa
     // 先过滤掉不符合要求的新文件
     const validFiles = newFiles.filter(f => {
       if (f.raw) {
-        const isImage = f.raw.type?.startsWith('image/')
-        const isVideo = f.raw.type?.startsWith('video/')
-        if (!isImage && !isVideo) return false
-
-        // 检查大小
-        if (isImage && f.raw.size > 5 * 1024 * 1024) {
-          ElMessage.error(`${f.name} 超过5MB限制`)
-          return false
-        }
-        if (isVideo && f.raw.size > 50 * 1024 * 1024) {
-          ElMessage.error(`${f.name} 超过50MB限制`)
+        const validationMessage = validatePublishMediaFile(f.raw)
+        if (validationMessage) {
+          ElMessage.error(validationMessage)
           return false
         }
       }
@@ -729,25 +664,14 @@ const handleFileChange = async (_file: PendingUploadFile, fileList: PendingUploa
     for (const f of validFiles) {
       if (!f.raw || !isHeicFormat(f.raw)) {
         // 非 HEIC 文件，直接添加
-        if (!f.url && f.raw) {
-          f.url = URL.createObjectURL(f.raw)
-        }
+        ensurePublishPendingFileUrl(f)
         processedFiles.push(f)
       } else {
         // HEIC 文件，创建转换任务
-        const heicIndex = processedFiles.filter(pf => pf.raw && isHeicFormat(pf.raw)).length
+        const heicIndex = conversionPromises.length
         conversionPromises.push(
           convertHeicToJpeg(f.raw, heicIndex, heicFiles.length)
-            .then(converted => {
-              const blobUrl = URL.createObjectURL(converted)
-              return {
-                uid: f.uid,
-                name: converted.name,
-                raw: converted,
-                status: 'ready',
-                url: blobUrl
-              }
-            })
+            .then((converted) => buildConvertedPublishFile(f, converted))
             .catch(error => {
               logger.error('[HEIC 转换] 处理失败:', f.name, error)
               // 转换失败不添加到列表，跳过该文件
@@ -762,18 +686,7 @@ const handleFileChange = async (_file: PendingUploadFile, fileList: PendingUploa
     // 等待所有 HEIC 文件转换完成
     if (conversionPromises.length > 0) {
       const results = await Promise.all(conversionPromises)
-      // 替换占位符
-      let resultIndex = 0
-      for (let i = 0; i < processedFiles.length; i++) {
-        if (processedFiles[i].status === 'converting' && results[resultIndex]) {
-          processedFiles[i] = results[resultIndex]
-          resultIndex++
-        } else if (processedFiles[i].status === 'converting') {
-          // 转换失败，移除占位符
-          processedFiles.splice(i, 1)
-          i--
-        }
-      }
+      processedFiles.splice(0, processedFiles.length, ...applyPublishConversionResults(processedFiles, results))
     }
 
     // 将新处理的文件追加到待上传列表
@@ -790,40 +703,21 @@ const handleFileChange = async (_file: PendingUploadFile, fileList: PendingUploa
 
 // 生成预览URL
 const previewUrl = (file: PendingUploadFile) => {
-  if (file.url) return file.url
-  if (file.raw) {
-    return URL.createObjectURL(file.raw)
-  }
-  return ''
+  return ensurePublishPendingFileUrl(file)
 }
 
 const openPendingImagePreview = (clickedIndex: number) => {
-  const previewableFiles = pendingFiles.value
-    .filter(file => !file.raw?.type?.startsWith('video/'))
-    .map(file => previewUrl(file))
-    .filter(Boolean)
-
-  const clickedFile = pendingFiles.value[clickedIndex]
-  const clickedUrl = clickedFile ? previewUrl(clickedFile) : ''
-  const initialIndex = Math.max(previewableFiles.findIndex(url => url === clickedUrl), 0)
-
-  previewImageUrls.value = previewableFiles
-  previewInitialIndex.value = initialIndex
-  showImagePreview.value = previewableFiles.length > 0
+  const previewState = buildPublishPreviewStateFromPending(pendingFiles.value, clickedIndex)
+  previewImageUrls.value = previewState.urls
+  previewInitialIndex.value = previewState.initialIndex
+  showImagePreview.value = previewState.urls.length > 0
 }
 
 const openUploadedImagePreview = (clickedImage: UploadedMediaItem) => {
-  const previewableImages = images.value
-    .filter(image => image.image_type !== 'video')
-    .map(image => formatImageUrl(image.image_url))
-    .filter(Boolean)
-
-  const clickedUrl = formatImageUrl(clickedImage.image_url)
-  const initialIndex = Math.max(previewableImages.findIndex(url => url === clickedUrl), 0)
-
-  previewImageUrls.value = previewableImages
-  previewInitialIndex.value = initialIndex
-  showImagePreview.value = previewableImages.length > 0
+  const previewState = buildPublishPreviewStateFromUploaded(images.value, clickedImage, formatImageUrl)
+  previewImageUrls.value = previewState.urls
+  previewInitialIndex.value = previewState.initialIndex
+  showImagePreview.value = previewState.urls.length > 0
 }
 
 const closeImagePreview = () => {
@@ -834,38 +728,45 @@ const closeImagePreview = () => {
 
 // 移除待上传文件
 const removePendingFile = (index: number) => {
-  pendingFiles.value.splice(index, 1)
+  const [removedFile] = pendingFiles.value.splice(index, 1)
+  if (removedFile?.url && removedFile.url.startsWith('blob:')) {
+    URL.revokeObjectURL(removedFile.url)
+  }
+}
+
+const uploadMediaFile = async (file: File) => {
+  const formData = new FormData()
+  formData.append(getPublishUploadFieldName(file), file)
+
+  return api.upload<UploadResult>(
+    getPublishUploadEndpoint(props.phoneId, file),
+    formData
+  )
 }
 
 // 批量上传待上传文件
 const uploadPendingFiles = async () => {
-  if (pendingFiles.value.length === 0) return
+  const filesToUpload = filterValidPublishFiles(pendingFiles.value)
+  if (filesToUpload.length === 0) return
 
   uploading.value = true
-  const filesToUpload = [...pendingFiles.value]
 
   for (const file of filesToUpload) {
     try {
-      const isVideo = file.raw?.type?.startsWith('video/')
-      const formData = new FormData()
-      formData.append(isVideo ? 'video' : 'image', file.raw)
+      if (!file.raw) {
+        continue
+      }
 
-      const uploadUrl = `/api/phones/${props.phoneId}/${isVideo ? 'upload-video' : 'upload-image'}`
-
-      const response = await fetch(uploadUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${authStore.token || ''}`
-        },
-        body: formData
-      })
-
-      const result = await response.json()
+      const result = await uploadMediaFile(file.raw)
 
       if (result.success) {
         // 上传成功，从待上传列表移除
         const index = pendingFiles.value.findIndex(f => f.uid === file.uid)
         if (index > -1) {
+          const currentFile = pendingFiles.value[index]
+          if (currentFile?.url && currentFile.url.startsWith('blob:')) {
+            URL.revokeObjectURL(currentFile.url)
+          }
           pendingFiles.value.splice(index, 1)
         }
       } else {
@@ -889,23 +790,9 @@ const uploadPendingFiles = async () => {
 
 // 上传前校验（统一处理图片和视频）
 const beforeMediaUpload = (file: File) => {
-  const isImage = file.type.startsWith('image/')
-  const isVideo = file.type.startsWith('video/')
-
-  if (!isImage && !isVideo) {
-    ElMessage.error('只能上传图片或视频文件！')
-    return false
-  }
-
-  // 图片大小限制 5MB
-  if (isImage && file.size / 1024 / 1024 > 5) {
-    ElMessage.error(`图片 "${file.name}" 大小不能超过 5MB！`)
-    return false
-  }
-
-  // 视频大小限制 50MB
-  if (isVideo && file.size / 1024 / 1024 > 50) {
-    ElMessage.error(`视频 "${file.name}" 大小不能超过 50MB！`)
+  const validationMessage = validatePublishMediaFile(file)
+  if (validationMessage) {
+    ElMessage.error(validationMessage)
     return false
   }
 
@@ -918,23 +805,8 @@ const handleMediaUpload = async (options: MediaUploadOptions) => {
   const { file, onError, onSuccess } = options
   const isVideo = file.type.startsWith('video/')
 
-  // 构建表单数据
-  const formData = new FormData()
-  formData.append(isVideo ? 'video' : 'image', file)
-
   try {
-    // 根据文件类型选择不同的上传接口
-    const uploadUrl = `/api/phones/${props.phoneId}/${isVideo ? 'upload-video' : 'upload-image'}`
-
-    const response = await fetch(uploadUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${authStore.token || ''}`
-      },
-      body: formData
-    })
-
-    const result = await response.json() as UploadResult
+    const result = await uploadMediaFile(file)
 
     if (result.success) {
       ElMessage.success(isVideo ? '视频上传成功' : '图片上传成功')
@@ -961,8 +833,7 @@ const loadPhoneImages = async () => {
     const response = await api.get(`/phones/${props.phoneId}/images`)
     images.value = Array.isArray(response.data) ? response.data as UploadedMediaItem[] : []
     // 同步更新视频预览
-    const video = images.value.find((img) => img.image_type === 'video')
-    productVideo.value = video ? video.image_url : ''
+    productVideo.value = findUploadedVideoUrl(images.value)
   } catch (error) {
     logger.error('加载图片失败:', error)
   }
@@ -1033,11 +904,7 @@ const handleImageDragEnd = async () => {
 const handleSave = async () => {
   if (!props.phoneId) return
 
-  // 验证：至少需要一张图片或视频（已上传的 + 待上传的）
-  const hasExistingFiles = images.value.length > 0
-  const hasPendingFiles = pendingFiles.value.length > 0
-
-  if (!hasExistingFiles && !hasPendingFiles) {
+  if (!hasPublishMediaFiles(images.value, pendingFiles.value)) {
     ElMessage.warning('请至少上传一张商品图片或视频')
     return
   }
@@ -1045,7 +912,7 @@ const handleSave = async () => {
   saving.value = true
   try {
     // 先上传待上传的文件
-    if (hasPendingFiles) {
+    if (pendingFiles.value.length > 0) {
       ElMessage.info('正在上传文件...')
       await uploadPendingFiles()
 
@@ -1075,33 +942,7 @@ const handleSave = async () => {
 // 关闭对话框
 const handleClose = () => {
   visible.value = false
-  // 清除处理标志
-  isProcessingFiles.value = false
-  // 清空已处理的文件 UID 记录
-  processedFileUids.value.clear()
-  // 清理预览URL
-  pendingFiles.value.forEach(file => {
-    if (file.url && file.url.startsWith('blob:')) {
-      URL.revokeObjectURL(file.url)
-    }
-  })
-  // 重置表单数据
-  form.value = {
-    sale_price: null,
-    condition_grade: '',
-    battery_status: null,
-    screen_condition: 'original',
-    system_version: '',
-    model_version: '',
-    warranty_date: '',
-    is_warranty_expired: false
-  }
-  // 重置电池显示值
-  batteryDisplayValue.value = ''
-  images.value = []
-  productVideo.value = ''
-  pendingFiles.value = []
-  closeImagePreview()
+  resetPublishState()
 }
 
 // 暴露方法供父组件调用
