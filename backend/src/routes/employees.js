@@ -3,7 +3,7 @@ const router = express.Router();
 const { unifiedAuth, requirePermission } = require('../middleware/unified-auth');
 const ApiResponse = require('../utils/response');
 const { getDatabase } = require('../config/database');
-const { getModuleAccessScope } = require('../services/accessControl.service');
+const { getSalaryAccessScope } = require('../services/accessControl.service');
 const log = require('../utils/log');
 
 // 获取员工列表
@@ -105,21 +105,23 @@ router.get('/', unifiedAuth, requirePermission('employee:view'), async (req, res
 
 // 获取员工简化列表（用于工资管理）
 // 只返回基本的员工信息，不需要员工管理权限
-// 管理员（增删改查全开）：可以看到所有员工
-// 普通员工：只能看到自己
+// 工资记录查看权限：可以看到所有员工
+// 我的工资查看权限：只能看到自己
 router.get('/salary-list', unifiedAuth, requirePermission('salary-records:view'), async (req, res) => {
   try {
     const db = getDatabase();
     const userId = req.user.id || req.user.userId;
 
-    // 检查用户是否为工资模块管理员（拥有完整CRUD权限）
-    const { isAdmin } = await getModuleAccessScope(userId, ['salary-records', 'my-salary']);
+    // 工资数据范围只由权限模块控制：
+    // salary_salaryrecordsview:view => 全部
+    // salary_mysalaryview:view => 仅自己
+    const { isAdmin } = await getSalaryAccessScope(userId);
 
     let query;
     let params;
 
     if (isAdmin) {
-      // 管理员：查看所有员工
+      // 全量查看权限：查看所有员工
       query = `
         SELECT
           id,
@@ -135,7 +137,7 @@ router.get('/salary-list', unifiedAuth, requirePermission('salary-records:view')
       `;
       params = [];
     } else {
-      // 普通员工：只能看到自己
+      // 仅本人视角：只能看到自己
       query = `
         SELECT
           id,
@@ -167,22 +169,24 @@ router.get('/salary-list', unifiedAuth, requirePermission('salary-records:view')
 // 获取员工当前底薪（包含工龄涨薪计算）
 // 专门用于工资发放页面
 // 支持通过 date 参数（YYYY-MM）计算指定月份的底薪
-// 管理员（增删改查全开）：可以看到所有员工
-// 普通员工：只能看到自己
+// 工资记录查看权限：可以看到所有员工
+// 我的工资查看权限：只能看到自己
 router.get('/current-salary', unifiedAuth, requirePermission('salary-records:view'), async (req, res) => {
   try {
     const db = getDatabase();
     const { date } = req.query; // 接收日期参数，格式：YYYY-MM
     const userId = req.user.id || req.user.userId;
 
-    // 检查用户是否为工资模块管理员（拥有完整CRUD权限）
-    const { isAdmin } = await getModuleAccessScope(userId, ['salary-records', 'my-salary']);
+    // 工资数据范围只由权限模块控制：
+    // salary_salaryrecordsview:view => 全部
+    // salary_mysalaryview:view => 仅自己
+    const { isAdmin } = await getSalaryAccessScope(userId);
 
     let query;
     let params;
 
     if (isAdmin) {
-      // 管理员：获取所有员工
+      // 全量查看权限：获取所有员工
       query = `
         SELECT
           u.id,
@@ -206,7 +210,7 @@ router.get('/current-salary', unifiedAuth, requirePermission('salary-records:vie
       `;
       params = [];
     } else {
-      // 普通员工：只获取自己
+      // 仅本人视角：只获取自己
       query = `
         SELECT
           u.id,

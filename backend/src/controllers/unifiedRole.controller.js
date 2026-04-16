@@ -1,4 +1,5 @@
 const log = require('../utils/log');
+const { clearRoleHierarchyCache } = require('../services/accessControl.service');
 /**
  * 统一角色管理控制器
  * 合并原有的角色管理和操作员管理功能
@@ -202,6 +203,9 @@ class UnifiedRoleController {
 
       await connection.commit();
 
+      // 清除角色层级缓存（新增角色可能影响层级判断）
+      clearRoleHierarchyCache();
+
       // 返回完整的角色信息
       const fullRoleQuery = `
         SELECT
@@ -317,6 +321,9 @@ class UnifiedRoleController {
 
       await connection.commit();
 
+      // 清除角色层级缓存（层级变更时需要更新）
+      clearRoleHierarchyCache();
+
       // 返回更新后的角色信息
       const updatedRoleQuery = `
         SELECT
@@ -395,6 +402,9 @@ class UnifiedRoleController {
       await connection.execute('DELETE FROM roles WHERE id = ?', [id]);
 
       await connection.commit();
+
+      // 清除角色层级缓存
+      clearRoleHierarchyCache();
 
       res.json({
         success: true,

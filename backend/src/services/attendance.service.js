@@ -272,6 +272,153 @@ class AttendanceService {
       throw error;
     }
   }
+
+  /**
+   * 获取考勤仪表盘汇总统计
+   * @param {number} userId - 用户ID
+   * @param {boolean} isAdmin - 是否为管理员（查看所有员工或仅自己）
+   * @returns {Promise<Object>} 汇总统计数据
+   */
+  async getDashboardStats(userId, isAdmin) {
+    try {
+      const db = this.repository.getConnection();
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth() + 1;
+
+      // 上月
+      const lastMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+      const lastMonthYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+
+      // 构建基础查询条件
+      const employeeCondition = isAdmin ? '' : 'AND employee_id = ?';
+      const params = isAdmin ? [] : [userId];
+
+      // 上月休假天数（monthly_leave）
+      const [lastMonthLeaveResult] = await db.execute(
+        `SELECT COALESCE(SUM(monthly_leave_days), 0) as total_days
+         FROM attendance_records
+         WHERE YEAR(record_date) = ? AND MONTH(record_date) = ?
+         AND record_type = 'monthly_leave' AND status = 'approved' ${employeeCondition}`,
+        isAdmin ? [lastMonthYear, lastMonth] : [lastMonthYear, lastMonth, userId]
+      );
+
+      // 上月加班小时数
+      const [lastMonthOvertimeResult] = await db.execute(
+        `SELECT COALESCE(SUM(overtime_hours), 0) as total_hours
+         FROM attendance_records
+         WHERE YEAR(record_date) = ? AND MONTH(record_date) = ?
+         AND record_type = 'overtime' AND status = 'approved' ${employeeCondition}`,
+        isAdmin ? [lastMonthYear, lastMonth] : [lastMonthYear, lastMonth, userId]
+      );
+
+      // 本月休假天数（monthly_leave）
+      const [currentMonthLeaveResult] = await db.execute(
+        `SELECT COALESCE(SUM(monthly_leave_days), 0) as total_days
+         FROM attendance_records
+         WHERE YEAR(record_date) = ? AND MONTH(record_date) = ?
+         AND record_type = 'monthly_leave' AND status IN ('pending', 'approved') ${employeeCondition}`,
+        isAdmin ? [currentYear, currentMonth] : [currentYear, currentMonth, userId]
+      );
+
+      // 本月请假天数（leave，无薪）
+      const [currentMonthUnpaidLeaveResult] = await db.execute(
+        `SELECT COALESCE(SUM(leave_days), 0) as total_days
+         FROM attendance_records
+         WHERE YEAR(record_date) = ? AND MONTH(record_date) = ?
+         AND record_type = 'leave' AND status IN ('pending', 'approved') ${employeeCondition}`,
+        isAdmin ? [currentYear, currentMonth] : [currentYear, currentMonth, userId]
+      );
+
+      // 本月加班小时数
+      const [currentMonthOvertimeResult] = await db.execute(
+        `SELECT COALESCE(SUM(overtime_hours), 0) as total_hours
+         FROM attendance_records
+         WHERE YEAR(record_date) = ? AND MONTH(record_date) = ?
+         AND record_type = 'overtime' AND status IN ('pending', 'approved') ${employeeCondition}`,
+        isAdmin ? [currentYear, currentMonth] : [currentYear, currentMonth, userId]
+      );
+
+      // 本月费用统计（计算所有 pending + approved 状态的加班费和请假扣款）
+      // 获取员工工资模板信息（加班费率和基本工资）
+      const [employeeSalaries] = await db.execute(
+        `SELECT u.id as employee_id, st.overtime_hourly_rate, st.base_salary
+         FROM users u
+         LEFT JOIN salary_templates st ON u.salary_template_id = st.id
+         WHERE u.status = 1 ${isAdmin ? '' : 'AND u.id = ?'}`,
+        isAdmin ? [] : [userId]
+      );
+
+      // 创建员工工资信息映射，如果没有工资模板则使用默认值
+      const rateMap = new Map();
+      const salaryMap = new Map();
+      const daysInMonth = new Date(currentYear, currentMonth, 0).getDate(); // 当月天数
+
+      for (const row of employeeSalaries) {
+        // 加班费率：如果没有设置，默认按基本工资/174小时计算（每月工作时间约174小时）
+        let overtimeRate = Number(row.overtime_hourly_rate || 0);
+        const baseSalary = Number(row.base_salary || 3000); // 默认基本工资3000
+        if (overtimeRate === 0 && baseSalary > 0) {
+          overtimeRate = baseSalary / 174; // 默认加班费率 = 月工资/174
+        }
+        rateMap.set(row.employee_id, overtimeRate);
+
+        // 日工资 = 月工资/当月天数
+        const dailySalary = baseSalary / daysInMonth;
+        salaryMap.set(row.employee_id, dailySalary);
+      }
+
+      // 获取本月所有加班记录计算加班费（pending + approved）
+      const [overtimeRecords] = await db.execute(
+        `SELECT employee_id, overtime_hours, status
+         FROM attendance_records
+         WHERE YEAR(record_date) = ? AND MONTH(record_date) = ?
+         AND record_type = 'overtime' AND status IN ('pending', 'approved') ${employeeCondition}`,
+        isAdmin ? [currentYear, currentMonth] : [currentYear, currentMonth, userId]
+      );
+
+      let overtimePay = 0;
+      for (const record of overtimeRecords) {
+        const rate = rateMap.get(record.employee_id) || 20; // 默认20元/小时
+        overtimePay += Number(record.overtime_hours || 0) * rate;
+      }
+
+      // 获取本月所有请假（leave类型）扣款（pending + approved）
+      const [leaveRecords] = await db.execute(
+        `SELECT employee_id, leave_days, status
+         FROM attendance_records
+         WHERE YEAR(record_date) = ? AND MONTH(record_date) = ?
+         AND record_type = 'leave' AND status IN ('pending', 'approved') ${employeeCondition}`,
+        isAdmin ? [currentYear, currentMonth] : [currentYear, currentMonth, userId]
+      );
+
+      let leaveDeduction = 0;
+      for (const record of leaveRecords) {
+        const dailySalary = salaryMap.get(record.employee_id) || 100; // 默认100元/天
+        leaveDeduction += Number(record.leave_days || 0) * dailySalary;
+      }
+
+      return {
+        lastMonth: {
+          leaveDays: Number(lastMonthLeaveResult[0]?.total_days || 0),
+          overtimeHours: Number(lastMonthOvertimeResult[0]?.total_hours || 0)
+        },
+        currentMonth: {
+          leaveDays: Number(currentMonthLeaveResult[0]?.total_days || 0),
+          unpaidLeaveDays: Number(currentMonthUnpaidLeaveResult[0]?.total_days || 0),
+          overtimeHours: Number(currentMonthOvertimeResult[0]?.total_hours || 0)
+        },
+        pending: {
+          overtimePay: overtimePay,
+          leaveDeduction: leaveDeduction,
+          count: overtimeRecords.length + leaveRecords.length
+        }
+      };
+    } catch (error) {
+      log.error('获取仪表盘统计失败:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new AttendanceService();

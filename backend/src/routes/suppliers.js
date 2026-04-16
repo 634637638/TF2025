@@ -271,28 +271,30 @@ router.put('/batch/reorder', requirePermission('suppliers:edit'), async (req, re
     }
 
     const pool = getDatabase();
-
-    // 使用事务批量更新
-    await pool.query('START TRANSACTION');
+    const connection = await pool.getConnection();
 
     try {
+      await connection.beginTransaction();
+
       for (const item of items) {
         if (item.id !== undefined && item.sort_order !== undefined) {
-          await pool.execute(
+          await connection.execute(
             'UPDATE suppliers SET sort_order = ? WHERE id = ?',
             [item.sort_order, item.id]
           );
         }
       }
 
-      await pool.query('COMMIT');
+      await connection.commit();
       ApiResponse.success(res, null, '排序更新成功');
 
     } catch (error) {
-      await pool.query('ROLLBACK');
-      throw error;
+      await connection.rollback();
+      log.error('批量更新排序失败:', error);
+      ApiResponse.error(res, '批量更新排序失败', 500);
+    } finally {
+      connection.release();
     }
-
   } catch (error) {
     log.error('批量更新排序失败:', error);
     ApiResponse.error(res, '批量更新排序失败', 500);

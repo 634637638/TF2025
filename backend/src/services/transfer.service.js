@@ -116,18 +116,31 @@ class TransferService {
       const failed_phones = [];
       const results = [];
 
-      // 如果没有客户ID，先创建客户
+      // 如果没有客户ID，先检查或创建客户
       let final_customer_id = customer_id;
       if (!final_customer_id && customer_name && customer_phone) {
-        // 生成会员号
-        const memberNumber = await this.generateMemberNumber(connection);
-        // 创建新客户
-        const [insertResult] = await connection.query(
-          `INSERT INTO customers (name, phone, customer_type, vip_level, member_number, created_at)
-           VALUES (?, ?, 'wholesale', 'normal', ?, NOW())`,
-          [customer_name, customer_phone, memberNumber]
+        // 🔥 先检查手机号是否已存在（确保唯一性）
+        const [existingCustomer] = await connection.query(
+          'SELECT id, name, member_number FROM customers WHERE phone = ? AND status = 1',
+          [customer_phone]
         );
-        final_customer_id = insertResult.insertId;
+
+        if (existingCustomer.length > 0) {
+          // 手机号已存在，直接使用已有客户
+          final_customer_id = existingCustomer[0].id;
+          log.debug(`手机号 ${customer_phone} 已存在，使用已有客户 ID: ${final_customer_id}`);
+        } else {
+          // 生成会员号
+          const memberNumber = await this.generateMemberNumber(connection);
+          // 创建新客户
+          const [insertResult] = await connection.query(
+            `INSERT INTO customers (name, phone, customer_type, vip_level, member_number, created_at)
+             VALUES (?, ?, 'wholesale', 'normal', ?, NOW())`,
+            [customer_name, customer_phone, memberNumber]
+          );
+          final_customer_id = insertResult.insertId;
+          log.debug(`创建新客户 ID: ${final_customer_id}, 手机号: ${customer_phone}`);
+        }
       }
 
       if (!final_customer_id) {
@@ -367,17 +380,30 @@ class TransferService {
       const failed_phones = [];
       const results = [];
 
-      // 如果传入了客户信息但没有ID，先创建客户
+      // 如果传入了客户信息但没有ID，先检查或创建客户
       let final_customer_id = customer_id;
       if (!final_customer_id && customer_name && customer_phone) {
-        // 生成会员号
-        const memberNumber = await this.generateMemberNumber(connection);
-        const [insertResult] = await connection.query(
-          `INSERT INTO customers (name, phone, customer_type, vip_level, member_number, created_at)
-           VALUES (?, ?, 'allocate', 'normal', ?, NOW())`,
-          [customer_name, customer_phone, memberNumber]
+        // 🔥 先检查手机号是否已存在（确保唯一性）
+        const [existingCustomer] = await connection.query(
+          'SELECT id, name, member_number FROM customers WHERE phone = ? AND status = 1',
+          [customer_phone]
         );
-        final_customer_id = insertResult.insertId;
+
+        if (existingCustomer.length > 0) {
+          // 手机号已存在，直接使用已有客户
+          final_customer_id = existingCustomer[0].id;
+          log.debug(`手机号 ${customer_phone} 已存在，使用已有客户 ID: ${final_customer_id}`);
+        } else {
+          // 生成会员号
+          const memberNumber = await this.generateMemberNumber(connection);
+          const [insertResult] = await connection.query(
+            `INSERT INTO customers (name, phone, customer_type, vip_level, member_number, created_at)
+             VALUES (?, ?, 'allocate', 'normal', ?, NOW())`,
+            [customer_name, customer_phone, memberNumber]
+          );
+          final_customer_id = insertResult.insertId;
+          log.debug(`创建新客户 ID: ${final_customer_id}, 手机号: ${customer_phone}`);
+        }
       }
 
       // 确定门店ID：优先使用前端传入的，否则使用操作员的默认门店

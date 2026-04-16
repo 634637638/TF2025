@@ -12,12 +12,17 @@ class AuthController {
     this.authService = new AuthService();
   }
 
-  isAdminUser(user) {
+  /**
+   * 检查用户是否为管理员（异步方法，从数据库动态判断）
+   * @param {Object} user - 用户对象
+   * @returns {Promise<boolean>} 是否为管理员
+   */
+  async isAdminUser(user) {
     if (!user) {
       return false;
     }
 
-    return hasGlobalAdminRole([
+    return await hasGlobalAdminRole([
       user.role,
       ...(Array.isArray(user.roles) ? user.roles : []),
       ...(Array.isArray(user.role_codes) ? user.role_codes.map((code) => ({ roleCode: code })) : [])
@@ -307,8 +312,8 @@ class AuthController {
    */
   async getUserStats(req, res) {
     try {
-      // 检查管理员权限
-      if (!this.isAdminUser(req.user)) {
+      // 检查管理员权限（异步检查）
+      if (!await this.isAdminUser(req.user)) {
         return ApiResponse.error(res, '权限不足', 403);
       }
 
@@ -339,8 +344,8 @@ class AuthController {
    */
   async kickUser(req, res) {
     try {
-      // 检查管理员权限
-      if (!this.isAdminUser(req.user)) {
+      // 检查管理员权限（异步检查）
+      if (!await this.isAdminUser(req.user)) {
         return ApiResponse.error(res, '权限不足', 403);
       }
 
@@ -367,8 +372,8 @@ class AuthController {
    */
   async toggleUserStatus(req, res) {
     try {
-      // 检查管理员权限
-      if (!this.isAdminUser(req.user)) {
+      // 检查管理员权限（异步检查）
+      if (!await this.isAdminUser(req.user)) {
         return ApiResponse.error(res, '权限不足', 403);
       }
 

@@ -17,30 +17,119 @@ const DEFAULT_PERMISSION_ACTIONS = [
   'sync'
 ];
 
-const ROLE_HIERARCHY = {
-  '超级管理员': 100,
-  'webadmin': 90,
-  '管理员': 80,
-  '经理': 70,
-  '采购员': 60,
-  '销售员': 60,
-  '维修师': 60,
-  '库管员': 60,
-  '员工': 50,
-  '普通用户': 40,
-  'user': 30
-};
+/**
+ * 角色层级参考（仅作为文档注释，实际层级从数据库读取）
+ *
+ * 数据库 roles.hierarchy_level 字段存储实际层级值：
+ * - 层级 >= 80: 全局管理员角色
+ * - 层级 >= 70: 经理级别角色
+ * - 层级 >= 60: 业务操作角色（采购员、销售员等）
+ * - 层级 < 60: 普通用户角色
+ */
+// const ROLE_HIERARCHY_REFERENCE = {
+//   '超级管理员': 100,
+//   'webadmin': 90,
+//   '管理员': 80,
+//   '经理': 70,
+//   '采购员': 60,
+//   '销售员': 60,
+//   '维修师': 60,
+//   '库管员': 60,
+//   '员工': 50,
+//   '普通用户': 40,
+//   'user': 30
+// };
 
 const LEGACY_USER_ROLE_CODES = ['employee', 'admin', 'manager'];
 const LEGACY_USER_ROLE_SQL_LIST = LEGACY_USER_ROLE_CODES.map((roleCode) => `'${roleCode}'`).join(', ');
 
-const GLOBAL_ADMIN_ROLE_NAMES = new Set(
-  Object.entries(ROLE_HIERARCHY)
-    .filter(([, level]) => level >= 80)
-    .map(([roleName]) => roleName)
-);
+// 全局管理员角色代码（固定，用于兼容性检查）
 const GLOBAL_ADMIN_ROLE_CODES = new Set(['super_admin', 'webadmin', 'admin']);
 const MODULE_MANAGE_ACTIONS = new Set(['create', 'edit', 'delete', 'approve', 'manage']);
+
+// ========== 角色层级缓存机制 ==========
+
+// 角色层级缓存（从数据库加载）
+let roleHierarchyCache = null;
+let cacheExpiryTime = 0;
+const ROLE_HIERARCHY_CACHE_TTL_MS = 5 * 60 * 1000; // 5分钟缓存
+
+/**
+ * 从数据库获取角色层级映射
+ * @param {Object} db - 数据库连接（可选）
+ * @returns {Object} 角色名称/代码到层级的映射
+ */
+async function getRoleHierarchyFromDB(db = null) {
+  const now = Date.now();
+  if (roleHierarchyCache && now < cacheExpiryTime) {
+    return roleHierarchyCache;
+  }
+
+  const executor = db || getDatabase();
+  const hasHierarchyLevel = await hasColumn('roles', 'hierarchy_level', executor);
+
+  if (!hasHierarchyLevel) {
+    // 降级：数据库无 hierarchy_level 字段时返回空映射
+    roleHierarchyCache = {};
+    cacheExpiryTime = now + ROLE_HIERARCHY_CACHE_TTL_MS;
+    return roleHierarchyCache;
+  }
+
+  const [rows] = await executor.execute(`
+    SELECT name, code, COALESCE(hierarchy_level, 0) as level
+    FROM roles WHERE is_active = 1 OR status = 'active'
+  `);
+
+  roleHierarchyCache = {};
+  rows.forEach((r) => {
+    roleHierarchyCache[r.name] = r.level;
+    if (r.code) {
+      roleHierarchyCache[r.code] = r.level;
+    }
+  });
+
+  cacheExpiryTime = now + ROLE_HIERARCHY_CACHE_TTL_MS;
+  return roleHierarchyCache;
+}
+
+/**
+ * 清除角色层级缓存（角色变更时调用）
+ */
+function clearRoleHierarchyCache() {
+  roleHierarchyCache = null;
+  cacheExpiryTime = 0;
+}
+
+/**
+ * 获取全局管理员角色名称集合（层级 >= 80）
+ * @param {Object} db - 数据库连接（可选）
+ * @returns {Set} 管理员角色名称集合
+ */
+async function getGlobalAdminRoleNames(db = null) {
+  const hierarchy = await getRoleHierarchyFromDB(db);
+  return new Set(
+    Object.entries(hierarchy)
+      .filter(([, level]) => level >= 80)
+      .map(([name]) => name)
+  );
+}
+
+/**
+ * 检查用户是否具有全局管理员角色（异步版本）
+ * @param {Array} roles - 角色列表
+ * @param {Object} db - 数据库连接（可选）
+ * @returns {boolean} 是否为管理员
+ */
+async function hasGlobalAdminRole(roles = [], db = null) {
+  const adminNames = await getGlobalAdminRoleNames(db);
+  return roles.some((role) => {
+    const roleName = role?.roleName || role?.name || role;
+    const roleCode = role?.roleCode || role?.code || null;
+    return adminNames.has(roleName) || GLOBAL_ADMIN_ROLE_CODES.has(roleCode);
+  });
+}
+
+// ========== 工具函数 ==========
 
 function getExecutor(executor = null) {
   return executor || getDatabase();
@@ -55,13 +144,7 @@ function normalizeModuleKeys(moduleKeys = []) {
   return uniqueStrings(keys.map((moduleKey) => normalizeModuleKey(moduleKey)));
 }
 
-function hasGlobalAdminRole(roles = []) {
-  return roles.some((role) => {
-    const roleName = role?.roleName || role?.name || role;
-    const roleCode = role?.roleCode || role?.code || null;
-    return GLOBAL_ADMIN_ROLE_NAMES.has(roleName) || GLOBAL_ADMIN_ROLE_CODES.has(roleCode);
-  });
-}
+// ========== 访问控制核心功能 ==========
 
 async function getAccessControlSchemaSupport(db) {
   // 使用并行查询检查多个列是否存在，减少等待时间
@@ -395,6 +478,50 @@ async function hasUserPermission(userId, moduleKey, permissionType, executor = n
   return Array.isArray(profile.summary[normalizedModuleKey]) && profile.summary[normalizedModuleKey].includes(permissionType);
 }
 
+function collectModulePermissions(summary, moduleKeys = []) {
+  return uniqueStrings(
+    normalizeModuleKeys(moduleKeys).flatMap((moduleKey) => summary[moduleKey] || [])
+  );
+}
+
+async function getExplicitViewAccessScope(userId, options = {}, executor = null) {
+  const profile = await getUserAccessProfile(userId, executor);
+  const allModuleKeys = normalizeModuleKeys(options.allModuleKeys);
+  const ownModuleKeys = normalizeModuleKeys(options.ownModuleKeys);
+  const allViewPermissions = uniqueStrings(options.allViewPermissions || ['view']);
+  const ownViewPermissions = uniqueStrings(options.ownViewPermissions || ['view']);
+
+  const allPermissions = collectModulePermissions(profile.summary, allModuleKeys);
+  const ownPermissions = collectModulePermissions(profile.summary, ownModuleKeys);
+  const permissions = sortPermissionTypes(uniqueStrings([...allPermissions, ...ownPermissions]));
+  const canManage = permissions.some((permissionType) => MODULE_MANAGE_ACTIONS.has(permissionType));
+  const isAdminRole = await hasGlobalAdminRole(profile.roles, executor);
+  const canViewAll = allPermissions.some((permissionType) => allViewPermissions.includes(permissionType));
+  const canViewOwn = ownPermissions.some((permissionType) => ownViewPermissions.includes(permissionType));
+
+  let scope = 'none';
+  if (canViewAll) {
+    scope = 'all';
+  } else if (canViewOwn) {
+    scope = 'own';
+  }
+
+  return {
+    scope,
+    moduleKeys: uniqueStrings([...allModuleKeys, ...ownModuleKeys]),
+    permissions,
+    allPermissions: sortPermissionTypes(allPermissions),
+    ownPermissions: sortPermissionTypes(ownPermissions),
+    canView: scope !== 'none',
+    canViewAll,
+    canViewOwn,
+    canManage,
+    isAdminRole,
+    isAdmin: scope === 'all',
+    isOwnOnly: scope === 'own'
+  };
+}
+
 async function getModuleAccessScope(userId, moduleKeys, executor = null) {
   const profile = await getUserAccessProfile(userId, executor);
   const normalizedModuleKeys = normalizeModuleKeys(moduleKeys);
@@ -404,7 +531,7 @@ async function getModuleAccessScope(userId, moduleKeys, executor = null) {
   const sortedPermissions = sortPermissionTypes(permissions);
   const canView = sortedPermissions.includes('view') || sortedPermissions.includes('menu_view');
   const canManage = sortedPermissions.some((permissionType) => MODULE_MANAGE_ACTIONS.has(permissionType));
-  const isAdminRole = hasGlobalAdminRole(profile.roles);
+  const isAdminRole = await hasGlobalAdminRole(profile.roles, executor);
 
   let scope = 'none';
   if (canView) {
@@ -423,16 +550,39 @@ async function getModuleAccessScope(userId, moduleKeys, executor = null) {
   };
 }
 
+async function getAttendanceAccessScope(userId, executor = null) {
+  return getExplicitViewAccessScope(userId, {
+    allModuleKeys: ['attendance_attendanceview'],
+    ownModuleKeys: ['attendance_myattendanceview', 'attendance_attendanceview'],
+    allViewPermissions: ['view'],
+    ownViewPermissions: ['view', 'view:own']
+  }, executor);
+}
+
+async function getSalaryAccessScope(userId, executor = null) {
+  return getExplicitViewAccessScope(userId, {
+    allModuleKeys: ['salary_salaryrecordsview'],
+    ownModuleKeys: ['salary_mysalaryview', 'salary_salaryrecordsview'],
+    allViewPermissions: ['view'],
+    ownViewPermissions: ['view', 'view:own']
+  }, executor);
+}
+
 function resolveScopedTargetId(scopeInfo, currentUserId, requestedTargetId = null) {
-  if (scopeInfo?.isAdmin && requestedTargetId !== undefined && requestedTargetId !== null && requestedTargetId !== '') {
-    return requestedTargetId;
+  if (!scopeInfo?.canView) {
+    return null;
   }
 
-  if (scopeInfo?.canView) {
-    return currentUserId;
+  if (scopeInfo.isAdmin) {
+    if (requestedTargetId !== undefined && requestedTargetId !== null && requestedTargetId !== '') {
+      return requestedTargetId;
+    }
+
+    // 管理员未指定目标时，不应强制收敛到本人，返回 null 表示查询全量数据
+    return null;
   }
 
-  return null;
+  return currentUserId;
 }
 
 function canAccessScopedTarget(scopeInfo, currentUserId, ownerId) {
@@ -449,12 +599,18 @@ function canAccessScopedTarget(scopeInfo, currentUserId, ownerId) {
 
 module.exports = {
   DEFAULT_PERMISSION_ACTIONS,
-  ROLE_HIERARCHY,
+  // 移除 ROLE_HIERARCHY 硬编码，改为数据库配置
+  // 移除 GLOBAL_ADMIN_ROLE_NAMES 硬编码，改为动态函数
   LEGACY_USER_ROLE_CODES,
   LEGACY_USER_ROLE_SQL_LIST,
-  GLOBAL_ADMIN_ROLE_NAMES,
   GLOBAL_ADMIN_ROLE_CODES,
   MODULE_MANAGE_ACTIONS,
+  // 新增的角色层级相关函数
+  getRoleHierarchyFromDB,
+  clearRoleHierarchyCache,
+  getGlobalAdminRoleNames,
+  hasGlobalAdminRole,
+  // 原有功能函数
   listPermissionActions,
   getActiveUserRoles,
   getRoleMenuVisibility,
@@ -462,8 +618,10 @@ module.exports = {
   getUserActionRows,
   getUserAccessProfile,
   hasUserPermission,
-  hasGlobalAdminRole,
+  getExplicitViewAccessScope,
   getModuleAccessScope,
+  getAttendanceAccessScope,
+  getSalaryAccessScope,
   resolveScopedTargetId,
   canAccessScopedTarget
 };

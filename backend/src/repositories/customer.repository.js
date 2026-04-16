@@ -100,9 +100,6 @@ class CustomerRepository extends BaseRepository {
       const records = await this.executeQuery(query, [id]);
 
       // 删除调试日志
-      const records = await this.executeQuery(query, [id]);
-
-      // 删除调试日志
       if (!records) {
         log.warn(`查询返回 null`);
         return null;
@@ -263,14 +260,14 @@ class CustomerRepository extends BaseRepository {
   /**
    * 更新客户积分
    * @param {number} id - 客户ID
-   * @param {number} points - 积分变化量
+   * @param {number} points - 积分变化量（增量，可正可负）
    * @returns {boolean} 是否成功
    */
   async updateCustomerPoints(id, points) {
     try {
       const query = `
         UPDATE ${this.tableName}
-        SET points = points, updated_at = NOW()
+        SET points = points + ?, updated_at = NOW()
         WHERE id = ?
       `;
       const result = await this.executeQuery(query, [points, id]);
@@ -284,14 +281,14 @@ class CustomerRepository extends BaseRepository {
   /**
    * 更新客户余额
    * @param {number} id - 客户ID
-   * @param {number} balance - 余额
+   * @param {number} balance - 新余额（绝对值）
    * @returns {boolean} 是否成功
    */
   async updateCustomerBalance(id, balance) {
     try {
       const query = `
         UPDATE ${this.tableName}
-        SET balance = balance, updated_at = NOW()
+        SET balance = ?, updated_at = NOW()
         WHERE id = ?
       `;
       const result = await this.executeQuery(query, [balance, id]);

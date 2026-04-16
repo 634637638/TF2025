@@ -263,14 +263,15 @@ class SalesOrderRepository extends BaseRepository {
    */
   async cancelOrder(id, reason = '') {
     try {
-      // 开始事务
-      const db = this.getConnection();
+      // 使用连接池获取单个连接，确保事务在同一连接上执行
+      const pool = this.getConnection();
+      const connection = await pool.getConnection();
 
       try {
-        await db.execute('START TRANSACTION');
+        await connection.beginTransaction();
 
         // 更新订单状态
-        await db.execute(
+        await connection.execute(
           `UPDATE ${this.tableName}
            SET order_status = 'cancelled',
                updated_at = NOW()
@@ -279,7 +280,7 @@ class SalesOrderRepository extends BaseRepository {
         );
 
         // 更新所有订单项状态为已取消
-        await db.execute(
+        await connection.execute(
           `UPDATE sales_order_items
            SET item_status = 'returned',
                return_date = NOW(),
@@ -290,13 +291,15 @@ class SalesOrderRepository extends BaseRepository {
         );
 
         // 提交事务
-        await db.execute('COMMIT');
+        await connection.commit();
 
         log.info(`取消订单成功 [${this.tableName}]，ID: ${id}`);
         return true;
       } catch (error) {
-        await db.execute('ROLLBACK');
+        await connection.rollback();
         throw error;
+      } finally {
+        connection.release();
       }
     } catch (error) {
       log.error('取消订单失败:', error);
@@ -311,14 +314,15 @@ class SalesOrderRepository extends BaseRepository {
    */
   async completeOrder(id) {
     try {
-      // 开始事务
-      const db = this.getConnection();
+      // 使用连接池获取单个连接，确保事务在同一连接上执行
+      const pool = this.getConnection();
+      const connection = await pool.getConnection();
 
       try {
-        await db.execute('START TRANSACTION');
+        await connection.beginTransaction();
 
         // 获取订单信息
-        const [orderResult] = await db.execute(
+        const [orderResult] = await connection.execute(
           `SELECT * FROM ${this.tableName} WHERE id = ?`,
           [id]
         );
@@ -330,7 +334,7 @@ class SalesOrderRepository extends BaseRepository {
         const order = orderResult[0];
 
         // 更新订单状态
-        await db.execute(
+        await connection.execute(
           `UPDATE ${this.tableName}
            SET order_status = 'completed',
                completed_date = NOW(),
@@ -340,7 +344,7 @@ class SalesOrderRepository extends BaseRepository {
         );
 
         // 更新支付状态为已付清
-        await db.execute(
+        await connection.execute(
           `UPDATE ${this.tableName}
            SET payment_status = 'paid',
                paid_amount = ?,
@@ -350,7 +354,7 @@ class SalesOrderRepository extends BaseRepository {
         );
 
         // 更新所有订单项状态为已交付
-        await db.execute(
+        await connection.execute(
           `UPDATE sales_order_items
            SET item_status = 'delivered',
                delivery_date = NOW(),
@@ -360,13 +364,15 @@ class SalesOrderRepository extends BaseRepository {
         );
 
         // 提交事务
-        await db.execute('COMMIT');
+        await connection.commit();
 
         log.info(`完成订单成功 [${this.tableName}]，ID: ${id}`);
         return true;
       } catch (error) {
-        await db.execute('ROLLBACK');
+        await connection.rollback();
         throw error;
+      } finally {
+        connection.release();
       }
     } catch (error) {
       log.error('完成订单失败:', error);
@@ -449,11 +455,13 @@ class SalesOrderRepository extends BaseRepository {
     try {
       const results = [];
 
-      // 开始事务
-      const db = this.getConnection();
-      await db.execute('START TRANSACTION');
+      // 使用连接池获取单个连接，确保事务在同一连接上执行
+      const pool = this.getConnection();
+      const connection = await pool.getConnection();
 
       try {
+        await connection.beginTransaction();
+
         for (const orderData of ordersList) {
           // 生成订单号
           const orderNo = this.generateOrderNumber();
@@ -468,21 +476,30 @@ class SalesOrderRepository extends BaseRepository {
 
           log.debug(`批量创建销售订单参数 [${this.tableName}]:`, data);
 
-          const result = await this.create(data);
+          // 使用 connection 执行插入
+          const keys = Object.keys(data);
+          const values = Object.values(data);
+          const placeholders = keys.map(() => '?').join(', ');
+          const sql = `INSERT INTO ${this.tableName} (${keys.join(', ')}) VALUES (${placeholders})`;
+          const [result] = await connection.execute(sql, values);
+
           results.push({
-            ...result,
+            id: result.insertId,
+            affectedRows: result.affectedRows,
             order_no: orderNo
           });
         }
 
         // 提交事务
-        await db.execute('COMMIT');
+        await connection.commit();
 
         log.info(`批量创建销售订单成功 [${this.tableName}]，数量: ${results.length}`);
         return results;
       } catch (error) {
-        await db.execute('ROLLBACK');
+        await connection.rollback();
         throw error;
+      } finally {
+        connection.release();
       }
     } catch (error) {
       log.error('批量创建销售订单失败:', error);

@@ -738,13 +738,16 @@ router.post('/', unifiedAuth, requireCustomerCreatePermissionForBusinessFlow, as
 router.put('/:id', unifiedAuth, requirePermission('customers:edit'), async (req, res) => {
   try {
     const { id } = req.params;
+    const customerId = parseInt(id, 10);
 
     // 使用真实数据库操作
     const CustomerRepository = require('../repositories/customer.repository');
     const customerRepo = new CustomerRepository();
+    const { getDatabase } = require('../config/database');
+    const db = getDatabase();
 
     // 检查客户是否存在
-    const existingCustomer = await customerRepo.findCustomerById(parseInt(id));
+    const existingCustomer = await customerRepo.findCustomerById(customerId);
     if (!existingCustomer) {
       return ApiResponse.notFound(res, '客户不存在');
     }
@@ -782,7 +785,7 @@ router.put('/:id', unifiedAuth, requirePermission('customers:edit'), async (req,
 
       // 检查手机号是否重复
       const existingPhoneCustomer = await customerRepo.findByPhone(phone);
-      if (existingPhoneCustomer && existingPhoneCustomer.id !== parseInt(id)) {
+      if (existingPhoneCustomer && existingPhoneCustomer.id !== customerId) {
         return ApiResponse.badRequest(res, '手机号已存在');
       }
     }
@@ -843,20 +846,41 @@ router.put('/:id', unifiedAuth, requirePermission('customers:edit'), async (req,
       updateData.password = hashedPassword;
     }
 
-    updateData.updated_at = new Date();
+    const [columnRows] = await db.query('SHOW COLUMNS FROM customers');
+    const availableColumns = new Set(
+      Array.isArray(columnRows)
+        ? columnRows.map((column) => column.Field).filter(Boolean)
+        : []
+    );
+
+    if (availableColumns.has('updated_at')) {
+      updateData.updated_at = new Date();
+    }
+
+    const sanitizedUpdateData = Object.fromEntries(
+      Object.entries(updateData).filter(([fieldName]) => availableColumns.has(fieldName))
+    );
+
+    if (Object.keys(sanitizedUpdateData).length === 0) {
+      return ApiResponse.badRequest(res, '没有可更新的字段');
+    }
 
     // 执行更新
-    const result = await customerRepo.update(parseInt(id), updateData);
+    const result = await customerRepo.update(customerId, sanitizedUpdateData);
 
     if (!result || result.affectedRows === 0) {
       return ApiResponse.notFound(res, '客户不存在或更新失败');
     }
 
     // 获取更新后的客户信息
-    const updatedCustomer = await customerRepo.findCustomerById(parseInt(id));
+    const updatedCustomer = await customerRepo.findCustomerById(customerId);
 
     ApiResponse.success(res, updatedCustomer, '客户信息更新成功');
   } catch (error) {
+    if (error && (error.code === 'ER_DUP_ENTRY' || error.errno === 1062)) {
+      return ApiResponse.badRequest(res, '手机号已存在');
+    }
+
     log.error('更新客户信息失败:', error);
     ApiResponse.serverError(res, '更新客户信息失败', error);
   }

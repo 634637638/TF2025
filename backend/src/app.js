@@ -5,17 +5,6 @@ const { connectToDatabase, getDatabase } = require('./config/database');
 const errorHandler = require('./middleware/error-handler');
 const log = require('./utils/log');
 
-// Swagger API 文档（可选）
-let swaggerUi = null;
-let swaggerSpecs = null;
-try {
-  swaggerUi = require('swagger-ui-express');
-  swaggerSpecs = require('./config/swagger');
-} catch (error) {
-  log.warn('Swagger UI 未安装，API 文档功能将不可用');
-  log.warn('如需启用 API 文档，请运行: npm install swagger-ui-express');
-}
-
 // 导入路由
 const routes = require('./routes');
 
@@ -91,25 +80,6 @@ async function initializeApp() {
 
     app.use('/uploads', express.static(uploadsPath));
     log.success('静态文件服务配置完成:', uploadsPath);
-
-    // Swagger API 文档（如果可用）
-    if (swaggerUi && swaggerSpecs) {
-      app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
-        customSiteTitle: 'TF2025 API 文档',
-        customCss: '.swagger-ui .topbar { display: none }',
-        swaggerOptions: {
-          persistAuthorization: true,
-          displayRequestDuration: true,
-          docExpansion: 'none',
-          filter: true,
-          showRequestHeaders: true,
-          tryItOutEnabled: true
-        }
-      }));
-      log.success('API 文档访问地址: http://localhost:' + PORT + '/api-docs');
-    } else {
-      log.info('API 文档功能未启用（缺少 swagger-ui-express 模块）');
-    }
 
     // 将数据库连接池添加到 app 实例
     try {

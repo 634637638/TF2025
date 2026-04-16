@@ -1810,14 +1810,48 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
             log.debug(`✅ 更新客户姓名: ID=${finalCustomerId}, 姓名=${customer_name}`);
           }
         } else if (customer_name || customer_phone) {
-          // 没有customer_id但有客户信息，创建新客户
-          const memberNumber = await generateMemberNumber({ connection });
-          const [newCustomer] = await connection.execute(
-            `INSERT INTO customers (name, phone, member_number, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())`,
-            [customer_name || null, customer_phone || null, memberNumber]
-          );
-          finalCustomerId = newCustomer.insertId;
-          log.debug(`✅ 创建新客户: ID=${finalCustomerId}, 姓名=${customer_name}, 手机=${customer_phone}`);
+          // 没有customer_id但有客户信息，先检查手机号是否存在
+          if (customer_phone) {
+            // 🔥 先检查手机号是否已存在（确保唯一性）
+            const [existingCustomerByPhone] = await connection.execute(
+              'SELECT id, name FROM customers WHERE phone = ? AND status = 1',
+              [customer_phone]
+            );
+
+            if (existingCustomerByPhone.length > 0) {
+              // 手机号已存在，直接使用已有客户
+              finalCustomerId = existingCustomerByPhone[0].id;
+              log.debug(`✅ 手机号 ${customer_phone} 已存在，使用已有客户 ID: ${finalCustomerId}`);
+
+              // 如果前端还提供了姓名，更新客户姓名
+              if (customer_name && customer_name !== existingCustomerByPhone[0].name) {
+                await connection.execute(
+                  'UPDATE customers SET name = ?, updated_at = NOW() WHERE id = ?',
+                  [customer_name, finalCustomerId]
+                );
+                log.debug(`✅ 更新客户姓名: ${customer_name}`);
+              }
+            } else {
+              // 手机号不存在，创建新客户
+              const memberNumber = await generateMemberNumber({ connection });
+              const [newCustomer] = await connection.execute(
+                `INSERT INTO customers (name, phone, member_number, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())`,
+                [customer_name || null, customer_phone, memberNumber]
+              );
+              finalCustomerId = newCustomer.insertId;
+              log.debug(`✅ 创建新客户: ID=${finalCustomerId}, 姓名=${customer_name}, 手机=${customer_phone}`);
+            }
+          } else {
+            // 没有手机号，直接创建新客户（用临时手机号）
+            const tempPhone = `TEMP_${Date.now()}`;
+            const memberNumber = await generateMemberNumber({ connection });
+            const [newCustomer] = await connection.execute(
+              `INSERT INTO customers (name, phone, member_number, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())`,
+              [customer_name || null, tempPhone, memberNumber]
+            );
+            finalCustomerId = newCustomer.insertId;
+            log.debug(`✅ 创建临时客户: ID=${finalCustomerId}, 姓名=${customer_name}`);
+          }
 
           // 更新phones表的customer_id
           await connection.execute(

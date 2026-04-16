@@ -2,7 +2,7 @@ const SalaryRecordService = require('../services/salary-record.service');
 const ApiResponse = require('../utils/response');
 const log = require('../utils/log');
 const {
-  getModuleAccessScope,
+  getSalaryAccessScope,
   resolveScopedTargetId,
   canAccessScopedTarget
 } = require('../services/accessControl.service');
@@ -11,10 +11,6 @@ const {
  * 工资记录控制器
  */
 class SalaryRecordController {
-  get salaryScopeModuleKeys() {
-    return ['salary_salaryrecordsview', 'salary_mysalaryview'];
-  }
-
   /**
    * 获取当前用户ID
    */
@@ -23,12 +19,14 @@ class SalaryRecordController {
   }
 
   async getSalaryScope(userId) {
-    return getModuleAccessScope(userId, this.salaryScopeModuleKeys);
+    return getSalaryAccessScope(userId);
   }
 
   /**
    * 获取工资记录列表
-   * 管理员（有完整增删改查权限）可以查看所有员工，普通员工只能查看自己
+   * 工资数据范围由权限模块控制：
+   * - salary_salaryrecordsview:view => 可查看全部员工
+   * - salary_mysalaryview:view => 仅查看自己
    */
   async getSalaryRecords(req, res) {
     try {
@@ -45,10 +43,10 @@ class SalaryRecordController {
       }
 
       if (scopeInfo.isAdmin) {
-        // 管理员：可以查看所有员工，也可以通过 employee_id 过滤
+        // 全量查看权限：可以查看所有员工，也可以通过 employee_id 过滤
         if (status) filters.status = status;
       } else {
-        // 未发放工资不可见
+        // 仅本人视角下，未发放工资不可见
         filters.status = 'paid';
       }
 
@@ -291,7 +289,7 @@ class SalaryRecordController {
   /**
    * 获取单个员工的销售明细列表
    * 返回指定时间段内该员工的销售记录详情
-   * 员工只能查看自己的销售明细，管理员可以查看所有员工的销售明细
+   * 只有“工资记录查看”权限可查看全部，否则只能查看自己的销售明细
    */
   async getEmployeeSalesDetails(req, res) {
     try {
@@ -304,7 +302,7 @@ class SalaryRecordController {
         return ApiResponse.error(res, '请提供员工ID和时间范围（employee_id, period_start, period_end）', 400);
       }
 
-      // 检查权限：管理员可以查看所有员工，普通员工只能查看自己的销售明细
+      // 检查权限：无全量查看权限时，只能查看自己的销售明细
       if (!canAccessScopedTarget(scopeInfo, userId, employee_id)) {
         return ApiResponse.forbidden(res, '无权限查看其他员工的销售明细');
       }

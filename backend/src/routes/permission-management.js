@@ -1097,8 +1097,9 @@ router.get('/user-permissions', async (req, res) => {
  */
 router.get('/roles', requirePermission('permissions:admin'), async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10000;
+    // 安全参数验证：强制转换为正整数并限制范围
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, Math.min(10000, parseInt(req.query.limit) || 10000));
     const offset = (page - 1) * limit;
 
     const pool = getDatabase();
@@ -1108,7 +1109,7 @@ router.get('/roles', requirePermission('permissions:admin'), async (req, res) =>
     const [countResult] = await pool.execute('SELECT COUNT(*) as total FROM roles');
     const total = countResult[0].total;
 
-    // 获取角色列表
+    // 获取角色列表 - 使用参数化查询防止SQL注入
     const rolesQuery = `
       SELECT
         r.id,
@@ -1123,9 +1124,9 @@ router.get('/roles', requirePermission('permissions:admin'), async (req, res) =>
       LEFT JOIN user_roles ur ON r.id = ur.role_id
       GROUP BY r.id, r.name, ${supportsRoleCode ? 'r.code,' : ''} r.description, r.created_at, r.updated_at${supportsRoleIsActive ? ', r.is_active' : ''}
       ORDER BY r.created_at DESC
-      LIMIT ${limit} OFFSET ${offset}
+      LIMIT ? OFFSET ?
     `;
-    const [roles] = await pool.execute(rolesQuery);
+    const [roles] = await pool.execute(rolesQuery, [limit, offset]);
 
     res.json({
       success: true,
@@ -1159,8 +1160,9 @@ router.get('/roles', requirePermission('permissions:admin'), async (req, res) =>
  */
 router.get('/users-with-roles', requirePermission('permissions:admin'), async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10000;
+    // 安全参数验证：强制转换为正整数并限制范围
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, Math.min(10000, parseInt(req.query.limit) || 10000));
     const offset = (page - 1) * limit;
 
     const pool = getDatabase();
@@ -1170,7 +1172,7 @@ router.get('/users-with-roles', requirePermission('permissions:admin'), async (r
     const [countResult] = await pool.execute('SELECT COUNT(*) as total FROM users');
     const total = countResult[0].total;
 
-    // 获取用户及其角色信息
+    // 获取用户及其角色信息 - 使用参数化查询防止SQL注入
     const usersQuery = `
       SELECT
         u.id,
@@ -1187,9 +1189,9 @@ router.get('/users-with-roles', requirePermission('permissions:admin'), async (r
       LEFT JOIN roles r ON ur.role_id = r.id
       GROUP BY u.id, u.username, u.name, u.email${supportsUserStatus ? ', u.status' : ''}${supportsUserLastLogin ? ', u.last_login' : ''}, u.created_at, u.updated_at
       ORDER BY u.created_at DESC
-      LIMIT ${limit} OFFSET ${offset}
+      LIMIT ? OFFSET ?
     `;
-    const [users] = await pool.execute(usersQuery);
+    const [users] = await pool.execute(usersQuery, [limit, offset]);
 
     // 调试：检查查询结果中的last_login字段
     log.debug('🔍 权限管理页面用户查询调试:');

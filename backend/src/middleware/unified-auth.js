@@ -3,7 +3,7 @@
  * 合并原有的双轨权限系统（roles + operators）为单一角色系统
  *
  * 功能特性：
- * - 支持角色层级权限检查
+ * - 支持角色层级权限检查（从数据库动态获取）
  * - 支持具体权限检查
  * - 支持模块类型分类（system/business）
  * - 支持权限缓存
@@ -13,7 +13,7 @@
 
 const { getDatabase } = require('../config/database');
 const { verifyToken } = require('./jwt-blacklist');
-const { ROLE_HIERARCHY } = require('../services/accessControl.service');
+const { getRoleHierarchyFromDB } = require('../services/accessControl.service');
 const log = require('../utils/log');
 
 // 开发环境检测
@@ -471,11 +471,12 @@ const checkUnifiedPermission = (options = {}) => {
         // 检查用户是否有任何一个所需角色
         const hasRequiredRole = requiredRoles.some(role => userRoles.includes(role));
 
-        // 如果没有所需角色，再检查层级
+        // 如果没有所需角色，再检查层级（从数据库缓存获取）
         if (!hasRequiredRole) {
           const userHierarchy = req.user.maxHierarchy || 0;
+          const roleHierarchy = await getRoleHierarchyFromDB(pool);
           const requiredHierarchy = Math.max(
-            ...requiredRoles.map(role => ROLE_HIERARCHY[role] || 0)
+            ...requiredRoles.map(role => roleHierarchy[role] || 0)
           );
 
           if (userHierarchy < requiredHierarchy) {
@@ -1085,7 +1086,6 @@ module.exports = {
   isModuleAdmin,
   checkModuleAdmin,
 
-  // 常量
-  ROLE_HIERARCHY,
+  // 常量（移除 ROLE_HIERARCHY 硬编码，改为数据库配置）
   MODULE_PERMISSIONS
 };

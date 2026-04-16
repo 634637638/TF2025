@@ -3,7 +3,7 @@ const { unifiedAuth, requirePermission, requireAnyPermission } = require('../mid
 const UserRepository = require('../repositories/user.repository');
 const ApiResponse = require('../utils/response');
 const { getDatabase, isConnected } = require('../config/database');
-const { getModuleAccessScope, hasUserPermission } = require('../services/accessControl.service');
+const { getAttendanceAccessScope, hasUserPermission } = require('../services/accessControl.service');
 const log = require('../utils/log');
 
 const router = express.Router();
@@ -16,14 +16,14 @@ const userRepository = new UserRepository();
  * - 考勤管理用户，或有综合查询权限：可以看到所有员工
  * - 普通用户（只有个人考勤查看权限）：只能看到自己
  */
-router.get('/employees', unifiedAuth, requireAnyPermission(['attendance:view', 'query:view']), async (req, res) => {
+router.get('/employees', unifiedAuth, requireAnyPermission(['attendance:view', 'attendance:view:own', 'attendance:view:all', 'query:view']), async (req, res) => {
   try {
     const { status = '1' } = req.query;
     const userId = req.user.id || req.user.userId;
 
     const db = getDatabase();
     const [attendanceScope, hasQueryPermission] = await Promise.all([
-      getModuleAccessScope(userId, ['attendance', 'my-attendance']),
+      getAttendanceAccessScope(userId),
       hasUserPermission(userId, 'query_queryview', 'view')
     ]);
     const isAdmin = attendanceScope.isAdmin || hasQueryPermission;

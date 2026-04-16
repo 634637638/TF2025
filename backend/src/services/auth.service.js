@@ -2,7 +2,9 @@ const BaseService = require('./base.service');
 const UserRepository = require('../repositories/user.repository');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { hasGlobalAdminRole, ROLE_HIERARCHY, LEGACY_USER_ROLE_CODES } = require('./accessControl.service');
+const { getDatabase } = require('../config/database');
+const { hasGlobalAdminRole, getRoleHierarchyFromDB } = require('./accessControl.service');
+const { hasColumn } = require('./schemaInspector.service');
 const log = require('../utils/log');
 
 /**
@@ -59,15 +61,22 @@ class AuthService extends BaseService {
       // 提取所有门店ID数组
       const storeIds = userStores.map(s => s.store_id);
 
-      // 扩展用户对象，包含门店信息
+      // 获取用户角色层级（从数据库查询）
+      const userMaxHierarchy = await this.getUserMaxHierarchy(user.id);
+
+      // 检查是否为全局管理员（从数据库动态判断）
+      const isGlobalAdmin = userMaxHierarchy >= 80;
+
+      // 扩展用户对象，包含门店信息和层级
       const userWithStores = {
         ...user,
         store_id: primaryStoreId,
-        store_ids: storeIds
+        store_ids: storeIds,
+        maxHierarchy: userMaxHierarchy
       };
 
-      // 生成JWT令牌（包含门店信息）
-      const tokens = this.generateTokens(userWithStores);
+      // 生成JWT令牌（包含门店信息和层级）
+      const tokens = this.generateTokens(userWithStores, isGlobalAdmin);
 
       // 更新最后登录时间
       await this.updateLastLogin(user.id);
@@ -377,10 +386,11 @@ class AuthService extends BaseService {
 
   /**
    * 生成JWT令牌
-   * @param {Object} user - 用户对象
+   * @param {Object} user - 用户对象（包含 maxHierarchy 属性）
+   * @param {boolean} isGlobalAdmin - 是否为全局管理员（预先计算）
    * @returns {Object} 包含访问令牌和刷新令牌的对象
    */
-  generateTokens(user) {
+  generateTokens(user, isGlobalAdmin = false) {
     const payload = {
       sub: user.id,
       username: user.username,
@@ -390,15 +400,13 @@ class AuthService extends BaseService {
       store_ids: user.store_ids || []  // 所有关联门店ID数组
     };
 
-    // 根据用户角色动态设置Token过期时间
-    let tokenExpiry = process.env.JWT_EXPIRES_IN || '7d'; // 默认7天
+    // 根据用户层级动态设置Token过期时间（使用数据库配置）
+    const userHierarchy = user.maxHierarchy || 0;
 
-    // 根据用户角色设置不同的过期时间
-    const roleLevel = ROLE_HIERARCHY[user.role] || 0;
-
-    if (hasGlobalAdminRole([user.role])) {
+    let tokenExpiry;
+    if (isGlobalAdmin || userHierarchy >= 80) {
       tokenExpiry = process.env.JWT_ACCESS_EXPIRES_ADMIN || '30d'; // 管理员30天
-    } else if (roleLevel >= 70 || user.role === 'manager') {
+    } else if (userHierarchy >= 70) {
       tokenExpiry = process.env.JWT_ACCESS_EXPIRES_LONG || '7d';  // 管理者7天
     } else {
       tokenExpiry = process.env.JWT_ACCESS_EXPIRES_SHORT || '2h';  // 普通用户2小时
@@ -592,6 +600,34 @@ class AuthService extends BaseService {
     } catch (error) {
       log.error('获取用户完整信息失败:', error);
       return { operatorInfo: null, userStores: [] };
+    }
+  }
+
+  /**
+   * 获取用户最大角色层级（从数据库查询）
+   * @param {number} userId - 用户ID
+   * @returns {Promise<number>} 用户最大层级值
+   */
+  async getUserMaxHierarchy(userId) {
+    try {
+      const connection = getDatabase();
+      const hasHierarchyLevel = await hasColumn('roles', 'hierarchy_level', connection);
+      const hierarchyExpr = hasHierarchyLevel ? 'COALESCE(r.hierarchy_level, 0)' : '0';
+
+      const [rows] = await connection.execute(`
+        SELECT MAX(${hierarchyExpr}) as max_hierarchy
+        FROM user_roles ur
+        JOIN roles r ON ur.role_id = r.id
+        WHERE ur.user_id = ?
+          AND ur.status = 'active'
+          AND r.is_active = 1
+          AND (ur.expires_at IS NULL OR ur.expires_at > NOW())
+      `, [userId]);
+
+      return rows[0]?.max_hierarchy || 0;
+    } catch (error) {
+      log.error('获取用户角色层级失败:', error);
+      return 0;
     }
   }
 

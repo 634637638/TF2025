@@ -2,8 +2,7 @@ const log = require('../utils/log');
 const AttendanceService = require('../services/attendance.service');
 const ApiResponse = require('../utils/response');
 const {
-  getModuleAccessScope,
-  resolveScopedTargetId,
+  getAttendanceAccessScope,
   canAccessScopedTarget
 } = require('../services/accessControl.service');
 
@@ -11,12 +10,8 @@ const {
  * 考勤控制器
  */
 class AttendanceController {
-  get attendanceScopeModuleKeys() {
-    return ['attendance_attendanceview', 'attendance_myattendanceview'];
-  }
-
   async getAttendanceScope(userId) {
-    return getModuleAccessScope(userId, this.attendanceScopeModuleKeys);
+    return getAttendanceAccessScope(userId);
   }
 
   /**
@@ -30,10 +25,19 @@ class AttendanceController {
       const userId = req.user.id;
       const scopeInfo = await this.getAttendanceScope(userId);
 
+      // 权限检查：无权限直接返回
+      if (!scopeInfo.canView) {
+        return ApiResponse.forbidden(res, '无权限查看考勤记录');
+      }
+
       // 只传递允许的字段到 filters
       const filters = {};
 
-      const scopedEmployeeId = resolveScopedTargetId(scopeInfo, userId, employee_id);
+      // 对于非管理员，强制使用当前用户ID
+      const scopedEmployeeId = scopeInfo.isAdmin
+        ? (employee_id ? parseInt(employee_id, 10) : null)
+        : userId;
+
       if (scopedEmployeeId !== null) {
         filters.employee_id = scopedEmployeeId;
       }
@@ -67,7 +71,7 @@ class AttendanceController {
 
   /**
    * 获取考勤记录详情
-   * 员工只能查看自己的记录，管理员可以查看所有记录
+   * 只有“所有考勤查看”权限可查看全部，否则只能查看自己的记录
    */
   async getAttendanceRecordById(req, res) {
     try {
@@ -81,7 +85,7 @@ class AttendanceController {
         return ApiResponse.error(res, '考勤记录不存在', 404);
       }
 
-      // 非管理员只能查看自己的记录
+      // 无全量查看权限时，只能查看自己的记录
       if (!canAccessScopedTarget(scopeInfo, userId, result.employee_id)) {
         return ApiResponse.forbidden(res, '无权限查看其他员工的考勤记录');
       }
@@ -100,9 +104,20 @@ class AttendanceController {
     try {
       const userId = req.user.id;
       const scopeInfo = await this.getAttendanceScope(userId);
+
+      // 权限检查：无权限直接返回
+      if (!scopeInfo.canView) {
+        return ApiResponse.forbidden(res, '无权限创建考勤记录');
+      }
+
+      // 对于非管理员，强制使用当前用户ID
+      const targetEmployeeId = scopeInfo.isAdmin
+        ? (req.body.employee_id ? parseInt(req.body.employee_id, 10) : userId)
+        : userId;
+
       const payload = {
         ...req.body,
-        employee_id: resolveScopedTargetId(scopeInfo, userId, req.body.employee_id) || userId
+        employee_id: targetEmployeeId
       };
 
       const result = await AttendanceService.createAttendanceRecord(payload, userId);
@@ -128,7 +143,7 @@ class AttendanceController {
   }
 
   /**
-   * 删除考勤记录（管理员）
+   * 删除考勤记录
    */
   async deleteAttendanceRecord(req, res) {
     try {
@@ -175,15 +190,23 @@ class AttendanceController {
 
   /**
    * 获取员工考勤统计
-   * 员工只能查看自己的统计数据，管理员可以查看所有员工的统计数据
+   * 只有”所有考勤查看”权限可查看全部，否则只能查看自己的统计数据
    */
   async getAttendanceStats(req, res) {
     try {
       const userId = req.user.id;
       const scopeInfo = await this.getAttendanceScope(userId);
 
+      // 权限检查：无权限直接返回
+      if (!scopeInfo.canView) {
+        return ApiResponse.forbidden(res, '无权限查看考勤统计');
+      }
+
       let { employee_id, start_date, end_date } = req.query;
-      employee_id = resolveScopedTargetId(scopeInfo, userId, employee_id);
+      // 对于非管理员，强制使用当前用户ID
+      employee_id = scopeInfo.isAdmin
+        ? (employee_id ? parseInt(employee_id, 10) : userId)
+        : userId;
 
       const result = await AttendanceService.getEmployeeAttendanceStats(
         employee_id,
@@ -199,16 +222,22 @@ class AttendanceController {
 
   /**
    * 获取用户休假余额
-   * 员工只能查看自己的休假余额，管理员可以查看所有员工的休假余额
+   * 只有”所有考勤查看”权限可查看全部，否则只能查看自己的休假余额
    */
   async getUserLeaveBalance(req, res) {
     try {
       const userId = req.user.id;
       const scopeInfo = await this.getAttendanceScope(userId);
-      const employeeId = parseInt(
-        resolveScopedTargetId(scopeInfo, userId, req.query.employee_id),
-        10
-      );
+
+      // 权限检查：无权限直接返回
+      if (!scopeInfo.canView) {
+        return ApiResponse.forbidden(res, '无权限查看休假余额');
+      }
+
+      // 对于非管理员，强制使用当前用户ID
+      const employeeId = scopeInfo.isAdmin
+        ? (req.query.employee_id ? parseInt(req.query.employee_id, 10) : userId)
+        : userId;
 
       const result = await AttendanceService.getUserLeaveBalance(employeeId);
       ApiResponse.success(res, '获取休假余额成功', result, 200);
@@ -251,6 +280,29 @@ class AttendanceController {
       ApiResponse.success(res, '获取待审批统计成功', stats, 200);
     } catch (error) {
       log.error('获取待审批统计失败:', error);
+      ApiResponse.error(res, error.message, 500);
+    }
+  }
+
+  /**
+   * 获取考勤仪表盘汇总统计
+   */
+  async getDashboardStats(req, res) {
+    try {
+      const userId = req.user.id;
+      const scopeInfo = await this.getAttendanceScope(userId);
+
+      // 权限检查
+      if (!scopeInfo.canView) {
+        return ApiResponse.forbidden(res, '无权限查看考勤统计');
+      }
+
+      const isAdmin = scopeInfo.isAdmin;
+      const stats = await AttendanceService.getDashboardStats(userId, isAdmin);
+
+      ApiResponse.success(res, '获取仪表盘统计成功', stats, 200);
+    } catch (error) {
+      log.error('获取仪表盘统计失败:', error);
       ApiResponse.error(res, error.message, 500);
     }
   }

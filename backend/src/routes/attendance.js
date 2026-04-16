@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const AttendanceController = require('../controllers/attendance.controller');
-const { unifiedAuth, requirePermission } = require('../middleware/unified-auth');
+const { unifiedAuth, requirePermission, requireAnyPermission } = require('../middleware/unified-auth');
 
 // 考勤记录相关路由（需要认证）
 router.use(unifiedAuth);
@@ -10,7 +10,7 @@ router.use(unifiedAuth);
 // - 普通用户：只返回自己的数据
 // - 管理员（拥有完整权限）：返回所有数据
 router.get('/',
-  requirePermission('attendance:view'),
+  requireAnyPermission(['attendance:view', 'attendance:view:own', 'attendance:view:all']),
   AttendanceController.getAttendanceRecords.bind(AttendanceController)
 );
 
@@ -24,6 +24,11 @@ router.get('/my',
 // 获取考勤统计（管理员功能）
 router.get('/stats/summary', requirePermission('attendance:view:all'),
   AttendanceController.getAttendanceStats.bind(AttendanceController)
+);
+
+// 获取考勤仪表盘汇总统计 - 所有认证用户
+router.get('/stats/dashboard',
+  AttendanceController.getDashboardStats.bind(AttendanceController)
 );
 
 // 获取待审批统计 - 仪表盘使用
@@ -43,7 +48,7 @@ router.get('/leave-config',
 
 // 获取考勤记录详情
 router.get('/:id',
-  requirePermission('attendance:view'),
+  requireAnyPermission(['attendance:view', 'attendance:view:own', 'attendance:view:all']),
   AttendanceController.getAttendanceRecordById.bind(AttendanceController)
 );
 

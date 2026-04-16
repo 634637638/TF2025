@@ -62,7 +62,8 @@ const config = {
   },
   security: {
     bcryptRounds: parseInt(process.env.BCRYPT_ROUNDS || '12'),
-    sessionSecret: process.env.SESSION_SECRET || 'TF2025_SESSION_SECRET_CHANGE_IN_PRODUCTION'
+    sessionSecret: process.env.SESSION_SECRET || 'TF2025_SESSION_SECRET_CHANGE_IN_PRODUCTION',
+    initAdminPassword: process.env.INIT_ADMIN_PASSWORD || ''
   },
   api: {
     rateLimit: parseInt(process.env.API_RATE_LIMIT || '100'),
@@ -75,4 +76,3 @@ const config = {
 };
 
 module.exports = config;
-

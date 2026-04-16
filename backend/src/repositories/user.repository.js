@@ -408,7 +408,7 @@ class UserRepository extends BaseRepository {
     const sql = `
       SELECT id, username, password, role, store_id, status
       FROM users
-      WHERE username = ? AND status = 'active'
+      WHERE username = ? AND status = 1
     `;
 
     try {
@@ -419,9 +419,22 @@ class UserRepository extends BaseRepository {
 
       const user = result[0];
 
-      // 这里应该使用密码比较逻辑，但为了简化，暂时返回用户信息
-      // 在实际应用中，应该使用 bcrypt.compare(password, user.password)
-      return user;
+      // 使用 bcryptjs 验证密码
+      const bcrypt = require('bcryptjs');
+      const isValid = await bcrypt.compare(password, user.password);
+
+      if (!isValid) {
+        return null;
+      }
+
+      // 返回用户信息（不包含密码）
+      return {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        store_id: user.store_id,
+        status: user.status
+      };
     } catch (error) {
       log.error('验证用户凭据失败:', error);
       throw error;
