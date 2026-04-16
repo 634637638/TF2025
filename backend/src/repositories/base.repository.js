@@ -1,7 +1,8 @@
 const { getDatabase } = require('../config/database');
 const {
   sanitizeOrderBy,
-  sanitizeLimitOffset
+  sanitizeLimitOffset,
+  sanitizeConditionFieldNames
 } = require('../utils/security-enhanced');
 const log = require('../utils/log');
 
@@ -220,11 +221,20 @@ class BaseRepository {
       join = ''
     } = options;
 
-    const whereClause = Object.keys(conditions)
-      .map(key => `${key} = ?`)
+    const safeConditionKeys = sanitizeConditionFieldNames(
+      Object.keys(conditions || {}),
+      `${this.tableName}.findBy`
+    );
+
+    if (safeConditionKeys.length === 0) {
+      throw new Error(`查询条件无效 [${this.tableName}]`);
+    }
+
+    const whereClause = safeConditionKeys
+      .map(key => `\`${key}\` = ?`)
       .join(' AND ');
 
-    const values = Object.values(conditions);
+    const values = safeConditionKeys.map(key => conditions[key]);
 
     let sql = `SELECT ${select} FROM ${this.tableName}`;
 

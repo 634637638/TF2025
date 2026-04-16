@@ -145,6 +145,32 @@ function isValidFieldName(fieldName) {
   return validPattern.test(fieldName);
 }
 
+/**
+ * 清理并验证 SQL 条件字段名
+ * 防止通过对象 key 注入 SQL 片段
+ * @param {string[]} fieldNames - 字段名列表
+ * @param {string} context - 上下文信息，便于日志定位
+ * @returns {string[]} 安全字段名列表
+ */
+function sanitizeConditionFieldNames(fieldNames, context = 'unknown') {
+  if (!Array.isArray(fieldNames)) {
+    return [];
+  }
+
+  const safeFields = [];
+
+  for (const fieldName of fieldNames) {
+    if (isValidFieldName(fieldName)) {
+      safeFields.push(fieldName);
+      continue;
+    }
+
+    log.warn(`[安全警告] 检测到可疑字段名: "${fieldName}"，上下文: ${context}，已拒绝处理`);
+  }
+
+  return safeFields;
+}
+
 // ============================================================================
 // 2. XSS 防护工具
 // ============================================================================
@@ -559,6 +585,7 @@ module.exports = {
   sanitizeLimitOffset,
   isValidTableName,
   isValidFieldName,
+  sanitizeConditionFieldNames,
   ORDER_BY_WHITELIST,
 
   // XSS 防护

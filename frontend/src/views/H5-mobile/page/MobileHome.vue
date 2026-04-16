@@ -214,6 +214,7 @@ import type { HomeSection } from '@/api/home-sections'
 import { formatImageUrl, generateProductPlaceholder } from '@/utils/format'
 import { storage } from '@/services/storage'
 import { logger } from '@/utils/logger'
+import { buildTencentMapScriptUrl, ensureTencentMapKey } from '@/utils/tencent-map'
 // 滚动位置存储键前缀
 const SCROLL_POSITION_PREFIX = 'scroll-pos_'
 const IMAGE_FILE_PATTERN = /\.(png|jpe?g|gif|webp|bmp|svg|avif)(?:[?#].*)?$/i
@@ -586,8 +587,15 @@ const loadTencentMapScript = () => {
       return
     }
 
+    const mapScriptUrl = buildTencentMapScriptUrl()
+    if (!mapScriptUrl) {
+      ensureTencentMapKey()
+      reject(new Error('腾讯地图 Key 未配置'))
+      return
+    }
+
     const script = document.createElement('script')
-    script.src = 'https://map.qq.com/api/gljs?v=1.exp&key=BUTBZ-J4UC6-ZUNSH-MJCJJ-L2ZY6-CZBFG'
+    script.src = mapScriptUrl
     script.onload = () => {
       mapScriptLoaded = true
       resolve(true)

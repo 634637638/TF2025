@@ -255,6 +255,7 @@ import { usePagePermissions } from '@/composables/usePagePermissions'
 import { formatImageUrl } from '@/utils/format'
 import { deleteTempFiles } from '@/utils/temp-file-cleaner'
 import { logger } from '@/utils/logger'
+import { buildTencentMapScriptUrl, ensureTencentMapKey } from '@/utils/tencent-map'
 import type { HeaderAction } from '@/types'
 
 const router = useRouter()
@@ -538,9 +539,16 @@ const loadTencentMapScript = (): Promise<void> => {
       resolve()
       return
     }
-    // 腾讯地图 API Key
+
+    const mapScriptUrl = buildTencentMapScriptUrl()
+    if (!mapScriptUrl) {
+      ensureTencentMapKey()
+      reject(new Error('腾讯地图 Key 未配置'))
+      return
+    }
+
     const script = document.createElement('script')
-    script.src = 'https://map.qq.com/api/gljs?v=1.exp&key=BUTBZ-J4UC6-ZUNSH-MJCJJ-L2ZY6-CZBFG'
+    script.src = mapScriptUrl
     script.onload = () => resolve()
     script.onerror = () => reject(new Error('地图加载失败'))
     document.head.appendChild(script)

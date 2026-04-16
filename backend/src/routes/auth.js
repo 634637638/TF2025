@@ -1,7 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const { getDatabase, isConnected } = require('../config/database');
+const config = require('../config');
 const { generateTokens, addToBlacklist, verifyToken } = require('../middleware/jwt-blacklist');
 const { unifiedAuth } = require('../middleware/unified-auth');
 const { recordSuccessfulLogin, recordFailedLogin, getClientIdentifier } = require('../middleware/login-attempts');
@@ -9,6 +11,7 @@ const ApiResponse = require('../utils/response');
 const { validateBody } = require('../middleware/validation');
 const { getUserAccessProfile } = require('../services/accessControl.service');
 const { hasColumn } = require('../services/schemaInspector.service');
+const { isValidFieldName, validatePassword } = require('../utils/security-enhanced');
 const log = require('../utils/log');
 
 // 登录失败处理辅助函数
@@ -101,6 +104,10 @@ function buildInsertStatement(tableName, valueMap) {
       return;
     }
 
+    if (!isValidFieldName(column)) {
+      throw new Error(`检测到非法字段名: ${column}`);
+    }
+
     columns.push(`\`${column}\``);
 
     if (value && typeof value === 'object' && value.__raw) {
@@ -115,6 +122,25 @@ function buildInsertStatement(tableName, valueMap) {
   return {
     sql: `INSERT INTO \`${tableName}\` (${columns.join(', ')}) VALUES (${placeholders.join(', ')})`,
     values
+  };
+}
+
+function generateOneTimeAdminPassword() {
+  return crypto.randomBytes(12).toString('base64url');
+}
+
+function resolveInitAdminPassword() {
+  const configuredPassword = config.security.initAdminPassword?.trim();
+  const password = configuredPassword || generateOneTimeAdminPassword();
+  const passwordValidation = validatePassword(password);
+
+  if (!passwordValidation.valid) {
+    throw new Error(`INIT_ADMIN_PASSWORD 不符合安全要求: ${passwordValidation.errors.join('；')}`);
+  }
+
+  return {
+    password,
+    source: configuredPassword ? 'env' : 'generated'
   };
 }
 
@@ -260,98 +286,7 @@ async function ensureUserRoleBinding(connection, userId, roleId) {
   await connection.execute(sql, values);
 }
 
-/**
- * @swagger
- * /api/auth/login:
- *   post:
- *     summary: 用户登录
- *     description: |
- *       使用用户名和密码登录系统
- *       - 登录成功返回访问令牌和刷新令牌
- *       - 包含用户的角色、权限、门店信息
- *       - 支持 5 分钟内 5 次失败尝试限制
- *     tags: [认证]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - username
- *               - password
- *             properties:
- *               username:
- *                 type: string
- *                 minLength: 3
- *                 maxLength: 50
- *                 description: 用户名
- *                 example: "sadmin"
- *               password:
- *                 type: string
- *                 minLength: 4
- *                 maxLength: 100
- *                 description: 密码
- *                 example: "123456"
- *     responses:
- *       200:
- *         description: 登录成功
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "登录成功"
- *                 token:
- *                   type: string
- *                   description: JWT 访问令牌（有效期 2 小时）
- *                 refreshToken:
- *                   type: string
- *                   description: JWT 刷新令牌（有效期 7 天）
- *                 user:
- *                   $ref: '#/components/schemas/User'
- *       401:
- *         description: 登录失败
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               success: false
- *               message: "用户名或密码错误"
- *       429:
- *         description: 登录尝试次数过多
- *         headers:
- *           X-Login-Attempts-Remaining:
- *             schema:
- *               type: integer
- *             description: 剩余尝试次数
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 message:
- *                   type: string
- *                   example: "登录尝试次数过多，账户已被临时锁定"
- *                 code:
- *                   type: string
- *                   example: "LOGIN_RATE_LIMITED"
- *                 details:
- *                   type: object
- *                   properties:
- *                     lockDuration:
- *                       type: integer
- *                       description: 锁定时长（分钟）
- */
+// 用户登录接口
 router.post('/login', validateBody({
   username: { type: 'string', required: true, minLength: 3, maxLength: 50 },
   password: { type: 'string', required: true, minLength: 4, maxLength: 100 }
@@ -426,64 +361,7 @@ router.post('/login', validateBody({
   }
 });
 
-/**
- * @swagger
- * /api/auth/user:
- *   get:
- *     summary: 获取当前用户信息
- *     description: 获取已登录用户的详细信息，包括角色和最后登录时间
- *     tags: [认证]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: 成功返回用户信息
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 data:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: integer
- *                       example: 1
- *                     username:
- *                       type: string
- *                       example: "sadmin"
- *                     name:
- *                       type: string
- *                       example: "系统管理员"
- *                     phone:
- *                       type: string
- *                       example: "13800138000"
- *                     email:
- *                       type: string
- *                       format: email
- *                       example: "admin@example.com"
- *                     roles:
- *                       type: array
- *                       items:
- *                         type: string
- *                       example: ["管理员"]
- *                     role:
- *                       type: string
- *                       nullable: true
- *                       example: "管理员"
- *                     last_login:
- *                       type: string
- *                       format: date-time
- *       401:
- *         description: 未授权
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- */
+// 获取当前用户信息
 router.get('/user', unifiedAuth, async (req, res) => {
   try {
     // 检查数据库连接
@@ -518,62 +396,7 @@ router.get('/user', unifiedAuth, async (req, res) => {
   }
 });
 
-/**
- * @swagger
- * /api/auth/refresh:
- *   post:
- *     summary: 刷新访问令牌
- *     description: |
- *       使用刷新令牌获取新的访问令牌
- *       - 刷新令牌有效期为 7 天
- *       - 刷新成功后，旧的刷新令牌将失效
- *       - 返回新的访问令牌和刷新令牌
- *     tags: [认证]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - refreshToken
- *             properties:
- *               refreshToken:
- *                 type: string
- *                 minLength: 10
- *                 description: 刷新令牌
- *     responses:
- *       200:
- *         description: 刷新成功
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "令牌刷新成功"
- *                 data:
- *                   type: object
- *                   properties:
- *                     token:
- *                       type: string
- *                       description: 新的访问令牌
- *                     refreshToken:
- *                       type: string
- *                       description: 新的刷新令牌
- *                     user:
- *                       $ref: '#/components/schemas/User'
- *       401:
- *         description: 令牌无效或已过期
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- */
+// 刷新访问令牌
 router.post('/refresh', validateBody({
   refreshToken: { type: 'string', required: true, minLength: 10 }
 }), async (req, res) => {
@@ -636,39 +459,7 @@ router.post('/refresh', validateBody({
   }
 });
 
-/**
- * @swagger
- * /api/auth/logout:
- *   post:
- *     summary: 用户退出登录
- *     description: |
- *       退出当前设备登录
- *       - 将当前访问令牌加入黑名单
- *       - 需要提供有效的访问令牌
- *     tags: [认证]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: 退出成功
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "退出成功"
- *       401:
- *         description: 未授权
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- */
+// 用户退出登录
 router.post('/logout', unifiedAuth, (req, res) => {
   try {
     const authHeader = req.headers['authorization'];
@@ -686,36 +477,7 @@ router.post('/logout', unifiedAuth, (req, res) => {
   }
 });
 
-/**
- * @swagger
- * /api/auth/logout-all:
- *   post:
- *     summary: 退出所有设备
- *     description: 退出当前用户在所有设备上的登录状态
- *     tags: [认证]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: 退出成功
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "已退出所有设备"
- *       401:
- *         description: 未授权
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- */
+// 退出所有设备
 router.post('/logout-all', unifiedAuth, async (req, res) => {
   try {
     const database = getDatabase();
@@ -763,7 +525,7 @@ router.post('/init-admin', async (req, res) => {
       const adminRoleId = await ensureDevelopmentAdminRole(connection);
 
       // 创建默认管理员用户
-      const defaultPassword = 'admin123';
+      const { password: defaultPassword, source: passwordSource } = resolveInitAdminPassword();
       const hashedPassword = await bcrypt.hash(defaultPassword, 12);
       const supportsUserRole = await hasColumn('users', 'role', connection);
       const supportsUserRoleId = await hasColumn('users', 'role_id', connection);
@@ -787,6 +549,7 @@ router.post('/init-admin', async (req, res) => {
         id: result.insertId,
         username: 'admin',
         password: defaultPassword,
+        password_source: passwordSource,
         role_id: adminRoleId,
         message: '请保存此密码并在登录后立即修改'
       }, '管理员用户初始化成功');

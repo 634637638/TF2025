@@ -16,8 +16,8 @@ const CONFIG = {
   ISSUER: 'tf2025-backend', // 发行者
   AUDIENCE: 'tf2025-users', // 受众
   JWT_SECRET: config.jwt.secret, // 从配置获取JWT密钥
-  // 🔒 新增：是否使用数据库持久化黑名单
-  PERSIST_BLACKLIST: process.env.JWT_BLACKLIST_PERSIST === 'true',
+  // 🔒 默认启用持久化，除非显式关闭
+  PERSIST_BLACKLIST: process.env.JWT_BLACKLIST_PERSIST !== 'false',
   // 新增：Token 轮换（每次刷新时生成新的刷新令牌）
   ENABLE_TOKEN_ROTATION: true
 };
@@ -41,6 +41,19 @@ function cleanupExpiredTokens() {
 
 // 定期清理
 setInterval(cleanupExpiredTokens, CONFIG.CLEANUP_INTERVAL);
+
+function shouldUsePersistentBlacklist() {
+  if (!CONFIG.PERSIST_BLACKLIST) {
+    return false;
+  }
+
+  if (!isConnected()) {
+    log.error('JWT 黑名单持久化已启用，但数据库未连接，当前无法保证重启后吊销状态');
+    return false;
+  }
+
+  return true;
+}
 
 // 生成JWT令牌
 function generateTokens(payload) {
@@ -152,7 +165,7 @@ async function addToBlacklist(token, reason = 'logout') {
     blacklistedTokens.set(token, tokenInfo);
 
     // 🔒 改进：如果启用了持久化，记录到数据库
-    if (CONFIG.PERSIST_BLACKLIST && isConnected()) {
+    if (shouldUsePersistentBlacklist()) {
       await logBlacklistEvent(tokenInfo);
     }
 
@@ -176,7 +189,7 @@ async function isTokenBlacklisted(token) {
     if (Date.now() > tokenInfo.expiresAt) {
       blacklistedTokens.delete(token);
       // 如果启用了持久化，也从数据库删除
-      if (CONFIG.PERSIST_BLACKLIST) {
+      if (shouldUsePersistentBlacklist()) {
         await removeFromDatabase(tokenInfo.jti);
       }
       return false;
@@ -185,7 +198,7 @@ async function isTokenBlacklisted(token) {
   }
 
   // 如果内存中没有，但启用了持久化，检查数据库
-  if (CONFIG.PERSIST_BLACKLIST && isConnected()) {
+  if (shouldUsePersistentBlacklist()) {
     return await checkInDatabase(token);
   }
 
@@ -295,18 +308,30 @@ const getBlacklistStats = () => {
 };
 
 // 手动从黑名单中移除令牌
-const removeFromBlacklist = (token) => {
+const removeFromBlacklist = async (token) => {
+  const tokenInfo = blacklistedTokens.get(token);
   const removed = blacklistedTokens.delete(token);
   if (removed) {
+    if (tokenInfo?.jti && shouldUsePersistentBlacklist()) {
+      await removeFromDatabase(tokenInfo.jti);
+    }
     log.info('JWT令牌已从黑名单移除');
   }
   return removed;
 };
 
 // 清空黑名单
-const clearBlacklist = () => {
+const clearBlacklist = async () => {
   const count = blacklistedTokens.size;
   blacklistedTokens.clear();
+  if (shouldUsePersistentBlacklist()) {
+    try {
+      const db = getDatabase();
+      await db.execute('DELETE FROM jwt_blacklist');
+    } catch (error) {
+      log.error('清空数据库 JWT 黑名单失败', error);
+    }
+  }
   log.info(`JWT黑名单已清空，移除 ${count} 个令牌`);
   return count;
 };
