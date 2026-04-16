@@ -28,6 +28,8 @@
 - [代码审查标准](guides/CODE_REVIEW_STANDARDS.md) - ⭐ **NEW** AI 代码审查完整提示词规范
 - [日志系统规范](guides/LOG_SYSTEM_STANDARDS.md) - ⭐ **NEW** 统一日志入口，后端 `backend/src/utils/log.js` / 前端 `frontend/src/utils/logger.ts`
 - [前端类型统一进展](development/FRONTEND_TYPE_UNIFICATION_PROGRESS.md) - ⭐ **NEW** 公共类型、表格组件、业务页面去 `any` 收口记录
+- [前端代码规范核实版审查报告](development/FRONTEND_CODE_AUDIT_VERIFIED_2026-04-15.md) - ⭐ **NEW** 已核实高优先级问题、误判项与实际整改顺序
+- [Git 变更分批提交方案](development/GIT_CHANGE_BATCH_PLAN_2026-04-16.md) - ⭐ **NEW** 当前未提交重构按安全修复、TS 迁移、前后端重构分批整理方案
 - [组件标准](guides/component-standards.md) - Vue 组件开发规范
 - [TypeScript 标准](guides/typescript-standards.md) - TS 使用规范
 - [错误处理标准](guides/error-handling-standards.md) - 统一错误处理
