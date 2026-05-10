@@ -2229,7 +2229,11 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
 });
 
 // 删除手机
-router.delete('/:id', unifiedAuth, requirePermission('phones:delete'), async (req, res) => {
+router.delete(
+  '/:id',
+  unifiedAuth,
+  requireAnyPermission(['phones:delete', 'sales:delete', 'sales-editphoneview:delete', 'query:delete', 'inventory:delete']),
+  async (req, res) => {
   let connection;
   try {
     const { id } = req.params;

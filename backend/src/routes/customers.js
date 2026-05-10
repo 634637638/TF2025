@@ -46,8 +46,9 @@ const requireCustomerCreatePermissionForBusinessFlow = async (req, res, next) =>
   try {
     const cachedPermissions = Array.isArray(req.user?.permissions) ? req.user.permissions : [];
     const dbPermissions = cachedPermissions.length > 0 ? [] : await getUserPermissions(req.user.id);
+    const normalizedCachedPermissions = normalizePermissionEntries(cachedPermissions);
     const normalizedPermissions = new Set([
-      ...cachedPermissions,
+      ...normalizedCachedPermissions,
       ...normalizePermissionEntries(dbPermissions)
     ]);
 

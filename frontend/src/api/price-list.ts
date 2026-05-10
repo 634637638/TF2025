@@ -210,6 +210,10 @@ export interface PriceMarkupConfig {
   highPercent: number
   threshold: number
   enabled: boolean
+  wholesale: {
+    enabled: boolean
+    adjustment: number
+  }
 }
 
 /**

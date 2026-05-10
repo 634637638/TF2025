@@ -639,8 +639,9 @@ class PriceListService {
         LIMIT 500
       `;
       const [rows] = await this.db.query(query);
+      const rowsWithDisplayMarkup = await this.applyWholesaleDisplayMarkup(rows);
 
-      return this.createSuccessResponse('获取成功', rows);
+      return this.createSuccessResponse('获取成功', rowsWithDisplayMarkup);
     } catch (error) {
       log.error('获取所有价格失败:', error);
       return this.createErrorResponse('获取失败');
@@ -761,8 +762,9 @@ class PriceListService {
         LIMIT 100
       `;
       const [rows] = await this.db.query(query, searchParams);
+      const rowsWithDisplayMarkup = await this.applyWholesaleDisplayMarkup(rows);
 
-      return this.createSuccessResponse('搜索成功', rows);
+      return this.createSuccessResponse('搜索成功', rowsWithDisplayMarkup);
     } catch (error) {
       log.error('搜索销售价格失败:', error);
       return this.createErrorResponse('搜索失败');
@@ -1185,11 +1187,22 @@ class PriceListService {
           // 价格没有变化，跳过更新，只更新同步时间
           log.debug(`  ⏭️  价格未变化，跳过更新: ${brand_name} ${model_number} ${external_model || ''} ${color_name || ''} ${memory || ''}`);
 
-          // 只更新同步时间，不更新价格
-          await this.db.query(
-            `UPDATE price_list SET last_sync_time = ?, updated_at = ? WHERE id = ?`,
-            [finalSyncTime || this.getBeijingTime(), finalSyncTime || this.getBeijingTime(), priceItemId]
-          );
+          const hasLastSyncTime = data.hasOwnProperty('last_sync_time');
+          const updatedAt = this.getBeijingTime();
+
+          if (isManualEdit && hasLastSyncTime) {
+            // 手动编辑明确传入了同步时间时，允许保存为 NULL
+            await this.db.query(
+              `UPDATE price_list SET last_sync_time = ?, updated_at = ? WHERE id = ?`,
+              [finalSyncTime, updatedAt, priceItemId]
+            );
+          } else {
+            // 其他情况保持原有逻辑：自动同步或未传同步时间时更新为当前同步时间
+            await this.db.query(
+              `UPDATE price_list SET last_sync_time = ?, updated_at = ? WHERE id = ?`,
+              [finalSyncTime || updatedAt, updatedAt, priceItemId]
+            );
+          }
         }
       }
 
@@ -3881,7 +3894,34 @@ class PriceListService {
       lowPercent: 8.0,
       highPercent: 3.0,
       threshold: 6000,
-      enabled: true
+      enabled: true,
+      wholesale: {
+        enabled: false,
+        adjustment: 0
+      }
+    };
+  }
+
+  normalizeGlobalMarkupConfig(config) {
+    const defaultConfig = this.getDefaultGlobalMarkupConfig();
+    const wholesaleConfig = config?.wholesale && typeof config.wholesale === 'object'
+      ? config.wholesale
+      : {};
+
+    return {
+      mode: config?.mode === 'percentage' ? 'percentage' : 'fixed',
+      lowFixed: Number(config?.lowFixed ?? defaultConfig.lowFixed),
+      highFixed: Number(config?.highFixed ?? defaultConfig.highFixed),
+      lowPercent: Number(config?.lowPercent ?? defaultConfig.lowPercent),
+      highPercent: Number(config?.highPercent ?? defaultConfig.highPercent),
+      threshold: Number(config?.threshold ?? defaultConfig.threshold),
+      enabled: typeof config?.enabled === 'boolean' ? config.enabled : defaultConfig.enabled,
+      wholesale: {
+        enabled: typeof wholesaleConfig.enabled === 'boolean'
+          ? wholesaleConfig.enabled
+          : defaultConfig.wholesale.enabled,
+        adjustment: Number(wholesaleConfig.adjustment ?? defaultConfig.wholesale.adjustment)
+      }
     };
   }
 
@@ -3895,15 +3935,7 @@ class PriceListService {
         return defaultConfig;
       }
 
-      return {
-        mode: config.mode === 'percentage' ? 'percentage' : 'fixed',
-        lowFixed: Number(config.lowFixed ?? defaultConfig.lowFixed),
-        highFixed: Number(config.highFixed ?? defaultConfig.highFixed),
-        lowPercent: Number(config.lowPercent ?? defaultConfig.lowPercent),
-        highPercent: Number(config.highPercent ?? defaultConfig.highPercent),
-        threshold: Number(config.threshold ?? defaultConfig.threshold),
-        enabled: typeof config.enabled === 'boolean' ? config.enabled : defaultConfig.enabled
-      };
+      return this.normalizeGlobalMarkupConfig(config);
     } catch (error) {
       log.error('获取全局加价配置失败，改用默认配置:', error.message);
       return defaultConfig;
@@ -3931,6 +3963,34 @@ class PriceListService {
     }
 
     return Math.round(retailPrice * 100) / 100;
+  }
+
+  async applyWholesaleDisplayMarkup(items) {
+    if (!Array.isArray(items) || items.length === 0) {
+      return items || [];
+    }
+
+    const config = await this.getGlobalMarkupConfig();
+    const wholesaleConfig = config.wholesale || { enabled: false, adjustment: 0 };
+    const adjustment = Number(wholesaleConfig.adjustment || 0);
+
+    return items.map(item => {
+      const wholesalePrice = Number(item.wholesale_price);
+      let displayWholesalePrice = item.wholesale_price;
+
+      if (
+        wholesaleConfig.enabled &&
+        Number.isFinite(wholesalePrice) &&
+        wholesalePrice > 0
+      ) {
+        displayWholesalePrice = Math.round((wholesalePrice + adjustment) * 100) / 100;
+      }
+
+      return {
+        ...item,
+        display_wholesale_price: displayWholesalePrice
+      };
+    });
   }
 
   async calculateRetailPriceByTemplate(brandId, modelId, colorId, memoryId, wholesalePrice) {

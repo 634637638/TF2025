@@ -47,6 +47,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticating = ref(false)  // 认证状态：是否正在认证中
   const backendDisconnected = ref(false) // 新增：后端失联状态
   const backendHealthFailureCount = ref(0)
+  let fetchUserInfoPromise: Promise<void> | null = null
 
   // =========== 计算属性 ===========
   const isAuthenticated = computed(() => {
@@ -971,6 +972,11 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
   const fetchUserInfo = async (): Promise<void> => {
+    if (fetchUserInfoPromise) {
+      return fetchUserInfoPromise
+    }
+
+    fetchUserInfoPromise = (async () => {
     try {
       // 检查是否有有效token
       if (!token.value || token.value.length < 10) {
@@ -1117,6 +1123,11 @@ export const useAuthStore = defineStore('auth', () => {
         throw error
       }
     }
+    })().finally(() => {
+      fetchUserInfoPromise = null
+    })
+
+    return fetchUserInfoPromise
   }
 
   // =========== 监听器 ===========

@@ -17,11 +17,13 @@ export const useMenuStore = defineStore('menu', () => {
 
   // 最后加载时间
   const lastLoadTime = ref(0)
+  let loadPromise: Promise<void> | null = null
 
   /**
    * 加载用户菜单
    */
   const loadMenus = async () => {
+    if (loadPromise) return loadPromise
     if (loading.value) return
 
     // 检查用户是否已认证
@@ -30,9 +32,9 @@ export const useMenuStore = defineStore('menu', () => {
       return
     }
 
-    loading.value = true
-
-    try {
+    loadPromise = (async () => {
+      loading.value = true
+      try {
       const response = await unifiedApi.get('/permissions/user-menu', {
         params: { _t: Date.now() }
       })
@@ -43,11 +45,16 @@ export const useMenuStore = defineStore('menu', () => {
       } else {
         menuItems.value = []
       }
-    } catch (error) {
-      menuItems.value = []
-    } finally {
-      loading.value = false
-    }
+      } catch (error) {
+        menuItems.value = []
+      } finally {
+        loading.value = false
+      }
+    })().finally(() => {
+      loadPromise = null
+    })
+
+    return loadPromise
   }
 
   /**

@@ -1,148 +1,196 @@
 <template>
   <MobileDialog
     v-model="visible"
-    title="销售价格加价配置"
-    width="600px"
+    title="价格加价配置"
+    width="680px"
     :close-on-click-modal="false"
     dialog-class="price-markup-dialog"
     :show-default-footer="false"
     @close="handleClose"
   >
-    <el-form ref="formRef" :model="form" :rules="rules" label-width="120px">
-      <!-- 加价模式选择 -->
-      <el-form-item label="加价模式" prop="mode">
-        <el-radio-group v-model="form.mode">
-          <el-radio value="fixed">固定金额</el-radio>
-          <el-radio value="percentage">百分比</el-radio>
-        </el-radio-group>
-        <div class="form-tip">
-          <i class="fas fa-info-circle"></i>
-          <span>固定金额：按固定金额加价；百分比：按批发价百分比加价</span>
+    <div class="markup-layout">
+      <section class="overview-panel">
+        <div class="overview-item">
+          <span class="overview-label">销售模式</span>
+          <strong class="overview-value">{{ getSaleModeLabel() }}</strong>
         </div>
-      </el-form-item>
+        <div class="overview-item">
+          <span class="overview-label">价格分界点</span>
+          <strong class="overview-value">{{ form.threshold }} 元</strong>
+        </div>
+        <div class="overview-item">
+          <span class="overview-label">批发显示</span>
+          <strong class="overview-value">{{ form.wholesale.enabled ? '已启用' : '未启用' }}</strong>
+        </div>
+      </section>
 
-      <!-- 固定金额模式 -->
-      <template v-if="form.mode === 'fixed'">
-        <el-form-item label="低档加价" prop="lowFixed">
-          <div class="price-input-group">
-            <span class="price-label">6000元以下</span>
-            <el-input-number
-              v-model="form.lowFixed"
-              :min="0"
-              :max="1000"
-              :step="50"
-              controls-position="right"
-              class="price-input"
+      <el-form ref="formRef" :model="form" :rules="rules" label-width="92px" class="markup-form">
+        <section class="config-card">
+          <div class="section-heading">
+            <div>
+              <h4 class="form-section-title">销售价规则</h4>
+              <p class="section-subtitle">采集价转销售价</p>
+            </div>
+            <el-switch
+              v-model="form.enabled"
+              active-text="启用"
+              inactive-text="禁用"
             />
-            <span class="price-unit">元</span>
           </div>
-        </el-form-item>
 
-        <el-form-item label="高档加价" prop="highFixed">
-          <div class="price-input-group">
-            <span class="price-label">6000元及以上</span>
-            <el-input-number
-              v-model="form.highFixed"
-              :min="0"
-              :max="1000"
-              :step="50"
-              controls-position="right"
-              class="price-input"
+          <div class="inline-grid inline-grid--top">
+            <el-form-item label="加价模式" prop="mode" class="compact-form-item">
+              <el-radio-group v-model="form.mode" class="mode-group">
+                <el-radio value="fixed">固定金额</el-radio>
+                <el-radio value="percentage">百分比</el-radio>
+              </el-radio-group>
+            </el-form-item>
+
+            <el-form-item label="价格分界点" prop="threshold" class="compact-form-item">
+              <div class="price-input-group">
+                <el-input-number
+                  v-model="form.threshold"
+                  :min="1000"
+                  :max="20000"
+                  :step="1000"
+                  controls-position="right"
+                  class="price-input"
+                />
+                <span class="price-unit">元</span>
+              </div>
+            </el-form-item>
+          </div>
+
+          <div class="tier-grid">
+            <el-form-item v-if="form.mode === 'fixed'" label="" prop="lowFixed" class="tier-form-item">
+              <div class="tier-card">
+                <span class="price-label">低于{{ form.threshold }}元</span>
+                <div class="tier-input-wrap">
+                  <el-input-number
+                    v-model="form.lowFixed"
+                    :min="0"
+                    :max="1000"
+                    :step="50"
+                    controls-position="right"
+                    class="price-input"
+                  />
+                  <span class="price-unit">元</span>
+                </div>
+              </div>
+            </el-form-item>
+
+            <el-form-item v-if="form.mode === 'fixed'" label="" prop="highFixed" class="tier-form-item">
+              <div class="tier-card">
+                <span class="price-label">高于{{ form.threshold }}元</span>
+                <div class="tier-input-wrap">
+                  <el-input-number
+                    v-model="form.highFixed"
+                    :min="0"
+                    :max="1000"
+                    :step="50"
+                    controls-position="right"
+                    class="price-input"
+                  />
+                  <span class="price-unit">元</span>
+                </div>
+              </div>
+            </el-form-item>
+
+            <el-form-item v-if="form.mode === 'percentage'" label="" prop="lowPercent" class="tier-form-item">
+              <div class="tier-card">
+                <span class="price-label">低于{{ form.threshold }}元</span>
+                <div class="tier-input-wrap">
+                  <el-input-number
+                    v-model="form.lowPercent"
+                    :min="0"
+                    :max="50"
+                    :step="1"
+                    :precision="1"
+                    controls-position="right"
+                    class="price-input"
+                  />
+                  <span class="price-unit">%</span>
+                </div>
+              </div>
+            </el-form-item>
+
+            <el-form-item v-if="form.mode === 'percentage'" label="" prop="highPercent" class="tier-form-item">
+              <div class="tier-card">
+                <span class="price-label">高于{{ form.threshold }}元</span>
+                <div class="tier-input-wrap">
+                  <el-input-number
+                    v-model="form.highPercent"
+                    :min="0"
+                    :max="30"
+                    :step="1"
+                    :precision="1"
+                    controls-position="right"
+                    class="price-input"
+                  />
+                  <span class="price-unit">%</span>
+                </div>
+              </div>
+            </el-form-item>
+          </div>
+        </section>
+
+        <section class="config-card">
+          <div class="section-heading">
+            <div>
+              <h4 class="form-section-title">批发显示价</h4>
+              <p class="section-subtitle">公开报价页批发显示</p>
+            </div>
+            <el-switch
+              v-model="form.wholesale.enabled"
+              active-text="启用"
+              inactive-text="禁用"
             />
-            <span class="price-unit">元</span>
           </div>
-        </el-form-item>
-      </template>
 
-      <!-- 百分比模式 -->
-      <template v-if="form.mode === 'percentage'">
-        <el-form-item label="低档加价" prop="lowPercent">
-          <div class="price-input-group">
-            <span class="price-label">6000元以下</span>
-            <el-input-number
-              v-model="form.lowPercent"
-              :min="0"
-              :max="50"
-              :step="1"
-              :precision="1"
-              controls-position="right"
-              class="price-input"
-            />
-            <span class="price-unit">%</span>
+          <div class="inline-grid inline-grid--single">
+            <el-form-item label="调整金额" class="compact-form-item">
+              <div class="price-input-group">
+                <el-input-number
+                  v-model="form.wholesale.adjustment"
+                  :min="-1000"
+                  :max="1000"
+                  :step="50"
+                  controls-position="right"
+                  class="price-input"
+                />
+                <span class="price-unit">元</span>
+              </div>
+            </el-form-item>
           </div>
-        </el-form-item>
+        </section>
+      </el-form>
 
-        <el-form-item label="高档加价" prop="highPercent">
-          <div class="price-input-group">
-            <span class="price-label">6000元及以上</span>
-            <el-input-number
-              v-model="form.highPercent"
-              :min="0"
-              :max="30"
-              :step="1"
-              :precision="1"
-              controls-position="right"
-              class="price-input"
-            />
-            <span class="price-unit">%</span>
+      <section class="price-preview">
+        <div class="section-heading">
+          <div>
+            <h4 class="form-section-title">价格预览</h4>
+            <p class="section-subtitle">根据当前配置即时预估</p>
           </div>
-        </el-form-item>
-      </template>
-
-      <!-- 价格区间设置 -->
-      <el-form-item label="价格分界点" prop="threshold">
-        <div class="price-input-group">
-          <el-input-number
-            v-model="form.threshold"
-            :min="1000"
-            :max="20000"
-            :step="1000"
-            controls-position="right"
-            class="price-input"
-          />
-          <span class="price-unit">元</span>
         </div>
-        <div class="form-tip">
-          <i class="fas fa-info-circle"></i>
-          <span>低于此价格使用低档加价，高于或等于使用高档加价</span>
+        <div class="preview-grid">
+          <div class="preview-item">
+            <span class="preview-label">采集价 {{ getLowTierPreviewPrice() }}元</span>
+            <span class="preview-value">销售价: {{ calculatePreview(getLowTierPreviewPrice()) }}元</span>
+          </div>
+          <div class="preview-item">
+            <span class="preview-label">采集价 {{ getHighTierPreviewPrice() }}元</span>
+            <span class="preview-value">销售价: {{ calculatePreview(getHighTierPreviewPrice()) }}元</span>
+          </div>
+          <div class="preview-item">
+            <span class="preview-label">采集价 5600元</span>
+            <span class="preview-value preview-value--wholesale">批发价: {{ calculateWholesalePreview(5600) }}元</span>
+          </div>
+          <div class="preview-item">
+            <span class="preview-label">采集价 8000元</span>
+            <span class="preview-value preview-value--wholesale">批发价: {{ calculateWholesalePreview(8000) }}元</span>
+          </div>
         </div>
-      </el-form-item>
-
-      <!-- 启用状态 -->
-      <el-form-item label="状态">
-        <el-switch
-          v-model="form.enabled"
-          active-text="启用"
-          inactive-text="禁用"
-        />
-        <div class="form-tip">
-          <i class="fas fa-info-circle"></i>
-          <span>禁用后销售价格将直接显示批发价</span>
-        </div>
-      </el-form-item>
-    </el-form>
-
-    <!-- 价格预览 -->
-    <div class="price-preview">
-      <h4>价格预览</h4>
-      <div class="preview-grid">
-        <div class="preview-item">
-          <span class="preview-label">批发价 3000元</span>
-          <span class="preview-value">售价: {{ calculatePreview(3000) }}元</span>
-        </div>
-        <div class="preview-item">
-          <span class="preview-label">批发价 5000元</span>
-          <span class="preview-value">售价: {{ calculatePreview(5000) }}元</span>
-        </div>
-        <div class="preview-item">
-          <span class="preview-label">批发价 6000元</span>
-          <span class="preview-value">售价: {{ calculatePreview(6000) }}元</span>
-        </div>
-        <div class="preview-item">
-          <span class="preview-label">批发价 8000元</span>
-          <span class="preview-value">售价: {{ calculatePreview(8000) }}元</span>
-        </div>
-      </div>
+      </section>
     </div>
 
     <template #footer>
@@ -159,19 +207,9 @@
 import { ref, computed, watch } from 'vue'
 import { ElMessage, FormInstance } from 'element-plus'
 import { ValidationRules } from '@/composables'
-import { getMarkupConfig, saveMarkupConfig } from '@/api/price-list'
+import { getMarkupConfig, saveMarkupConfig, type PriceMarkupConfig } from '@/api/price-list'
 import type { ModelValueProps, UpdateModelValueEmits } from '@/types/component'
 import { logger } from '@/utils/logger'
-
-interface PriceMarkupConfig {
-  mode: 'fixed' | 'percentage'
-  lowFixed: number
-  highFixed: number
-  lowPercent: number
-  highPercent: number
-  threshold: number
-  enabled: boolean
-}
 
 interface Props extends ModelValueProps {
   config?: PriceMarkupConfig
@@ -201,17 +239,34 @@ const defaultConfig: PriceMarkupConfig = {
   lowPercent: 8.0,
   highPercent: 3.0,
   threshold: 6000,
-  enabled: true
+  enabled: true,
+  wholesale: {
+    enabled: false,
+    adjustment: 0
+  }
 }
 
-// 表单数据
-const form = ref<PriceMarkupConfig>({ ...defaultConfig })
-
-const normalizeConfig = (raw: any): PriceMarkupConfig => {
+function normalizeConfig(raw: any): PriceMarkupConfig {
   const config = raw?.value && typeof raw.value === 'object' ? raw.value : raw
   if (!config || typeof config !== 'object') {
-    return { ...defaultConfig }
+    return {
+      mode: defaultConfig.mode,
+      lowFixed: defaultConfig.lowFixed,
+      highFixed: defaultConfig.highFixed,
+      lowPercent: defaultConfig.lowPercent,
+      highPercent: defaultConfig.highPercent,
+      threshold: defaultConfig.threshold,
+      enabled: defaultConfig.enabled,
+      wholesale: {
+        enabled: defaultConfig.wholesale.enabled,
+        adjustment: defaultConfig.wholesale.adjustment
+      }
+    }
   }
+
+  const wholesaleConfig = config.wholesale && typeof config.wholesale === 'object'
+    ? config.wholesale
+    : {}
 
   return {
     mode: config.mode === 'percentage' ? 'percentage' : 'fixed',
@@ -220,9 +275,18 @@ const normalizeConfig = (raw: any): PriceMarkupConfig => {
     lowPercent: Number(config.lowPercent ?? defaultConfig.lowPercent),
     highPercent: Number(config.highPercent ?? defaultConfig.highPercent),
     threshold: Number(config.threshold ?? defaultConfig.threshold),
-    enabled: typeof config.enabled === 'boolean' ? config.enabled : defaultConfig.enabled
+    enabled: typeof config.enabled === 'boolean' ? config.enabled : defaultConfig.enabled,
+    wholesale: {
+      enabled: typeof wholesaleConfig.enabled === 'boolean'
+        ? wholesaleConfig.enabled
+        : defaultConfig.wholesale.enabled,
+      adjustment: Number(wholesaleConfig.adjustment ?? defaultConfig.wholesale.adjustment)
+    }
   }
 }
+
+// 表单数据
+const form = ref<PriceMarkupConfig>(normalizeConfig(defaultConfig))
 
 // 从后端加载配置
 const loadConfig = async () => {
@@ -232,11 +296,11 @@ const loadConfig = async () => {
     if (response.success && response.data) {
       form.value = normalizeConfig(response.data)
     } else {
-      form.value = { ...defaultConfig }
+      form.value = normalizeConfig(defaultConfig)
     }
   } catch (error) {
     logger.error('加载加价配置失败:', error)
-    form.value = { ...defaultConfig }
+    form.value = normalizeConfig(defaultConfig)
   } finally {
     loading.value = false
   }
@@ -293,6 +357,28 @@ const calculatePreview = (wholesalePrice: number): string => {
   }
 }
 
+const calculateWholesalePreview = (wholesalePrice: number): string => {
+  if (!form.value.wholesale.enabled) {
+    return wholesalePrice.toString()
+  }
+
+  return (wholesalePrice + Number(form.value.wholesale.adjustment || 0)).toFixed(0)
+}
+
+const getLowTierPreviewPrice = (): number => {
+  const threshold = Number(form.value.threshold || 6000)
+  return Math.max(1, threshold - 1000)
+}
+
+const getHighTierPreviewPrice = (): number => {
+  const threshold = Number(form.value.threshold || 6000)
+  return threshold + 1000
+}
+
+const getSaleModeLabel = (): string => {
+  return form.value.mode === 'percentage' ? '百分比' : '固定金额'
+}
+
 /**
  * 保存配置
  */
@@ -308,7 +394,7 @@ const handleSave = async () => {
 
     if (response.success) {
       // 触发保存事件
-      emit('save', form.value)
+      emit('save', normalizeConfig(form.value))
       ElMessage.success('加价配置保存成功')
       visible.value = false
     } else {
@@ -336,25 +422,148 @@ const handleClose = () => {
   if (props.config) {
     form.value = normalizeConfig(props.config)
   } else {
-    form.value = { ...defaultConfig }
+    form.value = normalizeConfig(defaultConfig)
   }
 }
 </script>
 
 <style scoped lang="scss">
+.markup-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.markup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.overview-panel {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.overview-item {
+  padding: 14px 16px;
+  background: #f6f7f9;
+  border: 1px solid #e7e9ee;
+  border-radius: 14px;
+}
+
+.overview-label {
+  display: block;
+  margin-bottom: 6px;
+  color: #8a94a6;
+  font-size: 12px;
+}
+
+.overview-value {
+  color: #111827;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.config-card,
+.price-preview {
+  padding: 20px;
+  background: #ffffff;
+  border: 1px solid #e7e9ee;
+  border-radius: 18px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.form-section-title {
+  margin: 0;
+  color: #111827;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.section-subtitle {
+  margin: 3px 0 0;
+  color: #8a94a6;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.inline-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 20px;
+  align-items: start;
+}
+
+.inline-grid--top {
+  margin-bottom: 18px;
+}
+
+.inline-grid--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.tier-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.tier-form-item,
+.compact-form-item {
+  margin-bottom: 0;
+}
+
+.tier-form-item :deep(.el-form-item__content) {
+  margin-left: 0 !important;
+}
+
+.mode-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+}
+
+.tier-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 100%;
+  padding: 16px;
+  background: #fafbfc;
+  border: 1px solid #eceef2;
+  border-radius: 14px;
+}
+
+.tier-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .price-input-group {
   display: flex;
   align-items: center;
   gap: 12px;
 
   .price-label {
-    flex: 1;
-    color: #606266;
+    color: #374151;
     font-size: 14px;
+    font-weight: 600;
   }
 
   .price-input {
-    width: 150px;
+    width: 160px;
   }
 
   .price-unit {
@@ -369,27 +578,12 @@ const handleClose = () => {
   align-items: center;
   gap: 6px;
   margin-top: 8px;
-  color: #909399;
+  color: #8a94a6;
   font-size: 12px;
   line-height: 1.5;
-
-  i {
-    color: #409EFF;
-  }
 }
 
 .price-preview {
-  margin-top: 24px;
-  padding: 16px;
-  background: #f5f7fa;
-  border-radius: 8px;
-
-  h4 {
-    margin: 0 0 16px 0;
-    font-size: 14px;
-    color: #303133;
-  }
-
   .preview-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -397,15 +591,16 @@ const handleClose = () => {
 
     .preview-item {
       display: flex;
+      flex-direction: column;
+      gap: 6px;
       justify-content: space-between;
-      align-items: center;
-      padding: 8px 12px;
-      background: white;
-      border-radius: 6px;
-      border: 1px solid #dcdfe6;
+      padding: 12px 14px;
+      background: #fafbfc;
+      border-radius: 14px;
+      border: 1px solid #eceef2;
 
       .preview-label {
-        color: #606266;
+        color: #607089;
         font-size: 13px;
       }
 
@@ -414,7 +609,50 @@ const handleClose = () => {
         font-weight: bold;
         font-size: 14px;
       }
+
+      .preview-value--wholesale {
+        color: #409eff;
+      }
     }
+  }
+}
+
+@media (max-width: 768px) {
+  .overview-panel {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .config-card,
+  .price-preview {
+    padding: 14px;
+    border-radius: 12px;
+  }
+
+  .inline-grid,
+  .tier-grid,
+  .price-preview .preview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .price-input-group,
+  .tier-input-wrap {
+    width: 100%;
+  }
+
+  .section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .price-input-group {
+    gap: 10px;
+  }
+
+  .price-input-group .price-input,
+  .tier-input-wrap .price-input {
+    flex: 1;
+    width: auto;
   }
 }
 </style>

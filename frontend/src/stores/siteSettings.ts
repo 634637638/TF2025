@@ -108,6 +108,7 @@ export const useSiteSettingsStore = defineStore('siteSettings', () => {
 
   const isLoading = ref(false)
   const lastUpdated = ref<Date | null>(null)
+  let loadPromise: Promise<void> | null = null
 
   // 计算属性
   const displayName = computed(() => {
@@ -120,6 +121,10 @@ export const useSiteSettingsStore = defineStore('siteSettings', () => {
 
   // 方法
   const loadSiteSettings = async (forceReload = false) => {
+    if (loadPromise) {
+      return loadPromise
+    }
+
     // 避免重复调用
     if (isLoading.value) {
       return
@@ -130,6 +135,7 @@ export const useSiteSettingsStore = defineStore('siteSettings', () => {
       return
     }
 
+    loadPromise = (async () => {
     try {
       isLoading.value = true
 
@@ -150,6 +156,11 @@ export const useSiteSettingsStore = defineStore('siteSettings', () => {
     } finally {
       isLoading.value = false
     }
+    })().finally(() => {
+      loadPromise = null
+    })
+
+    return loadPromise
   }
 
   const updateSiteSettings = async (newSettings: Partial<SiteSettings>): Promise<UpdateSiteSettingsResult | null> => {

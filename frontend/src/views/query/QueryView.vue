@@ -897,6 +897,7 @@ const editModalOptions = reactive({
 const editModalOptionsLoaded = ref(false)
 const editModalOptionsLoading = ref(false)
 let editModalWarmupTimer: ReturnType<typeof setTimeout> | null = null
+const employeesPromise = ref<Promise<any[]> | null>(null)
 
 // 筛选条件
 const filters = reactive({
@@ -1513,13 +1514,23 @@ const loadSalesUsers = async () => {
     options.value.users = options.value.users.length > 0 ? options.value.users : editModalOptions.users
     return
   }
-  if (editModalOptionsLoading.value) return
+
+  if (employeesPromise.value) {
+    options.value.users = await employeesPromise.value
+    return
+  }
+
   try {
-    const usersRes = await unifiedApi.get('/users/employees?limit=10000')
-    const users = usersRes.success && usersRes.data?.employees ? usersRes.data.employees : []
-    options.value.users = users
+    employeesPromise.value = (async () => {
+      const usersRes = await unifiedApi.get('/users/employees?limit=10000')
+      return usersRes.success && usersRes.data?.employees ? usersRes.data.employees : []
+    })()
+
+    options.value.users = await employeesPromise.value
   } catch (error) {
     options.value.users = []
+  } finally {
+    employeesPromise.value = null
   }
 }
 

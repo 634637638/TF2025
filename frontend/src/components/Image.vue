@@ -61,7 +61,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
-import { formatImageUrl, generateProductPlaceholder, type ProductPlaceholderOptions } from '@/utils/format'
+import { formatImageUrl, generateProductPlaceholder, getBackendOrigin, type ProductPlaceholderOptions } from '@/utils/format'
 
 interface Props {
   src?: string
@@ -168,15 +168,20 @@ const generateSmartUrl = (src: string): string[] => {
   const normalizedPath = normalizedSource.startsWith('/') ? normalizedSource : `/${normalizedSource}`
 
   const isHttpsPage = typeof window !== 'undefined' && window.location.protocol === 'https:'
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || (typeof window !== 'undefined' ? window.location.origin : '')
+  const backendOrigin = getBackendOrigin()
 
   if (isHttpsPage) {
-    // HTTPS页面：先尝试HTTP直连，降级到代理
-    candidates.push(`${BACKEND_URL}${normalizedPath}`)
+    // HTTPS 页面优先尝试后端公网域名，其次走当前站点代理
+    if (backendOrigin) {
+      candidates.push(`${backendOrigin}${normalizedPath}`)
+    }
     candidates.push(normalizedPath)
   } else {
-    // HTTP页面：直接使用后端地址
-    candidates.push(`${BACKEND_URL}${normalizedPath}`)
+    if (backendOrigin) {
+      candidates.push(`${backendOrigin}${normalizedPath}`)
+    } else {
+      candidates.push(normalizedPath)
+    }
   }
 
   return candidates

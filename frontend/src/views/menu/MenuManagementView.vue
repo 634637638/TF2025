@@ -999,6 +999,7 @@ const menuSearchExpanded = ref(false)
 const activeMobileMenuId = ref<number | null>(null)
 const lastTappedMenuId = ref<number | null>(null)
 const lastMenuTapTimestamp = ref(0)
+let sharedPublicMenuPromise: Promise<any[]> | null = null
 
 const isIconifyIconClass = (icon?: string | null) => isIconifyIcon(String(icon || '').trim())
 const getIconifyName = (icon?: string | null) => extractIconifyName(String(icon || '').trim()) || ''
@@ -1043,6 +1044,21 @@ const parentMenuOptions = computed(() => {
 })
 
 // 方法
+const loadPublicMenuTree = async () => {
+  if (sharedPublicMenuPromise) {
+    return sharedPublicMenuPromise
+  }
+
+  sharedPublicMenuPromise = (async () => {
+    const publicResponse = await unifiedApi.get('/permissions/user-menu')
+    return publicResponse?.success ? (publicResponse.data || []) : []
+  })().finally(() => {
+    sharedPublicMenuPromise = null
+  })
+
+  return sharedPublicMenuPromise
+}
+
 const loadMenus = async (bustCache: boolean = false, silentError: boolean = false, showLoadingState: boolean = true) => {
   if (!canView.value) {
     menuTree.value = []
@@ -1077,13 +1093,7 @@ const loadMenus = async (bustCache: boolean = false, silentError: boolean = fals
     } else {
       // 如果认证接口失败，尝试使用公开的用户菜单接口
       try {
-        const publicResponse = await unifiedApi.get('/permissions/user-menu')
-
-        if (publicResponse && publicResponse.success) {
-          menuTree.value = publicResponse.data || []
-        } else {
-          throw new Error(publicResponse?.message || '获取菜单列表失败')
-        }
+        menuTree.value = await loadPublicMenuTree()
       } catch (publicErr) {
         logger.error('所有接口都失败:', publicErr)
         errorMessage.value = '无法加载菜单数据，请检查网络连接或稍后重试'
@@ -1146,10 +1156,8 @@ const searchMenus = async () => {
 
     // 如果搜索接口失败，回退到公开接口并应用前端过滤
     try {
-      const publicResponse = await unifiedApi.get('/permissions/user-menu')
-
-      if (publicResponse && publicResponse.success) {
-        let allMenus = publicResponse.data || []
+      let allMenus = await loadPublicMenuTree()
+      if (allMenus) {
 
         // 前端过滤
         if (searchForm.value.name) {

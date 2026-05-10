@@ -41,6 +41,8 @@ const DEFAULT_BREAKPOINTS = {
   desktop: 1200
 }
 
+let sharedLoadMenuWidthsPromise: Promise<{ pc: number; mobile: number }> | null = null
+
 export function useMenuWidth(options: MenuWidthOptions = {}) {
   const {
     default: defaultConfig = DEFAULT_CONFIG,
@@ -202,6 +204,11 @@ export function useMenuWidth(options: MenuWidthOptions = {}) {
 
   // 加载所有菜单宽度（PC和移动端）- 优先从API加载，降级到本地存储
   const loadAllMenuWidths = async () => {
+    if (sharedLoadMenuWidthsPromise) {
+      return sharedLoadMenuWidthsPromise
+    }
+
+    sharedLoadMenuWidthsPromise = (async () => {
     isLoading.value = true
     try {
       // 首先尝试从 API 加载
@@ -264,6 +271,11 @@ export function useMenuWidth(options: MenuWidthOptions = {}) {
     } finally {
       isLoading.value = false
     }
+    })().finally(() => {
+      sharedLoadMenuWidthsPromise = null
+    })
+
+    return sharedLoadMenuWidthsPromise
   }
 
   // 同时设置PC和移动端菜单宽度

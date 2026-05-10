@@ -11,6 +11,28 @@ const { getDatabase } = require('../config/database');
 const log = require('../utils/log');
 const XLSX = require('xlsx');
 
+const createRouteTimer = (routeName, req) => {
+  const routeStart = process.hrtime.bigint();
+  let lastMark = routeStart;
+
+  const mark = (label, extra = {}) => {
+    const now = process.hrtime.bigint();
+    const stepMs = Number(now - lastMark) / 1e6;
+    const totalMs = Number(now - routeStart) / 1e6;
+    lastMark = now;
+
+    log.info(`⏱️ [${routeName}] ${label}`, {
+      stepMs: stepMs.toFixed(2),
+      totalMs: totalMs.toFixed(2),
+      method: req.method,
+      path: req.originalUrl,
+      ...extra
+    });
+  };
+
+  return { mark };
+};
+
 // ============================
 // 图片上传配置
 // ============================
@@ -296,12 +318,12 @@ const buildSubsidyFilters = (query) => {
 
   // 销售日期范围筛选
   if (start_date) {
-    whereConditions.push('DATE(sale_time) >= ?');
+    whereConditions.push('sale_time >= ?');
     queryParams.push(start_date);
   }
 
   if (end_date) {
-    whereConditions.push('DATE(sale_time) <= ?');
+    whereConditions.push('sale_time < DATE_ADD(?, INTERVAL 1 DAY)');
     queryParams.push(end_date);
   }
 
@@ -342,23 +364,23 @@ const buildSubsidyFilters = (query) => {
 
   // 提交时间范围筛选
   if (apply_start_date) {
-    whereConditions.push('DATE(apply_time) >= ?');
+    whereConditions.push('apply_time >= ?');
     queryParams.push(apply_start_date);
   }
 
   if (apply_end_date) {
-    whereConditions.push('DATE(apply_time) <= ?');
+    whereConditions.push('apply_time < DATE_ADD(?, INTERVAL 1 DAY)');
     queryParams.push(apply_end_date);
   }
 
   // 到账时间范围筛选
   if (arrival_start_date) {
-    whereConditions.push('DATE(arrival_time) >= ?');
+    whereConditions.push('arrival_time >= ?');
     queryParams.push(arrival_start_date);
   }
 
   if (arrival_end_date) {
-    whereConditions.push('DATE(arrival_time) <= ?');
+    whereConditions.push('arrival_time < DATE_ADD(?, INTERVAL 1 DAY)');
     queryParams.push(arrival_end_date);
   }
 
@@ -442,6 +464,7 @@ const buildSubsidyExportFile = (items = []) => {
 
 // 第一步：通过IMEI或序列号搜索设备列表
 router.get('/search-phones/:identifier', unifiedAuth, requirePermission('subsidy:view'), cacheMiddleware({ ttl: 10000 }), async (req, res) => {
+  const timer = createRouteTimer('GET /subsidy/search-phones/:identifier', req);
   try {
     const { identifier } = req.params;
     if (!identifier || identifier.trim().length === 0) {
@@ -453,8 +476,11 @@ router.get('/search-phones/:identifier', unifiedAuth, requirePermission('subsidy
 
     const trimmedIdentifier = identifier.trim();
     const searchPattern = `%${trimmedIdentifier}%`;
+    timer.mark('search params prepared', {
+      keywordLength: trimmedIdentifier.length
+    });
 
-    // 搜索phones表中的设备（支持模糊搜索IMEI1和序列号），同时获取客户信息
+    // 先只查询匹配的设备基础信息，避免直接关联 sales 表造成放大扫描和重复行
     const [phones] = await getDatabase().execute(`
       SELECT
         p.id as phone_id,
@@ -468,21 +494,21 @@ router.get('/search-phones/:identifier', unifiedAuth, requirePermission('subsidy
         mem.size as memory,
         p.sale_price,
         p.salestime as sale_time,
-        st.name as store_name,
-        c.name as customer_name,
-        c.phone as customer_phone
+        st.name as store_name
       FROM phones p
       LEFT JOIN brands b ON p.brand_id = b.id
       LEFT JOIN models m ON p.model_id = m.id
       LEFT JOIN colors co ON p.color_id = co.id
       LEFT JOIN memories mem ON p.memory_id = mem.id
       LEFT JOIN stores st ON p.store_id = st.id
-      LEFT JOIN sales s ON p.id = s.phone_id
-      LEFT JOIN customers c ON s.customer_id = c.id
-      WHERE (p.imei LIKE ? OR p.serial_number LIKE ?)
+      WHERE p.status = 'sold'
+        AND (p.imei LIKE ? OR p.serial_number LIKE ?)
       ORDER BY p.salestime DESC
       LIMIT 50
     `, [searchPattern, searchPattern]);
+    timer.mark('phones query completed', {
+      matchCount: phones.length
+    });
 
     if (phones.length === 0) {
       return res.status(404).json({
@@ -491,13 +517,45 @@ router.get('/search-phones/:identifier', unifiedAuth, requirePermission('subsidy
       });
     }
 
-    // 获取每个设备的国补申请状态
     const phoneIds = phones.map(p => p.phone_id);
-    const [subsidyRecords] = phoneIds.length > 0 ? await getDatabase().execute(`
+    const [latestSales, subsidyRecords] = await Promise.all([
+      getDatabase().execute(`
+        SELECT
+          latest.phone_id,
+          c.name as customer_name,
+          c.phone as customer_phone
+        FROM (
+          SELECT s.phone_id, s.customer_id
+          FROM sales s
+          INNER JOIN (
+            SELECT phone_id, MAX(created_at) as max_created_at
+            FROM sales
+            WHERE phone_id IN (${phoneIds.map(() => '?').join(',')})
+            GROUP BY phone_id
+          ) latest_sale
+            ON latest_sale.phone_id = s.phone_id
+           AND latest_sale.max_created_at = s.created_at
+        ) latest
+        LEFT JOIN customers c ON c.id = latest.customer_id
+      `, phoneIds).then(([rows]) => rows),
+      getDatabase().execute(`
       SELECT phone_id, apply_status, subsidy_amount
       FROM national_subsidies
       WHERE phone_id IN (${phoneIds.map(() => '?').join(',')})
-    `, phoneIds) : [];
+      `, phoneIds).then(([rows]) => rows)
+    ]);
+    timer.mark('related data queries completed', {
+      latestSalesCount: latestSales.length,
+      subsidyRecordCount: subsidyRecords.length
+    });
+
+    const customerMap = new Map();
+    latestSales.forEach((sale) => {
+      customerMap.set(sale.phone_id, {
+        customer_name: sale.customer_name || '',
+        customer_phone: sale.customer_phone || ''
+      });
+    });
 
     // 创建国补记录映射
     const subsidyMap = new Map();
@@ -512,6 +570,7 @@ router.get('/search-phones/:identifier', unifiedAuth, requirePermission('subsidy
     // 格式化返回结果
     const deviceList = phones.map(p => {
       const subsidyInfo = subsidyMap.get(p.phone_id);
+      const customerInfo = customerMap.get(p.phone_id) || {};
       return {
         phone_id: p.phone_id,
         imei: p.imei,
@@ -525,16 +584,15 @@ router.get('/search-phones/:identifier', unifiedAuth, requirePermission('subsidy
         sale_price: parseFloat(p.sale_price) || 0,
         sale_time: p.sale_time,
         store_name: p.store_name || '',
-        customer_name: p.customer_name || '',
-        customer_phone: p.customer_phone || '',
+        customer_name: customerInfo.customer_name || '',
+        customer_phone: customerInfo.customer_phone || '',
         // 国补记录状态
         has_subsidy: !!subsidyInfo,
         subsidy_status: subsidyInfo?.status || null,
         subsidy_amount: subsidyInfo?.amount || 0,
         // 判断是否符合国补条件
-        can_apply_subsidy: p.status === 'sold' && p.is_new === 1 && p.sale_price <= 6000 && !subsidyInfo,
+        can_apply_subsidy: p.is_new === 1 && p.sale_price <= 6000 && !subsidyInfo,
         reason: subsidyInfo ? `已记录国补资料 (¥${subsidyInfo.amount})` :
-                p.status !== 'sold' ? '设备未销售' :
                 p.is_new !== 1 ? '仅全新机可申请' :
                 p.sale_price > 6000 ? '售价超过6000元' : '符合条件'
       };
@@ -545,8 +603,14 @@ router.get('/search-phones/:identifier', unifiedAuth, requirePermission('subsidy
       message: `找到 ${deviceList.length} 个匹配设备`,
       data: deviceList
     });
+    timer.mark('response sent', {
+      resultCount: deviceList.length
+    });
 
   } catch (error) {
+    timer.mark('request failed', {
+      error: error.message
+    });
     log.error('❌ 搜索设备失败:', error);
     res.status(500).json({
       success: false,
@@ -600,13 +664,14 @@ router.get('/phone-detail/:phoneId', unifiedAuth, requirePermission('subsidy:vie
       ) latest_sale ON p.id = latest_sale.phone_id AND latest_sale.rn = 1
       LEFT JOIN stores sale_st ON latest_sale.store_id = sale_st.id
       WHERE p.id = ?
+        AND p.status = 'sold'
       LIMIT 1
     `, [phoneId]);
 
     if (phones.length === 0) {
       return res.status(404).json({
         success: false,
-        message: '设备不存在'
+        message: '仅已销售设备可申请国补'
       });
     }
 
@@ -889,7 +954,8 @@ router.post('/apply', unifiedAuth, requirePermission('subsidy:create'), async (r
 });
 
 // 获取国补列表（带缓存，仅缓存第一页）
-router.get('/', unifiedAuth, requirePermission('subsidy:view'), cacheMiddleware({ ttl: 60000 }), async (req, res) => {
+router.get('/', unifiedAuth, requirePermission('subsidy:view'), cacheMiddleware({ ttl: 10000 }), async (req, res) => {
+  const timer = createRouteTimer('GET /subsidy', req);
   try {
     const {
       page = 1,
@@ -898,7 +964,18 @@ router.get('/', unifiedAuth, requirePermission('subsidy:view'), cacheMiddleware(
       sort_order = 'desc'
     } = req.query;
 
+    log.info('🔍 国补列表查询参数:', { page, limit, sort_by, sort_order, filters: req.query });
+
     const { whereConditions, queryParams } = buildSubsidyFilters(req.query);
+    timer.mark('filters built', {
+      page: Number(page),
+      limit: Number(limit),
+      filterCount: whereConditions.length,
+      queryParamCount: queryParams.length
+    });
+
+    log.info('📊 构建的WHERE条件:', whereConditions.join(' AND '));
+    log.info('📊 查询参数数量:', queryParams.length);
 
     // 验证并构建排序字段
     const validSortFields = ['sale_time', 'apply_time', 'arrival_time', 'sale_price', 'subsidy_amount', 'created_at'];
@@ -957,8 +1034,35 @@ router.get('/', unifiedAuth, requirePermission('subsidy:view'), cacheMiddleware(
       WHERE ${whereConditions.join(' AND ')}
     `;
 
-    const [subsidies] = await getDatabase().execute(query, queryParams);
-    const [countResult] = await getDatabase().execute(countQuery, queryParams);
+    let listQueryMs = 0;
+    let countQueryMs = 0;
+
+    const [[subsidies], [countResult]] = await Promise.all([
+      (async () => {
+        const startedAt = process.hrtime.bigint();
+        const result = await getDatabase().execute(query, queryParams);
+        listQueryMs = Number(process.hrtime.bigint() - startedAt) / 1e6;
+        return result;
+      })(),
+      (async () => {
+        const startedAt = process.hrtime.bigint();
+        const result = await getDatabase().execute(countQuery, queryParams);
+        countQueryMs = Number(process.hrtime.bigint() - startedAt) / 1e6;
+        return result;
+      })()
+    ]);
+    timer.mark('database queries completed', {
+      listQueryMs: listQueryMs.toFixed(2),
+      countQueryMs: countQueryMs.toFixed(2),
+      rowCount: subsidies.length
+    });
+
+    log.info('✅ 国补列表查询完成:', {
+      返回记录数: subsidies.length,
+      总记录数: countResult[0].total,
+      当前页: page,
+      每页数量: limit
+    });
 
     // 格式化数据
     const formattedSubsidies = subsidies.map(sub => {
@@ -993,6 +1097,9 @@ router.get('/', unifiedAuth, requirePermission('subsidy:view'), cacheMiddleware(
         } : null
       };
     });
+    timer.mark('response formatted', {
+      formattedCount: formattedSubsidies.length
+    });
 
     res.json({
       success: true,
@@ -1000,13 +1107,17 @@ router.get('/', unifiedAuth, requirePermission('subsidy:view'), cacheMiddleware(
       data: formattedSubsidies,
       pagination: {
         current: parseInt(page),
-        pageSize: parseInt(limit),
+        pageSize: limitNum,  // 使用实际计算的limitNum
         total: countResult[0].total,
-        totalPages: Math.ceil(countResult[0].total / parseInt(limit))
+        totalPages: Math.ceil(countResult[0].total / limitNum)
       }
     });
+    timer.mark('response sent');
 
   } catch (error) {
+    timer.mark('failed', {
+      error: error.message
+    });
     log.error('❌ 获取国补列表失败:', error);
     res.status(500).json({
       success: false,
@@ -1166,21 +1277,31 @@ router.get('/:id', unifiedAuth, requirePermission('subsidy:view'), cacheMiddlewa
         id,
         customer_id,
         phone_id,
+        customer_name,
+        customer_phone,
+        customer_idcard,
         phone_brand,
         phone_model,
         phone_color,
         phone_memory,
+        salesman_name,
         imei1,
         imei2,
         serial_number,
         sale_price,
+        subsidy_photos,
         subsidy_amount,
         subsidy_rate,
         store_id,
         store_name,
         apply_time,
+        apply_status,
         arrival_time,
         remarks,
+        has_different_handler,
+        handler_name,
+        handler_phone,
+        handler_idcard,
         DATE_FORMAT(sale_time, '%Y-%m-%d') as sale_time_formatted
       FROM national_subsidies
       WHERE id = ?
@@ -1200,6 +1321,27 @@ router.get('/:id', unifiedAuth, requirePermission('subsidy:view'), cacheMiddlewa
     // 使用格式化后的时间作为 sale_time
     subsidy.sale_time = subsidy.sale_time_formatted;
     delete subsidy.sale_time_formatted;
+
+    let subsidyPhotos = [];
+    if (subsidy.subsidy_photos) {
+      try {
+        subsidyPhotos = typeof subsidy.subsidy_photos === 'string'
+          ? JSON.parse(subsidy.subsidy_photos)
+          : subsidy.subsidy_photos;
+      } catch (e) {
+        log.error('解析 subsidy_photos 失败:', e);
+        subsidyPhotos = [];
+      }
+    }
+
+    const hasHandler = subsidy.has_different_handler === 1 || subsidy.has_different_handler === true;
+    subsidy.subsidy_photos = subsidyPhotos;
+    subsidy.hasDifferentHandler = hasHandler;
+    subsidy.handlerInfo = hasHandler ? {
+      handlerName: subsidy.handler_name || '',
+      handlerPhone: subsidy.handler_phone || '',
+      handlerIdcard: subsidy.handler_idcard || ''
+    } : null;
 
     res.json({
       success: true,
@@ -1691,12 +1833,19 @@ router.put('/:id/confirm-arrival', unifiedAuth, requirePermission('subsidy:edit'
 
 // 获取国补统计
 router.get('/stats/summary', unifiedAuth, requirePermission('subsidy:view'), cacheMiddleware({ ttl: 10000 }), async (req, res) => {
+  const timer = createRouteTimer('GET /subsidy/stats/summary', req);
   try {
     const { whereConditions, queryParams } = buildSubsidyFilters(req.query);
     const whereClause = `WHERE ${whereConditions.join(' AND ')}`;
+    const includeStoreStats = req.query.include_store_stats === '1';
+    timer.mark('filters built', {
+      includeStoreStats,
+      filterCount: whereConditions.length,
+      queryParamCount: queryParams.length
+    });
 
     // 总体统计
-    const [stats] = await getDatabase().execute(`
+    const statsQuery = `
       SELECT
         COUNT(*) as total_count,
         SUM(CASE WHEN apply_time IS NULL THEN 1 ELSE 0 END) as pending_count,
@@ -1707,24 +1856,53 @@ router.get('/stats/summary', unifiedAuth, requirePermission('subsidy:view'), cac
         COALESCE(SUM(subsidy_amount), 0) as total_subsidy_amount
       FROM national_subsidies
       ${whereClause}
-    `, queryParams);
+    `;
 
-    // 按店铺分组统计
-    const [storeStats] = await getDatabase().execute(`
-      SELECT
-        store_id,
-        store_name,
-        COUNT(*) as total_count,
-        SUM(CASE WHEN apply_time IS NULL THEN 1 ELSE 0 END) as pending_count,
-        SUM(CASE WHEN apply_time IS NOT NULL THEN 1 ELSE 0 END) as completed_count,
-        SUM(CASE WHEN arrival_time IS NOT NULL THEN 1 ELSE 0 END) as approved_count,
-        COALESCE(SUM(CASE WHEN arrival_time IS NOT NULL THEN subsidy_amount ELSE 0 END), 0) as total_arrived_amount,
-        COALESCE(SUM(subsidy_amount), 0) as total_subsidy_amount
-      FROM national_subsidies
-      ${whereClause} AND store_id IS NOT NULL
-      GROUP BY store_id, store_name
-      ORDER BY total_count DESC
-    `, queryParams);
+    let statsQueryMs = 0;
+    let storeStatsQueryMs = 0;
+
+    const queryTasks = [
+      (async () => {
+        const startedAt = process.hrtime.bigint();
+        const result = await getDatabase().execute(statsQuery, queryParams);
+        statsQueryMs = Number(process.hrtime.bigint() - startedAt) / 1e6;
+        return result;
+      })()
+    ];
+
+    if (includeStoreStats) {
+      const storeStatsQuery = `
+        SELECT
+          store_id,
+          store_name,
+          COUNT(*) as total_count,
+          SUM(CASE WHEN apply_time IS NULL THEN 1 ELSE 0 END) as pending_count,
+          SUM(CASE WHEN apply_time IS NOT NULL THEN 1 ELSE 0 END) as completed_count,
+          SUM(CASE WHEN arrival_time IS NOT NULL THEN 1 ELSE 0 END) as approved_count,
+          COALESCE(SUM(CASE WHEN arrival_time IS NOT NULL THEN subsidy_amount ELSE 0 END), 0) as total_arrived_amount,
+          COALESCE(SUM(subsidy_amount), 0) as total_subsidy_amount
+        FROM national_subsidies
+        ${whereClause} AND store_id IS NOT NULL
+        GROUP BY store_id, store_name
+        ORDER BY total_count DESC
+      `;
+
+      queryTasks.push((async () => {
+        const startedAt = process.hrtime.bigint();
+        const result = await getDatabase().execute(storeStatsQuery, queryParams);
+        storeStatsQueryMs = Number(process.hrtime.bigint() - startedAt) / 1e6;
+        return result;
+      })());
+    }
+
+    const results = await Promise.all(queryTasks);
+    const [stats] = results[0][0];
+    const storeStats = includeStoreStats ? results[1][0] : [];
+    timer.mark('database queries completed', {
+      statsQueryMs: statsQueryMs.toFixed(2),
+      storeStatsQueryMs: includeStoreStats ? storeStatsQueryMs.toFixed(2) : '0.00',
+      storeCount: storeStats.length
+    });
 
     // 格式化店铺统计数据
     const formattedStoreStats = storeStats.map(store => ({
@@ -1741,14 +1919,18 @@ router.get('/stats/summary', unifiedAuth, requirePermission('subsidy:view'), cac
       success: true,
       message: '获取统计数据成功',
       data: {
-        ...stats[0],
-        total_arrived_amount: parseFloat(stats[0].total_arrived_amount),
-        total_subsidy_amount: parseFloat(stats[0].total_subsidy_amount),
+        ...stats,
+        total_arrived_amount: parseFloat(stats.total_arrived_amount),
+        total_subsidy_amount: parseFloat(stats.total_subsidy_amount),
         store_stats: formattedStoreStats
       }
     });
+    timer.mark('response sent');
 
   } catch (error) {
+    timer.mark('failed', {
+      error: error.message
+    });
     log.error('❌ 获取统计数据失败:', error);
     res.status(500).json({
       success: false,

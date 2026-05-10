@@ -14,6 +14,7 @@
 | 🎨 [组件开发](components/) | UI 组件规范 | [查看 →](components/) |
 | 🗄️ [数据库文档](database/) | 数据库与模块映射 | [查看 →](database/) |
 | 🚀 [部署文档](deployment/) | 云端部署指南 | [查看 →](deployment/) |
+| ⚡ [性能优化](performance/) | 性能分析与优化方案 | [查看 →](performance/) |
 | 📦 [归档文档](archive/) | 已废弃文档 | [查看 →](archive/) |
 
 ---
@@ -181,6 +182,41 @@ UI 组件开发指南和样式规范。
 
 ---
 
+## ⚡ 性能优化
+
+项目性能分析、优化方案和监控工具。
+
+### [整站分析报告（2026-05-06）](performance/)
+- [执行摘要](performance/整站分析-执行摘要.md) - ⭐ **核心问题和方案总结**
+- [完整报告](performance/整站分析报告_2026-05-06.md) - 详细技术分析（920行）
+- [健康度评分](performance/项目健康度评分.md) - 8维度量化评估
+- [真实性验证](performance/报告真实性验证.md) - 报告数据验证结果
+
+### 快速开始
+- [快速修复指南](performance/QUICK_FIX_GUIDE.md) - ⚡ **1小时快速优化**
+- [优化检查清单](performance/OPTIMIZATION_CHECKLIST.md) - 📋 完整任务跟踪
+- [文档索引](performance/优化文档索引.md) - 🗺️ 所有文档导航
+
+### 工具脚本
+- `scripts/optimize_indexes.sql` - 数据库索引优化SQL
+- `scripts/monitor-performance.sh` - 实时性能监控脚本
+
+### 核心发现
+**严重问题（P0）**:
+1. 数据库查询性能差 - 缺少索引
+2. 缓存策略缺陷 - 集群模式无效
+3. 前端组件过大 - SalesView.vue达10,431行
+4. 连接池配置不当 - connectionLimit过小
+5. API超时过长 - 全局120秒
+
+**预期提升**:
+- API响应时间: 180ms → <50ms (**3.6倍**)
+- 首屏加载: 3.5s → <1.5s (**2.3倍**)
+- 数据库查询: 慢 → 快 (**5-10倍**)
+- 投资回报期: **3.5个月**
+
+---
+
 ## 📦 归档文档
 
 已废弃或过期的文档，仅供参考。
@@ -206,6 +242,11 @@ docs/
 │   ├── leave/
 │   ├── sales/
 │   └── inventory/
+├── performance/                   # 性能优化 ⭐ NEW
+│   ├── INDEX.md
+│   ├── 整站分析报告_2026-05-06.md
+│   ├── QUICK_FIX_GUIDE.md
+│   └── OPTIMIZATION_CHECKLIST.md
 ├── sync/                          # 数据同步
 │   ├── INDEX.md
 │   └── ...
@@ -252,6 +293,7 @@ docs/
 | 数据同步 | `docs/sync/` | 同步相关文档 |
 | 支付管理 | `docs/payments/` | 支付相关文档 |
 | 权限系统 | `docs/permissions/` | 权限相关文档 |
+| 性能优化 | `docs/performance/` | 性能分析与优化 ⭐ NEW |
 
 ### 文件命名规范
 - **业务文档**：大写下划线（如 `LEAVE_CALCULATION_RULES.md`）

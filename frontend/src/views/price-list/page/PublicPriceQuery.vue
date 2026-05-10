@@ -204,7 +204,13 @@
               </el-table-column>
               <el-table-column prop="wholesale_price" label="调货价格" min-width="70" align="right">
                 <template #default="{ row }">
-                  <span v-if="row.wholesale_price" class="price wholesale" :class="{ 'has-stock': passwordVerified && row.stock_quantity > 0 }">{{ Math.round(row.wholesale_price) }}</span>
+                  <span
+                    v-if="hasWholesalePrice(row)"
+                    class="price wholesale"
+                    :class="{ 'has-stock': passwordVerified && row.stock_quantity > 0 }"
+                  >
+                    {{ formatWholesalePrice(row) }}
+                  </span>
                 </template>
               </el-table-column>
             </el-table>
@@ -414,6 +420,16 @@ const verifyInventoryPassword = async (password: string): Promise<boolean> => {
 const handleClear = () => {
   searchKeyword.value = ''
   loadAllData()
+}
+
+const hasWholesalePrice = (row: any) => {
+  const price = row?.display_wholesale_price ?? row?.wholesale_price
+  return price !== null && price !== undefined && price !== '' && Number(price) > 0
+}
+
+const formatWholesalePrice = (row: any) => {
+  const price = Number(row?.display_wholesale_price ?? row?.wholesale_price ?? 0)
+  return Math.round(price)
 }
 
 // 获取当前日期时间字符串

@@ -139,7 +139,11 @@ class SystemSettingsController {
         lowPercent: 8.0,
         highPercent: 3.0,
         threshold: 6000,
-        enabled: true
+        enabled: true,
+        wholesale: {
+          enabled: false,
+          adjustment: 0
+        }
       };
 
       const result = setting ? setting.value : defaultConfig;

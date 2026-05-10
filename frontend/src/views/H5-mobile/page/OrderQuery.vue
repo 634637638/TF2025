@@ -106,7 +106,7 @@
 
             <div class="order-items-preview">
               <div v-for="(item, index) in getFirstItems(order.items)" :key="index" class="item-preview">
-                <img v-if="item.image_url" :src="item.image_url" :alt="item.product_name" />
+                <img v-if="item.image_url" :src="formatImageUrl(item.image_url)" :alt="item.product_name" />
                 <span>{{ item.product_name || '商品' }}</span>
                 <span v-if="order.items.length > 1" class="more-count">等{{ order.items.length }}件</span>
               </div>
@@ -145,6 +145,7 @@ import { ElMessage, type FormInstance } from 'element-plus'
 import { useForm, ValidationRules, useLoadingState } from '@/composables'
 import { getOrdersByPhone } from '@/api/shop-public'
 import { getUserOrders, userManager, tokenManager, type AuthUser } from '@/api/auth'
+import { formatImageUrl } from '@/utils/format'
 import { normalizePhoneDigits } from '@/utils/security'
 import { logger } from '@/utils/logger'
 const router = useRouter()

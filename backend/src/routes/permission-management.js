@@ -1097,36 +1097,50 @@ router.get('/user-permissions', async (req, res) => {
  */
 router.get('/roles', requirePermission('permissions:admin'), async (req, res) => {
   try {
-    // 安全参数验证：强制转换为正整数并限制范围
-    const page = Math.max(1, parseInt(req.query.page) || 1);
-    const limit = Math.max(1, Math.min(10000, parseInt(req.query.limit) || 10000));
+    const normalizedPage = Number.parseInt(req.query.page, 10);
+    const normalizedLimit = Number.parseInt(req.query.limit, 10);
+    const page = Number.isInteger(normalizedPage) && normalizedPage > 0 ? normalizedPage : 1;
+    const limit = Number.isInteger(normalizedLimit) && normalizedLimit > 0
+      ? Math.min(normalizedLimit, 10000)
+      : 10000;
     const offset = (page - 1) * limit;
 
     const pool = getDatabase();
     const { supportsRoleCode, supportsRoleIsActive } = await getPermissionRouteSchemaSupport(pool);
+    const selectCodeColumn = supportsRoleCode ? 'r.code' : 'NULL as code';
+    const selectIsActiveColumn = supportsRoleIsActive ? 'r.is_active' : '1 as is_active';
+    const groupByColumns = [
+      'r.id',
+      'r.name',
+      ...(supportsRoleCode ? ['r.code'] : []),
+      'r.description',
+      'r.created_at',
+      'r.updated_at',
+      ...(supportsRoleIsActive ? ['r.is_active'] : [])
+    ].join(', ');
 
     // 获取角色总数
     const [countResult] = await pool.execute('SELECT COUNT(*) as total FROM roles');
     const total = countResult[0].total;
 
-    // 获取角色列表 - 使用参数化查询防止SQL注入
+    // LIMIT/OFFSET 经过严格整数校验后直接内联，规避部分 MySQL 环境下预处理分页参数异常
     const rolesQuery = `
       SELECT
         r.id,
         r.name,
-        ${supportsRoleCode ? 'r.code,' : 'NULL as code,'}
+        ${selectCodeColumn},
         r.description,
         r.created_at,
         r.updated_at,
-        ${supportsRoleIsActive ? 'r.is_active,' : '1 as is_active,'}
+        ${selectIsActiveColumn},
         COUNT(ur.user_id) as user_count
       FROM roles r
       LEFT JOIN user_roles ur ON r.id = ur.role_id
-      GROUP BY r.id, r.name, ${supportsRoleCode ? 'r.code,' : ''} r.description, r.created_at, r.updated_at${supportsRoleIsActive ? ', r.is_active' : ''}
+      GROUP BY ${groupByColumns}
       ORDER BY r.created_at DESC
-      LIMIT ? OFFSET ?
+      LIMIT ${limit} OFFSET ${offset}
     `;
-    const [roles] = await pool.execute(rolesQuery, [limit, offset]);
+    const [roles] = await pool.query(rolesQuery);
 
     res.json({
       success: true,
@@ -1161,37 +1175,53 @@ router.get('/roles', requirePermission('permissions:admin'), async (req, res) =>
 router.get('/users-with-roles', requirePermission('permissions:admin'), async (req, res) => {
   try {
     // 安全参数验证：强制转换为正整数并限制范围
-    const page = Math.max(1, parseInt(req.query.page) || 1);
-    const limit = Math.max(1, Math.min(10000, parseInt(req.query.limit) || 10000));
+    const normalizedPage = Number.parseInt(req.query.page, 10);
+    const normalizedLimit = Number.parseInt(req.query.limit, 10);
+    const page = Number.isInteger(normalizedPage) && normalizedPage > 0 ? normalizedPage : 1;
+    const limit = Number.isInteger(normalizedLimit) && normalizedLimit > 0
+      ? Math.min(normalizedLimit, 10000)
+      : 10000;
     const offset = (page - 1) * limit;
 
     const pool = getDatabase();
     const { supportsUserStatus, supportsUserLastLogin } = await getPermissionRouteSchemaSupport(pool);
+    const selectStatusColumn = supportsUserStatus ? 'u.status' : '1 as status';
+    const selectLastLoginColumn = supportsUserLastLogin ? 'u.last_login' : 'NULL as last_login';
+    const groupByColumns = [
+      'u.id',
+      'u.username',
+      'u.name',
+      'u.email',
+      ...(supportsUserStatus ? ['u.status'] : []),
+      ...(supportsUserLastLogin ? ['u.last_login'] : []),
+      'u.created_at',
+      'u.updated_at'
+    ].join(', ');
 
     // 获取用户总数
     const [countResult] = await pool.execute('SELECT COUNT(*) as total FROM users');
     const total = countResult[0].total;
 
-    // 获取用户及其角色信息 - 使用参数化查询防止SQL注入
+    // LIMIT/OFFSET 经过严格整数校验后直接内联，规避部分 MySQL 环境下预处理分页参数异常
     const usersQuery = `
       SELECT
         u.id,
         u.username,
         u.name as full_name,
         u.email,
-        ${supportsUserStatus ? 'u.status,' : '1 as status,'}
-        ${supportsUserLastLogin ? 'u.last_login,' : 'NULL as last_login,'}
+        ${selectStatusColumn},
+        ${selectLastLoginColumn},
         u.created_at,
         u.updated_at,
         GROUP_CONCAT(r.name SEPARATOR ', ') as roles
       FROM users u
       LEFT JOIN user_roles ur ON u.id = ur.user_id
       LEFT JOIN roles r ON ur.role_id = r.id
-      GROUP BY u.id, u.username, u.name, u.email${supportsUserStatus ? ', u.status' : ''}${supportsUserLastLogin ? ', u.last_login' : ''}, u.created_at, u.updated_at
+      GROUP BY ${groupByColumns}
       ORDER BY u.created_at DESC
-      LIMIT ? OFFSET ?
+      LIMIT ${limit} OFFSET ${offset}
     `;
-    const [users] = await pool.execute(usersQuery, [limit, offset]);
+    const [users] = await pool.query(usersQuery);
 
     // 调试：检查查询结果中的last_login字段
     log.debug('🔍 权限管理页面用户查询调试:');

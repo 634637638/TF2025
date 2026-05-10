@@ -6,7 +6,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMobile } from './mobile'
 import { useAuthStore } from '@/stores/auth'
-import { unifiedApi } from '@/utils/unified-api'
+import { useMenuStore } from '@/stores/menu'
 import type { MenuItem } from '@/types/menu'
 
 export interface MobileMenuConfig {
@@ -33,6 +33,7 @@ export function useMobileMenu(config: MobileMenuConfig) {
   const route = useRoute()
   const router = useRouter()
   const authStore = useAuthStore()
+  const menuStore = useMenuStore()
   const { isMobile, isTablet, screenSize } = useMobile()
 
   // 菜单状态
@@ -105,15 +106,14 @@ export function useMobileMenu(config: MobileMenuConfig) {
     }
 
     try {
-      // 使用统一的权限过滤菜单 API（与 PC 端一致）
-      const response = await unifiedApi.get('/permissions/user-menu', {
-        params: { _t: Date.now() }
-      })
-      if (response?.success && response?.data?.menuPermissions) {
-        menuItems.value = response.data.menuPermissions
+      if (menuStore.menuItems.length === 0) {
+        await menuStore.loadMenus()
+      }
+
+      if (menuStore.menuItems.length > 0) {
+        menuItems.value = menuStore.menuItems
         computeMenuDistribution()
       } else {
-        // 如果没有认证或获取失败，使用默认菜单
         useDefaultMenu()
       }
     } catch (error) {

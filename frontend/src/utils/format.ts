@@ -437,6 +437,23 @@ export const formatColor = (color: string): string => {
  */
 const KNOWN_IMAGE_PREFIXES = ['/uploads/', '/upload/', '/images/', '/static/', '/assets/']
 
+const getAbsoluteEnvUrl = (value: string | undefined): string => {
+  if (typeof value !== 'string') {
+    return ''
+  }
+
+  const normalizedValue = value.trim()
+  if (!normalizedValue) {
+    return ''
+  }
+
+  if (normalizedValue.startsWith('http://') || normalizedValue.startsWith('https://')) {
+    return normalizedValue
+  }
+
+  return ''
+}
+
 const extractKnownImagePath = (input: string): string => {
   try {
     const url = new URL(input)
@@ -480,13 +497,12 @@ export const formatImageUrl = (path: string | null | undefined): string => {
     return normalizedPath
   }
 
-  const backendUrl = (import.meta.env.VITE_BACKEND_URL || '').trim()
-  if (!backendUrl || typeof window === 'undefined') {
+  const backendOrigin = getBackendOrigin()
+  if (!backendOrigin || typeof window === 'undefined') {
     return normalizedPath
   }
 
   try {
-    const backendOrigin = new URL(backendUrl).origin
     const isSameOrigin = backendOrigin === window.location.origin
     const isHttpsPage = window.location.protocol === 'https:'
     const isHttpsBackend = backendOrigin.startsWith('https://')
@@ -506,6 +522,28 @@ export const formatImageUrl = (path: string | null | undefined): string => {
   } catch {
     return normalizedPath
   }
+}
+
+export const getBackendOrigin = (): string => {
+  const backendUrl = getAbsoluteEnvUrl(import.meta.env.VITE_BACKEND_URL)
+  if (backendUrl) {
+    try {
+      return new URL(backendUrl).origin
+    } catch {
+      // ignore invalid backend url
+    }
+  }
+
+  const apiBaseUrl = getAbsoluteEnvUrl(import.meta.env.VITE_API_BASE_URL)
+  if (apiBaseUrl) {
+    try {
+      return new URL(apiBaseUrl).origin
+    } catch {
+      // ignore invalid api url
+    }
+  }
+
+  return ''
 }
 
 // 品牌颜色映射表（用于生成占位图背景）

@@ -395,6 +395,29 @@ const actionsStyle = computed(() => ({
   }
 }
 
+.header-actions :deep(.el-button) {
+  flex: 0 0 auto;
+  min-width: 0;
+  height: 34px;
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 13px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.header-actions :deep(.el-button > span) {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.header-actions :deep(.el-button i) {
+  font-size: 12px;
+  line-height: 1;
+}
+
 // 移动端按钮文字简化
 @media (max-width: 480px) {
   .header-actions {

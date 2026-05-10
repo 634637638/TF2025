@@ -15,6 +15,8 @@ const getValidSessionToken = () => {
   return token?.trim() || ''
 }
 
+let sharedLockSettingsPromise: Promise<void> | null = null
+
 export const useScreenLock = () => {
   const isLocked = ref(false)
   const lockSettings = ref({
@@ -32,6 +34,11 @@ export const useScreenLock = () => {
 
   // 获取屏幕锁定设置（仅背景设置，密码从后台获取）
   const loadLockSettings = async () => {
+    if (sharedLockSettingsPromise) {
+      return sharedLockSettingsPromise
+    }
+
+    sharedLockSettingsPromise = (async () => {
     try {
       const token = getValidSessionToken()
       const response = await fetch('/api/screen-lock', {
@@ -56,6 +63,11 @@ export const useScreenLock = () => {
     } catch (error) {
       logger.error('加载屏幕锁定设置失败:', error)
     }
+    })().finally(() => {
+      sharedLockSettingsPromise = null
+    })
+
+    return sharedLockSettingsPromise
   }
 
   // 锁定屏幕 - 点击按钮立即锁定

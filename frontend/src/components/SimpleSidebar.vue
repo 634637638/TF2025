@@ -118,11 +118,9 @@ import { useRouter, useRoute } from 'vue-router'
 import { useMobile, useMobileGestures } from '../composables/mobile'
 import { useTheme } from '../composables/useTheme'
 import { useMenuWidth } from '../composables/useMenuWidth'
-import { useAuthStore } from '../stores/auth'
+import { useMenuStore } from '../stores/menu'
 import { useEventBus } from '../composables/core/useEventBus'
 import { refreshIconifyIcons, waitForIconify } from '../utils/iconify'
-import unifiedApi from '@/utils/unified-api'
-import { logger } from '@/utils/logger'
 
 // 使用菜单宽度组合式函数
 const { menuWidth, updateWidth, setMenuWidth, loadAllMenuWidths } = useMenuWidth()
@@ -145,6 +143,7 @@ const emit = defineEmits(['menu-click', 'mobile-close'])
 // Router
 const router = useRouter()
 const route = useRoute()
+const menuStore = useMenuStore()
 
 // 获取非props属性
 const attrs = useAttrs()
@@ -170,37 +169,13 @@ const loadUserMenus = async () => {
     return
   }
 
-  // 没有 props 时，自己加载菜单
-  await loadMenusFromAPI()
-}
-
-// 从 API 加载菜单
-const loadMenusFromAPI = async () => {
-  const authStore = useAuthStore()
-
-  if (!authStore.isAuthenticated) {
+  if (menuStore.menuItems.length > 0) {
+    menuList.value = menuStore.menuItems
     return
   }
 
-  try {
-    const response = await unifiedApi.get('/permissions/user-menu', {
-      params: { _t: Date.now() }
-    })
-
-    if (response && response.success && response.data && response.data.menuPermissions) {
-      menuList.value = response.data.menuPermissions
-    } else if (response && response.success && response.data) {
-      menuList.value = Array.isArray(response.data) ? response.data : []
-    }
-
-    // 菜单加载完成后刷新 Iconify 图标
-    await nextTick()
-    await waitForIconify(3000)
-    refreshIconifyIcons()
-  } catch (error) {
-    logger.error('加载菜单失败:', error)
-    menuList.value = []
-  }
+  await menuStore.loadMenus()
+  menuList.value = menuStore.menuItems
 }
 
 const handleMenuClick = async (menu) => {
