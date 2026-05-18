@@ -12,11 +12,12 @@ const { unifiedAuth, requirePermission } = require('../middleware/unified-auth')
 const { getDatabase, isConnected } = require('../config/database');
 const ApiResponse = require('../utils/response');
 const log = require('../utils/log');
+const { getUploadSubdir, getUploadUrl } = require('../utils/upload-paths');
 
 // 存储配置
 const storage = multer.diskStorage({
   destination: async (req, file, cb) => {
-    const uploadDir = path.join(process.cwd(), 'uploads/screen-lock');
+    const uploadDir = getUploadSubdir('screen-lock');
     try {
       await fs.mkdir(uploadDir, { recursive: true });
       cb(null, uploadDir);
@@ -224,7 +225,7 @@ router.post('/upload/screen-lock',
       }
 
       // 构建文件访问URL
-      const fileUrl = `/uploads/screen-lock/${req.file.filename}`;
+      const fileUrl = getUploadUrl('screen-lock', req.file.filename);
       const fileType = isImage ? '图片' : '视频';
 
       res.json({
@@ -604,7 +605,7 @@ router.delete('/upload/screen-lock/:filename',
         });
       }
 
-      const filePath = path.join(process.cwd(), 'uploads/screen-lock', filename);
+      const filePath = getUploadSubdir('screen-lock', filename);
 
       try {
         await fs.unlink(filePath);

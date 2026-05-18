@@ -34,8 +34,13 @@ export interface NotificationOptions {
   position?: string
   center?: boolean
   offset?: number
+  customClass?: string
+  zIndex?: number
   dangerouslyUseHTMLString?: boolean
 }
+
+const DEFAULT_MESSAGE_Z_INDEX = 6000
+const DEFAULT_MESSAGE_CLASS = 'tf-global-message'
 
 class SimpleNotificationService {
   private static instance: SimpleNotificationService
@@ -117,7 +122,10 @@ class SimpleNotificationService {
       message,
       duration: options.duration || this.defaultConfig.duration,
       showClose: options.showClose ?? this.defaultConfig.showClose,
-      offset: options.offset || 20
+      offset: options.offset || 20,
+      customClass: options.customClass || DEFAULT_MESSAGE_CLASS,
+      zIndex: options.zIndex || DEFAULT_MESSAGE_Z_INDEX,
+      appendTo: document.body
     } as any)
   }
 
@@ -129,7 +137,10 @@ class SimpleNotificationService {
       message,
       duration: options.duration || 6000,  // 错误消息默认显示更久
       showClose: options.showClose ?? this.defaultConfig.showClose,
-      offset: options.offset || 20
+      offset: options.offset || 20,
+      customClass: options.customClass || DEFAULT_MESSAGE_CLASS,
+      zIndex: options.zIndex || DEFAULT_MESSAGE_Z_INDEX,
+      appendTo: document.body
     } as any)
   }
 
@@ -141,7 +152,10 @@ class SimpleNotificationService {
       message,
       duration: options.duration || this.defaultConfig.duration,
       showClose: options.showClose ?? this.defaultConfig.showClose,
-      offset: options.offset || 20
+      offset: options.offset || 20,
+      customClass: options.customClass || DEFAULT_MESSAGE_CLASS,
+      zIndex: options.zIndex || DEFAULT_MESSAGE_Z_INDEX,
+      appendTo: document.body
     } as any)
   }
 
@@ -153,7 +167,10 @@ class SimpleNotificationService {
       message,
       duration: options.duration || this.defaultConfig.duration,
       showClose: options.showClose ?? this.defaultConfig.showClose,
-      offset: options.offset || 20
+      offset: options.offset || 20,
+      customClass: options.customClass || DEFAULT_MESSAGE_CLASS,
+      zIndex: options.zIndex || DEFAULT_MESSAGE_Z_INDEX,
+      appendTo: document.body
     } as any)
   }
 
@@ -167,7 +184,9 @@ class SimpleNotificationService {
       type: options.type as any,
       duration: options.duration || this.defaultConfig.duration,
       position: options.position as any || (this.defaultConfig.position as any),
-      showClose: options.showClose ?? this.defaultConfig.showClose
+      showClose: options.showClose ?? this.defaultConfig.showClose,
+      customClass: options.customClass || DEFAULT_MESSAGE_CLASS,
+      zIndex: options.zIndex || DEFAULT_MESSAGE_Z_INDEX
     })
   }
 

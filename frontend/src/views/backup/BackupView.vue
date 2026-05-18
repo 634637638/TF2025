@@ -45,6 +45,15 @@
               <span class="info-value">{{ storageInfo.total_size || '0 KB' }}</span>
             </div>
           </div>
+          <div class="info-item info-item-path">
+            <div class="info-icon">
+              <i class="fas fa-folder-open"></i>
+            </div>
+            <div class="info-content">
+              <span class="info-label">服务器备份目录</span>
+              <span class="info-value info-path">{{ storageInfo.backup_dir || '-' }}</span>
+            </div>
+          </div>
           <div class="info-actions">
             <el-button
               type="warning"
@@ -179,6 +188,8 @@ const isCleaningUp = ref(false)
 const downloadingFilename = ref<string | null>(null)
 const backupList = ref<any[]>([])
 const storageInfo = ref({
+  backup_dir: '',
+  backend_root: '',
   total_count: 0,
   total_size: '0 KB',
   total_size_bytes: 0
@@ -239,7 +250,8 @@ const createBackup = async () => {
       timeout: 10 * 60 * 1000  // 10分钟超时
     })
     if (response.success) {
-      success(`备份创建成功：${response.data.filename}`)
+      const backupPath = response.data?.path ? `\n路径：${response.data.path}` : ''
+      success(`备份创建成功：${response.data.filename}${backupPath}`)
       await loadBackupList()
     } else {
       throw new Error(response.message || '备份失败')
@@ -418,6 +430,11 @@ onMounted(async () => {
   flex-direction: column;
 }
 
+.storage-info-card .info-item-path {
+  min-width: 320px;
+  flex: 1;
+}
+
 .storage-info-card .info-label {
   font-size: 13px;
   color: var(--text-secondary, #6c757d);
@@ -427,6 +444,13 @@ onMounted(async () => {
   font-size: 20px;
   font-weight: 600;
   color: var(--text-primary, #2c3e50);
+}
+
+.storage-info-card .info-path {
+  font-size: 13px;
+  font-weight: 500;
+  word-break: break-all;
+  line-height: 1.5;
 }
 
 .storage-info-card .info-actions {

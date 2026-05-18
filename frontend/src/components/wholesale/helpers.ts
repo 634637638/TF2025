@@ -32,7 +32,9 @@ export const normalizeWholesaleCustomerSearchItem = (
 ): WholesaleCustomerSearchItem => ({
   id: Number(customer?.id || 0),
   name: normalizePersonName(customer?.name || '', 20),
-  phone: normalizePhoneDigits(customer?.phone || '')
+  phone: normalizePhoneDigits(customer?.phone || ''),
+  member_number: String(customer?.member_number || ''),
+  vip_level: String(customer?.vip_level || 'normal')
 })
 
 export const matchCollectedPrice = (

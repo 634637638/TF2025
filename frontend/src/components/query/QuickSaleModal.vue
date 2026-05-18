@@ -224,78 +224,107 @@
           客户信息
         </div>
 
-        <div class="form-row form-row-3">
-          <el-form-item label="客户手机" prop="customer_phone">
-            <div class="customer-search-container">
+        <div class="form-row form-row-3 customer-form-row">
+          <el-form-item label="客户手机" prop="customer_phone" class="customer-phone-item">
+            <div ref="customerSearchContainerRef" class="customer-search-container">
               <el-input
                 v-model="formData.customer_phone"
-                placeholder="请输入手机号搜索客户"
+                placeholder="请输入用户手机号"
                 @input="handleCustomerPhoneInput"
-                @focus="showCustomerSearchResults = true"
+                @focus="handleCustomerPhoneFocus"
                 @blur="formatCustomerPhone"
                 clearable
                 @clear="handleCustomerClear"
                 maxlength="11"
-              >
-                <template #prefix>
-                  <i class="fas fa-phone"></i>
-                </template>
-              </el-input>
-              <div class="input-hint">只允许数字，11位</div>
+                :readonly="foundCustomer !== null"
+              />
 
               <!-- 客户搜索结果面板 -->
-              <div
-                v-if="showCustomerSearchResults && (customerOptions.length > 0 || customerLookupLoading || (formData.customer_phone.length >= 11 && !foundCustomer && !customerLookupLoading))"
-                class="customer-search-results"
-              >
-                <div v-if="customerLookupLoading" class="search-loading">
-                  <i class="fas fa-spinner fa-spin"></i>
-                  搜索中...
-                </div>
-                <template v-else>
-                  <div
-                    v-for="customer in customerOptions"
-                    :key="customer.id"
-                    class="customer-item"
-                    @mousedown.prevent="selectCustomer(customer)"
-                  >
-                    <div class="customer-info">
-                      <div class="customer-name">{{ customer.name }}</div>
-                      <div class="customer-phone">{{ customer.phone }}</div>
-                      <div v-if="customer.member_number" class="customer-meta">
-                        <span class="member-number">{{ customer.member_number }}</span>
+              <Teleport to="body">
+                <div
+                  v-if="showCustomerSearchResults && (customerOptions.length > 0 || customerLookupLoading || (formData.customer_phone.length >= 11 && !foundCustomer && !customerLookupLoading))"
+                  class="customer-search-results customer-search-results--floating"
+                  :style="customerSearchResultsStyle"
+                >
+                  <div v-if="customerLookupLoading" class="search-loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    搜索中...
+                  </div>
+                  <template v-else>
+                    <div
+                      v-for="customer in customerOptions"
+                      :key="customer.id"
+                      class="customer-item"
+                      @mousedown.prevent="selectCustomer(customer)"
+                    >
+                      <div class="customer-info">
+                        <div class="customer-headline">
+                          <div class="customer-name">{{ customer.name }}</div>
+                          <span v-if="customer.member_number" class="member-number">{{ customer.member_number }}</span>
+                        </div>
+                        <div class="customer-subline">
+                          <span class="customer-phone">{{ customer.phone }}</span>
+                          <span class="vip-badge">{{ getVipLabel(customer.vip_level) }}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <!-- 创建新客户提示 -->
-                  <div
-                    v-if="formData.customer_phone.length >= 11 && customerOptions.length === 0 && !foundCustomer"
-                    class="create-new-customer"
-                    @mousedown.prevent="createNewCustomer"
-                  >
-                    <i class="fas fa-user-plus"></i>
-                    创建新客户 ({{ formData.customer_phone }})
-                    <div style="font-size: 12px; color: #999; margin-top: 4px;">
-                      输入姓名后点击创建
+                    <!-- 创建新客户提示 -->
+                    <div
+                      v-if="formData.customer_phone.length >= 11 && customerOptions.length === 0 && !foundCustomer"
+                      class="create-new-customer"
+                      @mousedown.prevent="createNewCustomer"
+                    >
+                      <i class="fas fa-user-plus"></i>
+                      点击创建该用户
                     </div>
-                  </div>
-                </template>
-              </div>
+                  </template>
+                </div>
+              </Teleport>
             </div>
           </el-form-item>
 
-          <el-form-item label="客户姓名" prop="customer_name">
-            <el-input
-              v-model="formData.customer_name"
-              placeholder="请输入客户姓名"
-              @input="formatCustomerName"
-              clearable
-              data-field="customer_name"
-            />
+          <el-form-item label="客户姓名" prop="customer_name" class="customer-name-item">
+            <div class="customer-name-group">
+              <el-input
+                ref="customerNameInputRef"
+                v-model="formData.customer_name"
+                name="quick-sale-customer-name"
+                placeholder=""
+                :readonly="!foundCustomer && !customerCreating ? true : !customerNameEditing"
+                @dblclick="enableCustomerNameEdit"
+                @touchend="handleCustomerNameTouchEnd"
+                @input="formatCustomerName"
+                @blur="handleCustomerNameBlur"
+                @keyup.enter="saveCustomerNameEdit"
+                :class="{ 'editable': foundCustomer || customerCreating }"
+                clearable
+                data-field="customer_name"
+              />
+              <el-button
+                v-if="customerNameEditing"
+                class="customer-lock-button"
+                type="success"
+                plain
+                @click="saveCustomerNameEdit"
+                title="当前已解锁，点击保存并锁定"
+              >
+                <i class="fas fa-lock-open"></i>
+              </el-button>
+              <el-button
+                v-if="foundCustomer !== null && !customerNameEditing"
+                class="customer-lock-button"
+                type="info"
+                plain
+                @click="clearSelectedCustomer"
+                title="当前已锁定，点击清除客户选择"
+              >
+                <i class="fas fa-lock"></i>
+              </el-button>
+            </div>
             <div class="input-hint">只允许中文和英文</div>
           </el-form-item>
 
-          <el-form-item label="Apple ID" prop="apple_id">
+          <el-form-item label="Apple ID" prop="apple_id" class="customer-apple-item">
             <el-input
               v-model="formData.apple_id"
               placeholder="请输入Apple ID"
@@ -427,10 +456,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch } from 'vue'
-import { ElMessage } from 'element-plus'
-import type { FormInstance } from 'element-plus'
+import { ref, reactive, computed, watch, nextTick } from 'vue'
+import type { FormInstance, FormRules } from 'element-plus'
 import { ValidationRules } from '@/composables'
+import { useNotification } from '@/composables/useNotification'
 import unifiedApi from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import { useAuthStore } from '@/stores/auth'
@@ -473,8 +502,9 @@ const emit = defineEmits<UpdateModelValueEmits & SuccessEmits>()
 
 // ==================== Composables ====================
 
-const { isMobile } = useMobile()
+const { isMobile, isIOS } = useMobile()
 const authStore = useAuthStore()
+const { success: showSuccess, error: showError, warning: showWarning, info: showInfo } = useNotification()
 
 // ==================== 响应式数据 ====================
 
@@ -496,9 +526,16 @@ const filteredModels = ref<string[]>([])
 const customerLookupLoading = ref(false)
 const customerOptions = ref<CustomerOption[]>([])
 const foundCustomer = ref<CustomerOption | null>(null)
+const customerNameEditing = ref(false)
+const customerCreating = ref(false)
 const showCustomerSearchResults = ref(false)
 const customerSearchTimeout = ref<ReturnType<typeof window.setTimeout> | null>(null)
 const customerSearchRequestId = ref(0)
+const customerNameInputRef = ref<any>(null)
+const customerNameLastTapAt = ref(0)
+const customerSearchContainerRef = ref<HTMLElement | null>(null)
+const customerSearchResultsStyle = ref<Record<string, string>>({})
+const customerSearchLayoutFrame = ref<number | null>(null)
 
 const normalizeCustomerOption = (
   customer?: Partial<CustomerOption> & Record<string, unknown> | null
@@ -511,17 +548,80 @@ const clearCustomerSearchTimeout = () => {
   }
 }
 
+const clearCustomerSearchLayoutFrame = () => {
+  if (customerSearchLayoutFrame.value !== null) {
+    cancelAnimationFrame(customerSearchLayoutFrame.value)
+    customerSearchLayoutFrame.value = null
+  }
+}
+
+const updateCustomerSearchResultsLayout = () => {
+  if (!showCustomerSearchResults.value) {
+    customerSearchResultsStyle.value = {}
+    return
+  }
+
+  const container = customerSearchContainerRef.value
+  if (!container) return
+
+  const rect = container.getBoundingClientRect()
+  const viewportWidth = window.visualViewport?.width ?? window.innerWidth
+  const viewportTop = window.visualViewport?.offsetTop ?? 0
+  const viewportHeight = window.visualViewport?.height ?? window.innerHeight
+  const viewportBottom = viewportTop + viewportHeight
+  const safeGap = isMobile.value ? 8 : 12
+  const availableBelow = viewportBottom - rect.bottom - safeGap
+  const availableAbove = rect.top - viewportTop - safeGap
+  const shouldOpenUpward = isMobile.value && availableBelow < 180 && availableAbove > availableBelow
+  const preferredSpace = shouldOpenUpward ? availableAbove : availableBelow
+  const maxHeight = Math.max(Math.min(preferredSpace, 300), 120)
+  const width = Math.min(rect.width, viewportWidth - (safeGap * 2))
+  const left = Math.min(
+    Math.max(rect.left, safeGap),
+    Math.max(safeGap, viewportWidth - width - safeGap)
+  )
+
+  customerSearchResultsStyle.value = shouldOpenUpward
+    ? {
+        position: 'fixed',
+        left: `${Math.round(left)}px`,
+        width: `${Math.round(width)}px`,
+        top: 'auto',
+        bottom: `${Math.max(safeGap, Math.round(window.innerHeight - rect.top + 4))}px`,
+        maxHeight: `${Math.round(maxHeight)}px`
+      }
+    : {
+        position: 'fixed',
+        left: `${Math.round(left)}px`,
+        width: `${Math.round(width)}px`,
+        top: `${Math.round(rect.bottom + 4)}px`,
+        bottom: 'auto',
+        maxHeight: `${Math.round(maxHeight)}px`
+      }
+}
+
+const scheduleCustomerSearchResultsLayout = () => {
+  clearCustomerSearchLayoutFrame()
+  customerSearchLayoutFrame.value = window.requestAnimationFrame(() => {
+    customerSearchLayoutFrame.value = null
+    updateCustomerSearchResultsLayout()
+  })
+}
+
 const applyCustomerSearchResetState = () => {
   const resetState = buildQuickSaleCustomerSearchResetState()
   customerOptions.value = resetState.options
   foundCustomer.value = resetState.foundCustomer
+  customerNameEditing.value = false
+  customerCreating.value = false
   showCustomerSearchResults.value = resetState.visible
   customerLookupLoading.value = resetState.loading
+  customerSearchResultsStyle.value = {}
 }
 
 const resetSubsidyPaymentSelection = (message?: string) => {
   if (message) {
-    ElMessage.error(message)
+    showError(message)
   }
 
   formData.payment_method = ''
@@ -544,6 +644,17 @@ const showProfit = computed(() => {
 const currentUserName = computed(() => {
   return authStore.user?.name || authStore.user?.username || ''
 })
+
+const getVipLabel = (vipLevel?: string) => {
+  const labels: Record<string, string> = {
+    normal: '普通',
+    silver: '银卡',
+    gold: '金卡',
+    platinum: '白金'
+  }
+
+  return labels[vipLevel || 'normal'] || '普通'
+}
 
 // ==================== 表单验证规则 ====================
 
@@ -568,7 +679,7 @@ const imeiRules = computed(() => {
   }
 })
 
-const formRules = {
+const formRules = computed<FormRules>(() => ({
   brand_id: [
     ValidationRules.required('请选择品牌')
   ],
@@ -584,7 +695,7 @@ const formRules = {
   is_new: [
     ValidationRules.required('请选择成色')
   ],
-  imei: imeiRules,
+  imei: imeiRules.value,
   serial_number: [
     ValidationRules.required('请输入序列号')
   ],
@@ -609,7 +720,7 @@ const formRules = {
   operator_id: [
     ValidationRules.required('请选择销售员')
   ]
-}
+}))
 
 // ==================== 方法 ====================
 
@@ -667,7 +778,15 @@ const enableNoIMEIMode = () => {
   })
   formData.isNoIMEIMode = toggleResult.nextMode
   formData.imei = toggleResult.nextIMEI
-  ElMessage[toggleResult.messageType](toggleResult.message)
+  if (toggleResult.messageType === 'success') {
+    showSuccess(toggleResult.message)
+  } else if (toggleResult.messageType === 'warning') {
+    showWarning(toggleResult.message)
+  } else if (toggleResult.messageType === 'info') {
+    showInfo(toggleResult.message)
+  } else {
+    showError(toggleResult.message)
+  }
 
   // 清除IMEI字段的验证错误，避免显示旧的错误提示
   if (formRef.value) {
@@ -726,6 +845,168 @@ const formatCustomerName = () => {
   formData.customer_name = normalizePersonName(formData.customer_name, 20)
 }
 
+const resolveNativeCustomerInput = (source: any): HTMLInputElement | null => {
+  if (!source) return null
+  if (source instanceof HTMLInputElement) return source
+  if (source instanceof HTMLElement && typeof source.querySelector === 'function') {
+    const nestedInput = source.querySelector('input, textarea')
+    if (nestedInput instanceof HTMLInputElement) return nestedInput
+  }
+  if (source?.target instanceof HTMLInputElement) return source.target
+  if (source?.target instanceof HTMLElement && typeof source.target.querySelector === 'function') {
+    const nestedInput = source.target.querySelector('input, textarea')
+    if (nestedInput instanceof HTMLInputElement) return nestedInput
+  }
+  if (source?.input instanceof HTMLInputElement) return source.input
+  if (source?.$el && typeof source.$el.querySelector === 'function') {
+    return source.$el.querySelector('input')
+  }
+  return null
+}
+
+const focusCustomerNameInput = (input: HTMLInputElement | null) => {
+  if (!input) return
+
+  input.readOnly = false
+  input.removeAttribute('readonly')
+  input.disabled = false
+  input.removeAttribute('disabled')
+  input.focus({ preventScroll: true })
+  input.click()
+
+  try {
+    if (isIOS.value) {
+      const length = input.value?.length || 0
+      input.setSelectionRange(length, length)
+    } else {
+      input.select()
+    }
+  } catch {
+    // ignore
+  }
+}
+
+const promptCustomerNameForIOS = async (currentName: string) => {
+  const promptedName = window.prompt('请输入客户姓名', currentName)
+  if (promptedName === null) return null
+
+  const normalizedName = normalizePersonName(promptedName, 20)
+  if (!normalizedName) {
+    showWarning('客户姓名不能为空')
+    return null
+  }
+
+  return normalizedName
+}
+
+const unlockCustomerNameFromTouch = (source: EventTarget | null | undefined) => {
+  const touchedInput = resolveNativeCustomerInput(source)
+  const fallbackInput = resolveNativeCustomerInput(
+    document.querySelector('input[name="quick-sale-customer-name"]')
+  )
+
+  customerNameEditing.value = true
+
+  const targetInput = touchedInput || fallbackInput
+  if (!targetInput) return
+
+  targetInput.readOnly = false
+  targetInput.removeAttribute('readonly')
+  targetInput.disabled = false
+  targetInput.removeAttribute('disabled')
+  targetInput.focus()
+  targetInput.click()
+
+  try {
+    const length = targetInput.value?.length || 0
+    targetInput.setSelectionRange(length, length)
+  } catch {
+    // ignore
+  }
+}
+
+const enableCustomerNameEdit = (event?: MouseEvent) => {
+  if (!foundCustomer.value) return
+  customerNameEditing.value = true
+
+  focusCustomerNameInput(resolveNativeCustomerInput(event) || resolveNativeCustomerInput(customerNameInputRef.value))
+
+  requestAnimationFrame(() => {
+    focusCustomerNameInput(
+      resolveNativeCustomerInput(customerNameInputRef.value) ||
+      document.querySelector('input[name="quick-sale-customer-name"]')
+    )
+  })
+}
+
+const handleCustomerNameTouchEnd = (event: TouchEvent) => {
+  if (!isIOS.value) return
+
+  const now = Date.now()
+  const interval = now - customerNameLastTapAt.value
+  customerNameLastTapAt.value = now
+
+  if (interval > 0 && interval < 320) {
+    if (!foundCustomer.value) return
+    const promptedName = window.prompt('请输入客户姓名', formData.customer_name)
+    if (promptedName === null) return
+    const normalizedName = normalizePersonName(promptedName, 20)
+    if (!normalizedName) {
+      showWarning('客户姓名不能为空')
+      return
+    }
+    formData.customer_name = normalizedName
+    void saveCustomerNameEdit()
+  }
+}
+
+const handleCustomerNameBlur = () => {
+  if (customerCreating.value && !foundCustomer.value) {
+    void createNewCustomer()
+    return
+  }
+
+  if (customerNameEditing.value && foundCustomer.value) {
+    void saveCustomerNameEdit()
+  } else {
+    customerNameEditing.value = false
+  }
+}
+
+const saveCustomerNameEdit = async () => {
+  if (!foundCustomer.value) {
+    customerNameEditing.value = false
+    return
+  }
+
+  formatCustomerName()
+
+  if (!formData.customer_name) {
+    showWarning('客户姓名不能为空')
+    return
+  }
+
+  try {
+    const response = await unifiedApi.put(`/customers/${foundCustomer.value.id}`, {
+      name: formData.customer_name,
+      apple_id: normalizeAppleId(formData.apple_id) || null
+    })
+
+    if (!response.success) {
+      throw new Error(response.message || '更新客户失败')
+    }
+
+    foundCustomer.value.name = formData.customer_name
+    foundCustomer.value.apple_id = normalizeAppleId(formData.apple_id)
+    showSuccess('客户信息更新成功')
+  } catch (err) {
+    logger.error('更新客户失败:', err)
+    showError(err instanceof Error ? err.message : '更新客户失败')
+  } finally {
+    customerNameEditing.value = false
+  }
+}
+
 // 格式化Apple ID - 支持手机号或邮箱形式
 const formatAppleId = () => {
   formData.apple_id = normalizeAppleId(formData.apple_id)
@@ -745,6 +1026,7 @@ const handleCustomerPhoneInput = () => {
 
   if (foundCustomer.value && normalizeCustomerPhone(foundCustomer.value.phone) !== phone) {
     foundCustomer.value = null
+    customerCreating.value = false
   }
 
   // 清除之前的超时
@@ -756,12 +1038,20 @@ const handleCustomerPhoneInput = () => {
     return
   }
 
+  showCustomerSearchResults.value = true
+  scheduleCustomerSearchResultsLayout()
+
   // 延迟搜索（防抖）
   customerSearchTimeout.value = setTimeout(async () => {
     if (shouldSearchQuickSaleCustomer(phone)) {
       await searchCustomers(phone)
     }
   }, 300)
+}
+
+const handleCustomerPhoneFocus = () => {
+  showCustomerSearchResults.value = true
+  scheduleCustomerSearchResultsLayout()
 }
 
 const isActiveCustomerSearch = (query: string, requestId: number) =>
@@ -810,8 +1100,11 @@ const selectCustomer = (customer: CustomerOption) => {
   customerSearchRequestId.value += 1
   Object.assign(formData, selectionState.formPatch)
   foundCustomer.value = selectionState.customer
+  customerNameEditing.value = false
+  customerCreating.value = false
   showCustomerSearchResults.value = false
   customerOptions.value = []
+  customerSearchResultsStyle.value = {}
 
   // 清除手机号字段的验证错误
   if (formRef.value) {
@@ -822,56 +1115,64 @@ const selectCustomer = (customer: CustomerOption) => {
 
 // 创建新客户（后端自动生成会员号）
 const createNewCustomer = async () => {
-  formatCustomerName()
+  formatCustomerPhone()
   formatAppleId()
 
-  // 验证姓名是否已输入
-  if (!formData.customer_name) {
-    ElMessage.warning('请先输入客户姓名')
+  if (!isValidMobilePhone(formData.customer_phone)) {
+    showWarning('请输入有效的手机号码')
+    customerLookupLoading.value = false
     return
   }
 
-  // 验证手机号格式
-  if (!isValidMobilePhone(formData.customer_phone)) {
-    ElMessage.warning('请输入有效的手机号码')
+  if (!customerCreating.value) {
+    customerCreating.value = true
+    customerNameEditing.value = true
+    showCustomerSearchResults.value = false
+    requestAnimationFrame(() => {
+      focusCustomerNameInput(
+        resolveNativeCustomerInput(customerNameInputRef.value) ||
+        document.querySelector('input[name="quick-sale-customer-name"]')
+      )
+    })
+    return
+  }
+
+  formatCustomerName()
+
+  if (!formData.customer_name) {
+    showWarning('请输入客户姓名')
     return
   }
 
   try {
     customerLookupLoading.value = true
 
-    // 后端会自动生成会员号，无需前端生成
-    const newCustomerData = buildQuickSaleCustomerPayload(formData)
-
-    const response = await unifiedApi.post('/customers', newCustomerData)
+    const response = await unifiedApi.post('/customers', buildQuickSaleCustomerPayload(formData))
 
     if (!response.success || !response.data) {
       throw new Error(response.message || '创建客户失败')
     }
 
-    const newCustomer = response.data
-
     const selectionState = buildQuickSaleCustomerSelectionPatch(
-      normalizeCustomerOption(newCustomer)
+      normalizeCustomerOption(response.data)
     )
     customerSearchRequestId.value += 1
     Object.assign(formData, selectionState.formPatch)
     foundCustomer.value = selectionState.customer
-
-    // 隐藏搜索结果
+    customerCreating.value = false
+    customerNameEditing.value = false
     showCustomerSearchResults.value = false
     customerOptions.value = []
 
-    // 清除客户相关字段的验证错误
     if (formRef.value) {
       formRef.value.clearValidate('customer_phone')
       formRef.value.clearValidate('customer_name')
     }
 
-    ElMessage.success(`新客户 "${selectionState.customer.name}" 创建成功`)
+    showSuccess(`新客户 "${selectionState.customer.name}" 创建成功`)
   } catch (err) {
     logger.error('创建客户失败:', err)
-    ElMessage.error(err instanceof Error ? err.message : '创建客户失败')
+    showError(err instanceof Error ? err.message : '创建客户失败')
   } finally {
     customerLookupLoading.value = false
   }
@@ -883,6 +1184,12 @@ const handleCustomerClear = () => {
   customerSearchRequestId.value += 1
   Object.assign(formData, buildQuickSaleCustomerClearedPatch())
   applyCustomerSearchResetState()
+}
+
+const clearSelectedCustomer = () => {
+  handleCustomerClear()
+  formData.customer_phone = ''
+  customerCreating.value = false
 }
 
 // 重置表单
@@ -925,18 +1232,18 @@ const handleSubmit = async () => {
     const response = await unifiedApi.post('/inventory/quick-sale', buildQuickSaleSubmitPayload(formData))
 
     if (response.success) {
-      ElMessage.success('快速出库成功！')
+      showSuccess('快速出库成功！')
       emit('success')
       handleCancel()
     } else {
-      ElMessage.error(response.message || '快速出库失败')
+      showError(response.message || '快速出库失败')
     }
   } catch (err: unknown) {
     logger.error('快速出库失败:', err)
     const errorMessage = err instanceof Error
       ? err.message
       : '快速出库失败，请稍后重试'
-    ElMessage.error(errorMessage)
+    showError(errorMessage)
   } finally {
     submitting.value = false
   }
@@ -971,9 +1278,10 @@ watch(() => formData.sale_price, () => {
 const handleClickOutside = (event: MouseEvent) => {
   const target = event.target as HTMLElement
   const searchContainer = target.closest('.customer-search-container')
+  const searchResults = target.closest('.customer-search-results')
 
   // 如果点击的是搜索容器内的元素，不关闭
-  if (searchContainer) {
+  if (searchContainer || searchResults) {
     return
   }
 
@@ -990,16 +1298,39 @@ const handleClickOutside = (event: MouseEvent) => {
   }
 
   showCustomerSearchResults.value = false
+  customerSearchResultsStyle.value = {}
 }
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
+  document.addEventListener('scroll', scheduleCustomerSearchResultsLayout, true)
+  window.addEventListener('resize', scheduleCustomerSearchResultsLayout, { passive: true })
+  window.visualViewport?.addEventListener('resize', scheduleCustomerSearchResultsLayout)
+  window.visualViewport?.addEventListener('scroll', scheduleCustomerSearchResultsLayout)
 })
 
 onUnmounted(() => {
   clearCustomerSearchTimeout()
+  clearCustomerSearchLayoutFrame()
   document.removeEventListener('click', handleClickOutside)
+  document.removeEventListener('scroll', scheduleCustomerSearchResultsLayout, true)
+  window.removeEventListener('resize', scheduleCustomerSearchResultsLayout)
+  window.visualViewport?.removeEventListener('resize', scheduleCustomerSearchResultsLayout)
+  window.visualViewport?.removeEventListener('scroll', scheduleCustomerSearchResultsLayout)
 })
+
+watch(
+  () => [showCustomerSearchResults.value, customerOptions.value.length, customerLookupLoading.value],
+  async ([visible]) => {
+    if (!visible) {
+      customerSearchResultsStyle.value = {}
+      return
+    }
+
+    await nextTick()
+    scheduleCustomerSearchResultsLayout()
+  }
+)
 </script>
 
 <style lang="scss" scoped>
@@ -1128,37 +1459,41 @@ onUnmounted(() => {
 
 .customer-search-results {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 4px);
   left: 0;
   right: 0;
-  max-height: 250px;
+  max-height: 300px;
   overflow-y: auto;
   background: white;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  z-index: 1000;
-  margin-top: 4px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1001;
+  min-width: 0;
 
   .search-loading {
-    padding: 12px 16px;
+    padding: 16px 20px;
     text-align: center;
-    color: #909399;
-    font-size: 13px;
+    color: #666;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 
     i {
-      margin-right: 6px;
+      margin-right: 0;
     }
   }
 
   .customer-item {
-    padding: 10px 16px;
+    padding: 16px 20px;
     cursor: pointer;
-    border-bottom: 1px solid #f5f5f5;
+    border-bottom: 1px solid #eee;
     transition: background-color 0.2s;
 
     &:hover {
-      background-color: #f5f7fa;
+      background-color: #f8f9fa;
     }
 
     &:last-child {
@@ -1166,51 +1501,196 @@ onUnmounted(() => {
     }
 
     .customer-info {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+
+      .customer-headline {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .customer-subline {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 8px;
+      }
+
       .customer-name {
         font-size: 14px;
-        font-weight: 500;
-        color: #303133;
-        margin-bottom: 4px;
+        font-weight: 600;
+        color: #1f2937;
+        line-height: 1.2;
+        min-width: 0;
       }
 
       .customer-phone {
-        font-size: 13px;
-        color: #606266;
-        margin-bottom: 4px;
+        font-size: 12px;
+        color: #475569;
+        line-height: 1.2;
       }
 
-      .customer-meta {
-        .member-number {
-          display: inline-block;
-          padding: 2px 6px;
-          background-color: #ecf5ff;
-          color: #409eff;
-          border-radius: 3px;
-          font-size: 11px;
-        }
+      .member-number {
+        padding: 2px 8px;
+        background: linear-gradient(135deg, #eef6ff 0%, #dbeafe 100%);
+        color: #1d4ed8;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+        line-height: 1.2;
+        justify-self: end;
+      }
+
+      .vip-badge {
+        background: linear-gradient(135deg, #fb7185 0%, #f59e0b 100%);
+        color: white;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+        line-height: 1.2;
+        flex-shrink: 0;
+        justify-self: end;
+        box-shadow: 0 6px 14px rgba(245, 158, 11, 0.18);
       }
     }
   }
 
   .create-new-customer {
-    padding: 12px 16px;
+    padding: 16px 20px;
+    background: #f8f9fa;
     cursor: pointer;
-    background-color: #f0f9ff;
-    border-top: 1px solid #e4e7ed;
     transition: background-color 0.2s;
+    color: #28a745;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 500;
 
     &:hover {
-      background-color: #e0f0ff;
+      background: #e9ecef;
     }
 
     i {
-      margin-right: 6px;
-      color: #67c23a;
+      margin-right: 0;
     }
-
-    color: #303133;
-    font-size: 13px;
   }
+}
+
+.customer-search-results--floating {
+  position: fixed;
+  right: auto;
+  z-index: 3100;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 768px) {
+  .customer-form-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .customer-phone-item,
+  .customer-name-item {
+    grid-column: span 1;
+    min-width: 0;
+  }
+
+  .customer-apple-item {
+    grid-column: 1 / -1;
+  }
+
+  .customer-search-results {
+    max-height: 250px;
+  }
+
+  .customer-search-results .search-loading {
+    padding: 16px 20px;
+    font-size: 14px;
+    gap: 8px;
+  }
+
+  .customer-search-results .customer-item {
+    padding: 9px 10px;
+  }
+
+  .customer-search-results .customer-info {
+    gap: 5px;
+  }
+
+  .customer-search-results .customer-headline,
+  .customer-search-results .customer-subline {
+    gap: 4px;
+  }
+
+  .customer-search-results .customer-name {
+    font-size: 12px;
+  }
+
+  .customer-search-results .member-number {
+    font-size: 8px;
+    line-height: 1.1;
+    padding: 1px 5px;
+    white-space: nowrap;
+  }
+
+  .customer-search-results .customer-phone {
+    font-size: 11px;
+  }
+
+  .customer-search-results .vip-badge {
+    font-size: 8px;
+    padding: 1px 5px;
+    line-height: 1.1;
+    white-space: nowrap;
+    box-shadow: none;
+  }
+
+  .customer-search-results .create-new-customer {
+    padding: 10px 12px;
+    font-size: 12px;
+    gap: 6px;
+  }
+}
+
+.customer-name-group {
+  display: flex;
+  align-items: stretch;
+}
+
+.customer-name-group :deep(.el-input) {
+  flex: 1;
+}
+
+.customer-name-group:has(.customer-lock-button) :deep(.el-input__wrapper) {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.customer-lock-button {
+  width: 36px !important;
+  min-width: 36px !important;
+  height: 36px !important;
+  padding: 0 !important;
+  flex: 0 0 36px !important;
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+}
+
+.customer-lock-button :deep(.el-button__content) {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.customer-lock-button i {
+  font-size: 14px;
 }
 
 .lookup-loading {
@@ -1328,6 +1808,17 @@ onUnmounted(() => {
     }
   }
 
+  .customer-lock-button {
+    width: 32px !important;
+    min-width: 32px !important;
+    height: 32px !important;
+    flex-basis: 32px !important;
+  }
+
+  .customer-lock-button i {
+    font-size: 13px;
+  }
+
 }
 
 // 小屏幕适配（iPhone SE）
@@ -1338,9 +1829,6 @@ onUnmounted(() => {
     --dialog-max-width: calc(100vw - 8px);
     --mobile-dialog-body-padding: 6px 4px 6px;
     --mobile-dialog-footer-padding: 0 4px 4px;
-  }
-
-  :global(.quick-sale-dialog.mobile-dialog-sheet-panel) {
   }
 
   .quick-sale-form {

@@ -159,6 +159,8 @@ router.get('/storage', unifiedAuth, requirePermission('permissions:admin'), (req
     res.json({
       success: true,
       data: {
+        backup_dir: backupService.getBackupDir(),
+        backend_root: backupService.getBackendRoot(),
         total_count: backups.length,
         total_size: totalSizeFormatted,
         total_size_bytes: totalSize

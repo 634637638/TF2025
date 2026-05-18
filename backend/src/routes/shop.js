@@ -12,6 +12,7 @@ const { unifiedAuth, requirePermission, requireAnyPermission, requireAdmin } = r
 const ApiResponse = require('../utils/response');
 const ShopService = require('../services/shop.service');
 const log = require('../utils/log');
+const { getUploadsRoot, getUploadSubdir, getUploadUrl } = require('../utils/upload-paths');
 
 const shopService = new ShopService();
 
@@ -69,8 +70,7 @@ const H5_ASSET_EDIT_PERMISSIONS = [
 // 配置 multer 存储
 const storage = multer.diskStorage({
   destination: async (req, file, cb) => {
-    // 使用相对于后端目录的 uploads 路径（shop 目录用于商城配置图片）
-    const uploadDir = path.join(__dirname, '../../uploads/shop');
+    const uploadDir = getUploadSubdir('shop');
     log.debug('[Multer] 上传目录:', uploadDir);
     try {
       await fs.mkdir(uploadDir, { recursive: true });
@@ -208,7 +208,7 @@ router.post('/upload/image',
 
       // 生成文件访问URL数组（返回相对路径，由前端负责拼接完整URL）
       const uploadedFiles = files.map(file => ({
-        url: `/uploads/shop/${file.filename}`,
+        url: getUploadUrl('shop', file.filename),
         filename: file.filename,
         originalname: file.originalname,
         size: file.size
@@ -248,11 +248,7 @@ router.post('/delete-image',
           const path = require('path');
 
           // 图片 URL 格式：/uploads/shop/xxx.jpg
-          // 根据环境获取正确的上传目录
-          const IS_PRODUCTION = process.env.NODE_ENV === 'production';
-          const baseUploadPath = IS_PRODUCTION
-            ? (process.env.UPLOAD_PATH || '/www/wwwroot/v6.cn9527.cn/backend/uploads')
-            : path.join(__dirname, '../../uploads');
+          const baseUploadPath = getUploadsRoot();
 
           // 去掉开头的 /uploads/ 然后构建完整路径
           const relativePath = image_url.startsWith('/uploads/')
@@ -1170,9 +1166,7 @@ router.delete('/products/:id/images',
         if (image.image_url) {
           try {
             // 确定上传目录路径
-            const uploadDir = process.env.NODE_ENV === 'production'
-              ? (process.env.UPLOAD_PATH || '/www/wwwroot/v6.cn9527.cn/backend/uploads')
-              : path.join(__dirname, '../../uploads');
+            const uploadDir = getUploadsRoot();
 
             // 图片 URL 格式：/uploads/phones/phone-xxx.jpg
             const relativePath = image.image_url.startsWith('/uploads/')

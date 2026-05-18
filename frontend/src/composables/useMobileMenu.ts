@@ -114,74 +114,13 @@ export function useMobileMenu(config: MobileMenuConfig) {
         menuItems.value = menuStore.menuItems
         computeMenuDistribution()
       } else {
-        useDefaultMenu()
+        menuItems.value = []
+        computeMenuDistribution()
       }
     } catch (error) {
-      // 使用默认菜单作为后备
-      useDefaultMenu()
+      menuItems.value = []
+      computeMenuDistribution()
     }
-  }
-
-  // 使用默认菜单结构
-  const useDefaultMenu = () => {
-    const defaultMenuItems: MenuItem[] = [
-      {
-        id: 'dashboard',
-        name: '仪表盘',
-        title: '仪表盘',
-        url: '/dashboard',
-        icon: 'fas fa-tachometer-alt',
-        priority: 1,
-        children: []
-      },
-      {
-        id: 'menu',
-        name: '菜单管理',
-        title: '菜单管理',
-        url: '/menu',
-        icon: 'fas fa-bars',
-        priority: 2,
-        children: []
-      },
-      {
-        id: 'sales',
-        name: '销售管理',
-        title: '销售管理',
-        url: '/sales',
-        icon: 'fas fa-shopping-cart',
-        priority: 3,
-        children: []
-      },
-      {
-        id: 'inventory',
-        name: '库存管理',
-        title: '库存管理',
-        url: '/inventory',
-        icon: 'fas fa-warehouse',
-        priority: 4,
-        children: []
-      },
-      {
-        id: 'customers',
-        name: '客户管理',
-        title: '客户管理',
-        url: '/customers',
-        icon: 'fas fa-users',
-        priority: 5,
-        children: []
-      },
-      {
-        id: 'system',
-        name: '系统设置',
-        title: '系统设置',
-        url: '/system',
-        icon: 'fas fa-cog',
-        priority: 6,
-        children: []
-      }
-    ]
-    menuItems.value = defaultMenuItems
-    computeMenuDistribution()
   }
 
   // 切换侧滑菜单

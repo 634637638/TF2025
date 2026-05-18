@@ -32,10 +32,18 @@
               :customer-search-results="customerSearchResults"
               :customer-searching="customerSearching"
               :selected-customer="selectedCustomer"
+              :customer-name-editing="customerNameEditing"
+              :customer-creating="customerCreating"
               :handle-phone-input="handlePhoneInput"
               :handle-phone-focus="handlePhoneFocus"
               :handle-phone-blur="handlePhoneBlur"
               :handle-customer-name-input="handleCustomerNameInput"
+              :enable-customer-name-edit="enableCustomerNameEdit"
+              :handle-customer-name-touch-end="handleCustomerNameTouchEnd"
+              :handle-customer-name-blur="handleCustomerNameBlur"
+              :save-customer-name-edit="saveCustomerNameEdit"
+              :clear-selected-customer="clearSelectedCustomer"
+              :customer-name-input-ref="customerNameInputRef"
               :select-customer="selectCustomer"
               :auto-create-customer="autoCreateCustomer"
               :handle-payment-method-change="handlePaymentMethodChange"
@@ -90,8 +98,10 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
-import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import type { FormInstance, FormRules } from 'element-plus'
 import { ValidationRules } from '@/composables'
+import { useNotification } from '@/composables/useNotification'
+import { useMobileDetection } from '@/composables/mobile'
 import { unifiedApi } from '@/utils/unified-api'
 import { isValidMobilePhone, normalizePersonName } from '@/utils/security'
 import { logger } from '@/utils/logger'
@@ -142,6 +152,8 @@ const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 const authStore = useAuthStore()
+const mobileDetection = useMobileDetection()
+const { success: showSuccess, error: showError, warning: showWarning } = useNotification()
 
 const formRef = ref<FormInstance>()
 const submitting = ref(false)
@@ -149,10 +161,14 @@ const customerSearching = ref(false)
 const searchTimer = ref<number | null>(null)
 const showCustomerSearch = ref(false)
 const selectedCustomer = ref<CustomerSearchItem | null>(null)
+const customerNameEditing = ref(false)
+const customerCreating = ref(false)
 const customerSearchResults = ref<CustomerSearchItem[]>([])
 const customerSearchCache = ref(new Map<string, CustomerSearchItem[]>())
 const isSelectingCustomer = ref(false)
 const customerSearchRequestId = ref(0)
+const customerNameInputRef = ref<any>(null)
+const customerNameLastTapAt = ref(0)
 
 // 表单数据
 const formData = ref<WholesaleFormData>(createWholesaleFormData())
@@ -310,6 +326,7 @@ const handlePhoneInput = (value: string) => {
   if (inputState.shouldClearSelectedCustomer) {
     selectedCustomer.value = null
     formData.value.customer_id = null
+    customerCreating.value = false
   }
 
   // 清除之前的定时器
@@ -334,6 +351,108 @@ const handleCustomerNameInput = (value: string) => {
   formData.value.customer_name = normalizePersonName(value, 20)
 }
 
+const resolveNativeCustomerInput = (source: any): HTMLInputElement | null => {
+  if (!source) return null
+  if (source instanceof HTMLInputElement) return source
+  if (source?.target instanceof HTMLInputElement) return source.target
+  if (source?.input instanceof HTMLInputElement) return source.input
+  if (source?.$el && typeof source.$el.querySelector === 'function') {
+    return source.$el.querySelector('input')
+  }
+  return null
+}
+
+const focusCustomerNameInput = (input: HTMLInputElement | null) => {
+  if (!input) return
+
+  input.readOnly = false
+  input.removeAttribute('readonly')
+  input.focus({ preventScroll: true })
+
+  try {
+    if (mobileDetection.isIOS.value) {
+      const length = input.value?.length || 0
+      input.setSelectionRange(length, length)
+    } else {
+      input.select()
+    }
+  } catch {
+    // ignore
+  }
+}
+
+const enableCustomerNameEdit = (event?: MouseEvent) => {
+  if (!selectedCustomer.value) return
+  customerNameEditing.value = true
+
+  focusCustomerNameInput(resolveNativeCustomerInput(event) || resolveNativeCustomerInput(customerNameInputRef.value))
+
+  nextTick(() => {
+    focusCustomerNameInput(
+      resolveNativeCustomerInput(customerNameInputRef.value) ||
+      document.querySelector('input[name="wholesale-customer-name"]')
+    )
+  })
+}
+
+const handleCustomerNameTouchEnd = () => {
+  if (!mobileDetection.isIOS.value) return
+
+  const now = Date.now()
+  const interval = now - customerNameLastTapAt.value
+  customerNameLastTapAt.value = now
+
+  if (interval > 0 && interval < 320) {
+    enableCustomerNameEdit()
+  }
+}
+
+const handleCustomerNameBlur = () => {
+  if (customerCreating.value && !selectedCustomer.value) {
+    void autoCreateCustomer()
+    return
+  }
+
+  if (customerNameEditing.value && selectedCustomer.value) {
+    void saveCustomerNameEdit()
+  } else {
+    customerNameEditing.value = false
+  }
+}
+
+const saveCustomerNameEdit = async () => {
+  if (!selectedCustomer.value) {
+    customerNameEditing.value = false
+    return
+  }
+
+  const normalizedCustomerName = normalizePersonName(formData.value.customer_name, 20)
+
+  if (!normalizedCustomerName) {
+    showError('客户姓名不能为空')
+    return
+  }
+
+  try {
+    const response = await unifiedApi.put(`/customers/${selectedCustomer.value.id}`, {
+      name: normalizedCustomerName
+    })
+
+    if (!response.success) {
+      throw new Error(response.message || '更新客户失败')
+    }
+
+    selectedCustomer.value.name = normalizedCustomerName
+    formData.value.customer_name = normalizedCustomerName
+    showSuccess('客户信息更新成功')
+  } catch (error: unknown) {
+    logger.error('更新客户失败:', error)
+    showError(resolveWholesaleErrorMessage(error, '更新客户失败'))
+  } finally {
+    customerNameEditing.value = false
+  }
+}
+
 const isActiveCustomerSearch = (phoneNumber: string, requestId: number) =>
   requestId === customerSearchRequestId.value &&
   normalizeCustomerPhone(formData.value.customer_phone) === phoneNumber
@@ -343,13 +462,6 @@ const searchCustomers = async (phoneNumber: string) => {
   const requestId = customerSearchRequestId.value
 
   try {
-    if (customerSearchCache.value.has(phoneNumber)) {
-      if (isActiveCustomerSearch(phoneNumber, requestId)) {
-        customerSearchResults.value = customerSearchCache.value.get(phoneNumber) || []
-      }
-      return
-    }
-
     customerSearching.value = true
     const results = await searchWholesaleCustomers(phoneNumber)
     if (!isActiveCustomerSearch(phoneNumber, requestId)) {
@@ -376,6 +488,8 @@ const selectCustomer = (customer: CustomerSearchItem) => {
   const nextCustomerState = buildWholesaleCreatedCustomerState(customer)
   selectedCustomer.value = nextCustomerState.customer
   Object.assign(formData.value, nextCustomerState.formPatch)
+  customerNameEditing.value = false
+  customerCreating.value = false
   showCustomerSearch.value = false
   customerSearchResults.value = []
 
@@ -395,21 +509,32 @@ const autoCreateCustomer = async () => {
   const normalizedCustomerPhone = normalizeCustomerPhone(formData.value.customer_phone)
   const normalizedCustomerName = normalizePersonName(formData.value.customer_name, 20)
 
-  if (!normalizedCustomerName) {
-    formData.value.customer_name = '客户'
-  } else {
-    formData.value.customer_name = normalizedCustomerName
+  if (!isValidMobilePhone(normalizedCustomerPhone)) {
+    showError('请输入有效的手机号码')
+    customerSearching.value = false
+    return
   }
 
-  if (!isValidMobilePhone(normalizedCustomerPhone)) {
-    ElMessage.error('请输入有效的手机号码')
+  if (!customerCreating.value) {
+    customerCreating.value = true
+    customerNameEditing.value = true
+    showCustomerSearch.value = false
+    nextTick(() => {
+      focusCustomerNameInput(
+        resolveNativeCustomerInput(customerNameInputRef.value) ||
+        document.querySelector('input[name="wholesale-customer-name"]')
+      )
+    })
+    return
+  }
+
+  if (!normalizedCustomerName) {
+    showError('请输入客户姓名')
     return
   }
 
   try {
     const newCustomerData = buildAutoCreateCustomerPayload(formData.value, props.mode)
-    formData.value.customer_name = newCustomerData.name
-
     const response = await unifiedApi.post('/customers', newCustomerData)
 
     if (response.success) {
@@ -420,14 +545,30 @@ const autoCreateCustomer = async () => {
       Object.assign(formData.value, nextCustomerState.formPatch)
       customerSearchRequestId.value += 1
       customerSearchCache.value.set(normalizedCustomerPhone, [nextCustomerState.customer])
+      customerCreating.value = false
+      customerNameEditing.value = false
       showCustomerSearch.value = false
       customerSearchResults.value = []
-      ElMessage.success('新客户创建成功')
+      showSuccess('新客户创建成功')
     }
   } catch (error: unknown) {
     logger.error('创建客户失败:', error)
-    ElMessage.error(resolveWholesaleErrorMessage(error, '创建客户失败'))
+    showError(resolveWholesaleErrorMessage(error, '创建客户失败'))
+  } finally {
+    customerSearching.value = false
   }
+}
+
+const clearSelectedCustomer = () => {
+  selectedCustomer.value = null
+  formData.value.customer_id = null
+  formData.value.customer_phone = ''
+  formData.value.customer_name = ''
+  customerNameEditing.value = false
+  customerCreating.value = false
+  customerSearchResults.value = []
+  showCustomerSearch.value = false
+  customerSearchRequestId.value += 1
 }
 
 const loadDialogOptions = async () => {
@@ -447,6 +588,8 @@ const mode = computed(() => props.mode)
 const applyWholesaleSearchResetState = () => {
   const resetState = createWholesaleSearchResetState()
   selectedCustomer.value = resetState.selectedCustomer
+  customerNameEditing.value = false
+  customerCreating.value = false
   customerSearchResults.value = resetState.customerSearchResults
   showCustomerSearch.value = resetState.showCustomerSearch
   customerSearching.value = resetState.customerSearching
@@ -500,7 +643,11 @@ const handleSubmit = async () => {
       isValidMobilePhone
     })
     if (submitValidationError) {
-      ElMessage[submitValidationError.includes('批发价格') ? 'warning' : 'error'](submitValidationError)
+      if (submitValidationError.includes('批发价格')) {
+        showWarning(submitValidationError)
+      } else {
+        showError(submitValidationError)
+      }
       return
     }
 
@@ -523,7 +670,7 @@ const handleSubmit = async () => {
       const totalCount = response.data?.total_count || props.phoneIds.length
       const message = response.message || `${props.mode === 'wholesale' ? '批发' : '划拨'}成功`
 
-      ElMessage.success(message)
+      showSuccess(message)
       emit('success', {
         success_count: successCount,
         total_count: totalCount,
@@ -531,11 +678,11 @@ const handleSubmit = async () => {
       })
       handleClose()
     } else {
-      ElMessage.error(response.message || '操作失败')
+      showError(response.message || '操作失败')
     }
   } catch (error: unknown) {
     logger.error('提交失败:', error)
-    ElMessage.error(resolveWholesaleErrorMessage(error, '操作失败，请稍后重试'))
+    showError(resolveWholesaleErrorMessage(error, '操作失败，请稍后重试'))
   } finally {
     submitting.value = false
   }

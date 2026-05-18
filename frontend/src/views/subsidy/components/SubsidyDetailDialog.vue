@@ -121,7 +121,7 @@
             :key="`${currentDetail.id}-photo-${index}`"
             class="detail-photo-item"
           >
-            <img :src="photo" alt="国补照片" class="detail-photo-image" />
+            <img :src="resolvePhotoUrl(photo)" alt="国补照片" class="detail-photo-image" />
           </div>
         </div>
       </div>
@@ -137,6 +137,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import MobileDialog from '@/components/MobileDialog.vue'
+import { formatImageUrl } from '@/utils/format'
 import { unifiedApi } from '@/utils/unified-api'
 import { normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
@@ -212,6 +213,8 @@ const toggleCustomerInfo = () => {
     showHandlerInfo.value = !showHandlerInfo.value
   }
 }
+
+const resolvePhotoUrl = (photo?: string) => formatImageUrl(photo || '')
 
 const formatDate = (date: string) => date ? TimeUtil.format(date, TIME_FORMATS.DATE) : '-'
 

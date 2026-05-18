@@ -31,6 +31,7 @@ export interface CustomerOption {
   phone: string
   apple_id: string
   member_number: string
+  vip_level: string
 }
 
 export interface BrandModelOption {

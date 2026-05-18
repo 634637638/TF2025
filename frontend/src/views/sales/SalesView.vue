@@ -394,35 +394,39 @@
                 <label class="form-label required">客户姓名</label>
                 <div class="input-group">
                   <input
+                    ref="batchCustomerNameInputRef"
                     v-model="batchSaleForm.customer_name"
                     type="text"
                     class="form-control"
                     name="batch-customer-name"
-                    :placeholder="selectedBatchCustomer ? '双击编辑客户姓名' : '请输入客户姓名'"
-                    :readonly="selectedBatchCustomer ? !batchCustomerNameEditing : false"
+                    placeholder=""
+                    :readonly="!selectedBatchCustomer && !batchCustomerCreating ? true : !batchCustomerNameEditing"
                     @dblclick="enableBatchCustomerNameEdit"
+                    @touchend="handleBatchCustomerNameTouchEnd"
                     @input="handleBatchCustomerNameInput"
                     @blur="disableBatchCustomerNameEdit"
-                    :class="{ 'editable': selectedBatchCustomer }"
-                    :title="selectedBatchCustomer ? '双击编辑客户信息' : '请输入客户姓名'"
+                    :class="{ 'editable': selectedBatchCustomer || batchCustomerCreating }"
+                    :title="selectedBatchCustomer ? '双击编辑客户信息' : (batchCustomerCreating ? '输入姓名后，点击其他地方自动创建客户' : '请先按手机号选择客户')"
                   />
                   <el-button
                     v-if="batchCustomerNameEditing"
+                    class="customer-lock-button"
                     type="success"
                     plain
                     @click="saveBatchCustomerNameEdit"
-                    title="保存修改"
+                    title="当前已解锁，点击保存并锁定"
                   >
-                    <i class="fas fa-check"></i>
+                    <i class="fas fa-lock-open"></i>
                   </el-button>
                   <el-button
                     v-if="selectedBatchCustomer !== null && !batchCustomerNameEditing"
+                    class="customer-lock-button"
                     type="info"
                     plain
                     @click="clearSelectedBatchCustomer"
-                    title="清除客户选择"
+                    title="当前已锁定，点击清除客户选择"
                   >
-                    <i class="fas fa-times"></i>
+                    <i class="fas fa-lock"></i>
                   </el-button>
                 </div>
                 <small v-if="selectedBatchCustomer && !batchCustomerNameEditing" class="form-hint">双击姓名可编辑客户信息</small>
@@ -434,7 +438,7 @@
                     v-model="batchSaleForm.customer_phone"
                     type="text"
                     class="form-control"
-                    placeholder="请输入客户电话"
+                    placeholder="请输入用户手机号"
                     required
                     @input="handleBatchCustomerPhoneInput"
                     @focus="showBatchCustomerSearch = true"
@@ -467,8 +471,7 @@
                       <!-- 创建新客户提示 -->
                       <div v-if="batchSaleForm.customer_phone.length >= 11 && batchCustomerSearchResults.length === 0 && !selectedBatchCustomer" class="create-new-customer" @click="createNewBatchCustomer">
                         <i class="fas fa-user-plus"></i>
-                        创建新客户 ({{ batchSaleForm.customer_phone }})
-                        <div class="text-xs text-placeholder mt-1">输入姓名后点击创建</div>
+                        点击创建该用户
                       </div>
                     </template>
                   </div>
@@ -636,7 +639,7 @@
             >
               <div class="card-image">
                 <Image
-                  :src="phone.image_url || phone.main_image"
+                  :src="getPhoneImageSrc(phone)"
                   :alt="phone.model"
                   mode="eager"
                   :product-info="{
@@ -973,7 +976,7 @@
                   <div class="device-number">{{ index + 1 }}</div>
                   <div class="device-image">
                     <Image
-                      :src="phone.image_url || phone.main_image"
+                      :src="getPhoneImageSrc(phone)"
                       :alt="phone.brand + ' ' + phone.model"
                       mode="eager"
                       :product-info="{
@@ -1031,7 +1034,7 @@
               <div v-else class="device-card compact">
                 <div v-if="!isMobile" class="device-image">
                   <Image
-                    :src="selectedPhone?.image_url || selectedPhone?.main_image"
+                    :src="getPhoneImageSrc(selectedPhone)"
                     :alt="selectedPhone?.model"
                     mode="eager"
                     :product-info="{
@@ -1118,9 +1121,15 @@
                         </div>
 
                         <div
-                          v-if="selectedPhone?.purchase_number"
+                          v-if="selectedPhone?.purchase_number || canViewSaleField('Inventorytime')"
                           class="sale-mobile-purchase-grid"
                         >
+                          <div v-if="canViewSaleField('Inventorytime')" class="sale-mobile-purchase-row">
+                            <span class="sale-mobile-purchase-label">入库时间</span>
+                            <span class="sale-mobile-purchase-value">
+                              {{ formatDate((selectedPhone as any)?.Inventorytime || selectedPhone?.purchase_date || selectedPhone?.created_at) || '-' }}
+                            </span>
+                          </div>
                           <div v-if="selectedPhone?.purchase_number" class="sale-mobile-purchase-row">
                             <span class="sale-mobile-purchase-label">采购编号</span>
                             <span class="sale-mobile-purchase-value">{{ selectedPhone?.purchase_number }}</span>
@@ -1171,6 +1180,12 @@
                       <span class="meta-label">入库员:</span>
                       <span class="meta-value">{{ selectedPhone?.inventory_operator_name || '-' }}</span>
                     </div>
+                    <div v-if="canViewSaleField('Inventorytime')" class="meta-item meta-item-wide">
+                      <span class="meta-label">入库时间:</span>
+                      <span class="meta-value">
+                        {{ formatDate((selectedPhone as any)?.Inventorytime || selectedPhone?.purchase_date || selectedPhone?.created_at) || '-' }}
+                      </span>
+                    </div>
                     <div class="meta-item meta-item-wide">
                       <span class="meta-label">采购编号:</span>
                       <span class="meta-value">{{ selectedPhone?.purchase_number || '-' }}</span>
@@ -1190,7 +1205,7 @@
                     <div class="customer-search-container">
                       <el-input
                         v-model="saleForm.customer_phone"
-                        placeholder="请输入手机号码"
+                        placeholder="请输入用户手机号"
                         maxlength="11"
                         clearable
                         @input="handleCustomerSearch"
@@ -1212,19 +1227,20 @@
                             @click="selectCustomer(customer)"
                           >
                             <div class="customer-info">
-                              <div class="customer-name">{{ customer.name }}</div>
-                              <div class="customer-phone">{{ customer.phone }}</div>
-                              <div class="customer-meta">
+                              <div class="customer-headline">
+                                <div class="customer-name">{{ customer.name }}</div>
                                 <span v-if="customer.member_number" class="member-number">{{ customer.member_number }}</span>
-                                <span v-if="customer.vip_level !== 'normal'" class="vip-badge">{{ getVipLabel(customer.vip_level) }}</span>
+                              </div>
+                              <div class="customer-subline">
+                                <span class="customer-phone">{{ customer.phone }}</span>
+                                <span class="vip-badge">{{ getVipLabel(customer.vip_level) }}</span>
                               </div>
                             </div>
                           </div>
                           <!-- 当手机号输入完整（11位）且没有搜索结果时，显示创建新客户提示 -->
                           <div v-if="saleForm.customer_phone.length >= 11 && customerSearchResults.length === 0 && !selectedCustomer" class="create-new-customer" @click="createNewCustomer">
                             <i class="fas fa-user-plus"></i>
-                            创建新客户 ({{ saleForm.customer_phone }})
-                            <div class="text-xs text-placeholder mt-1">输入姓名后点击创建</div>
+                            点击创建该用户
                           </div>
                         </template>
                       </div>
@@ -1234,36 +1250,39 @@
                     <label class="form-label">客户姓名</label>
                     <div class="input-group">
                       <el-input
+                        ref="saleCustomerNameInputRef"
                         v-model="saleForm.customer_name"
                         name="sale-customer-name"
-                        :placeholder="selectedCustomer ? '双击编辑客户姓名' : '请输入客户姓名'"
-                        :readonly="selectedCustomer ? !customerNameEditing : false"
+                        placeholder=""
+                        :readonly="!selectedCustomer && !customerCreating ? true : !customerNameEditing"
                         @dblclick="enableCustomerNameEdit"
+                        @touchend="handleCustomerNameTouchEnd"
                         @input="handleCustomerNameInput"
                         @blur="handleCustomerNameBlur"
                         @keyup.enter="saveCustomerNameEdit"
-                        :class="{ 'editable': selectedCustomer }"
+                        :class="{ 'editable': selectedCustomer || customerCreating }"
                       />
                       <el-button
                         v-if="customerNameEditing"
+                        class="customer-lock-button"
                         type="success"
                         plain
                         @click="saveCustomerNameEdit"
-                        title="保存修改"
+                        title="当前已解锁，点击保存并锁定"
                       >
-                        <i class="fas fa-check"></i>
+                        <i class="fas fa-lock-open"></i>
                       </el-button>
                       <el-button
                         v-if="selectedCustomer !== null && !customerNameEditing"
+                        class="customer-lock-button"
                         type="info"
                         plain
                         @click="clearSelectedCustomer"
-                        title="清除客户选择"
+                        title="当前已锁定，点击清除客户选择"
                       >
-                        <i class="fas fa-times"></i>
+                        <i class="fas fa-lock"></i>
                       </el-button>
                     </div>
-                    <small v-if="selectedCustomer && !customerNameEditing" class="form-hint">双击姓名可编辑客户信息</small>
                   </div>
                 </div>
 
@@ -1303,7 +1322,6 @@
                       placeholder="请输入入库价格"
                       @input="calculateProfit"
                     />
-                    <small class="form-hint">当前入库价格: ¥{{ formatNumber(selectedPhone?.purchase_cost || 0) }}</small>
                   </div>
                   <div v-if="canViewSaleField('sale_price')" class="form-group">
                     <label class="form-label required">{{ batchMode ? '销售单价' : '销售价格' }}</label>
@@ -1794,7 +1812,7 @@ import { ref, reactive, computed, onMounted, onUnmounted, nextTick, watch } from
 import { useRouter, useRoute } from 'vue-router'
 import { usePermissionPreload } from '@/composables/usePermissionPreload'
 import CustomSearch from '@/components/CustomSearch.vue'
-import { useMobileDetection, useMobileForm } from '@/composables/mobile'
+import { useMobile, useMobileForm } from '@/composables/mobile'
 import { usePagination } from '@/composables/index'
 import { unifiedApi as api } from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
@@ -1812,7 +1830,7 @@ import { fieldPermissions } from '@/composables/useFieldPermissions'
 import { useAuthStore } from '@/stores/auth'
 import WholesaleModal from '@/components/WholesaleModal.vue'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessageBox } from 'element-plus'
 import { PageHeader } from '@/components/base'
 import Image from '@/components/Image.vue'
 import PermissionAccessNotice from '@/components/base/PermissionAccessNotice.vue'
@@ -1843,6 +1861,8 @@ interface InventorySummaryItem {
   memory: string
   condition: string
   quantity?: number
+  earliest_date?: string
+  latest_date?: string
 }
 
 interface InventoryDetailItem {
@@ -2007,7 +2027,7 @@ const showSearchDrawer = ref(false)
 // 移动端高级搜索展开状态
 const showAdvancedSearch = ref(false)
 
-const { isMobile, isTablet } = useMobileDetection()
+const { isMobile, isTablet, isIOS } = useMobile()
 const { inputProps, numberInputProps } = useMobileForm()
 
 // 响应式数据
@@ -2018,9 +2038,6 @@ const submitting = ref(false)
 const searchExpanded = ref(false) // 搜索区域展开状态（移动端默认折叠）
 const simpleSearchQuery = ref('')
 const showDesktopSearch = ref(false)
-
-// 移动端检测
-const mobileDetection = useMobileDetection()
 
 // 防抖函数，避免快速重复点击
 const debounceSubmit = (fn, delay = 500) => {
@@ -2059,6 +2076,12 @@ const operationMode = ref<'wholesale' | 'proxy' | null>(null) // 操作模式
 const customerEditSubmitting = ref(false)
 const customerNameEditing = ref(false) // 客户姓名是否正在编辑（单台模式）
 const batchCustomerNameEditing = ref(false) // 客户姓名是否正在编辑（批量模式）
+const customerCreating = ref(false)
+const batchCustomerCreating = ref(false)
+const saleCustomerNameInputRef = ref<any>(null)
+const batchCustomerNameInputRef = ref<HTMLInputElement | null>(null)
+const customerNameLastTapAt = ref(0)
+const batchCustomerNameLastTapAt = ref(0)
 
 // 批发/划拨权限检查
 const canWholesale = computed(() => {
@@ -2123,12 +2146,12 @@ const openWholesaleModal = () => {
   }
 
   if (wholesaleMode.value === 'wholesale' && !canWholesale.value) {
-    ElMessage.warning('请先选择可调货的在库手机')
+    showWarning('请先选择可调货的在库手机')
     return
   }
 
   if (wholesaleMode.value === 'proxy' && !canProxy.value) {
-    ElMessage.warning('请先选择可划拨的在库手机')
+    showWarning('请先选择可划拨的在库手机')
     return
   }
 
@@ -2137,12 +2160,12 @@ const openWholesaleModal = () => {
     const suppliers = [...new Set(selectedPhones.value.map(p => p.supplier_id).filter(id => id != null))]
 
     if (suppliers.length > 1) {
-      ElMessage.error('相同供应商商品才能划拨')
+      showError('相同供应商商品才能划拨')
       return
     }
 
     if (suppliers.length === 0) {
-      ElMessage.error('选中的商品没有供应商信息')
+      showError('选中的商品没有供应商信息')
       return
     }
   }
@@ -2158,14 +2181,14 @@ const handleTransferSuccess = (data?: { success_count: number; total_count: numb
 
   // 如果没有传递数据，显示默认消息
   if (!data) {
-    ElMessage.success('操作成功')
+    showSuccess('操作成功')
   } else {
     // 显示详细的成功信息
     const { success_count, total_count, message } = data
     if (success_count === total_count) {
-      ElMessage.success(`${message}，共 ${success_count} 台`)
+      showSuccess(`${message}，共 ${success_count} 台`)
     } else {
-      ElMessage.warning(`${message} ${success_count}/${total_count} 台`)
+      showWarning(`${message} ${success_count}/${total_count} 台`)
     }
   }
 }
@@ -2229,7 +2252,7 @@ const availablePhones = ref<Phone[]>([])
 const stores = ref<Store[]>([])
 const operators = ref<Operator[]>([])
 const suppliers = ref<Supplier[]>([])
-const brands = ref<PhoneBrand[]>([])  // 品牌对象数组，包含 id 和 name
+const brands = ref<Array<Pick<PhoneBrand, 'id' | 'name'> & { sort_order?: number }>>([])  // 品牌对象数组，包含 id 和 name
 const brandsFull = ref<PhoneBrand[]>([])  // 存储完整的品牌数据（包含ID）
 const models = ref<PhoneModel[]>([])  // 型号对象数组，包含 id 和 name
 const colors = ref<string[]>([])
@@ -3847,6 +3870,7 @@ const handleCustomerSearch = (valueOrEvent) => {
 
   if (selectedCustomer.value && normalizeCustomerPhone(selectedCustomer.value.phone) !== cleanedValue) {
     selectedCustomer.value = null
+    customerCreating.value = false
   }
 
   // 清除之前的搜索
@@ -3869,14 +3893,6 @@ const handleCustomerSearch = (valueOrEvent) => {
 // 搜索客户
 const searchCustomers = async (phoneNumber) => {
   try {
-
-    // 先检查缓存
-    if (customerSearchCache.value.has(phoneNumber)) {
-      const cachedResults = customerSearchCache.value.get(phoneNumber)
-      customerSearchResults.value = cachedResults
-      return;
-    }
-
     customerSearching.value = true
 
     const response = await api.get(`/sales/customers?search=${encodeURIComponent(phoneNumber)}`)
@@ -3905,22 +3921,179 @@ const searchCustomers = async (phoneNumber) => {
   }
 }
 
-// 启用客户姓名编辑（双击时）
-const enableCustomerNameEdit = () => {
-  if (!selectedCustomer.value) return
-  customerNameEditing.value = true
-  // 下一帧聚焦到输入框
-  nextTick(() => {
-    const input = (document as any).querySelector('input[name="sale-customer-name"]') as HTMLInputElement
-    if (input) {
-      input.focus()
+const resolveNativeCustomerInput = (source: any): HTMLInputElement | null => {
+  if (!source) {
+    return null
+  }
+
+  if (source instanceof HTMLInputElement) {
+    return source
+  }
+
+  if (source instanceof HTMLElement && typeof source.querySelector === 'function') {
+    const nestedInput = source.querySelector('input, textarea')
+    if (nestedInput instanceof HTMLInputElement) {
+      return nestedInput
+    }
+  }
+
+  if (source?.target instanceof HTMLInputElement) {
+    return source.target
+  }
+
+  if (source?.target instanceof HTMLElement && typeof source.target.querySelector === 'function') {
+    const nestedInput = source.target.querySelector('input, textarea')
+    if (nestedInput instanceof HTMLInputElement) {
+      return nestedInput
+    }
+  }
+
+  if (source?.input instanceof HTMLInputElement) {
+    return source.input
+  }
+
+  if (source?.$el && typeof source.$el.querySelector === 'function') {
+    return source.$el.querySelector('input')
+  }
+
+  return null
+}
+
+const focusCustomerNameInput = (input: HTMLInputElement | null) => {
+  if (!input) {
+    return
+  }
+
+  input.readOnly = false
+  input.removeAttribute('readonly')
+  input.disabled = false
+  input.removeAttribute('disabled')
+  input.focus({ preventScroll: true })
+  input.click()
+
+  const textLength = input.value?.length || 0
+
+  try {
+    if (isIOS.value) {
+      input.setSelectionRange(textLength, textLength)
+    } else {
       input.select()
     }
+  } catch {
+    // 忽略不支持选择范围的浏览器
+  }
+}
+
+const promptCustomerNameForIOS = async (
+  currentName: string,
+  onConfirm: (nextName: string) => Promise<void> | void
+) => {
+  const promptedName = window.prompt('请输入客户姓名', currentName)
+  if (promptedName === null) {
+    return
+  }
+
+  const normalizedName = normalizePersonName(promptedName, 20)
+  if (!normalizedName) {
+    showWarning('客户姓名不能为空')
+    return
+  }
+
+  await onConfirm(normalizedName)
+}
+
+const unlockCustomerNameFromTouch = (
+  source: EventTarget | null | undefined,
+  unlockEditing: () => void,
+  fallbackName: string
+) => {
+  const touchedInput = resolveNativeCustomerInput(source)
+  const fallbackInput = resolveNativeCustomerInput(document.querySelector(`input[name="${fallbackName}"]`))
+
+  unlockEditing()
+
+  const targetInput = touchedInput || fallbackInput
+  if (!targetInput) {
+    return
+  }
+
+  targetInput.readOnly = false
+  targetInput.removeAttribute('readonly')
+  targetInput.disabled = false
+  targetInput.removeAttribute('disabled')
+  targetInput.focus()
+  targetInput.click()
+
+  try {
+    const textLength = targetInput.value?.length || 0
+    targetInput.setSelectionRange(textLength, textLength)
+  } catch {
+    // ignore
+  }
+}
+
+const handleTouchBasedCustomerUnlock = (
+  event: TouchEvent,
+  lastTapRef: { value: number },
+  unlock: () => void,
+  fallbackName: string,
+  iosPromptHandler?: () => Promise<void> | void
+) => {
+  if (!isIOS.value) {
+    return
+  }
+
+  const now = Date.now()
+  const interval = now - lastTapRef.value
+  lastTapRef.value = now
+
+  if (interval > 0 && interval < 320) {
+    if (iosPromptHandler) {
+      iosPromptHandler()
+      return
+    }
+    unlockCustomerNameFromTouch(event.target, unlock, fallbackName)
+  }
+}
+
+// 启用客户姓名编辑（双击时）
+const enableCustomerNameEdit = (event?: MouseEvent) => {
+  if (!selectedCustomer.value) return
+  customerNameEditing.value = true
+
+  focusCustomerNameInput(resolveNativeCustomerInput(event) || resolveNativeCustomerInput(saleCustomerNameInputRef.value))
+
+  nextTick(() => {
+    focusCustomerNameInput(
+      resolveNativeCustomerInput(saleCustomerNameInputRef.value) ||
+      document.querySelector('input[name="sale-customer-name"]')
+    )
   })
+}
+
+const handleCustomerNameTouchEnd = (event: TouchEvent) => {
+  handleTouchBasedCustomerUnlock(
+    event,
+    customerNameLastTapAt,
+    () => enableCustomerNameEdit(),
+    'sale-customer-name',
+    () => {
+      if (!selectedCustomer.value) return
+      void promptCustomerNameForIOS(saleForm.customer_name, async (nextName) => {
+        saleForm.customer_name = nextName
+        await saveCustomerNameEdit()
+      })
+    }
+  )
 }
 
 // 禁用客户姓名编辑（失焦时自动保存）
 const handleCustomerNameBlur = () => {
+  if (customerCreating.value && !selectedCustomer.value) {
+    void createNewCustomer()
+    return
+  }
+
   if (customerNameEditing.value && selectedCustomer.value) {
     saveCustomerNameEdit()
   } else {
@@ -3978,6 +4151,7 @@ const selectCustomer = (customer) => {
   saleForm.customer_name = normalizePersonName(customer.name, 20)
   saleForm.customer_apple_id = normalizeAppleId(customer.apple_id || '')
   customerNameEditing.value = false // 选择客户后重置编辑状态
+  customerCreating.value = false
   showCustomerSearch.value = false
   customerSearchResults.value = []
 }
@@ -3989,6 +4163,7 @@ const clearSelectedCustomer = () => {
   saleForm.customer_name = ''
   saleForm.customer_apple_id = ''
   customerNameEditing.value = false
+  customerCreating.value = false
 }
 
 // 保存客户信息修改
@@ -4036,100 +4211,38 @@ const saveCustomerEdit = async () => {
 
 // 创建新客户
 const createNewCustomer = async () => {
-  try {
-    const normalizedCustomerPhone = normalizeCustomerPhone(saleForm.customer_phone)
-    const normalizedCustomerName = normalizePersonName(saleForm.customer_name, 20)
-    const normalizedAppleId = normalizeAppleId(saleForm.customer_apple_id)
+  const normalizedCustomerPhone = normalizeCustomerPhone(saleForm.customer_phone)
+  const normalizedCustomerName = normalizePersonName(saleForm.customer_name, 20)
+  const normalizedAppleId = normalizeAppleId(saleForm.customer_apple_id)
 
-    // 验证姓名是否已输入
-    if (!normalizedCustomerName) {
-      showError('请输入客户姓名')
-      customerSearching.value = false
-      return
-    }
-
-    if (!isValidMobilePhone(normalizedCustomerPhone)) {
-      showError('请输入有效的手机号码')
-      customerSearching.value = false
-      return
-    }
-
-    customerSearching.value = true
-
-    const newCustomerData = {
-      name: normalizedCustomerName,
-      phone: normalizedCustomerPhone,
-      apple_id: normalizedAppleId || null, // Apple ID字段
-      email: resolveAppleAccountEmail(normalizedAppleId), // 兼容email字段
-      gender: null,
-      birthday: null,
-      id_card: null,
-      address: null,
-      city: null,
-      province: null,
-      postal_code: null,
-      customer_type: 'individual',
-      vip_level: 'normal',
-      notes: '通过销售系统创建',
-      tags: null,
-      blacklist: 0,
-      credit_rating: 'good',
-      preferred_contact: 'phone',
-      source: 'sales' // 标识来源为销售系统
-    }
-
-    const response = await api.post('/customers', newCustomerData, { showError: false })
-
-  if (response.success && response.data) {
-      const newCustomer = response.data
-
-      // 更新表单数据，确保与selectCustomer方法保持一致
-      selectedCustomer.value = newCustomer
-      saleForm.customer_phone = normalizeCustomerPhone(newCustomer.phone)
-      saleForm.customer_name = normalizePersonName(newCustomer.name, 20)
-      saleForm.customer_apple_id = normalizeAppleId(newCustomer.apple_id || '')
-
-
-      // 隐藏搜索结果
-      showCustomerSearch.value = false
-      customerSearchResults.value = []
-
-      showSuccess(`新客户 "${newCustomer.name}" 创建成功`)
-    } else {
-      logger.error('❌ 客户创建失败:', response)
-      showError('创建客户失败')
-    }
-  } catch (error) {
-    logger.error('创建客户失败:', error)
-    showError('创建客户失败')
-  } finally {
+  if (!isValidMobilePhone(normalizedCustomerPhone)) {
+    showError('请输入有效的手机号码')
     customerSearching.value = false
+    return
   }
-}
 
-// 批量销售创建新客户
-const createNewBatchCustomer = async () => {
+  if (!customerCreating.value) {
+    customerCreating.value = true
+    customerNameEditing.value = true
+    showCustomerSearch.value = false
+    nextTick(() => {
+      focusCustomerNameInput(
+        resolveNativeCustomerInput(saleCustomerNameInputRef.value) ||
+        document.querySelector('input[name="sale-customer-name"]')
+      )
+    })
+    return
+  }
+
+  if (!normalizedCustomerName) {
+    showError('请输入客户姓名')
+    return
+  }
+
+  customerSearching.value = true
+
   try {
-    const normalizedCustomerPhone = normalizeCustomerPhone(batchSaleForm.customer_phone)
-    const normalizedCustomerName = normalizePersonName(batchSaleForm.customer_name, 20)
-    const normalizedAppleId = normalizeAppleId(batchSaleForm.apple_id)
-
-    // 验证姓名是否已输入
-    if (!normalizedCustomerName) {
-      showError('请输入客户姓名')
-      batchCustomerSearching.value = false
-      return
-    }
-
-    if (!isValidMobilePhone(normalizedCustomerPhone)) {
-      showError('请输入有效的手机号码')
-      batchCustomerSearching.value = false
-      return
-    }
-
-    batchCustomerSearching.value = true
-
-    const newCustomerData = {
+    const response = await api.post('/customers', {
       name: normalizedCustomerName,
       phone: normalizedCustomerPhone,
       apple_id: normalizedAppleId || null,
@@ -4149,31 +4262,105 @@ const createNewBatchCustomer = async () => {
       credit_rating: 'good',
       preferred_contact: 'phone',
       source: 'sales'
-    }
-
-    const response = await api.post('/customers', newCustomerData, { showError: false })
+    }, { showError: false })
 
     if (response.success && response.data) {
       const newCustomer = response.data
+      selectedCustomer.value = newCustomer
+      saleForm.customer_phone = normalizeCustomerPhone(newCustomer.phone)
+      saleForm.customer_name = normalizePersonName(newCustomer.name, 20)
+      saleForm.customer_apple_id = normalizeAppleId(newCustomer.apple_id || '')
+      customerCreating.value = false
+      customerNameEditing.value = false
+      showCustomerSearch.value = false
+      customerSearchResults.value = []
+      showSuccess(`新客户 "${saleForm.customer_name}" 创建成功`)
+      return
+    }
 
-      // 更新批量销售表单数据
+    showError(response.message || '创建客户失败')
+  } catch (error: any) {
+    logger.error('创建客户失败:', error)
+    showError(error.response?.data?.message || '创建客户失败')
+  } finally {
+    customerSearching.value = false
+  }
+}
+
+// 批量销售创建新客户
+const createNewBatchCustomer = async () => {
+  const normalizedCustomerPhone = normalizeCustomerPhone(batchSaleForm.customer_phone)
+  const normalizedCustomerName = normalizePersonName(batchSaleForm.customer_name, 20)
+  const normalizedAppleId = normalizeAppleId(batchSaleForm.apple_id)
+
+  if (!isValidMobilePhone(normalizedCustomerPhone)) {
+    showError('请输入有效的手机号码')
+    batchCustomerSearching.value = false
+    return
+  }
+
+  if (!batchCustomerCreating.value) {
+    batchCustomerCreating.value = true
+    batchCustomerNameEditing.value = true
+    showBatchCustomerSearch.value = false
+    nextTick(() => {
+      const input = document.querySelector('input[name="batch-customer-name"]') as HTMLInputElement | null
+      if (input) {
+        input.focus()
+        input.select()
+      }
+    })
+    return
+  }
+
+  if (!normalizedCustomerName) {
+    showError('请输入客户姓名')
+    return
+  }
+
+  batchCustomerSearching.value = true
+
+  try {
+    const response = await api.post('/customers', {
+      name: normalizedCustomerName,
+      phone: normalizedCustomerPhone,
+      apple_id: normalizedAppleId || null,
+      email: resolveAppleAccountEmail(normalizedAppleId),
+      gender: null,
+      birthday: null,
+      id_card: null,
+      address: null,
+      city: null,
+      province: null,
+      postal_code: null,
+      customer_type: 'individual',
+      vip_level: 'normal',
+      notes: '通过销售系统创建',
+      tags: null,
+      blacklist: 0,
+      credit_rating: 'good',
+      preferred_contact: 'phone',
+      source: 'sales'
+    }, { showError: false })
+
+    if (response.success && response.data) {
+      const newCustomer = response.data
       selectedBatchCustomer.value = newCustomer
       batchSaleForm.customer_phone = normalizeCustomerPhone(newCustomer.phone)
       batchSaleForm.customer_name = normalizePersonName(newCustomer.name, 20)
       batchSaleForm.apple_id = normalizeAppleId(newCustomer.apple_id || '')
-
-
-      // 隐藏搜索结果
+      batchCustomerCreating.value = false
+      batchCustomerNameEditing.value = false
       showBatchCustomerSearch.value = false
       batchCustomerSearchResults.value = []
-
-      showSuccess('客户创建成功')
-    } else {
-      showError(response.message || '创建客户失败')
+      showSuccess(`新客户 "${batchSaleForm.customer_name}" 创建成功`)
+      return
     }
-  } catch (error) {
+
+    showError(response.message || '创建客户失败')
+  } catch (error: any) {
     logger.error('创建客户失败:', error)
-    showError('创建客户失败')
+    showError(error.response?.data?.message || '创建客户失败')
   } finally {
     batchCustomerSearching.value = false
   }
@@ -4365,6 +4552,7 @@ const handleBatchCustomerPhoneInput = () => {
 
   if (selectedBatchCustomer.value && normalizeCustomerPhone(selectedBatchCustomer.value.phone) !== cleanedValue) {
     selectedBatchCustomer.value = null
+    batchCustomerCreating.value = false
   }
 
   const phone = cleanedValue
@@ -4404,15 +4592,6 @@ const searchBatchCustomers = async (phone) => {
     return;
   }
 
-
-  // 先检查缓存
-  if (batchCustomerSearchCache.value.has(phone)) {
-    const cachedResults = batchCustomerSearchCache.value.get(phone)
-    batchCustomerSearchResults.value = cachedResults
-    batchCustomerSearching.value = false
-    return;
-  }
-
   try {
     const response = await api.get(`/sales/customers?search=${encodeURIComponent(phone)}`)
 
@@ -4447,21 +4626,43 @@ const handleBatchCustomerBlur = () => {
 }
 
 // 启用批量模式客户姓名编辑（双击时）
-const enableBatchCustomerNameEdit = () => {
+const enableBatchCustomerNameEdit = (event?: MouseEvent) => {
   if (!selectedBatchCustomer.value) return
   batchCustomerNameEditing.value = true
-  // 下一帧聚焦到输入框
+
+  focusCustomerNameInput(resolveNativeCustomerInput(event) || resolveNativeCustomerInput(batchCustomerNameInputRef.value))
+
   nextTick(() => {
-    const input = (document as any).querySelector('input[name="batch-customer-name"]') as HTMLInputElement
-    if (input) {
-      input.focus()
-      input.select()
-    }
+    focusCustomerNameInput(
+      resolveNativeCustomerInput(batchCustomerNameInputRef.value) ||
+      document.querySelector('input[name="batch-customer-name"]')
+    )
   })
+}
+
+const handleBatchCustomerNameTouchEnd = (event: TouchEvent) => {
+  handleTouchBasedCustomerUnlock(
+    event,
+    batchCustomerNameLastTapAt,
+    () => enableBatchCustomerNameEdit(),
+    'batch-customer-name',
+    () => {
+      if (!selectedBatchCustomer.value) return
+      void promptCustomerNameForIOS(batchSaleForm.customer_name, async (nextName) => {
+        batchSaleForm.customer_name = nextName
+        await saveBatchCustomerNameEdit()
+      })
+    }
+  )
 }
 
 // 禁用批量模式客户姓名编辑（失焦时自动保存）
 const disableBatchCustomerNameEdit = () => {
+  if (batchCustomerCreating.value && !selectedBatchCustomer.value) {
+    void createNewBatchCustomer()
+    return
+  }
+
   if (batchCustomerNameEditing.value && selectedBatchCustomer.value) {
     saveBatchCustomerNameEdit()
   } else {
@@ -4518,6 +4719,7 @@ const selectBatchCustomer = (customer) => {
   batchSaleForm.customer_phone = normalizeCustomerPhone(customer.phone)
   batchSaleForm.apple_id = normalizeAppleId(customer.apple_id || '')
   batchCustomerNameEditing.value = false // 选择客户后重置编辑状态
+  batchCustomerCreating.value = false
   showBatchCustomerSearch.value = false
 }
 
@@ -4528,6 +4730,7 @@ const clearSelectedBatchCustomer = () => {
   batchSaleForm.customer_phone = ''
   batchSaleForm.apple_id = ''
   batchCustomerNameEditing.value = false
+  batchCustomerCreating.value = false
 }
 
 // 提交批量销售
@@ -5007,11 +5210,11 @@ const toggleEditNoIMEIMode = () => {
     if (editForm.serial_number) {
       editForm.imei = editForm.serial_number
     }
-    ElMessage.success('已启用无IMEI模式，IMEI将支持字母+数字')
+    showSuccess('已启用无IMEI模式，IMEI将支持字母+数字')
   } else {
     // 切换回标准模式：清空IMEI，重新输入15位纯数字
     editForm.imei = ''
-    ElMessage.info('已切换回标准IMEI模式，需要输入15位纯数字')
+    showInfo('已切换回标准IMEI模式，需要输入15位纯数字')
   }
 }
 
@@ -5288,7 +5491,7 @@ const clearQuickSearch = () => {
 
 // 切换高级搜索显示状态
 const toggleAdvancedSearch = () => {
-  if (mobileDetection.isMobile) {
+  if (isMobile.value) {
     showAdvancedSearch.value = !showAdvancedSearch.value
   } else {
     showDesktopSearch.value = !showDesktopSearch.value
@@ -5431,7 +5634,7 @@ const formatDate = (dateString?: string) => {
     const day = String(date.getDate()).padStart(2, '0')
     return `${year}-${month}-${day}`
   } catch (error) {
-    logger.error('日期格式化错误:', error, dateString)
+    logger.error(`日期格式化错误: ${String(dateString)}`, error)
     return '-'
   }
 }
@@ -5692,7 +5895,7 @@ onUnmounted(() => {
   align-items: stretch;
 }
 
-.input-group .form-control {
+.input-group:has(.customer-lock-button) .form-control {
   flex: 1;
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
@@ -5704,6 +5907,28 @@ onUnmounted(() => {
   border-left: none;
   min-width: 40px;
   padding: 10px 12px;
+}
+
+.customer-lock-button {
+  width: 36px !important;
+  min-width: 36px !important;
+  height: 36px !important;
+  padding: 0 !important;
+  flex: 0 0 36px !important;
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+}
+
+.customer-lock-button :deep(.el-button__content) {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.customer-lock-button i {
+  font-size: 14px;
 }
 
 .input-icon {
@@ -7833,43 +8058,59 @@ input.form-control:focus, textarea.form-control:focus {
 .customer-info {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 7px;
+}
+
+.customer-headline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.customer-subline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
 }
 
 .customer-name {
   font-weight: 600;
-  color: #333;
-  font-size: 15px;
+  color: #1f2937;
+  font-size: 14px;
+  line-height: 1.2;
+  min-width: 0;
 }
 
 .customer-phone {
-  color: #666;
-  font-size: 14px;
-}
-
-.customer-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 4px;
+  color: #475569;
+  font-size: 12px;
+  line-height: 1.2;
 }
 
 .member-number {
-  background: #e3f2fd;
-  color: #1976d2;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
+  background: linear-gradient(135deg, #eef6ff 0%, #dbeafe 100%);
+  color: #1d4ed8;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  justify-self: end;
 }
 
 .vip-badge {
-  background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%);
+  background: linear-gradient(135deg, #fb7185 0%, #f59e0b 100%);
   color: white;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  flex-shrink: 0;
+  justify-self: end;
+  box-shadow: 0 6px 14px rgba(245, 158, 11, 0.18);
 }
 
 .vip-badge:empty {
@@ -7904,15 +8145,42 @@ input.form-control:focus, textarea.form-control:focus {
   }
 
   .customer-item {
-    padding: 10px 12px;
+    padding: 9px 10px;
   }
 
   .customer-name {
-    font-size: 14px;
+    font-size: 12px;
   }
 
   .customer-phone {
-    font-size: 13px;
+    font-size: 11px;
+  }
+
+  .customer-headline,
+  .customer-subline {
+    gap: 4px;
+  }
+
+  .customer-info {
+    gap: 5px;
+  }
+
+  .member-number,
+  .vip-badge {
+    font-size: 8px;
+    padding: 1px 5px;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+
+  .create-new-customer {
+    padding: 10px 12px;
+    font-size: 12px;
+    gap: 6px;
+  }
+
+  .create-new-customer i {
+    font-size: 12px;
   }
 }
 
@@ -9995,6 +10263,17 @@ input.form-control:focus, textarea.form-control:focus {
 
   .input-group .el-button {
     flex-shrink: 0;
+  }
+
+  .customer-lock-button {
+    width: 32px !important;
+    min-width: 32px !important;
+    height: 32px !important;
+    flex-basis: 32px !important;
+  }
+
+  .customer-lock-button i {
+    font-size: 13px;
   }
 }
 

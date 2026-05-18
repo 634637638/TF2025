@@ -9,6 +9,7 @@ const { cacheMiddleware, clearCache } = require('../middleware/cache');
 const ApiResponse = require('../utils/response');
 const { getDatabase } = require('../config/database');
 const log = require('../utils/log');
+const { getUploadsRoot, getUploadSubdir } = require('../utils/upload-paths');
 const XLSX = require('xlsx');
 
 const createRouteTimer = (routeName, req) => {
@@ -38,7 +39,7 @@ const createRouteTimer = (routeName, req) => {
 // ============================
 
 // 确保上传目录存在
-const uploadDir = path.join(process.cwd(), 'uploads', 'subsidy');
+const uploadDir = getUploadSubdir('subsidy');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
@@ -1565,9 +1566,7 @@ router.put('/:id', unifiedAuth, requirePermission('subsidy:edit'), async (req, r
           const filename = urlParts[urlParts.length - 1];
 
           // 构建文件路径
-          const uploadDir = process.env.NODE_ENV === 'production'
-            ? process.env.UPLOAD_PATH || '/www/wwwroot/v6.cn9527.cn/backend/uploads'
-            : path.join(process.cwd(), 'uploads');
+          const uploadDir = getUploadsRoot();
           const filePath = path.join(uploadDir, 'subsidy', filename);
 
           // 删除文件
@@ -2061,9 +2060,7 @@ router.post('/delete-temp-photos', unifiedAuth, async (req, res) => {
         const filename = urlParts[urlParts.length - 1];
 
         // 构建文件路径
-        const uploadDirPath = process.env.NODE_ENV === 'production'
-          ? process.env.UPLOAD_PATH || '/www/wwwroot/v6.cn9527.cn/backend/uploads'
-          : path.join(process.cwd(), 'uploads');
+        const uploadDirPath = getUploadsRoot();
         const filePath = path.join(uploadDirPath, 'subsidy', filename);
 
         // 删除文件

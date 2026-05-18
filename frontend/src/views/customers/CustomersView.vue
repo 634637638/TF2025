@@ -1436,13 +1436,12 @@ const CUSTOMER_TYPES = [
 // VIP等级配置（统一管理）- 必须在 filterConfigs 之前定义
 const VIP_LEVELS = [
   { value: 'normal', label: '普通会员', color: 'info', icon: 'fas fa-user' },
-  { value: 'bronze', label: '青铜会员', color: 'info', icon: 'fas fa-medal' },
   { value: 'silver', label: '白银会员', color: 'primary', icon: 'fas fa-star' },
   { value: 'gold', label: '黄金会员', color: 'warning', icon: 'fas fa-crown' },
-  { value: 'platinum', label: '铂金会员', color: 'danger', icon: 'fas fa-gem' },
-  { value: 'diamond', label: '钻石会员', color: 'success', icon: 'fas fa-diamond' },
-  { value: 'vip', label: 'VIP至尊', color: 'danger', icon: 'fas fa-trophy' }
+  { value: 'platinum', label: '铂金会员', color: 'danger', icon: 'fas fa-gem' }
 ] as const
+
+const ALLOWED_VIP_LEVELS = new Set(VIP_LEVELS.map(vip => vip.value))
 
 // 筛选器配置
 const filterConfigs = [
@@ -1961,6 +1960,11 @@ const saveCustomer = async () => {
 
     // 准备提交数据
     const submitData = { ...customerForm.value }
+
+    if (!ALLOWED_VIP_LEVELS.has(submitData.vip_level)) {
+      error('VIP等级无效，请重新选择')
+      return
+    }
 
     // 如果是编辑模式且勾选了修改密码，包含密码字段
     if (modalMode.value === 'edit') {

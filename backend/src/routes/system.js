@@ -8,6 +8,12 @@ const mysql = require('mysql2/promise');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs').promises;
+const {
+  getUploadSubdir,
+  getUploadUrl,
+  getUploadPathFromUrl,
+  getRelativeUploadPathFromUrl
+} = require('../utils/upload-paths');
 
 const BRAND_IMAGE_ALLOWED_MIME_TYPES = {
   '.jpg': ['image/jpeg'],
@@ -429,7 +435,7 @@ router.get('/status', unifiedAuth, requirePermission('system:view'), async (req,
 
 // 配置文件上传
 const upload = multer({
-  dest: 'uploads/brand/',
+  dest: getUploadSubdir('brand'),
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB
   },
@@ -454,15 +460,11 @@ const upload = multer({
 
 // 确保上传目录存在
 const ensureUploadDir = async () => {
+  const brandDir = getUploadSubdir('brand');
   try {
-    await fs.access('uploads');
+    await fs.access(brandDir);
   } catch {
-    await fs.mkdir('uploads', { recursive: true });
-  }
-  try {
-    await fs.access('uploads/brand');
-  } catch {
-    await fs.mkdir('uploads/brand', { recursive: true });
+    await fs.mkdir(brandDir, { recursive: true });
   }
 };
 
@@ -598,13 +600,13 @@ router.post('/upload-brand-image', unifiedAuth, requirePermission('system:edit')
     const ext = path.extname(req.file.originalname);
     const timestamp = Date.now();
     const filename = `brand_${timestamp}${ext}`;
-    const filepath = path.join('uploads/brand', filename);
+    const filepath = getUploadSubdir('brand', filename);
 
     // 移动文件到最终位置
     await fs.rename(req.file.path, filepath);
 
     // 生成文件URL
-    const fileUrl = `/uploads/brand/${filename}`;
+    const fileUrl = getUploadUrl('brand', filename);
 
     // 记录文件信息到数据库
     const db = getDatabase();
@@ -641,7 +643,7 @@ async function deleteOldBrandImage() {
 
       try {
         // 删除物理文件
-        const fullPath = path.join(process.cwd(), oldImagePath);
+        const fullPath = getUploadPathFromUrl(oldImagePath);
         await fs.unlink(fullPath);
 
         // 已移除brand_images表操作，现在只删除物理文件
@@ -670,18 +672,19 @@ router.post('/cleanup-brand-images', unifiedAuth, requirePermission('system:dele
       SELECT brand_image as filepath FROM settings WHERE brand_image IS NOT NULL AND brand_image != ''
     `);
 
-    const validPaths = new Set(validImages.map(img => img.filepath));
+    const validPaths = new Set(validImages.map(img => getRelativeUploadPathFromUrl(img.filepath)));
 
     // 扫描uploads/brand目录中的所有文件
-    const brandDir = path.join('uploads/brand');
+    const brandDir = getUploadSubdir('brand');
     try {
       await fs.access(brandDir);
       const files = await fs.readdir(brandDir);
 
       let deletedCount = 0;
       for (const file of files) {
-        const filePath = path.join('uploads/brand', file);
-        if (!validPaths.has(filePath)) {
+        const filePath = getUploadSubdir('brand', file);
+        const relativeFilePath = path.join('brand', file).replace(/\\/g, '/');
+        if (!validPaths.has(relativeFilePath)) {
           try {
             await fs.unlink(filePath);
             deletedCount++;
@@ -731,21 +734,23 @@ router.get('/brand-images-info', unifiedAuth, requirePermission('system:view'), 
     // 扫描物理文件
     let physicalFiles = [];
     try {
-      const brandDir = path.join('uploads/brand');
+      const brandDir = getUploadSubdir('brand');
       await fs.access(brandDir);
       const files = await fs.readdir(brandDir, { withFileTypes: true });
 
       for (const file of files) {
         if (file.isFile()) {
-          const filePath = path.join('uploads/brand', file.name);
+          const filePath = getUploadSubdir('brand', file.name);
+          const relativeFilePath = path.join('brand', file.name).replace(/\\/g, '/');
           const stats = await fs.stat(filePath);
           physicalFiles.push({
             name: file.name,
-            path: filePath,
+            path: relativeFilePath,
             size: stats.size,
             created: stats.birthtime,
             modified: stats.mtime,
-            isCurrent: currentImage === `/${filePath.replace(/\\/g, '/')}` || currentImage === filePath
+            isCurrent: currentImage === getUploadUrl('brand', file.name)
+              || getRelativeUploadPathFromUrl(currentImage) === relativeFilePath
           });
         }
       }

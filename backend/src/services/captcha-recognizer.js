@@ -3,17 +3,21 @@
  * 使用Tesseract.js识别数字验证码
  */
 
-const Tesseract = require('tesseract.js');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const log = require('../utils/log');
+const { ensureLogDir } = require('../utils/log-paths');
+const {
+  preprocessImageForOcr,
+  recognizeTextWithTesseract,
+  validateImageResponse
+} = require('../utils/ocr-image');
 
 class CaptchaRecognizer {
   constructor() {
     // 验证码图片缓存目录
-    this.cacheDir = path.join(__dirname, '../../logs/captcha-cache');
-    fs.mkdirSync(this.cacheDir, { recursive: true });
+    this.cacheDir = ensureLogDir('captcha-cache');
   }
 
   /**
@@ -39,7 +43,8 @@ class CaptchaRecognizer {
       validateStatus: (status) => status < 500
     });
 
-    return Buffer.from(response.data);
+    const { buffer, format } = validateImageResponse(response, log);
+    return { buffer, format };
   }
 
   /**
@@ -53,34 +58,31 @@ class CaptchaRecognizer {
       log.debug('🔍 开始识别验证码...');
 
       // 1. 获取验证码图片
-      const imageBuffer = await this.fetchCaptchaImage(captchaUrl, referer);
+      const { buffer: imageBuffer, format } = await this.fetchCaptchaImage(captchaUrl, referer);
 
       // 2. 保存图片到缓存（用于调试）
       const timestamp = Date.now();
-      const cachePath = path.join(this.cacheDir, `captcha-${timestamp}.jpg`);
+      const cachePath = path.join(this.cacheDir, `captcha-${timestamp}.${format || 'bin'}`);
       fs.writeFileSync(cachePath, imageBuffer);
       log.debug(`📸 验证码已保存: ${cachePath}`);
 
+      const { buffer: processedBuffer, metadata } = await preprocessImageForOcr(imageBuffer);
+      const processedCachePath = path.join(this.cacheDir, `captcha-${timestamp}-processed.png`);
+      fs.writeFileSync(processedCachePath, processedBuffer);
+      log.debug(`🧹 验证码预处理完成: ${metadata.width}x${metadata.height} -> ${processedCachePath}`);
+
       // 3. 使用Tesseract识别
       // 由于是数字验证码，设置识别白名单为数字
-      const result = await Tesseract.recognize(
-        imageBuffer,
-        'eng',  // 使用英文语言包（数字识别）
-        {
-          logger: (m) => {
-            // 只在关键步骤输出日志
-            if (m.status === 'recognizing text') {
-              log.debug(`   识别进度: ${Math.round(m.progress * 100)}%`);
-            }
-          },
-          // 优化参数以提高数字识别准确率
-          options: {
-            tessedit_char_whitelist: '0123456789',  // 只识别数字
-            tessedit_pageseg_mode: '7',  // 单行文本模式
-            preserve_interword_spaces: '0',
+      const result = await recognizeTextWithTesseract(processedBuffer, {
+        logger: (m) => {
+          if (m.status === 'recognizing text') {
+            log.debug(`   识别进度: ${Math.round(m.progress * 100)}%`);
           }
+        },
+        params: {
+          tessedit_char_whitelist: '0123456789'
         }
-      );
+      });
 
       const rawText = result.data.text;
       log.debug(`📝 原始识别结果: "${rawText}"`);
@@ -105,6 +107,9 @@ class CaptchaRecognizer {
 
     } catch (error) {
       log.error('❌ 验证码识别失败:', error.message);
+      if (error.stack) {
+        log.error(error.stack.split('\n').slice(0, 5).join('\n'));
+      }
       return '';
     }
   }

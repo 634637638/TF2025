@@ -11,6 +11,7 @@ const XLSX = require('xlsx');
 const DataImportService = require('../services/data-import.service');
 const { unifiedAuth, requirePermission } = require('../middleware/unified-auth');
 const log = require('../utils/log');
+const { getUploadSubdir } = require('../utils/upload-paths');
 
 // 实例化服务
 const dataImportService = new DataImportService();
@@ -18,7 +19,7 @@ const dataImportService = new DataImportService();
 // 配置文件上传
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '../uploads/import');
+    const uploadDir = getUploadSubdir('import');
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }

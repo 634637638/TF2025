@@ -46,7 +46,8 @@ export const normalizeQuickSaleCustomerOption = (
   name: normalizePersonName(customer?.name || '', 20),
   phone: normalizeQuickSaleCustomerPhone(customer?.phone || ''),
   apple_id: normalizeAppleId(customer?.apple_id || ''),
-  member_number: String(customer?.member_number || '')
+  member_number: String(customer?.member_number || ''),
+  vip_level: String(customer?.vip_level || 'normal')
 })
 
 export const toggleQuickSaleNoIMEIMode = (options: {

@@ -2,6 +2,8 @@ export interface WholesaleCustomerSearchItem {
   id: number
   name: string
   phone: string
+  member_number?: string
+  vip_level?: string
 }
 
 export interface WholesalePhone {

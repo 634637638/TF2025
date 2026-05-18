@@ -8,7 +8,7 @@ const router = express.Router();
 const ApiResponse = require('../utils/response');
 const ShopPublicService = require('../services/shop-public.service');
 const bcrypt = require('bcryptjs');
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 const db = require('../config/database');
 const { generateMemberNumber } = require('../utils/member-number');
 const { unifiedAuth, requirePermission } = require('../middleware/unified-auth');
@@ -713,7 +713,7 @@ router.post('/auth/register', async (req, res) => {
     );
 
     // 生成 Token
-    const token = uuidv4();
+    const token = randomUUID();
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30天
 
     await db.getDatabase().query(
@@ -775,7 +775,7 @@ router.post('/auth/login', async (req, res) => {
     }
 
     // 生成 Token
-    const token = uuidv4();
+    const token = randomUUID();
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30天
 
     await db.getDatabase().query(

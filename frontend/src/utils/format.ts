@@ -644,7 +644,13 @@ export const generateProductPlaceholder = (options: ProductPlaceholderOptions = 
 
   // 根据布局类型生成不同的 SVG
   if (layout === 'horizontal') {
-    // 横向布局：适合长方形卡片，上方显示品牌，中间显示型号，底部横向显示颜色+内存
+    // 横向布局：适合长方形卡片，第一行显示品牌，第二行显示型号+颜色
+    const detailText = [model, color]
+      .map(text => String(text || '').trim())
+      .filter(Boolean)
+      .join(' · ')
+    const detailDisplay = detailText.length > 18 ? `${detailText.substring(0, 18)}...` : detailText
+
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
   <defs>
     <linearGradient id="${gradientId}" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -658,30 +664,17 @@ export const generateProductPlaceholder = (options: ProductPlaceholderOptions = 
   <circle cx="${size * 0.12}" cy="${size * 0.12}" r="${size * 0.08}" fill="rgba(255,255,255,0.25)"/>
   <text x="${size * 0.12}" y="${size * 0.12}" text-anchor="middle" dominant-baseline="middle"
         font-family="Arial, sans-serif" font-size="${size * 0.06}" font-weight="bold" fill="white">${brandInitial}</text>
-  <!-- 品牌名称（顶部居中） -->
-  <text x="${size / 2}" y="${size * 0.25}" text-anchor="middle"
-        font-family="Arial, sans-serif" font-size="${size * 0.1}" font-weight="bold" fill="white" opacity="0.95">${escapeHtml(mainText)}</text>
+  <!-- 品牌名称（第一行） -->
+  <text x="${size / 2}" y="${size * 0.28}" text-anchor="middle"
+        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+        font-size="${size * 0.095}" font-weight="700" fill="white" opacity="0.96">${escapeHtml(mainText)}</text>
   <!-- 分割线 -->
-  <line x1="${size * 0.2}" y1="${size * 0.36}" x2="${size * 0.8}" y2="${size * 0.36}" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
-  <!-- 型号（中间区域） -->
-  ${modelDisplay ? `<text x="${size / 2}" y="${size * 0.52}" text-anchor="middle"
-        font-family="Arial, sans-serif" font-size="${size * 0.075}" fill="white" opacity="0.9">${escapeHtml(modelDisplay)}</text>` : ''}
-  <!-- 颜色和内存标签（底部同一行，从左到右排列） -->
-  <g>
-    <!-- 颜色标签 -->
-    ${color ? `<g transform="translate(${size * 0.1}, ${size * 0.68})">
-      <rect x="0" y="0" width="${Math.min(color.length * 11 + 16, size * 0.35)}" height="${size * 0.14}" rx="${size * 0.07}" fill="rgba(255,255,255,0.22)"/>
-      <text x="${Math.min(color.length * 11 + 16, size * 0.35) / 2}" y="${size * 0.1}" text-anchor="middle"
-            font-family="Arial, sans-serif" font-size="${size * 0.065}" fill="white">${escapeHtml(color)}</text>
-    </g>` : ''}
-    <!-- 内存标签（紧跟在颜色后面） -->
-    ${memoryText ? `<g transform="translate(${size * 0.1 + (color ? Math.min(color.length * 11 + 24, size * 0.4) : 0)}, ${size * 0.68})">
-      <rect x="0" y="0" width="${Math.min(memoryText.length * 11 + 16, size * 0.28)}" height="${size * 0.14}" rx="${size * 0.07}" fill="rgba(255,255,255,0.3)"/>
-      <text x="${Math.min(memoryText.length * 11 + 16, size * 0.28) / 2}" y="${size * 0.1}" text-anchor="middle"
-            font-family="Arial, sans-serif" font-size="${size * 0.065}" font-weight="500" fill="white">${escapeHtml(memoryText)}</text>
-    </g>` : ''}
-  </g>
-  <!-- 手机图标（左下角装饰） -->
+  <line x1="${size * 0.2}" y1="${size * 0.38}" x2="${size * 0.8}" y2="${size * 0.38}" stroke="rgba(255,255,255,0.24)" stroke-width="1"/>
+  <!-- 型号+颜色（第二行） -->
+  ${detailDisplay ? `<text x="${size / 2}" y="${size * 0.56}" text-anchor="middle"
+        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+        font-size="${size * 0.07}" font-weight="500" fill="rgba(255,255,255,0.9)">${escapeHtml(detailDisplay)}</text>` : ''}
+  <!-- 手机图标（右下角装饰） -->
   <g transform="translate(${size * 0.75}, ${size * 0.72})" opacity="0.2">
     <rect x="0" y="0" width="28" height="42" rx="4" fill="none" stroke="white" stroke-width="1.5"/>
     <rect x="8" y="36" width="12" height="3" rx="1.5" fill="white"/>

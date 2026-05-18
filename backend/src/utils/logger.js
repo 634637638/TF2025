@@ -12,9 +12,10 @@
 const winston = require('winston');
 const path = require('path');
 const DailyRotateFile = require('winston-daily-rotate-file');
+const { ensureLogDir } = require('./log-paths');
 
 // 日志目录
-const logDir = path.join(__dirname, '../../logs');
+const logDir = ensureLogDir();
 
 // 日志格式
 const logFormat = winston.format.combine(

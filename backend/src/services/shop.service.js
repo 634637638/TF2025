@@ -7,6 +7,7 @@ const db = require('../config/database');
 const fs = require('fs').promises;
 const path = require('path');
 const log = require('../utils/log');
+const { getUploadsRoot } = require('../utils/upload-paths');
 
 class ShopService {
   async ensurePrimaryPhoneImage(phoneId, connection = db.getDatabase()) {
@@ -591,9 +592,7 @@ class ShopService {
 
     try {
       // 确定上传目录路径
-      const uploadDir = process.env.NODE_ENV === 'production'
-        ? (process.env.UPLOAD_PATH || '/www/wwwroot/v6.cn9527.cn/backend/uploads')
-        : path.join(__dirname, '../../uploads');
+      const uploadDir = getUploadsRoot();
 
       // 图片 URL 格式：/uploads/phones/phone-xxx.jpg
       // 去掉开头的 /uploads/ 然后构建完整路径

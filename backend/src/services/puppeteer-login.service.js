@@ -5,16 +5,15 @@
 
 const puppeteer = require('puppeteer');
 const fs = require('fs');
-const path = require('path');
 const log = require('../utils/log');
+const { ensureLogDir } = require('../utils/log-paths');
 
 class PuppeteerLoginService {
   constructor() {
     this.browser = null;
-    this.cookiesDir = path.join(__dirname, '../../logs/puppeteer-cookies');
+    this.cookiesDir = ensureLogDir('puppeteer-cookies');
     this.chromeAvailable = null; // 缓存检测结果
     this.chromePath = null; // 保存找到的路径
-    fs.mkdirSync(this.cookiesDir, { recursive: true });
   }
 
   /**

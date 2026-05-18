@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const log = require('../utils/log');
+const { getUploadSubdir } = require('../utils/upload-paths');
 
 // 导入控制器和中间件
 const menuController = require('../controllers/menu.controller');
@@ -10,8 +11,14 @@ const { unifiedAuth, requirePermission } = require('../middleware/unified-auth')
 
 // 配置文件上传
 const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    cb(null, path.join(__dirname, '../uploads/temp'));
+  destination: async (_req, _file, cb) => {
+    const uploadDir = getUploadSubdir('temp');
+    try {
+      await require('fs').promises.mkdir(uploadDir, { recursive: true });
+      cb(null, uploadDir);
+    } catch (error) {
+      cb(error, uploadDir);
+    }
   },
   filename: (_req, file, cb) => {
     cb(null, Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname));

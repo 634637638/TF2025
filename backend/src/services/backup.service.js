@@ -39,6 +39,14 @@ const ensureBackupConfig = () => {
 };
 
 class BackupService {
+  getBackupDir() {
+    return BACKUP_DIR;
+  }
+
+  getBackendRoot() {
+    return BACKEND_ROOT;
+  }
+
   isValidBackupFilename(filename) {
     return typeof filename === 'string'
       && BACKUP_FILENAME_PATTERN.test(filename)
@@ -129,6 +137,7 @@ class BackupService {
 
       const result = {
         filename: `${backupName}.zip`,
+        path: zipPath,
         size: size,
         size_bytes: stats.size,
         created_at: new Date().toISOString()

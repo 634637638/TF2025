@@ -6,8 +6,12 @@
 
 const axios = require('axios');
 const cheerio = require('cheerio');
-const Tesseract = require('tesseract.js');
 const log = require('../utils/log');
+const {
+  preprocessImageForOcr,
+  recognizeTextWithTesseract,
+  validateImageResponse
+} = require('../utils/ocr-image');
 
 class HttpLoginService {
   constructor() {
@@ -435,20 +439,22 @@ class HttpLoginService {
         timeout: 15000
       });
 
-      // 将图片转为 base64
-      const base64Image = Buffer.from(imgResponse.data).toString('base64');
+      const { buffer: imageBuffer, format } = validateImageResponse(imgResponse, log);
+      const { buffer: processedBuffer, metadata } = await preprocessImageForOcr(imageBuffer);
+
+      log.debug(`  🧹 验证码预处理完成: format=${format}, original=${metadata.width}x${metadata.height}, processedBytes=${processedBuffer.length}`);
 
       // 🔥 云端环境优化：使用多个策略识别验证码
       const strategies = [
         // 策略1: 标准识别
         {
           name: '标准识别',
-          options: {}
+          config: {}
         },
         // 策略2: 只识别数字
         {
           name: '数字模式',
-          options: {
+          config: {
             tessedit_char_whitelist: '0123456789'
           }
         }
@@ -460,20 +466,14 @@ class HttpLoginService {
       for (const strategy of strategies) {
         try {
           log.debug(`  📋 尝试${strategy.name}...`);
-          const result = await Tesseract.recognize(
-            `data:image/png;base64,${base64Image}`,
-            'eng',
-            {
-              ...strategy.options,
-              logger: m => {
-                if (m.status === 'recognizing text') {
-                  process.stdout.write(`\r  ${strategy.name}进度: ${Math.round(m.progress * 100)}%`);
-                }
+          const result = await recognizeTextWithTesseract(processedBuffer, {
+            logger: m => {
+              if (m.status === 'recognizing text') {
+                log.debug(`  ${strategy.name}进度: ${Math.round(m.progress * 100)}%`);
               }
-            }
-          );
-
-          process.stdout.write('\n');
+            },
+            params: strategy.config
+          });
 
           // 清理识别结果：只保留数字
           let captchaText = result.data.text.replace(/[^0-9]/g, '').trim();

@@ -5,6 +5,7 @@ const path = require('path');
 const { unifiedAuth } = require('../middleware/unified-auth');
 const ApiResponse = require('../utils/response');
 const log = require('../utils/log');
+const { getUploadsRoot, getUploadPathFromUrl, getRelativeUploadPathFromUrl } = require('../utils/upload-paths');
 
 /**
  * 删除临时文件（通用接口）
@@ -32,18 +33,11 @@ router.post('/delete-temp-files', unifiedAuth, async (req, res) => {
         // 从URL中提取文件路径
         // URL格式: http://localhost:3000/uploads/subsidy/filename.jpg
         // 或: /uploads/subsidy/filename.jpg
-        const urlObj = new URL(fileUrl, 'http://localhost');
-        const urlPath = urlObj.pathname; // /uploads/subsidy/filename.jpg
-
-        // 移除开头的 /uploads/
-        const relativePath = urlPath.replace(/^\/uploads\//, '');
+        const relativePath = getRelativeUploadPathFromUrl(fileUrl);
 
         // 构建完整文件路径
-        const uploadDirPath = process.env.NODE_ENV === 'production'
-          ? process.env.UPLOAD_PATH || '/www/wwwroot/v6.cn9527.cn/backend/uploads'
-          : path.join(process.cwd(), 'uploads');
-
-        const filePath = path.join(uploadDirPath, relativePath);
+        const uploadDirPath = getUploadsRoot();
+        const filePath = getUploadPathFromUrl(fileUrl);
 
         // 安全检查：确保文件路径在上传目录内
         const normalizedFilePath = path.normalize(filePath);

@@ -539,6 +539,7 @@ import { ValidationRules } from '@/composables'
 import PhoneWarningConfigView from '@/views/system/phone-warning-config/PhoneWarningConfigView.vue'
 import Returngoods from '@/views/system/page/Returngoods.vue'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
+import { logger } from '@/utils/logger'
 
 const SITE_LOGO_ALLOWED_MIME_TYPES = {
   '.jpg': ['image/jpeg'],

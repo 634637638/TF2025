@@ -8,6 +8,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const log = require('../utils/log');
+const { getUploadSubdir } = require('../utils/upload-paths');
 
 // 导入安全工具
 const {
@@ -165,7 +166,7 @@ function generateSecureUploadPath(baseDir) {
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     // 根据文件类型选择存储目录
-    let baseDir = path.join(__dirname, '../../uploads');
+    let baseDir = getUploadSubdir();
 
     if (file.mimetype?.startsWith('image/')) {
       baseDir = path.join(baseDir, 'images');

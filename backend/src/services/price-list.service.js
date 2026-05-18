@@ -2406,7 +2406,9 @@ class PriceListService {
 
       // 调试：保存完整HTML到文件
       const fs = require('fs');
-      const debugPath = '/Users/imac/Desktop/webtset/TF2025/backend/logs/debug-html-' + Date.now() + '.html';
+      const { getLogSubdir, ensureLogDir } = require('../utils/log-paths');
+      ensureLogDir();
+      const debugPath = getLogSubdir(`debug-html-${Date.now()}.html`);
       try {
         fs.writeFileSync(debugPath, html);
         log.debug('📝 完整HTML已保存到:', debugPath);

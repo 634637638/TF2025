@@ -7,14 +7,14 @@ const { unifiedAuth, requirePermission } = require('../middleware/unified-auth')
 const ApiResponse = require('../utils/response');
 const AccessoryService = require('../services/accessory.service');
 const log = require('../utils/log');
+const { getUploadSubdir, getUploadUrl } = require('../utils/upload-paths');
 
 const accessoryService = new AccessoryService();
 
 // 配置图片上传存储
 const storage = multer.diskStorage({
   destination: async (req, file, cb) => {
-    // 使用相对于当前文件的路径：backend/src/routes -> backend/uploads
-    const uploadDir = path.join(__dirname, '../../uploads/accessories');
+    const uploadDir = getUploadSubdir('accessories');
     try {
       await fs.mkdir(uploadDir, { recursive: true });
       cb(null, uploadDir);
@@ -64,7 +64,7 @@ router.post('/upload', unifiedAuth, requirePermission('accessories:create'), upl
     }
 
     // 返回文件访问URL
-    const fileUrl = `/uploads/accessories/${req.file.filename}`;
+    const fileUrl = getUploadUrl('accessories', req.file.filename);
 
     ApiResponse.success(res, {
       url: fileUrl,

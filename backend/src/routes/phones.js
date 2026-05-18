@@ -2334,12 +2334,13 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs').promises;
 const ShopServiceClass = require('../services/shop.service');
+const { getUploadSubdir, getUploadUrl } = require('../utils/upload-paths');
 const shopService = new ShopServiceClass();
 
 // 配置图片上传
 const storage = multer.diskStorage({
   destination: async (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '../../uploads/phones');
+    const uploadDir = getUploadSubdir('phones');
     try {
       await fs.mkdir(uploadDir, { recursive: true });
     } catch (error) {
@@ -2390,7 +2391,7 @@ router.post('/:id/upload-image',
       const uploadedBy = req.user ? req.user.id : 0;
 
       // 生成文件访问URL
-      const fileUrl = `/uploads/phones/${req.file.filename}`;
+      const fileUrl = getUploadUrl('phones', req.file.filename);
 
       // 使用 ShopService 添加单张图片（不删除旧图片）
       await shopService.addPhoneImage(id, fileUrl, 'inventory', uploadedBy);
@@ -2620,7 +2621,7 @@ router.get('/:id/inspection',
 // 配置视频上传存储
 const videoStorage = multer.diskStorage({
   destination: async (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '../../uploads/videos');
+    const uploadDir = getUploadSubdir('videos');
     try {
       await fs.mkdir(uploadDir, { recursive: true });
     } catch (error) {
@@ -2672,7 +2673,7 @@ router.post('/:id/upload-video',
       const uploadedBy = req.user ? req.user.id : 0;
 
       // 生成文件访问URL
-      const videoUrl = `/uploads/videos/${req.file.filename}`;
+      const videoUrl = getUploadUrl('videos', req.file.filename);
 
       // 使用 addPhoneImage 方法，指定类型为 video
       await shopService.addPhoneImage(id, videoUrl, 'video', uploadedBy);

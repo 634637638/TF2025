@@ -244,18 +244,15 @@
             <div class="customer-search-container">
               <el-input
                 v-model="formData.customer_phone"
-                placeholder="请输入手机号搜索客户"
+                placeholder="请输入用户手机号"
                 maxlength="11"
                 clearable
                 @input="handleCustomerPhoneInput"
                 @focus="editShowCustomerSearchResults = true"
                 @blur="handleCustomerPhoneBlur"
                 @clear="handleCustomerClear"
-              >
-                <template #prefix>
-                  <i class="fas fa-phone"></i>
-                </template>
-              </el-input>
+                :readonly="editFoundCustomer !== null"
+              />
 
               <div
                 v-if="editShowCustomerSearchResults && (editCustomerOptions.length > 0 || editCustomerLookupLoading || (formData.customer_phone.length >= 11 && !editFoundCustomer && !editCustomerLookupLoading))"
@@ -273,10 +270,13 @@
                     @mousedown.prevent="selectCustomer(customer)"
                   >
                     <div class="customer-info">
-                      <div class="customer-name">{{ customer.name }}</div>
-                      <div class="customer-phone">{{ customer.phone }}</div>
-                      <div v-if="customer.member_number" class="customer-meta">
-                        <span class="member-number">{{ customer.member_number }}</span>
+                      <div class="customer-headline">
+                        <div class="customer-name">{{ customer.name }}</div>
+                        <span v-if="customer.member_number" class="member-number">{{ customer.member_number }}</span>
+                      </div>
+                      <div class="customer-subline">
+                        <span class="customer-phone">{{ customer.phone }}</span>
+                        <span class="vip-badge">{{ getVipLabel(customer.vip_level) }}</span>
                       </div>
                     </div>
                   </div>
@@ -286,8 +286,7 @@
                     @mousedown.prevent="createNewCustomer"
                   >
                     <i class="fas fa-user-plus"></i>
-                    创建新客户 ({{ formData.customer_phone }})
-                    <div class="create-hint">输入姓名后点击创建</div>
+                    点击创建该用户
                   </div>
                 </template>
               </div>
@@ -295,13 +294,43 @@
           </el-form-item>
 
           <el-form-item label="客户姓名">
-            <el-input
-              v-model="formData.customer_name"
-              placeholder="请输入客户姓名"
-              clearable
-              data-field="customer_name"
-              @input="formatCustomerName"
-            />
+            <div class="customer-name-group">
+              <el-input
+                ref="customerNameInputRef"
+                v-model="formData.customer_name"
+                name="query-edit-customer-name"
+                placeholder=""
+                :readonly="!editFoundCustomer && !customerCreating ? true : !customerNameEditing"
+                clearable
+                data-field="customer_name"
+                @dblclick="enableCustomerNameEdit"
+                @touchend="handleCustomerNameTouchEnd"
+                @input="formatCustomerName"
+                @blur="handleCustomerNameBlur"
+                @keyup.enter="saveCustomerNameEdit"
+                :class="{ 'editable': editFoundCustomer || customerCreating }"
+              />
+              <el-button
+                v-if="customerNameEditing"
+                class="customer-lock-button"
+                type="success"
+                plain
+                @click="saveCustomerNameEdit"
+                title="当前已解锁，点击保存并锁定"
+              >
+                <i class="fas fa-lock-open"></i>
+              </el-button>
+              <el-button
+                v-if="editFoundCustomer !== null && !customerNameEditing"
+                class="customer-lock-button"
+                type="info"
+                plain
+                @click="clearSelectedCustomer"
+                title="当前已锁定，点击清除客户选择"
+              >
+                <i class="fas fa-lock"></i>
+              </el-button>
+            </div>
           </el-form-item>
 
           <el-form-item label="Apple ID">
@@ -458,9 +487,9 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { ValidationRules } from '@/composables'
+import { useNotification } from '@/composables/useNotification'
 import MobileDialog from '@/components/MobileDialog.vue'
 import { useMobile } from '@/composables/mobile'
 import unifiedApi from '@/utils/unified-api'
@@ -509,14 +538,18 @@ type NormalizedSection = Record<string, string | number | boolean | null | undef
 interface CustomerOption extends Pick<Customer, 'id' | 'name' | 'phone'> {
   apple_id?: string
   member_number?: string
+  vip_level?: string
 }
+
+const { success: showSuccess, error: showError, warning: showWarning, info: showInfo } = useNotification()
 
 const normalizeCustomerOption = (customer?: Partial<CustomerOption> | null): CustomerOption => ({
   id: Number(customer?.id || 0),
   name: normalizePersonName(customer?.name || '', 20),
   phone: normalizeCustomerPhone(customer?.phone || ''),
   apple_id: normalizeAppleId(customer?.apple_id || ''),
-  member_number: customer?.member_number || ''
+  member_number: customer?.member_number || '',
+  vip_level: customer?.vip_level || 'normal'
 })
 
 interface NormalizedPhoneData {
@@ -624,16 +657,42 @@ const cloneOptions = (source: EditModalOptions): EditModalOptions => ({
   users: [...source.users]
 })
 
-const sortByOrder = <T extends { sort_order?: number; id?: number }>(items: T[]) => {
+const sortByOrder = <T extends { sort_order?: number; id?: string | number }>(items: T[]) => {
   return [...items].sort((a, b) => {
     const orderDiff = (a.sort_order || 0) - (b.sort_order || 0)
     if (orderDiff !== 0) return orderDiff
-    return (a.id || 0) - (b.id || 0)
+    return Number(a.id || 0) - Number(b.id || 0)
   })
 }
 
 const toRecord = (value: unknown): Record<string, unknown> | null => {
   return typeof value === 'object' && value !== null ? value as Record<string, unknown> : null
+}
+
+const toSectionValue = (value: unknown): string | number | boolean | null | undefined => {
+  if (value === null) return null
+  if (value === undefined) return undefined
+  if (typeof value === 'string') return value
+  if (typeof value === 'number') return value
+  if (typeof value === 'boolean') return value
+  return undefined
+}
+
+const isOptionItem = (item: OptionItem | null): item is OptionItem => {
+  return Boolean(item?.name)
+}
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (error instanceof Error && error.message) {
+    return error.message
+  }
+
+  const errorRecord = toRecord(error)
+  const responseRecord = toRecord(errorRecord?.response)
+  const dataRecord = toRecord(responseRecord?.data)
+  const rawMessage = dataRecord?.message ?? errorRecord?.message
+
+  return typeof rawMessage === 'string' && rawMessage.trim() ? rawMessage : fallback
 }
 
 const extractNestedList = (data: unknown, keys: string[]) => {
@@ -772,29 +831,29 @@ const fetchEditOptions = async (): Promise<EditModalOptions> => {
           colorItems: colorsRes.success
             ? sortByOrder(
                 extractNestedList(colorsRes.data, ['data', 'colors'])
-                  .map((item) => {
+                  .map((item): OptionItem | null => {
                     if (typeof item === 'string') return null
                     const rawItem = toRecord(item) as RawLookupItem | null
                     return rawItem?.name
                       ? { id: Number(rawItem.id || 0), name: rawItem.name, sort_order: Number(rawItem.sort_order || 0) }
                       : null
                   })
-                  .filter(Boolean) as OptionItem[]
+                  .filter(isOptionItem)
               )
             : [],
           memories: memoriesRes.success ? normalizeNameList(memoriesRes.data, ['size', 'capacity', 'name']) : [],
           memoryItems: memoriesRes.success
             ? sortByOrder(
                 extractNestedList(memoriesRes.data, ['data', 'memories'])
-                  .map((item) => {
+                  .map((item): OptionItem | null => {
                     if (typeof item === 'string') return null
                     const rawItem = toRecord(item) as RawLookupItem | null
                     const name = rawItem?.size || rawItem?.capacity || rawItem?.name
                     return name
-                      ? { id: Number(rawItem.id || 0), name, sort_order: Number(rawItem.sort_order || 0) }
+                      ? { id: Number(rawItem.id || 0), name: String(name), sort_order: Number(rawItem.sort_order || 0) }
                       : null
                   })
-                  .filter(Boolean) as OptionItem[]
+                  .filter(isOptionItem)
               )
             : [],
           users: usersRes.success && Array.isArray(usersRes.data?.employees)
@@ -849,7 +908,7 @@ const normalizePhoneData = (item: unknown): NormalizedPhoneData => {
     return {
       基本信息: {
         ...basicSection,
-        phone_id: basicSection.phone_id || basicSection.id || rawItem?.id
+        phone_id: basicSection.phone_id || basicSection.id || toSectionValue(rawItem?.id)
       },
       供应商信息: {
         ...(supplierSection || {}),
@@ -880,7 +939,7 @@ const normalizePhoneData = (item: unknown): NormalizedPhoneData => {
 
   return {
     基本信息: {
-      phone_id: rawItem?.phone_id || rawItem?.id,
+      phone_id: toSectionValue(rawItem?.phone_id) || toSectionValue(rawItem?.id),
       imei: rawItem?.imei as string || '',
       serial_number: rawItem?.serial_number as string || '',
       brand: rawItem?.brand as string || '',
@@ -973,7 +1032,7 @@ const props = defineProps<ModelValueProps & {
 
 const emit = defineEmits<UpdateModelValueEmits & SuccessEmits>()
 
-const { isMobile } = useMobile()
+const { isMobile, isIOS } = useMobile()
 
 const dialogVisible = computed({
   get: () => props.modelValue,
@@ -994,8 +1053,12 @@ const originalEditValues = ref({
 const editCustomerOptions = ref<CustomerOption[]>([])
 const editCustomerLookupLoading = ref(false)
 const editFoundCustomer = ref<CustomerOption | null>(null)
+const customerNameEditing = ref(false)
+const customerCreating = ref(false)
 const editShowCustomerSearchResults = ref(false)
 const editCustomerSearchTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
+const customerNameInputRef = ref<any>(null)
+const customerNameLastTapAt = ref(0)
 let lastLoadToken = 0
 let salePriceDebounceTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -1040,7 +1103,7 @@ const findModelOption = (modelName?: string | null, brandId?: number | null, bra
 
 const syncBrandId = () => {
   const matchedBrand = findOptionByName(options.brandItems, formData.brand)
-  formData.brand_id = matchedBrand?.id || null
+  formData.brand_id = matchedBrand ? Number(matchedBrand.id) || null : null
   return matchedBrand
 }
 
@@ -1052,13 +1115,13 @@ const syncModelId = () => {
 
 const syncColorId = () => {
   const matchedColor = findOptionByName(options.colorItems, formData.color)
-  formData.color_id = matchedColor?.id || null
+  formData.color_id = matchedColor ? Number(matchedColor.id) || null : null
   return matchedColor
 }
 
 const syncMemoryId = () => {
   const matchedMemory = findOptionByName(options.memoryItems, formData.memory)
-  formData.memory_id = matchedMemory?.id || null
+  formData.memory_id = matchedMemory ? Number(matchedMemory.id) || null : null
   return matchedMemory
 }
 
@@ -1112,6 +1175,17 @@ const showProfit = computed(() => {
 const showPaymentChannel = computed(() => {
   return ['mobile', 'bank_card', 'subsidy_card'].includes(formData.payment_method)
 })
+
+const getVipLabel = (vipLevel?: string) => {
+  const labels: Record<string, string> = {
+    normal: '普通',
+    silver: '银卡',
+    gold: '金卡',
+    platinum: '白金'
+  }
+
+  return labels[vipLevel || 'normal'] || '普通'
+}
 
 const resetFormState = () => {
   Object.assign(formData, defaultFormState())
@@ -1201,14 +1275,14 @@ const loadDialogData = async () => {
 
     if (customerInfo.customer_id && customerInfo.customer_name) {
       editFoundCustomer.value = {
-        id: customerInfo.customer_id,
+        id: Number(customerInfo.customer_id || 0),
         name: normalizePersonName(customerInfo.customer_name, 20),
         phone: normalizeCustomerPhone(customerInfo.customer_phone || ''),
         apple_id: normalizeAppleId(customerInfo.apple_id || '')
       }
     }
   } catch (error: unknown) {
-    ElMessage.error(error?.message || '获取手机数据失败，请稍后重试')
+    showError(getErrorMessage(error, '获取手机数据失败，请稍后重试'))
     dialogVisible.value = false
   } finally {
     if (token === lastLoadToken) {
@@ -1276,12 +1350,12 @@ const toggleNoIMEIMode = () => {
 
   if (formData.isNoIMEIMode) {
     formData.imei = formData.serial_number || ''
-    ElMessage.success('已启用无IMEI模式')
+    showSuccess('已启用无IMEI模式')
     return
   }
 
   formData.imei = ''
-  ElMessage.info('已切换回标准 IMEI 模式')
+  showInfo('已切换回标准 IMEI 模式')
 }
 
 const formatCustomerPhone = () => {
@@ -1290,6 +1364,137 @@ const formatCustomerPhone = () => {
 
 const formatCustomerName = () => {
   formData.customer_name = normalizePersonName(formData.customer_name, 20)
+}
+
+const resolveNativeCustomerInput = (source: any): HTMLInputElement | null => {
+  if (!source) return null
+  if (source instanceof HTMLInputElement) return source
+  if (source?.target instanceof HTMLInputElement) return source.target
+  if (source?.input instanceof HTMLInputElement) return source.input
+  if (source?.$el && typeof source.$el.querySelector === 'function') {
+    return source.$el.querySelector('input')
+  }
+  return null
+}
+
+const focusCustomerNameInput = (input: HTMLInputElement | null) => {
+  if (!input) return
+
+  input.readOnly = false
+  input.removeAttribute('readonly')
+  input.disabled = false
+  input.removeAttribute('disabled')
+  input.focus({ preventScroll: true })
+  input.click()
+
+  try {
+    if (isIOS.value) {
+      const length = input.value?.length || 0
+      input.setSelectionRange(length, length)
+    } else {
+      input.select()
+    }
+  } catch {
+    // ignore
+  }
+}
+
+const promptCustomerNameForIOS = async (currentName: string) => {
+  const promptedName = window.prompt('请输入客户姓名', currentName)
+  if (promptedName === null) return null
+
+  const normalizedName = normalizePersonName(promptedName, 20)
+  if (!normalizedName) {
+    showWarning('客户姓名不能为空')
+    return null
+  }
+
+  return normalizedName
+}
+
+const enableCustomerNameEdit = (event?: MouseEvent) => {
+  if (!editFoundCustomer.value) return
+  customerNameEditing.value = true
+
+  focusCustomerNameInput(resolveNativeCustomerInput(event) || resolveNativeCustomerInput(customerNameInputRef.value))
+
+  requestAnimationFrame(() => {
+    focusCustomerNameInput(
+      resolveNativeCustomerInput(customerNameInputRef.value) ||
+      document.querySelector('input[name="query-edit-customer-name"]')
+    )
+  })
+}
+
+const handleCustomerNameTouchEnd = async (event: TouchEvent) => {
+  if (!isIOS.value) return
+
+  const now = Date.now()
+  const interval = now - customerNameLastTapAt.value
+  customerNameLastTapAt.value = now
+
+  if (interval <= 0 || interval >= 320) return
+  if (!editFoundCustomer.value) return
+
+  const activeInput = resolveNativeCustomerInput(event.target) || resolveNativeCustomerInput(customerNameInputRef.value)
+
+  if (activeInput && document.activeElement === activeInput && customerNameEditing.value) {
+    return
+  }
+
+  const normalizedName = await promptCustomerNameForIOS(formData.customer_name)
+  if (!normalizedName) return
+
+  formData.customer_name = normalizedName
+  void saveCustomerNameEdit()
+}
+
+const handleCustomerNameBlur = () => {
+  if (customerCreating.value && !editFoundCustomer.value) {
+    void createNewCustomer()
+    return
+  }
+
+  if (customerNameEditing.value && editFoundCustomer.value) {
+    void saveCustomerNameEdit()
+  } else {
+    customerNameEditing.value = false
+  }
+}
+
+const saveCustomerNameEdit = async () => {
+  if (!editFoundCustomer.value) {
+    customerNameEditing.value = false
+    return
+  }
+
+  formatCustomerName()
+  formatAppleId()
+
+  if (!formData.customer_name) {
+    showError('客户姓名不能为空')
+    return
+  }
+
+  try {
+    const response = await unifiedApi.put(`/customers/${editFoundCustomer.value.id}`, {
+      name: formData.customer_name,
+      apple_id: normalizeAppleId(formData.apple_id) || null,
+      email: resolveAppleAccountEmail(normalizeAppleId(formData.apple_id))
+    })
+
+    if (!response.success) {
+      throw new Error(response.message || '更新客户失败')
+    }
+
+    editFoundCustomer.value.name = formData.customer_name
+    editFoundCustomer.value.apple_id = normalizeAppleId(formData.apple_id)
+    showSuccess('客户信息更新成功')
+  } catch (error: unknown) {
+    showError(error instanceof Error ? error.message : '更新客户失败')
+  } finally {
+    customerNameEditing.value = false
+  }
 }
 
 const formatAppleId = () => {
@@ -1343,6 +1548,8 @@ const handleCustomerPhoneInput = () => {
   if (!formData.customer_phone) {
     editCustomerOptions.value = []
     editFoundCustomer.value = null
+    customerNameEditing.value = false
+    customerCreating.value = false
     editShowCustomerSearchResults.value = false
     formData.customer_id = ''
     return
@@ -1350,6 +1557,8 @@ const handleCustomerPhoneInput = () => {
 
   if (editFoundCustomer.value && normalizeCustomerPhone(editFoundCustomer.value.phone) !== formData.customer_phone) {
     editFoundCustomer.value = null
+    customerNameEditing.value = false
+    customerCreating.value = false
     formData.customer_id = ''
   }
 
@@ -1387,21 +1596,39 @@ const selectCustomer = (customer: CustomerOption) => {
   formData.apple_id = normalizedCustomer.apple_id || ''
   formData.customer_id = String(normalizedCustomer.id)
   editFoundCustomer.value = normalizedCustomer
+  customerNameEditing.value = false
+  customerCreating.value = false
   editCustomerOptions.value = []
   editShowCustomerSearchResults.value = false
 }
 
 const createNewCustomer = async () => {
-  formatCustomerName()
+  formatCustomerPhone()
   formatAppleId()
 
-  if (!formData.customer_name) {
-    ElMessage.error('请先输入客户姓名')
+  if (!isValidMobilePhone(formData.customer_phone)) {
+    showError('请输入有效的手机号码')
+    editCustomerLookupLoading.value = false
     return
   }
 
-  if (!isValidMobilePhone(formData.customer_phone)) {
-    ElMessage.error('请输入有效的手机号码')
+  if (!customerCreating.value) {
+    customerCreating.value = true
+    customerNameEditing.value = true
+    editShowCustomerSearchResults.value = false
+    requestAnimationFrame(() => {
+      focusCustomerNameInput(
+        resolveNativeCustomerInput(customerNameInputRef.value) ||
+        document.querySelector('input[name="query-edit-customer-name"]')
+      )
+    })
+    return
+  }
+
+  formatCustomerName()
+
+  if (!formData.customer_name) {
+    showError('请输入客户姓名')
     return
   }
 
@@ -1428,9 +1655,11 @@ const createNewCustomer = async () => {
 
     const newCustomer = normalizeCustomerOption(response.data)
     selectCustomer(newCustomer)
-    ElMessage.success(`新客户 "${newCustomer.name}" 创建成功`)
+    customerCreating.value = false
+    customerNameEditing.value = false
+    showSuccess(`新客户 "${newCustomer.name}" 创建成功`)
   } catch (error: unknown) {
-    ElMessage.error(error?.message || '创建客户失败')
+    showError(getErrorMessage(error, '创建客户失败'))
   } finally {
     editCustomerLookupLoading.value = false
   }
@@ -1441,8 +1670,16 @@ const handleCustomerClear = () => {
   formData.apple_id = ''
   formData.customer_id = ''
   editFoundCustomer.value = null
+  customerNameEditing.value = false
+  customerCreating.value = false
   editCustomerOptions.value = []
   editShowCustomerSearchResults.value = false
+}
+
+const clearSelectedCustomer = () => {
+  handleCustomerClear()
+  formData.customer_phone = ''
+  customerCreating.value = false
 }
 
 const calculateSubsidyRemarks = () => {
@@ -1451,7 +1688,7 @@ const calculateSubsidyRemarks = () => {
 
   if (salePrice > 6000) {
     if (formData.payment_method === 'subsidy_card') {
-      ElMessage.error('销售金额超过6000元，无法使用国补刷卡')
+      showError('销售金额超过6000元，无法使用国补刷卡')
       formData.payment_method = ''
       formData.payment_channel = ''
     }
@@ -1473,7 +1710,7 @@ const handlePaymentMethodChange = () => {
   if (formData.payment_method === 'subsidy_card') {
     const salePrice = Number(formData.sale_price || 0)
     if (salePrice > 6000) {
-      ElMessage.error('销售金额超过6000元，无法使用国补刷卡')
+      showError('销售金额超过6000元，无法使用国补刷卡')
       formData.payment_method = ''
       formData.payment_channel = ''
       formData.remarks = ''
@@ -1508,12 +1745,12 @@ const handleSubmit = async () => {
   if (!valid) return
 
   if (formData.imei !== formData.serial_number && (!formData.imei || formData.imei.length < 15)) {
-    ElMessage.error('请输入完整的15位IMEI号')
+    showError('请输入完整的15位IMEI号')
     return
   }
 
   if (!formData.serial_number) {
-    ElMessage.error('请输入序列号')
+    showError('请输入序列号')
     return
   }
 
@@ -1526,7 +1763,7 @@ const handleSubmit = async () => {
     const normalizedAppleId = normalizeAppleId(formData.apple_id)
 
     if (!formData.brand_id || !formData.model_id || !formData.color_id || !formData.memory_id) {
-      ElMessage.error('品牌、型号、颜色、内存必须从数据库已有选项中选择，不能使用不存在的数据')
+      showError('品牌、型号、颜色、内存必须从数据库已有选项中选择，不能使用不存在的数据')
       return
     }
 
@@ -1580,11 +1817,11 @@ const handleSubmit = async () => {
       throw new Error(response.message || '更新失败')
     }
 
-    ElMessage.success('设备信息更新成功')
+    showSuccess('设备信息更新成功')
     emit('success')
     dialogVisible.value = false
   } catch (error: unknown) {
-    ElMessage.error(error?.response?.data?.message || error?.message || '更新失败，请稍后重试')
+    showError(getErrorMessage(error, '更新失败，请稍后重试'))
   } finally {
     submitting.value = false
   }
@@ -1856,66 +2093,199 @@ onBeforeUnmount(() => {
 
 .customer-search-results {
   position: absolute;
-  top: calc(100% + 6px);
+  top: 100%;
   left: 0;
   right: 0;
-  z-index: 25;
-  max-height: 280px;
+  z-index: 1001;
+  max-height: 300px;
   overflow-y: auto;
-  background: #fff;
-  border: 1px solid #dbe3ef;
-  border-radius: 14px;
-  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
-}
-
-.search-loading,
-.customer-item,
-.create-new-customer {
-  padding: 12px 14px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  margin-top: 4px;
 }
 
 .search-loading {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #64748b;
+  justify-content: center;
+  padding: 16px 20px;
+  color: #666;
+  font-size: 14px;
 }
 
 .customer-item {
+  padding: 16px 20px;
   cursor: pointer;
-  transition: background-color 0.16s ease;
+  transition: background-color 0.2s;
+  border-bottom: 1px solid #eee;
 
   &:hover {
-    background: #f8fafc;
+    background: #f8f9fa;
   }
+}
+
+.customer-item:last-child {
+  border-bottom: none;
+}
+
+.customer-info {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.customer-headline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.customer-subline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
 }
 
 .customer-name {
   font-weight: 600;
-  color: #111827;
+  color: #1f2937;
+  font-size: 14px;
+  line-height: 1.2;
+  min-width: 0;
 }
 
-.customer-phone,
-.customer-meta {
-  margin-top: 4px;
+.customer-phone {
+  color: #475569;
   font-size: 12px;
-  color: #6b7280;
+  line-height: 1.2;
+}
+
+.member-number {
+  background: linear-gradient(135deg, #eef6ff 0%, #dbeafe 100%);
+  color: #1d4ed8;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  justify-self: end;
+}
+
+.vip-badge {
+  background: linear-gradient(135deg, #fb7185 0%, #f59e0b 100%);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  flex-shrink: 0;
+  justify-self: end;
+  box-shadow: 0 6px 14px rgba(245, 158, 11, 0.18);
 }
 
 .create-new-customer {
+  padding: 16px 20px;
   cursor: pointer;
-  color: #2563eb;
-  border-top: 1px solid #eef2f7;
+  color: #28a745;
+  background: #f8f9fa;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
 
   &:hover {
-    background: #eff6ff;
+    background: #e9ecef;
   }
 }
 
-.create-hint {
-  margin-top: 4px;
-  font-size: 12px;
-  color: #94a3b8;
+@media (max-width: 768px) {
+  .customer-search-results {
+    max-height: 240px;
+  }
+
+  .search-loading {
+    padding: 10px 12px;
+    font-size: 12px;
+    gap: 6px;
+  }
+
+  .customer-item {
+    padding: 9px 10px;
+  }
+
+  .customer-info {
+    gap: 5px;
+  }
+
+  .customer-headline,
+  .customer-subline {
+    gap: 4px;
+  }
+
+  .customer-name {
+    font-size: 12px;
+  }
+
+  .customer-phone {
+    font-size: 11px;
+  }
+
+  .member-number,
+  .vip-badge {
+    font-size: 8px;
+    padding: 1px 5px;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+
+  .create-new-customer {
+    padding: 10px 12px;
+    font-size: 12px;
+    gap: 6px;
+  }
+}
+
+.customer-name-group {
+  display: flex;
+  align-items: stretch;
+}
+
+.customer-name-group :deep(.el-input) {
+  flex: 1;
+}
+
+.customer-name-group:has(.customer-lock-button) :deep(.el-input__wrapper) {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.customer-lock-button {
+  width: 36px !important;
+  min-width: 36px !important;
+  height: 36px !important;
+  padding: 0 !important;
+  flex: 0 0 36px !important;
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+}
+
+.customer-lock-button :deep(.el-button__content) {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.customer-lock-button i {
+  font-size: 14px;
 }
 
 :deep(.el-form-item) {
@@ -2020,6 +2390,17 @@ onBeforeUnmount(() => {
     :deep(.el-button [class*='fa-']) {
       margin-right: 4px;
     }
+  }
+
+  .customer-lock-button {
+    width: 32px !important;
+    min-width: 32px !important;
+    height: 32px !important;
+    flex-basis: 32px !important;
+  }
+
+  .customer-lock-button i {
+    font-size: 13px;
   }
 
   :deep(.el-input__wrapper),

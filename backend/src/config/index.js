@@ -8,6 +8,7 @@ const envFile = env === 'production' ? '.env.production' : '.env';
 // 使用绝对路径加载 .env 文件（从 cwd 解析）
 const envPath = path.resolve(process.cwd(), envFile);
 require('dotenv').config({ path: envPath });
+log.info(`环境配置加载: NODE_ENV=${env}, envFile=${envPath}`);
 
 // 验证必需的环境变量
 const requiredEnvVars = ['DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_NAME', 'JWT_SECRET'];

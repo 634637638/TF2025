@@ -4,6 +4,7 @@ const config = require('./config');
 const { connectToDatabase, getDatabase } = require('./config/database');
 const errorHandler = require('./middleware/error-handler');
 const log = require('./utils/log');
+const { getUploadsRoot } = require('./utils/upload-paths');
 
 // 导入路由
 const routes = require('./routes');
@@ -69,11 +70,8 @@ async function initializeApp() {
     app.use(requestLogger);
 
     // 设置静态文件服务
-    // __dirname 是 backend/src，需要向上两级到项目根，然后进入 backend/uploads
-    // 或者直接使用 process.cwd() 指向后端根目录
-    const uploadsPath = process.env.NODE_ENV === 'production'
-      ? process.env.UPLOAD_PATH || '/www/wwwroot/v6.cn9527.cn/backend/uploads'
-      : path.join(process.cwd(), 'uploads');
+    // 优先使用 UPLOAD_PATH；未配置时统一回退到 backend/uploads
+    const uploadsPath = getUploadsRoot();
 
     // 添加 URL 解码中间件和 CORS 头，处理中文文件名和跨域访问
     app.use('/uploads', uploadStaticMiddleware);

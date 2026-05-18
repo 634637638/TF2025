@@ -1616,7 +1616,7 @@ router.get('/customers', unifiedAuth, requirePermission('sales:view'), async (re
     if (isNumeric) {
       // 手机号搜索
       query = `
-        SELECT id, name, phone, apple_id, member_number, created_at
+        SELECT id, name, phone, apple_id, member_number, vip_level, created_at
         FROM customers
         WHERE phone LIKE ?
         ORDER BY created_at DESC
@@ -1626,7 +1626,7 @@ router.get('/customers', unifiedAuth, requirePermission('sales:view'), async (re
     } else {
       // 姓名搜索
       query = `
-        SELECT id, name, phone, apple_id, member_number, created_at
+        SELECT id, name, phone, apple_id, member_number, vip_level, created_at
         FROM customers
         WHERE name LIKE ?
         ORDER BY created_at DESC

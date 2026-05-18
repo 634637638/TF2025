@@ -11,12 +11,13 @@
           <el-form-item label="手机号码" prop="customer_phone" required class="customer-search-form-item">
             <el-input
               v-model="formData.customer_phone"
-              placeholder="请输入手机号码"
+              placeholder="请输入用户手机号"
               clearable
               maxlength="11"
               @input="handlePhoneInput"
               @focus="handlePhoneFocus"
               @blur="handlePhoneBlur"
+              :readonly="selectedCustomer !== null"
             >
               <template #prefix>
                 <i class="fas fa-mobile-alt"></i>
@@ -39,10 +40,15 @@
                   @click="selectCustomer(customer)"
                 >
                   <div class="customer-info">
-                    <span class="customer-name">{{ customer.name }}</span>
-                    <span class="customer-phone">{{ customer.phone }}</span>
+                    <div class="customer-headline">
+                      <div class="customer-name">{{ customer.name }}</div>
+                      <span v-if="customer.member_number" class="member-number">{{ customer.member_number }}</span>
+                    </div>
+                    <div class="customer-subline">
+                      <span class="customer-phone">{{ customer.phone }}</span>
+                      <span class="vip-badge">{{ getVipLabel(customer.vip_level) }}</span>
+                    </div>
                   </div>
-                  <i class="fas fa-check-circle"></i>
                 </div>
               </div>
               <div
@@ -50,24 +56,51 @@
                 class="create-new-customer"
                 @click="autoCreateCustomer"
               >
-                <i class="fas fa-plus-circle"></i>
-                自动创建新客户
+                <i class="fas fa-user-plus"></i>
+                点击创建该用户
               </div>
             </div>
           </el-form-item>
         </el-col>
         <el-col :span="12">
           <el-form-item label="客户姓名" prop="customer_name" required>
-            <el-input
-              v-model="formData.customer_name"
-              placeholder="客户姓名"
-              clearable
-              @input="handleCustomerNameInput"
-            >
-              <template #prefix>
-                <i class="fas fa-user"></i>
-              </template>
-            </el-input>
+            <div class="customer-name-group">
+              <el-input
+                :ref="customerNameInputRef"
+                v-model="formData.customer_name"
+                name="wholesale-customer-name"
+                placeholder=""
+                :readonly="!selectedCustomer && !customerCreating ? true : !customerNameEditing"
+                @dblclick="enableCustomerNameEdit"
+                @touchend="handleCustomerNameTouchEnd"
+                @input="handleCustomerNameInput"
+                @blur="handleCustomerNameBlur"
+              >
+                <template #prefix>
+                  <i class="fas fa-user"></i>
+                </template>
+              </el-input>
+              <el-button
+                v-if="customerNameEditing"
+                class="customer-lock-button"
+                type="success"
+                plain
+                @click="saveCustomerNameEdit"
+                title="当前已解锁，点击保存并锁定"
+              >
+                <i class="fas fa-lock-open"></i>
+              </el-button>
+              <el-button
+                v-if="selectedCustomer !== null && !customerNameEditing"
+                class="customer-lock-button"
+                type="info"
+                plain
+                @click="clearSelectedCustomer"
+                title="当前已锁定，点击清除客户选择"
+              >
+                <i class="fas fa-lock"></i>
+              </el-button>
+            </div>
           </el-form-item>
         </el-col>
       </el-row>
@@ -261,12 +294,13 @@
           <el-form-item label="客户手机" prop="customer_phone" class="customer-search-form-item">
             <el-input
               v-model="formData.customer_phone"
-              placeholder="客户手机号（可选）"
+              placeholder="请输入用户手机号"
               clearable
               maxlength="11"
               @input="handlePhoneInput"
               @focus="handlePhoneFocus"
               @blur="handlePhoneBlur"
+              :readonly="selectedCustomer !== null"
             >
               <template #prefix>
                 <i class="fas fa-mobile-alt"></i>
@@ -289,10 +323,15 @@
                   @click="selectCustomer(customer)"
                 >
                   <div class="customer-info">
-                    <span class="customer-name">{{ customer.name }}</span>
-                    <span class="customer-phone">{{ customer.phone }}</span>
+                    <div class="customer-headline">
+                      <div class="customer-name">{{ customer.name }}</div>
+                      <span v-if="customer.member_number" class="member-number">{{ customer.member_number }}</span>
+                    </div>
+                    <div class="customer-subline">
+                      <span class="customer-phone">{{ customer.phone }}</span>
+                      <span class="vip-badge">{{ getVipLabel(customer.vip_level) }}</span>
+                    </div>
                   </div>
-                  <i class="fas fa-check-circle"></i>
                 </div>
               </div>
               <div
@@ -300,24 +339,51 @@
                 class="create-new-customer"
                 @click="autoCreateCustomer"
               >
-                <i class="fas fa-plus-circle"></i>
-                自动创建新客户
+                <i class="fas fa-user-plus"></i>
+                点击创建该用户
               </div>
             </div>
           </el-form-item>
         </el-col>
         <el-col :span="12">
           <el-form-item label="客户姓名" prop="customer_name">
-            <el-input
-              v-model="formData.customer_name"
-              placeholder="客户姓名（可选）"
-              clearable
-              @input="handleCustomerNameInput"
-            >
-              <template #prefix>
-                <i class="fas fa-user"></i>
-              </template>
-            </el-input>
+            <div class="customer-name-group">
+              <el-input
+                :ref="customerNameInputRef"
+                v-model="formData.customer_name"
+                name="wholesale-customer-name"
+                placeholder=""
+                :readonly="!selectedCustomer && !customerCreating ? true : !customerNameEditing"
+                @dblclick="enableCustomerNameEdit"
+                @touchend="handleCustomerNameTouchEnd"
+                @input="handleCustomerNameInput"
+                @blur="handleCustomerNameBlur"
+              >
+                <template #prefix>
+                  <i class="fas fa-user"></i>
+                </template>
+              </el-input>
+              <el-button
+                v-if="customerNameEditing"
+                class="customer-lock-button"
+                type="success"
+                plain
+                @click="saveCustomerNameEdit"
+                title="当前已解锁，点击保存并锁定"
+              >
+                <i class="fas fa-lock-open"></i>
+              </el-button>
+              <el-button
+                v-if="selectedCustomer !== null && !customerNameEditing"
+                class="customer-lock-button"
+                type="info"
+                plain
+                @click="clearSelectedCustomer"
+                title="当前已锁定，点击清除客户选择"
+              >
+                <i class="fas fa-lock"></i>
+              </el-button>
+            </div>
           </el-form-item>
         </el-col>
       </el-row>
@@ -339,10 +405,18 @@ interface Props {
   customerSearchResults: WholesaleCustomerSearchItem[]
   customerSearching: boolean
   selectedCustomer: WholesaleCustomerSearchItem | null
+  customerNameEditing: boolean
+  customerCreating: boolean
   handlePhoneInput: (value: string) => void
   handlePhoneFocus: () => void
   handlePhoneBlur: () => void
   handleCustomerNameInput: (value: string) => void
+  enableCustomerNameEdit: (event?: MouseEvent) => void
+  handleCustomerNameTouchEnd: () => void
+  handleCustomerNameBlur: () => void
+  saveCustomerNameEdit: () => void
+  clearSelectedCustomer: () => void
+  customerNameInputRef?: any
   selectCustomer: (customer: WholesaleCustomerSearchItem) => void
   autoCreateCustomer: () => void | Promise<void>
   handlePaymentMethodChange: () => void
@@ -350,6 +424,17 @@ interface Props {
 }
 
 defineProps<Props>()
+
+const getVipLabel = (vipLevel?: string) => {
+  const labels: Record<string, string> = {
+    normal: '普通',
+    silver: '银卡',
+    gold: '金卡',
+    platinum: '白金'
+  }
+
+  return labels[vipLevel || 'normal'] || '普通'
+}
 </script>
 
 <style lang="scss" scoped>
@@ -379,74 +464,150 @@ defineProps<Props>()
   left: 0;
   right: 0;
   background: white;
-  border: 1px solid #e4e7ed;
-  border-radius: 4px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
   margin-top: 4px;
-  max-height: 200px;
+  max-height: 300px;
   overflow-y: auto;
-  z-index: 1000;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  z-index: 1001;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .searching {
-  padding: 12px 16px;
+  padding: 16px 20px;
   text-align: center;
-  color: #909399;
-  font-size: 13px;
-}
-
-.searching i {
-  margin-right: 6px;
+  color: #666;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .customer-item {
-  padding: 10px 16px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #eee;
   cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  transition: background-color 0.2s;
 }
 
 .customer-item:hover {
-  background: #f5f7fa;
+  background: #f8f9fa;
+}
+
+.customer-item:last-child {
+  border-bottom: none;
 }
 
 .customer-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 7px;
+}
+
+.customer-headline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.customer-subline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
 }
 
 .customer-name {
   font-size: 14px;
-  font-weight: 500;
-  color: #303133;
+  font-weight: 600;
+  color: #1f2937;
+  line-height: 1.2;
+  min-width: 0;
 }
 
 .customer-phone {
   font-size: 12px;
-  color: #909399;
+  color: #475569;
+  line-height: 1.2;
 }
 
-.customer-item i {
-  color: #67c23a;
-  font-size: 16px;
+.member-number {
+  background: linear-gradient(135deg, #eef6ff 0%, #dbeafe 100%);
+  color: #1d4ed8;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  justify-self: end;
+}
+
+.vip-badge {
+  background: linear-gradient(135deg, #fb7185 0%, #f59e0b 100%);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  flex-shrink: 0;
+  justify-self: end;
+  box-shadow: 0 6px 14px rgba(245, 158, 11, 0.18);
 }
 
 .create-new-customer {
-  padding: 12px 16px;
+  padding: 16px 20px;
+  background: #f8f9fa;
   cursor: pointer;
-  transition: all 0.2s;
-  color: #409eff;
-  font-size: 13px;
+  transition: background-color 0.2s;
+  color: #28a745;
+  font-size: 14px;
+  font-weight: 500;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .create-new-customer:hover {
-  background: #ecf5ff;
+  background: #e9ecef;
+}
+
+.customer-name-group {
+  display: flex;
+  align-items: stretch;
+}
+
+.customer-name-group :deep(.el-input) {
+  flex: 1;
+}
+
+.customer-name-group :deep(.el-input__wrapper) {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.customer-lock-button {
+  width: 36px !important;
+  min-width: 36px !important;
+  height: 36px !important;
+  padding: 0 !important;
+  flex: 0 0 36px !important;
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+}
+
+.customer-lock-button :deep(.el-button__content) {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.customer-lock-button i {
+  font-size: 14px;
 }
 
 :deep(.customer-search-form-item) .el-form-item__content {
@@ -477,6 +638,51 @@ defineProps<Props>()
 
   :deep(.el-form-item__label) {
     font-size: 13px;
+  }
+
+  .customer-lock-button {
+    width: 32px !important;
+    min-width: 32px !important;
+    height: 32px !important;
+    flex-basis: 32px !important;
+  }
+
+  .customer-lock-button i {
+    font-size: 13px;
+  }
+
+  .customer-headline,
+  .customer-subline {
+    gap: 6px;
+  }
+
+  .customer-info {
+    gap: 6px;
+  }
+
+  .member-number,
+  .vip-badge {
+    font-size: 8px;
+    padding: 1px 5px;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+
+  .customer-item {
+    padding: 9px 10px;
+  }
+
+  .customer-name {
+    font-size: 12px;
+  }
+
+  .customer-phone {
+    font-size: 11px;
+  }
+
+  .create-new-customer {
+    padding: 10px 12px;
+    font-size: 12px;
   }
 }
 </style>

@@ -5,6 +5,7 @@
       title="国补照片管理"
       width="900px"
       class="photo-preview-dialog"
+      append-to-body
       :close-on-click-modal="true"
       destroy-on-close
       @update:model-value="handleDialogChange"
@@ -62,16 +63,17 @@
               class="photo-grid-item"
               :class="{ selected: selectedPhotos.includes(index) }"
               :data-index="index"
+              @click="openPhotoViewer(index)"
               @mouseenter="onPhotoHover(index)"
             >
               <div class="photo-checkbox" @click.stop="togglePhotoSelection(index)">
                 <el-checkbox :model-value="selectedPhotos.includes(index)" />
               </div>
 
-              <AsyncImage :src="photo" alt="国补照片" mode="lazy" class="photo-image" />
+              <AsyncImage :src="resolvePhotoUrl(photo)" alt="国补照片" mode="eager" class="photo-image" />
 
               <div class="photo-actions">
-                <el-button class="action-btn view-btn" circle @click="openPhotoViewer(index)">
+                <el-button class="action-btn view-btn" circle @click.stop="openPhotoViewer(index)">
                   <i class="fas fa-search-plus"></i>
                 </el-button>
                 <el-button class="action-btn delete-btn" circle @click.stop="removePhotoFromPreview(index)">
@@ -114,6 +116,7 @@
       :title="`照片预览 (${currentPhotoIndex + 1}/${previewPhotos.length})`"
       width="90%"
       class="photo-viewer-dialog"
+      append-to-body
       destroy-on-close
     >
       <div class="photo-viewer-content">
@@ -123,8 +126,8 @@
           </el-button>
           <div class="photo-viewer-image">
             <AsyncImage
-              :key="previewPhotos[currentPhotoIndex]"
-              :src="previewPhotos[currentPhotoIndex]"
+              :key="resolvePhotoUrl(previewPhotos[currentPhotoIndex])"
+              :src="resolvePhotoUrl(previewPhotos[currentPhotoIndex])"
               alt="国补照片"
               mode="eager"
               @load="handleViewerImageLoad"
