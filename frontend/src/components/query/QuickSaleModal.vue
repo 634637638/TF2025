@@ -1506,10 +1506,11 @@ watch(
       gap: 7px;
 
       .customer-headline {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
+        display: flex;
         align-items: center;
         gap: 8px;
+        flex-wrap: nowrap;
+        min-width: 0;
       }
 
       .customer-subline {
@@ -1525,12 +1526,16 @@ watch(
         color: #1f2937;
         line-height: 1.2;
         min-width: 0;
+        flex: 0 1 auto;
+        white-space: nowrap;
       }
 
       .customer-phone {
         font-size: 12px;
         color: #475569;
         line-height: 1.2;
+        min-width: 0;
+        white-space: nowrap;
       }
 
       .member-number {
@@ -1541,7 +1546,7 @@ watch(
         font-size: 11px;
         font-weight: 600;
         line-height: 1.2;
-        justify-self: end;
+        flex: 0 0 auto;
       }
 
       .vip-badge {
@@ -1654,6 +1659,159 @@ watch(
     padding: 10px 12px;
     font-size: 12px;
     gap: 6px;
+  }
+}
+
+@media (max-width: 430px) {
+  .customer-search-results {
+    max-height: 240px;
+  }
+
+  .customer-search-results .customer-item {
+    padding: 7px 9px;
+  }
+
+  .customer-search-results .customer-headline {
+    gap: 3px;
+  }
+
+  .customer-search-results .customer-subline {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 3px;
+  }
+
+  .customer-search-results .customer-name,
+  .customer-search-results .customer-phone {
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  .customer-search-results .customer-phone {
+    font-size: 8.5px;
+    white-space: nowrap;
+    word-break: keep-all;
+    letter-spacing: -0.02em;
+  }
+
+  .customer-search-results .customer-name {
+    font-size: 10.5px;
+    line-height: 1.1;
+  }
+
+  .customer-search-results .member-number,
+  .customer-search-results .vip-badge {
+    font-size: 6px;
+    padding: 0 3px;
+    line-height: 1;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 414px) {
+  .customer-search-results .customer-item {
+    padding: 7px 8px;
+  }
+
+  .customer-search-results .customer-name {
+    font-size: 10px;
+  }
+
+  .customer-search-results .customer-phone {
+    font-size: 8px;
+    letter-spacing: -0.025em;
+  }
+
+  .customer-search-results .member-number,
+  .customer-search-results .vip-badge {
+    font-size: 5px;
+    padding: 0 2px;
+    transform: scale(0.92);
+    transform-origin: right center;
+  }
+}
+
+@media (max-width: 390px) {
+  .customer-search-results .customer-item {
+    padding: 6px 8px;
+  }
+
+  .customer-search-results .customer-headline,
+  .customer-search-results .customer-subline {
+    gap: 2px;
+  }
+
+  .customer-search-results .customer-name {
+    font-size: 9px;
+  }
+
+  .customer-search-results .customer-phone {
+    font-size: 7.5px;
+    letter-spacing: -0.03em;
+  }
+
+  .customer-search-results .member-number,
+  .customer-search-results .vip-badge {
+    font-size: 4.5px;
+    padding: 0 1px;
+    transform: scale(0.88);
+    transform-origin: right center;
+  }
+}
+
+@media (max-width: 375px) {
+  .customer-search-results {
+    max-height: 220px;
+  }
+
+  .customer-search-results .customer-item {
+    padding: 6px 7px;
+  }
+
+  .customer-search-results .customer-info {
+    gap: 3px;
+  }
+
+  .customer-search-results .customer-headline,
+  .customer-search-results .customer-subline {
+    gap: 2px;
+  }
+
+  .customer-search-results .customer-name {
+    font-size: 7px;
+    line-height: 1;
+  }
+
+  .customer-search-results .customer-phone {
+    font-size: 6.5px;
+    line-height: 1.05;
+    letter-spacing: -0.04em;
+  }
+
+  .customer-search-results .member-number,
+  .customer-search-results .vip-badge {
+    font-size: 3.5px;
+    padding: 0 1px;
+    line-height: 0.9;
+    border-radius: 999px;
+    transform: scale(0.82);
+    transform-origin: right center;
+  }
+}
+
+@media (max-width: 360px) {
+  .customer-search-results .customer-headline {
+    flex-wrap: nowrap;
+  }
+
+  .customer-search-results .customer-subline {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: start;
+  }
+
+  .customer-search-results .member-number,
+  .customer-search-results .vip-badge {
+    justify-self: start;
+    max-width: 100%;
   }
 }
 

@@ -23,6 +23,16 @@
           <span class="btn-icon">⚠️</span>
           <span class="btn-text">调货须知</span>
         </button>
+        <button
+          v-if="passwordVerified"
+          class="inventory-trigger-btn"
+          :class="{ active: showInStockOnly }"
+          @click="toggleInStockFilter"
+          :disabled="isGenerating || allResults.length === 0"
+        >
+          <span class="btn-icon">{{ showInStockOnly ? '📦' : '🏪' }}</span>
+          <span class="btn-text">{{ showInStockOnly ? '全部' : '在库' }}</span>
+        </button>
         <button class="download-trigger-btn" @click="downloadAsImage" :disabled="isGenerating || searchResults.length === 0">
           <span v-if="!isGenerating" class="btn-content">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
@@ -295,10 +305,12 @@ import { logger } from '@/utils/logger'
 // 状态
 const { loading } = useLoadingState()
 const searchKeyword = ref('')
+const allResults = ref<any[]>([])
 const searchResults = ref<any[]>([])
 const hasSearched = ref(false)
 const showNoticeDialog = ref(false)
 const isGenerating = ref(false)
+const showInStockOnly = ref(false)
 
 // 在库查询相关状态
 const passwordVerified = ref(false)
@@ -316,6 +328,24 @@ const selectedProduct = ref<{
   memory: ''
 })
 
+const applyInventoryFilter = () => {
+  const source = Array.isArray(allResults.value) ? allResults.value : []
+
+  if (passwordVerified.value && showInStockOnly.value) {
+    searchResults.value = source.filter((item: any) => Number(item?.stock_quantity || 0) > 0)
+    return
+  }
+
+  searchResults.value = [...source]
+}
+
+const toggleInStockFilter = () => {
+  if (!passwordVerified.value) return
+
+  showInStockOnly.value = !showInStockOnly.value
+  applyInventoryFilter()
+}
+
 // 移动端双击检测
 let lastTapTime = 0
 let lastTapRowIndex = -1
@@ -326,7 +356,8 @@ const loadAllData = async () => {
   try {
     const res = await getAllPrices()
     if (res.success) {
-      searchResults.value = res.data
+      allResults.value = Array.isArray(res.data) ? res.data : []
+      applyInventoryFilter()
       hasSearched.value = true
     }
   } catch (error) {
@@ -369,7 +400,8 @@ const handleSearch = async () => {
     const res = await searchPrices(keyword)
     if (res.success) {
       // 后端已经按 show_price 过滤，前端直接使用返回的数据
-      searchResults.value = res.data
+      allResults.value = Array.isArray(res.data) ? res.data : []
+      applyInventoryFilter()
       hasSearched.value = true
 
       // 如果没有搜索结果，显示友好提示（和正常搜索行为一致）
@@ -402,6 +434,7 @@ const verifyInventoryPassword = async (password: string): Promise<boolean> => {
       passwordVerified.value = true
       // 从后端返回的用户名
       verifiedUserName.value = response.data?.userName || '用户'
+      applyInventoryFilter()
       return true
     } else {
       // 静默失败，作为搜索关键词
@@ -1513,7 +1546,9 @@ declare global {
     }
 
     // 调货须知按钮
-    .notice-trigger-btn {
+    .notice-trigger-btn,
+    .inventory-trigger-btn,
+    .download-trigger-btn {
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1521,12 +1556,11 @@ declare global {
       flex: 1;
       max-width: 400px;
       padding: 14px 24px;
-      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
       border: none;
       border-radius: 12px;
       cursor: pointer;
       transition: all 0.3s ease;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      min-width: 0;
 
       @media (max-width: 768px) {
         max-width: none;
@@ -1534,16 +1568,6 @@ declare global {
         min-width: 0;
         padding: 10px 12px;
         border-radius: 8px;
-
-        &:hover {
-          background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-          transform: none;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-        }
-
-        &:active {
-          transform: none;
-        }
       }
 
       // 小屏幕手机适配
@@ -1558,36 +1582,34 @@ declare global {
         gap: 5px;
       }
 
-      &:hover {
-        background: linear-gradient(135deg, #e8ecf1 0%, #b8c5d6 100%);
-        transform: translateY(-2px);
-        box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
-      }
-
-      &:active {
-        transform: translateY(0);
-      }
-
       .btn-icon {
-        font-size: 24px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 24px;
+        font-size: 22px;
 
         @media (max-width: 768px) {
           font-size: 18px;
+          min-width: 18px;
         }
 
         @media (max-width: 420px) {
           font-size: 16px;
+          min-width: 16px;
         }
 
         @media (max-width: 380px) {
           font-size: 14px;
+          min-width: 14px;
         }
       }
 
       .btn-text {
-        font-size: 18px;
-        font-weight: bold;
-        color: #333;
+        font-size: 16px;
+        font-weight: 700;
+        line-height: 1;
+        white-space: nowrap;
 
         @media (max-width: 768px) {
           font-size: 14px;
@@ -1600,6 +1622,37 @@ declare global {
         @media (max-width: 380px) {
           font-size: 12px;
         }
+      }
+    }
+
+    .notice-trigger-btn {
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+
+      @media (max-width: 768px) {
+        &:hover {
+          background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+          transform: none;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        &:active {
+          transform: none;
+        }
+      }
+
+      &:hover {
+        background: linear-gradient(135deg, #e8ecf1 0%, #b8c5d6 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
+      }
+
+      &:active {
+        transform: translateY(0);
+      }
+
+      .btn-text {
+        color: #333;
       }
 
       .btn-hint {
@@ -1614,32 +1667,54 @@ declare global {
     }
 
     // 保存图片按钮
-    .download-trigger-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      flex: 1;
-      max-width: 400px;
-      padding: 14px 24px;
-      background: linear-gradient(135deg, #67c23a 0%, #85ce61 100%);
-      border: none;
-      border-radius: 12px;
+    .inventory-trigger-btn {
+      background: linear-gradient(135deg, #409eff 0%, #67c6ff 100%);
       color: white;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(64, 158, 255, 0.32);
+
+      @media (max-width: 768px) {
+        &:hover:not(:disabled) {
+          background: linear-gradient(135deg, #409eff 0%, #67c6ff 100%);
+          box-shadow: 0 4px 12px rgba(64, 158, 255, 0.32);
+          transform: none;
+        }
+
+        &:active:not(:disabled) {
+          transform: none;
+        }
+      }
+
+      &:hover:not(:disabled) {
+        background: linear-gradient(135deg, #2f8cf1 0%, #57b8fb 100%);
+        box-shadow: 0 6px 16px rgba(64, 158, 255, 0.42);
+        transform: translateY(-2px);
+      }
+
+      &:active:not(:disabled) {
+        transform: translateY(0);
+      }
+
+      &.active {
+        background: linear-gradient(135deg, #1d6fe9 0%, #3aa0ff 100%);
+        box-shadow: 0 8px 18px rgba(29, 111, 233, 0.38);
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .btn-text {
+        color: white;
+      }
+    }
+
+    .download-trigger-btn {
+      background: linear-gradient(135deg, #67c23a 0%, #85ce61 100%);
+      color: white;
       box-shadow: 0 4px 12px rgba(103, 194, 58, 0.3);
 
       @media (max-width: 768px) {
-        max-width: none;
-        flex: 1;
-        min-width: 0;
-        padding: 10px 12px;
-        font-size: 14px;
-        border-radius: 8px;
-
         &:hover:not(:disabled) {
           background: linear-gradient(135deg, #67c23a 0%, #85ce61 100%);
           box-shadow: 0 4px 12px rgba(103, 194, 58, 0.3);
@@ -1683,6 +1758,10 @@ declare global {
         align-items: center;
         gap: 8px;
 
+        .btn-text {
+          color: white;
+        }
+
         .btn-icon {
           width: 20px;
           height: 20px;
@@ -1704,23 +1783,6 @@ declare global {
 
           &.loading-spinner {
             animation: spin 1s linear infinite;
-          }
-        }
-
-        .btn-text {
-          font-size: 16px;
-          font-weight: 600;
-
-          @media (max-width: 768px) {
-            font-size: 14px;
-          }
-
-          @media (max-width: 420px) {
-            font-size: 13px;
-          }
-
-          @media (max-width: 380px) {
-            font-size: 12px;
           }
         }
       }

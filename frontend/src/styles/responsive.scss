@@ -487,22 +487,37 @@ body {
 
 /* 5.2 Form - 移动端通用适配 */
 @media (max-width: 767px) {
+  html,
+  body,
+  #app {
+    font-family: var(--app-font-family-sans);
+    font-size: var(--mobile-text-body);
+    line-height: var(--mobile-line-height-body);
+  }
+
   .el-form-item {
     margin-bottom: 16px !important;
   }
 
   .el-form-item__label {
-    font-size: 14px !important;
+    font-size: var(--mobile-text-label) !important;
     line-height: 20px !important;
+    font-weight: 600 !important;
+    color: var(--text-primary) !important;
   }
 
   .el-input__wrapper {
-    min-height: 44px; /* iOS 触摸最小尺寸 */
+    min-height: var(--mobile-control-height) !important; /* iOS 触摸最小尺寸 */
+    padding: 0 12px !important;
+    border-radius: 12px !important;
+    align-items: center !important;
   }
 
   .el-input__inner {
-    height: 44px !important;
-    font-size: 16px !important;
+    height: var(--mobile-control-height) !important;
+    font-size: var(--mobile-text-body-lg) !important;
+    line-height: var(--mobile-line-height-body) !important;
+    font-family: var(--app-font-family-sans) !important;
   }
 
   .el-select__selected-item,
@@ -510,7 +525,34 @@ body {
   .el-date-editor .el-range-input,
   .el-textarea__inner,
   .el-input-number .el-input__inner {
-    font-size: 16px !important;
+    font-size: var(--mobile-text-body-lg) !important;
+    font-family: var(--app-font-family-sans) !important;
+  }
+
+  .el-select__selected-item,
+  .el-input__prefix,
+  .el-input__suffix,
+  .el-input__icon,
+  .el-select__caret,
+  .el-form-item__content,
+  .el-radio__label,
+  .el-checkbox__label {
+    font-family: var(--app-font-family-sans) !important;
+  }
+
+  .el-textarea__inner {
+    font-size: var(--mobile-text-body-lg) !important;
+    line-height: var(--mobile-line-height-body) !important;
+    border-radius: 12px !important;
+    padding: 10px 12px !important;
+  }
+
+  .el-input-number,
+  .el-date-editor.el-input,
+  .el-date-editor.el-input__wrapper,
+  .el-select,
+  .el-select__wrapper {
+    min-height: var(--mobile-control-height) !important;
   }
 
   .el-select {
@@ -526,6 +568,24 @@ body {
     margin-right: 0;
     margin-bottom: 12px;
   }
+
+  .el-dialog__title,
+  .mobile-dialog-title,
+  .el-drawer__title {
+    font-family: var(--app-font-family-sans) !important;
+    font-size: var(--mobile-text-title) !important;
+    font-weight: 700 !important;
+    line-height: 1.3 !important;
+    letter-spacing: 0.01em;
+  }
+
+  .section-title,
+  .form-section .section-title,
+  .form-section h4 {
+    font-size: var(--mobile-text-section-title) !important;
+    line-height: 1.35 !important;
+    font-weight: 700 !important;
+  }
 }
 
 /* 小屏手机特定适配 */
@@ -535,11 +595,11 @@ body {
   }
 
   .el-form-item__label {
-    font-size: 13px !important;
+    font-size: var(--mobile-text-label) !important;
   }
 
   .el-input__inner {
-    font-size: 16px !important;
+    font-size: var(--mobile-text-body-lg) !important;
   }
 
   .el-select__selected-item,
@@ -547,29 +607,31 @@ body {
   .el-date-editor .el-range-input,
   .el-textarea__inner,
   .el-input-number .el-input__inner {
-    font-size: 16px !important;
+    font-size: var(--mobile-text-body-lg) !important;
   }
 }
 
 /* 5.3 Table - 移动端通用适配 */
 @media (max-width: 767px) {
   .el-table {
-    font-size: 12px !important;
+    font-size: var(--mobile-text-table) !important;
+    font-family: var(--app-font-family-sans) !important;
   }
 
   .el-table th,
   .el-table td {
-    padding: 8px 4px !important;
+    padding: 8px 6px !important;
   }
 
   .el-table__cell {
-    word-break: break-all;
+    word-break: break-word;
+    line-height: var(--mobile-line-height-compact) !important;
   }
 
   /* 表格操作列 */
   .el-table .el-table__cell .el-button {
     padding: 4px 8px;
-    font-size: 12px;
+    font-size: var(--mobile-text-caption) !important;
     margin: 2px;
   }
 }
@@ -577,17 +639,17 @@ body {
 /* 小屏手机特定适配 */
 @media (max-width: 479px) {
   .el-table {
-    font-size: 11px !important;
+    font-size: var(--mobile-text-table) !important;
   }
 
   .el-table th,
   .el-table td {
-    padding: 6px 2px !important;
+    padding: 7px 4px !important;
   }
 
   .el-table .el-table__cell .el-button {
     padding: 2px 6px;
-    font-size: 11px;
+    font-size: 11px !important;
     min-height: 32px;
   }
 }
@@ -595,22 +657,26 @@ body {
 /* 5.4 Button - 移动端通用适配 */
 @media (max-width: 767px) {
   .el-button {
-    min-height: 44px; /* iOS 触摸最小尺寸 */
+    min-height: var(--mobile-button-height) !important; /* iOS 触摸最小尺寸 */
     padding: 0 16px;
-    font-size: 14px;
+    font-size: var(--mobile-text-button) !important;
+    line-height: 1 !important;
+    font-family: var(--app-font-family-sans) !important;
+    font-weight: 600 !important;
     margin: 4px; /* 增加间距避免误触 */
+    border-radius: 12px !important;
   }
 
   .el-button--small {
-    min-height: 36px;
-    font-size: 12px;
+    min-height: var(--mobile-button-height-sm) !important;
+    font-size: var(--mobile-text-caption) !important;
     padding: 0 12px;
   }
 
   .el-button--large {
-    min-height: 48px;
+    min-height: var(--mobile-button-height-lg) !important;
     padding: 0 20px;
-    font-size: 16px;
+    font-size: var(--mobile-text-body-lg) !important;
   }
 
   /* 按钮组 */
@@ -622,21 +688,21 @@ body {
 /* 小屏手机特定适配 */
 @media (max-width: 479px) {
   .el-button {
-    min-height: 44px;
+    min-height: var(--mobile-button-height) !important;
     padding: 0 12px;
-    font-size: 13px;
+    font-size: var(--mobile-text-button) !important;
   }
 
   .el-button--small {
-    min-height: 36px;
-    font-size: 11px;
+    min-height: var(--mobile-button-height-sm) !important;
+    font-size: 11px !important;
     padding: 0 8px;
   }
 
   .el-button--large {
-    min-height: 48px;
+    min-height: var(--mobile-button-height-lg) !important;
     padding: 0 16px;
-    font-size: 15px;
+    font-size: var(--mobile-text-body-lg) !important;
   }
 }
 

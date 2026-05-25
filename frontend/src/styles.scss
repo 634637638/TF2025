@@ -11,7 +11,7 @@
 }
 
 body {
-  font-family: 'Segoe UI', 'Apple System', BlinkMacSystemFont, Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: var(--app-font-family-sans);
   background: var(--bg-primary, #f5f5f5);
   line-height: 1.6;
   color: var(--text-primary, #333);
@@ -28,10 +28,37 @@ html {
   overflow-y: auto;
   width: 100%;
   min-height: 100%;
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
 }
 
 /* CSS 自定义属性（主题变量） */
 :root {
+  /* 全局字体与移动端视觉基线 */
+  --app-font-family-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC', 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  --mobile-text-body: 15px;
+  --mobile-text-body-lg: 16px;
+  --mobile-text-label: 14px;
+  --mobile-text-caption: 12px;
+  --mobile-text-button: 14px;
+  --mobile-text-title: 18px;
+  --mobile-text-section-title: 16px;
+  --mobile-text-stat-value: 22px;
+  --mobile-text-stat-label: 12px;
+  --mobile-text-table: 12px;
+  --mobile-text-table-header: 11px;
+  --mobile-line-height-body: 1.5;
+  --mobile-line-height-compact: 1.35;
+  --mobile-control-height: 44px;
+  --mobile-control-height-lg: 48px;
+  --mobile-button-height: 44px;
+  --mobile-button-height-sm: 36px;
+  --mobile-button-height-lg: 48px;
+  --mobile-card-radius: 14px;
+  --mobile-card-padding: 12px;
+
   /* 主色调 */
   --primary-color: #667eea;
   --primary-dark: #5a6fd8;
@@ -113,6 +140,27 @@ html {
   --mobile-table-inline-gap: 2px;
   --mobile-section-block-gap: 10px;
   --mobile-table-block-gap: 8px;
+}
+
+@media (max-width: 375px) {
+  :root {
+    --mobile-text-body: 14px;
+    --mobile-text-body-lg: 15px;
+    --mobile-text-label: 13px;
+    --mobile-text-caption: 11px;
+    --mobile-text-button: 13px;
+    --mobile-text-title: 17px;
+    --mobile-text-section-title: 15px;
+    --mobile-text-stat-value: 20px;
+    --mobile-text-stat-label: 11px;
+    --mobile-text-table: 11px;
+    --mobile-text-table-header: 10px;
+    --mobile-control-height: 42px;
+    --mobile-button-height: 42px;
+    --mobile-button-height-sm: 34px;
+    --mobile-button-height-lg: 46px;
+    --mobile-card-padding: 10px;
+  }
 }
 
 .crud-dialog-sm {

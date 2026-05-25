@@ -2152,8 +2152,9 @@ const handleViewInventory = async (row: any) => {
 const calculateInventoryDays = (inventoryTime: string) => {
   if (!inventoryTime) return 0
   const inventoryDate = TimeUtil.parse(inventoryTime)
+  if (!inventoryDate || !inventoryDate.isValid()) return 0
   const today = TimeUtil.now()
-  return TimeUtil.diff(inventoryDate, today, 'day')
+  return Math.max(TimeUtil.diff(today.startOf('day'), inventoryDate.startOf('day'), 'day'), 0)
 }
 
 // 加载价格趋势数据

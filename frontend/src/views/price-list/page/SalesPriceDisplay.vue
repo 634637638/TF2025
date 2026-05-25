@@ -133,11 +133,29 @@
         <p class="copyright">&copy; {{ TimeUtil.now().year() }} 版权所有</p>
       </div>
     </div>
+
+    <MobileDialog
+      v-model="showIOSImageModal"
+      title="长按图片保存到相册"
+      width="90%"
+      :close-on-click-modal="false"
+      dialog-class="ios-image-dialog"
+      :show-default-footer="false"
+    >
+      <div class="ios-save-container">
+        <div class="image-wrapper">
+          <img :src="iosImageUrl" alt="腾飞数码销售报价" />
+        </div>
+      </div>
+      <template #footer>
+        <el-button type="primary" @click="closeIOSImageModal">关闭</el-button>
+      </template>
+    </MobileDialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { Search, Loading, Close } from '@element-plus/icons-vue'
 import { getAllSalesPrices, searchSalesPrices } from '@/api/price-list'
 import html2canvas from 'html2canvas'
@@ -145,12 +163,15 @@ import { PublicPriceHeader } from '@/components/base'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { useLoadingState } from '@/composables'
 import { logger } from '@/utils/logger'
+import { ElMessage } from 'element-plus'
 // 状态
 const { loading } = useLoadingState()
 const searchKeyword = ref('')
 const searchResults = ref<any[]>([])
 const hasSearched = ref(false)
 const isGenerating = ref(false)
+const showIOSImageModal = ref(false)
+const iosImageUrl = ref('')
 
 // 加载所有数据
 const loadAllData = async () => {
@@ -224,6 +245,83 @@ const generateRandomWatermarkPositions = (): WatermarkPosition[] => {
     })
   }
   return positions
+}
+
+const isIOS = () => {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+}
+
+const closeIOSImageModal = () => {
+  showIOSImageModal.value = false
+  if (iosImageUrl.value) {
+    URL.revokeObjectURL(iosImageUrl.value)
+    iosImageUrl.value = ''
+  }
+}
+
+const saveImageToGallery = async (canvas: HTMLCanvasElement) => {
+  const now = TimeUtil.now()
+  const dateStr = now.format('YYYYMMDD')
+  const timeStr = now.format('HHmm')
+  const fileName = `腾飞数码销售报价_${dateStr}_${timeStr}.png`
+
+  return new Promise<void>((resolve, reject) => {
+    canvas.toBlob(async (blob) => {
+      if (!blob) {
+        reject(new Error('生成图片失败'))
+        return
+      }
+
+      if (isIOS()) {
+        const url = URL.createObjectURL(blob)
+        iosImageUrl.value = url
+        showIOSImageModal.value = true
+        ElMessage.success({
+          message: '请长按图片保存到相册',
+          duration: 3000
+        })
+        resolve()
+        return
+      }
+
+      const file = new File([blob], fileName, { type: 'image/png' })
+
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: '腾飞数码销售报价',
+            text: `报价单 ${dateStr} ${timeStr}`
+          })
+          ElMessage.success({
+            message: '图片已保存',
+            duration: 2000
+          })
+          resolve()
+          return
+        } catch (shareError) {
+          if ((shareError as Error).name !== 'AbortError') {
+            // ignore and fall back to download
+          }
+        }
+      }
+
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.download = fileName
+      link.href = url
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      ElMessage.success({
+        message: '图片已下载',
+        duration: 2000
+      })
+      resolve()
+    }, 'image/png', 0.95)
+  })
 }
 
 // 下载为图片
@@ -325,23 +423,7 @@ const downloadAsImage = async () => {
         // 恢复原类名
         element.classList.remove('generating-image')
 
-        // 转换为 blob 并下载
-        croppedCanvas.toBlob((blob) => {
-          if (blob) {
-            const url = URL.createObjectURL(blob)
-            const link = document.createElement('a')
-            const now = TimeUtil.now()
-            const dateStr = now.format('YYYYMMDD')
-            const timeStr = now.format('HHmm')
-
-            link.download = `腾飞数码销售报价_${dateStr}_${timeStr}.png`
-            link.href = url
-            link.click()
-
-            // 清理 URL
-            URL.revokeObjectURL(url)
-          }
-        }, 'image/png', 0.95)
+        await saveImageToGallery(croppedCanvas)
         return
       }
     }
@@ -354,23 +436,7 @@ const downloadAsImage = async () => {
     // 恢复原类名
     element.classList.remove('generating-image')
 
-    // 转换为 blob 并下载
-    canvas.toBlob((blob) => {
-      if (blob) {
-        const url = URL.createObjectURL(blob)
-        const link = document.createElement('a')
-        const now = TimeUtil.now()
-        const dateStr = now.format('YYYYMMDD')
-        const timeStr = now.format('HHmm')
-
-        link.download = `腾飞数码销售报价_${dateStr}_${timeStr}.png`
-        link.href = url
-        link.click()
-
-        // 清理 URL
-        URL.revokeObjectURL(url)
-      }
-    }, 'image/png', 0.95)
+    await saveImageToGallery(canvas)
   } catch (error) {
     logger.error('生成图片失败', error)
     alert('生成图片失败，请重试')
@@ -382,6 +448,10 @@ const downloadAsImage = async () => {
 onMounted(() => {
   // 默认加载所有数据
   loadAllData()
+})
+
+onBeforeUnmount(() => {
+  closeIOSImageModal()
 })
 </script>
 

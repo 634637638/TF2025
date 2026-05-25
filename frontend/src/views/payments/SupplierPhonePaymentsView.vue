@@ -563,7 +563,6 @@
         <div class="payment-dialog-footer">
           <el-button type="default" @click="showBatchPaymentDialog = false">取消</el-button>
           <el-button
-            v-if="canExportPayment"
             type="success"
             @click="saveBatchPaymentAsImage"
             :loading="savingImage"
@@ -588,7 +587,7 @@
       :style="{ maxWidth: '1600px' }"
       :close-on-click-modal="false"
     >
-      <div class="payment-details">
+      <div ref="singlePaymentForCapture" class="payment-details">
         <!-- 手机信息摘要 -->
         <div class="details-info payment-summary-cards payment-summary-cards-four" style="grid-template-columns: repeat(4, 1fr);">
           <div v-if="canViewPaymentField('supplier_name')" class="info-row">
@@ -697,6 +696,14 @@
       <template #footer>
         <div class="payment-dialog-footer">
           <el-button type="default" @click="showSinglePaymentDialog = false">取消</el-button>
+          <el-button
+            type="success"
+            @click="saveSinglePaymentAsImage"
+            :loading="savingImage"
+          >
+            <i :class="savingImage ? 'fas fa-spinner fa-spin' : 'fas fa-camera'"></i>
+            <span>保存图片</span>
+          </el-button>
           <el-button type="primary" @click="handleSinglePaymentSubmit" :loading="submitting">
             确认打款
           </el-button>
@@ -817,7 +824,6 @@
             <span>批量取消 {{ paymentDetails.phones?.length || 0 }} 台</span>
           </el-button>
           <el-button
-            v-if="canExportPayment"
             type="primary"
             @click="savePaymentDetailsAsImage"
             :loading="savingImage"
@@ -1206,6 +1212,7 @@ const savingImage = ref(false);
 // 图片截图引用
 const paymentDetailsForCapture = ref<HTMLElement | null>(null);
 const batchPaymentTableForCapture = ref<HTMLElement | null>(null);
+const singlePaymentForCapture = ref<HTMLElement | null>(null);
 
 const withCaptureLayout = async (
   element: HTMLElement,
@@ -2074,11 +2081,6 @@ const handleBatchCancelPayment = async () => {
 
 // 保存批次详情为图片
 const savePaymentDetailsAsImage = async () => {
-  if (!canExportPayment.value) {
-    handleNoPermission('export')
-    return
-  }
-
   try {
     savingImage.value = true;
 
@@ -2110,11 +2112,6 @@ const savePaymentDetailsAsImage = async () => {
 
 // 保存批量打款明细为图片
 const saveBatchPaymentAsImage = async () => {
-  if (!canExportPayment.value) {
-    handleNoPermission('export')
-    return
-  }
-
   try {
     savingImage.value = true;
 
@@ -2133,6 +2130,37 @@ const saveBatchPaymentAsImage = async () => {
 
     await withCaptureLayout(element, async () => {
       await downloadCaptureImage(element, `批量打款明细_${supplierName}_${paymentTime}.png`);
+    });
+
+    success('图片已保存');
+  } catch (err) {
+    logger.error('保存图片失败:', err);
+    error('保存图片失败');
+  } finally {
+    savingImage.value = false;
+  }
+};
+
+// 保存单个打款明细为图片
+const saveSinglePaymentAsImage = async () => {
+  try {
+    savingImage.value = true;
+
+    await nextTick();
+
+    const element = singlePaymentForCapture.value;
+    if (!element) {
+      error('无法找到要截图的内容');
+      return;
+    }
+
+    const supplierName = currentPhone.value?.supplier_name || '未知供应商';
+    const paymentTime = paymentForm.payment_time
+      ? TimeUtil.format(paymentForm.payment_time, TIME_FORMATS.DATE)
+      : TimeUtil.nowFormatted(TIME_FORMATS.DATE);
+
+    await withCaptureLayout(element, async () => {
+      await downloadCaptureImage(element, `单个打款明细_${supplierName}_${paymentTime}.png`);
     });
 
     success('图片已保存');

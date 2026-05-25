@@ -813,8 +813,11 @@ const usedData = ref({
 
 const transferData = ref({
   wholesaleCount: 0,
+  wholesaleAmount: 0,
+  wholesaleCost: 0,
   wholesaleProfit: 0,
   allocationCount: 0,
+  allocationAmount: 0,
   allocationProfit: 0
 })
 
@@ -1052,10 +1055,16 @@ const loadTransferDataWithDates = async (params: any) => {
     }
     const response = await unifiedApi.get('/transfers/statistics', { params: transferParams })
     if (response.success && response.data) {
+      const wholesaleAmount = parseFloat(String(response.data.wholesale?.total_amount || 0)) || 0
+      const wholesaleProfit = parseFloat(String(response.data.wholesale?.total_profit || 0)) || 0
+      const allocationAmount = parseFloat(String(response.data.supplier_proxy?.total_amount || 0)) || 0
       transferData.value = {
         wholesaleCount: parseInt(String(response.data.wholesale?.total_count || 0)) || 0,
-        wholesaleProfit: parseFloat(String(response.data.wholesale?.total_profit || 0)) || 0,
+        wholesaleAmount,
+        wholesaleCost: wholesaleAmount - wholesaleProfit,
+        wholesaleProfit,
         allocationCount: parseInt(String(response.data.supplier_proxy?.total_count || 0)) || 0,
+        allocationAmount,
         allocationProfit: parseFloat(String(response.data.supplier_proxy?.total_profit || 0)) || 0
       }
     }
@@ -1172,7 +1181,7 @@ const loadSalesByCondition = async () => {
 // 根据全新机和二手机数据计算总盈利数据
 const calculateProfitData = () => {
   // 总销售额 = 全新机销售金额 + 二手机销售金额
-  const totalRevenue = (newData.value.salesAmount || 0) + (usedData.value.salesAmount || 0)
+  const totalRevenue = (newData.value.salesAmount || 0) + (usedData.value.salesAmount || 0) + (transferData.value.wholesaleAmount || 0)
 
   // 总销售量 = 全新机销售数量 + 二手机销售数量 + 调货数量（不包括划拨）
   const totalSalesCount = (newData.value.salesCount || 0) + (usedData.value.salesCount || 0) + (transferData.value.wholesaleCount || 0)
@@ -1181,7 +1190,7 @@ const calculateProfitData = () => {
   // 成本 = 销售金额 - 利润
   const newCost = (newData.value.salesAmount || 0) - (newData.value.profit || 0)
   const usedCost = (usedData.value.salesAmount || 0) - (usedData.value.profit || 0)
-  const totalCost = newCost + usedCost
+  const totalCost = newCost + usedCost + (transferData.value.wholesaleCost || 0)
 
   // 销售利润 = 全新机利润 + 二手机利润 + 批发利润
   const grossProfit = (newData.value.profit || 0) + (usedData.value.profit || 0) + (transferData.value.wholesaleProfit || 0)
@@ -2355,6 +2364,8 @@ const loadStoreProfit = async () => {
         params.endDate = endDate.value
       }
     }
+    if (selectedStore.value) params.storeId = selectedStore.value
+    if (selectedSupplier.value) params.supplierId = selectedSupplier.value
 
     const response = await unifiedApi.get('/analytics/store-profit', { params })
 

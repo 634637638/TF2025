@@ -1,8 +1,16 @@
 <template>
-  <div class="page-header" :style="rootStyle">
+  <div
+    class="page-header"
+    :class="{ 'page-header--dense-short': isDenseMobileHeader && isShortTitle }"
+    :style="rootStyle"
+  >
     <div class="header-content" :style="contentStyle">
       <div class="header-left" :style="leftStyle">
-        <h1 class="page-title" :style="titleStyle">
+        <h1
+          class="page-title"
+          :class="{ 'page-title--dense-short': isDenseMobileHeader && isShortTitle }"
+          :style="titleStyle"
+        >
           <span
             v-if="resolvedIcon && isIconifyIcon"
             class="iconify page-title-icon"
@@ -169,7 +177,9 @@ const isIconifyIcon = computed(() => resolvedIcon.value.startsWith('iconify '))
 const isMobile = computed(() => viewportWidth.value <= 768)
 const isSmallMobile = computed(() => viewportWidth.value <= 480)
 const isTinyMobile = computed(() => viewportWidth.value <= 375)
-const shouldWrapActions = computed(() => isTinyMobile.value || actionCount.value > 4)
+const shouldWrapActions = computed(() => actionCount.value > 4)
+const isDenseMobileHeader = computed(() => isMobile.value && actionCount.value >= 4)
+const isShortTitle = computed(() => props.title.trim().length <= 4 && !props.description)
 
 const rootStyle = computed(() => {
   if (isTinyMobile.value) {
@@ -197,33 +207,105 @@ const rootStyle = computed(() => {
 
 const contentStyle = computed(() => ({
   flexDirection: 'row',
-  flexWrap: isTinyMobile.value ? 'wrap' : 'nowrap',
+  flexWrap: 'nowrap',
   alignItems: isMobile.value ? 'flex-start' : 'center',
   justifyContent: 'space-between',
   gap: isTinyMobile.value ? '8px' : isMobile.value ? '10px' : '12px'
 }))
 
 const leftStyle = computed(() => ({
-  flex: '0 1 auto',
+  flex: isMobile.value ? '0 1 auto' : '0 1 auto',
   minWidth: '0',
-  maxWidth: isTinyMobile.value ? '100%' : isMobile.value ? '30%' : '50%'
+  maxWidth: isDenseMobileHeader.value
+    ? isShortTitle.value
+      ? isTinyMobile.value
+        ? '34%'
+        : isSmallMobile.value
+          ? '37%'
+          : '40%'
+      : isTinyMobile.value
+        ? '26%'
+        : isSmallMobile.value
+          ? '29%'
+          : '32%'
+    : isMobile.value
+      ? isShortTitle.value
+        ? 'max-content'
+        : isTinyMobile.value
+          ? '42%'
+          : '46%'
+      : '50%'
 }))
 
 const titleStyle = computed(() => ({
   margin: '0',
-  fontSize: isTinyMobile.value ? '0.95rem' : isSmallMobile.value ? '20px' : isMobile.value ? '22px' : '32px',
+  fontSize: isDenseMobileHeader.value
+    ? isShortTitle.value
+      ? isTinyMobile.value
+        ? '12px'
+        : isSmallMobile.value
+          ? '14px'
+          : '16px'
+      : isTinyMobile.value
+        ? '13.5px'
+        : isSmallMobile.value
+          ? '16px'
+          : '18px'
+    : isTinyMobile.value
+      ? '15px'
+      : isSmallMobile.value
+        ? '18px'
+        : isMobile.value
+          ? '22px'
+          : '32px',
   fontWeight: '700',
   display: 'flex',
   alignItems: 'center',
-  gap: isMobile.value ? '8px' : '12px',
-  flexWrap: 'wrap',
+  gap: isDenseMobileHeader.value
+    ? isShortTitle.value
+      ? isTinyMobile.value
+        ? '3px'
+        : '5px'
+      : isTinyMobile.value
+        ? '4px'
+        : '6px'
+    : isTinyMobile.value
+      ? '6px'
+      : isMobile.value
+        ? '8px'
+        : '12px',
+  flexWrap: 'nowrap',
   color: '#fff'
 }))
 
 const iconStyle = computed(() => ({
-  fontSize: '0.9em',
-  width: '0.9em',
-  height: '0.9em',
+  fontSize: isDenseMobileHeader.value
+    ? isShortTitle.value
+      ? isTinyMobile.value
+        ? '0.72em'
+        : '0.8em'
+      : isTinyMobile.value
+        ? '0.8em'
+        : '0.85em'
+    : '0.9em',
+  width: isDenseMobileHeader.value
+    ? isShortTitle.value
+      ? isTinyMobile.value
+        ? '0.72em'
+        : '0.8em'
+      : isTinyMobile.value
+        ? '0.8em'
+        : '0.85em'
+    : '0.9em',
+  height: isDenseMobileHeader.value
+    ? isShortTitle.value
+      ? isTinyMobile.value
+        ? '0.72em'
+        : '0.8em'
+      : isTinyMobile.value
+        ? '0.8em'
+        : '0.85em'
+    : '0.9em',
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -241,13 +323,36 @@ const descriptionStyle = computed(() => ({
 
 const actionsStyle = computed(() => ({
   display: 'flex',
-  gap: isTinyMobile.value ? '0.1rem' : isSmallMobile.value ? '0.18rem' : '12px',
+  gap: isDenseMobileHeader.value && isShortTitle.value
+    ? isTinyMobile.value
+      ? '0.04rem'
+      : '0.1rem'
+    : isTinyMobile.value
+      ? '0.1rem'
+      : isSmallMobile.value
+        ? '0.18rem'
+        : '12px',
   alignItems: 'center',
   flexWrap: shouldWrapActions.value ? 'wrap' : 'nowrap',
   justifyContent: 'flex-end',
-  flex: '1 1 auto',
-  maxWidth: isTinyMobile.value ? '100%' : isMobile.value ? '70%' : '65%',
-  width: shouldWrapActions.value ? '100%' : 'auto',
+  flex: isMobile.value ? '1 1 0' : '1 1 auto',
+  minWidth: '0',
+  maxWidth: isDenseMobileHeader.value
+    ? isShortTitle.value
+      ? isTinyMobile.value
+        ? '66%'
+        : isSmallMobile.value
+          ? '63%'
+          : '60%'
+      : isTinyMobile.value
+        ? '74%'
+        : isSmallMobile.value
+          ? '71%'
+          : '68%'
+    : isMobile.value
+      ? 'none'
+      : '65%',
+  width: 'auto',
   marginLeft: 'auto'
 }))
 </script>
@@ -265,6 +370,21 @@ const actionsStyle = computed(() => ({
     padding: 1rem;
     border-radius: 12px;
     margin-bottom: 1rem;
+  }
+
+  &.page-header--dense-short {
+    .header-actions :deep(.el-button) {
+      padding: 0 2px !important;
+      height: 27px !important;
+      min-height: 27px !important;
+      font-size: 9.5px !important;
+      border-radius: 999px !important;
+
+      i,
+      span {
+        font-size: 9.5px !important;
+      }
+    }
   }
 }
 
@@ -292,11 +412,12 @@ const actionsStyle = computed(() => ({
   max-width: 50%;
 
   @media (max-width: 768px) {
-    max-width: 30%;
+    flex: 0 0 auto;
+    max-width: max-content;
   }
 
   @media (max-width: 375px) {
-    max-width: 100%;
+    max-width: max-content;
   }
 }
 
@@ -322,7 +443,16 @@ const actionsStyle = computed(() => ({
   }
 
   span {
-    word-break: break-word;
+    white-space: nowrap;
+    word-break: keep-all;
+    text-overflow: ellipsis;
+    overflow: hidden;
+  }
+
+  &.page-title--dense-short {
+    span:last-child {
+      text-overflow: clip;
+    }
   }
 
   @media (max-width: 768px) {
@@ -332,6 +462,18 @@ const actionsStyle = computed(() => ({
       font-size: 0.9em;
       width: 0.9em;
       height: 0.9em;
+    }
+  }
+
+  @media (max-width: 390px) {
+    font-size: 16px;
+    gap: 6px;
+
+    .page-title-icon {
+      font-size: 0.85em;
+      width: 0.85em;
+      height: 0.85em;
+      flex-shrink: 0;
     }
   }
 }
@@ -359,7 +501,9 @@ const actionsStyle = computed(() => ({
   margin-left: auto;
 
   @media (max-width: 768px) {
-    max-width: 70%;
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: none;
     margin-left: auto;
     justify-content: flex-end;
     flex-wrap: nowrap;
@@ -373,19 +517,21 @@ const actionsStyle = computed(() => ({
       height: 30px !important;
       min-height: 30px !important;
       padding: 0 5px !important;
-      font-size: 9px;
+      font-size: 8px;
+      font-weight: 500 !important;
+      letter-spacing: -0.01em;
       overflow: hidden;
       text-overflow: ellipsis;
       line-height: 1;
       gap: 2px;
 
       i {
-        font-size: 9px;
+        font-size: 8px;
         margin-right: 0;
       }
 
       span {
-        font-size: 9px;
+        font-size: 8px;
         line-height: 1;
         white-space: nowrap;
         overflow: hidden;
@@ -423,7 +569,7 @@ const actionsStyle = computed(() => ({
   .header-actions {
     gap: 0.12rem;
     flex-wrap: nowrap;
-    max-width: 72%;
+    max-width: none;
 
     :deep(.el-button) {
       flex: 0 0 auto;
@@ -433,22 +579,38 @@ const actionsStyle = computed(() => ({
       height: 28px !important;
       min-height: 28px !important;
       padding: 0 4px !important;
-      font-size: 8px;
+      font-size: 7px;
+      font-weight: 500 !important;
+      letter-spacing: -0.01em;
       overflow: hidden;
       line-height: 1;
       gap: 1px;
 
       i {
-        font-size: 8px;
+        font-size: 7px;
         margin-right: 0;
       }
 
       span {
-        font-size: 8px;
+        font-size: 7px;
         line-height: 1;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+      }
+    }
+  }
+
+  .page-header--dense-short {
+    .header-actions :deep(.el-button) {
+      padding: 0 2px !important;
+      height: 25px !important;
+      min-height: 25px !important;
+      font-size: 9px !important;
+
+      i,
+      span {
+        font-size: 9px !important;
       }
     }
   }
@@ -463,7 +625,7 @@ const actionsStyle = computed(() => ({
   }
 
   .page-title {
-    font-size: 1rem;
+    font-size: 15px;
 
     .page-title-icon {
       font-size: 0.9em;
@@ -478,9 +640,9 @@ const actionsStyle = computed(() => ({
 
   .header-actions {
     gap: 0.15rem;
-    flex-wrap: wrap;
-    max-width: 100%;
-    width: 100%;
+    flex-wrap: nowrap;
+    max-width: none;
+    width: auto;
 
     :deep(.el-button) {
       flex: 0 0 auto;
@@ -510,6 +672,40 @@ const actionsStyle = computed(() => ({
         overflow: hidden;
         text-overflow: clip;
         flex-shrink: 0;
+      }
+    }
+  }
+}
+
+@media (max-width: 390px) {
+  .header-actions {
+    :deep(.el-button) {
+      height: 27px !important;
+      min-height: 27px !important;
+      padding: 0 3px !important;
+      font-size: 6.5px !important;
+      gap: 1px;
+
+      i {
+        font-size: 6.5px !important;
+      }
+
+      span {
+        font-size: 6.5px !important;
+      }
+    }
+  }
+
+  .page-header--dense-short {
+    .header-actions :deep(.el-button) {
+      padding: 0 2px !important;
+      height: 24px !important;
+      min-height: 24px !important;
+      font-size: 8.5px !important;
+
+      i,
+      span {
+        font-size: 8.5px !important;
       }
     }
   }

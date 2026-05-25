@@ -1,12 +1,18 @@
 /**
  * 价目表控制器
  */
-const priceListService = require('../services/price-list.service');
 const { getDatabase } = require('../config/database');
 const ApiResponse = require('../utils/response');
-const scheduler = require('../scripts/price-sync-scheduler');
 const XLSX = require('xlsx');
 const log = require('../utils/log');
+
+function getPriceListService() {
+  return require('../services/price-list.service');
+}
+
+function getScheduler() {
+  return require('../scripts/price-sync-scheduler');
+}
 
 const parseNullableNumber = (value) => {
   if (value === '' || value === null || value === undefined) {
@@ -39,6 +45,7 @@ function initDb() {
         log.warn('数据库连接尚未就绪，将在首次请求时重试');
         return false;
       }
+      const priceListService = getPriceListService();
       priceListService.setDatabase(db);
       dbInitialized = true;
       log.success('价格列表服务数据库连接已初始化');
@@ -53,6 +60,7 @@ function initDb() {
 
 async function restartPriceSyncScheduler(reason) {
   try {
+    const scheduler = getScheduler();
     await scheduler.restartAllJobs();
     log.success(`价格同步调度器已重启: ${reason}`);
   } catch (error) {
@@ -67,6 +75,7 @@ class PriceListController {
   async getPriceList(req, res) {
     try {
       initDb();
+      const priceListService = getPriceListService();
       const result = await priceListService.getPriceList(req.query);
       return ApiResponse.success(res, result.data, result.message);
     } catch (error) {
@@ -78,6 +87,7 @@ class PriceListController {
   async exportPriceList(req, res) {
     try {
       initDb();
+      const priceListService = getPriceListService();
       const result = await priceListService.getPriceList({
         ...req.query,
         page: 1,
@@ -130,6 +140,7 @@ class PriceListController {
   async importPriceList(req, res) {
     try {
       initDb();
+      const priceListService = getPriceListService();
 
       if (!req.file?.buffer) {
         return ApiResponse.error(res, '请选择要导入的 Excel 文件', 400);
@@ -204,6 +215,7 @@ class PriceListController {
   async getPricesByBrand(req, res) {
     try {
       const { brand } = req.params;
+      const priceListService = getPriceListService();
       const result = await priceListService.getPricesByBrand(brand);
       return ApiResponse.success(res, result.data, result.message);
     } catch (error) {
@@ -217,6 +229,7 @@ class PriceListController {
    */
   async getAllPrices(req, res) {
     try {
+      const priceListService = getPriceListService();
       const result = await priceListService.getAllPrices();
       return ApiResponse.success(res, result.data, result.message);
     } catch (error) {
@@ -230,6 +243,7 @@ class PriceListController {
    */
   async getAllSalesPrices(req, res) {
     try {
+      const priceListService = getPriceListService();
       const result = await priceListService.getAllSalesPrices();
       return ApiResponse.success(res, result.data, result.message);
     } catch (error) {
@@ -247,6 +261,7 @@ class PriceListController {
       if (!keyword || keyword.length < 2) {
         return ApiResponse.error(res, '搜索关键词至少2个字符', 400);
       }
+      const priceListService = getPriceListService();
       const result = await priceListService.searchSalesPrices(keyword);
       return ApiResponse.success(res, result.data, result.message);
     } catch (error) {
@@ -264,6 +279,7 @@ class PriceListController {
       if (!keyword || keyword.length < 2) {
         return ApiResponse.error(res, '搜索关键词至少2个字符', 400);
       }
+      const priceListService = getPriceListService();
       const result = await priceListService.searchPrices(keyword);
       return ApiResponse.success(res, result.data, result.message);
     } catch (error) {
@@ -278,6 +294,7 @@ class PriceListController {
   async upsertPriceItem(req, res) {
     try {
       initDb();
+      const priceListService = getPriceListService();
       const result = await priceListService.upsertPriceItem(req.body);
       if (result.success) {
         return ApiResponse.success(res, result.data, result.message);
@@ -311,6 +328,7 @@ class PriceListController {
   async getSyncConfig(req, res) {
     try {
       initDb();
+      const priceListService = getPriceListService();
       // 支持 hidePassword 参数，默认为 true（隐藏密码）
       const hidePassword = req.query.hidePassword !== 'false' && req.query.hidePassword !== false;
       const result = await priceListService.getSyncConfig(hidePassword);
@@ -330,6 +348,7 @@ class PriceListController {
   async updateSyncConfig(req, res) {
     try {
       initDb();
+      const priceListService = getPriceListService();
       const result = await priceListService.updateSyncConfig(req.body);
       if (result.success) {
         await restartPriceSyncScheduler('更新默认同步配置');
@@ -348,6 +367,7 @@ class PriceListController {
   async getAllSyncConfigs(req, res) {
     try {
       initDb();
+      const priceListService = getPriceListService();
       const result = await priceListService.getAllSyncConfigs();
       if (result.success) {
         return ApiResponse.success(res, result.data, result.message);
@@ -365,6 +385,7 @@ class PriceListController {
   async createSyncConfig(req, res) {
     try {
       initDb();
+      const priceListService = getPriceListService();
       const result = await priceListService.createSyncConfig(req.body);
       if (result.success) {
         await restartPriceSyncScheduler('新增同步配置');
@@ -384,6 +405,7 @@ class PriceListController {
     try {
       initDb();
       const { configId } = req.params;
+      const priceListService = getPriceListService();
       const result = await priceListService.setDefaultSyncConfig(configId);
       if (result.success) {
         await restartPriceSyncScheduler(`切换默认同步配置: ${configId}`);
@@ -403,6 +425,7 @@ class PriceListController {
     try {
       initDb();
       const { configId } = req.params;
+      const priceListService = getPriceListService();
       const result = await priceListService.deleteSyncConfig(configId);
       if (result.success) {
         await restartPriceSyncScheduler(`删除同步配置: ${configId}`);
@@ -422,6 +445,7 @@ class PriceListController {
     try {
       initDb();
       const { configId } = req.params;
+      const priceListService = getPriceListService();
       const result = await priceListService.getSyncConfigById(configId);
       if (result.success) {
         return ApiResponse.success(res, result.data, result.message);
@@ -440,6 +464,7 @@ class PriceListController {
     try {
       initDb();
       const { configId } = req.params;
+      const priceListService = getPriceListService();
       const result = await priceListService.updateSyncConfigById(configId, req.body);
       if (result.success) {
         await restartPriceSyncScheduler(`更新同步配置: ${configId}`);
@@ -459,6 +484,7 @@ class PriceListController {
     try {
       initDb();
       const userId = req.user?.id || null;
+      const priceListService = getPriceListService();
 
       // 获取当前默认的配置ID（使用 is_default 字段）
       const db = getDatabase();
@@ -502,6 +528,7 @@ class PriceListController {
       initDb();
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 20;
+      const priceListService = getPriceListService();
       const result = await priceListService.getSyncLogs(page, limit);
       return ApiResponse.success(res, result.data, result.message);
     } catch (error) {
@@ -556,6 +583,7 @@ class PriceListController {
     try {
       const { id } = req.params;
       const limit = parseInt(req.query.limit) || 50;
+      const priceListService = getPriceListService();
       const result = await priceListService.getPriceHistory(id, limit);
       if (result.success) {
         return ApiResponse.success(res, result.data, result.message);

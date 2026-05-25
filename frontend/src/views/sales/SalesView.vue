@@ -324,31 +324,46 @@
         </div>
 
         <!-- 视图切换按钮组 -->
-        <div class="view-toggle">
-          <el-button
-            @click="viewMode = 'summary'"
-            :type="viewMode === 'summary' ? 'primary' : 'default'"
-            title="对存表"
-          >
-            <i class="fas fa-table"></i>
-            <span class="view-toggle-text">对库</span>
-          </el-button>
-          <el-button
-            @click="viewMode = 'grid'"
-            :type="viewMode === 'grid' ? 'primary' : 'default'"
-            title="图文模式"
-          >
-            <i class="fas fa-th"></i>
-            <span class="view-toggle-text">图文</span>
-          </el-button>
-          <el-button
-            @click="viewMode = 'table'"
-            :type="viewMode === 'table' ? 'primary' : 'default'"
-            title="表格模式"
-          >
-            <i class="fas fa-list"></i>
-            <span class="view-toggle-text">表格</span>
-          </el-button>
+        <div class="view-toggle-group">
+          <div class="view-toggle">
+            <el-button
+              v-if="viewMode === 'summary'"
+              class="summary-action-button"
+              type="primary"
+              size="small"
+              title="保存为图片"
+              :loading="savingInventorySummary"
+              :disabled="inventorySummaryLoading || sortedInventorySummary.length === 0"
+              @click="saveInventorySummaryAsImage"
+            >
+              <i class="fas fa-camera"></i>
+              <span class="view-toggle-text">保存图片</span>
+            </el-button>
+            <el-button
+              @click="viewMode = 'summary'"
+              :type="viewMode === 'summary' ? 'primary' : 'default'"
+              title="对存表"
+            >
+              <i class="fas fa-table"></i>
+              <span class="view-toggle-text">对库</span>
+            </el-button>
+            <el-button
+              @click="viewMode = 'grid'"
+              :type="viewMode === 'grid' ? 'primary' : 'default'"
+              title="图文模式"
+            >
+              <i class="fas fa-th"></i>
+              <span class="view-toggle-text">图文</span>
+            </el-button>
+            <el-button
+              @click="viewMode = 'table'"
+              :type="viewMode === 'table' ? 'primary' : 'default'"
+              title="表格模式"
+            >
+              <i class="fas fa-list"></i>
+              <span class="view-toggle-text">表格</span>
+            </el-button>
+          </div>
         </div>
       </div>
 
@@ -747,19 +762,6 @@
             <p>调整筛选条件或添加新的库存设备</p>
           </div>
           <div v-else>
-            <!-- 保存为图片按钮 -->
-            <div class="inventory-summary-actions">
-              <ImportExportActions
-                :can-export="canExport"
-                :export-loading="savingInventorySummary"
-                export-type="primary"
-                export-label="保存为图片"
-                export-loading-label="生成中..."
-                export-icon-class="fas fa-camera"
-                size="small"
-                @export="saveInventorySummaryAsImage"
-              />
-            </div>
             <!-- 库存统计表 -->
             <div class="table-responsive">
               <table ref="inventorySummaryTableRef" class="devices-table summary-table">
@@ -3072,8 +3074,9 @@ const loadInventorySummary = async () => {
 const getInventoryDays = (dateStr: string) => {
   if (!dateStr) return 0
   const inventoryDate = TimeUtil.parse(dateStr)
+  if (!inventoryDate || !inventoryDate.isValid()) return 0
   const today = TimeUtil.now()
-  const diffDays = TimeUtil.diff(inventoryDate, today, 'day')
+  const diffDays = TimeUtil.diff(today.startOf('day'), inventoryDate.startOf('day'), 'day')
   return diffDays > 0 ? diffDays : 0
 }
 
@@ -3235,11 +3238,6 @@ const exportAvailablePhones = async () => {
 
 // 保存库存统计表为图片
 const saveInventorySummaryAsImage = async () => {
-  if (!canExport.value) {
-    handleNoPermission('export')
-    return
-  }
-
   if (!inventorySummaryTableRef.value) {
     showError('库存统计表未加载')
     return
@@ -6295,6 +6293,13 @@ input.form-control:focus, textarea.form-control:focus {
   gap: 16px;
 }
 
+.view-toggle-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
 /* 批发/划拨按钮组 */
 .wholesale-actions {
   display: flex;
@@ -6353,6 +6358,12 @@ input.form-control:focus, textarea.form-control:focus {
     display: inline-flex;
     align-items: center;
     gap: 4px;
+  }
+
+  .summary-action-button {
+    min-width: 74px;
+    justify-content: center;
+    padding: 0 12px;
   }
 }
 
@@ -9335,18 +9346,6 @@ input.form-control:focus, textarea.form-control:focus {
   border-spacing: 0;
 }
 
-/* 库存统计表操作按钮区 */
-.inventory-summary-actions {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  margin-bottom: 16px;
-  padding: 12px 16px;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
-  border-radius: 8px;
-  border: 1px solid #dee2e6;
-}
-
 .summary-table .quantity-badge {
   display: inline-block;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -9844,17 +9843,12 @@ input.form-control:focus, textarea.form-control:focus {
 /* 移动端适配 */
 @media (max-width: 768px) {
   .view-controls {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
+    flex-direction: column;
+    align-items: stretch;
     gap: 6px;
-    flex-wrap: nowrap;
-    overflow: hidden;
   }
 
   .wholesale-actions {
-    flex: 1;
-    min-width: 0;
     display: flex;
     align-items: center;
     gap: 4px;
@@ -9888,6 +9882,12 @@ input.form-control:focus, textarea.form-control:focus {
         margin-left: 2px;
       }
     }
+  }
+
+  .view-toggle-group {
+    width: 100%;
+    margin-left: 0;
+    gap: 4px;
   }
 
   .view-toggle {

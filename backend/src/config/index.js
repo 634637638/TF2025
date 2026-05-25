@@ -1,14 +1,25 @@
-// 根据环境加载对应的 .env 文件
 const path = require('path');
+const fs = require('fs');
 const log = require('../utils/log');
 
 const env = process.env.NODE_ENV || 'development';
-const envFile = env === 'production' ? '.env.production' : '.env';
+const explicitEnvFile = process.env.ENV_FILE;
+const candidateEnvFiles = explicitEnvFile
+  ? [explicitEnvFile]
+  : env === 'production'
+    ? ['.env.production', '.env']
+    : ['.env', '.env.production'];
 
-// 使用绝对路径加载 .env 文件（从 cwd 解析）
-const envPath = path.resolve(process.cwd(), envFile);
-require('dotenv').config({ path: envPath });
-log.info(`环境配置加载: NODE_ENV=${env}, envFile=${envPath}`);
+const envPath = candidateEnvFiles
+  .map((file) => path.resolve(process.cwd(), file))
+  .find((filePath) => fs.existsSync(filePath));
+
+if (envPath) {
+  require('dotenv').config({ path: envPath });
+  log.info(`环境配置加载: NODE_ENV=${env}, envFile=${envPath}`);
+} else {
+  log.warn(`未找到可用的环境配置文件: ${candidateEnvFiles.join(', ')}`);
+}
 
 // 验证必需的环境变量
 const requiredEnvVars = ['DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_NAME', 'JWT_SECRET'];

@@ -241,6 +241,58 @@ function getBeijingMonthRange(monthOffset = 0) {
   };
 }
 
+function hasValidQueryValue(value) {
+  return value !== undefined && value !== null && value !== '' && value !== 'undefined' && value !== 'null';
+}
+
+function parseOptionalInt(value) {
+  if (!hasValidQueryValue(value)) {
+    return null;
+  }
+
+  const parsed = parseInt(String(value), 10);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+function buildLatestSaleJoin({
+  phoneAlias = 'p',
+  joinType = 'LEFT JOIN',
+  alias = 'latest_sale'
+} = {}) {
+  return `
+    ${joinType} (
+      SELECT s.phone_id, s.store_id, s.operator_id, s.sale_type, s.sale_date, s.id
+      FROM sales s
+      INNER JOIN (
+        SELECT phone_id, MAX(id) AS max_id
+        FROM sales
+        GROUP BY phone_id
+      ) latest_sales ON latest_sales.max_id = s.id
+    ) ${alias} ON ${alias}.phone_id = ${phoneAlias}.id
+  `;
+}
+
+function buildStoreFilterClause(storeId, {
+  phoneAlias = 'p',
+  saleAlias = 'latest_sale'
+} = {}) {
+  const normalizedStoreId = parseOptionalInt(storeId);
+
+  if (!normalizedStoreId) {
+    return {
+      storeId: null,
+      clause: '',
+      params: []
+    };
+  }
+
+  return {
+    storeId: normalizedStoreId,
+    clause: `AND COALESCE(${saleAlias}.store_id, ${phoneAlias}.store_id) = ?`,
+    params: [normalizedStoreId]
+  };
+}
+
 async function calculatePayrollSnapshot(db, periodStart, periodEnd) {
   const [employeeRows] = await db.execute(
     `SELECT id
@@ -1888,12 +1940,8 @@ router.get('/profit', unifiedAuth, requireBusinessUser, async (req, res) => {
     // 批发：status = 'peer_transfer'，使用 wholesale_date
     // 划拨：status = 'supplier_proxy'，不计算利润（代供应商划拨，不产生货款）
 
-    const storeCondition = storeId && storeId !== '' && storeId !== 'undefined' && storeId !== 'null'
-      ? 'AND p.store_id = ?'
-      : '';
-    const storeParam = storeId && storeId !== '' && storeId !== 'undefined' && storeId !== 'null'
-      ? parseInt(String(storeId))
-      : null;
+    const storeFilter = buildStoreFilterClause(storeId, { phoneAlias: 'p', saleAlias: 'latest_sale' });
+    const latestSaleJoin = buildLatestSaleJoin({ phoneAlias: 'p', alias: 'latest_sale' });
 
     // 本月零售数据查询
     const currentRetailQuery = `
@@ -1902,10 +1950,11 @@ router.get('/profit', unifiedAuth, requireBusinessUser, async (req, res) => {
         COALESCE(SUM(p.sale_price), 0) as totalRevenue,
         COALESCE(SUM(p.purchase_cost), 0) as totalCost
       FROM phones p
+      ${latestSaleJoin}
       WHERE p.status = 'sold'
         AND DATE(p.salestime) >= ?
         AND DATE(p.salestime) <= ?
-        ${storeCondition}
+        ${storeFilter.clause}
     `;
 
     // 本月批发数据查询
@@ -1915,11 +1964,12 @@ router.get('/profit', unifiedAuth, requireBusinessUser, async (req, res) => {
         COALESCE(SUM(p.sale_price), 0) as totalRevenue,
         COALESCE(SUM(p.purchase_cost), 0) as totalCost
       FROM phones p
+      ${latestSaleJoin}
       WHERE p.status = 'peer_transfer'
         AND p.wholesale_date IS NOT NULL
         AND DATE(p.wholesale_date) >= ?
         AND DATE(p.wholesale_date) <= ?
-        ${storeCondition}
+        ${storeFilter.clause}
     `;
 
     // 上月零售数据查询
@@ -1929,10 +1979,11 @@ router.get('/profit', unifiedAuth, requireBusinessUser, async (req, res) => {
         COALESCE(SUM(p.sale_price), 0) as totalRevenue,
         COALESCE(SUM(p.purchase_cost), 0) as totalCost
       FROM phones p
+      ${latestSaleJoin}
       WHERE p.status = 'sold'
         AND DATE(p.salestime) >= ?
         AND DATE(p.salestime) <= ?
-        ${storeCondition}
+        ${storeFilter.clause}
     `;
 
     // 上月批发数据查询
@@ -1942,18 +1993,19 @@ router.get('/profit', unifiedAuth, requireBusinessUser, async (req, res) => {
         COALESCE(SUM(p.sale_price), 0) as totalRevenue,
         COALESCE(SUM(p.purchase_cost), 0) as totalCost
       FROM phones p
+      ${latestSaleJoin}
       WHERE p.status = 'peer_transfer'
         AND p.wholesale_date IS NOT NULL
         AND DATE(p.wholesale_date) >= ?
         AND DATE(p.wholesale_date) <= ?
-        ${storeCondition}
+        ${storeFilter.clause}
     `;
 
     // 构建查询参数
-    const currentRetailParams = storeParam ? [queryStartDate, queryEndDate, storeParam] : [queryStartDate, queryEndDate];
-    const currentWholesaleParams = storeParam ? [queryStartDate, queryEndDate, storeParam] : [queryStartDate, queryEndDate];
-    const lastRetailParams = storeParam ? [lastMonthStartDate, lastMonthEndDate, storeParam] : [lastMonthStartDate, lastMonthEndDate];
-    const lastWholesaleParams = storeParam ? [lastMonthStartDate, lastMonthEndDate, storeParam] : [lastMonthStartDate, lastMonthEndDate];
+    const currentRetailParams = [queryStartDate, queryEndDate, ...storeFilter.params];
+    const currentWholesaleParams = [queryStartDate, queryEndDate, ...storeFilter.params];
+    const lastRetailParams = [lastMonthStartDate, lastMonthEndDate, ...storeFilter.params];
+    const lastWholesaleParams = [lastMonthStartDate, lastMonthEndDate, ...storeFilter.params];
 
     log.debug('本月零售查询:', currentRetailQuery);
     log.debug('本月零售参数:', currentRetailParams);
@@ -2012,17 +2064,19 @@ router.get('/profit', unifiedAuth, requireBusinessUser, async (req, res) => {
           COUNT(*) as salesCount,
           COALESCE(SUM(sale_price), 0) as totalRevenue,
           COALESCE(SUM(purchase_cost), 0) as totalCost
-        FROM phones
-        WHERE status = 'sold'
-          AND DATE(salestime) < ?
-          AND DATE(salestime) >= DATE_SUB(?, INTERVAL 6 MONTH)
+        FROM phones p
+        ${latestSaleJoin}
+        WHERE p.status = 'sold'
+          AND DATE(p.salestime) < ?
+          AND DATE(p.salestime) >= DATE_SUB(?, INTERVAL 6 MONTH)
+          ${storeFilter.clause}
         GROUP BY DATE_FORMAT(salestime, '%Y-%m')
         HAVING totalRevenue > 0
         ORDER BY month DESC
         LIMIT 1
       `;
 
-      const [recentMonths] = await db.execute(recentMonthsQuery, [queryStartDate, queryStartDate]);
+      const [recentMonths] = await db.execute(recentMonthsQuery, [queryStartDate, queryStartDate, ...storeFilter.params]);
 
       if (recentMonths && recentMonths.length > 0 && recentMonths[0].length > 0) {
         const recentMonth = recentMonths[0][0];
@@ -2119,12 +2173,8 @@ router.get('/profit-trend', unifiedAuth, requireBusinessUser, async (req, res) =
 
     const rangeStart = periods[0].startDate;
     const rangeEnd = periods[periods.length - 1].endDate;
-    const storeCondition = storeId && storeId !== '' && storeId !== 'undefined' && storeId !== 'null'
-      ? 'AND p.store_id = ?'
-      : '';
-    const storeParam = storeId && storeId !== '' && storeId !== 'undefined' && storeId !== 'null'
-      ? parseInt(String(storeId), 10)
-      : null;
+    const storeFilter = buildStoreFilterClause(storeId, { phoneAlias: 'p', saleAlias: 'latest_sale' });
+    const latestSaleJoin = buildLatestSaleJoin({ phoneAlias: 'p', alias: 'latest_sale' });
 
     const db = getDatabase();
     const soldPeriodExpr = getProfitTrendGroupExpression('p.salestime', normalizedGranularity);
@@ -2143,11 +2193,12 @@ router.get('/profit-trend', unifiedAuth, requireBusinessUser, async (req, res) =
           COALESCE(SUM(p.sale_price), 0) AS total_revenue,
           COALESCE(SUM(p.purchase_cost), 0) AS total_cost
         FROM phones p
+        ${latestSaleJoin}
         WHERE p.status = 'sold'
           AND p.salestime IS NOT NULL
           AND DATE(p.salestime) >= ?
           AND DATE(p.salestime) <= ?
-          ${storeCondition}
+          ${storeFilter.clause}
         GROUP BY period_key
 
         UNION ALL
@@ -2158,20 +2209,26 @@ router.get('/profit-trend', unifiedAuth, requireBusinessUser, async (req, res) =
           COALESCE(SUM(p.sale_price), 0) AS total_revenue,
           COALESCE(SUM(p.purchase_cost), 0) AS total_cost
         FROM phones p
+        ${latestSaleJoin}
         WHERE p.status = 'peer_transfer'
           AND p.wholesale_date IS NOT NULL
           AND DATE(p.wholesale_date) >= ?
           AND DATE(p.wholesale_date) <= ?
-          ${storeCondition}
+          ${storeFilter.clause}
         GROUP BY period_key
       ) AS profit_periods
       GROUP BY period_key
       ORDER BY period_key ASC
     `;
 
-    const queryParams = storeParam
-      ? [rangeStart, rangeEnd, storeParam, rangeStart, rangeEnd, storeParam]
-      : [rangeStart, rangeEnd, rangeStart, rangeEnd];
+    const queryParams = [
+      rangeStart,
+      rangeEnd,
+      ...storeFilter.params,
+      rangeStart,
+      rangeEnd,
+      ...storeFilter.params
+    ];
 
     const [rows] = await db.execute(trendQuery, queryParams);
     const rowMap = new Map(
@@ -2217,7 +2274,7 @@ router.get('/profit-trend', unifiedAuth, requireBusinessUser, async (req, res) =
 router.get('/store-profit', unifiedAuth, requireBusinessUser, async (req, res) => {
   try {
     log.debug('=== 门店利润 API 被调用 ===');
-    const { startDate, endDate } = req.query;
+    const { startDate, endDate, storeId, supplierId } = req.query;
 
     if (!isConnected()) {
       return ApiResponse.serverError(res, '数据库连接失败');
@@ -2237,93 +2294,78 @@ router.get('/store-profit', unifiedAuth, requireBusinessUser, async (req, res) =
       queryEndDate = `${year}-${month}-${new Date(year, now.getMonth() + 1, 0).getDate()}`;
     }
 
-    // 从 phones 表查询各门店的利润数据
-    // 包含零售销售（status = 'sold'）和批发（status = 'peer_transfer'）
-    // 排除划拨（status = 'supplier_proxy'）
+    const storeFilter = buildStoreFilterClause(storeId, { phoneAlias: 'p', saleAlias: 'latest_sale' });
+    const supplierFilter = parseOptionalInt(supplierId);
+    const supplierClause = supplierFilter ? 'AND p.supplier_id = ?' : '';
+    const subQueryParams = [
+      queryStartDate,
+      queryEndDate,
+      ...storeFilter.params,
+      ...(supplierFilter ? [supplierFilter] : [])
+    ];
 
-    // 零售数据查询
-    const retailQuery = `
+    const storeProfitQuery = `
       SELECT
-        s.id as store_id,
-        s.name as store_name,
-        COUNT(p.id) as sales_count,
-        COALESCE(SUM(p.sale_price), 0) as total_revenue,
-        COALESCE(SUM(p.purchase_cost), 0) as total_cost
-      FROM stores s
-      LEFT JOIN phones p ON s.id = p.store_id
-        AND p.status = 'sold'
-        AND DATE(p.salestime) >= ?
-        AND DATE(p.salestime) <= ?
-      GROUP BY s.id, s.name
+        summary.store_id,
+        st.name AS store_name,
+        SUM(summary.sales_count) AS sales_count,
+        SUM(summary.total_revenue) AS total_revenue,
+        SUM(summary.total_cost) AS total_cost
+      FROM (
+        SELECT
+          COALESCE(latest_sale.store_id, p.store_id) AS store_id,
+          COUNT(p.id) AS sales_count,
+          COALESCE(SUM(p.sale_price), 0) AS total_revenue,
+          COALESCE(SUM(p.purchase_cost), 0) AS total_cost
+        FROM phones p
+        ${buildLatestSaleJoin({ phoneAlias: 'p', alias: 'latest_sale' })}
+        WHERE p.status = 'sold'
+          AND p.salestime IS NOT NULL
+          AND DATE(p.salestime) >= ?
+          AND DATE(p.salestime) <= ?
+          ${storeFilter.clause}
+          ${supplierClause}
+        GROUP BY COALESCE(latest_sale.store_id, p.store_id)
+
+        UNION ALL
+
+        SELECT
+          COALESCE(latest_sale.store_id, p.store_id) AS store_id,
+          COUNT(p.id) AS sales_count,
+          COALESCE(SUM(p.sale_price), 0) AS total_revenue,
+          COALESCE(SUM(p.purchase_cost), 0) AS total_cost
+        FROM phones p
+        ${buildLatestSaleJoin({ phoneAlias: 'p', alias: 'latest_sale' })}
+        WHERE p.status = 'peer_transfer'
+          AND p.wholesale_date IS NOT NULL
+          AND DATE(p.wholesale_date) >= ?
+          AND DATE(p.wholesale_date) <= ?
+          ${storeFilter.clause}
+          ${supplierClause}
+        GROUP BY COALESCE(latest_sale.store_id, p.store_id)
+      ) summary
+      LEFT JOIN stores st ON st.id = summary.store_id
+      WHERE summary.store_id IS NOT NULL
+      GROUP BY summary.store_id, st.name
+      ORDER BY (SUM(summary.total_revenue) - SUM(summary.total_cost)) DESC
     `;
 
-    // 批发数据查询
-    const wholesaleQuery = `
-      SELECT
-        s.id as store_id,
-        s.name as store_name,
-        COUNT(p.id) as sales_count,
-        COALESCE(SUM(p.sale_price), 0) as total_revenue,
-        COALESCE(SUM(p.purchase_cost), 0) as total_cost
-      FROM stores s
-      LEFT JOIN phones p ON s.id = p.store_id
-        AND p.status = 'peer_transfer'
-        AND p.wholesale_date IS NOT NULL
-        AND DATE(p.wholesale_date) >= ?
-        AND DATE(p.wholesale_date) <= ?
-      GROUP BY s.id, s.name
-    `;
+    log.debug('门店利润查询:', storeProfitQuery);
 
-    log.debug('门店零售查询:', retailQuery);
-    log.debug('门店批发查询:', wholesaleQuery);
-
-    // 并行执行两个查询
-    const [retailResult, wholesaleResult] = await Promise.all([
-      db.execute(retailQuery, [queryStartDate, queryEndDate]),
-      db.execute(wholesaleQuery, [queryStartDate, queryEndDate])
+    const [storeRows] = await db.execute(storeProfitQuery, [
+      ...subQueryParams,
+      ...subQueryParams
     ]);
 
-    log.debug('门店零售结果:', retailResult[0]);
-    log.debug('门店批发结果:', wholesaleResult[0]);
-
-    // 合并零售和批发数据
-    const storeMap = new Map();
-
-    // 处理零售数据
-    (retailResult[0] || []).forEach(row => {
-      storeMap.set(row.store_id, {
-        id: row.store_id,
-        name: row.store_name,
-        revenue: parseFloat(row.total_revenue) || 0,
-        cost: parseFloat(row.total_cost) || 0,
-        count: parseInt(row.sales_count) || 0
-      });
-    });
-
-    // 累加批发数据
-    (wholesaleResult[0] || []).forEach(row => {
-      const existing = storeMap.get(row.store_id);
-      if (existing) {
-        existing.revenue += parseFloat(row.total_revenue) || 0;
-        existing.cost += parseFloat(row.total_cost) || 0;
-        existing.count += parseInt(row.sales_count) || 0;
-      } else {
-        storeMap.set(row.store_id, {
-          id: row.store_id,
-          name: row.store_name,
-          revenue: parseFloat(row.total_revenue) || 0,
-          cost: parseFloat(row.total_cost) || 0,
-          count: parseInt(row.sales_count) || 0
-        });
-      }
-    });
-
-    const storeProfitList = Array.from(storeMap.values())
-      .filter(item => item.count > 0) // 只包含有销售的门店
+    const storeProfitList = Array.from(storeRows || [])
+      .filter(item => (parseInt(item.sales_count, 10) || 0) > 0)
       .map(item => ({
-        id: item.id,
-        name: item.name,
-        profit: Math.round(item.revenue - item.cost)
+        id: item.store_id,
+        name: item.store_name || '未知门店',
+        revenue: Math.round(parseFloat(item.total_revenue) || 0),
+        cost: Math.round(parseFloat(item.total_cost) || 0),
+        count: parseInt(item.sales_count, 10) || 0,
+        profit: Math.round((parseFloat(item.total_revenue) || 0) - (parseFloat(item.total_cost) || 0))
       }))
       .sort((a, b) => b.profit - a.profit);
 
@@ -2349,7 +2391,9 @@ router.get('/ranking/brands', unifiedAuth, requireBusinessUser, async (req, res)
     const db = getDatabase();
 
     // 构建零售查询条件（从 phones 表查询 status = 'sold'）
-    let retailConditions = ['p.status = "sold"'];
+    const storeFilter = buildStoreFilterClause(storeId, { phoneAlias: 'p', saleAlias: 'latest_sale' });
+    const latestSaleJoin = buildLatestSaleJoin({ phoneAlias: 'p', alias: 'latest_sale' });
+    let retailConditions = ['p.status = "sold"', 'p.salestime IS NOT NULL'];
     let retailParams = [];
 
     if (startDate) {
@@ -2360,9 +2404,9 @@ router.get('/ranking/brands', unifiedAuth, requireBusinessUser, async (req, res)
       retailConditions.push('DATE(p.salestime) <= ?');
       retailParams.push(endDate);
     }
-    if (storeId && storeId !== '' && storeId !== 'undefined' && storeId !== 'null') {
-      retailConditions.push('p.store_id = ?');
-      retailParams.push(parseInt(String(storeId)));
+    if (storeFilter.storeId) {
+      retailConditions.push('COALESCE(latest_sale.store_id, p.store_id) = ?');
+      retailParams.push(storeFilter.storeId);
     }
     if (supplierId && supplierId !== '' && supplierId !== 'undefined' && supplierId !== 'null') {
       retailConditions.push('p.supplier_id = ?');
@@ -2386,9 +2430,9 @@ router.get('/ranking/brands', unifiedAuth, requireBusinessUser, async (req, res)
       wholesaleConditions.push('DATE(p.wholesale_date) <= ?');
       wholesaleParams.push(endDate);
     }
-    if (storeId && storeId !== '' && storeId !== 'undefined' && storeId !== 'null') {
-      wholesaleConditions.push('p.store_id = ?');
-      wholesaleParams.push(parseInt(String(storeId)));
+    if (storeFilter.storeId) {
+      wholesaleConditions.push('COALESCE(latest_sale.store_id, p.store_id) = ?');
+      wholesaleParams.push(storeFilter.storeId);
     }
     if (supplierId && supplierId !== '' && supplierId !== 'undefined' && supplierId !== 'null') {
       wholesaleConditions.push('p.supplier_id = ?');
@@ -2406,6 +2450,7 @@ router.get('/ranking/brands', unifiedAuth, requireBusinessUser, async (req, res)
         COALESCE(SUM(p.sale_price), 0) as amount
       FROM brands b
       LEFT JOIN phones p ON b.id = p.brand_id
+      ${latestSaleJoin}
       WHERE ${retailWhereClause}
       GROUP BY b.id, b.name
     `;
@@ -2419,6 +2464,7 @@ router.get('/ranking/brands', unifiedAuth, requireBusinessUser, async (req, res)
         COALESCE(SUM(p.sale_price), 0) as amount
       FROM brands b
       LEFT JOIN phones p ON b.id = p.brand_id
+      ${latestSaleJoin}
       WHERE ${wholesaleWhereClause}
       GROUP BY b.id, b.name
     `;
@@ -2502,7 +2548,9 @@ router.get('/ranking/models', unifiedAuth, requireBusinessUser, async (req, res)
     const db = getDatabase();
 
     // 构建零售查询条件（从 phones 表查询 status = 'sold'）
-    let retailConditions = ['p.status = "sold"'];
+    const storeFilter = buildStoreFilterClause(storeId, { phoneAlias: 'p', saleAlias: 'latest_sale' });
+    const latestSaleJoin = buildLatestSaleJoin({ phoneAlias: 'p', alias: 'latest_sale' });
+    let retailConditions = ['p.status = "sold"', 'p.salestime IS NOT NULL'];
     let retailParams = [];
 
     if (startDate) {
@@ -2513,9 +2561,9 @@ router.get('/ranking/models', unifiedAuth, requireBusinessUser, async (req, res)
       retailConditions.push('DATE(p.salestime) <= ?');
       retailParams.push(endDate);
     }
-    if (storeId && storeId !== '' && storeId !== 'undefined' && storeId !== 'null') {
-      retailConditions.push('p.store_id = ?');
-      retailParams.push(parseInt(String(storeId)));
+    if (storeFilter.storeId) {
+      retailConditions.push('COALESCE(latest_sale.store_id, p.store_id) = ?');
+      retailParams.push(storeFilter.storeId);
     }
     if (supplierId && supplierId !== '' && supplierId !== 'undefined' && supplierId !== 'null') {
       retailConditions.push('p.supplier_id = ?');
@@ -2539,9 +2587,9 @@ router.get('/ranking/models', unifiedAuth, requireBusinessUser, async (req, res)
       wholesaleConditions.push('DATE(p.wholesale_date) <= ?');
       wholesaleParams.push(endDate);
     }
-    if (storeId && storeId !== '' && storeId !== 'undefined' && storeId !== 'null') {
-      wholesaleConditions.push('p.store_id = ?');
-      wholesaleParams.push(parseInt(String(storeId)));
+    if (storeFilter.storeId) {
+      wholesaleConditions.push('COALESCE(latest_sale.store_id, p.store_id) = ?');
+      wholesaleParams.push(storeFilter.storeId);
     }
     if (supplierId && supplierId !== '' && supplierId !== 'undefined' && supplierId !== 'null') {
       wholesaleConditions.push('p.supplier_id = ?');
@@ -2562,6 +2610,7 @@ router.get('/ranking/models', unifiedAuth, requireBusinessUser, async (req, res)
       FROM models m
       LEFT JOIN brands b ON m.brand_id = b.id
       LEFT JOIN phones p ON m.id = p.model_id
+      ${latestSaleJoin}
       WHERE ${retailWhereClause}
       GROUP BY m.id, m.name, b.name
     `;
@@ -2578,6 +2627,7 @@ router.get('/ranking/models', unifiedAuth, requireBusinessUser, async (req, res)
       FROM models m
       LEFT JOIN brands b ON m.brand_id = b.id
       LEFT JOIN phones p ON m.id = p.model_id
+      ${latestSaleJoin}
       WHERE ${wholesaleWhereClause}
       GROUP BY m.id, m.name, b.name
     `;
@@ -2690,6 +2740,8 @@ router.get('/sales-by-condition', unifiedAuth, requireBusinessUser, async (req, 
     }
 
     const db = getDatabase();
+    const storeFilter = buildStoreFilterClause(storeId, { phoneAlias: 'p', saleAlias: 'latest_sale' });
+    const latestSaleJoin = buildLatestSaleJoin({ phoneAlias: 'p', alias: 'latest_sale' });
 
     // 构建查询条件 - 使用 phones 表的 salestime 字段
     // 注意：如果 salestime 为 NULL，使用 updated_at 作为备选
@@ -2705,9 +2757,9 @@ router.get('/sales-by-condition', unifiedAuth, requireBusinessUser, async (req, 
       soldWhereConditions.push('DATE(p.salestime) <= ?');
       queryParams.push(endDate);
     }
-    if (storeId) {
-      soldWhereConditions.push('p.store_id = ?');
-      queryParams.push(parseInt(String(storeId))); // 确保是整数
+    if (storeFilter.storeId) {
+      soldWhereConditions.push('COALESCE(latest_sale.store_id, p.store_id) = ?');
+      queryParams.push(storeFilter.storeId);
     }
     if (supplierId) {
       soldWhereConditions.push('p.supplier_id = ?');
@@ -2723,6 +2775,7 @@ router.get('/sales-by-condition', unifiedAuth, requireBusinessUser, async (req, 
         COALESCE(SUM(p.sale_price), 0) as salesAmount,
         COALESCE(SUM(p.sale_price - COALESCE(p.purchase_cost, 0)), 0) as profit
       FROM phones p
+      ${latestSaleJoin}
       WHERE ${soldWhereClause} AND p.is_new = 1
     `;
 
@@ -2733,6 +2786,7 @@ router.get('/sales-by-condition', unifiedAuth, requireBusinessUser, async (req, 
         COALESCE(SUM(p.sale_price), 0) as salesAmount,
         COALESCE(SUM(p.sale_price - COALESCE(p.purchase_cost, 0)), 0) as profit
       FROM phones p
+      ${latestSaleJoin}
       WHERE ${soldWhereClause} AND (p.is_new = 0 OR p.is_new IS NULL)
     `;
 
@@ -2754,9 +2808,9 @@ router.get('/sales-by-condition', unifiedAuth, requireBusinessUser, async (req, 
       wholesaleWhereConditions.push('DATE(p.wholesale_date) <= ?');
       wholesaleParams.push(endDate);
     }
-    if (storeId && storeId !== '' && storeId !== 'undefined' && storeId !== 'null') {
-      wholesaleWhereConditions.push('p.store_id = ?');
-      wholesaleParams.push(parseInt(String(storeId)));
+    if (storeFilter.storeId) {
+      wholesaleWhereConditions.push('COALESCE(latest_sale.store_id, p.store_id) = ?');
+      wholesaleParams.push(storeFilter.storeId);
     }
     if (supplierId && supplierId !== '' && supplierId !== 'undefined' && supplierId !== 'null') {
       wholesaleWhereConditions.push('p.supplier_id = ?');
@@ -2772,6 +2826,7 @@ router.get('/sales-by-condition', unifiedAuth, requireBusinessUser, async (req, 
         COALESCE(SUM(p.sale_price), 0) as salesAmount,
         COALESCE(SUM(p.sale_price - COALESCE(p.purchase_cost, 0)), 0) as profit
       FROM phones p
+      ${latestSaleJoin}
       WHERE p.status = 'peer_transfer'
         AND p.is_new = 1
         ${wholesaleWhereClause}
@@ -2784,6 +2839,7 @@ router.get('/sales-by-condition', unifiedAuth, requireBusinessUser, async (req, 
         COALESCE(SUM(p.sale_price), 0) as salesAmount,
         COALESCE(SUM(p.sale_price - COALESCE(p.purchase_cost, 0)), 0) as profit
       FROM phones p
+      ${latestSaleJoin}
       WHERE p.status = 'peer_transfer'
         AND (p.is_new = 0 OR p.is_new IS NULL)
         ${wholesaleWhereClause}
@@ -2900,33 +2956,11 @@ router.get('/employee-performance', unifiedAuth, requireBusinessUser, async (req
       queryEndDate = `${year}-${month}-${new Date(year, now.getMonth() + 1, 0).getDate()}`;
     }
 
-    // 构建零售查询条件
-    let retailWhereConditions = [
-      "p.status = 'sold'",
-      "DATE(p.salestime) >= ?",
-      "DATE(p.salestime) <= ?"
-    ];
-    let retailParams = [queryStartDate, queryEndDate];
-
-    // 构建批发查询条件
-    let wholesaleWhereConditions = [
-      "p.status = 'peer_transfer'",
-      "p.wholesale_date IS NOT NULL",
-      "DATE(p.wholesale_date) >= ?",
-      "DATE(p.wholesale_date) <= ?"
-    ];
-    let wholesaleParams = [queryStartDate, queryEndDate];
-
-    // 店铺筛选
-    if (storeId && storeId !== '' && storeId !== 'undefined' && storeId !== 'null') {
-      retailWhereConditions.push('p.store_id = ?');
-      retailParams.push(parseInt(String(storeId)));
-      wholesaleWhereConditions.push('p.store_id = ?');
-      wholesaleParams.push(parseInt(String(storeId)));
-    }
-
-    const retailWhereClause = retailWhereConditions.join(' AND ');
-    const wholesaleWhereClause = wholesaleWhereConditions.join(' AND ');
+    const storeFilter = buildStoreFilterClause(storeId, { phoneAlias: 'p', saleAlias: 'latest_sale' });
+    const retailLatestSaleJoin = buildLatestSaleJoin({ phoneAlias: 'p', alias: 'latest_sale' });
+    const wholesaleLatestSaleJoin = buildLatestSaleJoin({ phoneAlias: 'p', alias: 'latest_sale' });
+    const retailParams = [queryStartDate, queryEndDate, ...storeFilter.params];
+    const wholesaleParams = [queryStartDate, queryEndDate, ...storeFilter.params];
 
     // 员工业绩查询 - 使用子查询分别处理零售和批发数据
     // 零售数据查询
@@ -2952,8 +2986,9 @@ router.get('/employee-performance', unifiedAuth, requireBusinessUser, async (req
         AND p.status = 'sold'
         AND DATE(p.salestime) >= ?
         AND DATE(p.salestime) <= ?
-        ${storeId && storeId !== '' && storeId !== 'undefined' && storeId !== 'null' ? 'AND p.store_id = ?' : ''}
+      ${retailLatestSaleJoin}
       WHERE u.status = 1
+        ${storeFilter.storeId ? 'AND COALESCE(latest_sale.store_id, p.store_id) = ?' : ''}
       GROUP BY u.id, u.username, u.name, s.id, s.name
     `;
 
@@ -2976,8 +3011,9 @@ router.get('/employee-performance', unifiedAuth, requireBusinessUser, async (req
         AND p.wholesale_date IS NOT NULL
         AND DATE(p.wholesale_date) >= ?
         AND DATE(p.wholesale_date) <= ?
-        ${storeId && storeId !== '' && storeId !== 'undefined' && storeId !== 'null' ? 'AND p.store_id = ?' : ''}
+      ${wholesaleLatestSaleJoin}
       WHERE u.status = 1
+        ${storeFilter.storeId ? 'AND COALESCE(latest_sale.store_id, p.store_id) = ?' : ''}
       GROUP BY u.id
     `;
 
