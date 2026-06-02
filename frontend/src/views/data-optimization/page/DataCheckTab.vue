@@ -3,8 +3,11 @@
     <!-- 操作按钮 -->
     <div class="action-bar">
       <el-button type="primary" @click="handleCheckAll" :disabled="loading">
-        <i :class="loading ? 'fas fa-spinner fa-spin' : 'fas fa-search'"></i>
-        <span>综合检查</span>
+        <InlineLoading v-if="loading" text="检查中..." size="small" variant="inherit" />
+        <template v-else>
+          <i class="fas fa-search"></i>
+          <span>综合检查</span>
+        </template>
       </el-button>
       <el-button type="info" @click="getStatistics" :disabled="loading">
         <i class="fas fa-chart-bar"></i>
@@ -82,12 +85,16 @@
 
       <div class="data-table-container">
         <el-table
-          :data="paginatedAllData"
-          v-loading="loading"
+          :data="loading ? [] : paginatedAllData"
           stripe
           border
           :row-class-name="getRowClassName"
         >
+          <template #empty>
+            <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
+            <el-empty v-else description="暂无数据" />
+          </template>
+
           <el-table-column type="index" label="#" width="60" />
           <el-table-column prop="id" label="ID" width="80" />
           <el-table-column prop="name" label="名称" min-width="150">
@@ -325,14 +332,18 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
-import { ElMessage, ElMessageBox, ElLoading } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { dataCheckApi } from '@/api/data-optimization'
 import { extractResponseData } from '@/utils/api-response'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useLoadingState } from '@/composables'
+import { useLoadingStore } from '@/stores/loading'
 import Pagination from '@/components/Pagination.vue'
+import InlineLoading from '@/components/InlineLoading.vue'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 
 const { canView, canEdit, canDelete, handleNoPermission } = usePagePermissions('data-optimization')
+const globalLoading = useLoadingStore()
 
 const ensureViewPermission = () => {
   if (canView.value) {
@@ -826,11 +837,8 @@ const handleDeleteGroup = async (group: any) => {
 
     // 对于重复数据行，我们使用后端的清理功能
     if (group.isDuplicateRows) {
-      const loading = ElLoading.service({
-        lock: true,
-        text: '正在清理重复数据行，请稍候...',
-        background: 'rgba(0, 0, 0, 0.7)'
-      })
+      const loadingTaskId = 'data-check-cleanup-duplicate-row'
+      globalLoading.startLoading('正在清理重复数据行，请稍候...', loadingTaskId)
 
       try {
         // 提取该组的ID（从key中解析，格式为 "ID:123"）
@@ -848,7 +856,7 @@ const handleDeleteGroup = async (group: any) => {
       } catch (error: any) {
         ElMessage.error('清理失败: ' + (error.message || '未知错误'))
       } finally {
-        loading.close()
+        globalLoading.stopLoading(loadingTaskId)
       }
       return
     }
@@ -947,11 +955,8 @@ const handleMergeSelected = async () => {
     )
 
     // 使用批量合并 API（优化版：一次请求处理所有组）
-    const loading = ElLoading.service({
-      lock: true,
-      text: '正在批量合并，请稍候...',
-      background: 'rgba(0, 0, 0, 0.7)'
-    })
+    const loadingTaskId = 'data-check-batch-merge'
+    globalLoading.startLoading('正在批量合并，请稍候...', loadingTaskId)
 
     try {
       // 准备批量合并的数据
@@ -969,7 +974,7 @@ const handleMergeSelected = async () => {
       selectedDuplicates.value = []
       handleCheckItem(currentCheck.value.key)
     } finally {
-      loading.close()
+      globalLoading.stopLoading(loadingTaskId)
     }
   } catch (error: any) {
     if (error !== 'cancel') {
@@ -1036,11 +1041,8 @@ const handleDeleteSelected = async () => {
         }
       )
 
-      const loading = ElLoading.service({
-        lock: true,
-        text: `正在删除 ${totalToDelete} 条重复数据行，请稍候...`,
-        background: 'rgba(0, 0, 0, 0.7)'
-      })
+      const loadingTaskId = 'data-check-delete-selected-duplicate-rows'
+      globalLoading.startLoading(`正在删除 ${totalToDelete} 条重复数据行，请稍候...`, loadingTaskId)
 
       try {
         const idsToCleanup = groupsToCleanup.map(g => g.id)
@@ -1056,7 +1058,7 @@ const handleDeleteSelected = async () => {
         selectedDuplicates.value = []
         handleCheckItem(currentCheck.value.key)
       } finally {
-        loading.close()
+        globalLoading.stopLoading(loadingTaskId)
       }
       return
     }
@@ -1092,11 +1094,8 @@ const handleDeleteSelected = async () => {
       }
     )
 
-    const loading = ElLoading.service({
-      lock: true,
-      text: `正在删除 ${deletableIds.length} 条记录，请稍候...`,
-      background: 'rgba(0, 0, 0, 0.7)'
-    })
+    const loadingTaskId = 'data-check-delete-selected-duplicates'
+    globalLoading.startLoading(`正在删除 ${deletableIds.length} 条记录，请稍候...`, loadingTaskId)
 
     try {
       await dataCheckApi.batchDeleteDuplicates({
@@ -1108,7 +1107,7 @@ const handleDeleteSelected = async () => {
       selectedDuplicates.value = []
       handleCheckItem(currentCheck.value.key)
     } finally {
-      loading.close()
+      globalLoading.stopLoading(loadingTaskId)
     }
   } catch (error: any) {
     if (error !== 'cancel') {
@@ -1135,11 +1134,8 @@ const handleCleanupAllDuplicates = async () => {
     )
 
     loading.value = true
-    const loadingInstance = ElLoading.service({
-      lock: true,
-      text: '正在清理重复数据，请稍候...',
-      background: 'rgba(0, 0, 0, 0.7)'
-    })
+    const loadingTaskId = 'data-check-cleanup-all-duplicates'
+    globalLoading.startLoading('正在清理重复数据，请稍候...', loadingTaskId)
 
     try {
       const response = await dataCheckApi.cleanupData('customers')
@@ -1156,7 +1152,7 @@ const handleCleanupAllDuplicates = async () => {
         throw new Error(response.data?.message || '清理失败')
       }
     } finally {
-      loadingInstance.close()
+      globalLoading.stopLoading(loadingTaskId)
     }
   } catch (error: any) {
     if (error !== 'cancel') {

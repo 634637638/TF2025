@@ -20,12 +20,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-if="ctx.storeBindingsLoading">
-                <td :colspan="7" class="text-center">
-                  <GlobalLoading size="medium" />
-                  <span>加载中...</span>
-                </td>
-              </tr>
+              <TableLoadingRow v-if="ctx.storeBindingsLoading" :colspan="7" />
               <tr v-else-if="ctx.filteredStoreBindings.length === 0">
                 <td :colspan="7" class="text-center empty-cell">
                   <i class="fas fa-inbox"></i>
@@ -112,7 +107,7 @@
 
 <script setup lang="ts">
 import Pagination from '@/components/Pagination.vue'
-import GlobalLoading from '@/components/GlobalLoading.vue'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { usePermissionsPageContext } from './context'
 
 const ctx = usePermissionsPageContext()

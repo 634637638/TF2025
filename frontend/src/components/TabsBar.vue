@@ -51,10 +51,14 @@
 import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useTabsStore } from '@/stores/tabs'
+import { useAuthStore } from '@/stores/auth'
+import { canAccessRoutePath } from '@/constants/routePermissions'
+import { ElMessage } from 'element-plus'
 
 const router = useRouter()
 const route = useRoute()
 const tabsStore = useTabsStore()
+const authStore = useAuthStore()
 
 // 标签页列表
 const tabs = computed(() => tabsStore.tabs)
@@ -65,6 +69,13 @@ const switchTab = (path: string) => {
   if (route.path === path) {
     return
   }
+
+  if (!canAccessRoutePath(path, authStore)) {
+    tabsStore.closeTab(path)
+    ElMessage.warning('您没有访问此页面的权限')
+    return
+  }
+
   router.push(path)
 }
 
@@ -75,7 +86,12 @@ const closeTab = (path: string) => {
   // 如果关闭的是当前标签，跳转到最后一个标签
   if (path === route.path && tabs.value.length > 0) {
     const lastTab = tabs.value[tabs.value.length - 1]
-    router.push(lastTab.path)
+    if (canAccessRoutePath(lastTab.path, authStore)) {
+      router.push(lastTab.path)
+    } else {
+      tabsStore.closeTab(lastTab.path)
+      router.push('/dashboard')
+    }
   }
 }
 
@@ -93,8 +109,8 @@ const handleCommand = (command: string) => {
       router.push('/dashboard')
       break
     case 'refresh':
-      // 强制刷新当前页面
-      router.go(0)
+      // 只刷新当前路由组件，避免整页重载导致菜单、权限、缓存全部重新初始化。
+      tabsStore.refreshCurrentTab()
       break
   }
 }

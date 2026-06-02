@@ -262,6 +262,14 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     key: 'subsidy_subsidyview',
     name: '国补管理',
     permissions: ['view', 'create', 'edit', 'delete', 'approve', 'export', 'menu_view']
+  },
+
+  // 租赁管理模块
+  RENTALS: {
+    id: 'rentals',
+    key: 'rentals_rentalsview',
+    name: '租赁管理',
+    permissions: ['view', 'create', 'edit', 'menu_view']
   }
 }
 

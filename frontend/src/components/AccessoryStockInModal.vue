@@ -337,7 +337,7 @@
                     size="small"
                     controls-position="right"
                   />
-                  <span class="item-amount">¥{{ ((store.quantity || 0) * formData.purchase_price).toLocaleString() }}</span>
+                  <span class="item-amount">¥{{ ((store.quantity || 0) * formData.purchase_price).toLocaleString('zh-CN') }}</span>
                 </div>
               </div>
 

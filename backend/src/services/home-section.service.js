@@ -6,6 +6,14 @@
 const db = require('../config/database');
 
 class HomeSectionService {
+  normalizeCount(value, fallback = 0) {
+    const normalized = Number(value);
+    if (!Number.isFinite(normalized)) {
+      return fallback;
+    }
+    return Math.max(0, Math.floor(normalized));
+  }
+
   /**
    * 获取所有启用的推荐区域及其商品
    */
@@ -45,6 +53,9 @@ class HomeSectionService {
    * @param {number} fillCount - 自动补齐阈值（0表示不补齐）
    */
   async getSectionProducts(sectionId, productLimit = 10, fillCount = 0) {
+    const normalizedProductLimit = this.normalizeCount(productLimit, 10);
+    const normalizedFillCount = this.normalizeCount(fillCount, 0);
+
     // 1. 获取已配置的推荐商品
     const query = `
       SELECT
@@ -146,10 +157,14 @@ class HomeSectionService {
 
     let finalProducts = [];
 
-    if (availableCount >= productLimit) {
-      finalProducts = products.slice(0, productLimit);
-    } else if (fillCount > 0 && availableCount < fillCount) {
-      const needCount = Math.min(fillCount, productLimit) - availableCount;
+    if (normalizedProductLimit === 0) {
+      return [];
+    }
+
+    if (availableCount >= normalizedProductLimit) {
+      finalProducts = products.slice(0, normalizedProductLimit);
+    } else if (normalizedFillCount > 0 && availableCount < normalizedFillCount) {
+      const needCount = Math.min(normalizedFillCount, normalizedProductLimit) - availableCount;
       const fillProducts = await this.getRandomStockProducts(sectionId, needCount, products);
       finalProducts = [...products, ...fillProducts];
     } else {
@@ -166,6 +181,11 @@ class HomeSectionService {
    * @param {Array} existingProducts - 已存在的商品
    */
   async getRandomStockProducts(sectionId, limit, existingProducts = []) {
+    const normalizedLimit = this.normalizeCount(limit, 0);
+    if (normalizedLimit <= 0) {
+      return [];
+    }
+
     // 获取已存在的商品ID，避免重复
     const existingTemplateIds = existingProducts
       .filter(p => p.product_type === 'new' && p.template_id)
@@ -181,26 +201,67 @@ class HomeSectionService {
     const totalCount = existingProducts.length;
 
     let randomProducts = [];
+    let newProducts = [];
+    let usedProducts = [];
 
     if (newCount > 0 && usedCount === 0) {
-      randomProducts = await this.getRandomNewProducts(limit, existingTemplateIds);
+      newProducts = await this.getRandomNewProducts(normalizedLimit, existingTemplateIds);
     }
     else if (usedCount > 0 && newCount === 0) {
-      randomProducts = await this.getRandomUsedProducts(limit, existingPhoneIds);
+      usedProducts = await this.getRandomUsedProducts(normalizedLimit, existingPhoneIds);
     }
     else {
-      const newRatio = newCount / totalCount;
-      const usedRatio = usedCount / totalCount;
+      let newFillCount;
+      let usedFillCount;
 
-      const newFillCount = Math.ceil(limit * newRatio);
-      const usedFillCount = Math.ceil(limit * usedRatio);
+      if (totalCount === 0) {
+        newFillCount = Math.ceil(normalizedLimit / 2);
+        usedFillCount = normalizedLimit - newFillCount;
+      } else {
+        const newRatio = newCount / totalCount;
+        const usedRatio = usedCount / totalCount;
 
-      const newProducts = await this.getRandomNewProducts(newFillCount, existingTemplateIds);
-      const usedProducts = await this.getRandomUsedProducts(usedFillCount, existingPhoneIds);
+        newFillCount = Math.ceil(normalizedLimit * newRatio);
+        usedFillCount = Math.ceil(normalizedLimit * usedRatio);
+      }
 
-      randomProducts = [...newProducts, ...usedProducts].slice(0, limit);
+      if (newFillCount + usedFillCount < normalizedLimit) {
+        newFillCount += normalizedLimit - (newFillCount + usedFillCount);
+      }
+
+      newProducts = await this.getRandomNewProducts(newFillCount, existingTemplateIds);
+      usedProducts = await this.getRandomUsedProducts(usedFillCount, existingPhoneIds);
     }
 
+    randomProducts = [...newProducts, ...usedProducts];
+
+    if (randomProducts.length < normalizedLimit) {
+      const remaining = normalizedLimit - randomProducts.length;
+      const fetchedTemplateIds = newProducts
+        .filter(product => product.template_id)
+        .map(product => product.template_id);
+
+      const extraNewProducts = await this.getRandomNewProducts(
+        remaining,
+        [...existingTemplateIds, ...fetchedTemplateIds]
+      );
+      randomProducts = [...randomProducts, ...extraNewProducts];
+    }
+
+    if (randomProducts.length < normalizedLimit) {
+      const remaining = normalizedLimit - randomProducts.length;
+      const fetchedPhoneIds = randomProducts
+        .filter(product => product.product_type === 'used' && product.phone_id)
+        .map(product => product.phone_id);
+
+      const extraUsedProducts = await this.getRandomUsedProducts(
+        remaining,
+        [...existingPhoneIds, ...fetchedPhoneIds]
+      );
+      randomProducts = [...randomProducts, ...extraUsedProducts];
+    }
+
+    randomProducts = randomProducts.slice(0, normalizedLimit);
     return randomProducts;
   }
 
@@ -208,6 +269,11 @@ class HomeSectionService {
    * 获取随机全新机模板
    */
   async getRandomNewProducts(limit, existingTemplateIds = []) {
+    const normalizedLimit = this.normalizeCount(limit, 0);
+    if (normalizedLimit <= 0) {
+      return [];
+    }
+
     const query = `
       SELECT DISTINCT
         t.id as template_id,
@@ -261,7 +327,7 @@ class HomeSectionService {
       LIMIT ?
     `;
 
-    const params = [...existingTemplateIds, limit];
+    const params = [...existingTemplateIds, normalizedLimit];
     const [products] = await db.getDatabase().query(query, params);
     return products;
   }
@@ -270,6 +336,11 @@ class HomeSectionService {
    * 获取随机二手机
    */
   async getRandomUsedProducts(limit, existingPhoneIds = []) {
+    const normalizedLimit = this.normalizeCount(limit, 0);
+    if (normalizedLimit <= 0) {
+      return [];
+    }
+
     const query = `
       SELECT
         NULL as template_id,
@@ -305,7 +376,7 @@ class HomeSectionService {
       LIMIT ?
     `;
 
-    const params = [...existingPhoneIds, limit];
+    const params = [...existingPhoneIds, normalizedLimit];
     const [products] = await db.getDatabase().query(query, params);
     return products;
   }

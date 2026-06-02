@@ -66,7 +66,7 @@ const authenticateBackupDownload = (req, res, next) => {
   }
 
   return unifiedAuth(req, res, () => {
-    const permissionMiddleware = requirePermission('permissions:admin');
+    const permissionMiddleware = requirePermission('backup:view');
     return permissionMiddleware(req, res, next);
   });
 };
@@ -74,7 +74,7 @@ const authenticateBackupDownload = (req, res, next) => {
 // ============ 需要认证的路由 ============
 
 // 创建备份、列表、删除、清理 - 使用标准认证
-router.post('/create', unifiedAuth, requirePermission('permissions:admin'), async (req, res) => {
+router.post('/create', unifiedAuth, requirePermission('backup:create'), async (req, res) => {
   try {
     const result = await backupService.createBackup();
 
@@ -92,7 +92,7 @@ router.post('/create', unifiedAuth, requirePermission('permissions:admin'), asyn
   }
 });
 
-router.get('/list', unifiedAuth, requirePermission('permissions:admin'), (req, res) => {
+router.get('/list', unifiedAuth, requirePermission('backup:view'), (req, res) => {
   try {
     const backups = backupService.getBackupList();
 
@@ -110,7 +110,7 @@ router.get('/list', unifiedAuth, requirePermission('permissions:admin'), (req, r
   }
 });
 
-router.delete('/:filename', unifiedAuth, requirePermission('permissions:admin'), (req, res) => {
+router.delete('/:filename', unifiedAuth, requirePermission('backup:delete'), (req, res) => {
   try {
     const filename = validateFilename(req.params.filename);
 
@@ -130,7 +130,7 @@ router.delete('/:filename', unifiedAuth, requirePermission('permissions:admin'),
   }
 });
 
-router.post('/cleanup', unifiedAuth, requirePermission('permissions:admin'), (req, res) => {
+router.post('/cleanup', unifiedAuth, requirePermission('backup:delete'), (req, res) => {
   try {
     const { keepCount = 5 } = req.body;
 
@@ -150,7 +150,7 @@ router.post('/cleanup', unifiedAuth, requirePermission('permissions:admin'), (re
   }
 });
 
-router.get('/storage', unifiedAuth, requirePermission('permissions:admin'), (req, res) => {
+router.get('/storage', unifiedAuth, requirePermission('backup:view'), (req, res) => {
   try {
     const backups = backupService.getBackupList();
     const totalSize = backups.reduce((sum, b) => sum + b.size_bytes, 0);
@@ -175,7 +175,7 @@ router.get('/storage', unifiedAuth, requirePermission('permissions:admin'), (req
   }
 });
 
-router.get('/download-link/:filename', unifiedAuth, requirePermission('permissions:admin'), (req, res) => {
+router.get('/download-link/:filename', unifiedAuth, requirePermission('backup:view'), (req, res) => {
   try {
     const filename = validateFilename(req.params.filename);
     const filePath = backupService.getBackupPath(filename);

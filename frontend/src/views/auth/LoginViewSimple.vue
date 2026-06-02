@@ -52,10 +52,11 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useNotification } from '@/composables/useNotification'
-import { useLoadingState } from '@/composables'
+import { useLoadingState } from '@/composables/useLoading'
 import { useSiteSettingsStore } from '@/stores/siteSettings'
 import { storage } from '@/services/storage'
 import { AUTH_STORAGE_KEYS } from '@/constants/storage'
+import logger from '@/utils/logger'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -124,13 +125,11 @@ const initializeAuth = () => {
 
 // 在组件挂载时执行初始化
 onMounted(() => {
-  initializeAuth();
+  initializeAuth()
   if (!siteSettingsStore.lastUpdated && !siteSettingsStore.isLoading) {
-    siteSettingsStore.loadSiteSettings().catch(err => {
-      logger.warn('加载站点设置失败:', err)
-    })
+    logger.debug('登录页复用全局站点设置初始化结果')
   }
-});
+})
 
 const handleLogin = async () => {
   if (!username.value || !password.value) {

@@ -1,16 +1,15 @@
 <template>
   <div class="menu-management admin-page">
-    <!-- ❌ 无权限时显示提示 -->
-    <PermissionDenied
-      v-if="!canView"
+    <PermissionGate
       :can-view="canView"
+      mode="denied"
       module-key="menu"
       module-name="菜单管理"
       permission-code="menus:view"
-    />
+    >
 
     <!-- 主要内容 - 只有有权限时才显示 -->
-    <div v-else class="content admin-page-content">
+    <div class="content admin-page-content">
       <PageHeader
         class="menu-page-header"
         icon="fas fa-bars"
@@ -36,9 +35,12 @@
             <i class="fas fa-plus"></i>
             <span>新增</span>
           </el-button>
-          <el-button type="info" plain @click="refreshData" :disabled="loading">
-            <i :class="loading ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'"></i>
-            <span>刷新</span>
+          <el-button type="info" plain @click="refreshData" :disabled="refreshing">
+            <InlineLoading v-if="refreshing" text="刷新中..." size="small" variant="inherit" />
+            <template v-else>
+              <i class="fas fa-sync-alt"></i>
+              <span>刷新</span>
+            </template>
           </el-button>
           <el-button type="warning" plain @click="initMenus" v-if="canCreate && menuTree.length === 0">
             <i class="fas fa-database"></i>
@@ -163,8 +165,11 @@
               <span>菜单宽度设置</span>
             </div>
             <el-button type="success" size="small" @click="applyBothMenuWidths" :disabled="isWidthLoading">
-              <i :class="isWidthLoading ? 'fas fa-spinner fa-spin' : 'fas fa-check'"></i>
-              {{ isWidthLoading ? '保存中...' : '保存设置' }}
+              <InlineLoading v-if="isWidthLoading" text="保存中..." size="small" variant="inherit" />
+              <template v-else>
+                <i class="fas fa-check"></i>
+                保存设置
+              </template>
             </el-button>
           </div>
           <div class="width-controls">
@@ -210,12 +215,7 @@
     </div>
 
     <!-- 菜单数据加载状态 -->
-    <div v-if="loading" class="loading-container">
-      <div class="loading-content">
-        <i class="fas fa-spinner fa-spin loading-icon"></i>
-        <p class="loading-text">正在加载菜单数据...</p>
-      </div>
-    </div>
+    <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
 
     <!-- 错误信息 -->
     <div v-if="errorMessage" class="error-container">
@@ -277,12 +277,7 @@
                 </td>
                 <td class="menu-icon-cell">
                   <div class="icon-display">
-                    <span
-                      v-if="isIconifyIconClass(menu.icon)"
-                      class="iconify menu-icon"
-                      :data-icon="getIconifyName(menu.icon)"
-                    ></span>
-                    <i v-else :class="menu.icon || 'fas fa-circle'" class="menu-icon"></i>
+                    <IconRenderer :icon="menu.icon" :svg="menu.icon_svg" class-name="menu-icon" />
                     <span class="icon-text">{{ menu.icon }}</span>
                   </div>
                 </td>
@@ -305,6 +300,7 @@
                       v-if="canEdit"
                     >
                       <i class="fas fa-edit"></i>
+                      <span>编辑</span>
                     </el-button>
                     <el-button
                       type="success"
@@ -314,6 +310,7 @@
                       v-if="canCreate"
                     >
                       <i class="fas fa-plus"></i>
+                      <span>子菜单</span>
                     </el-button>
                     <el-button
                       type="danger"
@@ -323,6 +320,7 @@
                       v-if="canDelete"
                     >
                       <i class="fas fa-trash"></i>
+                      <span>删除</span>
                     </el-button>
                   </div>
                 </td>
@@ -383,12 +381,7 @@
                   </td>
                   <td class="menu-icon-cell">
                     <div class="icon-display">
-                      <span
-                        v-if="isIconifyIconClass(child.icon)"
-                        class="iconify menu-icon"
-                        :data-icon="getIconifyName(child.icon)"
-                      ></span>
-                      <i v-else :class="child.icon || 'fas fa-circle'" class="menu-icon"></i>
+                      <IconRenderer :icon="child.icon" :svg="child.icon_svg" class-name="menu-icon" />
                       <span class="icon-text">{{ child.icon }}</span>
                     </div>
                   </td>
@@ -411,6 +404,7 @@
                         v-if="canEdit"
                       >
                         <i class="fas fa-edit"></i>
+                        <span>编辑</span>
                       </el-button>
                       <el-button
                         type="success"
@@ -420,6 +414,7 @@
                         v-if="canCreate"
                       >
                         <i class="fas fa-plus"></i>
+                        <span>子菜单</span>
                       </el-button>
                       <el-button
                         type="danger"
@@ -429,6 +424,7 @@
                         v-if="canDelete"
                       >
                         <i class="fas fa-trash"></i>
+                        <span>删除</span>
                       </el-button>
                     </div>
                   </td>
@@ -504,228 +500,240 @@
       :close-on-click-modal="false"
       :dialog-class="['menu-management-dialog', 'crud-dialog-lg']"
       :show-default-footer="false"
+      destroy-on-close
+      @close="handleDialogClose"
+      @cancel="handleDialogClose"
     >
-      <div class="modal-body">
-        <form @submit.prevent="handleSubmit">
-          <div class="form-section">
-            <h6 class="section-title">基本信息</h6>
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label">菜单名称 <span class="required">*</span></label>
-                <div class="input-group">
-                  <i class="fas fa-tag input-icon"></i>
-                  <input
-                    v-model="formData.name"
-                    type="text"
-                    class="form-control"
-                    placeholder="请输入菜单名称"
-                    required
-                  >
-                </div>
+      <div class="modal-body menu-editor-body">
+        <el-form
+          :model="formData"
+          label-position="top"
+          class="menu-editor-form"
+          @submit.prevent="handleSubmit"
+        >
+          <section class="menu-editor-hero">
+              <div class="menu-editor-preview">
+              <div class="preview-icon">
+                <IconRenderer :icon="formData.icon || 'fas fa-bars'" :svg="formData.icon_svg" fallback="fas fa-bars" />
               </div>
-              <div class="form-group">
-                <label class="form-label">菜单路径 <span class="required">*</span></label>
-                <div class="input-group">
-                  <i class="fas fa-link input-icon"></i>
-                  <input
-                    v-model="formData.url"
-                    type="text"
-                    class="form-control"
-                    placeholder="请输入菜单路径"
-                    required
-                  >
-                </div>
+              <div class="preview-copy">
+                <span class="preview-eyebrow">{{ isEdit ? '正在编辑' : '创建菜单' }}</span>
+                <strong>{{ formData.name || '未命名菜单' }}</strong>
+                <small>{{ formData.url || '设置一个访问路径' }}</small>
               </div>
             </div>
-          </div>
-
-          <div class="form-section">
-            <h6 class="section-title">显示设置</h6>
-            <div class="form-group full-width">
-              <label class="form-label">图标</label>
-              <IconPicker v-model="formData.icon" :default-collapsed="true" @select="handleIconSelect" />
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label">排序</label>
-                <div class="input-group">
-                  <i class="fas fa-sort input-icon"></i>
-                  <input
-                    v-model.number="formData.sort_order"
-                    type="number"
-                    class="form-control"
-                    placeholder="排序值"
-                    min="0"
-                  >
-                </div>
-              </div>
-              <div class="form-group">
-              </div>
-            </div>
-          </div>
-
-          <div class="form-section">
-            <h6 class="section-title">配置选项</h6>
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label">父级菜单</label>
-                <div class="input-group">
-                  <i class="fas fa-sitemap input-icon"></i>
-                  <select v-model="formData.parent_id" class="form-control">
-                    <option value="0">根菜单</option>
-                    <option v-for="menu in parentMenuOptions" :key="menu.id" :value="menu.id">
-                      {{ menu.name }}
-                    </option>
-                  </select>
-                </div>
-              </div>
-              <div class="form-group">
-                <label class="form-label">打开方式</label>
-                <div class="input-group">
-                  <i class="fas fa-external-link-alt input-icon"></i>
-                  <select v-model="formData.target" class="form-control">
-                    <option value="_self">当前窗口</option>
-                    <option value="_blank">新窗口</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="form-section">
-            <h6 class="section-title">其他设置</h6>
-            <div class="form-group">
-              <label class="form-label">备注</label>
-              <div class="input-group">
-                <i class="fas fa-comment input-icon"></i>
-                <textarea
-                  v-model="formData.remarks"
-                  class="form-control"
-                  placeholder="请输入备注信息"
-                  rows="3"
-                ></textarea>
-              </div>
-            </div>
-            <div class="form-group">
-              <label class="form-label">
-                <i class="fas fa-cube"></i>
-                关联模块
-              </label>
-              <div class="module-selector-section">
-                <el-select
-                  v-model="formData.module_id"
-                  placeholder="请选择关联模块（可选）"
-                  filterable
-                  clearable
-                  class="module-select-input"
-                  popper-class="module-select-dropdown"
-                  :teleported="true"
-                  @change="handleModuleChange"
-                >
-                  <el-option
-                    :value="0"
-                    label="不关联模块"
-                  />
-                  <el-option-group
-                    v-for="group in groupedModuleOptions"
-                    :key="group.key"
-                    :label="group.label"
-                  >
-                    <el-option
-                      v-for="module in group.modules"
-                      :key="module.id"
-                      :label="`${module.name} (${module.key})`"
-                      :value="module.id"
-                    >
-                      <div
-                        class="module-option"
-                        :class="[`is-${module.relation}`]"
-                      >
-                        <i :class="module.icon || 'fas fa-cube'" class="module-icon"></i>
-                        <div class="module-info">
-                          <div class="module-title-row">
-                            <span class="module-name">{{ module.name }}</span>
-                            <span
-                              class="module-relation-badge"
-                              :class="`is-${module.relation}`"
-                            >
-                              {{ getModuleRelationLabel(module.relation) }}
-                            </span>
-                          </div>
-                          <span class="module-key">{{ module.key }}</span>
-                        </div>
-                        <span class="module-id">ID: {{ module.id }}</span>
-                      </div>
-                    </el-option>
-                  </el-option-group>
-                </el-select>
-                <small class="text-muted">
-                  <i class="fas fa-info-circle"></i>
-                  <span v-if="formData.module_id">
-                    已选择模块，系统会自动关联 module_key
-                  </span>
-                  <span v-else>
-                    未选择模块，系统会根据 URL 路径自动识别关联模块
-                  </span>
-                </small>
-              </div>
-            </div>
-            <div class="form-group">
-              <label class="form-label">
-                <i class="fas fa-key"></i>
-                模块 Key (Module Key)
-              </label>
-              <input
-                v-model="formData.module_key"
-                type="text"
-                class="form-control"
-                placeholder="自动填充或手动输入，例如: supplier-payments"
+            <div class="status-switch">
+              <span class="status-switch-label">启用菜单</span>
+              <el-switch
+                v-model="formData.is_active"
+                inline-prompt
+                active-text="启"
+                inactive-text="禁"
               />
-              <small class="text-muted">
-                <i class="fas fa-lightbulb"></i>
-                模块的唯一标识，用于权限控制。可选择模块自动填充，或手动输入
-              </small>
             </div>
-            <div class="form-group">
-              <div class="form-check">
-                <input
-                  id="is_active"
-                  v-model="formData.is_active"
-                  type="checkbox"
-                  class="form-check-input"
-                >
-                <label for="is_active" class="form-check-label">
-                  启用菜单
-                </label>
+          </section>
+
+          <div class="menu-editor-grid">
+            <section class="editor-card editor-card--main">
+              <div class="editor-card-head">
+                <span class="editor-card-icon"><i class="fas fa-compass"></i></span>
+                <div>
+                  <h6>基础信息</h6>
+                  <p>定义菜单名称、路径和层级关系。</p>
+                </div>
               </div>
-            </div>
+
+              <el-row :gutter="16" class="menu-form-row">
+                <el-col :xs="24" :sm="12">
+                  <el-form-item label="菜单名称" required>
+                    <el-input
+                      v-model="formData.name"
+                      placeholder="例如：销售管理"
+                      clearable
+                      maxlength="50"
+                      show-word-limit
+                    >
+                      <template #prefix>
+                        <i class="fas fa-tag"></i>
+                      </template>
+                    </el-input>
+                  </el-form-item>
+                </el-col>
+                <el-col :xs="24" :sm="12">
+                  <el-form-item label="菜单路径" required>
+                    <el-input
+                      v-model="formData.url"
+                      placeholder="例如：/sales 或 #"
+                      clearable
+                    >
+                      <template #prefix>
+                        <i class="fas fa-link"></i>
+                      </template>
+                    </el-input>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+
+              <el-row :gutter="16" class="menu-form-row">
+                <el-col :xs="24" :sm="12">
+                  <el-form-item label="父级菜单">
+                    <el-select v-model="formData.parent_id" placeholder="请选择父级菜单" class="w-full" filterable>
+                      <el-option :value="0" label="根菜单" />
+                      <el-option
+                        v-for="menu in parentMenuOptions"
+                        :key="menu.id"
+                        :label="menu.name"
+                        :value="menu.id"
+                      />
+                    </el-select>
+                  </el-form-item>
+                </el-col>
+                <el-col :xs="24" :sm="12">
+                  <el-form-item label="打开方式">
+                    <el-select v-model="formData.target" placeholder="请选择打开方式" class="w-full">
+                      <el-option value="_self" label="当前窗口" />
+                      <el-option value="_blank" label="新窗口" />
+                    </el-select>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+
+              <el-row :gutter="16" class="menu-form-row menu-form-row--compact">
+                <el-col :xs="24" :sm="9">
+                  <el-form-item label="排序">
+                    <el-input-number
+                      v-model="formData.sort_order"
+                      :min="0"
+                      :max="9999"
+                      controls-position="right"
+                      placeholder="越小越靠前"
+                      class="w-full"
+                    />
+                  </el-form-item>
+                </el-col>
+                <el-col :xs="24" :sm="15">
+                  <el-form-item label="模块 Key">
+                    <el-input
+                      v-model="formData.module_key"
+                      placeholder="例如：supplier-payments"
+                      clearable
+                    >
+                      <template #prefix>
+                        <i class="fas fa-key"></i>
+                      </template>
+                    </el-input>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+
+              <el-form-item label="备注">
+                <el-input
+                  v-model="formData.remarks"
+                  type="textarea"
+                  placeholder="给自己或同事留一点上下文，例如这个菜单的用途。"
+                  :rows="3"
+                  maxlength="500"
+                  show-word-limit
+                />
+              </el-form-item>
+            </section>
+
+            <aside class="editor-card editor-card--side">
+              <div class="editor-card-head">
+                <span class="editor-card-icon"><i class="fas fa-icons"></i></span>
+                <div>
+                  <h6>图标与模块</h6>
+                  <p>选择本地/在线图标，并关联权限模块。</p>
+                </div>
+              </div>
+
+              <el-form-item label="菜单图标" class="full-width">
+                <IconPicker
+                  v-if="showModal"
+                  v-model="formData.icon"
+                  :default-collapsed="false"
+                  @select="handleIconSelect"
+                />
+              </el-form-item>
+
+              <el-form-item label="关联模块">
+                <div class="module-selector-section">
+                  <el-select
+                    v-model="formData.module_id"
+                    placeholder="请选择关联模块（可选）"
+                    filterable
+                    clearable
+                    class="module-select-input"
+                    popper-class="module-select-dropdown"
+                    :teleported="false"
+                    :fit-input-width="true"
+                    @change="handleModuleChange"
+                  >
+                    <el-option :value="0" label="不关联模块" />
+                    <el-option-group
+                      v-for="group in groupedModuleOptions"
+                      :key="group.key"
+                      :label="group.label"
+                    >
+                      <el-option
+                        v-for="module in group.modules"
+                        :key="module.id"
+                        :label="`${module.name} (${module.key})`"
+                        :value="module.id"
+                      >
+                        <div class="module-option" :class="[`is-${module.relation}`]">
+                          <div class="module-info">
+                            <div class="module-title-row">
+                              <span class="module-name">{{ module.name }}</span>
+                              <span class="module-relation-badge" :class="`is-${module.relation}`">
+                                {{ getModuleRelationLabel(module.relation) }}
+                              </span>
+                            </div>
+                            <span class="module-key">{{ module.key }}</span>
+                          </div>
+                        </div>
+                      </el-option>
+                    </el-option-group>
+                  </el-select>
+                  <small v-if="formData.module_id" class="text-muted">
+                    <i class="fas fa-info-circle"></i>
+                    已选择模块，系统会自动关联 module_key
+                  </small>
+                </div>
+              </el-form-item>
+            </aside>
           </div>
-        </form>
+        </el-form>
       </div>
 
       <template #footer>
         <div class="modal-footer mobile-dialog-footer">
-          <el-button type="info" @click="closeModal">
+          <el-button type="info" native-type="button" @click="closeModal">
             <i class="fas fa-times"></i>
             取消
           </el-button>
-          <el-button type="primary" @click="handleSubmit" :disabled="submitting">
-            <i :class="submitting ? 'fas fa-spinner fa-spin' : 'fas fa-save'"></i>
-            {{ submitting ? '保存中...' : '保存' }}
+          <el-button type="primary" native-type="button" @click="handleSubmit" :disabled="submitting">
+            <InlineLoading v-if="submitting" text="保存中..." size="small" variant="inherit" />
+            <template v-else>
+              <i class="fas fa-save"></i>
+              保存
+            </template>
           </el-button>
         </div>
       </template>
     </MobileDialog>
     </div>  <!-- END: .content -->
+    </PermissionGate>
   </div>    <!-- END: .menu-management -->
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch, defineAsyncComponent } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import { unifiedApi } from '@/utils/unified-api'
 import { useRouter } from 'vue-router'
 import { useNotification } from '@/composables/useNotification'
+import { useRefreshData } from '@/composables/useRefreshData'
 import { useImportExport } from '@/composables/useImportExport'
 import { useLoadingState } from '@/composables'
 import { usePagePermissions } from '@/composables/usePagePermissions'
@@ -734,12 +742,16 @@ import { useAuthStore } from '@/stores/auth'
 import { useMenuStore } from '@/stores/menu'
 import { useMenuWidth } from '@/composables/useMenuWidth'
 import { useMobile } from '@/composables/mobile'
-import IconPicker from '@/components/IconPicker.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
+import InlineLoading from '@/components/InlineLoading.vue'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
+import IconRenderer from '@/components/IconRenderer.vue'
 import { useEventBus } from '@/composables/core/useEventBus'
-import { PageHeader, PermissionDenied } from '@/components/base'
-import { extractIconifyName, isIconifyIcon } from '@/utils/iconify'
+import { PageHeader, PermissionGate } from '@/components/base'
+import { logger } from '@/utils/logger'
+
+const IconPicker = defineAsyncComponent(() => import('@/components/IconPicker.vue'))
 
 // 权限检查
 const { canView, canCreate, canEdit, canDelete, canExport, canImport, handleNoPermission } = usePagePermissions('menu')
@@ -767,7 +779,9 @@ const showStatsCards = computed(() => (
 // 权限和通知
 const router = useRouter()
 const authStore = useAuthStore()
+const menuStore = useMenuStore()
 const { success, error, warning, info, handleApiError, confirm } = useNotification()
+const { refreshing, refresh } = useRefreshData()
 const { exportFile, importFile, buildDateFilename } = useImportExport()
 const { isMobile } = useMobile()
 
@@ -794,6 +808,7 @@ const formData = ref({
   name: '',
   url: '',
   icon: '',
+  icon_svg: '',
   parent_id: 0,
   sort_order: 0,
   target: '_self',
@@ -1001,8 +1016,26 @@ const lastTappedMenuId = ref<number | null>(null)
 const lastMenuTapTimestamp = ref(0)
 let sharedPublicMenuPromise: Promise<any[]> | null = null
 
-const isIconifyIconClass = (icon?: string | null) => isIconifyIcon(String(icon || '').trim())
-const getIconifyName = (icon?: string | null) => extractIconifyName(String(icon || '').trim()) || ''
+const extractMenuTreeData = (response: any) => {
+  if (!response?.success) {
+    return []
+  }
+
+  const data = response.data
+  if (Array.isArray(data)) {
+    return data
+  }
+
+  if (Array.isArray(data?.records)) {
+    return data.records
+  }
+
+  if (Array.isArray(data?.menuPermissions)) {
+    return data.menuPermissions
+  }
+
+  return []
+}
 
 // PC和手机端菜单宽度状态
 const pcMenuWidth = ref(200)
@@ -1051,7 +1084,7 @@ const loadPublicMenuTree = async () => {
 
   sharedPublicMenuPromise = (async () => {
     const publicResponse = await unifiedApi.get('/permissions/user-menu')
-    return publicResponse?.success ? (publicResponse.data || []) : []
+    return extractMenuTreeData(publicResponse)
   })().finally(() => {
     sharedPublicMenuPromise = null
   })
@@ -1079,9 +1112,7 @@ const loadMenus = async (bustCache: boolean = false, silentError: boolean = fals
     })
 
     if (response && response.success) {
-      // 如果返回的是树形结构，直接使用
-      // 如果返回的是分页数据，取 records
-      menuTree.value = response.data || (response.data as any)?.records || []
+      menuTree.value = extractMenuTreeData(response)
     } else {
       throw new Error(response?.message || '获取菜单列表失败')
     }
@@ -1147,7 +1178,7 @@ const searchMenus = async () => {
     })
 
     if (response && response.success) {
-      menuTree.value = response.data || []
+      menuTree.value = extractMenuTreeData(response)
     } else {
       throw new Error(response?.message || '搜索菜单失败')
     }
@@ -1200,7 +1231,9 @@ const refreshData = async () => {
 
   // 实现静默刷新，避免页面抖动
   try {
-    await loadMenus(true, false, false)  // 不显示加载状态
+    await refresh(async () => {
+      await loadMenus(true, false, false)
+    })
     success('数据刷新成功', { duration: 2000 })
   } catch (err) {
     error('刷新失败：请稍后重试')
@@ -1329,7 +1362,9 @@ watch(() => formData.value.module_key, (newModuleKey) => {
   // 注意：如果 module_id 已经有值，不覆盖，因为那是用户主动选择的
 })
 
-const handleIconSelect = (iconName) => {
+const handleIconSelect = (iconName, icon) => {
+  formData.value.icon = iconName || ''
+  formData.value.icon_svg = icon?.svg || ''
 }
 
 // 切换菜单展开状态
@@ -1433,6 +1468,7 @@ const showAddModal = (parentId = 0) => {
     name: '',
     url: '',
     icon: '',
+    icon_svg: '',
     parent_id: parentId,
     sort_order: 0,
     target: '_self',
@@ -1442,6 +1478,20 @@ const showAddModal = (parentId = 0) => {
     module_key: ''
   }
   showModal.value = true
+}
+
+const normalizeMenuActiveState = (menu) => {
+  const activeValue = menu.status ?? menu.is_active
+
+  if (activeValue === undefined || activeValue === null) {
+    return true
+  }
+
+  if (typeof activeValue === 'boolean') {
+    return activeValue
+  }
+
+  return Number(activeValue) === 1
 }
 
 const showEditModal = (menu) => {
@@ -1456,10 +1506,11 @@ const showEditModal = (menu) => {
     name: menu.title || menu.name || '',
     url: menu.path || menu.url || '',
     icon: menu.icon || '',
+    icon_svg: menu.icon_svg || '',
     parent_id: menu.parent_id || 0,
     sort_order: menu.sort_order || 0,
     target: menu.target || '_self',
-    is_active: menu.status !== undefined ? menu.status : true,
+    is_active: normalizeMenuActiveState(menu),
     remarks: menu.remarks || '',
     module_id: menu.module_id || 0,
     module_key: menu.module_key || ''
@@ -1468,7 +1519,12 @@ const showEditModal = (menu) => {
 }
 
 const closeModal = () => {
+  submitting.value = false
   showModal.value = false
+}
+
+const handleDialogClose = () => {
+  closeModal()
 }
 
 // 表单验证函数
@@ -1506,8 +1562,8 @@ const validateForm = () => {
   }
 
   // 图标验证（可选）
-  if (formData.value.icon && formData.value.icon.trim().length > 100) {
-    errors.push('图标名称不能超过100个字符')
+  if (formData.value.icon && formData.value.icon.trim().length > 255) {
+    errors.push('图标名称不能超过255个字符')
   }
 
   // 备注验证（可选）
@@ -1568,16 +1624,15 @@ const handleSubmit = async () => {
     }
 
     if (response && response.success) {
+      closeModal()
       await new Promise(resolve => setTimeout(resolve, 100))
       await loadMenus()
-      closeModal()
       success('保存成功', {
         title: isEdit.value ? `菜单"${formData.value.name}"更新成功` : `菜单"${formData.value.name}"创建成功`,
         duration: 3000
       })
 
       // 刷新侧边栏菜单
-      const menuStore = useMenuStore()
       await menuStore.refreshMenus()
 
       // 发送菜单更新事件，通知侧边栏刷新
@@ -1660,7 +1715,6 @@ const executeDelete = async (menu) => {
         })
 
         // 刷新侧边栏菜单
-        const menuStore = useMenuStore()
         await menuStore.refreshMenus()
 
         // 发送菜单更新事件，通知侧边栏刷新
@@ -1701,7 +1755,6 @@ const initMenus = async () => {
       })
 
       // 刷新侧边栏菜单
-      const menuStore = useMenuStore()
       await menuStore.refreshMenus()
 
       // 发送菜单更新事件，通知侧边栏刷新
@@ -1894,27 +1947,20 @@ onMounted(async () => {
 
 .module-option {
   display: flex;
-  align-items: center;
-  padding: 8px 0;
-  gap: 12px;
+  align-items: flex-start;
+  padding: 9px 0;
+  gap: 8px;
   width: 100%;
-  overflow: hidden;
+  min-width: 0;
+  overflow: visible;
 }
 
 .module-option.is-child {
-  padding-left: 18px;
+  padding-left: 12px;
 }
 
 .module-option.is-standalone {
-  padding-left: 6px;
-}
-
-.module-icon {
-  font-size: 18px;
-  color: #409EFF;
-  width: 24px;
-  text-align: center;
-  flex-shrink: 0;
+  padding-left: 0;
 }
 
 .module-info {
@@ -1928,17 +1974,22 @@ onMounted(async () => {
 
 .module-title-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   min-width: 0;
+  width: 100%;
 }
 
 .module-name {
+  flex: 1 1 auto;
+  min-width: 0;
   font-weight: 500;
   color: #303133;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.45;
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .module-relation-badge {
@@ -1975,18 +2026,9 @@ onMounted(async () => {
   font-size: 12px;
   color: #909399;
   font-family: 'Courier New', monospace;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.module-id {
-  font-size: 12px;
-  color: #C0C4CC;
-  padding: 2px 6px;
-  background: #F5F7FA;
-  border-radius: 4px;
-  flex-shrink: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* 确保 el-select 下拉框不会被遮挡 */
@@ -2431,7 +2473,7 @@ onMounted(async () => {
 }
 
 .table-responsive {
-  overflow-x: auto;
+  overflow-x: hidden;
 }
 
 .menu-table {
@@ -2439,6 +2481,31 @@ onMounted(async () => {
   border-collapse: separate; /* 修复点击区域问题 */
   border-spacing: 0;
   margin: 0;
+  table-layout: auto;
+}
+
+.menu-table .column-name {
+  width: auto;
+}
+
+.menu-table .column-url {
+  width: auto;
+}
+
+.menu-table .column-icon {
+  width: auto;
+}
+
+.menu-table .column-sort {
+  width: 72px;
+}
+
+.menu-table .column-status {
+  width: 92px;
+}
+
+.menu-table .column-actions {
+  width: 240px;
 }
 
 .menu-table thead {
@@ -2446,7 +2513,7 @@ onMounted(async () => {
 }
 
 .menu-table th {
-  padding: 12px 16px; /* 使用与全局样式一致的padding */
+  padding: 12px 10px; /* 使用与全局样式一致的padding */
   text-align: left;
   font-weight: 600;
   color: #2c3e50;
@@ -2461,8 +2528,15 @@ onMounted(async () => {
   vertical-align: middle;
 }
 
+.menu-table .column-icon,
+.menu-table .column-sort,
+.menu-table .column-status,
+.menu-table .column-actions {
+  text-align: center;
+}
+
 .menu-table td {
-  padding: 12px 16px; /* 使用与全局样式一致的padding */
+  padding: 12px 10px; /* 使用与全局样式一致的padding */
   border-bottom: 1px solid #e9ecef;
   vertical-align: middle;
   min-height: 48px; /* 确保一致的点击区域 */
@@ -2485,7 +2559,8 @@ onMounted(async () => {
 }
 
 .menu-name-cell {
-  min-width: 220px;
+  width: auto;
+  min-width: 180px;
 }
 
 .menu-info {
@@ -2593,7 +2668,8 @@ onMounted(async () => {
 }
 
 .menu-url-cell {
-  min-width: 150px;
+  width: auto;
+  min-width: 130px;
 }
 
 .url-text {
@@ -2603,16 +2679,27 @@ onMounted(async () => {
   font-size: 12px;
   color: #495057;
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  white-space: nowrap;
 }
 
 .menu-icon-cell {
+  width: auto;
   min-width: 120px;
+  text-align: center;
 }
 
 .icon-display {
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .menu-icon {
@@ -2626,10 +2713,15 @@ onMounted(async () => {
   font-size: 12px;
   color: #6c757d;
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .menu-sort-cell {
-  min-width: 80px;
+  width: 72px;
+  text-align: center;
 }
 
 .sort-badge {
@@ -2642,7 +2734,8 @@ onMounted(async () => {
 }
 
 .menu-status-cell {
-  min-width: 100px;
+  width: 92px;
+  text-align: center;
 }
 
 .status-badge {
@@ -2666,12 +2759,29 @@ onMounted(async () => {
 }
 
 .menu-actions-cell {
-  min-width: 120px;
+  width: 240px;
+  text-align: center;
 }
 
 .action-buttons {
-  display: flex;
+  display: inline-flex;
+  justify-content: center;
+  flex-wrap: nowrap;
   gap: 6px;
+  max-width: 100%;
+}
+
+.action-buttons :deep(.el-button) {
+  min-width: 62px;
+  margin: 0;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.action-buttons :deep(.el-button span) {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 /* ===== 空状态样式 ===== */
@@ -2706,189 +2816,209 @@ onMounted(async () => {
   max-width: 400px;
 }
 
-/* ==================== 编辑弹窗内容样式 ==================== */
-.modal-body {
-  padding: 4px 0 0;
-  background: transparent;
-  color: #303133;
+/* ==================== 现代化菜单编辑弹窗 ==================== */
+.menu-editor-body {
+  padding: 0;
+  color: #26313f;
+}
+
+.menu-editor-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.menu-editor-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px;
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 12% 20%, rgba(45, 212, 191, 0.28), transparent 30%),
+    linear-gradient(135deg, #102a43 0%, #1f4f5f 52%, #2f6f63 100%);
+  color: #fff;
+  box-shadow: 0 18px 42px rgba(16, 42, 67, 0.2);
+}
+
+.menu-editor-preview {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 14px;
+}
+
+.preview-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: #102a43;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 12px 26px rgba(0, 0, 0, 0.18);
+}
+
+.preview-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 3px;
+}
+
+.preview-copy strong {
+  font-size: 20px;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.preview-copy small,
+.preview-eyebrow {
+  color: rgba(255, 255, 255, 0.74);
+}
+
+.preview-eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.status-switch {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.status-switch-label {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.status-switch :deep(.el-switch__core) {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.status-switch :deep(.el-switch.is-checked .el-switch__core) {
+  border-color: #5eead4;
+  background: #5eead4;
+}
+
+.menu-editor-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.85fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.editor-card {
+  padding: 18px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(210, 219, 229, 0.9);
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.08);
+}
+
+.editor-card--side {
+  position: sticky;
+  top: 12px;
+}
+
+.editor-card-head {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.editor-card-icon {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  color: #0f766e;
+  background: linear-gradient(135deg, #ccfbf1, #e0f2fe);
+}
+
+.editor-card-head h6 {
+  margin: 0;
+  font-size: 16px;
+  color: #172033;
+}
+
+.editor-card-head p {
+  margin: 3px 0 0;
+  color: #7a8797;
+  font-size: 12px;
 }
 
 /* 模态框底部 */
 .modal-footer {
-  padding: 12px 0 0;
+  padding: 14px 0 0;
   border-top: 1px solid #e9ecef;
   background: transparent;
 }
 
-/* ==================== 表单区域样式优化 ==================== */
-
-/* 表单区块 */
-.form-section {
-  margin-bottom: 24px;
-  padding-bottom: 24px;
-  border-bottom: 1px solid #f0f2f5;
+/* Element Plus 统一表单控件 */
+.menu-form-row {
+  margin-bottom: 2px;
 }
 
-.form-section:last-child {
-  margin-bottom: 0;
-  padding-bottom: 0;
-  border-bottom: none;
+.menu-editor-form :deep(.el-form-item) {
+  margin-bottom: 18px;
 }
 
-.form-section .section-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: #667eea;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin: 0 0 16px 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.form-section .section-title::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: linear-gradient(90deg, #667eea 0%, transparent 100%);
-  opacity: 0.3;
-}
-
-/* 表单行 */
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-}
-
-.form-row .form-group {
-  margin-bottom: 0;
-}
-
-/* 表单组 */
-.form-group {
-  margin-bottom: 20px;
-}
-
-.form-group:last-child {
-  margin-bottom: 0;
-}
-
-.form-group.full-width {
-  grid-column: 1 / -1;
-}
-
-/* 表单标签 */
-.form-label {
-  display: block;
-  margin-bottom: 8px;
+.menu-editor-form :deep(.el-form-item__label) {
+  min-height: 22px;
+  margin-bottom: 7px;
+  color: #344256;
   font-size: 14px;
-  font-weight: 500;
-  color: #606266;
+  font-weight: 700;
+  line-height: 1.35;
 }
 
-.form-label i {
-  color: #909399;
-  margin-right: 4px;
+.menu-editor-form :deep(.el-input__wrapper),
+.menu-editor-form :deep(.el-select__wrapper),
+.menu-editor-form :deep(.el-textarea__inner) {
+  border-radius: 12px;
+  background: #f8fafc;
+  box-shadow: 0 0 0 1px #d8e0ea inset;
+  transition: box-shadow 0.2s ease, background 0.2s ease;
 }
 
-/* 必填标记 */
-.required {
-  color: #f56c6c;
-  margin-left: 2px;
+.menu-editor-form :deep(.el-input__wrapper:hover),
+.menu-editor-form :deep(.el-select__wrapper:hover),
+.menu-editor-form :deep(.el-textarea__inner:hover) {
+  box-shadow: 0 0 0 1px #b8c7d9 inset;
 }
 
-/* 输入框组 */
-.input-group {
-  position: relative;
-  display: flex;
-  align-items: center;
+.menu-editor-form :deep(.el-input__wrapper.is-focus),
+.menu-editor-form :deep(.el-select__wrapper.is-focused),
+.menu-editor-form :deep(.el-textarea__inner:focus) {
+  background: #fff;
+  box-shadow: 0 0 0 1px #0f766e inset, 0 0 0 3px rgba(15, 118, 110, 0.12);
 }
 
-.input-icon {
-  position: absolute;
-  left: 12px;
-  color: #909399;
-  font-size: 14px;
-  z-index: 1;
+.menu-editor-form :deep(.el-input__prefix) {
+  color: #7a8797;
 }
 
-.input-group .form-control,
-.input-group .form-control {
-  padding-left: 38px;
-}
-
-/* 表单控件 */
-.form-control,
-.form-control {
+.menu-editor-form :deep(.el-input-number .el-input__wrapper) {
   width: 100%;
-  padding: 10px 12px;
-  padding-left: 38px;
-  font-size: 14px;
-  line-height: 1.5;
-  color: #606266;
-  background: #ffffff;
-  border: 1px solid #dcdfe6;
-  border-radius: 6px;
-  transition: all 0.25s ease;
-}
-
-.form-control:focus,
-.form-control:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.form-control::placeholder {
-  color: #c0c4cc;
-}
-
-/* 下拉选择框 */
-select.form-control {
-  cursor: pointer;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23909399' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  padding-right: 30px;
-}
-
-/* 文本域 */
-textarea.form-control {
-  resize: vertical;
-  min-height: 80px;
-  padding-left: 12px;
-  padding-top: 10px;
-}
-
-/* 复选框 */
-.form-check {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.form-check-input {
-  width: 18px;
-  height: 18px;
-  border: 2px solid #dcdfe6;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.25s ease;
-}
-
-.form-check-input:checked {
-  background: #667eea;
-  border-color: #667eea;
-}
-
-.form-check-label {
-  font-size: 14px;
-  color: #606266;
-  cursor: pointer;
-  user-select: none;
 }
 
 /* 模块选择器 */
@@ -2908,16 +3038,11 @@ textarea.form-control {
 
 .module-option {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 0;
-}
-
-.module-icon {
-  font-size: 18px;
-  color: #667eea;
-  width: 24px;
-  text-align: center;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 0;
+  width: 100%;
+  min-width: 0;
 }
 
 .module-info {
@@ -2928,19 +3053,22 @@ textarea.form-control {
 }
 
 .module-name {
+  min-width: 0;
   font-size: 14px;
   font-weight: 500;
   color: #303133;
+  line-height: 1.45;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .module-key {
   font-size: 12px;
   color: #909399;
-}
-
-.module-id {
-  font-size: 12px;
-  color: #c0c4cc;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* 图标预览 */
@@ -2985,9 +3113,28 @@ textarea.form-control {
 
 /* ===== 响应式设计 ===== */
 @media (max-width: 767px) {
-  .modal-body,
+  .menu-editor-body,
   .modal-footer {
     padding: 0;
+  }
+
+  .menu-editor-hero {
+    align-items: flex-start;
+    flex-direction: column;
+    border-radius: 16px;
+  }
+
+  .menu-editor-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .editor-card {
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .editor-card--side {
+    position: static;
   }
 
   .modal-footer.mobile-dialog-footer {
@@ -3002,10 +3149,6 @@ textarea.form-control {
   .modal-footer.mobile-dialog-footer :deep(.el-button) {
     width: auto !important;
     flex: 0 0 auto !important;
-  }
-
-  .form-row {
-    grid-template-columns: 1fr;
   }
 
   .menu-management {
@@ -3096,10 +3239,6 @@ textarea.form-control {
   .inline-width-label {
     min-width: 44px;
     font-size: 11px;
-  }
-
-  .form-row {
-    grid-template-columns: 1fr;
   }
 
   .table-responsive {
@@ -3213,7 +3352,7 @@ textarea.form-control {
     font-size: 13px;
   }
 
-  .modal-body {
+  .menu-editor-body {
     padding: 0;
   }
 
@@ -3282,17 +3421,6 @@ textarea.form-control {
   .stats-cards {
     grid-template-columns: repeat(2, 1fr);
     gap: 12px;
-  }
-
-  /* 移动端搜索框优化 */
-  .search-box {
-    width: 100%;
-    margin-bottom: 16px;
-  }
-
-  .search-box input {
-    min-height: 44px;
-    font-size: 16px; /* 防止iOS放大 */
   }
 
   /* 移动端按钮组优化 */
@@ -3365,62 +3493,13 @@ textarea.form-control {
   }
 }
 
-/* 权限控制样式 */
-.permission-denied-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 70vh;
-  padding: 20px;
-}
-
-.permission-denied-content {
-  text-align: center;
-  max-width: 500px;
-  padding: 40px;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-.permission-icon {
-  font-size: 48px;
-  color: #f56c6c;
-  margin-bottom: 16px;
-}
-
-.permission-denied-content h3 {
-  font-size: 24px;
-  color: #303133;
-  margin-bottom: 16px;
-}
-
-.permission-denied-content p {
-  color: #606266;
-  margin-bottom: 12px;
-  line-height: 1.5;
-}
-
-.permission-hint {
-  font-size: 14px;
-  color: #909399;
-  margin-bottom: 24px !important;
-}
-
-.permission-hint code {
-  background: #f5f5f5;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-family: 'Courier New', monospace;
-  color: #e74c3c;
-}
 </style>
 
 <!-- 全局样式：模块选择器下拉框（popper-class 需要全局样式） -->
 <style>
 .module-select-dropdown {
-  min-width: 700px !important;
-  max-width: 800px !important;
+  min-width: min(360px, 100%) !important;
+  max-width: min(520px, calc(100vw - 48px)) !important;
   z-index: 9999 !important;
 }
 
@@ -3445,12 +3524,13 @@ textarea.form-control {
 }
 
 .module-select-dropdown .el-select-dropdown__item {
-  min-width: 700px !important;
+  min-width: 0 !important;
   height: auto !important;
   padding: 12px 16px !important;
   line-height: normal !important;
   display: flex !important;
   align-items: center !important;
+  overflow: hidden !important;
 }
 
 .module-select-dropdown .el-select-dropdown__item.hover {

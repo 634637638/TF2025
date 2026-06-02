@@ -8,7 +8,7 @@
         <span class="expand-icon" v-else></span>
         
         <span class="menu-icon" v-if="menu.icon">
-          <i :class="menu.icon"></i>
+          <IconRenderer :icon="menu.icon" :svg="menu.icon_svg" />
         </span>
         
         <div class="menu-details">
@@ -60,12 +60,16 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import IconRenderer from '@/components/IconRenderer.vue'
 
 interface Menu {
   id: number
   name: string
   url: string | null
   icon: string | null
+  icon_svg?: string | null
+  icon_source?: string | null
+  icon_is_valid?: number | boolean | null
   parent_id: number
   sort_order: number
   is_active: boolean

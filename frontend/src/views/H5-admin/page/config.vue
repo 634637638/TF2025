@@ -3,15 +3,15 @@
   功能：店铺基本信息、联系方式、支付方式配置
 -->
 <template>
-  <PermissionDenied
-    v-if="!canView"
+  <PermissionGate
     :can-view="canView"
+    mode="denied"
     module-key="h5-admin-config"
     module-name="商城配置"
     permission-code="h5-config:view"
-  />
+  >
 
-  <div v-else class="shop-config-page">
+  <div class="shop-config-page">
     <!-- 加载状态 -->
     <div v-if="loading" class="loading-state">
       <el-skeleton animated />
@@ -241,15 +241,16 @@
       </template>
     </MobileDialog>
   </div>
+  </PermissionGate>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick, inject, onUnmounted } from 'vue'
+import { ref, computed, onMounted, nextTick, inject, onUnmounted, watch } from 'vue'
 import { useRouter, onBeforeRouteLeave } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Refresh, Check } from '@element-plus/icons-vue'
 import { getAllConfigs, batchUpdateConfigs } from '@/api/shop'
-import { PermissionDenied } from '@/components/base/index'
+import { PermissionGate } from '@/components/base/index'
 import { useAuthStore } from '@/stores/auth'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { formatImageUrl } from '@/utils/format'
@@ -260,7 +261,11 @@ import type { HeaderAction } from '@/types'
 
 const router = useRouter()
 const authStore = useAuthStore()
-const { canView, canEdit, handleNoPermission } = usePagePermissions('h5-admin-config')
+const configPermissions = usePagePermissions('h5-admin-config')
+const h5AdminPermissions = usePagePermissions('h5-admin')
+const { handleNoPermission } = configPermissions
+const canView = computed(() => configPermissions.canView.value || h5AdminPermissions.canView.value)
+const canEdit = computed(() => configPermissions.canEdit.value || h5AdminPermissions.canEdit.value)
 
 // 注入父组件提供的注册方法
 const registerHeaderActions = inject<(actions: HeaderAction[]) => void>('registerHeaderActions')
@@ -300,6 +305,7 @@ const configs = ref<any>({
 })
 const loading = ref(true)
 const saving = ref(false)
+const hasInitializedPageData = ref(false)
 const showMapDialog = ref(false)
 const IMAGE_FIELDS = ['shop_logo', 'wechat_qrcode', 'alipay_qrcode'] as const
 type ImageField = typeof IMAGE_FIELDS[number]
@@ -671,11 +677,21 @@ const cancelMapLocation = () => {
   showMapDialog.value = false
 }
 
-onMounted(() => {
-  if (canView.value) {
-    loadConfigs()
+const initializePageData = async () => {
+  if (!canView.value) {
+    loading.value = false
+    return
   }
-  // 注册头部操作按钮
+
+  if (hasInitializedPageData.value) {
+    return
+  }
+
+  hasInitializedPageData.value = true
+  await loadConfigs()
+}
+
+const registerPageHeaderActions = () => {
   if (registerHeaderActions) {
     registerHeaderActions([
       ...(canEdit.value ? [{
@@ -694,6 +710,21 @@ onMounted(() => {
       }
     ])
   }
+}
+
+watch(canView, (allowed) => {
+  if (allowed) {
+    void initializePageData()
+  }
+})
+
+watch(canEdit, () => {
+  registerPageHeaderActions()
+})
+
+onMounted(() => {
+  void initializePageData()
+  registerPageHeaderActions()
 })
 
 // 路由守卫：页面离开时清理临时文件

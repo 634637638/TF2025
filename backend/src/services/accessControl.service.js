@@ -1,5 +1,5 @@
 const { getDatabase } = require('../config/database');
-const { sortPermissionTypes } = require('../config/module-permission-actions');
+const { normalizePermissionType, sortPermissionTypes } = require('../config/module-permission-actions');
 const { hasTable, hasColumn } = require('./schemaInspector.service');
 const { normalizeModuleKey } = require('../utils/moduleKeyNormalizer');
 const log = require('../utils/log');
@@ -407,6 +407,7 @@ async function getUserAccessProfile(userId, executor = null) {
 
     actionRows.forEach((row) => {
       const moduleKey = normalizeModuleKey(row.module_key);
+      const permissionType = normalizePermissionType(row.permission_type);
       if (!moduleKey) {
         return;
       }
@@ -414,9 +415,9 @@ async function getUserAccessProfile(userId, executor = null) {
       if (!summary[moduleKey]) {
         summary[moduleKey] = [];
       }
-      if (!summary[moduleKey].includes(row.permission_type)) {
-        summary[moduleKey].push(row.permission_type);
-        userPermissions.push(`${moduleKey}:${row.permission_type}`);
+      if (!summary[moduleKey].includes(permissionType)) {
+        summary[moduleKey].push(permissionType);
+        userPermissions.push(`${moduleKey}:${permissionType}`);
       }
 
       const roleKey = String(row.role_id);
@@ -433,8 +434,8 @@ async function getUserAccessProfile(userId, executor = null) {
         rolePermissions[roleKey].summary[moduleKey] = [];
       }
 
-      if (!rolePermissions[roleKey].summary[moduleKey].includes(row.permission_type)) {
-        rolePermissions[roleKey].summary[moduleKey].push(row.permission_type);
+      if (!rolePermissions[roleKey].summary[moduleKey].includes(permissionType)) {
+        rolePermissions[roleKey].summary[moduleKey].push(permissionType);
       }
     });
 

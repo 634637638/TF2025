@@ -1,5 +1,12 @@
 <template>
   <div class="data-optimization-view admin-page">
+    <PermissionGate
+      :can-view="canView"
+      mode="denied"
+      module-key="data_optimization"
+      module-name="数据优化"
+      permission-code="data-check:view"
+    >
     <!-- 页面头部 - 使用全局组件 -->
     <PageHeader
       class="data-optimization-header"
@@ -7,17 +14,8 @@
       title="优化数据"
     />
 
-    <!-- ❌ 无权限时显示提示 -->
-    <PermissionDenied
-      v-if="!canView"
-      :can-view="canView"
-      module-key="data_optimization"
-      module-name="数据优化"
-      permission-code="data-check:view"
-    />
-
     <!-- TAB 标签页 -->
-    <div v-else class="optimization-tabs-wrapper admin-page-content">
+    <div class="optimization-tabs-wrapper admin-page-content">
       <el-tabs v-if="visibleOptimizationTabs.length" v-model="activeTab" class="optimization-tabs">
         <el-tab-pane
           v-for="tab in visibleOptimizationTabs"
@@ -38,6 +36,7 @@
         当前角色未开启任何数据优化子页面字段，请在字段权限中开启对应页签。
       </div>
     </div>
+    </PermissionGate>
   </div>
 </template>
 
@@ -45,7 +44,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
-import { PageHeader, PermissionDenied } from '@/components/base'
+import { PageHeader, PermissionGate } from '@/components/base'
 import DataCheckTab from './page/DataCheckTab.vue'
 import DataImportTab from './page/DataImportTab.vue'
 import DatabaseSyncTab from './page/DatabaseSyncTab.vue'

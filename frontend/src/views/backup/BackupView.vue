@@ -1,21 +1,21 @@
 <template>
   <div class="backup-management admin-page">
-    <!-- 权限检查 -->
-    <PermissionDenied
-      v-if="!permissionLoading && !canView"
+    <PermissionGate
       :can-view="canView"
+      mode="denied"
       module-key="backup"
       module-name="备份管理"
       permission-code="backup:view"
-    />
-
+    >
     <!-- 主内容 -->
-    <template v-if="!permissionLoading && canView">
       <PageHeader icon="fas fa-database" title="备份管理">
         <template #actions>
           <el-button type="primary" @click="createBackup" :loading="isCreating" v-if="canCreate">
-            <i :class="isCreating ? 'fas fa-spinner fa-spin' : 'fas fa-plus'"></i>
-            <span>{{ isCreating ? '备份中...' : '创建备份' }}</span>
+            <InlineLoading v-if="isCreating" text="备份中..." size="small" variant="inherit" />
+            <template v-else>
+              <i class="fas fa-plus"></i>
+              <span>创建备份</span>
+            </template>
           </el-button>
           <el-button type="info" plain @click="loadBackupList">
             <i class="fas fa-sync-alt"></i>
@@ -78,12 +78,21 @@
           </div>
 
           <el-table
-            :data="backupList"
-            v-loading="isLoading"
+            :data="isLoading ? [] : backupList"
             border
             stripe
             style="width: 100%"
           >
+            <template #empty>
+              <TableLoadingRow v-if="isLoading" mode="block" text="加载中..." />
+              <el-empty v-else description="暂无备份记录">
+                <el-button v-if="canCreate" type="primary" @click="createBackup">
+                  <i class="fas fa-plus"></i>
+                  创建第一个备份
+                </el-button>
+              </el-empty>
+            </template>
+
             <el-table-column prop="filename" label="文件名" min-width="280">
               <template #default="{ row }">
                 <div class="filename-cell">
@@ -113,8 +122,11 @@
                     :disabled="downloadingFilename !== null && downloadingFilename !== row.filename"
                     @click="downloadBackup(row.filename)"
                   >
-                    <i :class="downloadingFilename === row.filename ? 'fas fa-spinner fa-spin' : 'fas fa-download'"></i>
-                    {{ downloadingFilename === row.filename ? '下载中' : '下载' }}
+                    <InlineLoading v-if="downloadingFilename === row.filename" text="下载中" size="small" variant="inherit" />
+                    <template v-else>
+                      <i class="fas fa-download"></i>
+                      下载
+                    </template>
                   </el-button>
                   <el-button
                     v-if="canDelete"
@@ -131,18 +143,10 @@
             </el-table-column>
           </el-table>
 
-          <!-- 空状态 -->
-          <div v-if="!isLoading && backupList.length === 0" class="empty-state">
-            <i class="fas fa-inbox"></i>
-            <p>暂无备份记录</p>
-            <el-button v-if="canCreate" type="primary" @click="createBackup">
-              <i class="fas fa-plus"></i>
-              创建第一个备份
-            </el-button>
-          </div>
+          <!-- 空状态由表格 empty 插槽统一处理 -->
         </div>
       </div>
-    </template>
+    </PermissionGate>
 
     <!-- 清理对话框 -->
     <el-dialog
@@ -168,17 +172,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import { unifiedApi } from '@/utils/unified-api'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
-import { PermissionDenied, PageHeader } from '@/components/base'
+import { PermissionGate, PageHeader } from '@/components/base'
+import InlineLoading from '@/components/InlineLoading.vue'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 
 const { success, error, loading } = useNotification()
 
 // 权限
-const permissionLoading = ref(false)
 const { canView, canCreate, canDelete, requirePermission } = usePagePermissions('backup')
 
 // 状态
@@ -187,6 +192,7 @@ const isCreating = ref(false)
 const isCleaningUp = ref(false)
 const downloadingFilename = ref<string | null>(null)
 const backupList = ref<any[]>([])
+const hasInitializedPageData = ref(false)
 const storageInfo = ref({
   backup_dir: '',
   backend_root: '',
@@ -201,6 +207,18 @@ const keepCount = ref(5)
 
 // 加载备份列表
 const loadBackupList = async () => {
+  if (!canView.value) {
+    backupList.value = []
+    storageInfo.value = {
+      backup_dir: '',
+      backend_root: '',
+      total_count: 0,
+      total_size: '0 KB',
+      total_size_bytes: 0
+    }
+    return
+  }
+
   isLoading.value = true
   try {
     const [listRes, storageRes] = await Promise.all([
@@ -219,6 +237,15 @@ const loadBackupList = async () => {
   } finally {
     isLoading.value = false
   }
+}
+
+const initializePageData = async () => {
+  if (!canView.value || hasInitializedPageData.value) {
+    return
+  }
+
+  hasInitializedPageData.value = true
+  await loadBackupList()
 }
 
 // 创建备份
@@ -373,12 +400,24 @@ const formatDateTime = (dateStr: string) => {
 
 // 初始化
 onMounted(async () => {
-  if (!canView.value) {
-    return
-  }
-
-  await loadBackupList()
+  await initializePageData()
 })
+
+watch(canView, async (value) => {
+  if (value) {
+    await initializePageData()
+  } else {
+    hasInitializedPageData.value = false
+    backupList.value = []
+    storageInfo.value = {
+      backup_dir: '',
+      backend_root: '',
+      total_count: 0,
+      total_size: '0 KB',
+      total_size_bytes: 0
+    }
+  }
+}, { immediate: true })
 </script>
 
 <style scoped>

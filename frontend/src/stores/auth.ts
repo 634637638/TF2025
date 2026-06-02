@@ -13,6 +13,7 @@ import { AUTH_STORAGE_KEYS } from '@/constants/storage'
 import { PermissionMapper, PermissionUtils } from '@/utils/permissionMapper'
 import type { User, LoginCredentials } from '@/types'
 import { logger } from '@/utils/logger'
+import { showElementWarning } from '@/utils/element-feedback'
 
 const PERMISSIONS_ADMIN_REQUIREMENTS = [
   'permissions:view',
@@ -204,12 +205,10 @@ export const useAuthStore = defineStore('auth', () => {
     if (backendDisconnected.value) {
       // 显示友好提示（仅显示一次）
       if (!storage.has(AUTH_STORAGE_KEYS.DISCONNECT_NOTIFIED, 'session')) {
-        import('element-plus').then(({ ElMessage }) => {
-          ElMessage.warning({
-            message: '网络连接已断开，部分功能不可用',
-            duration: 3000,
-            showClose: true
-          })
+        showElementWarning({
+          message: '网络连接已断开，部分功能不可用',
+          duration: 3000,
+          showClose: true
         })
         storage.set(AUTH_STORAGE_KEYS.DISCONNECT_NOTIFIED, 'true', 'session')
       }

@@ -285,11 +285,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { unifiedApi } from '@/utils/unified-api'
+import { useAuthStore } from '@/stores/auth'
+import { canAccessRoutePath } from '@/constants/routePermissions'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 // 响应式数据
 const loading = ref(false)
@@ -300,6 +304,7 @@ const warningsData = ref<any>({
   sales: { today: {}, trend: [], avgDailySales: 0, isBelowAverage: false },
   purchases: { recent: [], noRecent: [] }
 })
+let warningTimer: ReturnType<typeof setInterval> | null = null
 
 // 计算属性
 const salesStatus = computed(() => {
@@ -323,8 +328,22 @@ const phoneWarnings = computed(() => {
   return []
 })
 
+const resetWarnings = () => {
+  warningsData.value = {
+    phones: { warnings: [], count: 0, threshold: 3 },
+    accessories: { warnings: [], count: 0 },
+    sales: { today: {}, trend: [], avgDailySales: 0, isBelowAverage: false },
+    purchases: { recent: [], noRecent: [] }
+  }
+}
+
 // 获取预警数据
 const fetchWarnings = async () => {
+  if (!canAccessRoutePath('/dashboard', authStore)) {
+    resetWarnings()
+    return
+  }
+
   loading.value = true
   try {
     const response = await unifiedApi.get('/dashboard/warnings/comprehensive', {
@@ -394,9 +413,20 @@ const formatDate = (dateStr: string) => {
   return `${date.getMonth() + 1}/${date.getDate()}`
 }
 
+const guardedPush = (target: string | { path: string; query?: Record<string, string> }) => {
+  const path = typeof target === 'string' ? target : target.path
+
+  if (!canAccessRoutePath(path, authStore)) {
+    ElMessage.warning('您没有访问此页面的权限')
+    return
+  }
+
+  router.push(target)
+}
+
 // 查看手机详情
 const viewPhoneDetail = (row: any) => {
-  router.push({
+  guardedPush({
     path: '/inventory',
     query: {
       brand: row.brand_name,
@@ -409,17 +439,17 @@ const viewPhoneDetail = (row: any) => {
 
 // 跳转到配件页面
 const goToAccessories = () => {
-  router.push('/accessories')
+  guardedPush('/accessories')
 }
 
 // 跳转到供应商页面
 const goToSuppliers = () => {
-  router.push('/suppliers')
+  guardedPush('/suppliers')
 }
 
 // 跳转到预警配置页面
 const goToWarningConfig = () => {
-  router.push('/system?tab=warning')
+  guardedPush('/system?tab=warning')
 }
 
 // 生命周期
@@ -427,9 +457,16 @@ onMounted(() => {
   fetchWarnings()
 
   // 每5分钟自动刷新
-  setInterval(() => {
+  warningTimer = setInterval(() => {
     fetchWarnings()
   }, 5 * 60 * 1000)
+})
+
+onUnmounted(() => {
+  if (warningTimer) {
+    clearInterval(warningTimer)
+    warningTimer = null
+  }
 })
 </script>
 

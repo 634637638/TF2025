@@ -125,7 +125,10 @@ const sanitizeArchiveBackupName = (name, fallbackName) => {
 // 所有路由都需要认证
 router.use(unifiedAuth);
 
-const requireAdmin = requirePermission('permissions:admin');
+const requireGitView = requirePermission('git-management:view');
+const requireGitCreate = requirePermission('git-management:create');
+const requireGitEdit = requirePermission('git-management:edit');
+const requireGitDelete = requirePermission('git-management:delete');
 
 // 工具函数：执行 Git 命令
 const execGitCommand = (command) => {
@@ -469,7 +472,7 @@ const createBranchBackupSnapshot = async ({
  * GET /api/git/status
  * 获取 Git 状态
  */
-router.get('/status', requireAdmin, async (req, res) => {
+router.get('/status', requireGitView, async (req, res) => {
   try {
     const { stdout: statusOutput } = await execGitCommand('git status --porcelain');
     const { stdout: branchStatusOutput } = await execGitCommand('git status --short --branch');
@@ -516,7 +519,7 @@ router.get('/status', requireAdmin, async (req, res) => {
  * 一键提交到 Git
  * Body: { message: string, autoPush: boolean }
  */
-router.post('/commit', requireAdmin, async (req, res) => {
+router.post('/commit', requireGitEdit, async (req, res) => {
   try {
     const { message = '自动提交: 更新代码', autoPush = true } = req.body;
     const headState = await getHeadState();
@@ -667,7 +670,7 @@ router.post('/commit', requireAdmin, async (req, res) => {
  * POST /api/git/push
  * 单独推送代码
  */
-router.post('/push', requireAdmin, async (req, res) => {
+router.post('/push', requireGitEdit, async (req, res) => {
   try {
     const headState = await getHeadState();
     const targetBranch = 'main';
@@ -775,7 +778,7 @@ router.post('/push', requireAdmin, async (req, res) => {
  * POST /api/git/pull
  * 拉取远程更新
  */
-router.post('/pull', requireAdmin, async (req, res) => {
+router.post('/pull', requireGitEdit, async (req, res) => {
   try {
     const headState = await getHeadState();
     const targetBranch = 'main';
@@ -810,7 +813,7 @@ router.post('/pull', requireAdmin, async (req, res) => {
  * GET /api/git/log
  * 获取提交历史（过滤掉本地备份相关的提交）
  */
-router.get('/log', requireAdmin, async (req, res) => {
+router.get('/log', requireGitView, async (req, res) => {
   try {
     const { limit = 20 } = req.query;
     const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
@@ -892,7 +895,7 @@ router.get('/log', requireAdmin, async (req, res) => {
  * POST /api/git/discard
  * 丢弃所有未提交的更改
  */
-router.post('/discard', requireAdmin, async (req, res) => {
+router.post('/discard', requireGitEdit, async (req, res) => {
   try {
     // 丢弃所有更改
     await execGitCommand('git reset --hard HEAD');
@@ -918,7 +921,7 @@ router.post('/discard', requireAdmin, async (req, res) => {
  * 切换到指定版本
  * Body: { commit: string, mode: 'view' | 'reset' }
  */
-router.post('/checkout', requireAdmin, async (req, res) => {
+router.post('/checkout', requireGitEdit, async (req, res) => {
   try {
     const safeCommit = normalizeCommitHash(req.body.commit);
     const { mode = 'view' } = req.body;
@@ -995,7 +998,7 @@ router.post('/checkout', requireAdmin, async (req, res) => {
  * GET /api/git/branches
  * 获取所有分支列表
  */
-router.get('/branches', requireAdmin, async (req, res) => {
+router.get('/branches', requireGitView, async (req, res) => {
   try {
     // 获取本地分支
     const { stdout: localBranchesOutput } = await execGitCommand('git branch');
@@ -1043,7 +1046,7 @@ router.get('/branches', requireAdmin, async (req, res) => {
  * 切换分支
  * Body: { branch: string }
  */
-router.post('/switch-branch', requireAdmin, async (req, res) => {
+router.post('/switch-branch', requireGitEdit, async (req, res) => {
   try {
     const branch = normalizeBranchName(req.body.branch);
 
@@ -1102,7 +1105,7 @@ router.post('/switch-branch', requireAdmin, async (req, res) => {
  * 创建新分支
  * Body: { name: string, baseBranch?: string }
  */
-router.post('/create-branch', requireAdmin, async (req, res) => {
+router.post('/create-branch', requireGitCreate, async (req, res) => {
   try {
     const name = normalizeBranchName(req.body.name, '新分支名称');
     const baseBranch = req.body.baseBranch
@@ -1144,7 +1147,7 @@ router.post('/create-branch', requireAdmin, async (req, res) => {
  * 删除分支
  * Body: { branch: string, force?: boolean }
  */
-router.delete('/delete-branch', requireAdmin, async (req, res) => {
+router.delete('/delete-branch', requireGitDelete, async (req, res) => {
   try {
     const branch = normalizeBranchName(req.body.branch);
     const { force = false } = req.body;
@@ -1180,7 +1183,7 @@ router.delete('/delete-branch', requireAdmin, async (req, res) => {
  * POST /api/git/clean
  * 清理未跟踪的文件
  */
-router.post('/clean', requireAdmin, async (req, res) => {
+router.post('/clean', requireGitEdit, async (req, res) => {
   try {
     // 先检查有哪些未跟踪文件
     const { stdout: statusOutput } = await execGitCommand('git status --porcelain');
@@ -1223,7 +1226,7 @@ router.post('/clean', requireAdmin, async (req, res) => {
  * 从 Git 管理历史列表中隐藏指定提交
  * Body: { hash: string }
  */
-router.post('/delete-commit', requireAdmin, async (req, res) => {
+router.post('/delete-commit', requireGitDelete, async (req, res) => {
   try {
     const hash = normalizeCommitHash(req.body.hash);
     log.debug(`🗂️ 隐藏提交历史记录: ${hash.substring(0, 8)}`);
@@ -1260,7 +1263,7 @@ router.post('/delete-commit', requireAdmin, async (req, res) => {
 });
 
 // ==================== 创建本地压缩包备份 ====================
-router.post('/backup/archive', requireAdmin, async (req, res) => {
+router.post('/backup/archive', requireGitCreate, async (req, res) => {
   try {
     const { name } = req.body;
 
@@ -1449,7 +1452,7 @@ router.post('/backup/archive', requireAdmin, async (req, res) => {
 });
 
 // ==================== 创建 Git 分支备份 ====================
-router.post('/backup/branch', requireAdmin, async (req, res) => {
+router.post('/backup/branch', requireGitCreate, async (req, res) => {
   try {
     const { name, message, includeChanges = true } = req.body;
 
@@ -1524,7 +1527,7 @@ router.post('/backup/branch', requireAdmin, async (req, res) => {
   }
 });
 
-router.post('/restore-main', requireAdmin, async (req, res) => {
+router.post('/restore-main', requireGitEdit, async (req, res) => {
   try {
     const targetBranch = 'main';
     const headState = await getHeadState();

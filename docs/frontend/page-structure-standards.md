@@ -96,7 +96,8 @@ src/views/
               <el-button
                 v-if="showRefresh"
                 :icon="Refresh"
-                :loading="loading"
+                :loading="refreshing"
+                :disabled="refreshing"
                 @click="handleRefresh"
               >
                 刷新
@@ -151,7 +152,7 @@ src/views/
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Refresh } from '@element-plus/icons-vue'
 
@@ -197,6 +198,7 @@ interface Emits {
 const emit = defineEmits<Emits>()
 
 const router = useRouter()
+const refreshing = ref(false)
 
 // 页面标题自动更新
 const pageTitle = computed(() => {
@@ -234,6 +236,16 @@ onUnmounted(() => {
   }
 })
 </script>
+
+### 2. 页面刷新规范
+
+- 页面首屏允许使用 `loading` 渲染骨架、表格空态 loading 或区块 loading。
+- 页面右上角刷新按钮不要直接绑定页面 `loading`，应单独维护 `refreshing`。
+- 右上角刷新只负责按钮反馈和顶部消息提示，不应清空当前表格、卡片或图表。
+- 推荐把主数据函数设计成 `loadData(showLoadingState = true)`，右上角刷新调用 `loadData(false)`。
+- 顶部刷新提示文案统一为：
+  - 成功：`数据刷新成功`
+  - 失败：`刷新失败，请重试`
 
 <style lang="scss" scoped>
 .page-container {

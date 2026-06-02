@@ -19,6 +19,7 @@
 ## 权限组件
 
 - [权限拒绝组件](permission-denied-component.md) - 无权限时的 UI 组件
+- [路由权限与导航入口统一规范](route-permission-navigation.md) - 菜单、标签、路由守卫的统一无权限行为
 
 ## 当前权限模型
 

@@ -73,18 +73,159 @@
         <h3>热门品牌</h3>
         <span @click="goProducts({})">更多 <i class="fas fa-chevron-right"></i></span>
       </div>
-      <div class="brands-list">
-        <div
-          v-for="brand in brands.slice(0, 8)"
-          :key="brand.id"
-          class="brand-item"
-          @click="goProducts({ brand_id: brand.id })"
-        >
-          <div class="brand-icon">
-            <i v-if="brand.icon" :class="brand.icon"></i>
-            <i v-else class="fas fa-mobile-alt"></i>
+      <div class="brands-scroll">
+        <div class="brands-list">
+          <div
+            v-for="brand in brands"
+            :key="brand.id"
+            class="brand-item"
+            :class="{ active: selectedBrandId === brand.id }"
+            @click="openBrandSearch(brand.id)"
+          >
+            <span>{{ brand.name }}</span>
           </div>
-          <span>{{ brand.name }}</span>
+        </div>
+      </div>
+      <div v-if="selectedBrandId" class="brand-search-panel">
+        <div class="brand-search-header">
+          <div class="brand-search-title">
+            <strong>{{ selectedBrandName }}</strong>
+            <span>精准筛选</span>
+          </div>
+          <button type="button" class="brand-reset-btn" @click="resetBrandSearch">重置</button>
+        </div>
+        <div class="brand-search-grid">
+          <label class="brand-field">
+            <span>型号</span>
+            <div class="brand-field-control">
+              <input
+                v-model.trim="modelKeyword"
+                type="text"
+                placeholder="点击或输入筛选型号"
+                @focus="openSearchField('model')"
+                @click.stop="openSearchField('model')"
+                @input="openSearchField('model')"
+              />
+              <button
+                type="button"
+                class="brand-field-toggle"
+                @click.stop="toggleSearchField('model')"
+              >
+                <i class="fas" :class="activeSearchField === 'model' ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+              </button>
+            </div>
+            <div v-if="activeSearchField === 'model'" class="brand-option-dropdown">
+              <div class="brand-option-list">
+                <button
+                  type="button"
+                  class="brand-option"
+                  :class="{ active: selectedModelId === '' }"
+                  @click="selectModelOption(null)"
+                >
+                  全部型号
+                </button>
+                <button
+                  v-for="model in filteredBrandModels"
+                  :key="model.id"
+                  type="button"
+                  class="brand-option"
+                  :class="{ active: selectedModelId === String(model.id) }"
+                  @click="selectModelOption(model)"
+                >
+                  {{ model.name }}
+                </button>
+              </div>
+            </div>
+          </label>
+          <label class="brand-field">
+            <span>颜色</span>
+            <div class="brand-field-control">
+              <input
+                v-model.trim="colorKeyword"
+                type="text"
+                placeholder="点击或输入筛选颜色"
+                @focus="openSearchField('color')"
+                @click.stop="openSearchField('color')"
+                @input="openSearchField('color')"
+              />
+              <button
+                type="button"
+                class="brand-field-toggle"
+                @click.stop="toggleSearchField('color')"
+              >
+                <i class="fas" :class="activeSearchField === 'color' ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+              </button>
+            </div>
+            <div v-if="activeSearchField === 'color'" class="brand-option-dropdown">
+              <div class="brand-option-list">
+                <button
+                  type="button"
+                  class="brand-option"
+                  :class="{ active: selectedColorId === '' }"
+                  @click="selectColorOption(null)"
+                >
+                  全部颜色
+                </button>
+                <button
+                  v-for="color in filteredColors"
+                  :key="color.id"
+                  type="button"
+                  class="brand-option"
+                  :class="{ active: selectedColorId === String(color.id) }"
+                  @click="selectColorOption(color)"
+                >
+                  {{ color.name }}
+                </button>
+              </div>
+            </div>
+          </label>
+          <label class="brand-field">
+            <span>内存</span>
+            <div class="brand-field-control">
+              <input
+                v-model.trim="memoryKeyword"
+                type="text"
+                placeholder="点击或输入筛选内存"
+                @focus="openSearchField('memory')"
+                @click.stop="openSearchField('memory')"
+                @input="openSearchField('memory')"
+              />
+              <button
+                type="button"
+                class="brand-field-toggle"
+                @click.stop="toggleSearchField('memory')"
+              >
+                <i class="fas" :class="activeSearchField === 'memory' ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+              </button>
+            </div>
+            <div v-if="activeSearchField === 'memory'" class="brand-option-dropdown">
+              <div class="brand-option-list">
+                <button
+                  type="button"
+                  class="brand-option"
+                  :class="{ active: selectedMemoryId === '' }"
+                  @click="selectMemoryOption(null)"
+                >
+                  全部内存
+                </button>
+                <button
+                  v-for="memory in filteredMemories"
+                  :key="memory.id"
+                  type="button"
+                  class="brand-option"
+                  :class="{ active: selectedMemoryId === String(memory.id) }"
+                  @click="selectMemoryOption(memory)"
+                >
+                  {{ memory.size || memory.name }}
+                </button>
+              </div>
+            </div>
+          </label>
+        </div>
+        <p class="brand-search-hint">选择内存时将自动按二手机检索</p>
+        <div class="brand-search-actions">
+          <button type="button" class="ghost-btn" @click="collapseBrandSearch">收起</button>
+          <button type="button" class="search-btn" @click="searchBrandProducts">检索商品</button>
         </div>
       </div>
     </div>
@@ -326,10 +467,49 @@ const generatePlaceholderImage = (product: any): string => {
 const config = ref<any>({})
 const banners = ref<Banner[]>([])
 const brands = ref<any[]>([])
+const colors = ref<any[]>([])
+const memories = ref<any[]>([])
+const brandModels = ref<any[]>([])
 const homeSections = ref<HomeSection[]>([])
 const { loading } = useLoadingState()
 const currentSlideIndex = ref(0)
 const showMapDialog = ref(false)
+const selectedBrandId = ref<number | null>(null)
+const selectedModelId = ref('')
+const selectedColorId = ref('')
+const selectedMemoryId = ref('')
+const modelKeyword = ref('')
+const colorKeyword = ref('')
+const memoryKeyword = ref('')
+const activeSearchField = ref<'model' | 'color' | 'memory' | null>(null)
+const modelCache = new Map<number, any[]>()
+const selectedBrandName = computed(() => {
+  const currentBrand = brands.value.find((brand) => brand.id === selectedBrandId.value)
+  return currentBrand?.name || '当前品牌'
+})
+const normalizeKeyword = (value: string) => value.trim().toLowerCase()
+const getMemoryLabel = (memory: any) => memory?.size || memory?.name || ''
+const filteredBrandModels = computed(() => {
+  const keyword = normalizeKeyword(modelKeyword.value)
+  if (!keyword) {
+    return brandModels.value
+  }
+  return brandModels.value.filter((model) => String(model?.name || '').toLowerCase().includes(keyword))
+})
+const filteredColors = computed(() => {
+  const keyword = normalizeKeyword(colorKeyword.value)
+  if (!keyword) {
+    return colors.value
+  }
+  return colors.value.filter((color) => String(color?.name || '').toLowerCase().includes(keyword))
+})
+const filteredMemories = computed(() => {
+  const keyword = normalizeKeyword(memoryKeyword.value)
+  if (!keyword) {
+    return memories.value
+  }
+  return memories.value.filter((memory) => getMemoryLabel(memory).toLowerCase().includes(keyword))
+})
 
 // 当前轮播间隔（根据当前显示的 banner 动态调整）
 const currentBannerInterval = computed(() => {
@@ -393,10 +573,184 @@ const loadBanners = async () => {
 // 获取品牌列表
 const loadBrands = async () => {
   try {
-    brands.value = await baseDataApi.getPublicBrands()
+    const publicBrands = await baseDataApi.getPublicBrands()
+    brands.value = [...publicBrands].sort((a: any, b: any) => {
+      const left = Number.isFinite(Number(a?.sort_order)) ? Number(a.sort_order) : Number.MAX_SAFE_INTEGER
+      const right = Number.isFinite(Number(b?.sort_order)) ? Number(b.sort_order) : Number.MAX_SAFE_INTEGER
+      if (left !== right) {
+        return left - right
+      }
+      return Number(a?.id || 0) - Number(b?.id || 0)
+    })
   } catch (error) {
     logger.error('获取品牌列表失败:', error)
   }
+}
+
+const loadColors = async () => {
+  if (colors.value.length > 0) {
+    return
+  }
+
+  try {
+    const publicColors = await baseDataApi.getPublicColors()
+    colors.value = [...publicColors].sort((a: any, b: any) => {
+      const left = Number.isFinite(Number(a?.sort_order)) ? Number(a.sort_order) : Number.MAX_SAFE_INTEGER
+      const right = Number.isFinite(Number(b?.sort_order)) ? Number(b.sort_order) : Number.MAX_SAFE_INTEGER
+      if (left !== right) {
+        return left - right
+      }
+      return Number(a?.id || 0) - Number(b?.id || 0)
+    })
+  } catch (error) {
+    logger.error('获取颜色列表失败:', error)
+  }
+}
+
+const loadMemories = async () => {
+  if (memories.value.length > 0) {
+    return
+  }
+
+  try {
+    const publicMemories = await baseDataApi.getPublicMemories()
+    memories.value = [...publicMemories].sort((a: any, b: any) => {
+      const left = Number.isFinite(Number(a?.sort_order)) ? Number(a.sort_order) : Number.MAX_SAFE_INTEGER
+      const right = Number.isFinite(Number(b?.sort_order)) ? Number(b.sort_order) : Number.MAX_SAFE_INTEGER
+      if (left !== right) {
+        return left - right
+      }
+      return Number(a?.id || 0) - Number(b?.id || 0)
+    })
+  } catch (error) {
+    logger.error('获取内存列表失败:', error)
+  }
+}
+
+const loadBrandModels = async (brandId: number) => {
+  if (modelCache.has(brandId)) {
+    brandModels.value = modelCache.get(brandId) || []
+    return
+  }
+
+  try {
+    const publicModels = await baseDataApi.getPublicModels(brandId)
+    const sortedModels = [...publicModels].sort((a: any, b: any) => {
+      const left = Number.isFinite(Number(a?.sort_order)) ? Number(a.sort_order) : Number.MAX_SAFE_INTEGER
+      const right = Number.isFinite(Number(b?.sort_order)) ? Number(b.sort_order) : Number.MAX_SAFE_INTEGER
+      if (left !== right) {
+        return left - right
+      }
+      return Number(a?.id || 0) - Number(b?.id || 0)
+    })
+    modelCache.set(brandId, sortedModels)
+    brandModels.value = sortedModels
+  } catch (error) {
+    logger.error('获取型号列表失败:', error)
+    brandModels.value = []
+  }
+}
+
+const resetBrandSearchSelections = () => {
+  selectedModelId.value = ''
+  selectedColorId.value = ''
+  selectedMemoryId.value = ''
+  modelKeyword.value = ''
+  colorKeyword.value = ''
+  memoryKeyword.value = ''
+}
+
+const openSearchField = (field: 'model' | 'color' | 'memory') => {
+  activeSearchField.value = field
+}
+
+const toggleSearchField = (field: 'model' | 'color' | 'memory') => {
+  activeSearchField.value = activeSearchField.value === field ? null : field
+}
+
+const selectModelOption = (model: any | null) => {
+  selectedModelId.value = model ? String(model.id) : ''
+  modelKeyword.value = model?.name || ''
+  activeSearchField.value = null
+}
+
+const selectColorOption = (color: any | null) => {
+  selectedColorId.value = color ? String(color.id) : ''
+  colorKeyword.value = color?.name || ''
+  activeSearchField.value = null
+}
+
+const selectMemoryOption = (memory: any | null) => {
+  selectedMemoryId.value = memory ? String(memory.id) : ''
+  memoryKeyword.value = memory ? getMemoryLabel(memory) : ''
+  activeSearchField.value = null
+}
+
+const openBrandSearch = async (brandId: number) => {
+  if (selectedBrandId.value === brandId) {
+    collapseBrandSearch()
+    return
+  }
+
+  selectedBrandId.value = brandId
+  resetBrandSearchSelections()
+  await Promise.allSettled([
+    loadBrandModels(brandId),
+    loadColors(),
+    loadMemories()
+  ])
+}
+
+const collapseBrandSearch = () => {
+  selectedBrandId.value = null
+  brandModels.value = []
+  activeSearchField.value = null
+  resetBrandSearchSelections()
+}
+
+const resetBrandSearch = async () => {
+  if (!selectedBrandId.value) {
+    return
+  }
+
+  resetBrandSearchSelections()
+  await loadBrandModels(selectedBrandId.value)
+}
+
+const searchBrandProducts = () => {
+  if (!selectedBrandId.value) {
+    return
+  }
+
+  const query: Record<string, string | number | boolean> = {
+    brand_id: selectedBrandId.value
+  }
+
+  if (selectedModelId.value) {
+    query.model_id = Number(selectedModelId.value)
+  }
+
+  if (selectedColorId.value) {
+    query.color_id = Number(selectedColorId.value)
+  }
+
+  if (selectedMemoryId.value) {
+    query.memory_id = Number(selectedMemoryId.value)
+    query.is_new = false
+  }
+
+  router.push({
+    path: '/m/products',
+    query
+  })
+}
+
+const handleDocumentPointerDown = (event: Event) => {
+  const target = event.target as HTMLElement | null
+  if (target?.closest('.brand-search-panel')) {
+    return
+  }
+  activeSearchField.value = null
 }
 
 // 获取首页推荐区域
@@ -682,6 +1036,7 @@ onMounted(async () => {
   loadBrands()
   await loadHomeSections()
   await refreshCart()
+  document.addEventListener('pointerdown', handleDocumentPointerDown)
 })
 
 onUnmounted(() => {
@@ -690,6 +1045,7 @@ onUnmounted(() => {
     window.removeEventListener('scroll', scrollHandler)
     scrollHandler = null
   }
+  document.removeEventListener('pointerdown', handleDocumentPointerDown)
 })
 
 // 当从详情页返回时恢复滚动位置
@@ -943,35 +1299,240 @@ onActivated(async () => {
   padding: 16px;
   margin-bottom: 8px;
 
+  .brands-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
   .brands-list {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
+    display: inline-flex;
+    align-items: stretch;
+    gap: 12px;
+    min-width: max-content;
+  }
 
-    .brand-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-      cursor: pointer;
+  .brand-item {
+    min-width: 72px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border-radius: 999px;
+    background: #f4f4f4;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
 
-      .brand-icon {
-        width: 48px;
-        height: 48px;
-        background: #f5f5f5;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 20px;
-        color: #666;
-      }
+    span {
+      max-width: 84px;
+      font-size: 12px;
+      line-height: 1;
+      color: #555;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    &.active {
+      background: #fff1e6;
+      border-color: #ffd0ab;
 
       span {
-        font-size: 12px;
-        color: #666;
+        color: #d95f00;
+        font-weight: 600;
       }
     }
+
+    &:active {
+      transform: scale(0.97);
+    }
+  }
+
+  .brand-search-panel {
+    margin-top: 14px;
+    padding: 14px;
+    border-radius: 16px;
+    background: linear-gradient(180deg, #fffaf6 0%, #fff 100%);
+    border: 1px solid #ffe2cb;
+  }
+
+  .brand-search-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .brand-search-title {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    strong {
+      font-size: 14px;
+      color: #333;
+      line-height: 1.2;
+    }
+
+    span {
+      font-size: 11px;
+      color: #999;
+      line-height: 1;
+    }
+  }
+
+  .brand-reset-btn,
+  .ghost-btn,
+  .search-btn {
+    appearance: none;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    font-size: 12px;
+  }
+
+  .brand-reset-btn {
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: #fff;
+    color: #888;
+    border: 1px solid #f0d7c4;
+  }
+
+  .brand-search-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .brand-field {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    span {
+      font-size: 11px;
+      color: #888;
+      line-height: 1;
+    }
+
+    &:last-child {
+      grid-column: 1 / -1;
+    }
+  }
+
+  .brand-field-control {
+    position: relative;
+
+    input {
+      width: 100%;
+      min-width: 0;
+      height: 36px;
+      padding: 0 38px 0 10px;
+      border-radius: 10px;
+      border: 1px solid #ead9ca;
+      background: #fff;
+      color: #333;
+      font-size: 12px;
+      outline: none;
+
+      &::placeholder {
+        color: #b2b2b2;
+      }
+    }
+  }
+
+  .brand-field-toggle {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+    border: none;
+    background: transparent;
+    color: #999;
+    font-size: 12px;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  .brand-option-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    z-index: 5;
+    padding: 10px;
+    border-radius: 12px;
+    background: #fff;
+    border: 1px solid #f0ded0;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
+  }
+
+  .brand-option-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    max-height: 140px;
+    overflow-y: auto;
+    padding-right: 2px;
+  }
+
+  .brand-option {
+    padding: 7px 10px;
+    border-radius: 999px;
+    border: 1px solid #eadfd5;
+    background: #fff;
+    color: #666;
+    font-size: 11px;
+    line-height: 1;
+    cursor: pointer;
+
+    &.active {
+      background: #fff1e6;
+      border-color: #ffc48f;
+      color: #d95f00;
+      font-weight: 600;
+    }
+  }
+
+  .brand-search-hint {
+    margin: 10px 0 0;
+    font-size: 11px;
+    color: #999;
+    line-height: 1.4;
+  }
+
+  .brand-search-actions {
+    margin-top: 12px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+
+  .ghost-btn {
+    padding: 9px 14px;
+    border-radius: 999px;
+    background: #fff;
+    color: #777;
+    border: 1px solid #ecd8c5;
+  }
+
+  .search-btn {
+    padding: 9px 16px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #ff8a2a 0%, #ff6b00 100%);
+    color: #fff;
+    box-shadow: 0 10px 20px rgba(255, 107, 0, 0.18);
   }
 }
 

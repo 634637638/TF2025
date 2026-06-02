@@ -49,7 +49,7 @@
         </div>
 
         <div v-if="loading" class="loading">
-          <i class="fas fa-spinner fa-spin"></i> 加载图标中...
+          <InlineLoading text="加载图标中..." />
         </div>
 
         <div v-else-if="filteredIcons.length > 0" class="icon-grid">
@@ -90,6 +90,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import unifiedApi from '@/utils/unified-api'
+import InlineLoading from '@/components/InlineLoading.vue'
 import type { StringModelValueProps, UpdateStringModelValueEmits } from '@/types/component'
 
 interface Icon {

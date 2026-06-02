@@ -250,9 +250,11 @@
           :disabled="editing"
           @click="submitEdit"
         >
-          <i v-if="editing" class="fas fa-spinner fa-spin"></i>
-          <i v-else class="fas fa-save"></i>
-          <span>{{ editing ? '保存中...' : '保存' }}</span>
+          <InlineLoading v-if="editing" text="保存中..." size="small" variant="inherit" />
+          <template v-else>
+            <i class="fas fa-save"></i>
+            <span>保存</span>
+          </template>
         </el-button>
       </div>
     </template>
@@ -263,6 +265,7 @@
 import { computed, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import MobileDialog from '@/components/MobileDialog.vue'
+import InlineLoading from '@/components/InlineLoading.vue'
 import { unifiedApi } from '@/utils/unified-api'
 import { normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'

@@ -19,6 +19,7 @@
 ### 智能匹配
 - [智能用户匹配指南](SMART_USER_MATCHING_GUIDE.md) - 用户智能匹配算法说明
 - [智能同步功能完成](SMART_SYNC_FEATURE_COMPLETE.md) - 功能实现总结
+- [价格采集 iPad Air 尺寸匹配说明](price-sync-ipad-air-size-guide.md) - iPad Air7/Air8 11 寸与 13 寸采集匹配规范
 
 ### 导入功能
 - [导入历史记录](IMPORT_HISTORY_GUIDE.md) - 数据导入历史查看

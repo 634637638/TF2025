@@ -78,13 +78,21 @@
           <span>退库记录</span>
         </div>
         <el-button type="info" plain @click="loadRecords" :disabled="loading">
-          <i :class="loading ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'"></i>
-          <span>刷新</span>
+          <InlineLoading v-if="loading" text="刷新中..." size="small" variant="inherit" />
+          <template v-else>
+            <i class="fas fa-sync-alt"></i>
+            <span>刷新</span>
+          </template>
         </el-button>
       </div>
 
       <div v-if="!isMobile" class="table-wrapper">
-        <el-table :data="records" border stripe v-loading="loading" style="width: 100%">
+        <el-table :data="loading ? [] : records" border stripe style="width: 100%">
+          <template #empty>
+            <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
+            <el-empty v-else description="暂无退库记录" />
+          </template>
+
           <el-table-column prop="phone_id" label="设备ID" width="88" align="center" />
           <el-table-column label="商品信息" min-width="250">
             <template #default="{ row }">
@@ -138,22 +146,25 @@
         </el-table>
       </div>
 
-      <div v-else class="mobile-records" v-loading="loading">
-        <div v-if="records.length === 0 && !loading" class="empty-state">
+      <div v-else class="mobile-records">
+        <SectionLoading v-if="loading" text="加载中..." />
+
+        <div v-else-if="records.length === 0" class="empty-state">
           <i class="fas fa-inbox"></i>
           <span>暂无退库记录</span>
         </div>
-        <div
-          v-for="record in records"
-          :key="record.id"
-          class="record-card"
-        >
-          <div class="record-card-header">
-            <div class="record-title">
-              {{ [record.brand, record.model, record.color, record.memory].filter(Boolean).join(' ') || '未识别设备' }}
+        <template v-else>
+          <div
+            v-for="record in records"
+            :key="record.id"
+            class="record-card"
+          >
+            <div class="record-card-header">
+              <div class="record-title">
+                {{ [record.brand, record.model, record.color, record.memory].filter(Boolean).join(' ') || '未识别设备' }}
+              </div>
+              <div class="record-time">{{ formatDateTime(record.reversal_date) }}</div>
             </div>
-            <div class="record-time">{{ formatDateTime(record.reversal_date) }}</div>
-          </div>
 
           <div class="record-grid">
             <div class="record-item">
@@ -195,29 +206,30 @@
             <span class="record-remark-text">{{ record.remarks }}</span>
           </div>
 
-          <div v-if="canEdit || canDelete" class="mobile-actions">
-            <el-button
-              v-if="canEdit"
-              type="primary"
-              plain
-              size="small"
-              @click="openEditDialog(record)"
-            >
-              <i class="fas fa-edit"></i>
-              <span>编辑</span>
-            </el-button>
-            <el-button
-              v-if="canDelete"
-              type="danger"
-              plain
-              size="small"
-              @click="handleDelete(record)"
-            >
-              <i class="fas fa-trash"></i>
-              <span>删除</span>
-            </el-button>
+            <div v-if="canEdit || canDelete" class="mobile-actions">
+              <el-button
+                v-if="canEdit"
+                type="primary"
+                plain
+                size="small"
+                @click="openEditDialog(record)"
+              >
+                <i class="fas fa-edit"></i>
+                <span>编辑</span>
+              </el-button>
+              <el-button
+                v-if="canDelete"
+                type="danger"
+                plain
+                size="small"
+                @click="handleDelete(record)"
+              >
+                <i class="fas fa-trash"></i>
+                <span>删除</span>
+              </el-button>
+            </div>
           </div>
-        </div>
+        </template>
       </div>
 
       <div class="pagination-wrapper">
@@ -319,6 +331,9 @@ import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useLoadingState } from '@/composables'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import MobileDialog from '@/components/MobileDialog.vue'
+import InlineLoading from '@/components/InlineLoading.vue'
+import SectionLoading from '@/components/SectionLoading.vue'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { ElMessageBox } from 'element-plus'
 import { PHONE_STATUS_OPTIONS, getPhoneStatusLabel, normalizePhoneStatus } from '@/constants/phoneStatuses'
 
@@ -352,6 +367,7 @@ const { isMobile } = useMobile()
 const { canView, canEdit, canDelete } = usePagePermissions('returngoods')
 
 const { loading } = useLoadingState()
+loading.value = true
 const submitting = ref(false)
 const searchExpanded = ref(false)
 const editDialogVisible = ref(false)
@@ -402,6 +418,16 @@ const formatDateTime = (value?: string | null) => {
 const getSaleTypeText = (value?: string | null) => getPhoneStatusLabel(value)
 
 const loadRecords = async () => {
+  if (!canView.value) {
+    records.value = []
+    pagination.total = 0
+    stats.total_records = 0
+    stats.total_phones = 0
+    stats.total_days = 0
+    loading.value = false
+    return
+  }
+
   loading.value = true
 
   try {
@@ -547,6 +573,11 @@ defineExpose({
 })
 
 onMounted(() => {
+  if (!canView.value) {
+    loading.value = false
+    return
+  }
+
   loadRecords()
   loadOperators()
 })

@@ -57,14 +57,7 @@
               >
                 <div class="menu-item-content">
                   <div class="menu-icon">
-                    <!-- Iconify 图标 -->
-                    <span
-                      v-if="menu.icon && menu.icon.startsWith('iconify')"
-                      class="iconify"
-                      :data-icon="menu.icon.replace('iconify ', '')"
-                    ></span>
-                    <!-- Font Awesome 图标 -->
-                    <i v-else :class="menu.icon || 'fas fa-circle'"></i>
+                    <IconRenderer :icon="menu.icon" :svg="menu.icon_svg" />
                   </div>
                   <span class="menu-name">{{ menu.name || menu.title || '未命名菜单' }}</span>
                   <div class="menu-actions">
@@ -90,14 +83,7 @@
                     @click="navigateToMenu(child)"
                   >
                     <div class="menu-icon">
-                      <!-- Iconify 图标 -->
-                      <span
-                        v-if="child.icon && child.icon.startsWith('iconify')"
-                        class="iconify"
-                        :data-icon="child.icon.replace('iconify ', '')"
-                      ></span>
-                      <!-- Font Awesome 图标 -->
-                      <i v-else :class="child.icon || 'fas fa-circle'"></i>
+                      <IconRenderer :icon="child.icon" :svg="child.icon_svg" />
                     </div>
                     <span class="menu-name">{{ child.name || child.title || '未命名菜单' }}</span>
                   </div>
@@ -119,15 +105,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useSiteSettingsStore } from '@/stores/siteSettings'
 import { useMobileGestures } from '@/composables/mobile'
 import { useMenuWidth } from '@/composables/useMenuWidth'
 import { buildLogoUrl } from '@/utils/logoUtils'
-import { refreshIconifyIcons, waitForIconify } from '@/utils/iconify'
 import { storage } from '@/composables/core/useLocalStorage'
+import IconRenderer from '@/components/IconRenderer.vue'
 import type { CloseEmits } from '@/types/component'
 import { logger } from '@/utils/logger'
 
@@ -335,10 +321,6 @@ watch(() => props.isOpen, async (isOpen) => {
     document.body.style.overflow = 'hidden'
     // 确保菜单宽度已加载
     loadAllMenuWidths()
-    // 刷新 Iconify 图标
-    await nextTick()
-    await waitForIconify(3000)
-    refreshIconifyIcons()
   } else {
     // 恢复背景滚动
     document.body.style.overflow = ''
@@ -350,10 +332,6 @@ watch(() => props.isOpen, async (isOpen) => {
 // 组件挂载时加载菜单宽度
 onMounted(async () => {
   loadAllMenuWidths()
-  // 刷新 Iconify 图标
-  await nextTick()
-  await waitForIconify(3000)
-  refreshIconifyIcons()
 })
 
 // Cleanup

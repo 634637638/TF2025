@@ -1,5 +1,7 @@
 const { getDatabase } = require('../config/database');
 const { hasColumn } = require('./schemaInspector.service');
+const { getModulePermissionTypes, normalizePermissionType } = require('../config/module-permission-actions');
+const { normalizeModuleKey } = require('../utils/moduleKeyNormalizer');
 const log = require('../utils/log');
 
 class PermissionService {
@@ -239,7 +241,11 @@ class PermissionService {
         for (const permission of permissions) {
           await connection.execute(
             'INSERT INTO role_permissions (role_id, module_key, permission_type) VALUES (?, ?, ?)',
-            [roleId, permission.module_key, permission.permission_type]
+            [
+              roleId,
+              normalizeModuleKey(permission.module_key),
+              normalizePermissionType(permission.permission_type)
+            ]
           );
         }
       }
@@ -271,15 +277,13 @@ class PermissionService {
         SELECT \`key\` FROM modules ORDER BY sort_order ASC, name ASC
       `);
 
-      // 定义所有权限类型
-      const permissionTypes = ['view', 'create', 'edit', 'delete', 'export', 'import', 'sell'];
-
-      // 为每个模块添加所有权限
+      // 为每个模块添加其真实支持的权限，避免无功能模块出现导入/导出等无关开关。
       for (const module of modules) {
-        for (const permissionType of permissionTypes) {
+        const moduleKey = normalizeModuleKey(module.key);
+        for (const permissionType of getModulePermissionTypes(moduleKey)) {
           await connection.execute(
             'INSERT INTO role_permissions (role_id, module_key, permission_type) VALUES (?, ?, ?)',
-            [roleId, module.key, permissionType]
+            [roleId, moduleKey, normalizePermissionType(permissionType)]
           );
         }
       }

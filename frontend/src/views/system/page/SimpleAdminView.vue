@@ -77,8 +77,8 @@
 
         <!-- 内容区域 -->
         <div class="content-area" ref="contentAreaRef">
-          <!-- 子路由视图 - 简单缓存所有页面 -->
-          <router-view />
+          <!-- 标签页刷新时只重挂当前页面，不整页 reload -->
+          <router-view :key="routeRefreshKey" />
         </div>
       </div>
     </div>
@@ -102,11 +102,12 @@ import { useSiteSettingsStore } from '@/stores/siteSettings'
 import { useMenuStore } from '@/stores/menu'
 import { useTabsStore } from '@/stores/tabs'
 import { storeToRefs } from 'pinia'
-import { ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import type { MenuItem } from '@/types/menu'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { storage } from '@/services/storage'
 import { SECURITY_STORAGE_KEYS } from '@/constants/storage'
+import { canAccessRoutePath } from '@/constants/routePermissions'
 
 // 路由
 const router = useRouter()
@@ -119,6 +120,7 @@ const menuStore = useMenuStore()
 const tabsStore = useTabsStore()
 const { user: authUser, isAuthenticated } = storeToRefs(authStore)
 const { menuItems } = storeToRefs(menuStore)
+const routeRefreshKey = computed(() => `${route.fullPath}:${tabsStore.refreshKey}`)
 
 // 移动端检测
 const { isMobile } = useMobile()
@@ -152,7 +154,7 @@ const quickActions = ref<QuickAction[]>([
     name: '新建销售',
     icon: 'fas fa-plus-circle',
     handler: () => {
-      router.push('/sales/create')
+      navigateIfAllowed('/sales/create')
     }
   },
   {
@@ -160,7 +162,7 @@ const quickActions = ref<QuickAction[]>([
     name: '快速查询',
     icon: 'fas fa-search',
     handler: () => {
-      router.push('/query')
+      navigateIfAllowed('/query')
     }
   },
   {
@@ -168,7 +170,7 @@ const quickActions = ref<QuickAction[]>([
     name: '库存盘点',
     icon: 'fas fa-clipboard-check',
     handler: () => {
-      router.push('/inventory/check')
+      navigateIfAllowed('/inventory/check')
     }
   },
   {
@@ -177,7 +179,7 @@ const quickActions = ref<QuickAction[]>([
     icon: 'fas fa-chart-bar',
     badge: '新',
     handler: () => {
-      router.push('/analytics/today')
+      navigateIfAllowed('/analytics/today')
     }
   }
 ])
@@ -213,12 +215,28 @@ const updateBeijingTime = () => {
 
 
 // 方法
+const navigateIfAllowed = async (targetPath: string) => {
+  if (!canAccessRoutePath(targetPath, authStore)) {
+    tabsStore.closeTab(targetPath)
+    ElMessage.warning('您没有访问此页面的权限')
+    return
+  }
+
+  await router.push(targetPath)
+}
+
 const handleMenuNavigation = async (menu) => {
   // 获取目标路径
   const targetPath = menu.url || menu.path
 
   // 检查是否有有效路径
   if (!targetPath || targetPath === '#' || targetPath === '') {
+    return
+  }
+
+  if (!canAccessRoutePath(targetPath, authStore)) {
+    tabsStore.closeTab(targetPath)
+    ElMessage.warning('您没有访问此页面的权限')
     return
   }
 
@@ -229,7 +247,7 @@ const handleMenuNavigation = async (menu) => {
 
   try {
     // 使用Vue Router进行导航，添加错误处理防止导航取消错误
-    await router.push(targetPath)
+    await navigateIfAllowed(targetPath)
   } catch (error) {
     // 静默处理导航取消
   }
@@ -335,11 +353,20 @@ const getPageInfo = (routePath: string) => {
   }
 }
 
+const canAddRouteTab = (routePath: string) => {
+  return canAccessRoutePath(routePath, authStore)
+}
+
 // 监听路由变化，自动添加标签页
 watch(
   () => route.path,
   (newPath) => {
     if (newPath && !isMobile.value) {
+      if (!canAddRouteTab(newPath)) {
+        tabsStore.closeTab(newPath)
+        return
+      }
+
       const pageInfo = getPageInfo(newPath)
       tabsStore.addTab({
         path: newPath,

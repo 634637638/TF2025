@@ -31,8 +31,7 @@
     <!-- 表格 -->
     <div class="tf-paginated-table__table-wrapper">
       <el-table
-        v-loading="loading"
-        :data="tableData"
+        :data="loading ? [] : tableData"
         :height="tableHeight"
         :max-height="maxHeight"
         :stripe="stripe"
@@ -99,7 +98,9 @@
 
         <!-- 空状态 -->
         <template #empty>
+          <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
           <el-empty
+            v-else
             :description="emptyDescription"
             :image="emptyImage"
           >
@@ -135,6 +136,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { Search } from '@element-plus/icons-vue'
 import Pagination from './Pagination.vue'
+import TableLoadingRow from './TableLoadingRow.vue'
 import type { TableColumn } from '@/types'
 
 type TableRow = Record<string, unknown>

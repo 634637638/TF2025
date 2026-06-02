@@ -2,7 +2,7 @@
  * 通用基础组件导出
  */
 
-export { default as PermissionDenied } from './PermissionDenied.vue'
+export { default as PermissionGate } from './PermissionGate.vue'
 export { default as PageHeader } from './PageHeader.vue'
 export { default as PublicPriceHeader } from './PublicPriceHeader.vue'
 

@@ -1,4 +1,4 @@
-import { ElMessage } from 'element-plus'
+import { showElementError } from '@/utils/element-feedback'
 
 const TENCENT_MAP_SCRIPT_BASE_URL = 'https://map.qq.com/api/gljs?v=1.exp'
 const tencentMapKey = (import.meta.env.VITE_TENCENT_MAP_KEY || '').trim()
@@ -16,6 +16,6 @@ export function ensureTencentMapKey(message = '未配置腾讯地图 Key，请�
     return tencentMapKey
   }
 
-  ElMessage.error(message)
+  showElementError(message)
   return null
 }

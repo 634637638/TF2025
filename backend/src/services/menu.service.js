@@ -6,6 +6,12 @@ const { getDatabase } = require('../config/database');
 const XLSX = require('xlsx');
 const fs = require('fs');
 const log = require('../utils/log');
+const {
+  ensureIconSchema,
+  ensureMenuIconSchema,
+  iconJoinSelect,
+  iconLeftJoin
+} = require('../utils/iconStore');
 
 class MenuService {
   constructor() {
@@ -59,7 +65,13 @@ class MenuService {
    */
   async getMenuById(id) {
     try {
-      const query = 'SELECT * FROM menus WHERE id = ?';
+      await ensureIconSchema(this.db);
+      const query = `
+        SELECT ${iconJoinSelect('m', 'i')}
+        FROM menus m
+        ${iconLeftJoin('m', 'i')}
+        WHERE m.id = ?
+      `;
       const [menus] = await this.db.execute(query, [id]);
 
       if (menus.length === 0) {
@@ -82,6 +94,8 @@ class MenuService {
    */
   async createMenu(menuData, user) {
     try {
+      await ensureMenuIconSchema(this.db);
+
       // 验证数据
       const validation = this.validateMenuData(menuData, false);
       if (!validation.valid) {
@@ -174,6 +188,8 @@ class MenuService {
    */
   async updateMenu(id, menuData, user) {
     try {
+      await ensureMenuIconSchema(this.db);
+
       // 验证数据
       const validation = this.validateMenuData(menuData, true);
       if (!validation.valid) {
@@ -517,35 +533,41 @@ class MenuService {
    */
   async getMenuListWithPagination(page, limit, menu_type, status, keyword) {
     try {
+      await ensureIconSchema(this.db);
       const offset = (page - 1) * limit;
       let whereClause = 'WHERE 1=1';
       const params = [];
 
       if (menu_type) {
-        whereClause += ' AND menu_type = ?';
+        whereClause += ' AND m.menu_type = ?';
         params.push(menu_type);
       }
 
       if (status !== undefined) {
-        whereClause += ' AND is_active = ?';
+        whereClause += ' AND m.is_active = ?';
         params.push(status ? 1 : 0);
       }
 
       if (keyword) {
-        whereClause += ' AND (title LIKE ? OR name LIKE ? OR path LIKE ?)';
+        whereClause += ' AND (m.title LIKE ? OR m.name LIKE ? OR m.path LIKE ?)';
         params.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`);
       }
 
       // 获取总数
       const [countResult] = await this.db.execute(
-        `SELECT COUNT(*) as total FROM menus ${whereClause}`,
+        `SELECT COUNT(*) as total FROM menus m ${whereClause}`,
         params
       );
       const total = countResult[0].total;
 
       // 获取数据
       const [menus] = await this.db.execute(
-        `SELECT *, is_active as status FROM menus ${whereClause} ORDER BY sort_order ASC, id ASC LIMIT ? OFFSET ?`,
+        `SELECT ${iconJoinSelect('m', 'i')}
+         FROM menus m
+         ${iconLeftJoin('m', 'i')}
+         ${whereClause}
+         ORDER BY m.sort_order ASC, m.id ASC
+         LIMIT ? OFFSET ?`,
         [...params, limit, offset]
       );
 
@@ -573,28 +595,31 @@ class MenuService {
    */
   async getMenuTree(menu_type, status, keyword) {
     try {
+      await ensureIconSchema(this.db);
       let query = `
-        SELECT *, is_active as status FROM menus
+        SELECT ${iconJoinSelect('m', 'i')}
+        FROM menus m
+        ${iconLeftJoin('m', 'i')}
         WHERE 1=1
       `;
       const params = [];
 
       if (menu_type) {
-        query += ' AND menu_type = ?';
+        query += ' AND m.menu_type = ?';
         params.push(menu_type);
       }
 
       if (status !== undefined) {
-        query += ' AND is_active = ?';
+        query += ' AND m.is_active = ?';
         params.push(status ? 1 : 0);
       }
 
       if (keyword) {
-        query += ' AND (title LIKE ? OR name LIKE ?)';
+        query += ' AND (m.title LIKE ? OR m.name LIKE ?)';
         params.push(`%${keyword}%`, `%${keyword}%`);
       }
 
-      query += ' ORDER BY sort_order ASC, id ASC';
+      query += ' ORDER BY m.sort_order ASC, m.id ASC';
 
       const [menus] = await this.db.execute(query, params);
 
@@ -697,6 +722,10 @@ class MenuService {
 
     if (data.menu_type && !['menu', 'button', 'directory'].includes(data.menu_type)) {
       return { valid: false, message: '菜单类型无效' };
+    }
+
+    if (data.icon && String(data.icon).trim().length > 255) {
+      return { valid: false, message: '菜单图标长度不能超过255个字符' };
     }
 
     if (data.sort_order !== undefined && (data.sort_order < 0 || !Number.isInteger(data.sort_order))) {

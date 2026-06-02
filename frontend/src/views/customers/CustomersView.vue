@@ -1,16 +1,15 @@
 <template>
   <div class="page-container admin-page">
-    <!-- ❌ 无权限时显示提示 -->
-    <PermissionDenied
-      v-if="!canView"
+    <PermissionGate
       :can-view="canView"
+      mode="denied"
       module-key="customers"
       module-name="客户管理"
       permission-code="customers:view"
-    />
+    >
 
     <!-- 主要内容 -->
-    <div v-else class="page-content admin-page-content">
+    <div class="page-content admin-page-content">
       <!-- 页面头部 - 使用公共组件 -->
       <PageHeader
         icon="fas fa-user"
@@ -185,13 +184,8 @@
           </div>
 
           <div class="table-responsive">
-            <!-- 加载状态 -->
-            <div v-if="isLoading" class="table-loading">
-              <el-skeleton :rows="5" animated />
-            </div>
-
             <!-- 错误状态 -->
-            <div v-else-if="hasError" class="table-error">
+            <div v-if="hasError" class="table-error">
               <el-empty description="加载失败" :image-size="200">
                 <el-button type="primary" @click="refresh(() => loadCustomers())">
                   重试
@@ -224,7 +218,12 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-if="!customers.length && !isLoading">
+                  <TableLoadingRow
+                    v-if="isLoading"
+                    :colspan="visibleColumnCount"
+                    text="加载客户列表..."
+                  />
+                  <tr v-else-if="!customers.length">
                     <td :colspan="visibleColumnCount" class="text-center py-8">
                       <div class="empty-state">
                         <i class="fas fa-users"></i>
@@ -232,7 +231,7 @@
                       </div>
                     </td>
                   </tr>
-                  <template v-for="customer in customers" :key="customer.id">
+                  <template v-else v-for="customer in customers" :key="customer.id">
                   <tr @click="handleMobileRowTap(customer.id)" @dblclick="toggleMobileActions(customer.id)">
                     <td v-if="!isMobile">
                       <input
@@ -785,8 +784,8 @@
             取消
           </el-button>
           <el-button type="primary" @click="saveCustomer" :disabled="isSubmitting" :loading="isSubmitting">
-            <i v-if="isSubmitting" class="fas fa-spinner fa-spin"></i>
-            {{ isSubmitting ? '保存中...' : (modalMode === 'add' ? '新增' : '保存') }}
+            <InlineLoading v-if="isSubmitting" text="保存中..." size="small" variant="inherit" />
+            <template v-else>{{ modalMode === 'add' ? '新增' : '保存' }}</template>
           </el-button>
         </template>
       </MobileDialog>
@@ -1005,6 +1004,7 @@
         </template>
       </MobileDialog>
     </div>
+    </PermissionGate>
   </div>
 </template>
 
@@ -1022,12 +1022,14 @@ import { useSearchHighlight } from '@/composables/useSearchHighlight'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
 import { unifiedApi } from '@/utils/unified-api'
 import { useMobile } from '@/composables/mobile'
-import { ElSkeleton, ElEmpty, ElButton, ElMessageBox } from 'element-plus'
+import { ElEmpty, ElButton, ElMessageBox } from 'element-plus'
 import Pagination from '../../components/Pagination.vue'
 import CitySelector from '../../components/CitySelector.vue'
+import InlineLoading from '@/components/InlineLoading.vue'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
-import { PermissionDenied, PageHeader } from '@/components/base'
+import { PermissionGate, PageHeader } from '@/components/base'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { isValidAppleAccount, isValidEmail, isValidIdCard, isValidMobilePhone, normalizeAppleId, normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
 
@@ -1167,6 +1169,7 @@ const { highlightText, isMatch, getMatchSnippet } = useSearchHighlight()
 
 // 基础状态管理
 const { loading: isLoading } = useLoadingState()
+isLoading.value = true
 const { loading: isSubmitting } = useLoadingState()
 const errorMessage = ref('')
 const hasError = computed(() => !!errorMessage.value)
@@ -1389,7 +1392,7 @@ const debouncedRefresh = async () => {
     refreshTimeoutId = setTimeout(async () => {
       try {
         await Promise.all([
-          loadCustomers(),
+          loadCustomers(false),
           loadStats()
         ])
         success('数据刷新成功')
@@ -1683,15 +1686,18 @@ const isSelected = (customer: CustomerListItem) => {
   return selectedRows.value.some(row => row.id === customer.id)
 }
 
-const loadCustomers = async () => {
+const loadCustomers = async (showLoadingState = true) => {
   if (!canView.value) {
     customers.value = []
     setPagination(1, pagination.pageSize, 0)
+    setDataLoading(false)
     return
   }
 
   try {
-    setDataLoading(true)
+    if (showLoadingState) {
+      setDataLoading(true)
+    }
     clearError()
 
     // 构建搜索参数
@@ -1764,7 +1770,9 @@ const loadCustomers = async () => {
   } catch (err) {
     handlePageError(err, '加载客户列表失败')
   } finally {
-    setDataLoading(false)
+    if (showLoadingState) {
+      setDataLoading(false)
+    }
   }
 }
 
@@ -1805,6 +1813,7 @@ const handleRefresh = async () => {
   await refresh(async () => {
     await debouncedRefresh()
   })
+  success('数据刷新成功')
 }
 
 // 模态框操作函数
@@ -2275,6 +2284,7 @@ const formatNumber = (num: number | string) => {
 // 生命周期
 onMounted(async () => {
   if (!canView.value) {
+    setDataLoading(false)
     return
   }
 

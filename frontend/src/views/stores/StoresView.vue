@@ -1,57 +1,48 @@
 <template>
   <div class="stores-view admin-page">
-    <!-- 权限加载中 -->
-    <div v-if="permissionLoading" class="loading-container">
-      <div class="loading-spinner"></div>
-      <p>加载权限中...</p>
-    </div>
-
-    <!-- 页面头部 - 使用公共组件 -->
-    <PageHeader
-      v-else
-      icon="fas fa-store"
-      title="门店管理"
-    >
-      <template #actions>
-        <el-button
-          v-if="canCreate"
-          type="primary"
-          @click="openAddModal"
-        >
-          <i class="fas fa-plus"></i>
-          <span>新增</span>
-        </el-button>
-        <ImportExportActions
-          :can-export="canExport"
-          :export-loading="exportingStores"
-          export-label="导出"
-          export-loading-label="导出中..."
-          export-icon-class="fas fa-file-excel"
-          export-type="success"
-          @export="handleExport"
-        />
-        <el-button type="info" @click="handleRefresh">
-          <i :class="refreshing ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'"></i>
-          <span>刷新</span>
-        </el-button>
-      </template>
-    </PageHeader>
-
-    <!-- 权限不足提示 - 在权限加载完成后显示 -->
-    <PermissionAccessNotice
-      v-if="!permissionLoading"
-      v-permission-not="'stores:view'"
+    <PermissionGate
+      :can-view="canView"
+      mode="denied"
+      module-key="stores"
       module-name="门店管理"
-      permission-name="门店查看权限"
       permission-code="stores:view"
-      :has-menu-permission-only="hasMenuPermissionOnly"
-      :related-permissions="storePermissions"
-      detail-title="门店管理相关权限"
-      suggestion="请联系有权限的角色维护人员为您分配门店查看权限，或使用已有权限访问其他功能模块"
-    />
+    >
 
-    <!-- 权限验证通过后的内容 -->
-    <div class="content admin-page-content" v-permission="'stores:view'">
+    <div class="content admin-page-content">
+      <!-- 页面头部 - 使用公共组件 -->
+      <PageHeader
+        icon="fas fa-store"
+        title="门店管理"
+      >
+        <template #actions>
+          <el-button
+            v-if="canCreate"
+            type="primary"
+            @click="openAddModal"
+          >
+            <i class="fas fa-plus"></i>
+            <span>新增</span>
+          </el-button>
+          <ImportExportActions
+            :can-export="canExport"
+            :export-loading="exportingStores"
+            export-label="导出"
+            export-loading-label="导出中..."
+            export-icon-class="fas fa-file-excel"
+            export-type="success"
+            @export="handleExport"
+          />
+          <el-button type="info" @click="handleRefresh" :disabled="refreshing">
+            <InlineLoading v-if="refreshing" text="刷新中..." size="small" variant="inherit" />
+            <template v-else>
+              <i class="fas fa-sync-alt"></i>
+              <span>刷新</span>
+            </template>
+          </el-button>
+        </template>
+      </PageHeader>
+
+      <!-- 权限验证通过后的内容 -->
       <!-- 统计卡片 -->
       <div v-if="showStatsCards" class="stats-cards">
         <div v-if="canViewField('stats_total_stores')" class="stat-card">
@@ -152,14 +143,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-if="isLoading" class="loading-row">
-                <td :colspan="visibleColumnCount">
-                  <div class="loading-content">
-                    <i class="fas fa-spinner fa-spin"></i>
-                    <span>正在加载数据...</span>
-                  </div>
-                </td>
-              </tr>
+              <TableLoadingRow v-if="isLoading" :colspan="visibleColumnCount" />
               <tr v-else-if="stores.length === 0" class="empty-row">
                 <td :colspan="visibleColumnCount">
                   <div class="empty-content">
@@ -169,8 +153,11 @@
                       <p v-if="canCreate">点击上方"新增门店"按钮添加第一个店铺</p>
                       <p v-else>暂无数据，请联系有权限的角色维护人员添加门店</p>
                       <el-button size="small" class="mt-2" @click="loadStores()" :disabled="isLoading">
-                        <i class="fas fa-sync-alt"></i>
-                        {{ isLoading ? '加载中...' : '重新加载' }}
+                        <InlineLoading v-if="isLoading" text="加载中..." size="small" variant="inherit" />
+                        <template v-else>
+                          <i class="fas fa-sync-alt"></i>
+                          重新加载
+                        </template>
                       </el-button>
                     </div>
                   </div>
@@ -513,19 +500,21 @@
       </template>
     </MobileDialog>
 
-    <!-- Toast 通知组件 -->
-    <Toast />
+      <!-- Toast 通知组件 -->
+      <Toast />
+    </PermissionGate>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
-import { useRouter } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 import unifiedApi from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import Toast from '../../components/Toast.vue'
 import Pagination from '../../components/Pagination.vue'
+import InlineLoading from '@/components/InlineLoading.vue'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import { useImportExport } from '@/composables/useImportExport'
@@ -535,16 +524,15 @@ import { useRefreshData } from '@/composables/useRefreshData'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
 import { useAuthStore } from '@/stores/auth'
 import { usePageState } from '@/composables/usePageState'
-import { usePermissionModuleInfo } from '@/composables/usePermissionModuleInfo'
-import PermissionAccessNotice from '@/components/base/PermissionAccessNotice.vue'
-import { normalizePermissionList } from '@/utils/permissionList'
-import { PageHeader } from '@/components/base'
+import { PageHeader, PermissionGate } from '@/components/base'
 import { usePermissionToast } from '@/utils/permissionToastSimple'
 import { handleApiErrorWithPermission } from '@/utils/apiPermissionError'
 import { useMobile } from '@/composables/mobile'
+import { useLatestRequest } from '@/composables/useLatestRequest'
 import type { Store, StoreFormData } from '@/types/system'
 import type { User } from '@/types'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
+import { logger } from '@/utils/logger'
 
 // 类型别名 - 兼容原有代码
 
@@ -570,18 +558,11 @@ const {
   setError,
   clearError
 } = usePageState(24)
-const router = useRouter()
+setDataLoading(true)
 const { init: initFieldPermissions } = fieldPermissions
 const { isMobile } = useMobile()
 const exportingStores = ref(false)
-
-// 权限加载状态
-const permissionLoading = ref(false)
-const normalizedStorePermissions = computed(() => normalizePermissionList(authStore.permissions))
-const { hasMenuPermissionOnly, modulePermissions: storePermissions } = usePermissionModuleInfo(
-  normalizedStorePermissions,
-  'stores_storesview'
-)
+const storeListRequest = useLatestRequest()
 
 const storeFieldMap: Record<string, string> = {
   stats_total_stores: 'stats.total_stores',
@@ -649,32 +630,6 @@ const hasBasicDetailFields = computed(() => {
   return ['name', 'address', 'phone', 'status'].some(fieldName => canViewField(fieldName))
 })
 
-// 确保权限数据已加载
-const ensurePermissionsLoaded = async (): Promise<void> => {
-  // 如果已有权限数据，直接返回
-  if (authStore.user && normalizedStorePermissions.value.length > 0) {
-    return
-  }
-
-  // 确保用户信息已加载
-  if (!authStore.user) {
-    try {
-      await authStore.fetchUserInfo()
-    } catch (error) {
-      // 静默处理
-    }
-  }
-
-  // 如果权限数据仍然为空，尝试强制刷新（但不阻塞页面）
-  if (normalizedStorePermissions.value.length === 0) {
-    try {
-      await authStore.forceRefreshPermissions()
-    } catch (error) {
-      // 静默处理
-    }
-  }
-}
-
 // 响应式数据
 const stores = ref<Store[]>([])
 const users = ref<User[]>([])
@@ -715,26 +670,25 @@ const formatUserRoleSuffix = (role: unknown) => {
 }
 
 const handlePermissionsUpdated = async () => {
-  permissionLoading.value = true
   try {
-    await ensurePermissionsLoaded()
+    if (!authStore.user) {
+      await authStore.fetchUserInfo()
+    }
+    await authStore.forceRefreshPermissions()
   } catch (error) {
     logger.error('门店页面权限刷新失败:', error)
-  } finally {
-    permissionLoading.value = false
   }
 
-  if (!canView.value) {
+  if (canView.value) {
+    await Promise.all([
+      loadStores(),
+      loadUsers()
+    ])
+  } else {
     stores.value = []
     pagination.total = 0
     pagination.pages = 1
-    return
   }
-
-  await Promise.all([
-    loadStores(),
-    loadUsers()
-  ])
 }
 
 // 分页数据
@@ -804,18 +758,12 @@ const loadStores = async () => {
     stores.value = []
     pagination.total = 0
     pagination.pages = 1
+    setDataLoading(false)
     return
   }
 
   setDataLoading(true)
-  permissionLoading.value = true
-
-  // 确保权限数据已加载
-  try {
-    await ensurePermissionsLoaded()
-  } catch (error) {
-    logger.error('权限加载失败:', error)
-  }
+  const request = storeListRequest.nextRequest()
 
   try {
     const params: any = {}
@@ -824,7 +772,14 @@ const loadStores = async () => {
     params.page = pagination.page
     params.limit = pagination.limit
 
-    const response = await unifiedApi.get('/stores', { params })
+    const response = await unifiedApi.get('/stores', {
+      params,
+      signal: request.signal
+    })
+
+    if (!request.isLatest()) {
+      return
+    }
 
     if (response.success) {
       // unifiedApi 已解包一层，直接使用 extractResponseData
@@ -841,14 +796,19 @@ const loadStores = async () => {
       showError(response.message || '加载门店数据失败')
     }
   } catch (err: any) {
+    if (storeListRequest.isCanceledError(err)) {
+      return
+    }
+
     logger.error('加载门店数据失败:', err)
     handleApiError(err, '加载门店数据失败')
     stores.value = []
     pagination.total = 0
     pagination.pages = 1
   } finally {
-    setDataLoading(false)
-    permissionLoading.value = false
+    if (request.isLatest()) {
+      setDataLoading(false)
+    }
   }
 }
 
@@ -887,6 +847,8 @@ const loadStoresSilent = async () => {
     return
   }
 
+  const request = storeListRequest.nextRequest()
+
   try {
     const params: any = {}
     if (searchForm.name) params.name = searchForm.name
@@ -894,7 +856,14 @@ const loadStoresSilent = async () => {
     params.page = pagination.page
     params.limit = pagination.limit
 
-    const response = await unifiedApi.get('/stores', { params })
+    const response = await unifiedApi.get('/stores', {
+      params,
+      signal: request.signal
+    })
+
+    if (!request.isLatest()) {
+      return
+    }
 
     if (response.success) {
       const responseData = extractResponseData<any>(response)
@@ -905,8 +874,16 @@ const loadStoresSilent = async () => {
       updateStats()
     }
   } catch (error) {
+    if (storeListRequest.isCanceledError(error)) {
+      return
+    }
+
     // 静默处理错误，不显示提示
     logger.error('静默加载门店数据失败:', error)
+  } finally {
+    if (request.isLatest()) {
+      setDataLoading(false)
+    }
   }
 }
 
@@ -1181,6 +1158,7 @@ const resetSearch = () => {
 // 刷新数据 - 使用统一的 composable
 const handleRefresh = async () => {
   if (!canView.value) {
+    setDataLoading(false)
     return
   }
 
@@ -1191,7 +1169,7 @@ const handleRefresh = async () => {
       loadUsersSilent()
     ])
   })
-  showSuccess('数据已刷新')
+  showSuccess('数据刷新成功')
 }
 
 const updateStats = () => {
@@ -1235,12 +1213,9 @@ const changePage = (page: number) => {
 
 // 新的分页变化处理方法
 const handlePaginationChange = (page: number, pageSize: number) => {
-  pagination.page = page
+  const oldPageSize = pagination.limit
   pagination.limit = pageSize
-  // 重置到第一页（当页面大小改变时）
-  if (pageSize !== pagination.limit) {
-    pagination.page = 1
-  }
+  pagination.page = pageSize !== oldPageSize ? 1 : page
   loadStores()
 }
 
@@ -1381,16 +1356,6 @@ const handleSortOrderChange = async (index: number, value: number) => {
 onMounted(async () => {
   window.addEventListener('tf2025:permissions:updated', handlePermissionsUpdated)
 
-  // 首先确保权限数据已加载
-  permissionLoading.value = true
-  try {
-    await ensurePermissionsLoaded()
-  } catch (error) {
-    logger.error('初始化权限加载失败:', error)
-  } finally {
-    permissionLoading.value = false
-  }
-
   // 检查是否有页面访问权限
   if (!canView.value) {
     return
@@ -1406,6 +1371,10 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener('tf2025:permissions:updated', handlePermissionsUpdated)
+  if (debounceSearchTimeoutId) {
+    clearTimeout(debounceSearchTimeoutId)
+    debounceSearchTimeoutId = null
+  }
 })
 </script>
 
@@ -1415,258 +1384,6 @@ onUnmounted(() => {
   background: #f8fafc;
   min-height: 100vh;
 }
-
-/* 权限加载样式 */
-.loading-container {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  min-height: 400px;
-  gap: 20px;
-}
-
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid #f3f4f6;
-  border-top: 4px solid #10b981;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-/* 权限拒绝页面样式 - 统一背景可见样式 */
-.permission-denied {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 60vh;
-  background: #f8f9fa;
-  border-radius: 12px;
-  margin: 20px 0;
-}
-
-.permission-denied-wrapper {
-  width: 100%;
-  max-width: 600px;
-}
-
-.permission-denied-card {
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
-  overflow: hidden;
-  animation: slideUp 0.3s ease-out;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.permission-icon {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 30px;
-  text-align: center;
-  color: white;
-}
-
-.permission-icon i {
-  font-size: 48px;
-  opacity: 0.9;
-}
-
-.permission-content {
-  padding: 40px;
-  text-align: center;
-}
-
-.permission-content h2 {
-  font-size: 28px;
-  color: #1f2937;
-  margin-bottom: 16px;
-  font-weight: 700;
-}
-
-.permission-message {
-  font-size: 16px;
-  color: #6b7280;
-  margin-bottom: 30px;
-  line-height: 1.6;
-}
-
-.permission-status {
-  display: flex;
-  justify-content: center;
-  gap: 20px;
-  margin-bottom: 30px;
-}
-
-.status-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 20px;
-  border-radius: 25px;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.status-item.has-menu {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.status-item.has-menu i {
-  color: #22c55e;
-}
-
-.status-item.missing-view {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.status-item.missing-view i {
-  color: #ef4444;
-}
-
-.permission-info {
-  background: #f8fafc;
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 24px;
-  text-align: left;
-}
-
-.info-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 0;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.info-item:last-child {
-  border-bottom: none;
-}
-
-.info-item label {
-  font-weight: 600;
-  color: #374151;
-  font-size: 14px;
-}
-
-.permission-name {
-  color: #059669;
-  font-weight: 500;
-}
-
-.permission-code {
-  background: #f3f4f6;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-family: 'Monaco', 'Consolas', monospace;
-  font-size: 12px;
-  color: #6b7280;
-  border: 1px solid #e5e7eb;
-}
-
-.permission-suggestion {
-  background: #eff6ff;
-  border: 1px solid #dbeafe;
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 24px;
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.permission-suggestion i {
-  color: #3b82f6;
-  margin-top: 2px;
-}
-
-.permission-suggestion p {
-  margin: 0;
-  color: #1e40af;
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.permission-actions {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 24px;
-}
-
-.permission-details {
-  text-align: left;
-  border-top: 1px solid #e5e7eb;
-  padding-top: 24px;
-}
-
-.permission-details h4 {
-  font-size: 16px;
-  color: #374151;
-  margin-bottom: 16px;
-  font-weight: 600;
-}
-
-.permission-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  max-height: 200px;
-  overflow-y: auto;
-  padding: 4px;
-}
-
-.permission-tag {
-  display: inline-block;
-  padding: 6px 12px;
-  background: #f3f4f6;
-  color: #6b7280;
-  border-radius: 16px;
-  font-size: 12px;
-  font-family: 'Monaco', 'Consolas', monospace;
-  border: 1px solid #e5e7eb;
-  transition: all 0.2s ease;
-}
-
-.permission-tag.current-module {
-  background: #ede9fe;
-  color: #7c3aed;
-  border-color: #c4b5fd;
-  font-weight: 500;
-}
-
-.permission-info strong {
-  color: #111827;
-}
-
-.permission-actions {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
 /* 统计卡片样式 */
 .stats-cards {
   display: grid;
@@ -2433,11 +2150,6 @@ onUnmounted(() => {
     gap: 4px;
     white-space: normal;
     line-height: 1.35;
-  }
-
-  .permission-actions {
-    flex-direction: column;
-    align-items: stretch;
   }
 
   /* 详情视图移动端适配 */

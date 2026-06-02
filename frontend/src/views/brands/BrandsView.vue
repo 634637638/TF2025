@@ -1,5 +1,12 @@
 <template>
   <div class="brands-view admin-page">
+    <PermissionGate
+      :can-view="canView"
+      mode="denied"
+      module-key="brands"
+      module-name="品牌管理"
+      permission-code="brands:view"
+    >
     <!-- 页面头部 - 使用公共组件 -->
     <PageHeader
       icon="fas fa-tags"
@@ -15,23 +22,16 @@
           <span>新增</span>
         </el-button>
         <el-button type="info" @click="handleRefresh" :disabled="refreshing">
-          <i :class="refreshing ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'"></i>
-          <span>刷新</span>
+          <InlineLoading v-if="refreshing" text="刷新中..." size="small" variant="inherit" />
+          <template v-else>
+            <i class="fas fa-sync-alt"></i>
+            <span>刷新</span>
+          </template>
         </el-button>
       </template>
     </PageHeader>
 
-    <!-- ❌ 无权限时显示提示 -->
-    <PermissionDenied
-      v-if="!canView"
-      :can-view="canView"
-      module-key="brands"
-      module-name="品牌管理"
-      permission-code="brands:view"
-    />
-
-    <!-- 权限验证通过后的内容 -->
-    <div v-else class="content admin-page-content">
+    <div class="content admin-page-content">
 
     <!-- 统计卡片 -->
     <div v-if="showStatsCards" class="stats-cards">
@@ -75,7 +75,6 @@
 
     <UnifiedSearchPanel
       v-model:expanded="searchExpanded"
-      :loading="loading"
       @search="searchBrands"
       @reset="resetSearch"
     >
@@ -128,14 +127,11 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-if="loading" class="loading-row">
-              <td :colspan="visibleColumnCount">
-                <div class="loading-content">
-                  <i class="fas fa-spinner fa-spin"></i>
-                  <span>正在加载数据...</span>
-                </div>
-              </td>
-            </tr>
+            <TableLoadingRow
+              v-if="tableLoading"
+              :colspan="visibleColumnCount"
+              text="加载品牌列表..."
+            />
             <tr v-else-if="brands.length === 0" class="empty-row">
               <td :colspan="visibleColumnCount">
                 <div class="empty-content">
@@ -143,9 +139,9 @@
                   <div class="empty-text">
                     <h4>暂无品牌数据</h4>
                     <p>点击上方"新增品牌"按钮添加第一个品牌</p>
-                    <el-button class="mt-2" size="small" type="info" @click="loadBrands()" :disabled="loading">
+                    <el-button class="mt-2" size="small" type="info" @click="loadBrands()">
                       <i class="fas fa-sync-alt"></i>
-                      {{ loading ? '加载中...' : '重新加载' }}
+                      重新加载
                     </el-button>
                   </div>
                 </div>
@@ -280,7 +276,6 @@
         :show-range="true"
         :show-page-sizes="true"
         :show-quick-jumper="true"
-        :disabled="loading"
         @change="handlePaginationChange"
       />
     </div>
@@ -327,12 +322,13 @@
       <template #footer>
         <el-button type="default" @click="attemptCloseModal">取消</el-button>
         <el-button type="primary" @click="submitForm" :disabled="submitting" :loading="submitting">
-          <i v-if="submitting" class="fas fa-spinner fa-spin"></i>
-          {{ isEditMode ? '更新' : '创建' }}
+          <InlineLoading v-if="submitting" :text="isEditMode ? '更新中...' : '创建中...'" size="small" variant="inherit" />
+          <template v-else>{{ isEditMode ? '更新' : '创建' }}</template>
         </el-button>
       </template>
     </MobileDialog>
     </div>
+    </PermissionGate>
   </div>
 </template>
 
@@ -343,18 +339,20 @@ import { ElMessageBox } from 'element-plus'
 import unifiedApi from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import { useNotification } from '@/composables/useNotification'
-import { useLoadingState } from '@/composables'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useRefreshData } from '@/composables/useRefreshData'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
 import { useAuthStore } from '@/stores/auth'
 import { normalizePermissionList } from '@/utils/permissionList'
 import Pagination from '../../components/Pagination.vue'
+import InlineLoading from '@/components/InlineLoading.vue'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
-import { PermissionDenied, PageHeader } from '@/components/base'
+import { PermissionGate, PageHeader } from '@/components/base'
 import { usePermissionToast } from '@/utils/permissionToastSimple'
 import { handleApiErrorWithPermission } from '@/utils/apiPermissionError'
 import { useMobile } from '@/composables/mobile'
+import { useLatestRequest } from '@/composables/useLatestRequest'
 import { logger } from '@/utils/logger'
 import type { Brand } from '@/types'
 
@@ -369,6 +367,7 @@ const { refreshing, refreshData: refresh } = useRefreshData()
 const authStore = useAuthStore()
 const { isMobile } = useMobile()
 const { init: initFieldPermissions } = fieldPermissions
+const brandListRequest = useLatestRequest()
 
 // 获取用户权限列表用于显示
 const currentUserPermissions = computed(() => {
@@ -466,10 +465,9 @@ const handleMobileRowTap = (id: number) => {
 const isEditMode = computed(() => showEditModal.value && currentEditingId.value !== null)
 
 // 响应式数据
-const { loading } = useLoadingState()
-
 // 搜索相关状态
 const searchExpanded = ref(false)
+const tableLoading = ref(true)
 const submitting = ref(false)
 const savingOrder = ref(false)
 const brands = ref<Brand[]>([])
@@ -503,7 +501,7 @@ const pagination = ref({
 })
 
 // 方法
-const loadBrands = async (bustCache = false, silentError = false, showLoadingState = true) => {
+const loadBrands = async (bustCache = false, silentError = false, _showLoadingState = true) => {
   // 检查查看权限
   if (!canView.value) {
     if (!silentError) {
@@ -511,13 +509,14 @@ const loadBrands = async (bustCache = false, silentError = false, showLoadingSta
         title: '权限不足'
       })
     }
+    tableLoading.value = false
     return
   }
 
-  // 根据 showLoadingState 参数决定是否显示加载状态
-  if (showLoadingState) {
-    loading.value = true
+  if (_showLoadingState) {
+    tableLoading.value = true
   }
+
   try {
     const params: any = {
       page: pagination.value.page,
@@ -533,7 +532,15 @@ const loadBrands = async (bustCache = false, silentError = false, showLoadingSta
       params._t = Date.now()
     }
 
-    const response = await unifiedApi.get('/brands', { params })
+    const request = brandListRequest.nextRequest()
+    const response = await unifiedApi.get('/brands', {
+      params,
+      signal: request.signal
+    })
+
+    if (!request.isLatest()) {
+      return
+    }
 
     if (response.success) {
       // 使用 extractResponseData 统一提取数据
@@ -556,19 +563,22 @@ const loadBrands = async (bustCache = false, silentError = false, showLoadingSta
         error(`获取品牌列表失败: ${response.message || '未知错误'}`)
       }
     }
-  } catch (error: any) {
-    logger.error('获取品牌列表失败:', error)
+  } catch (err: any) {
+    if (brandListRequest.isCanceledError(err)) {
+      return
+    }
+
+    logger.error('获取品牌列表失败:', err)
     brands.value = []
     pagination.value = { page: 1, limit: 10, total: 0, pages: 0 }
 
     // 使用统一的错误处理
     if (!silentError) {
-      handleApiError(error, '获取品牌列表失败')
+      handleApiError(err, '获取品牌列表失败')
     }
   } finally {
-    // 只有在显示加载状态时才重置
-    if (showLoadingState) {
-      loading.value = false
+    if (_showLoadingState) {
+      tableLoading.value = false
     }
   }
 }
@@ -594,12 +604,9 @@ const changePage = (page: number) => {
 
 // 新的分页变化处理方法
 const handlePaginationChange = (page: number, pageSize: number) => {
-  pagination.value.page = page
+  const oldPageSize = pagination.value.limit
   pagination.value.limit = pageSize
-  // 重置到第一页（当页面大小改变时）
-  if (pageSize !== pagination.value.limit) {
-    pagination.value.page = 1
-  }
+  pagination.value.page = pageSize !== oldPageSize ? 1 : page
   loadBrands()
 }
 
@@ -663,10 +670,7 @@ const deleteBrand = async (brand: Brand) => {
         title: '操作成功',
         duration: 3000
       })
-      // 延迟一下刷新，确保后端操作完成
-      setTimeout(() => {
-        loadBrands(true)
-      }, 300)
+      await loadBrands(true, false, false)
     } else {
       error(`删除品牌失败: ${response.message || '未知错误'}`)
     }
@@ -755,10 +759,7 @@ const submitForm = async () => {
           duration: 3000
         })
         closeModal()
-        // 延迟一下刷新，确保后端操作完成
-        setTimeout(() => {
-          loadBrands(true)
-        }, 300)
+        await loadBrands(true, false, false)
       } else {
         error(`创建品牌失败: ${response.message || '未知错误'}`)
       }
@@ -784,10 +785,7 @@ const submitForm = async () => {
           duration: 3000
         })
         closeModal()
-        // 延迟一下刷新，确保后端操作完成
-        setTimeout(() => {
-          loadBrands(true)
-        }, 300)
+        await loadBrands(true, false, false)
       } else {
         error(`更新品牌失败: ${response.message || '未知错误'}`)
       }
@@ -1462,21 +1460,6 @@ onMounted(async () => {
   color: #dc3545;
 }
 
-/* 加载和空状态样式 */
-.loading-row td {
-  padding: 40px 12px;
-  text-align: center;
-}
-
-.loading-content {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  color: #6c757d;
-  font-size: 16px;
-}
-
 .empty-row td {
   padding: 60px 12px;
   text-align: center;
@@ -1533,9 +1516,15 @@ onMounted(async () => {
 
 /* 操作按钮样式 */
 .actions {
-  display: flex;
-  gap: 8px;
+  vertical-align: middle;
+  text-align: center;
+}
+
+.actions .action-buttons {
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
+  gap: 8px;
 }
 
 .btn-action {
@@ -1764,10 +1753,16 @@ onMounted(async () => {
 
   /* 操作按钮优化 */
   .actions {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+    vertical-align: middle;
+    text-align: center;
     min-width: 80px;
+  }
+
+  .actions .action-buttons {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
   }
 
   .brand-info {

@@ -1,23 +1,22 @@
 <template>
   <div class="analytics-view admin-page">
-    <!-- ❌ 无权限时显示提示 -->
-    <PermissionDenied
-      v-if="!canView"
+    <PermissionGate
       :can-view="canView"
+      mode="denied"
       module-key="analytics"
       module-name="数据分析"
       permission-code="analytics:view"
-    />
+    >
 
     <!-- 权限验证通过后的内容 -->
-    <div v-else class="admin-page-content">
+    <div class="admin-page-content">
       <!-- 页面头部 -->
       <PageHeader
         icon="fas fa-chart-line"
         title="数据分析"
       >
         <template #actions>
-          <el-button type="info" :icon="Refresh" @click="refreshData" :loading="loading">
+          <el-button type="info" :icon="Refresh" @click="refreshData" :loading="refreshing" :disabled="refreshing">
             刷新
           </el-button>
           <el-button
@@ -151,35 +150,39 @@
 
       <!-- TAB内容 -->
       <div v-if="visibleAnalyticsTabs.length" class="tab-content">
-        <div
-          v-for="tab in visibleAnalyticsTabs"
-          :key="tab.key"
-          v-show="activeTab === tab.key"
-          class="tab-panel"
-        >
-          <component
-            :is="tab.component"
-            :loading="loading"
-            :is-active="activeTab === tab.key"
-            :start-date="filterStartDate"
-            :end-date="filterEndDate"
-            :store-id="filterStoreId"
-            :supplier-id="filterSupplierId"
-            :search-trigger="searchTrigger"
-            @loading-change="handleTabLoading"
-          />
-        </div>
+        <template v-for="tab in visibleAnalyticsTabs" :key="tab.key">
+          <div
+            v-if="activeTab === tab.key"
+            class="tab-panel"
+          >
+            <KeepAlive>
+              <component
+                ref="activeAnalyticsRef"
+                :is="tab.component"
+                :loading="loading"
+                :is-active="activeTab === tab.key"
+                :start-date="filterStartDate"
+                :end-date="filterEndDate"
+                :store-id="filterStoreId"
+                :supplier-id="filterSupplierId"
+                :search-trigger="searchTrigger"
+                @loading-change="handleTabLoading"
+              />
+            </KeepAlive>
+          </div>
+        </template>
       </div>
       <div v-else class="analytics-empty-state">
         当前角色未开启任何分析分组字段，请在字段权限中开启对应子页面。
       </div>
     </div>
     </div>
+    </PermissionGate>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onMounted } from 'vue'
+import { computed, defineAsyncComponent, ref, watch, onMounted } from 'vue'
 import {
   Refresh,
   Download
@@ -189,16 +192,17 @@ import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useLoadingState } from '@/composables'
 import { useImportExport } from '@/composables/useImportExport'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
-import { PermissionDenied, PageHeader } from '@/components/base'
+import { PermissionGate, PageHeader } from '@/components/base'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
-import SalesAnalytics from './page/SalesAnalytics.vue'
-import InventoryAnalytics from './page/InventoryAnalytics.vue'
-import CustomerAnalytics from './page/CustomerAnalytics.vue'
-import EmployeeAnalytics from './page/EmployeeAnalytics.vue'
-import TransferAnalytics from './page/TransferAnalytics.vue'
-import ProfitAnalytics from './page/ProfitAnalytics.vue'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
+
+const SalesAnalytics = defineAsyncComponent(() => import('./page/SalesAnalytics.vue'))
+const InventoryAnalytics = defineAsyncComponent(() => import('./page/InventoryAnalytics.vue'))
+const CustomerAnalytics = defineAsyncComponent(() => import('./page/CustomerAnalytics.vue'))
+const EmployeeAnalytics = defineAsyncComponent(() => import('./page/EmployeeAnalytics.vue'))
+const TransferAnalytics = defineAsyncComponent(() => import('./page/TransferAnalytics.vue'))
+const ProfitAnalytics = defineAsyncComponent(() => import('./page/ProfitAnalytics.vue'))
 
 const { success, error } = useNotification()
 const { exportTextFile, buildDateFilename } = useImportExport()
@@ -220,6 +224,8 @@ const searchTrigger = ref(0)
 // 响应式数据
 const activeTab = ref('sales')
 const { loading } = useLoadingState()
+const { loading: refreshing } = useLoadingState()
+const activeAnalyticsRef = ref<any>(null)
 
 const analyticsTabs = [
   {
@@ -516,6 +522,9 @@ const loadSupplierList = async () => {
 }
 
 const handleTabLoading = (tabLoadingState: boolean) => {
+  if (refreshing.value) {
+    return
+  }
   loading.value = tabLoadingState
 }
 
@@ -524,13 +533,20 @@ const refreshData = async () => {
     return
   }
 
-  loading.value = true
+  if (refreshing.value) {
+    return
+  }
+
+  refreshing.value = true
   try {
+    if (activeAnalyticsRef.value?.refreshSilently) {
+      await activeAnalyticsRef.value.refreshSilently()
+    }
     success('数据刷新成功')
   } catch (err) {
     error('数据刷新失败')
   } finally {
-    loading.value = false
+    refreshing.value = false
   }
 }
 
@@ -569,7 +585,6 @@ onMounted(() => {
   void fieldPermissions.init()
   loadStoreList()  // 加载店铺列表
   loadSupplierList()  // 加载供应商列表
-  refreshData()
 })
 
 </script>

@@ -1,19 +1,8 @@
 const { getDatabase } = require('../config/database');
+const { normalizePermissionType } = require('../config/module-permission-actions');
 const log = require('../utils/log');
 
 // 强制重新加载
-
-function normalizePermissionType(permissionType) {
-  if (!permissionType) {
-    return permissionType;
-  }
-
-  if (permissionType.endsWith('_permission')) {
-    return permissionType.replace(/_permission$/, '');
-  }
-
-  return permissionType;
-}
 
 /**
  * 权限清理工具 - 自动清理和同步角色权限

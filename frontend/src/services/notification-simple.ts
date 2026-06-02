@@ -3,8 +3,17 @@
  * 专门用于在应用启动时避免 Pinia 初始化问题
  */
 
-import { ElMessage, ElMessageBox, ElNotification, ElLoading } from 'element-plus'
 import { logger } from '@/utils/logger'
+import {
+  closeAllElementMessages,
+  loadElementPlus,
+  showElementError,
+  showElementLoading,
+  showElementMessage,
+  showElementNotification,
+  showElementSuccess,
+  showElementWarning
+} from '@/utils/element-feedback'
 
 // 通知方式枚举
 export enum NotificationMethod {
@@ -118,7 +127,7 @@ class SimpleNotificationService {
    * 显示成功消息
    */
   public success(message: string, options: NotificationOptions = {}): void {
-    ElMessage.success({
+    showElementSuccess({
       message,
       duration: options.duration || this.defaultConfig.duration,
       showClose: options.showClose ?? this.defaultConfig.showClose,
@@ -133,7 +142,7 @@ class SimpleNotificationService {
    * 显示错误消息
    */
   public error(message: string, options: NotificationOptions = {}): void {
-    ElMessage.error({
+    showElementError({
       message,
       duration: options.duration || 6000,  // 错误消息默认显示更久
       showClose: options.showClose ?? this.defaultConfig.showClose,
@@ -148,7 +157,7 @@ class SimpleNotificationService {
    * 显示警告消息
    */
   public warning(message: string, options: NotificationOptions = {}): void {
-    ElMessage.warning({
+    showElementWarning({
       message,
       duration: options.duration || this.defaultConfig.duration,
       showClose: options.showClose ?? this.defaultConfig.showClose,
@@ -163,8 +172,9 @@ class SimpleNotificationService {
    * 显示信息消息
    */
   public info(message: string, options: NotificationOptions = {}): void {
-    ElMessage.info({
+    showElementMessage({
       message,
+      type: 'info',
       duration: options.duration || this.defaultConfig.duration,
       showClose: options.showClose ?? this.defaultConfig.showClose,
       offset: options.offset || 20,
@@ -178,7 +188,7 @@ class SimpleNotificationService {
    * 显示通知（更丰富的通知形式）
    */
   public notify(options: NotificationOptions): void {
-    ElNotification({
+    showElementNotification({
       title: options.title,
       message: options.message,
       type: options.type as any,
@@ -193,7 +203,7 @@ class SimpleNotificationService {
   /**
    * 显示确认对话框
    */
-  public confirm(
+  public async confirm(
     message: string,
     title: string = '确认',
     options: {
@@ -205,6 +215,8 @@ class SimpleNotificationService {
     // 添加 class 和动态样式来隐藏表格
     document.body.classList.add('el-message-box-open')
     this.createHideTablesStyle()
+
+    const { ElMessageBox } = await loadElementPlus()
 
     return ElMessageBox.confirm(message, title, {
       confirmButtonText: options.confirmButtonText || '确定',
@@ -227,7 +239,7 @@ class SimpleNotificationService {
   /**
    * 显示提示对话框
    */
-  public alert(
+  public async alert(
     message: string,
     title: string = '提示',
     type: 'success' | 'warning' | 'info' | 'error' = 'info'
@@ -235,6 +247,8 @@ class SimpleNotificationService {
     // 添加 class 和动态样式来隐藏表格
     document.body.classList.add('el-message-box-open')
     this.createHideTablesStyle()
+
+    const { ElMessageBox } = await loadElementPlus()
 
     return ElMessageBox.alert(message, title, {
       type,
@@ -253,7 +267,7 @@ class SimpleNotificationService {
   /**
    * 显示输入对话框
    */
-  public prompt(
+  public async prompt(
     message: string,
     title: string = '输入',
     options: {
@@ -267,6 +281,8 @@ class SimpleNotificationService {
     // 添加 class 和动态样式来隐藏表格
     document.body.classList.add('el-message-box-open')
     this.createHideTablesStyle()
+
+    const { ElMessageBox } = await loadElementPlus()
 
     return ElMessageBox.prompt(message, title, {
       confirmButtonText: options.confirmButtonText || '确定',
@@ -354,22 +370,32 @@ class SimpleNotificationService {
    * 清除所有通知
    */
   public clearAll(): void {
-    ElMessage.closeAll()
+    closeAllElementMessages()
   }
 
   /**
    * 加载状态通知
    */
   public loading(message: string = '加载中...'): () => void {
-    const loadingInstance = ElLoading.service({
+    let closeRequested = false
+    let loadingInstance: { close: () => void } | null = null
+
+    showElementLoading({
       lock: true,
       text: message,
       background: 'rgba(0, 0, 0, 0.7)'
+    }).then((instance) => {
+      if (closeRequested) {
+        instance.close()
+      } else {
+        loadingInstance = instance
+      }
     })
 
     // 返回关闭函数
     return () => {
-      loadingInstance.close()
+      closeRequested = true
+      loadingInstance?.close()
     }
   }
 

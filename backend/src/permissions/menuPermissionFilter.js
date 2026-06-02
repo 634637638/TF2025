@@ -1,6 +1,7 @@
 const { getDatabase } = require('../config/database');
 const { getUserMenuVisibility } = require('../services/accessControl.service');
 const log = require('../utils/log');
+const { ensureIconSchema, iconLeftJoin } = require('../utils/iconStore');
 
 function buildHierarchicalMenu(flatMenus) {
   const menuMap = new Map();
@@ -44,6 +45,9 @@ function formatMenus(menus) {
     name: menu.name,
     url: menu.url,
     icon: menu.icon || 'el-icon-menu',
+    icon_svg: menu.icon_svg || null,
+    icon_source: menu.icon_source || null,
+    icon_is_valid: menu.icon_is_valid,
     parent_id: menu.parent_id,
     children: formatMenus(menu.children || [])
   }));
@@ -64,20 +68,26 @@ async function getMenuWithPermissionFilter(req, res) {
       });
     }
 
+    await ensureIconSchema(connection);
+
     const [allMenus] = await connection.execute(`
       SELECT
-        id,
-        name,
-        url,
-        icon,
-        parent_id,
-        sort_order,
-        is_active,
-        module_id,
-        module_key
-      FROM menus
-      WHERE is_active = 1
-      ORDER BY parent_id, sort_order
+        m.id,
+        m.name,
+        m.url,
+        m.icon,
+        m.parent_id,
+        m.sort_order,
+        m.is_active,
+        m.module_id,
+        m.module_key,
+        i.svg as icon_svg,
+        i.source as icon_source,
+        i.is_valid as icon_is_valid
+      FROM menus m
+      ${iconLeftJoin('m', 'i')}
+      WHERE m.is_active = 1
+      ORDER BY m.parent_id, m.sort_order
     `);
 
     const [modules] = await connection.execute(`

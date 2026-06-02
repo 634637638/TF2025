@@ -139,6 +139,9 @@ export interface MenuItem {
   name: string
   url: string | null
   icon: string | null
+  icon_svg?: string | null
+  icon_source?: string | null
+  icon_is_valid?: number | boolean | null
   parent_id: number
   sort_order: number
   is_active: boolean

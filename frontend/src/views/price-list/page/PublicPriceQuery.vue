@@ -43,11 +43,7 @@
             <span class="btn-text">保存为图片</span>
           </span>
           <span v-else class="btn-content loading">
-            <svg class="btn-icon loading-spinner" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none" opacity="0.25"></circle>
-              <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="2" fill="none"></path>
-            </svg>
-            <span class="btn-text">生成中...</span>
+            <InlineLoading text="生成中..." size="small" />
           </span>
         </button>
       </template>
@@ -163,8 +159,7 @@
       <div class="container">
         <!-- 加载状态 -->
         <div v-if="loading" class="loading-container">
-          <el-icon class="is-loading"><Loading /></el-icon>
-          <p>正在查询价格...</p>
+          <InlineLoading text="正在查询价格..." />
         </div>
 
         <!-- 空状态 -->
@@ -265,6 +260,7 @@
 
     <!-- 在库查询结果弹窗 -->
     <InventoryResultDialog
+      v-if="showInventoryResult"
       v-model="showInventoryResult"
       :product="selectedProduct"
     />
@@ -291,17 +287,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue'
-import { Search, Loading, Close } from '@element-plus/icons-vue'
+import { ref, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue'
+import { Search, Close } from '@element-plus/icons-vue'
 import { getAllPrices, searchPrices } from '@/api/price-list'
-import html2canvas from 'html2canvas'
-import InventoryResultDialog from '@/components/InventoryResultDialog.vue'
 import { PublicPriceHeader } from '@/components/base'
+import InlineLoading from '@/components/InlineLoading.vue'
 import { unifiedApi } from '@/utils/unified-api'
 import { ElMessage } from 'element-plus'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { useLoadingState } from '@/composables'
 import { logger } from '@/utils/logger'
+import { loadHtml2Canvas } from '@/utils/html2canvas'
+
+const InventoryResultDialog = defineAsyncComponent(() => import('@/components/InventoryResultDialog.vue'))
 // 状态
 const { loading } = useLoadingState()
 const searchKeyword = ref('')
@@ -624,6 +622,8 @@ const downloadAsImage = async () => {
 
     // 等待样式应用和水印显示
     await new Promise(resolve => setTimeout(resolve, 150))
+
+    const html2canvas = await loadHtml2Canvas()
 
     // 使用 html2canvas 生成图片（完整捕获）
     const canvas = await html2canvas(element, {

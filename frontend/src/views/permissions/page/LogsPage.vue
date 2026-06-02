@@ -20,12 +20,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-if="ctx.logsLoading" class="loading-row">
-                <td colspan="7" class="text-center">
-                  <i class="fas fa-spinner fa-spin"></i>
-                  <span>加载中...</span>
-                </td>
-              </tr>
+              <TableLoadingRow v-if="ctx.logsLoading" :colspan="7" />
               <tr v-else-if="ctx.filteredLogs.length === 0" class="empty-row">
                 <td colspan="7" class="text-center">
                   <i class="fas fa-inbox"></i>
@@ -94,6 +89,7 @@
 
 <script setup lang="ts">
 import Pagination from '@/components/Pagination.vue'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { usePermissionsPageContext } from './context'
 
 const ctx = usePermissionsPageContext()

@@ -3,10 +3,19 @@ const router = express.Router();
 const { unifiedAuth, requirePermission } = require('../middleware/unified-auth');
 const ApiResponse = require('../utils/response');
 const { getDatabase, isConnected } = require('../config/database');
+const { cacheMiddleware, clearCache } = require('../middleware/cache');
 const log = require('../utils/log');
 
+const clearModelsRouteCache = () => {
+  try {
+    clearCache('/api/models');
+  } catch (error) {
+    log.warn('清理型号缓存失败:', error.message);
+  }
+};
+
 // 获取型号列表
-router.get('/', unifiedAuth, requirePermission('models:view'), async (req, res) => {
+router.get('/', unifiedAuth, requirePermission('models:view'), cacheMiddleware({ ttl: 10 * 1000 }), async (req, res) => {
   try {
     if (!isConnected()) {
       return ApiResponse.error(res, '数据库未连接', 500);
@@ -30,14 +39,6 @@ router.get('/', unifiedAuth, requirePermission('models:view'), async (req, res) 
     const pageNum = parseInt(page) || 1;
     const offset = (pageNum - 1) * limitNum;
 
-    // 先检查models表是否存在
-    try {
-      await pool.execute('SELECT 1 FROM models LIMIT 1');
-    } catch (tableError) {
-      log.error('models表不存在或无权限访问:', tableError);
-      return ApiResponse.error(res, 'models表不存在或无权限访问', 500);
-    }
-
     // 使用JOIN查询，直接关联品牌表
     let baseQuery = `
       SELECT
@@ -49,7 +50,6 @@ router.get('/', unifiedAuth, requirePermission('models:view'), async (req, res) 
     let baseCountQuery = `
       SELECT COUNT(*) as total
       FROM models m
-      LEFT JOIN brands b ON m.brand_id = b.id
     `;
 
     // 构建WHERE条件
@@ -128,7 +128,7 @@ router.get('/', unifiedAuth, requirePermission('models:view'), async (req, res) 
 });
 
 // 根据品牌ID获取型号列表
-router.get('/brand/:brandId', unifiedAuth, requirePermission('models:view'), async (req, res) => {
+router.get('/brand/:brandId', unifiedAuth, requirePermission('models:view'), cacheMiddleware({ ttl: 10 * 1000 }), async (req, res) => {
   try {
     if (!isConnected()) {
       return ApiResponse.error(res, '数据库未连接', 500);
@@ -149,14 +149,6 @@ router.get('/brand/:brandId', unifiedAuth, requirePermission('models:view'), asy
     const limitNum = parseInt(limit) || 10000;  // 提高默认限制
     const pageNum = parseInt(page) || 1;
     const offset = (pageNum - 1) * limitNum;
-
-    // 先检查models表是否存在
-    try {
-      await pool.execute('SELECT 1 FROM models LIMIT 1');
-    } catch (tableError) {
-      log.error('models表不存在或无权限访问:', tableError);
-      return ApiResponse.error(res, 'models表不存在或无权限访问', 500);
-    }
 
     // 构建WHERE条件
     const conditions = ['m.brand_id = ?'];
@@ -286,8 +278,8 @@ router.post('/', unifiedAuth, requirePermission('models:create'), async (req, re
     const insertValues = [
       parseInt(brand_id),
       name,
-      status || 1,
-      sort_order || 0
+      status !== undefined ? parseInt(status) : 1,
+      sort_order !== undefined ? parseInt(sort_order) : 0
     ];
 
     const [result] = await pool.execute(insertQuery, insertValues);
@@ -296,6 +288,7 @@ router.post('/', unifiedAuth, requirePermission('models:create'), async (req, re
     const [newModels] = await pool.execute('SELECT * FROM models WHERE id = ?', [result.insertId]);
     const newModel = newModels[0];
 
+    clearModelsRouteCache();
     ApiResponse.created(res, '型号创建成功', newModel);
   } catch (error) {
     log.error('创建型号失败:', error);
@@ -427,6 +420,7 @@ router.put('/:id', unifiedAuth, requirePermission('models:edit'), async (req, re
     const [updatedModels] = await pool.execute('SELECT * FROM models WHERE id = ?', [parseInt(id)]);
     const updatedModel = updatedModels[0];
 
+    clearModelsRouteCache();
     ApiResponse.success(res, updatedModel, '型号更新成功');
   } catch (error) {
     log.error('更新型号失败:', error);
@@ -460,6 +454,7 @@ router.delete('/:id', unifiedAuth, requirePermission('models:delete'), async (re
     // 删除型号
     await pool.execute('DELETE FROM models WHERE id = ?', [parseInt(id)]);
 
+    clearModelsRouteCache();
     ApiResponse.success(res, existingModels[0], '型号删除成功');
   } catch (error) {
     log.error('删除型号失败:', error);
@@ -568,6 +563,7 @@ router.patch('/:id/toggle', unifiedAuth, requirePermission('models:edit'), async
     const updatedModel = updatedModels[0];
 
     const statusText = newStatus === 1 ? '启用' : '禁用';
+    clearModelsRouteCache();
     ApiResponse.success(res, updatedModel, `型号${statusText}成功`);
   } catch (error) {
     log.error('切换型号状态失败:', error);
@@ -611,6 +607,7 @@ router.put('/batch/reorder', unifiedAuth, requirePermission('models:edit'), asyn
       }
 
       await connection.commit();
+      clearModelsRouteCache();
       ApiResponse.success(res, null, '排序更新成功');
 
     } catch (error) {

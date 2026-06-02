@@ -512,6 +512,7 @@ class ModuleScanner {
     try {
       const pool = getDatabase();
       const supportsRoutePath = await hasColumn('modules', 'route_path', pool);
+      const supportsIsActive = await hasColumn('modules', 'is_active', pool);
 
       // 检查模块是否已存在
       const [existingModule] = await pool.execute(
@@ -529,12 +530,12 @@ class ModuleScanner {
           // 只更新非名称字段
           if (supportsRoutePath) {
             await pool.execute(
-              'UPDATE modules SET description = ?, category = ?, icon = ?, route_path = ?, updated_at = NOW() WHERE `key` = ?',
+              `UPDATE modules SET description = ?, category = ?, icon = ?, route_path = ?${supportsIsActive ? ', is_active = 1' : ''}, updated_at = NOW() WHERE \`key\` = ?`,
               [moduleInfo.description, moduleInfo.category, moduleInfo.icon, moduleInfo.route_path || moduleInfo.path || null, moduleInfo.key]
             );
           } else {
             await pool.execute(
-              'UPDATE modules SET description = ?, category = ?, icon = ?, updated_at = NOW() WHERE `key` = ?',
+              `UPDATE modules SET description = ?, category = ?, icon = ?${supportsIsActive ? ', is_active = 1' : ''}, updated_at = NOW() WHERE \`key\` = ?`,
               [moduleInfo.description, moduleInfo.category, moduleInfo.icon, moduleInfo.key]
             );
           }
@@ -553,12 +554,12 @@ class ModuleScanner {
 
           if (supportsRoutePath) {
             await pool.execute(
-              'UPDATE modules SET name = ?, description = ?, category = ?, icon = ?, original_name = ?, route_path = ?, updated_at = NOW() WHERE `key` = ?',
+              `UPDATE modules SET name = ?, description = ?, category = ?, icon = ?, original_name = ?, route_path = ?${supportsIsActive ? ', is_active = 1' : ''}, updated_at = NOW() WHERE \`key\` = ?`,
               [moduleInfo.name, moduleInfo.description, moduleInfo.category, moduleInfo.icon, moduleInfo.name, moduleInfo.route_path || moduleInfo.path || null, moduleInfo.key]
             );
           } else {
             await pool.execute(
-              'UPDATE modules SET name = ?, description = ?, category = ?, icon = ?, original_name = ?, updated_at = NOW() WHERE `key` = ?',
+              `UPDATE modules SET name = ?, description = ?, category = ?, icon = ?, original_name = ?${supportsIsActive ? ', is_active = 1' : ''}, updated_at = NOW() WHERE \`key\` = ?`,
               [moduleInfo.name, moduleInfo.description, moduleInfo.category, moduleInfo.icon, moduleInfo.name, moduleInfo.key]
             );
           }

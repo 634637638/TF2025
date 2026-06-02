@@ -1,13 +1,13 @@
 <template>
-  <PermissionDenied
-    v-if="!canView"
+  <PermissionGate
     :can-view="canView"
+    mode="denied"
     module-key="price-list"
     module-name="同步日志"
     permission-code="price-list:view"
-  />
+  >
 
-  <div v-else class="sync-log-view admin-page admin-page-content">
+  <div class="sync-log-view admin-page admin-page-content">
     <PageHeader title="同步日志">
       <template #actions>
         <el-button v-if="canDelete" type="danger" @click="handleClearLogs" :loading="clearLoading">
@@ -141,13 +141,17 @@
 
       <el-table
         v-else
-        v-loading="loading"
-        :data="logList"
+        :data="loading ? [] : logList"
         stripe
         border
         style="width: 100%"
         @row-dblclick="handleViewDetail"
       >
+        <template #empty>
+          <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
+          <el-empty v-else description="暂无同步日志" />
+        </template>
+
         <el-table-column type="index" label="序号" width="80" align="center" />
         <el-table-column prop="start_time" label="开始时间" min-width="160">
           <template #default="{ row }">
@@ -255,7 +259,7 @@
         <div class="detail-banner" :class="`banner-${currentLog.status}`">
           <i v-if="currentLog.status === 'success'" class="fas fa-check-circle"></i>
           <i v-else-if="currentLog.status === 'failed'" class="fas fa-times-circle"></i>
-          <i v-else class="fas fa-spinner fa-spin"></i>
+          <InlineLoading v-else size="small" variant="inherit" />
           <span class="banner-text">
             {{ currentLog.status === 'success' ? '同步成功' : currentLog.status === 'failed' ? '同步失败' : '同步中...' }}
           </span>
@@ -350,6 +354,7 @@
       </div>
     </MobileDialog>
   </div>
+  </PermissionGate>
 </template>
 
 <script setup lang="ts">
@@ -361,8 +366,10 @@ import { usePagination } from '@/composables'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
 import { useLoadingState } from '@/composables'
-import { PageHeader, PermissionDenied } from '@/components/base'
+import { PageHeader, PermissionGate } from '@/components/base'
 import Pagination from '@/components/Pagination.vue'
+import InlineLoading from '@/components/InlineLoading.vue'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { logger } from '@/utils/logger'
 const router = useRouter()
 const { canView, canDelete, handleNoPermission } = usePagePermissions('price-list')
@@ -408,6 +415,7 @@ const pagination = reactive({ page, limit, total, setTotal, setPage, setLimit })
 
 // 数据状态
 const { loading } = useLoadingState()
+loading.value = true
 const clearLoading = ref(false)
 const deleteLoading = ref(false)
 const logList = ref<any[]>([])
@@ -486,6 +494,7 @@ const fetchLogs = async () => {
   if (!canView.value) {
     logList.value = []
     setTotal(0)
+    loading.value = false
     return
   }
 
@@ -733,6 +742,7 @@ onMounted(async () => {
   window.addEventListener('resize', updateMobileState)
 
   if (!canView.value) {
+    loading.value = false
     return
   }
 

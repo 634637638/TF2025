@@ -1,16 +1,15 @@
 <template>
   <div class="module-management admin-page">
-    <!-- ❌ 无权限时显示提示 -->
-    <PermissionDenied
-      v-if="!canView"
+    <PermissionGate
       :can-view="canView"
+      mode="denied"
       module-key="module-management"
       module-name="模块管理"
-      permission-code="permissions:admin"
-    />
+      permission-code="module-management:view"
+    >
 
     <!-- 主要内容 - 只有有权限时才显示 -->
-    <div v-else class="admin-page-content">
+    <div class="admin-page-content">
     <PageHeader title="模块管理">
       <template #actions>
         <div class="action-buttons">
@@ -19,12 +18,18 @@
             返回上一步
           </button>
           <el-button type="info" plain @click="refreshModules" :disabled="isLoading">
-            <i :class="isLoading ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'"></i>
-            <span>刷新</span>
+            <InlineLoading v-if="isLoading" text="刷新中..." size="small" variant="inherit" />
+            <template v-else>
+              <i class="fas fa-sync-alt"></i>
+              <span>刷新</span>
+            </template>
           </el-button>
           <el-button type="primary" plain @click="handleFixMenuLinks" :disabled="isFixingMenuLinks">
-            <i :class="isFixingMenuLinks ? 'fas fa-spinner fa-spin' : 'fas fa-link'"></i>
-            <span>{{ isFixingMenuLinks ? '修复中...' : '修复菜单关联' }}</span>
+            <InlineLoading v-if="isFixingMenuLinks" text="修复中..." size="small" variant="inherit" />
+            <template v-else>
+              <i class="fas fa-link"></i>
+              <span>修复菜单关联</span>
+            </template>
           </el-button>
         </div>
       </template>
@@ -154,10 +159,7 @@
 
       <!-- 加载状态 -->
       <div v-if="isLoading" class="loading-container">
-        <div class="loading-spinner">
-          <i class="fas fa-spinner fa-spin"></i>
-          <p>加载模块数据中...</p>
-        </div>
+        <InlineLoading text="加载模块数据中..." />
       </div>
 
       <!-- 空状态 -->
@@ -442,8 +444,8 @@
             取消
           </el-button>
           <el-button type="primary" @click="saveModuleName" :disabled="isSubmitting">
-            <i v-if="isSubmitting" class="fas fa-spinner fa-spin"></i>
-            {{ isSubmitting ? '保存中...' : '保存' }}
+            <InlineLoading v-if="isSubmitting" text="保存中..." size="small" variant="inherit" />
+            <template v-else>保存</template>
           </el-button>
         </div>
       </template>
@@ -476,8 +478,8 @@
             取消
           </el-button>
           <el-button type="warning" @click="confirmRestore" :disabled="isSubmitting">
-            <i v-if="isSubmitting" class="fas fa-spinner fa-spin"></i>
-            {{ isSubmitting ? '恢复中...' : '确认恢复' }}
+            <InlineLoading v-if="isSubmitting" text="恢复中..." size="small" variant="inherit" />
+            <template v-else>确认恢复</template>
           </el-button>
         </div>
       </template>
@@ -680,13 +682,17 @@
             @click="handleAddModule"
             :disabled="isSubmitting"
           >
-            <i :class="isSubmitting ? 'fas fa-spinner fa-spin' : 'fas fa-check'"></i>
-            {{ isSubmitting ? '添加中...' : '确认添加' }}
+            <InlineLoading v-if="isSubmitting" text="添加中..." size="small" variant="inherit" />
+            <template v-else>
+              <i class="fas fa-check"></i>
+              确认添加
+            </template>
           </el-button>
         </div>
       </template>
     </MobileDialog>
     </div>
+    </PermissionGate>
   </div>
 </template>
 
@@ -700,14 +706,16 @@ import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import unifiedApi from '@/utils/unified-api';
 import Pagination from '@/components/Pagination.vue';
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue';
-import { PageHeader, PermissionDenied } from '@/components/base';
+import InlineLoading from '@/components/InlineLoading.vue';
+import { PageHeader, PermissionGate } from '@/components/base';
 
 export default {
   name: 'ModuleManagementView',
   components: {
     Pagination,
     UnifiedSearchPanel,
-    PermissionDenied
+    InlineLoading,
+    PermissionGate
   },
   setup() {
     // 路由
@@ -2660,7 +2668,7 @@ export default {
   min-height: 100%;
 }
 
-.module-management > div:not(.permission-denied-container) {
+.module-management > div {
   display: flex;
   flex-direction: column;
   gap: 20px;

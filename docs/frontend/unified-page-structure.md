@@ -59,8 +59,11 @@
                   <span>新增</span>
                 </button>
                 <button class="btn btn-outline-secondary" @click="handleRefresh" :disabled="loading">
-                  <i :class="loading ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'"></i>
-                  <span>刷新</span>
+                  <InlineLoading v-if="loading" text="刷新中..." size="small" variant="inherit" />
+                  <template v-else>
+                    <i class="fas fa-sync-alt"></i>
+                    <span>刷新</span>
+                  </template>
                 </button>
               </slot>
             </div>

@@ -39,7 +39,7 @@
     </div>
     <div v-else class="tf-image-placeholder">
       <slot name="placeholder">
-        <i class="fas fa-image fa-spin"></i>
+        <InlineLoading size="small" />
       </slot>
     </div>
   </div>
@@ -62,6 +62,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { formatImageUrl, generateProductPlaceholder, getBackendOrigin, type ProductPlaceholderOptions } from '@/utils/format'
+import InlineLoading from '@/components/InlineLoading.vue'
 
 interface Props {
   src?: string

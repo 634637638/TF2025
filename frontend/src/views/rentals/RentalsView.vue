@@ -1,13 +1,13 @@
 <template>
-  <PermissionDenied
-    v-if="!canView"
+  <PermissionGate
     :can-view="canView"
+    mode="denied"
     module-key="rentals"
     module-name="租赁管理"
     permission-code="rentals:view"
-  />
+  >
 
-  <div v-else class="rentals-view admin-page">
+  <div class="rentals-view admin-page">
     <PageHeader title="租赁管理" description="设备租赁服务和合同管理" />
 
     <div class="rentals-content admin-page-content">
@@ -60,11 +60,15 @@
         </UnifiedSearchPanel>
 
         <el-table
-          :data="displayTableData"
-          v-loading="loading"
+          :data="loading ? [] : displayTableData"
           stripe
           style="width: 100%"
         >
+          <template #empty>
+            <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
+            <el-empty v-else description="暂无租赁合同" />
+          </template>
+
           <el-table-column prop="id" label="合同编号" width="100" />
           <el-table-column prop="customerName" label="客户姓名" />
           <el-table-column prop="deviceName" label="租赁设备" />
@@ -160,20 +164,116 @@
         </el-col>
       </el-row>
     </div>
+
+    <el-dialog
+      v-model="viewDialogVisible"
+      title="租赁合同详情"
+      width="560px"
+    >
+      <el-descriptions v-if="selectedRental" :column="1" border>
+        <el-descriptions-item label="合同编号">{{ selectedRental.id }}</el-descriptions-item>
+        <el-descriptions-item label="客户姓名">{{ selectedRental.customerName }}</el-descriptions-item>
+        <el-descriptions-item label="租赁设备">{{ selectedRental.deviceName }}</el-descriptions-item>
+        <el-descriptions-item label="设备类型">{{ getDeviceTypeName(selectedRental.deviceType) }}</el-descriptions-item>
+        <el-descriptions-item label="月租金">￥{{ selectedRental.monthlyRent }}</el-descriptions-item>
+        <el-descriptions-item label="押金">￥{{ selectedRental.deposit }}</el-descriptions-item>
+        <el-descriptions-item label="租期">{{ selectedRental.startDate }} 至 {{ selectedRental.endDate }}</el-descriptions-item>
+        <el-descriptions-item label="状态">
+          <el-tag :type="getStatusTagType(selectedRental.status)">
+            {{ getStatusName(selectedRental.status) }}
+          </el-tag>
+        </el-descriptions-item>
+      </el-descriptions>
+
+      <template #footer>
+        <el-button @click="viewDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog
+      v-model="editDialogVisible"
+      :title="isCreating ? '新建租赁合同' : '编辑租赁合同'"
+      width="560px"
+      :close-on-click-modal="false"
+    >
+      <el-form :model="rentalForm" label-width="96px">
+        <el-form-item label="合同编号">
+          <el-input v-model="rentalForm.id" :disabled="!isCreating" />
+        </el-form-item>
+        <el-form-item label="客户姓名">
+          <el-input v-model="rentalForm.customerName" />
+        </el-form-item>
+        <el-form-item label="租赁设备">
+          <el-input v-model="rentalForm.deviceName" />
+        </el-form-item>
+        <el-form-item label="设备类型">
+          <el-select v-model="rentalForm.deviceType" style="width: 100%">
+            <el-option label="手机" value="phone" />
+            <el-option label="平板" value="tablet" />
+            <el-option label="笔记本" value="laptop" />
+            <el-option label="配件" value="accessory" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="月租金">
+          <el-input-number v-model="rentalForm.monthlyRent" :min="0" :precision="2" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="押金">
+          <el-input-number v-model="rentalForm.deposit" :min="0" :precision="2" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="开始日期">
+          <el-date-picker v-model="rentalForm.startDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="结束日期">
+          <el-date-picker v-model="rentalForm.endDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="合同状态">
+          <el-select v-model="rentalForm.status" style="width: 100%">
+            <el-option label="进行中" value="active" />
+            <el-option label="已到期" value="expired" />
+            <el-option label="已终止" value="terminated" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+
+      <template #footer>
+        <el-button @click="editDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleSaveRental">
+          保存
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
+  </PermissionGate>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useLoadingState } from '@/composables'
-import { PageHeader, PermissionDenied } from '@/components/base'
+import { PageHeader, PermissionGate } from '@/components/base'
 import Pagination from '@/components/Pagination.vue'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 
 const { canView, canCreate, canEdit, handleNoPermission } = usePagePermissions('rentals')
 
 const { loading } = useLoadingState()
+
+type RentalStatus = 'active' | 'expired' | 'terminated'
+type DeviceType = 'phone' | 'tablet' | 'laptop' | 'accessory'
+
+interface RentalContract {
+  id: string
+  customerName: string
+  deviceName: string
+  deviceType: DeviceType
+  monthlyRent: number
+  startDate: string
+  endDate: string
+  status: RentalStatus
+  deposit: number
+}
 
 // 搜索相关状态
 const searchExpanded = ref(false)
@@ -196,7 +296,7 @@ const stats = reactive({
   totalDeposits: 89000
 })
 
-const tableData = ref([
+const tableData = ref<RentalContract[]>([
   {
     id: 'RZ2024001',
     customerName: '张三',
@@ -242,6 +342,24 @@ const tableData = ref([
     deposit: 300
   }
 ])
+
+const emptyRentalForm = (): RentalContract => ({
+  id: `RZ${Date.now().toString().slice(-8)}`,
+  customerName: '',
+  deviceName: '',
+  deviceType: 'phone',
+  monthlyRent: 0,
+  startDate: new Date().toISOString().slice(0, 10),
+  endDate: addMonths(new Date().toISOString().slice(0, 10), 6),
+  status: 'active',
+  deposit: 0
+})
+
+const viewDialogVisible = ref(false)
+const editDialogVisible = ref(false)
+const isCreating = ref(false)
+const selectedRental = ref<RentalContract | null>(null)
+const rentalForm = reactive<RentalContract>(emptyRentalForm())
 
 const filteredTableData = computed(() => {
   const keyword = searchForm.customerName.trim().toLowerCase()
@@ -305,23 +423,90 @@ const handleAdd = () => {
     handleNoPermission('create')
     return
   }
+
+  isCreating.value = true
+  Object.assign(rentalForm, emptyRentalForm())
+  editDialogVisible.value = true
 }
 
-const handleView = (row: any) => {
+const handleView = (row: RentalContract) => {
+  selectedRental.value = { ...row }
+  viewDialogVisible.value = true
 }
 
-const handleEdit = (row: any) => {
+const handleEdit = (row: RentalContract) => {
   if (!canEdit.value) {
     handleNoPermission('edit')
     return
   }
+
+  isCreating.value = false
+  Object.assign(rentalForm, { ...row })
+  editDialogVisible.value = true
 }
 
-const handleStatusChange = (row: any) => {
+const handleStatusChange = async (row: RentalContract) => {
   if (!canEdit.value) {
     handleNoPermission('edit')
     return
   }
+
+  const isActive = row.status === 'active'
+  const actionText = isActive ? '终止' : '续租'
+  const message = isActive
+    ? `确定要终止合同 ${row.id} 吗？`
+    : `确定要续租合同 ${row.id} 吗？续租后状态将改为进行中，并自动延长 6 个月。`
+
+  try {
+    await ElMessageBox.confirm(message, `${actionText}确认`, {
+      confirmButtonText: actionText,
+      cancelButtonText: '取消',
+      type: isActive ? 'warning' : 'success'
+    })
+
+    row.status = isActive ? 'terminated' : 'active'
+    if (!isActive) {
+      row.startDate = new Date().toISOString().slice(0, 10)
+      row.endDate = addMonths(row.startDate, 6)
+    }
+
+    updateStats()
+    handleSearch()
+    ElMessage.success(`${actionText}成功`)
+  } catch {
+    // 用户取消，不需要提示
+  }
+}
+
+const handleSaveRental = () => {
+  if (!rentalForm.id.trim() || !rentalForm.customerName.trim() || !rentalForm.deviceName.trim()) {
+    ElMessage.warning('请填写合同编号、客户姓名和租赁设备')
+    return
+  }
+
+  const payload: RentalContract = {
+    ...rentalForm,
+    monthlyRent: Number(rentalForm.monthlyRent || 0),
+    deposit: Number(rentalForm.deposit || 0)
+  }
+
+  if (isCreating.value) {
+    if (tableData.value.some(item => item.id === payload.id)) {
+      ElMessage.warning('合同编号已存在')
+      return
+    }
+    tableData.value.unshift(payload)
+  } else {
+    const index = tableData.value.findIndex(item => item.id === payload.id)
+    if (index !== -1) {
+      tableData.value[index] = payload
+    }
+  }
+
+  editDialogVisible.value = false
+  updateStats()
+  handleSearch()
+  ElMessage.success(isCreating.value ? '新建成功' : '保存成功')
 }
 
 const handleSearch = () => {
@@ -341,8 +526,23 @@ onMounted(() => {
     return
   }
 
+  updateStats()
   pagination.total = filteredTableData.value.length
 })
+
+function addMonths(dateString: string, months: number): string {
+  const date = new Date(dateString)
+  date.setMonth(date.getMonth() + months)
+  return date.toISOString().slice(0, 10)
+}
+
+function updateStats() {
+  const activeContracts = tableData.value.filter(item => item.status === 'active')
+  stats.activeContracts = activeContracts.length
+  stats.monthlyRevenue = activeContracts.reduce((sum, item) => sum + Number(item.monthlyRent || 0), 0)
+  stats.totalDevices = activeContracts.length
+  stats.totalDeposits = tableData.value.reduce((sum, item) => sum + Number(item.deposit || 0), 0)
+}
 </script>
 
 <style scoped>

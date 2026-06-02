@@ -7,8 +7,8 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { ElMessage } from 'element-plus'
 import { PermissionMapper } from '@/utils/permissionMapper'
+import { showElementWarning } from '@/utils/element-feedback'
 
 const MODULE_ALIASES: Record<string, string> = {
   employees: 'employee',
@@ -17,7 +17,6 @@ const MODULE_ALIASES: Record<string, string> = {
   returngoods: 'return-goods',
   'sales-phone': 'sales',
   'data-optimization': 'data-check',
-  'module-management': 'permissions',
   'h5-admin-templates': 'h5-templates',
   'h5-admin-config': 'h5-config',
   'h5-admin-home-sections': 'home-sections',
@@ -25,9 +24,7 @@ const MODULE_ALIASES: Record<string, string> = {
   'h5-admin-orders': 'h5-orders'
 }
 
-const SPECIAL_PERMISSION_MAP: Record<string, string> = {
-  'module-management': 'permissions:admin'
-}
+const SPECIAL_PERMISSION_MAP: Record<string, string> = {}
 
 export const usePagePermissions = (module: string) => {
   const authStore = useAuthStore()
@@ -60,8 +57,8 @@ export const usePagePermissions = (module: string) => {
 
   // 统一的无查看权限处理
   const handleNoViewPermission = () => {
-    ElMessage.warning({
-      message: '您没有访问此页面的权限，请联系有权限的角色维护人员开通相应权限',
+    showElementWarning({
+      message: '您没有访问此页面的权限',
       duration: 3000,
       showClose: true
     })
@@ -93,8 +90,8 @@ export const usePagePermissions = (module: string) => {
 
     const actionName = actionNames[action] || action
 
-    ElMessage.warning({
-      message: `您没有${actionName}权限，请联系有权限的角色维护人员开通相应权限`,
+    showElementWarning({
+      message: `您没有${actionName}权限`,
       duration: 2000,
       showClose: true
     })

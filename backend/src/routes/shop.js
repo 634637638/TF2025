@@ -45,6 +45,20 @@ const H5_TEMPLATE_DELETE_PERMISSIONS = [
   'inventory:delete',
   'inventory:edit'
 ];
+const H5_SOLD_PRODUCTS_VIEW_PERMISSIONS = [
+  'h5-sold-products:view',
+  'h5-admin:view',
+  'h5-templates:view',
+  'inventory:view',
+  'query:view'
+];
+const H5_SOLD_PRODUCTS_DELETE_PERMISSIONS = [
+  'h5-sold-products:delete',
+  'h5-admin:delete',
+  'h5-templates:delete',
+  'inventory:delete',
+  'inventory:edit'
+];
 const H5_ORDER_VIEW_PERMISSIONS = [
   'h5-orders:view',
   'h5-admin:view',
@@ -516,7 +530,7 @@ router.put('/images/:id/primary',
  */
 router.delete('/images/:id',
   unifiedAuth,
-  requirePermission('inventory:edit'),
+  requireAnyPermission(H5_SOLD_PRODUCTS_DELETE_PERMISSIONS),
   async (req, res) => {
     try {
       const { id } = req.params;
@@ -1026,7 +1040,7 @@ router.post('/upload-phone-image',
  */
 router.get('/sold-products',
   unifiedAuth,
-  requireAnyPermission(H5_TEMPLATE_VIEW_PERMISSIONS),
+  requireAnyPermission(H5_SOLD_PRODUCTS_VIEW_PERMISSIONS),
   async (req, res) => {
     try {
       const db = require('../config/database');
@@ -1090,7 +1104,7 @@ router.get('/sold-products',
  */
 router.get('/products/:id/images',
   unifiedAuth,
-  requireAnyPermission(H5_TEMPLATE_VIEW_PERMISSIONS),
+  requireAnyPermission(H5_SOLD_PRODUCTS_VIEW_PERMISSIONS),
   async (req, res) => {
     try {
       const { id } = req.params;
@@ -1148,7 +1162,7 @@ router.put('/products/:id/images/reorder',
  */
 router.delete('/products/:id/images',
   unifiedAuth,
-  requireAnyPermission(H5_TEMPLATE_DELETE_PERMISSIONS),
+  requireAnyPermission(H5_SOLD_PRODUCTS_DELETE_PERMISSIONS),
   async (req, res) => {
     try {
       const { id } = req.params;

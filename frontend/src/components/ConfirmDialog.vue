@@ -31,8 +31,11 @@
             @click="handleConfirm"
             :disabled="loading"
           >
-            <i :class="loading ? 'fas fa-spinner fa-spin' : getConfirmIcon()"></i>
-            {{ loading ? '处理中...' : confirmText }}
+            <InlineLoading v-if="loading" text="处理中..." size="small" variant="inherit" />
+            <template v-else>
+              <i :class="getConfirmIcon()"></i>
+              {{ confirmText }}
+            </template>
           </button>
         </div>
       </div>
@@ -43,6 +46,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useTheme } from '../composables/useTheme'
+import InlineLoading from '@/components/InlineLoading.vue'
 
 // Props
 const props = defineProps({

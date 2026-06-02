@@ -3,6 +3,8 @@ const { clearRoleHierarchyCache } = require('../services/accessControl.service')
 const { getDatabase } = require('../config/database');
 const ApiResponse = require('../utils/response');
 const ERROR_CODES = require('../constants/errorCodes');
+const { normalizePermissionType } = require('../config/module-permission-actions');
+const { normalizeModuleKey } = require('../utils/moduleKeyNormalizer');
 /**
  * 统一角色管理控制器
  * 合并原有的角色管理和操作员管理功能
@@ -166,7 +168,12 @@ class UnifiedRoleController {
           await connection.execute(`
             INSERT INTO role_permissions (role_id, module_key, permission_type, module_category, created_at, updated_at)
             VALUES (?, ?, ?, ?, NOW(), NOW())
-          `, [newRoleId, perm.module_key, perm.permission_type, perm.module_category || role_type]);
+          `, [
+            newRoleId,
+            normalizeModuleKey(perm.module_key),
+            normalizePermissionType(perm.permission_type),
+            perm.module_category || role_type
+          ]);
         }
       }
 
@@ -276,7 +283,12 @@ class UnifiedRoleController {
             await connection.execute(`
               INSERT INTO role_permissions (role_id, module_key, permission_type, module_category, created_at, updated_at)
               VALUES (?, ?, ?, ?, NOW(), NOW())
-            `, [id, perm.module_key, perm.permission_type, perm.module_category || role_type]);
+            `, [
+              id,
+              normalizeModuleKey(perm.module_key),
+              normalizePermissionType(perm.permission_type),
+              perm.module_category || role_type
+            ]);
           }
         }
       }

@@ -28,6 +28,25 @@ interface UpdateSiteSettingsResult {
 }
 
 const DEFAULT_FAVICON = '/favicon.ico'
+let appliedFaviconHref = ''
+let appliedFaviconType = ''
+
+const removeDuplicateFaviconLinks = () => {
+  if (typeof document === 'undefined') return
+
+  const faviconLinks = Array.from(document.head.querySelectorAll<HTMLLinkElement>(
+    'link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]'
+  ))
+
+  faviconLinks.forEach((link) => {
+    const relation = link.getAttribute('rel')?.toLowerCase() || ''
+    const isIconLink = ['icon', 'shortcut icon', 'apple-touch-icon'].includes(relation)
+
+    if (isIconLink && link.id !== 'app-favicon') {
+      link.remove()
+    }
+  })
+}
 
 const ensureHeadLink = (selector: string, attributes: Record<string, string>) => {
   if (typeof document === 'undefined') return null
@@ -64,32 +83,31 @@ const syncDocumentBranding = (siteName?: string, logoUrl?: string) => {
   if (typeof document === 'undefined') return
 
   const normalizedTitle = siteName?.trim() || '腾飞数码管理系统'
-  document.title = normalizedTitle
+  if (document.title !== normalizedTitle) {
+    document.title = normalizedTitle
+  }
 
   const normalizedLogo = logoUrl ? buildLogoUrl(logoUrl) : ''
   const faviconHref = normalizedLogo || DEFAULT_FAVICON
   const faviconType = getFaviconMimeType(faviconHref)
-  const cacheSafeHref = faviconHref.includes('?')
-    ? `${faviconHref}&t=${Date.now()}`
-    : `${faviconHref}?t=${Date.now()}`
 
-  const iconLink = ensureHeadLink('link[rel="icon"]', {
+  if (appliedFaviconHref === faviconHref && appliedFaviconType === faviconType) {
+    return
+  }
+
+  removeDuplicateFaviconLinks()
+
+  const iconLink = ensureHeadLink('#app-favicon', {
+    id: 'app-favicon',
     rel: 'icon',
     type: faviconType
   })
-  const shortcutIconLink = ensureHeadLink('link[rel="shortcut icon"]', {
-    rel: 'shortcut icon',
-    type: faviconType
-  })
-  const appleTouchIconLink = ensureHeadLink('link[rel="apple-touch-icon"]', {
-    rel: 'apple-touch-icon'
-  })
 
-  iconLink?.setAttribute('href', cacheSafeHref)
+  iconLink?.setAttribute('href', faviconHref)
   iconLink?.setAttribute('type', faviconType)
-  shortcutIconLink?.setAttribute('href', cacheSafeHref)
-  shortcutIconLink?.setAttribute('type', faviconType)
-  appleTouchIconLink?.setAttribute('href', cacheSafeHref)
+
+  appliedFaviconHref = faviconHref
+  appliedFaviconType = faviconType
 }
 
 export const useSiteSettingsStore = defineStore('siteSettings', () => {
@@ -139,7 +157,10 @@ export const useSiteSettingsStore = defineStore('siteSettings', () => {
     try {
       isLoading.value = true
 
-      const response = await unifiedApi.get('/system/site-settings')
+      const response = await unifiedApi.get('/system/site-settings', {
+        showLoading: false,
+        showError: false
+      })
 
       if (response.success && response.data) {
         // 更新设置
@@ -173,7 +194,9 @@ export const useSiteSettingsStore = defineStore('siteSettings', () => {
       Object.assign(settings.value, newSettings)
 
       // 发送到服务器
-      const response = await unifiedApi.post('/system/site-settings', settings.value)
+      const response = await unifiedApi.post('/system/site-settings', settings.value, {
+        showLoading: false
+      })
 
       if (response.success) {
         lastUpdated.value = new Date()
@@ -228,18 +251,21 @@ export const useSiteSettingsStore = defineStore('siteSettings', () => {
     }))
   }
 
-  // 监听设置变化，自动更新浏览器标题
-  watch(() => settings.value.siteName, (newName) => {
-    syncDocumentBranding(newName, settings.value.logoUrl)
-  }, { immediate: true })
+  // 标题与 favicon 统一由同一个监听器同步，避免站点名称和 logo 分别触发两次资源请求
+  watch(
+    () => [settings.value.siteName, settings.value.logoUrl] as const,
+    ([newName, newLogo], previousValue) => {
+      const previousLogo = previousValue?.[1]
+      syncDocumentBranding(newName, newLogo)
 
-  // 监听Logo变化，触发更新事件
-  watch(() => settings.value.logoUrl, (newLogo) => {
-    syncDocumentBranding(settings.value.siteName, newLogo)
-    window.dispatchEvent(new CustomEvent('tf2025:site-logo-updated', {
-      detail: { logoUrl: newLogo }
-    }))
-  }, { immediate: true })
+      if (newLogo !== previousLogo) {
+        window.dispatchEvent(new CustomEvent('tf2025:site-logo-updated', {
+          detail: { logoUrl: newLogo }
+        }))
+      }
+    },
+    { immediate: true }
+  )
 
   return {
     // 状态

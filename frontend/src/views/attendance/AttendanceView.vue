@@ -1,14 +1,14 @@
 <template>
   <!-- 权限检查 - 页面级访问控制 -->
-  <PermissionDenied
-    v-if="!canAccessPage"
+  <PermissionGate
     :can-view="canAccessPage"
+    mode="denied"
     module-key="attendance"
     module-name="考勤管理"
     permission-code="attendance:view / attendance:view:own"
-  />
+  >
 
-  <el-config-provider v-else :locale="locale">
+  <el-config-provider :locale="locale">
     <div class="page-container attendance-page admin-page">
       <PageHeader title="考勤管理">
         <template #actions>
@@ -17,9 +17,12 @@
               <i class="fas fa-plus"></i>
               <span>新增</span>
             </el-button>
-            <el-button type="info" @click="refreshData" :disabled="loading">
-              <i :class="loading ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'"></i>
-              <span>刷新</span>
+            <el-button type="info" @click="refreshData" :disabled="refreshing">
+              <InlineLoading v-if="refreshing" text="刷新中..." size="small" variant="inherit" />
+              <template v-else>
+                <i class="fas fa-sync-alt"></i>
+                <span>刷新</span>
+              </template>
             </el-button>
           </div>
         </template>
@@ -170,7 +173,12 @@
             <!-- 数据表格 -->
             <div class="table-section admin-panel admin-table-panel">
               <div class="table-responsive">
-                <el-table ref="attendanceTableRef" :data="tableData" v-loading="loading" border stripe class="data-table" row-key="id" @row-click="handleMobileRowTap($event, 'all')">
+                <el-table ref="attendanceTableRef" :data="loading ? [] : tableData" border stripe class="data-table" row-key="id" @row-click="handleMobileRowTap($event, 'all')">
+                  <template #empty>
+                    <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
+                    <el-empty v-else description="暂无考勤记录" />
+                  </template>
+
                   <el-table-column v-if="isMobile" type="expand" width="1" class-name="mobile-expand-column">
                     <template #default="{ row }">
                       <div class="mobile-inline-actions">
@@ -397,7 +405,12 @@
             <!-- 数据表格 -->
             <div class="table-section admin-panel admin-table-panel">
               <div class="table-responsive">
-                <el-table ref="myAttendanceTableRef" :data="myTableData" v-loading="myLoading" border stripe class="data-table" row-key="id" @row-click="handleMobileRowTap($event, 'my')">
+                <el-table ref="myAttendanceTableRef" :data="myLoading ? [] : myTableData" border stripe class="data-table" row-key="id" @row-click="handleMobileRowTap($event, 'my')">
+                  <template #empty>
+                    <TableLoadingRow v-if="myLoading" mode="block" text="加载中..." />
+                    <el-empty v-else description="暂无我的考勤记录" />
+                  </template>
+
                   <el-table-column v-if="isMobile" type="expand" width="1" class-name="mobile-expand-column">
                     <template #default="{ row }">
                       <div class="mobile-inline-actions">
@@ -737,8 +750,10 @@
             <i class="fas fa-times mr-1"></i>取消
           </el-button>
           <el-button plain type="primary" @click="handleSubmit" :disabled="submitting" :loading="submitting" class="btn-sm">
-            <i v-if="submitting" class="fas fa-spinner fa-spin"></i>
-            <i v-else class="fas fa-paper-plane mr-1"></i>提交申请
+            <InlineLoading v-if="submitting" text="提交中..." size="small" variant="inherit" />
+            <template v-else>
+              <i class="fas fa-paper-plane mr-1"></i>提交申请
+            </template>
           </el-button>
         </template>
       </MobileDialog>
@@ -832,13 +847,16 @@
             <i class="fas fa-times mr-1"></i>取消
           </el-button>
           <el-button plain type="success" @click="handleApproveSubmit" :disabled="approving" :loading="approving" class="btn-sm">
-            <i v-if="approving" class="fas fa-spinner fa-spin"></i>
-            <i v-else class="fas fa-check mr-1"></i>确认
+            <InlineLoading v-if="approving" text="处理中..." size="small" variant="inherit" />
+            <template v-else>
+              <i class="fas fa-check mr-1"></i>确认
+            </template>
           </el-button>
         </template>
       </MobileDialog>
     </div>
   </el-config-provider>
+  </PermissionGate>
 </template>
 
 <script setup lang="ts">
@@ -858,8 +876,10 @@ import { unifiedApi } from '@/utils/unified-api'
 import { formatDate } from '@/utils/format'
 import { logger } from '@/utils/logger'
 import Pagination from '@/components/Pagination.vue'
+import InlineLoading from '@/components/InlineLoading.vue'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
-import { PageHeader, PermissionDenied } from '@/components/base'
+import { PageHeader, PermissionGate } from '@/components/base'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import dayjs from 'dayjs'
 
@@ -952,7 +972,9 @@ const canReadSalaryTemplateDetails = computed(() => salaryTemplatePermissions.ca
 const { success, error, warning } = useNotification()
 const { isMobile } = useMobile()
 const { loading } = useLoadingState()
-const myLoading = ref(false)
+loading.value = true
+const refreshing = ref(false)
+const myLoading = ref(true)
 const submitting = ref(false)
 const approving = ref(false)
 const tableData = ref<AttendanceTableRow[]>([])
@@ -1250,14 +1272,17 @@ const handleMyDateRangeChange = () => {
   loadMyData()
 }
 
-const loadData = async () => {
+const loadData = async (showLoadingState = true) => {
   if (!canViewAllAttendance.value) {
     tableData.value = []
     pagination.total = 0
+    loading.value = false
     return
   }
 
-  loading.value = true
+  if (showLoadingState) {
+    loading.value = true
+  }
   try {
     const params = buildAttendanceQueryParams('attendance_attendanceview', filters, pagination, dateRange.value)
     const response = await attendanceApi.getAttendanceRecords(params)
@@ -1278,18 +1303,23 @@ const loadData = async () => {
   } catch (error) {
     ElMessage.error('加载数据失败')
   } finally {
-    loading.value = false
+    if (showLoadingState) {
+      loading.value = false
+    }
   }
 }
 
-const loadMyData = async () => {
+const loadMyData = async (showLoadingState = true) => {
   if (!canViewOwnAttendance.value) {
     myTableData.value = []
     myPagination.total = 0
+    myLoading.value = false
     return
   }
 
-  myLoading.value = true
+  if (showLoadingState) {
+    myLoading.value = true
+  }
   try {
     const params = buildAttendanceQueryParams('attendance_myattendanceview', myFilters, myPagination, myDateRange.value)
     // 使用 getMyAttendanceRecords 获取个人考勤记录
@@ -1313,7 +1343,9 @@ const loadMyData = async () => {
   } catch (error) {
     ElMessage.error('加载数据失败')
   } finally {
-    myLoading.value = false
+    if (showLoadingState) {
+      myLoading.value = false
+    }
   }
 }
 
@@ -2242,18 +2274,22 @@ const refreshData = async () => {
     return
   }
 
-  loading.value = true
+  if (refreshing.value) {
+    return
+  }
+
+  refreshing.value = true
   try {
     if (activeTab.value === 'all') {
-      await loadData()
+      await loadData(false)
     } else if (activeTab.value === 'my') {
-      await loadMyData()
+      await loadMyData(false)
     }
     success('数据刷新成功', { duration: 2000 })
   } catch (err) {
     error('刷新失败：请稍后重试')
   } finally {
-    loading.value = false
+    refreshing.value = false
   }
 }
 
@@ -2335,6 +2371,8 @@ watch(
 
 onMounted(async () => {
   if (!canAccessPage.value) {
+    loading.value = false
+    myLoading.value = false
     return
   }
 
@@ -2346,9 +2384,11 @@ onMounted(async () => {
 
   if (canViewAllAttendance.value) {
     activeTab.value = 'all'
+    myLoading.value = false
     await loadData()
   } else if (canViewOwnAttendance.value) {
     activeTab.value = 'my'
+    loading.value = false
     await loadMyData()
   }
   if (canViewAllAttendance.value) {

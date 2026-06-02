@@ -98,6 +98,9 @@ import { usePageState, useTableState } from './usePageState'
 export { useDebounce, useDebouncedValue, useSearchDebounce } from './useDebounce'
 import { useDebounce, useDebouncedValue, useSearchDebounce } from './useDebounce'
 
+// 最新请求控制
+export { useLatestRequest, isCanceledError } from './useLatestRequest'
+
 /**
  * 通用验证规则
  */

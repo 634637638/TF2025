@@ -1,5 +1,12 @@
 <template>
   <div class="models-view admin-page">
+    <PermissionGate
+      :can-view="canView"
+      mode="denied"
+      module-key="models_modelsview"
+      module-name="型号管理"
+      permission-code="models:view"
+    >
     <!-- 页面头部 - 使用公共组件 -->
     <PageHeader
       icon="fas fa-mobile-alt"
@@ -15,23 +22,16 @@
           <span>新增</span>
         </el-button>
         <el-button type="info" @click="handleRefresh" :disabled="refreshing">
-          <i :class="refreshing ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'"></i>
-          <span>刷新</span>
+          <InlineLoading v-if="refreshing" text="刷新中..." size="small" variant="inherit" />
+          <template v-else>
+            <i class="fas fa-sync-alt"></i>
+            <span>刷新</span>
+          </template>
         </el-button>
       </template>
     </PageHeader>
 
-    <!-- ❌ 无权限时显示提示 -->
-    <PermissionDenied
-      v-if="!canView"
-      :can-view="canView"
-      module-key="models_modelsview"
-      module-name="型号管理"
-      permission-code="models:view"
-    />
-
-    <!-- 权限验证通过后的内容 -->
-    <div v-else class="content admin-page-content">
+    <div class="content admin-page-content">
 
     <!-- 统计卡片 -->
     <div v-if="showStatsCards" class="stats-cards">
@@ -146,14 +146,11 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-if="loading" class="loading-row">
-              <td :colspan="visibleColumnCount">
-                <div class="loading-content">
-                  <i class="fas fa-spinner fa-spin"></i>
-                  <span>正在加载数据...</span>
-                </div>
-              </td>
-            </tr>
+            <TableLoadingRow
+              v-if="tableLoading"
+              :colspan="visibleColumnCount"
+              text="加载型号列表..."
+            />
             <tr v-else-if="models.length === 0" class="empty-row">
               <td :colspan="visibleColumnCount">
                 <div class="empty-content">
@@ -161,9 +158,9 @@
                   <div class="empty-text">
                     <h4>暂无型号数据</h4>
                     <p>点击上方"新增型号"按钮添加第一个型号</p>
-                    <el-button class="mt-2" size="small" type="info" @click="loadModels()" :disabled="loading">
+                    <el-button class="mt-2" size="small" type="info" @click="loadModels()">
                       <i class="fas fa-sync-alt"></i>
-                      {{ loading ? '加载中...' : '重新加载' }}
+                      重新加载
                     </el-button>
                   </div>
                 </div>
@@ -303,7 +300,6 @@
         :show-range="true"
         :show-page-sizes="true"
         :show-quick-jumper="true"
-        :disabled="loading"
         @change="handlePaginationChange"
       />
     </div>
@@ -367,12 +363,13 @@
       <template #footer>
         <el-button type="default" @click="attemptCloseModal">取消</el-button>
         <el-button type="primary" @click="submitForm" :disabled="submitting" :loading="submitting">
-          <i v-if="submitting" class="fas fa-spinner fa-spin"></i>
-          {{ isEditMode ? '更新' : '创建' }}
+          <InlineLoading v-if="submitting" :text="isEditMode ? '更新中...' : '创建中...'" size="small" variant="inherit" />
+          <template v-else>{{ isEditMode ? '更新' : '创建' }}</template>
         </el-button>
       </template>
     </MobileDialog>
     </div>
+    </PermissionGate>
   </div>
 </template>
 
@@ -383,17 +380,19 @@ import { ElMessageBox } from 'element-plus'
 import unifiedApi from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import { useNotification } from '@/composables/useNotification'
-import { useLoadingState } from '@/composables'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useRefreshData } from '@/composables/useRefreshData'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
 import Pagination from '../../components/Pagination.vue'
+import InlineLoading from '@/components/InlineLoading.vue'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
-import { PermissionDenied, PageHeader } from '@/components/base'
+import { PermissionGate, PageHeader } from '@/components/base'
 import { usePermissionToast } from '@/utils/permissionToastSimple'
 import { handleApiErrorWithPermission } from '@/utils/apiPermissionError'
 import { logger } from '@/utils/logger'
 import { useMobile } from '@/composables/mobile'
+import { useLatestRequest } from '@/composables/useLatestRequest'
 import type { Brand, Model } from '@/types'
 
 const router = useRouter()
@@ -404,6 +403,7 @@ const { showViewDenied, showEditDenied, showDeleteDenied, showCreateDenied } = u
 const { refreshing, refresh } = useRefreshData()
 const { isMobile } = useMobile()
 const { init: initFieldPermissions } = fieldPermissions
+const modelListRequest = useLatestRequest()
 
 const modelFieldMap: Record<string, string> = {
   stats_total_models: 'stats.total_models',
@@ -463,7 +463,6 @@ const visibleColumnCount = computed(() => {
 })
 
 // 响应式数据
-const { loading } = useLoadingState()
 const mobileActionRowId = ref<number | null>(null)
 const lastTappedRowId = ref<number | null>(null)
 const lastTapTimestamp = ref(0)
@@ -490,6 +489,7 @@ const handleMobileRowTap = (id: number) => {
 
 // 搜索相关状态
 const searchExpanded = ref(false)
+const tableLoading = ref(true)
 const submitting = ref(false)
 const savingOrder = ref(false)
 const models = ref<Model[]>([])
@@ -585,18 +585,20 @@ const loadBrands = async () => {
   }
 }
 
-const loadModels = async (bustCache = false, silentError = false, showLoadingState = true) => {
+const loadModels = async (bustCache = false, silentError = false, _showLoadingState = true) => {
   if (!canView.value) {
     if (!silentError) {
       showViewDenied('型号管理', 'models:view')
     }
     models.value = []
+    tableLoading.value = false
     return
   }
 
-  if (showLoadingState) {
-    loading.value = true
+  if (_showLoadingState) {
+    tableLoading.value = true
   }
+
   try {
     const params: any = {
       page: pagination.value.page,
@@ -612,8 +614,15 @@ const loadModels = async (bustCache = false, silentError = false, showLoadingSta
     }
     if (searchForm.value.status !== '') params.status = searchForm.value.status
 
-    const response = await unifiedApi.get('/models', { params })
+    const request = modelListRequest.nextRequest()
+    const response = await unifiedApi.get('/models', {
+      params,
+      signal: request.signal
+    })
 
+    if (!request.isLatest()) {
+      return
+    }
 
     if (response.success) {
       models.value = response.data.models || []
@@ -635,6 +644,10 @@ const loadModels = async (bustCache = false, silentError = false, showLoadingSta
       }
     }
   } catch (err: any) {
+    if (modelListRequest.isCanceledError(err)) {
+      return
+    }
+
     logger.error('获取型号列表失败:', err)
     models.value = []
     pagination.value = { page: 1, limit: 10, total: 0, pages: 0 }
@@ -659,8 +672,8 @@ const loadModels = async (bustCache = false, silentError = false, showLoadingSta
       }
     }
   } finally {
-    if (showLoadingState) {
-      loading.value = false
+    if (_showLoadingState) {
+      tableLoading.value = false
     }
   }
 }
@@ -686,11 +699,9 @@ const changePage = (page: number) => {
 }
 
 const handlePaginationChange = (page, pageSize) => {
-  pagination.value.page = page
+  const oldPageSize = pagination.value.limit
   pagination.value.limit = pageSize
-  if (pageSize !== pagination.value.limit) {
-    pagination.value.page = 1
-  }
+  pagination.value.page = pageSize !== oldPageSize ? 1 : page
   loadModels()
 }
 
@@ -752,10 +763,7 @@ const deleteModel = async (model: Model) => {
 
     if (response.success) {
       success(`操作成功：${response.message || '型号删除成功'}`)
-      // 延迟一下刷新，确保后端操作完成
-      setTimeout(() => {
-        loadModels()
-      }, 300)
+      await loadModels(true, false, false)
     } else {
       error(`删除型号失败：${response.message || '未知错误'}`)
     }
@@ -835,10 +843,7 @@ const submitForm = async () => {
       if (response.success) {
         success(`操作成功：${response.message || '型号创建成功'}`)
         closeModal()
-        // 延迟一下刷新，确保后端操作完成
-        setTimeout(() => {
-          loadModels()
-        }, 300)
+        await loadModels(true, false, false)
       } else {
         error(`创建型号失败：${response.message || '未知错误'}`)
       }
@@ -875,10 +880,7 @@ const submitForm = async () => {
       if (response.success) {
         success(`操作成功：${response.message || '型号更新成功'}`)
         closeModal()
-        // 延迟一下刷新，确保后端操作完成
-        setTimeout(() => {
-          loadModels()
-        }, 300)
+        await loadModels(true, false, false)
       } else {
         error(`更新型号失败：${response.message || '未知错误'}`)
       }
@@ -1539,9 +1541,15 @@ onMounted(async () => {
 }
 
 .actions {
-  display: flex;
-  gap: 8px;
+  vertical-align: middle;
+  text-align: center;
+}
+
+.actions .action-buttons {
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
+  gap: 8px;
 }
 
 .btn-action {
@@ -1584,21 +1592,6 @@ onMounted(async () => {
   background: #c82333;
   transform: translateY(-1px);
   box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
-}
-
-/* 加载和空状态样式 */
-.loading-row td {
-  padding: 40px 12px;
-  text-align: center;
-}
-
-.loading-content {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  color: #6c757d;
-  font-size: 16px;
 }
 
 .empty-row td {

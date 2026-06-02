@@ -32,8 +32,11 @@
             取消
           </el-button>
           <el-button type="primary" :loading="submitting" @click="handleSubmit">
-            <i :class="submitting ? 'fas fa-spinner fa-spin' : 'fas fa-bolt'"></i>
-            {{ submitting ? '处理中...' : '确认出库' }}
+            <InlineLoading v-if="submitting" text="处理中..." size="small" variant="inherit" />
+            <template v-else>
+              <i class="fas fa-bolt"></i>
+              确认出库
+            </template>
           </el-button>
         </div>
       </div>
@@ -247,8 +250,7 @@
                   :style="customerSearchResultsStyle"
                 >
                   <div v-if="customerLookupLoading" class="search-loading">
-                    <i class="fas fa-spinner fa-spin"></i>
-                    搜索中...
+                    <InlineLoading text="搜索中..." size="small" />
                   </div>
                   <template v-else>
                     <div
@@ -464,6 +466,7 @@ import unifiedApi from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import { useAuthStore } from '@/stores/auth'
 import MobileDialog from '@/components/MobileDialog.vue'
+import InlineLoading from '@/components/InlineLoading.vue'
 import { useMobile } from '@/composables/mobile'
 import { onMounted, onUnmounted } from 'vue'
 import { isValidMobilePhone, normalizeAppleId, normalizePersonName, normalizePhoneDigits } from '@/utils/security'

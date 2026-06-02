@@ -1,194 +1,105 @@
-# PermissionDenied 组件使用指南
+# PermissionGate 与无权限页面规范
 
-## 概述
+> 最后更新：2026-05-31
 
-`PermissionDenied` 是一个统一的权限不足提示组件，用于在用户没有相应权限时显示友好的提示页面。
+## 当前规范
 
-## 组件位置
+项目已不再使用 `PermissionDenied` / `PermissionAccessNotice` 这类页面内无权限卡片。
 
-```
-frontend/src/components/PermissionDenied.vue
-```
+统一行为：
 
-## 使用方法
+- 无权限点击菜单或顶部标签：顶部提示 `您没有访问此页面的权限`
+- 不进入受限页面路径
+- 不新增顶部标签
+- 直接访问受限 URL 时，由路由守卫或 `PermissionGate` 兜底返回 `/dashboard`
+- 页面内不展示“访问受限 / 权限代码 / 联系开通”等详细说明
 
-### 1. 在页面中导入组件
+## 页面写法
 
-```vue
-<script setup lang="ts">
-import PermissionDenied from '@/components/PermissionDenied.vue'
-import { useAuthStore } from '@/stores/auth'
-
-const authStore = useAuthStore()
-</script>
-```
-
-### 2. 在模板中使用
+页面根部统一使用 `PermissionGate`：
 
 ```vue
 <template>
-  <div class="your-page">
-    <!-- 有权限时显示内容 -->
-    <template v-if="authStore.hasPermission('module:action')">
-      <!-- 页面内容 -->
-      <div class="page-content">
-        <!-- 你的页面内容 -->
-      </div>
-    </template>
-
-    <!-- 无权限时显示提示 -->
-    <PermissionDenied v-else />
-  </div>
-</template>
-```
-
-## 完整示例
-
-### 示例1：数据优化页面
-
-```vue
-<template>
-  <div class="data-optimization-view">
-    <template v-if="authStore.hasPermission('data_optimization:view')">
-      <div class="page-header">
-        <h1>数据优化</h1>
-      </div>
-      <!-- 页面内容 -->
-    </template>
-
-    <PermissionDenied v-else />
-  </div>
+  <PermissionGate
+    :can-view="canView"
+    module-name="型号管理"
+    permission-code="models:view"
+  >
+    <PageHeader title="型号管理" />
+    <div class="admin-page-content">
+      页面内容
+    </div>
+  </PermissionGate>
 </template>
 
 <script setup lang="ts">
-import { useAuthStore } from '@/stores/auth'
-import PermissionDenied from '@/components/PermissionDenied.vue'
+import { PageHeader, PermissionGate } from '@/components/base'
+import { usePagePermissions } from '@/composables/usePagePermissions'
 
-const authStore = useAuthStore()
+const { canView } = usePagePermissions('models')
 </script>
 ```
 
-### 示例2：销售管理页面
+## 路由权限必须同步
 
-```vue
-<template>
-  <div class="sales-view">
-    <template v-if="authStore.hasPermission('sales_salesview:view')">
-      <!-- 销售管理内容 -->
-    </template>
+新增页面时，还需要在以下文件维护路由权限：
 
-    <PermissionDenied v-else />
-  </div>
-</template>
+```text
+frontend/src/constants/routePermissions.ts
 ```
 
-### 示例3：多权限检查
+示例：
 
-```vue
-<template>
-  <div class="admin-view">
-    <template v-if="canViewAdmin">
-      <!-- 管理员内容 -->
-    </template>
-
-    <PermissionDenied v-else />
-  </div>
-</template>
-
-<script setup lang="ts">
-import { computed } from 'vue'
-import { useAuthStore } from '@/stores/auth'
-import PermissionDenied from '@/components/PermissionDenied.vue'
-
-const authStore = useAuthStore()
-
-const canViewAdmin = computed(() =>
-  authStore.hasPermission('system_systemview:view') ||
-  authStore.hasPermission('users_usersview:view')
-)
-</script>
+```ts
+'/models': ['models:view']
 ```
 
-## 权限命名规范
+`routePermissions.ts` 的权限必须和页面 `PermissionGate` 的 `can-view` 逻辑一致。否则会出现菜单/标签判断允许，但页面自己又跳回首页的不一致。
 
-权限名称格式：`module_key:action`
+## 多权限页面
 
-### 常用权限列表
+如果一个页面允许多个查看权限进入，路由表可以配置多个权限，但必须与页面 computed 保持一致。
 
-| 模块 | 权限 | 说明 |
-|------|------|------|
-| system | system_systemview:view | 查看系统管理 |
-| users | users_usersview:view | 查看用户列表 |
-| users | users_usersview:create | 创建用户 |
-| users | users_usersview:edit | 编辑用户 |
-| users | users_usersview:delete | 删除用户 |
-| roles | roles_rolesview:view | 查看角色列表 |
-| roles | roles_rolesview:edit | 编辑角色 |
-| sales | sales_salesview:view | 查看销售数据 |
-| sales | sales_salesview:create | 创建销售订单 |
-| inventory | inventory_inventoryview:view | 查看库存 |
-| inventory | inventory_inventoryview:edit | 编辑库存 |
-| data_optimization | data_optimization:view | 查看数据优化 |
-| data_optimization | data_optimization:create | 创建导入任务 |
-| query | query_queryview:view | 查看综合查询 |
+示例：工资管理页使用页面入口权限进入：
 
-## 组件特性
-
-1. **自动返回**：点击"返回上一页"按钮会自动返回，如果无法返回则跳转到首页
-2. **友好提示**：显示清晰的图标和说明文字
-3. **解决方案**：提供可能的解决方案列表
-4. **响应式设计**：在不同设备上都能良好显示
-
-## 样式自定义
-
-组件样式已内置在组件中，无需额外配置。如需自定义样式，可以：
-
-1. 修改 `PermissionDenied.vue` 中的 `<style>` 部分
-2. 或者通过 CSS 变量覆盖样式
-
-## 注意事项
-
-1. **权限检查时机**：在页面加载时立即检查权限
-2. **路由守卫**：建议在路由守卫中也添加权限检查
-3. **后端验证**：前端权限检查只是UI层面的，后端必须再次验证权限
-4. **权限缓存**：权限信息会缓存在 authStore 中，登出时会清除
-
-## 迁移指南
-
-如果页面已有自定义的权限提示，可以替换为统一组件：
-
-### 替换前
-
-```vue
-<template>
-  <div v-if="hasPermission">
-    <div class="content">页面内容</div>
-  </div>
-  <div v-else class="error">
-    <h3>没有权限</h3>
-    <p>请联系管理员</p>
-    <button @click="goBack">返回</button>
-  </div>
-</template>
+```ts
+'/salary': ['salary:view']
 ```
 
-### 替换后
+页面内使用同样的入口逻辑：
 
-```vue
-<template>
-  <template v-if="hasPermission">
-    <div class="content">页面内容</div>
-  </template>
-  <PermissionDenied v-else />
-</template>
-
-<script setup lang="ts">
-import PermissionDenied from '@/components/PermissionDenied.vue'
-</script>
+```ts
+const canAccessSalaryPage = computed(() => canViewSalaryPage.value)
 ```
 
-## 相关文件
+## 导航入口
 
-- 组件：`frontend/src/components/PermissionDenied.vue`
-- 权限Store：`frontend/src/stores/auth.ts`
-- 权限配置：`backend/permission_config.js`
+不要在组件里手写权限判断。所有菜单、标签、快捷入口跳转前统一使用：
+
+```ts
+import { canAccessRoutePath } from '@/constants/routePermissions'
+
+if (!canAccessRoutePath(targetPath, authStore)) {
+  ElMessage.warning('您没有访问此页面的权限')
+  return
+}
+```
+
+目前已接入：
+
+- `frontend/src/router/guards.ts`
+- `frontend/src/components/SimpleSidebar.vue`
+- `frontend/src/composables/useMobileMenu.ts`
+- `frontend/src/components/TabsBar.vue`
+- `frontend/src/views/system/page/SimpleAdminView.vue`
+
+## 维护检查
+
+修改权限相关页面后，至少检查：
+
+```bash
+grep -R -n "PermissionDenied\\|PermissionAccessNotice" frontend/src
+grep -R -n "访问受限\\|权限代码：\\|需要权限：" frontend/src
+```
+
+这两个扫描不应命中页面内旧提示。

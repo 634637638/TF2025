@@ -1,20 +1,23 @@
 <template>
-  <PermissionDenied
-    v-if="!canView"
+  <PermissionGate
     :can-view="canView"
+    mode="denied"
     module-key="repairs"
     module-name="维修管理"
     permission-code="repairs:view"
-  />
+  >
 
-  <div v-else class="repairs-management">
+  <div class="repairs-management">
     <PageHeader title="维修管理" description="管理手机维修记录和进度">
       <template #actions>
         <el-button v-if="canCreate" @click="showAddModal" type="primary">
           <i class="fas fa-plus"></i> 新建维修单
         </el-button>
-        <el-button @click="refreshData" type="info">
-          <i class="fas fa-refresh"></i> 刷新
+        <el-button @click="refreshData" type="info" :disabled="refreshing">
+          <InlineLoading v-if="refreshing" text="刷新中..." size="small" variant="inherit" />
+          <template v-else>
+            <i class="fas fa-refresh"></i> 刷新
+          </template>
         </el-button>
       </template>
     </PageHeader>
@@ -218,18 +221,23 @@
       </template>
     </MobileDialog>
   </div>
+  </PermissionGate>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { usePagePermissions } from '@/composables/usePagePermissions'
+import { useNotification } from '@/composables/useNotification'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
-import { PageHeader, PermissionDenied } from '@/components/base'
+import { PageHeader, PermissionGate } from '@/components/base'
+import InlineLoading from '@/components/InlineLoading.vue'
 import type { RepairOrder } from '@/types/repair'
 import type { Customer } from '@/types/order'
 import type { Brand, Technician } from '@/types'
+import { logger } from '@/utils/logger'
 
 const { canView, canCreate, canEdit, handleNoPermission } = usePagePermissions('repairs')
+const { success, error } = useNotification()
 
 // 维修单别名
 type Repair = RepairOrder
@@ -240,6 +248,7 @@ const brands = ref<Brand[]>([])
 const technicians = ref<Technician[]>([])
 const showModal = ref(false)
 const submitting = ref(false)
+const refreshing = ref(false)
 const searchQuery = ref('')
 const activeTab = ref('all')
 
@@ -477,11 +486,26 @@ const updateStatus = (repair: Repair) => {
   }
 }
 
-const refreshData = () => {
-  loadRepairs()
-  loadCustomers()
-  loadBrands()
-  loadTechnicians()
+const refreshData = async () => {
+  if (refreshing.value) {
+    return
+  }
+
+  refreshing.value = true
+  try {
+    await Promise.all([
+      loadRepairs(),
+      loadCustomers(),
+      loadBrands(),
+      loadTechnicians()
+    ])
+    success('数据刷新成功')
+  } catch (err) {
+    logger.error('刷新维修数据失败:', err)
+    error('数据刷新失败')
+  } finally {
+    refreshing.value = false
+  }
 }
 
 const formatDate = (date: string) => {

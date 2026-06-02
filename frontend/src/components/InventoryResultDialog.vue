@@ -18,7 +18,7 @@
             </button>
           </div>
 
-          <div v-loading="loading" class="inventory-mobile-body">
+          <div class="inventory-mobile-body">
             <div class="product-header mobile-only">
               <div class="product-info">
                 <div class="product-main">
@@ -33,7 +33,9 @@
               </div>
             </div>
 
-            <div class="inventory-list mobile-only">
+            <SectionLoading v-if="loading" text="加载中..." size="compact" />
+
+            <div v-else class="inventory-list mobile-only">
               <div
                 v-for="(item, index) in inventoryData"
                 :key="item.id"
@@ -101,7 +103,9 @@
       </div>
     </div>
 
-    <div v-loading="loading" class="inventory-list">
+    <SectionLoading v-if="loading" text="加载中..." size="compact" />
+
+    <div v-else class="inventory-list">
       <div
         v-for="(item, index) in inventoryData"
         :key="item.id"
@@ -150,6 +154,7 @@ import { ElMessage } from 'element-plus'
 import { unifiedApi } from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import { useMobile } from '@/composables/mobile'
+import SectionLoading from '@/components/SectionLoading.vue'
 import { logger } from '@/utils/logger'
 import type { InventoryItem } from '@/types'
 import type { ModelValueProps, UpdateModelValueEmits } from '@/types/component'

@@ -4,20 +4,23 @@
  */
 
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios'
-import { ElMessage, ElLoading } from 'element-plus'
 import { PermissionMapper } from './permissionMapper'
 import { globalErrorLogger } from './error-logger'
 import { ErrorLevel, ErrorType } from './error-boundary'
 import { clearPersistedAuthData, setBackendDisconnectedState } from './auth-session'
+import { showElementError, showElementLoading, showElementNotification, showElementSuccess, showElementWarning } from './element-feedback'
 import { storage } from '@/services/storage'
 import { AUTH_STORAGE_KEYS, ROUTER_STORAGE_KEYS } from '@/constants/storage'
 import type { ApiResponse as GlobalApiResponse } from '@/types'
 import logger from '@/utils/logger'
 
 // API基础配置
+const DEFAULT_READ_TIMEOUT = 30000
+const DEFAULT_WRITE_TIMEOUT = 120000
+
 const API_CONFIG = {
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
-  timeout: 120000, // 120秒超时，为销售出库等复杂操作提供更长时间
+  timeout: DEFAULT_WRITE_TIMEOUT,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json'
@@ -52,6 +55,7 @@ export type ApiResponse<T = any> = GlobalApiResponse<T>
 class UnifiedApiManager {
   private instance: AxiosInstance
   private loadingInstance: any = null
+  private loadingPromise: Promise<any> | null = null
   private requestCount = 0
   private cache = new Map<string, { data: any, timestamp: number, ttl: number }>()
   private refreshPromise: Promise<boolean> | null = null
@@ -96,6 +100,11 @@ class UnifiedApiManager {
    */
   private handleRequest(config: any): any {
     const requestConfig = config as RequestConfig
+
+    if (!requestConfig.timeout) {
+      const method = String(config.method || 'get').toLowerCase()
+      requestConfig.timeout = method === 'get' ? DEFAULT_READ_TIMEOUT : DEFAULT_WRITE_TIMEOUT
+    }
 
     // 添加认证信息
     this.addAuthHeaders(config)
@@ -174,7 +183,7 @@ class UnifiedApiManager {
     // 显示成功消息
     if (requestConfig.showSuccess && response.data?.success) {
       const message = requestConfig.successMessage || response.data?.message || '操作成功'
-      ElMessage.success(message)
+      showElementSuccess(message)
     }
 
     return response.data
@@ -533,7 +542,7 @@ class UnifiedApiManager {
     }
 
     // 豁免认证相关API和设置API的权限检查
-    // Git管理使用requireAdmin中间件检查角色，不需要权限转换
+    // Git管理使用独立的 git-management:* 权限映射
     // employees 路径下的工资相关接口使用 salary:view 权限
     // options 提供基础数据选项（颜色、内存、品牌等），不需要特殊权限
     // stores 提供门店基础数据，不需要特殊权限
@@ -602,7 +611,6 @@ class UnifiedApiManager {
    * 处理权限错误
    */
   private handlePermissionError(error: AxiosError): void {
-    const responseData = error.response?.data as any;
     const urlPath = error.config?.url || '';
     const method = error.config?.method?.toUpperCase() || 'GET';
 
@@ -610,13 +618,41 @@ class UnifiedApiManager {
     const isUserAction = method !== 'GET' || urlPath.includes('/export') || urlPath.includes('/delete');
 
     if (isUserAction) {
-      // 直接使用 ElMessage 显示错误，避免 inject() 警告
-      const message = responseData?.message || '您没有权限执行此操作';
-      ElMessage.warning({
+      // 按需加载 Element Plus 消息组件，避免 API 入口提前拉起整包
+      const action = this.inferActionFromRequest(method, urlPath);
+      const actionName = this.getActionDisplayName(action);
+      const message = action === 'view'
+        ? '您没有访问此页面的权限'
+        : `您没有${actionName}权限`;
+      showElementWarning({
         message,
         duration: 3000,
         showClose: true
       });
+    }
+  }
+
+  private inferActionFromRequest(method: string, urlPath: string): string {
+    const normalizedPath = urlPath.toLowerCase();
+
+    if (normalizedPath.includes('/export')) return 'export';
+    if (normalizedPath.includes('/import')) return 'import';
+    if (normalizedPath.includes('/approve')) return 'approve';
+    if (normalizedPath.includes('/reject')) return 'reject';
+    if (normalizedPath.includes('/delete') || normalizedPath.includes('/remove')) return 'delete';
+
+    switch (method) {
+      case 'GET':
+        return 'view';
+      case 'POST':
+        return 'create';
+      case 'PUT':
+      case 'PATCH':
+        return 'edit';
+      case 'DELETE':
+        return 'delete';
+      default:
+        return '操作';
     }
   }
 
@@ -782,14 +818,12 @@ class UnifiedApiManager {
           this.markRedirected()
 
           // 显示友好的通知
-          import('element-plus').then(({ ElNotification }) => {
-            ElNotification({
-              title: notificationTitle,
-              message: notificationMessage,
-              type: 'warning',
-              duration: 4000,
-              position: 'top-right'
-            })
+          showElementNotification({
+            title: notificationTitle,
+            message: notificationMessage,
+            type: 'warning',
+            duration: 4000,
+            position: 'top-right'
           })
 
           setBackendDisconnectedState(false)
@@ -809,27 +843,27 @@ class UnifiedApiManager {
         break
       case 404:
         if (!isLoginPage) {
-          ElMessage.error('请求的资源不存在')
+          showElementError('请求的资源不存在')
         }
         break
       case 422:
         // 表单验证错误，不显示通用错误消息
         break
       case 429:
-        ElMessage.error('请求过于频繁，请稍后再试')
+        showElementError('请求过于频繁，请稍后再试')
         break
       case 500:
-        ElMessage.error('服务器内部错误，请稍后再试')
+        showElementError('服务器内部错误，请稍后再试')
         break
       case 502:
-        ElMessage.error('服务器网关错误，请稍后再试')
+        showElementError('服务器网关错误，请稍后再试')
         break
       case 503:
-        ElMessage.error('服务暂时不可用，请稍后再试')
+        showElementError('服务暂时不可用，请稍后再试')
         break
       default:
         if (status && status >= 500) {
-          ElMessage.error('服务器错误，请稍后再试')
+          showElementError('服务器错误，请稍后再试')
         }
     }
   }
@@ -862,7 +896,7 @@ class UnifiedApiManager {
       }
     }
 
-    ElMessage.error(message)
+    showElementError(message)
   }
 
   /**
@@ -870,11 +904,20 @@ class UnifiedApiManager {
    */
   private showLoading(): void {
     this.requestCount++
-    if (!this.loadingInstance) {
-      this.loadingInstance = ElLoading.service({
+    if (!this.loadingInstance && !this.loadingPromise) {
+      this.loadingPromise = showElementLoading({
         lock: true,
         text: '加载中...',
         background: 'rgba(0, 0, 0, 0.7)'
+      }).then((instance) => {
+        this.loadingPromise = null
+
+        if (this.requestCount > 0 && !this.loadingInstance) {
+          this.loadingInstance = instance
+          return
+        }
+
+        instance.close()
       })
     }
   }

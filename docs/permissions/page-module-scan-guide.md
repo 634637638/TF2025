@@ -160,7 +160,7 @@ src/views/<module>/page/<ComponentName>Card.vue
 典型风险：
 
 - 独立页面迁移到 `page/` 后，扫描器漏扫
-- 菜单仍显示，但点击后页面内部 `PermissionDenied`
+- 菜单或标签入口未接入 `canAccessRoutePath`，导致无权限页面被短暂打开
 - 模块同步后，数据库中的旧模块被停用，导致角色权限不完整
 
 ## 当前项目中的典型例子

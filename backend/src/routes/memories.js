@@ -4,11 +4,20 @@ const { unifiedAuth, requirePermission } = require('../middleware/unified-auth')
 const { devPermissionCheck } = require('../middleware/dev-permission');
 const ApiResponse = require('../utils/response');
 const { getDatabase, isConnected } = require('../config/database');
+const { cacheMiddleware, clearCache } = require('../middleware/cache');
 const log = require('../utils/log');
 
+const clearMemoriesRouteCache = () => {
+  try {
+    clearCache('/api/memories');
+    clearCache('/api/public/memories');
+  } catch (error) {
+    log.warn('清理内存缓存失败:', error.message);
+  }
+};
 
 // 获取内存规格列表
-router.get('/', unifiedAuth, devPermissionCheck('memories:view'), async (req, res) => {
+router.get('/', unifiedAuth, devPermissionCheck('memories:view'), cacheMiddleware({ ttl: 10 * 1000 }), async (req, res) => {
   try {
     log.debug('获取内存规格列表请求，参数:', req.query);
 
@@ -30,23 +39,6 @@ router.get('/', unifiedAuth, devPermissionCheck('memories:view'), async (req, re
     const limitNum = parseInt(limit) || 10000;  // 提高默认限制
     const pageNum = parseInt(page) || 1;
     const offset = (pageNum - 1) * limitNum;
-
-    // 先检查memories表是否存在
-    try {
-      await pool.execute('SELECT 1 FROM memories LIMIT 1');
-    } catch (tableError) {
-      log.error('memories表不存在或无权限访问:', tableError);
-      // 如果表不存在，返回空结果而不是错误
-      return ApiResponse.success(res, {
-        memories: [],
-        pagination: {
-          page: pageNum,
-          limit: limitNum,
-          total: 0,
-          pages: 0
-        }
-      });
-    }
 
     // 使用简单的查询方式，避免复杂的JOIN和参数问题
     let baseQuery = 'SELECT * FROM memories';
@@ -317,18 +309,10 @@ router.post('/', unifiedAuth, requirePermission('memories:create'), async (req, 
       return ApiResponse.badRequest(res, '内存规格包含无效字符，只能使用数字、字母和+号');
     }
 
-    // 先检查memories表是否存在
-    try {
-      await pool.execute('SELECT 1 FROM memories LIMIT 1');
-    } catch (tableError) {
-      log.error('memories表不存在或无权限访问:', tableError);
-      return ApiResponse.error(res, 'memories表不存在或无权限访问', 500);
-    }
-
     // 检查规格是否重复
     const [existingMemories] = await pool.execute(
       'SELECT id FROM memories WHERE size = ?',
-      [size]
+      [trimmedSize]
     );
     if (existingMemories.length > 0) {
       return ApiResponse.badRequest(res, '该内存规格已存在');
@@ -342,7 +326,7 @@ router.post('/', unifiedAuth, requirePermission('memories:create'), async (req, 
     `;
 
     const insertValues = [
-      size,
+      trimmedSize,
       sort_order ? parseInt(sort_order) : 0,
       status !== undefined ? parseInt(status) : 1
     ];
@@ -356,6 +340,7 @@ router.post('/', unifiedAuth, requirePermission('memories:create'), async (req, 
     const [newMemories] = await pool.execute('SELECT * FROM memories WHERE id = ?', [result.insertId]);
     const newMemory = newMemories[0];
 
+    clearMemoriesRouteCache();
     ApiResponse.created(res, '内存规格创建成功', newMemory);
   } catch (error) {
     log.error('创建内存规格失败:', error);
@@ -385,12 +370,12 @@ router.put('/:id', unifiedAuth, requirePermission('memories:edit'), async (req, 
       sort_order,
       status
     } = req.body;
+    const trimmedSize = size !== undefined ? size.trim() : undefined;
 
     // 如果提供了size字段，验证格式
     if (size !== undefined) {
       // 更严格的验证：必须是数字开头，后面跟着字母，中间可以有+号连接
       const validFormat = /^(\d+[a-zA-Z]+|\d+\+\d+[a-zA-Z]*)$/;
-      const trimmedSize = size.trim();
 
       if (!validFormat.test(trimmedSize)) {
         return ApiResponse.badRequest(res,
@@ -428,18 +413,18 @@ router.put('/:id', unifiedAuth, requirePermission('memories:edit'), async (req, 
     const updateValues = [];
 
     // 如果size有变化，检查是否与其他记录重复
-    if (size !== undefined && size !== currentSize) {
+    if (size !== undefined && trimmedSize !== currentSize) {
       const [duplicateCheck] = await pool.execute(
         'SELECT id FROM memories WHERE size = ? AND id != ?',
-        [size, id]
+        [trimmedSize, id]
       );
 
       if (duplicateCheck.length > 0) {
-        return ApiResponse.error(res, `已有存在${size}内存，请勿重复提交`, 409);
+        return ApiResponse.error(res, `已有存在${trimmedSize}内存，请勿重复提交`, 409);
       }
 
       updateFields.push('size = ?');
-      updateValues.push(size);
+      updateValues.push(trimmedSize);
     }
 
     if (sort_order !== undefined) {
@@ -467,6 +452,7 @@ router.put('/:id', unifiedAuth, requirePermission('memories:edit'), async (req, 
     // 获取更新后的内存规格信息
     const [updatedMemory] = await pool.execute('SELECT * FROM memories WHERE id = ?', [id]);
 
+    clearMemoriesRouteCache();
     return ApiResponse.success(res, updatedMemory[0], '内存规格更新成功');
   } catch (error) {
     log.error('更新内存规格失败:', error);
@@ -501,6 +487,7 @@ router.delete('/:id', unifiedAuth, requirePermission('memories:delete'), async (
     // 删除内存规格
     await pool.execute('DELETE FROM memories WHERE id = ?', [parseInt(id)]);
 
+    clearMemoriesRouteCache();
     ApiResponse.success(res, existingMemories[0], '内存规格删除成功');
   } catch (error) {
     log.error('删除内存规格失败:', error);
@@ -593,6 +580,7 @@ router.patch('/:id/toggle', unifiedAuth, requirePermission('memories:edit'), asy
     const updatedMemory = updatedMemories[0];
 
     const statusText = newStatus === 1 ? '启用' : '禁用';
+    clearMemoriesRouteCache();
     ApiResponse.success(res, updatedMemory, `内存规格${statusText}成功`);
   } catch (error) {
     log.error('切换内存规格状态失败:', error);
@@ -651,6 +639,7 @@ router.put('/batch/reorder', unifiedAuth, requirePermission('memories:edit'), as
       }
 
       await connection.commit();
+      clearMemoriesRouteCache();
       ApiResponse.success(res, null, '排序更新成功');
 
     } catch (error) {
@@ -701,6 +690,7 @@ router.post('/init-missing', async (req, res) => {
 
     const [allMemories] = await pool.query('SELECT size, id FROM memories ORDER BY sort_order');
 
+    clearMemoriesRouteCache();
     return ApiResponse.success(res, {
       added: addedCount,
       total: allMemories.length,

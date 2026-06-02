@@ -22,8 +22,7 @@
       </template>
 
       <el-table
-        :data="filteredGroupedConfigs"
-        v-loading="loading"
+        :data="loading ? [] : filteredGroupedConfigs"
         stripe
         border
         row-key="groupKey"
@@ -32,6 +31,11 @@
         :fit="false"
         style="width: 100%"
       >
+        <template #empty>
+          <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
+          <el-empty v-else description="暂无库存预警模板" />
+        </template>
+
         <el-table-column type="expand" width="56">
           <template #default="{ row }">
             <div class="child-panel">
@@ -456,6 +460,7 @@ import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useLoadingState } from '@/composables'
 import phoneStockWarningsApi from '@/api/phone-stock-warnings'
 import { baseDataApi } from '@/api/base-data'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 
 const { success, error } = useNotification()
 const {

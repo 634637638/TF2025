@@ -226,6 +226,39 @@ class PriceListService {
     return `${Math.round(maxGb)}GB`;
   }
 
+  normalizeModelForMatch(modelText) {
+    if (!modelText) return '';
+
+    const normalized = String(modelText)
+      .toLowerCase()
+      .replace(/\s+/g, '')
+      .replace(/[()（）]/g, '')
+      .replace(/英寸/g, '寸');
+
+    if (normalized.includes('ipadair7') && !normalized.includes('11寸') && !normalized.includes('13寸')) {
+      return 'ipadair711寸';
+    }
+    if (normalized.includes('ipadair8') && !normalized.includes('11寸') && !normalized.includes('13寸')) {
+      return 'ipadair811寸';
+    }
+
+    return normalized;
+  }
+
+  normalizeMemoryForMatch(memoryText) {
+    if (!memoryText) return '';
+
+    const normalized = String(memoryText).replace(/\s+/g, '').toLowerCase();
+    if (normalized.includes('tb')) {
+      const tb = parseFloat(normalized);
+      return Number.isNaN(tb) ? normalized : String(tb * 1024);
+    }
+    if (normalized.includes('gb')) {
+      return normalized.replace('gb', '');
+    }
+    return normalized;
+  }
+
   /**
    * 判断外部商品文本是否标记为“同城”
    */
@@ -285,10 +318,13 @@ class PriceListService {
     const brand = String(productLike.brand || productLike.brand_name || '').toLowerCase();
     const model = productLike.model || productLike.model_number || '';
 
-    const isAppleLike = brand.includes('苹果') || brand.includes('apple') || String(model).toLowerCase().includes('iphone');
+    const modelText = String(model).toLowerCase();
+    if (!modelText.includes('iphone')) return false;
+
+    const isAppleLike = brand.includes('苹果') || brand.includes('apple') || modelText.includes('iphone');
     if (!isAppleLike) return false;
 
-    const generation = this.extractIPhoneGeneration(model);
+    const generation = this.extractIPhoneGeneration(modelText);
     return generation !== null && generation >= 16;
   }
 
@@ -2737,6 +2773,8 @@ class PriceListService {
         .replace(/\s+/g, '')
         .replace(/[()]/g, '');
 
+      inventoryModel = this.normalizeModelForMatch(inventoryModel);
+
       // 统一型号格式：如果以数字开头（如 17promax），添加 iphone 前缀
       if (/^\d/.test(inventoryModel)) {
         inventoryModel = 'iphone' + inventoryModel;
@@ -2833,7 +2871,7 @@ class PriceListService {
           for (const [, priceList] of externalPrices.entries()) {
             for (const priceData of this.getEligiblePriceCandidates(priceList, inventoryItem)) {
               // 标准化库存的型号名称
-              const normalizedInvExternal = externalModelForMatch.toLowerCase().replace(/\s+/g, '');
+              const normalizedInvExternal = this.normalizeModelForMatch(externalModelForMatch);
 
               // 🔥 匹配策略：
               // 1. 如果有型号代码（如 A3527），必须匹配型号代码
@@ -2850,23 +2888,26 @@ class PriceListService {
 
                 // 进一步检查内存和颜色
                 // 🔥 修复：如果外部数据没有内存信息，跳过匹配（避免将所有内存匹配到同一价格）
-                const memoryMatch = priceData.memory && normalizedInvExternal.includes(priceData.memory.toLowerCase().replace('gb', ''));
-                const colorMatch = !priceData.color || normalizedInvExternal.includes(priceData.color.toLowerCase());
+                const colorMatch = !inventoryItem.color_name || !priceData.color ||
+                  this.normalizeColor(inventoryItem.color_name) === this.normalizeColor(priceData.color);
+                const memoryMatch = this.normalizeMemoryForMatch(inventoryItem.memory) === this.normalizeMemoryForMatch(priceData.memory);
 
-                isMatch = memoryMatch && colorMatch;
+                isMatch = colorMatch && memoryMatch;
               } else {
                 // 没有型号代码（如 iPad）：通过型号名称、颜色、内存匹配
                 // 检查型号名称是否匹配（如 "ipad11" 匹配 "苹果11英寸iPad(第十一代)"）
-                const normalizedModel = priceData.model.toLowerCase().replace(/\s+/g, '');
-                const modelMatch = normalizedInvExternal.includes(normalizedModel) ||
-                                   (normalizedModel.includes('ipad') && normalizedInvExternal.includes('ipad'));
+                const normalizedModel = this.normalizeModelForMatch(priceData.model);
+                const modelMatch = normalizedInvExternal === normalizedModel;
 
                 if (!modelMatch) continue;
 
-                // 进一步检查内存和颜色
-                // 🔥 修复：如果外部数据没有内存信息，跳过匹配（避免将所有内存匹配到同一价格）
-                const memoryMatch = priceData.memory && normalizedInvExternal.includes(priceData.memory.toLowerCase().replace('gb', ''));
-                const colorMatch = !priceData.color || normalizedInvExternal.includes(priceData.color.toLowerCase());
+                const normalizedExtColor = this.normalizeColor(priceData.color);
+                const normalizedInvColor = this.normalizeColor(inventoryItem.color_name);
+                const colorMatch = !inventoryItem.color_name || !priceData.color ||
+                  normalizedInvColor === normalizedExtColor;
+                const memoryMatch = isAccessory
+                  ? true
+                  : this.normalizeMemoryForMatch(inventoryItem.memory) === this.normalizeMemoryForMatch(priceData.memory);
 
                 isMatch = memoryMatch && colorMatch;
               }
@@ -2954,22 +2995,8 @@ class PriceListService {
               const extMemory = priceData.memory ? priceData.memory.replace(/\s+/g, '').toLowerCase() : '';
 
               // 标准化内存格式用于比较
-              const normalizeMemoryForMatch = (mem) => {
-                if (!mem) return mem;
-                // 1TB -> 1024, 2TB -> 2048
-                if (mem.includes('tb')) {
-                  const tb = parseFloat(mem);
-                  return (tb * 1024).toString();
-                }
-                // 1024GB -> 1024, 256GB -> 256
-                if (mem.includes('gb')) {
-                  return mem.replace('gb', '');
-                }
-                return mem;
-              };
-
-              const normalizedInvMem = normalizeMemoryForMatch(invMemory);
-              const normalizedExtMem = normalizeMemoryForMatch(extMemory);
+              const normalizedInvMem = this.normalizeMemoryForMatch(invMemory);
+              const normalizedExtMem = this.normalizeMemoryForMatch(extMemory);
               // 配件产品不需要匹配内存
               // 🔥 修复：严格内存匹配逻辑
               // 1. 配件产品：不需要匹配内存，直接成功
@@ -3131,8 +3158,8 @@ class PriceListService {
           if (extBrand !== inventoryItem.brand_name.toLowerCase()) continue;
 
           // 标准化型号后直接比较
-          const normalizedInventoryModel = inventoryModel.replace(/\s+/g, '').toLowerCase();
-          const normalizedExtModel = extModel.replace(/\s+/g, '').toLowerCase();
+          const normalizedInventoryModel = this.normalizeModelForMatch(inventoryModel);
+          const normalizedExtModel = this.normalizeModelForMatch(extModel);
 
           if (normalizedInventoryModel === normalizedExtModel) {
             // 型号完全匹配，查找颜色和内存（严格匹配）
@@ -3158,20 +3185,8 @@ class PriceListService {
               const extMemory = priceData.memory ? priceData.memory.replace(/\s+/g, '').toLowerCase() : '';
 
               // 标准化内存格式用于比较
-              const normalizeMemoryForMatch = (mem) => {
-                if (!mem) return mem;
-                if (mem.includes('tb')) {
-                  const tb = parseFloat(mem);
-                  return (tb * 1024).toString();
-                }
-                if (mem.includes('gb')) {
-                  return mem.replace('gb', '');
-                }
-                return mem;
-              };
-
-              const normalizedInvMem = normalizeMemoryForMatch(invMemory);
-              const normalizedExtMem = normalizeMemoryForMatch(extMemory);
+              const normalizedInvMem = this.normalizeMemoryForMatch(invMemory);
+              const normalizedExtMem = this.normalizeMemoryForMatch(extMemory);
               const memoryMatch = !invMemory || !extMemory || normalizedInvMem === normalizedExtMem;
 
               if (colorMatch && memoryMatch) {
@@ -3240,20 +3255,8 @@ class PriceListService {
               const extMemory = priceData.memory ? priceData.memory.replace(/\s+/g, '').toLowerCase() : '';
 
               // 标准化内存格式用于比较
-              const normalizeMemoryForMatch = (mem) => {
-                if (!mem) return mem;
-                if (mem.includes('tb')) {
-                  const tb = parseFloat(mem);
-                  return (tb * 1024).toString();
-                }
-                if (mem.includes('gb')) {
-                  return mem.replace('gb', '');
-                }
-                return mem;
-              };
-
-              const normalizedInvMem = normalizeMemoryForMatch(invMemory);
-              const normalizedExtMem = normalizeMemoryForMatch(extMemory);
+              const normalizedInvMem = this.normalizeMemoryForMatch(invMemory);
+              const normalizedExtMem = this.normalizeMemoryForMatch(extMemory);
               const memoryMatch = !invMemory || !extMemory || normalizedInvMem === normalizedExtMem;
 
               if (colorMatch && memoryMatch) {

@@ -92,7 +92,12 @@
       dialog-class="inventory-low-stock-dialog"
       :show-default-footer="false"
     >
-      <el-table :data="filteredLowStockItems" stripe :table-layout="'auto'" :empty-text="loading ? '加载中...' : '暂无库存预警商品'">
+      <el-table :data="loading ? [] : filteredLowStockItems" stripe :table-layout="'auto'">
+        <template #empty>
+          <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
+          <el-empty v-else description="暂无库存预警商品" />
+        </template>
+
         <el-table-column prop="brand" label="品牌" width="120" />
         <el-table-column prop="model" label="型号" min-width="220" />
         <el-table-column prop="color" label="颜色" width="100" />
@@ -144,7 +149,12 @@
               </div>
             </div>
           </template>
-          <el-table :data="recentSoldModels" stripe :table-layout="'auto'" :empty-text="loading ? '加载中...' : '暂无最近销售记录'">
+          <el-table :data="loading ? [] : recentSoldModels" stripe :table-layout="'auto'">
+            <template #empty>
+              <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
+              <el-empty v-else description="暂无最近销售记录" />
+            </template>
+
             <el-table-column prop="brand" label="品牌" min-width="120" />
             <el-table-column prop="model" label="型号" min-width="180" />
             <el-table-column prop="color" label="颜色" min-width="100" />
@@ -244,12 +254,16 @@
           </div>
 
           <el-table
-            :data="filteredLowStockItems"
+            :data="loading ? [] : filteredLowStockItems"
             stripe
             style="width: 100%"
-            :empty-text="loading ? '加载中...' : '暂无库存预警商品'"
             :table-layout="'auto'"
           >
+            <template #empty>
+              <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
+              <el-empty v-else description="暂无库存预警商品" />
+            </template>
+
             <el-table-column type="index" label="#" width="50" />
             <el-table-column prop="name" label="产品名称" min-width="220">
               <template #default="{ row }">
@@ -364,6 +378,7 @@ import { useCachedRequest, DEFAULT_CACHE_TTL } from '@/composables/usePageCache'
 import { useImportExport } from '@/composables/useImportExport'
 import { analyticsService } from '@/api/analytics'
 import { unifiedApi } from '@/utils/unified-api'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import type { InventoryAnalytics } from '@/types/analytics'
 import type { InventoryAnalyticsProps, LoadingChangeEmits } from '@/types/component'
 import { useAnalyticsFieldVisibility } from './useAnalyticsFieldVisibility'
@@ -541,10 +556,12 @@ const CACHE_KEYS = {
   recentSold: '/analytics/inventory/recent-sold'
 }
 
-const loadInventoryData = async () => {
+const loadInventoryData = async (showLoadingState = true) => {
   try {
-    loading.value = true
-    emit('loading-change', true)
+    if (showLoadingState) {
+      loading.value = true
+      emit('loading-change', true)
+    }
 
     // 获取库存数据
     const params: any = {}
@@ -599,10 +616,16 @@ const loadInventoryData = async () => {
     logger.error('获取库存数据失败:', err)
     error('获取库存数据失败')
   } finally {
-    loading.value = false
-    emit('loading-change', false)
+    if (showLoadingState) {
+      loading.value = false
+      emit('loading-change', false)
+    }
   }
 }
+
+defineExpose({
+  refreshSilently: () => loadInventoryData(false)
+})
 
 // 计算有货的供应商数量
 const calculateSupplierCount = async () => {

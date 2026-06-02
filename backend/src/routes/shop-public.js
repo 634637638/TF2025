@@ -1193,6 +1193,16 @@ router.get('/home/sections', async (req, res) => {
     ApiResponse.success(res, sections, '获取推荐区域成功');
   } catch (error) {
     log.error('获取推荐区域失败:', error);
+    const isMissingHomeSectionTable = (
+      error?.code === 'ER_NO_SUCH_TABLE' ||
+      /H5_home_sections|H5_home_section_products/i.test(String(error?.message || ''))
+    );
+
+    if (isMissingHomeSectionTable) {
+      log.warn('推荐区域相关数据表不存在，降级返回空列表');
+      return ApiResponse.success(res, [], '推荐区域未初始化');
+    }
+
     ApiResponse.error(res, error.message || '获取推荐区域失败', 500);
   }
 });

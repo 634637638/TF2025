@@ -20,10 +20,7 @@
         </div>
       </div>
 
-      <div v-if="ctx.loadingPermissionDialog" class="dialog-loading-state">
-        <GlobalLoading />
-        <p>正在加载权限数据...</p>
-      </div>
+      <SectionLoading v-if="ctx.loadingPermissionDialog" text="加载中..." />
 
       <template v-else>
         <div v-if="ctx.permissionDialogMatrix.length > 0" class="permission-toolbar">
@@ -261,7 +258,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import GlobalLoading from '@/components/GlobalLoading.vue'
+import SectionLoading from '@/components/SectionLoading.vue'
 import { usePermissionsPageContext } from './context'
 
 const ctx = usePermissionsPageContext()
@@ -707,14 +704,18 @@ const totalModuleCount = computed(() =>
 }
 
 .permission-switch-grid {
+  --permission-switch-width: 160px;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(var(--permission-switch-width), var(--permission-switch-width)));
+  justify-content: start;
+  align-items: stretch;
   gap: 8px;
 }
 
 .permission-switch {
   appearance: none;
   width: 100%;
+  min-height: 46px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -751,6 +752,7 @@ const totalModuleCount = computed(() =>
   align-items: center;
   gap: 8px;
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .permission-switch__icon {
@@ -775,6 +777,7 @@ const totalModuleCount = computed(() =>
   min-width: 0;
   display: flex;
   align-items: center;
+  flex: 1 1 auto;
 }
 
 .permission-switch__label {
@@ -782,6 +785,9 @@ const totalModuleCount = computed(() =>
   font-weight: 700;
   color: #0f172a;
   line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .permission-switch.checked .permission-switch__label {
@@ -857,6 +863,13 @@ const totalModuleCount = computed(() =>
     padding-left: 12px;
   }
 
+  .permission-switch-grid {
+    --permission-switch-width: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
   .permission-switch-grid {
     grid-template-columns: 1fr;
   }

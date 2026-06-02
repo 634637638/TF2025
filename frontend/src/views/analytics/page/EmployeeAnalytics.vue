@@ -447,7 +447,7 @@ const formatAmount = (amount: number) => {
   if (amount >= 10000) {
     return (amount / 10000).toFixed(1) + '万'
   }
-  return amount.toLocaleString()
+  return amount.toLocaleString('zh-CN')
 }
 
 const formatNumber = (num: number) => {
@@ -506,10 +506,12 @@ const CACHE_KEYS = {
   employeeAttendance: '/analytics/employees/attendance'
 }
 
-const loadEmployeeData = async () => {
+const loadEmployeeData = async (showLoadingState = true) => {
   try {
-    loading.value = true
-    emit('loading-change', true)
+    if (showLoadingState) {
+      loading.value = true
+      emit('loading-change', true)
+    }
 
     // 构建查询参数
     const params: any = {}
@@ -592,10 +594,16 @@ const loadEmployeeData = async () => {
     logger.error('获取员工数据失败:', err)
     error('获取员工数据失败，请稍后重试')
   } finally {
-    loading.value = false
-    emit('loading-change', false)
+    if (showLoadingState) {
+      loading.value = false
+      emit('loading-change', false)
+    }
   }
 }
+
+defineExpose({
+  refreshSilently: () => loadEmployeeData(false)
+})
 
 const loadEmployeePerformance = async () => {
   try {

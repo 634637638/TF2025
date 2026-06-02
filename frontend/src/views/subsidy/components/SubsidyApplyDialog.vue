@@ -322,9 +322,11 @@
           <el-button type="default" @click="closeDialog">取消</el-button>
           <el-button v-if="deviceList.length > 0" type="info" @click="resetDeviceSearch">重新搜索</el-button>
           <el-button type="primary" :disabled="!searchIdentifier || searching" @click="searchPhones">
-            <i v-if="searching" class="fas fa-spinner fa-spin"></i>
-            <i v-else class="fas fa-search"></i>
-            <span>搜索</span>
+            <InlineLoading v-if="searching" text="搜索中..." size="small" variant="inherit" />
+            <template v-else>
+              <i class="fas fa-search"></i>
+              <span>搜索</span>
+            </template>
           </el-button>
           <el-button
             v-if="selectedDevice"
@@ -332,9 +334,11 @@
             :disabled="loadingDetail || selectedDevice.has_subsidy"
             @click="loadPhoneDetail"
           >
-            <i v-if="loadingDetail" class="fas fa-spinner fa-spin"></i>
-            <i v-else class="fas fa-arrow-right"></i>
-            <span>{{ selectedDevice.has_subsidy ? '该设备已记录国补' : '下一步' }}</span>
+            <InlineLoading v-if="loadingDetail" text="加载中..." size="small" variant="inherit" />
+            <template v-else>
+              <i class="fas fa-arrow-right"></i>
+              <span>{{ selectedDevice.has_subsidy ? '该设备已记录国补' : '下一步' }}</span>
+            </template>
           </el-button>
         </template>
 
@@ -347,9 +351,11 @@
             :disabled="submitting"
             @click="submitApply"
           >
-            <i v-if="submitting" class="fas fa-spinner fa-spin"></i>
-            <i v-else class="fas fa-check"></i>
-            <span>提交资料</span>
+            <InlineLoading v-if="submitting" text="提交中..." size="small" variant="inherit" />
+            <template v-else>
+              <i class="fas fa-check"></i>
+              <span>提交资料</span>
+            </template>
           </el-button>
         </template>
       </div>
@@ -401,6 +407,7 @@
 import { computed, defineAsyncComponent, nextTick, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import MobileDialog from '@/components/MobileDialog.vue'
+import InlineLoading from '@/components/InlineLoading.vue'
 import { unifiedApi } from '@/utils/unified-api'
 import { storage } from '@/composables/core/useLocalStorage'
 import { deleteTempFiles } from '@/utils/temp-file-cleaner'

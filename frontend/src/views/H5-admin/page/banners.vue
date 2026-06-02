@@ -3,15 +3,15 @@
   功能：轮播图列表、添加、编辑、删除、排序
 -->
 <template>
-  <PermissionDenied
-    v-if="!canView"
+  <PermissionGate
     :can-view="canView"
+    mode="denied"
     module-key="h5-admin-banners"
     module-name="轮播图管理"
     permission-code="h5-banners:view"
-  />
+  >
 
-  <div v-else class="banner-management-page">
+  <div class="banner-management-page">
     <!-- 加载状态 -->
     <div v-if="loading" class="loading-state">
       <el-skeleton :rows="3" animated />
@@ -205,17 +205,18 @@
       </template>
     </MobileDialog>
   </div>
+  </PermissionGate>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, inject } from 'vue'
+import { ref, computed, onMounted, onUnmounted, inject, watch } from 'vue'
 import { useRouter, onBeforeRouteLeave } from 'vue-router'
 import { ElMessage, ElMessageBox, FormInstance } from 'element-plus'
 import { ValidationRules } from '@/composables'
 import { Refresh, Plus } from '@element-plus/icons-vue'
 import draggable from 'vuedraggable'
 import { getAllBanners, createBanner, updateBanner, deleteBanner, reorderBanners } from '@/api/shop'
-import { PermissionDenied } from '@/components/base/index'
+import { PermissionGate } from '@/components/base/index'
 import { useAuthStore } from '@/stores/auth'
 import { formatImageUrl } from '@/utils/format'
 import { usePagePermissions } from '@/composables/usePagePermissions'
@@ -225,7 +226,13 @@ import { logger } from '@/utils/logger'
 import type { HeaderAction } from '@/types'
 const router = useRouter()
 const authStore = useAuthStore()
-const { canView, canCreate, canEdit, canDelete, handleNoPermission } = usePagePermissions('h5-admin-banners')
+const bannerPermissions = usePagePermissions('h5-admin-banners')
+const h5AdminPermissions = usePagePermissions('h5-admin')
+const { handleNoPermission } = bannerPermissions
+const canView = computed(() => bannerPermissions.canView.value || h5AdminPermissions.canView.value)
+const canCreate = computed(() => bannerPermissions.canCreate.value || h5AdminPermissions.canCreate.value)
+const canEdit = computed(() => bannerPermissions.canEdit.value || h5AdminPermissions.canEdit.value)
+const canDelete = computed(() => bannerPermissions.canDelete.value || h5AdminPermissions.canDelete.value)
 
 // 注入父组件提供的注册方法
 const registerHeaderActions = inject<(actions: HeaderAction[]) => void>('registerHeaderActions')
@@ -404,11 +411,8 @@ const beforeUpload = async (file: File) => {
 const convertPDFToImage = async (pdfFile: File): Promise<File> => {
   const pdfjsLib = await import('pdfjs-dist')
 
-  // 使用本地worker避免CDN加载问题
-  pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-    'pdfjs-dist/build/pdf.worker.min.mjs',
-    import.meta.url
-  ).toString()
+  // 使用 public 中的本地 worker，避免重复打包 pdf.worker。
+  pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf/pdf.worker.min.js'
 
   // 读取PDF文件
   const arrayBuffer = await pdfFile.arrayBuffer()
@@ -446,6 +450,7 @@ const formRef = ref<FormInstance>()
 // 数据
 const banners = ref<ShopBanner[]>([])
 const loading = ref(true)
+const hasInitializedPageData = ref(false)
 const showDialog = ref(false)
 const saving = ref(false)
 const dialogMode = ref<'add' | 'edit'>('add')
@@ -729,11 +734,21 @@ const formatTimeRange = (banner: ShopBanner) => {
   return '永久展示'
 }
 
-onMounted(() => {
-  if (canView.value) {
-    loadBanners()
+const initializePageData = async () => {
+  if (!canView.value) {
+    loading.value = false
+    return
   }
-  // 注册头部操作按钮
+
+  if (hasInitializedPageData.value) {
+    return
+  }
+
+  hasInitializedPageData.value = true
+  await loadBanners()
+}
+
+const registerPageHeaderActions = () => {
   if (registerHeaderActions) {
     registerHeaderActions([
       ...(canCreate.value ? [{
@@ -751,6 +766,21 @@ onMounted(() => {
       }
     ])
   }
+}
+
+watch(canView, (allowed) => {
+  if (allowed) {
+    void initializePageData()
+  }
+})
+
+watch(canCreate, () => {
+  registerPageHeaderActions()
+})
+
+onMounted(() => {
+  void initializePageData()
+  registerPageHeaderActions()
 })
 
 // 路由守卫：页面离开时清理临时文件

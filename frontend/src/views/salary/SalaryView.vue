@@ -1,13 +1,13 @@
 <template>
-  <PermissionDenied
-    v-if="!canAccessSalaryPage"
+  <PermissionGate
     :can-view="canAccessSalaryPage"
+    mode="denied"
     module-key="salary"
     module-name="工资管理"
-    permission-code="salary-templates:view / salary-records:view / salary-records:view:own"
-  />
+    permission-code="salary:view"
+  >
 
-  <ElConfigProvider v-else :locale="locale">
+  <ElConfigProvider :locale="locale">
     <div class="page-container salary-page admin-page">
       <!-- 页面头部 - 使用公共组件 -->
       <PageHeader icon="fas fa-money-bill-wave" title="工资管理">
@@ -30,8 +30,11 @@
             <span>批量重算</span>
           </el-button>
           <el-button type="info" @click="handleRefresh" :disabled="refreshing">
-            <i :class="refreshing ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'"></i>
-            <span>刷新</span>
+            <InlineLoading v-if="refreshing" text="刷新中..." size="small" variant="inherit" />
+            <template v-else>
+              <i class="fas fa-sync-alt"></i>
+              <span>刷新</span>
+            </template>
           </el-button>
         </template>
       </PageHeader>
@@ -140,14 +143,18 @@
               <div class="table-responsive">
                 <el-table
                   ref="templateTableRef"
-                  :data="filteredTemplates"
-                  v-loading="templatesLoading"
+                  :data="templatesLoading ? [] : filteredTemplates"
                   border
                   stripe
                   row-key="id"
                   class="data-table salary-template-table"
                   @row-click="handleTemplateRowTap"
                 >
+                  <template #empty>
+                    <TableLoadingRow v-if="templatesLoading" mode="block" text="加载中..." />
+                    <el-empty v-else description="暂无工资模板" />
+                  </template>
+
                   <el-table-column v-if="isMobile" type="expand" width="1" class-name="mobile-expand-column">
                     <template #default="{ row }">
                       <div class="mobile-inline-actions">
@@ -390,14 +397,18 @@
                 <el-table
                   v-if="isMobile"
                   ref="employeeTableRef"
-                  :data="filteredEmployees"
-                  v-loading="employeesLoading"
+                  :data="employeesLoading ? [] : filteredEmployees"
                   border
                   stripe
                   row-key="id"
                   class="data-table salary-employee-table"
                   @row-click="handleEmployeeRowTap"
                 >
+                  <template #empty>
+                    <TableLoadingRow v-if="employeesLoading" mode="block" text="加载中..." />
+                    <el-empty v-else description="暂无员工工资数据" />
+                  </template>
+
                   <el-table-column type="expand" width="1" class-name="mobile-expand-column">
                     <template #default="{ row }">
                       <div class="mobile-inline-actions">
@@ -480,7 +491,12 @@
                   </el-table-column>
                 </el-table>
 
-                <el-table v-else :data="filteredEmployees" v-loading="employeesLoading" border stripe class="data-table">
+                <el-table v-else :data="employeesLoading ? [] : filteredEmployees" border stripe class="data-table">
+                  <template #empty>
+                    <TableLoadingRow v-if="employeesLoading" mode="block" text="加载中..." />
+                    <el-empty v-else description="暂无员工工资数据" />
+                  </template>
+
                   <el-table-column label="序号" min-width="60" align="center">
                     <template #default="{ $index }">
                       {{ $index + 1 }}
@@ -735,14 +751,18 @@
                 <el-table
                   v-if="isMobile"
                   ref="payoutTableRef"
-                  :data="salaryPayoutData"
-                  v-loading="payoutLoading"
+                  :data="payoutLoading ? [] : salaryPayoutData"
                   border
                   stripe
                   row-key="id"
                   class="data-table salary-payout-table"
                   @row-click="handlePayoutRowTap"
                 >
+                  <template #empty>
+                    <TableLoadingRow v-if="payoutLoading" mode="block" text="加载中..." />
+                    <el-empty v-else description="暂无工资发放数据" />
+                  </template>
+
                   <el-table-column type="expand" width="1" class-name="mobile-expand-column">
                     <template #default="{ row }">
                       <div class="mobile-inline-actions">
@@ -824,12 +844,16 @@
 
                 <el-table
                   v-else
-                  :data="salaryPayoutData"
-                  v-loading="payoutLoading"
+                  :data="payoutLoading ? [] : salaryPayoutData"
                   border
                   stripe
                   class="data-table"
                 >
+                  <template #empty>
+                    <TableLoadingRow v-if="payoutLoading" mode="block" text="加载中..." />
+                    <el-empty v-else description="暂无工资发放数据" />
+                  </template>
+
                   <el-table-column label="序号" min-width="50" align="center">
                     <template #default="{ $index }">
                       {{ $index + 1 }}
@@ -1052,7 +1076,12 @@
             <!-- 数据表格 -->
             <div class="table-section admin-panel admin-table-panel">
               <div class="table-responsive my-salary-table">
-                <el-table :data="myRecords" v-loading="myLoading" border stripe class="data-table">
+                <el-table :data="myLoading ? [] : myRecords" border stripe class="data-table">
+                  <template #empty>
+                    <TableLoadingRow v-if="myLoading" mode="block" text="加载中..." />
+                    <el-empty v-else description="暂无工资记录" />
+                  </template>
+
                   <el-table-column v-if="canViewSalaryField('salary_mysalaryview', 'paid_at')" label="发放时间" min-width="100" align="center">
                     <template #default="{ row }">
                       <span class="period-text">{{ formatPayoutTime(row.paid_at) }}</span>
@@ -1262,7 +1291,10 @@
         dialog-class="salary-dialog salary-dialog-large"
         :show-default-footer="false"
       >
-        <div v-if="currentSalesRecord" class="sales-details" v-loading="salesDetailLoading">
+        <div v-if="currentSalesRecord" class="sales-details">
+          <SectionLoading v-if="salesDetailLoading" text="加载中..." />
+
+          <template v-else>
           <!-- 汇总信息 -->
           <div class="details-info">
             <div v-if="canViewSalaryField('salary_mysalaryview', 'paid_at')" class="info-row">
@@ -1321,6 +1353,7 @@
               <p>暂无销售明细数据</p>
             </div>
           </div>
+          </template>
         </div>
 
         <template #footer>
@@ -1362,9 +1395,11 @@
           </div>
 
           <!-- 销售明细表格 -->
-          <div v-loading="employeeSalesDetailLoading" class="sales-details-table">
+          <div class="sales-details-table">
             <h4 class="section-title">销售明细列表</h4>
-            <div v-if="employeeSalesDetailList.length > 0" class="table-responsive">
+            <SectionLoading v-if="employeeSalesDetailLoading" text="加载中..." />
+
+            <div v-else-if="employeeSalesDetailList.length > 0" class="table-responsive">
               <table class="data-table">
                 <thead>
                   <tr>
@@ -1534,9 +1569,11 @@
             取消
           </el-button>
           <el-button type="primary" native-type="submit" form="edit-payout-form" :disabled="editPayoutSaving">
-            <i v-if="editPayoutSaving" class="fas fa-spinner fa-spin"></i>
-            <i v-else class="fas fa-save"></i>
-            保存
+            <InlineLoading v-if="editPayoutSaving" text="保存中..." size="small" variant="inherit" />
+            <template v-else>
+              <i class="fas fa-save"></i>
+              保存
+            </template>
           </el-button>
         </template>
       </MobileDialog>
@@ -1578,9 +1615,11 @@
             取消
           </el-button>
           <el-button type="success" native-type="submit" form="settle-form" :disabled="settleSaving">
-            <i v-if="settleSaving" class="fas fa-spinner fa-spin"></i>
-            <i v-else class="fas fa-check"></i>
-            确认结算
+            <InlineLoading v-if="settleSaving" text="结算中..." size="small" variant="inherit" />
+            <template v-else>
+              <i class="fas fa-check"></i>
+              确认结算
+            </template>
           </el-button>
         </template>
       </MobileDialog>
@@ -1803,9 +1842,11 @@
             取消
           </el-button>
           <el-button type="primary" native-type="submit" form="template-form" :disabled="templateSaving">
-            <i v-if="templateSaving" class="fas fa-spinner fa-spin"></i>
-            <i v-else class="fas fa-save"></i>
-            保存
+            <InlineLoading v-if="templateSaving" text="保存中..." size="small" variant="inherit" />
+            <template v-else>
+              <i class="fas fa-save"></i>
+              保存
+            </template>
           </el-button>
         </template>
       </MobileDialog>
@@ -1923,7 +1964,12 @@
           </el-button>
         </div>
 
-        <el-table :data="attendanceRecords" v-loading="attendanceLoading" border stripe class="data-table">
+        <el-table :data="attendanceLoading ? [] : attendanceRecords" border stripe class="data-table">
+          <template #empty>
+            <TableLoadingRow v-if="attendanceLoading" mode="block" text="加载中..." />
+            <el-empty v-else description="暂无考勤记录" />
+          </template>
+
           <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'attendance_record_date')" prop="record_date" label="日期" width="120" align="center" />
           <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'attendance_record_type')" label="类型" width="100" align="center">
             <template #default="{ row }">
@@ -2186,14 +2232,17 @@
             取消
           </el-button>
           <el-button type="primary" native-type="submit" form="attendance-form" :disabled="attendanceSaving">
-            <i v-if="attendanceSaving" class="fas fa-spinner fa-spin"></i>
-            <i v-else class="fas fa-save"></i>
-            保存
+            <InlineLoading v-if="attendanceSaving" text="保存中..." size="small" variant="inherit" />
+            <template v-else>
+              <i class="fas fa-save"></i>
+              保存
+            </template>
           </el-button>
         </template>
       </MobileDialog>
     </div>
   </ElConfigProvider>
+  </PermissionGate>
 </template>
 
 <script setup lang="ts">
@@ -2214,8 +2263,11 @@ import { useAuthStore } from '@/stores/auth'
 import { unifiedApi } from '@/utils/unified-api'
 import { useNotification } from '@/composables/useNotification'
 import Pagination from '@/components/Pagination.vue'
+import InlineLoading from '@/components/InlineLoading.vue'
+import SectionLoading from '@/components/SectionLoading.vue'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
-import { PageHeader, PermissionDenied } from '@/components/base'
+import { PageHeader, PermissionGate } from '@/components/base'
 import dayjs from 'dayjs'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
@@ -2226,9 +2278,11 @@ const locale = zhCn
 // 使用统一的 composable
 const authStore = useAuthStore()
 const { success, error, warning } = useNotification()
+const salaryPagePermissions = usePagePermissions('salary')
 const salaryTemplatePermissions = usePagePermissions('salary-templates')
 const salaryRecordPermissions = usePagePermissions('salary-records')
 const mySalaryPermissions = usePagePermissions('my-salary')
+const canViewSalaryPage = computed(() => salaryPagePermissions.canView.value)
 const canViewSalaryTemplates = computed(() => salaryTemplatePermissions.canView.value)
 const canCreateSalaryTemplate = computed(() => salaryTemplatePermissions.canCreate.value)
 const canEditSalaryTemplate = computed(() => salaryTemplatePermissions.canEdit.value)
@@ -2241,11 +2295,7 @@ const canApproveSalaryRecord = computed(() => salaryRecordPermissions.canApprove
 const canManageSalaryRecord = computed(() => salaryRecordPermissions.canManage.value)
 const canViewOwnSalary = computed(() => mySalaryPermissions.canView.value)
 const canViewPayoutRecords = computed(() => canViewSalaryRecords.value || canViewOwnSalary.value)
-const canAccessSalaryPage = computed(() => (
-  canViewSalaryTemplates.value ||
-  canViewSalaryRecords.value ||
-  canViewOwnSalary.value
-))
+const canAccessSalaryPage = computed(() => canViewSalaryPage.value)
 const { init: initFieldPermissions } = fieldPermissions
 const { refreshing, refresh } = useRefreshData()
 const { isMobile } = useMobile()

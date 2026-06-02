@@ -4,7 +4,7 @@
  */
 
 import { useAuthStore } from '@/stores/auth'
-import { ElNotification } from 'element-plus'
+import { showElementNotification } from '@/utils/element-feedback'
 import logger from '@/utils/logger'
 
 // Token 过期检测配置
@@ -76,7 +76,7 @@ function checkTokenExpiry() {
  * 显示 Token 即将过期的提醒
  */
 function showExpiryWarning(minutes: number) {
-  ElNotification({
+  showElementNotification({
     title: '登录即将过期',
     message: `您的登录将在 ${minutes} 分钟后过期，请注意保存数据`,
     type: 'warning',
@@ -95,7 +95,7 @@ async function refreshToken() {
     await authStore.refreshAuth()
     hasShownWarning = false // 重置警告标志
 
-    ElNotification({
+    showElementNotification({
       title: '登录已续期',
       message: '您的登录已自动续期',
       type: 'success',
@@ -114,7 +114,7 @@ async function refreshToken() {
 function handleTokenExpired() {
   const authStore = useAuthStore()
 
-  ElNotification({
+  showElementNotification({
     title: '登录已过期',
     message: '您的登录已过期，请重新登录',
     type: 'error',

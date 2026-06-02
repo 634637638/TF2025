@@ -1,13 +1,13 @@
 <template>
-  <PermissionDenied
-    v-if="!canView"
+  <PermissionGate
     :can-view="canView"
+    mode="denied"
     module-key="h5-admin-templates"
     module-name="商城模板"
     permission-code="h5-templates:view"
-  />
+  >
 
-  <div v-else class="template-management-page">
+  <div class="template-management-page">
     <el-card class="toolbar-card" shadow="never">
       <div class="toolbar search-toolbar">
         <div class="search-panel">
@@ -33,7 +33,10 @@
       </div>
     </el-card>
 
-    <el-card class="table-card" shadow="never" v-loading="loading">
+    <el-card class="table-card" shadow="never">
+      <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
+
+      <template v-else>
       <div v-if="keyword" class="sort-tip">
         搜索结果仅用于筛选查看，清空搜索后可拖拽排序母模板。
       </div>
@@ -169,9 +172,10 @@
         </div>
       </div>
 
-      <el-empty v-if="!loading && filteredGroups.length === 0" description="暂无母模板">
+      <el-empty v-if="filteredGroups.length === 0" description="暂无母模板">
         <el-button v-if="canCreate" type="primary" @click="openCreateDialog">新增</el-button>
       </el-empty>
+      </template>
     </el-card>
 
     <MobileDialog
@@ -486,6 +490,7 @@
       </template>
     </MobileDialog>
   </div>
+  </PermissionGate>
 </template>
 
 <script setup lang="ts">
@@ -494,7 +499,8 @@ import { useRouter, onBeforeRouteLeave } from 'vue-router'
 import { Refresh, Plus } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import draggable from 'vuedraggable'
-import { PermissionDenied } from '@/components/base/index'
+import { PermissionGate } from '@/components/base/index'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useLoadingState } from '@/composables'
 import { formatImageUrl } from '@/utils/format'
@@ -543,14 +549,21 @@ interface TemplateGroup {
 }
 
 const router = useRouter()
-const { canView, canCreate, canEdit, canDelete, handleNoPermission } = usePagePermissions('h5-admin-templates')
+const templatePermissions = usePagePermissions('h5-admin-templates')
+const h5AdminPermissions = usePagePermissions('h5-admin')
+const { handleNoPermission } = templatePermissions
+const canView = computed(() => templatePermissions.canView.value || h5AdminPermissions.canView.value)
+const canCreate = computed(() => templatePermissions.canCreate.value || h5AdminPermissions.canCreate.value)
+const canEdit = computed(() => templatePermissions.canEdit.value || h5AdminPermissions.canEdit.value)
+const canDelete = computed(() => templatePermissions.canDelete.value || h5AdminPermissions.canDelete.value)
 
 // 注入父组件提供的注册方法
 const registerHeaderActions = inject<(actions: HeaderAction[]) => void>('registerHeaderActions')
 const clearHeaderActions = inject<() => void>('clearHeaderActions')
 
-const { loading } = useLoadingState()
+const { loading } = useLoadingState(true)
 const saving = ref(false)
+const hasInitializedPageData = ref(false)
 const mediaUploadingCount = ref(0)
 const sortingGroups = ref(false)
 const keyword = ref('')
@@ -1314,11 +1327,21 @@ const handleImageDragEnd = async (child: EditableChildTemplate) => {
   }
 }
 
-onMounted(() => {
-  if (canView.value) {
-    loadPageData()
+const initializePageData = async () => {
+  if (!canView.value) {
+    loading.value = false
+    return
   }
-  // 注册头部操作按钮
+
+  if (hasInitializedPageData.value) {
+    return
+  }
+
+  hasInitializedPageData.value = true
+  await loadPageData()
+}
+
+const registerPageHeaderActions = () => {
   if (registerHeaderActions) {
     registerHeaderActions([
       ...(canCreate.value ? [{
@@ -1336,6 +1359,21 @@ onMounted(() => {
       }
     ])
   }
+}
+
+watch(canView, (allowed) => {
+  if (allowed) {
+    void initializePageData()
+  }
+})
+
+watch(canCreate, () => {
+  registerPageHeaderActions()
+})
+
+onMounted(() => {
+  void initializePageData()
+  registerPageHeaderActions()
 })
 
 // 路由守卫：页面离开时清理临时文件

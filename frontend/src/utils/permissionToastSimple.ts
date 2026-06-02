@@ -3,7 +3,7 @@
  * 提供友好的权限不足提示
  */
 
-import { ElMessage, ElNotification } from 'element-plus'
+import { showElementWarning } from '@/utils/element-feedback'
 
 /**
  * 权限提示类型
@@ -43,35 +43,21 @@ const ACTION_NAMES: Record<PermissionAction, string> = {
  */
 export function showPermissionDenied(options: PermissionToastOptions) {
   const {
-    moduleName,
     action = 'view',
-    permissionCode,
-    showDetails = false,
     message
   } = options
 
   const actionName = ACTION_NAMES[action] || '操作'
-  const defaultMessage = `您没有${moduleName}的${actionName}权限，请联系管理员开通`
+  const defaultMessage = action === 'view'
+    ? '您没有访问此页面的权限'
+    : `您没有${actionName}权限`
 
   // 使用友好的消息提示
-  ElMessage({
+  showElementWarning({
     message: message || defaultMessage,
-    type: 'warning',
     duration: 3000,
     showClose: true
   })
-
-  // 如果需要显示详细信息
-  if (showDetails && permissionCode) {
-    setTimeout(() => {
-      ElNotification({
-        title: '权限详情',
-        message: `所需权限代码：${permissionCode}`,
-        type: 'info',
-        duration: 5000
-      })
-    }, 500)
-  }
 }
 
 /**

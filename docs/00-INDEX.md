@@ -29,6 +29,10 @@
 - [代码审查标准](guides/CODE_REVIEW_STANDARDS.md) - ⭐ **NEW** AI 代码审查完整提示词规范
 - [日志系统规范](guides/LOG_SYSTEM_STANDARDS.md) - ⭐ **NEW** 统一日志入口，后端 `backend/src/utils/log.js` / 前端 `frontend/src/utils/logger.ts`
 - [前端类型统一进展](development/FRONTEND_TYPE_UNIFICATION_PROGRESS.md) - ⭐ **NEW** 公共类型、表格组件、业务页面去 `any` 收口记录
+- [全局加载动画统一规范](frontend/global-loading-standard.md) - ⭐ **NEW** 页面切换、局部加载与按钮 loading 分层规范
+- [菜单图标管理规范](frontend/menu-icon-management-standard.md) - ⭐ **NEW** 菜单图标在线检索、本地缓存、统一渲染规范
+- [前端最新请求规范](frontend/latest-request-standard.md) - ⭐ **NEW** 搜索、筛选、分页请求取消与旧响应防覆盖规范
+- [近期 UI 与数据修复记录](frontend/recent-ui-and-data-fixes-2026-06-01.md) - ⭐ **NEW** 基础资料、菜单点击、价格采集相关修复记录
 - [前端代码规范核实版审查报告](development/FRONTEND_CODE_AUDIT_VERIFIED_2026-04-15.md) - ⭐ **NEW** 已核实高优先级问题、误判项与实际整改顺序
 - [Git 变更分批提交方案](development/GIT_CHANGE_BATCH_PLAN_2026-04-16.md) - ⭐ **NEW** 当前未提交重构按安全修复、TS 迁移、前后端重构分批整理方案
 - [组件标准](guides/component-standards.md) - Vue 组件开发规范
@@ -96,6 +100,7 @@ RBAC 权限管理系统的完整文档。
 
 ### 同步功能
 - [自动同步指南](sync/AUTO_SYNC_GUIDE.md)
+- [价格采集 iPad Air 尺寸匹配说明](sync/price-sync-ipad-air-size-guide.md)
 - [数据库同步指南](sync/DATABASE_SYNC_GUIDE.md)
 - [远程数据库同步](sync/REMOTE_DATABASE_SYNC_GUIDE.md)
 - [智能用户匹配指南](sync/SMART_USER_MATCHING_GUIDE.md)
@@ -172,6 +177,7 @@ UI 组件开发指南和样式规范。
 - Element Plus 按需引入
 - 图片和资源优化
 - 代码分割策略
+- [前端响应速度优化记录（2026-06-01）](performance/frontend-response-optimization-2026-06-01.md) - 列表请求竞态、首屏入口瘦身与剩余大包方向
 
 ### [后端性能优化](deployment/PERFORMANCE_OPTIMIZATION.md)
 - 数据库索引优化
@@ -195,6 +201,7 @@ UI 组件开发指南和样式规范。
 ### 快速开始
 - [快速修复指南](performance/QUICK_FIX_GUIDE.md) - ⚡ **1小时快速优化**
 - [优化检查清单](performance/OPTIMIZATION_CHECKLIST.md) - 📋 完整任务跟踪
+- [前端响应速度优化记录（2026-06-01）](performance/frontend-response-optimization-2026-06-01.md) - 🧩 前端继续优化
 - [文档索引](performance/优化文档索引.md) - 🗺️ 所有文档导航
 
 ### 工具脚本

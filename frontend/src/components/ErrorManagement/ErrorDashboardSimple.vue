@@ -177,11 +177,15 @@
       </template>
 
       <el-table
-        :data="paginatedLogs"
-        v-loading="loading"
+        :data="loading ? [] : paginatedLogs"
         row-key="id"
         :row-class-name="getRowClassName"
       >
+        <template #empty>
+          <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
+          <el-empty v-else description="暂无错误日志" />
+        </template>
+
         <el-table-column prop="formattedTime" label="时间" width="180" />
 
         <el-table-column label="级别" width="100">
@@ -276,6 +280,7 @@
 
       <!-- 分页 -->
       <Pagination
+        v-if="!loading"
         v-model:current="pagination.page"
         v-model:page-size="pagination.size"
         :total="filteredLogs.length"
@@ -383,6 +388,7 @@ import {
 import { useErrorLogger, ErrorLevel, ErrorType } from '@/utils/error-logger'
 import { TimeUtil } from '@/utils/time'
 import Pagination from '@/components/Pagination.vue'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { useImportExport } from '@/composables/useImportExport'
 
 // 错误日志

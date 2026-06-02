@@ -1,20 +1,12 @@
 <template>
   <div class="subsidy-view admin-page safe-area-top">
-    <!-- 权限加载中 -->
-    <div v-if="permissionLoading" class="loading-container">
-      <div class="loading-spinner"></div>
-      <p>加载权限中...</p>
-    </div>
-
-    <PermissionDenied
-      v-else-if="!canView"
+    <PermissionGate
       :can-view="canView"
+      mode="denied"
       module-key="subsidy"
       module-name="国补管理"
       permission-code="subsidy:view"
-    />
-
-    <template v-else>
+    >
       <!-- 页面头部 - 使用公共组件 -->
       <PageHeader
         icon="fas fa-hand-holding-usd"
@@ -44,8 +36,11 @@
             :disabled="refreshing"
             title="刷新数据"
           >
-            <i :class="refreshing ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'"></i>
-            <span>刷新</span>
+            <InlineLoading v-if="refreshing" text="刷新中..." size="small" variant="inherit" />
+            <template v-else>
+              <i class="fas fa-sync-alt"></i>
+              <span>刷新</span>
+            </template>
           </el-button>
         </template>
       </PageHeader>
@@ -54,76 +49,128 @@
       <!-- 统计卡片 -->
     <div v-if="showStatsCards" class="stats-cards">
       <div v-if="canViewField('stats_total_and_handler')" class="stat-card total-card">
-        <div class="stat-content">
-          <div class="stat-value">{{ stats.total_count || 0 }} <span class="divider">/</span> {{ stats.handler_count || 0 }}</div>
-          <div class="stat-label">总办理 / 代办理</div>
-        </div>
-        <!-- 手机端双行显示 -->
-        <div class="stat-content-mobile">
-          <div class="stat-row">
-            <span class="row-label">总办理</span>
-            <span class="row-value">{{ stats.total_count || 0 }}单</span>
+        <div class="stat-card__glow"></div>
+        <div class="stat-card__head">
+          <div class="stat-card__icon">
+            <i class="fas fa-layer-group"></i>
           </div>
-          <div class="stat-row">
-            <span class="row-label">代办理</span>
-            <span class="row-value">{{ stats.handler_count || 0 }}单</span>
+          <div class="stat-card__head-copy">
+            <div class="stat-card__eyebrow">办理</div>
+            <div class="stat-card__title">总单数</div>
+          </div>
+          <div class="stat-card__badge">代办 {{ stats.handler_count || 0 }}</div>
+        </div>
+        <div class="stat-card__value-row">
+          <div class="stat-card__value">{{ stats.total_count || 0 }}</div>
+          <div class="stat-card__value-unit">单</div>
+        </div>
+        <div class="stat-card__metrics">
+          <div class="stat-metric">
+            <span class="stat-metric__label">待审</span>
+            <strong class="stat-metric__value">{{ stats.pending_count || 0 }}</strong>
+          </div>
+          <div class="stat-metric">
+            <span class="stat-metric__label">代办</span>
+            <strong class="stat-metric__value">{{ stats.handler_count || 0 }}</strong>
           </div>
         </div>
       </div>
       <div v-if="canViewField('stats_approval_progress')" class="stat-card approval-card">
-        <div class="stat-content">
-          <div class="stat-value">{{ stats.completed_count || 0 }} <span class="divider">/</span> {{ stats.pending_count || 0 }}</div>
-          <div class="stat-label">已审批 / 未审批</div>
-        </div>
-        <!-- 手机端双行显示 -->
-        <div class="stat-content-mobile">
-          <div class="stat-row">
-            <span class="row-label">已审批</span>
-            <span class="row-value">{{ stats.completed_count || 0 }}单</span>
+        <div class="stat-card__glow"></div>
+        <div class="stat-card__head">
+          <div class="stat-card__icon">
+            <i class="fas fa-stamp"></i>
           </div>
-          <div class="stat-row">
-            <span class="row-label">未审批</span>
-            <span class="row-value">{{ stats.pending_count || 0 }}单</span>
+          <div class="stat-card__head-copy">
+            <div class="stat-card__eyebrow">审批</div>
+            <div class="stat-card__title">已审批</div>
+          </div>
+          <div class="stat-card__badge">{{ approvalRate }}%</div>
+        </div>
+        <div class="stat-card__value-row">
+          <div class="stat-card__value">{{ stats.completed_count || 0 }}</div>
+          <div class="stat-card__value-unit">单</div>
+        </div>
+        <div class="stat-progress">
+          <div class="stat-progress__track">
+            <div class="stat-progress__fill" :style="{ width: `${approvalRate}%` }"></div>
+          </div>
+          <div class="stat-progress__meta">
+            <span>完成 {{ approvalRate }}%</span>
+            <span>待 {{ stats.pending_count || 0 }}</span>
+          </div>
+        </div>
+        <div class="stat-card__metrics">
+          <div class="stat-metric">
+            <span class="stat-metric__label">已审</span>
+            <strong class="stat-metric__value">{{ stats.completed_count || 0 }}</strong>
+          </div>
+          <div class="stat-metric">
+            <span class="stat-metric__label">待审</span>
+            <strong class="stat-metric__value">{{ stats.pending_count || 0 }}</strong>
           </div>
         </div>
       </div>
       <div v-if="canViewField('stats_amount_progress')" class="stat-card amount-card">
-        <div class="stat-content">
-          <div class="stat-value">¥{{ formatAmount(stats.total_arrived_amount || 0) }} <span class="divider">/</span> ¥{{ formatAmount((stats.total_subsidy_amount || 0) - (stats.total_arrived_amount || 0)) }}</div>
-          <div class="stat-label">已到账 / 未到账</div>
-        </div>
-        <!-- 手机端双行显示 -->
-        <div class="stat-content-mobile">
-          <div class="stat-row">
-            <span class="row-label">已到账</span>
-            <span class="row-value">¥{{ formatAmount(stats.total_arrived_amount || 0) }}</span>
+        <div class="stat-card__glow"></div>
+        <div class="stat-card__head">
+          <div class="stat-card__icon">
+            <i class="fas fa-wallet"></i>
           </div>
-          <div class="stat-row">
-            <span class="row-label">未到账</span>
-            <span class="row-value">¥{{ formatAmount((stats.total_subsidy_amount || 0) - (stats.total_arrived_amount || 0)) }}</span>
+          <div class="stat-card__head-copy">
+            <div class="stat-card__eyebrow">到账</div>
+            <div class="stat-card__title">已到账</div>
+          </div>
+          <div class="stat-card__badge">{{ arrivalRate }}%</div>
+        </div>
+        <div class="stat-card__value-row stat-card__value-row--money">
+          <div class="stat-card__value">¥{{ formatAmount(stats.total_arrived_amount || 0) }}</div>
+        </div>
+        <div class="stat-progress">
+          <div class="stat-progress__track">
+            <div class="stat-progress__fill" :style="{ width: `${arrivalRate}%` }"></div>
+          </div>
+          <div class="stat-progress__meta">
+            <span>到账 {{ arrivalRate }}%</span>
+            <span>待 ¥{{ formatAmount(pendingArrivalAmount) }}</span>
+          </div>
+        </div>
+        <div class="stat-card__metrics">
+          <div class="stat-metric">
+            <span class="stat-metric__label">应到</span>
+            <strong class="stat-metric__value">¥{{ formatAmount(stats.total_subsidy_amount || 0) }}</strong>
+          </div>
+          <div class="stat-metric">
+            <span class="stat-metric__label">待到</span>
+            <strong class="stat-metric__value">¥{{ formatAmount(pendingArrivalAmount) }}</strong>
           </div>
         </div>
       </div>
       <div v-if="canViewField('stats_store_overview')" class="stat-card handler-card">
-        <div class="stat-content">
-          <div class="stat-value">{{ stats.store_stats?.length || 0 }}</div>
-          <div class="stat-label">店铺数</div>
+        <div class="stat-card__glow"></div>
+        <div class="stat-card__head">
+          <div class="stat-card__icon">
+            <i class="fas fa-store"></i>
+          </div>
+          <div class="stat-card__head-copy">
+            <div class="stat-card__eyebrow">店铺</div>
+            <div class="stat-card__title">参与店铺</div>
+          </div>
+          <div class="stat-card__badge">TOP</div>
         </div>
-        <!-- 手机端店铺列表 -->
-        <div class="stat-content-mobile">
+        <div class="stat-card__value-row">
+          <div class="stat-card__value">{{ stats.store_stats?.length || 0 }}</div>
+          <div class="stat-card__value-unit">家</div>
+        </div>
+        <div class="store-pill-list">
           <template v-if="stats.store_stats && stats.store_stats.length > 0">
-            <div class="stat-row" v-for="store in stats.store_stats.slice(0, 3)" :key="store.store_id">
-              <span class="row-label">{{ store.store_name || '未知店铺' }}</span>
-              <span class="row-value">{{ store.total_count || 0 }}单</span>
-            </div>
-            <div class="stat-row" v-if="stats.store_stats.length > 3">
-              <span class="row-label">其他</span>
-              <span class="row-value">+{{ stats.store_stats.length - 3 }}店</span>
+            <div v-for="store in topStores" :key="store.store_id" class="store-pill">
+              <span class="store-pill__name">{{ store.store_name || '未知店铺' }}</span>
+              <strong class="store-pill__value">{{ store.total_count || 0 }}单</strong>
             </div>
           </template>
-          <div class="stat-row" v-else>
-            <span class="row-label">暂无数据</span>
-            <span class="row-value">-</span>
+          <div v-else class="store-pill store-pill--empty">
+            <span class="store-pill__name">暂无店铺数据</span>
           </div>
         </div>
       </div>
@@ -333,9 +380,11 @@
             @click="submitBatchUpdate"
             :disabled="batchUpdating || (!batchForm.apply_time && !batchForm.arrival_time)"
           >
-            <i v-if="batchUpdating" class="fas fa-spinner fa-spin"></i>
-            <i v-else class="fas fa-save"></i>
-            <span>确认修改 ({{ selectedItems.length }}条)</span>
+            <InlineLoading v-if="batchUpdating" text="修改中..." size="small" variant="inherit" />
+            <template v-else>
+              <i class="fas fa-save"></i>
+              <span>确认修改 ({{ selectedItems.length }}条)</span>
+            </template>
           </el-button>
         </div>
       </template>
@@ -371,7 +420,7 @@
       :item="currentManagingItem"
       @saved="handlePhotoSaved"
     />
-    </template>
+    </PermissionGate>
   </div>
 </template>
 
@@ -388,7 +437,8 @@ import { useCachedRequest, DEFAULT_CACHE_TTL } from '@/composables/usePageCache'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time';
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue';
 import ImportExportActions from '@/components/business/ImportExportActions.vue';
-import { PageHeader, PermissionDenied } from '@/components/base';
+import InlineLoading from '@/components/InlineLoading.vue';
+import { PageHeader, PermissionGate } from '@/components/base';
 import { normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/utils/security';
 import { logger } from '@/utils/logger';
 const SubsidyApplyDialog = defineAsyncComponent(() => import('./components/SubsidyApplyDialog.vue'))
@@ -407,8 +457,7 @@ const {
   canExport,
   handleNoPermission
 } = usePagePermissions('subsidy');
-const { refreshing, refresh } = useRefreshData();
-const permissionLoading = ref(false);
+const { refreshing, refreshData } = useRefreshData();
 
 // 字段权限（使用全局composable）
 const { isFieldVisible, isFieldEditable, init: initFieldPermissions } = fieldPermissions;
@@ -569,6 +618,31 @@ const stats = ref({
     total_count: number;
   }>
 });
+
+const approvalRate = computed(() => {
+  const total = Number(stats.value.total_count || 0)
+  if (total <= 0) return 0
+  return Math.round((Number(stats.value.completed_count || 0) / total) * 100)
+})
+
+const pendingArrivalAmount = computed(() => {
+  return Math.max(
+    Number(stats.value.total_subsidy_amount || 0) - Number(stats.value.total_arrived_amount || 0),
+    0
+  )
+})
+
+const arrivalRate = computed(() => {
+  const total = Number(stats.value.total_subsidy_amount || 0)
+  if (total <= 0) return 0
+  return Math.round((Number(stats.value.total_arrived_amount || 0) / total) * 100)
+})
+
+const topStores = computed(() => {
+  return [...(stats.value.store_stats || [])]
+    .sort((a, b) => Number(b.total_count || 0) - Number(a.total_count || 0))
+    .slice(0, 2)
+})
 
 const filters = reactive({
   search: '',
@@ -901,7 +975,7 @@ const scheduleStatsFetch = (requestSeq: number) => {
   }, 120)
 }
 
-const fetchLatestSubsidyData = async (resetPage = false) => {
+const fetchLatestSubsidyData = async (resetPage = false, setLoading = true) => {
   const requestSeq = ++subsidyRequestSeq;
 
   if (resetPage) {
@@ -915,7 +989,8 @@ const fetchLatestSubsidyData = async (resetPage = false) => {
   const currentListController = listAbortController;
   await fetchSubsidyList({
     signal: currentListController.signal,
-    requestSeq
+    requestSeq,
+    setLoading
   });
 
   if (requestSeq === subsidyRequestSeq) {
@@ -1293,9 +1368,15 @@ const resetFilters = () => {
 // 刷新数据
 // 刷新数据 - 使用统一的 composable
 const handleRefresh = () => {
-  refresh(async () => {
-    await fetchLatestSubsidyData()
-  })
+  refreshData(
+    async () => {
+      await fetchLatestSubsidyData(false, false)
+    },
+    {
+      successMessage: '数据刷新成功',
+      errorMessage: '刷新失败，请重试'
+    }
+  )
 };
 
 // 翻页
@@ -1411,134 +1492,321 @@ onUnmounted(() => {
 .content {
   .stats-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 20px;
-    margin: 0 0 24px 0;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 14px;
+    margin: 0 0 18px 0;
 
     @media (max-width: 768px) {
-      margin: 0 0 16px 0;
-      gap: 12px;
+      margin: 0 0 14px 0;
+      gap: 10px;
       grid-template-columns: repeat(2, 1fr);
-      padding: 0 4px;
+      padding: 0;
     }
 
     @media (max-width: 480px) {
       margin: 0 0 12px 0;
-      gap: 10px;
+      gap: 8px;
     }
 
     .stat-card {
-      background: white;
-      border-radius: 12px;
-      padding: 24px;
+      --card-accent: #2563eb;
+      position: relative;
+      background:
+        radial-gradient(circle at top right, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.98) 42%, rgba(255, 255, 255, 1) 100%),
+        linear-gradient(160deg, rgba(37, 99, 235, 0.08), rgba(37, 99, 235, 0.01));
+      border-radius: 14px;
+      padding: 16px;
       display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 9px;
+      box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
       transition: all 0.3s ease;
-      border: 1px solid #e8ecef;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      overflow: hidden;
 
       @media (max-width: 768px) {
-        padding: 14px 12px;
-        border-radius: 16px;
-        border: none;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        padding: 10px;
+        border-radius: 12px;
+        gap: 7px;
+        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.1);
       }
 
       &:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+        box-shadow: 0 16px 28px rgba(15, 23, 42, 0.12);
 
         @media (max-width: 768px) {
           transform: translateY(-1px);
         }
       }
 
-      /* 总申请数卡片 */
       &.total-card {
-        @media (max-width: 768px) {
-          background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
-        }
+        --card-accent: #f97316;
       }
 
-      /* 审批状态卡片 */
       &.approval-card {
-        @media (max-width: 768px) {
-          background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-        }
+        --card-accent: #2563eb;
       }
 
-      /* 金额状态卡片 */
       &.amount-card {
-        @media (max-width: 768px) {
-          background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-        }
+        --card-accent: #059669;
       }
 
-      /* 店铺统计卡片 */
       &.handler-card {
-        @media (max-width: 768px) {
-          background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
-        }
+        --card-accent: #7c3aed;
       }
 
-      .stat-content {
-        text-align: center;
-
-        @media (max-width: 768px) {
-          display: none;
-        }
-
-        .stat-value {
-          font-size: 1.75rem;
-          font-weight: 700;
-          color: #2c3e50;
-          line-height: 1.2;
-          margin-bottom: 4px;
-
-          .divider {
-            color: #adb5bd;
-            margin: 0 4px;
-            font-weight: 400;
-          }
-        }
-
-        .stat-label {
-          font-size: 0.875rem;
-          color: #6c757d;
-          font-weight: 500;
-        }
+      .stat-card__glow {
+        position: absolute;
+        inset: -36px auto auto -24px;
+        width: 118px;
+        height: 118px;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--card-accent) 18%, white 82%);
+        filter: blur(8px);
+        opacity: 0.95;
+        pointer-events: none;
       }
 
-      /* 手机端双行内容 */
-      .stat-content-mobile {
-        display: none;
+      .stat-card__head {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        gap: 9px;
+      }
+
+      .stat-card__icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
+        display: grid;
+        place-items: center;
+        color: white;
+        font-size: 15px;
+        background: linear-gradient(145deg, var(--card-accent), color-mix(in srgb, var(--card-accent) 70%, black 30%));
+        box-shadow: 0 12px 24px color-mix(in srgb, var(--card-accent) 24%, transparent);
+      }
+
+      .stat-card__head-copy {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .stat-card__eyebrow {
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: color-mix(in srgb, var(--card-accent) 74%, #334155 26%);
+        margin-bottom: 2px;
+      }
+
+      .stat-card__title {
+        font-size: 14px;
+        font-weight: 700;
+        color: #0f172a;
+      }
+
+      .stat-card__badge {
+        flex-shrink: 0;
+        padding: 3px 7px;
+        border-radius: 999px;
+        font-size: 10px;
+        font-weight: 700;
+        color: color-mix(in srgb, var(--card-accent) 78%, #1e293b 22%);
+        background: color-mix(in srgb, var(--card-accent) 12%, white 88%);
+        border: 1px solid color-mix(in srgb, var(--card-accent) 16%, white 84%);
+      }
+
+      .stat-card__value-row {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: flex-end;
+        gap: 8px;
+      }
+
+      .stat-card__value-row--money {
+        align-items: center;
+      }
+
+      .stat-card__value {
+        font-size: clamp(1.55rem, 2.1vw, 2rem);
+        line-height: 1;
+        font-weight: 800;
+        letter-spacing: -0.04em;
+        color: #020617;
+        word-break: break-word;
+      }
+
+      .stat-card__value-unit {
+        font-size: 12px;
+        font-weight: 700;
+        color: #64748b;
+        padding-bottom: 4px;
+      }
+
+      .stat-card__metrics {
+        position: relative;
+        z-index: 1;
         width: 100%;
-        flex-direction: column;
-        gap: 6px;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 7px;
+      }
 
-        @media (max-width: 768px) {
-          display: flex;
+      .stat-metric {
+        padding: 7px 8px;
+        border-radius: 10px;
+        background: rgba(248, 250, 252, 0.88);
+        border: 1px solid rgba(226, 232, 240, 0.9);
+        min-width: 0;
+      }
+
+      .stat-metric__label {
+        display: block;
+        font-size: 11px;
+        color: #64748b;
+        margin-bottom: 4px;
+      }
+
+      .stat-metric__value {
+        display: block;
+        font-size: 14px;
+        font-weight: 800;
+        color: #0f172a;
+        line-height: 1.2;
+        word-break: break-word;
+      }
+
+      .stat-progress {
+        position: relative;
+        z-index: 1;
+      }
+
+      .stat-progress__track {
+        height: 6px;
+        border-radius: 999px;
+        background: rgba(226, 232, 240, 0.95);
+        overflow: hidden;
+        margin-bottom: 5px;
+      }
+
+      .stat-progress__fill {
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--card-accent), color-mix(in srgb, var(--card-accent) 55%, white 45%));
+        transition: width 0.35s ease;
+      }
+
+      .stat-progress__meta {
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 6px;
+        font-size: 10px;
+        color: #64748b;
+      }
+
+      .store-pill-list {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+
+      .store-pill {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 8px;
+        border-radius: 10px;
+        background: rgba(248, 250, 252, 0.9);
+        border: 1px solid rgba(226, 232, 240, 0.85);
+      }
+
+      .store-pill--empty {
+        justify-content: center;
+      }
+
+      .store-pill__name {
+        min-width: 0;
+        font-size: 12px;
+        font-weight: 600;
+        color: #334155;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .store-pill__value {
+        flex-shrink: 0;
+        font-size: 12px;
+        font-weight: 800;
+        color: color-mix(in srgb, var(--card-accent) 74%, #0f172a 26%);
+      }
+
+      @media (max-width: 768px) {
+        .stat-card__icon {
+          width: 30px;
+          height: 30px;
+          border-radius: 9px;
+          font-size: 12px;
         }
 
-        .stat-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          gap: 8px;
+        .stat-card__eyebrow {
+          font-size: 9px;
+        }
 
-          .row-label {
-            font-size: 11px;
-            color: rgba(255, 255, 255, 0.85);
-            font-weight: 500;
-          }
+        .stat-card__title {
+          font-size: 12px;
+        }
 
-          .row-value {
-            font-size: 14px;
-            font-weight: 700;
-            color: white;
-            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+        .stat-card__value {
+          font-size: clamp(1.18rem, 5vw, 1.48rem);
+        }
+
+        &.amount-card {
+          .stat-card__value {
+            font-size: clamp(0.98rem, 4.2vw, 1.25rem);
           }
+        }
+
+        .stat-card__badge {
+          padding: 2px 5px;
+          font-size: 9px;
+        }
+
+        .stat-card__metrics {
+          gap: 6px;
+        }
+
+        .stat-metric {
+          padding: 6px;
+          border-radius: 8px;
+        }
+
+        .stat-metric__label {
+          font-size: 10px;
+          margin-bottom: 3px;
+        }
+
+        .stat-metric__value {
+          font-size: 11px;
+        }
+
+        .store-pill {
+          padding: 6px 7px;
+          border-radius: 8px;
+        }
+
+        .store-pill__name,
+        .store-pill__value {
+          font-size: 11px;
         }
       }
     }
@@ -3301,7 +3569,7 @@ onUnmounted(() => {
 
 @media (max-width: 480px) {
   .stats-cards {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .search-row {

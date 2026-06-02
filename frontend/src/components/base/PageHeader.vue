@@ -12,12 +12,12 @@
           :style="titleStyle"
         >
           <span
-            v-if="resolvedIcon && isIconifyIcon"
-            class="iconify page-title-icon"
-            :data-icon="resolvedIcon.replace('iconify ', '')"
+            v-if="resolvedIcon"
+            class="page-title-icon"
             :style="iconStyle"
-          ></span>
-          <i v-else-if="resolvedIcon" :class="[resolvedIcon, 'page-title-icon']" :style="iconStyle"></i>
+          >
+            <IconRenderer :icon="resolvedIcon" :svg="resolvedIconSvg" />
+          </span>
           <span>{{ title }}</span>
         </h1>
         <p v-if="description" class="page-description" :style="descriptionStyle">{{ description }}</p>
@@ -40,6 +40,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useSlots, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useMenuStore, type MenuItem } from '@/stores/menu'
+import IconRenderer from '@/components/IconRenderer.vue'
 /**
  * PageHeader - 统一页面头部组件
  *
@@ -152,28 +153,31 @@ const normalizePath = (path?: string | null) => {
   return path.startsWith('/') ? path : `/${path}`
 }
 
-const findMenuIconByPath = (menus: MenuItem[], targetPath: string): string => {
+const findMenuIconByPath = (menus: MenuItem[], targetPath: string): { icon: string, svg: string } => {
   for (const menu of menus) {
     const menuPath = normalizePath(menu.url)
     if (menuPath && menuPath === targetPath && menu.icon) {
-      return menu.icon
+      return {
+        icon: menu.icon,
+        svg: (menu as any).icon_svg || ''
+      }
     }
 
     if (menu.children?.length) {
       const childIcon = findMenuIconByPath(menu.children, targetPath)
-      if (childIcon) {
+      if (childIcon.icon) {
         return childIcon
       }
     }
   }
 
-  return ''
+  return { icon: '', svg: '' }
 }
 
 const menuIcon = computed(() => findMenuIconByPath(menuStore.menuItems, normalizePath(route.path)))
 const routeMetaIcon = computed(() => String(route.meta?.icon || ''))
-const resolvedIcon = computed(() => menuIcon.value || routeMetaIcon.value || props.icon || '')
-const isIconifyIcon = computed(() => resolvedIcon.value.startsWith('iconify '))
+const resolvedIcon = computed(() => menuIcon.value.icon || routeMetaIcon.value || props.icon || '')
+const resolvedIconSvg = computed(() => menuIcon.value.svg || '')
 const isMobile = computed(() => viewportWidth.value <= 768)
 const isSmallMobile = computed(() => viewportWidth.value <= 480)
 const isTinyMobile = computed(() => viewportWidth.value <= 375)

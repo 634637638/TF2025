@@ -1,57 +1,41 @@
 <template>
   <div class="inventory-view admin-page">
-    <!-- 权限加载中 -->
-    <div v-if="permissionLoading" class="loading-container">
-      <div class="loading-spinner"></div>
-      <p>加载权限中...</p>
-    </div>
-
-    <!-- 页面头部 - 使用公共组件 -->
-    <PageHeader
-      icon="fas fa-warehouse"
-      title="库存管理"
-    >
-      <template #actions>
-        <el-button
-          v-if="canCreate"
-          type="primary"
-          @click="handleStartStockIn"
-        >
-          <i class="fas fa-plus"></i>
-          <span>入库</span>
-        </el-button>
-        <ImportExportActions
-          :can-export="canExport"
-          :export-loading="exporting"
-          :export-disabled="loadingStore.isLoading || exporting"
-          export-icon-class="fas fa-download"
-          @export="exportInventory"
-        />
-        <el-button type="info" @click="handleRefresh" :disabled="refreshing">
-          <i :class="refreshing ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'"></i>
-          <span>刷新</span>
-        </el-button>
-      </template>
-    </PageHeader>
-
-    <!-- 权限不足提示 - 在权限加载完成后显示 -->
-    <PermissionAccessNotice
-      v-if="!permissionLoading"
-      v-permission-not="'inventory:view'"
+    <PermissionGate
+      :can-view="canView"
       module-name="库存管理"
-      permission-name="库存管理查看权限"
       permission-code="inventory:view"
-      :has-menu-permission-only="hasMenuPermissionOnly"
-      :related-permissions="inventoryPermissions"
-      detail-title="库存管理相关权限"
-    />
-
-    <!-- 权限验证通过后的内容 -->
-    <div
-      v-if="!permissionLoading"
-      class="content admin-page-content"
-      v-permission="'inventory:view'"
     >
+      <PageHeader
+        icon="fas fa-warehouse"
+        title="库存管理"
+      >
+        <template #actions>
+          <el-button
+            v-if="canCreate"
+            type="primary"
+            @click="handleStartStockIn"
+          >
+            <i class="fas fa-plus"></i>
+            <span>入库</span>
+          </el-button>
+          <ImportExportActions
+            :can-export="canExport"
+            :export-loading="exporting"
+            :export-disabled="loadingStore.isLoading || exporting"
+            export-icon-class="fas fa-download"
+            @export="exportInventory"
+          />
+          <el-button type="info" @click="handleRefresh" :disabled="refreshing">
+            <InlineLoading v-if="refreshing" text="刷新中..." size="small" variant="inherit" />
+            <template v-else>
+              <i class="fas fa-sync-alt"></i>
+              <span>刷新</span>
+            </template>
+          </el-button>
+        </template>
+      </PageHeader>
+
+      <div class="content admin-page-content">
 
     <!-- 统计卡片 -->
     <div v-if="showStatsCards" class="stats-cards" :class="{ 'loading': loadingStore.isLoading }">
@@ -64,8 +48,7 @@
           <div class="stat-label">{{ stat.label }}</div>
         </div>
       </div>
-    </div>
-
+      </div>
     <UnifiedSearchPanel
       v-model:expanded="searchExpanded"
       :loading="isLoading"
@@ -267,7 +250,7 @@
         </div>
       </div>
 
-      <div class="table-responsive table-mobile-friendly" v-loading="isLoading">
+      <div class="table-responsive table-mobile-friendly">
         <table class="data-table">
           <thead>
             <tr>
@@ -281,7 +264,12 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-if="inventory.length === 0">
+            <TableLoadingRow
+              v-if="isLoading"
+              :colspan="tableColumns.length || 1"
+              text="加载库存列表..."
+            />
+            <tr v-else-if="inventory.length === 0">
               <td :colspan="tableColumns.length" class="text-center py-8">
                 <div class="empty-state">
                   <i class="fas fa-box-open"></i>
@@ -435,24 +423,25 @@
     </div>
 
     <InventoryDetailModal
+      v-if="showDetailsModal"
       v-model="showDetailsModal"
       :item="selectedItem"
-      :permission-loading="permissionLoading"
       :can-edit="canEdit"
       :can-delete="canDelete"
       @close="handleCloseDetails"
       @edit="handleEditFromModal"
       @delete="handleDeleteFromModal"
     />
+      </div>
 
-    </div>
-    <!-- 权限验证通过后的内容 结束 -->
+    </PermissionGate>
 
   </div>
 
   
   <!-- 入库弹窗组件 -->
   <StockInModal
+    v-if="showStockInModal"
     v-model:visible="showStockInModal"
     mode="create"
     @success="handleStockInSuccess"
@@ -687,6 +676,7 @@
 
   <!-- 上架商品到H5商城模态框 -->
   <PublishToH5Modal
+    v-if="showPublishToH5Modal"
     v-model="showPublishToH5Modal"
     :phone-id="selectedPhoneForEdit?.id || null"
     @success="handlePublishSuccess"
@@ -695,7 +685,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed, watch, onUnmounted } from 'vue'
+import { ref, reactive, onMounted, computed, watch, onUnmounted, defineAsyncComponent } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox, ElSelect, ElOption, ElInputNumber, ElDatePicker } from 'element-plus'
 import { useMobileDetection } from '@/composables/mobile'
@@ -703,7 +693,6 @@ import { useMobile } from '@/composables/mobile'
 import { useNotification } from '@/composables/useNotification'
 import { useImportExport } from '@/composables/useImportExport'
 import { usePagePermissions } from '@/composables/usePagePermissions'
-import { usePermissionModuleInfo } from '@/composables/usePermissionModuleInfo'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
 import { useRefreshData } from '@/composables/useRefreshData'
 import { useCachedRequest, DEFAULT_CACHE_TTL } from '@/composables/usePageCache'
@@ -716,16 +705,18 @@ import { useLoadingStore } from '@/stores/loading'
 import Toast from '../../components/Toast.vue'
 import CustomSearch from '@/components/CustomSearch.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
-import InventoryDetailModal from '@/components/InventoryDetailModal.vue'
-import StockInModal from '@/components/StockInModal.vue'
-import PublishToH5Modal from '@/components/PublishToH5Modal.vue'
 import Pagination from '@/components/Pagination.vue'
+import InlineLoading from '@/components/InlineLoading.vue'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
-import { PageHeader } from '@/components/base'
-import PermissionAccessNotice from '@/components/base/PermissionAccessNotice.vue'
+import { PageHeader, PermissionGate } from '@/components/base'
 import { PHONE_STATUS_OPTIONS, getPhoneStatusClass, getPhoneStatusLabel, normalizePhoneStatus } from '@/constants/phoneStatuses'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import type { InventoryItem } from '@/types'
+
+const InventoryDetailModal = defineAsyncComponent(() => import('@/components/InventoryDetailModal.vue'))
+const StockInModal = defineAsyncComponent(() => import('@/components/StockInModal.vue'))
+const PublishToH5Modal = defineAsyncComponent(() => import('@/components/PublishToH5Modal.vue'))
 
 interface Stats {
   total: number
@@ -753,9 +744,8 @@ const loadingStore = useLoadingStore()
 const { init: initFieldPermissions } = fieldPermissions
 const { exportFile, buildDateFilename } = useImportExport()
 const exporting = ref(false)
+const initialTableLoading = ref(true)
 
-// 权限加载状态
-const permissionLoading = ref(false)
 const { success: showSuccess, error: showError } = useNotification()
 
 // 搜索相关状态
@@ -1005,16 +995,11 @@ const memories = ref<string[]>([])
 const brandModels = ref<Array<{id: number, name: string}>>([])  // 存储当前品牌对应的型号列表
 
 // 加载状态
-const isLoading = computed(() => loadingStore.isLoading)
+const isLoading = computed(() => initialTableLoading.value || loadingStore.isLoading)
 
 const normalizedInventoryPermissions = computed<string[]>(() => {
   return normalizePermissionList(authStore.permissions)
 })
-
-const { hasMenuPermissionOnly, modulePermissions: inventoryPermissions } = usePermissionModuleInfo(
-  normalizedInventoryPermissions,
-  'inventory_inventoryview'
-)
 
 // 统计数据
 const stats = reactive<Stats>({
@@ -1561,7 +1546,7 @@ const resetFilters = () => {
 const handleRefresh = async () => {
   await refresh(async () => {
     await Promise.all([
-      loadInventoryData(),
+      loadInventoryData({}, { showLoadingState: false }),
       fetchBasicData()
     ])
   })
@@ -3056,17 +3041,15 @@ const ensurePermissionsLoaded = async (): Promise<void> => {
 
 onMounted(async () => {
   // 首先确保权限数据已加载
-  permissionLoading.value = true
   try {
     await ensurePermissionsLoaded()
   } catch (error) {
     logger.error('初始化权限加载失败:', error)
-  } finally {
-    permissionLoading.value = false
   }
 
   // 检查是否有页面访问权限
   if (!canView.value) {
+    initialTableLoading.value = false
     return
   }
 
@@ -3079,6 +3062,7 @@ onMounted(async () => {
 
   // 在后台延后加载基础数据，避免和首屏列表抢占请求
   initialInventoryLoad.finally(() => {
+    initialTableLoading.value = false
     basicDataWarmupTimer = setTimeout(() => {
       fetchBasicData().then(() => {
         // 初始化型号列表为所有型号
@@ -4804,202 +4788,6 @@ const handleSelect = (item: InventoryItem) => {
   color: #dc3545;
 }
 
-/* 权限拒绝页面样式 - 与其他页面保持一致的背景可见样式 */
-.permission-denied {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 60vh;
-  background: #f8f9fa;
-  border-radius: 12px;
-  margin: 20px 0;
-}
-
-.permission-denied-wrapper {
-  width: 100%;
-  max-width: 600px;
-}
-
-.permission-denied-card {
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-  overflow: hidden;
-  border: 1px solid #e8ecef;
-}
-
-.permission-icon {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 30px;
-  text-align: center;
-  font-size: 48px;
-}
-
-.permission-icon i {
-  font-size: 48px;
-  opacity: 0.9;
-}
-
-.permission-content {
-  padding: 40px 30px;
-  text-align: center;
-}
-
-.permission-content h2 {
-  color: #2c3e50;
-  margin: 0 0 15px 0;
-  font-size: 28px;
-  font-weight: 600;
-}
-
-.permission-message {
-  color: #6c757d;
-  font-size: 16px;
-  line-height: 1.6;
-  margin-bottom: 30px;
-}
-
-.permission-status {
-  display: flex;
-  gap: 20px;
-  justify-content: center;
-  margin-bottom: 30px;
-}
-
-.status-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 20px;
-  border-radius: 25px;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.status-item.has-menu {
-  background: #d4edda;
-  color: #155724;
-}
-
-.status-item.missing-view {
-  background: #f8d7da;
-  color: #721c24;
-}
-
-.permission-info {
-  background: #f8f9fa;
-  border-radius: 12px;
-  padding: 25px;
-  margin-bottom: 30px;
-  text-align: left;
-  border-left: 4px solid #667eea;
-}
-
-.info-item {
-  display: flex;
-  align-items: center;
-  margin-bottom: 12px;
-  font-size: 14px;
-}
-
-.info-item:last-child {
-  margin-bottom: 0;
-}
-
-.info-item label {
-  font-weight: 600;
-  color: #495057;
-  margin-right: 10px;
-  min-width: 80px;
-}
-
-.permission-name {
-  color: #2c3e50;
-  font-weight: 500;
-}
-
-.permission-code {
-  background: #e9ecef;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-family: 'Monaco', 'Consolas', monospace;
-  font-size: 12px;
-  color: #495057;
-}
-
-.permission-suggestion {
-  background: #e7f3ff;
-  border: 1px solid #b3d9ff;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 30px;
-  display: flex;
-  align-items: flex-start;
-  gap: 15px;
-}
-
-.permission-suggestion i {
-  color: #0066cc;
-  font-size: 18px;
-  margin-top: 2px;
-}
-
-.permission-suggestion p {
-  margin: 0;
-  color: #0066cc;
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.permission-actions {
-  display: flex;
-  gap: 15px;
-  justify-content: center;
-  flex-wrap: wrap;
-  margin-bottom: 30px;
-}
-
-.permission-details {
-  background: #f8f9fa;
-  border-radius: 8px;
-  padding: 20px;
-  text-align: left;
-  border-top: 1px solid #e8ecef;
-}
-
-.permission-details h4 {
-  margin: 0 0 15px 0;
-  color: #495057;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.permission-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.permission-tag {
-  background: #e9ecef;
-  color: #495057;
-  padding: 4px 12px;
-  border-radius: 16px;
-  font-size: 12px;
-  font-weight: 500;
-  font-family: 'Monaco', 'Consolas', monospace;
-}
-
-.permission-tag.current-module {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
-}
-
-.permission-actions .btn {
-  min-width: 140px;
-}
-
 /* ===== 权限加载中样式 ===== */
 .loading-container {
   display: flex;
@@ -5328,44 +5116,6 @@ const handleSelect = (item: InventoryItem) => {
 
   .detail-grid {
     grid-template-columns: 1fr;
-  }
-
-  .permission-denied {
-    margin: 10px;
-    min-height: 50vh;
-  }
-
-  .permission-denied-wrapper {
-    padding: 0 10px;
-  }
-
-  .permission-content {
-    padding: 30px 20px;
-  }
-
-  .permission-content h2 {
-    font-size: 24px;
-    margin-bottom: 12px;
-  }
-
-  .permission-message {
-    font-size: 14px;
-    margin-bottom: 20px;
-  }
-
-  .permission-info {
-    margin: 20px 0;
-    padding: 16px;
-  }
-
-  .permission-status {
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .permission-actions {
-    flex-direction: column;
-    gap: 12px;
   }
 
   .loading-container {

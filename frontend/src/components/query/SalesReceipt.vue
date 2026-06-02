@@ -128,6 +128,7 @@ import MobileDialog from '@/components/MobileDialog.vue'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import type { CloseEmits, VisibleProps } from '@/types/component'
 import { logger } from '@/utils/logger'
+import { loadHtml2Canvas } from '@/utils/html2canvas'
 
 interface ReceiptItem {
   phone_id: number
@@ -308,7 +309,7 @@ const downloadImage = async () => {
 
   try {
     isDownloading.value = true
-    const html2canvas = (await import('html2canvas')).default
+    const html2canvas = await loadHtml2Canvas()
     const canvas = await html2canvas(receiptRef.value, {
       scale: 2,
       backgroundColor: '#ffffff',

@@ -18,8 +18,11 @@
           取消
         </el-button>
         <el-button type="primary" :loading="submitting" @click="handleSubmit">
-          <i :class="submitting ? 'fas fa-spinner fa-spin' : 'fas fa-save'"></i>
-          {{ submitting ? '保存中...' : '保存更改' }}
+          <InlineLoading v-if="submitting" text="保存中..." size="small" variant="inherit" />
+          <template v-else>
+            <i class="fas fa-save"></i>
+            保存更改
+          </template>
         </el-button>
       </div>
     </template>
@@ -259,8 +262,7 @@
                 class="customer-search-results"
               >
                 <div v-if="editCustomerLookupLoading" class="search-loading">
-                  <i class="fas fa-spinner fa-spin"></i>
-                  搜索中...
+                  <InlineLoading text="搜索中..." size="small" />
                 </div>
                 <template v-else>
                   <div
@@ -491,6 +493,7 @@ import type { FormInstance } from 'element-plus'
 import { ValidationRules } from '@/composables'
 import { useNotification } from '@/composables/useNotification'
 import MobileDialog from '@/components/MobileDialog.vue'
+import InlineLoading from '@/components/InlineLoading.vue'
 import { useMobile } from '@/composables/mobile'
 import unifiedApi from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'

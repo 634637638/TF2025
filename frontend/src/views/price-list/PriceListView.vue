@@ -1,15 +1,13 @@
 <template>
   <div class="price-list-view admin-page">
-    <!-- 权限检查提示 - 使用全局组件 -->
-    <PermissionDenied
-      :canView="canView"
+    <PermissionGate
+      :can-view="canView"
+      mode="denied"
       module-key="price-list"
       module-name="报价管理"
       permission-code="price-list:view"
-    />
+    >
 
-    <!-- 主内容 - 只有有权限时才显示 -->
-    <template v-if="canView">
     <div class="admin-page-content">
     <PageHeader title="报价管理">
       <template #actions>
@@ -223,11 +221,7 @@
     <!-- 价格列表 -->
     <el-card class="table-card admin-panel admin-table-panel">
       <div v-if="isMobile" class="table-responsive">
-        <div v-if="loading" class="table-loading">
-          <el-skeleton :rows="5" animated />
-        </div>
-
-        <table v-else class="data-table price-mobile-table">
+        <table class="data-table price-mobile-table">
           <thead>
             <tr>
               <th>型号</th>
@@ -238,7 +232,12 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-if="!priceList.length">
+            <TableLoadingRow
+              v-if="loading"
+              :colspan="5"
+              text="加载报价列表..."
+            />
+            <tr v-else-if="!priceList.length">
               <td colspan="5" class="text-center py-8">
                 <div class="empty-state mobile-empty-state">
                   <i class="fas fa-tags"></i>
@@ -319,13 +318,19 @@
 
       <el-table
         v-else
-        v-loading="loading"
-        :data="priceList"
+        :data="loading ? [] : priceList"
         stripe
         border
         class="w-full"
         :table-layout="'auto'"
       >
+        <template #empty>
+          <TableLoadingRow v-if="loading" mode="block" text="加载报价列表..." />
+          <div v-else class="empty-state">
+            <i class="fas fa-tags"></i>
+            <p>暂无价目表数据</p>
+          </div>
+        </template>
         <el-table-column type="index" label="序号" width="60" align="center" />
         <el-table-column prop="brand_name" label="品牌" min-width="80" align="center" show-overflow-tooltip />
         <el-table-column prop="model_number" label="型号" min-width="120" align="center" show-overflow-tooltip />
@@ -899,56 +904,61 @@
       dialog-class="price-list-inventory-dialog"
       :show-default-footer="false"
     >
-      <div v-loading="inventoryLoading" class="inventory-dialog-content">
-        <div class="inventory-header">
-          <span class="record-count">共 {{ inventoryTotal }} 条记录</span>
-        </div>
-        <el-table :data="inventoryData" stripe border max-height="500" class="inventory-table">
-          <el-table-column label="优先" width="60" align="center">
-            <template #default="{ row, $index }">
-              <span v-if="$index === 0" class="priority-badge">
-                <i class="fas fa-star"></i>
-              </span>
-              <span v-else class="priority-rank">{{ $index + 1 }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="store_name" label="店铺" width="100" />
-          <el-table-column prop="model" label="型号" min-width="120" />
-          <el-table-column prop="color" label="颜色" width="80" />
-          <el-table-column prop="memory" label="内存" width="80" />
-          <el-table-column prop="serial_number" label="序列号" width="120" />
-          <el-table-column prop="imei" label="IMEI" width="150" />
-          <el-table-column prop="Inventorytime" label="入库时间" width="110">
-            <template #default="{ row }">
-              {{ formatInventoryDate(row.Inventorytime) }}
-            </template>
-          </el-table-column>
-          <el-table-column label="在库天数" width="90" align="center">
-            <template #default="{ row }">
-              <span :class="['days-badge', getInventoryDaysClass(row.inventory_days)]">
-                {{ row.inventory_days }}天
-              </span>
-            </template>
-          </el-table-column>
-        </el-table>
-        <div v-if="inventoryData.length === 0" class="empty-inventory">
-          <el-empty description="暂无库存数据" />
-        </div>
+      <div class="inventory-dialog-content">
+        <SectionLoading v-if="inventoryLoading" text="加载中..." />
+
+        <template v-else>
+          <div class="inventory-header">
+            <span class="record-count">共 {{ inventoryTotal }} 条记录</span>
+          </div>
+          <el-table :data="inventoryData" stripe border max-height="500" class="inventory-table">
+            <el-table-column label="优先" width="60" align="center">
+              <template #default="{ row, $index }">
+                <span v-if="$index === 0" class="priority-badge">
+                  <i class="fas fa-star"></i>
+                </span>
+                <span v-else class="priority-rank">{{ $index + 1 }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="store_name" label="店铺" width="100" />
+            <el-table-column prop="model" label="型号" min-width="120" />
+            <el-table-column prop="color" label="颜色" width="80" />
+            <el-table-column prop="memory" label="内存" width="80" />
+            <el-table-column prop="serial_number" label="序列号" width="120" />
+            <el-table-column prop="imei" label="IMEI" width="150" />
+            <el-table-column prop="Inventorytime" label="入库时间" width="110">
+              <template #default="{ row }">
+                {{ formatInventoryDate(row.Inventorytime) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="在库天数" width="90" align="center">
+              <template #default="{ row }">
+                <span :class="['days-badge', getInventoryDaysClass(row.inventory_days)]">
+                  {{ row.inventory_days }}天
+                </span>
+              </template>
+            </el-table-column>
+          </el-table>
+          <div v-if="inventoryData.length === 0" class="empty-inventory">
+            <el-empty description="暂无库存数据" />
+          </div>
+        </template>
       </div>
     </MobileDialog>
 
     <!-- 价格加价配置对话框 -->
     <PriceMarkupConfig
+      v-if="showMarkupConfigDialog"
       v-model="showMarkupConfigDialog"
       :config="markupConfig"
       @save="handleMarkupConfigSave"
     />
-    </template>
+    </PermissionGate>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted, watch, computed } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, watch, computed, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
@@ -977,15 +987,18 @@ import api from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import { useImportExport } from '@/composables/useImportExport'
 import { usePagePermissions } from '@/composables/usePagePermissions'
-import PermissionDenied from '@/components/base/PermissionDenied.vue'
-import PageHeader from '@/components/base/PageHeader.vue'
+import { PageHeader, PermissionGate } from '@/components/base'
 import Pagination from '@/components/Pagination.vue'
-import PriceMarkupConfig from '@/components/PriceMarkupConfig.vue'
+import SectionLoading from '@/components/SectionLoading.vue'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
+import { canAccessRoutePath } from '@/constants/routePermissions'
 import { TimeUtil } from '@/utils/time'
 import { logger } from '@/utils/logger'
 import { useLoadingState } from '@/composables'
+
+const PriceMarkupConfig = defineAsyncComponent(() => import('@/components/PriceMarkupConfig.vue'))
 
 // 权限检查
 const { canView, canCreate, canEdit, canDelete, canExport, canImport, handleNoPermission } = usePagePermissions('price-list')
@@ -994,6 +1007,7 @@ const { canView, canCreate, canEdit, canDelete, canExport, canImport, handleNoPe
 const router = useRouter()
 const authStore = useAuthStore()
 const { loading } = useLoadingState()
+loading.value = true
 const { exportFile, importFile, buildDateFilename } = useImportExport()
 const clearingAllHistory = ref(false)
 const importingPriceList = ref(false)
@@ -1004,6 +1018,7 @@ const loadingModels = ref(false)
 const priceList = ref<any[]>([])
 const priceHistoryMap = ref<Map<number, any[]>>(new Map())
 let trendLoadSeq = 0
+const hasInitializedPageData = ref(false)
 const pagination = reactive({
   page: 1,
   limit: 100, // 每页100条
@@ -1230,6 +1245,16 @@ const fetchPriceList = async () => {
   }
 }
 
+const initializePageData = () => {
+  if (!canView.value || hasInitializedPageData.value) {
+    return
+  }
+
+  hasInitializedPageData.value = true
+  loadFilterOptions()
+  fetchPriceList()
+}
+
 const handleExportPriceList = async () => {
   await exportFile({
     url: '/price-list/export',
@@ -1309,6 +1334,16 @@ const handleReset = () => {
   handleSearch()
 }
 
+const guardedPush = (target: string) => {
+  if (!canAccessRoutePath(target, authStore)) {
+    ElMessage.warning('您没有访问此页面的权限')
+    return false
+  }
+
+  router.push(target)
+  return true
+}
+
 const handleQuoteCommand = (command: 'wholesale' | 'sales') => {
   if (command === 'wholesale') {
     router.push('/price-query')
@@ -1333,7 +1368,7 @@ const handleDataCleanupCommand = async (command: 'clear_prices' | 'clear_history
 
 const handleSyncSettingsCommand = (command: 'sync_logs' | 'sync_config' | 'markup_config') => {
   if (command === 'sync_logs') {
-    router.push('/price-list/sync-logs')
+    guardedPush('/price-list/sync-logs')
     return
   }
 
@@ -2522,13 +2557,19 @@ onMounted(() => {
   updateMobileState()
   window.addEventListener('resize', updateMobileState)
 
-  if (!canView.value) {
-    return
-  }
-
-  loadFilterOptions()
-  fetchPriceList()
+  initializePageData()
 })
+
+watch(canView, (value) => {
+  if (value) {
+    initializePageData()
+  } else {
+    hasInitializedPageData.value = false
+    priceList.value = []
+    pagination.total = 0
+    loading.value = false
+  }
+}, { immediate: true })
 
 onUnmounted(() => {
   if (typeof window !== 'undefined') {

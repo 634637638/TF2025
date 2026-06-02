@@ -20,7 +20,7 @@
           plain
           :disabled="refreshing"
         >
-          <GlobalLoading v-if="refreshing" size="small" />
+          <InlineLoading v-if="refreshing" size="small" />
           <i v-else class="fas fa-sync-alt"></i>
           刷新
         </el-button>
@@ -30,8 +30,7 @@
     <!-- 配件列表表格 -->
     <div class="accessories-table-container admin-page-content">
       <div v-if="loading && accessories.length === 0" class="loading-state">
-        <GlobalLoading />
-        <p>加载配件数据中...</p>
+        <InlineLoading text="加载配件数据中..." />
       </div>
 
       <div v-else-if="error" class="error-state">
@@ -54,7 +53,7 @@
 
       <div v-else class="table-container admin-panel admin-table-panel">
         <!-- 桌面端表格视图 -->
-        <div class="table-responsive desktop-table" v-loading="loading && accessories.length > 0">
+        <div class="table-responsive desktop-table">
           <table class="data-table">
             <thead>
               <tr>
@@ -125,12 +124,7 @@
               </tr>
             </tbody>
             <tbody v-else-if="loading">
-              <tr class="loading-row">
-                <td :colspan="14">
-                  <GlobalLoading />
-                  <p>加载中...</p>
-                </td>
-              </tr>
+              <TableLoadingRow :colspan="14" />
             </tbody>
             <tbody v-else>
               <tr class="empty-row">
@@ -268,6 +262,7 @@
 
     <!-- 配件入库/编辑模态框（统一） -->
     <AccessoryStockInModal
+      v-if="showStockInModal"
       v-model="showStockInModal"
       :accessory="selectedAccessory"
       @success="loadAccessories"
@@ -276,19 +271,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, defineAsyncComponent } from 'vue'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useLoadingState } from '@/composables'
 import { useRefreshData } from '@/composables/useRefreshData'
 import { unifiedApi as api } from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import { useAuthStore } from '@/stores/auth'
-import GlobalLoading from '@/components/GlobalLoading.vue'
-import AccessoryDetailsModal from '@/components/AccessoryDetailsModal.vue'
-import AccessoryStockInModal from '@/components/AccessoryStockInModal.vue'
+import InlineLoading from '@/components/InlineLoading.vue'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { logger } from '@/utils/logger'
 import { PageHeader } from '@/components/base'
+
+const AccessoryDetailsModal = defineAsyncComponent(() => import('@/components/AccessoryDetailsModal.vue'))
+const AccessoryStockInModal = defineAsyncComponent(() => import('@/components/AccessoryStockInModal.vue'))
 
 // 使用统一的 composable
 const { canView, canCreate, canEdit, canDelete, handleNoPermission } = usePagePermissions('accessories')
@@ -301,6 +298,7 @@ const errorMsg = (msg) => ElMessage.error(msg)
 
 // 响应式状态
 const { loading } = useLoadingState()
+loading.value = true
 const error = ref('')
 const accessories = ref([])
 
@@ -360,9 +358,11 @@ const formatPrice = (price) => {
 }
 
 // API 调用函数
-const loadAccessories = async () => {
+const loadAccessories = async (showLoadingState = true) => {
   try {
-    loading.value = true
+    if (showLoadingState) {
+      loading.value = true
+    }
     error.value = ''
 
     const response = await api.get('/accessories')
@@ -373,7 +373,9 @@ const loadAccessories = async () => {
     logger.error('加载配件数据失败', err)
     accessories.value = []
   } finally {
-    loading.value = false
+    if (showLoadingState) {
+      loading.value = false
+    }
   }
 }
 
@@ -381,7 +383,7 @@ const loadAccessories = async () => {
 // 刷新数据 - 使用统一的 composable
 const handleRefresh = async () => {
   await refresh(async () => {
-    await loadAccessories()
+    await loadAccessories(false)
   })
   success('数据刷新成功')
 }
@@ -464,6 +466,7 @@ watch(itemsPerPage, () => {
 // 页面挂载
 onMounted(async () => {
   if (!canView.value) {
+    loading.value = false
     return
   }
 

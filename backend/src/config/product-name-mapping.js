@@ -44,9 +44,45 @@ const PRODUCT_NAME_MAPPING = {
     external_model: null,
     category: 'tablet'
   },
+  '苹果11英寸iPad Air(第七代)': {
+    brand: '苹果',
+    model: 'ipad Air7 11寸',
+    external_model: null,
+    category: 'tablet'
+  },
+  '苹果13英寸iPad Air(第七代)': {
+    brand: '苹果',
+    model: 'ipad Air7 13寸',
+    external_model: null,
+    category: 'tablet'
+  },
   '苹果ipad Air7': {
     brand: '苹果',
     model: 'ipad Air7',
+    external_model: null,
+    category: 'tablet'
+  },
+  'ipad Air7 11寸': {
+    brand: '苹果',
+    model: 'ipad Air7 11寸',
+    external_model: null,
+    category: 'tablet'
+  },
+  'iPad Air7 11寸': {
+    brand: '苹果',
+    model: 'ipad Air7 11寸',
+    external_model: null,
+    category: 'tablet'
+  },
+  'ipad Air7 13寸': {
+    brand: '苹果',
+    model: 'ipad Air7 13寸',
+    external_model: null,
+    category: 'tablet'
+  },
+  'iPad Air7 13寸': {
+    brand: '苹果',
+    model: 'ipad Air7 13寸',
     external_model: null,
     category: 'tablet'
   },
@@ -74,9 +110,45 @@ const PRODUCT_NAME_MAPPING = {
     external_model: null,
     category: 'tablet'
   },
+  '苹果11英寸iPad Air(第八代)': {
+    brand: '苹果',
+    model: 'iPad Air8 11寸',
+    external_model: null,
+    category: 'tablet'
+  },
+  '苹果13英寸iPad Air(第八代)': {
+    brand: '苹果',
+    model: 'iPad Air8 13寸',
+    external_model: null,
+    category: 'tablet'
+  },
   '苹果ipad Air8': {
     brand: '苹果',
     model: 'ipad Air8',
+    external_model: null,
+    category: 'tablet'
+  },
+  'ipad Air8 11寸': {
+    brand: '苹果',
+    model: 'iPad Air8 11寸',
+    external_model: null,
+    category: 'tablet'
+  },
+  'iPad Air8 11寸': {
+    brand: '苹果',
+    model: 'iPad Air8 11寸',
+    external_model: null,
+    category: 'tablet'
+  },
+  'ipad Air8 13寸': {
+    brand: '苹果',
+    model: 'iPad Air8 13寸',
+    external_model: null,
+    category: 'tablet'
+  },
+  'iPad Air8 13寸': {
+    brand: '苹果',
+    model: 'iPad Air8 13寸',
     external_model: null,
     category: 'tablet'
   },
@@ -538,6 +610,62 @@ const PRODUCT_NAME_MAPPING = {
   }
 };
 
+function detectIpadAirSize(normalizedInput) {
+  if (!normalizedInput) return null;
+
+  if (
+    normalizedInput.includes('13英寸') ||
+    normalizedInput.includes('13寸') ||
+    normalizedInput.includes('13inch')
+  ) {
+    return '13';
+  }
+
+  if (
+    normalizedInput.includes('11英寸') ||
+    normalizedInput.includes('11寸') ||
+    normalizedInput.includes('11inch')
+  ) {
+    return '11';
+  }
+
+  return null;
+}
+
+function normalizeIpadAirName(normalizedInput, generation) {
+  const size = detectIpadAirSize(normalizedInput);
+
+  if (generation === 8) {
+    if (size === '13') return 'ipadair813寸';
+    if (size === '11') return 'ipadair811寸';
+    return 'ipadair811寸';
+  }
+
+  if (generation === 7) {
+    if (size === '13') return 'ipadair713寸';
+    if (size === '11') return 'ipadair711寸';
+    return 'ipadair711寸';
+  }
+
+  return null;
+}
+
+function resolveIpadAirModel(generation, normalizedInput) {
+  const size = detectIpadAirSize(normalizedInput);
+
+  if (generation === 8) {
+    if (size === '13') return 'iPad Air8 13寸';
+    return 'iPad Air8 11寸';
+  }
+
+  if (generation === 7) {
+    if (size === '13') return 'ipad Air7 13寸';
+    return 'ipad Air7 11寸';
+  }
+
+  return null;
+}
+
 /**
  * 模糊匹配产品名称 - 通过关键字搜索
  * @param {string} externalName - 外部系统名称
@@ -587,7 +715,7 @@ function matchProductName(externalName) {
     ) {
       return {
         brand: '苹果',
-        model: 'ipad Air8',
+        model: resolveIpadAirModel(8, normalizedInput) || 'iPad Air8 11寸',
         external_model: null,
         category: 'tablet'
       };
@@ -598,7 +726,7 @@ function matchProductName(externalName) {
     ) {
       return {
         brand: '苹果',
-        model: 'ipad Air7',
+        model: resolveIpadAirModel(7, normalizedInput) || 'ipad Air7 11寸',
         external_model: null,
         category: 'tablet'
       };
@@ -690,7 +818,7 @@ function matchProductName(externalName) {
       }
       return {
         brand: '苹果',
-        model: 'ipad Air7', // 🔥 默认匹配到最新型号 Air 7
+        model: resolveIpadAirModel(7, normalizedInput) || 'ipad Air7 11寸', // 默认回退到 Air7，并尽量保留尺寸信息
         external_model: null,
         category: 'tablet'
       };

@@ -1,24 +1,29 @@
 <template>
-  <PermissionDenied
-    v-if="!canView"
+  <PermissionGate
     :can-view="canView"
+    mode="denied"
     module-key="dashboard"
     module-name="仪表盘"
     permission-code="dashboard:view"
-  />
+  >
 
-  <div v-else class="dashboard">
+  <div class="dashboard">
 
     <PageHeader title="仪表盘">
       <template #actions>
         <el-button type="info" @click="refreshData" :disabled="isRefreshing">
-          <i :class="isRefreshing ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'"></i>
-          刷新数据
+          <InlineLoading v-if="isRefreshing" text="刷新中..." size="small" variant="inherit" />
+          <template v-else>
+            <i class="fas fa-sync-alt"></i>
+            刷新数据
+          </template>
         </el-button>
       </template>
     </PageHeader>
 
-    <div class="dashboard-grid" v-loading="isLoading">
+    <SectionLoading v-if="isLoading" text="加载中..." size="large" />
+
+    <div v-else class="dashboard-grid">
       <!-- 统计卡片 -->
       <div class="stats-grid">
         <div class="stat-card" @click="showDetails('sales')">
@@ -146,18 +151,24 @@
       </div>
     </div>
   </div>
+  </PermissionGate>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useLoadingState } from '@/composables'
 import { useCachedRequest, DEFAULT_CACHE_TTL } from '@/composables/usePageCache'
 import { useSiteSettingsStore } from '@/stores/siteSettings'
+import { useAuthStore } from '@/stores/auth'
 import { unifiedApi } from '@/utils/unified-api'
-import { PageHeader, PermissionDenied } from '@/components/base'
+import { canAccessRoutePath } from '@/constants/routePermissions'
+import { PageHeader, PermissionGate } from '@/components/base'
+import InlineLoading from '@/components/InlineLoading.vue'
+import SectionLoading from '@/components/SectionLoading.vue'
 import ComprehensiveWarnings from '@/components/ComprehensiveWarnings.vue'
 import PendingApprovals from '@/components/PendingApprovals.vue'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
@@ -171,12 +182,12 @@ const {
   confirm,
   alert,
   prompt,
-  loading,
   handleApiError,
   handleApiSuccess
 } = useNotification()
 
 const router = useRouter()
+const authStore = useAuthStore()
 const { canView } = usePagePermissions('dashboard')
 
 // 待审批提醒组件引用
@@ -243,11 +254,22 @@ const hasWarning = computed(() => {
   return inventoryAlert.value || urgentRepairs.value > 0
 })
 
+const guardedPush = (target: string) => {
+  if (!canAccessRoutePath(target, authStore)) {
+    ElMessage.warning('您没有访问此页面的权限')
+    return false
+  }
+
+  router.push(target)
+  return true
+}
+
 // 方法
 const goToSales = async () => {
   if (await confirm('确定要创建新的销售订单吗？')) {
-    router.push('/sales')
-    success('已跳转到销售页面')
+    if (guardedPush('/sales')) {
+      success('已跳转到销售页面')
+    }
   }
 }
 
@@ -259,7 +281,7 @@ const addCustomer = async () => {
   )
 
   if (result) {
-    router.push('/customers?action=add')
+    guardedPush('/customers?action=add')
   }
 }
 
@@ -267,14 +289,14 @@ const goToInventory = () => {
   if (inventoryAlert.value) {
     warning('检测到库存预警，请及时处理')
   }
-  router.push('/inventory')
+  guardedPush('/inventory')
 }
 
 const goToRepairs = () => {
   if (urgentRepairs.value > 0) {
     warning(`您有 ${urgentRepairs.value} 项紧急维修待处理`)
   }
-  router.push('/repairs')
+  guardedPush('/repairs')
 }
 
 // 刷新数据
@@ -284,10 +306,9 @@ const refreshData = async () => {
   }
 
   isRefreshing.value = true
-  const closeLoading = loading('正在刷新仪表盘数据...')
 
   try {
-    await loadDashboardData()
+    await loadDashboardData(false)
     // 刷新待审批提醒
     if (pendingApprovementsRef.value?.refresh) {
       await pendingApprovementsRef.value.refresh()
@@ -297,7 +318,6 @@ const refreshData = async () => {
   } catch (err) {
     handleApiError(err, '数据刷新失败')
   } finally {
-    closeLoading()
     isRefreshing.value = false
   }
 }
@@ -396,12 +416,14 @@ const updateLastUpdateTime = () => {
 }
 
 // 加载仪表盘数据
-const loadDashboardData = async () => {
+const loadDashboardData = async (showLoadingState = true) => {
   if (!canView.value) {
     return
   }
 
-  isLoading.value = true
+  if (showLoadingState) {
+    isLoading.value = true
+  }
 
   try {
     // 使用缓存的API调用
@@ -431,7 +453,9 @@ const loadDashboardData = async () => {
     handleApiError(error, '加载仪表盘数据失败')
     throw error
   } finally {
-    isLoading.value = false
+    if (showLoadingState) {
+      isLoading.value = false
+    }
   }
 }
 

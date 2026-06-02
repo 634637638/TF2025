@@ -23,7 +23,8 @@ const MODULE_PERMISSION_TYPES = {
   payments_supplierphonepaymentsview: ['view', 'create', 'edit', 'delete', 'approve', 'export'],
   system_systemview: ['view', 'edit', 'delete'],
   system_returngoods: ['view', 'edit', 'delete'],
-  system_gitmanagement: ['view'],
+  system_gitmanagement: ['view', 'create', 'edit', 'delete'],
+  backup_backupview: ['view', 'create', 'delete'],
   data_optimization_dataoptimizationview: ['view', 'create', 'edit', 'delete'],
   menu_menumanagementview: ['view', 'create', 'edit', 'delete', 'export', 'import'],
   sales_salesview: ['view', 'create', 'wholesale', 'proxy-transfer', 'edit', 'delete', 'export'],
@@ -53,6 +54,7 @@ const MODULE_PERMISSION_TYPES = {
   price_list_synclogview: ['view', 'delete'],
   h5_admin_h5_adminview: ['view', 'create', 'edit', 'delete'],
   h5_admin_templatesview: ['view', 'create', 'edit', 'delete'],
+  h5_admin_soldproductsview: ['view', 'delete'],
   h5_admin_configview: ['view', 'edit'],
   h5_admin_homesectionsview: ['view', 'create', 'edit', 'delete'],
   h5_admin_bannersview: ['view', 'create', 'edit', 'delete'],
@@ -101,6 +103,12 @@ const MODULE_PERMISSION_METADATA = {
     description: '查看仓库状态和执行代码备份操作',
     category: 'system',
     icon: 'fas fa-code-branch'
+  },
+  backup_backupview: {
+    name: '备份管理',
+    description: '查看、创建、下载和清理系统备份',
+    category: 'system',
+    icon: 'fas fa-database'
   },
   data_optimization_dataoptimizationview: {
     name: '数据优化',
@@ -276,6 +284,12 @@ const MODULE_PERMISSION_METADATA = {
     category: 'business',
     icon: 'fas fa-box-open'
   },
+  h5_admin_soldproductsview: {
+    name: '已售商品',
+    description: '查看已售商品图片并清理无效图片素材',
+    category: 'business',
+    icon: 'fas fa-check-circle'
+  },
   h5_admin_configview: {
     name: '商城配置',
     description: '维护店铺基础信息、收款码、地图和功能开关',
@@ -302,8 +316,35 @@ const MODULE_PERMISSION_METADATA = {
   }
 };
 
+const PERMISSION_TYPE_ALIASES = {
+  '查看': 'view',
+  '新增': 'create',
+  '创建': 'create',
+  '编辑': 'edit',
+  '修改': 'edit',
+  '删除': 'delete',
+  '审批': 'approve',
+  '管理': 'manage',
+  '导出': 'export',
+  '导入': 'import',
+  '同步': 'sync'
+};
+
+function normalizePermissionType(permissionType) {
+  if (!permissionType) {
+    return permissionType;
+  }
+
+  const normalizedType = PERMISSION_TYPE_ALIASES[permissionType] || permissionType;
+  if (normalizedType.endsWith('_permission')) {
+    return normalizedType.replace(/_permission$/, '');
+  }
+
+  return normalizedType;
+}
+
 function sortPermissionTypes(permissionTypes = []) {
-  return [...new Set(permissionTypes)].sort((a, b) => {
+  return [...new Set(permissionTypes.map(normalizePermissionType).filter(Boolean))].sort((a, b) => {
     const indexA = ACTION_ORDER.indexOf(a);
     const indexB = ACTION_ORDER.indexOf(b);
 
@@ -317,8 +358,17 @@ function sortPermissionTypes(permissionTypes = []) {
 }
 
 function getModulePermissionTypes(moduleKey, extraTypes = []) {
-  const baseTypes = MODULE_PERMISSION_TYPES[moduleKey] || DEFAULT_PERMISSION_TYPES;
-  return sortPermissionTypes([...baseTypes, ...extraTypes.filter(type => type && type !== 'menu_view')]);
+  const configuredTypes = MODULE_PERMISSION_TYPES[moduleKey];
+  if (configuredTypes) {
+    return sortPermissionTypes(configuredTypes);
+  }
+
+  return sortPermissionTypes([
+    ...DEFAULT_PERMISSION_TYPES,
+    ...extraTypes
+      .map(normalizePermissionType)
+      .filter(type => type && type !== 'menu_view')
+  ]);
 }
 
 function getModulePermissionMetadata(moduleKey) {
@@ -332,5 +382,6 @@ module.exports = {
   MODULE_PERMISSION_TYPES,
   getModulePermissionMetadata,
   getModulePermissionTypes,
+  normalizePermissionType,
   sortPermissionTypes
 };

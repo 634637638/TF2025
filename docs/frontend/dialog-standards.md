@@ -300,7 +300,7 @@
           @click="handleSubmit"
           :disabled="submitting"
         >
-          <i v-if="submitting" class="fas fa-spinner fa-spin"></i>
+          <InlineLoading v-if="submitting" text="提交中..." size="small" variant="inherit" />
           {{ isEdit ? '更新' : '创建' }}
         </button>
       </div>
@@ -417,7 +417,7 @@ const handleSubmit = async () => {
           @click="handleConfirm"
           :disabled="submitting"
         >
-          <i v-if="submitting" class="fas fa-spinner fa-spin"></i>
+          <InlineLoading v-if="submitting" text="处理中..." size="small" variant="inherit" />
           确认
         </button>
       </div>

@@ -27,6 +27,25 @@ class PriceSyncScheduler {
     return /server shutdown in progress|connection is closed|pool is closed|cannot enqueue|connection lost/i.test(message);
   }
 
+  closeSchedulerLockConnection(connection, { destroy = false } = {}) {
+    if (!connection) {
+      return;
+    }
+
+    try {
+      if (destroy && typeof connection.destroy === 'function') {
+        connection.destroy();
+        return;
+      }
+
+      connection.release();
+    } catch (error) {
+      if (!(this.isShuttingDown && this.isIgnorableShutdownError(error))) {
+        log.warn('清理价格同步主锁连接失败:', error.message);
+      }
+    }
+  }
+
   /**
    * 确保调度器数据库连接可用
    */
@@ -59,7 +78,7 @@ class PriceSyncScheduler {
       const acquired = Number(rows?.[0]?.acquired || 0) === 1;
 
       if (!acquired) {
-        connection.release();
+        this.closeSchedulerLockConnection(connection);
         this.isLeader = false;
         this.schedulerLockConnection = null;
         log.info(`当前进程未取得价格同步主调度锁，跳过定时任务启动 (PID: ${process.pid})`);
@@ -71,7 +90,7 @@ class PriceSyncScheduler {
       log.success(`当前进程已取得价格同步主调度锁 (PID: ${process.pid})`);
       return true;
     } catch (error) {
-      connection.release();
+      this.closeSchedulerLockConnection(connection, { destroy: true });
       this.isLeader = false;
       this.schedulerLockConnection = null;
       throw error;
@@ -97,13 +116,7 @@ class PriceSyncScheduler {
         log.warn(`释放价格同步主调度锁失败: ${this.schedulerLockName}`, error.message);
       }
     } finally {
-      try {
-        this.schedulerLockConnection.release();
-      } catch (releaseError) {
-        if (!(this.isShuttingDown && this.isIgnorableShutdownError(releaseError))) {
-          log.warn(`释放价格同步主调度锁连接失败: ${this.schedulerLockName}`, releaseError.message);
-        }
-      }
+      this.closeSchedulerLockConnection(this.schedulerLockConnection);
       this.schedulerLockConnection = null;
       this.isLeader = false;
     }
@@ -146,6 +159,9 @@ class PriceSyncScheduler {
       return true;
     } catch (error) {
       log.warn('价格同步主锁连接已失效，准备重新抢占主锁:', error.message);
+      this.closeSchedulerLockConnection(this.schedulerLockConnection, { destroy: true });
+      this.schedulerLockConnection = null;
+      this.isLeader = false;
       return false;
     }
   }

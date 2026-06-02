@@ -4,13 +4,22 @@
     <div v-if="!isMobile" class="mobile-table__desktop">
       <el-table
         ref="desktopTableRef"
-        :data="data"
-        v-loading="loading"
+        :data="loading ? [] : data"
         :stripe="stripe"
         :border="border"
         :size="size"
         @selection-change="handleSelectionChange"
       >
+        <template #empty>
+          <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
+          <el-empty
+            v-else
+            :image="emptyImage"
+            :description="emptyDescription"
+            :image-size="emptyImageSize"
+          />
+        </template>
+
         <!-- 动态生成列 -->
         <el-table-column
           v-for="column in columns"
@@ -57,7 +66,9 @@
 
     <!-- 移动端卡片式表格 -->
     <div v-else class="mobile-table__mobile">
-      <div v-loading="loading" class="mobile-table__card-list">
+      <SectionLoading v-if="loading" text="加载中..." />
+
+      <div v-else class="mobile-table__card-list">
         <div
           v-for="(row, index) in data"
           :key="getRowKey(row, index)"
@@ -124,6 +135,8 @@
 
 <script setup lang="ts">
 import { ref, computed, type Component } from 'vue'
+import SectionLoading from '@/components/SectionLoading.vue'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import type { TableAction, TableColumn } from '@/types/component'
 import { useMobile } from '@/composables/mobile'
 

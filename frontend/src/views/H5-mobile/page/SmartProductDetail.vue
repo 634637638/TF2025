@@ -3,10 +3,7 @@
   根据 ID 类型自动判断是模板商品还是普通商品，然后加载对应的详情页
 -->
 <template>
-  <div v-if="loading" class="loading-state">
-    <el-icon class="is-loading"><Loading /></el-icon>
-    <p>加载中...</p>
-  </div>
+  <SectionLoading v-if="loading" text="加载中..." />
   <ProductDetail v-else-if="isUsedProduct" :product-id="productId" />
   <AggregatedProductDetail v-else />
 </template>
@@ -14,7 +11,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { Loading } from '@element-plus/icons-vue'
+import SectionLoading from '@/components/SectionLoading.vue'
 import ProductDetail from './ProductDetail.vue'
 import AggregatedProductDetail from './AggregatedProductDetail.vue'
 import { getProductDetail } from '@/api/shop-public'

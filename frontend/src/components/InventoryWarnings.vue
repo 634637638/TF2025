@@ -82,13 +82,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElNotification } from 'element-plus'
+import { ElMessage, ElNotification } from 'element-plus'
 import { unifiedApi } from '@/utils/unified-api'
 import { logger } from '@/utils/logger'
+import { useAuthStore } from '@/stores/auth'
+import { canAccessRoutePath } from '@/constants/routePermissions'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 // 响应式数据
 const loading = ref(false)
@@ -101,8 +104,17 @@ const totalWarnings = computed(() => {
   return phoneWarnings.value.length + accessoryWarnings.value.length
 })
 
+const canAccessInventory = computed(() => canAccessRoutePath('/inventory', authStore))
+
 // 获取预警数据
 const fetchWarnings = async () => {
+  if (!canAccessInventory.value) {
+    phoneWarnings.value = []
+    accessoryWarnings.value = []
+    salesWarnings.value = null
+    return
+  }
+
   loading.value = true
   try {
     const response = await unifiedApi.get('/dashboard/warnings/comprehensive', {
@@ -144,6 +156,11 @@ const refreshWarnings = () => {
 
 // 跳转到库存页面
 const goToInventory = () => {
+  if (!canAccessInventory.value) {
+    ElMessage.warning('您没有访问此页面的权限')
+    return
+  }
+
   router.push('/inventory')
 }
 
@@ -155,13 +172,22 @@ const getStockClass = (stock: number) => {
 }
 
 // 生命周期
+let warningTimer: ReturnType<typeof setInterval> | null = null
+
 onMounted(() => {
   fetchWarnings()
 
   // 每5分钟自动刷新
-  setInterval(() => {
+  warningTimer = setInterval(() => {
     fetchWarnings()
   }, 5 * 60 * 1000)
+})
+
+onUnmounted(() => {
+  if (warningTimer) {
+    clearInterval(warningTimer)
+    warningTimer = null
+  }
 })
 </script>
 

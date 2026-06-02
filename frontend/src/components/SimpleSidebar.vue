@@ -35,14 +35,7 @@
           >
           <div class="menu-content">
             <div class="menu-icon">
-              <!-- Iconify 图标 -->
-              <span
-                v-if="menu.icon && menu.icon.startsWith('iconify')"
-                class="iconify"
-                :data-icon="menu.icon.replace('iconify ', '')"
-              ></span>
-              <!-- Font Awesome 图标 -->
-              <i v-else :class="menu.icon || 'fas fa-circle'"></i>
+              <IconRenderer :icon="menu.icon" :svg="menu.icon_svg" />
             </div>
             <div class="menu-text" v-show="!props.collapsed && !isMobile">
               {{ menu.name }}
@@ -80,14 +73,7 @@
                 >
                 <div class="menu-content">
                   <div class="menu-icon">
-                    <!-- Iconify 图标 -->
-                    <span
-                      v-if="child.icon && child.icon.startsWith('iconify')"
-                      class="iconify"
-                      :data-icon="child.icon.replace('iconify ', '')"
-                    ></span>
-                    <!-- Font Awesome 图标 -->
-                    <i v-else :class="child.icon || 'fas fa-circle'"></i>
+                    <IconRenderer :icon="child.icon" :svg="child.icon_svg" />
                   </div>
                   <div class="menu-text" v-show="!props.collapsed && !isMobile">
                     {{ child.name }}
@@ -113,14 +99,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, useAttrs, watch, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, useAttrs, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useMobile, useMobileGestures } from '../composables/mobile'
 import { useTheme } from '../composables/useTheme'
 import { useMenuWidth } from '../composables/useMenuWidth'
 import { useMenuStore } from '../stores/menu'
 import { useEventBus } from '../composables/core/useEventBus'
-import { refreshIconifyIcons, waitForIconify } from '../utils/iconify'
+import IconRenderer from './IconRenderer.vue'
+import logger from '../utils/logger'
 
 // 使用菜单宽度组合式函数
 const { menuWidth, updateWidth, setMenuWidth, loadAllMenuWidths } = useMenuWidth()
@@ -214,9 +201,6 @@ const isMenuActive = (menu) => {
 }
 
 const navigateToMenu = async (menu) => {
-  // 通知父组件
-  emit('menu-click', menu)
-
   // 获取目标路径
   const targetPath = menu.url || menu.path
 
@@ -224,6 +208,9 @@ const navigateToMenu = async (menu) => {
   if (!targetPath || targetPath === '#' || targetPath === '') {
     return
   }
+
+  // 通知父组件
+  emit('menu-click', menu)
 
   // 检查当前路由，避免冗余导航
   const currentRoute = router.currentRoute.value
@@ -324,11 +311,6 @@ watch(() => props.menuItems, async (newItems, oldItems) => {
   // 只有当有数据时才更新，避免空数组覆盖
   if (newItems && newItems.length > 0) {
     menuList.value = newItems
-
-    // 菜单列表更新后刷新 Iconify 图标
-    await nextTick()
-    await waitForIconify(3000)
-    refreshIconifyIcons()
   }
 }, { immediate: false, deep: true })  // 改为 immediate: false，避免在 mount 时触发
 
@@ -347,11 +329,6 @@ onMounted(async () => {
 
   // 加载菜单数据
   await loadUserMenus()
-
-  // 组件挂载后刷新 Iconify 图标
-  await nextTick()
-  await waitForIconify(3000)
-  refreshIconifyIcons()
 
   // 监听菜单更新事件 - 也不重新加载，由父组件更新 props
   on('menu:updated', async (data) => {

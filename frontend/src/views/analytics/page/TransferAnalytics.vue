@@ -187,7 +187,12 @@
               </el-space>
             </div>
           </template>
-          <el-table :data="displayRecords" stripe class="w-full" max-height="400" v-loading="loading">
+          <el-table :data="loading ? [] : displayRecords" stripe class="w-full" max-height="400">
+            <template #empty>
+              <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
+              <el-empty v-else description="暂无操作记录" />
+            </template>
+
             <el-table-column prop="order_no" label="单号" width="120" />
             <el-table-column prop="type" label="类型" width="80">
               <template #default="{ row }">
@@ -203,13 +208,13 @@
             <el-table-column prop="to_store_name" label="客户" width="120" />
             <el-table-column prop="amount" label="金额" width="100" align="right">
               <template #default="{ row }">
-                {{ row.amount ? `¥${row.amount.toLocaleString()}` : '-' }}
+                {{ row.amount ? `¥${row.amount.toLocaleString('zh-CN')}` : '-' }}
               </template>
             </el-table-column>
             <el-table-column prop="profit" label="利润" width="100" align="right">
               <template #default="{ row }">
                 <span :class="getProfitClass(row.profit)">
-                  {{ row.profit !== null && row.profit !== undefined ? `¥${row.profit.toLocaleString()}` : '-' }}
+                  {{ row.profit !== null && row.profit !== undefined ? `¥${row.profit.toLocaleString('zh-CN')}` : '-' }}
                 </span>
               </template>
             </el-table-column>
@@ -236,6 +241,7 @@ import { useNotification } from '@/composables/useNotification'
 import { useLoadingState } from '@/composables'
 import { useImportExport } from '@/composables/useImportExport'
 import { unifiedApi } from '@/utils/unified-api'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import echarts, { ECharts } from '@/utils/echarts'
 import { buildCsvContent } from '@/utils/csv-export'
 import { useAnalyticsFieldVisibility } from './useAnalyticsFieldVisibility'
@@ -389,14 +395,16 @@ const formatAmount = (amount: number) => {
   if (amount >= 10000) {
     return (amount / 10000).toFixed(1) + '万'
   }
-  return amount.toLocaleString()
+  return amount.toLocaleString('zh-CN')
 }
 
 // 加载数据
-const loadData = async () => {
+const loadData = async (showLoadingState = true) => {
   try {
-    loading.value = true
-    emit('loading-change', true)
+    if (showLoadingState) {
+      loading.value = true
+      emit('loading-change', true)
+    }
 
     // 计算本月和上月的日期范围
     const getCurrentMonthRange = () => {
@@ -518,8 +526,10 @@ const loadData = async () => {
   } catch (err: any) {
     logger.error('❌ [TransferAnalytics] 获取数据失败:', err)
   } finally {
-    loading.value = false
-    emit('loading-change', false)
+    if (showLoadingState) {
+      loading.value = false
+      emit('loading-change', false)
+    }
   }
 }
 
@@ -527,6 +537,10 @@ const loadData = async () => {
 const handleMonthChange = (value: string) => {
   loadData()
 }
+
+defineExpose({
+  refreshSilently: () => loadData(false)
+})
 
 const initCharts = () => {
   // 销毁旧实例
@@ -666,7 +680,7 @@ const updateWholesaleProductRank = () => {
           <div class="p-2">
             <div class="font-bold mb-2">${p.name}</div>
             <div>数量: ${p.count} 台</div>
-            <div>金额: ¥${p.amount.toLocaleString()}</div>
+            <div>金额: ¥${p.amount.toLocaleString('zh-CN')}</div>
           </div>
         `
       }
@@ -731,7 +745,7 @@ const updateAllocationProductRank = () => {
           <div class="p-2">
             <div class="font-bold mb-2">${p.name}</div>
             <div>数量: ${p.count} 台</div>
-            <div>金额: ¥${p.amount.toLocaleString()}</div>
+            <div>金额: ¥${p.amount.toLocaleString('zh-CN')}</div>
           </div>
         `
       }
@@ -798,7 +812,7 @@ const updateStoreDistribution = () => {
             <div class="font-bold mb-2">${s.store_name}</div>
             <div>批发: ${s.wholesale_count} 台</div>
             <div>划拨: ${s.allocation_count} 台</div>
-            <div>金额: ¥${s.amount.toLocaleString()}</div>
+            <div>金额: ¥${s.amount.toLocaleString('zh-CN')}</div>
           </div>
         `
       }

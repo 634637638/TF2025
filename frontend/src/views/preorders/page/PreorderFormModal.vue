@@ -36,8 +36,7 @@
                 class="customer-search-results"
               >
                 <div v-if="customerSearching" class="search-loading">
-                  <i class="fas fa-spinner fa-spin"></i>
-                  搜索中...
+                  <InlineLoading text="搜索中..." size="small" />
                 </div>
                 <template v-else>
                   <div
@@ -296,6 +295,7 @@ import { preorderApi, Preorder } from '@/api/preorder'
 import { baseDataApi } from '@/api/base-data'
 import { unifiedApi } from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
+import InlineLoading from '@/components/InlineLoading.vue'
 import dayjs from 'dayjs'
 import { logger } from '@/utils/logger'
 import type { ModalProps, SuccessEmits, UpdateVisibleEmits } from '@/types'

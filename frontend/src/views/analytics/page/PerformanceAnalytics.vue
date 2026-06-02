@@ -221,7 +221,12 @@
 
           <el-tabs v-model="activeMetricsTab">
             <el-tab-pane label="API 性能" name="api">
-              <el-table :data="apiMetrics" v-loading="metricsLoading" stripe>
+              <el-table :data="metricsLoading ? [] : apiMetrics" stripe>
+                <template #empty>
+                  <TableLoadingRow v-if="metricsLoading" mode="block" text="加载中..." />
+                  <el-empty v-else description="暂无 API 性能数据" />
+                </template>
+
                 <el-table-column prop="endpoint" label="API 端点" min-width="200" />
                 <el-table-column prop="method" label="方法" width="80" />
                 <el-table-column prop="avgResponseTime" label="平均响应时间" width="120">
@@ -253,7 +258,12 @@
             </el-tab-pane>
 
             <el-tab-pane label="数据库性能" name="database">
-              <el-table :data="dbMetrics" v-loading="metricsLoading" stripe>
+              <el-table :data="metricsLoading ? [] : dbMetrics" stripe>
+                <template #empty>
+                  <TableLoadingRow v-if="metricsLoading" mode="block" text="加载中..." />
+                  <el-empty v-else description="暂无数据库性能数据" />
+                </template>
+
                 <el-table-column prop="query" label="查询类型" min-width="200" />
                 <el-table-column prop="avgExecutionTime" label="平均执行时间" width="140">
                   <template #default="{ row }">
@@ -352,6 +362,7 @@ import { useNotification } from '@/composables/useNotification'
 import { useLoadingState } from '@/composables'
 import { useImportExport } from '@/composables/useImportExport'
 import { globalApiCache, globalDeduplicator } from '@/composables/api-cache'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 const { success, error: showError, warning, info } = useNotification()
 import {
   Monitor,

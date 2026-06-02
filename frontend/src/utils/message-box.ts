@@ -1,4 +1,4 @@
-import { ElMessageBox } from 'element-plus'
+import { loadElementPlus } from '@/utils/element-feedback'
 
 type MessageBoxType = 'success' | 'warning' | 'info' | 'error'
 
@@ -229,11 +229,12 @@ const normalizeConfirmConfig = (
   }
 }
 
-export const enhanceGlobalMessageBox = () => {
+export const enhanceGlobalMessageBox = async () => {
   if (isEnhanced) {
     return
   }
 
+  const { ElMessageBox } = await loadElementPlus()
   const originalConfirm = ElMessageBox.confirm.bind(ElMessageBox)
 
   ElMessageBox.confirm = ((message: unknown, title?: unknown, options?: MessageBoxOptions) => {

@@ -5,7 +5,7 @@
     :class="buttonClasses"
     @click="handleClick"
   >
-    <i v-if="loading" class="fas fa-spinner animate-spin"></i>
+    <InlineLoading v-if="loading" size="small" variant="inherit" />
     <i v-else-if="icon" :class="iconClass"></i>
 
     <span v-if="$slots.default" :class="{ 'ml-2': icon || loading }">
@@ -18,6 +18,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import InlineLoading from '@/components/InlineLoading.vue'
 
 interface Props {
   type?: 'button' | 'submit' | 'reset'

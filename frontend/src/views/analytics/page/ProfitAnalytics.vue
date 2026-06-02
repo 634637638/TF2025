@@ -958,10 +958,12 @@ const loadForecastHistoryData = async () => {
 }
 
 // 使用指定日期范围加载所有数据（用于快捷选择）
-const loadDataWithDates = async (start: string, end: string) => {
+const loadDataWithDates = async (start: string, end: string, showLoadingState = true) => {
   try {
-    loading.value = true
-    emit('loading-change', true)
+    if (showLoadingState) {
+      loading.value = true
+      emit('loading-change', true)
+    }
 
     const params: any = {
       startDate: start,
@@ -990,7 +992,7 @@ const loadDataWithDates = async (start: string, end: string) => {
 
     // 最后补充盈利汇总接口中的上月数据和环比数据
     await Promise.all([
-      loadProfitData(),
+      loadProfitData(false),
       loadProfitTrendData(),
       loadForecastHistoryData()
     ])
@@ -1008,8 +1010,10 @@ const loadDataWithDates = async (start: string, end: string) => {
       }, 300)
     }, 400)
   } finally {
-    loading.value = false
-    emit('loading-change', false)
+    if (showLoadingState) {
+      loading.value = false
+      emit('loading-change', false)
+    }
   }
 }
 
@@ -1436,10 +1440,12 @@ let forecastChart: ECharts | null = null
 let chartsInitialized = false
 
 // 方法
-const loadProfitData = async () => {
+const loadProfitData = async (showLoadingState = true) => {
   try {
-    loading.value = true
-    emit('loading-change', true)
+    if (showLoadingState) {
+      loading.value = true
+      emit('loading-change', true)
+    }
 
     // 构建查询参数 - 处理日期格式
     const params: any = {}
@@ -1574,8 +1580,10 @@ const loadProfitData = async () => {
     logger.error('获取盈利数据失败:', err)
     updateCharts()
   } finally {
-    loading.value = false
-    emit('loading-change', false)
+    if (showLoadingState) {
+      loading.value = false
+      emit('loading-change', false)
+    }
   }
 }
 
@@ -2315,14 +2323,18 @@ const handleExport = () => {
 }
 
 // 刷新所有数据
-const refreshAllData = async () => {
+const refreshAllData = async (showLoadingState = true) => {
   // 使用父组件传递的参数
   const computedStartDate = startDate.value || TimeUtil.now().startOf('month').format('YYYY-MM-DD')
   const computedEndDate = endDate.value || TimeUtil.now().endOf('month').format('YYYY-MM-DD')
 
   // 使用 loadDataWithDates 加载所有数据
-  await loadDataWithDates(computedStartDate, computedEndDate)
+  await loadDataWithDates(computedStartDate, computedEndDate, showLoadingState)
 }
+
+defineExpose({
+  refreshSilently: () => refreshAllData(false)
+})
 
 // 加载门店利润数据
 const loadStoreProfit = async () => {

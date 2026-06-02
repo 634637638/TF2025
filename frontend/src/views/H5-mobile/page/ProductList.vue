@@ -81,8 +81,7 @@
 
       <!-- 加载更多提示 -->
       <div v-if="loading && products.length > 0" class="loading-more">
-        <el-icon class="is-loading"><Loading /></el-icon>
-        <span>加载中...</span>
+        <InlineLoading text="加载中..." size="small" />
       </div>
       <div v-else-if="!hasMore && products.length > 0" class="no-more-data">
         <div class="no-more-line">
@@ -191,11 +190,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, onActivated, onDeactivated, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Loading } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { getAggregatedProducts, getProducts, getPublicConfig } from '@/api/shop-public'
 import { baseDataApi } from '@/api/base-data'
 import { useCart, useLoadingState } from '@/composables'
+import InlineLoading from '@/components/InlineLoading.vue'
 import type { AggregatedProduct } from '@/api/shop-public'
 import { storage } from '@/services/storage'
 import { formatImageUrl, generateProductPlaceholder } from '@/utils/format'
@@ -907,7 +906,15 @@ onActivated(async () => {
 })
 
 // 监听筛选条件变化 - 分别监听每个属性
-watch([() => filters.value.brand_id, () => filters.value.memory_id, () => filters.value.is_new, () => filters.value.condition_grade, () => filters.value.search], async ([newBrandId, newMemoryId, newIsNew, newConditionGrade, newSearch], [oldBrandId, oldMemoryId, oldIsNew, oldConditionGrade, oldSearch]) => {
+watch([
+  () => filters.value.brand_id,
+  () => filters.value.model_id,
+  () => filters.value.color_id,
+  () => filters.value.memory_id,
+  () => filters.value.is_new,
+  () => filters.value.condition_grade,
+  () => filters.value.search
+], async ([newBrandId, newModelId, newColorId, newMemoryId, newIsNew, newConditionGrade, newSearch], [oldBrandId, oldModelId, oldColorId, oldMemoryId, oldIsNew, oldConditionGrade, oldSearch]) => {
   // 如果正在初始化，跳过此次变化
   if (isInitializing.value || isSyncingRouteFilters.value) {
     isSyncingRouteFilters.value = false
@@ -915,9 +922,20 @@ watch([() => filters.value.brand_id, () => filters.value.memory_id, () => filter
   }
 
   // 检查是否有实际变化
-  const hasChanged = newBrandId !== oldBrandId || newMemoryId !== oldMemoryId || newIsNew !== oldIsNew || newConditionGrade !== oldConditionGrade || newSearch !== oldSearch
+  const hasChanged = newBrandId !== oldBrandId ||
+    newModelId !== oldModelId ||
+    newColorId !== oldColorId ||
+    newMemoryId !== oldMemoryId ||
+    newIsNew !== oldIsNew ||
+    newConditionGrade !== oldConditionGrade ||
+    newSearch !== oldSearch
 
   if (!hasChanged) return
+
+  if (newBrandId !== oldBrandId && oldBrandId !== undefined) {
+    filters.value.model_id = null
+    filters.value.color_id = null
+  }
 
   // 当切换成色时，重置内存筛选（因为全新机不支持内存筛选）
   if (newIsNew !== oldIsNew && oldIsNew !== undefined) {
@@ -929,6 +947,8 @@ watch([() => filters.value.brand_id, () => filters.value.memory_id, () => filter
   // 更新URL参数（不触发路由守卫）
   const query: any = {}
   if (filters.value.brand_id) query.brand_id = filters.value.brand_id
+  if (filters.value.model_id) query.model_id = filters.value.model_id
+  if (filters.value.color_id) query.color_id = filters.value.color_id
   // 只在二手机时保存内存筛选参数
   if (filters.value.is_new === false && filters.value.memory_id) {
     query.memory_id = filters.value.memory_id

@@ -193,8 +193,11 @@
             @click="handleSearch"
             :disabled="loading || disabled"
           >
-            <i :class="loading ? 'fas fa-spinner fa-spin' : 'fas fa-search'"></i>
-            <span v-if="!compact">{{ searchButtonText }}</span>
+            <InlineLoading v-if="loading" :text="compact ? '' : searchButtonText" size="small" variant="inherit" />
+            <template v-else>
+              <i class="fas fa-search"></i>
+              <span v-if="!compact">{{ searchButtonText }}</span>
+            </template>
           </button>
           <button
             v-if="showResetButton"
@@ -237,6 +240,7 @@ import type {
   UpdateFilterValuesEmits,
   UpdateStringModelValueEmits
 } from '@/types/component'
+import InlineLoading from '@/components/InlineLoading.vue'
 import { logger } from '@/utils/logger'
 
 

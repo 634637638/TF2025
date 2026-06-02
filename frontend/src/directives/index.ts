@@ -366,13 +366,17 @@ export const vMobileOptimize: Directive = {
 
 // 工具函数
 function showLoading(el: HTMLElement) {
+  if (el.querySelector('.tf2025-loading-spinner')) {
+    return
+  }
+
   el.classList.add('tf2025-loading')
 
   // 创建加载动画元素
   const loading = document.createElement('div')
   loading.className = 'tf2025-loading-spinner'
   loading.innerHTML = `
-    <div class="spinner"></div>
+    <div class="tf2025-loading-spinner__icon"></div>
     <span>加载中...</span>
   `
 
@@ -382,7 +386,6 @@ function showLoading(el: HTMLElement) {
     .tf2025-loading {
       position: relative;
       pointer-events: none;
-      opacity: 0.6;
     }
     .tf2025-loading-spinner {
       position: absolute;
@@ -390,23 +393,32 @@ function showLoading(el: HTMLElement) {
       left: 50%;
       transform: translate(-50%, -50%);
       display: flex;
-      flex-direction: column;
       align-items: center;
+      justify-content: center;
       gap: 8px;
-      color: #409eff;
+      min-width: 112px;
+      padding: 10px 14px;
+      color: #475569;
       font-size: 14px;
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      border-radius: 12px;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+      backdrop-filter: blur(8px);
+      z-index: 2;
     }
-    .spinner {
-      width: 20px;
-      height: 20px;
-      border: 2px solid #f3f3f3;
-      border-top: 2px solid #409eff;
+    .tf2025-loading-spinner__icon {
+      width: 18px;
+      height: 18px;
+      border: 2px solid #dbeafe;
+      border-top-color: #2563eb;
+      border-right-color: #38bdf8;
       border-radius: 50%;
-      animation: spin 1s linear infinite;
+      animation: tf2025-loading-spin 0.75s linear infinite;
     }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+    @keyframes tf2025-loading-spin {
+      to { transform: rotate(360deg); }
     }
   `
 

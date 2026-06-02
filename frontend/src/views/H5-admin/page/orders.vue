@@ -3,15 +3,15 @@
   功能：查看、审核、发货H5订单
 -->
 <template>
-  <PermissionDenied
-    v-if="!canView"
+  <PermissionGate
     :can-view="canView"
+    mode="denied"
     module-key="h5-admin-orders"
     module-name="商城订单"
     permission-code="h5-orders:view"
-  />
+  >
 
-  <div v-else class="sales-management-page">
+  <div class="sales-management-page">
     <!-- 统计卡片 -->
     <div v-if="showStatsCards" class="stats-cards">
       <div v-if="canViewOrderField('stats_total_orders')" class="stat-card" @click="filterByStatus('')">
@@ -115,8 +115,12 @@
     </el-card>
 
     <!-- 订单列表 -->
-    <el-card class="table-card" shadow="never" v-loading="loading">
-      <el-table :data="orders" class="w-full" :border="true">
+    <el-card class="table-card" shadow="never">
+      <el-table :data="loading ? [] : orders" class="w-full" :border="true">
+        <template #empty>
+          <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
+          <el-empty v-else description="暂无订单" />
+        </template>
         <el-table-column prop="order_number" label="订单号" width="160" fixed>
           <template #default="{ row }">
             <el-tag size="small">{{ row.order_number }}</el-tag>
@@ -236,7 +240,7 @@
       </el-table>
 
       <!-- 分页 -->
-      <div class="pagination-wrapper">
+      <div v-if="!loading" class="pagination-wrapper">
         <Pagination
           v-model:current="pagination.page"
           v-model:page-size="pagination.limit"
@@ -496,14 +500,16 @@
       </template>
     </MobileDialog>
   </div>
+  </PermissionGate>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, reactive, onMounted, onUnmounted, inject } from 'vue'
+import { computed, ref, reactive, onMounted, onUnmounted, inject, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
-import { PermissionDenied } from '@/components/base'
+import { PermissionGate } from '@/components/base'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import Pagination from '@/components/Pagination.vue'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
@@ -521,11 +527,25 @@ type OrderStatistics = Record<string, unknown>
 type OrderDateRange = [string, string] | []
 
 const router = useRouter()
-const { canView, canEdit, handleNoPermission } = usePagePermissions('h5-admin-orders')
+const orderPermissions = usePagePermissions('h5-admin-orders')
+const h5AdminPermissions = usePagePermissions('h5-admin')
+const salesPermissions = usePagePermissions('sales')
+const { handleNoPermission } = orderPermissions
+const canView = computed(() => (
+  orderPermissions.canView.value ||
+  h5AdminPermissions.canView.value ||
+  salesPermissions.canView.value
+))
+const canEdit = computed(() => (
+  orderPermissions.canEdit.value ||
+  h5AdminPermissions.canEdit.value ||
+  salesPermissions.canEdit.value
+))
 const H5_ORDER_MODULE_KEY = 'h5_admin_ordersview'
 
 // 数据
-const { loading } = useLoadingState()
+const { loading } = useLoadingState(true)
+const hasInitializedPageData = ref(false)
 const orders = ref<OrderRecord[]>([])
 const statistics = ref<OrderStatistics>({})
 const currentOrder = ref<OrderRecord | null>(null)
@@ -1016,13 +1036,28 @@ const confirmCancel = async () => {
   }
 }
 
-onMounted(async () => {
-  if (canView.value) {
-    await fieldPermissions.init()
-    loadOrders()
-    loadStatistics()
+const initializePageData = async () => {
+  if (!canView.value) {
+    orders.value = []
+    statistics.value = {}
+    pagination.total = 0
+    loading.value = false
+    return
   }
-  // 注册头部操作按钮
+
+  if (hasInitializedPageData.value) {
+    return
+  }
+
+  hasInitializedPageData.value = true
+  await fieldPermissions.init()
+  await Promise.all([
+    loadOrders(),
+    loadStatistics()
+  ])
+}
+
+const registerPageHeaderActions = () => {
   if (registerHeaderActions) {
     registerHeaderActions([
       {
@@ -1034,6 +1069,17 @@ onMounted(async () => {
       }
     ])
   }
+}
+
+watch(canView, (allowed) => {
+  if (allowed) {
+    void initializePageData()
+  }
+})
+
+onMounted(() => {
+  void initializePageData()
+  registerPageHeaderActions()
 })
 
 onUnmounted(() => {

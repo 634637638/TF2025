@@ -52,7 +52,7 @@ export default defineConfig({
         manualChunks: (id) => {
           // 1. 将大型第三方库单独打包
           if (id.includes('node_modules')) {
-            // Vue 生态与 Element Plus 基础能力（包括所有依赖 Vue 的包）
+            // Vue 生态与 Element Plus 基础能力（Element Plus 与 Vue 依赖紧密，强拆会产生循环 chunk）
             if (
               id.includes('/vue/') ||
               id.includes('/pinia/') ||
@@ -90,15 +90,7 @@ export default defineConfig({
               return 'pdf';
             }
 
-            // H5 交互与动效能力
-            if (
-              id.includes('/swiper/') ||
-              id.includes('/aos/') ||
-              id.includes('/vuedraggable/') ||
-              id.includes('/v3-infinite-loading/')
-            ) {
-              return 'ui-extensions';
-            }
+            // H5 交互与动效库交给 Rollup 自动拆分；强制合并容易和 vue-vendor 形成循环 chunk。
 
             // 通用请求与安全相关工具
             if (

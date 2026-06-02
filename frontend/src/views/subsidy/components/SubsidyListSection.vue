@@ -51,10 +51,7 @@
       </div>
 
       <div class="table-container">
-        <div v-if="loading" class="loading-state">
-          <div class="loading-spinner"></div>
-          <p>加载中...</p>
-        </div>
+        <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
 
         <div v-else-if="subsidyList.length === 0" class="empty-state">
           <i class="fas fa-inbox"></i>
@@ -267,137 +264,118 @@
           <div
             v-for="item in displayList"
             :key="item.id"
-            v-memo="[item, isPinnedItem(item.id), isShowingHandlerInfo(item)]"
-            class="mobile-card"
-            :class="{ 'pinned-card': isPinnedItem(item.id) }"
-            @dblclick="emit('row-double-click', item)"
+            v-memo="[item, isSelectedItem(item.id), isPinnedItem(item.id), isShowingHandlerInfo(item)]"
+            class="mobile-subsidy-card"
+            :class="{ 'selected-row': isSelectedItem(item.id), 'pinned-row': isPinnedItem(item.id) }"
+            @click="emit('row-double-click', item)"
           >
-            <div class="card-section device-section">
-              <div class="section-title">
-                <i class="fas fa-mobile-alt"></i>
-                <span>设备信息</span>
+            <div class="mobile-card-accent"></div>
+            <div class="mobile-card-shell">
+              <div class="mobile-select-cell" @click.stop>
+                <el-checkbox
+                  :model-value="isSelectedItem(item.id)"
+                  @change="(value) => emit('select-item', { id: item.id, checked: !!value })"
+                />
               </div>
-              <div class="section-grid compact-grid">
-                <div class="grid-item">
-                  <span class="item-label">型号</span>
-                  <span class="item-value">{{ item.phone_model }}</span>
-                </div>
-                <div class="grid-item">
-                  <span class="item-label">颜色</span>
-                  <span class="item-value">{{ item.phone_color }}</span>
-                </div>
-                <div class="grid-item">
-                  <span class="item-label">内存</span>
-                  <span class="item-value">{{ item.phone_memory }}</span>
-                </div>
-                <div v-if="item.serial_number" class="grid-item">
-                  <span class="item-label">序列号</span>
-                  <span class="item-value clickable-text" @click="copyToClipboard(item.serial_number, '序列号')">
-                    {{ item.serial_number }}
-                  </span>
-                </div>
-              </div>
-            </div>
 
-            <div class="card-section purchase-section">
-              <div class="section-title">
-                <i class="fas fa-user"></i>
-                <span>购买信息</span>
-              </div>
-              <div class="customer-info-list">
-                <div v-if="getDisplayInfo(item, 'name')" class="info-row-first">
-                  <span class="info-label">姓名</span>
-                  <span
-                    class="info-value customer-info-toggle"
-                    :class="{
-                      'has-handler-but-showing-purchaser': hasHandlerInfo(item) && !isShowingHandlerInfo(item),
-                      'showing-handler': isShowingHandlerInfo(item)
-                    }"
-                    @click="hasHandlerInfo(item) ? toggleListItemCustomerInfo(item.id) : copyToClipboard(getDisplayInfo(item, 'name'), '姓名')"
-                  >
-                    {{ getDisplayInfo(item, 'name') }}
-                  </span>
-                  <span v-if="getDisplayInfo(item, 'phone')" class="info-label phone-label">手机</span>
-                  <span
-                    v-if="getDisplayInfo(item, 'phone')"
-                    class="info-value clickable-text"
-                    @click="copyToClipboard(getDisplayInfo(item, 'phone'), '手机号')"
-                  >
-                    {{ getDisplayInfo(item, 'phone') }}
-                  </span>
+              <div class="mobile-card-content">
+                <div class="mobile-card-head">
+                  <div class="mobile-meta-line">
+                    <span v-if="fieldVisibility.saleTime" class="mobile-date">{{ formatDate(item.sale_time) }}</span>
+                    <span v-if="fieldVisibility.storeName" class="mobile-store">{{ item.store_name || '-' }}</span>
+                  </div>
+                  <span v-if="isHandlerSubsidy(item)" class="mobile-handler-badge">代办</span>
                 </div>
-                <div v-if="getDisplayInfo(item, 'idcard') && canViewCustomerIdcard" class="info-row-second">
-                  <span class="info-label">身份证</span>
-                  <span class="info-value clickable-text" @click="copyToClipboard(getDisplayInfo(item, 'idcard'), '身份证号')">
-                    {{ getDisplayInfo(item, 'idcard') }}
-                  </span>
-                </div>
-              </div>
-            </div>
 
-            <div class="card-section price-section">
-              <div class="section-title">
-                <i class="fas fa-tags"></i>
-                <span>价格与状态</span>
-              </div>
-              <div class="section-grid compact-grid">
-                <div v-if="item.sale_price" class="grid-item">
-                  <span class="item-label">销售价</span>
-                  <span class="item-value price-highlight">¥{{ item.sale_price?.toFixed(2) }}</span>
+                <div class="mobile-device-line">
+                  <span v-if="fieldVisibility.brand" class="mobile-brand-text">
+                    {{ item.phone_brand || '-' }}
+                  </span>
+                  <span v-if="fieldVisibility.model" class="mobile-model-title">
+                    {{ item.phone_model || '-' }}
+                  </span>
+                  <span v-if="fieldVisibility.color" class="mobile-spec-text">
+                    {{ item.phone_color || '颜色-' }}
+                  </span>
+                  <span v-if="fieldVisibility.memory" class="mobile-spec-text">
+                    {{ item.phone_memory || '内存-' }}
+                  </span>
                 </div>
-                <div v-if="item.subsidy_amount" class="grid-item">
-                  <span class="item-label">国补后价</span>
-                  <span class="item-value subsidy-amount">¥{{ (item.sale_price - item.subsidy_amount).toFixed(2) }}</span>
+
+                <div class="mobile-person-line">
+                  <span v-if="fieldVisibility.customerName" class="mobile-name">
+                    <i class="fas fa-user"></i>
+                    {{ getDisplayInfo(item, 'name') || '-' }}
+                  </span>
+                  <span v-if="fieldVisibility.customerPhone" class="mobile-phone">
+                    <i class="fas fa-phone-alt"></i>
+                    {{ getDisplayInfo(item, 'phone') || '-' }}
+                  </span>
+                  <span v-if="fieldVisibility.salePrice" class="mobile-price">
+                    ¥{{ formatMoney(item.sale_price) }}
+                  </span>
+                  <span v-else-if="fieldVisibility.subsidyAmount" class="mobile-price mobile-price--subsidy">
+                    补后 ¥{{ formatMoney(getSubsidyFinalPrice(item)) }}
+                  </span>
                 </div>
-                <div v-if="item.store_name" class="grid-item">
-                  <span class="item-label">店铺</span>
-                  <span class="item-value">{{ item.store_name }}</span>
-                </div>
-                <div v-if="item.sale_time" class="grid-item">
-                  <span class="item-label">销售日期</span>
-                  <span class="item-value">{{ formatDate(item.sale_time) }}</span>
-                </div>
-                <div v-if="fieldVisibility.applyTime" class="grid-item">
-                  <span class="item-label">国补提交</span>
-                  <div class="item-value">
-                    <span
-                      v-if="item.apply_time && item.apply_time !== '' && item.apply_time !== null"
-                      class="time-badge approval-time"
-                    >
-                      <i class="fas fa-check-circle"></i>
-                      {{ formatDate(item.apply_time) }}
-                    </span>
-                    <el-button
-                      v-else-if="canApprove"
-                      type="warning"
-                      size="small"
-                      @click.stop="emit('audit', item)"
-                    >
-                      <i class="fas fa-clipboard-check"></i>
-                      <span>提交审批</span>
-                    </el-button>
-                  </div>
-                </div>
-                <div v-if="fieldVisibility.arrivalTime" class="grid-item">
-                  <span class="item-label">国补到账</span>
-                  <div class="item-value">
-                    <span
-                      v-if="item.arrival_time && item.arrival_time !== '' && item.arrival_time !== null"
-                      class="time-badge arrival-time"
-                    >
-                      <i class="fas fa-coins"></i>
-                      {{ formatDate(item.arrival_time) }}
-                    </span>
-                    <el-button
-                      v-else-if="canEdit"
-                      type="success"
-                      size="small"
-                      @click.stop="emit('confirm-arrival', item)"
-                    >
-                      <i class="fas fa-hand-holding-usd"></i>
-                      <span>确认到账</span>
-                    </el-button>
-                  </div>
+
+                <div class="mobile-card-actions" @click.stop>
+                  <button
+                    type="button"
+                    class="mobile-action-mark mobile-photo-action"
+                    :class="{ 'has-photos': photoCount(item) > 0 }"
+                    :title="photoCount(item) > 0 ? '查看/管理国补照片' : '上传国补照片'"
+                    @click="emit('open-photo-manage', item)"
+                  >
+                    <i :class="photoCount(item) > 0 ? 'fas fa-images' : 'far fa-image'"></i>
+                    <span v-if="photoCount(item) > 0" class="mobile-photo-count">{{ photoCount(item) }}</span>
+                  </button>
+                  <el-button
+                    v-if="fieldVisibility.applyTime && canApprove && !hasApplyTime(item)"
+                    type="warning"
+                    size="small"
+                    @click="emit('audit', item)"
+                  >
+                    审批
+                  </el-button>
+                  <span
+                    v-else-if="fieldVisibility.applyTime"
+                    class="mobile-action-status"
+                    :class="hasApplyTime(item) ? 'is-approved' : 'is-pending'"
+                  >
+                    {{ hasApplyTime(item) ? '已审' : '待审' }}
+                  </span>
+                  <el-button
+                    v-if="fieldVisibility.arrivalTime && canEdit && !hasArrivalTime(item)"
+                    type="success"
+                    size="small"
+                    @click="emit('confirm-arrival', item)"
+                  >
+                    到账
+                  </el-button>
+                  <span
+                    v-else-if="fieldVisibility.arrivalTime"
+                    class="mobile-action-status"
+                    :class="hasArrivalTime(item) ? 'is-arrived' : 'is-waiting'"
+                  >
+                    {{ hasArrivalTime(item) ? '已到' : '待到' }}
+                  </span>
+                  <el-button
+                    v-if="canEdit"
+                    type="primary"
+                    size="small"
+                    @click="emit('edit', item)"
+                  >
+                    编辑
+                  </el-button>
+                  <el-button
+                    v-if="canDelete"
+                    type="danger"
+                    size="small"
+                    @click="emit('delete', item)"
+                  >
+                    删除
+                  </el-button>
                 </div>
               </div>
             </div>
@@ -438,6 +416,7 @@
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import PaginationComponent from '@/components/Pagination.vue'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
 
@@ -509,6 +488,20 @@ const handleSelectAll = (value: boolean | string | number) => {
 
 const isSelectedItem = (id: number) => selectedItemIdSet.value.has(id)
 const isPinnedItem = (id: number) => pinnedItemIdSet.value.has(id)
+
+const formatMoney = (value: unknown) => {
+  const amount = Number(value)
+  return Number.isFinite(amount) ? amount.toFixed(2) : '0.00'
+}
+
+const getSubsidyFinalPrice = (item: any) => {
+  return Number(item?.sale_price || 0) - Number(item?.subsidy_amount || 0)
+}
+
+const hasApplyTime = (item: any) => Boolean(item?.apply_time && item.apply_time !== '')
+const hasArrivalTime = (item: any) => Boolean(item?.arrival_time && item.arrival_time !== '')
+const photoCount = (item: any) => Array.isArray(item?.subsidy_photos) ? item.subsidy_photos.length : 0
+const isHandlerSubsidy = (item: any) => Boolean(item?.hasDifferentHandler)
 
 const toggleListItemCustomerInfo = (itemId: number) => {
   const currentState = handlerInfoVisibility.value.get(itemId) || false
@@ -862,13 +855,11 @@ onUnmounted(() => {
     letter-spacing: 0.2px;
   }
 
-  .table-price.sale-price,
-  .mobile-card .item-value.price-highlight {
+  .table-price.sale-price {
     color: #dc2626;
   }
 
-  .table-price.subsidy-price,
-  .mobile-card .item-value.subsidy-amount {
+  .table-price.subsidy-price {
     color: #16a34a;
   }
 
@@ -880,7 +871,7 @@ onUnmounted(() => {
 
   .data-table :deep(.el-button--small),
   .batch-actions-buttons :deep(.el-button--small),
-  .mobile-card :deep(.el-button--small) {
+  .mobile-card-list :deep(.el-button--small) {
     height: 28px !important;
     min-height: 28px !important;
     padding: 0 10px !important;
@@ -1012,112 +1003,306 @@ onUnmounted(() => {
   .mobile-card-list {
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    padding: 4px;
+    gap: 10px;
   }
 
-  .mobile-card {
-    background: white;
-    border-radius: 16px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.1);
+  .mobile-subsidy-card {
+    position: relative;
     overflow: hidden;
-    border: 1px solid rgba(0, 0, 0, 0.06);
+    background:
+      radial-gradient(circle at top right, rgba(219, 234, 254, 0.65), transparent 38%),
+      linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   }
 
-  .mobile-card .card-section {
-    padding: 12px;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  .mobile-subsidy-card:active {
+    transform: scale(0.995);
   }
 
-  .mobile-card .card-section:last-child {
-    border-bottom: none;
+  .mobile-subsidy-card.selected-row {
+    border-color: #60a5fa;
+    box-shadow: 0 10px 24px rgba(37, 99, 235, 0.16);
   }
 
-  .mobile-card .section-title {
+  .mobile-subsidy-card.pinned-row {
+    border-color: #fbbf24;
+    background: linear-gradient(135deg, #fffbeb 0%, #fff 58%);
+  }
+
+  .mobile-card-accent {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 4px;
+    background: linear-gradient(180deg, #2563eb, #06b6d4);
+  }
+
+  .mobile-card-shell {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 10px;
+    padding: 12px 12px 12px 14px;
+  }
+
+  .mobile-select-cell {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 2px;
+  }
+
+  .mobile-card-content {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .mobile-card-head,
+  .mobile-meta-line,
+  .mobile-device-line,
+  .mobile-person-line,
+  .mobile-card-actions {
     display: flex;
     align-items: center;
+  }
+
+  .mobile-card-head,
+  .mobile-device-line,
+  .mobile-person-line {
+    justify-content: space-between;
     gap: 6px;
-    margin-bottom: 8px;
+    min-width: 0;
+  }
+
+  .mobile-meta-line {
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 6px;
+  }
+
+  .mobile-date {
+    flex-shrink: 0;
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 700;
+  }
+
+  .mobile-store {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #0f172a;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .mobile-handler-badge {
+    flex-shrink: 0;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #f97316, #f59e0b);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1.2;
+    box-shadow: 0 6px 12px rgba(249, 115, 22, 0.22);
+  }
+
+  .mobile-device-line {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    gap: 6px;
+    min-width: 0;
+    padding: 2px 0;
+  }
+
+  .mobile-person-line {
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .mobile-action-mark {
+    position: relative;
+    width: 30px;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .mobile-action-mark:active {
+    transform: scale(0.94);
+  }
+
+  .mobile-photo-action {
+    background: linear-gradient(135deg, #2563eb, #38bdf8);
+    box-shadow: 0 8px 16px rgba(37, 99, 235, 0.22);
+  }
+
+  .mobile-photo-action.has-photos {
+    background: linear-gradient(135deg, #059669, #34d399);
+    box-shadow: 0 8px 16px rgba(5, 150, 105, 0.2);
+  }
+
+  .mobile-photo-count {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 16px;
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.32);
+  }
+
+  .mobile-brand-text,
+  .mobile-model-title,
+  .mobile-spec-text {
+    max-width: 100%;
+    min-height: 26px;
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+
+  .mobile-brand-text {
+    flex: 0 0 auto;
+    padding: 0 8px;
+    background: linear-gradient(135deg, #eff6ff, #dbeafe);
+    border-color: #bfdbfe;
+    color: #1d4ed8;
+    font-size: 12px;
+    font-weight: 800;
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.08);
+  }
+
+  .mobile-model-title {
+    flex: 0 0 auto;
+    padding: 0 10px;
+    background: #ffffff;
+    border-color: #cbd5e1;
+    color: #0f172a;
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.3;
+    box-shadow: 0 5px 12px rgba(15, 23, 42, 0.08);
+  }
+
+  .mobile-spec-text {
+    flex: 0 0 auto;
+    padding: 0 8px;
+    background: #f8fafc;
+    border-color: #e2e8f0;
+    color: #475569;
     font-size: 12px;
     font-weight: 700;
-    color: #1a1a1a;
   }
 
-  .mobile-card .section-title i {
-    font-size: 14px;
-    color: #667eea;
-  }
-
-  .mobile-card .section-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 6px 8px;
-  }
-
-  .mobile-card .grid-item {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .mobile-card .item-label {
-    font-size: 10px;
-    color: #8e8e93;
-    font-weight: 600;
-    text-transform: uppercase;
-  }
-
-  .mobile-card .item-value {
-    font-size: 13px;
-    color: #1c1c1e;
-    font-weight: 600;
-    line-height: 1.3;
-    word-break: break-all;
-  }
-
-  .mobile-card .customer-info-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .mobile-card .info-row-first,
-  .mobile-card .info-row-second {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .mobile-card .info-label {
-    color: #8e8e93;
-    font-weight: 600;
-    font-size: 10px;
+  .mobile-price {
     flex-shrink: 0;
+    margin-left: auto;
+    color: #dc2626;
+    font-size: 13px;
+    font-weight: 800;
   }
 
-  .mobile-card .phone-label {
-    margin-left: 4px;
+  .mobile-price--subsidy {
+    color: #16a34a;
+    font-size: 12px;
   }
 
-  .mobile-card .device-section {
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.03) 0%, rgba(118, 75, 162, 0.03) 100%);
+  .mobile-name,
+  .mobile-phone {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: #475569;
+    font-size: 12px;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
-  .mobile-card .purchase-section {
-    background: linear-gradient(135deg, rgba(52, 199, 89, 0.03) 0%, rgba(48, 209, 88, 0.03) 100%);
+  .mobile-name {
+    flex: 0 1 auto;
+    max-width: 34%;
+    min-width: 0;
   }
 
-  .mobile-card .price-section {
-    background: linear-gradient(135deg, rgba(255, 149, 0, 0.03) 0%, rgba(255, 59, 48, 0.03) 100%);
+  .mobile-phone {
+    flex: 1 1 auto;
+    min-width: 0;
+    color: #64748b;
+  }
+
+  .mobile-card-actions {
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 2px;
+    padding-top: 8px;
+    border-top: 1px dashed #e2e8f0;
+  }
+
+  .mobile-action-status {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    height: 28px;
+    padding: 0 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .mobile-action-status.is-pending {
+    background: #fef3c7;
+    color: #92400e;
+  }
+
+  .mobile-action-status.is-approved {
+    background: #dbeafe;
+    color: #1d4ed8;
+  }
+
+  .mobile-action-status.is-arrived {
+    background: #dcfce7;
+    color: #15803d;
+  }
+
+  .mobile-action-status.is-waiting {
+    background: #fee2e2;
+    color: #b91c1c;
   }
 
   @media (max-width: 768px) {
     .data-table :deep(.el-button--small),
     .batch-actions-buttons :deep(.el-button--small),
-    .mobile-card :deep(.el-button--small) {
+    .mobile-card-list :deep(.el-button--small) {
       height: 32px !important;
       min-height: 32px !important;
-      padding: 0 12px !important;
+      padding: 0 10px !important;
       font-size: 12px !important;
     }
   }

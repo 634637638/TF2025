@@ -96,6 +96,7 @@ export const MODULE_KEY_MAP: Record<string, string> = {
   'admin': 'system_adminview',
   '404': 'system_404',
   'git-management': 'system_gitmanagement',
+  'backup': 'backup_backupview',
   'data-optimization': 'data_optimization_dataoptimizationview',
   'data-check': 'data_optimization_dataoptimizationview',
 
@@ -137,6 +138,8 @@ export const MODULE_KEY_MAP: Record<string, string> = {
   'h5-admin': 'h5_admin_h5_adminview',
   'h5-templates': 'h5_admin_templatesview',
   'h5-admin-templates': 'h5_admin_templatesview',
+  'h5-sold-products': 'h5_admin_soldproductsview',
+  'h5-admin-sold-products': 'h5_admin_soldproductsview',
   'h5-config': 'h5_admin_configview',
   'h5-admin-config': 'h5_admin_configview',
   'home-sections': 'h5_admin_homesectionsview',
@@ -173,7 +176,7 @@ export const BACKEND_MODULE_MAP: Record<string, string> = {
   'phones_phonesview': 'phones',
   'customers_customersview': 'customers',
   'permissions_permissionsview': 'permissions',
-  'permissions_modulemanagementview': 'permissions',
+  'permissions_modulemanagementview': 'module-management',
   'menu_menumanagementview': 'menus',
   'query_queryview': 'query',
   'accessories_accessoriesview': 'accessories',
@@ -202,6 +205,7 @@ export const BACKEND_MODULE_MAP: Record<string, string> = {
   'system_returngoods': 'return-goods',
   'h5_admin_h5_adminview': 'h5-admin',
   'h5_admin_templatesview': 'h5-templates',
+  'h5_admin_soldproductsview': 'h5-sold-products',
   'h5_admin_configview': 'h5-config',
   'h5_admin_homesectionsview': 'home-sections',
   'h5_admin_bannersview': 'h5-banners',
@@ -261,6 +265,19 @@ export const MODULE_PERMISSIONS: Record<string, ModulePermissionConfig> = {
   // 权限管理模块
   permissions: {
     name: '权限管理',
+    permissions: {
+      'view': '查看',
+      'create': '创建',
+      'edit': '编辑',
+      'delete': '删除',
+      'admin:view': '管理查看',
+      'admin:edit': '管理编辑'
+    }
+  },
+
+  // 模块管理模块
+  'module-management': {
+    name: '模块管理',
     permissions: {
       'view': '查看',
       'create': '创建',
@@ -414,6 +431,18 @@ export const MODULE_PERMISSIONS: Record<string, ModulePermissionConfig> = {
     }
   },
 
+  // 租赁管理模块
+  rentals: {
+    name: '租赁管理',
+    permissions: {
+      'view': '查看',
+      'create': '创建',
+      'edit': '编辑',
+      'admin:view': '管理查看',
+      'admin:edit': '管理编辑'
+    }
+  },
+
   // 考勤管理模块
   attendance: {
     name: '考勤管理',
@@ -501,6 +530,18 @@ export const MODULE_PERMISSIONS: Record<string, ModulePermissionConfig> = {
     }
   },
 
+  // 备份管理模块
+  'backup': {
+    name: '备份管理',
+    permissions: {
+      'view': '查看',
+      'create': '创建',
+      'delete': '删除',
+      'admin:view': '管理查看',
+      'admin:edit': '管理编辑'
+    }
+  },
+
   // 价目表模块
   'price-list': {
     name: '价目表',
@@ -562,6 +603,14 @@ export const MODULE_PERMISSIONS: Record<string, ModulePermissionConfig> = {
       'view': '查看',
       'create': '创建',
       'edit': '编辑',
+      'delete': '删除'
+    }
+  },
+
+  'h5-admin-sold-products': {
+    name: '已售商品',
+    permissions: {
+      'view': '查看',
       'delete': '删除'
     }
   },
@@ -869,8 +918,16 @@ export class PermissionMapper {
       return { baseAction: action, level: 2 }
     }
 
-    const frontendAction = parseActionScope(frontendParsed.action)
-    const backendAction = parseActionScope(backendParsed.action)
+    const normalizeActionAlias = (action: string) => {
+      if (action === 'menu_view') {
+        return 'view'
+      }
+
+      return action
+    }
+
+    const frontendAction = parseActionScope(normalizeActionAlias(frontendParsed.action))
+    const backendAction = parseActionScope(normalizeActionAlias(backendParsed.action))
 
     return frontendAction.baseAction === backendAction.baseAction && frontendAction.level >= backendAction.level
   }

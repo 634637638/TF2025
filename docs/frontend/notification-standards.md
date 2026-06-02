@@ -42,6 +42,44 @@ export const simpleNotification = SimpleNotificationService.getInstance()
 
 ## 📚 使用规范
 
+### 页面刷新提示
+
+右上角页面刷新按钮属于统一交互，通知文案需要固定，不要每个页面各写一套：
+
+- 刷新成功统一使用：`数据刷新成功`
+- 刷新失败统一使用：`刷新失败，请重试`
+- 提示位置保持顶部全局消息，不要改成表格内提示、卡片内提示或仅控制台输出
+- 右上角刷新是静默刷新时，也必须保留这条顶部提示
+
+推荐写法：
+
+```typescript
+const { refreshing, refreshData } = useRefreshData()
+
+const handleRefresh = () => {
+  refreshData(
+    async () => {
+      await loadData(false)
+    },
+    {
+      successMessage: '数据刷新成功',
+      errorMessage: '刷新失败，请重试'
+    }
+  )
+}
+```
+
+如果页面没有使用 `useRefreshData`，也应保持相同文案：
+
+```typescript
+try {
+  await loadData(false)
+  success('数据刷新成功')
+} catch (err) {
+  error('刷新失败，请重试')
+}
+```
+
 ### 1. 导入方式
 
 ```typescript

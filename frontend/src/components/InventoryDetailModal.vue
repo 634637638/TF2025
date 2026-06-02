@@ -9,7 +9,7 @@
     :close-on-click-modal="true"
     destroy-on-close
   >
-    <div v-if="item && !permissionLoading" class="detail-modal-body">
+    <div v-if="item" class="detail-modal-body">
       <section class="detail-intro">
         <div class="detail-intro-line">
           <span class="detail-intro-main">{{ productTitle }}</span>
@@ -111,7 +111,7 @@
     </div>
 
     <template #footer>
-      <div v-if="item && !permissionLoading" class="detail-modal-footer">
+      <div v-if="item" class="detail-modal-footer">
         <el-button type="default" @click="handleClose">
           <i class="fas fa-times"></i>
           关闭
@@ -146,7 +146,6 @@ import type { ModelValueProps, UpdateModelValueEmits, CloseEmits } from '@/types
 
 interface Props extends ModelValueProps {
   item: InventoryItem | null
-  permissionLoading?: boolean
   canEdit?: boolean
   canDelete?: boolean
 }

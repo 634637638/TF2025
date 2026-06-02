@@ -1,4 +1,10 @@
 <template>
+  <PermissionGate
+    :can-view="canView"
+    module-key="h5-sold-products"
+    module-name="已售商品"
+    permission-code="h5-sold-products:view"
+  >
   <div class="sold-products-view">
     <!-- 搜索栏 -->
     <div class="search-bar">
@@ -18,10 +24,7 @@
     </div>
 
     <!-- 加载状态 -->
-    <div v-if="loading" class="loading-state">
-      <i class="fas fa-spinner fa-spin"></i>
-      <p>加载中...</p>
-    </div>
+    <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
 
     <!-- 空状态 -->
     <div v-else-if="filteredProducts.length === 0" class="empty-state">
@@ -81,6 +84,7 @@
             <i class="fas fa-eye mr-1"></i>查看图片
           </el-button>
           <el-button
+            v-if="canDelete"
             plain
             type="danger"
             size="small"
@@ -129,8 +133,7 @@
         </div>
 
         <div v-if="loadingImages" class="loading-images">
-          <i class="fas fa-spinner fa-spin"></i>
-          <p>加载图片中...</p>
+          <InlineLoading text="加载图片中..." />
         </div>
 
         <div v-else-if="productImages.length === 0" class="no-images">
@@ -162,6 +165,7 @@
             </div>
             <!-- 右上角删除按钮 -->
             <el-button
+              v-if="canDelete"
               plain
               type="danger"
               size="small"
@@ -179,6 +183,7 @@
         <div class="image-modal-footer">
           <el-button @click="showImageModal = false">关闭</el-button>
           <el-button
+            v-if="canDelete"
             plain
             type="danger"
             @click="deleteAllImages"
@@ -202,6 +207,7 @@
           />
           <!-- 右上角删除按钮 -->
           <button
+            v-if="canDelete"
             class="preview-delete-btn"
             @click.stop="deleteCurrentImage"
             title="删除此图片"
@@ -212,6 +218,7 @@
       </div>
     </teleport>
   </div>
+  </PermissionGate>
 </template>
 
 <script setup lang="ts">
@@ -221,11 +228,20 @@ import { Refresh } from '@element-plus/icons-vue'
 import { unifiedApi as api } from '@/utils/unified-api'
 import { formatImageUrl } from '@/utils/format'
 import { useLoadingState } from '@/composables'
+import InlineLoading from '@/components/InlineLoading.vue'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
+import { PermissionGate } from '@/components/base'
+import { usePagePermissions } from '@/composables/usePagePermissions'
 import { logger } from '@/utils/logger'
 import type { HeaderAction } from '@/types'
 // 注入父组件提供的注册方法
 const registerHeaderActions = inject<(actions: HeaderAction[]) => void>('registerHeaderActions')
 const clearHeaderActions = inject<() => void>('clearHeaderActions')
+const soldProductsPermissions = usePagePermissions('h5-sold-products')
+const h5AdminPermissions = usePagePermissions('h5-admin')
+const { handleNoPermission } = soldProductsPermissions
+const canView = computed(() => soldProductsPermissions.canView.value || h5AdminPermissions.canView.value)
+const canDelete = computed(() => soldProductsPermissions.canDelete.value || h5AdminPermissions.canDelete.value)
 
 interface SoldProduct {
   id: number
@@ -247,7 +263,8 @@ interface ProductImage {
   sort_order: number
 }
 
-const { loading } = useLoadingState()
+const { loading } = useLoadingState(true)
+const hasInitializedPageData = ref(false)
 const loadingImages = ref(false)
 const products = ref<SoldProduct[]>([])
 const searchKeyword = ref('')
@@ -304,6 +321,12 @@ const totalPages = computed(() => {
 
 // 加载已售商品列表
 const loadSoldProducts = async () => {
+  if (!canView.value) {
+    products.value = []
+    loading.value = false
+    return
+  }
+
   try {
     loading.value = true
     const response = await api.get('/shop/sold-products')
@@ -317,6 +340,15 @@ const loadSoldProducts = async () => {
   }
 }
 
+const ensureDeletePermission = () => {
+  if (canDelete.value) {
+    return true
+  }
+
+  handleNoPermission('delete')
+  return false
+}
+
 // 搜索处理
 const handleSearch = () => {
   currentPage.value = 1
@@ -324,6 +356,11 @@ const handleSearch = () => {
 
 // 查看图片
 const viewImages = async (product: SoldProduct) => {
+  if (!canView.value) {
+    handleNoPermission('view')
+    return
+  }
+
   selectedProduct.value = product
   showImageModal.value = true
   loadingImages.value = true
@@ -341,6 +378,10 @@ const viewImages = async (product: SoldProduct) => {
 
 // 删除商品所有图片
 const deleteProductImages = async (product: SoldProduct) => {
+  if (!ensureDeletePermission()) {
+    return
+  }
+
   try {
     await ElMessageBox.confirm(
       `确定要删除 ${product.brand} ${product.model} 的所有图片吗？此操作不可撤销。`,
@@ -365,6 +406,10 @@ const deleteProductImages = async (product: SoldProduct) => {
 
 // 删除单张图片
 const deleteSingleImage = async (image: ProductImage) => {
+  if (!ensureDeletePermission()) {
+    return
+  }
+
   try {
     await ElMessageBox.confirm(
       '确定要删除这张图片吗？',
@@ -401,6 +446,10 @@ const previewImage = (image: ProductImage) => {
 
 // 删除当前预览的图片
 const deleteCurrentImage = async () => {
+  if (!ensureDeletePermission()) {
+    return
+  }
+
   if (!currentPreviewImageId.value) return
 
   const image = productImages.value.find(img => img.id === currentPreviewImageId.value)
@@ -433,6 +482,10 @@ const deleteCurrentImage = async () => {
 
 // 删除全部图片
 const deleteAllImages = async () => {
+  if (!ensureDeletePermission()) {
+    return
+  }
+
   if (!selectedProduct.value) return
 
   try {
@@ -474,9 +527,22 @@ const formatDate = (date: string) => {
   return new Date(date).toLocaleDateString('zh-CN')
 }
 
-onMounted(() => {
-  loadSoldProducts()
-  // 注册头部操作按钮
+const initializePageData = async () => {
+  if (!canView.value) {
+    products.value = []
+    loading.value = false
+    return
+  }
+
+  if (hasInitializedPageData.value) {
+    return
+  }
+
+  hasInitializedPageData.value = true
+  await loadSoldProducts()
+}
+
+const registerPageHeaderActions = () => {
   if (registerHeaderActions) {
     registerHeaderActions([
       {
@@ -488,6 +554,17 @@ onMounted(() => {
       }
     ])
   }
+}
+
+watch(canView, (allowed) => {
+  if (allowed) {
+    void initializePageData()
+  }
+})
+
+onMounted(() => {
+  void initializePageData()
+  registerPageHeaderActions()
 })
 
 onUnmounted(() => {

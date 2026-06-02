@@ -9,6 +9,7 @@ export interface Tab {
 }
 
 export const useTabsStore = defineStore('tabs', () => {
+  const refreshKey = ref(0)
   const tabs = ref<Tab[]>([
     {
       path: '/dashboard',
@@ -62,13 +63,19 @@ export const useTabsStore = defineStore('tabs', () => {
     }
   }
 
+  const refreshCurrentTab = () => {
+    refreshKey.value += 1
+  }
+
   return {
+    refreshKey,
     tabs,
     addTab,
     closeTab,
     closeOtherTabs,
     closeRightTabs,
     closeAllTabs,
-    updateTabTitle
+    updateTabTitle,
+    refreshCurrentTab
   }
 })

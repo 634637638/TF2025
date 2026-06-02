@@ -2,10 +2,18 @@ const express = require('express');
 const router = express.Router();
 const { getDatabase, isConnected } = require('../config/database');
 const ApiResponse = require('../utils/response');
-const { cacheMiddleware } = require('../middleware/cache');
+const { cacheMiddleware, clearCache } = require('../middleware/cache');
 const { validateBody, validateQuery } = require('../middleware/validation');
 const { unifiedAuth, requirePermission } = require('../middleware/unified-auth');
 const log = require('../utils/log');
+
+const clearBrandsRouteCache = () => {
+  try {
+    clearCache('/api/brands');
+  } catch (error) {
+    log.warn('清理品牌缓存失败:', error.message);
+  }
+};
 
 // 获取品牌列表 - 增强搜索功能
 router.get('/', unifiedAuth, requirePermission('brands:view'), validateQuery({
@@ -222,6 +230,7 @@ router.post('/', unifiedAuth, requirePermission('brands:create'), validateBody({
       status: parseInt(status),
       sort_order: parseInt(sort_order)
     }, '品牌创建成功');
+    clearBrandsRouteCache();
 
   } catch (error) {
     log.error('创建品牌失败:', error);
@@ -286,6 +295,7 @@ router.put('/:id', unifiedAuth, requirePermission('brands:edit'), async (req, re
       id: parseInt(id),
       ...updateData
     }, '品牌更新成功');
+    clearBrandsRouteCache();
 
   } catch (error) {
     log.error('❌ 更新品牌失败, 详细错误:', {
@@ -328,6 +338,7 @@ router.put('/batch/reorder', unifiedAuth, requirePermission('brands:edit'), asyn
       }
 
       await connection.commit();
+      clearBrandsRouteCache();
       ApiResponse.success(res, null, '排序更新成功');
 
     } catch (error) {
@@ -366,6 +377,7 @@ router.delete('/:id', unifiedAuth, requirePermission('brands:delete'), async (re
       return ApiResponse.error(res, '品牌不存在', 404);
     }
 
+    clearBrandsRouteCache();
     ApiResponse.success(res, null, '品牌删除成功');
 
   } catch (error) {

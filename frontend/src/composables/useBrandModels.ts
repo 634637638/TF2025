@@ -5,7 +5,7 @@
 
 import { ref, reactive } from 'vue'
 import { unifiedApi } from '@/utils/unified-api'
-import { ElMessage } from 'element-plus'
+import { showElementError } from '@/utils/element-feedback'
 import type { Brand, Model, Color, MemoryOption as Memory } from '@/types'
 
 // 全局状态 - 使用响应式数据
@@ -40,7 +40,7 @@ export function useBrandModels() {
         return []
       }
     } catch (error) {
-      ElMessage.error('品牌列表加载失败')
+      showElementError('品牌列表加载失败')
       brands.value = []
       return []
     }
@@ -76,7 +76,7 @@ export function useBrandModels() {
         return []
       }
     } catch (error) {
-      ElMessage.error('型号列表加载失败')
+      showElementError('型号列表加载失败')
       brandModels[brandId] = []
       return []
     } finally {
@@ -170,7 +170,7 @@ export function useBrandModels() {
 
       await Promise.all(requests)
     } catch (error) {
-      ElMessage.error('基础数据加载失败')
+      showElementError('基础数据加载失败')
     } finally {
       loading.value = false
     }

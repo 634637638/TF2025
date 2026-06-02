@@ -1,5 +1,10 @@
 <template>
   <div class="memories-view admin-page">
+    <PermissionGate
+      :can-view="canView"
+      module-name="内存管理"
+      permission-code="memories:view"
+    >
     <!-- 页面头部 - 使用公共组件 -->
     <PageHeader
       icon="fas fa-memory"
@@ -15,26 +20,16 @@
           <span>新增</span>
         </el-button>
         <el-button type="info" @click="handleRefresh" :disabled="refreshing">
-          <i :class="refreshing ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'"></i>
-          <span>刷新</span>
+          <InlineLoading v-if="refreshing" text="刷新中..." size="small" variant="inherit" />
+          <template v-else>
+            <i class="fas fa-sync-alt"></i>
+            <span>刷新</span>
+          </template>
         </el-button>
       </template>
     </PageHeader>
 
-    <!-- 权限不足提示 - 在权限加载完成后显示 -->
-    <PermissionAccessNotice
-      v-if="!permissionLoading"
-      v-permission-not="'memories:view'"
-      module-name="内存管理"
-      permission-name="内存查看权限"
-      permission-code="memories:view"
-      :has-menu-permission-only="hasMenuPermissionOnly"
-      :related-permissions="memoryPermissions"
-      detail-title="内存管理相关权限"
-    />
-
-    <!-- 权限验证通过后的内容 -->
-    <div class="content admin-page-content" v-permission="'memories:view'">
+    <div class="content admin-page-content">
 
     <!-- 统计卡片 -->
     <div v-if="showStatsCards" class="stats-cards">
@@ -132,14 +127,11 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-if="loading" class="loading-row">
-              <td :colspan="visibleColumnCount">
-                <div class="loading-content">
-                  <i class="fas fa-spinner fa-spin"></i>
-                  <span>正在加载数据...</span>
-                </div>
-              </td>
-            </tr>
+            <TableLoadingRow
+              v-if="tableLoading"
+              :colspan="visibleColumnCount"
+              text="加载内存规格..."
+            />
             <tr v-else-if="memories.length === 0" class="empty-row">
               <td :colspan="visibleColumnCount">
                 <div class="empty-content">
@@ -147,9 +139,9 @@
                   <div class="empty-text">
                     <h4>暂无内存规格数据</h4>
                     <p>点击上方"新增内存"按钮添加第一个内存规格</p>
-                    <el-button size="small" type="info" class="mt-2" @click="loadMemories()" :disabled="loading">
+                    <el-button size="small" type="info" class="mt-2" @click="loadMemories()">
                       <i class="fas fa-sync-alt"></i>
-                      {{ loading ? '加载中...' : '重新加载' }}
+                      重新加载
                     </el-button>
                   </div>
                 </div>
@@ -299,7 +291,6 @@
         :show-range="true"
         :show-page-sizes="true"
         :show-quick-jumper="true"
-        :disabled="loading"
         @change="handlePaginationChange"
       />
     </div>
@@ -349,12 +340,13 @@
       <template #footer>
         <el-button type="default" @click="attemptCloseModal">取消</el-button>
         <el-button type="primary" @click="submitForm" :disabled="submitting" :loading="submitting">
-          <i v-if="submitting" class="fas fa-spinner fa-spin"></i>
-          {{ isEditMode ? '更新' : '创建' }}
+          <InlineLoading v-if="submitting" :text="isEditMode ? '更新中...' : '创建中...'" size="small" variant="inherit" />
+          <template v-else>{{ isEditMode ? '更新' : '创建' }}</template>
         </el-button>
       </template>
     </MobileDialog>
     </div>
+    </PermissionGate>
   </div>
 </template>
 
@@ -364,20 +356,18 @@ import { useRouter } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 import unifiedApi from '@/utils/unified-api'
 import { useNotification } from '@/composables/useNotification'
-import { useLoadingState } from '@/composables'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useRefreshData } from '@/composables/useRefreshData'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
-import { usePermissionModuleInfo } from '@/composables/usePermissionModuleInfo'
-import { useAuthStore } from '@/stores/auth'
-import { normalizePermissionList } from '@/utils/permissionList'
-import PermissionAccessNotice from '@/components/base/PermissionAccessNotice.vue'
 import Pagination from '../../components/Pagination.vue'
+import InlineLoading from '@/components/InlineLoading.vue'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
-import { PageHeader } from '@/components/base'
+import { PageHeader, PermissionGate } from '@/components/base'
 import { usePermissionToast } from '@/utils/permissionToastSimple'
 import { handleApiErrorWithPermission } from '@/utils/apiPermissionError'
 import { useMobile } from '@/composables/mobile'
+import { useLatestRequest } from '@/composables/useLatestRequest'
 import { logger } from '@/utils/logger'
 
 // 获取路由实例
@@ -388,23 +378,8 @@ const { canView, canCreate, canEdit, canDelete } = usePagePermissions('memories'
 const { showViewDenied, showEditDenied, showDeleteDenied, showCreateDenied } = usePermissionToast()
 const { refreshing, refresh } = useRefreshData()
 const { isMobile } = useMobile()
-const authStore = useAuthStore()
 const { init: initFieldPermissions } = fieldPermissions
-
-// 权限加载状态
-const permissionLoading = ref(false)
-
-const normalizedMemoryPermissions = computed<string[]>(() => {
-  return normalizePermissionList(authStore?.permissions)
-})
-
-// 用户权限列表
-const userPermissions = computed(() => normalizedMemoryPermissions.value)
-
-const { hasMenuPermissionOnly, modulePermissions: memoryPermissions } = usePermissionModuleInfo(
-  normalizedMemoryPermissions,
-  'memories_memoriesview'
-)
+const memoryListRequest = useLatestRequest()
 
 const memoryFieldMap: Record<string, string> = {
   stats_total_memories: 'stats.total_memories',
@@ -504,10 +479,9 @@ const handleMobileRowTap = (id: number) => {
 }
 
 // 响应式数据
-const { loading } = useLoadingState()
-
 // 搜索相关状态
 const searchExpanded = ref(false)
+const tableLoading = ref(true)
 const submitting = ref(false)
 const savingOrder = ref(false)
 const memories = ref<Memory[]>([])
@@ -584,18 +558,20 @@ const getStorageUnitClass = (unit: string | null | undefined): string => {
   }
 }
 
-const loadMemories = async (bustCache: boolean = false, silentError: boolean = false, showLoadingState: boolean = true) => {
+const loadMemories = async (bustCache: boolean = false, silentError: boolean = false, _showLoadingState: boolean = true) => {
   if (!canView.value) {
     if (!silentError) {
       showViewDenied('内存管理', 'memories:view')
     }
     memories.value = []
+    tableLoading.value = false
     return
   }
 
-  if (showLoadingState) {
-    loading.value = true
+  if (_showLoadingState) {
+    tableLoading.value = true
   }
+
   try {
     const params: any = {
       page: pagination.value.page,
@@ -613,7 +589,15 @@ const loadMemories = async (bustCache: boolean = false, silentError: boolean = f
       params._t = Date.now()
     }
 
-    const response = await unifiedApi.get('/memories', { params })
+    const request = memoryListRequest.nextRequest()
+    const response = await unifiedApi.get('/memories', {
+      params,
+      signal: request.signal
+    })
+
+    if (!request.isLatest()) {
+      return
+    }
 
     if (response.success) {
       memories.value = response.data.memories || []
@@ -635,14 +619,13 @@ const loadMemories = async (bustCache: boolean = false, silentError: boolean = f
       }
     }
   } catch (err: any) {
+    if (memoryListRequest.isCanceledError(err)) {
+      return
+    }
+
     logger.error('获取内存规格列表失败:', err)
     memories.value = []
     pagination.value = { page: 1, limit: 50, total: 0, pages: 0 }
-
-    // 静默处理页面卸载导致的取消错误
-    if (err.name === 'CanceledError') {
-      return
-    }
 
     if (!silentError) {
       // 处理权限错误
@@ -656,8 +639,8 @@ const loadMemories = async (bustCache: boolean = false, silentError: boolean = f
       }
     }
   } finally {
-    if (showLoadingState) {
-      loading.value = false
+    if (_showLoadingState) {
+      tableLoading.value = false
     }
   }
 }
@@ -682,11 +665,9 @@ const changePage = (page: number) => {
 }
 
 const handlePaginationChange = (page, pageSize) => {
-  pagination.value.page = page
+  const oldPageSize = pagination.value.limit
   pagination.value.limit = pageSize
-  if (pageSize !== pagination.value.limit) {
-    pagination.value.page = 1
-  }
+  pagination.value.page = pageSize !== oldPageSize ? 1 : page
   loadMemories()
 }
 
@@ -743,10 +724,7 @@ const deleteMemory = async (memory: Memory) => {
 
     if (response.success) {
       success(response.message || '内存规格删除成功')
-      // 延迟一下刷新，确保后端操作完成
-      setTimeout(() => {
-        loadMemories()
-      }, 300)
+      await loadMemories(true, false, false)
     } else {
       error(`删除内存规格失败: ${response.message || '未知错误'}`)
     }
@@ -778,9 +756,7 @@ const submitForm = async () => {
       if (response.success) {
         success('操作成功', response.message || '内存规格创建成功')
         closeModal()
-        setTimeout(() => {
-          loadMemories()
-        }, 300)
+        await loadMemories(true, false, false)
       } else {
         error('创建内存规格失败', response.message || '未知错误')
       }
@@ -794,16 +770,7 @@ const submitForm = async () => {
       if (response.success) {
         success('操作成功', response.message || '内存规格更新成功')
         closeModal()
-        setTimeout(() => {
-          loadMemories()
-          // 二次验证：确保数据更新成功
-          setTimeout(() => {
-            const updatedMemory = memories.value.find(m => m.id === currentEditingId.value)
-            if (updatedMemory && updatedMemory.size !== formData.value.size) {
-              loadMemories()
-            }
-          }, 200)
-        }, 300)
+        await loadMemories(true, false, false)
       } else {
         error('更新内存规格失败', response.message || '未知错误')
       }
@@ -1498,9 +1465,15 @@ onMounted(() => {
 }
 
 .actions {
-  display: flex;
-  gap: 12px;
+  vertical-align: middle;
+  text-align: center;
+}
+
+.actions .action-buttons {
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
+  gap: 8px;
 }
 
 .btn-action {
@@ -1543,21 +1516,6 @@ onMounted(() => {
   background: #c82333;
   transform: translateY(-1px);
   box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
-}
-
-/* 加载和空状态样式 */
-.loading-row td {
-  padding: 40px 12px;
-  text-align: center;
-}
-
-.loading-content {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  color: #6c757d;
-  font-size: 16px;
 }
 
 .empty-row td {
@@ -1659,221 +1617,6 @@ onMounted(() => {
   
   .memory-info {
     max-width: 150px;
-  }
-}
-
-/* ===== 统一权限提示样式 ===== */
-.permission-denied {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.05);
-  backdrop-filter: blur(2px);
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.permission-denied-wrapper {
-  width: 100%;
-  max-width: 1200px;
-  padding: 2rem;
-  display: flex;
-  justify-content: center;
-}
-
-.permission-denied-card {
-  background: white;
-  border-radius: 20px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
-  padding: 3rem;
-  text-align: center;
-  width: 100%;
-  max-width: 600px;
-  border: 1px solid #e4e7ed;
-  position: relative;
-  overflow: hidden;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 6px;
-    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 25%, #feca57 50%, #48dbfb 75%, #0abde3 100%);
-    animation: shimmer 3s ease-in-out infinite;
-  }
-
-  @keyframes shimmer {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
-  }
-}
-
-.permission-icon {
-  margin-bottom: 2rem;
-
-  i {
-    font-size: 5rem;
-    color: #f56c6c;
-  }
-}
-
-.permission-content h2 {
-  font-size: 1.8rem;
-  font-weight: 700;
-  color: #303133;
-  margin-bottom: 1rem;
-}
-
-.permission-message {
-  font-size: 1.1rem;
-  color: #606266;
-  margin-bottom: 2rem;
-  line-height: 1.6;
-}
-
-.permission-status {
-  display: flex;
-  justify-content: center;
-  gap: 2rem;
-  margin-bottom: 2rem;
-}
-
-.status-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  font-weight: 500;
-
-  &.has-menu {
-    background-color: #f0f9ff;
-    color: #0369a1;
-    border: 1px solid #bae6fd;
-
-    i {
-      color: #0284c7;
-    }
-  }
-
-  &.missing-view {
-    background-color: #fef2f2;
-    color: #dc2626;
-    border: 1px solid #fecaca;
-
-    i {
-      color: #dc2626;
-    }
-  }
-}
-
-.permission-info {
-  background: #f8f9fa;
-  border: 1px solid #e9ecef;
-  border-radius: 12px;
-  padding: 1.5rem;
-  margin-bottom: 2rem;
-  text-align: left;
-}
-
-.info-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.5rem 0;
-
-  label {
-    font-weight: 600;
-    color: #495057;
-    min-width: 100px;
-  }
-
-  .permission-name {
-    color: #28a745;
-    font-weight: 500;
-  }
-
-  .permission-code {
-    background: #e9ecef;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-family: monospace;
-    font-size: 0.9rem;
-    color: #495057;
-  }
-}
-
-.permission-suggestion {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding: 1rem;
-  background: #f0f9ff;
-  border: 1px solid #bae6fd;
-  border-radius: 8px;
-  margin-bottom: 2rem;
-
-  i {
-    color: #0284c7;
-    margin-top: 0.25rem;
-  }
-
-  p {
-    margin: 0;
-    color: #0c4a6e;
-    font-size: 0.95rem;
-    line-height: 1.5;
-  }
-}
-
-.permission-actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  flex-wrap: wrap;
-  margin-bottom: 2rem;
-}
-
-.permission-details {
-  margin-top: 2rem;
-  padding-top: 2rem;
-  border-top: 1px solid #e4e7ed;
-
-  h4 {
-    font-size: 1.1rem;
-    color: #303133;
-    margin-bottom: 1rem;
-  }
-}
-
-.permission-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  justify-content: center;
-}
-
-.permission-tag {
-  display: inline-block;
-  padding: 0.25rem 0.75rem;
-  background: #f8f9fa;
-  border: 1px solid #dee2e6;
-  border-radius: 16px;
-  font-size: 0.8rem;
-  color: #6c757d;
-  font-family: monospace;
-
-  &.current-module {
-    background: #e3f2fd;
-    border-color: #2196f3;
-    color: #1976d2;
-    font-weight: 500;
   }
 }
 

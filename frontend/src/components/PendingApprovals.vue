@@ -1,5 +1,5 @@
 <template>
-  <div class="pending-approvals">
+  <div v-if="canViewPendingApprovals" class="pending-approvals">
     <!-- 预警概览卡片 -->
     <div class="approvals-overview">
       <div class="overview-card" @click="goToAttendance('pending')" :class="{ 'has-pending': attendanceCount > 0 }">
@@ -107,14 +107,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { useNotification } from '@/composables/useNotification'
 import { unifiedApi } from '@/utils/unified-api'
-import { TimeUtil, TIME_FORMATS } from '@/utils/time'
+import { TimeUtil } from '@/utils/time'
 import { storage } from '@/services/storage'
 import { SESSION_STORAGE_KEYS } from '@/constants/storage'
 import { logger } from '@/utils/logger'
+import { useAuthStore } from '@/stores/auth'
+import { canAccessRoutePath } from '@/constants/routePermissions'
+import { PermissionMapper } from '@/utils/permissionMapper'
 
 interface PendingApprovalStats {
   total?: number
@@ -147,6 +151,7 @@ interface ApprovalError {
 }
 
 const router = useRouter()
+const authStore = useAuthStore()
 const { warning } = useNotification()
 
 // 响应式数据
@@ -157,13 +162,39 @@ const leaveCount = ref(0)
 const overtimeCount = ref(0)
 
 // 计算属性
+const canAccessAttendance = computed(() => canAccessRoutePath('/attendance', authStore))
+const canViewPendingApprovals = computed(() => {
+  const approvalPermissions = [
+    'attendance:view',
+    'attendance:view:all'
+  ].map(permission => PermissionMapper.normalizePermission(permission))
+
+  const normalizedUserPermissions = authStore.userPermissions
+    .filter(permission => typeof permission === 'string' && permission)
+    .map(permission => PermissionMapper.normalizePermission(permission))
+
+  return normalizedUserPermissions.includes('*') ||
+    approvalPermissions.some(permission => normalizedUserPermissions.includes(permission))
+})
+
 const totalPending = computed(() => {
   return attendanceCount.value + leaveCount.value + overtimeCount.value
 })
 
+const resetPendingApprovals = () => {
+  attendanceList.value = []
+  attendanceCount.value = 0
+  leaveCount.value = 0
+  overtimeCount.value = 0
+}
+
 // 获取待审批数据
 const fetchPendingApprovals = async () => {
   if (loading.value) return
+  if (!canViewPendingApprovals.value) {
+    resetPendingApprovals()
+    return
+  }
 
   loading.value = true
   try {
@@ -232,6 +263,11 @@ const showPendingNotification = () => {
 
 // 跳转到考勤页面
 const goToAttendance = (type?: string) => {
+  if (!canAccessAttendance.value) {
+    ElMessage.warning('您没有访问此页面的权限')
+    return
+  }
+
   const query: Record<string, string> = {}
 
   if (type === 'pending') {
@@ -254,6 +290,11 @@ const goToAttendance = (type?: string) => {
 
 // 查看详情
 const viewDetail = (item: PendingApprovalItem) => {
+  if (!canAccessAttendance.value) {
+    ElMessage.warning('您没有访问此页面的权限')
+    return
+  }
+
   router.push({
     path: '/attendance',
     query: {
@@ -320,21 +361,46 @@ const formatTime = (dateStr: string) => {
 // 轮询定时器
 let pollTimer: ReturnType<typeof setInterval> | null = null
 
-// 生命周期
-onMounted(() => {
-  fetchPendingApprovals()
-
-  // 每5分钟自动刷新
-  pollTimer = setInterval(() => {
-    fetchPendingApprovals()
-  }, 5 * 60 * 1000)
-})
-
-onUnmounted(() => {
+const stopPolling = () => {
   if (pollTimer) {
     clearInterval(pollTimer)
     pollTimer = null
   }
+}
+
+const startPolling = () => {
+  if (!canViewPendingApprovals.value) {
+    resetPendingApprovals()
+    return
+  }
+
+  fetchPendingApprovals()
+
+  // 每5分钟自动刷新
+  if (!pollTimer) {
+    pollTimer = setInterval(() => {
+      fetchPendingApprovals()
+    }, 5 * 60 * 1000)
+  }
+}
+
+watch(canViewPendingApprovals, (allowed) => {
+  if (allowed) {
+    startPolling()
+    return
+  }
+
+  stopPolling()
+  resetPendingApprovals()
+})
+
+// 生命周期
+onMounted(() => {
+  startPolling()
+})
+
+onUnmounted(() => {
+  stopPolling()
 })
 
 // 暴露刷新方法供父组件调用

@@ -113,11 +113,15 @@
           </template>
 
           <el-table
-            :data="filteredCustomers"
-            v-loading="customerLoading"
+            :data="customerLoading ? [] : filteredCustomers"
             stripe
             :max-height="400"
           >
+            <template #empty>
+              <TableLoadingRow v-if="customerLoading" mode="block" text="加载中..." />
+              <el-empty v-else description="暂无客户数据" />
+            </template>
+
             <el-table-column prop="name" label="客户姓名" min-width="100" />
             <el-table-column prop="phone" label="手机号" width="120" />
             <el-table-column prop="segment" label="客户细分" width="100">
@@ -253,6 +257,7 @@ import { useLoadingState } from '@/composables'
 import { useCachedRequest, DEFAULT_CACHE_TTL } from '@/composables/usePageCache'
 import { useImportExport } from '@/composables/useImportExport'
 import Pagination from '@/components/Pagination.vue'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { buildCsvContent } from '@/utils/csv-export'
 const { success, error: showError, info, warning } = useNotification()
 import {
@@ -438,9 +443,11 @@ const CACHE_KEYS = {
   customerActivity: '/analytics/customers/activity'
 }
 
-const loadOverview = async () => {
+const loadOverview = async (showLoadingState = true) => {
   try {
-    loading.value = true;
+    if (showLoadingState) {
+      loading.value = true;
+    }
 
     // 构建查询参数
     const params: any = { period: growthPeriod.value };
@@ -474,7 +481,7 @@ const loadOverview = async () => {
     overviewCards.value = [
       {
         title: '总客户数',
-        value: (data.totalCustomers || 0).toLocaleString(),
+        value: (data.totalCustomers || 0).toLocaleString('zh-CN'),
         change: `${(data.customersGrowth || 0) > 0 ? '+' : ''}${data.customersGrowth || 0}%`,
         trend: (data.customersGrowth || 0) > 0 ? 'up' : 'down',
         type: 'primary',
@@ -482,7 +489,7 @@ const loadOverview = async () => {
       },
       {
         title: '新增客户',
-        value: (data.newCustomers || 0).toLocaleString(),
+        value: (data.newCustomers || 0).toLocaleString('zh-CN'),
         change: `${(data.newCustomersGrowth || 0) > 0 ? '+' : ''}${data.newCustomersGrowth || 0}%`,
         trend: (data.newCustomersGrowth || 0) > 0 ? 'up' : 'down',
         type: 'success',
@@ -490,7 +497,7 @@ const loadOverview = async () => {
       },
       {
         title: '活跃客户',
-        value: (data.activeCustomers || 0).toLocaleString(),
+        value: (data.activeCustomers || 0).toLocaleString('zh-CN'),
         change: `${(data.activeCustomersGrowth || 0) > 0 ? '+' : ''}${data.activeCustomersGrowth || 0}%`,
         trend: (data.activeCustomersGrowth || 0) > 0 ? 'up' : 'down',
         type: 'warning',
@@ -498,7 +505,7 @@ const loadOverview = async () => {
       },
       {
         title: '高价值客户',
-        value: (data.highValueCustomers || 0).toLocaleString(),
+        value: (data.highValueCustomers || 0).toLocaleString('zh-CN'),
         change: `${(data.highValueCustomersGrowth || 0) > 0 ? '+' : ''}${data.highValueCustomersGrowth || 0}%`,
         trend: (data.highValueCustomersGrowth || 0) > 0 ? 'up' : 'down',
         type: 'danger',
@@ -514,13 +521,17 @@ const loadOverview = async () => {
     logger.error('错误详情:', err.response?.data || err.message);
     showError('加载客户概览失败');
   } finally {
-    loading.value = false;
+    if (showLoadingState) {
+      loading.value = false;
+    }
   }
 };
 
-const loadCustomers = async () => {
+const loadCustomers = async (showLoadingState = true) => {
   try {
-    customerLoading.value = true;
+    if (showLoadingState) {
+      customerLoading.value = true;
+    }
     const cacheKey = CACHE_KEYS.customerList(customerPage.value, customerPageSize.value, customerSearch.value)
     const response = await useCachedRequest(cacheKey, () => analyticsService.getHighValueCustomers({
       page: customerPage.value,
@@ -534,7 +545,9 @@ const loadCustomers = async () => {
     logger.error('加载客户列表失败:', err);
     showError('加载客户列表失败');
   } finally {
-    customerLoading.value = false;
+    if (showLoadingState) {
+      customerLoading.value = false;
+    }
   }
 };
 
@@ -1127,17 +1140,30 @@ watch(retentionCohort, () => {
   handleCohortChange();
 });
 
+const refreshCharts = async () => {
+  await Promise.all([
+    initGrowthChart(),
+    initSegmentChart(),
+    initRetentionChart(),
+    initActivityChart()
+  ])
+}
+
 // 公开方法供父组件调用
 defineExpose({
   loadOverview,
   loadCustomers,
+  refreshSilently: async () => {
+    await Promise.all([
+      loadOverview(false),
+      loadCustomers(false)
+    ])
+    await refreshCharts()
+  },
   refresh: () => {
     loadOverview();
     loadCustomers();
-    initGrowthChart();
-    initSegmentChart();
-    initRetentionChart();
-    initActivityChart();
+    refreshCharts();
   }
 });
 </script>

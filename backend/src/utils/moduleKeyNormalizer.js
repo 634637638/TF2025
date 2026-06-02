@@ -17,7 +17,11 @@ const LEGACY_MODULE_KEY_MAP = {
   salary: 'salary_salaryview',
   'salary-records': 'salary_salaryrecordsview',
   'my-salary': 'salary_mysalaryview',
-  'price-list': 'price_list_pricelistview'
+  'price-list': 'price_list_pricelistview',
+  'git-management': 'system_gitmanagement',
+  'h5-sold-products': 'h5_admin_soldproductsview',
+  'h5-admin-sold-products': 'h5_admin_soldproductsview',
+  backup: 'backup_backupview'
 };
 
 function normalizeModuleKey(moduleKey) {

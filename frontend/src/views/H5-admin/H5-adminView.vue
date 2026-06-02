@@ -73,10 +73,10 @@
 
     <!-- 页面内容 -->
     <div class="admin-content">
-      <router-view v-slot="{ Component }">
-        <transition name="fade" mode="out-in">
-          <component :is="Component" />
-        </transition>
+      <router-view v-slot="{ Component, route: viewRoute }">
+        <KeepAlive :max="6">
+          <component :is="Component" :key="viewRoute.name || viewRoute.fullPath" />
+        </KeepAlive>
       </router-view>
     </div>
   </div>
@@ -86,8 +86,11 @@
 import { computed, onMounted, watch, shallowRef, provide, markRaw } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSiteSettingsStore } from '@/stores/siteSettings'
+import { useAuthStore } from '@/stores/auth'
 import { PageHeader } from '@/components/base'
+import { canAccessRoutePath } from '@/constants/routePermissions'
 import { logger } from '@/utils/logger'
+import { ElMessage } from 'element-plus'
 import type { HeaderAction } from '@/types'
 import {
   Box,
@@ -101,6 +104,7 @@ import {
 const route = useRoute()
 const router = useRouter()
 const siteSettingsStore = useSiteSettingsStore()
+const authStore = useAuthStore()
 
 // 头部操作按钮（由子页面注册）
 const headerActions = shallowRef<HeaderAction[]>([])
@@ -139,6 +143,15 @@ const isActiveTab = (path: string) => {
 
 // 导航到指定路径
 const navigateTo = (path: string) => {
+  if (!canAccessRoutePath(path, authStore)) {
+    ElMessage.warning('您没有访问此页面的权限')
+    return
+  }
+
+  if (route.path === path) {
+    return
+  }
+
   router.push(path)
 }
 
@@ -169,11 +182,6 @@ watch(() => route.path, () => {
 watch(currentDocumentTitle, syncDocumentTitle, { immediate: true })
 
 onMounted(() => {
-  if (!siteSettingsStore.lastUpdated && !siteSettingsStore.isLoading) {
-    siteSettingsStore.loadSiteSettings().catch(err => {
-      logger.warn('加载站点设置失败:', err)
-    })
-  }
   syncDocumentTitle()
 })
 </script>
@@ -235,17 +243,6 @@ onMounted(() => {
 .tab-navigation .el-button--primary:hover {
   background: linear-gradient(135deg, #667eea, #764ba2);
   opacity: 0.9;
-}
-
-// 过渡动画
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
 }
 
 // 响应式

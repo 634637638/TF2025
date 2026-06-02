@@ -63,8 +63,11 @@
             @click="analyzeFile"
             :disabled="!uploadedFile || uploading || analyzing"
           >
-            <i :class="uploading || analyzing ? 'fas fa-spinner fa-spin' : 'fas fa-search'"></i>
-            <span>{{ uploading || analyzing ? '处理中...' : '分析数据' }}</span>
+            <InlineLoading v-if="uploading || analyzing" text="处理中..." size="small" variant="inherit" />
+            <template v-else>
+              <i class="fas fa-search"></i>
+              <span>分析数据</span>
+            </template>
           </el-button>
         </div>
       </div>
@@ -261,8 +264,11 @@
             @click="startImport"
             :disabled="!selectedStrategy || importing"
           >
-            <i :class="importing ? 'fas fa-spinner fa-spin' : 'fas fa-play'"></i>
-            <span>开始导入</span>
+            <InlineLoading v-if="importing" text="导入中..." size="small" variant="inherit" />
+            <template v-else>
+              <i class="fas fa-play"></i>
+              <span>开始导入</span>
+            </template>
           </el-button>
         </div>
       </div>
@@ -432,6 +438,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete } from '@element-plus/icons-vue'
 import { dataImportApi } from '@/api/data-optimization'
 import { usePagePermissions } from '@/composables/usePagePermissions'
+import InlineLoading from '@/components/InlineLoading.vue'
 
 const { canView, canCreate, canDelete, handleNoPermission } = usePagePermissions('data-optimization')
 

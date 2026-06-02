@@ -152,10 +152,7 @@
       dialog-class="memory-dialog"
       :show-default-footer="false"
     >
-      <div v-if="loadingMemories" class="loading-memories">
-        <el-icon class="is-loading"><Loading /></el-icon>
-        <span>加载中...</span>
-      </div>
+      <SectionLoading v-if="loadingMemories" text="加载中..." />
       <div v-else-if="memoryOptions.length > 0" class="memory-options">
         <div
           v-for="option in memoryOptions"
@@ -191,8 +188,8 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Swiper, SwiperSlide } from 'swiper/vue'
 import { Pagination, Zoom } from 'swiper/modules'
-import { Loading } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import SectionLoading from '@/components/SectionLoading.vue'
 import 'swiper/css'
 import 'swiper/css/pagination'
 import { getProductDetail, getPublicConfig, getProducts } from '@/api/shop-public'

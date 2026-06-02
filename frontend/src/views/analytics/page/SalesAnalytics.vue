@@ -486,10 +486,12 @@ const CACHE_KEYS = {
 }
 
 // 方法
-const loadSalesData = async () => {
+const loadSalesData = async (showLoadingState = true) => {
   try {
-    loading.value = true
-    emit('loading-change', true)
+    if (showLoadingState) {
+      loading.value = true
+      emit('loading-change', true)
+    }
 
     const params: any = {}
 
@@ -567,10 +569,16 @@ const loadSalesData = async () => {
     logger.error('获取销售数据失败:', err)
     error('获取销售数据失败')
   } finally {
-    loading.value = false
-    emit('loading-change', false)
+    if (showLoadingState) {
+      loading.value = false
+      emit('loading-change', false)
+    }
   }
 }
+
+defineExpose({
+  refreshSilently: () => loadSalesData(false)
+})
 
 // 加载月度销售趋势数据
 const loadMonthlyTrendData = async () => {

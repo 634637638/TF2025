@@ -4,6 +4,7 @@
       <router-view v-slot="{ Component, route }">
         <component :is="Component" />
       </router-view>
+      <GlobalLoading size="medium" />
     </div>
   </el-config-provider>
 </template>
@@ -11,13 +12,12 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { useAuthStore } from '@/stores/auth'
-import { initializeSiteSettings } from '@/stores/siteSettings'
 import { clearPersistedAuthData, getBackendDisconnectInfo } from '@/utils/auth-session'
-import { ElConfigProvider } from 'element-plus'
-import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
 import { storage } from '@/services/storage'
 import logger from '@/utils/logger'
+import GlobalLoading from '@/components/GlobalLoading.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -47,12 +47,6 @@ onMounted(async () => {
 
     if (authStore.isAuthenticated && router.currentRoute.value.path === '/login') {
       await router.push('/dashboard')
-    }
-
-    if (authStore.isAuthenticated) {
-      initializeSiteSettings().catch((error) => {
-        logger.warn('全局站点设置初始化失败', error)
-      })
     }
   } catch (error) {
     logger.error('App 启动时认证状态检查失败', error)

@@ -1,106 +1,123 @@
 <template>
-  <div class="icon-picker" @submit.prevent>
+  <div class="icon-picker">
     <!-- 可折叠的头部 -->
-    <div class="icon-picker-header" @click.stop="toggleCollapse" @submit.prevent>
+    <div
+      class="icon-picker-header"
+      role="button"
+      tabindex="0"
+      @click.stop="toggleCollapse"
+      @keydown.enter.prevent.stop="toggleCollapse"
+      @keydown.space.prevent.stop="toggleCollapse"
+    >
       <div class="header-left">
         <i class="collapse-icon" :class="isCollapsed ? 'fas fa-chevron-right' : 'fas fa-chevron-down'"></i>
         <span class="header-title">
-          <!-- Iconify 图标 -->
-          <span
-            v-if="currentIconClass && isIconifyIconClass(currentIconClass)"
-            class="iconify current-icon"
-            :data-icon="getIconifyName(currentIconClass)"
-          ></span>
-          <!-- Font Awesome 图标 -->
-          <i v-else :class="currentIconClass || 'fas fa-icons'" class="current-icon"></i>
-          {{ currentIconClass || '选择图标' }}
+          <IconRenderer
+            :icon="currentIconClass || 'fas fa-icons'"
+            :svg="currentIconSvg"
+            class-name="current-icon"
+            fallback="fas fa-icons"
+          />
         </span>
       </div>
       <span class="collapse-hint">{{ isCollapsed ? '点击展开' : '点击折叠' }}</span>
     </div>
 
     <!-- 可折叠的内容区域 -->
-    <div v-show="!isCollapsed" class="icon-picker-content" @submit.prevent>
-      <div class="icon-picker-search" @submit.prevent>
-        <div class="search-box">
-          <i class="fas fa-search"></i>
-          <input
-            v-model="searchQuery"
-            @input="filterIcons"
-            @keydown.enter.prevent
-            type="text"
-            placeholder="搜索图标（支持中文/英文）..."
-            class="search-input"
-          />
-          <i v-if="searching" class="fas fa-spinner fa-spin searching-indicator"></i>
-        </div>
-        <select v-model="selectedCategory" @change="filterIcons" @keydown.enter.prevent class="category-filter">
-          <option value="">所有分类</option>
-          <option v-for="category in categories" :key="category" :value="category">
-            {{ getCategoryLabel(category) }}
-          </option>
-        </select>
-        <button
-          type="button"
-          @click.stop="toggleOnlineSearch"
-          @submit.prevent
-          class="online-search-toggle"
-          :class="{ active: useOnlineSearch }"
-          title="切换在线/离线搜索"
+    <div v-show="!isCollapsed" class="icon-picker-content">
+      <div class="icon-picker-search">
+        <el-input
+          v-model="searchQuery"
+          placeholder="搜索图标（支持中文/英文）..."
+          clearable
+          class="icon-search-input"
+          @input="filterIcons"
+          @keydown.enter.prevent
         >
-          <i :class="useOnlineSearch ? 'fas fa-globe' : 'fas fa-database'"></i>
-          {{ useOnlineSearch ? '在线' : '离线' }}
-        </button>
+          <template #prefix>
+            <i class="fas fa-search"></i>
+          </template>
+          <template v-if="searching" #suffix>
+            <InlineLoading size="small" />
+          </template>
+        </el-input>
+
+        <el-select
+          v-model="selectedCategory"
+          placeholder="所有分类"
+          clearable
+          filterable
+          class="category-filter"
+          popper-class="icon-picker-category-dropdown"
+          @change="filterIcons"
+          @keydown.enter.prevent
+        >
+          <el-option label="所有分类" value="" />
+          <el-option
+            v-for="category in categories"
+            :key="category"
+            :label="getCategoryLabel(category)"
+            :value="category"
+          />
+        </el-select>
+
+        <el-segmented
+          v-model="searchMode"
+          :options="searchModeOptions"
+          class="search-mode-toggle"
+          @change="handleSearchModeChange"
+        />
       </div>
 
     <!-- 加载状态 -->
     <div v-if="loading" class="loading-state">
       <div class="loading-content">
-        <i class="fas fa-spinner fa-spin"></i>
-        <p>正在加载图标...</p>
+        <InlineLoading text="正在加载图标..." />
       </div>
     </div>
 
     <!-- 图标网格 -->
-    <div v-else-if="filteredIcons.length > 0" class="icon-grid" @submit.prevent>
+    <div v-else-if="filteredIcons.length > 0" class="icon-grid">
       <div
         v-for="icon in paginatedIcons"
         :key="icon.id"
         class="icon-item"
         :class="{ active: selectedIcon === icon.class }"
-        @click.stop="selectIcon(icon)"
+        role="button"
+        tabindex="0"
+        @pointerdown.prevent.stop="selectIcon(icon)"
+        @click.prevent.stop
+        @keydown.enter.prevent.stop="selectIcon(icon)"
+        @keydown.space.prevent.stop="selectIcon(icon)"
         :title="`${icon.name} (${icon.class})`"
       >
-        <!-- Iconify 图标使用 span + iconify 类 -->
-        <span
-          v-if="isIconifyIconClass(icon.class)"
-          class="iconify"
-          :data-icon="getIconifyName(icon.class)"
-        ></span>
-        <!-- Font Awesome 图标 -->
-        <i v-else :class="icon.class"></i>
+        <IconRenderer :icon="icon.class" :svg="icon.svg" />
+        <button
+          v-if="canDeleteIcon(icon)"
+          type="button"
+          class="icon-delete-btn"
+          title="删除本地图标"
+          @click.stop="deleteLocalIcon(icon)"
+        >
+          <i class="fas fa-times"></i>
+        </button>
       </div>
     </div>
 
     <!-- 无结果状态 -->
     <div v-else class="no-results">
       <i class="fas fa-search"></i>
-      <p>{{ searchQuery.trim() || selectedCategory ? '未找到匹配的图标' : '暂无图标数据' }}</p>
-      <p class="hint" v-if="!searchQuery.trim() && !selectedCategory">
-        尝试刷新页面或检查网络连接
-      </p>
-      <p class="hint online-hint" v-if="searchQuery.trim() && useOnlineSearch">
-        <i class="fas fa-lightbulb"></i>
-        提示：支持中文搜索（如"首页"、"用户"、"设置"）
+      <p>{{ emptyStateText }}</p>
+      <p class="hint" v-if="emptyStateHint">
+        {{ emptyStateHint }}
       </p>
     </div>
 
-    <div class="icon-picker-footer" v-if="totalPages > 1" @click.stop @submit.prevent>
+    <div class="icon-picker-footer" v-if="totalPages > 1" @click.stop>
       <div class="pagination">
         <button
           type="button"
           @click.stop="prevPage"
-          @submit.prevent
           :disabled="currentPage === 1"
           class="btn btn-sm btn-outline-secondary"
         >
@@ -110,7 +127,6 @@
         <button
           type="button"
           @click.stop="nextPage"
-          @submit.prevent
           :disabled="currentPage === totalPages"
           class="btn btn-sm btn-outline-secondary"
         >
@@ -123,13 +139,41 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { unifiedApi } from '@/utils/unified-api'
-import { extractIconifyName, isIconifyReady, isIconifyIcon, refreshIconifyIcons, waitForIconify } from '@/utils/iconify'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import InlineLoading from '@/components/InlineLoading.vue'
+import IconRenderer from '@/components/IconRenderer.vue'
+import { extractIconifyName, isIconifyIcon } from '@/utils/iconify'
 import { storage } from '@/services/storage'
 import { CACHE_STORAGE_KEYS } from '@/constants/storage'
 
 const ICON_PICKER_CACHE_TTL = 7 * 24 * 60 * 60 * 1000
+const ICON_PICKER_FALLBACK_DELAY = 1500
+
+const DEFAULT_ICONS = [
+  { id: 1, class: 'fas fa-home', name: '首页', category: 'navigation' },
+  { id: 2, class: 'fas fa-user', name: '用户', category: 'user' },
+  { id: 3, class: 'fas fa-cog', name: '设置', category: 'interface' },
+  { id: 4, class: 'fas fa-dashboard', name: '仪表盘', category: 'interface' },
+  { id: 5, class: 'fas fa-chart-bar', name: '图表', category: 'data' },
+  { id: 6, class: 'fas fa-database', name: '数据库', category: 'data' },
+  { id: 7, class: 'fas fa-shopping-cart', name: '购物车', category: 'commerce' },
+  { id: 8, class: 'fas fa-box', name: '盒子', category: 'commerce' },
+  { id: 9, class: 'fas fa-truck', name: '卡车', category: 'commerce' },
+  { id: 10, class: 'fas fa-wrench', name: '扳手', category: 'tools' },
+  { id: 11, class: 'fas fa-tools', name: '工具', category: 'tools' },
+  { id: 12, class: 'fas fa-chart-line', name: '折线图', category: 'charts' },
+  { id: 13, class: 'fas fa-chart-pie', name: '饼图', category: 'charts' },
+  { id: 14, class: 'fas fa-file', name: '文件', category: 'files' },
+  { id: 15, class: 'fas fa-file-alt', name: '文档', category: 'files' },
+  { id: 16, class: 'fas fa-envelope', name: '信封', category: 'communication' },
+  { id: 17, class: 'fas fa-bell', name: '铃铛', category: 'notification' },
+  { id: 18, class: 'fas fa-search', name: '搜索', category: 'navigation' },
+  { id: 19, class: 'fas fa-plus', name: '加号', category: 'interface' },
+  { id: 20, class: 'fas fa-minus', name: '减号', category: 'interface' }
+]
+const DEFAULT_ICON_CATEGORIES = ['navigation', 'user', 'interface', 'data', 'commerce', 'tools', 'charts', 'files', 'communication', 'notification']
 
 let memoryCachedIcons = null
 let memoryCachedCategories = null
@@ -140,8 +184,12 @@ const iconKeywordMap = {
   '主页': 'home',
   '用户': 'user',
   '客户': 'user',
+  '员工': 'employee',
+  '供应商': 'supplier',
   '设置': 'settings',
   '系统': 'system',
+  '权限': 'permission',
+  '角色': 'role',
   '菜单': 'menu',
   '列表': 'list',
   '表格': 'table',
@@ -156,8 +204,27 @@ const iconKeywordMap = {
   '商店': 'store',
   '订单': 'order',
   '商品': 'product',
+  '产品': 'product',
+  '销售': 'sales',
+  '收银': 'cashier',
+  '付款': 'payment',
+  '支付': 'payment',
+  '账单': 'bill',
+  '利润': 'profit',
+  '价格': 'price',
+  '价目表': 'price',
   '库存': 'inventory',
+  '入库': 'stock-in',
+  '出库': 'stock-out',
+  '调拨': 'transfer',
   '仓库': 'warehouse',
+  '维修': 'repair',
+  '补贴': 'subsidy',
+  '工资': 'salary',
+  '考勤': 'attendance',
+  '商城': 'store',
+  '横幅': 'banner',
+  '轮播': 'banner',
   '盒子': 'box',
   '包裹': 'package',
   '卡车': 'truck',
@@ -216,6 +283,57 @@ const buildSearchKeywords = (query) => {
   return Array.from(new Set([rawQuery, translatedQuery].filter(Boolean).map(item => item.toLowerCase())))
 }
 
+const isChineseText = (value) => /[\u4e00-\u9fa5]/.test(String(value || ''))
+
+const iconCategoryRules = [
+  { category: '导航', keywords: ['首页', '主页', '菜单', '返回', '箭头', '搜索', '导航', 'home', 'menu', 'back', 'arrow', 'search', 'navigation'] },
+  { category: '用户客户', keywords: ['用户', '客户', '员工', '供应商', '会员', 'user', 'customer', 'employee', 'supplier', 'people', 'person'] },
+  { category: '系统管理', keywords: ['系统', '设置', '配置', '管理', '后台', '仪表盘', 'system', 'settings', 'config', 'admin', 'dashboard', 'gear', 'cog'] },
+  { category: '权限安全', keywords: ['权限', '角色', '安全', '锁', '钥匙', '密码', 'permission', 'role', 'security', 'lock', 'key', 'shield', 'password'] },
+  { category: '销售收款', keywords: ['销售', '收银', '付款', '支付', '账单', '利润', '价格', '价目表', 'sales', 'sell', 'cash', 'cashier', 'payment', 'pay', 'receipt', 'invoice', 'wallet', 'price', 'money'] },
+  { category: '库存仓储', keywords: ['库存', '入库', '出库', '调拨', '仓库', '运输', '送货', 'inventory', 'stock', 'warehouse', 'box', 'package', 'truck', 'shipping', 'delivery'] },
+  { category: '商品订单', keywords: ['商品', '产品', '订单', '商城', '购物车', '商店', 'product', 'order', 'cart', 'store', 'shop'] },
+  { category: '数据报表', keywords: ['数据', '统计', '分析', '报表', '图表', '数据库', 'data', 'chart', 'analytics', 'report', 'database', 'table'] },
+  { category: '文件媒体', keywords: ['文件', '文档', '图片', '照片', '视频', '音乐', 'file', 'document', 'image', 'photo', 'video', 'music'] },
+  { category: '通知消息', keywords: ['通知', '消息', '邮件', '电话', '铃铛', 'notification', 'message', 'email', 'phone', 'bell', 'envelope'] },
+  { category: '工具操作', keywords: ['工具', '维修', '编辑', '删除', '保存', '导入', '导出', '打印', 'tool', 'wrench', 'repair', 'edit', 'delete', 'trash', 'save', 'import', 'export', 'print'] },
+  { category: '时间日历', keywords: ['考勤', '工资', '时间', '日历', '时钟', 'attendance', 'salary', 'time', 'calendar', 'clock'] },
+  { category: '地图位置', keywords: ['地图', '位置', '全球', 'map', 'location', 'globe'] }
+]
+
+const resolveIconCategory = (icon, query = '') => {
+  const currentCategory = String(icon?.category || '').trim()
+  if (isChineseText(currentCategory)) {
+    return currentCategory
+  }
+
+  const text = [
+    query,
+    icon?.name,
+    icon?.class,
+    icon?.iconifyName,
+    currentCategory,
+    icon?.description,
+    icon?.tags
+  ].filter(Boolean).join(' ').toLowerCase()
+
+  const matchedRule = iconCategoryRules.find(rule =>
+    rule.keywords.some(keyword => text.includes(String(keyword).toLowerCase()))
+  )
+
+  return matchedRule?.category || '在线图标'
+}
+
+const buildOnlineIconTags = (icon, category) => {
+  return Array.from(new Set([
+    category,
+    icon?.category,
+    icon?.tags,
+    icon?.iconifyName || getIconifyName(icon?.class),
+    icon?.name
+  ].filter(Boolean).map(item => String(item).trim()).filter(Boolean))).join(',')
+}
+
 const saveIconCache = (icons, categories) => {
   memoryCachedIcons = icons
   memoryCachedCategories = categories
@@ -261,6 +379,12 @@ const readIconCache = () => {
   }
 }
 
+const applyFallbackIcons = () => {
+  allIcons.value = DEFAULT_ICONS
+  icons.value = DEFAULT_ICONS
+  categories.value = DEFAULT_ICON_CATEGORIES
+}
+
 const props = defineProps({
   modelValue: {
     type: [String, null],
@@ -282,23 +406,32 @@ const toggleCollapse = () => {
   isCollapsed.value = !isCollapsed.value
 }
 
-// 在线搜索模式（默认开启）
-const useOnlineSearch = ref(true)
+// 默认使用本地图标，在线检索由用户手动切换。
+const useOnlineSearch = ref(false)
+const searchMode = ref('local')
+const searchModeOptions = [
+  { label: '本地', value: 'local' },
+  { label: '在线', value: 'online' }
+]
 
 // 切换在线/离线搜索
-const toggleOnlineSearch = () => {
-  useOnlineSearch.value = !useOnlineSearch.value
-
-  // 清空搜索并重新加载
-  searchQuery.value = ''
+const handleSearchModeChange = (mode) => {
+  useOnlineSearch.value = mode === 'online'
+  selectedCategory.value = ''
   currentPage.value = 1
 
   if (useOnlineSearch.value) {
-    // 切换到在线模式，清空当前显示
-    icons.value = []
+    if (searchQuery.value.trim()) {
+      searchIcons()
+    } else {
+      icons.value = []
+      searching.value = false
+    }
   } else {
-    // 切换到离线模式，加载本地数据
     icons.value = allIcons.value
+    if (searchQuery.value.trim()) {
+      searchIcons()
+    }
   }
 }
 
@@ -307,35 +440,19 @@ const currentIconClass = computed(() => {
   return props.modelValue || null
 })
 
+const currentIconSvg = computed(() => {
+  const currentClass = String(props.modelValue || '').trim()
+  if (!currentClass) {
+    return ''
+  }
+
+  return allIcons.value.find(icon => icon.class === currentClass)?.svg ||
+    icons.value.find(icon => icon.class === currentClass)?.svg ||
+    ''
+})
+
 const isIconifyIconClass = (iconClass) => isIconifyIcon(String(iconClass || '').trim())
 const getIconifyName = (iconClass) => extractIconifyName(String(iconClass || '').trim()) || ''
-
-const refreshCurrentIconPreview = async () => {
-  if (!isIconifyIcon(String(props.modelValue || '').trim())) {
-    return
-  }
-
-  await nextTick()
-
-  if (!isIconifyReady()) {
-    await waitForIconify(3000)
-  }
-
-  if (isIconifyReady()) {
-    const iconName = extractIconifyName(String(props.modelValue || '').trim())
-    const iconifyRuntime = typeof window !== 'undefined' ? window.Iconify : null
-
-    if (iconName && iconifyRuntime?.loadIcon) {
-      try {
-        await iconifyRuntime.loadIcon(iconName)
-      } catch (error) {
-        // 静默处理
-      }
-    }
-
-    refreshIconifyIcons()
-  }
-}
 
 // 状态管理
 const searchQuery = ref('')
@@ -372,11 +489,34 @@ const paginatedIcons = computed(() => {
   return filteredIcons.value.slice(start, end)
 })
 
+const emptyStateText = computed(() => {
+  if (useOnlineSearch.value && !searchQuery.value.trim()) {
+    return '输入关键词后搜索在线图标'
+  }
+
+  if (searchQuery.value.trim() || selectedCategory.value) {
+    return '未找到匹配的图标'
+  }
+
+  return '暂无图标数据'
+})
+
+const emptyStateHint = computed(() => {
+  if (useOnlineSearch.value && !searchQuery.value.trim()) {
+    return '例如：首页、销售、库存、设置'
+  }
+
+  if (!searchQuery.value.trim() && !selectedCategory.value) {
+    return '本地图标库正在后台刷新，稍后会自动补全'
+  }
+
+  return ''
+})
+
 const selectedIcon = computed({
   get: () => props.modelValue,
   set: (value) => {
     emit('update:modelValue', value)
-    emit('select', value)
   }
 })
 
@@ -385,17 +525,28 @@ const updateLocalIconCache = (icon) => {
     return
   }
 
+  const normalizedIcon = {
+    ...icon,
+    source: icon.source === 'online' ? 'local' : (icon.source || 'local')
+  }
   const exists = allIcons.value.some(item => item.class === icon.class)
+  const shouldSyncVisibleIcons = !useOnlineSearch.value
+
   if (!exists) {
-    const normalizedIcon = {
-      ...icon,
-      source: 'local'
-    }
     allIcons.value = [normalizedIcon, ...allIcons.value]
 
-    if (!searchQuery.value.trim() || !useOnlineSearch.value) {
+    if (shouldSyncVisibleIcons && !searchQuery.value.trim()) {
       icons.value = [normalizedIcon, ...icons.value.filter(item => item.class !== icon.class)]
     }
+  } else {
+    allIcons.value = allIcons.value.map(item => item.class === icon.class ? { ...item, ...normalizedIcon } : item)
+    if (shouldSyncVisibleIcons) {
+      icons.value = icons.value.map(item => item.class === icon.class ? { ...item, ...normalizedIcon } : item)
+    }
+  }
+
+  if (normalizedIcon.category && !categories.value.includes(normalizedIcon.category)) {
+    categories.value = [...categories.value, normalizedIcon.category].sort()
   }
 
   try {
@@ -415,12 +566,18 @@ const persistOnlineIcon = async (icon) => {
   }
 
   try {
+    const localCategory = resolveIconCategory(icon, searchQuery.value)
+    const iconifyName = icon.iconifyName || getIconifyName(icon.class)
+    const tags = buildOnlineIconTags(icon, localCategory)
+
     const response = await unifiedApi.post('/icons/cache', {
       class: icon.class,
-      name: icon.name || getIconifyName(icon.class),
-      category: icon.category || 'iconify',
-      description: icon.description || `${icon.category || 'iconify'} 图标`,
-      tags: icon.tags || icon.category || 'iconify'
+      name: icon.name || iconifyName,
+      category: localCategory,
+      description: icon.description || `${localCategory}图标`,
+      tags,
+      iconifyName,
+      svg: icon.svg || null
     })
 
     if (response?.success && response.data) {
@@ -431,13 +588,55 @@ const persistOnlineIcon = async (icon) => {
     // 静默处理
   }
 
+  const localCategory = resolveIconCategory(icon, searchQuery.value)
+  const iconifyName = icon.iconifyName || getIconifyName(icon.class)
   updateLocalIconCache({
     class: icon.class,
-    name: icon.name || getIconifyName(icon.class),
-    category: icon.category || 'iconify',
-    description: icon.description || `${icon.category || 'iconify'} 图标`,
-    tags: icon.tags || icon.category || 'iconify'
+    name: icon.name || iconifyName,
+    category: localCategory,
+    description: icon.description || `${localCategory}图标`,
+    tags: buildOnlineIconTags(icon, localCategory),
+    iconifyName
   })
+}
+
+const canDeleteIcon = (icon) => {
+  return Boolean(icon?.id && icon.source !== 'online')
+}
+
+const removeIconFromCache = (iconId) => {
+  allIcons.value = allIcons.value.filter(icon => icon.id !== iconId)
+  icons.value = icons.value.filter(icon => icon.id !== iconId)
+  saveIconCache(allIcons.value, categories.value)
+}
+
+const deleteLocalIcon = async (icon) => {
+  if (!canDeleteIcon(icon)) {
+    return
+  }
+
+  try {
+    await ElMessageBox.confirm(
+      `确定删除图标「${icon.name || icon.class}」吗？如果菜单正在使用，系统会阻止删除。`,
+      '删除图标',
+      {
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+
+    const response = await unifiedApi.delete(`/icons/${icon.id}`)
+    if (response?.success) {
+      removeIconFromCache(icon.id)
+      ElMessage.success(response.message || '图标已删除')
+    }
+  } catch (error) {
+    if (error !== 'cancel' && error !== 'close') {
+      const message = error?.response?.data?.message || error?.message || '删除图标失败'
+      ElMessage.warning(message)
+    }
+  }
 }
 
 // 方法
@@ -447,12 +646,17 @@ const filterIcons = () => {
   searchIcons()
 }
 
-const selectIcon = async (icon) => {
+const selectIcon = (icon) => {
   const iconClass = icon?.class || ''
+  if (!iconClass) {
+    return
+  }
+
   selectedIcon.value = iconClass
+  emit('select', iconClass, icon)
 
   if (icon?.source === 'online' || isIconifyIconClass(iconClass)) {
-    await persistOnlineIcon(icon)
+    persistOnlineIcon(icon)
   }
 }
 
@@ -469,92 +673,91 @@ const nextPage = () => {
 }
 
 const getCategoryLabel = (category) => {
+  if (isChineseText(category)) {
+    return category
+  }
+
   const labels = {
     'solid': '实心图标',
     'regular': '常规图标',
     'light': '轻量图标',
     'duotone': '双色调图标',
-    'brands': '品牌图标'
+    'brands': '品牌图标',
+    'navigation': '导航',
+    'user': '用户客户',
+    'interface': '系统界面',
+    'data': '数据报表',
+    'commerce': '商品订单',
+    'tools': '工具操作',
+    'charts': '数据图表',
+    'files': '文件媒体',
+    'communication': '通知消息',
+    'notification': '通知消息',
+    'iconify': '在线图标',
+    'mdi': 'Material 图标',
+    'lucide': 'Lucide 图标',
+    'tabler': 'Tabler 图标',
+    'solar': 'Solar 图标',
+    'fa6-solid': 'Font Awesome',
+    'fa-solid': 'Font Awesome'
   }
   return labels[category] || category
 }
 
 const loadIcons = async () => {
-  try {
-    const cached = readIconCache()
-    if (cached?.icons?.length) {
-      allIcons.value = cached.icons
-      icons.value = cached.icons
-      categories.value = cached.categories
-      loading.value = false
-    } else {
-      loading.value = true
-    }
+  const cached = readIconCache()
+  let fallbackTimer = null
 
-    if (!iconsLoadingPromise) {
-      iconsLoadingPromise = unifiedApi.get('/icons?limit=1000')
-        .then(response => {
-          if (response && response.success && response.data && response.data.length > 0) {
-            const iconData = response.data
-            const uniqueCategories = [...new Set(iconData.map(icon => icon.category))].sort()
-            saveIconCache(iconData, uniqueCategories)
-            return {
-              icons: iconData,
-              categories: uniqueCategories
-            }
-          }
-
-          throw new Error('图标接口返回空数据')
-        })
-        .finally(() => {
-          iconsLoadingPromise = null
-        })
-    }
-
-    try {
-      const remoteData = await iconsLoadingPromise
-      allIcons.value = remoteData.icons
-      icons.value = searchQuery.value.trim() ? icons.value : remoteData.icons
-      categories.value = remoteData.categories
-      return
-    } catch (apiError) {
-      if (cached?.icons?.length) {
-        return
+  if (cached?.icons?.length) {
+    allIcons.value = cached.icons
+    icons.value = cached.icons
+    categories.value = cached.categories
+    loading.value = false
+  } else {
+    loading.value = true
+    fallbackTimer = window.setTimeout(() => {
+      if (loading.value && allIcons.value.length === 0) {
+        applyFallbackIcons()
+        loading.value = false
       }
+    }, ICON_PICKER_FALLBACK_DELAY)
+  }
+
+  if (!iconsLoadingPromise) {
+    iconsLoadingPromise = unifiedApi.get('/icons?limit=1000', {
+      showError: false
+    })
+      .then(response => {
+        if (response && response.success && response.data && response.data.length > 0) {
+          const iconData = response.data
+          const uniqueCategories = [...new Set(iconData.map(icon => icon.category))].sort()
+          saveIconCache(iconData, uniqueCategories)
+          return {
+            icons: iconData,
+            categories: uniqueCategories
+          }
+        }
+
+        throw new Error('图标接口返回空数据')
+      })
+      .finally(() => {
+        iconsLoadingPromise = null
+      })
+  }
+
+  try {
+    const remoteData = await iconsLoadingPromise
+    allIcons.value = remoteData.icons
+    icons.value = searchQuery.value.trim() ? icons.value : remoteData.icons
+    categories.value = remoteData.categories
+  } catch (apiError) {
+    if (!cached?.icons?.length) {
+      applyFallbackIcons()
     }
-
-    // 如果所有方式都失败，使用默认图标
-    throw new Error('所有加载方式都失败')
-
-  } catch (error) {
-    // 加载失败，使用默认图标
-    const defaultIcons = [
-      { id: 1, class: 'fas fa-home', name: '首页', category: 'navigation' },
-      { id: 2, class: 'fas fa-user', name: '用户', category: 'user' },
-      { id: 3, class: 'fas fa-cog', name: '设置', category: 'interface' },
-      { id: 4, class: 'fas fa-dashboard', name: '仪表盘', category: 'interface' },
-      { id: 5, class: 'fas fa-chart-bar', name: '图表', category: 'data' },
-      { id: 6, class: 'fas fa-database', name: '数据库', category: 'data' },
-      { id: 7, class: 'fas fa-shopping-cart', name: '购物车', category: 'commerce' },
-      { id: 8, class: 'fas fa-box', name: '盒子', category: 'commerce' },
-      { id: 9, class: 'fas fa-truck', name: '卡车', category: 'commerce' },
-      { id: 10, class: 'fas fa-wrench', name: '扳手', category: 'tools' },
-      { id: 11, class: 'fas fa-tools', name: '工具', category: 'tools' },
-      { id: 12, class: 'fas fa-chart-line', name: '折线图', category: 'charts' },
-      { id: 13, class: 'fas fa-chart-pie', name: '饼图', category: 'charts' },
-      { id: 14, class: 'fas fa-file', name: '文件', category: 'files' },
-      { id: 15, class: 'fas fa-file-alt', name: '文档', category: 'files' },
-      { id: 16, class: 'fas fa-envelope', name: '信封', category: 'communication' },
-      { id: 17, class: 'fas fa-bell', name: '铃铛', category: 'notification' },
-      { id: 18, class: 'fas fa-search', name: '搜索', category: 'navigation' },
-      { id: 19, class: 'fas fa-plus', name: '加号', category: 'interface' },
-      { id: 20, class: 'fas fa-minus', name: '减号', category: 'interface' }
-    ]
-    allIcons.value = defaultIcons
-    icons.value = defaultIcons
-    categories.value = ['navigation', 'user', 'interface', 'data', 'commerce', 'tools', 'charts', 'files', 'communication', 'notification']
-    saveIconCache(defaultIcons, categories.value)
   } finally {
+    if (fallbackTimer) {
+      clearTimeout(fallbackTimer)
+    }
     loading.value = false
   }
 }
@@ -570,7 +773,7 @@ const searchIcons = async () => {
 
   // 如果搜索为空，显示所有图标
   if (!query) {
-    icons.value = allIcons.value
+    icons.value = useOnlineSearch.value ? [] : allIcons.value
     searching.value = false
     return
   }
@@ -610,33 +813,10 @@ const searchIcons = async () => {
 // 在线搜索图标（使用 Iconify API）
 const searchOnlineIcons = async (query) => {
   try {
-    const translatedQuery = translateSearchKeyword(query)
-    const response = await unifiedApi.get(`/icons/search/online?query=${encodeURIComponent(translatedQuery || query)}&limit=100`)
+    const response = await unifiedApi.get(`/icons/search/online?query=${encodeURIComponent(query)}&limit=100`)
 
     if (response && response.success && response.data && response.data.length > 0) {
       icons.value = response.data
-
-      // 等待 DOM 更新后刷新 Iconify 图标
-      await nextTick()
-
-      // 动态导入并使用 Iconify 工具
-      try {
-        const { refreshIconifyIcons, isIconifyReady } = await import('@/utils/iconify')
-
-        if (isIconifyReady()) {
-          refreshIconifyIcons()
-        } else {
-          // 如果 Iconify 未就绪，等待加载
-          const { waitForIconify } = await import('@/utils/iconify')
-          const ready = await waitForIconify(3000)
-
-          if (ready) {
-            refreshIconifyIcons()
-          }
-        }
-      } catch (iconifyError) {
-        // 无法刷新 Iconify 图标，静默处理
-      }
     } else {
       icons.value = []
     }
@@ -698,47 +878,11 @@ const loadCategories = async () => {
 onMounted(async () => {
   await loadIcons()
   await loadCategories()
-
-  // 等待 Iconify 加载完成
-  try {
-    await waitForIconify(5000)
-  } catch (error) {
-    // Iconify 加载检查失败，静默处理
-  }
-
-  await refreshCurrentIconPreview()
 })
-
-// 监听图标数据变化，刷新 Iconify 图标显示
-watch(icons, async (newIcons) => {
-  // 检查是否有在线图标需要刷新
-  const hasOnlineIcons = newIcons.some(icon => icon.source === 'online' || icon.iconifyName)
-
-  if (hasOnlineIcons) {
-    await nextTick()
-    try {
-      if (isIconifyReady()) {
-        refreshIconifyIcons()
-      }
-    } catch (error) {
-      // 静默处理
-    }
-  }
-}, { deep: true })
 
 // 监听搜索和分类变化，重置分页
 watch([searchQuery, selectedCategory], () => {
   currentPage.value = 1
-})
-
-watch(() => props.modelValue, async () => {
-  await refreshCurrentIconPreview()
-})
-
-watch(isCollapsed, async (collapsed) => {
-  if (!collapsed) {
-    await refreshCurrentIconPreview()
-  }
 })
 </script>
 
@@ -767,7 +911,15 @@ watch(isCollapsed, async (collapsed) => {
   height: 24px;
 }
 
+.icon-item .icon-renderer {
+  font-size: 24px;
+  width: 24px;
+  height: 24px;
+}
+
 .icon-picker-header {
+  width: 100%;
+  border: 0;
   padding: 12px 16px;
   background: #f8f9fa;
   border-bottom: 1px solid #e9ecef;
@@ -777,6 +929,7 @@ watch(isCollapsed, async (collapsed) => {
   cursor: pointer;
   user-select: none;
   transition: background 0.2s;
+  text-align: left;
 }
 
 .icon-picker-header:hover {
@@ -824,86 +977,37 @@ watch(isCollapsed, async (collapsed) => {
   display: flex;
   gap: 12px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
-.search-box {
-  flex: 1;
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.search-box i {
-  position: absolute;
-  left: 12px;
-  color: #6c757d;
-  font-size: 14px;
-}
-
-.search-input {
-  width: 100%;
-  padding: 8px 12px 8px 36px;
-  border: 1px solid #dee2e6;
-  border-radius: 8px;
-  font-size: 14px;
-  transition: all 0.3s ease;
-}
-
-.search-input:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.searching-indicator {
-  position: absolute;
-  right: 12px;
-  color: #667eea;
-  font-size: 14px;
+.icon-search-input {
+  flex: 1 1 220px;
+  min-width: 0;
 }
 
 .category-filter {
-  padding: 8px 12px;
-  border: 1px solid #dee2e6;
-  border-radius: 8px;
-  font-size: 14px;
-  background: white;
-  min-width: 120px;
+  flex: 0 1 150px;
+  min-width: 130px;
 }
 
-.category-filter:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+.search-mode-toggle {
+  flex: 0 0 auto;
+  min-width: 118px;
 }
 
-.online-search-toggle {
-  padding: 8px 16px;
-  border: 1px solid #dee2e6;
-  border-radius: 8px;
-  font-size: 14px;
-  background: white;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: #6c757d;
+.icon-picker-search :deep(.el-input__wrapper),
+.icon-picker-search :deep(.el-select__wrapper) {
+  border-radius: 10px;
 }
 
-.online-search-toggle:hover {
-  background: #f8f9fa;
-  border-color: #667eea;
+.icon-picker-search :deep(.el-segmented) {
+  --el-segmented-item-selected-bg-color: #0f766e;
+  --el-segmented-item-selected-color: #fff;
+  border-radius: 10px;
 }
 
-.online-search-toggle.active {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-color: #667eea;
-  color: white;
-}
-
-.online-search-toggle i {
-  font-size: 14px;
+.icon-picker-search :deep(.el-segmented__item) {
+  min-width: 52px;
 }
 
 .icon-grid {
@@ -918,6 +1022,7 @@ watch(isCollapsed, async (collapsed) => {
 .icon-item {
   width: 48px;
   height: 48px;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -941,6 +1046,28 @@ watch(isCollapsed, async (collapsed) => {
   border-color: #667eea;
   color: white;
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.icon-delete-btn {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 999px;
+  background: #dc3545;
+  color: #fff;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  box-shadow: 0 2px 6px rgba(220, 53, 69, 0.35);
+}
+
+.icon-item:hover .icon-delete-btn {
+  display: inline-flex;
 }
 
 .no-results {
@@ -1003,20 +1130,6 @@ watch(isCollapsed, async (collapsed) => {
   margin-bottom: 0;
 }
 
-.no-results .online-hint {
-  color: #667eea;
-  font-size: 13px;
-  margin-top: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.no-results .online-hint i {
-  font-size: 14px;
-}
-
 /* 滚动条样式 */
 .icon-grid::-webkit-scrollbar {
   width: 6px;
@@ -1043,11 +1156,18 @@ watch(isCollapsed, async (collapsed) => {
     gap: 8px;
   }
 
-  .search-box {
+  .icon-picker-search {
+    gap: 10px;
+  }
+
+  .icon-search-input,
+  .category-filter,
+  .search-mode-toggle {
+    flex-basis: 100%;
     width: 100%;
   }
 
-  .category-filter {
+  .search-mode-toggle :deep(.el-segmented) {
     width: 100%;
   }
 

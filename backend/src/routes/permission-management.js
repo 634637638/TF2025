@@ -7,7 +7,8 @@ const { manualCleanup } = require('../services/permissionCleanupService');
 const { logRoleOperation, logUserRoleOperation, logPermissionModification } = require('./permission-logs');
 const {
   getModulePermissionMetadata,
-  getModulePermissionTypes
+  getModulePermissionTypes,
+  normalizePermissionType
 } = require('../config/module-permission-actions');
 const {
   getRoleMenuVisibility,
@@ -22,15 +23,18 @@ const ENSURED_PERMISSION_MODULE_KEYS = [
   'attendance_attendanceview',
   'attendance_myattendanceview',
   'system_gitmanagement',
+  'backup_backupview',
   'data_optimization_dataoptimizationview',
   'permissions_modulemanagementview',
   'salary_salaryview',
   'salary_mysalaryview',
   'salary_salaryrecordsview',
   'salary_salarytemplatesview',
+  'price_list_pricelistview',
   'price_list_synclogview',
   'h5_admin_h5_adminview',
   'h5_admin_templatesview',
+  'h5_admin_soldproductsview',
   'h5_admin_configview',
   'h5_admin_homesectionsview',
   'h5_admin_bannersview',
@@ -234,7 +238,11 @@ router.post('/assign-batch', requirePermission('permissions:admin'), async (req,
       );
 
       // 批量插入新权限
-      const values = permissions.map(p => [roleId, p.moduleKey, p.permissionType]);
+      const values = permissions.map(p => [
+        roleId,
+        normalizeManagedModuleKey(p.moduleKey || p.module_key),
+        normalizePermissionType(p.permissionType || p.permission_type)
+      ]);
 
       if (values.length > 0) {
         const placeholders = values.map(() => `(?, ?, ?${supportsRolePermissionCreatedAt ? ', NOW()' : ''})`).join(', ');
@@ -754,7 +762,8 @@ router.post('/import', requirePermission('permissions:admin'), async (req, res) 
         }
 
         // 导入权限
-        for (const [moduleKey, moduleConfig] of Object.entries(roleConfig.modules)) {
+        for (const [rawModuleKey, moduleConfig] of Object.entries(roleConfig.modules)) {
+          const moduleKey = normalizeManagedModuleKey(rawModuleKey);
           // 检查模块是否存在
           const [moduleRows] = await connection.execute(
             `SELECT \`key\` FROM modules WHERE \`key\` = ? ${supportsModuleIsActive ? 'AND is_active = 1' : ''}`,
@@ -767,11 +776,12 @@ router.post('/import', requirePermission('permissions:admin'), async (req, res) 
           }
 
           for (const permission of moduleConfig.permissions) {
+            const normalizedPermission = normalizePermissionType(permission);
             // 检查权限是否已存在（非覆盖模式）
             if (!overwrite) {
               const [existingRows] = await connection.execute(
                 'SELECT id FROM role_permissions WHERE role_id = ? AND module_key = ? AND permission_type = ?',
-                [roleId, moduleKey, permission]
+                [roleId, moduleKey, normalizedPermission]
               );
 
               if (existingRows.length > 0) {
@@ -782,7 +792,7 @@ router.post('/import', requirePermission('permissions:admin'), async (req, res) 
             await connection.execute(`
               INSERT INTO role_permissions (role_id, module_key, permission_type${supportsRolePermissionCreatedAt ? ', created_at' : ''})
               VALUES (?, ?, ?${supportsRolePermissionCreatedAt ? ', NOW()' : ''})
-            `, [roleId, moduleKey, permission]);
+            `, [roleId, moduleKey, normalizedPermission]);
 
             importedCount++;
           }
@@ -1854,10 +1864,11 @@ router.get('/roles/:id/permissions', requirePermission('permissions:admin'), asy
     const modulePermissionTypeMap = new Map();
     allModulePermissionTypes.forEach(perm => {
       const normalizedModuleKey = normalizeManagedModuleKey(perm.module_key);
+      const normalizedPermissionType = normalizePermissionType(perm.permission_type);
       if (!modulePermissionTypeMap.has(normalizedModuleKey)) {
         modulePermissionTypeMap.set(normalizedModuleKey, new Set());
       }
-      modulePermissionTypeMap.get(normalizedModuleKey).add(perm.permission_type);
+      modulePermissionTypeMap.get(normalizedModuleKey).add(normalizedPermissionType);
     });
 
     const actionUniverse = await listPermissionActions(pool);
@@ -1875,7 +1886,7 @@ router.get('/roles/:id/permissions', requirePermission('permissions:admin'), asy
     const rolePermissionMap = new Set();
     rolePermissions.forEach(perm => {
       const normalizedModuleKey = normalizeManagedModuleKey(perm.module_key);
-      rolePermissionMap.add(`${normalizedModuleKey}:${perm.permission_type}`);
+      rolePermissionMap.add(`${normalizedModuleKey}:${normalizePermissionType(perm.permission_type)}`);
     });
 
     // 按模块分组所有权限，并标注分配状态
@@ -1985,7 +1996,11 @@ router.put('/roles/:id/permissions', requirePermission('permissions:admin'), asy
       });
 
       if (validPermissions.length > 0) {
-        const values = validPermissions.map(perm => [id, perm.module_key, perm.permission_type]);
+        const values = validPermissions.map(perm => [
+          id,
+          normalizeManagedModuleKey(perm.module_key),
+          normalizePermissionType(perm.permission_type)
+        ]);
         const placeholders = values.map(() => '(?, ?, ?)').join(', ');
         const flatValues = values.flat();
 
@@ -2099,7 +2114,7 @@ router.put('/roles/:id/permissions/select-all', requirePermission('permissions:a
     allModules.forEach(moduleKey => {
       if (moduleKey && moduleKey !== 'undefined') {
         getModulePermissionTypes(moduleKey).forEach(type => {
-          allPermissions.push([id, moduleKey, type]);
+          allPermissions.push([id, normalizeManagedModuleKey(moduleKey), normalizePermissionType(type)]);
         });
       } else {
         log.warn(`跳过无效的模块key: ${moduleKey}`);

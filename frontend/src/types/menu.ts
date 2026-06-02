@@ -9,6 +9,9 @@ export interface MenuItem {
   url?: string
   path?: string
   icon?: string
+  icon_svg?: string | null
+  icon_source?: string | null
+  icon_is_valid?: number | boolean | null
   parent_id?: number | string
   module_id?: number
   module_key?: string

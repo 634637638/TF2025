@@ -7,6 +7,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useMobile } from './mobile'
 import { useAuthStore } from '@/stores/auth'
 import { useMenuStore } from '@/stores/menu'
+import { canAccessRoutePath } from '@/constants/routePermissions'
+import { showElementWarning } from '@/utils/element-feedback'
 import type { MenuItem } from '@/types/menu'
 
 export interface MobileMenuConfig {
@@ -156,6 +158,14 @@ export function useMobileMenu(config: MobileMenuConfig) {
         // 外部链接
         window.open(path, '_blank')
       } else {
+        if (!canAccessRoutePath(path, authStore)) {
+          showElementWarning('您没有访问此页面的权限')
+          if (isMobile.value) {
+            closeSlideMenu()
+          }
+          return
+        }
+
         // 内部路由 - 检查是否为当前路由，避免重复导航警告
         if (router.currentRoute.value.path !== path) {
           router.push(path)

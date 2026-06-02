@@ -8,15 +8,22 @@ const router = express.Router();
 const { getDatabase } = require('../config/database');
 const { unifiedAuth, requirePermission } = require('../middleware/unified-auth');
 const log = require('../utils/log');
+const {
+  ensureIconSchema,
+  extractIconifyName,
+  fetchIconifySvg,
+  sanitizeSvg
+} = require('../utils/iconStore');
 
 // ==================== 本地数据库功能 ====================
 
 // 获取所有图标（从数据库）
 router.get('/', async (req, res) => {
   try {
-    const { limit = 500, category, search } = req.query;
+    const { limit = 500, category, search, includeInvalid = '0' } = req.query;
 
     const pool = getDatabase();
+    await ensureIconSchema(pool);
 
     // 构建查询条件
     let whereClause = 'WHERE 1=1';
@@ -35,6 +42,10 @@ router.get('/', async (req, res) => {
       params.push(searchPattern, searchPattern, searchPattern, searchPattern, searchPattern);
     }
 
+    if (String(includeInvalid) !== '1') {
+      whereClause += ' AND (is_valid IS NULL OR is_valid = 1)';
+    }
+
     // 查询图标数据
     const query = `
       SELECT
@@ -44,6 +55,11 @@ router.get('/', async (req, res) => {
         category,
         description,
         tags,
+        svg,
+        iconify_name,
+        source,
+        is_valid,
+        last_checked_at,
         created_at
       FROM icons
       ${whereClause}
@@ -77,11 +93,12 @@ router.get('/', async (req, res) => {
 router.get('/categories', async (req, res) => {
   try {
     const pool = getDatabase();
+    await ensureIconSchema(pool);
 
     const query = `
       SELECT DISTINCT category
       FROM icons
-      WHERE category IS NOT NULL AND category != ''
+      WHERE category IS NOT NULL AND category != '' AND (is_valid IS NULL OR is_valid = 1)
       ORDER BY category
     `;
 
@@ -117,9 +134,14 @@ const iconKeywordMap = {
   '主页': 'home',
   '用户': 'user',
   '客户': 'user',
+  '员工': 'employee',
+  '供应商': 'supplier',
   '设置': 'settings',
   '配置': 'settings',
   '系统': 'system',
+  '权限': 'permission',
+  '角色': 'role',
+  '管理员': 'admin',
   '仪表盘': 'dashboard',
   '菜单': 'menu',
   '列表': 'list',
@@ -138,15 +160,33 @@ const iconKeywordMap = {
   '商城': 'store',
   '订单': 'order',
   '商品': 'product',
+  '产品': 'product',
+  '销售': ['sales', 'sell', 'cart', 'cash', 'receipt'],
+  '收银': ['cashier', 'cash', 'payment'],
+  '付款': ['payment', 'pay', 'wallet', 'credit-card'],
+  '支付': ['payment', 'pay', 'wallet', 'credit-card'],
+  '账单': ['bill', 'invoice', 'receipt'],
+  '利润': ['profit', 'chart', 'trending-up'],
+  '价格': ['price', 'tag', 'money'],
+  '价目表': ['price', 'list', 'tag'],
   '库存': 'inventory',
+  '入库': ['stock', 'box', 'download', 'archive'],
+  '出库': ['stock', 'box', 'upload', 'truck'],
+  '调拨': ['transfer', 'exchange', 'truck'],
   '仓库': 'warehouse',
+  '维修': ['repair', 'wrench', 'tool'],
+  '补贴': ['subsidy', 'money', 'gift'],
+  '工资': ['salary', 'money', 'wallet'],
+  '考勤': ['attendance', 'calendar', 'clock'],
+  '横幅': ['banner', 'image'],
+  '轮播': ['carousel', 'image'],
   '盒子': 'box',
   '包裹': 'package',
   '卡车': 'truck',
   '运输': 'shipping',
   '送货': 'delivery',
   '扳手': 'wrench',
-  '工具': 'tool',
+  '工具': ['tool', 'wrench'],
   '编辑': 'edit',
   '修改': 'edit',
   '删除': 'delete',
@@ -170,12 +210,12 @@ const iconKeywordMap = {
   '邮件': 'email',
   '信封': 'envelope',
   '电话': 'phone',
-  '手机': 'mobile',
+  '手机': ['mobile', 'phone'],
   '搜索': 'search',
   '查找': 'search',
   '筛选': 'filter',
   '排序': 'sort',
-  '刷新': 'refresh',
+  '刷新': ['refresh', 'sync'],
   '同步': 'sync',
   '锁': 'lock',
   '钥匙': 'key',
@@ -256,20 +296,37 @@ const iconKeywordMap = {
  * 将中文关键词转换为英文搜索词
  */
 function translateKeywords(query) {
-  // 检查是否直接匹配中文关键词
-  if (iconKeywordMap[query]) {
-    return iconKeywordMap[query];
+  const rawQuery = String(query || '').trim();
+  const candidates = new Set();
+  const addCandidates = (value) => {
+    const values = Array.isArray(value) ? value : [value];
+    values
+      .map(item => String(item || '').trim())
+      .filter(Boolean)
+      .forEach(item => candidates.add(item));
+  };
+
+  if (!rawQuery) {
+    return [];
   }
 
-  // 检查是否包含中文关键词
+  if (iconKeywordMap[rawQuery]) {
+    addCandidates(iconKeywordMap[rawQuery]);
+  }
+
   for (const [chinese, english] of Object.entries(iconKeywordMap)) {
-    if (query.includes(chinese)) {
-      // 替换中文关键词为英文
-      return query.replace(chinese, english);
+    if (rawQuery.includes(chinese)) {
+      const englishWords = Array.isArray(english) ? english : [english];
+      englishWords.forEach(word => {
+        const translated = rawQuery.replace(chinese, word);
+        addCandidates(translated);
+      });
     }
   }
 
-  return query;
+  addCandidates(rawQuery);
+
+  return [...candidates].slice(0, 8);
 }
 
 /**
@@ -290,33 +347,50 @@ router.get('/search/online', async (req, res) => {
       });
     }
 
-    // 翻译中文关键词为英文
-    const translatedQuery = translateKeywords(query.trim());
-    // 构建 Iconify API 请求 URL
-    let apiUrl = `https://api.iconify.design/search?query=${encodeURIComponent(translatedQuery)}&limit=${limit}`;
+    const queryLimit = Math.max(1, Math.min(parseInt(limit, 10) || 100, 1000));
+    const translatedQueries = translateKeywords(query.trim());
+    const iconMap = new Map();
+    let mergedCollections = {};
 
-    // 如果指定了前缀（图标集合），只在该集合中搜索
-    if (prefix) {
-      apiUrl += `&prefix=${prefix}`;
+    for (const translatedQuery of translatedQueries) {
+      let apiUrl = `https://api.iconify.design/search?query=${encodeURIComponent(translatedQuery)}&limit=${queryLimit}`;
+
+      if (prefix) {
+        apiUrl += `&prefix=${prefix}`;
+      }
+
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json'
+        },
+        timeout: 10000 // 10秒超时
+      });
+
+      if (!response.ok) {
+        throw new Error(`Iconify API 请求失败: ${response.status}`);
+      }
+
+      const iconifyData = await response.json();
+      mergedCollections = {
+        ...mergedCollections,
+        ...(iconifyData.collections || {})
+      };
+
+      (iconifyData.icons || []).forEach(iconName => {
+        if (!iconMap.has(iconName)) {
+          iconMap.set(iconName, iconName);
+        }
+      });
+
+      if (iconMap.size >= queryLimit) {
+        break;
+      }
     }
 
-    // 调用 Iconify API
-    const response = await fetch(apiUrl, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json'
-      },
-      timeout: 10000 // 10秒超时
-    });
+    const iconNames = [...iconMap.values()].slice(0, queryLimit);
 
-    if (!response.ok) {
-      throw new Error(`Iconify API 请求失败: ${response.status}`);
-    }
-
-    const iconifyData = await response.json();
-
-    // 检查是否有结果
-    if (!iconifyData.icons || iconifyData.icons.length === 0) {
+    if (iconNames.length === 0) {
       return res.json({
         success: true,
         data: [],
@@ -327,7 +401,7 @@ router.get('/search/online', async (req, res) => {
     }
 
     // 转换为前端需要的格式
-    const icons = iconifyData.icons.map((iconName, index) => {
+    const icons = iconNames.map((iconName, index) => {
       const parts = iconName.split(':');
       const iconPrefix = parts[0];
       const iconSimpleName = parts[1] || iconName;
@@ -345,11 +419,10 @@ router.get('/search/online', async (req, res) => {
     });
 
     // 添加集合信息（如果有）
-    const collections = iconifyData.collections || {};
-    const collectionList = Object.keys(collections).map(key => ({
+    const collectionList = Object.keys(mergedCollections).map(key => ({
       prefix: key,
-      name: collections[key].name,
-      total: collections[key].total || 0
+      name: mergedCollections[key].name,
+      total: mergedCollections[key].total || 0
     }));
 
     res.json({
@@ -488,12 +561,15 @@ router.get('/collection/:prefix', async (req, res) => {
 router.post('/cache', unifiedAuth, requirePermission('menus:view'), async (req, res) => {
   try {
     const pool = getDatabase();
+    await ensureIconSchema(pool);
     const {
       class: iconClass,
       name,
       category,
       description,
-      tags
+      tags,
+      iconifyName,
+      svg
     } = req.body || {};
 
     const normalizedClass = String(iconClass || '').trim();
@@ -501,6 +577,9 @@ router.post('/cache', unifiedAuth, requirePermission('menus:view'), async (req, 
     const normalizedCategory = String(category || '').trim();
     const normalizedDescription = description ? String(description).trim() : null;
     const normalizedTags = tags ? String(tags).trim() : null;
+    const normalizedIconifyName = String(iconifyName || extractIconifyName(normalizedClass) || '').trim() || null;
+    const normalizedSource = normalizedIconifyName ? 'iconify' : 'local';
+    let normalizedSvg = sanitizeSvg(svg);
 
     if (!normalizedClass) {
       return res.status(400).json({
@@ -551,19 +630,39 @@ router.post('/cache', unifiedAuth, requirePermission('menus:view'), async (req, 
       });
     }
 
+    if (normalizedIconifyName && !normalizedSvg) {
+      try {
+        normalizedSvg = await fetchIconifySvg(normalizedIconifyName);
+      } catch (svgError) {
+        log.warn(`获取 Iconify SVG 失败: ${normalizedIconifyName}`, svgError);
+      }
+    }
+
+    const isValid = normalizedIconifyName ? (normalizedSvg ? 1 : 0) : 1;
+
     const upsertQuery = `
       INSERT INTO icons (
         class,
         name,
         category,
         description,
-        tags
-      ) VALUES (?, ?, ?, ?, ?)
+        tags,
+        svg,
+        iconify_name,
+        source,
+        is_valid,
+        last_checked_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
       ON DUPLICATE KEY UPDATE
         name = VALUES(name),
         category = VALUES(category),
         description = VALUES(description),
         tags = VALUES(tags),
+        svg = VALUES(svg),
+        iconify_name = VALUES(iconify_name),
+        source = VALUES(source),
+        is_valid = VALUES(is_valid),
+        last_checked_at = NOW(),
         updated_at = CURRENT_TIMESTAMP
     `;
 
@@ -572,11 +671,15 @@ router.post('/cache', unifiedAuth, requirePermission('menus:view'), async (req, 
       normalizedName,
       normalizedCategory,
       normalizedDescription,
-      normalizedTags
+      normalizedTags,
+      normalizedSvg,
+      normalizedIconifyName,
+      normalizedSource,
+      isValid
     ]);
 
     const [rows] = await pool.execute(
-      `SELECT id, class, name, category, description, tags, created_at
+      `SELECT id, class, name, category, description, tags, svg, iconify_name, source, is_valid, last_checked_at, created_at
        FROM icons
        WHERE class = ?
        LIMIT 1`,
@@ -591,7 +694,11 @@ router.post('/cache', unifiedAuth, requirePermission('menus:view'), async (req, 
         name: normalizedName,
         category: normalizedCategory,
         description: normalizedDescription,
-        tags: normalizedTags
+        tags: normalizedTags,
+        svg: normalizedSvg,
+        iconify_name: normalizedIconifyName,
+        source: normalizedSource,
+        is_valid: isValid
       }
     });
   } catch (error) {
@@ -604,6 +711,103 @@ router.post('/cache', unifiedAuth, requirePermission('menus:view'), async (req, 
   }
 });
 
+/**
+ * 清理无效图标。
+ * 不会删除正在被菜单使用的图标，避免菜单配置丢失。
+ * POST /api/icons/cleanup
+ */
+router.post('/cleanup', unifiedAuth, requirePermission('menus:edit'), async (req, res) => {
+  try {
+    const pool = getDatabase();
+    await ensureIconSchema(pool);
+
+    const [result] = await pool.execute(`
+      DELETE i FROM icons i
+      LEFT JOIN menus m ON m.icon COLLATE utf8mb4_unicode_ci = i.class COLLATE utf8mb4_unicode_ci
+      WHERE m.id IS NULL
+        AND (
+          i.is_valid = 0
+          OR (i.source = 'iconify' AND (i.svg IS NULL OR i.svg = ''))
+        )
+    `);
+
+    res.json({
+      success: true,
+      message: `已清理 ${result.affectedRows || 0} 个无效图标`,
+      data: {
+        deletedCount: result.affectedRows || 0
+      }
+    });
+  } catch (error) {
+    log.error('清理无效图标失败:', error);
+    res.status(500).json({
+      success: false,
+      message: '清理无效图标失败',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * 删除本地图标。
+ * DELETE /api/icons/:id
+ */
+router.delete('/:id', unifiedAuth, requirePermission('menus:edit'), async (req, res) => {
+  try {
+    const pool = getDatabase();
+    await ensureIconSchema(pool);
+    const iconId = Number(req.params.id);
+
+    if (!Number.isInteger(iconId) || iconId <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: '图标 ID 不正确'
+      });
+    }
+
+    const [rows] = await pool.execute(
+      'SELECT id, class, name FROM icons WHERE id = ? LIMIT 1',
+      [iconId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: '图标不存在'
+      });
+    }
+
+    const icon = rows[0];
+    const [usedRows] = await pool.execute(
+      'SELECT COUNT(*) as total FROM menus WHERE icon COLLATE utf8mb4_unicode_ci = ? COLLATE utf8mb4_unicode_ci',
+      [icon.class]
+    );
+    const usedCount = Number(usedRows[0]?.total || 0);
+
+    if (usedCount > 0) {
+      return res.status(409).json({
+        success: false,
+        message: `该图标正在被 ${usedCount} 个菜单使用，请先更换菜单图标后再删除`
+      });
+    }
+
+    await pool.execute('DELETE FROM icons WHERE id = ?', [iconId]);
+
+    res.json({
+      success: true,
+      message: '图标已删除',
+      data: icon
+    });
+  } catch (error) {
+    log.error('删除图标失败:', error);
+    res.status(500).json({
+      success: false,
+      message: '删除图标失败',
+      error: error.message
+    });
+  }
+});
+
 // ==================== 根据ID获取单个图标（必须在最后） ====================
 
 // 根据ID获取单个图标
@@ -611,6 +815,7 @@ router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const pool = getDatabase();
+    await ensureIconSchema(pool);
 
     const query = `
       SELECT
@@ -620,6 +825,11 @@ router.get('/:id', async (req, res) => {
         category,
         description,
         tags,
+        svg,
+        iconify_name,
+        source,
+        is_valid,
+        last_checked_at,
         created_at
       FROM icons
       WHERE id = ?

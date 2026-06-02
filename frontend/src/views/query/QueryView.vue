@@ -1,20 +1,16 @@
 <template>
   <div class="query-view admin-page safe-area-top safe-area-bottom">
     <!-- 无权限提示 -->
-    <PermissionDenied
-      v-if="!canView"
+    <PermissionGate
       :can-view="canView"
-      :can-create="canCreate"
-      :can-edit="canEdit"
-      :can-delete="canDelete"
-      :can-export="canExport"
+      mode="denied"
       module-key="query_queryview"
       module-name="综合查询"
       permission-code="query:view"
-    />
+    >
 
     <!-- 有权限时显示内容 -->
-    <div v-else class="view-content admin-page-content">
+    <div class="view-content admin-page-content">
       <!-- 页面头部 - 使用公共组件 + 滚动动画 -->
       <div data-aos="fade-down" data-aos-duration="600">
         <PageHeader
@@ -64,8 +60,11 @@
               type="info"
               :disabled="refreshing"
             >
-              <i :class="refreshing ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'"></i>
-              <span>刷新</span>
+              <InlineLoading v-if="refreshing" text="刷新中..." size="small" variant="inherit" />
+              <template v-else>
+                <i class="fas fa-sync-alt"></i>
+                <span>刷新</span>
+              </template>
             </el-button>
           </template>
         </PageHeader>
@@ -328,12 +327,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-if="loading">
-                <td :colspan="tableColumns.length" class="loading-cell">
-                  <GlobalLoading size="medium" />
-                  <span>加载中...</span>
-                </td>
-              </tr>
+              <TableLoadingRow v-if="loading" :colspan="tableColumns.length" />
               <tr v-else-if="queryData.length === 0">
                 <td :colspan="tableColumns.length" class="empty-cell">
                   <i class="fas fa-inbox"></i>
@@ -443,51 +437,33 @@
       </div>
     </div>
 
-    <!-- 权限不足提示 -->
-    <div v-if="!canView" class="permission-denied-container">
-      <div class="permission-denied-content">
-        <div class="permission-icon">
-          <i class="fas fa-lock"></i>
-        </div>
-        <h3 class="permission-title">访问受限</h3>
-        <p class="permission-message">抱歉，您没有权限访问综合查询页面</p>
-        <div class="permission-suggestions">
-          <h4>可能的解决方案：</h4>
-          <ul>
-            <li>联系管理员分配相应的查询权限</li>
-            <li>确认您的账户具有适当的角色</li>
-            <li>如需帮助，请联系技术支持</li>
-          </ul>
-        </div>
-        <el-button @click="router.back()" type="default">
-          <i class="fas fa-arrow-left"></i>
-          返回上一页
-        </el-button>
-      </div>
     </div>
-    </div>
+    </PermissionGate>
 
     <!-- 快速出库模态框 -->
     <QuickSaleModal
+      v-if="showQuickSaleModal"
       v-model="showQuickSaleModal"
       :options="editModalOptions"
       @success="handleQuickSaleSuccess"
     />
 
     <ReturnStockModal
+      v-if="showReturnModal"
       v-model="showReturnModal"
       :device-info="selectedReturnDevice"
       @success="handleReturnStockSuccess"
     />
 
     <QueryEditModal
+      v-if="showEditModal"
       v-model="showEditModal"
       :phone-id="selectedEditPhoneId"
       @success="handleEditSuccess"
     />
-    </div>
 
     <QueryDetailDialog
+      v-if="showDetailModal"
       v-model="showDetailModal"
       :detail-item="detailItem"
       :can-edit="canEdit"
@@ -531,8 +507,7 @@
         </div>
 
         <div v-if="loadingImages" class="loading-images">
-          <i class="fas fa-spinner fa-spin"></i>
-          <p>加载图片中...</p>
+          <InlineLoading text="加载图片中..." />
         </div>
 
         <div v-else-if="productImages.length === 0" class="no-images">
@@ -638,10 +613,11 @@
         </div>
       </div>
     </teleport>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick, defineAsyncComponent } from 'vue'
 import { useRouter, onBeforeRouteLeave } from 'vue-router'
 import { ElMessage, ElMessageBox, ElImageViewer } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
@@ -657,15 +633,13 @@ import unifiedApi from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import { formatImageUrl } from '@/utils/format'
 import { createTempFileTracker, type TempFileTracker } from '@/utils/temp-file-cleaner'
+import { canAccessRoutePath } from '@/constants/routePermissions'
 import draggable from 'vuedraggable'
 import Pagination from '../../components/Pagination.vue'
-import GlobalLoading from '../../components/GlobalLoading.vue'
-import { PageHeader, PermissionDenied } from '@/components/base'
+import InlineLoading from '@/components/InlineLoading.vue'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
+import { PageHeader, PermissionGate } from '@/components/base'
 import Image from '@/components/Image.vue'
-import QuickSaleModal from '@/components/query/QuickSaleModal.vue'
-import QueryEditModal from '@/components/query/QueryEditModal.vue'
-import QueryDetailDialog from '@/components/query/QueryDetailDialog.vue'
-import ReturnStockModal from '@/components/query/ReturnStockModal.vue'
 import SalesReceipt from '@/components/query/SalesReceipt.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
@@ -676,6 +650,10 @@ import { logger } from '@/utils/logger'
 
 // 定义消息提示函数
 const message = ElMessage
+const QuickSaleModal = defineAsyncComponent(() => import('@/components/query/QuickSaleModal.vue'))
+const QueryEditModal = defineAsyncComponent(() => import('@/components/query/QueryEditModal.vue'))
+const QueryDetailDialog = defineAsyncComponent(() => import('@/components/query/QueryDetailDialog.vue'))
+const ReturnStockModal = defineAsyncComponent(() => import('@/components/query/ReturnStockModal.vue'))
 
 // 字段权限相关
 import { fieldPermissions } from '../../composables/useFieldPermissions'
@@ -692,6 +670,15 @@ const { refreshing, refresh } = useRefreshData()
 const { isMobile } = useMobileDetection()
 const canReturnToStock = computed(() => hasQueryPagePermission('return-to-stock'))
 const { exportFile, buildDateFilename, sanitizeParams } = useImportExport()
+
+const guardedPush = (target: string) => {
+  if (!canAccessRoutePath(target, authStore)) {
+    message.warning('您没有访问此页面的权限')
+    return
+  }
+
+  router.push(target)
+}
 
 // 响应式数据
 const { loading } = useLoadingState()
@@ -1273,7 +1260,7 @@ const loadQueryStatistics = async (
   }
 }
 
-const loadQueryData = async (force = false) => {
+const loadQueryData = async (force = false, showLoadingState = true) => {
   const params = buildQueryParams()
   const cacheKey = getQueryCacheKey(params)
   const requestId = ++latestQueryRequestId
@@ -1292,7 +1279,9 @@ const loadQueryData = async (force = false) => {
     }
   }
 
-  loading.value = true
+  if (showLoadingState) {
+    loading.value = true
+  }
   const statisticsPromise = loadQueryStatistics(params, { force, cacheKey, requestId })
 
   try {
@@ -1337,7 +1326,7 @@ const loadQueryData = async (force = false) => {
     queryData.value = []
     setTotal(0)
   } finally {
-    if (requestId === latestQueryRequestId) {
+    if (showLoadingState && requestId === latestQueryRequestId) {
       loading.value = false
     }
   }
@@ -1681,7 +1670,7 @@ const exportToExcel = async () => {
 const goToStockIn = () => {
   try {
     // 跳转到库存页面，并通过 URL 参数触发打开入库模态框
-    router.push('/inventory?openStockIn=true')
+    guardedPush('/inventory?openStockIn=true')
   } catch (error) {
     logger.error('跳转到采购入库页面失败:', error)
     message.error('跳转失败，请手动访问采购入库页面')
@@ -1692,7 +1681,7 @@ const goToStockIn = () => {
 const goToSales = () => {
   try {
     // 在当前标签页跳转
-    router.push('/sales')
+    guardedPush('/sales')
   } catch (error) {
     logger.error('跳转到销售页面失败:', error)
     message.error('跳转失败，请手动访问销售页面')
@@ -1769,7 +1758,7 @@ const handleRefresh = async () => {
   await refresh(async () => {
     invalidateQueryCaches()
     await Promise.all([
-      loadQueryData(true),
+      loadQueryData(true, false),
       loadQueryOptions()
     ])
   })
@@ -4101,106 +4090,6 @@ textarea.form-control {
   .pagination select {
     font-size: 12px;
     padding: 6px 10px;
-  }
-}
-
-/* 权限提示样式 */
-.permission-denied-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 60vh;
-  padding: 2rem;
-}
-
-.permission-denied-content {
-  background: white;
-  border-radius: 12px;
-  padding: 3rem 2rem;
-  text-align: center;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  border: 1px solid var(--border-color);
-  max-width: 500px;
-  width: 100%;
-}
-
-.permission-icon {
-  font-size: 4rem;
-  color: var(--danger-color);
-  margin-bottom: 1.5rem;
-  opacity: 0.8;
-}
-
-.permission-title {
-  font-size: 1.5rem;
-  color: var(--dark-color);
-  margin-bottom: 1rem;
-  font-weight: 600;
-}
-
-.permission-message {
-  color: var(--secondary-color);
-  font-size: 1.1rem;
-  margin-bottom: 2rem;
-  line-height: 1.6;
-}
-
-.permission-suggestions {
-  text-align: left;
-  background: var(--light-bg);
-  border-radius: 8px;
-  padding: 1.5rem;
-  margin-bottom: 2rem;
-  border-left: 4px solid var(--primary-color);
-}
-
-.permission-suggestions h4 {
-  color: var(--dark-color);
-  margin-bottom: 1rem;
-  font-size: 1.1rem;
-  font-weight: 600;
-}
-
-.permission-suggestions ul {
-  margin: 0;
-  padding-left: 1.5rem;
-}
-
-.permission-suggestions li {
-  color: var(--secondary-color);
-  margin-bottom: 0.5rem;
-  line-height: 1.5;
-}
-
-.permission-suggestions li:last-child {
-  margin-bottom: 0;
-}
-
-.permission-denied-content .btn {
-  min-width: 140px;
-}
-
-@media (max-width: 768px) {
-  .permission-denied-container {
-    padding: 1rem;
-    min-height: 50vh;
-  }
-
-  .permission-denied-content {
-    padding: 2rem 1.5rem;
-  }
-
-  .permission-icon {
-    font-size: 3rem;
-    margin-bottom: 1rem;
-  }
-
-  .permission-title {
-    font-size: 1.3rem;
-  }
-
-  .permission-message {
-    font-size: 1rem;
   }
 }
 

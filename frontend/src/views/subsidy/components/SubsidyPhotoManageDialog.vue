@@ -134,8 +134,7 @@
               @error="handleViewerImageLoad"
             />
             <div v-if="viewerLoading" class="photo-viewer-loading">
-              <i class="fas fa-spinner fa-spin"></i>
-              <span>图片加载中...</span>
+              <InlineLoading text="图片加载中..." />
             </div>
           </div>
           <el-button
@@ -162,6 +161,7 @@
 
 <script setup lang="ts">
 import { computed, defineAsyncComponent, nextTick, ref, watch } from 'vue'
+import InlineLoading from '@/components/InlineLoading.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { storage } from '@/composables/core/useLocalStorage'
 import { deleteTempFiles } from '@/utils/temp-file-cleaner'

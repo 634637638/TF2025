@@ -8,11 +8,15 @@
 - [分页标准](pagination-standards.md) - 分页组件规范
 - [搜索标准](search-standards.md) - 搜索功能规范
 - [通知标准](notification-standards.md) - 消息通知规范
+- [全局加载动画统一规范](global-loading-standard.md) - 页面切换、局部加载，以及“首屏加载 / 顶部静默刷新”规范
+- [菜单图标管理规范](menu-icon-management-standard.md) - 菜单图标在线检索、本地缓存、统一渲染规范
+- [前端最新请求规范](latest-request-standard.md) - 搜索、筛选、分页请求取消与旧响应防覆盖规范
 - [统一页面结构](unified-page-structure.md) - 页面统一架构
 
 ## 📖 指南文档
 
 - [字段权限指南](field-permission-guide.md) - 字段级权限使用
+- [近期 UI 与数据修复记录](recent-ui-and-data-fixes-2026-06-01.md) - 基础资料、菜单点击、价格采集相关修复记录
 - [模态框开发指南](modal-development-guide.md) - 对话框开发
 - [移动端组件示例](mobile-component-examples.md) - 响应式组件
 - [通知指南](notification-guide.md) - 消息通知使用

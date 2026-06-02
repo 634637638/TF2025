@@ -774,6 +774,12 @@ router.get('/brand-images-info', unifiedAuth, requirePermission('system:view'), 
 // 获取站点信息设置（使用现有的settings表）
 router.get('/site-settings', async (req, res) => {
   try {
+    if (!isConnected()) {
+      log.warn('数据库未连接，站点信息设置使用默认值返回');
+      ApiResponse.success(res, { ...DEFAULT_SITE_SETTINGS });
+      return;
+    }
+
     const db = getDatabase();
 
     try {
@@ -798,8 +804,8 @@ router.get('/site-settings', async (req, res) => {
       ApiResponse.success(res, { ...DEFAULT_SITE_SETTINGS });
     }
   } catch (error) {
-    log.error('获取站点信息设置失败:', error);
-    ApiResponse.error(res, '获取站点信息设置失败', 500);
+    log.warn('获取站点信息设置失败，已使用默认值返回:', error.message);
+    ApiResponse.success(res, { ...DEFAULT_SITE_SETTINGS });
   }
 });
 

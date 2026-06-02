@@ -212,8 +212,10 @@
       dialog-class="my-center-purchase-dialog"
       :show-default-footer="false"
     >
-      <div v-loading="loadingPurchase" class="purchase-records">
-        <div v-if="purchaseRecords.length > 0" class="records-list">
+      <div class="purchase-records">
+        <SectionLoading v-if="loadingPurchase" text="加载中..." />
+
+        <div v-else-if="purchaseRecords.length > 0" class="records-list">
           <div v-for="record in purchaseRecords" :key="record.id" class="record-item">
             <div class="record-header">
               <span class="invoice-number">{{ record.invoice_number || '无发票号' }}</span>
@@ -286,6 +288,7 @@ import { storage } from '@/services/storage'
 import { H5_STORAGE_KEYS } from '@/constants/storage'
 import { normalizeAppleId, normalizeIdCard, normalizePersonName } from '@/utils/security'
 import { logger } from '@/utils/logger'
+import SectionLoading from '@/components/SectionLoading.vue'
 const router = useRouter()
 const shopConfig = ref<any>({})
 const serviceVisible = ref(false)
@@ -295,6 +298,7 @@ const profileVisible = ref(false)
 const loadingPurchase = ref(false)
 const savingProfile = ref(false)
 const purchaseRecords = ref<any[]>([])
+const currentUser = ref<AuthUser | null>(userManager.getUser())
 
 // 个人资料表单
 const profileFormRef = ref<FormInstance>()
@@ -319,7 +323,7 @@ const profileFormRules = {
 }
 
 // 当前用户
-const user = computed<AuthUser | null>(() => userManager.getUser())
+const user = computed<AuthUser | null>(() => currentUser.value)
 
 // 加载配置
 const loadConfig = async () => {
@@ -360,13 +364,9 @@ const handleLogout = async () => {
 
     await authLogout()
     userManager.clearAuth()
+    currentUser.value = null
 
     ElMessage.success('已退出登录')
-
-    // 刷新页面以更新UI状态
-    setTimeout(() => {
-      window.location.reload()
-    }, 500)
   } catch (error) {
     if (error !== 'cancel') {
       logger.error('登出失败:', error)
@@ -532,6 +532,7 @@ const saveProfile = async () => {
     // 更新本地用户信息
     if (response) {
       userManager.setUser(response)
+      currentUser.value = response
     }
 
     // 同时保存到本地存储作为备份
@@ -545,11 +546,6 @@ const saveProfile = async () => {
 
     ElMessage.success('个人资料保存成功')
     profileVisible.value = false
-
-    // 刷新页面以更新用户信息
-    setTimeout(() => {
-      window.location.reload()
-    }, 500)
   } catch (error: any) {
     logger.error('保存个人资料失败:', error)
     ElMessage.error(error.message || '保存个人资料失败')

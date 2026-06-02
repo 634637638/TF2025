@@ -3,9 +3,9 @@ import { useAuthStore } from '@/stores/auth'
 import { useAppStore } from '@/stores/app'
 import { useLoadingStore } from '@/stores/loading'
 import { useSiteSettingsStore } from '@/stores/siteSettings'
-import { ElMessage, ElNotification } from 'element-plus'
 import { unifiedApi as api } from '@/utils/unified-api'
-import { getRoutePermissions } from '@/constants/routePermissions'
+import { showElementNotification, showElementWarning } from '@/utils/element-feedback'
+import { canAccessRoutePath, getRoutePermissions } from '@/constants/routePermissions'
 import { clearPersistedAuthData, getBackendDisconnectInfo, setBackendDisconnectedState } from '@/utils/auth-session'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { storage } from '@/services/storage'
@@ -116,7 +116,7 @@ async function checkUserRoleStatus(): Promise<void> {
 
       if (!hasActiveRole) {
         // 显示友好的提示信息
-        ElNotification({
+        showElementNotification({
           title: '账户已被禁用',
           message: '您的账户（或角色）已被禁用，请联系管理员开启角色（或工号）的登录权限。',
           type: 'error',
@@ -237,7 +237,7 @@ export class RouteGuards {
 
             if (canRedirect()) {
               markRedirected()
-              ElNotification({
+              showElementNotification({
                 title: '连接已断开',
                 message: '后端失联超过5分钟，请重新登录后再继续操作',
                 type: 'warning',
@@ -339,7 +339,7 @@ export class RouteGuards {
           // 标记已跳转
           markRedirected()
 
-          ElNotification({
+          showElementNotification({
             title: '需要登录',
             message: '请先登录后再访问此页面',
             type: 'warning',
@@ -354,9 +354,11 @@ export class RouteGuards {
         }
 
         // 3. 确保权限数据已加载完成
+        const requiredPermissions = getRoutePermissions(to.path)
+        const hasNoLoadedPermissions = !Array.isArray(authStore.userPermissions) || authStore.userPermissions.length === 0
 
-        // 优化：如果用户已认证但权限数据为空，尝试主动获取（不等待）
-        if (authStore.isAuthenticated && (!Array.isArray(authStore.userPermissions) || authStore.userPermissions.length === 0)) {
+        // 只对需要权限的路由等待一次权限刷新；普通路由不阻塞跳转
+        if (authStore.isAuthenticated && requiredPermissions?.length && hasNoLoadedPermissions) {
           // ⚠️ 容错：检查 token 是否有效
           const token = authStore.token || storage.getToken()
           if (!token || token.length < 10) {
@@ -364,11 +366,11 @@ export class RouteGuards {
             return next()
           }
 
-          // 不阻塞页面跳转，后台静默刷新权限即可
+          // 进入受限路由前先恢复权限，避免页面先进入再由组件层提示
           const currentRole = authStore.user?.role
           const currentRoles = authStore.roles
 
-          void authStore.fetchUserInfo().then(() => {
+          await authStore.fetchUserInfo().then(() => {
             if (!authStore.user?.role && currentRole) {
               authStore.user.role = currentRole
               authStore.roles = currentRoles
@@ -385,17 +387,14 @@ export class RouteGuards {
         await checkUserRoleStatus()
 
         // 5. 权限检查
-        const requiredPermissions = getRoutePermissions(to.path)
         if (requiredPermissions && requiredPermissions.length > 0) {
-          // 如果权限数据仍然为空，但用户已认证，允许通过（避免无限循环）
           if (!Array.isArray(authStore.userPermissions) || authStore.userPermissions.length === 0) {
-            return next()
+            showElementWarning('您没有访问此页面的权限')
+            return to.path === '/dashboard' ? next() : next('/dashboard')
           }
 
-          const hasRoutePermission = requiredPermissions.some((permission) => authStore.hasPermission(permission))
-
-          if (!hasRoutePermission) {
-            ElMessage.warning('您没有访问此页面的权限')
+          if (!canAccessRoutePath(to.path, authStore)) {
+            showElementWarning('您没有访问此页面的权限')
 
             if (to.path === '/dashboard') {
               return next()
@@ -407,7 +406,7 @@ export class RouteGuards {
 
         // 5. 检查页面访问频率限制（开发环境绕过）
         if (import.meta.env.PROD && this.checkRateLimit(to.path)) {
-          ElMessage.warning('页面访问过于频繁，请稍后再试')
+          showElementWarning('页面访问过于频繁，请稍后再试')
           return next(false)
         }
 
@@ -431,7 +430,7 @@ export class RouteGuards {
         return next()
 
       } catch (error) {
-        ElNotification({
+        showElementNotification({
           title: '路由错误',
           message: '页面跳转时发生错误，请重试',
           type: 'error',
@@ -533,7 +532,7 @@ export class RouteGuards {
 
       // 如果站点设置还没有加载完成，等待
       if (!siteSettingsStore.lastUpdated && !siteSettingsStore.isLoading) {
-        siteSettingsStore.loadSiteSettings(true).catch((_error) => {
+        siteSettingsStore.loadSiteSettings().catch((_error) => {
           // 触发站点设置加载失败，忽略
         })
       }
@@ -616,14 +615,12 @@ export class RouteGuards {
    * 判断是否需要显示页面加载
    */
   private shouldShowPageLoading(to: any, from: any): boolean {
-    // 页面标题发生变化时显示加载
-    if (to.meta?.title !== from.meta?.title) return true
+    if (to.meta?.disableRouteLoading) {
+      return false
+    }
 
-    // 主要路由变化时显示加载
-    const mainRoutes = ['/dashboard', '/suppliers', '/sales', '/inventory', '/customers']
-    if (mainRoutes.some(route => to.path.startsWith(route))) return true
-
-    return false
+    // 全站统一：只要页面路径变化，就交给全局 loading 呈现页面切换反馈。
+    return to.path !== from.path
   }
 
   /**
@@ -660,7 +657,7 @@ export class RouteGuards {
     // 检查并显示页面提示（如果配置了）
     if (to.meta?.pageTip) {
       setTimeout(() => {
-        ElNotification({
+        showElementNotification({
           title: '页面提示',
           message: to.meta.pageTip,
           type: 'info',

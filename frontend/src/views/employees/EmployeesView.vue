@@ -1,5 +1,10 @@
 <template>
   <div class="employees-view admin-page">
+    <PermissionGate
+      :can-view="canView"
+      module-name="员工管理"
+      permission-code="employee:view"
+    >
     <!-- 页面头部 - 使用公共组件 -->
     <PageHeader
       icon="fas fa-users"
@@ -26,20 +31,7 @@
       </template>
     </PageHeader>
 
-    <!-- 权限不足提示 - 在权限加载完成后显示 -->
-    <PermissionAccessNotice
-      v-if="!permissionLoading"
-      v-permission-not="'employee:view'"
-      module-name="员工管理"
-      permission-name="员工查看权限"
-      permission-code="employee:view"
-      :has-menu-permission-only="hasMenuPermissionOnly"
-      :related-permissions="employeePermissions"
-      detail-title="员工管理相关权限"
-    />
-
-    <!-- 权限验证通过后的内容 -->
-    <div v-if="!permissionLoading" class="content admin-page-content" v-permission="'employee:view'">
+    <div class="content admin-page-content">
     <!-- 统计卡片 -->
     <div v-if="showStatsCards" class="stats-cards">
       <div v-if="canViewField('stats_total_employees')" class="stat-card">
@@ -149,14 +141,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-if="loading" class="loading-row">
-              <td :colspan="visibleColumnCount">
-                <div class="loading-content">
-                  <i class="fas fa-spinner fa-spin"></i>
-                  <span>正在加载数据...</span>
-                </div>
-              </td>
-            </tr>
+            <TableLoadingRow v-if="loading" :colspan="visibleColumnCount" />
             <tr v-else-if="filteredEmployees.length === 0" class="empty-row">
               <td :colspan="visibleColumnCount">
                 <div class="empty-content">
@@ -164,8 +149,12 @@
                   <div class="empty-text">
                     <h4>暂无员工数据</h4>
                     <p>点击上方"新增员工"按钮添加第一个员工</p>
-                    <el-button type="info" size="small" @click="loadEmployees()" :disabled="loading" :icon="Refresh">
-                      {{ loading ? '加载中...' : '重新加载' }}
+                    <el-button type="info" size="small" @click="loadEmployees()" :disabled="loading">
+                      <InlineLoading v-if="loading" text="加载中..." size="small" variant="inherit" />
+                      <template v-else>
+                        <el-icon><Refresh /></el-icon>
+                        重新加载
+                      </template>
                     </el-button>
                   </div>
                 </div>
@@ -429,8 +418,7 @@
           <el-checkbox-group v-model="employeeForm.role_ids" :disabled="!canEditField('role_ids')">
             <template v-if="loadingRoles">
               <div class="loading-roles">
-                <el-icon class="is-loading"><Loading /></el-icon>
-                <span>正在加载角色...</span>
+                <InlineLoading text="正在加载角色..." />
               </div>
             </template>
             <template v-else-if="roles.length === 0">
@@ -657,10 +645,7 @@
         </div>
 
         <div class="roles-list">
-          <div v-if="loadingRoles" class="loading-content">
-            <el-icon class="is-loading"><Loading /></el-icon>
-            <span>加载角色列表中...</span>
-          </div>
+          <TableLoadingRow v-if="loadingRoles" mode="block" text="加载中..." />
           <div v-else-if="roles.length === 0" class="empty-content">
             <el-empty description="暂无角色，请点击上方新增角色按钮添加" />
           </div>
@@ -748,7 +733,7 @@
       </template>
     </MobileDialog>
     </div>
-    <!-- 权限验证通过后的内容 结束 -->
+    </PermissionGate>
   </div>
 </template>
 
@@ -762,19 +747,19 @@ import { useLoadingState } from '@/composables'
 import { useImportExport } from '@/composables/useImportExport'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useRefreshData } from '@/composables/useRefreshData'
-import { usePermissionModuleInfo } from '@/composables/usePermissionModuleInfo'
 import { useCachedRequest, DEFAULT_CACHE_TTL } from '@/composables/usePageCache'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
 import { useAuthStore } from '@/stores/auth'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
-import { normalizePermissionList } from '@/utils/permissionList'
 import { logger } from '@/utils/logger'
 import type { Employee, EmployeeForm, Role } from '@/types/employee'
-import PermissionAccessNotice from '@/components/base/PermissionAccessNotice.vue'
 import Pagination from '../../components/Pagination.vue'
+import InlineLoading from '@/components/InlineLoading.vue'
+import SectionLoading from '@/components/SectionLoading.vue'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
-import { PageHeader } from '@/components/base'
+import { PageHeader, PermissionGate } from '@/components/base'
 import { useMobile } from '@/composables/mobile'
 import {
   Plus,
@@ -810,17 +795,10 @@ const authStore = useAuthStore()
 const { init: initFieldPermissions } = fieldPermissions
 const { isMobile } = useMobile()
 
-// 权限加载状态和权限详情显示
-const permissionLoading = ref(true)
-const normalizedEmployeePermissions = computed<string[]>(() => normalizePermissionList(authStore?.permissions))
-const { hasMenuPermissionOnly, modulePermissions: employeePermissions } = usePermissionModuleInfo(
-  normalizedEmployeePermissions,
-  'employees_employeesview'
-)
-
 // 响应式数据
 const employees = ref<Employee[]>([])
 const { loading } = useLoadingState()
+loading.value = true
 const { loading: submitting } = useLoadingState()
 const { loading: exporting } = useLoadingState()
 const { exportFile, buildDateFilename, sanitizeParams } = useImportExport()
@@ -1055,6 +1033,7 @@ const employeesWithPhone = computed(() => employees.value.filter(e => e.phone).l
 const loadEmployees = async (bustCache: boolean = false, silentError: boolean = false, showLoadingState: boolean = true) => {
   if (!canView.value) {
     employees.value = []
+    loading.value = false
     return
   }
 
@@ -1731,11 +1710,9 @@ const handleExport = async () => {
 
 // 生命周期
 onMounted(async () => {
-  // 初始化权限加载状态为 false，表示权限已加载完成
-  permissionLoading.value = false
-
   // 权限预检查，避免不必要的API调用
   if (!canView.value) {
+    loading.value = false
     return
   }
 
@@ -1750,202 +1727,6 @@ onMounted(async () => {
   padding: 24px;
   background: #f5f7fa;
   min-height: 100vh;
-}
-
-/* 权限拒绝页面样式 - 与型号页面保持一致的背景可见样式 */
-.permission-denied {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 60vh;
-  background: #f8f9fa;
-  border-radius: 12px;
-  margin: 20px 0;
-}
-
-.permission-denied-wrapper {
-  width: 100%;
-  max-width: 600px;
-}
-
-.permission-denied-card {
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-  overflow: hidden;
-  border: 1px solid #e8ecef;
-}
-
-.permission-icon {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
-  padding: 30px;
-  text-align: center;
-  font-size: 48px;
-}
-
-.permission-icon i {
-  font-size: 48px;
-  opacity: 0.9;
-}
-
-.permission-content {
-  padding: 40px 30px;
-  text-align: center;
-}
-
-.permission-content h2 {
-  color: #2c3e50;
-  margin: 0 0 15px 0;
-  font-size: 28px;
-  font-weight: 600;
-}
-
-.permission-message {
-  color: #6c757d;
-  font-size: 16px;
-  line-height: 1.6;
-  margin-bottom: 30px;
-}
-
-.permission-status {
-  display: flex;
-  gap: 20px;
-  justify-content: center;
-  margin-bottom: 30px;
-}
-
-.status-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 20px;
-  border-radius: 25px;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.status-item.has-menu {
-  background: #d4edda;
-  color: #155724;
-}
-
-.status-item.missing-view {
-  background: #f8d7da;
-  color: #721c24;
-}
-
-.permission-info {
-  background: #f8f9fa;
-  border-radius: 12px;
-  padding: 25px;
-  margin-bottom: 30px;
-  text-align: left;
-  border-left: 4px solid #667eea;
-}
-
-.info-item {
-  display: flex;
-  align-items: center;
-  margin-bottom: 12px;
-  font-size: 14px;
-}
-
-.info-item:last-child {
-  margin-bottom: 0;
-}
-
-.info-item label {
-  font-weight: 600;
-  color: #495057;
-  margin-right: 10px;
-  min-width: 80px;
-}
-
-.permission-name {
-  color: #2c3e50;
-  font-weight: 500;
-}
-
-.permission-code {
-  background: #e9ecef;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-family: 'Monaco', 'Consolas', monospace;
-  font-size: 12px;
-  color: #495057;
-}
-
-.permission-suggestion {
-  background: #e7f3ff;
-  border: 1px solid #b3d9ff;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 30px;
-  display: flex;
-  align-items: flex-start;
-  gap: 15px;
-}
-
-.permission-suggestion i {
-  color: #0066cc;
-  font-size: 18px;
-  margin-top: 2px;
-}
-
-.permission-suggestion p {
-  margin: 0;
-  color: #0066cc;
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.permission-actions {
-  display: flex;
-  gap: 15px;
-  justify-content: center;
-  flex-wrap: wrap;
-  margin-bottom: 30px;
-}
-
-.permission-details {
-  background: #f8f9fa;
-  border-radius: 8px;
-  padding: 20px;
-  text-align: left;
-  border-top: 1px solid #e8ecef;
-}
-
-.permission-details h4 {
-  margin: 0 0 15px 0;
-  color: #495057;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.permission-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.permission-tag {
-  background: #e9ecef;
-  color: #495057;
-  padding: 4px 12px;
-  border-radius: 16px;
-  font-size: 12px;
-  font-weight: 500;
-  font-family: 'Monaco', 'Consolas', monospace;
-}
-
-.permission-tag.current-module {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
-}
-
-.permission-actions .btn {
-  min-width: 140px;
 }
 
 /* 标签页导航样式 */
@@ -2500,21 +2281,7 @@ onMounted(async () => {
   color: #6f42c1;
 }
 
-/* 加载和空状态样式 */
-.loading-row td {
-  padding: 40px 12px;
-  text-align: center;
-}
-
-.loading-content {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  color: #6c757d;
-  font-size: 16px;
-}
-
+/* 空状态样式 */
 .empty-row td {
   padding: 60px 12px;
   text-align: center;

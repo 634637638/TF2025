@@ -87,14 +87,7 @@ export default defineConfig({
               return 'pdf';
             }
 
-            if (
-              id.includes('/swiper/') ||
-              id.includes('/aos/') ||
-              id.includes('/vuedraggable/') ||
-              id.includes('/v3-infinite-loading/')
-            ) {
-              return 'ui-extensions';
-            }
+            // H5 交互与动效库交给 Rollup 自动拆分；强制合并容易和 vue-vendor 形成循环 chunk。
 
             if (
               id.includes('/axios/') ||

@@ -1,17 +1,17 @@
 <template>
-  <PermissionDenied
-    v-if="!canView"
+  <PermissionGate
     :can-view="canView"
+    mode="denied"
     module-key="preorders"
     module-name="预定管理"
     permission-code="preorders:view"
-  />
+  >
 
-  <div v-else class="preorders-view">
+  <div class="preorders-view">
     <!-- 页面标题 -->
     <PageHeader title="预定管理">
       <template #actions>
-        <el-button @click="handleRefresh" :loading="loading">
+        <el-button @click="handleRefresh" :loading="refreshing" :disabled="refreshing">
           <i class="fas fa-sync-alt"></i>
           刷新
         </el-button>
@@ -82,13 +82,16 @@
           <el-table
             ref="pendingTableRef"
             :data="pendingPreorders"
-            v-loading="loading"
             stripe
             class="preorders-table"
             @row-dblclick="handleRowDblClick"
             :row-key="(row: Preorder) => String(row.id)"
             :expand-row-keys="expandedRows"
           >
+            <template #empty>
+              <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
+              <el-empty v-else description="暂无预定单" />
+            </template>
             <el-table-column v-if="isMobile" type="expand" width="1">
               <template #default="{ row }">
                 <div class="mobile-row-actions">
@@ -220,13 +223,16 @@
           <el-table
             ref="matchedTableRef"
             :data="matchedPreorders"
-            v-loading="loading"
             stripe
             class="preorders-table"
             @row-dblclick="handleRowDblClick"
             :row-key="(row: Preorder) => String(row.id)"
             :expand-row-keys="expandedRows"
           >
+            <template #empty>
+              <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
+              <el-empty v-else description="暂无预定单" />
+            </template>
             <el-table-column v-if="isMobile" type="expand" width="1">
               <template #default="{ row }">
                 <div class="mobile-row-actions">
@@ -474,13 +480,16 @@
           <el-table
             ref="deliveredTableRef"
             :data="deliveredPreorders"
-            v-loading="loading"
             stripe
             class="preorders-table"
             @row-dblclick="handleRowDblClick"
             :row-key="(row: Preorder) => String(row.id)"
             :expand-row-keys="expandedRows"
           >
+            <template #empty>
+              <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
+              <el-empty v-else description="暂无预定单" />
+            </template>
             <el-table-column v-if="isMobile" type="expand" width="1">
               <template #default="{ row }">
                 <div class="mobile-row-actions">
@@ -590,16 +599,18 @@
 
     <!-- 预定单表单模态框（创建/编辑） -->
     <PreorderFormModal
+      v-if="showFormModal"
       v-model:visible="showFormModal"
       :mode="formModalMode"
       :preorder="selectedPreorder"
       @success="handlePreorderFormSuccess"
     />
   </div>
+  </PermissionGate>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useNotification } from '@/composables/useNotification'
@@ -607,10 +618,12 @@ import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
 import { useLoadingState } from '@/composables'
 import { preorderApi, Preorder, PreorderStatus } from '@/api/preorder'
-import { PageHeader, PermissionDenied } from '@/components/base'
+import { PageHeader, PermissionGate } from '@/components/base'
 import Pagination from '@/components/Pagination.vue'
-import PreorderFormModal from './page/PreorderFormModal.vue'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { logger } from '@/utils/logger'
+
+const PreorderFormModal = defineAsyncComponent(() => import('./page/PreorderFormModal.vue'))
 
 const { success, error, warning } = useNotification()
 const {
@@ -653,6 +666,8 @@ const showStatsCards = computed(() => (
 // 状态
 const activeTab = ref('new')
 const { loading } = useLoadingState()
+loading.value = true
+const refreshing = ref(false)
 const matchedStatus = ref('all')
 const isMobile = ref(window.innerWidth <= 768)
 
@@ -708,8 +723,10 @@ const loadStats = async () => {
 }
 
 // 加载待匹配预定单
-const loadPendingPreorders = async () => {
-  loading.value = true
+const loadPendingPreorders = async (showLoadingState = true) => {
+  if (showLoadingState) {
+    loading.value = true
+  }
   try {
     const data = await preorderApi.getPreorders({
       page: pagination.page,
@@ -721,13 +738,17 @@ const loadPendingPreorders = async () => {
   } catch (err) {
     error('加载待匹配预定单失败')
   } finally {
-    loading.value = false
+    if (showLoadingState) {
+      loading.value = false
+    }
   }
 }
 
 // 加载已匹配预定单（包含待匹配、已匹配、已取消）
-const loadMatchedPreorders = async () => {
-  loading.value = true
+const loadMatchedPreorders = async (showLoadingState = true) => {
+  if (showLoadingState) {
+    loading.value = true
+  }
   try {
     // 根据筛选状态加载不同数据
     // 'all' - 加载全部（待匹配、已匹配、已取消）
@@ -751,13 +772,17 @@ const loadMatchedPreorders = async () => {
   } catch (err) {
     error('加载已匹配预定单失败')
   } finally {
-    loading.value = false
+    if (showLoadingState) {
+      loading.value = false
+    }
   }
 }
 
 // 加载已交付预定单
-const loadDeliveredPreorders = async () => {
-  loading.value = true
+const loadDeliveredPreorders = async (showLoadingState = true) => {
+  if (showLoadingState) {
+    loading.value = true
+  }
   try {
     const data = await preorderApi.getPreorders({
       page: pagination.page,
@@ -769,19 +794,21 @@ const loadDeliveredPreorders = async () => {
   } catch (err) {
     error('加载已交付预定单失败')
   } finally {
-    loading.value = false
+    if (showLoadingState) {
+      loading.value = false
+    }
   }
 }
 
 // TAB切换
-const handleTabChange = (tabName: string) => {
+const handleTabChange = async (tabName: string) => {
   pagination.page = 1
   if (tabName === 'new') {
-    loadPendingPreorders()
+    await loadPendingPreorders()
   } else if (tabName === 'matched') {
-    loadMatchedPreorders()
+    await loadMatchedPreorders()
   } else if (tabName === 'delivered') {
-    loadDeliveredPreorders()
+    await loadDeliveredPreorders()
   }
 }
 
@@ -798,13 +825,26 @@ const openCreateModal = () => {
 
 // 刷新数据
 const handleRefresh = async () => {
-  loading.value = true
+  if (refreshing.value) {
+    return
+  }
+
+  refreshing.value = true
   try {
     await loadStats()
-    handleTabChange(activeTab.value)
-    success('刷新成功')
+    if (activeTab.value === 'new') {
+      await loadPendingPreorders(false)
+    } else if (activeTab.value === 'matched') {
+      await loadMatchedPreorders(false)
+    } else if (activeTab.value === 'delivered') {
+      await loadDeliveredPreorders(false)
+    }
+    success('数据刷新成功')
+  } catch (err) {
+    logger.error('刷新预定数据失败:', err)
+    error('刷新失败，请重试')
   } finally {
-    loading.value = false
+    refreshing.value = false
   }
 }
 
@@ -1070,6 +1110,7 @@ const getMatchedTimeText = (row: Preorder) => {
 // 初始化
 onMounted(async () => {
   if (!canView.value) {
+    loading.value = false
     return
   }
 

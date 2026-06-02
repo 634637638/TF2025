@@ -1,18 +1,13 @@
 <template>
   <div class="sales-view admin-page safe-area-top">
-    <!-- ❌ 无权限时显示提示 -->
-    <PermissionAccessNotice
-      v-if="!canView"
+    <PermissionGate
+      :can-view="canView"
       module-name="销售管理"
-      permission-name="销售管理查看权限"
       permission-code="sales:view"
-      :has-menu-permission-only="hasMenuPermissionOnly"
-      :related-permissions="salesPermissions"
-      detail-title="销售管理相关权限"
-    />
+    >
 
     <!-- 页面头部 - 查看权限控制 -->
-    <div v-else>
+    <div>
       <PageHeader
         icon="fas fa-store"
         title="销售管理"
@@ -44,14 +39,17 @@
             type="info"
             :disabled="refreshing"
           >
-            <i :class="refreshing ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'"></i>
-            <span>刷新</span>
+            <InlineLoading v-if="refreshing" text="刷新中..." size="small" variant="inherit" />
+            <template v-else>
+              <i class="fas fa-sync-alt"></i>
+              <span>刷新</span>
+            </template>
           </el-button>
         </template>
       </PageHeader>
     </div>
 
-    <div v-if="canView" class="content admin-page-content">
+    <div class="content admin-page-content">
       <!-- 统计卡片 -->
     <div v-if="showStatsCards" class="stats-cards">
       <div v-if="canViewSaleField('stats_available_inventory')" class="stat-card">
@@ -464,8 +462,7 @@
                   />
                   <div v-if="showBatchCustomerSearch && (batchCustomerSearchResults.length > 0 || batchCustomerSearching || (batchSaleForm.customer_phone.length >= 11 && !selectedBatchCustomer && !batchCustomerSearching))" class="customer-search-results">
                     <div v-if="batchCustomerSearching" class="search-loading">
-                      <i class="fas fa-spinner fa-spin"></i>
-                      搜索中...
+                      <InlineLoading text="搜索中..." size="small" />
                     </div>
                     <template v-else>
                       <div
@@ -618,12 +615,11 @@
                     :disabled="submitting"
                     :class="{ 'btn-loading': submitting }"
                     @keydown.enter.prevent>
-              <i class="fas fa-shopping-cart"></i>
-              <span v-if="!submitting">确认批量销售</span>
-              <span v-else>
-                <i class="fas fa-spinner fa-spin"></i>
-                处理中...
-              </span>
+              <InlineLoading v-if="submitting" text="处理中..." size="small" variant="inherit" />
+              <template v-else>
+                <i class="fas fa-shopping-cart"></i>
+                <span>确认批量销售</span>
+              </template>
             </el-button>
             <el-button @click="clearBatchSelection" type="info" plain>
               取消
@@ -634,10 +630,7 @@
 
         <!-- 网格视图 -->
         <div v-if="viewMode === 'grid'" class="devices-grid">
-          <div v-if="loading" class="loading-state">
-            <GlobalLoading />
-            <p>加载中...</p>
-          </div>
+          <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
           <div v-else-if="availablePhones.length === 0" class="empty-state">
             <i class="fas" :class="hasActiveFilters ? 'fa-search' : 'fa-inbox'"></i>
             <h3>{{ hasActiveFilters ? '未找到匹配的设备' : '暂无可销售设备' }}</h3>
@@ -752,10 +745,7 @@
 
         <!-- 库存统计表视图 -->
         <div v-if="viewMode === 'summary'" class="table-section admin-panel admin-table-panel">
-          <div v-if="inventorySummaryLoading" class="loading-state">
-            <GlobalLoading />
-            <p>加载库存统计中...</p>
-          </div>
+          <TableLoadingRow v-if="inventorySummaryLoading" mode="block" text="加载中..." />
           <div v-else-if="sortedInventorySummary.length === 0" class="empty-state">
             <i class="fas fa-inbox"></i>
             <h3>暂无库存数据</h3>
@@ -848,12 +838,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-if="loading">
-                  <td :colspan="salesTableVisibleColumnCount" class="loading-cell">
-                    <GlobalLoading size="medium" />
-                    <span>加载中...</span>
-                  </td>
-                </tr>
+                <TableLoadingRow v-if="loading" :colspan="salesTableVisibleColumnCount" />
                 <tr v-else-if="availablePhones.length === 0">
                   <td :colspan="salesTableVisibleColumnCount" class="empty-cell">
                     <div class="empty-cell-content">
@@ -955,7 +940,7 @@
           @change="handlePaginationChange"
         />
       </div>
-    </div>
+    </PermissionGate>
 
     <!-- 销售模态框 -->
     <MobileDialog
@@ -1218,8 +1203,7 @@
                       <!-- 客户搜索结果 -->
                       <div v-if="showCustomerSearch && (customerSearchResults.length > 0 || customerSearching || (saleForm.customer_phone.length >= 11 && !selectedCustomer && !customerSearching))" class="customer-search-results">
                         <div v-if="customerSearching" class="search-loading">
-                          <i class="fas fa-spinner fa-spin"></i>
-                          搜索中...
+                          <InlineLoading text="搜索中..." size="small" />
                         </div>
                         <template v-else>
                           <div
@@ -1480,7 +1464,7 @@
             @click="handleSale"
             @keydown.enter.prevent
           >
-            <GlobalLoading v-if="submitting" size="medium" />
+            <InlineLoading v-if="submitting" size="small" />
             {{ submitting ? '处理中...' : '确认出库' }}
           </el-button>
         </div>
@@ -1497,10 +1481,7 @@
       :show-default-footer="false"
       @close="closeInventoryDetailModal"
     >
-      <div v-if="inventoryDetailLoading" class="loading-state">
-        <GlobalLoading />
-        <p>加载库存明细中...</p>
-      </div>
+      <SectionLoading v-if="inventoryDetailLoading" text="加载中..." />
       <div v-else class="inventory-detail-content">
         <!-- 上方汇总信息卡片 -->
         <div class="detail-summary-cards">
@@ -1800,6 +1781,7 @@
 
     <!-- 批发/划拨对话框 -->
     <WholesaleModal
+      v-if="showWholesaleModal"
       v-model:visible="showWholesaleModal"
       :mode="wholesaleMode"
       :phone-ids="selectedPhones.map(p => p.id)"
@@ -1807,10 +1789,11 @@
       :close-on-click-modal="false"
       @success="handleTransferSuccess"
     />
-  </template>
+  </div>
+</template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, nextTick, watch, defineAsyncComponent } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { usePermissionPreload } from '@/composables/usePermissionPreload'
 import CustomSearch from '@/components/CustomSearch.vue'
@@ -1818,32 +1801,34 @@ import { useMobile, useMobileForm } from '@/composables/mobile'
 import { usePagination } from '@/composables/index'
 import { unifiedApi as api } from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
-import GlobalLoading from '@/components/GlobalLoading.vue'
+import InlineLoading from '@/components/InlineLoading.vue'
+import SectionLoading from '@/components/SectionLoading.vue'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import Pagination from '../../components/Pagination.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { useNotification } from '@/composables/useNotification'
 import { useImportExport } from '@/composables/useImportExport'
 import { usePagePermissions } from '@/composables/usePagePermissions'
-import { usePermissionModuleInfo } from '@/composables/usePermissionModuleInfo'
 import { useRefreshData } from '@/composables/useRefreshData'
 import { useLoadingState } from '@/composables'
 import { useCachedRequest, DEFAULT_CACHE_TTL } from '@/composables/usePageCache'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
 import { useAuthStore } from '@/stores/auth'
-import WholesaleModal from '@/components/WholesaleModal.vue'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import { ElMessageBox } from 'element-plus'
-import { PageHeader } from '@/components/base'
+import { PageHeader, PermissionGate } from '@/components/base'
 import Image from '@/components/Image.vue'
-import PermissionAccessNotice from '@/components/base/PermissionAccessNotice.vue'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
-import html2canvas from 'html2canvas'
 import { storage } from '@/services/storage'
 import { isValidMobilePhone, normalizeAppleId, normalizePersonName, normalizePhoneDigits, resolveAppleAccountEmail } from '@/utils/security'
+import { loadHtml2Canvas } from '@/utils/html2canvas'
+import { extractBrandName, extractSeriesNumber, getBrandOrderWeight, getMemoryOrderWeight } from '@/utils/productSort'
 
 // 导入格式化工具函数
 import { formatNumber, generateProductPlaceholder } from '@/utils/format'
+
+const WholesaleModal = defineAsyncComponent(() => import('@/components/WholesaleModal.vue'))
 
 // 导入类型定义
 import type { Phone, Store, Operator, Supplier, Customer, PhoneBrand, PhoneModel } from '@/types'
@@ -1959,14 +1944,11 @@ const showStatsCards = computed(() => (
 
 const handleSalesPermissionsUpdated = async () => {
 
-  permissionLoading.value = true
   try {
     await preloadPermissions()
     await authStore.fetchUserInfo()
   } catch (refreshError) {
     logger.error('销售页面权限刷新失败:', refreshError)
-  } finally {
-    permissionLoading.value = false
   }
 
   if (!canView.value) {
@@ -1976,6 +1958,14 @@ const handleSalesPermissionsUpdated = async () => {
 
   await initFieldPermissions(true)
   loadAvailablePhones(false, true, false)
+}
+
+const isSalesMobileLayout = () => {
+  return window.innerWidth <= 768 || /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+}
+
+const syncSalesViewMode = () => {
+  viewMode.value = isSalesMobileLayout() ? 'grid' : 'table'
 }
 
 const getTodayDate = () => TimeUtil.nowFormatted(TIME_FORMATS.DATE)
@@ -2001,24 +1991,11 @@ const canViewPrice = computed(() => {
   return hasEditPermission || hasViewPermission || hasQueryPermission || hasPermissionAdminAccess
 })
 
-// 获取用户权限列表用于显示
-const userPermissions = computed(() => {
-  return Array.isArray(authStore.userPermissions) ? authStore.userPermissions : []
-})
-
-const { hasMenuPermissionOnly, modulePermissions: salesPermissions } = usePermissionModuleInfo(
-  userPermissions,
-  'sales_salesview'
-)
-
 // 使用权限预加载Hook
 const { isPreloaded, preloadPermissions } = usePermissionPreload()
 
 // 确保权限数据加载完成后再显示权限相关内容
 const showPermissionElements = ref(false)
-
-// 权限加载状态
-const permissionLoading = ref(false)
 
 // 控制搜索筛选区域的显示
 const showSearchSection = ref(true)
@@ -2277,62 +2254,6 @@ const inventoryDetailLoading = ref(false)
 // 库存统计表截图引用和状态
 const inventorySummaryTableRef = ref<HTMLElement | null>(null)
 const savingInventorySummary = ref(false)
-
-// 提取型号系列号（如 iPhone 15 Pro -> 15）
-const extractSeriesNumber = (model: string): number => {
-  if (!model) return 0
-  const match = model.match(/\d+/)
-  return match ? parseInt(match[0]) : 0
-}
-
-// 内存大小排序权重
-const getMemoryOrderWeight = (memory: string): number => {
-  if (!memory) return 999
-  const size = memory.toUpperCase().replace(/[^0-9A-Z]/g, '')
-
-  // 处理 GB 和 TB
-  if (size.includes('TB')) {
-    const tb = parseInt(size) || 0
-    return tb * 1000 // 1TB = 1000 权重
-  } else if (size.includes('GB')) {
-    const gb = parseInt(size) || 0
-    return gb // 128GB = 128 权重
-  }
-
-  // 纯数字
-  const num = parseInt(size) || 0
-  return num
-}
-
-// 品牌排序权重（苹果优先，其他品牌按字母顺序）
-const getBrandOrderWeight = (brand: string): number => {
-  if (!brand) return 999
-  // 移除 emoji 和特殊字符，只保留字母和中文
-  const brandClean = brand.replace(/[^\u4e00-\u9fa5a-zA-Z]/g, '').toLowerCase().trim()
-
-  // 苹果品牌优先（包含中文"苹果"或英文 Apple、iPhone、iPad、AirPods 等关键词）
-  if (brandClean.includes('苹果') || brandClean.includes('apple') || brandClean.includes('iphone') || brandClean.includes('ipad') || brandClean.includes('airpods')) {
-    return 0
-  }
-
-  // 其他品牌返回一个大数字，确保在苹果之后
-  return 1000
-}
-
-// 从品牌名称中提取纯净的品牌名（用于排序）
-const extractBrandName = (brand: string): string => {
-  if (!brand) return ''
-  // 移除 emoji 和特殊字符，只保留字母和中文
-  return brand.replace(/[^\u4e00-\u9fa5a-zA-Z]/g, '').toLowerCase().trim()
-}
-
-// 获取品牌的排序键（用于确保不同品牌之间不继续比较）
-const getBrandSortKey = (brand: string): string => {
-  const weight = getBrandOrderWeight(brand)
-  const brandName = extractBrandName(brand)
-  // 格式：权重_品牌名，权重确保苹果在前，品牌名用于字母排序
-  return `${weight.toString().padStart(4, '0')}_${brandName}`
-}
 
 // 排序后的库存数据 - 按品牌、机况、型号系列、内存大小排序
 const sortedInventorySummary = computed(() => {
@@ -3327,6 +3248,8 @@ const saveInventorySummaryAsImage = async () => {
     // 等待布局更新
     await nextTick()
 
+    const html2canvas = await loadHtml2Canvas()
+
     // 生成高清图片（使用scale: 2提高清晰度）
     const canvas = await html2canvas(element, {
       backgroundColor: '#ffffff',
@@ -3400,7 +3323,7 @@ const loadAvailablePhones = async (bustCache = false, silentError = false, showL
   // 权限检查：验证用户是否有查看销售页面的权限
   if (!canView.value) {
     if (!silentError) {
-      showError('您没有查看销售页面的权限，请联系管理员分配相关权限')
+      showError('您没有访问此页面的权限')
     }
     return
   }
@@ -5096,7 +5019,7 @@ const editPhone = async (phone: any) => {
 
   // 权限检查：验证用户是否有编辑权限
   if (!canEdit.value) {
-    showError('您没有编辑商品的权限，请联系管理员分配相关权限')
+    showError('您没有编辑权限')
     return;
   }
 
@@ -5371,7 +5294,7 @@ watch(showEditModal, async (newVal) => {
 const deletePhone = async (phone: any) => {
   // 权限检查：验证用户是否有删除权限
   if (!canDelete.value) {
-    showError('您没有删除商品的权限，请联系管理员分配相关权限')
+    showError('您没有删除权限')
     return;
   }
 
@@ -5660,42 +5583,22 @@ const handlePaginationChange = (page: number, pageSize: number) => {
 // 页面挂载
 onMounted(async () => {
   window.addEventListener('tf2025:permissions:updated', handleSalesPermissionsUpdated)
+  window.addEventListener('resize', syncSalesViewMode, { passive: true })
 
   // 检测是否为移动设备并调整显示模式
-  const checkMobile = () => {
-    return window.innerWidth <= 768 || /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-  }
-
-  // 如果是移动设备，切换到图文模式
-  if (checkMobile()) {
-    viewMode.value = 'grid'
-  } else {
-    viewMode.value = 'table'
-  }
-
-  // 监听窗口大小变化
-  window.addEventListener('resize', () => {
-    if (checkMobile()) {
-      viewMode.value = 'grid'
-    } else {
-      viewMode.value = 'table'
-    }
-  })
+  syncSalesViewMode()
 
   try {
     // 使用统一的权限预加载系统
-    permissionLoading.value = true
     await preloadPermissions()
       } catch (error) {
     logger.error('❌ 权限数据预加载失败:', error)
     showError('权限加载失败，请刷新页面重试')
-  } finally {
-    permissionLoading.value = false
   }
 
   // 权限检查：验证用户是否有销售页面访问权限
   if (!canView.value) {
-    showError('您没有查看销售页面的权限，请联系管理员分配相关权限')
+    showError('您没有访问此页面的权限')
     // 可以选择重定向到无权限页面或首页
     return
   }
@@ -5711,8 +5614,8 @@ onMounted(async () => {
   // 先恢复本地筛选，避免首屏加载后又因恢复筛选再打一轮请求
   loadFiltersFromStorage()
 
-  // 优先加载可用手机列表，让用户快速看到商品
-  const initialPhoneLoad = loadAvailablePhones(false, true, false)
+  // 首屏需要展示内容区加载，避免只看到全局加载而表格区域无反馈。
+  const initialPhoneLoad = loadAvailablePhones(false, true, true)
 
   // 在后台延后加载基础数据，避免首屏和商品列表抢占请求
   initialPhoneLoad.finally(() => {
@@ -5758,6 +5661,7 @@ watch(
 // 页面卸载时清理事件监听器和定时器
 onUnmounted(() => {
   document.removeEventListener('keydown', handleGlobalKeydown)
+  window.removeEventListener('resize', syncSalesViewMode)
   window.removeEventListener('tf2025:permissions:updated', handleSalesPermissionsUpdated)
   // 清理防抖定时器
   if (debounceTimer) clearTimeout(debounceTimer)
@@ -8913,221 +8817,6 @@ input.form-control:focus, textarea.form-control:focus {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
-}
-
-/* ===== 统一权限提示样式 ===== */
-.permission-denied {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.05);
-  backdrop-filter: blur(2px);
-  z-index: 99999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.permission-denied-wrapper {
-  width: 100%;
-  max-width: 1200px;
-  padding: 2rem;
-  display: flex;
-  justify-content: center;
-}
-
-.permission-denied-card {
-  background: white;
-  border-radius: 20px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
-  padding: 3rem;
-  text-align: center;
-  width: 100%;
-  max-width: 600px;
-  border: 1px solid #e4e7ed;
-  position: relative;
-  overflow: hidden;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 6px;
-    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 25%, #feca57 50%, #48dbfb 75%, #0abde3 100%);
-    animation: shimmer 3s ease-in-out infinite;
-  }
-
-  @keyframes shimmer {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
-  }
-}
-
-.permission-icon {
-  margin-bottom: 2rem;
-
-  i {
-    font-size: 5rem;
-    color: #f56c6c;
-  }
-}
-
-.permission-content h2 {
-  font-size: 1.8rem;
-  font-weight: 700;
-  color: #303133;
-  margin-bottom: 1rem;
-}
-
-.permission-message {
-  font-size: 1.1rem;
-  color: #606266;
-  margin-bottom: 2rem;
-  line-height: 1.6;
-}
-
-.permission-status {
-  display: flex;
-  justify-content: center;
-  gap: 2rem;
-  margin-bottom: 2rem;
-}
-
-.status-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  font-weight: 500;
-
-  &.has-menu {
-    background-color: #f0f9ff;
-    color: #0369a1;
-    border: 1px solid #bae6fd;
-
-    i {
-      color: #0284c7;
-    }
-  }
-
-  &.missing-view {
-    background-color: #fef2f2;
-    color: #dc2626;
-    border: 1px solid #fecaca;
-
-    i {
-      color: #dc2626;
-    }
-  }
-}
-
-.permission-info {
-  background: #f8f9fa;
-  border: 1px solid #e9ecef;
-  border-radius: 12px;
-  padding: 1.5rem;
-  margin-bottom: 2rem;
-  text-align: left;
-}
-
-.info-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.5rem 0;
-
-  label {
-    font-weight: 600;
-    color: #495057;
-    min-width: 100px;
-  }
-
-  .permission-name {
-    color: #28a745;
-    font-weight: 500;
-  }
-
-  .permission-code {
-    background: #e9ecef;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-family: monospace;
-    font-size: 0.9rem;
-    color: #495057;
-  }
-}
-
-.permission-suggestion {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding: 1rem;
-  background: #f0f9ff;
-  border: 1px solid #bae6fd;
-  border-radius: 8px;
-  margin-bottom: 2rem;
-
-  i {
-    color: #0284c7;
-    margin-top: 0.25rem;
-  }
-
-  p {
-    margin: 0;
-    color: #0c4a6e;
-    font-size: 0.95rem;
-    line-height: 1.5;
-  }
-}
-
-.permission-actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  flex-wrap: wrap;
-  margin-bottom: 2rem;
-}
-
-.permission-details {
-  margin-top: 2rem;
-  padding-top: 2rem;
-  border-top: 1px solid #e4e7ed;
-
-  h4 {
-    font-size: 1.1rem;
-    color: #303133;
-    margin-bottom: 1rem;
-  }
-}
-
-.permission-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  justify-content: center;
-}
-
-.permission-tag {
-  display: inline-block;
-  padding: 0.25rem 0.75rem;
-  background: #f8f9fa;
-  border: 1px solid #dee2e6;
-  border-radius: 16px;
-  font-size: 0.8rem;
-  color: #6c757d;
-  font-family: monospace;
-
-  &.current-module {
-    background: #e3f2fd;
-    border-color: #2196f3;
-    color: #1976d2;
-    font-weight: 500;
-  }
 }
 
 /* 编辑弹窗样式 */

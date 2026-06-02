@@ -25,6 +25,20 @@ router.get('/public/home/sections', async (req, res) => {
     });
   } catch (error) {
     log.error('获取推荐区域失败:', error);
+    const isMissingHomeSectionTable = (
+      error?.code === 'ER_NO_SUCH_TABLE' ||
+      /H5_home_sections|H5_home_section_products/i.test(String(error?.message || ''))
+    );
+
+    if (isMissingHomeSectionTable) {
+      log.warn('推荐区域相关数据表不存在，降级返回空列表');
+      return res.json({
+        success: true,
+        data: [],
+        message: '推荐区域未初始化'
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: '获取推荐区域失败'

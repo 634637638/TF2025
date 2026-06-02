@@ -70,8 +70,11 @@ interface UseRefreshDataReturn {
  *
  * <template>
  *   <button @click="handleRefresh" :disabled="refreshing">
- *     <i :class="refreshing ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'"></i>
- *     {{ refreshing ? '刷新中...' : '刷新' }}
+ *     <InlineLoading v-if="refreshing" text="刷新中..." size="small" variant="inherit" />
+ *     <template v-else>
+ *       <i class="fas fa-sync-alt"></i>
+ *       刷新
+ *     </template>
  *   </button>
  * </template>
  * ```

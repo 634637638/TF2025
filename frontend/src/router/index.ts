@@ -108,7 +108,8 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/sales/SalesView.vue'),
         meta: {
           title: '销售管理',
-          icon: 'fas fa-store'
+          icon: 'fas fa-store',
+          disableRouteLoading: true
         }
       },
       {

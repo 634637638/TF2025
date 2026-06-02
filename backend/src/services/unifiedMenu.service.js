@@ -6,6 +6,7 @@
 const { getDatabase } = require('../config/database');
 const { getUserMenuVisibility } = require('./accessControl.service');
 const log = require('../utils/log');
+const { ensureIconSchema, iconLeftJoin } = require('../utils/iconStore');
 
 class UnifiedMenuService {
   async getUserMenus(req) {
@@ -20,20 +21,25 @@ class UnifiedMenuService {
       }
 
       const db = getDatabase();
+      await ensureIconSchema(db);
       const [allMenus] = await db.execute(`
         SELECT
-          id,
-          name,
-          url,
-          icon,
-          parent_id,
-          sort_order,
-          is_active,
-          module_id,
-          module_key
-        FROM menus
-        WHERE is_active = 1
-        ORDER BY sort_order ASC, id ASC
+          m.id,
+          m.name,
+          m.url,
+          m.icon,
+          m.parent_id,
+          m.sort_order,
+          m.is_active,
+          m.module_id,
+          m.module_key,
+          i.svg as icon_svg,
+          i.source as icon_source,
+          i.is_valid as icon_is_valid
+        FROM menus m
+        ${iconLeftJoin('m', 'i')}
+        WHERE m.is_active = 1
+        ORDER BY m.sort_order ASC, m.id ASC
       `);
 
       const [modules] = await db.execute(`

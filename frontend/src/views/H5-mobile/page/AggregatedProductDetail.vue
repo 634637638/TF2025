@@ -194,10 +194,7 @@
   </div>
 
   <!-- 加载状态 -->
-  <div v-else class="loading-state">
-    <el-icon class="is-loading"><Loading /></el-icon>
-    <p>加载中...</p>
-  </div>
+  <SectionLoading v-else text="加载中..." />
 </template>
 
 <script setup lang="ts">
@@ -205,8 +202,8 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Swiper, SwiperSlide } from 'swiper/vue'
 import { Pagination, Autoplay } from 'swiper/modules'
-import { Loading } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import SectionLoading from '@/components/SectionLoading.vue'
 import 'swiper/css'
 import 'swiper/css/pagination'
 import { getPublicConfig, getStockDistribution } from '@/api/shop-public'

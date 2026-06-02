@@ -74,9 +74,11 @@
           @click="handleUnlock"
           :disabled="isUnlocking || !password"
         >
-          <i v-if="isUnlocking" class="fas fa-spinner fa-spin"></i>
-          <i v-else class="fas fa-unlock"></i>
-          {{ isUnlocking ? '验证中...' : '解锁' }}
+          <InlineLoading v-if="isUnlocking" text="验证中..." size="small" variant="inherit" />
+          <template v-else>
+            <i class="fas fa-unlock"></i>
+            解锁
+          </template>
         </button>
       </div>
 
@@ -99,6 +101,7 @@ import { ref, reactive, onMounted, nextTick, watch } from 'vue'
 import { unifiedApi } from '@/utils/unified-api'
 import { useNotification } from '@/composables/useNotification'
 import Image from './Image.vue'
+import InlineLoading from '@/components/InlineLoading.vue'
 import { formatImageUrl } from '@/utils/format'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import dayjs from 'dayjs'

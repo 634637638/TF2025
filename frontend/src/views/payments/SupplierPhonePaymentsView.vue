@@ -1,16 +1,15 @@
 <template>
   <div class="supplier-phone-payments-view admin-page">
-    <!-- ❌ 无权限时显示提示 -->
-    <PermissionDenied
-      v-if="!canView"
+    <PermissionGate
       :can-view="canView"
+      mode="denied"
       module-key="payments"
       module-name="供应商打款"
       permission-code="supplier-payments:view"
-    />
+    >
 
     <!-- 权限验证通过后的内容 -->
-    <div v-else class="admin-page-content">
+    <div class="admin-page-content">
     <PageHeader title="货款结算">
       <template #actions>
         <ImportExportActions
@@ -22,9 +21,12 @@
           export-type="success"
           @export="exportPaymentPhones"
         />
-        <el-button type="info" @click="refreshData" :disabled="loading">
-          <i :class="loading ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'"></i>
-          <span>刷新</span>
+        <el-button type="info" @click="refreshData" :disabled="refreshing">
+          <InlineLoading v-if="refreshing" text="刷新中..." size="small" variant="inherit" />
+          <template v-else>
+            <i class="fas fa-sync-alt"></i>
+            <span>刷新</span>
+          </template>
         </el-button>
       </template>
     </PageHeader>
@@ -412,11 +414,7 @@
           </template>
         </tbody>
         <tbody v-else-if="loading">
-          <tr>
-            <td :colspan="paymentVisibleColumnCount" class="text-center">
-              <i class="fas fa-spinner fa-spin"></i> 加载中...
-            </td>
-          </tr>
+          <TableLoadingRow :colspan="paymentVisibleColumnCount" />
         </tbody>
         <tbody v-else>
           <tr>
@@ -567,8 +565,11 @@
             @click="saveBatchPaymentAsImage"
             :loading="savingImage"
           >
-            <i :class="savingImage ? 'fas fa-spinner fa-spin' : 'fas fa-camera'"></i>
-            <span>保存图片</span>
+            <InlineLoading v-if="savingImage" text="保存中..." size="small" variant="inherit" />
+            <template v-else>
+              <i class="fas fa-camera"></i>
+              <span>保存图片</span>
+            </template>
           </el-button>
           <el-button type="primary" @click="handleBatchPayment" :loading="submitting">
             确认打款
@@ -701,8 +702,11 @@
             @click="saveSinglePaymentAsImage"
             :loading="savingImage"
           >
-            <i :class="savingImage ? 'fas fa-spinner fa-spin' : 'fas fa-camera'"></i>
-            <span>保存图片</span>
+            <InlineLoading v-if="savingImage" text="保存中..." size="small" variant="inherit" />
+            <template v-else>
+              <i class="fas fa-camera"></i>
+              <span>保存图片</span>
+            </template>
           </el-button>
           <el-button type="primary" @click="handleSinglePaymentSubmit" :loading="submitting">
             确认打款
@@ -828,8 +832,11 @@
             @click="savePaymentDetailsAsImage"
             :loading="savingImage"
           >
-            <i :class="savingImage ? 'fas fa-spinner fa-spin' : 'fas fa-camera'"></i>
-            <span>保存为图片</span>
+            <InlineLoading v-if="savingImage" text="保存中..." size="small" variant="inherit" />
+            <template v-else>
+              <i class="fas fa-camera"></i>
+              <span>保存为图片</span>
+            </template>
           </el-button>
           <el-button type="default" @click="showPaymentDetailsDialog = false">关闭</el-button>
         </div>
@@ -898,6 +905,7 @@
       </template>
     </MobileDialog>
     </div>
+    </PermissionGate>
   </div>
 </template>
 
@@ -916,12 +924,15 @@ import { useAuthStore } from '@/stores/auth';
 import Pagination from '@/components/Pagination.vue';
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue';
 import ImportExportActions from '@/components/business/ImportExportActions.vue';
-import { PageHeader, PermissionDenied } from '@/components/base';
-import html2canvas from 'html2canvas';
+import InlineLoading from '@/components/InlineLoading.vue';
+import TableLoadingRow from '@/components/TableLoadingRow.vue';
+import { PageHeader, PermissionGate } from '@/components/base';
 import { TimeUtil, TIME_FORMATS } from '@/utils/time';
+import { loadHtml2Canvas } from '@/utils/html2canvas';
 
 const router = useRouter();
 const { success, error, warning, info } = useNotification();
+const refreshing = ref(false);
 const authStore = useAuthStore();
 const { isMobile } = useMobile();
 const { exportFile, buildDateFilename } = useImportExport();
@@ -1271,6 +1282,7 @@ const downloadCaptureImage = async (
 ) => {
   const captureWidth = Math.max(element.scrollWidth, element.clientWidth, 1200);
   const captureHeight = Math.max(element.scrollHeight, element.clientHeight);
+  const html2canvas = await loadHtml2Canvas();
 
   const canvas = await html2canvas(element, {
     backgroundColor: '#ffffff',
@@ -1679,9 +1691,11 @@ const selectedTotalProfit = computed(() => {
   }, 0);
 });
 
-const loadStatistics = async () => {
+const loadStatistics = async (showLoadingState = true) => {
   try {
-    loading.value = true;
+    if (showLoadingState) {
+      loading.value = true;
+    }
     // 总是获取所有供应商的统计数据（不传 supplier_id），用于下拉框和卡片数据
     const response = await unifiedApi.get('/supplier-payments/statistics', {
       params: {
@@ -1700,7 +1714,9 @@ const loadStatistics = async () => {
     logger.error('加载统计数据失败:', err);
     error('加载统计数据失败');
   } finally {
-    loading.value = false;
+    if (showLoadingState) {
+      loading.value = false;
+    }
   }
 };
 
@@ -1742,9 +1758,11 @@ const loadStores = async () => {
   }
 };
 
-const loadPhones = async () => {
+const loadPhones = async (showLoadingState = true) => {
   try {
-    loading.value = true;
+    if (showLoadingState) {
+      loading.value = true;
+    }
     const response = await unifiedApi.get('/supplier-payments/phones', {
       params: buildPaymentListParams()
     }) as SupplierPaymentApiResponse<SupplierPaymentPhone[]>;
@@ -1790,7 +1808,9 @@ const loadPhones = async () => {
     logger.error('加载手机列表失败:', err);
     error('加载手机列表失败');
   } finally {
-    loading.value = false;
+    if (showLoadingState) {
+      loading.value = false;
+    }
   }
 };
 
@@ -1939,7 +1959,7 @@ const handleSinglePaymentSubmit = async () => {
       showSinglePaymentDialog.value = false;
       // 清空选择状态
       clearSelection();
-      refreshData();
+      refreshData({ showSuccess: false });
     }
   } catch (err: unknown) {
     logger.error('打款失败:', err);
@@ -1982,7 +2002,7 @@ const handleEditPaymentSubmit = async () => {
     if (response.success) {
       success('修改成功');
       showEditPaymentDialog.value = false;
-      refreshData();
+      refreshData({ showSuccess: false });
     }
   } catch (err) {
     logger.error('修改失败:', err);
@@ -2019,7 +2039,7 @@ const handleCancelPayment = async (phone: SupplierPaymentPhone) => {
 
     if (response.success) {
       success('已取消打款');
-      refreshData();
+      refreshData({ showSuccess: false });
     }
   } catch (err: unknown) {
     if (err !== 'cancel') {
@@ -2065,7 +2085,7 @@ const handleBatchCancelPayment = async () => {
       const count = response.data?.data?.count || response.data?.count || 0;
       success(`已取消 ${count} 台手机的打款`);
       showPaymentDetailsDialog.value = false;
-      refreshData();
+      refreshData({ showSuccess: false });
     } else {
       error(response.message || '批量取消打款失败');
     }
@@ -2206,7 +2226,7 @@ const handleBatchPayment = async () => {
       showBatchPaymentDialog.value = false;
       // 清空选择状态
       clearSelection();
-      refreshData();
+      refreshData({ showSuccess: false });
     }
   } catch (err) {
     logger.error('批量打款失败:', err);
@@ -2271,10 +2291,26 @@ const handlePaginationChange = (page: number, pageSize: number) => {
   loadPhones();
 };
 
-const refreshData = () => {
-  loadSummaryStatistics();
-  loadStatistics();
-  loadPhones();
+const refreshData = async (options: { showSuccess?: boolean } = {}) => {
+  const { showSuccess = true } = options;
+
+  if (refreshing.value) {
+    return;
+  }
+
+  refreshing.value = true;
+  try {
+    await Promise.all([
+      loadSummaryStatistics(),
+      loadStatistics(false),
+      loadPhones(false)
+    ]);
+    if (showSuccess) {
+      success('数据刷新成功');
+    }
+  } finally {
+    refreshing.value = false;
+  }
 };
 
 // 重置筛选条件
@@ -2417,256 +2453,6 @@ onMounted(async () => {
 <style lang="scss" scoped>
 .supplier-phone-payments-view {
   padding: 20px;
-
-  // 权限不足页面样式 - 统一风格
-  .permission-denied {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 60vh;
-    padding: 40px 20px;
-
-    .permission-denied-wrapper {
-      width: 100%;
-      max-width: 600px;
-    }
-
-    .permission-denied-card {
-      background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-      border-radius: 16px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-      overflow: hidden;
-      border: 1px solid rgba(0, 0, 0, 0.06);
-    }
-
-    .permission-icon {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      height: 120px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-
-      i {
-        font-size: 48px;
-        color: rgba(255, 255, 255, 0.95);
-      }
-    }
-
-    .permission-content {
-      padding: 32px;
-      text-align: center;
-    }
-
-    h2 {
-      font-size: 24px;
-      color: #303133;
-      margin: 0 0 12px 0;
-      font-weight: 600;
-    }
-
-    .permission-message {
-      font-size: 14px;
-      color: #606266;
-      margin: 0 0 20px 0;
-      line-height: 1.6;
-    }
-
-    .permission-status {
-      display: flex;
-      justify-content: center;
-      gap: 20px;
-      margin-bottom: 24px;
-      padding: 16px;
-      background: #f5f7fa;
-      border-radius: 8px;
-
-      .status-item {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 14px;
-        font-weight: 500;
-
-        &.has-menu {
-          color: #67c23a;
-
-          i {
-            font-size: 18px;
-          }
-        }
-
-        &.missing-view {
-          color: #f56c6c;
-
-          i {
-            font-size: 18px;
-          }
-        }
-      }
-    }
-
-    .permission-info {
-      background: #ecf5ff;
-      border-radius: 8px;
-      padding: 16px;
-      margin-bottom: 20px;
-      text-align: left;
-      border-left: 4px solid #409eff;
-
-      .info-item {
-        display: flex;
-        align-items: center;
-        margin-bottom: 8px;
-
-        &:last-child {
-          margin-bottom: 0;
-        }
-
-        label {
-          font-size: 13px;
-          color: #606266;
-          font-weight: 500;
-          margin-right: 8px;
-        }
-
-        .permission-name {
-          font-size: 13px;
-          color: #303133;
-          font-weight: 600;
-        }
-
-        .permission-code {
-          font-family: 'Monaco', 'Consolas', monospace;
-          font-size: 12px;
-          color: #409eff;
-          background: white;
-          padding: 2px 8px;
-          border-radius: 4px;
-          font-weight: 600;
-        }
-      }
-    }
-
-    .permission-suggestion {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      background: #fff7e6;
-      border-left: 4px solid #e6a23c;
-      border-radius: 8px;
-      padding: 16px;
-      margin-bottom: 24px;
-      text-align: left;
-
-      i {
-        color: #e6a23c;
-        font-size: 18px;
-        flex-shrink: 0;
-        margin-top: 2px;
-      }
-
-      p {
-        margin: 0;
-        font-size: 13px;
-        color: #606266;
-        line-height: 1.6;
-      }
-    }
-
-    .permission-actions {
-      display: flex;
-      gap: 12px;
-      justify-content: center;
-      flex-wrap: wrap;
-
-      .btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 10px 20px;
-        border-radius: 6px;
-        font-size: 14px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.3s;
-
-        &.btn-primary {
-          background: linear-gradient(135deg, #409eff 0%, #66b1ff 100%);
-          color: white;
-          border: none;
-          box-shadow: 0 2px 8px rgba(64, 158, 255, 0.3);
-
-          &:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(64, 158, 255, 0.4);
-          }
-        }
-
-        &.btn-outline-primary {
-          background: white;
-          color: #409eff;
-          border: 1px solid #409eff;
-
-          &:hover {
-            background: #409eff;
-            color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(64, 158, 255, 0.2);
-          }
-        }
-
-        &.btn-outline-secondary {
-          background: white;
-          color: #606266;
-          border: 1px solid #dcdfe6;
-
-          &:hover {
-            border-color: #409eff;
-            color: #409eff;
-          }
-        }
-      }
-    }
-
-    .permission-details {
-      margin-top: 24px;
-      padding-top: 24px;
-      border-top: 1px solid #ebeef5;
-      text-align: left;
-
-      h4 {
-        font-size: 14px;
-        color: #303133;
-        margin: 0 0 12px 0;
-        font-weight: 600;
-      }
-
-      .permission-list {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-
-        .permission-tag {
-          display: inline-block;
-          padding: 4px 12px;
-          border-radius: 4px;
-          font-size: 12px;
-          font-family: 'Monaco', 'Consolas', monospace;
-          font-weight: 600;
-          background: #f5f7fa;
-          color: #606266;
-          border: 1px solid #dcdfe6;
-
-          &.current-module {
-            background: linear-gradient(135deg, #ecf5ff 0%, #d9ecff 100%);
-            color: #409eff;
-            border-color: #b3d8ff;
-          }
-        }
-      }
-    }
-  }
 
   // 统计卡片样式
   .stats-cards {
@@ -3138,7 +2924,6 @@ onMounted(async () => {
             }
           }
 
-          &.loading-row,
           &.empty-row {
             background: #fff;
 

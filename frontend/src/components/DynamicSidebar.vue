@@ -27,16 +27,7 @@
           <el-sub-menu v-if="menu.children && menu.children.length > 0" :index="String(menu.path || menu.url)">
             <template #title>
               <span class="menu-title-wrapper">
-                <!-- Iconify 图标 -->
-                <span
-                  v-if="menu.icon && menu.icon.startsWith('iconify')"
-                  class="iconify menu-icon"
-                  :data-icon="menu.icon.replace('iconify ', '')"
-                ></span>
-                <!-- Font Awesome 图标 -->
-                <i v-else-if="menu.icon" :class="menu.icon" class="menu-icon"></i>
-                <!-- 默认图标 -->
-                <i v-else class="fas fa-circle menu-icon"></i>
+                <IconRenderer :icon="menu.icon" :svg="menu.icon_svg" class-name="menu-icon" />
                 <span class="menu-text">{{ menu.title || menu.name }}</span>
               </span>
             </template>
@@ -45,16 +36,7 @@
               <el-sub-menu v-if="child.children && child.children.length > 0" :index="String(child.path || child.url)">
                 <template #title>
                   <span class="menu-title-wrapper">
-                    <!-- Iconify 图标 -->
-                    <span
-                      v-if="child.icon && child.icon.startsWith('iconify')"
-                      class="iconify menu-icon"
-                      :data-icon="child.icon.replace('iconify ', '')"
-                    ></span>
-                    <!-- Font Awesome 图标 -->
-                    <i v-else-if="child.icon" :class="child.icon" class="menu-icon"></i>
-                    <!-- 默认图标 -->
-                    <i v-else class="fas fa-circle menu-icon"></i>
+                    <IconRenderer :icon="child.icon" :svg="child.icon_svg" class-name="menu-icon" />
                     <span class="menu-text">{{ child.title || child.name }}</span>
                   </span>
                 </template>
@@ -65,16 +47,7 @@
                   :route="{ path: grandchild.path || grandchild.url }"
                 >
                   <span class="menu-title-wrapper">
-                    <!-- Iconify 图标 -->
-                    <span
-                      v-if="grandchild.icon && grandchild.icon.startsWith('iconify')"
-                      class="iconify menu-icon"
-                      :data-icon="grandchild.icon.replace('iconify ', '')"
-                    ></span>
-                    <!-- Font Awesome 图标 -->
-                    <i v-else-if="grandchild.icon" :class="grandchild.icon" class="menu-icon"></i>
-                    <!-- 默认图标 -->
-                    <i v-else class="fas fa-circle menu-icon"></i>
+                    <IconRenderer :icon="grandchild.icon" :svg="grandchild.icon_svg" class-name="menu-icon" />
                     <span class="menu-text">{{ grandchild.title || grandchild.name }}</span>
                   </span>
                 </el-menu-item>
@@ -86,16 +59,7 @@
                 :route="{ path: child.path || child.url }"
               >
                 <span class="menu-title-wrapper">
-                  <!-- Iconify 图标 -->
-                  <span
-                    v-if="child.icon && child.icon.startsWith('iconify')"
-                    class="iconify menu-icon"
-                    :data-icon="child.icon.replace('iconify ', '')"
-                  ></span>
-                  <!-- Font Awesome 图标 -->
-                  <i v-else-if="child.icon" :class="child.icon" class="menu-icon"></i>
-                  <!-- 默认图标 -->
-                  <i v-else class="fas fa-circle menu-icon"></i>
+                  <IconRenderer :icon="child.icon" :svg="child.icon_svg" class-name="menu-icon" />
                   <span class="menu-text">{{ child.title || child.name }}</span>
                 </span>
               </el-menu-item>
@@ -108,16 +72,7 @@
             :route="{ path: menu.path || menu.url }"
           >
             <span class="menu-title-wrapper">
-              <!-- Iconify 图标 -->
-              <span
-                v-if="menu.icon && menu.icon.startsWith('iconify')"
-                class="iconify menu-icon"
-                :data-icon="menu.icon.replace('iconify ', '')"
-              ></span>
-              <!-- Font Awesome 图标 -->
-              <i v-else-if="menu.icon" :class="menu.icon" class="menu-icon"></i>
-              <!-- 默认图标 -->
-              <i v-else class="fas fa-circle menu-icon"></i>
+              <IconRenderer :icon="menu.icon" :svg="menu.icon_svg" class-name="menu-icon" />
               <span class="menu-text">{{ menu.title || menu.name }}</span>
             </span>
           </el-menu-item>
@@ -129,16 +84,16 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useNotification } from '@/composables/useNotification'
 import { useAuthStore } from '@/stores/auth'
 import { Refresh } from '@element-plus/icons-vue'
 import { menuApi } from '@/api/menu'
 import { dynamicRouter } from '@/utils/dynamicRouter'
-import { refreshIconifyIcons, waitForIconify } from '@/utils/iconify'
 import { extractResponseData } from '@/utils/api-response'
 import { logger } from '@/utils/logger'
+import IconRenderer from '@/components/IconRenderer.vue'
 
 // Props
 const props = defineProps({
@@ -213,22 +168,6 @@ const loadUserMenus = async () => {
     // 更新动态路由缓存
     dynamicRouter.clearCache()
     dynamicRouter.flattenMenus(menus)
-
-    // 等待 DOM 更新后刷新 Iconify 图标
-    await nextTick()
-
-    // 异步刷新图标，不阻塞菜单加载
-    setTimeout(async () => {
-      try {
-        // 检查 Iconify 是否可用（最多等待500ms）
-        const iconifyReady = await waitForIconify(500)
-        if (iconifyReady) {
-          refreshIconifyIcons()
-        }
-      } catch (error) {
-        logger.warn('⚠️ Iconify 图标刷新失败:', error)
-      }
-    }, 0)
   } catch (error) {
     logger.error('加载菜单失败:', error)
     notifyError('加载菜单失败')

@@ -29,8 +29,7 @@
               class="customer-search-results"
             >
               <div v-if="customerSearching" class="searching">
-                <i class="fas fa-spinner fa-spin"></i>
-                搜索中...
+                <InlineLoading text="搜索中..." size="small" />
               </div>
               <div v-else-if="customerSearchResults.length > 0" class="results-list">
                 <div
@@ -312,8 +311,7 @@
               class="customer-search-results"
             >
               <div v-if="customerSearching" class="searching">
-                <i class="fas fa-spinner fa-spin"></i>
-                搜索中...
+                <InlineLoading text="搜索中..." size="small" />
               </div>
               <div v-else-if="customerSearchResults.length > 0" class="results-list">
                 <div
@@ -392,6 +390,7 @@
 </template>
 
 <script setup lang="ts">
+import InlineLoading from '@/components/InlineLoading.vue'
 import type { Store, User } from '@/types'
 import type { WholesaleCustomerSearchItem, WholesaleFormData } from './types'
 

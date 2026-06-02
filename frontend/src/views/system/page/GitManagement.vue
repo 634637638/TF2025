@@ -1,41 +1,49 @@
 <template>
   <div class="git-management-view">
-    <PermissionDenied
-      v-if="!canView"
+    <PermissionGate
       :can-view="canView"
+      mode="denied"
       module-key="git-management"
       module-name="Git管理"
       permission-code="git-management:view"
-    />
-
-    <template v-else>
+    >
       <PageHeader title="Git 仓库管理">
         <template #actions>
           <div class="action-buttons">
             <button
+              v-if="canCreate"
               @click="handleCreateArchiveBackup"
               class="btn btn-success"
               :disabled="loading || backingUpArchive"
             >
-              <i :class="backingUpArchive ? 'fas fa-spinner fa-spin' : 'fas fa-file-archive'"></i>
-              <span>{{ backingUpArchive ? '备份中...' : '压缩包备份' }}</span>
+              <InlineLoading v-if="backingUpArchive" text="备份中..." size="small" variant="inherit" />
+              <template v-else>
+                <i class="fas fa-file-archive"></i>
+                <span>压缩包备份</span>
+              </template>
             </button>
             <button
-              v-if="shouldShowRestoreMain"
+              v-if="shouldShowRestoreMain && canEdit"
               @click="handleRestoreMain"
               class="btn btn-primary"
               :disabled="loading || restoringMain"
             >
-              <i :class="restoringMain ? 'fas fa-spinner fa-spin' : 'fas fa-house'"></i>
-              <span>{{ restoringMain ? '恢复中...' : '恢复到 main' }}</span>
+              <InlineLoading v-if="restoringMain" text="恢复中..." size="small" variant="inherit" />
+              <template v-else>
+                <i class="fas fa-house"></i>
+                <span>恢复到 main</span>
+              </template>
             </button>
             <button
               @click="fetchGitStatus"
               class="btn btn-outline-secondary"
               :disabled="loading"
             >
-              <i :class="loading ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'"></i>
-              <span>刷新状态</span>
+              <InlineLoading v-if="loading" text="刷新中..." size="small" variant="inherit" />
+              <template v-else>
+                <i class="fas fa-sync-alt"></i>
+                <span>刷新状态</span>
+              </template>
             </button>
           </div>
         </template>
@@ -134,7 +142,8 @@
                   提交历史
                 </h3>
                 <button class="btn-icon" @click="fetchCommitHistory" :disabled="loadingHistory">
-                  <i :class="loadingHistory ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'"></i>
+                  <InlineLoading v-if="loadingHistory" size="small" variant="inherit" />
+                  <i v-else class="fas fa-sync-alt"></i>
                 </button>
               </div>
               <div class="card-body">
@@ -175,6 +184,7 @@
                       </div>
                       <div class="commit-actions">
                         <el-button
+                          v-if="canEdit"
                           type="primary"
                           size="small"
                           @click="handleCheckoutCommit(commit.hash, 'view')"
@@ -183,6 +193,7 @@
                           查看
                         </el-button>
                         <el-button
+                          v-if="canEdit"
                           type="warning"
                           size="small"
                           @click="handleCheckoutCommit(commit.hash, 'reset')"
@@ -278,10 +289,13 @@
                   <button
                     type="submit"
                     class="btn btn-primary btn-block"
-                    :disabled="committing || shouldShowRestoreMain || (!gitStatus?.hasChanges && !canPushExistingCommits)"
+                    :disabled="!canEdit || committing || shouldShowRestoreMain || (!gitStatus?.hasChanges && !canPushExistingCommits)"
                   >
-                    <i :class="committing ? 'fas fa-spinner fa-spin' : 'fas fa-upload'"></i>
-                    <span>{{ commitButtonText }}</span>
+                    <InlineLoading v-if="committing" :text="commitButtonText" size="small" variant="inherit" />
+                    <template v-else>
+                      <i class="fas fa-upload"></i>
+                      <span>{{ commitButtonText }}</span>
+                    </template>
                   </button>
                 </form>
               </div>
@@ -299,26 +313,35 @@
                   <button
                     @click="handlePull"
                     class="btn btn-success btn-block"
-                    :disabled="pulling || shouldShowRestoreMain"
+                    :disabled="!canEdit || pulling || shouldShowRestoreMain"
                   >
-                    <i :class="pulling ? 'fas fa-spinner fa-spin' : 'fas fa-download'"></i>
-                    <span>拉取远程更新</span>
+                    <InlineLoading v-if="pulling" text="拉取中..." size="small" variant="inherit" />
+                    <template v-else>
+                      <i class="fas fa-download"></i>
+                      <span>拉取远程更新</span>
+                    </template>
                   </button>
                   <button
                     @click="handlePush"
                     class="btn btn-warning btn-block"
-                    :disabled="pushing || shouldShowRestoreMain"
+                    :disabled="!canEdit || pushing || shouldShowRestoreMain"
                   >
-                    <i :class="pushing ? 'fas fa-spinner fa-spin' : 'fas fa-cloud-upload-alt'"></i>
-                    <span>推送到远程</span>
+                    <InlineLoading v-if="pushing" text="推送中..." size="small" variant="inherit" />
+                    <template v-else>
+                      <i class="fas fa-cloud-upload-alt"></i>
+                      <span>推送到远程</span>
+                    </template>
                   </button>
                   <button
                     @click="handleDiscard"
                     class="btn btn-danger btn-block"
-                    :disabled="discarding || !gitStatus?.hasChanges"
+                    :disabled="!canEdit || discarding || !gitStatus?.hasChanges"
                   >
-                    <i :class="discarding ? 'fas fa-spinner fa-spin' : 'fas fa-trash-alt'"></i>
-                    <span>丢弃更改</span>
+                    <InlineLoading v-if="discarding" text="丢弃中..." size="small" variant="inherit" />
+                    <template v-else>
+                      <i class="fas fa-trash-alt"></i>
+                      <span>丢弃更改</span>
+                    </template>
                   </button>
                 </div>
               </div>
@@ -351,32 +374,28 @@
           </div>
         </div>
       </div>
-    </template>
+    </PermissionGate>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { unifiedApi } from '@/utils/unified-api';
-import PermissionDenied from '@/components/base/PermissionDenied.vue';
-import PageHeader from '@/components/base/PageHeader.vue';
+import { PageHeader, PermissionGate } from '@/components/base';
+import InlineLoading from '@/components/InlineLoading.vue';
 import { usePagePermissions } from '@/composables/usePagePermissions';
 import { fieldPermissions } from '@/composables/useFieldPermissions';
 import { useLoadingState } from '@/composables'
 import logger from '@/utils/logger';
 
 const {
-  canView: gitPermissionCanView,
-  handleNoPermission,
-  hasFullPermission
+  canView,
+  canCreate,
+  canEdit,
+  canDelete,
+  handleNoPermission
 } = usePagePermissions('git-management');
-
-const canView = computed(() => (
-  gitPermissionCanView.value ||
-  hasFullPermission('system:view') ||
-  hasFullPermission('permissions:view')
-));
 
 const gitFieldMap = {
   stats_current_branch: 'stats.current_branch',
@@ -406,8 +425,25 @@ const ensureGitViewPermission = () => {
   return false;
 };
 
+const ensureGitPermission = (action) => {
+  const permissionMap = {
+    create: canCreate,
+    edit: canEdit,
+    delete: canDelete
+  };
+
+  const permissionRef = permissionMap[action];
+  if (permissionRef?.value) {
+    return true;
+  }
+
+  handleNoPermission(action);
+  return false;
+};
+
 const { loading } = useLoadingState()
 const loadingHistory = ref(false);
+const hasInitializedPageData = ref(false);
 const backingUpArchive = ref(false);
 const restoringMain = ref(false);
 const committing = ref(false);
@@ -507,6 +543,10 @@ const isOptimizationSelected = (label) => {
 };
 
 const canDeleteCommit = (commit) => {
+  if (!canDelete.value) {
+    return false;
+  }
+
   if (commitHistory.value.length > 0 && commit.hash === commitHistory.value[0].hash) {
     return false;
   }
@@ -626,6 +666,10 @@ const handleCommit = async () => {
     return;
   }
 
+  if (!ensureGitPermission('edit')) {
+    return;
+  }
+
   if (!gitStatus.value?.hasChanges && canPushExistingCommits.value) {
     await handlePush();
     return;
@@ -688,6 +732,10 @@ const handlePush = async () => {
     return;
   }
 
+  if (!ensureGitPermission('edit')) {
+    return;
+  }
+
   pushing.value = true;
   try {
     const response = await unifiedApi.post('/git/push');
@@ -716,6 +764,10 @@ const handlePull = async () => {
     return;
   }
 
+  if (!ensureGitPermission('edit')) {
+    return;
+  }
+
   pulling.value = true;
   try {
     const response = await unifiedApi.post('/git/pull');
@@ -735,6 +787,10 @@ const handlePull = async () => {
 
 const handleDiscard = async () => {
   if (!ensureGitViewPermission()) {
+    return;
+  }
+
+  if (!ensureGitPermission('edit')) {
     return;
   }
 
@@ -769,6 +825,10 @@ const handleDiscard = async () => {
 
 const handleCheckoutCommit = async (commitHash, mode) => {
   if (!ensureGitViewPermission()) {
+    return;
+  }
+
+  if (!ensureGitPermission('edit')) {
     return;
   }
 
@@ -811,6 +871,10 @@ const handleDeleteCommit = async (commitHash, commitMessage) => {
     return;
   }
 
+  if (!ensureGitPermission('delete')) {
+    return;
+  }
+
   try {
     await ElMessageBox.confirm(
       `确定要从历史列表隐藏这条记录吗？\n\n版本: ${commitHash.substring(0, 8)}\n${getCommitTitle(commitMessage)}\n\n此操作不会删除当前实际文件，也不会修改工作区代码。`,
@@ -841,6 +905,10 @@ const handleDeleteCommit = async (commitHash, commitMessage) => {
 
 const handleCreateArchiveBackup = async () => {
   if (!ensureGitViewPermission()) {
+    return;
+  }
+
+  if (!ensureGitPermission('create')) {
     return;
   }
 
@@ -895,6 +963,10 @@ const handleRestoreMain = async () => {
     return;
   }
 
+  if (!ensureGitPermission('edit')) {
+    return;
+  }
+
   try {
     await ElMessageBox.confirm(
       '系统会先保留你当前这份代码，再尝试恢复到 main。若可以自动合并，就会把当前分支的最新代码带回主线，不会直接被旧的 main 覆盖。是否继续？',
@@ -926,13 +998,30 @@ const handleRestoreMain = async () => {
   }
 };
 
-onMounted(async () => {
-  if (canView.value) {
-    await fieldPermissions.init();
-    await fetchGitStatus();
-    await fetchCommitHistory();
+const initializePageData = async () => {
+  if (!canView.value || hasInitializedPageData.value) {
+    return;
   }
+
+  hasInitializedPageData.value = true;
+  await fieldPermissions.init();
+  await fetchGitStatus();
+  await fetchCommitHistory();
+};
+
+onMounted(async () => {
+  await initializePageData();
 });
+
+watch(canView, async (value) => {
+  if (value) {
+    await initializePageData();
+  } else {
+    hasInitializedPageData.value = false;
+    gitStatus.value = null;
+    commitHistory.value = [];
+  }
+}, { immediate: true });
 </script>
 
 <style lang="scss" scoped>

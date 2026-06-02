@@ -1,16 +1,15 @@
 <template>
   <div class="permissions-view admin-page">
-    <!-- ❌ 无权限时显示提示 -->
-    <PermissionDenied
-      v-if="!canView"
+    <PermissionGate
       :can-view="canView"
+      mode="denied"
       module-key="permissions"
       module-name="权限管理"
       permission-code="permissions:view"
-    />
+    >
 
     <!-- 主要内容 - 只有有权限时才显示 -->
-    <div v-else class="content admin-page-content">
+    <div class="content admin-page-content">
     <!-- 页面头部 -->
     <PageHeader
       :icon="currentTabHeader.icon"
@@ -80,9 +79,12 @@
           </el-button>
         </template>
 
-        <el-button type="info" @click="handleRefresh">
-          <i class="fas fa-sync-alt"></i>
-          刷新
+        <el-button type="info" @click="handleRefresh" :disabled="refreshing">
+          <InlineLoading v-if="refreshing" text="刷新中..." size="small" variant="inherit" />
+          <template v-else>
+            <i class="fas fa-sync-alt"></i>
+            刷新
+          </template>
         </el-button>
       </template>
     </PageHeader>
@@ -257,8 +259,8 @@
         <div class="modal-footer">
           <el-button type="info" @click="closeRoleDialog">取消</el-button>
           <el-button type="primary" @click="saveRole" :disabled="savingRole">
-            <i v-if="savingRole" class="fas fa-spinner fa-spin"></i>
-            {{ isEditRole ? '更新' : '创建' }}
+            <InlineLoading v-if="savingRole" :text="isEditRole ? '更新中...' : '创建中...'" size="small" variant="inherit" />
+            <template v-else>{{ isEditRole ? '更新' : '创建' }}</template>
           </el-button>
         </div>
       </template>
@@ -451,8 +453,8 @@
           <div class="user-role-footer-actions">
             <el-button type="info" @click="closeUserRoleDialog">取消</el-button>
             <el-button type="primary" @click="saveUserRoles" :disabled="savingUserRoles">
-              <i v-if="savingUserRoles" class="fas fa-spinner fa-spin me-2"></i>
-              {{ savingUserRoles ? '保存中...' : '保存角色分配' }}
+              <InlineLoading v-if="savingUserRoles" text="保存中..." size="small" variant="inherit" />
+              <template v-else>保存角色分配</template>
             </el-button>
           </div>
         </div>
@@ -557,8 +559,8 @@
                 @click="saveFieldPermissions"
                 :disabled="savingFieldPermissions"
               >
-                <i v-if="savingFieldPermissions" class="fas fa-spinner fa-spin"></i>
-                {{ savingFieldPermissions ? '保存中...' : '保存配置' }}
+                <InlineLoading v-if="savingFieldPermissions" text="保存中..." size="small" variant="inherit" />
+                <template v-else>保存配置</template>
               </el-button>
             </div>
           </div>
@@ -580,19 +582,23 @@
               页面模块
               <span class="module-count">共 {{ roleFieldModuleList.length }} 个模块</span>
             </div>
-            <div class="module-grid" v-loading="loadingRoleFieldModules">
-              <div
-                v-for="module in roleFieldModuleList"
-                :key="module.module_key"
-                :class="['module-item-grid', { active: selectedRoleModule?.module_key === module.module_key }]"
-                @click="selectRoleModuleForField(module)"
-                :title="module.name"
-              >
-                <div class="module-icon">
-                  <i :class="module.icon"></i>
+            <div class="module-grid">
+              <SectionLoading v-if="loadingRoleFieldModules" text="加载中..." size="compact" />
+
+              <template v-else>
+                <div
+                  v-for="module in roleFieldModuleList"
+                  :key="module.module_key"
+                  :class="['module-item-grid', { active: selectedRoleModule?.module_key === module.module_key }]"
+                  @click="selectRoleModuleForField(module)"
+                  :title="module.name"
+                >
+                  <div class="module-icon">
+                    <i :class="module.icon"></i>
+                  </div>
+                  <div class="module-name">{{ module.name }}</div>
                 </div>
-                <div class="module-name">{{ module.name }}</div>
-              </div>
+              </template>
             </div>
           </div>
 
@@ -602,7 +608,7 @@
                 <i class="fas fa-sitemap"></i>
                 子页面 / 分组
               </div>
-              <div v-if="loadingRoleFieldGroups" class="group-nav-loading" v-loading="loadingRoleFieldGroups"></div>
+              <SectionLoading v-if="loadingRoleFieldGroups" text="加载中..." size="compact" />
               <div v-else-if="roleFieldGroups.length > 0" class="group-nav-list">
                 <button
                   v-for="group in roleFieldGroups"
@@ -655,7 +661,9 @@
                 </div>
               </div>
 
-              <div class="field-config-panel" v-if="loadingRoleFieldGroups" v-loading="loadingRoleFieldGroups" style="min-height: 240px;"></div>
+              <div class="field-config-panel" v-if="loadingRoleFieldGroups" style="min-height: 240px;">
+                <SectionLoading text="加载中..." />
+              </div>
               <div v-else-if="currentRoleFieldGroup" class="field-config-panel">
                 <div class="field-panel-summary">
                   <div class="field-panel-summary__title">
@@ -738,8 +746,8 @@
                 @click="saveRoleFieldPermissions"
                 :disabled="savingRoleFieldPermissions || !selectedRoleModule"
               >
-                <i v-if="savingRoleFieldPermissions" class="fas fa-spinner fa-spin"></i>
-                {{ savingRoleFieldPermissions ? '保存中...' : '保存配置' }}
+                <InlineLoading v-if="savingRoleFieldPermissions" text="保存中..." size="small" variant="inherit" />
+                <template v-else>保存配置</template>
               </el-button>
             </div>
           </div>
@@ -797,20 +805,21 @@
               @click="saveStoreBinding"
               :disabled="savingStoreBinding || selectedStoreIds.length === 0"
             >
-              <i v-if="savingStoreBinding" class="fas fa-spinner fa-spin"></i>
-              {{ savingStoreBinding ? '保存中...' : '保存绑定' }}
+              <InlineLoading v-if="savingStoreBinding" text="保存中..." size="small" variant="inherit" />
+              <template v-else>保存绑定</template>
             </el-button>
           </div>
         </template>
       </MobileDialog>
     </Teleport>
+    </PermissionGate>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch, onActivated, nextTick, provide } from 'vue'
 import { User, Shop, Grid, Document, Avatar, Lock } from '@element-plus/icons-vue'
-import { ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { unifiedApi } from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import { useRouter } from 'vue-router'
@@ -818,12 +827,16 @@ import { useNotification } from '@/composables/useNotification'
 import { useLoadingState } from '@/composables'
 import { useImportExport } from '@/composables/useImportExport'
 import { usePagePermissions } from '@/composables/usePagePermissions'
+import { useRefreshData } from '@/composables/useRefreshData'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
 import { useAuthStore } from '@/stores/auth'
 import { useMenuStore } from '@/stores/menu'
 import { useDynamicPermissions } from '@/services/permissions'
 import { getModuleFields, getModuleFieldGroups } from '@/config/moduleFields.js'
-import { PermissionDenied, PageHeader } from '@/components/base'
+import { canAccessRoutePath } from '@/constants/routePermissions'
+import { PermissionGate, PageHeader } from '@/components/base'
+import InlineLoading from '@/components/InlineLoading.vue'
+import SectionLoading from '@/components/SectionLoading.vue'
 import { permissionsPageContextKey } from './page/context'
 import { getActionMeta, getPermissionMeta, getRoleVisualMeta } from './page/permissionMeta'
 import RolesPage from './page/RolesPage.vue'
@@ -887,9 +900,11 @@ const { canView, canCreate, canEdit, canDelete } = usePagePermissions('permissio
 
 // 状态变量
 const { loading } = useLoadingState()
+const { refreshing, refresh } = useRefreshData()
 const { exportTextFile, buildDateFilename } = useImportExport()
 const activeTab = ref('roles')
 const router = useRouter()
+const authStore = useAuthStore()
 const permissionsPageContext = reactive<Record<string, any>>({})
 provide(permissionsPageContextKey, permissionsPageContext)
 
@@ -1345,10 +1360,20 @@ const goToModuleManagement = () => {
 
 
 const goToRegisteredModules = () => {
+  if (!canAccessRoutePath('/permissions/module-management', authStore)) {
+    ElMessage.warning('您没有访问此页面的权限')
+    return
+  }
+
   router.push('/permissions/module-management')
 }
 
 const goToRoleManagement = () => {
+  if (!canAccessRoutePath('/roles', authStore)) {
+    ElMessage.warning('您没有访问此页面的权限')
+    return
+  }
+
   router.push('/roles')
 }
 
@@ -1781,11 +1806,12 @@ const refreshCurrentPage = async () => {
 const handleRefresh = async () => {
   // 不使用 loading 状态，实现完全静默刷新
   try {
-    // 静默刷新当前页面数据
-    await refreshCurrentPage()
+    await refresh(async () => {
+      await refreshCurrentPage()
+    })
 
     // 显示简洁的成功提示
-    success('数据已刷新', {
+    success('数据刷新成功', {
       duration: 1500,
       position: 'top-right'
     })
@@ -2244,15 +2270,10 @@ const refreshUserPermissions = async () => {
     const { refreshPermissions } = useDynamicPermissions()
     await refreshPermissions()
 
-    // 7. 显示成功提示，并建议刷新页面以确保所有功能生效
-    success('权限已更新，请刷新页面查看所有功能变化', { duration: 3000 })
+    // 7. 通知全站权限监听器刷新，不再整页 reload。
+    emitPermissionUpdated({ source: 'permission_page_refresh' })
 
-    // 8. 延迟1.5秒后提示用户刷新页面
-    setTimeout(() => {
-      if (confirm('权限已更新成功！是否立即刷新页面以应用所有更改？')) {
-        window.location.reload()
-      }
-    }, 1500)
+    success('权限已更新，菜单和页面权限已同步刷新', { duration: 3000 })
 
   } catch (err) {
     logger.error('❌ 刷新用户权限失败:', err)
@@ -5024,15 +5045,13 @@ onActivated(() => {
   color: #721c24;
 }
 
-/* 空状态和加载状态 */
-.loading-row,
+/* 空状态 */
 .empty-row {
   text-align: center;
   padding: 40px;
   color: #7f8c8d;
 }
 
-.loading-row i,
 .empty-row i {
   font-size: 24px;
   margin-bottom: 8px;
@@ -5877,16 +5896,6 @@ onActivated(() => {
   padding-right: 10px;
 }
 
-.dialog-loading-state {
-  min-height: 280px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  color: #6b7280;
-}
-
 .dialog-module-section {
   margin-bottom: 20px;
   border: 1px solid #e5e7eb;
@@ -6127,10 +6136,6 @@ onActivated(() => {
   background: #ffffff;
   padding: 20px 24px;
   overflow-y: auto;
-}
-
-.group-nav-loading {
-  min-height: 240px;
 }
 
 .group-nav-list {

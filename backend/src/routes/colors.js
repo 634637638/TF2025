@@ -4,142 +4,20 @@ const { unifiedAuth, requirePermission } = require('../middleware/unified-auth')
 const { devPermissionCheck } = require('../middleware/dev-permission');
 const ApiResponse = require('../utils/response');
 const { getDatabase, isConnected } = require('../config/database');
+const { cacheMiddleware, clearCache } = require('../middleware/cache');
 const log = require('../utils/log');
 
-// 模拟颜色数据
-const mockColors = [
-  {
-    id: 1,
-    name: '深空黑色',
-    english_name: 'Space Black',
-    hex_code: '#1C1C1E',
-    rgb: '28, 28, 30',
-    category: 'black',
-    is_premium: false,
-    description: '经典的深空黑色，沉稳大气',
-    brand_id: null, // null表示通用颜色，可用于所有品牌
-    brand_name: null,
-    is_active: true,
-    sort_order: 1,
-    created_at: '2023-01-15T10:00:00Z',
-    updated_at: '2023-01-15T10:00:00Z'
-  },
-  {
-    id: 2,
-    name: '钛金属',
-    english_name: 'Titanium',
-    hex_code: '#8E8E93',
-    rgb: '142, 142, 147',
-    category: 'gray',
-    is_premium: true,
-    description: '高端钛金属质感，轻量耐用',
-    brand_id: 15,
-    brand_name: '苹果',
-    is_active: true,
-    sort_order: 2,
-    created_at: '2023-01-15T10:01:00Z',
-    updated_at: '2023-01-15T10:01:00Z'
-  },
-  {
-    id: 3,
-    name: '粉红色',
-    english_name: 'Pink',
-    hex_code: '#FF3B30',
-    rgb: '255, 59, 48',
-    category: 'red',
-    is_premium: false,
-    description: '青春活力的粉红色',
-    brand_id: null,
-    brand_name: null,
-    is_active: true,
-    sort_order: 3,
-    created_at: '2023-01-15T10:02:00Z',
-    updated_at: '2023-01-15T10:02:00Z'
-  },
-  {
-    id: 4,
-    name: '钛紫色',
-    english_name: 'Titanium Violet',
-    hex_code: '#5856D6',
-    rgb: '88, 86, 214',
-    category: 'purple',
-    is_premium: true,
-    description: '三星独有的钛紫色',
-    brand_id: 20,
-    brand_name: '三星',
-    is_active: true,
-    sort_order: 4,
-    created_at: '2023-01-15T10:03:00Z',
-    updated_at: '2023-01-15T10:03:00Z'
-  },
-  {
-    id: 5,
-    name: '陶瓷白',
-    english_name: 'Ceramic White',
-    hex_code: '#F2F2F7',
-    rgb: '242, 242, 247',
-    category: 'white',
-    is_premium: true,
-    description: '温润如玉的陶瓷质感白色',
-    brand_id: 17,
-    brand_name: '小米',
-    is_active: true,
-    sort_order: 5,
-    created_at: '2023-01-15T10:04:00Z',
-    updated_at: '2023-01-15T10:04:00Z'
-  },
-  {
-    id: 6,
-    name: '银色',
-    english_name: 'Silver',
-    hex_code: '#E5E5EA',
-    rgb: '229, 229, 234',
-    category: 'white',
-    is_premium: false,
-    description: '经典银色，简洁优雅',
-    brand_id: null,
-    brand_name: null,
-    is_active: true,
-    sort_order: 6,
-    created_at: '2023-01-15T10:05:00Z',
-    updated_at: '2023-01-15T10:05:00Z'
-  },
-  {
-    id: 7,
-    name: '金色',
-    english_name: 'Gold',
-    hex_code: '#FF9500',
-    rgb: '255, 149, 0',
-    category: 'yellow',
-    is_premium: true,
-    description: '奢华金色，尊贵典雅',
-    brand_id: null,
-    brand_name: null,
-    is_active: true,
-    sort_order: 7,
-    created_at: '2023-01-15T10:06:00Z',
-    updated_at: '2023-01-15T10:06:00Z'
-  },
-  {
-    id: 8,
-    name: '深空蓝色',
-    english_name: 'Deep Blue',
-    hex_code: '#007AFF',
-    rgb: '0, 122, 255',
-    category: 'blue',
-    is_premium: false,
-    description: '深邃的蓝色，科技感十足',
-    brand_id: null,
-    brand_name: null,
-    is_active: true,
-    sort_order: 8,
-    created_at: '2023-01-15T10:07:00Z',
-    updated_at: '2023-01-15T10:07:00Z'
+const clearColorsRouteCache = () => {
+  try {
+    clearCache('/api/colors');
+    clearCache('/api/public/colors');
+  } catch (error) {
+    log.warn('清理颜色缓存失败:', error.message);
   }
-];
+};
 
 // 获取颜色列表
-router.get('/', unifiedAuth, devPermissionCheck('colors:view'), async (req, res) => {
+router.get('/', unifiedAuth, devPermissionCheck('colors:view'), cacheMiddleware({ ttl: 10 * 1000 }), async (req, res) => {
   try {
     log.debug('获取颜色列表请求，参数:', req.query);
 
@@ -165,23 +43,6 @@ router.get('/', unifiedAuth, devPermissionCheck('colors:view'), async (req, res)
     const limitNum = parseInt(limit) || 10000;  // 提高默认限制
     const pageNum = parseInt(page) || 1;
     const offset = (pageNum - 1) * limitNum;
-
-    // 先检查colors表是否存在
-    try {
-      await pool.execute('SELECT 1 FROM colors LIMIT 1');
-    } catch (tableError) {
-      log.error('colors表不存在或无权限访问:', tableError);
-      // 如果表不存在，返回空结果而不是错误
-      return ApiResponse.success(res, {
-        colors: [],
-        pagination: {
-          page: pageNum,
-          limit: limitNum,
-          total: 0,
-          pages: 0
-        }
-      });
-    }
 
     // 使用简单的查询方式，避免复杂的JOIN和参数问题
     let baseQuery = 'SELECT * FROM colors';
@@ -281,16 +142,21 @@ router.get('/', unifiedAuth, devPermissionCheck('colors:view'), async (req, res)
 });
 
 // 获取单个颜色详情
-router.get('/:id', unifiedAuth, requirePermission('colors:view'), (req, res) => {
+router.get('/:id', unifiedAuth, requirePermission('colors:view'), async (req, res) => {
   try {
-    const { id } = req.params;
-    const color = mockColors.find(c => c.id === parseInt(id));
+    if (!isConnected()) {
+      return ApiResponse.error(res, '数据库未连接', 500);
+    }
 
-    if (!color) {
+    const { id } = req.params;
+    const pool = getDatabase();
+    const [colors] = await pool.execute('SELECT * FROM colors WHERE id = ?', [parseInt(id)]);
+
+    if (colors.length === 0) {
       return ApiResponse.notFound(res, '颜色不存在');
     }
 
-    ApiResponse.success(res, color);
+    ApiResponse.success(res, colors[0]);
   } catch (error) {
     log.error('获取颜色详情失败:', error);
     ApiResponse.serverError(res, '获取颜色详情失败', error);
@@ -319,9 +185,10 @@ router.post('/', unifiedAuth, requirePermission('colors:create'), async (req, re
     }
 
     // 检查颜色名称是否重复
+    const trimmedName = name.trim();
     const [existingColors] = await pool.execute(
       'SELECT id FROM colors WHERE name = ?',
-      [name]
+      [trimmedName]
     );
     if (existingColors.length > 0) {
       return ApiResponse.badRequest(res, '颜色名称已存在');
@@ -335,9 +202,9 @@ router.post('/', unifiedAuth, requirePermission('colors:create'), async (req, re
     `;
 
     const insertValues = [
-      name,
-      status || 1,
-      sort_order || 0
+      trimmedName,
+      status !== undefined ? parseInt(status) : 1,
+      sort_order !== undefined ? parseInt(sort_order) : 0
     ];
 
     log.debug('执行插入SQL:', insertQuery);
@@ -349,6 +216,7 @@ router.post('/', unifiedAuth, requirePermission('colors:create'), async (req, re
     const [newColors] = await pool.execute('SELECT * FROM colors WHERE id = ?', [result.insertId]);
     const newColor = newColors[0];
 
+    clearColorsRouteCache();
     ApiResponse.created(res, '颜色创建成功', newColor);
   } catch (error) {
     log.error('创建颜色失败:', error);
@@ -389,7 +257,7 @@ router.put('/:id', unifiedAuth, requirePermission('colors:edit'), async (req, re
     if (name) {
       const [duplicateCheck] = await pool.execute(
         'SELECT id FROM colors WHERE name = ? AND id != ?',
-        [name, id]
+        [name.trim(), id]
       );
       if (duplicateCheck.length > 0) {
         return ApiResponse.badRequest(res, '颜色名称已存在');
@@ -402,7 +270,7 @@ router.put('/:id', unifiedAuth, requirePermission('colors:edit'), async (req, re
 
     if (name !== undefined) {
       updateFields.push('name = ?');
-      updateValues.push(name);
+      updateValues.push(name.trim());
     }
 
     // 处理status字段（使用正确的字段名）
@@ -431,6 +299,7 @@ router.put('/:id', unifiedAuth, requirePermission('colors:edit'), async (req, re
     // 获取更新后的颜色信息
     const [updatedColor] = await pool.execute('SELECT * FROM colors WHERE id = ?', [id]);
 
+    clearColorsRouteCache();
     ApiResponse.success(res, updatedColor[0], '颜色更新成功');
   } catch (error) {
     log.error('更新颜色失败:', error);
@@ -459,6 +328,7 @@ router.delete('/:id', unifiedAuth, requirePermission('colors:delete'), async (re
     // 删除颜色
     await pool.execute('DELETE FROM colors WHERE id = ?', [parseInt(id)]);
 
+    clearColorsRouteCache();
     ApiResponse.success(res, existingColors[0], '颜色删除成功');
   } catch (error) {
     log.error('删除颜色失败:', error);
@@ -474,39 +344,20 @@ router.delete('/:id', unifiedAuth, requirePermission('colors:delete'), async (re
 });
 
 // 获取颜色统计信息
-router.get('/stats/overview', unifiedAuth, requirePermission('colors:view'), (req, res) => {
+router.get('/stats/overview', unifiedAuth, requirePermission('colors:view'), async (req, res) => {
   try {
-    const { brand_id } = req.query;
-
-    let colorsForStats = [...mockColors];
-    if (brand_id !== undefined) {
-      if (brand_id === 'null' || brand_id === '') {
-        colorsForStats = colorsForStats.filter(color => color.brand_id === null);
-      } else {
-        colorsForStats = colorsForStats.filter(color => color.brand_id === parseInt(brand_id));
-      }
+    if (!isConnected()) {
+      return ApiResponse.error(res, '数据库未连接', 500);
     }
 
-    const stats = {
-      total: colorsForStats.length,
-      active: colorsForStats.filter(c => c.is_active).length,
-      inactive: colorsForStats.filter(c => !c.is_active).length,
-      premium: colorsForStats.filter(c => c.is_premium).length,
-      standard: colorsForStats.filter(c => !c.is_premium).length,
-      byCategory: {},
-      byBrand: {},
-      genericColors: colorsForStats.filter(c => c.brand_id === null).length,
-      brandSpecific: colorsForStats.filter(c => c.brand_id !== null).length
-    };
+    const pool = getDatabase();
+    const [colors] = await pool.execute('SELECT * FROM colors');
 
-    // 按类别统计
-    colorsForStats.forEach(color => {
-      stats.byCategory[color.category] = (stats.byCategory[color.category] || 0) + 1;
-      if (color.brand_id) {
-        stats.byBrand[color.brand_name || `品牌${color.brand_id}`] =
-          (stats.byBrand[color.brand_name || `品牌${color.brand_id}`] || 0) + 1;
-      }
-    });
+    const stats = {
+      total: colors.length,
+      active: colors.filter(c => c.status === 1).length,
+      inactive: colors.filter(c => c.status !== 1).length
+    };
 
     ApiResponse.success(res, stats);
   } catch (error) {
@@ -516,20 +367,30 @@ router.get('/stats/overview', unifiedAuth, requirePermission('colors:view'), (re
 });
 
 // 切换颜色状态
-router.patch('/:id/toggle', unifiedAuth, requirePermission('colors:edit'), (req, res) => {
+router.patch('/:id/toggle', unifiedAuth, requirePermission('colors:edit'), async (req, res) => {
   try {
-    const { id } = req.params;
-    const colorIndex = mockColors.findIndex(c => c.id === parseInt(id));
+    if (!isConnected()) {
+      return ApiResponse.error(res, '数据库未连接', 500);
+    }
 
-    if (colorIndex === -1) {
+    const { id } = req.params;
+    const pool = getDatabase();
+    const [existingColors] = await pool.execute('SELECT * FROM colors WHERE id = ?', [parseInt(id)]);
+
+    if (existingColors.length === 0) {
       return ApiResponse.notFound(res, '颜色不存在');
     }
 
-    mockColors[colorIndex].is_active = !mockColors[colorIndex].is_active;
-    mockColors[colorIndex].updated_at = new Date().toISOString();
+    const newStatus = existingColors[0].status === 1 ? 0 : 1;
+    await pool.execute(
+      'UPDATE colors SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [newStatus, parseInt(id)]
+    );
 
-    const statusText = mockColors[colorIndex].is_active ? '启用' : '禁用';
-    ApiResponse.success(res, mockColors[colorIndex], `颜色${statusText}成功`);
+    const [updatedColors] = await pool.execute('SELECT * FROM colors WHERE id = ?', [parseInt(id)]);
+    const statusText = newStatus === 1 ? '启用' : '禁用';
+    clearColorsRouteCache();
+    ApiResponse.success(res, updatedColors[0], `颜色${statusText}成功`);
   } catch (error) {
     log.error('切换颜色状态失败:', error);
     ApiResponse.serverError(res, '切换颜色状态失败', error);
@@ -589,6 +450,7 @@ router.put('/batch/reorder', unifiedAuth, requirePermission('colors:edit'), asyn
       }
 
       await connection.commit();
+      clearColorsRouteCache();
       ApiResponse.success(res, null, '排序更新成功');
 
     } catch (error) {

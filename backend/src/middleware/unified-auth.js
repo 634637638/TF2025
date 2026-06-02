@@ -14,6 +14,7 @@
 const { getDatabase } = require('../config/database');
 const { verifyToken } = require('./jwt-blacklist');
 const { getRoleHierarchyFromDB } = require('../services/accessControl.service');
+const { normalizePermissionType } = require('../config/module-permission-actions');
 const log = require('../utils/log');
 
 // 开发环境检测
@@ -682,6 +683,8 @@ const PERMISSION_MAPPING = {
   'h5-templates:create': ['h5_admin_templatesview:create'],
   'h5-templates:edit': ['h5_admin_templatesview:edit'],
   'h5-templates:delete': ['h5_admin_templatesview:delete'],
+  'h5-sold-products:view': ['h5_admin_soldproductsview:view'],
+  'h5-sold-products:delete': ['h5_admin_soldproductsview:delete'],
   'h5-orders:view': ['h5_admin_ordersview:view'],
   'h5-orders:edit': ['h5_admin_ordersview:edit'],
 
@@ -809,6 +812,17 @@ const PERMISSION_MAPPING = {
   'price-list:export': ['price_list_pricelistview:export'],
   'price-list:sync': ['price_list_pricelistview:sync'],
 
+  // Git 管理权限映射
+  'git-management:view': ['system_gitmanagement:view', 'system_gitmanagement:menu_view'],
+  'git-management:create': ['system_gitmanagement:create'],
+  'git-management:edit': ['system_gitmanagement:edit'],
+  'git-management:delete': ['system_gitmanagement:delete'],
+
+  // 备份管理权限映射
+  'backup:view': ['backup_backupview:view', 'backup_backupview:menu_view'],
+  'backup:create': ['backup_backupview:create'],
+  'backup:delete': ['backup_backupview:delete'],
+
   // 仪表盘权限映射
   'dashboard:view': ['dashboard_dashboardview:view', 'dashboard_dashboardview:menu_view'],
 
@@ -825,14 +839,6 @@ const PERMISSION_MAPPING = {
  * 检查用户是否为某个模块的管理员
  * 模块管理员定义：拥有该模块的 view, create, edit, delete 所有权限
  */
-const normalizePermissionType = (permissionType) => {
-  if (!permissionType) return permissionType;
-  if (permissionType.endsWith('_permission')) {
-    return permissionType.replace('_permission', '');
-  }
-  return permissionType;
-};
-
 const normalizePermissionString = (perm) => {
   if (!perm) return perm;
   if (typeof perm === 'string') {

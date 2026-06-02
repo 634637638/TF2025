@@ -3,15 +3,15 @@
   功能：管理首页推荐区域和商品
 -->
 <template>
-  <PermissionDenied
-    v-if="!canView"
+  <PermissionGate
     :can-view="canView"
+    mode="denied"
     module-key="h5-admin-home-sections"
     module-name="首页推荐"
     permission-code="home-sections:view"
-  />
+  >
 
-  <div v-else class="home-sections-config-page">
+  <div class="home-sections-config-page">
     <!-- 加载状态 -->
     <div v-if="loading" class="loading-state">
       <el-skeleton animated />
@@ -329,15 +329,16 @@
       </template>
     </MobileDialog>
   </div>
+  </PermissionGate>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, inject } from 'vue'
+import { ref, onMounted, onUnmounted, computed, inject, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, Plus } from '@element-plus/icons-vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
-import { PermissionDenied } from '@/components/base'
+import { PermissionGate } from '@/components/base'
 import draggable from 'vuedraggable'
 import {
   getAllHomeSections,
@@ -358,13 +359,20 @@ import { useLoadingState } from '@/composables'
 import { logger } from '@/utils/logger'
 import type { HeaderAction } from '@/types'
 const router = useRouter()
-const { canView, canCreate, canEdit, canDelete, handleNoPermission } = usePagePermissions('h5-admin-home-sections')
+const homeSectionPermissions = usePagePermissions('h5-admin-home-sections')
+const h5AdminPermissions = usePagePermissions('h5-admin')
+const { handleNoPermission } = homeSectionPermissions
+const canView = computed(() => homeSectionPermissions.canView.value || h5AdminPermissions.canView.value)
+const canCreate = computed(() => homeSectionPermissions.canCreate.value || h5AdminPermissions.canCreate.value)
+const canEdit = computed(() => homeSectionPermissions.canEdit.value || h5AdminPermissions.canEdit.value)
+const canDelete = computed(() => homeSectionPermissions.canDelete.value || h5AdminPermissions.canDelete.value)
 
 // 注入父组件提供的注册方法
 const registerHeaderActions = inject<(actions: HeaderAction[]) => void>('registerHeaderActions')
 const clearHeaderActions = inject<() => void>('clearHeaderActions')
 
 const { loading } = useLoadingState()
+const hasInitializedPageData = ref(false)
 const sections = ref<HomeSection[]>([])
 const showCreateDialog = ref(false)
 const showProductsDialog = ref(false)
@@ -907,11 +915,21 @@ const handleProductsDialogClose = () => {
   availableProducts.value = []
 }
 
-onMounted(() => {
-  if (canView.value) {
-    loadSections()
+const initializePageData = async () => {
+  if (!canView.value) {
+    loading.value = false
+    return
   }
-  // 注册头部操作按钮
+
+  if (hasInitializedPageData.value) {
+    return
+  }
+
+  hasInitializedPageData.value = true
+  await loadSections()
+}
+
+const registerPageHeaderActions = () => {
   if (registerHeaderActions) {
     registerHeaderActions([
       ...(canCreate.value ? [{
@@ -929,6 +947,21 @@ onMounted(() => {
       }
     ])
   }
+}
+
+watch(canView, (allowed) => {
+  if (allowed) {
+    void initializePageData()
+  }
+})
+
+watch(canCreate, () => {
+  registerPageHeaderActions()
+})
+
+onMounted(() => {
+  void initializePageData()
+  registerPageHeaderActions()
 })
 
 onUnmounted(() => {

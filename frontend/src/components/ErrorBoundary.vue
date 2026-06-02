@@ -195,7 +195,7 @@ const errorMessage = computed(() => {
     return '请检查您的网络连接，然后重试'
   }
   if (errorMsg.includes('permission') || errorMsg.includes('unauthorized')) {
-    return '您没有执行此操作的权限，请联系有权限的角色维护人员'
+    return '您没有执行此操作的权限'
   }
 
   return '抱歉，页面遇到了一个错误，请稍后重试'

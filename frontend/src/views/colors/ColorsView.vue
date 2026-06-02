@@ -1,5 +1,12 @@
 <template>
   <div class="colors-view admin-page">
+    <PermissionGate
+      :can-view="canView"
+      mode="denied"
+      module-key="colors_colorsview"
+      module-name="颜色管理"
+      permission-code="colors:view"
+    >
     <!-- 页面头部 - 使用公共组件 -->
     <PageHeader
       icon="fas fa-palette"
@@ -15,23 +22,16 @@
           <span>新增</span>
         </el-button>
         <el-button type="info" @click="handleRefresh" :disabled="refreshing">
-          <i :class="refreshing ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'"></i>
-          <span>刷新</span>
+          <InlineLoading v-if="refreshing" text="刷新中..." size="small" variant="inherit" />
+          <template v-else>
+            <i class="fas fa-sync-alt"></i>
+            <span>刷新</span>
+          </template>
         </el-button>
       </template>
     </PageHeader>
 
-    <!-- ❌ 无权限时显示提示 -->
-    <PermissionDenied
-      v-if="!canView"
-      :can-view="canView"
-      module-key="colors_colorsview"
-      module-name="颜色管理"
-      permission-code="colors:view"
-    />
-
-    <!-- 权限验证通过后的内容 -->
-    <div v-else class="content admin-page-content">
+    <div class="content admin-page-content">
 
     <!-- 统计卡片 -->
     <div v-if="showStatsCards" class="stats-cards">
@@ -129,14 +129,11 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-if="loading" class="loading-row">
-              <td :colspan="visibleColumnCount">
-                <div class="loading-content">
-                  <i class="fas fa-spinner fa-spin"></i>
-                  <span>正在加载数据...</span>
-                </div>
-              </td>
-            </tr>
+            <TableLoadingRow
+              v-if="tableLoading"
+              :colspan="visibleColumnCount"
+              text="加载颜色列表..."
+            />
             <tr v-else-if="colors.length === 0" class="empty-row">
               <td :colspan="visibleColumnCount">
                 <div class="empty-content">
@@ -144,9 +141,9 @@
                   <div class="empty-text">
                     <h4>暂无颜色数据</h4>
                     <p>点击上方"新增颜色"按钮添加第一个颜色</p>
-                    <el-button size="small" type="info" class="mt-2" @click="loadColors()" :disabled="loading">
+                    <el-button size="small" type="info" class="mt-2" @click="loadColors()">
                       <i class="fas fa-sync-alt"></i>
-                      {{ loading ? '加载中...' : '重新加载' }}
+                      重新加载
                     </el-button>
                   </div>
                 </div>
@@ -299,7 +296,6 @@
         :show-range="true"
         :show-page-sizes="true"
         :show-quick-jumper="true"
-        :disabled="loading"
         @change="handlePaginationChange"
       />
     </div>
@@ -363,12 +359,13 @@
       <template #footer>
         <el-button type="default" @click="attemptCloseModal">取消</el-button>
         <el-button type="primary" @click="submitForm" :disabled="submitting" :loading="submitting">
-          <i v-if="submitting" class="fas fa-spinner fa-spin"></i>
-          {{ isEditMode ? '更新' : '创建' }}
+          <InlineLoading v-if="submitting" :text="isEditMode ? '更新中...' : '创建中...'" size="small" variant="inherit" />
+          <template v-else>{{ isEditMode ? '更新' : '创建' }}</template>
         </el-button>
       </template>
     </MobileDialog>
     </div>
+    </PermissionGate>
   </div>
 </template>
 
@@ -378,17 +375,19 @@ import { useRouter } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 import unifiedApi from '@/utils/unified-api'
 import { useNotification } from '@/composables/useNotification'
-import { useLoadingState } from '@/composables'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useRefreshData } from '@/composables/useRefreshData'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
 import { useAuthStore } from '@/stores/auth'
 import Pagination from '../../components/Pagination.vue'
+import InlineLoading from '@/components/InlineLoading.vue'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
-import { PermissionDenied, PageHeader } from '@/components/base'
+import { PermissionGate, PageHeader } from '@/components/base'
 import { usePermissionToast } from '@/utils/permissionToastSimple'
 import { handleApiErrorWithPermission } from '@/utils/apiPermissionError'
 import { useMobile } from '@/composables/mobile'
+import { useLatestRequest } from '@/composables/useLatestRequest'
 import { logger } from '@/utils/logger'
 import type { Color } from '@/types'
 
@@ -403,6 +402,7 @@ const { refreshing, refresh } = useRefreshData()
 const { isMobile } = useMobile()
 const authStore = useAuthStore()
 const { init: initFieldPermissions } = fieldPermissions
+const colorListRequest = useLatestRequest()
 
 const colorFieldMap: Record<string, string> = {
   stats_total_colors: 'stats.total_colors',
@@ -461,9 +461,9 @@ const visibleColumnCount = computed(() => {
 })
 
 // 响应式数据
-const { loading } = useLoadingState()
 const submitting = ref(false)
 const savingOrder = ref(false)
+const tableLoading = ref(true)
 const mobileActionRowId = ref<number | null>(null)
 const lastTappedRowId = ref<number | null>(null)
 const lastTapTimestamp = ref(0)
@@ -571,20 +571,21 @@ const updateColorPreview = () => {
   // 这个方法用于在输入时更新预览，实际上通过计算属性已经处理了
 }
 
-const loadColors = async (bustCache = false, silentError = false, showLoadingState = true) => {
+const loadColors = async (bustCache = false, silentError = false, _showLoadingState = true) => {
   // 检查查看权限
   if (!canView.value) {
     if (!silentError) {
       showViewDenied('颜色管理', 'colors:view')
     }
     colors.value = []
+    tableLoading.value = false
     return
   }
 
-  // 根据 showLoadingState 参数决定是否显示加载状态
-  if (showLoadingState) {
-    loading.value = true
+  if (_showLoadingState) {
+    tableLoading.value = true
   }
+
   try {
     const params: any = {
       page: pagination.value.page,
@@ -597,7 +598,15 @@ const loadColors = async (bustCache = false, silentError = false, showLoadingSta
     if (searchForm.value.name) params.name = searchForm.value.name
     if (searchForm.value.status !== '') params.status = searchForm.value.status
 
-    const response = await unifiedApi.get('/colors', { params })
+    const request = colorListRequest.nextRequest()
+    const response = await unifiedApi.get('/colors', {
+      params,
+      signal: request.signal
+    })
+
+    if (!request.isLatest()) {
+      return
+    }
 
     if (response.success) {
       colors.value = response.data.colors || []
@@ -619,6 +628,10 @@ const loadColors = async (bustCache = false, silentError = false, showLoadingSta
       }
     }
   } catch (err: any) {
+    if (colorListRequest.isCanceledError(err)) {
+      return
+    }
+
     logger.error('获取颜色列表失败:', err)
     colors.value = []
     pagination.value = { page: 1, limit: 50, total: 0, pages: 0 }
@@ -631,9 +644,8 @@ const loadColors = async (bustCache = false, silentError = false, showLoadingSta
     // 使用统一的错误处理
     handleApiError(err, '获取颜色列表失败')
   } finally {
-    // 只有在显示加载状态时才重置
-    if (showLoadingState) {
-      loading.value = false
+    if (_showLoadingState) {
+      tableLoading.value = false
     }
   }
 }
@@ -658,11 +670,9 @@ const changePage = (page: number) => {
 }
 
 const handlePaginationChange = (page, pageSize) => {
-  pagination.value.page = page
+  const oldPageSize = pagination.value.limit
   pagination.value.limit = pageSize
-  if (pageSize !== pagination.value.limit) {
-    pagination.value.page = 1
-  }
+  pagination.value.page = pageSize !== oldPageSize ? 1 : page
   loadColors()
 }
 
@@ -719,10 +729,7 @@ const deleteColor = async (color: Color) => {
 
     if (response.success) {
       success(response.message || '颜色删除成功')
-      // 延迟一下刷新，确保后端操作完成
-      setTimeout(() => {
-        loadColors()
-      }, 300)
+      await loadColors(true, false, false)
     } else {
       error(`删除颜色失败: ${response.message || '未知错误'}`)
     }
@@ -815,10 +822,7 @@ const submitForm = async () => {
       if (response.success) {
         success('操作成功', response.message || '颜色创建成功')
         closeModal()
-        // 延迟一下刷新，确保后端操作完成
-        setTimeout(() => {
-          loadColors()
-        }, 300)
+        await loadColors(true, false, false)
       } else {
         error('创建颜色失败', response.message || '未知错误')
       }
@@ -831,10 +835,7 @@ const submitForm = async () => {
       if (response.success) {
         success('操作成功', response.message || '颜色更新成功')
         closeModal()
-        // 延迟一下刷新，确保后端操作完成
-        setTimeout(() => {
-          loadColors()
-        }, 300)
+        await loadColors(true, false, false)
       } else {
         error('更新颜色失败', response.message || '未知错误')
       }
@@ -1448,9 +1449,15 @@ onBeforeUnmount(() => {
 }
 
 .actions {
-  display: flex;
-  gap: 8px;
+  vertical-align: middle;
+  text-align: center;
+}
+
+.actions .action-buttons {
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
+  gap: 8px;
 }
 
 .btn-action {
@@ -1493,21 +1500,6 @@ onBeforeUnmount(() => {
   background: #c82333;
   transform: translateY(-1px);
   box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
-}
-
-/* 加载和空状态样式 */
-.loading-row td {
-  padding: 40px 12px;
-  text-align: center;
-}
-
-.loading-content {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  color: #6c757d;
-  font-size: 16px;
 }
 
 .empty-row td {
@@ -1722,8 +1714,6 @@ onBeforeUnmount(() => {
   }
 
   .actions {
-    flex-direction: column;
-    gap: 6px;
     min-width: 80px;
   }
 

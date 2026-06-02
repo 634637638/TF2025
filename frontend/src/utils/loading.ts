@@ -4,8 +4,7 @@
  */
 
 import { ref, reactive, computed, nextTick, type App, inject } from 'vue'
-import { ElLoading } from 'element-plus'
-import type { LoadingInstance } from 'element-plus'
+import { showElementLoading, type LoadingInstance } from '@/utils/element-feedback'
 
 /**
  * Loading配置接口
@@ -318,8 +317,10 @@ export class GlobalLoadingManager {
       }, this.config.taskTimeout)
     }
 
-    // 创建Loading实例
-    this.createLoadingInstance(task)
+    // 全局加载由 App.vue 中的 GlobalLoading 统一承载，避免和 Element Plus 全屏 Loading 重复显示。
+    if (!this.config.enableGlobalLoading) {
+      this.createLoadingInstance(task)
+    }
 
     // 触发全局事件
     this.emitGlobalEvent('loading:start', task)
@@ -328,7 +329,7 @@ export class GlobalLoadingManager {
   /**
    * 创建Loading实例
    */
-  private createLoadingInstance(task: LoadingTask): void {
+  private async createLoadingInstance(task: LoadingTask): Promise<void> {
     try {
       const loadingConfig = {
         text: task.config.showProgress
@@ -342,7 +343,12 @@ export class GlobalLoadingManager {
         spinner: task.config.spinner
       }
 
-      task.instance = ElLoading.service(loadingConfig)
+      const instance = await showElementLoading(loadingConfig)
+      if (task.status === 'running') {
+        task.instance = instance
+      } else {
+        instance.close()
+      }
 
     } catch (error) {
       task.status = 'error'
@@ -395,12 +401,10 @@ export class GlobalLoadingManager {
     const runningTasks = Array.from(this.tasks.values())
       .filter(task => task.status === 'running')
 
-    const shouldShowGlobal = this.config.enableGlobalLoading &&
+    const shouldShowGlobal = !this.config.enableGlobalLoading &&
                             runningTasks.length >= this.config.globalLoadingThreshold
 
-    if (shouldShowGlobal && !this.isGlobalLoadingActive) {
-      this.showGlobalLoading()
-    } else if (!shouldShowGlobal && this.isGlobalLoadingActive) {
+    if (!shouldShowGlobal && this.isGlobalLoadingActive) {
       this.hideGlobalLoading()
     }
   }
@@ -408,22 +412,29 @@ export class GlobalLoadingManager {
   /**
    * 显示全局Loading
    */
-  private showGlobalLoading(): void {
+  private async showGlobalLoading(): Promise<void> {
     if (this.isGlobalLoadingActive) return
 
     try {
-      this.globalLoading = ElLoading.service({
+      this.isGlobalLoadingActive = true
+      const loading = await showElementLoading({
         text: '系统处理中，请稍候...',
         background: 'rgba(0, 0, 0, 0.8)',
         lock: true,
         fullscreen: true
       })
 
-      this.isGlobalLoadingActive = true
+      if (this.isGlobalLoadingActive) {
+        this.globalLoading = loading
+      } else {
+        loading.close()
+      }
+
       this.globalTaskCount++
 
     } catch (error) {
       // 显示全局Loading失败，忽略
+      this.isGlobalLoadingActive = false
     }
   }
 

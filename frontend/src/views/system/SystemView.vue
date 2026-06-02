@@ -1,17 +1,15 @@
 <template>
   <div class="system-management admin-page">
-    <!-- ❌ 无权限时显示提示 -->
-    <PermissionDenied
-      v-if="!canView"
+    <PermissionGate
       :can-view="canView"
+      mode="denied"
       module-key="system"
       module-name="系统管理"
       permission-code="system:view"
-    />
+    >
 
     <!-- 页面头部 -->
     <PageHeader
-      v-else
       icon="fas fa-cogs"
       title="系统管理"
     >
@@ -25,14 +23,17 @@
           <span>新增</span>
         </el-button>
         <el-button type="info" @click="refreshSystemStatus" :disabled="refreshing">
-          <i :class="refreshing ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'"></i>
-          <span>刷新</span>
+          <InlineLoading v-if="refreshing" text="刷新中..." size="small" variant="inherit" />
+          <template v-else>
+            <i class="fas fa-sync-alt"></i>
+            <span>刷新</span>
+          </template>
         </el-button>
       </template>
     </PageHeader>
 
     <!-- 系统功能模块 -->
-    <div v-if="canView" class="system-container admin-page-content">
+    <div class="system-container admin-page-content">
       <!-- TAB导航 -->
       <div class="tab-navigation">
         <el-button
@@ -87,8 +88,11 @@
                     :loading="isLoading"
                     :disabled="!canUpdateSettings"
                   >
-                    <i :class="isLoading ? 'fas fa-spinner fa-spin' : 'fas fa-save'"></i>
-                    <span>保存</span>
+                    <InlineLoading v-if="isLoading" text="保存中..." size="small" variant="inherit" />
+                    <template v-else>
+                      <i class="fas fa-save"></i>
+                      <span>保存</span>
+                    </template>
                   </el-button>
                 </div>
 
@@ -140,8 +144,11 @@
                       :loading="logoUploading"
                       :disabled="!canUpdateSettings"
                     >
-                      <i :class="logoUploading ? 'fas fa-spinner fa-spin' : 'fas fa-upload'"></i>
-                      <span>上传 Logo</span>
+                      <InlineLoading v-if="logoUploading" text="上传中..." size="small" variant="inherit" />
+                      <template v-else>
+                        <i class="fas fa-upload"></i>
+                        <span>上传 Logo</span>
+                      </template>
                     </el-button>
                     <el-button
                       v-if="siteSettings.logoUrl"
@@ -182,8 +189,11 @@
                     :loading="isLoading"
                     :disabled="!canUpdateSettings"
                   >
-                    <i :class="isLoading ? 'fas fa-spinner fa-spin' : 'fas fa-save'"></i>
-                    <span>保存</span>
+                    <InlineLoading v-if="isLoading" text="保存中..." size="small" variant="inherit" />
+                    <template v-else>
+                      <i class="fas fa-save"></i>
+                      <span>保存</span>
+                    </template>
                   </el-button>
                 </div>
                 <el-table :data="siteSettingsList" border stripe style="width: 100%">
@@ -248,8 +258,11 @@
                     :loading="isLoading"
                     :disabled="!canUpdateSettings"
                   >
-                    <i :class="isLoading ? 'fas fa-spinner fa-spin' : 'fas fa-save'"></i>
-                    <span>保存</span>
+                    <InlineLoading v-if="isLoading" text="保存中..." size="small" variant="inherit" />
+                    <template v-else>
+                      <i class="fas fa-save"></i>
+                      <span>保存</span>
+                    </template>
                   </el-button>
                 </div>
 
@@ -391,12 +404,16 @@
                   </div>
 
                   <el-table
-                    :data="inventoryPasswords"
+                    :data="loadingPasswords ? [] : inventoryPasswords"
                     border
                     stripe
-                    v-loading="loadingPasswords"
                     style="width: 100%; margin-top: 12px;"
                   >
+                    <template #empty>
+                      <TableLoadingRow v-if="loadingPasswords" mode="block" text="加载中..." />
+                      <el-empty v-else description="暂无密码记录" />
+                    </template>
+
                     <el-table-column prop="name" label="用户名" min-width="100" show-overflow-tooltip />
                     <el-table-column prop="password" label="密码" width="100" align="center">
                       <template #default="{ row }">
@@ -518,6 +535,7 @@
         </el-button>
       </template>
     </MobileDialog>
+    </PermissionGate>
   </div>
 </template>
 
@@ -531,7 +549,9 @@ import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useSiteSettingsStore } from '@/stores/siteSettings'
 import { buildLogoUrl } from '@/utils/logoUtils'
-import { PermissionDenied, PageHeader } from '@/components/base'
+import { PermissionGate, PageHeader } from '@/components/base'
+import InlineLoading from '@/components/InlineLoading.vue'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import Image from '@/components/Image.vue'
 import { ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'

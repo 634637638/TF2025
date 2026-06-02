@@ -1,5 +1,10 @@
 <template>
   <div class="suppliers-view admin-page">
+    <PermissionGate
+      :can-view="canView"
+      module-name="供应商管理"
+      permission-code="suppliers:view"
+    >
     <!-- 页面头部 - 使用公共组件 -->
     <PageHeader
       icon="fas fa-truck"
@@ -30,26 +35,16 @@
           @click="handleRefresh"
           plain
         >
-          <i :class="refreshing ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'"></i>
-          刷新
+          <InlineLoading v-if="refreshing" text="刷新中..." size="small" variant="inherit" />
+          <template v-else>
+            <i class="fas fa-sync-alt"></i>
+            刷新
+          </template>
         </el-button>
       </template>
     </PageHeader>
 
-    <!-- 权限不足提示 - 在权限加载完成后显示 -->
-    <PermissionAccessNotice
-      v-if="!permissionLoading"
-      v-permission-not="'suppliers:view'"
-      module-name="供应商管理"
-      permission-name="供应商查看权限"
-      permission-code="suppliers:view"
-      :has-menu-permission-only="hasMenuPermissionOnly"
-      :related-permissions="supplierPermissions"
-      detail-title="供应商管理相关权限"
-    />
-
-    <!-- 权限验证通过后的内容 -->
-    <div class="content admin-page-content" v-permission="'suppliers:view'">
+    <div class="content admin-page-content">
 
     <!-- 统计卡片 -->
     <div v-if="showStatsCards" class="stats-cards">
@@ -67,7 +62,7 @@
           <i class="fas fa-check-circle"></i>
         </div>
         <div class="stat-content">
-          <div class="stat-value">{{ suppliers.filter(s => s.status === 1).length }}</div>
+          <div class="stat-value">{{ supplierStats.active }}</div>
           <div class="stat-label">正常供应商</div>
         </div>
       </div>
@@ -76,7 +71,7 @@
           <i class="fas fa-pause-circle"></i>
         </div>
         <div class="stat-content">
-          <div class="stat-value">{{ suppliers.filter(s => s.status === 0).length }}</div>
+          <div class="stat-value">{{ supplierStats.inactive }}</div>
           <div class="stat-label">禁用供应商</div>
         </div>
       </div>
@@ -85,7 +80,7 @@
           <i class="fas fa-phone"></i>
         </div>
         <div class="stat-content">
-          <div class="stat-value">{{ suppliers.filter(s => s.phone).length }}</div>
+          <div class="stat-value">{{ supplierStats.phoneCompletion }}</div>
           <div class="stat-label">已留电话</div>
         </div>
       </div>
@@ -149,14 +144,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-if="loading" class="loading-row">
-              <td :colspan="visibleColumnCount">
-                <div class="loading-content">
-                  <i class="fas fa-spinner fa-spin"></i>
-                  <span>正在加载数据...</span>
-                </div>
-              </td>
-            </tr>
+            <TableLoadingRow v-if="loading" :colspan="visibleColumnCount" />
             <tr v-else-if="suppliers.length === 0" class="empty-row">
               <td :colspan="visibleColumnCount">
                 <div class="empty-content">
@@ -164,11 +152,12 @@
                   <div class="empty-text">
                     <h4>暂无供应商数据</h4>
                     <p>点击上方"新增供应商"按钮添加第一个供应商</p>
-                    <el-button size="small" @click="loadSuppliers()" :loading="loading" plain>
-                      <template #icon>
+                    <el-button size="small" @click="loadSuppliers()" :disabled="loading" plain>
+                      <InlineLoading v-if="loading" text="加载中..." size="small" variant="inherit" />
+                      <template v-else>
                         <i class="fas fa-sync-alt"></i>
+                        重新加载
                       </template>
-                      {{ loading ? '加载中...' : '重新加载' }}
                     </el-button>
                   </div>
                 </div>
@@ -496,10 +485,7 @@
       :close-on-click-modal="false"
       :show-default-footer="false"
     >
-      <div v-if="detailLoading" class="loading-content">
-        <i class="fas fa-spinner fa-spin"></i>
-        <span>正在加载数据...</span>
-      </div>
+      <SectionLoading v-if="detailLoading" />
       <div v-else-if="supplierDetail" class="supplier-detail-view">
         <!-- 基本信息 -->
         <div class="detail-section">
@@ -595,11 +581,12 @@
       </template>
     </MobileDialog>
     </div>
+    </PermissionGate>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 import unifiedApi from '@/utils/unified-api'
@@ -609,12 +596,13 @@ import { useLoadingState } from '@/composables'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useRefreshData } from '@/composables/useRefreshData'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
-import { usePermissionModuleInfo } from '@/composables/usePermissionModuleInfo'
 import { useAuthStore } from '@/stores/auth'
 import { normalizePermissionList } from '@/utils/permissionList'
-import PermissionAccessNotice from '@/components/base/PermissionAccessNotice.vue'
 import Pagination from '../../components/Pagination.vue'
-import { PageHeader } from '@/components/base'
+import InlineLoading from '@/components/InlineLoading.vue'
+import SectionLoading from '@/components/SectionLoading.vue'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
+import { PageHeader, PermissionGate } from '@/components/base'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import DraggableRow from '../../components/DraggableRow.vue'
@@ -622,6 +610,7 @@ import { usePermissionToast } from '@/utils/permissionToastSimple'
 import { handleApiErrorWithPermission } from '@/utils/apiPermissionError'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { useMobile } from '@/composables/mobile'
+import { useLatestRequest } from '@/composables/useLatestRequest'
 import type { Supplier } from '@/types/system'
 import { logger } from '@/utils/logger'
 
@@ -659,6 +648,7 @@ const { refreshing, refresh } = useRefreshData()
 const { exportFile, buildDateFilename } = useImportExport()
 const { init: initFieldPermissions } = fieldPermissions
 const { isMobile } = useMobile()
+const supplierListRequest = useLatestRequest()
 
 const supplierFieldMap: Record<string, string> = {
   stats_total_suppliers: 'stats.total_suppliers',
@@ -710,6 +700,29 @@ const showStatsCards = computed(() => (
   canViewField('stats_inactive_suppliers') ||
   canViewField('stats_phone_completion')
 ))
+const supplierStats = computed(() => {
+  let active = 0
+  let inactive = 0
+  let phoneCompletion = 0
+
+  suppliers.value.forEach((supplier) => {
+    if (supplier.status === 1) {
+      active++
+    } else if (supplier.status === 0) {
+      inactive++
+    }
+
+    if (supplier.phone) {
+      phoneCompletion++
+    }
+  })
+
+  return {
+    active,
+    inactive,
+    phoneCompletion
+  }
+})
 const visibleColumnCount = computed(() => {
   return [
     showSortField.value,
@@ -729,11 +742,6 @@ const authStore = useAuthStore()
 const normalizedSupplierPermissions = computed<string[]>(() => {
   return normalizePermissionList(authStore.permissions)
 })
-
-const { hasMenuPermissionOnly, modulePermissions: supplierPermissions } = usePermissionModuleInfo(
-  normalizedSupplierPermissions,
-  'suppliers_suppliersview'
-)
 
 const ensureSupplierPermissionsLoaded = async (): Promise<void> => {
   if (authStore.user && normalizedSupplierPermissions.value.length > 0) {
@@ -759,7 +767,7 @@ const ensureSupplierPermissionsLoaded = async (): Promise<void> => {
 
 // 响应式数据
 const { loading } = useLoadingState()
-const permissionLoading = ref(false)
+loading.value = true
 
 // 搜索相关状态
 const searchExpanded = ref(false)
@@ -828,6 +836,7 @@ const loadSuppliers = async (bustCache: boolean = false, silentError: boolean = 
       showViewDenied('供应商管理', 'suppliers:view')
     }
     suppliers.value = []
+    loading.value = false
     return
   }
 
@@ -849,7 +858,15 @@ const loadSuppliers = async (bustCache: boolean = false, silentError: boolean = 
       params._t = Date.now()
     }
 
-    const response = await unifiedApi.get('/suppliers', { params })
+    const request = supplierListRequest.nextRequest()
+    const response = await unifiedApi.get('/suppliers', {
+      params,
+      signal: request.signal
+    })
+
+    if (!request.isLatest()) {
+      return
+    }
 
     if (response.success) {
       suppliers.value = response.data || []
@@ -873,18 +890,17 @@ const loadSuppliers = async (bustCache: boolean = false, silentError: boolean = 
       }
     }
   } catch (err: any) {
+    if (supplierListRequest.isCanceledError(err)) {
+      return
+    }
+
     logger.error('获取供应商列表失败:', err)
     suppliers.value = []
     pagination.value = { page: 1, limit: 10, total: 0, pages: 0 }
 
-    // 静默处理页面卸载导致的取消错误
-    if (err.name === 'CanceledError') {
-      return
-    }
-
     if (!silentError) {
       // 使用统一的错误处理
-      handleApiError(error, '获取供应商列表失败')
+      handleApiError(err, '获取供应商列表失败')
     }
   } finally {
     if (showLoadingState) {
@@ -914,12 +930,9 @@ const changePage = (page: number) => {
 
 // 新的分页变化处理方法
 const handlePaginationChange = (page: number, pageSize: number) => {
-  pagination.value.page = page
+  const oldPageSize = pagination.value.limit
   pagination.value.limit = pageSize
-  // 重置到第一页（当页面大小改变时）
-  if (pageSize !== pagination.value.limit) {
-    pagination.value.page = 1
-  }
+  pagination.value.page = pageSize !== oldPageSize ? 1 : page
   loadSuppliers()
 }
 
@@ -1406,16 +1419,11 @@ const submitFormWithPermission = async () => {
   }
 }
 
-let supplierReloadInterval: number | null = null
-
 const handlePermissionsUpdated = async () => {
-  permissionLoading.value = true
   try {
     await ensureSupplierPermissionsLoaded()
   } catch (refreshError) {
     logger.error('刷新供应商页面权限失败:', refreshError)
-  } finally {
-    permissionLoading.value = false
   }
 
   if (!canView.value) {
@@ -1431,17 +1439,15 @@ const handlePermissionsUpdated = async () => {
 onMounted(async () => {
   window.addEventListener('tf2025:permissions:updated', handlePermissionsUpdated)
 
-  permissionLoading.value = true
   try {
     await ensureSupplierPermissionsLoaded()
   } catch (error) {
     logger.error('初始化供应商页面权限失败:', error)
-  } finally {
-    permissionLoading.value = false
   }
 
   // 权限检查
   if (!canView.value) {
+    loading.value = false
     return
   }
 
@@ -1449,40 +1455,7 @@ onMounted(async () => {
   await loadSuppliers()
 })
 
-// 监听组件可见性变化
-watch(() => {
-  // 检查组件是否在DOM中可见
-  const element = document.getElementsByClassName('suppliers-view')[0]
-  return element && element.getBoundingClientRect().height > 0
-}, (isVisible) => {
-  if (isVisible && canView.value) {
-    loadSuppliers()
-  }
-})
-
-// 添加定时器来定期检查组件是否需要重新加载数据
-const checkAndReloadData = () => {
-  if (!canView.value) {
-    return
-  }
-
-  const element = document.getElementsByClassName('suppliers-view')[0]
-  if (element && element.getBoundingClientRect().height > 0) {
-    // 检查是否有数据，如果没有则重新加载
-    if (suppliers.value.length === 0 && !loading.value) {
-      loadSuppliers()
-    }
-  }
-}
-
-// 每5秒检查一次
-supplierReloadInterval = window.setInterval(checkAndReloadData, 5000)
-
 onUnmounted(() => {
-  if (supplierReloadInterval) {
-    clearInterval(supplierReloadInterval)
-  }
-
   window.removeEventListener('tf2025:permissions:updated', handlePermissionsUpdated)
 })
 
@@ -1494,202 +1467,6 @@ onUnmounted(() => {
   padding: 24px;
   background: #f5f7fa;
   min-height: 100vh;
-}
-
-/* 权限拒绝页面样式 - 与型号页面保持一致的背景可见样式 */
-.permission-denied {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 60vh;
-  background: #f8f9fa;
-  border-radius: 12px;
-  margin: 20px 0;
-}
-
-.permission-denied-wrapper {
-  width: 100%;
-  max-width: 600px;
-}
-
-.permission-denied-card {
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-  overflow: hidden;
-  border: 1px solid #e8ecef;
-}
-
-.permission-icon {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
-  padding: 30px;
-  text-align: center;
-  font-size: 48px;
-}
-
-.permission-icon i {
-  font-size: 48px;
-  opacity: 0.9;
-}
-
-.permission-content {
-  padding: 40px 30px;
-  text-align: center;
-}
-
-.permission-content h2 {
-  color: #2c3e50;
-  margin: 0 0 15px 0;
-  font-size: 28px;
-  font-weight: 600;
-}
-
-.permission-message {
-  color: #6c757d;
-  font-size: 16px;
-  line-height: 1.6;
-  margin-bottom: 30px;
-}
-
-.permission-status {
-  display: flex;
-  gap: 20px;
-  justify-content: center;
-  margin-bottom: 30px;
-}
-
-.status-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 20px;
-  border-radius: 25px;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.status-item.has-menu {
-  background: #d4edda;
-  color: #155724;
-}
-
-.status-item.missing-view {
-  background: #f8d7da;
-  color: #721c24;
-}
-
-.permission-info {
-  background: #f8f9fa;
-  border-radius: 12px;
-  padding: 25px;
-  margin-bottom: 30px;
-  text-align: left;
-  border-left: 4px solid #667eea;
-}
-
-.info-item {
-  display: flex;
-  align-items: center;
-  margin-bottom: 12px;
-  font-size: 14px;
-}
-
-.info-item:last-child {
-  margin-bottom: 0;
-}
-
-.info-item label {
-  font-weight: 600;
-  color: #495057;
-  margin-right: 10px;
-  min-width: 80px;
-}
-
-.permission-name {
-  color: #2c3e50;
-  font-weight: 500;
-}
-
-.permission-code {
-  background: #e9ecef;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-family: 'Monaco', 'Consolas', monospace;
-  font-size: 12px;
-  color: #495057;
-}
-
-.permission-suggestion {
-  background: #e7f3ff;
-  border: 1px solid #b3d9ff;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 30px;
-  display: flex;
-  align-items: flex-start;
-  gap: 15px;
-}
-
-.permission-suggestion i {
-  color: #0066cc;
-  font-size: 18px;
-  margin-top: 2px;
-}
-
-.permission-suggestion p {
-  margin: 0;
-  color: #0066cc;
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.permission-actions {
-  display: flex;
-  gap: 15px;
-  justify-content: center;
-  flex-wrap: wrap;
-  margin-bottom: 30px;
-}
-
-.permission-details {
-  background: #f8f9fa;
-  border-radius: 8px;
-  padding: 20px;
-  text-align: left;
-  border-top: 1px solid #e8ecef;
-}
-
-.permission-details h4 {
-  margin: 0 0 15px 0;
-  color: #495057;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.permission-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.permission-tag {
-  background: #e9ecef;
-  color: #495057;
-  padding: 4px 12px;
-  border-radius: 16px;
-  font-size: 12px;
-  font-weight: 500;
-  font-family: 'Monaco', 'Consolas', monospace;
-}
-
-.permission-tag.current-module {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
-}
-
-.permission-actions .btn {
-  min-width: 140px;
 }
 
 /* 统计卡片样式 */
@@ -2182,21 +1959,7 @@ onUnmounted(() => {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-/* 加载和空状态样式 */
-.loading-row td {
-  padding: 40px 12px;
-  text-align: center;
-}
-
-.loading-content {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  color: #6c757d;
-  font-size: 16px;
-}
-
+/* 空状态样式 */
 .empty-row td {
   padding: 60px 12px;
   text-align: center;
@@ -2306,43 +2069,6 @@ onUnmounted(() => {
     max-width: 150px;
   }
 
-  .permission-denied {
-    margin: 10px;
-    min-height: 50vh;
-  }
-
-  .permission-denied-wrapper {
-    padding: 0 10px;
-  }
-
-  .permission-content {
-    padding: 30px 20px;
-  }
-
-  .permission-content h2 {
-    font-size: 24px;
-    margin-bottom: 12px;
-  }
-
-  .permission-message {
-    font-size: 14px;
-    margin-bottom: 20px;
-  }
-
-  .permission-info {
-    margin: 20px 0;
-    padding: 16px;
-  }
-
-  .permission-status {
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .permission-actions {
-    flex-direction: column;
-    gap: 12px;
-  }
 }
 
 /* 使用上面已定义的form-group和form-control样式，避免重复 */
