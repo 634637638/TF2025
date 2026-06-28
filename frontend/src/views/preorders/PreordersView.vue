@@ -7,7 +7,7 @@
     permission-code="preorders:view"
   >
 
-  <div class="preorders-view">
+  <div class="preorders-view admin-page admin-page-content safe-area-top safe-area-bottom">
     <!-- 页面标题 -->
     <PageHeader title="预定管理">
       <template #actions>
@@ -1364,7 +1364,7 @@ onMounted(async () => {
 
   // 手机端响应式样式
   @media (max-width: 768px) {
-    padding: 8px;
+    padding: 0;
 
     // 手机端操作行样式
     .mobile-row-actions {
@@ -1483,7 +1483,7 @@ onMounted(async () => {
   }
 
   @media (max-width: 480px) {
-    padding: 4px;
+    padding: 0;
 
     .stats-cards {
       gap: 6px;

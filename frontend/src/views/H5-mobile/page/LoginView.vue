@@ -139,6 +139,7 @@ const loadConfig = async () => {
 
 // 处理登录
 const handleLogin = async () => {
+  if (loading.value) return
   if (!loginFormRef.value) return
 
   try {

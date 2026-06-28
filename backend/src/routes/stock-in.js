@@ -6,6 +6,7 @@ const express = require('express');
 const router = express.Router();
 const { unifiedAuth, requirePermission, requireAnyPermission } = require('../middleware/unified-auth');
 const ApiResponse = require('../utils/response');
+const { validateImei } = require('../utils/imei');
 const log = require('../utils/log');
 
 // 获取入库记录列表
@@ -481,12 +482,13 @@ router.post('/', unifiedAuth, requireAnyPermission(['stock-in:create', 'inventor
       if (!product.imei) {
         return ApiResponse.badRequest(res, `第${i + 1}行商品请输入IMEI号`);
       }
-      // 检查IMEI是否有效（15位纯数字 或 与序列号相同且至少4位）
-      const isValidIMEI = (product.imei.length === 15 && /^\d{15}$/.test(product.imei)) ||
-                          (product.imei === product.serial_number && product.imei.length >= 4);
-      if (!isValidIMEI) {
+      const imeiValidation = validateImei(product.imei, product.serial_number);
+      if (!imeiValidation.valid) {
         return ApiResponse.badRequest(res, `第${i + 1}行商品IMEI号必须为15位数字，或与序列号相同（无IMEI设备）`);
       }
+
+      product.imei = imeiValidation.normalizedImei;
+      product.serial_number = imeiValidation.normalizedSerialNumber;
 
       if (product.serial_number && product.serial_number.length > 50) {
         return ApiResponse.badRequest(res, `第${i + 1}行商品序列号最长50位`);

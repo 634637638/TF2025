@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const { getDatabase } = require('../config/database');
+const { verifyToken } = require('../middleware/jwt-blacklist');
 const log = require('../utils/log');
 
 /**
@@ -19,6 +20,66 @@ const CSRF_CONFIG = {
 
 // 内存存储 CSRF Token（作为缓存）
 const csrfTokens = new Map();
+
+const getBearerToken = (req) => {
+  const authHeader = req.headers.authorization || '';
+  if (!authHeader.startsWith('Bearer ')) {
+    return '';
+  }
+
+  return authHeader.slice(7).trim();
+};
+
+async function resolveCSRFUserId(req) {
+  if (req.user && req.user.id) {
+    return req.user.id;
+  }
+
+  const token = getBearerToken(req);
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const decoded = await verifyToken(token, 'access');
+    return decoded?.sub || decoded?.id || null;
+  } catch (error) {
+    log.warn('CSRF 用户解析失败:', error.message);
+    return null;
+  }
+}
+
+function isCSRFExemptRequest(req) {
+  const method = String(req.method || 'GET').toUpperCase();
+  if (['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+    return true;
+  }
+
+  const path = req.path || req.originalUrl || '';
+  const exactExemptPaths = new Set([
+    '/csrf/token',
+    '/csrf/verify',
+    '/csrf/csrf-token',
+    '/auth/login',
+    '/auth/refresh',
+    '/auth/init-admin',
+    '/screen-lock/verify-inventory-query'
+  ]);
+
+  if (exactExemptPaths.has(path)) {
+    return true;
+  }
+
+  const exemptPatterns = [
+    /^\/public\/cart(?:\/|$)/,
+    /^\/public\/orders\/create$/,
+    /^\/public\/orders\/[^/]+\/confirm-payment$/,
+    /^\/public\/orders\/[^/]+\/cancel$/,
+    /^\/public\/auth\/(?:register|login|profile|logout)$/
+  ];
+
+  return exemptPatterns.some(pattern => pattern.test(path));
+}
 
 /**
  * 🔒 生成加密安全的 CSRF Token
@@ -156,12 +217,10 @@ async function verifyCSRFToken(userId, token) {
 router.get('/token', async (req, res) => {
   try {
     // 获取用户 ID（如果已登录）或生成临时 ID（未登录）
-    let userId;
+    let userId = await resolveCSRFUserId(req);
     let isTemporary = false;
 
-    if (req.user && req.user.id) {
-      userId = req.user.id;
-    } else {
+    if (!userId) {
       // 未登录用户使用 session ID 或生成临时 ID
       const sessionId = req.sessionID || req.ip || 'anonymous_' + Date.now();
       userId = 'temp_' + sessionId;
@@ -219,10 +278,8 @@ router.post('/verify', async (req, res) => {
     }
 
     // 获取用户 ID（如果已登录）或临时 ID（未登录）
-    let userId;
-    if (req.user && req.user.id) {
-      userId = req.user.id;
-    } else {
+    let userId = await resolveCSRFUserId(req);
+    if (!userId) {
       // 未登录用户使用 session ID 或临时 ID
       const sessionId = req.sessionID || req.ip || 'anonymous_' + Date.now();
       userId = 'temp_' + sessionId;
@@ -268,8 +325,8 @@ function validateCSRFToken(req, res, next) {
       return next();
     }
 
-    // 检查用户是否已认证
-    if (!req.user || !req.user.id) {
+    const userId = await resolveCSRFUserId(req);
+    if (!userId) {
       return res.status(401).json({
         success: false,
         message: '需要先登录',
@@ -289,7 +346,7 @@ function validateCSRFToken(req, res, next) {
     }
 
     // 验证 Token
-    const isValid = await verifyCSRFToken(req.user.id, token);
+    const isValid = await verifyCSRFToken(userId, token);
 
     if (!isValid) {
       return res.status(403).json({
@@ -311,6 +368,14 @@ function validateCSRFToken(req, res, next) {
   });
 }
 
+function validateGlobalCSRFToken(req, res, next) {
+  if (isCSRFExemptRequest(req)) {
+    return next();
+  }
+
+  return validateCSRFToken(req, res, next);
+}
+
 /**
  * 🔒 可选的 CSRF 验证中间件
  * 仅在提供了 Token 时进行验证
@@ -322,8 +387,8 @@ function optionalCSRFValidation(req, res, next) {
       return next();
     }
 
-    // 检查用户是否已认证
-    if (!req.user || !req.user.id) {
+    const userId = await resolveCSRFUserId(req);
+    if (!userId) {
       return next(); // 未认证用户跳过
     }
 
@@ -335,7 +400,7 @@ function optionalCSRFValidation(req, res, next) {
     }
 
     // 验证 Token
-    const isValid = await verifyCSRFToken(req.user.id, token);
+    const isValid = await verifyCSRFToken(userId, token);
 
     if (!isValid) {
       return res.status(403).json({
@@ -384,6 +449,7 @@ setTimeout(() => {
 module.exports = {
   router,
   validateCSRFToken,
+  validateGlobalCSRFToken,
   optionalCSRFValidation,
   CSRF_CONFIG,
   generateSecureCSRFToken,

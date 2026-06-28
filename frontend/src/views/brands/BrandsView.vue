@@ -719,6 +719,7 @@ const validateBrandForm = () => {
 }
 
 const submitForm = async () => {
+  if (submitting.value) return
   // 权限检查
   if (showCreateModal.value && !canCreate.value) {
     showCreateDenied('品牌管理', 'brands:create')

@@ -1843,5 +1843,127 @@ onBeforeUnmount(() => {
       }
     }
   }
+
+  @media (max-width: 768px) {
+    .overview-cards {
+      margin-bottom: 18px;
+
+      :deep(.el-col) {
+        display: flex;
+      }
+    }
+
+    .overview-card {
+      min-height: 152px;
+      height: auto;
+      position: relative;
+      background: #fff;
+      border-radius: 18px;
+      border: 1px solid rgba(15, 23, 42, 0.06);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+
+      &::before {
+        content: '';
+        position: absolute;
+        inset: 0 0 auto 0;
+        height: 3px;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      }
+
+      :deep(.el-card__body) {
+        height: 100%;
+        padding: 0;
+        background:
+          radial-gradient(circle at top right, rgba(255, 255, 255, 0.92), transparent 42%),
+          linear-gradient(180deg, rgba(249, 250, 252, 0.98), rgba(255, 255, 255, 1));
+      }
+    }
+
+    .card-content {
+      align-items: flex-start;
+      gap: 12px;
+      padding: 18px 14px 14px;
+    }
+
+    .card-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      font-size: 18px;
+      box-shadow: 0 8px 18px rgba(102, 126, 234, 0.16);
+    }
+
+    .card-info {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      overflow: visible;
+
+      .card-title {
+        margin-bottom: 0;
+        font-size: 10px;
+        line-height: 1.35;
+        font-weight: 700;
+        letter-spacing: 0.45px;
+        text-transform: uppercase;
+        color: #8e8e93;
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+      }
+
+      .card-value {
+        margin-bottom: 0;
+        font-size: 21px;
+        line-height: 1.18;
+        color: #1c1c1e;
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+        overflow-wrap: anywhere;
+      }
+
+      .card-subtitle {
+        margin-top: 0;
+        display: inline-flex;
+        align-self: flex-start;
+        padding: 4px 8px;
+        border-radius: 8px;
+        font-size: 11px;
+        line-height: 1.35;
+        font-weight: 600;
+        color: #4b5563;
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(102, 126, 234, 0.12));
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+        overflow-wrap: anywhere;
+      }
+    }
+
+    .forecast-card {
+      margin-top: 18px;
+
+      .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+
+      .forecast-cards-section {
+        padding: 14px;
+
+        .section-header {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .forecast-cards {
+          grid-template-columns: 1fr;
+        }
+      }
+    }
+  }
 }
 </style>

@@ -50,12 +50,13 @@
 
           <!-- 状态指示器 -->
           <div class="status-overlay">
-            <div class="status-item camera-status">
+          <div class="status-item camera-status">
               <i class="fas fa-video"></i>
               <span>{{ cameraStatus }}</span>
             </div>
             <div class="status-item scan-status" :class="statusClass">
-              <i :class="statusIcon"></i>
+              <InlineLoading v-if="statusLoading" size="small" variant="inherit" />
+              <i v-else :class="statusIcon"></i>
               <span>{{ statusText }}</span>
             </div>
           </div>
@@ -153,6 +154,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, watch, type CSSProperties } from 'vue'
 import { ElMessage } from 'element-plus'
+import InlineLoading from '@/components/InlineLoading.vue'
 import { scanOptimizer, type DeviceInfo } from '@/utils/scanOptimizer'
 import type { CancelEmits, UpdateVisibleEmits, VisibleProps } from '@/types/component'
 import { logger } from '@/utils/logger'
@@ -227,7 +229,8 @@ const videoRef = ref<HTMLVideoElement>()
 const deviceInfo = ref<DeviceInfo>({} as DeviceInfo)
 const statusText = ref('初始化摄像头...')
 const statusClass = ref('status-waiting')
-const statusIcon = ref('fas fa-circle-notch fa-spin')
+const statusIcon = ref('fas fa-clock')
+const statusLoading = ref(true)
 const smartTips = ref<string[]>([])
 const showRegion = ref(true)
 const autoFocus = ref(true)
@@ -292,7 +295,7 @@ const startScanning = async () => {
   try {
     scanCompleted.value = false
     isScanning.value = false
-    updateStatus('正在启动摄像头...', 'status-starting', 'fas fa-circle-notch fa-spin')
+    updateStatus('正在启动摄像头...', 'status-starting', 'loading')
 
     // 检查浏览器支持
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -469,7 +472,10 @@ const handleScanSuccess = async (scannedText: string) => {
 const updateStatus = (text: string, className: string, icon: string) => {
   statusText.value = text
   statusClass.value = className
-  statusIcon.value = icon
+  statusLoading.value = icon === 'loading'
+  if (!statusLoading.value) {
+    statusIcon.value = icon
+  }
 }
 
 // 点击聚焦

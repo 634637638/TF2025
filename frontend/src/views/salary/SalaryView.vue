@@ -4196,6 +4196,7 @@ const handlePayoutByEmployee = async (employee: any) => {
 
 // 确认结算
 const confirmSettle = async () => {
+  if (settleSaving.value) return
   const action = (pendingSalaryData.value?.existingRecord || settleForm.value.recordId) ? 'edit' : 'create'
   if (!requireSalaryRecordPermission(action)) {
     return

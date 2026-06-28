@@ -14,7 +14,7 @@
   <div class="banner-management-page">
     <!-- 加载状态 -->
     <div v-if="loading" class="loading-state">
-      <el-skeleton :rows="3" animated />
+      <SectionLoading text="加载轮播图中..." size="large" />
     </div>
 
     <!-- 轮播图列表 -->
@@ -101,7 +101,14 @@
       :show-default-footer="false"
       @close="handleDialogClose"
     >
-      <el-form ref="formRef" :model="form" :rules="formRules" label-width="100px" :disabled="!canSaveCurrentBanner">
+      <el-form
+        ref="formRef"
+        :model="form"
+        :rules="formRules"
+        label-width="100px"
+        :disabled="!canSaveCurrentBanner"
+        class="banner-form"
+      >
         <el-form-item label="标题" prop="title">
           <el-input v-model="form.title" placeholder="请输入标题" />
         </el-form-item>
@@ -215,6 +222,7 @@ import { ElMessage, ElMessageBox, FormInstance } from 'element-plus'
 import { ValidationRules } from '@/composables'
 import { Refresh, Plus } from '@element-plus/icons-vue'
 import draggable from 'vuedraggable'
+import SectionLoading from '@/components/SectionLoading.vue'
 import { getAllBanners, createBanner, updateBanner, deleteBanner, reorderBanners } from '@/api/shop'
 import { PermissionGate } from '@/components/base/index'
 import { useAuthStore } from '@/stores/auth'
@@ -580,6 +588,8 @@ const handleEdit = (banner: ShopBanner) => {
 
 // 保存
 const handleSave = async () => {
+  if (saving.value) return
+
   if (!ensureBannerPermission(dialogMode.value === 'add' ? 'create' : 'edit')) {
     return
   }
@@ -800,6 +810,7 @@ onUnmounted(() => {
 <style scoped lang="scss">
 .banner-management-page {
   padding: 24px;
+  min-width: 0;
 }
 
 // 加载状态
@@ -811,6 +822,7 @@ onUnmounted(() => {
 .banner-list {
   max-width: 900px;
   margin: 0 auto;
+  min-width: 0;
 
   .banner-item {
     display: flex;
@@ -919,6 +931,11 @@ onUnmounted(() => {
     .banner-actions {
       display: flex;
       gap: 8px;
+
+      .el-button {
+        margin-left: 0;
+        white-space: nowrap;
+      }
     }
   }
 }
@@ -1034,6 +1051,212 @@ onUnmounted(() => {
 :deep(.banner-dialog .el-dialog__body) {
   .el-form-item__tip {
     margin-top: 4px;
+  }
+}
+
+@media (max-width: 768px) {
+  .banner-management-page {
+    width: 100%;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .loading-state {
+    padding: 24px 12px;
+  }
+
+  .banner-list {
+    width: 100%;
+    max-width: none;
+
+    .banner-item {
+      display: grid;
+      grid-template-columns: 22px 94px minmax(0, 1fr);
+      grid-template-areas:
+        "drag image info"
+        "drag status actions";
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      margin-bottom: 10px;
+      padding: 12px;
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      border-radius: 14px;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+
+      .drag-handle {
+        grid-area: drag;
+        align-self: stretch;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        font-size: 15px;
+      }
+
+      .banner-image {
+        grid-area: image;
+        width: 94px;
+        height: 58px;
+        border-radius: 10px;
+      }
+
+      .banner-info {
+        grid-area: info;
+        min-width: 0;
+
+        .banner-title {
+          margin-bottom: 5px;
+          font-size: 14px;
+          font-weight: 700;
+          line-height: 1.25;
+        }
+
+        .banner-meta {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 5px;
+          font-size: 11px;
+          line-height: 1.3;
+
+          span {
+            max-width: 100%;
+            margin-right: 0;
+            padding: 3px 6px;
+            border-radius: 999px;
+            background: rgba(248, 250, 252, 0.95);
+            color: #64748b;
+          }
+        }
+      }
+
+      .banner-status {
+        grid-area: status;
+        margin-right: 0;
+      }
+
+      .banner-actions {
+        grid-area: actions;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        width: 100%;
+
+        .el-button {
+          width: 100%;
+          min-width: 0;
+          margin: 0;
+          padding: 8px 6px;
+          justify-content: center;
+          font-size: 12px;
+        }
+      }
+    }
+  }
+
+  .banner-images-container {
+    gap: 8px;
+  }
+
+  .banner-image-item {
+    width: calc(50% - 4px);
+    height: 88px;
+    border-radius: 12px;
+  }
+
+  .banner-upload-trigger {
+    width: calc(50% - 4px);
+
+    :deep(.el-upload) {
+      width: 100%;
+      height: 88px;
+      border-radius: 12px;
+    }
+  }
+
+  :deep(.banner-form) {
+    width: 100%;
+  }
+
+  :deep(.banner-form .el-form-item) {
+    display: block;
+    margin-bottom: 16px;
+  }
+
+  :deep(.banner-form .el-form-item__label) {
+    width: 100% !important;
+    height: auto;
+    margin-bottom: 8px;
+    padding: 0 !important;
+    color: #334155;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.4;
+    text-align: left;
+  }
+
+  :deep(.banner-form .el-form-item__content) {
+    width: 100%;
+    min-width: 0;
+    margin-left: 0 !important;
+    line-height: 1.4;
+  }
+
+  :deep(.banner-form .el-input),
+  :deep(.banner-form .el-select),
+  :deep(.banner-form .el-input-number),
+  :deep(.banner-form .el-date-editor) {
+    width: 100% !important;
+  }
+
+  :deep(.banner-form .el-range-editor.el-input__wrapper) {
+    width: 100% !important;
+    min-height: 40px;
+  }
+
+  .tip-text {
+    margin-top: 6px;
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  :global(.banner-dialog .mobile-dialog-sheet-body) {
+    padding: 12px !important;
+  }
+
+  :global(.banner-dialog .mobile-dialog-sheet-footer) {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom)) !important;
+  }
+
+  :global(.banner-dialog .mobile-dialog-sheet-footer .el-button) {
+    width: 100%;
+    margin: 0 !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .banner-list {
+    .banner-item {
+      grid-template-columns: 18px 82px minmax(0, 1fr);
+      gap: 8px;
+      padding: 10px;
+
+      .banner-image {
+        width: 82px;
+        height: 54px;
+      }
+
+      .banner-actions {
+        gap: 6px;
+
+        .el-button {
+          padding-inline: 4px;
+        }
+      }
+    }
   }
 }
 </style>

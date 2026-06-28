@@ -508,6 +508,10 @@ class PriceListService {
       const offset = (page - 1) * limit;
       const dataQuery = `
         SELECT
+          pl.brand_id,
+          pl.model_id,
+          pl.color_id,
+          pl.memory_id,
           b.name as brand_name,
           mo.name as model_number,
           c.name as color_name,
@@ -633,6 +637,10 @@ class PriceListService {
       const latestPublishedFilters = this.buildLatestPublishedWholesaleFilters('p');
       const query = `
         SELECT
+          p.brand_id,
+          p.model_id,
+          p.color_id,
+          p.memory_id,
           b.name as brand_name,
           mo.name as model_number,
           c.name as color_name,
@@ -692,6 +700,10 @@ class PriceListService {
       const latestRetailFilters = this.buildLatestPublishedRetailFilters('p');
       const query = `
         SELECT
+          p.brand_id,
+          p.model_id,
+          p.color_id,
+          p.memory_id,
           b.name as brand_name,
           mo.name as model_number,
           c.name as color_name,
@@ -722,8 +734,9 @@ class PriceListService {
         LIMIT 500
       `;
       const [rows] = await this.db.query(query);
+      const rowsWithDisplayRetail = await this.applyRetailDisplayMarkup(rows);
 
-      return this.createSuccessResponse('获取成功', rows);
+      return this.createSuccessResponse('获取成功', rowsWithDisplayRetail);
     } catch (error) {
       log.error('获取销售价格失败:', error);
       return this.createErrorResponse('获取失败');
@@ -755,6 +768,10 @@ class PriceListService {
 
       const query = `
         SELECT
+          p.brand_id,
+          p.model_id,
+          p.color_id,
+          p.memory_id,
           b.name as brand_name,
           mo.name as model_number,
           c.name as color_name,
@@ -798,9 +815,9 @@ class PriceListService {
         LIMIT 100
       `;
       const [rows] = await this.db.query(query, searchParams);
-      const rowsWithDisplayMarkup = await this.applyWholesaleDisplayMarkup(rows);
+      const rowsWithDisplayRetail = await this.applyRetailDisplayMarkup(rows);
 
-      return this.createSuccessResponse('搜索成功', rowsWithDisplayMarkup);
+      return this.createSuccessResponse('搜索成功', rowsWithDisplayRetail);
     } catch (error) {
       log.error('搜索销售价格失败:', error);
       return this.createErrorResponse('搜索失败');
@@ -875,8 +892,9 @@ class PriceListService {
         LIMIT 100
       `;
       const [rows] = await this.db.query(query, searchParams);
+      const rowsWithDisplayMarkup = await this.applyWholesaleDisplayMarkup(rows);
 
-      return this.createSuccessResponse('搜索成功', rows);
+      return this.createSuccessResponse('搜索成功', rowsWithDisplayMarkup);
     } catch (error) {
       log.error('搜索价格失败:', error);
       return this.createErrorResponse('搜索失败');
@@ -3996,6 +4014,40 @@ class PriceListService {
         display_wholesale_price: displayWholesalePrice
       };
     });
+  }
+
+  async applyRetailDisplayMarkup(items) {
+    if (!Array.isArray(items) || items.length === 0) {
+      return items || [];
+    }
+
+    return Promise.all(items.map(async (item) => {
+      const wholesalePrice = Number(item.wholesale_price);
+      let displayRetailPrice = item.retail_price;
+
+      if (Number.isFinite(wholesalePrice) && wholesalePrice > 0) {
+        try {
+          const retailPriceResult = await this.calculateRetailPrice(
+            item.brand_id,
+            item.model_id,
+            item.color_id,
+            item.memory_id,
+            wholesalePrice
+          );
+
+          if (retailPriceResult.retailPrice !== null) {
+            displayRetailPrice = retailPriceResult.retailPrice;
+          }
+        } catch (error) {
+          log.warn(`销售显示价实时计算失败，使用已保存销售价: ${error.message}`);
+        }
+      }
+
+      return {
+        ...item,
+        display_retail_price: displayRetailPrice
+      };
+    }));
   }
 
   async calculateRetailPriceByTemplate(brandId, modelId, colorId, memoryId, wholesalePrice) {

@@ -19,7 +19,7 @@
     <!-- 商品列表 -->
     <div class="product-list">
       <div v-if="loading && products.length === 0" class="loading-state">
-        <el-skeleton :rows="3" animated />
+        <SectionLoading text="加载商品中..." size="large" />
       </div>
 
       <div v-else-if="products.length === 0" class="empty-state">
@@ -195,6 +195,7 @@ import { getAggregatedProducts, getProducts, getPublicConfig } from '@/api/shop-
 import { baseDataApi } from '@/api/base-data'
 import { useCart, useLoadingState } from '@/composables'
 import InlineLoading from '@/components/InlineLoading.vue'
+import SectionLoading from '@/components/SectionLoading.vue'
 import type { AggregatedProduct } from '@/api/shop-public'
 import { storage } from '@/services/storage'
 import { formatImageUrl, generateProductPlaceholder } from '@/utils/format'

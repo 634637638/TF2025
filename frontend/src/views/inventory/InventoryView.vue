@@ -495,7 +495,7 @@
           <!-- 供应商 -->
           <div v-if="canViewField('supplier_name')">
             <label class="form-label">供应商</label>
-            <el-select v-model="editForm.supplier_id" placeholder="选择供应商" filterable clearable reserve-keyword default-first-option teleported fit-input-width popper-class="inventory-edit-select-popper" class="w-full" :disabled="!canEditField('supplier_name')">
+            <el-select v-model="editForm.supplier_id" placeholder="选择供应商" filterable clearable reserve-keyword default-first-option teleported fit-input-width popper-class="tf2025-form-popper" class="w-full" :disabled="!canEditField('supplier_name')">
               <el-option v-for="supplier in suppliers" :key="supplier.id" :label="supplier.name" :value="supplier.id" />
             </el-select>
           </div>
@@ -503,7 +503,7 @@
           <!-- 入库店铺 -->
           <div v-if="canViewField('store_name')">
             <label class="form-label">入库店铺</label>
-            <el-select v-model="editForm.store_id" placeholder="选择店铺" filterable clearable reserve-keyword default-first-option teleported fit-input-width popper-class="inventory-edit-select-popper" class="w-full" :disabled="!canEditField('store_name')">
+            <el-select v-model="editForm.store_id" placeholder="选择店铺" filterable clearable reserve-keyword default-first-option teleported fit-input-width popper-class="tf2025-form-popper" class="w-full" :disabled="!canEditField('store_name')">
               <el-option v-for="store in stores" :key="store.id" :label="store.name" :value="store.id" />
             </el-select>
           </div>
@@ -511,13 +511,13 @@
           <!-- 入库时间 -->
           <div v-if="canViewField('Inventorytime')">
             <label class="form-label">入库时间</label>
-            <el-date-picker v-model="editForm.Inventorytime" type="date" placeholder="选择日期" format="YYYY-MM-DD" value-format="YYYY-MM-DD" teleported popper-class="inventory-edit-select-popper" class="w-full" :disabled="!canEditField('Inventorytime')" :prefix-icon="null" :clearable="false" />
+            <el-date-picker v-model="editForm.Inventorytime" type="date" placeholder="选择日期" format="YYYY-MM-DD" value-format="YYYY-MM-DD" teleported popper-class="tf2025-form-popper" class="w-full" :disabled="!canEditField('Inventorytime')" :prefix-icon="null" :clearable="false" />
           </div>
 
           <!-- 机况 -->
           <div v-if="canViewField('is_new')">
             <label class="form-label">机况</label>
-            <el-select v-model="editForm.condition" placeholder="选择机况" filterable reserve-keyword default-first-option teleported fit-input-width popper-class="inventory-edit-select-popper" class="w-full" :disabled="!canEditField('is_new')">
+            <el-select v-model="editForm.condition" placeholder="选择机况" filterable reserve-keyword default-first-option teleported fit-input-width popper-class="tf2025-form-popper" class="w-full" :disabled="!canEditField('is_new')">
               <el-option label="全新" value="全新" />
               <el-option label="二手" value="二手" />
             </el-select>
@@ -530,7 +530,7 @@
               placeholder="选择状态"
               teleported
               fit-input-width
-              popper-class="inventory-edit-select-popper"
+              popper-class="tf2025-form-popper"
               class="w-full"
             >
               <el-option
@@ -545,7 +545,7 @@
           <!-- 品牌 -->
           <div v-if="canViewField('brand')">
             <label class="form-label">品牌</label>
-            <el-select v-model="editForm.brand" placeholder="选择品牌" filterable clearable reserve-keyword default-first-option teleported fit-input-width popper-class="inventory-edit-select-popper" @change="onEditBrandChange" class="w-full" :disabled="!canEditField('brand')">
+            <el-select v-model="editForm.brand" placeholder="选择品牌" filterable clearable reserve-keyword default-first-option teleported fit-input-width popper-class="tf2025-form-popper" @change="onEditBrandChange" class="w-full" :disabled="!canEditField('brand')">
               <el-option v-for="brand in brands" :key="brand.id" :label="brand.name" :value="brand.name" />
             </el-select>
           </div>
@@ -566,7 +566,7 @@
               remote-show-suffix
               teleported
               fit-input-width
-              popper-class="inventory-edit-select-popper"
+              popper-class="tf2025-form-popper"
               :remote-method="remoteSearchModel"
               :loading="modelSearchLoading"
               :disabled="!canEditField('model')"
@@ -585,7 +585,7 @@
           <!-- 颜色 -->
           <div v-if="canViewField('color')">
             <label class="form-label">颜色</label>
-            <el-select v-model="editForm.color" placeholder="选择颜色" filterable clearable reserve-keyword default-first-option teleported fit-input-width popper-class="inventory-edit-select-popper" class="w-full" :disabled="!canEditField('color')">
+            <el-select v-model="editForm.color" placeholder="选择颜色" filterable clearable reserve-keyword default-first-option teleported fit-input-width popper-class="tf2025-form-popper" class="w-full" :disabled="!canEditField('color')">
               <el-option v-for="color in colors" :key="color" :label="color" :value="color" />
             </el-select>
           </div>
@@ -593,7 +593,7 @@
           <!-- 内存 -->
           <div v-if="canViewField('memory')">
             <label class="form-label">内存</label>
-            <el-select v-model="editForm.memory" placeholder="选择内存" filterable clearable reserve-keyword default-first-option teleported fit-input-width popper-class="inventory-edit-select-popper" class="w-full" :disabled="!canEditField('memory')">
+            <el-select v-model="editForm.memory" placeholder="选择内存" filterable clearable reserve-keyword default-first-option teleported fit-input-width popper-class="tf2025-form-popper" class="w-full" :disabled="!canEditField('memory')">
               <el-option v-for="memory in memories" :key="memory" :label="memory" :value="memory" />
             </el-select>
           </div>
@@ -679,6 +679,7 @@
     v-if="showPublishToH5Modal"
     v-model="showPublishToH5Modal"
     :phone-id="selectedPhoneForEdit?.id || null"
+    :is-new="selectedPhoneForEdit ? isNewInventoryValue(selectedPhoneForEdit.is_new) : undefined"
     @success="handlePublishSuccess"
   />
 
@@ -936,6 +937,12 @@ const modelSearchLoading = ref(false)
 
 // 上架商品模态框
 const showPublishToH5Modal = ref(false)
+
+const AUTO_OPEN_SALE_PHONE_STORAGE_KEY = 'tf2025:auto-open-sale-phone'
+
+const isNewInventoryValue = (value: unknown): boolean => {
+  return value === true || value === 1 || value === '1'
+}
 
 // 远程搜索型号方法
 const remoteSearchModel = async (query: string) => {
@@ -1985,7 +1992,7 @@ watch(showEditModal, async (newVal) => {
       purchase_cost: (phone.purchase_cost || phone.cost || phone.purchase_price) ? Math.round(Number(phone.purchase_cost || phone.cost || phone.purchase_price || 0)) : null,
       supplier_id: phone.supplier_id || null,
       store_id: phone.store_id || null,
-      condition: phone.is_new ? '全新' : '二手',
+      condition: isNewInventoryValue(phone.is_new) ? '全新' : '二手',
       status: normalizePhoneStatus(phone.status) || 'in_stock',
       Inventorytime: toDateInputValue(phone.Inventorytime || phone.created_at),
       remarks: phone.remarks || '',
@@ -2113,6 +2120,7 @@ const fetchEditBrandModels = async (brandName: string) => {
 
 // 提交编辑
 const submitEdit = async () => {
+  if (submitting.value) return
   try {
     submitting.value = true
 
@@ -2262,6 +2270,12 @@ const quickSaleItem = (item: InventoryItem) => {
     warning('只有在库商品才能出库')
     return
   }
+
+  window.sessionStorage.setItem(AUTO_OPEN_SALE_PHONE_STORAGE_KEY, JSON.stringify({
+    phoneId: String(item.id),
+    createdAt: Date.now()
+  }))
+  logger.info('库存出库跳转销售页:', { phoneId: String(item.id), status: item.status })
 
   router.push({
     path: '/sales',
@@ -3215,12 +3229,14 @@ const handleSelect = (item: InventoryItem) => {
 .inventory-edit-dialog .el-textarea__inner,
 .inventory-edit-dialog .el-input-number .el-input__wrapper {
   min-height: 42px;
+  border-radius: 12px;
+  box-shadow: 0 0 0 1px #dcdfe6 inset;
 }
 
-.inventory-edit-select-popper .el-select-dropdown__item,
-.inventory-edit-select-popper .el-picker-panel__shortcut {
-  min-height: 40px;
-  line-height: 1.4;
+.inventory-edit-dialog .el-select__wrapper.is-focused,
+.inventory-edit-dialog .el-input__wrapper.is-focus,
+.inventory-edit-dialog .el-input-number .el-input__wrapper.is-focus {
+  box-shadow: 0 0 0 1px #7c3aed inset;
 }
 
 /* 隐藏入库时间日期选择器的图标 */

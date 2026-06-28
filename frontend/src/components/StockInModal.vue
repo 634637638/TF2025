@@ -626,6 +626,7 @@ const handleDialogClose = () => {
 
 // 提交表单
 const handleSubmit = async () => {
+  if (submitting.value) return
   if (!formRef.value) return
 
   try {
@@ -684,17 +685,17 @@ watch(
   align-items: center;
   justify-content: center;
   width: 100%;
-  min-height: 64px;
-  padding: 12px 56px 12px 16px;
+  min-height: 56px;
+  padding: 10px 52px 10px 14px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   box-sizing: border-box;
 }
 
 .stock-in-dialog__title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
-  line-height: 1.35;
+  line-height: 1.25;
   letter-spacing: 0.02em;
 }
 
@@ -789,14 +790,29 @@ watch(
 
 /* 移动端优化 */
 @media (max-width: 767px) {
+  .stock-in-dialog .el-dialog__header {
+    min-height: calc(58px + env(safe-area-inset-top)) !important;
+    padding: calc(8px + env(safe-area-inset-top)) 56px 8px 14px !important;
+  }
+
+  .stock-in-dialog .el-dialog__header .el-dialog__title {
+    font-size: 15px !important;
+    line-height: 1.2 !important;
+  }
+
+  .stock-in-dialog .el-dialog__headerbtn {
+    top: calc(9px + env(safe-area-inset-top)) !important;
+    right: 12px !important;
+  }
+
   .stock-in-dialog__header {
-    min-height: calc(82px + env(safe-area-inset-top));
-    padding: calc(18px + env(safe-area-inset-top)) 64px 18px 18px;
+    min-height: calc(58px + env(safe-area-inset-top));
+    padding: calc(8px + env(safe-area-inset-top)) 56px 8px 14px;
   }
 
   .stock-in-dialog__title {
-    font-size: 18px;
-    line-height: 1.3;
+    font-size: 15px;
+    line-height: 1.2;
   }
 
   .dialog-body {
@@ -907,7 +923,8 @@ watch(
   align-items: center !important;
   width: 100% !important;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-  padding: 12px 56px 12px 16px !important;
+  min-height: 56px !important;
+  padding: 10px 52px 10px 14px !important;
   margin: 0 !important;
   border-bottom: none !important;
   box-sizing: border-box !important;
@@ -916,9 +933,9 @@ watch(
 .stock-in-dialog .el-dialog__header .el-dialog__title {
   display: block !important;
   color: #ffffff !important;
-  font-size: 16px !important;
+  font-size: 15px !important;
   font-weight: 700 !important;
-  line-height: 1.35 !important;
+  line-height: 1.25 !important;
 }
 
 .stock-in-dialog .el-dialog__body {
@@ -935,8 +952,8 @@ watch(
 /* 调整关闭按钮位置，使其在自定义 header 上可见 */
 .stock-in-dialog .el-dialog__headerbtn {
   z-index: 1000 !important;
-  top: 13px !important;
-  right: 14px !important;
+  top: 11px !important;
+  right: 12px !important;
   transform: none !important;
 }
 

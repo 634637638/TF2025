@@ -14,13 +14,13 @@
   <div class="home-sections-config-page">
     <!-- 加载状态 -->
     <div v-if="loading" class="loading-state">
-      <el-skeleton animated />
+      <SectionLoading text="加载首页推荐中..." size="large" />
     </div>
 
       <!-- 推荐区域列表 -->
       <div v-else class="sections-content">
       <el-empty v-if="sections.length === 0" description="暂无推荐区域">
-        <el-button v-if="canCreate" type="primary" @click="openCreateDialog">创建推荐区域</el-button>
+        <el-button v-if="canCreate" type="primary" @click="openCreateDialog">新增</el-button>
       </el-empty>
 
       <div v-else class="sections-list">
@@ -91,13 +91,18 @@
     <!-- 创建/编辑推荐区域对话框 -->
     <MobileDialog
       v-model="showCreateDialog"
-      :title="editingSection ? '编辑推荐区域' : '创建推荐区域'"
+      :title="editingSection ? '编辑推荐区域' : '新增'"
       width="550px"
       dialog-class="home-section-dialog"
       :show-default-footer="false"
       @close="handleDialogClose"
     >
-      <el-form :model="sectionForm" label-width="100px" :disabled="!canEditSectionForm">
+      <el-form
+        :model="sectionForm"
+        label-width="100px"
+        :disabled="!canEditSectionForm"
+        class="home-section-form"
+      >
         <!-- 快捷模板选择 -->
         <el-form-item label="快捷模板">
           <el-select
@@ -338,6 +343,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, Plus } from '@element-plus/icons-vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
+import SectionLoading from '@/components/SectionLoading.vue'
 import { PermissionGate } from '@/components/base'
 import draggable from 'vuedraggable'
 import {
@@ -556,6 +562,8 @@ const deleteSection = (section: HomeSection) => {
 
 // 保存区域
 const saveSection = async () => {
+  if (saving.value) return
+
   const action = editingSection.value ? 'edit' : 'create'
   const allowed = editingSection.value ? canEdit.value : canCreate.value
   if (!allowed) {
@@ -803,6 +811,8 @@ const handleDragEnd = async () => {
 
 // 保存商品
 const saveProducts = async () => {
+  if (savingProducts.value) return
+
   if (!canEdit.value) {
     handleNoPermission('edit')
     return
@@ -933,7 +943,7 @@ const registerPageHeaderActions = () => {
   if (registerHeaderActions) {
     registerHeaderActions([
       ...(canCreate.value ? [{
-        label: '添加推荐区域',
+        label: '新增',
         type: 'primary' as const,
         icon: Plus,
         handler: () => openCreateDialog()
@@ -974,6 +984,7 @@ onUnmounted(() => {
 <style scoped lang="scss">
 .home-sections-config-page {
   padding: 20px;
+  min-width: 0;
 }
 
 .loading-state {
@@ -981,6 +992,8 @@ onUnmounted(() => {
 }
 
 .sections-content {
+  min-width: 0;
+
   .sections-list {
     display: grid;
     gap: 16px;
@@ -992,6 +1005,7 @@ onUnmounted(() => {
     border-radius: 12px;
     padding: 20px;
     transition: all 0.3s;
+    min-width: 0;
 
     &:hover {
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -1007,6 +1021,7 @@ onUnmounted(() => {
         display: flex;
         align-items: center;
         gap: 12px;
+        min-width: 0;
 
         i {
           font-size: 24px;
@@ -1017,12 +1032,14 @@ onUnmounted(() => {
           font-size: 16px;
           font-weight: 500;
           margin: 0 0 4px;
+          word-break: break-word;
         }
 
         .section-key {
           font-size: 12px;
           color: #999;
           margin: 0;
+          word-break: break-all;
         }
       }
 
@@ -1030,9 +1047,15 @@ onUnmounted(() => {
         display: flex;
         align-items: center;
         gap: 8px;
+        flex-wrap: nowrap;
 
         i {
           font-size: 14px;
+        }
+
+        .el-button {
+          margin-left: 0;
+          white-space: nowrap;
         }
       }
     }
@@ -1417,6 +1440,262 @@ onUnmounted(() => {
         color: #ff1744;
         font-weight: 600;
         margin-bottom: 4px;
+      }
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .home-sections-config-page {
+    width: 100%;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .loading-state {
+    padding: 24px 12px;
+  }
+
+  .sections-content {
+    .sections-list {
+      gap: 12px;
+    }
+
+    .section-card {
+      padding: 12px;
+      border-radius: 14px;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+
+      .section-header {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 12px;
+        margin-bottom: 12px;
+
+        .section-info {
+          gap: 10px;
+
+          i {
+            width: 34px;
+            height: 34px;
+            display: grid;
+            place-items: center;
+            flex: 0 0 34px;
+            border-radius: 10px;
+            background: rgba(102, 126, 234, 0.1);
+            font-size: 16px;
+          }
+
+          h4 {
+            font-size: 15px;
+            font-weight: 700;
+            line-height: 1.3;
+          }
+        }
+
+        .section-actions {
+          display: grid;
+          grid-template-columns: minmax(84px, auto) repeat(2, minmax(0, 1fr));
+          gap: 8px;
+          width: 100%;
+
+          .el-switch {
+            align-self: center;
+          }
+
+          .el-button {
+            width: 100%;
+            min-width: 0;
+            justify-content: center;
+            padding: 8px 6px;
+            font-size: 12px;
+          }
+        }
+      }
+
+      .section-products {
+        padding-top: 12px;
+
+        .products-header {
+          align-items: flex-start;
+          gap: 10px;
+          margin-bottom: 10px;
+
+          .products-count-info {
+            flex-wrap: wrap;
+            gap: 6px;
+            min-width: 0;
+
+            .main-count {
+              font-size: 13px;
+            }
+          }
+
+          .el-button {
+            flex: 0 0 auto;
+            padding: 8px 10px;
+          }
+        }
+
+        .products-preview {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 8px;
+
+          .product-item {
+            display: grid;
+            grid-template-columns: 46px minmax(0, 1fr);
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+
+            img {
+              width: 46px;
+              height: 46px;
+            }
+
+            .product-info {
+              text-align: left;
+
+              .product-name {
+                font-size: 11px;
+                line-height: 1.3;
+              }
+
+              .product-price {
+                font-size: 12px;
+              }
+            }
+          }
+        }
+
+        .no-products {
+          padding: 14px;
+          font-size: 13px;
+        }
+      }
+    }
+  }
+
+  :deep(.home-section-form) {
+    width: 100%;
+  }
+
+  :deep(.home-section-form .el-form-item) {
+    display: block;
+    margin-bottom: 16px;
+  }
+
+  :deep(.home-section-form .el-form-item__label) {
+    width: 100% !important;
+    height: auto;
+    margin-bottom: 8px;
+    padding: 0 !important;
+    color: #334155;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.4;
+    text-align: left;
+  }
+
+  :deep(.home-section-form .el-form-item__content) {
+    width: 100%;
+    min-width: 0;
+    margin-left: 0 !important;
+    line-height: 1.4;
+  }
+
+  :deep(.home-section-form .el-input),
+  :deep(.home-section-form .el-select),
+  :deep(.home-section-form .el-input-number) {
+    width: 100% !important;
+  }
+
+  .tip-text {
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .products-manager {
+    :deep(.unified-search-panel) {
+      margin-bottom: 12px;
+    }
+
+    .products-list-section,
+    .available-products-section {
+      margin-top: 14px;
+      padding-top: 14px;
+
+      .list-header {
+        margin-bottom: 10px;
+        font-size: 13px;
+      }
+    }
+
+    .products-list-section .products-grid,
+    .available-products-section .available-products-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      max-height: 34vh;
+      padding: 2px 4px 2px 2px;
+    }
+
+    .products-list-section .products-grid .product-card,
+    .available-products-section .available-product-card {
+      padding: 8px;
+      border-radius: 12px;
+
+      img,
+      .product-thumb {
+        height: 72px;
+        border-radius: 10px;
+      }
+
+      .product-details .product-name,
+      .product-info .product-name {
+        font-size: 11px;
+        line-height: 1.3;
+      }
+    }
+  }
+
+  :global(.home-section-dialog .mobile-dialog-sheet-body),
+  :global(.home-section-products-dialog .mobile-dialog-sheet-body) {
+    padding: 12px !important;
+  }
+
+  :global(.home-section-dialog .mobile-dialog-sheet-footer),
+  :global(.home-section-products-dialog .mobile-dialog-sheet-footer) {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom)) !important;
+  }
+
+  :global(.home-section-dialog .mobile-dialog-sheet-footer .el-button),
+  :global(.home-section-products-dialog .mobile-dialog-sheet-footer .el-button) {
+    width: 100%;
+    margin: 0 !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .sections-content {
+    .section-card {
+      .section-header {
+        .section-actions {
+          grid-template-columns: 1fr 1fr;
+
+          .el-switch {
+            grid-column: 1 / -1;
+            justify-self: start;
+          }
+        }
+      }
+
+      .section-products {
+        .products-preview {
+          grid-template-columns: 1fr;
+        }
       }
     }
   }

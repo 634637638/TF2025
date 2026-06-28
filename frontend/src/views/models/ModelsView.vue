@@ -788,6 +788,7 @@ const deleteModel = async (model: Model) => {
 }
 
 const submitForm = async () => {
+  if (submitting.value) return
   // 权限检查
   if (showCreateModal.value && !canCreate.value) {
     showCreateDenied('型号管理', 'models:create')

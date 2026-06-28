@@ -1934,6 +1934,7 @@ const handleSinglePayment = (phone: SupplierPaymentPhone) => {
 };
 
 const handleSinglePaymentSubmit = async () => {
+  if (submitting.value) return
   if (!canCreatePayment.value) {
     handleNoPermission('create')
     return
@@ -1989,6 +1990,7 @@ const handleEditPayment = (phone: SupplierPaymentPhone) => {
 };
 
 const handleEditPaymentSubmit = async () => {
+  if (submitting.value) return
   if (!canEditPayment.value) {
     handleNoPermission('edit')
     return
@@ -2053,6 +2055,7 @@ const handleCancelPayment = async (phone: SupplierPaymentPhone) => {
 
 // 批量取消打款（批次详情中的批量操作）
 const handleBatchCancelPayment = async () => {
+  if (removingPayment.value) return
   if (!canDeletePayment.value) {
     handleNoPermission('delete')
     return
@@ -2101,6 +2104,7 @@ const handleBatchCancelPayment = async () => {
 
 // 保存批次详情为图片
 const savePaymentDetailsAsImage = async () => {
+  if (savingImage.value) return
   try {
     savingImage.value = true;
 
@@ -2132,6 +2136,7 @@ const savePaymentDetailsAsImage = async () => {
 
 // 保存批量打款明细为图片
 const saveBatchPaymentAsImage = async () => {
+  if (savingImage.value) return
   try {
     savingImage.value = true;
 
@@ -2163,6 +2168,7 @@ const saveBatchPaymentAsImage = async () => {
 
 // 保存单个打款明细为图片
 const saveSinglePaymentAsImage = async () => {
+  if (savingImage.value) return
   try {
     savingImage.value = true;
 

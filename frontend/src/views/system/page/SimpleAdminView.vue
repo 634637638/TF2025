@@ -108,6 +108,7 @@ import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { storage } from '@/services/storage'
 import { SECURITY_STORAGE_KEYS } from '@/constants/storage'
 import { canAccessRoutePath } from '@/constants/routePermissions'
+import { logger } from '@/utils/logger'
 
 // 路由
 const router = useRouter()
@@ -150,36 +151,11 @@ interface QuickAction {
 // 快捷操作
 const quickActions = ref<QuickAction[]>([
   {
-    id: 'new-sale',
-    name: '新建销售',
-    icon: 'fas fa-plus-circle',
-    handler: () => {
-      navigateIfAllowed('/sales/create')
-    }
-  },
-  {
     id: 'quick-search',
     name: '快速查询',
     icon: 'fas fa-search',
     handler: () => {
       navigateIfAllowed('/query')
-    }
-  },
-  {
-    id: 'inventory-check',
-    name: '库存盘点',
-    icon: 'fas fa-clipboard-check',
-    handler: () => {
-      navigateIfAllowed('/inventory/check')
-    }
-  },
-  {
-    id: 'today-report',
-    name: '今日报表',
-    icon: 'fas fa-chart-bar',
-    badge: '新',
-    handler: () => {
-      navigateIfAllowed('/analytics/today')
     }
   }
 ])
@@ -308,14 +284,20 @@ const loadMenus = async () => {
 
 const checkAuth = async () => {
   try {
-    // 如果用户未认证，跳转到登录页
     if (!isAuthenticated.value) {
-      window.location.href = '/login'
+      const hasPersistedAuth = Boolean(storage.getToken() || storage.getAuth())
+      if (hasPersistedAuth || authStore.isAuthenticating) {
+        await authStore.loadPersistedAuthData()
+      }
+    }
+
+    // 这里不再做页面级强制跳转，交给全局路由守卫统一处理，
+    // 避免首次恢复登录态时出现“页面先加载再被踢回登录”的竞态。
+    if (!isAuthenticated.value) {
       return
     }
   } catch (error) {
     logger.error('认证检查失败:', error)
-    window.location.href = '/login'
   }
 }
 

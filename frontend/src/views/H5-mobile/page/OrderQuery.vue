@@ -80,7 +80,7 @@
 
       <!-- 订单列表 -->
       <div v-if="loading" class="loading-state">
-        <el-skeleton animated />
+        <SectionLoading text="加载订单中..." size="large" />
       </div>
 
       <div v-else-if="orders.length > 0" class="orders-list">
@@ -145,6 +145,7 @@ import { ElMessage, type FormInstance } from 'element-plus'
 import { useForm, ValidationRules, useLoadingState } from '@/composables'
 import { getOrdersByPhone } from '@/api/shop-public'
 import { getUserOrders, userManager, tokenManager, type AuthUser } from '@/api/auth'
+import SectionLoading from '@/components/SectionLoading.vue'
 import { formatImageUrl } from '@/utils/format'
 import { normalizePhoneDigits } from '@/utils/security'
 import { logger } from '@/utils/logger'

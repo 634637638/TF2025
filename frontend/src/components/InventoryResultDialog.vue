@@ -199,7 +199,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<UpdateModelValueEmits>()
 
 // 响应式数据
-const visible = ref(false)
+const visible = ref(props.modelValue)
 const loading = ref(false)
 const inventoryData = ref<InventoryItem[]>([])
 const { isMobile } = useMobile()
@@ -277,6 +277,10 @@ const loadData = async () => {
   } finally {
     loading.value = false
   }
+}
+
+if (visible.value) {
+  loadData()
 }
 
 const handleClose = () => {

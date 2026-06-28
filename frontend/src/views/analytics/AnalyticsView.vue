@@ -678,27 +678,53 @@ onMounted(() => {
 // 响应式
 @media (max-width: 768px) {
   .analytics-view {
-    padding: 16px;
+    padding-inline: var(--admin-page-gap-x);
+    padding-top: 10px;
   }
 
   .tab-navigation {
-    flex-wrap: wrap;
+    position: relative;
+    flex-wrap: nowrap;
+    gap: 6px;
+    margin-bottom: 0;
+    padding: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-radius: var(--mobile-card-radius);
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    background:
+      linear-gradient(90deg, rgba(255, 255, 255, 0.98), rgba(248, 251, 255, 0.96));
+  }
+
+  .tab-navigation::-webkit-scrollbar {
+    display: none;
   }
 
   .tab-navigation .el-button {
-    flex: 1 1 auto;
-    min-width: 100px;
-    padding: 12px 16px;
-    font-size: 13px;
-  }
-
-  .tab-navigation .el-button {
+    flex: 0 0 auto;
+    min-width: max-content;
+    height: 36px;
+    min-height: 36px;
+    margin: 0;
+    padding: 0 14px;
     border-right: none;
-    border-bottom: 1px solid #e8ecef;
+    border-bottom: none;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    scroll-snap-align: start;
+    white-space: nowrap;
   }
 
   .tab-navigation .el-button:last-child {
     border-bottom: none;
+  }
+
+  .tab-navigation .el-button i {
+    margin-right: 4px;
+    font-size: 12px;
   }
 }
 </style>

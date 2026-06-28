@@ -1,6 +1,7 @@
 import { normalizePersonName, normalizePhoneDigits } from '@/utils/security'
 import { extractResponseData } from '@/utils/api-response'
 import { unifiedApi } from '@/utils/unified-api'
+import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import type { User } from '@/types'
 import type { Store, Supplier } from '@/types/system'
 import type {
@@ -23,7 +24,7 @@ export const createWholesaleFormData = (): WholesaleFormData => ({
   payment_method: '',
   payment_channel: '',
   invoice_number: '',
-  sale_date: '',
+  sale_date: TimeUtil.nowFormatted(TIME_FORMATS.DATE),
   remarks: ''
 })
 
@@ -129,16 +130,16 @@ export const loadWholesaleDialogOptions = async (): Promise<{
   stores: Store[]
   users: User[]
 }> => {
-  const [suppliers, stores, users] = await Promise.all([
+  const [suppliersResult, storesResult, usersResult] = await Promise.allSettled([
     loadWholesaleSuppliers(),
     loadWholesaleStores(),
     loadWholesaleUsers()
   ])
 
   return {
-    suppliers,
-    stores,
-    users
+    suppliers: suppliersResult.status === 'fulfilled' ? suppliersResult.value : [],
+    stores: storesResult.status === 'fulfilled' ? storesResult.value : [],
+    users: usersResult.status === 'fulfilled' ? usersResult.value : []
   }
 }
 
@@ -153,7 +154,8 @@ export const buildWholesaleOpenFormPatch = (options: {
   operatorName: string
 }): Partial<WholesaleFormData> => ({
   supplier_id: options.mode === 'proxy' ? resolveProxySupplierId(options.phones) : null,
-  salesperson_name: options.operatorName
+  salesperson_name: options.operatorName,
+  sale_date: TimeUtil.nowFormatted(TIME_FORMATS.DATE)
 })
 
 export const normalizeWholesalePhoneValue = (phone: unknown): string =>

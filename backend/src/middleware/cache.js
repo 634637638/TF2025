@@ -37,6 +37,14 @@ function cacheMiddleware(options = {}) {
   setInterval(cleanupExpiredCache, 60000); // 每分钟清理一次
 
   return (req, res, next) => {
+    if (opts.ttl <= 0) {
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
+      res.set('Surrogate-Control', 'no-store');
+      return next();
+    }
+
     // 只缓存GET请求
     if (req.method !== 'GET') {
       return next();

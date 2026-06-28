@@ -42,10 +42,6 @@
               <span>刷新</span>
             </template>
           </el-button>
-          <el-button type="warning" plain @click="initMenus" v-if="canCreate && menuTree.length === 0">
-            <i class="fas fa-database"></i>
-            <span>初始化数据</span>
-          </el-button>
         </div>
         </template>
       </PageHeader>
@@ -483,10 +479,6 @@
             <i class="fas fa-sitemap empty-icon"></i>
             <h3 class="empty-title">暂无菜单数据</h3>
             <p class="empty-description">系统中还没有菜单配置，点击上方按钮开始添加</p>
-            <el-button v-if="canCreate" type="primary" @click="initMenus">
-              <i class="fas fa-database"></i>
-              初始化菜单数据
-            </el-button>
           </template>
         </div>
       </div>
@@ -1580,6 +1572,8 @@ const validateForm = () => {
 }
 
 const handleSubmit = async () => {
+  if (submitting.value) return
+
   if (isEdit.value && !canEdit.value) {
     error('权限不足：您没有编辑菜单的权限')
     return
@@ -1736,37 +1730,6 @@ const handleDelete = (menu) => {
   }
 
   executeDelete(menu)
-}
-
-const initMenus = async () => {
-  if (!canCreate.value) {
-    error('权限不足：您没有初始化菜单的权限')
-    return
-  }
-
-  try {
-    const response = await unifiedApi.post('/init-menus')
-
-    if (response && response.success) {
-      await loadMenus()
-      success('初始化成功', {
-        title: '菜单数据初始化成功',
-        duration: 3000
-      })
-
-      // 刷新侧边栏菜单
-      await menuStore.refreshMenus()
-
-      // 发送菜单更新事件，通知侧边栏刷新
-      emit('menu:updated')
-    } else {
-      throw new Error(response?.message || '初始化失败')
-    }
-  } catch (err) {
-    logger.error('初始化菜单数据失败:', err)
-    errorMessage.value = err.message || '初始化菜单数据失败'
-    error('初始化失败', err.message || '初始化菜单数据时发生错误')
-  }
 }
 
 // 统计方法
@@ -2057,6 +2020,10 @@ onMounted(async () => {
 .menu-header-actions {
   display: flex;
   gap: 12px;
+  width: 100%;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 /* ===== 统计卡片样式 ===== */
@@ -3174,7 +3141,7 @@ onMounted(async () => {
     width: 100%;
     flex-wrap: wrap;
     gap: 8px;
-    justify-content: flex-start;
+    justify-content: flex-end;
   }
 
   .menu-header-actions > * {
@@ -3484,7 +3451,7 @@ onMounted(async () => {
     flex-wrap: wrap;
     gap: 8px;
     width: 100%;
-    justify-content: flex-start;
+    justify-content: flex-end;
   }
 
   .menu-header-actions :deep(.el-button) {

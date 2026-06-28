@@ -1899,6 +1899,8 @@ const filterSubmitData = (data: AttendanceRecord): AttendanceRecord => {
 }
 
 const handleSubmit = async () => {
+  if (submitting.value) return
+
   if (formData.id && !canEdit.value) {
     handleAttendanceNoPermission('edit')
     return
@@ -2005,6 +2007,7 @@ const handleApprove = async (row: AttendanceTableRow) => {
 }
 
 const handleApproveSubmit = async () => {
+  if (approving.value) return
   if (!canApprove.value) {
     handleAttendanceNoPermission('approve')
     return

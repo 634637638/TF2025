@@ -1,5 +1,5 @@
 <template>
-  <div class="phone-warning-config">
+  <div class="phone-warning-config admin-page admin-page-content safe-area-top safe-area-bottom">
     <el-empty
       v-if="!canViewWarningConfig"
       description="当前账号暂无库存预警配置查看权限"
@@ -888,6 +888,7 @@ const syncTemplateVariants = async () => {
 }
 
 const handleSubmit = async () => {
+  if (submitting.value) return
   if (!canEditWarningConfig.value) {
     handleNoPermission('edit')
     return

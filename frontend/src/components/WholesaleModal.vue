@@ -619,6 +619,7 @@ const handleClose = () => {
 
 // 提交表单
 const handleSubmit = async () => {
+  if (submitting.value) return
   if (!formRef.value) return
 
   try {
@@ -698,7 +699,7 @@ watch(() => props.visible, async (newVal) => {
       operatorName: authStore.user?.name || authStore.user?.username || ''
     }))
   }
-})
+}, { immediate: true })
 </script>
 
 <style lang="scss">
@@ -718,7 +719,7 @@ watch(() => props.visible, async (newVal) => {
   overflow: hidden;
   border: 1px solid rgba(124, 58, 237, 0.12);
   box-shadow: 0 28px 72px rgba(15, 23, 42, 0.24);
-  background: linear-gradient(180deg, #ffffff 0%, #faf7ff 100%);
+  background: #ffffff !important;
 }
 
 .wholesale-form-dialog .el-dialog__header {
@@ -727,9 +728,14 @@ watch(() => props.visible, async (newVal) => {
   border-bottom: 0 !important;
 }
 
-.wholesale-form-dialog .el-dialog__body,
+.wholesale-form-dialog .el-dialog__body {
+  padding: 0 !important;
+  background: #ffffff !important;
+}
+
 .wholesale-form-dialog .el-dialog__footer {
   padding: 0 !important;
+  background: #ffffff !important;
 }
 
 .wholesale-form-dialog.mobile-dialog-sheet-panel {
@@ -745,6 +751,11 @@ watch(() => props.visible, async (newVal) => {
 
 .wholesale-form-dialog .mobile-dialog-sheet-header-content {
   justify-content: flex-start;
+}
+
+.wholesale-form-dialog .mobile-dialog-sheet-body,
+.wholesale-form-dialog .mobile-dialog-sheet-footer {
+  background: #ffffff !important;
 }
 
 @media (max-width: 767px) {
@@ -829,12 +840,64 @@ watch(() => props.visible, async (newVal) => {
 }
 
 .wholesale-modal-footer {
-  padding: 16px 24px;
-  border-top: 1px solid #e9ecef;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 18px 24px 20px;
+  border-top: 1px solid rgba(124, 58, 237, 0.12);
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  background: #fafbfc;
+  background: #ffffff;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.wholesale-modal-footer :deep(.el-button) {
+  min-width: 112px;
+  height: 40px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.wholesale-modal-footer :deep(.el-button:hover) {
+  transform: translateY(-1px);
+}
+
+.wholesale-modal-footer :deep(.el-button--default) {
+  color: #5b5675;
+  border-color: rgba(148, 163, 184, 0.28);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(243, 244, 246, 0.92) 100%);
+  box-shadow:
+    0 10px 24px rgba(148, 163, 184, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+.wholesale-modal-footer :deep(.el-button--default:hover) {
+  color: #433d63;
+  border-color: rgba(102, 126, 234, 0.28);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 1) 0%, rgba(237, 242, 255, 0.96) 100%);
+  box-shadow:
+    0 14px 30px rgba(102, 126, 234, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.96);
+}
+
+.wholesale-modal-footer :deep(.el-button--primary) {
+  border-color: rgba(118, 75, 162, 0.26);
+  background: linear-gradient(135deg, #667eea 0%, #7c3aed 52%, #764ba2 100%);
+  box-shadow:
+    0 14px 30px rgba(118, 75, 162, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.wholesale-modal-footer :deep(.el-button--primary:hover) {
+  border-color: rgba(124, 58, 237, 0.34);
+  background: linear-gradient(135deg, #5b73e8 0%, #6d34ed 52%, #6d45a1 100%);
+  box-shadow:
+    0 18px 34px rgba(118, 75, 162, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
 }
 
 /* 移动端适配 */
@@ -863,12 +926,13 @@ watch(() => props.visible, async (newVal) => {
   }
 
   .wholesale-modal-footer {
-    padding: 12px 16px;
+    padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
     flex-direction: row-reverse;
 
-    .el-button {
+    :deep(.el-button) {
       flex: 1;
-      margin: 0 4px;
+      min-width: 0;
+      margin: 0;
     }
   }
 

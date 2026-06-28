@@ -283,6 +283,7 @@
                   :disabled="!canUpdateSettings"
                   label-width="100px"
                   label-position="left"
+                  class="screen-lock-form"
                 >
                   <!-- 背景类型 -->
                   <el-form-item label="背景类型">
@@ -407,6 +408,7 @@
                     :data="loadingPasswords ? [] : inventoryPasswords"
                     border
                     stripe
+                    class="mobile-password-table"
                     style="width: 100%; margin-top: 12px;"
                   >
                     <template #empty>
@@ -1050,6 +1052,8 @@ const editPassword = (row: any) => {
 
 // 保存密码
 const savePassword = async () => {
+  if (savingPassword.value) return
+
   if (!canManageInventoryPasswords.value) {
     error('您没有管理批发报价查询密码的权限')
     return
@@ -1581,23 +1585,39 @@ onBeforeUnmount(() => {
   }
 
   .tab-navigation {
-    flex-wrap: wrap;
+    position: relative;
+    flex-wrap: nowrap;
+    gap: 6px;
+    margin-bottom: 0;
+    padding: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-radius: var(--mobile-card-radius, 14px);
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    background:
+      linear-gradient(90deg, rgba(255, 255, 255, 0.98), rgba(248, 251, 255, 0.96));
+  }
+
+  .tab-navigation::-webkit-scrollbar {
+    display: none;
   }
 
   .tab-navigation .el-button {
-    flex: 1 1 auto;
-    min-width: 100px;
-    padding: 12px 16px;
-    font-size: 13px;
-  }
-
-  .tab-navigation {
-    flex-wrap: wrap;
-  }
-
-  .tab-navigation .el-button {
+    flex: 0 0 auto;
+    min-width: max-content;
+    height: 36px;
+    min-height: 36px;
+    margin: 0;
+    padding: 0 14px;
     border-right: none;
-    border-bottom: 1px solid #e8ecef;
+    border-bottom: none;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    scroll-snap-align: start;
+    white-space: nowrap;
   }
 
   .tab-navigation .el-button:last-child {
@@ -1823,6 +1843,10 @@ onBeforeUnmount(() => {
   max-width: 800px;
 }
 
+.screen-lock-form :deep(.el-form-item__content) {
+  min-width: 0;
+}
+
 .screen-lock-form :deep(.el-form-item) {
   margin-bottom: 24px;
 }
@@ -1930,27 +1954,63 @@ onBeforeUnmount(() => {
 
 /* 响应式设计 - 锁屏设置 */
 @media (max-width: 768px) {
+  .screen-lock-settings-wrapper {
+    width: 100%;
+    overflow: hidden;
+  }
+
   .settings-cards-group {
-    grid-template-columns: 1fr;
-    gap: 16px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    width: 100%;
   }
 
   .setting-card {
-    padding: 16px;
+    min-width: 0;
+    padding: 14px;
+    border-radius: 14px;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07);
   }
 
   .card-header-custom {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
   }
 
   .card-title {
+    min-width: 0;
+    gap: 8px;
+    font-size: 15px;
+    line-height: 1.25;
+  }
+
+  .card-title i {
     font-size: 16px;
   }
 
-  .demo-box {
-    padding: 16px;
+  .card-header-custom .el-button {
+    width: auto;
+    flex: 0 0 auto;
+    justify-content: center;
+    padding: 8px 10px;
+  }
+
+  .screen-lock-settings-wrapper :deep(.el-alert) {
+    margin-bottom: 14px !important;
+    border-radius: 12px;
+  }
+
+  .screen-lock-settings-wrapper :deep(.el-alert__content) {
+    min-width: 0;
+  }
+
+  .screen-lock-settings-wrapper :deep(.el-alert p) {
+    margin: 3px 0;
+    font-size: 12px;
+    line-height: 1.45;
   }
 
   .demo-step {
@@ -1966,7 +2026,8 @@ onBeforeUnmount(() => {
   .video-preview,
   .upload-placeholder {
     max-width: 100%;
-    height: 180px;
+    height: 150px;
+    border-radius: 12px;
   }
 
   .screen-lock-form {
@@ -1976,6 +2037,158 @@ onBeforeUnmount(() => {
   .screen-lock-form :deep(.el-form-item__label) {
     width: 100% !important;
     text-align: left !important;
+  }
+
+  .screen-lock-settings-wrapper :deep(.el-form) {
+    width: 100%;
+  }
+
+  .screen-lock-settings-wrapper :deep(.el-form-item) {
+    display: block;
+    margin-bottom: 16px;
+  }
+
+  .screen-lock-settings-wrapper :deep(.el-form-item__label) {
+    width: 100% !important;
+    margin-bottom: 8px;
+    padding: 0 !important;
+    line-height: 1.4;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: left !important;
+  }
+
+  .screen-lock-settings-wrapper :deep(.el-form-item__content) {
+    width: 100%;
+    margin-left: 0 !important;
+    min-width: 0;
+  }
+
+  .screen-lock-settings-wrapper :deep(.el-radio-group) {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .screen-lock-settings-wrapper :deep(.el-radio) {
+    margin-right: 0;
+    height: auto;
+    min-height: 38px;
+    padding: 9px 10px;
+    border: 1px solid var(--border-light, #e9ecef);
+    border-radius: 12px;
+    background: rgba(248, 250, 252, 0.9);
+  }
+
+  .screen-lock-settings-wrapper :deep(.el-radio__label) {
+    font-size: 13px;
+    line-height: 1.3;
+  }
+
+  .screen-lock-settings-wrapper :deep(.el-input),
+  .screen-lock-settings-wrapper :deep(.el-textarea) {
+    width: 100%;
+  }
+
+  .image-upload-container,
+  .video-upload-container {
+    gap: 10px;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .upload-placeholder i {
+    margin-bottom: 8px;
+    font-size: 30px;
+  }
+
+  .upload-placeholder span,
+  .form-help {
+    font-size: 12px;
+  }
+
+  .form-help {
+    margin-top: 6px;
+  }
+
+  .password-list-section {
+    margin-top: 4px;
+  }
+
+  .screen-lock-settings-wrapper .password-list-header {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .screen-lock-settings-wrapper .password-list-header h4 {
+    font-size: 15px;
+  }
+
+  .screen-lock-settings-wrapper .password-list-header .el-button {
+    width: auto;
+    flex: 0 0 auto;
+  }
+
+  .screen-lock-settings-wrapper .action-buttons {
+    justify-content: flex-end;
+    gap: 4px;
+  }
+
+  .screen-lock-settings-wrapper .action-buttons .el-button {
+    flex: 0 0 auto;
+    min-width: 0;
+    padding: 2px 4px;
+  }
+
+  .screen-lock-settings-wrapper :deep(.mobile-password-table) {
+    display: block;
+    width: 100% !important;
+    overflow-x: auto;
+    font-size: 12px;
+    border-radius: 12px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .screen-lock-settings-wrapper :deep(.mobile-password-table .el-table__inner-wrapper) {
+    min-width: 520px;
+  }
+
+  .screen-lock-settings-wrapper :deep(.mobile-password-table .cell) {
+    padding-left: 6px;
+    padding-right: 6px;
+    white-space: nowrap;
+  }
+
+  :global(.system-password-dialog .el-form) {
+    width: 100%;
+  }
+
+  :global(.system-password-dialog .el-form-item) {
+    display: block;
+    margin-bottom: 16px;
+  }
+
+  :global(.system-password-dialog .el-form-item__label) {
+    width: 100% !important;
+    margin-bottom: 8px;
+    padding: 0 !important;
+    text-align: left !important;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  :global(.system-password-dialog .el-form-item__content) {
+    margin-left: 0 !important;
+    width: 100%;
+  }
+
+  :global(.system-password-dialog .el-input),
+  :global(.system-password-dialog .el-textarea) {
+    width: 100%;
   }
 
   .phone-warning-config-wrapper {
@@ -1991,6 +2204,40 @@ onBeforeUnmount(() => {
       background: var(--bg-primary, #f5f7fa);
       border-radius: 8px;
     }
+  }
+}
+
+@media (max-width: 480px) {
+  .setting-card {
+    padding: 12px;
+    border-radius: 12px;
+  }
+
+  .card-header-custom {
+    align-items: flex-start;
+  }
+
+  .card-header-custom .el-button span {
+    display: none;
+  }
+
+  .image-preview,
+  .video-preview,
+  .upload-placeholder {
+    height: 132px;
+  }
+
+  .screen-lock-settings-wrapper .password-list-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .screen-lock-settings-wrapper .password-list-header .el-button {
+    width: 100%;
+  }
+
+  .screen-lock-settings-wrapper :deep(.mobile-password-table .el-table__inner-wrapper) {
+    min-width: 500px;
   }
 }
 </style>

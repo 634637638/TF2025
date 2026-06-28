@@ -159,21 +159,30 @@ export function clearSyncLogs() {
  * 获取所有价格（公开，批发报价用，只显示采集的商品）
  */
 export function getAllPrices() {
-  return unifiedApi.get('/public/price/all')
+  return unifiedApi.get('/public/price/all', {
+    params: { _t: Date.now() },
+    useCache: false
+  })
 }
 
 /**
  * 获取所有销售价格（公开，销售报价用，显示所有有价格的商品）
  */
 export function getAllSalesPrices() {
-  return unifiedApi.get('/public/price/sales/all')
+  return unifiedApi.get('/public/price/sales/all', {
+    params: { _t: Date.now() },
+    useCache: false
+  })
 }
 
 /**
  * 搜索销售价格（公开，不限采集状态）
  */
 export function searchSalesPrices(keyword: string) {
-  return unifiedApi.get(`/public/price/sales/search/${encodeURIComponent(keyword)}`)
+  return unifiedApi.get(`/public/price/sales/search/${encodeURIComponent(keyword)}`, {
+    params: { _t: Date.now() },
+    useCache: false
+  })
 }
 
 /**
@@ -187,14 +196,20 @@ export function getPublicBrands() {
  * 搜索价格（公开，批发报价用，只显示采集的商品）
  */
 export function searchPrices(keyword: string) {
-  return unifiedApi.get(`/public/price/search/${encodeURIComponent(keyword)}`)
+  return unifiedApi.get(`/public/price/search/${encodeURIComponent(keyword)}`, {
+    params: { _t: Date.now() },
+    useCache: false
+  })
 }
 
 /**
  * 根据品牌获取价格（公开）
  */
 export function getPricesByBrand(brand: string) {
-  return unifiedApi.get(`/public/price/brand/${encodeURIComponent(brand)}`)
+  return unifiedApi.get(`/public/price/brand/${encodeURIComponent(brand)}`, {
+    params: { _t: Date.now() },
+    useCache: false
+  })
 }
 
 // ==================== 加价配置接口 ====================

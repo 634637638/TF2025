@@ -380,53 +380,6 @@ function showLoading(el: HTMLElement) {
     <span>加载中...</span>
   `
 
-  // 添加样式
-  const style = document.createElement('style')
-  style.textContent = `
-    .tf2025-loading {
-      position: relative;
-      pointer-events: none;
-    }
-    .tf2025-loading-spinner {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      min-width: 112px;
-      padding: 10px 14px;
-      color: #475569;
-      font-size: 14px;
-      font-weight: 600;
-      background: rgba(255, 255, 255, 0.92);
-      border: 1px solid rgba(226, 232, 240, 0.9);
-      border-radius: 12px;
-      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
-      backdrop-filter: blur(8px);
-      z-index: 2;
-    }
-    .tf2025-loading-spinner__icon {
-      width: 18px;
-      height: 18px;
-      border: 2px solid #dbeafe;
-      border-top-color: #2563eb;
-      border-right-color: #38bdf8;
-      border-radius: 50%;
-      animation: tf2025-loading-spin 0.75s linear infinite;
-    }
-    @keyframes tf2025-loading-spin {
-      to { transform: rotate(360deg); }
-    }
-  `
-
-  if (!document.getElementById('tf2025-loading-styles')) {
-    style.id = 'tf2025-loading-styles'
-    document.head.appendChild(style)
-  }
-
   el.appendChild(loading)
 }
 

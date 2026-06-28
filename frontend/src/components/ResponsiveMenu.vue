@@ -4,6 +4,7 @@
     <MobileSlideMenu
       v-if="isMobile"
       :is-open="isSlideMenuOpen"
+      :is-menu-loading="isMenuLoading"
       :menu-list="slideMenuItems"
       :user-name="userInfo.name"
       :user-role="userInfo.role"
@@ -24,9 +25,10 @@
 
     <!-- 移动端菜单按钮（汉堡菜单） -->
     <button
+      type="button"
       v-if="isMobile && showMenuButton"
       class="mobile-menu-button"
-      @click="toggleSlideMenu"
+      @click.stop.prevent="handleMenuButtonClick"
       :class="{ 'is-active': isSlideMenuOpen }"
       aria-label="菜单"
     >
@@ -38,7 +40,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch, onMounted, onUnmounted } from 'vue'
+import { watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useMobileMenu } from '@/composables/useMobileMenu'
 import { useMenuWidth } from '@/composables/useMenuWidth'
@@ -77,17 +79,17 @@ const props = withDefaults(defineProps<Props>(), {
 const {
   isMobile,
   isSlideMenuOpen,
-  isBottomNavVisible,
+  isMenuLoading,
   userInfo,
-  menuItems: dynamicMenuItems,
-  bottomNavItems,
   slideMenuItems,
   activeQuickActions,
   toggleSlideMenu,
   closeSlideMenu,
+  openSlideMenu,
   handleMenuClick,
   handleQuickAction,
-  refreshMenu
+  refreshMenu,
+  syncMenuItems
 } = useMobileMenu({
   items: props.menuItems,
   maxBottomNavItems: props.maxBottomNavItems,
@@ -106,11 +108,21 @@ watch(() => props.sidebarCollapsed, (collapsed) => {
   }
 })
 
+watch(() => props.menuItems, (items) => {
+  if (Array.isArray(items) && items.length > 0) {
+    syncMenuItems(items)
+  }
+}, { deep: true })
+
 // 路由
 const route = useRoute()
 
+const handleMenuButtonClick = async () => {
+  await toggleSlideMenu()
+}
+
 // 监听路由变化，同步菜单折叠状态
-watch(route, (newRoute) => {
+watch(route, () => {
   // 移动端自动关闭菜单
   if (isMobile.value && isSlideMenuOpen.value) {
     closeSlideMenu()
@@ -128,7 +140,7 @@ onMounted(async () => {
 defineExpose({
   toggleMenu: toggleSlideMenu,
   closeMenu: closeSlideMenu,
-  openMenu: () => toggleSlideMenu(),
+  openMenu: openSlideMenu,
   refreshMenu
 })
 </script>
@@ -152,7 +164,7 @@ defineExpose({
   position: fixed;
   top: 8px;
   left: 8px;
-  z-index: 1001;
+  z-index: 3200;
   width: 40px;
   height: 40px;
   background: var(--primary-color, #667eea);
@@ -166,6 +178,8 @@ defineExpose({
   gap: 3px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   transition: all 0.3s ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 
   &:hover {
     background: var(--primary-dark, #5a6fd8);
@@ -256,7 +270,7 @@ defineExpose({
 // 确保菜单按钮在其他元素之上
 .mobile-menu-button {
   position: fixed;
-  z-index: 1001;
+  z-index: 3200;
 }
 
 // 暗色模式

@@ -1220,6 +1220,7 @@ const applyInitialData = async () => {
 
 // 提交表单
 const handleSubmit = async () => {
+  if (submitting.value) return
   if (!formRef.value) return
 
   try {

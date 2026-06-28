@@ -54,7 +54,7 @@
             </div>
           </div>
 
-          <div v-if="hasCustomerInfo || showSupplierInfo" class="info-bar">
+          <div v-if="hasCustomerInfo || showSupplierInfo || showSupplierReceiverInfo" class="info-bar">
             <span v-if="hasCustomerInfo" class="info-tag">
               <i class="fas fa-user"></i>
               {{ customerName }}<span v-if="customerPhone"> · {{ customerPhone }}</span>
@@ -62,6 +62,10 @@
             <span v-if="showSupplierInfo" class="info-tag">
               <i class="fas fa-truck"></i>
               {{ supplierName }}
+            </span>
+            <span v-if="showSupplierReceiverInfo" class="info-tag">
+              <i class="fas fa-user-check"></i>
+              接收方：{{ customerName }}<span v-if="customerPhone"> · 手机号码：{{ customerPhone }}</span>
             </span>
           </div>
 
@@ -218,6 +222,7 @@ const receiptDate = computed(() => props.saleDate
 
 const hasCustomerInfo = computed(() => Boolean((props.status === 'sold' || props.status === 'peer_transfer') && props.customerName))
 const showSupplierInfo = computed(() => Boolean(props.status === 'supplier_proxy' && props.supplierName))
+const showSupplierReceiverInfo = computed(() => Boolean(props.status === 'supplier_proxy' && props.customerName))
 
 const totalAmount = computed(() => props.items.reduce((sum, item) => sum + (Number(item.salePrice) || 0), 0))
 
@@ -668,16 +673,16 @@ const handleSearchClear = () => {
 }
 
 .supplier-receipt .receipt-header {
-  background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+  background: linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%);
 }
 
 .supplier-receipt .info-tag i {
-  color: #6c757d;
+  color: #8b5cf6;
 }
 
 .supplier-receipt .item-price,
 .supplier-receipt .total-amount {
-  color: #6c757d;
+  color: #8b5cf6;
 }
 
 .action-buttons {

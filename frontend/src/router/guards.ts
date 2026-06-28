@@ -389,8 +389,9 @@ export class RouteGuards {
         // 5. 权限检查
         if (requiredPermissions && requiredPermissions.length > 0) {
           if (!Array.isArray(authStore.userPermissions) || authStore.userPermissions.length === 0) {
-            showElementWarning('您没有访问此页面的权限')
-            return to.path === '/dashboard' ? next() : next('/dashboard')
+            // 权限数据可能仍在恢复过程中，此时先允许进入，
+            // 避免移动端刷新或弱网下出现“页面先打开又立刻被跳走”的误判。
+            return next()
           }
 
           if (!canAccessRoutePath(to.path, authStore)) {
@@ -516,6 +517,12 @@ export class RouteGuards {
    */
   private setupErrorHandlers(): void {
     this.router.onError((error) => {
+      const loadingStore = useLoadingStore()
+
+      // 路由组件懒加载失败、网络波动或导航异常时，确保不会遗留全局加载遮罩。
+      loadingStore.clearAllLoading()
+      this.pageLoadingTasks.clear()
+
       // 错误上报
       if (import.meta.env.PROD) {
         // 生产环境下可以上报错误到监控系统
@@ -619,8 +626,10 @@ export class RouteGuards {
       return false
     }
 
-    // 全站统一：只要页面路径变化，就交给全局 loading 呈现页面切换反馈。
-    return to.path !== from.path
+    // 默认关闭全局路由切页 loading，避免弱网、懒加载失败或云端资源波动时
+    // 出现“页面一直卡在正在加载 xxx”的问题。
+    // 只有明确声明 enableRouteLoading 的页面才启用这层全局反馈。
+    return to.meta?.enableRouteLoading === true && to.path !== from.path
   }
 
   /**

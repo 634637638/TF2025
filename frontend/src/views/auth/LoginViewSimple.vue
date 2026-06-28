@@ -132,6 +132,7 @@ onMounted(() => {
 })
 
 const handleLogin = async () => {
+  if (loading.value) return
   if (!username.value || !password.value) {
     showError('请输入完整的用户名和密码')
     return

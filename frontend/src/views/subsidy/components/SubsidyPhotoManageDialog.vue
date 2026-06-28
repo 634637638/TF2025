@@ -13,17 +13,37 @@
     >
       <div class="photo-preview-content">
         <div class="photo-upload-area">
-          <el-upload
-            :show-file-list="false"
-            :http-request="customUploadRequest"
-            accept="image/*,.heic,.heif,.pdf,application/pdf"
-            multiple
-          >
-            <el-button type="primary" size="default">
-              <i class="fas fa-image"></i> 上传图片
+          <div class="photo-upload-actions">
+            <el-upload
+              class="toolbar-upload"
+              :show-file-list="false"
+              :http-request="customUploadRequest"
+              accept="image/*,.heic,.heif,.pdf,application/pdf"
+              multiple
+            >
+              <el-button type="primary" size="default" class="toolbar-action-btn">
+                <i class="fas fa-image"></i> 上传图片
+              </el-button>
+            </el-upload>
+            <el-button
+              class="toolbar-action-btn"
+              type="success"
+              size="default"
+              :disabled="previewPhotos.length === 0"
+              @click="downloadToolbarPhotos"
+            >
+              <i class="fas fa-download"></i> {{ selectedPhotos.length > 0 ? '下载选中' : '下载全部' }}
             </el-button>
-          </el-upload>
-          <span class="upload-tip">支持PDF、图片批量上传</span>
+            <el-button
+              class="toolbar-action-btn"
+              type="danger"
+              size="default"
+              :disabled="previewPhotos.length === 0"
+              @click="deleteToolbarPhotos"
+            >
+              <i class="fas fa-trash"></i> {{ selectedPhotos.length > 0 ? '删除选中' : '删除全部' }}
+            </el-button>
+          </div>
         </div>
 
         <div v-if="previewPhotos.length > 0" class="photo-grid-area">
@@ -39,14 +59,6 @@
               <span v-if="selectedPhotos.length > 0" class="selected-count">
                 已选择 {{ selectedPhotos.length }} 张
               </span>
-            </div>
-            <div class="toolbar-right">
-              <el-button v-if="selectedPhotos.length > 0" type="primary" size="small" @click="downloadSelectedPhotos">
-                <i class="fas fa-download"></i> 下载选中
-              </el-button>
-              <el-button v-if="selectedPhotos.length > 0" type="danger" size="small" @click="deleteSelectedPhotos">
-                <i class="fas fa-trash"></i> 删除选中
-              </el-button>
             </div>
           </div>
 
@@ -101,9 +113,6 @@
       <template #footer>
         <div class="photo-preview-footer">
           <el-button @click="closeDialog">取消</el-button>
-          <el-button v-if="previewPhotos.length > 0" type="success" @click="downloadAllPhotos">
-            <i class="fas fa-download"></i> 下载全部
-          </el-button>
           <el-button type="primary" :loading="savingPhotos" @click="savePhotoChanges">
             <i class="fas fa-save"></i> 保存
           </el-button>
@@ -491,6 +500,15 @@ const handlePhotoSelectAll = (checked: boolean) => {
   selectedPhotos.value = checked ? previewPhotos.value.map((_, index) => index) : []
 }
 
+const downloadToolbarPhotos = async () => {
+  if (selectedPhotos.value.length > 0) {
+    await downloadSelectedPhotos()
+    return
+  }
+
+  await downloadAllPhotos()
+}
+
 const downloadSelectedPhotos = async () => {
   if (selectedPhotos.value.length === 0) return
 
@@ -509,6 +527,26 @@ const downloadSelectedPhotos = async () => {
   }
 }
 
+const applyPhotoDeletion = (indexes: number[], successMessage: string) => {
+  const sortedIndexes = [...indexes].sort((a, b) => b - a)
+  sortedIndexes.forEach(index => {
+    deletedPhotos.value.push(previewPhotos.value[index])
+    previewPhotos.value.splice(index, 1)
+  })
+
+  selectedPhotos.value = []
+  photoSelectAll.value = false
+
+  if (previewPhotos.value.length === 0) {
+    showPhotoViewer.value = false
+    currentPhotoIndex.value = 0
+  } else if (currentPhotoIndex.value >= previewPhotos.value.length) {
+    currentPhotoIndex.value = previewPhotos.value.length - 1
+  }
+
+  ElMessage.success(successMessage)
+}
+
 const deleteSelectedPhotos = () => {
   if (selectedPhotos.value.length === 0) return
 
@@ -517,15 +555,29 @@ const deleteSelectedPhotos = () => {
     cancelButtonText: '取消',
     type: 'warning'
   }).then(() => {
-    const sortedIndexes = [...selectedPhotos.value].sort((a, b) => b - a)
-    sortedIndexes.forEach(index => {
-      deletedPhotos.value.push(previewPhotos.value[index])
-      previewPhotos.value.splice(index, 1)
-    })
-    selectedPhotos.value = []
-    photoSelectAll.value = false
-    ElMessage.success(`已删除 ${sortedIndexes.length} 张照片`)
+    applyPhotoDeletion(selectedPhotos.value, `已删除 ${selectedPhotos.value.length} 张照片`)
   }).catch(() => {})
+}
+
+const deleteAllPhotos = () => {
+  if (previewPhotos.value.length === 0) return
+
+  ElMessageBox.confirm(`确定要删除全部 ${previewPhotos.value.length} 张照片吗？`, '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(() => {
+    applyPhotoDeletion(previewPhotos.value.map((_, index) => index), `已删除全部 ${previewPhotos.value.length} 张照片`)
+  }).catch(() => {})
+}
+
+const deleteToolbarPhotos = () => {
+  if (selectedPhotos.value.length > 0) {
+    deleteSelectedPhotos()
+    return
+  }
+
+  deleteAllPhotos()
 }
 
 const openPhotoViewer = (index: number) => {
@@ -590,6 +642,8 @@ const downloadAllPhotos = async () => {
 }
 
 const savePhotoChanges = async () => {
+  if (savingPhotos.value) return
+
   if (!props.item?.id) {
     ElMessage.error('未找到要更新的记录')
     return
@@ -635,7 +689,50 @@ const savePhotoChanges = async () => {
   margin-bottom: 18px;
 }
 
-.upload-tip,
+.photo-upload-actions,
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.photo-upload-actions {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 12px;
+  flex-wrap: nowrap;
+
+  :deep(.toolbar-upload) {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+
+  :deep(.toolbar-upload .el-upload) {
+    display: block;
+    width: 100%;
+  }
+
+  :deep(.toolbar-action-btn) {
+    width: 100%;
+    min-width: 0;
+    height: 40px;
+    margin-left: 0 !important;
+  }
+
+  :deep(.toolbar-action-btn > span) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    gap: 6px;
+    white-space: nowrap;
+  }
+}
+
 .selected-count {
   color: #6c757d;
   font-size: 13px;
@@ -806,12 +903,97 @@ const savePhotoChanges = async () => {
 }
 
 @media (max-width: 768px) {
-  .photo-upload-area,
-  .photo-toolbar,
-  .photo-preview-footer,
+  :deep(.photo-preview-dialog .el-dialog) {
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px);
+    max-height: calc(100vh - 24px);
+    margin: 12px auto !important;
+    display: flex;
+    flex-direction: column;
+  }
+
+  :deep(.photo-preview-dialog .el-dialog__body) {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding-bottom: 12px;
+  }
+
+  :deep(.photo-preview-dialog .el-dialog__footer) {
+    padding-top: 12px;
+    border-top: 1px solid #ebeef5;
+    background: #fff;
+  }
+
   .photo-viewer-actions {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .photo-upload-area,
+  .photo-toolbar,
+  .toolbar-left {
+    align-items: stretch;
+  }
+
+  .photo-upload-actions,
+  .toolbar-left {
+    width: 100%;
+  }
+
+  .photo-upload-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 6px;
+
+    :deep(.toolbar-action-btn) {
+      width: 100%;
+      min-width: 0;
+      padding: 8px 6px !important;
+      height: 36px;
+      font-size: 12px !important;
+    }
+
+    :deep(.toolbar-action-btn [class*="fa-"]) {
+      font-size: 11px;
+      margin-right: 4px;
+    }
+
+    :deep(.toolbar-action-btn > span) {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
+  .photo-upload-actions :deep(.el-button),
+  .toolbar-left :deep(.el-button) {
+    margin-left: 0 !important;
+  }
+
+  .photo-preview-footer {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: stretch;
+    gap: 8px;
+
+    :deep(.el-button) {
+      flex: 1 1 0;
+      min-width: 0;
+      margin-left: 0 !important;
+      padding-left: 10px;
+      padding-right: 10px;
+    }
+
+    :deep(.el-button > span) {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      width: 100%;
+      white-space: nowrap;
+    }
   }
 
   .photo-grid {

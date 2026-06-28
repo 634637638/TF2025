@@ -1652,26 +1652,26 @@
           <div class="sales-edit-form-grid">
             <div v-if="canViewSaleField('supplier_name')">
               <label class="sales-edit-field-label">供应商</label>
-              <el-select v-model="editForm.supplier_id" placeholder="选择供应商" filterable clearable teleported popper-class="sales-edit-dialog-popper" class="full-width" :disabled="!canEditSaleField('supplier_name')">
+              <el-select v-model="editForm.supplier_id" placeholder="选择供应商" filterable clearable teleported popper-class="tf2025-form-popper" class="full-width" :disabled="!canEditSaleField('supplier_name')">
                 <el-option v-for="supplier in suppliers" :key="supplier.id" :label="supplier.name" :value="supplier.id" />
               </el-select>
             </div>
 
             <div v-if="canViewSaleField('store_name')">
               <label class="sales-edit-field-label">入库店铺</label>
-              <el-select v-model="editForm.store_id" placeholder="选择店铺" filterable clearable teleported popper-class="sales-edit-dialog-popper" class="full-width" :disabled="!canEditSaleField('store_name')">
+              <el-select v-model="editForm.store_id" placeholder="选择店铺" filterable clearable teleported popper-class="tf2025-form-popper" class="full-width" :disabled="!canEditSaleField('store_name')">
                 <el-option v-for="store in stores" :key="store.id" :label="store.name" :value="store.id" />
               </el-select>
             </div>
 
             <div v-if="canViewSaleField('Inventorytime')">
               <label class="sales-edit-field-label">入库时间</label>
-              <el-date-picker v-model="editForm.created_at" type="date" placeholder="选择日期" format="YYYY-MM-DD" value-format="YYYY-MM-DD" teleported popper-class="sales-edit-dialog-popper" style="width: 140px" :disabled="!canEditSaleField('Inventorytime')" />
+              <el-date-picker v-model="editForm.created_at" type="date" placeholder="选择日期" format="YYYY-MM-DD" value-format="YYYY-MM-DD" teleported popper-class="tf2025-form-popper" style="width: 140px" :disabled="!canEditSaleField('Inventorytime')" />
             </div>
 
             <div v-if="canViewSaleField('condition')">
               <label class="sales-edit-field-label">机况</label>
-              <el-select v-model="editForm.condition" placeholder="选择机况" teleported popper-class="sales-edit-dialog-popper" class="full-width" :disabled="!canEditSaleField('condition')">
+              <el-select v-model="editForm.condition" placeholder="选择机况" teleported popper-class="tf2025-form-popper" class="full-width" :disabled="!canEditSaleField('condition')">
                 <el-option label="全新" value="全新" />
                 <el-option label="二手" value="二手" />
               </el-select>
@@ -1679,14 +1679,14 @@
 
             <div v-if="canViewSaleField('brand')">
               <label class="sales-edit-field-label">品牌</label>
-              <el-select v-model="editForm.brand" placeholder="选择品牌" filterable clearable teleported popper-class="sales-edit-dialog-popper" @change="onEditBrandChange" class="full-width" :disabled="!canEditSaleField('brand')">
+              <el-select v-model="editForm.brand" placeholder="选择品牌" filterable clearable teleported popper-class="tf2025-form-popper" @change="onEditBrandChange" class="full-width" :disabled="!canEditSaleField('brand')">
                 <el-option v-for="brand in brands" :key="brand.id" :label="brand.name" :value="brand.name" />
               </el-select>
             </div>
 
             <div v-if="canViewSaleField('model')">
               <label class="sales-edit-field-label">型号</label>
-              <el-select v-if="editForm.brand && editBrandModels.length > 0" v-model="editForm.model" placeholder="选择型号" filterable clearable teleported popper-class="sales-edit-dialog-popper" :disabled="!canEditSaleField('model') || (!editForm.brand && editBrandModels.length === 0)" class="full-width">
+              <el-select v-if="editForm.brand && editBrandModels.length > 0" v-model="editForm.model" placeholder="选择型号" filterable clearable teleported popper-class="tf2025-form-popper" :disabled="!canEditSaleField('model') || (!editForm.brand && editBrandModels.length === 0)" class="full-width">
                 <el-option v-for="model in editBrandModels" :key="model" :label="model" :value="model" />
               </el-select>
               <el-input v-else v-model="editForm.model" placeholder="请输入型号" class="full-width" :disabled="!canEditSaleField('model')" />
@@ -1694,14 +1694,14 @@
 
             <div v-if="canViewSaleField('color')">
               <label class="sales-edit-field-label">颜色</label>
-              <el-select v-model="editForm.color" placeholder="选择颜色" filterable clearable teleported popper-class="sales-edit-dialog-popper" class="full-width" :disabled="!canEditSaleField('color')">
+              <el-select v-model="editForm.color" placeholder="选择颜色" filterable clearable teleported popper-class="tf2025-form-popper" class="full-width" :disabled="!canEditSaleField('color')">
                 <el-option v-for="color in colors" :key="color" :label="color" :value="color" />
               </el-select>
             </div>
 
             <div v-if="canViewSaleField('memory')">
               <label class="sales-edit-field-label">内存</label>
-              <el-select v-model="editForm.memory" placeholder="选择内存" filterable clearable teleported popper-class="sales-edit-dialog-popper" class="full-width" :disabled="!canEditSaleField('memory')">
+              <el-select v-model="editForm.memory" placeholder="选择内存" filterable clearable teleported popper-class="tf2025-form-popper" class="full-width" :disabled="!canEditSaleField('memory')">
                 <el-option v-for="memory in memories" :key="memory" :label="memory" :value="memory" />
               </el-select>
             </div>
@@ -3128,6 +3128,7 @@ const buildAvailablePhoneParams = (includePagination = true) => {
   const routePhoneId = String(route.query.sale_phone_id || '').trim()
   if (routePhoneId) {
     params.phone_id = routePhoneId
+    return params
   }
 
   if (canViewSaleField('supplier_name') && filters.supplier_id) params.supplier_id = filters.supplier_id
@@ -3143,6 +3144,138 @@ const buildAvailablePhoneParams = (includePagination = true) => {
   if (showSalesSearchKeyword.value && filters.search) params.search = filters.search
 
   return params
+}
+
+const AUTO_OPEN_SALE_PHONE_STORAGE_KEY = 'tf2025:auto-open-sale-phone'
+const AUTO_OPEN_SALE_TASK_TTL = 60 * 1000
+
+const readStoredAutoOpenSalePhoneId = () => {
+  try {
+    const rawTask = window.sessionStorage.getItem(AUTO_OPEN_SALE_PHONE_STORAGE_KEY)
+    if (!rawTask) return ''
+
+    const task = JSON.parse(rawTask) as { phoneId?: unknown; createdAt?: unknown }
+    const phoneId = String(task.phoneId || '').trim()
+    const createdAt = Number(task.createdAt || 0)
+
+    if (!phoneId || !createdAt || Date.now() - createdAt > AUTO_OPEN_SALE_TASK_TTL) {
+      window.sessionStorage.removeItem(AUTO_OPEN_SALE_PHONE_STORAGE_KEY)
+      return ''
+    }
+
+    logger.info('读取库存出库自动打开任务:', { phoneId })
+    return phoneId
+  } catch (error) {
+    logger.warn('读取库存出库自动打开任务失败，已清理:', error)
+    window.sessionStorage.removeItem(AUTO_OPEN_SALE_PHONE_STORAGE_KEY)
+    return ''
+  }
+}
+
+const clearStoredAutoOpenSalePhoneId = () => {
+  window.sessionStorage.removeItem(AUTO_OPEN_SALE_PHONE_STORAGE_KEY)
+}
+
+const getRouteAutoOpenSalePhoneId = () => {
+  const autoOpenSale = String(route.query.auto_open_sale || '') === '1'
+  const routePhoneId = String(route.query.sale_phone_id || '').trim()
+  return autoOpenSale && routePhoneId ? routePhoneId : readStoredAutoOpenSalePhoneId()
+}
+
+const clearRouteAutoOpenSaleQuery = () => {
+  clearStoredAutoOpenSalePhoneId()
+
+  const nextQuery = { ...route.query }
+  delete nextQuery.sale_phone_id
+  delete nextQuery.auto_open_sale
+
+  const queryParams = new URLSearchParams()
+  Object.entries(nextQuery).forEach(([key, value]) => {
+    if (Array.isArray(value)) {
+      value.forEach(item => {
+        if (item != null) queryParams.append(key, String(item))
+      })
+    } else if (value != null) {
+      queryParams.set(key, String(value))
+    }
+  })
+
+  const queryString = queryParams.toString()
+  const cleanUrl = `${route.path}${queryString ? `?${queryString}` : ''}${route.hash || ''}`
+  window.history.replaceState(window.history.state, '', cleanUrl)
+}
+
+const findPhoneByRouteId = (records: Phone[], routePhoneId: string) => {
+  return records.find((phone: Phone) => String(phone.id) === routePhoneId)
+}
+
+const handleRouteAutoOpenSale = async (records: Phone[] = []) => {
+  const routePhoneId = getRouteAutoOpenSalePhoneId()
+  if (!routePhoneId || handledRouteSalePhoneId.value === routePhoneId) {
+    logger.debug('跳过自动打开销售弹窗:', {
+      routePhoneId,
+      handledRouteSalePhoneId: handledRouteSalePhoneId.value
+    })
+    return false
+  }
+
+  logger.info('开始自动打开销售出库弹窗:', {
+    phoneId: routePhoneId,
+    currentRecords: records.length
+  })
+
+  let matchedPhone = findPhoneByRouteId(records, routePhoneId)
+
+  if (!matchedPhone) {
+    try {
+      logger.info('当前列表未找到目标商品，按ID重新请求:', { phoneId: routePhoneId })
+      const response = await api.get('/sales/phones/available', {
+        params: {
+          page: 1,
+          limit: 1,
+          phone_id: routePhoneId
+        },
+        useCache: false
+      })
+
+      if (response.success) {
+        const responseData = extractResponseData<any>(response)
+        const routeRecords = Array.isArray(responseData) ? responseData : (responseData.records || [])
+        matchedPhone = findPhoneByRouteId(routeRecords, routePhoneId)
+        logger.info('自动出库商品ID请求完成:', {
+          phoneId: routePhoneId,
+          returnedCount: routeRecords.length,
+          matched: Boolean(matchedPhone)
+        })
+
+        if (matchedPhone) {
+          availablePhones.value = routeRecords
+          setTotal(Number(response.pagination?.total) || routeRecords.length || 0)
+        }
+      }
+    } catch (error) {
+      logger.error('自动打开出库商品失败:', error)
+    }
+  }
+
+  if (matchedPhone) {
+    await nextTick()
+    const opened = openSaleModal(matchedPhone)
+    if (opened) {
+      logger.info('自动打开销售出库弹窗成功:', { phoneId: routePhoneId })
+      handledRouteSalePhoneId.value = routePhoneId
+      await clearRouteAutoOpenSaleQuery()
+      return true
+    }
+
+    logger.warn('自动打开销售出库弹窗被权限或状态拦截:', { phoneId: routePhoneId })
+    return false
+  }
+
+  handledRouteSalePhoneId.value = routePhoneId
+  showWarning('未找到可出库商品，可能已售出或不在库')
+  await clearRouteAutoOpenSaleQuery()
+  return false
 }
 
 const exportAvailablePhones = async () => {
@@ -3334,7 +3467,10 @@ const loadAvailablePhones = async (bustCache = false, silentError = false, showL
   try {
     const params: any = buildAvailablePhoneParams(true)
 
-    const response = await api.get('/sales/phones/available', { params });
+    const response = await api.get('/sales/phones/available', {
+      params,
+      useCache: !getRouteAutoOpenSalePhoneId()
+    });
 
     if (response.success) {
       const responseData = extractResponseData<any>(response)
@@ -3385,20 +3521,7 @@ const loadAvailablePhones = async (bustCache = false, silentError = false, showL
       }
       // 处理原有的通过phone_id打开销售的方式
       else {
-        const autoOpenSale = String(route.query.auto_open_sale || '') === '1'
-        const routePhoneId = String(route.query.sale_phone_id || '').trim()
-        if (autoOpenSale && routePhoneId && handledRouteSalePhoneId.value !== routePhoneId) {
-          const matchedPhone = records.find((phone: Phone) => String(phone.id) === routePhoneId)
-          if (matchedPhone) {
-            handledRouteSalePhoneId.value = routePhoneId
-            await nextTick()
-            openSaleModal(matchedPhone)
-            const nextQuery = { ...route.query }
-            delete nextQuery.sale_phone_id
-            delete nextQuery.auto_open_sale
-            router.replace({ path: route.path, query: nextQuery })
-          }
-        }
+        await handleRouteAutoOpenSale(records)
       }
     } else {
       showError(response.message || '加载数据失败')
@@ -3709,7 +3832,7 @@ const openSaleModal = (phone: Phone) => {
   // 权限检查：验证用户是否有销售权限
   if (!canCreate.value) {
     handleNoPermission('create')
-    return
+    return false
   }
 
   // 隐藏搜索筛选区域
@@ -3727,6 +3850,7 @@ const openSaleModal = (phone: Phone) => {
 
   resetCustomerForm()
   showSaleModal.value = true
+  return true
 }
 
 // 打开销售模态框（带预定信息预填）
@@ -3741,7 +3865,7 @@ const openSaleModalWithPreorder = (phone: Phone, preorderInfo: {
   // 权限检查
   if (!canCreate.value) {
     handleNoPermission('create')
-    return
+    return false
   }
 
   // 隐藏搜索筛选区域
@@ -3774,6 +3898,7 @@ const openSaleModalWithPreorder = (phone: Phone, preorderInfo: {
   }
 
   showSaleModal.value = true
+  return true
 }
 
 
@@ -5030,6 +5155,7 @@ const editPhone = async (phone: any) => {
 
 // 提交编辑
 const submitEdit = async () => {
+  if (submitting.value) return
   try {
     // 验证必填字段
     // 对于手机设备（品牌包含iPhone、华为、小米等），IMEI必须是15位
@@ -5619,6 +5745,12 @@ onMounted(async () => {
 
   // 在后台延后加载基础数据，避免首屏和商品列表抢占请求
   initialPhoneLoad.finally(() => {
+    if (getRouteAutoOpenSalePhoneId()) {
+      window.setTimeout(() => {
+        void handleRouteAutoOpenSale(availablePhones.value)
+      }, 100)
+    }
+
     salesBaseDataWarmupTimer = setTimeout(() => {
       Promise.all([
         loadStores(),

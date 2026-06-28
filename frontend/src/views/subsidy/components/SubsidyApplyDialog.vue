@@ -784,6 +784,8 @@ const removeCurrentPreviewPhoto = async () => {
 }
 
 const submitApply = async () => {
+  if (submitting.value) return
+
   if (!phoneDetail.value) return
 
   applyForm.customer_idcard = normalizeIdCard(applyForm.customer_idcard || '')

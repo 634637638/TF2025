@@ -5,7 +5,7 @@
 <template>
   <div class="cart-page">
     <div v-if="loading" class="loading-state">
-      <el-skeleton animated />
+      <SectionLoading text="加载购物车中..." size="large" />
     </div>
 
     <div v-else-if="cartData && cartData.items.length > 0" class="cart-content">
@@ -77,6 +77,7 @@ import type { CartItem } from '@/api/shop-public'
 import { storage } from '@/services/storage'
 import { H5_STORAGE_KEYS } from '@/constants/storage'
 import Image from '@/components/Image.vue'
+import SectionLoading from '@/components/SectionLoading.vue'
 import { logger } from '@/utils/logger'
 const router = useRouter()
 

@@ -235,7 +235,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
+import { ref, computed, onBeforeUnmount, watch, nextTick } from 'vue'
 import { Minus } from '@element-plus/icons-vue'
 import { useNotification } from '@/composables/useNotification'
 import { useLoadingState } from '@/composables'
@@ -317,6 +317,42 @@ let storeDistributionChart: ECharts | null = null
 
 // 图表是否已初始化
 let chartsInitialized = false
+
+const createOrReuseChart = (chartRef: HTMLElement | undefined, currentChart: ECharts | null): ECharts | null => {
+  if (!chartRef) return null
+
+  if (currentChart) {
+    currentChart.clear()
+    return currentChart
+  }
+
+  const existing = echarts.getInstanceByDom(chartRef)
+  if (existing) {
+    existing.clear()
+    return existing
+  }
+
+  return echarts.init(chartRef)
+}
+
+const disposeCharts = () => {
+  if (trendChart) {
+    trendChart.dispose()
+    trendChart = null
+  }
+  if (wholesaleProductRankChart) {
+    wholesaleProductRankChart.dispose()
+    wholesaleProductRankChart = null
+  }
+  if (allocationProductRankChart) {
+    allocationProductRankChart.dispose()
+    allocationProductRankChart = null
+  }
+  if (storeDistributionChart) {
+    storeDistributionChart.dispose()
+    storeDistributionChart = null
+  }
+}
 
 // 原始数据
 const rawData = ref({
@@ -543,38 +579,20 @@ defineExpose({
 })
 
 const initCharts = () => {
-  // 销毁旧实例
-  if (trendChart) {
-    trendChart.dispose()
-    trendChart = null
-  }
-  if (wholesaleProductRankChart) {
-    wholesaleProductRankChart.dispose()
-    wholesaleProductRankChart = null
-  }
-  if (allocationProductRankChart) {
-    allocationProductRankChart.dispose()
-    allocationProductRankChart = null
-  }
-  if (storeDistributionChart) {
-    storeDistributionChart.dispose()
-    storeDistributionChart = null
-  }
-
   // 延迟初始化，确保 DOM 有正确的尺寸
   nextTick(() => {
     setTimeout(() => {
       if (trendChartRef.value) {
-        trendChart = echarts.init(trendChartRef.value)
+        trendChart = createOrReuseChart(trendChartRef.value, trendChart)
       }
       if (wholesaleProductRankRef.value) {
-        wholesaleProductRankChart = echarts.init(wholesaleProductRankRef.value)
+        wholesaleProductRankChart = createOrReuseChart(wholesaleProductRankRef.value, wholesaleProductRankChart)
       }
       if (allocationProductRankRef.value) {
-        allocationProductRankChart = echarts.init(allocationProductRankRef.value)
+        allocationProductRankChart = createOrReuseChart(allocationProductRankRef.value, allocationProductRankChart)
       }
       if (storeDistributionRef.value) {
-        storeDistributionChart = echarts.init(storeDistributionRef.value)
+        storeDistributionChart = createOrReuseChart(storeDistributionRef.value, storeDistributionChart)
       }
       chartsInitialized = true
       // 图表初始化完成后更新数据
@@ -981,24 +999,8 @@ watch(() => props.searchTrigger, () => {
   }
 })
 
-// 生命周期
-onMounted(() => {
-  // 如果 TAB 已经激活，初始化图表
-  if (props.isActive) {
-    nextTick(() => {
-      setTimeout(() => {
-        initCharts()
-        loadData()
-      }, 100)
-    })
-  }
-})
-
 onBeforeUnmount(() => {
-  if (trendChart) trendChart.dispose()
-  if (wholesaleProductRankChart) wholesaleProductRankChart.dispose()
-  if (allocationProductRankChart) allocationProductRankChart.dispose()
-  if (storeDistributionChart) storeDistributionChart.dispose()
+  disposeCharts()
 })
 </script>
 

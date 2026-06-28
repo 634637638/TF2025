@@ -1,5 +1,5 @@
 <template>
-  <div class="git-management-view">
+  <div class="git-management-view admin-page safe-area-top safe-area-bottom">
     <PermissionGate
       :can-view="canView"
       mode="denied"
@@ -7,6 +7,7 @@
       module-name="Git管理"
       permission-code="git-management:view"
     >
+      <div class="git-page-content admin-page-content">
       <PageHeader title="Git 仓库管理">
         <template #actions>
           <div class="action-buttons">
@@ -49,7 +50,7 @@
         </template>
       </PageHeader>
 
-      <div class="content">
+      <div class="content admin-page-content">
         <div v-if="showStatsCards" class="stats-cards">
           <div v-if="canViewGitField('stats_current_branch')" class="stat-card">
             <div class="stat-icon">
@@ -373,6 +374,7 @@
             </div>
           </div>
         </div>
+      </div>
       </div>
     </PermissionGate>
   </div>
@@ -1394,7 +1396,7 @@ watch(canView, async (value) => {
   }
 
   .content {
-    padding: 20px 16px;
+    padding: 0;
   }
 }
 </style>

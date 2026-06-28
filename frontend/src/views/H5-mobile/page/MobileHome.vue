@@ -341,7 +341,6 @@ import { ref, computed, onMounted, onUnmounted, onActivated, nextTick } from 'vu
 import { useRouter } from 'vue-router'
 import { Swiper, SwiperSlide } from 'swiper/vue'
 import { Autoplay, Pagination } from 'swiper/modules'
-import { Loading } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import 'swiper/css'
 import 'swiper/css/pagination'

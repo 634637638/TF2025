@@ -735,6 +735,7 @@ const deleteMemory = async (memory: Memory) => {
 }
 
 const submitForm = async () => {
+  if (submitting.value) return
   // 权限检查
   if (showCreateModal.value && !canCreate.value) {
     showCreateDenied('内存管理', 'memories:create')

@@ -245,24 +245,60 @@ onMounted(() => {
   opacity: 0.9;
 }
 
+.admin-content {
+  min-width: 0;
+}
+
 // 响应式
 @media (max-width: 768px) {
   .h5-admin-layout {
-    padding: 12px;
+    padding-inline: var(--admin-page-gap-x);
+    padding-top: 10px;
   }
 
   .tab-navigation {
-    margin-bottom: 16px;
-    border-radius: 8px;
+    position: relative;
+    flex-wrap: nowrap;
+    gap: 6px;
+    margin-bottom: 12px;
+    padding: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-radius: var(--mobile-card-radius, 14px);
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    background:
+      linear-gradient(90deg, rgba(255, 255, 255, 0.98), rgba(248, 251, 255, 0.96));
+  }
+
+  .tab-navigation::-webkit-scrollbar {
+    display: none;
   }
 
   .tab-navigation .el-button {
-    padding: 12px 16px;
-    font-size: 13px;
+    flex: 0 0 auto;
+    min-width: max-content;
+    height: 36px;
+    min-height: 36px;
+    margin: 0;
+    padding: 0 14px;
+    border-right: none;
+    border-bottom: none;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    scroll-snap-align: start;
+    white-space: nowrap;
   }
 
   .tab-navigation .el-button .el-icon {
-    font-size: 14px;
+    font-size: 12px;
+  }
+
+  .admin-content {
+    width: 100%;
+    min-width: 0;
   }
 }
 </style>

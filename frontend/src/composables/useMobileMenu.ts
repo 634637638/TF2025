@@ -41,6 +41,7 @@ export function useMobileMenu(config: MobileMenuConfig) {
   // 菜单状态
   const isSlideMenuOpen = ref(false)
   const isBottomNavVisible = ref(true)
+  const isMenuLoading = ref(false)
   const activeQuickActions = ref(config.quickActions || [])
 
   // 菜单数据
@@ -107,6 +108,7 @@ export function useMobileMenu(config: MobileMenuConfig) {
       return
     }
 
+    isMenuLoading.value = true
     try {
       if (menuStore.menuItems.length === 0) {
         await menuStore.loadMenus()
@@ -122,31 +124,42 @@ export function useMobileMenu(config: MobileMenuConfig) {
     } catch (error) {
       menuItems.value = []
       computeMenuDistribution()
+    } finally {
+      isMenuLoading.value = false
     }
   }
 
-  // 切换侧滑菜单
-  const toggleSlideMenu = () => {
-    isSlideMenuOpen.value = !isSlideMenuOpen.value
+  const syncMenuItems = (items: MenuItem[] = []) => {
+    menuItems.value = Array.isArray(items) ? items : []
+    computeMenuDistribution()
+  }
 
-    // 控制背景滚动
+  const setSlideMenuOpen = (open: boolean) => {
+    isSlideMenuOpen.value = open
+  }
+
+  // 切换侧滑菜单
+  const toggleSlideMenu = async () => {
     if (isSlideMenuOpen.value) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
+      closeSlideMenu()
+      return
     }
+
+    await openSlideMenu()
   }
 
   // 关闭侧滑菜单
   const closeSlideMenu = () => {
-    isSlideMenuOpen.value = false
-    document.body.style.overflow = ''
+    setSlideMenuOpen(false)
   }
 
   // 打开侧滑菜单
-  const openSlideMenu = () => {
-    isSlideMenuOpen.value = true
-    document.body.style.overflow = 'hidden'
+  const openSlideMenu = async () => {
+    setSlideMenuOpen(true)
+
+    if (slideMenuItems.value.length === 0 && menuItems.value.length === 0) {
+      await loadMenuData()
+    }
   }
 
   // 处理菜单点击
@@ -277,7 +290,11 @@ export function useMobileMenu(config: MobileMenuConfig) {
   // ========== 生命周期 ==========
   onMounted(() => {
     // 加载菜单数据
-    loadMenuData()
+    if (Array.isArray(config.items) && config.items.length > 0) {
+      syncMenuItems(config.items)
+    } else {
+      loadMenuData()
+    }
 
     // 添加事件监听器
     if (isMobile.value && config.enableGestures) {
@@ -309,8 +326,7 @@ export function useMobileMenu(config: MobileMenuConfig) {
       clearTimeout(scrollTimer)
     }
 
-    // 恢复滚动
-    document.body.style.overflow = ''
+    setSlideMenuOpen(false)
   })
 
   // 监听路由变化
@@ -331,6 +347,7 @@ export function useMobileMenu(config: MobileMenuConfig) {
     screenSize,
     isSlideMenuOpen,
     isBottomNavVisible,
+    isMenuLoading,
 
     // 数据
     userInfo,
@@ -346,6 +363,7 @@ export function useMobileMenu(config: MobileMenuConfig) {
     handleMenuClick,
     handleQuickAction,
     handleLogout,
+    syncMenuItems,
 
     // 计算属性
     currentPath: computed(() => route.path),

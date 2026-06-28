@@ -25,8 +25,12 @@
           :export-disabled="loading || exporting"
           @export="handleExport"
         />
-        <el-button type="info" @click="handleRefresh" :disabled="refreshing" :icon="refreshing ? Loading : Refresh">
-          刷新
+        <el-button type="info" @click="handleRefresh" :disabled="refreshing">
+          <InlineLoading v-if="refreshing" text="刷新中..." size="small" variant="inherit" />
+          <template v-else>
+            <el-icon><Refresh /></el-icon>
+            刷新
+          </template>
         </el-button>
       </template>
     </PageHeader>
@@ -550,9 +554,12 @@
                 size="small"
                 @click="resetToDefaultPassword"
                 :disabled="passwordResetting"
-                :icon="passwordResetting ? Loading : RefreshLeft"
               >
-                {{ passwordResetting ? '重置中...' : '重置为随机密码' }}
+                <InlineLoading v-if="passwordResetting" text="重置中..." size="small" variant="inherit" />
+                <template v-else>
+                  <el-icon><RefreshLeft /></el-icon>
+                  重置为随机密码
+                </template>
               </el-button>
               <el-button
                 type="info"
@@ -577,9 +584,12 @@
 
       <template #footer>
         <el-button type="default" @click="attemptCloseModal" :icon="Close">取消</el-button>
-        <el-button type="primary" @click="saveEmployee" :disabled="submitting" :icon="isEditMode ? Check : Plus">
-          <el-icon v-if="submitting" class="is-loading"><Loading /></el-icon>
-          {{ isEditMode ? '保存' : '添加' }}
+        <el-button type="primary" @click="saveEmployee" :disabled="submitting">
+          <InlineLoading v-if="submitting" :text="isEditMode ? '保存中...' : '添加中...'" size="small" variant="inherit" />
+          <template v-else>
+            <el-icon><component :is="isEditMode ? Check : Plus" /></el-icon>
+            {{ isEditMode ? '保存' : '添加' }}
+          </template>
         </el-button>
       </template>
     </MobileDialog>
@@ -726,9 +736,12 @@
 
       <template #footer>
         <el-button type="default" @click="closeRoleModal" :icon="Close">取消</el-button>
-        <el-button type="primary" @click="saveRole" :disabled="savingRole" :icon="Check">
-          <el-icon v-if="savingRole" class="is-loading"><Loading /></el-icon>
-          {{ showAddRoleModal ? '添加' : '保存' }}
+        <el-button type="primary" @click="saveRole" :disabled="savingRole">
+          <InlineLoading v-if="savingRole" :text="showAddRoleModal ? '添加中...' : '保存中...'" size="small" variant="inherit" />
+          <template v-else>
+            <el-icon><Check /></el-icon>
+            {{ showAddRoleModal ? '添加' : '保存' }}
+          </template>
         </el-button>
       </template>
     </MobileDialog>
@@ -764,7 +777,6 @@ import { useMobile } from '@/composables/mobile'
 import {
   Plus,
   Download,
-  Loading,
   Refresh,
   ArrowLeft,
   HomeFilled,
@@ -1162,6 +1174,8 @@ const editEmployee = async (employee: Employee) => {
 }
 
 const saveEmployee = async () => {
+  if (submitting.value) return
+
   // 检查权限
   if (showAddModal.value && !canCreate.value) {
     error('权限不足：您没有新增员工的权限')
@@ -1579,6 +1593,8 @@ const editRole = (role: Role) => {
 }
 
 const saveRole = async () => {
+  if (savingRole.value) return
+
   if (showAddRoleModal.value && !canCreate.value) {
     error('权限不足：您没有新增角色的权限')
     return

@@ -374,6 +374,7 @@ const formatIMEI2 = () => {
 }
 
 const submitEdit = async () => {
+  if (editing.value) return
   if (!props.item?.id || !editForm.value) return
 
   try {

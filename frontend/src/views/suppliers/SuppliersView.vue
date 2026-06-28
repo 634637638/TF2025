@@ -1085,6 +1085,7 @@ const deleteSupplier = async (supplier: Supplier) => {
 }
 
 const submitForm = async () => {
+  if (submitting.value) return
   // 权限检查
   if (showCreateModal.value && !canCreate.value) {
     showCreateDenied('供应商管理', 'suppliers:create')

@@ -101,6 +101,7 @@ const formRules = computed(() => {
 })
 
 const handleSubmit = async () => {
+  if (submitting.value) return
   if (!formRef.value) return
 
   await formRef.value.validate()

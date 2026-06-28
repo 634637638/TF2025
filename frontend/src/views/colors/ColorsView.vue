@@ -789,6 +789,7 @@ const validateColorForm = () => {
 }
 
 const submitForm = async () => {
+  if (submitting.value) return
   // 权限检查 - 使用友好的权限提示
   if (showCreateModal.value && !canCreate.value) {
     showCreateDenied('颜色管理', 'colors:create')

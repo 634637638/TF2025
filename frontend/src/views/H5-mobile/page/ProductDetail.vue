@@ -5,7 +5,7 @@
 <template>
   <div class="product-detail-page">
     <div v-if="loading" class="loading-state">
-      <el-skeleton animated />
+      <SectionLoading text="加载商品详情中..." size="large" />
     </div>
 
     <div v-else-if="product" class="detail-content">

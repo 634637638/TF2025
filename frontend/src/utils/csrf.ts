@@ -45,6 +45,11 @@ interface CSRFToken {
   timestamp: number
 }
 
+interface StoredCSRFToken {
+  token: string
+  expiresAt: number
+}
+
 interface CSRFState {
   token: CSRFToken | null
   failures: number
@@ -129,19 +134,28 @@ function generateSignature(token: string, timestamp: number): string {
  */
 function loadTokenFromStorage(): CSRFToken | null {
   try {
-    const stored = storage.get<CSRFToken>(CSRF_CONFIG.TOKEN_KEY, 'local')
+    // 新版 CSRF 统一使用 sessionStorage，避免浏览器重开后复用旧 token。
+    const stored = storage.get<StoredCSRFToken | CSRFToken>(CSRF_CONFIG.TOKEN_KEY, 'session')
     if (stored) {
+      const value = 'token' in stored ? stored.token : stored.value
+      const expires = 'expiresAt' in stored ? stored.expiresAt : stored.expires
+
       // 检查是否过期
-      if (Date.now() > stored.expires) {
-        storage.remove(CSRF_CONFIG.TOKEN_KEY, 'local')
+      if (!value || !expires || Date.now() > expires) {
+        storage.remove(CSRF_CONFIG.TOKEN_KEY, 'session')
         return null
       }
 
-      return stored
+      return {
+        value,
+        expires,
+        signature: 'signature' in stored ? stored.signature : generateSignature(value, Date.now()),
+        timestamp: 'timestamp' in stored ? stored.timestamp : Date.now()
+      }
     }
   } catch (error) {
     logger.warn('加载CSRF Token失败:', error)
-    storage.remove(CSRF_CONFIG.TOKEN_KEY, 'local')
+    storage.remove(CSRF_CONFIG.TOKEN_KEY, 'session')
   }
 
   return null
@@ -152,7 +166,10 @@ function loadTokenFromStorage(): CSRFToken | null {
  */
 function saveTokenToStorage(token: CSRFToken): void {
   try {
-    storage.set(CSRF_CONFIG.TOKEN_KEY, token, 'local')
+    storage.set<StoredCSRFToken>(CSRF_CONFIG.TOKEN_KEY, {
+      token: token.value,
+      expiresAt: token.expires
+    }, 'session')
   } catch (error) {
     logger.warn('保存CSRF Token失败:', error)
   }
@@ -244,10 +261,11 @@ async function fetchTokenFromServer(): Promise<CSRFToken> {
 
     // 后端返回格式: { success: true, data: { csrfToken: string, ... } }
     // unifiedApi 已解包一层，直接从 response 取 data
-    const responseData = extractResponseData<{ csrfToken?: string }>(response)
+    const responseData = extractResponseData<{ csrfToken?: string; expiresIn?: number }>(response)
     if (responseData?.csrfToken) {
       const serverToken = responseData.csrfToken
       const timestamp = Date.now()
+      const expiresInSeconds = Number(responseData.expiresIn || 3600)
 
       // 验证服务器响应
       if (typeof serverToken === 'string' && serverToken.length > 0) {
@@ -255,23 +273,20 @@ async function fetchTokenFromServer(): Promise<CSRFToken> {
           value: serverToken,
           signature: generateSignature(serverToken, timestamp),
           timestamp,
-          expires: timestamp + CSRF_CONFIG.TOKEN_EXPIRY
+          expires: timestamp + Math.max(60, expiresInSeconds) * 1000
         }
       }
     }
 
     throw new Error('无效的服务器响应')
   } catch (error) {
-    logger.warn('CSRF后端端点未实现，使用本地生成Token:', (error as Error).message || error)
-
-    // 如果服务器不可用，使用本地生成的 token
-    return generateToken()
+    logger.warn('CSRF服务端Token获取失败:', (error as Error).message || error)
+    throw error
   }
 }
 
 /**
  * 验证 Token
- * 注意：CSRF验证失败时自动降级使用本地生成的token
  */
 async function verifyToken(token: CSRFToken): Promise<boolean> {
   try {
@@ -280,23 +295,13 @@ async function verifyToken(token: CSRFToken): Promise<boolean> {
     })
 
     // 后端返回 success: true 表示验证成功
-    return response.data?.success === true
+    const payload = (response as any)?.data && typeof (response as any).data === 'object'
+      ? (response as any).data
+      : response as any
+    return payload?.success === true
   } catch (error: any) {
-    const status = error.response?.status
-
-    // 403: Token无效或过期 - 降级使用本地token
-    if (status === 403) {
-      return true // 使用本地生成的token，不再请求服务器验证
-    }
-
-    // 404: 验证端点不存在 - 跳过服务器验证
-    if (status === 404) {
-      return true
-    }
-
-    // 其他错误 - 降级处理
-    logger.warn('⚠️ Token验证失败，使用本地token:', error.message || error)
-    return true
+    logger.warn('CSRF Token服务端验证失败:', error.message || error)
+    return false
   }
 }
 
@@ -313,7 +318,7 @@ async function refreshToken(): Promise<CSRFToken | null> {
   try {
     const newToken = await fetchTokenFromServer()
 
-    // 验证新 token (如果验证失败，使用本地生成的token)
+    // 验证新 token，必须通过服务端校验才写入本地状态。
     if (await verifyToken(newToken)) {
       csrfState.token = newToken
       csrfState.lastRefresh = Date.now()
@@ -326,30 +331,14 @@ async function refreshToken(): Promise<CSRFToken | null> {
       setCookie(newToken.value, CSRF_CONFIG.TOKEN_EXPIRY / 1000)
 
       return newToken
-    } else {
-      // 如果验证失败，使用本地生成的token作为后备
-      const fallbackToken = generateToken()
-      csrfState.token = fallbackToken
-      csrfState.lastRefresh = Date.now()
-      saveTokenToStorage(fallbackToken)
-      setCookie(fallbackToken.value, CSRF_CONFIG.TOKEN_EXPIRY / 1000)
-      return fallbackToken
     }
+
+    throw new Error('CSRF Token服务端验证未通过')
   } catch (error) {
     csrfState.failures++
     csrfState.lastFailure = Date.now()
 
     logger.error('刷新CSRF Token失败:', (error as Error).message || error)
-
-    // 如果失败次数过多，使用本地 token
-    if (csrfState.failures >= CSRF_CONFIG.MAX_FAILURES) {
-      logger.warn('服务器Token获取失败，使用本地生成Token')
-      const fallbackToken = generateToken()
-      csrfState.token = fallbackToken
-      saveTokenToStorage(fallbackToken)
-      return fallbackToken
-    }
-
     return null
   } finally {
     csrfState.isRefreshing = false
@@ -468,15 +457,10 @@ export async function initCSRFProtection(config: CSRFConfig = {}): Promise<void>
       })
 
     } else {
-      logger.warn('⚠️ CSRF 防护初始化部分失败，使用本地防护')
-
-      // 即使服务器不可用，也生成本地 token
-      const fallbackToken = generateToken()
-      csrfState.token = fallbackToken
-      saveTokenToStorage(fallbackToken)
+      logger.warn('CSRF 防护初始化未获取到服务端 Token，等待统一请求层按需获取')
     }
 
-    csrfState.initialized = true
+    csrfState.initialized = token !== null
 
     // 添加到全局状态
     if (window.__TF2025__) {
@@ -492,12 +476,8 @@ export async function initCSRFProtection(config: CSRFConfig = {}): Promise<void>
 
   } catch (error) {
     logger.error('❌ CSRF 防护初始化失败:', error)
-
-    // 初始化失败时使用本地防护
-    const fallbackToken = generateToken()
-    csrfState.token = fallbackToken
-    csrfState.initialized = true
-    saveTokenToStorage(fallbackToken)
+    csrfState.token = null
+    csrfState.initialized = false
   }
 }
 
@@ -546,6 +526,7 @@ export function clearCSRFState(): void {
   csrfState.isRefreshing = false
   csrfState.lastRefresh = 0
 
+  storage.remove(CSRF_CONFIG.TOKEN_KEY, 'session')
   storage.remove(CSRF_CONFIG.TOKEN_KEY, 'local')
 
   // 清除 cookie

@@ -253,6 +253,7 @@ const handleCancel = () => {
 }
 
 const handleSubmit = async () => {
+  if (submitting.value) return
   if (!formRef.value || !props.deviceInfo?.id) return
 
   try {

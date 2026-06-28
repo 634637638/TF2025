@@ -100,10 +100,10 @@
               </div>
             </div>
 
-            <div class="group-stat center"><strong>{{ row.templates.length }}</strong></div>
-            <div class="group-stat center">{{ row.active_count }}/{{ row.templates.length }}</div>
-            <div class="group-stat center">{{ row.total_stock }}</div>
-            <div class="group-stat center">{{ row.sort_order }}</div>
+            <div class="group-stat center" data-label="颜色数"><strong>{{ row.templates.length }}</strong></div>
+            <div class="group-stat center" data-label="启用">{{ row.active_count }}/{{ row.templates.length }}</div>
+            <div class="group-stat center" data-label="在库">{{ row.total_stock }}</div>
+            <div class="group-stat center" data-label="排序">{{ row.sort_order }}</div>
             <div class="group-actions center">
               <div class="action-buttons">
                 <el-button v-if="canEdit" link type="primary" @click="openEditDialog(row)">编辑</el-button>
@@ -159,10 +159,10 @@
             </div>
           </div>
 
-          <div class="group-stat center"><strong>{{ row.templates.length }}</strong></div>
-          <div class="group-stat center">{{ row.active_count }}/{{ row.templates.length }}</div>
-          <div class="group-stat center">{{ row.total_stock }}</div>
-          <div class="group-stat center">{{ row.sort_order }}</div>
+          <div class="group-stat center" data-label="颜色数"><strong>{{ row.templates.length }}</strong></div>
+          <div class="group-stat center" data-label="启用">{{ row.active_count }}/{{ row.templates.length }}</div>
+          <div class="group-stat center" data-label="在库">{{ row.total_stock }}</div>
+          <div class="group-stat center" data-label="排序">{{ row.sort_order }}</div>
           <div class="group-actions center">
             <div class="action-buttons">
               <el-button v-if="canEdit" link type="primary" @click="openEditDialog(row)">编辑</el-button>
@@ -1124,6 +1124,8 @@ const validateGroupBeforeSave = () => {
 }
 
 const handleSaveGroup = async () => {
+  if (saving.value) return
+
   if (!canWriteDialog.value) {
     handleNoPermission(isEditMode.value ? 'edit' : 'create')
     return
@@ -1920,6 +1922,21 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
   .template-management-page {
+    width: 100%;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .toolbar-card,
+  .table-card {
+    margin-bottom: 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(226, 232, 240, 0.88);
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+  }
+
+  .toolbar-card :deep(.el-card__body),
+  .table-card :deep(.el-card__body) {
     padding: 12px;
   }
 
@@ -1932,21 +1949,358 @@ onUnmounted(() => {
   }
 
   .search-panel {
-    gap: 12px;
+    padding: 0;
   }
 
-  .product-cell {
-    align-items: center;
+  .search-panel-main {
+    gap: 8px;
+  }
+
+  .search-panel-meta {
+    gap: 8px;
+    font-size: 11px;
+  }
+
+  .sort-tip {
+    margin-bottom: 10px;
+    padding: 9px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .group-table-header {
+    display: none;
+  }
+
+  .group-list {
+    gap: 10px;
+  }
+
+  .group-row {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 9px;
+    padding: 12px;
+    border-color: rgba(226, 232, 240, 0.92);
+    border-radius: 14px;
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05);
   }
 
   .group-main {
+    grid-column: 1 / -1;
+    gap: 9px;
     align-items: flex-start;
+    min-width: 0;
+  }
+
+  .group-drag-handle {
+    width: 30px;
+    height: 30px;
+    flex: 0 0 30px;
+    border-radius: 10px;
+    font-size: 12px;
+  }
+
+  .product-cell {
+    min-width: 0;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .product-cover {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+  }
+
+  .product-title {
+    margin-bottom: 3px;
+    font-size: 14px;
+    line-height: 1.35;
+  }
+
+  .product-subtitle {
+    margin-bottom: 7px;
+    font-size: 11px;
+    line-height: 1.4;
+  }
+
+  .color-tags {
+    gap: 5px;
+    max-height: 52px;
+    overflow: hidden;
+  }
+
+  .group-stat {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 3px;
+    padding: 8px 6px;
+    border-radius: 12px;
+    background: #f8fafc;
+    color: #0f172a;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.2;
+    text-align: center;
+  }
+
+  .group-stat::before {
+    content: attr(data-label);
+    color: #64748b;
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  .group-actions {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .action-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
+  }
+
+  .action-buttons .el-button {
+    width: 100%;
+    min-width: 0;
+    height: 34px;
+    margin: 0;
+    justify-content: center;
+    border-radius: 10px;
+    background: #f8fafc;
+  }
+
+  .center {
+    text-align: center;
+  }
+
+  .dialog-shell {
+    min-height: 0;
+  }
+
+  .dialog-header-form {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .header-form-item {
+    gap: 7px;
+  }
+
+  .form-label {
+    font-size: 12px;
+  }
+
+  .header-form-summary {
+    padding: 10px 12px;
+    border-radius: 12px;
+  }
+
+  .summary-title {
+    font-size: 14px;
+  }
+
+  .editor-layout {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .children-panel,
+  .editor-panel {
+    min-height: 0;
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .children-panel-header {
+    display: none;
+  }
+
+  .add-child-box {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 72px;
+    gap: 8px;
+    margin: 0 0 10px;
+  }
+
+  .add-child-box .el-button {
+    width: 100%;
+    margin: 0;
+  }
+
+  .child-list {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(132px, 44%);
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .child-list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .child-item {
+    padding: 10px;
+    border-radius: 12px;
+  }
+
+  .child-name {
+    font-size: 13px;
+  }
+
+  .child-item-meta {
+    font-size: 11px;
+  }
+
+  .editor-title-row {
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .editor-title-row h3 {
+    font-size: 15px;
+    line-height: 1.35;
+  }
+
+  .editor-title-row p {
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .editor-title-row .el-button {
+    width: 100%;
+    margin: 0;
+  }
+
+  .editor-form-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .editor-block {
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .block-title {
+    margin-bottom: 10px;
+    font-size: 14px;
+  }
+
+  .markup-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
   }
 
   .editor-title-row,
   .image-block-header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .image-block-header {
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .image-block-header p {
+    font-size: 11px;
+    line-height: 1.45;
+  }
+
+  .image-block-header .el-upload,
+  .image-block-header .el-button {
+    width: 100%;
+  }
+
+  .image-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .image-card {
+    border-radius: 13px;
+  }
+
+  .image-card img,
+  .image-card video {
+    height: 112px;
+  }
+
+  .image-drag-handle {
+    top: 8px;
+    right: 8px;
+    width: 26px;
+    height: 26px;
+    font-size: 11px;
+  }
+
+  .image-card-body {
+    padding: 8px;
+  }
+
+  .image-card-meta {
+    align-items: flex-start;
+    margin-bottom: 7px;
+    font-size: 10px;
+  }
+
+  .image-card-actions {
+    gap: 6px;
+  }
+
+  .image-action-btn {
+    width: 30px;
+    height: 30px;
+  }
+
+  :deep(.template-dialog .mobile-dialog-sheet-body),
+  :global(.template-dialog .mobile-dialog-sheet-body) {
+    padding: 10px 8px;
+  }
+
+  :deep(.template-dialog .mobile-dialog-footer),
+  :global(.template-dialog .mobile-dialog-footer) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
+  }
+
+  :deep(.template-dialog .mobile-dialog-footer .el-button),
+  :global(.template-dialog .mobile-dialog-footer .el-button) {
+    width: 100%;
+    margin: 0;
+  }
+
+  :deep(.template-dialog .el-form-item) {
+    margin-bottom: 14px;
+  }
+
+  :deep(.template-dialog .el-form-item__label) {
+    margin-bottom: 6px;
+    color: #334155;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  :deep(.template-dialog .el-input),
+  :deep(.template-dialog .el-select),
+  :deep(.template-dialog .el-input-number),
+  :deep(.template-dialog .el-textarea) {
+    width: 100%;
   }
 }
 </style>

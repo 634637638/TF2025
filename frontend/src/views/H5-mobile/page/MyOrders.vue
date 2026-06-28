@@ -29,7 +29,7 @@
 
     <!-- 订单列表 -->
     <div v-if="loading && orders.length === 0" class="loading-state">
-      <el-skeleton animated />
+      <SectionLoading text="加载订单中..." size="large" />
     </div>
 
     <div v-else-if="orders.length > 0" class="orders-list">
@@ -102,6 +102,7 @@ import { ElMessage } from 'element-plus'
 import { getOrdersByPhone } from '@/api/shop-public'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import Image from '@/components/Image.vue'
+import SectionLoading from '@/components/SectionLoading.vue'
 import { useLoadingState } from '@/composables'
 import { logger } from '@/utils/logger'
 const router = useRouter()

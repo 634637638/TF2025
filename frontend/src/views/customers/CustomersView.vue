@@ -195,7 +195,22 @@
 
             <!-- 正常内容 -->
             <div v-else>
-              <table class="data-table">
+              <table
+                class="data-table"
+                :class="{
+                  'customers-mobile-table': isMobile,
+                  'customers-mobile-one-col': isMobile && visibleColumnCount === 1,
+                  'customers-mobile-two-cols': isMobile && visibleColumnCount === 2,
+                  'customers-mobile-has-member': isMobile && showMemberNumberColumn,
+                  'customers-mobile-has-name': isMobile && showCustomerInfoColumn,
+                  'customers-mobile-has-phone': isMobile && showContactColumn
+                }"
+              >
+                <colgroup v-if="isMobile">
+                  <col v-if="showMemberNumberColumn" class="customers-col-member" />
+                  <col v-if="showCustomerInfoColumn" class="customers-col-name" />
+                  <col v-if="showContactColumn" class="customers-col-phone" />
+                </colgroup>
                 <thead>
                   <tr>
                     <th v-if="!isMobile" width="40">
@@ -205,9 +220,9 @@
                         @change="handleSelectAll"
                       />
                     </th>
-                    <th v-if="isMobile && showMemberNumberColumn">会员号</th>
-                    <th v-if="showCustomerInfoColumn">{{ isMobile ? '姓名' : '客户信息' }}</th>
-                    <th v-if="showContactColumn">{{ isMobile ? '手机号' : '联系方式' }}</th>
+                    <th v-if="isMobile && showMemberNumberColumn" class="customers-cell-member">会员号</th>
+                    <th v-if="showCustomerInfoColumn" class="customers-cell-name">{{ isMobile ? '姓名' : '客户信息' }}</th>
+                    <th v-if="showContactColumn" class="customers-cell-phone">{{ isMobile ? '手机号' : '联系方式' }}</th>
                     <th v-if="!isMobile && showCustomerTypeColumn">客户类型</th>
                     <th v-if="!isMobile && showVipColumn">VIP等级</th>
                     <th v-if="!isMobile && showAccountColumn">账户信息</th>
@@ -232,7 +247,7 @@
                     </td>
                   </tr>
                   <template v-else v-for="customer in customers" :key="customer.id">
-                  <tr @click="handleMobileRowTap(customer.id)" @dblclick="toggleMobileActions(customer.id)">
+                  <tr class="customers-data-row" @click="handleMobileRowTap(customer.id)" @dblclick="toggleMobileActions(customer.id)">
                     <td v-if="!isMobile">
                       <input
                         type="checkbox"
@@ -240,13 +255,13 @@
                         @change="toggleRowSelection(customer)"
                       />
                     </td>
-                    <td v-if="isMobile && showMemberNumberColumn">
+                    <td v-if="isMobile && showMemberNumberColumn" class="customers-cell-member">
                       <div class="mobile-member-number">
                         <span v-if="customer.member_number" v-html="highlightText(customer.member_number, searchKeyword)"></span>
                         <span v-else>-</span>
                       </div>
                     </td>
-                    <td v-if="showCustomerInfoColumn">
+                    <td v-if="showCustomerInfoColumn" class="customers-cell-name">
                       <div class="customer-info">
                         <div v-if="canViewField('name')" class="customer-name">
                           <strong v-html="highlightText(customer.name || '-', searchKeyword)"></strong>
@@ -266,7 +281,7 @@
                         </div>
                       </div>
                     </td>
-                    <td v-if="showContactColumn">
+                    <td v-if="showContactColumn" class="customers-cell-phone">
                       <div class="contact-info">
                         <div v-if="canViewField('phone') && customer.phone" class="phone primary">
                           <i class="fas fa-phone"></i>
@@ -1908,6 +1923,7 @@ const resetCustomerForm = () => {
 }
 
 const saveCustomer = async () => {
+  if (submitLoading.value) return
   if (modalMode.value === 'add' && !canCreate.value) {
     handleNoPermission('create')
     return
@@ -2829,8 +2845,9 @@ onUnmounted(() => {
 // 响应式设计
 @media (max-width: 767px) {
   .page-body {
-    padding: 12px;
-    margin-top: 16px;
+    padding: 0;
+    margin-top: 0;
+    overflow: visible;
   }
 
   .stats-cards {
@@ -2889,7 +2906,7 @@ onUnmounted(() => {
 // 小屏幕手机适配（小于480px）
 @media (max-width: 480px) {
   .page-body {
-    padding: 10px;
+    padding: 0;
   }
 
   .stats-cards {
@@ -2922,6 +2939,14 @@ onUnmounted(() => {
 
 .page-body {
   padding: 16px;
+}
+
+@media (max-width: 767px) {
+  .page-body.admin-page-content {
+    padding: 0;
+    margin-top: 0;
+    overflow: visible;
+  }
 }
 
 // 继续添加移动端适配的媒体查询
@@ -3623,6 +3648,273 @@ onUnmounted(() => {
 
     .pagination-info {
       font-size: 12px;
+    }
+  }
+}
+
+@media (max-width: 767px) {
+  .table-section {
+    .table-responsive {
+      overflow-x: auto;
+      padding: var(--mobile-table-block-gap) var(--admin-table-panel-padding-x) 2px;
+      background:
+        radial-gradient(circle at top left, rgba(59, 130, 246, 0.08), transparent 36%),
+        linear-gradient(180deg, #f8fbff 0%, #ffffff 70%);
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .customers-mobile-table {
+      width: 100%;
+      min-width: 0;
+      table-layout: auto;
+      border-collapse: separate;
+      border-spacing: 0 7px;
+      font-size: 12px;
+
+      col.customers-col-member {
+        width: auto;
+      }
+
+      col.customers-col-name {
+        width: auto;
+      }
+
+      col.customers-col-phone {
+        width: auto;
+      }
+
+      &.customers-mobile-two-cols {
+        col.customers-col-member,
+        col.customers-col-name,
+        col.customers-col-phone {
+          width: 50%;
+        }
+      }
+
+      &.customers-mobile-one-col {
+        col.customers-col-member,
+        col.customers-col-name,
+        col.customers-col-phone {
+          width: 100%;
+        }
+      }
+
+      thead th,
+      tbody td {
+        display: table-cell;
+        box-sizing: border-box;
+        min-width: 0;
+        white-space: nowrap;
+        word-break: normal;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      thead th {
+        padding: 9px 8px;
+        background: linear-gradient(135deg, #1e3a5f 0%, #0f2742 100%);
+        color: rgba(255, 255, 255, 0.92);
+        border-bottom: none;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+
+        &:first-child {
+          border-radius: 12px 0 0 12px;
+        }
+
+        &:last-child {
+          border-radius: 0 12px 12px 0;
+        }
+      }
+
+      tbody td {
+        padding: 10px 8px;
+        background: rgba(255, 255, 255, 0.98);
+        color: var(--el-text-color-primary);
+        border-top: 1px solid rgba(219, 231, 248, 0.92);
+        border-bottom: 1px solid rgba(219, 231, 248, 0.92);
+        font-size: 12px;
+        line-height: 1.35;
+        vertical-align: middle;
+
+        &:first-child {
+          border-left: 1px solid rgba(219, 231, 248, 0.92);
+          border-radius: 12px 0 0 12px;
+        }
+
+        &:last-child {
+          border-right: 1px solid rgba(219, 231, 248, 0.92);
+          border-radius: 0 12px 12px 0;
+        }
+      }
+
+      .customers-data-row {
+        filter: drop-shadow(0 5px 12px rgba(15, 39, 66, 0.06));
+        transition: filter 0.16s ease;
+
+        &:active {
+          filter: drop-shadow(0 3px 8px rgba(37, 99, 235, 0.15));
+
+          td {
+            background: #eef6ff;
+            border-color: rgba(96, 165, 250, 0.5);
+          }
+        }
+      }
+
+      .customers-cell-member {
+        text-align: center;
+        width: 1%;
+        max-width: none;
+        overflow: visible;
+        text-overflow: clip;
+      }
+
+      .customers-cell-name {
+        text-align: left;
+        width: auto;
+      }
+
+      .customers-cell-phone {
+        text-align: right;
+        width: 1%;
+        max-width: none;
+        overflow: visible;
+        text-overflow: clip;
+      }
+
+      .mobile-member-number,
+      .customer-info,
+      .customer-info .customer-name,
+      .customer-info .customer-name strong,
+      .contact-info,
+      .contact-info .phone,
+      .contact-info .phone span {
+        display: block;
+        max-width: 100%;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .mobile-member-number {
+        display: inline-block;
+        width: auto;
+        max-width: none;
+        color: var(--el-color-primary);
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 999px;
+        font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        line-height: 1.2;
+        padding: 4px 7px;
+        text-align: center;
+      }
+
+      .customer-info {
+        text-align: left;
+
+        .customer-name strong {
+          color: #111827;
+          font-size: 13px;
+          font-weight: 800;
+          letter-spacing: 0.01em;
+        }
+      }
+
+      .contact-info {
+        text-align: right;
+
+        .phone {
+          display: inline-block;
+          width: auto;
+          max-width: 100%;
+          color: #0f172a;
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 999px;
+          font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+          font-size: 11px;
+          font-variant-numeric: tabular-nums;
+          font-weight: 700;
+          line-height: 1.2;
+          padding: 4px 7px;
+
+          i {
+            display: none;
+          }
+        }
+      }
+
+      .mobile-action-row td {
+        padding: 0;
+        background: #f8fbff;
+        border: 1px solid #dbe7f8;
+        border-radius: 12px;
+      }
+
+      .mobile-row-actions {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(86px, 1fr));
+        gap: 8px;
+        padding: 10px 12px 12px;
+      }
+
+      .mobile-action-btn {
+        width: 100%;
+        min-height: 34px;
+        margin: 0;
+        border-radius: 10px;
+        font-weight: 700;
+
+        span {
+          display: inline;
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .table-section .customers-mobile-table {
+    thead th {
+      padding: 9px 6px;
+      font-size: 10px;
+    }
+
+    tbody td {
+      padding: 10px 6px;
+      font-size: 11px;
+    }
+
+    col.customers-col-member {
+      width: auto;
+    }
+
+    col.customers-col-name {
+      width: auto;
+    }
+
+    col.customers-col-phone {
+      width: auto;
+    }
+
+    .mobile-member-number {
+      font-size: 10px;
+    }
+
+    .customer-info .customer-name strong {
+      font-size: 12px;
+    }
+
+    .contact-info .phone {
+      font-size: 11px;
+      max-width: none;
     }
   }
 }

@@ -34,6 +34,13 @@ const uploadStaticMiddleware = (req, res, next) => {
     log.error('URL 解码失败:', error);
   }
 
+  if (req.path.startsWith('/subsidy/')) {
+    return res.status(404).json({
+      success: false,
+      message: '资源不存在'
+    });
+  }
+
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');

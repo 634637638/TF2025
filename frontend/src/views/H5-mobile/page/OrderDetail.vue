@@ -5,7 +5,7 @@
 <template>
   <div class="order-detail-page">
     <div v-if="loading" class="loading-state">
-      <el-skeleton animated />
+      <SectionLoading text="加载订单详情中..." size="large" />
     </div>
 
     <div v-else-if="orderData" class="order-content">
@@ -325,6 +325,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { getOrderByNumber, getPublicConfig, cancelOrder, confirmPayment } from '@/api/shop-public'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import Image from '@/components/Image.vue'
+import SectionLoading from '@/components/SectionLoading.vue'
 import { logger } from '@/utils/logger'
 const router = useRouter()
 const route = useRoute()

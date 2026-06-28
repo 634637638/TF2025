@@ -239,6 +239,63 @@
         </el-table-column>
       </el-table>
 
+      <div class="mobile-orders-list">
+        <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
+        <el-empty v-else-if="orders.length === 0" description="暂无订单" />
+        <div
+          v-else
+          v-for="row in orders"
+          :key="row.id"
+          class="mobile-order-card"
+        >
+          <div class="mobile-order-card__head">
+            <div class="mobile-order-card__number">{{ row.order_number }}</div>
+            <el-tag :type="getStatusType(row.status)" size="small">{{ getStatusText(row.status) }}</el-tag>
+          </div>
+          <div class="mobile-order-card__body">
+            <div class="mobile-order-card__item">
+              <span>客户</span>
+              <strong>{{ row.customer_name || '-' }}</strong>
+            </div>
+            <div class="mobile-order-card__item">
+              <span>电话</span>
+              <strong>{{ row.customer_phone || '-' }}</strong>
+            </div>
+            <div class="mobile-order-card__item">
+              <span>金额</span>
+              <strong class="amount">¥{{ parseFloat(row.total_amount).toFixed(2) }}</strong>
+            </div>
+            <div class="mobile-order-card__item">
+              <span>下单</span>
+              <strong>{{ formatTime(row.created_at) }}</strong>
+            </div>
+          </div>
+          <div class="mobile-order-card__actions">
+            <template v-if="row.status === 'pending'">
+              <el-button size="small" type="info" plain @click="viewOrder(row)">查看</el-button>
+              <el-button v-if="canEdit" size="small" type="danger" plain @click="cancelOrder(row)">取消</el-button>
+            </template>
+            <template v-if="row.status === 'paid'">
+              <el-button size="small" type="info" plain @click="viewOrder(row)">查看</el-button>
+              <el-button v-if="canEdit" size="small" type="success" plain @click="confirmOrder(row)">通过</el-button>
+              <el-button v-if="canEdit" size="small" type="warning" plain @click="rejectOrder(row)">拒绝</el-button>
+              <el-button v-if="canEdit" size="small" type="danger" plain @click="cancelOrder(row)">取消</el-button>
+            </template>
+            <template v-if="row.status === 'confirmed'">
+              <el-button size="small" type="info" plain @click="viewOrder(row)">查看</el-button>
+              <el-button v-if="canEdit" size="small" type="primary" plain @click="shipOrder(row)">发货</el-button>
+            </template>
+            <template v-if="row.status === 'shipped'">
+              <el-button size="small" type="info" plain @click="viewOrder(row)">查看</el-button>
+              <el-button v-if="canEdit" size="small" type="success" plain @click="completeOrder(row)">完成</el-button>
+            </template>
+            <template v-if="['completed', 'cancelled'].includes(row.status)">
+              <el-button size="small" type="info" plain @click="viewOrder(row)">查看</el-button>
+            </template>
+          </div>
+        </div>
+      </div>
+
       <!-- 分页 -->
       <div v-if="!loading" class="pagination-wrapper">
         <Pagination
@@ -445,7 +502,7 @@
       dialog-class="h5-order-dialog"
       :show-default-footer="false"
     >
-      <el-form :model="shipForm" label-width="100px">
+      <el-form :model="shipForm" label-width="100px" class="h5-order-action-form">
         <el-form-item label="物流公司">
           <el-input v-model="shipForm.shipping_company" placeholder="请输入物流公司名称"/>
         </el-form-item>
@@ -470,7 +527,7 @@
       dialog-class="h5-order-dialog"
       :show-default-footer="false"
     >
-      <el-form :model="completeForm" label-width="100px">
+      <el-form :model="completeForm" label-width="100px" class="h5-order-action-form">
         <el-form-item label="备注">
           <el-input v-model="completeForm.remarks" type="textarea" :rows="4" placeholder="请输入备注信息（可选）"/>
         </el-form-item>
@@ -489,7 +546,7 @@
       dialog-class="h5-order-dialog"
       :show-default-footer="false"
     >
-      <el-form :model="cancelForm" label-width="100px">
+      <el-form :model="cancelForm" label-width="100px" class="h5-order-action-form">
         <el-form-item label="取消原因" required>
           <el-input v-model="cancelForm.reason" type="textarea" :rows="4" placeholder="请输入取消原因"/>
         </el-form-item>
@@ -844,6 +901,8 @@ const viewOrder = async (order: any) => {
 
 // 审核通过
 const confirmOrder = async (order: any) => {
+  if (submitting.value) return
+
   if (!canEdit.value) {
     handleNoPermission('edit')
     return
@@ -874,6 +933,8 @@ const confirmOrder = async (order: any) => {
 
 // 拒绝订单
 const rejectOrder = async (order: any) => {
+  if (submitting.value) return
+
   if (!canEdit.value) {
     handleNoPermission('edit')
     return
@@ -923,6 +984,7 @@ const shipOrder = (order: any) => {
 
 // 确认发货
 const confirmShip = async () => {
+  if (submitting.value) return
   if (!canEdit.value) {
     handleNoPermission('edit')
     return
@@ -965,6 +1027,7 @@ const completeOrder = (order: any) => {
 
 // 确认完成
 const confirmComplete = async () => {
+  if (submitting.value) return
   if (!canEdit.value) {
     handleNoPermission('edit')
     return
@@ -1004,6 +1067,7 @@ const cancelOrder = (order: any) => {
 
 // 确认取消
 const confirmCancel = async () => {
+  if (submitting.value) return
   if (!canEdit.value) {
     handleNoPermission('edit')
     return
@@ -1092,6 +1156,7 @@ onUnmounted(() => {
 <style scoped lang="scss">
 .sales-management-page {
   padding: 20px;
+  min-width: 0;
 }
 
 // 统计卡片
@@ -1179,6 +1244,10 @@ onUnmounted(() => {
     display: flex;
     justify-content: flex-end;
   }
+}
+
+.mobile-orders-list {
+  display: none;
 }
 
 // 订单详情
@@ -1423,81 +1492,205 @@ onUnmounted(() => {
 // 响应式设计
 @media (max-width: 768px) {
   .sales-management-page {
-    padding: 12px;
+    width: 100%;
+    padding: 0;
+    overflow: hidden;
   }
 
   .stats-cards {
     grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
+    gap: 8px;
+    margin-bottom: 12px;
 
     .stat-card {
-      padding: 16px;
+      gap: 9px;
+      min-width: 0;
+      padding: 10px;
+      border-radius: 14px;
 
       .stat-icon {
-        width: 48px;
-        height: 48px;
-        font-size: 20px;
+        width: 34px;
+        height: 34px;
+        flex: 0 0 34px;
+        border-radius: 10px;
+        font-size: 14px;
+
+        i {
+          font-size: 14px;
+        }
       }
 
       .stat-content {
+        min-width: 0;
+
         .stat-value {
-          font-size: 20px;
+          font-size: 18px;
         }
 
         .stat-label {
-          font-size: 12px;
+          font-size: 11px;
         }
       }
     }
   }
 
+  .filter-card,
+  .table-card {
+    border-radius: 14px;
+    border: 1px solid rgba(226, 232, 240, 0.88);
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+  }
+
+  .filter-card {
+    margin-bottom: 12px;
+  }
+
+  .filter-card :deep(.el-card__body),
+  .table-card :deep(.el-card__body) {
+    padding: 12px;
+  }
+
   .filter-form {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+
     .el-form-item {
       display: block;
       margin-right: 0;
-      margin-bottom: 12px;
+      margin-bottom: 0;
 
       .el-form-item__label {
         width: 100% !important;
+        height: auto;
+        margin-bottom: 7px;
+        padding: 0 !important;
+        color: #334155;
+        font-size: 13px;
+        font-weight: 700;
+        line-height: 1.4;
         text-align: left;
       }
 
+      .el-form-item__content {
+        width: 100%;
+      }
+
       .el-input,
-      .el-select {
+      .el-select,
+      .el-date-editor {
         width: 100% !important;
+      }
+    }
+
+    .el-form-item:last-child :deep(.el-form-item__content) {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+
+      .el-button {
+        width: 100%;
+        margin: 0;
       }
     }
   }
 
   .table-card {
-    // 移动端表格样式优化
     :deep(.el-table) {
-      font-size: 12px;
-
-      .el-table__header th {
-        padding: 8px 4px;
-      }
-
-      .el-table__body td {
-        padding: 8px 4px;
-      }
+      display: none;
     }
 
-    .action-buttons {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px;
+    .pagination-wrapper {
+      justify-content: center;
+      margin-top: 12px;
+    }
+  }
 
-      .el-button {
-        font-size: 12px;
-        padding: 4px 8px;
-      }
+  .mobile-orders-list {
+    display: grid;
+    gap: 10px;
+  }
+
+  .mobile-order-card {
+    padding: 12px;
+    border: 1px solid rgba(226, 232, 240, 0.92);
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05);
+  }
+
+  .mobile-order-card__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .mobile-order-card__number {
+    min-width: 0;
+    color: #0f172a;
+    font-size: 13px;
+    font-weight: 800;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-order-card__body {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .mobile-order-card__item {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+    padding: 8px;
+    border-radius: 10px;
+    background: #f8fafc;
+
+    span {
+      color: #64748b;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    strong {
+      color: #0f172a;
+      font-size: 12px;
+      line-height: 1.3;
+      overflow-wrap: anywhere;
+    }
+  }
+
+  .mobile-order-card__actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 10px;
+
+    .el-button {
+      width: 100%;
+      min-width: 0;
+      margin: 0;
+      padding: 8px 6px;
+      justify-content: center;
+      font-size: 12px;
     }
   }
 
   .order-detail {
     .detail-section {
       margin-bottom: 16px;
+
+      .status-info {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 8px;
+      }
     }
 
     .info-grid {
@@ -1524,18 +1717,81 @@ onUnmounted(() => {
     }
 
     .dialog-footer {
-      flex-direction: column;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
 
       .el-button {
         width: 100%;
+        margin: 0;
       }
     }
   }
 
-  // 弹窗移动端优化
-  :deep(.el-dialog) {
-    width: 95% !important;
-    margin: 0 auto;
+  .order-detail .order-items .order-item {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+
+    .item-info {
+      grid-column: 1 / -1;
+    }
+
+    .item-subtotal {
+      text-align: right;
+    }
+  }
+
+  :global(.h5-order-dialog .mobile-dialog-sheet-body) {
+    padding: 12px !important;
+  }
+
+  :global(.h5-order-dialog .mobile-dialog-sheet-footer) {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom)) !important;
+  }
+
+  :global(.h5-order-dialog .mobile-dialog-sheet-footer .el-button) {
+    width: 100%;
+    margin: 0 !important;
+  }
+
+  :deep(.h5-order-action-form),
+  :global(.h5-order-dialog .h5-order-action-form) {
+    width: 100%;
+  }
+
+  :deep(.h5-order-action-form .el-form-item),
+  :global(.h5-order-dialog .h5-order-action-form .el-form-item) {
+    display: block;
+    margin-bottom: 16px;
+  }
+
+  :deep(.h5-order-action-form .el-form-item__label),
+  :global(.h5-order-dialog .h5-order-action-form .el-form-item__label) {
+    width: 100% !important;
+    height: auto;
+    margin-bottom: 8px;
+    padding: 0 !important;
+    color: #334155;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.4;
+    text-align: left;
+  }
+
+  :deep(.h5-order-action-form .el-form-item__content),
+  :global(.h5-order-dialog .h5-order-action-form .el-form-item__content) {
+    width: 100%;
+    margin-left: 0 !important;
+  }
+
+  :deep(.h5-order-action-form .el-input),
+  :deep(.h5-order-action-form .el-textarea),
+  :global(.h5-order-dialog .h5-order-action-form .el-input),
+  :global(.h5-order-dialog .h5-order-action-form .el-textarea) {
+    width: 100%;
   }
 }
 </style>

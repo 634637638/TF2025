@@ -104,6 +104,10 @@ export const buildQuickSaleSubmitPayload = (formData: QuickSaleFormState) => {
   const normalizedCustomerPhone = normalizeQuickSaleCustomerPhone(formData.customer_phone)
   const normalizedCustomerName = normalizePersonName(formData.customer_name, 20)
   const normalizedAppleId = normalizeAppleId(formData.apple_id)
+  const normalizedSerialNumber = formatQuickSaleSerialNumber(formData.serial_number || '')
+  const resolvedImei = formData.isNoIMEIMode
+    ? normalizedSerialNumber
+    : formatQuickSaleIMEI(String(formData.imei || ''), false)
 
   return {
     brand: formData.brand_id,
@@ -111,8 +115,8 @@ export const buildQuickSaleSubmitPayload = (formData: QuickSaleFormState) => {
     color: formData.color_id,
     memory: formData.memory_id,
     is_new: parseInt(formData.is_new, 10),
-    imei: String(formData.imei),
-    serial_number: formData.serial_number,
+    imei: resolvedImei,
+    serial_number: normalizedSerialNumber,
     supplier_id: formData.supplier_id,
     store_id: formData.store_id,
     purchase_price: formData.purchase_price ?? null,

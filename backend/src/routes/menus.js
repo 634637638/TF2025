@@ -63,9 +63,6 @@ router.get('/:id', unifiedAuth, requirePermission('menus:view'), (req, res) => m
 // 创建菜单
 router.post('/', unifiedAuth, requirePermission('menus:create'), (req, res) => menuController.createMenu(req, res));
 
-// 初始化菜单数据（必须在 /:id 之前）
-router.post('/init-menus', unifiedAuth, requirePermission('menus:create'), (req, res) => menuController.initMenus(req, res));
-
 // 导入菜单数据（必须在 /:id 之前）
 router.post('/import/excel', unifiedAuth, requirePermission('menus:import'), upload.single('file'), (req, res) => menuController.importMenus(req, res));
 

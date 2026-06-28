@@ -13,8 +13,7 @@
     @close="handleClose"
   >
     <div v-if="loadingPhoneData" class="publish-to-h5-loading">
-      <el-icon class="is-loading" :size="30"><LoadingIcon /></el-icon>
-      <div class="publish-to-h5-loading-text">加载商品信息中...</div>
+      <InlineLoading text="加载商品信息中..." size="large" />
     </div>
     <el-form
       v-else
@@ -330,11 +329,11 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { ElImageViewer, ElMessage } from 'element-plus'
-import { Loading as LoadingIcon } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { unifiedApi as api } from '@/utils/unified-api'
 import { formatImageUrl } from '@/utils/format'
 import Image from './Image.vue'
+import InlineLoading from '@/components/InlineLoading.vue'
 import { useMobile } from '@/composables/mobile'
 import draggable from 'vuedraggable'
 import { logger } from '@/utils/logger'
@@ -387,25 +386,6 @@ const visible = computed({
   set: (val) => emit('update:modelValue', val)
 })
 
-// 监听对话框打开，自动加载数据
-watch(() => props.modelValue, async (isOpen) => {
-  if (isOpen && props.phoneId) {
-    await loadPhoneData()
-  } else if (!isOpen) {
-    resetUploadState()
-  }
-})
-
-// 监听 phoneId 变化，切换商品时清空待上传文件
-watch(() => props.phoneId, async (newId, oldId) => {
-  if (newId && newId !== oldId) {
-    resetUploadState()
-    if (props.modelValue) {
-      await loadPhoneData()
-    }
-  }
-})
-
 // 表单数据
 const form = ref<PublishFormState>(createDefaultPublishForm())
 
@@ -452,6 +432,87 @@ const isBatteryNumeric = computed(() => {
   return val !== '' && !isNaN(Number(val))
 })
 
+const applyInspectionData = (inspectionData: PublishInspectionResponse | null | undefined) => {
+  const inspectionState = buildPublishInspectionForm(inspectionData)
+  form.value = inspectionState.formData
+  batteryDisplayValue.value = inspectionState.batteryDisplayValue
+}
+
+const normalizePublicProductImages = (rawImages: unknown[]): UploadedMediaItem[] => {
+  return rawImages
+    .map((item, index) => {
+      if (typeof item === 'string') {
+        return {
+          id: -(index + 1),
+          image_type: 'other',
+          image_url: item,
+          is_primary: index === 0
+        } satisfies UploadedMediaItem
+      }
+
+      if (item && typeof item === 'object') {
+        const rawItem = item as Record<string, unknown>
+        const imageUrl = typeof rawItem.image_url === 'string'
+          ? rawItem.image_url
+          : typeof rawItem.url === 'string'
+            ? rawItem.url
+            : ''
+
+        if (!imageUrl) {
+          return null
+        }
+
+        return {
+          id: Number(rawItem.id ?? index + 1),
+          image_type: typeof rawItem.image_type === 'string' && rawItem.image_type
+            ? rawItem.image_type
+            : 'other',
+          image_url: imageUrl,
+          is_primary: rawItem.is_primary as UploadedMediaItem['is_primary'] ?? index === 0
+        } satisfies UploadedMediaItem
+      }
+
+      return null
+    })
+    .filter((item): item is UploadedMediaItem => Boolean(item?.image_url))
+}
+
+const loadPublicProductFallback = async () => {
+  if (!props.phoneId) return
+
+  try {
+    const response = await api.get<any>(`/public/products/${props.phoneId}`)
+    if (!response.success || !response.data) {
+      return
+    }
+
+    const productData = response.data
+
+    if (typeof productData.is_new !== 'undefined') {
+      isNewPhone.value = resolvePublishIsNewPhone(productData.is_new, props.isNew)
+    }
+
+    if (!isNewPhone.value && productData.inspection) {
+      applyInspectionData(productData.inspection as PublishInspectionResponse)
+    }
+
+    const publicImages = normalizePublicProductImages(
+      Array.isArray(productData.images)
+        ? productData.images
+        : productData.main_image
+          ? [productData.main_image]
+          : []
+    )
+
+    if (publicImages.length > 0) {
+      images.value = publicImages
+      productVideo.value = findUploadedVideoUrl(publicImages)
+    }
+  } catch (error) {
+    logger.warn('读取H5公开商品数据失败:', error)
+  }
+}
+
 const resetUploadState = () => {
   isProcessingFiles.value = false
   processedFileUids.value.clear()
@@ -466,7 +527,9 @@ const resetPublishState = () => {
   isNewPhone.value = false
   images.value = []
   productVideo.value = ''
-  closeImagePreview()
+  showImagePreview.value = false
+  previewImageUrls.value = []
+  previewInitialIndex.value = 0
 }
 
 // 处理电池输入
@@ -494,25 +557,34 @@ const loadPhoneData = async () => {
   loadingPhoneData.value = true
 
   try {
-    // 先获取商品基本信息（判断是否全新机）
-    const phoneRes = await api.get(`/phones/${props.phoneId}`)
-    if (phoneRes.success && phoneRes.data) {
-      // is_new 可能是 1, "1", true 或其他值，统一转换为布尔判断
-      isNewPhone.value = resolvePublishIsNewPhone(phoneRes.data.is_new, props.isNew)
-
-      // 全新机提示
-      if (isNewPhone.value) {
-        ElMessage.info('全新机使用模板配置，只需设置销售价格和上传商品图片')
+    // 库存页已经知道当前商品的新旧机状态时，优先使用父组件传值，
+    // 避免额外依赖 /phones/:id（该接口权限更高，失败会阻断后续回填）
+    if (typeof props.isNew === 'boolean') {
+      isNewPhone.value = props.isNew
+    } else {
+      try {
+        const phoneRes = await api.get(`/phones/${props.phoneId}`)
+        if (phoneRes.success && phoneRes.data) {
+          isNewPhone.value = resolvePublishIsNewPhone(phoneRes.data.is_new, props.isNew)
+        }
+      } catch (error) {
+        logger.warn('获取商品基本信息失败，继续尝试加载图片与验机信息:', error)
       }
+    }
+
+    if (isNewPhone.value) {
+      ElMessage.info('全新机使用模板配置，只需设置销售价格和上传商品图片')
     }
 
     // 加载验机信息（仅二手商品）
     if (!isNewPhone.value) {
-      const inspectionRes = await api.get(`/phones/${props.phoneId}/inspection`)
-      if (inspectionRes.success && inspectionRes.data) {
-        const inspectionState = buildPublishInspectionForm(inspectionRes.data)
-        form.value = inspectionState.formData
-        batteryDisplayValue.value = inspectionState.batteryDisplayValue
+      try {
+        const inspectionRes = await api.get(`/phones/${props.phoneId}/inspection`)
+        if (inspectionRes.success && inspectionRes.data) {
+          applyInspectionData(inspectionRes.data)
+        }
+      } catch (error) {
+        logger.warn('加载验机信息失败:', error)
       }
     } else {
       form.value = createDefaultPublishForm()
@@ -520,10 +592,28 @@ const loadPhoneData = async () => {
     }
 
     // 加载图片
-    const imagesRes = await api.get(`/phones/${props.phoneId}/images`)
-    if (imagesRes.success && imagesRes.data) {
-      images.value = imagesRes.data as UploadedMediaItem[]
-      productVideo.value = findUploadedVideoUrl(images.value)
+    try {
+      const imagesRes = await api.get(`/phones/${props.phoneId}/images`)
+      if (imagesRes.success && imagesRes.data) {
+        images.value = normalizePublicProductImages(imagesRes.data as unknown[])
+        productVideo.value = findUploadedVideoUrl(images.value)
+      }
+    } catch (error) {
+      logger.warn('加载商品图片失败:', error)
+    }
+
+    const shouldUsePublicFallback =
+      images.value.length === 0 ||
+      (!isNewPhone.value &&
+        !form.value.condition_grade &&
+        !form.value.battery_status &&
+        !form.value.system_version &&
+        !form.value.model_version &&
+        !form.value.warranty_date &&
+        !form.value.sale_price)
+
+    if (shouldUsePublicFallback) {
+      await loadPublicProductFallback()
     }
   } catch (error) {
     logger.error('加载数据失败:', error)
@@ -531,6 +621,29 @@ const loadPhoneData = async () => {
     loadingPhoneData.value = false
   }
 }
+
+// 首次挂载且弹窗已打开时也要立即回填编辑数据
+watch(
+  () => [props.modelValue, props.phoneId] as const,
+  async ([isOpen, phoneId], previousState) => {
+    const [wasOpen, previousPhoneId] = previousState ?? [false, null]
+
+    if (!isOpen) {
+      resetUploadState()
+      return
+    }
+
+    if (!phoneId) {
+      return
+    }
+
+    const shouldLoad = !wasOpen || phoneId !== previousPhoneId
+    if (shouldLoad) {
+      await loadPhoneData()
+    }
+  },
+  { immediate: true }
+)
 
 // 保修过期处理
 const handleWarrantyExpiredChange = (checked: boolean) => {
@@ -721,6 +834,10 @@ const openUploadedImagePreview = (clickedImage: UploadedMediaItem) => {
 }
 
 const closeImagePreview = () => {
+  resetImagePreviewState()
+}
+
+const resetImagePreviewState = () => {
   showImagePreview.value = false
   previewImageUrls.value = []
   previewInitialIndex.value = 0
@@ -902,6 +1019,7 @@ const handleImageDragEnd = async () => {
 
 // 保存
 const handleSave = async () => {
+  if (saving.value) return
   if (!props.phoneId) return
 
   if (!hasPublishMediaFiles(images.value, pendingFiles.value)) {
@@ -995,13 +1113,14 @@ defineExpose({
 }
 
 .publish-to-h5-loading {
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 40px 16px;
 }
 
-.publish-to-h5-loading-text {
-  margin-top: 12px;
-  color: #909399;
+.publish-to-h5-loading :deep(.inline-loading) {
+  color: #2563eb;
 }
 
 .publish-to-h5-form {

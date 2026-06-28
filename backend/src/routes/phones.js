@@ -4,6 +4,7 @@ const { unifiedAuth, requirePermission, requireAnyPermission } = require('../mid
 const ApiResponse = require('../utils/response');
 const { cacheMiddleware, clearCache } = require('../middleware/cache');
 const { generateMemberNumber } = require('../utils/member-number');
+const { validateImei } = require('../utils/imei');
 const log = require('../utils/log');
 
 // 模拟手机数据
@@ -1460,6 +1461,14 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
       return ApiResponse.badRequest(res, '缺少IMEI号');
     }
 
+    const imeiValidation = validateImei(imei, serial_number);
+    if (!imeiValidation.valid) {
+      return ApiResponse.badRequest(res, imeiValidation.reason);
+    }
+
+    const normalizedImei = imeiValidation.normalizedImei;
+    const normalizedSerialNumber = imeiValidation.normalizedSerialNumber || null;
+
     // 打印调试信息
     log.debug('📝 收到的更新数据:', {
       id,
@@ -1472,7 +1481,7 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
       memory_id,
       memory,
       store_id,
-      imei
+      imei: normalizedImei
     });
     // price字段不再是必需的，因为编辑页面只修改成本字段
     // 如果需要修改销售价格，可以在专门的页面或接口中处理
@@ -1500,7 +1509,7 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
        FROM phones p
        LEFT JOIN sales s ON p.id = s.phone_id
        WHERE p.imei = ? AND p.id != ?`,
-      [imei, id]
+      [normalizedImei, id]
     );
 
     if (duplicateImei.length > 0) {
@@ -1516,7 +1525,7 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
         return ApiResponse.badRequest(res, '该客户已存在相同IMEI的手机');
       }
       // 如果客户不同，允许相同IMEI（不同客户可以拥有相同IMEI的手机）
-      log.debug(`ℹ️ IMEI ${imei} 已存在于其他客户，允许继续`);
+      log.debug(`ℹ️ IMEI ${normalizedImei} 已存在于其他客户，允许继续`);
     }
 
     // 获取对应的brand_id
@@ -1699,8 +1708,8 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
       colorId || null,     // 使用转换后的color_id
       memoryId || null,    // 使用转换后的memory_id
       store_id,
-      imei,
-      serial_number || null,
+      normalizedImei,
+      normalizedSerialNumber,
       finalPurchaseCost, // 更新purchase_cost字段（真正的成本价）
       finalSalePrice,     // 更新sale_price字段（销售价格）
       condition === 'new' ? 1 : (condition === 'used' ? 0 : 1), // 更新is_new字段 (1=全新, 0=二手)

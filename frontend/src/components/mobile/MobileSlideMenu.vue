@@ -14,9 +14,10 @@
       class="menu-container"
       :class="{ 'is-open': isOpen }"
       :style="menuStyles"
-      @touchstart="handleTouchStart"
-      @touchmove="handleTouchMove"
-      @touchend="handleTouchEnd"
+      @touchstart="handleMenuTouchStart"
+      @touchmove="handleMenuTouchMove"
+      @touchend="handleMenuTouchEnd"
+      @touchcancel="handleMenuTouchEnd"
       @transitionend="handleTransitionEnd"
     >
       <!-- 菜单头部 -->
@@ -38,10 +39,13 @@
 
 
       <!-- 菜单内容区域 -->
-      <div class="menu-content" ref="menuContent">
+      <div class="menu-content">
+        <div v-if="props.isMenuLoading" class="menu-loading-state">
+          <InlineLoading text="菜单加载中..." />
+        </div>
 
         <!-- 全部菜单 -->
-        <div class="all-menus">
+        <div v-else class="all-menus">
           <div class="section-title">全部功能</div>
           <div class="menu-list">
             <template v-for="(menu, index) in filteredMenuList" :key="menu.id || index">
@@ -51,28 +55,37 @@
                 :class="{
                   'active': isActiveMenu(menu),
                   'has-children': menu.children && menu.children.length > 0,
-                  'expanded': menu.id && expandedMenus.has(menu.id)
+                  'expanded': menu.id && expandedMenus.has(getMenuKey(menu))
                 }"
-                @click="handleMenuClick(menu)"
+                @click="handleMenuItemClick(menu)"
               >
-                <div class="menu-item-content">
+                <div
+                  class="menu-item-content"
+                  @click.stop="handleMenuPrimaryAction(menu)"
+                >
                   <div class="menu-icon">
                     <IconRenderer :icon="menu.icon" :svg="menu.icon_svg" />
                   </div>
                   <span class="menu-name">{{ menu.name || menu.title || '未命名菜单' }}</span>
-                  <div class="menu-actions">
+                  <button
+                    v-if="menu.children && menu.children.length > 0"
+                    type="button"
+                    class="menu-actions"
+                    @click.stop="toggleMenuExpansion(menu)"
+                    :aria-label="expandedMenus.has(String(menu.id)) ? '收起子菜单' : '展开子菜单'"
+                  >
                     <i
                       v-if="menu.children && menu.children.length > 0"
                       class="expand-icon fas fa-chevron-down"
                     ></i>
-                  </div>
+                  </button>
                 </div>
               </div>
 
               <!-- 子菜单 -->
               <transition name="sub-menu">
                 <div
-                  v-if="menu.children && menu.children.length > 0 && menu.id && expandedMenus.has(menu.id)"
+                  v-if="menu.children && menu.children.length > 0 && menu.id && expandedMenus.has(getMenuKey(menu))"
                   class="sub-menu-list"
                 >
                   <div
@@ -80,7 +93,7 @@
                     :key="child.id || childIndex"
                     class="sub-menu-item"
                     :class="{ 'active': isActiveMenu(child) }"
-                    @click="navigateToMenu(child)"
+                    @click.stop="navigateToMenu(child)"
                   >
                     <div class="menu-icon">
                       <IconRenderer :icon="child.icon" :svg="child.icon_svg" />
@@ -94,7 +107,7 @@
         </div>
 
         <!-- 空状态 -->
-        <div v-if="filteredMenuList.length === 0" class="empty-state">
+        <div v-if="!props.isMenuLoading && filteredMenuList.length === 0" class="empty-state">
           <i class="fas fa-search empty-icon"></i>
           <p class="empty-text">没有找到相关菜单</p>
         </div>
@@ -105,15 +118,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
-import { useSiteSettingsStore } from '@/stores/siteSettings'
-import { useMobileGestures } from '@/composables/mobile'
 import { useMenuWidth } from '@/composables/useMenuWidth'
-import { buildLogoUrl } from '@/utils/logoUtils'
 import { storage } from '@/composables/core/useLocalStorage'
 import IconRenderer from '@/components/IconRenderer.vue'
+import InlineLoading from '@/components/InlineLoading.vue'
 import type { CloseEmits } from '@/types/component'
 import { logger } from '@/utils/logger'
 
@@ -131,6 +141,7 @@ interface MenuItem {
 // Props
 interface Props {
   isOpen: boolean
+  isMenuLoading?: boolean
   menuList?: MenuItem[] | null
   userName?: string
   userRole?: string
@@ -144,6 +155,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  isMenuLoading: false,
   menuList: () => [],
   userName: '',
   userRole: '',
@@ -161,13 +173,8 @@ const emit = defineEmits<Emits>()
 // Route
 const route = useRoute()
 
-// Stores
-const authStore = useAuthStore()
-const siteSettingsStore = useSiteSettingsStore()
-const { handleTouchStart, handleTouchEnd } = useMobileGestures()
-
 // 菜单宽度管理
-const { menuWidth, loadAllMenuWidths, isMobile } = useMenuWidth()
+const { menuWidth, loadAllMenuWidths } = useMenuWidth()
 
 // Local Storage - 使用统一存储服务
 const getLocalStorageItem = (key: string, defaultValue: any[] = []) => {
@@ -189,8 +196,13 @@ const setRecentlyUsedMenus = (value: any[]) => {
 const expandedMenus = ref(new Set<string>())
 const isDragging = ref(false)
 const dragStartX = ref(0)
+const dragStartY = ref(0)
 const dragCurrentX = ref(0)
-const menuContent = ref<HTMLElement>()
+const isVerticalScrolling = ref(false)
+const bodyScrollTop = ref(0)
+
+const SWIPE_CLOSE_THRESHOLD = 56
+const SWIPE_ACTIVATION_THRESHOLD = 12
 
 const filteredMenuList = computed(() => {
   // 如果菜单列表不存在或为null，返回空数组
@@ -201,12 +213,6 @@ const filteredMenuList = computed(() => {
 
   // 直接返回菜单列表，不需要过滤
   return props.menuList
-})
-
-// Logo URL
-const logoUrl = computed(() => {
-  const rawUrl = siteSettingsStore.settings.logoUrl
-  return buildLogoUrl(rawUrl)
 })
 
 // Styles
@@ -230,18 +236,39 @@ const closeMenu = () => {
   emit('close')
 }
 
-const handleMenuClick = (menu: MenuItem) => {
-  if (menu.children && menu.children.length > 0) {
-    // 切换子菜单展开状态
-    if (menu.id) {
-      if (expandedMenus.value.has(menu.id)) {
-        expandedMenus.value.delete(menu.id)
-      } else {
-        expandedMenus.value.add(menu.id)
-      }
-    }
-  } else {
+const getMenuKey = (menu: MenuItem) => String(menu.id)
+
+const hasNavigablePath = (menu: MenuItem) => {
+  const targetPath = menu.url || menu.path
+  return Boolean(targetPath && targetPath !== '#')
+}
+
+const toggleMenuExpansion = (menu: MenuItem) => {
+  if (!menu.id) return
+
+  const menuKey = getMenuKey(menu)
+  if (expandedMenus.value.has(menuKey)) {
+    expandedMenus.value.delete(menuKey)
+    return
+  }
+
+  expandedMenus.value.add(menuKey)
+}
+
+const handleMenuPrimaryAction = (menu: MenuItem) => {
+  if (hasNavigablePath(menu)) {
     navigateToMenu(menu)
+    return
+  }
+
+  if (menu.children && menu.children.length > 0) {
+    toggleMenuExpansion(menu)
+  }
+}
+
+const handleMenuItemClick = (menu: MenuItem) => {
+  if (!hasNavigablePath(menu) && menu.children && menu.children.length > 0) {
+    toggleMenuExpansion(menu)
   }
 }
 
@@ -288,44 +315,116 @@ const addToRecentlyUsed = (menu: MenuItem) => {
 }
 
 
-// Logo加载错误处理
-const handleLogoError = (event: Event) => {
-  const img = event.target as HTMLImageElement
-  logger.warn('Logo加载失败:', img.src)
-  img.style.display = 'none'
+const lockBodyScroll = () => {
+  bodyScrollTop.value = window.scrollY || window.pageYOffset || 0
+  document.documentElement.style.overflow = 'hidden'
+  document.body.style.position = 'fixed'
+  document.body.style.top = `-${bodyScrollTop.value}px`
+  document.body.style.left = '0'
+  document.body.style.right = '0'
+  document.body.style.width = '100%'
+  document.body.style.overflow = 'hidden'
 }
 
-// Touch handlers for swipe gestures
-const handleTouchMove = (event: TouchEvent) => {
+const unlockBodyScroll = () => {
+  const scrollTop = bodyScrollTop.value
+  document.documentElement.style.overflow = ''
+  document.body.style.position = ''
+  document.body.style.top = ''
+  document.body.style.left = ''
+  document.body.style.right = ''
+  document.body.style.width = ''
+  document.body.style.overflow = ''
+  window.scrollTo(0, scrollTop)
+}
+
+const resetDragState = () => {
+  isDragging.value = false
+  isVerticalScrolling.value = false
+  dragCurrentX.value = 0
+}
+
+const handleMenuTouchStart = (event: TouchEvent) => {
+  if (!props.isOpen || !event.touches.length) return
+
+  const touch = event.touches[0]
+  dragStartX.value = touch.clientX
+  dragStartY.value = touch.clientY
+  dragCurrentX.value = 0
+  isDragging.value = false
+  isVerticalScrolling.value = false
+}
+
+const handleMenuTouchMove = (event: TouchEvent) => {
   if (!props.isOpen) return
+  if (!event.touches.length) return
 
   const touch = event.touches[0]
   const deltaX = touch.clientX - dragStartX.value
+  const deltaY = touch.clientY - dragStartY.value
+  const absX = Math.abs(deltaX)
+  const absY = Math.abs(deltaY)
+
+  if (isVerticalScrolling.value) {
+    return
+  }
+
+  if (!isDragging.value) {
+    if (absY > absX && absY > SWIPE_ACTIVATION_THRESHOLD) {
+      isVerticalScrolling.value = true
+      return
+    }
+
+    if (deltaX < -SWIPE_ACTIVATION_THRESHOLD && absX > absY) {
+      isDragging.value = true
+    } else {
+      return
+    }
+  }
 
   // 只允许向左滑动关闭
   if (deltaX < 0) {
-    isDragging.value = true
     dragCurrentX.value = deltaX
   }
 }
 
+const handleMenuTouchEnd = () => {
+  if (!props.isOpen) {
+    resetDragState()
+    return
+  }
+
+  if (isDragging.value && Math.abs(dragCurrentX.value) >= SWIPE_CLOSE_THRESHOLD) {
+    closeMenu()
+    return
+  }
+
+  resetDragState()
+}
+
 const handleTransitionEnd = () => {
-  isDragging.value = false
-  dragCurrentX.value = 0
+  if (!props.isOpen) {
+    resetDragState()
+    return
+  }
+
+  if (!isDragging.value) {
+    dragCurrentX.value = 0
+  }
 }
 
 // Watch menu open state
 watch(() => props.isOpen, async (isOpen) => {
   if (isOpen) {
-    // 禁止背景滚动
-    document.body.style.overflow = 'hidden'
+    lockBodyScroll()
     // 确保菜单宽度已加载
+    await nextTick()
     loadAllMenuWidths()
   } else {
-    // 恢复背景滚动
-    document.body.style.overflow = ''
+    unlockBodyScroll()
     // 清除展开的菜单
     expandedMenus.value.clear()
+    resetDragState()
   }
 })
 
@@ -336,7 +435,7 @@ onMounted(async () => {
 
 // Cleanup
 onUnmounted(() => {
-  document.body.style.overflow = ''
+  unlockBodyScroll()
 })
 </script>
 
@@ -347,7 +446,7 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 1000;
+  z-index: 3100;
   pointer-events: none;
 }
 
@@ -503,7 +602,20 @@ onUnmounted(() => {
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
   padding: 0 0 20px 0;
+}
+
+.menu-loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 180px;
+  padding: 24px 20px;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 14px;
 }
 
 .section-title {
@@ -566,6 +678,13 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .all-menus .menu-list .menu-item .menu-item-content .menu-actions .expand-icon {

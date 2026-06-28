@@ -992,6 +992,8 @@ const deleteStore = async (store: Store) => {
 }
 
 const saveStore = async () => {
+  if (isSubmitting.value) return
+
   // 表单验证
   if (!storeForm.name || storeForm.name.trim() === '') {
     showError('门店名称不能为空')

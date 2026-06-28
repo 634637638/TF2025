@@ -4,7 +4,6 @@
     title="编辑设备信息"
     :force-fullscreen="isMobile"
     :show-default-footer="false"
-    :loading="submitting"
     :close-on-click-modal="false"
     width="800px"
     destroy-on-close
@@ -17,18 +16,15 @@
           <i class="fas fa-times"></i>
           取消
         </el-button>
-        <el-button type="primary" :loading="submitting" @click="handleSubmit">
-          <InlineLoading v-if="submitting" text="保存中..." size="small" variant="inherit" />
-          <template v-else>
-            <i class="fas fa-save"></i>
-            保存更改
-          </template>
+        <el-button type="primary" :disabled="submitting" @click="handleSubmit">
+          <i v-if="!submitting" class="fas fa-save"></i>
+          {{ submitting ? '保存中...' : '保存更改' }}
         </el-button>
       </div>
     </template>
 
     <div v-if="initializing" class="dialog-loading">
-      <el-skeleton animated :rows="10" />
+      <SectionLoading text="加载编辑数据中..." size="large" />
     </div>
 
     <el-form
@@ -493,7 +489,7 @@ import type { FormInstance } from 'element-plus'
 import { ValidationRules } from '@/composables'
 import { useNotification } from '@/composables/useNotification'
 import MobileDialog from '@/components/MobileDialog.vue'
-import InlineLoading from '@/components/InlineLoading.vue'
+import SectionLoading from '@/components/SectionLoading.vue'
 import { useMobile } from '@/composables/mobile'
 import unifiedApi from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
@@ -681,21 +677,31 @@ const toSectionValue = (value: unknown): string | number | boolean | null | unde
   return undefined
 }
 
+const toNullableNumber = (value: unknown): number | null => {
+  if (value === null || value === undefined || value === '') return null
+  const numericValue = Number(value)
+  return Number.isFinite(numericValue) && numericValue > 0 ? numericValue : null
+}
+
 const isOptionItem = (item: OptionItem | null): item is OptionItem => {
   return Boolean(item?.name)
 }
 
 const getErrorMessage = (error: unknown, fallback: string) => {
-  if (error instanceof Error && error.message) {
-    return error.message
-  }
-
   const errorRecord = toRecord(error)
   const responseRecord = toRecord(errorRecord?.response)
   const dataRecord = toRecord(responseRecord?.data)
   const rawMessage = dataRecord?.message ?? errorRecord?.message
 
-  return typeof rawMessage === 'string' && rawMessage.trim() ? rawMessage : fallback
+  if (typeof rawMessage === 'string' && rawMessage.trim()) {
+    return rawMessage
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message
+  }
+
+  return fallback
 }
 
 const extractNestedList = (data: unknown, keys: string[]) => {
@@ -1106,25 +1112,25 @@ const findModelOption = (modelName?: string | null, brandId?: number | null, bra
 
 const syncBrandId = () => {
   const matchedBrand = findOptionByName(options.brandItems, formData.brand)
-  formData.brand_id = matchedBrand ? Number(matchedBrand.id) || null : null
+  formData.brand_id = matchedBrand ? toNullableNumber(matchedBrand.id) : toNullableNumber(formData.brand_id)
   return matchedBrand
 }
 
 const syncModelId = () => {
   const matchedModel = findModelOption(formData.model, formData.brand_id, formData.brand)
-  formData.model_id = matchedModel?.id || null
+  formData.model_id = matchedModel ? toNullableNumber(matchedModel.id) : toNullableNumber(formData.model_id)
   return matchedModel
 }
 
 const syncColorId = () => {
   const matchedColor = findOptionByName(options.colorItems, formData.color)
-  formData.color_id = matchedColor ? Number(matchedColor.id) || null : null
+  formData.color_id = matchedColor ? toNullableNumber(matchedColor.id) : toNullableNumber(formData.color_id)
   return matchedColor
 }
 
 const syncMemoryId = () => {
   const matchedMemory = findOptionByName(options.memoryItems, formData.memory)
-  formData.memory_id = matchedMemory ? Number(matchedMemory.id) || null : null
+  formData.memory_id = matchedMemory ? toNullableNumber(matchedMemory.id) : toNullableNumber(formData.memory_id)
   return matchedMemory
 }
 
@@ -1233,18 +1239,21 @@ const loadDialogData = async () => {
     const customerInfo = normalized.客户信息 || {}
     const operatorInfo = normalized.操作员信息 || {}
     const saleInfo = normalized.销售信息 || {}
+    const rawImei = basicInfo.imei || response.data?.imei || ''
+    const rawSerialNumber = basicInfo.serial_number || response.data?.serial_number || ''
+    const isNoImeiPhone = !rawImei && Boolean(rawSerialNumber)
 
     Object.assign(formData, {
       id: Number(basicInfo.phone_id || response.data?.id || props.phoneId || 0),
-      imei: basicInfo.imei || response.data?.imei || '',
-      serial_number: basicInfo.serial_number || response.data?.serial_number || '',
-      brand_id: basicInfo.brand_id ?? response.data?.brand_id ?? null,
+      imei: rawImei || (isNoImeiPhone ? rawSerialNumber : ''),
+      serial_number: rawSerialNumber,
+      brand_id: toNullableNumber(basicInfo.brand_id ?? response.data?.brand_id),
       brand: basicInfo.brand || response.data?.brand || '',
-      model_id: basicInfo.model_id ?? response.data?.model_id ?? null,
+      model_id: toNullableNumber(basicInfo.model_id ?? response.data?.model_id),
       model: basicInfo.model || response.data?.model || '',
-      color_id: basicInfo.color_id ?? response.data?.color_id ?? null,
+      color_id: toNullableNumber(basicInfo.color_id ?? response.data?.color_id),
       color: basicInfo.color || response.data?.color || '',
-      memory_id: basicInfo.memory_id ?? response.data?.memory_id ?? null,
+      memory_id: toNullableNumber(basicInfo.memory_id ?? response.data?.memory_id),
       memory: basicInfo.memory || response.data?.memory || '',
       is_new: basicInfo.is_new === 1 ? '1' : '0',
       status: basicInfo.status_code || response.data?.status || 'in_stock',
@@ -1254,7 +1263,7 @@ const loadDialogData = async () => {
       customer_phone: normalizeCustomerPhone(customerInfo.customer_phone || response.data?.customer_phone || ''),
       customer_name: normalizePersonName(customerInfo.customer_name || response.data?.customer_name || '', 20),
       apple_id: normalizeAppleId(customerInfo.apple_id || response.data?.customer_apple_id || response.data?.apple_id || ''),
-      store_id: storeInfo.store_id ?? response.data?.store_id ?? null,
+      store_id: toNullableNumber(storeInfo.store_id ?? response.data?.store_id),
       purchase_operator_name: operatorInfo.inventory_operator_name || operatorInfo.purchase_operator_name || response.data?.inventory_operator_name || '',
       purchase_operator_id: operatorInfo.inventory_operator_id ? String(operatorInfo.inventory_operator_id) : (response.data?.inventory_operator_id ? String(response.data.inventory_operator_id) : ''),
       sale_operator_id: operatorInfo.sale_operator_id ? String(operatorInfo.sale_operator_id) : (response.data?.sale_operator_id ? String(response.data.sale_operator_id) : ''),
@@ -1263,7 +1272,7 @@ const loadDialogData = async () => {
       salestime: normalizeDate(timeInfo.salestime || response.data?.salestime),
       payment_method: saleInfo.payment_method || response.data?.payment_method || '',
       payment_channel: saleInfo.payment_channel || response.data?.payment_channel || '',
-      isNoIMEIMode: false,
+      isNoIMEIMode: isNoImeiPhone || rawImei === rawSerialNumber,
       remarks: basicInfo.remarks || response.data?.remarks || ''
     })
 
@@ -1737,6 +1746,7 @@ const handlePaymentChannelChange = () => {
 }
 
 const handleSubmit = async () => {
+  if (submitting.value) return
   if (!formRef.value) return
 
   formatCustomerPhone()
@@ -1747,13 +1757,22 @@ const handleSubmit = async () => {
   const valid = await formRef.value.validate().catch(() => false)
   if (!valid) return
 
-  if (formData.imei !== formData.serial_number && (!formData.imei || formData.imei.length < 15)) {
+  const resolvedImei = formData.isNoIMEIMode
+    ? (formData.imei || formData.serial_number)
+    : formData.imei
+
+  if (!formData.isNoIMEIMode && resolvedImei !== formData.serial_number && (!resolvedImei || resolvedImei.length < 15)) {
     showError('请输入完整的15位IMEI号')
     return
   }
 
   if (!formData.serial_number) {
     showError('请输入序列号')
+    return
+  }
+
+  if (formData.isNoIMEIMode && !resolvedImei) {
+    showError('无IMEI模式下请填写序列号')
     return
   }
 
@@ -1764,9 +1783,15 @@ const handleSubmit = async () => {
     const normalizedCustomerPhone = normalizeCustomerPhone(formData.customer_phone)
     const normalizedCustomerName = normalizePersonName(formData.customer_name, 20)
     const normalizedAppleId = normalizeAppleId(formData.apple_id)
+    const resolvedStoreId = toNullableNumber(formData.store_id)
 
     if (!formData.brand_id || !formData.model_id || !formData.color_id || !formData.memory_id) {
       showError('品牌、型号、颜色、内存必须从数据库已有选项中选择，不能使用不存在的数据')
+      return
+    }
+
+    if (!resolvedStoreId) {
+      showError('请选择店铺后再保存')
       return
     }
 
@@ -1779,11 +1804,11 @@ const handleSubmit = async () => {
       model: formData.model,
       color: formData.color,
       memory: formData.memory,
-      imei: formData.imei,
+      imei: resolvedImei,
       serial_number: formData.serial_number,
       condition: formData.is_new === '1' ? 'new' : 'used',
       supplier_id: formData.supplier_id ? Number(formData.supplier_id) : null,
-      store_id: formData.store_id ? Number(formData.store_id) : null,
+      store_id: resolvedStoreId,
       purchase_price: Number(formData.purchase_price || 0),
       sale_price: Number(formData.sale_price || 0),
       customer_phone: normalizedCustomerPhone,

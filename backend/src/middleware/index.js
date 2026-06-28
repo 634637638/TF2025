@@ -6,6 +6,7 @@ const log = require('../utils/log');
 const { corsMiddleware, corsLogger } = require('./cors');
 const { securityMiddleware, customSecurityHeaders, securityLogger } = require('./security');
 const { loginAttemptsMiddleware, loginFailureHandler } = require('./login-attempts');
+const { validateGlobalCSRFToken } = require('../routes/csrf');
 
 /**
  * 设置安全中间件
@@ -71,7 +72,7 @@ function setupRoutes(app, routes) {
   });
 
   // API路由
-  app.use('/api', routes);
+  app.use('/api', validateGlobalCSRFToken, routes);
 
   // 404处理
   app.use('*', (req, res) => {

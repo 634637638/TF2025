@@ -383,6 +383,7 @@ const getSaleModeLabel = (): string => {
  * 保存配置
  */
 const handleSave = async () => {
+  if (saving.value) return
   if (!formRef.value) return
 
   try {

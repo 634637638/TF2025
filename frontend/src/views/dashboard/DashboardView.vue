@@ -7,25 +7,25 @@
     permission-code="dashboard:view"
   >
 
-  <div class="dashboard">
+  <div class="dashboard admin-page safe-area-top safe-area-bottom">
+    <div class="dashboard-content admin-page-content">
+      <PageHeader title="仪表盘">
+        <template #actions>
+          <el-button type="info" @click="refreshData" :disabled="isRefreshing">
+            <InlineLoading v-if="isRefreshing" text="刷新中..." size="small" variant="inherit" />
+            <template v-else>
+              <i class="fas fa-sync-alt"></i>
+              刷新数据
+            </template>
+          </el-button>
+        </template>
+      </PageHeader>
 
-    <PageHeader title="仪表盘">
-      <template #actions>
-        <el-button type="info" @click="refreshData" :disabled="isRefreshing">
-          <InlineLoading v-if="isRefreshing" text="刷新中..." size="small" variant="inherit" />
-          <template v-else>
-            <i class="fas fa-sync-alt"></i>
-            刷新数据
-          </template>
-        </el-button>
-      </template>
-    </PageHeader>
+      <SectionLoading v-if="isLoading" text="加载中..." size="large" />
 
-    <SectionLoading v-if="isLoading" text="加载中..." size="large" />
-
-    <div v-else class="dashboard-grid">
+      <div v-else class="dashboard-grid">
       <!-- 统计卡片 -->
-      <div class="stats-grid">
+      <div class="stats-grid stats-cards">
         <div class="stat-card" @click="showDetails('sales')">
           <div class="stat-icon sales">
             <i class="fas fa-shopping-cart"></i>
@@ -98,7 +98,7 @@
       <PendingApprovals ref="pendingApprovementsRef" />
 
       <!-- 快速操作 -->
-      <div class="quick-actions">
+      <div class="quick-actions dashboard-card">
         <h2>快速操作</h2>
         <div class="actions-grid">
           <button class="action-btn" @click="goToSales">
@@ -129,7 +129,7 @@
       </div>
 
       <!-- 最近活动 -->
-      <div class="recent-activity">
+      <div class="recent-activity dashboard-card">
         <div class="activity-header">
           <h2>最近活动</h2>
           <button class="view-all-btn" @click="viewAllActivities">查看全部</button>
@@ -148,6 +148,7 @@
             </button>
           </div>
         </div>
+      </div>
       </div>
     </div>
   </div>
@@ -860,7 +861,11 @@ onUnmounted(() => {
 /* 手机端优化 */
 @media (max-width: 767px) {
   .dashboard {
-    padding: 8px;
+    padding: 0;
+  }
+
+  .dashboard-grid {
+    gap: var(--admin-panel-gap);
   }
 
   /* 欢迎横幅 */
@@ -894,10 +899,10 @@ onUnmounted(() => {
 
   /* 统计卡片 - 2列网格 */
   .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-    margin-bottom: 16px;
-    padding: 0 4px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 0;
+    padding: 0;
   }
 
   .stat-card {
@@ -932,7 +937,9 @@ onUnmounted(() => {
 
   /* 快速操作 - 2列网格 */
   .quick-actions {
-    padding: 16px 12px;
+    width: 100%;
+    padding: var(--admin-panel-padding);
+    border-radius: var(--mobile-card-radius);
   }
 
   .quick-actions h2 {
@@ -957,7 +964,9 @@ onUnmounted(() => {
 
   /* 最近活动 */
   .recent-activity {
-    padding: 16px 12px;
+    width: 100%;
+    padding: var(--admin-panel-padding);
+    border-radius: var(--mobile-card-radius);
   }
 
   .activity-header h2 {
@@ -996,7 +1005,7 @@ onUnmounted(() => {
 /* 小屏手机 */
 @media (max-width: 480px) {
   .dashboard {
-    padding: 6px;
+    padding: 0;
   }
 
   .welcome-banner {
@@ -1008,7 +1017,7 @@ onUnmounted(() => {
   }
 
   .stats-grid {
-    gap: 10px;
+    gap: 8px;
   }
 
   .stat-card {

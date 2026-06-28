@@ -1572,6 +1572,8 @@ const handleCreate = async () => {
 
 // 保存
 const handleSave = async () => {
+  if (saving.value) return
+
   const action = editForm.id ? 'edit' : 'create'
   const allowed = editForm.id ? canEdit.value : canCreate.value
   if (!allowed) {
@@ -1712,6 +1714,8 @@ const handleToggleShowPrice = async (row: any) => {
 
 // 同步
 const handleSync = async () => {
+  if (syncing.value) return
+
   if (!canEdit.value) {
     handleNoPermission('edit')
     return
@@ -1733,6 +1737,8 @@ const handleSync = async () => {
 
 // 一键清零采集价格
 const handleClearPrices = async () => {
+  if (clearingPrices.value) return
+
   if (!canEdit.value) {
     handleNoPermission('edit')
     return
@@ -1770,6 +1776,8 @@ const handleClearPrices = async () => {
 
 // 一键清理全部历史价格
 const handleClearAllPriceHistory = async () => {
+  if (clearingAllHistory.value) return
+
   if (!canDelete.value) {
     handleNoPermission('delete')
     return
@@ -1824,6 +1832,8 @@ const markupConfig = ref<any>(null)
 
 // 保存同步配置（支持添加新配置和更新现有配置）
 const handleSaveConfig = async () => {
+  if (savingConfig.value) return
+
   if (!canEdit.value) {
     handleNoPermission('edit')
     return

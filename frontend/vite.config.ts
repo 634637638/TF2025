@@ -109,13 +109,12 @@ export default defineConfig({
         // 输出文件命名带 hash，便于缓存
         chunkFileNames: 'js/[name]-[hash].js',
         entryFileNames: 'js/[name]-[hash].js',
-        assetFileNames: (assetInfo) => {
-          const info = assetInfo.name.split('.');
-          const ext = info[info.length - 1];
-          if (/\.(css)$/.test(assetInfo.name)) {
+        assetFileNames: (assetInfo: { name?: string }) => {
+          const assetName = typeof assetInfo.name === 'string' ? assetInfo.name : '';
+          if (/\.(css)$/.test(assetName)) {
             return 'css/[name]-[hash].[ext]';
           }
-          if (/\.(png|jpe?g|gif|svg|webp|ico)$/.test(assetInfo.name)) {
+          if (/\.(png|jpe?g|gif|svg|webp|ico)$/.test(assetName)) {
             return 'images/[name]-[hash].[ext]';
           }
           return 'assets/[name]-[hash].[ext]';

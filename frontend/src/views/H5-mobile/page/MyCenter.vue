@@ -514,6 +514,8 @@ const showProfileEdit = async () => {
 
 // 保存个人资料
 const saveProfile = async () => {
+  if (savingProfile.value) return
+
   if (!profileFormRef.value) return
 
   try {

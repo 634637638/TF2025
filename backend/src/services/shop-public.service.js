@@ -144,7 +144,10 @@ class ShopPublicService {
     };
 
     const sortField = sortMap[sort] || 'p.Inventorytime';
-    const sortDirection = sort === 'price_asc' ? 'ASC' : (sort === 'price_desc' ? 'DESC' : order);
+    const normalizedOrder = typeof order === 'string' ? order.trim().toUpperCase() : 'DESC';
+    const sortDirection = sort === 'price_asc'
+      ? 'ASC'
+      : (sort === 'price_desc' ? 'DESC' : (normalizedOrder === 'ASC' ? 'ASC' : 'DESC'));
 
     // 查询总数
     const countQuery = `

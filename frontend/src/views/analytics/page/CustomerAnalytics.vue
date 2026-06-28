@@ -360,6 +360,38 @@ const charts = ref<{
 // 图表初始化标记
 let chartsInitialized = false
 
+const createOrReuseChart = (
+  chartKey: keyof typeof charts.value,
+  chartRef: HTMLElement | undefined
+): ECharts | null => {
+  if (!chartRef) return null
+
+  const existing = echarts.getInstanceByDom(chartRef)
+  if (existing) {
+    charts.value[chartKey] = existing
+    existing.clear()
+    return existing
+  }
+
+  const chart = echarts.init(chartRef)
+  charts.value[chartKey] = chart
+  return chart
+}
+
+const disposeChart = (chartKey: keyof typeof charts.value) => {
+  const chart = charts.value[chartKey]
+  if (chart) {
+    chart.dispose()
+    charts.value[chartKey] = undefined
+  }
+}
+
+const disposeAllCharts = () => {
+  (Object.keys(charts.value) as Array<keyof typeof charts.value>).forEach((key) => {
+    disposeChart(key)
+  })
+}
+
 // 保存 resize 处理函数引用，用于后续移除
 const handleResize = () => {
   Object.values(charts.value).forEach(chart => {
@@ -565,13 +597,8 @@ const initGrowthChart = async () => {
   }
 
   try {
-    // 销毁旧实例
-    if (charts.value.growth) {
-      charts.value.growth.dispose();
-      charts.value.growth = undefined;
-    }
-    const chart = echarts.init(growthChartRef.value);
-    charts.value.growth = chart;
+    const chart = createOrReuseChart('growth', growthChartRef.value);
+    if (!chart) return
 
     const cacheKey = CACHE_KEYS.customerGrowth(growthPeriod.value)
     const response = await useCachedRequest(cacheKey, () => analyticsService.getCustomerGrowth({ period: growthPeriod.value }), DEFAULT_CACHE_TTL.DYNAMIC);
@@ -645,13 +672,8 @@ const initSegmentChart = async () => {
   }
 
   try {
-    // 销毁旧实例
-    if (charts.value.segment) {
-      charts.value.segment.dispose();
-      charts.value.segment = undefined;
-    }
-    const chart = echarts.init(segmentChartRef.value);
-    charts.value.segment = chart;
+    const chart = createOrReuseChart('segment', segmentChartRef.value);
+    if (!chart) return
 
     const response = await useCachedRequest(CACHE_KEYS.customerSegments, () => analyticsService.getCustomerSegments(), DEFAULT_CACHE_TTL.STATIC);
     const data = response.data || response;
@@ -710,13 +732,8 @@ const initRetentionChart = async () => {
   }
 
   try {
-    // 销毁旧实例
-    if (charts.value.retention) {
-      charts.value.retention.dispose();
-      charts.value.retention = undefined;
-    }
-    const chart = echarts.init(retentionChartRef.value);
-    charts.value.retention = chart;
+    const chart = createOrReuseChart('retention', retentionChartRef.value);
+    if (!chart) return
 
     const cacheKey = CACHE_KEYS.customerRetention(retentionCohort.value)
     const response = await useCachedRequest(cacheKey, () => analyticsService.getCustomerRetention({ cohort: retentionCohort.value }), DEFAULT_CACHE_TTL.DYNAMIC);
@@ -827,13 +844,8 @@ const initActivityChart = async () => {
   }
 
   try {
-    // 销毁旧实例
-    if (charts.value.activity) {
-      charts.value.activity.dispose();
-      charts.value.activity = undefined;
-    }
-    const chart = echarts.init(activityChartRef.value);
-    charts.value.activity = chart;
+    const chart = createOrReuseChart('activity', activityChartRef.value);
+    if (!chart) return
 
     const response = await useCachedRequest(CACHE_KEYS.customerActivity, () => analyticsService.getCustomerActivity(), DEFAULT_CACHE_TTL.STATIC);
     const data = response?.data || { activeRate: 0.5 };
@@ -866,20 +878,20 @@ const initActivityChart = async () => {
           width: 20,
           offsetCenter: [0, '-60%'],
           itemStyle: {
-            color: 'auto'
+            color: 'inherit'
           }
         },
         axisTick: {
           length: 12,
           lineStyle: {
-            color: 'auto',
+            color: 'inherit',
             width: 2
           }
         },
         splitLine: {
           length: 20,
           lineStyle: {
-            color: 'auto',
+            color: 'inherit',
             width: 5
           }
         },
@@ -902,7 +914,7 @@ const initActivityChart = async () => {
           formatter: function(value: number) {
             return Math.round(value * 100) + '%';
           },
-          color: 'auto'
+          color: 'inherit'
         },
         data: [{
           value: data.activeRate,
@@ -965,19 +977,9 @@ const initCustomerDetailCharts = async () => {
     return;
   }
 
-  // 销毁旧实例
-  if (charts.value.customerTrend) {
-    charts.value.customerTrend.dispose();
-    charts.value.customerTrend = undefined;
-  }
-  if (charts.value.customerPreference) {
-    charts.value.customerPreference.dispose();
-    charts.value.customerPreference = undefined;
-  }
-
   // 初始化消费趋势图
-  const trendChart = echarts.init(customerTrendChartRef.value);
-  charts.value.customerTrend = trendChart;
+  const trendChart = createOrReuseChart('customerTrend', customerTrendChartRef.value);
+  if (!trendChart) return
 
   // 模拟客户消费趋势数据
   const trendOption = {
@@ -1017,8 +1019,8 @@ const initCustomerDetailCharts = async () => {
   trendChart.setOption(trendOption);
 
   // 初始化商品偏好图
-  const preferenceChart = echarts.init(customerPreferenceChartRef.value);
-  charts.value.customerPreference = preferenceChart;
+  const preferenceChart = createOrReuseChart('customerPreference', customerPreferenceChartRef.value);
+  if (!preferenceChart) return
 
   const preferenceOption = {
     tooltip: {
@@ -1112,11 +1114,15 @@ watch(() => props.searchTrigger, () => {
   }
 })
 
+watch(customerDetailVisible, (visible) => {
+  if (!visible) {
+    disposeChart('customerTrend')
+    disposeChart('customerPreference')
+  }
+})
+
 onUnmounted(() => {
-  // 销毁图表实例
-  Object.values(charts.value).forEach(chart => {
-    chart?.dispose();
-  });
+  disposeAllCharts()
   // 移除 resize 事件监听器
   window.removeEventListener('resize', handleResize);
 });

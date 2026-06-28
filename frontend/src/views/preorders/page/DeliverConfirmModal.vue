@@ -100,6 +100,7 @@ watch(() => props.preorder, (preorder) => {
 }, { immediate: true })
 
 const handleSubmit = async () => {
+  if (submitting.value) return
   if (!props.preorder) return
 
   submitting.value = true

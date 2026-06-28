@@ -3,6 +3,7 @@ const router = express.Router();
 const { unifiedAuth, requirePermission } = require('../middleware/unified-auth');
 const ApiResponse = require('../utils/response');
 const { getDatabase, isConnected } = require('../config/database');
+const { validateImei } = require('../utils/imei');
 const { normalizeDateTime } = require('../utils/time');
 const { generateMemberNumber } = require('../utils/member-number');
 const log = require('../utils/log');
@@ -1133,6 +1134,14 @@ router.post('/stock-in', unifiedAuth, requirePermission('inventory:create'), asy
       return ApiResponse.badRequest(res, '手机商品必须提供IMEI号');
     }
 
+    const imeiValidation = product_type === 'phone'
+      ? validateImei(imei, serial_number)
+      : { valid: true, normalizedImei: imei, normalizedSerialNumber: serial_number || '' };
+
+    if (!imeiValidation.valid) {
+      return ApiResponse.badRequest(res, imeiValidation.reason);
+    }
+
     // 从连接池获取连接（用于事务操作）
     const pool = getDatabase();
     const connection = await pool.getConnection();
@@ -1157,7 +1166,7 @@ router.post('/stock-in', unifiedAuth, requirePermission('inventory:create'), asy
         // 检查IMEI是否已存在
         const [existingPhones] = await connection.execute(
           'SELECT id FROM phones WHERE imei = ?',
-          [imei]
+          [imeiValidation.normalizedImei]
         );
 
         if (existingPhones.length > 0) {
@@ -1174,8 +1183,8 @@ router.post('/stock-in', unifiedAuth, requirePermission('inventory:create'), asy
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             purchase_number,
-            imei,
-            serial_number || '',
+            imeiValidation.normalizedImei,
+            imeiValidation.normalizedSerialNumber,
             unit_cost, // purchase_cost: 实际采购成本价
             unit_cost * 1.2, // sale_price: 建议销售价(成本价的1.2倍)
             is_new,
@@ -1210,7 +1219,7 @@ router.post('/stock-in', unifiedAuth, requirePermission('inventory:create'), asy
           reference_type: reference_type || 'purchase',
           reference_id: reference_id || purchase_number,
           imei: product_type === 'phone' ? imei : null,
-          serial_number: serial_number || '',
+          serial_number: product_type === 'phone' ? imeiValidation.normalizedSerialNumber : (serial_number || ''),
           Inventorytime: new Date().toISOString(),
           salestime: null
         };
@@ -1655,20 +1664,24 @@ router.post('/quick-sale', unifiedAuth, requirePermission('inventory:create'), a
         (!hasMemoryId && !hasMemoryName)) {
       throw new Error('设备信息不完整，需要提供品牌、型号、颜色、内存的ID或名称');
     }
-    if (!imei || typeof imei !== 'string') {
-      log.error('❌ IMEI验证失败:', { imei, type: typeof imei, length: imei?.length });
-      throw new Error('IMEI必须是15位数字字符串');
-    }
-    if (imei.length !== 15) {
-      log.error('❌ IMEI长度错误:', { imei, length: imei.length });
-      throw new Error('IMEI必须是15位数字');
-    }
-    if (!/^\d{15}$/.test(imei)) {
-      log.error('❌ IMEI格式错误:', { imei });
-      throw new Error('IMEI必须为15位纯数字');
-    }
     if (!serial_number) {
       throw new Error('序列号不能为空');
+    }
+    if (!imei || typeof imei !== 'string') {
+      log.error('❌ IMEI验证失败:', { imei, type: typeof imei, length: imei?.length });
+      throw new Error('IMEI不能为空');
+    }
+
+    const imeiValidation = validateImei(imei, serial_number);
+    const { normalizedImei, normalizedSerialNumber } = imeiValidation;
+
+    if (!imeiValidation.valid) {
+      log.error('❌ IMEI格式错误:', {
+        imei: normalizedImei,
+        serial_number: normalizedSerialNumber,
+        imeiLength: normalizedImei.length
+      });
+      throw new Error(imeiValidation.reason);
     }
     if (!supplier_id || !store_id) {
       throw new Error('供应商和店铺不能为空');
@@ -1933,18 +1946,18 @@ router.post('/quick-sale', unifiedAuth, requirePermission('inventory:create'), a
 
     // 6. 检查IMEI是否已存在（但允许不同客户拥有相同IMEI）
     // 只有当同一客户已拥有相同IMEI时才报错
-    log.debug(`🔍 检查 IMEI ${imei} 和客户 ${customer_id} 的组合...`);
+    log.debug(`🔍 检查 IMEI ${normalizedImei} 和客户 ${customer_id} 的组合...`);
     const [existingPhones] = await connection.execute(
       `SELECT p.id, p.imei, s.customer_id
        FROM phones p
        LEFT JOIN sales s ON p.id = s.phone_id
        WHERE p.imei = ? AND s.customer_id = ?`,
-      [imei, customer_id]
+      [normalizedImei, customer_id]
     );
 
     log.debug(`🔍 查询结果: 找到 ${existingPhones.length} 条记录`);
     if (existingPhones.length > 0) {
-      log.debug(`❌ 该客户 ${customer_id} 已拥有 IMEI ${imei}`);
+      log.debug(`❌ 该客户 ${customer_id} 已拥有 IMEI ${normalizedImei}`);
       await connection.rollback();
       return ApiResponse.error(res, '该客户已存在相同IMEI的手机', 400);
     }
@@ -1952,10 +1965,10 @@ router.post('/quick-sale', unifiedAuth, requirePermission('inventory:create'), a
     // 不同客户可以拥有相同IMEI的手机，这里记录日志
     const [allImeiPhones] = await connection.execute(
       'SELECT id FROM phones WHERE imei = ?',
-      [imei]
+      [normalizedImei]
     );
     if (allImeiPhones.length > 0) {
-      log.debug(`ℹ️ IMEI ${imei} 已存在于其他客户，允许当前客户使用相同IMEI`);
+      log.debug(`ℹ️ IMEI ${normalizedImei} 已存在于其他客户，允许当前客户使用相同IMEI`);
     }
 
     // 7. 创建手机记录（直接设置为已销售状态）
@@ -1969,7 +1982,7 @@ router.post('/quick-sale', unifiedAuth, requirePermission('inventory:create'), a
       purchase_number,
       operator_id, // inventory_operator_id
       finalBrandId, finalModelId, finalColorId, finalMemoryId,
-      imei, serial_number,
+      normalizedImei, normalizedSerialNumber,
       purchase_price || null, sale_price || null,
       is_new !== undefined ? is_new : 1,
       supplier_id, store_id,
@@ -2019,7 +2032,7 @@ router.post('/quick-sale', unifiedAuth, requirePermission('inventory:create'), a
     ApiResponse.success(res, '快速出库成功', {
       phone_id,
       sale_id,
-      imei,
+      imei: normalizedImei,
       customer_name
     });
 
@@ -2027,8 +2040,14 @@ router.post('/quick-sale', unifiedAuth, requirePermission('inventory:create'), a
     if (connection) {
       await connection.rollback();
     }
-    log.error('❌ 快速出库失败:', error);
-    ApiResponse.serverError(res, error.message || '快速出库失败', error);
+    log.error('❌ 快速出库失败:', {
+      message: error?.message || '未知错误',
+      stack: error?.stack
+    });
+    if (error instanceof Error && !error.code) {
+      return ApiResponse.badRequest(res, error.message || '快速出库失败');
+    }
+    ApiResponse.serverError(res, '快速出库失败', error);
   } finally {
     if (connection) {
       connection.release();

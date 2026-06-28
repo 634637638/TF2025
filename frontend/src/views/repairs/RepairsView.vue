@@ -7,7 +7,7 @@
     permission-code="repairs:view"
   >
 
-  <div class="repairs-management">
+  <div class="repairs-management admin-page admin-page-content safe-area-top safe-area-bottom">
     <PageHeader title="维修管理" description="管理手机维修记录和进度">
       <template #actions>
         <el-button v-if="canCreate" @click="showAddModal" type="primary">
@@ -64,7 +64,7 @@
     </div>
 
     <!-- 维修记录列表 -->
-    <div class="repairs-table">
+    <div class="repairs-table table-section admin-table-panel">
       <table>
         <thead>
           <tr>
@@ -450,6 +450,7 @@ const onBrandChange = () => {
 }
 
 const handleSubmit = async () => {
+  if (submitting.value) return
   if (!canCreate.value) {
     handleNoPermission('create')
     return

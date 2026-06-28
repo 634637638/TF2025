@@ -25,9 +25,20 @@ export interface CsrfToken {
   signature: string
 }
 
+interface StoredCsrfToken {
+  token: string
+  expiresAt: number
+}
+
 export interface CsrfResponse {
   success: boolean
   token?: string
+  csrfToken?: string
+  data?: {
+    csrfToken?: string
+    expiresIn?: number
+  }
+  expiresIn?: number
   expiresAt?: number
   error?: string
 }
@@ -71,31 +82,40 @@ export class CsrfProtectionManager {
     // 监听页面可见性变化
     document.addEventListener('visibilitychange', this.handleVisibilityChange.bind(this))
 
-    // 监听存储变化（多标签页同步）
-    window.addEventListener('storage', this.handleStorageChange.bind(this))
+    // CSRF token 绑定当前 tab 的 sessionStorage，不做跨标签页复用。
   }
 
   // 从本地存储恢复token
   private restoreToken(): void {
     try {
-      const stored = storage.get<CsrfToken>(this.config.localStorageKey, 'local')
+      const stored = storage.get<StoredCsrfToken | CsrfToken>(this.config.localStorageKey, 'session')
       if (stored) {
-        if (this.isTokenValid(stored)) {
-          this.currentToken = stored
+        const value = 'token' in stored ? stored.token : stored.value
+        const token: CsrfToken = {
+          value,
+          expiresAt: stored.expiresAt,
+          signature: 'signature' in stored ? stored.signature : this.generateSignature(value)
+        }
+
+        if (this.isTokenValid(token)) {
+          this.currentToken = token
         } else {
-          storage.remove(this.config.localStorageKey, 'local')
+          storage.remove(this.config.localStorageKey, 'session')
         }
       }
     } catch (error) {
       logger.warn('恢复CSRF token失败:', error)
-      storage.remove(this.config.localStorageKey, 'local')
+      storage.remove(this.config.localStorageKey, 'session')
     }
   }
 
   // 保存token到本地存储
   private saveToken(token: CsrfToken): void {
     try {
-      storage.set(this.config.localStorageKey, token, 'local')
+      storage.set<StoredCsrfToken>(this.config.localStorageKey, {
+        token: token.value,
+        expiresAt: token.expiresAt
+      }, 'session')
     } catch (error) {
       logger.warn('保存CSRF token失败:', error)
     }
@@ -153,11 +173,15 @@ export class CsrfProtectionManager {
       try {
         const response = await this.fetchNewToken()
 
-        if (response.success && response.token) {
+        const serverToken = response.data?.csrfToken || response.csrfToken || response.token
+
+        if (response.success && serverToken) {
+          const expiresAt = response.expiresAt ||
+            Date.now() + Math.max(60, Number(response.data?.expiresIn || response.expiresIn || 3600)) * 1000
           const token: CsrfToken = {
-            value: response.token,
-            expiresAt: response.expiresAt || Date.now() + this.config.refreshInterval,
-            signature: this.generateSignature(response.token)
+            value: serverToken,
+            expiresAt,
+            signature: this.generateSignature(serverToken)
           }
 
           this.currentToken = token
@@ -205,7 +229,7 @@ export class CsrfProtectionManager {
 
   // 从服务器获取新的CSRF token
   private async fetchNewToken(): Promise<CsrfResponse> {
-    const response = await fetch('/api/csrf-token', {
+    const response = await fetch('/api/csrf/token', {
       method: 'GET',
       credentials: 'include',
       headers: {
@@ -309,28 +333,10 @@ export class CsrfProtectionManager {
     }
   }
 
-  // 处理存储变化（多标签页同步）
-  private handleStorageChange(event: StorageEvent): void {
-    if (event.key === this.config.localStorageKey && event.newValue) {
-      try {
-        const tokenData: CsrfToken = JSON.parse(event.newValue)
-        if (this.isTokenValid(tokenData) &&
-            (!this.currentToken || tokenData.expiresAt > this.currentToken.expiresAt)) {
-          this.currentToken = tokenData
-
-          window.dispatchEvent(new CustomEvent('tf2025:csrf:synced', {
-            detail: { token: tokenData.value, expiresAt: tokenData.expiresAt }
-          }))
-        }
-      } catch (error) {
-        logger.warn('同步CSRF token失败:', error)
-      }
-    }
-  }
-
   // 清除当前token
   public clearToken(): void {
     this.currentToken = null
+    storage.remove(this.config.localStorageKey, 'session')
     storage.remove(this.config.localStorageKey, 'local')
 
     window.dispatchEvent(new CustomEvent('tf2025:csrf:cleared'))
@@ -364,7 +370,6 @@ export class CsrfProtectionManager {
     this.stopAutoRefresh()
     this.clearToken()
     document.removeEventListener('visibilitychange', this.handleVisibilityChange)
-    window.removeEventListener('storage', this.handleStorageChange)
   }
 }
 

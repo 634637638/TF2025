@@ -1,0 +1,534 @@
+.analytics-view {
+  --analytics-card-text: #0f172a;
+  --analytics-card-muted: #64748b;
+  --analytics-card-border: rgba(148, 163, 184, 0.18);
+  --analytics-card-shadow: 0 8px 18px rgba(15, 23, 42, 0.075);
+  --analytics-card-shadow-hover: 0 12px 24px rgba(15, 23, 42, 0.11);
+  --analytics-card-panel-bg:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.98) 44%, #fff 100%),
+    linear-gradient(160deg, color-mix(in srgb, var(--card-accent) 7%, transparent), rgba(255, 255, 255, 0.01));
+}
+
+/* Analytics top summary cards mirror /subsidy top statistic cards, with a smaller footprint. */
+.analytics-view .customer-analytics .overview-cards,
+.analytics-view .sales-analytics .overview-cards,
+.analytics-view .transfer-analytics .overview-cards,
+.analytics-view .profit-analytics .overview-cards,
+.analytics-view .inventory-analytics .overview-cards,
+.analytics-view .employee-analytics .overview-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)) !important;
+  gap: 10px !important;
+  width: 100% !important;
+  margin: 0 0 14px 0 !important;
+}
+
+.analytics-view .customer-analytics .overview-cards,
+.analytics-view .sales-analytics .overview-cards,
+.analytics-view .transfer-analytics .overview-cards,
+.analytics-view .profit-analytics .overview-cards,
+.analytics-view .inventory-analytics .overview-cards {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.analytics-view .customer-analytics .overview-cards > .el-col,
+.analytics-view .sales-analytics .overview-cards > .el-col,
+.analytics-view .transfer-analytics .overview-cards > .el-col,
+.analytics-view .profit-analytics .overview-cards > .el-col,
+.analytics-view .inventory-analytics .overview-cards > .el-col {
+  width: auto !important;
+  max-width: none !important;
+  flex: none !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.analytics-view .customer-analytics .overview-card,
+.analytics-view .employee-analytics .overview-card,
+.analytics-view .sales-analytics .overview-card,
+.analytics-view .transfer-analytics .overview-card,
+.analytics-view .profit-analytics .overview-card,
+.analytics-view .inventory-analytics .insight-card {
+  --card-accent: #2563eb;
+  position: relative !important;
+  min-height: 126px !important;
+  overflow: hidden !important;
+  border-radius: 13px !important;
+  border: 1px solid var(--analytics-card-border) !important;
+  background: var(--analytics-card-panel-bg) !important;
+  box-shadow: var(--analytics-card-shadow) !important;
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+.analytics-view .customer-analytics .overview-card::before,
+.analytics-view .employee-analytics .overview-card::before,
+.analytics-view .sales-analytics .overview-card::before,
+.analytics-view .transfer-analytics .overview-card::before,
+.analytics-view .profit-analytics .overview-card::before,
+.analytics-view .inventory-analytics .insight-card::before {
+  content: '';
+  position: absolute;
+  inset: -34px auto auto -26px;
+  width: 104px;
+  height: 104px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--card-accent) 17%, white 83%);
+  filter: blur(8px);
+  opacity: 0.92;
+  pointer-events: none;
+}
+
+.analytics-view .customer-analytics .overview-card:hover,
+.analytics-view .employee-analytics .overview-card:hover,
+.analytics-view .sales-analytics .overview-card:hover,
+.analytics-view .transfer-analytics .overview-card:hover,
+.analytics-view .profit-analytics .overview-card:hover,
+.analytics-view .inventory-analytics .insight-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--analytics-card-shadow-hover) !important;
+}
+
+.analytics-view .customer-analytics .overview-card > .el-card__body,
+.analytics-view .employee-analytics .overview-card > .el-card__body,
+.analytics-view .sales-analytics .overview-card > .el-card__body,
+.analytics-view .transfer-analytics .overview-card > .el-card__body,
+.analytics-view .profit-analytics .overview-card > .el-card__body,
+.analytics-view .inventory-analytics .insight-card > .el-card__body {
+  position: relative !important;
+  z-index: 1 !important;
+  height: 100% !important;
+  min-height: 126px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  gap: 7px !important;
+  padding: 12px !important;
+  background: transparent !important;
+}
+
+.analytics-view .customer-analytics .overview-card .card-content,
+.analytics-view .employee-analytics .overview-card .card-content,
+.analytics-view .sales-analytics .overview-card .card-content,
+.analytics-view .transfer-analytics .overview-card .card-content,
+.analytics-view .profit-analytics .overview-card .card-content {
+  display: grid !important;
+  grid-template-columns: 32px minmax(0, 1fr) !important;
+  align-items: start !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+}
+
+.analytics-view .customer-analytics .overview-card .card-info,
+.analytics-view .employee-analytics .overview-card .card-info,
+.analytics-view .sales-analytics .overview-card .card-info,
+.analytics-view .transfer-analytics .overview-card .card-info,
+.analytics-view .profit-analytics .overview-card .card-info {
+  min-width: 0 !important;
+}
+
+.analytics-view .customer-analytics .overview-card .card-icon,
+.analytics-view .employee-analytics .overview-card .card-icon,
+.analytics-view .sales-analytics .overview-card .card-icon,
+.analytics-view .transfer-analytics .overview-card .card-icon,
+.analytics-view .profit-analytics .overview-card .card-icon,
+.analytics-view .inventory-analytics .insight-card__icon {
+  width: 32px !important;
+  height: 32px !important;
+  display: grid !important;
+  place-items: center !important;
+  flex: 0 0 32px !important;
+  border-radius: 10px !important;
+  color: #fff !important;
+  font-size: 14px !important;
+  background: linear-gradient(145deg, var(--card-accent), color-mix(in srgb, var(--card-accent) 70%, black 30%)) !important;
+  box-shadow: 0 10px 18px color-mix(in srgb, var(--card-accent) 22%, transparent) !important;
+}
+
+.analytics-view .customer-analytics .overview-card .card-title,
+.analytics-view .employee-analytics .overview-card .card-title,
+.analytics-view .sales-analytics .overview-card .card-title,
+.analytics-view .transfer-analytics .overview-card .card-title,
+.analytics-view .profit-analytics .overview-card .card-title,
+.analytics-view .inventory-analytics .insight-card__label {
+  margin: 0 0 5px 0 !important;
+  color: color-mix(in srgb, var(--card-accent) 74%, #334155 26%) !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  line-height: 1.2 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+}
+
+.analytics-view .customer-analytics .overview-card .card-value,
+.analytics-view .employee-analytics .overview-card .card-value,
+.analytics-view .sales-analytics .overview-card .card-value,
+.analytics-view .transfer-analytics .overview-card .card-value,
+.analytics-view .profit-analytics .overview-card .card-value,
+.analytics-view .inventory-analytics .insight-card__value {
+  max-width: 100% !important;
+  margin: 0 !important;
+  color: #020617 !important;
+  font-size: clamp(1.18rem, 1.65vw, 1.55rem) !important;
+  font-weight: 850 !important;
+  line-height: 1.06 !important;
+  letter-spacing: -0.035em !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+}
+
+.analytics-view .customer-analytics .overview-card .card-trend,
+.analytics-view .employee-analytics .overview-card .card-change,
+.analytics-view .sales-analytics .overview-card .card-subtitle {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  width: fit-content !important;
+  max-width: 100% !important;
+  margin-top: 7px !important;
+  padding: 3px 7px !important;
+  border-radius: 999px !important;
+  border: 1px solid color-mix(in srgb, var(--card-accent) 16%, white 84%) !important;
+  background: color-mix(in srgb, var(--card-accent) 12%, white 88%) !important;
+  color: color-mix(in srgb, var(--card-accent) 78%, #1e293b 22%) !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  line-height: 1.2 !important;
+  overflow-wrap: anywhere !important;
+}
+
+.analytics-view .transfer-analytics .overview-card .card-compare,
+.analytics-view .inventory-analytics .insight-card__footer {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 6px !important;
+  width: 100% !important;
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+  border-top: 0 !important;
+}
+
+.analytics-view .transfer-analytics .overview-card .card-compare > span,
+.analytics-view .inventory-analytics .insight-card__footer > span {
+  min-width: 0 !important;
+  padding: 6px 7px !important;
+  border-radius: 9px !important;
+  border: 1px solid rgba(226, 232, 240, 0.9) !important;
+  background: rgba(248, 250, 252, 0.88) !important;
+  color: var(--analytics-card-muted) !important;
+  font-size: 10px !important;
+  line-height: 1.25 !important;
+  overflow-wrap: anywhere !important;
+}
+
+.analytics-view .transfer-analytics .overview-card .card-compare .compare-label {
+  color: var(--analytics-card-muted) !important;
+  font-weight: 600 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+.analytics-view .inventory-analytics .insight-card__header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+}
+
+.analytics-view .inventory-analytics .insight-card__header .el-tag {
+  max-width: calc(100% - 40px) !important;
+  height: 22px !important;
+  padding: 0 7px !important;
+  overflow: hidden !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.analytics-view .inventory-analytics .insight-card__meta {
+  color: var(--analytics-card-muted) !important;
+  font-size: 11px !important;
+  line-height: 1.35 !important;
+}
+
+.analytics-view .customer-analytics .overview-card.primary,
+.analytics-view .sales-analytics .overview-cards > .el-col:nth-child(1) .overview-card,
+.analytics-view .transfer-analytics .overview-cards > .el-col:nth-child(1) .overview-card,
+.analytics-view .profit-analytics .overview-cards > .el-col:nth-child(1) .overview-card,
+.analytics-view .inventory-analytics .insight-card--primary,
+.analytics-view .employee-analytics .overview-grid > .overview-card:nth-child(1) {
+  --card-accent: #f97316;
+}
+
+.analytics-view .customer-analytics .overview-card.warning,
+.analytics-view .sales-analytics .overview-cards > .el-col:nth-child(2) .overview-card,
+.analytics-view .transfer-analytics .overview-cards > .el-col:nth-child(3) .overview-card,
+.analytics-view .profit-analytics .overview-cards > .el-col:nth-child(2) .overview-card,
+.analytics-view .inventory-analytics .insight-card--warning,
+.analytics-view .employee-analytics .overview-grid > .overview-card:nth-child(2) {
+  --card-accent: #2563eb;
+}
+
+.analytics-view .customer-analytics .overview-card.success,
+.analytics-view .sales-analytics .overview-card.new,
+.analytics-view .transfer-analytics .overview-cards > .el-col:nth-child(2) .overview-card,
+.analytics-view .profit-analytics .overview-cards > .el-col:nth-child(3) .overview-card,
+.analytics-view .inventory-analytics .insight-card--success,
+.analytics-view .employee-analytics .overview-grid > .overview-card:nth-child(3) {
+  --card-accent: #059669;
+}
+
+.analytics-view .customer-analytics .overview-card.danger,
+.analytics-view .sales-analytics .overview-card.used,
+.analytics-view .sales-analytics .overview-card.transfer,
+.analytics-view .sales-analytics .overview-card.allocation,
+.analytics-view .transfer-analytics .overview-cards > .el-col:nth-child(4) .overview-card,
+.analytics-view .profit-analytics .overview-cards > .el-col:nth-child(4) .overview-card,
+.analytics-view .inventory-analytics .insight-card--supplier,
+.analytics-view .employee-analytics .overview-grid > .overview-card:nth-child(n+4) {
+  --card-accent: #7c3aed;
+}
+
+/* Secondary analytics cards stay unified, but intentionally quieter than the top stats. */
+.analytics-view .chart-card,
+.analytics-view .table-card,
+.analytics-view .stats-card,
+.analytics-view .metric-card,
+.analytics-view .profit-analytics .ranking-card,
+.analytics-view .customer-analytics .detail-card,
+.analytics-view .inventory-analytics .panel-card {
+  overflow: hidden !important;
+  border-radius: 14px !important;
+  border: 1px solid rgba(226, 232, 240, 0.88) !important;
+  background: #fff !important;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.055) !important;
+}
+
+.analytics-view .chart-card > .el-card__header,
+.analytics-view .table-card > .el-card__header,
+.analytics-view .stats-card > .el-card__header,
+.analytics-view .metric-card > .el-card__header,
+.analytics-view .profit-analytics .ranking-card > .el-card__header,
+.analytics-view .customer-analytics .detail-card > .el-card__header,
+.analytics-view .inventory-analytics .panel-card > .el-card__header {
+  padding: 14px 16px 10px !important;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.78) !important;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.92)) !important;
+}
+
+.analytics-view .chart-card > .el-card__body,
+.analytics-view .table-card > .el-card__body,
+.analytics-view .stats-card > .el-card__body,
+.analytics-view .metric-card > .el-card__body,
+.analytics-view .profit-analytics .ranking-card > .el-card__body,
+.analytics-view .customer-analytics .detail-card > .el-card__body,
+.analytics-view .inventory-analytics .panel-card > .el-card__body {
+  padding: 14px 16px 16px !important;
+}
+
+.analytics-view .card-header,
+.analytics-view .card-header-main {
+  min-width: 0 !important;
+}
+
+.analytics-view .chart-card .card-header,
+.analytics-view .table-card .card-header,
+.analytics-view .stats-card .card-header,
+.analytics-view .metric-card .card-header {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+}
+
+.analytics-view .card-header-actions,
+.analytics-view .header-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex-wrap: wrap !important;
+}
+
+.analytics-view .chart-card .card-header h3,
+.analytics-view .table-card .card-header h3,
+.analytics-view .stats-card .card-header h3,
+.analytics-view .metric-card .card-header h3,
+.analytics-view .chart-card .card-header > span,
+.analytics-view .table-card .card-header > span,
+.analytics-view .stats-card .card-header > span,
+.analytics-view .metric-card .card-header > span {
+  margin: 0 !important;
+  color: var(--analytics-card-text) !important;
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  line-height: 1.3 !important;
+}
+
+.analytics-view .card-header-subtitle,
+.analytics-view .update-text {
+  color: var(--analytics-card-muted) !important;
+  font-size: 12px !important;
+}
+
+.analytics-view .stats-card .stat-item,
+.analytics-view .profit-analytics .metric-item {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 3px !important;
+  padding: 10px !important;
+  border-radius: 10px !important;
+  border: 1px solid rgba(226, 232, 240, 0.9) !important;
+  background: rgba(248, 250, 252, 0.9) !important;
+}
+
+.analytics-view .stats-card .stat-label,
+.analytics-view .profit-analytics .metric-label {
+  color: var(--analytics-card-muted) !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.04em !important;
+}
+
+.analytics-view .stats-card .stat-value,
+.analytics-view .profit-analytics .metric-value {
+  color: var(--analytics-card-text) !important;
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  line-height: 1.25 !important;
+  overflow-wrap: anywhere !important;
+}
+
+@media (max-width: 768px) {
+  .analytics-view .customer-analytics .overview-cards,
+  .analytics-view .sales-analytics .overview-cards,
+  .analytics-view .transfer-analytics .overview-cards,
+  .analytics-view .profit-analytics .overview-cards,
+  .analytics-view .inventory-analytics .overview-cards,
+  .analytics-view .employee-analytics .overview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    margin-bottom: 12px !important;
+  }
+
+  .analytics-view .customer-analytics .overview-card,
+  .analytics-view .employee-analytics .overview-card,
+  .analytics-view .sales-analytics .overview-card,
+  .analytics-view .transfer-analytics .overview-card,
+  .analytics-view .profit-analytics .overview-card,
+  .analytics-view .inventory-analytics .insight-card {
+    min-height: 116px !important;
+    border-radius: 12px !important;
+  }
+
+  .analytics-view .customer-analytics .overview-card > .el-card__body,
+  .analytics-view .employee-analytics .overview-card > .el-card__body,
+  .analytics-view .sales-analytics .overview-card > .el-card__body,
+  .analytics-view .transfer-analytics .overview-card > .el-card__body,
+  .analytics-view .profit-analytics .overview-card > .el-card__body,
+  .analytics-view .inventory-analytics .insight-card > .el-card__body {
+    min-height: 116px !important;
+    gap: 6px !important;
+    padding: 9px !important;
+  }
+
+  .analytics-view .customer-analytics .overview-card .card-content,
+  .analytics-view .employee-analytics .overview-card .card-content,
+  .analytics-view .sales-analytics .overview-card .card-content,
+  .analytics-view .transfer-analytics .overview-card .card-content,
+  .analytics-view .profit-analytics .overview-card .card-content {
+    grid-template-columns: 30px minmax(0, 1fr) !important;
+    gap: 7px !important;
+  }
+
+  .analytics-view .customer-analytics .overview-card .card-icon,
+  .analytics-view .employee-analytics .overview-card .card-icon,
+  .analytics-view .sales-analytics .overview-card .card-icon,
+  .analytics-view .transfer-analytics .overview-card .card-icon,
+  .analytics-view .profit-analytics .overview-card .card-icon,
+  .analytics-view .inventory-analytics .insight-card__icon {
+    width: 30px !important;
+    height: 30px !important;
+    flex-basis: 30px !important;
+    border-radius: 9px !important;
+    font-size: 13px !important;
+  }
+
+  .analytics-view .customer-analytics .overview-card .card-title,
+  .analytics-view .employee-analytics .overview-card .card-title,
+  .analytics-view .sales-analytics .overview-card .card-title,
+  .analytics-view .transfer-analytics .overview-card .card-title,
+  .analytics-view .profit-analytics .overview-card .card-title,
+  .analytics-view .inventory-analytics .insight-card__label {
+    margin-bottom: 4px !important;
+    font-size: 9px !important;
+  }
+
+  .analytics-view .customer-analytics .overview-card .card-value,
+  .analytics-view .employee-analytics .overview-card .card-value,
+  .analytics-view .sales-analytics .overview-card .card-value,
+  .analytics-view .transfer-analytics .overview-card .card-value,
+  .analytics-view .profit-analytics .overview-card .card-value,
+  .analytics-view .inventory-analytics .insight-card__value {
+    font-size: 18px !important;
+  }
+
+  .analytics-view .customer-analytics .overview-card .card-trend,
+  .analytics-view .employee-analytics .overview-card .card-change,
+  .analytics-view .sales-analytics .overview-card .card-subtitle {
+    margin-top: 6px !important;
+    padding: 3px 6px !important;
+    font-size: 9px !important;
+  }
+
+  .analytics-view .transfer-analytics .overview-card .card-compare,
+  .analytics-view .inventory-analytics .insight-card__footer {
+    gap: 5px !important;
+  }
+
+  .analytics-view .transfer-analytics .overview-card .card-compare > span,
+  .analytics-view .inventory-analytics .insight-card__footer > span {
+    padding: 5px 6px !important;
+    font-size: 9px !important;
+  }
+
+  .analytics-view .chart-card > .el-card__header,
+  .analytics-view .table-card > .el-card__header,
+  .analytics-view .stats-card > .el-card__header,
+  .analytics-view .metric-card > .el-card__header,
+  .analytics-view .profit-analytics .ranking-card > .el-card__header,
+  .analytics-view .customer-analytics .detail-card > .el-card__header,
+  .analytics-view .inventory-analytics .panel-card > .el-card__header {
+    padding: 12px 12px 9px !important;
+  }
+
+  .analytics-view .chart-card > .el-card__body,
+  .analytics-view .table-card > .el-card__body,
+  .analytics-view .stats-card > .el-card__body,
+  .analytics-view .metric-card > .el-card__body,
+  .analytics-view .profit-analytics .ranking-card > .el-card__body,
+  .analytics-view .customer-analytics .detail-card > .el-card__body,
+  .analytics-view .inventory-analytics .panel-card > .el-card__body {
+    padding: 12px !important;
+  }
+
+  .analytics-view .chart-card .card-header,
+  .analytics-view .table-card .card-header,
+  .analytics-view .stats-card .card-header,
+  .analytics-view .metric-card .card-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .analytics-view .customer-analytics .overview-card .card-value,
+  .analytics-view .employee-analytics .overview-card .card-value,
+  .analytics-view .sales-analytics .overview-card .card-value,
+  .analytics-view .transfer-analytics .overview-card .card-value,
+  .analytics-view .profit-analytics .overview-card .card-value,
+  .analytics-view .inventory-analytics .insight-card__value {
+    font-size: 16px !important;
+  }
+}

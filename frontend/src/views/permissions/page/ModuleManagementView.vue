@@ -919,6 +919,8 @@ export default {
     };
 
     const saveModuleName = async () => {
+      if (isSubmitting.value) return;
+
       if (!editForm.name.trim()) {
         showWarning('请输入模块名称');
         return;
@@ -954,6 +956,8 @@ export default {
     };
 
     const confirmRestore = async () => {
+      if (isSubmitting.value) return;
+
       if (!restoreData.key) return;
 
       setSubmitLoading(true);

@@ -14,7 +14,7 @@
   <div class="shop-config-page">
     <!-- 加载状态 -->
     <div v-if="loading" class="loading-state">
-      <el-skeleton animated />
+      <SectionLoading text="加载商城配置中..." size="large" />
     </div>
 
     <!-- 配置表单 -->
@@ -22,7 +22,7 @@
       <!-- 基本信息 -->
       <div class="config-section">
         <h3 class="section-title">基本信息</h3>
-        <el-form label-width="120px" :disabled="!canEdit">
+        <el-form class="config-form" label-width="120px" :disabled="!canEdit">
           <el-form-item label="店铺名称">
             <el-input v-model="configs.shop_name" placeholder="请输入店铺名称" />
           </el-form-item>
@@ -63,7 +63,7 @@
       <!-- 联系方式 -->
       <div class="config-section">
         <h3 class="section-title">联系方式</h3>
-        <el-form label-width="120px" :disabled="!canEdit">
+        <el-form class="config-form" label-width="120px" :disabled="!canEdit">
           <el-form-item label="联系电话">
             <el-input v-model="configs.shop_phone" placeholder="请输入联系电话" />
           </el-form-item>
@@ -77,8 +77,8 @@
             <el-input v-model="configs.shop_address" type="textarea" :rows="2" placeholder="请输入店铺地址" />
           </el-form-item>
           <el-form-item label="地图位置">
-            <div class="flex gap-2 items-start">
-              <div class="flex-1">
+            <div class="map-location-row">
+              <div class="map-coordinate-inputs">
                 <el-input v-model="configs.map_latitude" placeholder="纬度 (如: 22.5431)" class="mb-2" />
                 <el-input v-model="configs.map_longitude" placeholder="经度 (如: 114.0579)" />
               </div>
@@ -97,7 +97,7 @@
       <!-- 支付方式 -->
       <div class="config-section">
         <h3 class="section-title">支付方式</h3>
-        <el-form label-width="120px" :disabled="!canEdit">
+        <el-form class="config-form" label-width="120px" :disabled="!canEdit">
           <el-form-item label="微信收款码">
             <div class="image-upload-wrapper">
               <el-upload
@@ -177,7 +177,7 @@
       <!-- 功能开关 -->
       <div class="config-section">
         <h3 class="section-title">功能设置</h3>
-        <el-form label-width="120px" :disabled="!canEdit">
+        <el-form class="config-form" label-width="120px" :disabled="!canEdit">
           <el-form-item label="启用轮播图">
             <el-switch v-model="configs.banner_enabled" />
             <template #tip>
@@ -250,6 +250,7 @@ import { useRouter, onBeforeRouteLeave } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Refresh, Check } from '@element-plus/icons-vue'
 import { getAllConfigs, batchUpdateConfigs } from '@/api/shop'
+import SectionLoading from '@/components/SectionLoading.vue'
 import { PermissionGate } from '@/components/base/index'
 import { useAuthStore } from '@/stores/auth'
 import { usePagePermissions } from '@/composables/usePagePermissions'
@@ -494,6 +495,7 @@ const loadConfigs = async () => {
 
 // 保存配置
 const handleSave = async () => {
+  if (saving.value) return
   if (!ensureEditPermission()) {
     return
   }
@@ -744,6 +746,7 @@ onUnmounted(() => {
 <style scoped lang="scss">
 .shop-config-page {
   padding: 24px;
+  min-width: 0;
 }
 
 // 加载状态
@@ -755,6 +758,7 @@ onUnmounted(() => {
 .config-content {
   max-width: 800px;
   margin: 0 auto;
+  min-width: 0;
 }
 
 // 配置区块
@@ -764,6 +768,7 @@ onUnmounted(() => {
   padding: 24px;
   margin-bottom: 16px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  min-width: 0;
 
   .section-title {
     font-size: 18px;
@@ -827,6 +832,19 @@ onUnmounted(() => {
   }
 }
 
+.map-location-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.map-coordinate-inputs {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 // 操作按钮
 .actions {
   display: flex;
@@ -887,48 +905,196 @@ onUnmounted(() => {
 // 响应式设计
 @media (max-width: 768px) {
   .shop-config-page {
-    padding: 16px;
+    padding: 0;
+    width: 100%;
+    overflow: hidden;
   }
 
   .config-content {
     max-width: 100%;
+    width: 100%;
   }
 
   .config-section {
-    padding: 16px;
+    padding: 14px;
     margin-bottom: 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(226, 232, 240, 0.88);
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
 
     .section-title {
-      font-size: 16px;
-      margin-bottom: 16px;
-    }
-
-    // 移动端表单调整
-    :deep(.el-form) {
-      .el-form-item {
-        margin-bottom: 16px;
-
-        .el-form-item__label {
-          width: 100% !important;
-          text-align: left;
-          margin-bottom: 8px;
-          line-height: 1.5;
-        }
-
-        .el-form-item__content {
-          margin-left: 0 !important;
-        }
-      }
+      margin-bottom: 14px;
+      padding-left: 10px;
+      font-size: 15px;
+      font-weight: 700;
     }
   }
 
+  .config-section :deep(.config-form) {
+    width: 100%;
+  }
+
+  .config-section :deep(.el-form-item) {
+    display: block;
+    margin-bottom: 15px;
+  }
+
+  .config-section :deep(.el-form-item:last-child) {
+    margin-bottom: 0;
+  }
+
+  .config-section :deep(.el-form-item__label) {
+    width: 100% !important;
+    height: auto;
+    margin-bottom: 7px;
+    padding: 0 !important;
+    color: #334155;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.4;
+    text-align: left;
+  }
+
+  .config-section :deep(.el-form-item__content) {
+    width: 100%;
+    min-width: 0;
+    margin-left: 0 !important;
+    line-height: 1.4;
+  }
+
+  .config-section :deep(.el-input),
+  .config-section :deep(.el-textarea) {
+    width: 100%;
+  }
+
+  .config-section :deep(.el-input__wrapper),
+  .config-section :deep(.el-textarea__inner) {
+    border-radius: 12px;
+  }
+
+  .config-section :deep(.el-form-item__tip),
+  .tip-text {
+    display: block;
+    margin-top: 6px;
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .config-section .image-upload-wrapper {
+    align-items: flex-start;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .config-section .image-upload-wrapper :deep(.el-upload),
+  .config-section :deep(.el-upload) {
+    width: 82px;
+    height: 82px;
+    line-height: 82px;
+    border-radius: 14px;
+  }
+
+  .config-section .image-upload-wrapper :deep(.el-upload i),
+  .config-section :deep(.el-upload i) {
+    font-size: 22px;
+  }
+
+  .config-section .delete-image-btn {
+    min-height: 32px;
+    padding: 6px 10px;
+  }
+
+  .map-location-row {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .map-coordinate-inputs {
+    width: 100%;
+  }
+
+  .map-location-row .el-button {
+    width: 100%;
+  }
+
+  .map-picker-container .map-instructions {
+    margin-bottom: 12px;
+    padding: 12px;
+    border-radius: 12px;
+  }
+
+  .map-picker-container .map-instructions h4 {
+    margin-bottom: 8px;
+    font-size: 13px;
+  }
+
+  .map-picker-container .map-instructions ul {
+    padding-left: 18px;
+  }
+
+  .map-picker-container .map-instructions ul li,
+  .map-picker-container .map-instructions .current-location {
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .map-picker-container .map-frame {
+    height: min(46vh, 320px);
+    min-height: 240px;
+    border-radius: 12px;
+  }
+
   .actions {
-    padding: 24px 0;
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    margin: 0 -2px;
+    padding: 10px 0 calc(10px + env(safe-area-inset-bottom));
+    background: linear-gradient(180deg, rgba(245, 247, 250, 0), rgba(245, 247, 250, 0.96) 34%, #f5f7fa);
 
     .el-button {
       width: 100%;
-      max-width: 300px;
+      max-width: none;
+      min-height: 40px;
+      border-radius: 999px;
     }
+  }
+}
+
+@media (max-width: 480px) {
+  .config-section {
+    padding: 12px;
+  }
+
+  .config-section .image-upload-wrapper {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .config-section .delete-image-btn {
+    width: 100%;
+  }
+
+  .map-picker-container .map-frame {
+    height: 240px;
+  }
+}
+
+@media (max-width: 768px) {
+  :global(.shop-config-map-dialog .mobile-dialog-sheet-body) {
+    padding: 12px !important;
+  }
+
+  :global(.shop-config-map-dialog .mobile-dialog-sheet-footer) {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom)) !important;
+  }
+
+  :global(.shop-config-map-dialog .mobile-dialog-sheet-footer .el-button) {
+    width: 100%;
+    margin: 0 !important;
   }
 }
 </style>

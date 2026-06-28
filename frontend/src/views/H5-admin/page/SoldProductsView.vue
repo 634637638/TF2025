@@ -636,6 +636,7 @@ onUnmounted(() => {
 
 .product-main {
   flex: 1;
+  min-width: 0;
 
   h3 {
     font-size: 18px;
@@ -683,6 +684,7 @@ onUnmounted(() => {
   background: linear-gradient(135deg, #ff6b00 0%, #ff8c00 100%);
   color: #fff;
   border-radius: 8px;
+  flex-shrink: 0;
 
   i {
     font-size: 24px;
@@ -699,6 +701,12 @@ onUnmounted(() => {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
+  flex-wrap: nowrap;
+
+  .el-button {
+    margin-left: 0;
+    white-space: nowrap;
+  }
 }
 
 .pagination {
@@ -818,19 +826,74 @@ onUnmounted(() => {
   }
 
   .product-info {
-    flex-direction: column;
-    gap: 12px;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .product-main {
+    min-width: 0;
+
+    h3 {
+      margin-bottom: 6px;
+      font-size: 15px;
+      line-height: 1.3;
+      word-break: break-word;
+    }
+
+    .product-details {
+      gap: 8px;
+      margin-bottom: 6px;
+      flex-wrap: wrap;
+
+      .detail-item {
+        font-size: 12px;
+      }
+    }
+
+    .product-meta {
+      gap: 3px;
+
+      .meta-item {
+        font-size: 11px;
+        line-height: 1.35;
+        word-break: break-all;
+      }
+    }
   }
 
   .image-count {
     align-self: flex-start;
+    min-width: 52px;
+    padding: 6px 8px;
+    border-radius: 10px;
+
+    i {
+      margin-bottom: 2px;
+      font-size: 16px;
+    }
+
+    span {
+      font-size: 11px;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
   }
 
   .product-actions {
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
 
     .el-button {
       width: 100%;
+      min-width: 0;
+      margin: 0;
+      padding: 8px 6px;
+      justify-content: center;
+      font-size: 12px;
     }
   }
 

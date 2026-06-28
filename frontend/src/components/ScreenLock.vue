@@ -168,6 +168,7 @@ const loadLockSettings = async () => {
 
 // 处理解锁
 const handleUnlock = async () => {
+  if (isUnlocking.value) return
   if (!password.value.trim()) {
     errorMessage.value = '请输入密码'
     return

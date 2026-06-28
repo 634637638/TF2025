@@ -1,5 +1,5 @@
 <template>
-  <div class="returngoods-page">
+  <div class="returngoods-page admin-page admin-page-content safe-area-top safe-area-bottom">
     <div class="returngoods-overview">
       <div class="overview-card">
         <div class="overview-icon primary">
@@ -497,6 +497,7 @@ const handleOperatorChange = (operatorId: number | null) => {
 }
 
 const handleSave = async () => {
+  if (submitting.value) return
   if (!editForm.id) return
 
   submitting.value = true

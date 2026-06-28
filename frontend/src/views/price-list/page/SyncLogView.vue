@@ -69,7 +69,7 @@
     <el-card class="table-card admin-panel admin-table-panel">
       <div v-if="isMobile" class="table-responsive">
         <div v-if="loading" class="table-loading">
-          <el-skeleton :rows="5" animated />
+          <SectionLoading text="加载同步日志中..." size="large" />
         </div>
 
         <table v-else class="data-table sync-log-mobile-table">
@@ -369,6 +369,7 @@ import { useLoadingState } from '@/composables'
 import { PageHeader, PermissionGate } from '@/components/base'
 import Pagination from '@/components/Pagination.vue'
 import InlineLoading from '@/components/InlineLoading.vue'
+import SectionLoading from '@/components/SectionLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { logger } from '@/utils/logger'
 const router = useRouter()

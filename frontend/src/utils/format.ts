@@ -4,6 +4,7 @@
  * 适配北京时间
  */
 import { TimeUtil } from './time'
+import { storage } from '@/services/storage'
 
 /**
  * 格式化货币
@@ -491,15 +492,27 @@ export const formatImageUrl = (path: string | null | undefined): string => {
 
   // 确保路径以 / 开头
   const normalizedPath = normalizedInput.startsWith('/') ? normalizedInput : `/${normalizedInput}`
+  const protectedSubsidyPath = normalizedPath.startsWith('/uploads/subsidy/')
+    ? normalizedPath.replace('/uploads/subsidy/', '/api/subsidy/files/subsidy/')
+    : normalizedPath
+  if (protectedSubsidyPath.startsWith('/api/subsidy/files/')) {
+    const token = storage.getToken()
+    if (!token) {
+      return protectedSubsidyPath
+    }
+
+    const separator = protectedSubsidyPath.includes('?') ? '&' : '?'
+    return `${protectedSubsidyPath}${separator}token=${encodeURIComponent(token)}`
+  }
 
   // 开发环境：使用相对路径，通过 Vite 代理处理
   if (import.meta.env.DEV) {
-    return normalizedPath
+    return protectedSubsidyPath
   }
 
   const backendOrigin = getBackendOrigin()
   if (!backendOrigin || typeof window === 'undefined') {
-    return normalizedPath
+    return protectedSubsidyPath
   }
 
   try {
@@ -509,18 +522,18 @@ export const formatImageUrl = (path: string | null | undefined): string => {
 
     // 同源部署或已配置前端反向代理时，继续使用相对路径
     if (isSameOrigin) {
-      return normalizedPath
+      return protectedSubsidyPath
     }
 
     // HTTPS 页面不能回退到 HTTP 资源，避免混合内容被浏览器拦截
     if (isHttpsPage && !isHttpsBackend) {
-      return normalizedPath
+      return protectedSubsidyPath
     }
 
     // 海外前端单独部署且未配置 /uploads 代理时，直连后端图片服务
-    return `${backendOrigin}${normalizedPath}`
+    return `${backendOrigin}${protectedSubsidyPath}`
   } catch {
-    return normalizedPath
+    return protectedSubsidyPath
   }
 }
 

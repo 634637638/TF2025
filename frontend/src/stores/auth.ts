@@ -1268,6 +1268,7 @@ export const useAuthStore = defineStore('auth', () => {
     permissionVisibility,
     roles,
     isLoading,
+    isAuthenticating,
     lastActivity,
     sessionTimeout,
     loginAttempts,

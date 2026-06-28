@@ -688,6 +688,7 @@ const handleDistributionChange = () => {
 
 // 提交
 const handleSubmit = async () => {
+  if (submitting.value) return
   if (!canSubmit.value) {
     ElMessage.warning(isEditMode.value ? '请完善配件信息' : '请完善入库信息')
     return

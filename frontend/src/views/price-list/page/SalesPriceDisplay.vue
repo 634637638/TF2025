@@ -84,9 +84,9 @@
               <el-table-column prop="model_number" label="型号" min-width="100" />
               <el-table-column prop="color_name" label="颜色" min-width="60" />
               <el-table-column prop="memory" label="内存" min-width="70" />
-              <el-table-column prop="retail_price" label="销售价格" min-width="80" align="right">
+              <el-table-column prop="display_retail_price" label="销售价格" min-width="80" align="right">
                 <template #default="{ row }">
-                  <span v-if="row.retail_price" class="price wholesale">{{ Math.round(Number(row.retail_price)) }}</span>
+                  <span v-if="hasDisplayRetailPrice(row)" class="price wholesale">{{ formatDisplayRetailPrice(row) }}</span>
                 </template>
               </el-table-column>
             </el-table>
@@ -201,7 +201,7 @@ const handleSearch = async () => {
     if (res.success) {
       const rawData = Array.isArray(res.data) ? res.data : []
       searchResults.value = rawData
-        .filter((item: any) => item.retail_price && Number(item.retail_price) > 0)
+        .filter((item: any) => hasDisplayRetailPrice(item))
       hasSearched.value = true
     }
   } catch (error) {
@@ -215,6 +215,19 @@ const handleSearch = async () => {
 const handleClear = () => {
   searchKeyword.value = ''
   loadAllData()
+}
+
+const getDisplayRetailPrice = (row: any) => {
+  return row?.display_retail_price ?? row?.retail_price
+}
+
+const hasDisplayRetailPrice = (row: any) => {
+  const price = getDisplayRetailPrice(row)
+  return price !== null && price !== undefined && price !== '' && Number(price) > 0
+}
+
+const formatDisplayRetailPrice = (row: any) => {
+  return Math.round(Number(getDisplayRetailPrice(row) || 0))
 }
 
 // 获取当前时间字符串（用于水印）

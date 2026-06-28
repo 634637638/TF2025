@@ -5,7 +5,7 @@
 <template>
   <div class="checkout-page">
     <div v-if="loading" class="loading-state">
-      <el-skeleton animated />
+      <SectionLoading text="加载结算信息中..." size="large" />
     </div>
 
     <div v-else class="checkout-content">
@@ -209,6 +209,7 @@ import { ValidationRules } from '@/composables'
 import { createOrder, getCart, getProductDetail, getStockDistribution } from '@/api/shop-public'
 import { getPublicConfig } from '@/api/shop-public'
 import { baseDataApi } from '@/api/base-data'
+import SectionLoading from '@/components/SectionLoading.vue'
 import { formatImageUrl } from '@/utils/format'
 import { normalizePhoneDigits } from '@/utils/security'
 import { storage } from '@/services/storage'
@@ -634,6 +635,7 @@ const loadConfig = async () => {
 
 // 提交订单
 const handleSubmit = async () => {
+  if (submitting.value) return
   try {
     deliveryForm.value.phone = normalizeCustomerPhone(deliveryForm.value.phone)
     addressForm.value.phone = normalizeCustomerPhone(addressForm.value.phone)
@@ -810,6 +812,8 @@ const loadUserDefaultAddress = async (forceRemote = false) => {
 
 // 保存地址
 const saveAddress = async () => {
+  if (savingAddress.value) return
+
   if (!addressFormRef.value) return
 
   try {

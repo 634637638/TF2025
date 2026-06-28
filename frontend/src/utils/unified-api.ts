@@ -10,7 +10,7 @@ import { ErrorLevel, ErrorType } from './error-boundary'
 import { clearPersistedAuthData, setBackendDisconnectedState } from './auth-session'
 import { showElementError, showElementLoading, showElementNotification, showElementSuccess, showElementWarning } from './element-feedback'
 import { storage } from '@/services/storage'
-import { AUTH_STORAGE_KEYS, ROUTER_STORAGE_KEYS } from '@/constants/storage'
+import { AUTH_STORAGE_KEYS, ROUTER_STORAGE_KEYS, SECURITY_STORAGE_KEYS } from '@/constants/storage'
 import type { ApiResponse as GlobalApiResponse } from '@/types'
 import logger from '@/utils/logger'
 
@@ -59,6 +59,9 @@ class UnifiedApiManager {
   private requestCount = 0
   private cache = new Map<string, { data: any, timestamp: number, ttl: number }>()
   private refreshPromise: Promise<boolean> | null = null
+  private csrfToken: string | null = null
+  private csrfTokenExpiresAt = 0
+  private csrfTokenPromise: Promise<string | null> | null = null
   private static readonly REDIRECT_COOLDOWN_TIME = 3000 // 3秒内不重复跳转
 
   constructor() {
@@ -98,7 +101,7 @@ class UnifiedApiManager {
   /**
    * 处理请求
    */
-  private handleRequest(config: any): any {
+  private async handleRequest(config: any): Promise<any> {
     const requestConfig = config as RequestConfig
 
     if (!requestConfig.timeout) {
@@ -110,7 +113,7 @@ class UnifiedApiManager {
     this.addAuthHeaders(config)
 
     // 添加CSRF防护
-    this.addCSRFHeaders(config)
+    await this.addCSRFHeaders(config)
 
     // 添加请求ID和时间戳
     config.metadata = {
@@ -234,6 +237,14 @@ class UnifiedApiManager {
       return recoveredResponse
     }
 
+    const csrfRecoveredResponse = await this.tryRecoverCSRFError(error)
+    if (csrfRecoveredResponse) {
+      if (requestConfig?.showLoading) {
+        this.hideLoading()
+      }
+      return csrfRecoveredResponse
+    }
+
     // 处理特定状态码错误
     this.handleHttpError(error)
 
@@ -271,6 +282,35 @@ class UnifiedApiManager {
 
     requestConfig._retry = true
     this.addAuthHeaders(requestConfig)
+    return this.instance(requestConfig)
+  }
+
+  private async tryRecoverCSRFError(error: AxiosError): Promise<any | null> {
+    const status = error.response?.status
+    const responseData = error.response?.data as any
+    const requestConfig = (error.config || {}) as RequestConfig & { _csrfRetry?: boolean }
+    const tokenError = responseData?.code
+
+    if (
+      status !== 403 ||
+      requestConfig._csrfRetry ||
+      !['CSRF_TOKEN_MISSING', 'CSRF_TOKEN_INVALID'].includes(tokenError) ||
+      !this.shouldAttachCSRF(requestConfig)
+    ) {
+      return null
+    }
+
+    const token = await this.getCSRFToken(true)
+    if (!token) {
+      return null
+    }
+
+    requestConfig._csrfRetry = true
+    requestConfig.headers = {
+      ...(requestConfig.headers || {}),
+      'X-CSRF-Token': token
+    }
+
     return this.instance(requestConfig)
   }
 
@@ -725,14 +765,146 @@ class UnifiedApiManager {
   /**
    * 添加CSRF防护头
    */
-  private addCSRFHeaders(config: any): void {
-    // 获取CSRF token
+  private async addCSRFHeaders(config: any): Promise<void> {
+    if (!this.shouldAttachCSRF(config)) {
+      return
+    }
+
+    const token = await this.getCSRFToken()
+    if (token) {
+      config.headers['X-CSRF-Token'] = token
+      return
+    }
+
+    // 兼容旧页面里可能存在的 meta token
     const csrfMeta = (document as Document & { querySelector: (selectors: string) => Element | null })
       .querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null
     const csrfToken = csrfMeta?.content
     if (csrfToken) {
       config.headers['X-CSRF-Token'] = csrfToken
     }
+  }
+
+  private shouldAttachCSRF(config: any): boolean {
+    const method = String(config.method || 'get').toUpperCase()
+    if (['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+      return false
+    }
+
+    const url = String(config.url || '')
+    const normalizedPath = this.normalizeApiPath(url)
+
+    if (!normalizedPath) {
+      return false
+    }
+
+    const exactExemptPaths = new Set([
+      '/csrf/token',
+      '/csrf/verify',
+      '/csrf/csrf-token',
+      '/auth/login',
+      '/auth/refresh',
+      '/auth/init-admin',
+      '/screen-lock/verify-inventory-query'
+    ])
+
+    if (exactExemptPaths.has(normalizedPath)) {
+      return false
+    }
+
+    const exemptPatterns = [
+      /^\/public\/cart(?:\/|$)/,
+      /^\/public\/orders\/create$/,
+      /^\/public\/orders\/[^/]+\/confirm-payment$/,
+      /^\/public\/orders\/[^/]+\/cancel$/,
+      /^\/public\/auth\/(?:register|login|profile|logout)$/
+    ]
+
+    return !exemptPatterns.some(pattern => pattern.test(normalizedPath))
+  }
+
+  private normalizeApiPath(url: string): string {
+    if (!url) {
+      return ''
+    }
+
+    try {
+      const parsed = new URL(url, window.location.origin)
+      const basePath = String(API_CONFIG.baseURL || '/api').replace(/^https?:\/\/[^/]+/i, '').replace(/\/+$/, '')
+      const path = parsed.pathname.startsWith(basePath)
+        ? parsed.pathname.slice(basePath.length) || '/'
+        : parsed.pathname
+      return path.startsWith('/') ? path : `/${path}`
+    } catch {
+      const [pathOnly] = url.split('?')
+      const normalized = pathOnly.startsWith('/') ? pathOnly : `/${pathOnly}`
+      return normalized.startsWith('/api/') ? normalized.slice('/api'.length) : normalized
+    }
+  }
+
+  private readCachedCSRFToken(): string | null {
+    if (this.csrfToken && this.csrfTokenExpiresAt > Date.now() + 60_000) {
+      return this.csrfToken
+    }
+
+    const cached = storage.get<{ token: string; expiresAt: number }>(SECURITY_STORAGE_KEYS.CSRF_TOKEN, 'session')
+    if (cached?.token && cached.expiresAt > Date.now() + 60_000) {
+      this.csrfToken = cached.token
+      this.csrfTokenExpiresAt = cached.expiresAt
+      return cached.token
+    }
+
+    return null
+  }
+
+  private async getCSRFToken(forceRefresh = false): Promise<string | null> {
+    if (!forceRefresh) {
+      const cached = this.readCachedCSRFToken()
+      if (cached) {
+        return cached
+      }
+    }
+
+    if (this.csrfTokenPromise) {
+      return this.csrfTokenPromise
+    }
+
+    this.csrfTokenPromise = this.fetchCSRFToken()
+      .finally(() => {
+        this.csrfTokenPromise = null
+      })
+
+    return this.csrfTokenPromise
+  }
+
+  private async fetchCSRFToken(): Promise<string | null> {
+    const csrfClient = axios.create({
+      baseURL: API_CONFIG.baseURL,
+      timeout: DEFAULT_READ_TIMEOUT,
+      headers: API_CONFIG.headers,
+      withCredentials: true
+    })
+
+    const token = this.getValidToken()
+    const headers: Record<string, string> = {}
+    if (token) {
+      headers.Authorization = `Bearer ${token}`
+    }
+
+    const response = await csrfClient.get('/csrf/token', { headers })
+    const payload = response?.data?.data || response?.data
+    const nextToken = payload?.csrfToken || response.headers?.['x-csrf-token']
+    if (!nextToken) {
+      return null
+    }
+
+    const expiresInSeconds = Number(payload?.expiresIn || 3600)
+    const expiresAt = Date.now() + Math.max(60, expiresInSeconds) * 1000
+    this.csrfToken = nextToken
+    this.csrfTokenExpiresAt = expiresAt
+    storage.set(SECURITY_STORAGE_KEYS.CSRF_TOKEN, { token: nextToken, expiresAt }, 'session')
+
+    return nextToken
   }
 
   /**
@@ -1050,6 +1222,9 @@ class UnifiedApiManager {
     storage.remove('access_token', 'session')
     storage.remove(AUTH_STORAGE_KEYS.TOKEN, 'session')
     storage.remove(AUTH_STORAGE_KEYS.AUTH, 'local')
+    storage.remove(SECURITY_STORAGE_KEYS.CSRF_TOKEN, 'session')
+    this.csrfToken = null
+    this.csrfTokenExpiresAt = 0
   }
 
   /**

@@ -4,20 +4,12 @@
       <div v-if="showGlobalLoading" class="global-loading">
         <div class="loading-backdrop">
           <div class="loading-content">
-            <div class="loading-orb" :class="`loading-orb--${size}`" aria-hidden="true">
-              <span class="loading-orb__aura"></span>
-              <span class="loading-orb__ring loading-orb__ring--slow"></span>
-              <span class="loading-orb__ring loading-orb__ring--fast"></span>
-              <div class="loading-orb__core">
-                <span class="loading-orb__pulse"></span>
-              </div>
+            <div class="global-loading-ring" :class="`global-loading-ring--${size}`" aria-hidden="true">
+              <InlineLoading :size="size" />
             </div>
             <div class="loading-copy">
               <div class="loading-title">{{ loadingStore.loadingText || '正在加载' }}</div>
               <div class="loading-subtitle">正在为你准备页面内容</div>
-            </div>
-            <div class="loading-progress" aria-hidden="true">
-              <span></span>
             </div>
           </div>
         </div>
@@ -29,9 +21,13 @@
 <script>
 import { defineComponent, ref, watch, onBeforeUnmount } from 'vue'
 import { useLoadingStore } from '@/stores/loading'
+import InlineLoading from '@/components/InlineLoading.vue'
 
 export default defineComponent({
   name: 'GlobalLoading',
+  components: {
+    InlineLoading
+  },
   props: {
     size: {
       type: String,
@@ -136,7 +132,7 @@ export default defineComponent({
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 18px;
+  gap: 16px;
   min-width: 236px;
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(248, 250, 252, 0.82));
@@ -163,92 +159,47 @@ export default defineComponent({
   animation: panel-sheen 2.8s ease-in-out infinite;
 }
 
-.loading-orb {
+.global-loading-ring {
   position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 82px;
-  height: 82px;
-}
-
-.loading-orb--small {
-  width: 64px;
-  height: 64px;
-}
-
-.loading-orb--large {
-  width: 104px;
-  height: 104px;
-}
-
-.loading-orb__aura,
-.loading-orb__ring,
-.loading-orb__core,
-.loading-orb__pulse {
-  position: absolute;
+  width: 88px;
+  height: 88px;
   border-radius: 50%;
-}
-
-.loading-orb__aura {
-  inset: -12px;
   background:
-    radial-gradient(circle, rgba(14, 165, 233, 0.22), transparent 56%),
-    radial-gradient(circle at 62% 64%, rgba(20, 184, 166, 0.18), transparent 46%);
-  filter: blur(7px);
-  animation: aura-breathe 2.2s ease-in-out infinite;
-}
-
-.loading-orb__ring--slow {
-  inset: 0;
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  background:
-    conic-gradient(from 180deg, transparent 0 18%, rgba(14, 165, 233, 0.82) 28%, rgba(20, 184, 166, 0.82) 42%, transparent 58% 100%);
-  mask: radial-gradient(circle, transparent 0 62%, #000 63% 100%);
-  animation: spin 1.45s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+    radial-gradient(circle, rgba(255, 255, 255, 0.98), rgba(239, 246, 255, 0.86) 68%, rgba(186, 230, 253, 0.52));
   box-shadow:
-    0 0 28px rgba(14, 165, 233, 0.2),
-    inset 0 0 18px rgba(14, 165, 233, 0.08);
+    0 18px 40px rgba(37, 99, 235, 0.14),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.9);
 }
 
-.loading-orb__ring--fast {
-  inset: 13px;
+.global-loading-ring::before {
+  content: '';
+  position: absolute;
+  inset: -14px;
+  border-radius: 50%;
   background:
-    conic-gradient(from 0deg, transparent 0 28%, rgba(37, 99, 235, 0.7) 38%, transparent 52% 100%);
-  mask: radial-gradient(circle, transparent 0 68%, #000 69% 100%);
-  animation: spin 1s linear infinite reverse;
-  opacity: 0.86;
+    radial-gradient(circle, rgba(56, 189, 248, 0.18), transparent 58%),
+    radial-gradient(circle at 64% 62%, rgba(37, 99, 235, 0.14), transparent 48%);
+  filter: blur(8px);
+  animation: ambient-breathe 2.6s ease-in-out infinite;
 }
 
-.loading-orb__core {
-  inset: 27px;
-  display: grid;
-  place-items: center;
-  background:
-    radial-gradient(circle at 34% 28%, #ffffff 0 16%, #e0f2fe 46%, #38bdf8 100%);
-  box-shadow:
-    0 0 0 8px rgba(14, 165, 233, 0.08),
-    0 16px 32px rgba(37, 99, 235, 0.24),
-    inset 0 -7px 16px rgba(14, 116, 144, 0.16);
-  animation: core-breathe 1.8s ease-in-out infinite;
+.global-loading-ring :deep(.inline-loading) {
+  position: relative;
+  z-index: 1;
 }
 
-.loading-orb--small .loading-orb__core {
-  inset: 21px;
+.global-loading-ring--small {
+  width: 72px;
+  height: 72px;
 }
 
-.loading-orb--large .loading-orb__core {
-  inset: 34px;
-}
-
-.loading-orb__pulse {
-  width: 36%;
-  height: 36%;
-  background: #ffffff;
-  box-shadow:
-    0 0 0 3px rgba(255, 255, 255, 0.45),
-    0 0 18px rgba(255, 255, 255, 0.94);
-  animation: pulse-dot 1.2s ease-in-out infinite;
+.global-loading-ring--large {
+  width: 108px;
+  height: 108px;
 }
 
 .loading-copy {
@@ -270,77 +221,6 @@ export default defineComponent({
   color: #64748b;
   font-weight: 600;
   letter-spacing: 0.02em;
-}
-
-.loading-progress {
-  position: relative;
-  z-index: 1;
-  width: 164px;
-  height: 4px;
-  border-radius: 999px;
-  background: rgba(226, 232, 240, 0.86);
-  overflow: hidden;
-}
-
-.loading-progress span {
-  position: absolute;
-  inset: 0;
-  width: 46%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #0ea5e9, #14b8a6, #67e8f9);
-  box-shadow: 0 0 18px rgba(14, 165, 233, 0.5);
-  animation: progress-sweep 1.55s ease-in-out infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-@keyframes aura-breathe {
-  0%,
-  100% {
-    transform: scale(0.94);
-    opacity: 0.66;
-  }
-  50% {
-    transform: scale(1.08);
-    opacity: 1;
-  }
-}
-
-@keyframes core-breathe {
-  0%,
-  100% {
-    transform: scale(0.96);
-  }
-  50% {
-    transform: scale(1.03);
-  }
-}
-
-@keyframes pulse-dot {
-  0%,
-  100% {
-    transform: scale(0.74);
-    opacity: 0.64;
-  }
-  50% {
-    transform: scale(1.18);
-    opacity: 1;
-  }
-}
-
-@keyframes progress-sweep {
-  0% {
-    transform: translateX(-115%);
-  }
-  52% {
-    transform: translateX(85%);
-  }
-  100% {
-    transform: translateX(260%);
-  }
 }
 
 @keyframes panel-sheen {

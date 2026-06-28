@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { getDatabase } = require('../config/database');
-const { unifiedAuth, optionalAuth, requirePermission } = require('../middleware/unified-auth');
+const { unifiedAuth, requirePermission } = require('../middleware/unified-auth');
 const log = require('../utils/log');
 
 /**
@@ -84,7 +84,7 @@ async function logPermissionModification(req, roleId, roleName, permissions, ext
 /**
  * GET /api/permission-logs/logs - 获取权限操作日志
  */
-router.get('/logs', optionalAuth, async (req, res) => {
+router.get('/logs', unifiedAuth, requirePermission('permissions:admin'), async (req, res) => {
   try {
     const db = getDatabase();
     const {
@@ -161,7 +161,7 @@ router.get('/logs', optionalAuth, async (req, res) => {
 /**
  * GET /api/permission-logs/stats - 获取日志统计
  */
-router.get('/stats', optionalAuth, async (req, res) => {
+router.get('/stats', unifiedAuth, requirePermission('permissions:admin'), async (req, res) => {
   try {
     const db = getDatabase();
 
@@ -197,7 +197,7 @@ router.get('/stats', optionalAuth, async (req, res) => {
 /**
  * POST /api/permission-logs/log - 手动记录日志（供内部调用）
  */
-router.post('/log', optionalAuth, async (req, res) => {
+router.post('/log', unifiedAuth, requirePermission('permissions:admin'), async (req, res) => {
   try {
     const {
       action,

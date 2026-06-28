@@ -359,25 +359,6 @@ class MenuController {
     }
   }
 
-  /**
-   * 初始化菜单数据
-   */
-  async initMenus(req, res) {
-    try {
-      const result = await this.getMenuService().initMenus(req.user);
-
-      if (result.success) {
-        // 清除所有用户的菜单缓存
-        clearAllMenuCache();
-        ApiResponse.success(res, result.message, result.data);
-      } else {
-        ApiResponse.error(res, result.message, 400, result.code);
-      }
-    } catch (error) {
-      log.error('初始化菜单数据失败:', error);
-      ApiResponse.serverError(res, '初始化菜单数据失败', error);
-    }
-  }
 }
 
 module.exports = new MenuController();

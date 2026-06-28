@@ -1858,6 +1858,8 @@ const handleEditRole = (role: Role) => {
 }
 
 const saveRole = async () => {
+  if (savingRole.value) return
+
   // 自定义表单验证
   if (!roleForm.name.trim()) {
     error('请输入角色名称')
@@ -2399,6 +2401,8 @@ const loadRoleFieldPermissions = async (moduleKey: string) => {
 
 // 保存角色字段权限
 const saveRoleFieldPermissions = async () => {
+  if (savingRoleFieldPermissions.value) return
+
   if (!selectedRoleForFieldPermission.value || !selectedRoleModule.value) return
 
   try {
@@ -2657,6 +2661,8 @@ const handleEditUserRoles = (user: User) => {
 }
 
 const saveUserRoles = async () => {
+  if (savingUserRoles.value) return
+
   if (!currentUser.value) return
 
   try {
@@ -3140,6 +3146,8 @@ const closeFieldPermissionDialog = () => {
 }
 
 const saveFieldPermissions = async () => {
+  if (savingFieldPermissions.value) return
+
   if (!selectedModule.value || !selectedRoleId.value) {
     error('缺少必要信息')
     return
@@ -3557,6 +3565,8 @@ const closeStoreBindingDialog = () => {
 
 // 保存门店绑定（支持多门店）
 const saveStoreBinding = async () => {
+  if (savingStoreBinding.value) return
+
   if (!currentUserForBinding.value || selectedStoreIds.value.length === 0) {
     error('请选择至少一个门店')
     return

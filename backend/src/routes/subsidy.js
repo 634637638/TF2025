@@ -5,11 +5,12 @@ const path = require('path');
 const fs = require('fs');
 const convert = require('heic-convert');
 const { unifiedAuth, requirePermission } = require('../middleware/unified-auth');
+const { verifyToken } = require('../middleware/jwt-blacklist');
 const { cacheMiddleware, clearCache } = require('../middleware/cache');
 const ApiResponse = require('../utils/response');
 const { getDatabase } = require('../config/database');
 const log = require('../utils/log');
-const { getUploadsRoot, getUploadSubdir } = require('../utils/upload-paths');
+const { getUploadsRoot, getUploadSubdir, getRelativeUploadPathFromUrl } = require('../utils/upload-paths');
 const XLSX = require('xlsx');
 
 const createRouteTimer = (routeName, req) => {
@@ -32,6 +33,86 @@ const createRouteTimer = (routeName, req) => {
   };
 
   return { mark };
+};
+
+const SUBSIDY_UPLOAD_PREFIX = 'subsidy/';
+
+const normalizeSubsidyPhotoPath = (photoUrl) => {
+  const relativePath = getRelativeUploadPathFromUrl(photoUrl);
+  if (!relativePath || !relativePath.startsWith(SUBSIDY_UPLOAD_PREFIX)) {
+    return '';
+  }
+
+  const normalizedRelativePath = path.posix.normalize(relativePath);
+  if (
+    normalizedRelativePath.startsWith('../') ||
+    normalizedRelativePath.includes('/../') ||
+    normalizedRelativePath === '..'
+  ) {
+    return '';
+  }
+
+  return normalizedRelativePath;
+};
+
+const buildProtectedSubsidyPhotoUrl = (photoUrl) => {
+  const normalizedRelativePath = normalizeSubsidyPhotoPath(photoUrl);
+  if (!normalizedRelativePath) {
+    return photoUrl;
+  }
+
+  const encodedPath = normalizedRelativePath
+    .split('/')
+    .map(segment => encodeURIComponent(segment))
+    .join('/');
+
+  return `/api/subsidy/files/${encodedPath}`;
+};
+
+const mapSubsidyPhotoUrls = (photos = []) => (
+  Array.isArray(photos)
+    ? photos.map(photo => buildProtectedSubsidyPhotoUrl(photo))
+    : []
+);
+
+const authenticateSubsidyFileAccess = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization || '';
+    const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+    const queryToken = typeof req.query.token === 'string' ? req.query.token.trim() : '';
+    const token = bearerToken || queryToken;
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: '缺少访问令牌',
+        code: 'TOKEN_MISSING'
+      });
+    }
+
+    const decoded = await verifyToken(token, 'access');
+    if (!decoded || decoded.sub === undefined || decoded.sub === null) {
+      return res.status(401).json({
+        success: false,
+        message: '无效的访问令牌',
+        code: 'INVALID_TOKEN'
+      });
+    }
+
+    req.user = {
+      id: decoded.sub || decoded.id,
+      username: decoded.username,
+      name: decoded.name
+    };
+
+    return next();
+  } catch (error) {
+    return res.status(401).json({
+      success: false,
+      message: '访问令牌无效或已过期',
+      code: 'TOKEN_INVALID'
+    });
+  }
 };
 
 // ============================
@@ -1088,7 +1169,7 @@ router.get('/', unifiedAuth, requirePermission('subsidy:view'), cacheMiddleware(
         sale_price: parseFloat(sub.sale_price),
         subsidy_amount: parseFloat(sub.subsidy_amount),
         subsidy_rate: parseFloat(sub.subsidy_rate),
-        subsidy_photos: subsidyPhotos,
+        subsidy_photos: mapSubsidyPhotoUrls(subsidyPhotos),
         // 添加实际办理人信息对象
         hasDifferentHandler: hasHandler,
         handlerInfo: hasHandler ? {
@@ -1336,7 +1417,7 @@ router.get('/:id', unifiedAuth, requirePermission('subsidy:view'), cacheMiddlewa
     }
 
     const hasHandler = subsidy.has_different_handler === 1 || subsidy.has_different_handler === true;
-    subsidy.subsidy_photos = subsidyPhotos;
+    subsidy.subsidy_photos = mapSubsidyPhotoUrls(subsidyPhotos);
     subsidy.hasDifferentHandler = hasHandler;
     subsidy.handlerInfo = hasHandler ? {
       handlerName: subsidy.handler_name || '',
@@ -2023,7 +2104,7 @@ router.post('/upload/photo', unifiedAuth, (req, res, next) => {
 
     // 构建文件访问URL - 统一返回相对路径，由前端 formatImageUrl 函数处理
     // 这样可以和 H5 上传保持一致，开发环境走 Vite 代理，生产环境走 Nginx 代理
-    const fileUrl = `/uploads/subsidy/${finalFilename}`;
+    const fileUrl = buildProtectedSubsidyPhotoUrl(`/uploads/subsidy/${finalFilename}`);
 
     // 注意：ApiResponse.success 参数顺序是 (res, message, data, statusCode, meta)
     ApiResponse.success(res, '照片上传成功', {
@@ -2034,6 +2115,44 @@ router.post('/upload/photo', unifiedAuth, (req, res, next) => {
   } catch (error) {
     log.error('上传国补照片失败:', error);
     ApiResponse.error(res, error.message || '照片上传失败', 500);
+  }
+});
+
+router.get('/files/*', authenticateSubsidyFileAccess, requirePermission('subsidy:view'), (req, res) => {
+  try {
+    const requestedPath = typeof req.params[0] === 'string' ? req.params[0] : '';
+    const normalizedRelativePath = normalizeSubsidyPhotoPath(`/uploads/${requestedPath}`);
+
+    if (!normalizedRelativePath) {
+      return res.status(400).json({
+        success: false,
+        message: '无效的文件路径'
+      });
+    }
+
+    const uploadsRoot = getUploadsRoot();
+    const absolutePath = path.join(uploadsRoot, normalizedRelativePath);
+    const normalizedAbsolutePath = path.normalize(absolutePath);
+    const normalizedUploadsRoot = path.normalize(uploadsRoot + path.sep);
+
+    if (!normalizedAbsolutePath.startsWith(normalizedUploadsRoot)) {
+      return res.status(403).json({
+        success: false,
+        message: '禁止访问该文件'
+      });
+    }
+
+    if (!fs.existsSync(normalizedAbsolutePath)) {
+      return res.status(404).json({
+        success: false,
+        message: '文件不存在'
+      });
+    }
+
+    return res.sendFile(normalizedAbsolutePath);
+  } catch (error) {
+    log.error('读取国补照片失败:', error);
+    return ApiResponse.error(res, error.message || '读取照片失败', 500);
   }
 });
 
@@ -2055,18 +2174,26 @@ router.post('/delete-temp-photos', unifiedAuth, async (req, res) => {
 
     for (const photoUrl of photos) {
       try {
-        // 从URL中提取文件名
-        const urlParts = photoUrl.split('/');
-        const filename = urlParts[urlParts.length - 1];
+        const normalizedRelativePath = normalizeSubsidyPhotoPath(photoUrl);
+        if (!normalizedRelativePath) {
+          failedFiles.push(photoUrl);
+          continue;
+        }
 
-        // 构建文件路径
         const uploadDirPath = getUploadsRoot();
-        const filePath = path.join(uploadDirPath, 'subsidy', filename);
+        const filePath = path.join(uploadDirPath, normalizedRelativePath);
+        const normalizedFilePath = path.normalize(filePath);
+        const normalizedUploadDir = path.normalize(uploadDirPath + path.sep);
+
+        if (!normalizedFilePath.startsWith(normalizedUploadDir)) {
+          failedFiles.push(photoUrl);
+          continue;
+        }
 
         // 删除文件
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
-          deletedFiles.push(filename);
+        if (fs.existsSync(normalizedFilePath)) {
+          fs.unlinkSync(normalizedFilePath);
+          deletedFiles.push(normalizedRelativePath);
         }
       } catch (error) {
         log.error(`⚠️ 删除临时照片失败: ${photoUrl}`, error.message);

@@ -9,6 +9,7 @@ import './styles.scss'
 import './styles/responsive.scss'
 import './styles/permission-toast.scss'
 import './styles/admin-layout.css'
+import './styles/analytics-cards.css'
 
 // 配置 dayjs 中文（如果项目使用 dayjs）
 import dayjs from 'dayjs'
