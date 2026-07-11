@@ -73,34 +73,28 @@ interface ScannerErrorLike {
   message?: string
 }
 
-interface ScannerDecodeResult {
-  text?: string
+interface ScanResultTextProvider {
   getText?: () => string
 }
 
-interface ScannerTrackCapabilities extends MediaTrackCapabilities {
+type TorchMediaTrackCapabilities = MediaTrackCapabilities & {
   torch?: boolean
 }
 
-interface ScannerTrackConstraintSet extends MediaTrackConstraintSet {
+type TorchMediaTrackConstraintSet = MediaTrackConstraintSet & {
   torch?: boolean
 }
 
-interface ScannerMediaTrack extends MediaStreamTrack {
-  getCapabilities?: () => ScannerTrackCapabilities
-  applyConstraints: (
-    constraints?: MediaTrackConstraints & { advanced?: ScannerTrackConstraintSet[] }
-  ) => Promise<void>
+type TorchMediaTrack = MediaStreamTrack & {
+  getCapabilities: () => TorchMediaTrackCapabilities
+  applyConstraints: (constraints?: MediaTrackConstraints & { advanced?: TorchMediaTrackConstraintSet[] }) => Promise<void>
 }
 
-interface ScannerCodeReader {
-  reset: () => void
-  decodeFromVideoDevice: (
-    deviceId: string | undefined,
-    videoElement: HTMLVideoElement,
-    callback: (result: ScannerDecodeResult | null, error: ScannerErrorLike | null) => void
-  ) => Promise<void>
-}
+const getTorchCapabilities = (track: MediaStreamTrack): TorchMediaTrackCapabilities => (
+  track.getCapabilities() as TorchMediaTrackCapabilities
+)
+
+type ZxingBrowserReader = InstanceType<typeof import('@zxing/library').BrowserMultiFormatReader>
 
 interface Props extends VisibleProps {
   scanType: 'imei' | 'serial'
@@ -165,7 +159,7 @@ const videoStyle = computed(() => {
 const isDevMode = computed(() => import.meta.env.DEV)
 
 // 摄像头和解码器实例
-let codeReader: ScannerCodeReader | null = null
+let codeReader: ZxingBrowserReader | null = null
 let stream: MediaStream | null = null
 let cameraId: string | undefined = undefined
 
@@ -302,7 +296,7 @@ const startScanning = async () => {
       // 安卓优化
     }
 
-    codeReader = new BrowserMultiFormatReader(hints) as ScannerCodeReader
+    codeReader = new BrowserMultiFormatReader(hints)
 
     // 获取优化的摄像头配置
     const cameraConfig = scanOptimizer.generateCameraConfig(deviceInfo.value)
@@ -385,8 +379,8 @@ const startScanning = async () => {
       }
 
       // 检查闪光灯支持
-      const videoTrack = stream.getVideoTracks()[0] as ScannerMediaTrack
-      const capabilities = videoTrack.getCapabilities?.()
+      const videoTrack = stream.getVideoTracks()[0] as TorchMediaTrack
+      const capabilities = getTorchCapabilities(videoTrack)
       hasFlash.value = capabilities?.torch || false
 
 
@@ -426,11 +420,11 @@ const startScanning = async () => {
 const startDecoding = async () => {
   if (!videoRef.value || !codeReader) return
 
-  const scanCallback = (result: ScannerDecodeResult | null, error: ScannerErrorLike | null) => {
+  const scanCallback = (result: ScanResultTextProvider | null, error?: ScannerErrorLike) => {
     if (scanCompleted.value) return
 
     if (result) {
-      const scannedText = (typeof result.getText === 'function' ? result.getText() : result.text || '').trim()
+      const scannedText = (typeof result.getText === 'function' ? result.getText() : '').trim()
       const currentTime = Date.now()
 
       // 精准防抖：避免重复处理相同结果，增加防抖时间
@@ -452,7 +446,7 @@ const startDecoding = async () => {
 
     } else if (error && error.name !== 'NotFoundException' && error.name !== 'NotFoundException2') {
       // 只记录非NotFoundException错误
-    } else if (isDevMode.value && error.name === 'NotFoundException') {
+    } else if (isDevMode.value && error?.name === 'NotFoundException') {
       // 开发模式下每5秒输出一次扫描状态
       const now = Date.now()
       if (!lastNotFoundLog || now - lastNotFoundLog > 5000) {
@@ -467,7 +461,7 @@ const startDecoding = async () => {
   } catch (error) {
     // 如果指定摄像头失败，尝试使用默认摄像头
     try {
-      await codeReader.decodeFromVideoDevice(undefined, videoRef.value, scanCallback)
+      await codeReader.decodeFromVideoDevice(null, videoRef.value, scanCallback)
     } catch (fallbackError) {
       ElMessage.error('无法启动摄像头，请检查设备权限')
     }
@@ -616,8 +610,8 @@ const toggleFlash = async () => {
   if (!stream || !hasFlash.value) return
 
   try {
-    const videoTrack = stream.getVideoTracks()[0] as ScannerMediaTrack
-    const capabilities = videoTrack.getCapabilities?.()
+    const videoTrack = stream.getVideoTracks()[0] as TorchMediaTrack
+    const capabilities = getTorchCapabilities(videoTrack)
 
     if (capabilities.torch) {
       flashOn.value = !flashOn.value

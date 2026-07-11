@@ -7,6 +7,7 @@ const convert = require('heic-convert');
 const { unifiedAuth, requirePermission } = require('../middleware/unified-auth');
 const { verifyToken } = require('../middleware/jwt-blacklist');
 const { cacheMiddleware, clearCache } = require('../middleware/cache');
+const { CACHE_TTL } = require('../config/constants');
 const ApiResponse = require('../utils/response');
 const { getDatabase } = require('../config/database');
 const log = require('../utils/log');
@@ -545,7 +546,7 @@ const buildSubsidyExportFile = (items = []) => {
 };
 
 // 第一步：通过IMEI或序列号搜索设备列表
-router.get('/search-phones/:identifier', unifiedAuth, requirePermission('subsidy:view'), cacheMiddleware({ ttl: 10000 }), async (req, res) => {
+router.get('/search-phones/:identifier', unifiedAuth, requirePermission('subsidy:view'), cacheMiddleware({ ttl: CACHE_TTL.SHORT }), async (req, res) => {
   const timer = createRouteTimer('GET /subsidy/search-phones/:identifier', req);
   try {
     const { identifier } = req.params;
@@ -703,7 +704,7 @@ router.get('/search-phones/:identifier', unifiedAuth, requirePermission('subsidy
 });
 
 // 第二步：获取选定设备的完整销售信息（包括客户信息）
-router.get('/phone-detail/:phoneId', unifiedAuth, requirePermission('subsidy:view'), cacheMiddleware({ ttl: 10000 }), async (req, res) => {
+router.get('/phone-detail/:phoneId', unifiedAuth, requirePermission('subsidy:view'), cacheMiddleware({ ttl: CACHE_TTL.SHORT }), async (req, res) => {
   try {
     const { phoneId } = req.params;
     if (!phoneId || isNaN(phoneId)) {
@@ -1036,7 +1037,7 @@ router.post('/apply', unifiedAuth, requirePermission('subsidy:create'), async (r
 });
 
 // 获取国补列表（带缓存，仅缓存第一页）
-router.get('/', unifiedAuth, requirePermission('subsidy:view'), cacheMiddleware({ ttl: 10000 }), async (req, res) => {
+router.get('/', unifiedAuth, requirePermission('subsidy:view'), cacheMiddleware({ ttl: CACHE_TTL.SHORT }), async (req, res) => {
   const timer = createRouteTimer('GET /subsidy', req);
   try {
     const {
@@ -1211,7 +1212,7 @@ router.get('/', unifiedAuth, requirePermission('subsidy:view'), cacheMiddleware(
 
 // 获取筛选选项（品牌、型号、颜色、内存、店铺）
 // 注意：此路由必须在 /:id 之前，否则 filter-options 会被当作 id 参数处理
-router.get('/filter-options', unifiedAuth, requirePermission('subsidy:view'), cacheMiddleware({ ttl: 300000 }), async (req, res) => {
+router.get('/filter-options', unifiedAuth, requirePermission('subsidy:view'), cacheMiddleware({ ttl: CACHE_TTL.LONG }), async (req, res) => {
   try {
     // 获取品牌列表
     const [brands] = await getDatabase().execute(`
@@ -1349,7 +1350,7 @@ router.get('/export/excel', unifiedAuth, requirePermission('subsidy:export'), as
 });
 
 // 获取国补详情
-router.get('/:id', unifiedAuth, requirePermission('subsidy:view'), cacheMiddleware({ ttl: 10000 }), async (req, res) => {
+router.get('/:id', unifiedAuth, requirePermission('subsidy:view'), cacheMiddleware({ ttl: CACHE_TTL.SHORT }), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -1912,7 +1913,7 @@ router.put('/:id/confirm-arrival', unifiedAuth, requirePermission('subsidy:edit'
 });
 
 // 获取国补统计
-router.get('/stats/summary', unifiedAuth, requirePermission('subsidy:view'), cacheMiddleware({ ttl: 10000 }), async (req, res) => {
+router.get('/stats/summary', unifiedAuth, requirePermission('subsidy:view'), cacheMiddleware({ ttl: CACHE_TTL.SHORT }), async (req, res) => {
   const timer = createRouteTimer('GET /subsidy/stats/summary', req);
   try {
     const { whereConditions, queryParams } = buildSubsidyFilters(req.query);

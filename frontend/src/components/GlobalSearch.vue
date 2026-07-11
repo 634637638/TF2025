@@ -246,7 +246,7 @@ import { logger } from '@/utils/logger'
 
 interface FilterOption {
   label: string
-  value: unknown
+  value: string | number
 }
 
 interface FilterConfig {
@@ -352,6 +352,11 @@ const filterShowOptions = reactive<Record<string, boolean>>({})
 let searchTimer: ReturnType<typeof setTimeout> | null = null
 let filterChangeTimer: ReturnType<typeof setTimeout> | null = null
 let pendingFilterChange: { key: string; value: unknown } | null = null
+
+const getFilterStringValue = (key: string) => {
+  const value = localFilterValues[key]
+  return typeof value === 'string' || typeof value === 'number' ? String(value) : ''
+}
 
 
 const debouncedFilterChange = (key: string, value: unknown, immediate = false) => {
@@ -674,7 +679,7 @@ const showEditableSelectOptions = (filter: FilterConfig) => {
 
   
   if (!filterInputValues[filter.key]) {
-    filterInputValues[filter.key] = localFilterValues[filter.key] || ''
+    filterInputValues[filter.key] = getFilterStringValue(filter.key)
   }
 
   
@@ -823,7 +828,7 @@ const toggleEditableSelect = (filter: FilterConfig) => {
 
 
     if (!filterInputValues[filter.key]) {
-      filterInputValues[filter.key] = localFilterValues[filter.key] || ''
+      filterInputValues[filter.key] = getFilterStringValue(filter.key)
     }
 
     showAllEditableOptions[filter.key] = true
@@ -861,7 +866,7 @@ watch(() => props.filterValues, (newValues) => {
   
   props.filters.forEach(filter => {
     if (filter.type === 'editable-select' && newValues[filter.key]) {
-      filterInputValues[filter.key] = newValues[filter.key]
+      filterInputValues[filter.key] = getFilterStringValue(filter.key)
     }
   })
 }, { deep: true })
@@ -1209,6 +1214,7 @@ onBeforeUnmount(() => {
           height: 44px;   /* iOS recommended touch target size */
           padding: 12px 48px 12px 48px; 
           border-radius: 8px; 
+          appearance: none;
           -webkit-appearance: none; /* Remove iOS default styles */
           -webkit-tap-highlight-color: transparent; 
           width: 100%; 

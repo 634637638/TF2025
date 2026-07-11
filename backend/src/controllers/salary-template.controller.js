@@ -1,6 +1,7 @@
 const log = require('../utils/log');
 const SalaryTemplateService = require('../services/salary-template.service');
 const ApiResponse = require('../utils/response');
+const { parseBooleanFilter } = require('../utils/status');
 
 /**
  * 工资模板控制器
@@ -18,11 +19,11 @@ class SalaryTemplateController {
       const filters = {};
       // 处理 is_active 参数（支持字符串和布尔值）
       if (is_active !== undefined && is_active !== null && is_active !== '') {
-        filters.is_active = is_active === 'true' || is_active === true;
+        filters.is_active = parseBooleanFilter(is_active);
       }
       // 处理 is_default 参数（支持字符串和布尔值）
       if (is_default !== undefined && is_default !== null && is_default !== '') {
-        filters.is_default = is_default === 'true' || is_default === true;
+        filters.is_default = parseBooleanFilter(is_default);
       }
 
       log.debug('[获取模板列表] 筛选条件:', filters);

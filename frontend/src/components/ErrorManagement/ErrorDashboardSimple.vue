@@ -79,7 +79,8 @@
             <span>错误类型分布</span>
           </template>
           <div class="error-distribution">
-            <div v-for="(count, type) in statistics.byType" :key="type" class="dist-item" v-if="count > 0">
+            <template v-for="(count, type) in statistics.byType" :key="type">
+              <div v-if="count > 0" class="dist-item">
               <span class="dist-label">{{ getTypeText(type) }}</span>
               <el-progress
                 :percentage="getPercentage(count, statistics.total)"
@@ -88,7 +89,8 @@
               >
                 {{ count }}
               </el-progress>
-            </div>
+              </div>
+            </template>
           </div>
         </el-card>
       </el-col>
@@ -322,12 +324,12 @@
               {{ selectedError.resolved ? '已解决' : '未解决' }}
             </el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="URL" span="2">
+          <el-descriptions-item label="URL" :span="2">
             <el-link :href="selectedError.url" target="_blank" type="primary">
               {{ selectedError.url }}
             </el-link>
           </el-descriptions-item>
-          <el-descriptions-item label="用户代理" span="2">
+          <el-descriptions-item label="用户代理" :span="2">
             {{ selectedError.userAgent }}
           </el-descriptions-item>
         </el-descriptions>
@@ -374,6 +376,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import type { TagProps } from 'element-plus'
 import {
   WarningFilled,
   Clock,
@@ -386,6 +389,7 @@ import {
   Close
 } from '@element-plus/icons-vue'
 import { useErrorLogger, ErrorLevel, ErrorType } from '@/utils/error-logger'
+import type { ErrorLogEntry } from '@/utils/error-logger'
 import { TimeUtil } from '@/utils/time'
 import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
@@ -405,7 +409,7 @@ const { exportTextFile, buildDateFilename } = useImportExport()
 // 响应式数据
 const loading = ref(false)
 const detailVisible = ref(false)
-const selectedError = ref(null)
+const selectedError = ref<ErrorLogEntry | null>(null)
 
 // 过滤器
 const filters = ref({
@@ -464,14 +468,16 @@ const getLevelColor = (level: ErrorLevel) => {
   return colorMap[level] || '#909399'
 }
 
-const getLevelTagType = (level: ErrorLevel) => {
-  const typeMap = {
+type TagType = NonNullable<TagProps['type']>
+
+const getLevelTagType = (level: ErrorLevel): TagType => {
+  const typeMap: Record<ErrorLevel, TagType> = {
     [ErrorLevel.CRITICAL]: 'danger',
     [ErrorLevel.HIGH]: 'warning',
     [ErrorLevel.MEDIUM]: 'info',
     [ErrorLevel.LOW]: 'success'
   }
-  return typeMap[level] || 'info'
+  return typeMap[level]
 }
 
 const getTypeText = (type: ErrorType) => {
@@ -502,7 +508,7 @@ const getTypeColor = (type: ErrorType) => {
   return colorMap[type] || '#909399'
 }
 
-const getRowClassName = ({ row }: { row: any }) => {
+const getRowClassName = ({ row }: { row: ErrorLogEntry }) => {
   if (row.level === ErrorLevel.CRITICAL) return 'error-row-critical'
   if (row.level === ErrorLevel.HIGH) return 'error-row-high'
   if (!row.resolved) return 'error-row-unresolved'
@@ -545,7 +551,7 @@ const refreshLogs = async () => {
   }
 }
 
-const showErrorDetail = (error: any) => {
+const showErrorDetail = (error: ErrorLogEntry) => {
   selectedError.value = error
   detailVisible.value = true
 }

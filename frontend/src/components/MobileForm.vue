@@ -36,7 +36,8 @@
         <!-- 输入框 -->
         <el-input
           v-if="field.type === 'input' || field.type === 'text' || field.type === 'password'"
-          v-model="formData[field.prop]"
+          :model-value="getInputValue(field)"
+          @update:model-value="setFieldValue(field, $event)"
           :type="field.type || 'text'"
           :placeholder="field.placeholder || `请输入${field.label}`"
           :disabled="field.disabled"
@@ -56,21 +57,23 @@
         <!-- 数字输入框 -->
         <el-input-number
           v-else-if="field.type === 'number'"
-          v-model="formData[field.prop]"
+          :model-value="getNumberValue(field)"
+          @update:model-value="setFieldValue(field, $event)"
           :placeholder="field.placeholder || `请输入${field.label}`"
           :disabled="field.disabled"
           :min="field.min"
           :max="field.max"
           :step="field.step || 1"
           :precision="field.precision"
-          :controls-position="field.controlsPosition || 'right'"
+          :controls-position="getControlsPosition(field)"
           style="width: 100%"
         />
 
         <!-- 选择器 -->
         <el-select
           v-else-if="field.type === 'select'"
-          v-model="formData[field.prop]"
+          :model-value="getSelectValue(field)"
+          @update:model-value="setFieldValue(field, $event)"
           :placeholder="field.placeholder || `请选择${field.label}`"
           :disabled="field.disabled"
           :clearable="field.clearable !== false"
@@ -82,10 +85,10 @@
           style="width: 100%"
         >
           <el-option
-            v-for="option in field.options"
-            :key="option.value"
+            v-for="(option, optionIndex) in field.options"
+            :key="getOptionKey(option, optionIndex)"
             :label="option.label"
-            :value="option.value"
+            :value="getOptionValue(option)"
             :disabled="option.disabled"
           />
         </el-select>
@@ -93,8 +96,9 @@
         <!-- 日期选择器 -->
         <el-date-picker
           v-else-if="field.type === 'date'"
-          v-model="formData[field.prop]"
-          :type="field.dateType || 'date'"
+          :model-value="getDateValue(field)"
+          @update:model-value="setFieldValue(field, $event)"
+          :type="getDatePickerType(field)"
           :placeholder="field.placeholder || `请选择${field.label}`"
           :disabled="field.disabled"
           :clearable="field.clearable !== false"
@@ -106,7 +110,8 @@
         <!-- 日期时间选择器 -->
         <el-date-picker
           v-else-if="field.type === 'datetime'"
-          v-model="formData[field.prop]"
+          :model-value="getDateValue(field)"
+          @update:model-value="setFieldValue(field, $event)"
           type="datetime"
           :placeholder="field.placeholder || `请选择${field.label}`"
           :disabled="field.disabled"
@@ -119,7 +124,8 @@
         <!-- 时间选择器 -->
         <el-time-picker
           v-else-if="field.type === 'time'"
-          v-model="formData[field.prop]"
+          :model-value="getDateValue(field)"
+          @update:model-value="setFieldValue(field, $event)"
           :placeholder="field.placeholder || `请选择${field.label}`"
           :disabled="field.disabled"
           :clearable="field.clearable !== false"
@@ -131,7 +137,8 @@
         <!-- 开关 -->
         <el-switch
           v-else-if="field.type === 'switch'"
-          v-model="formData[field.prop]"
+          :model-value="getSwitchValue(field)"
+          @update:model-value="setFieldValue(field, $event)"
           :disabled="field.disabled"
           :active-text="field.activeText"
           :inactive-text="field.inactiveText"
@@ -142,14 +149,15 @@
         <!-- 单选框组 -->
         <el-radio-group
           v-else-if="field.type === 'radio'"
-          v-model="formData[field.prop]"
+          :model-value="getRadioValue(field)"
+          @update:model-value="setFieldValue(field, $event)"
           :disabled="field.disabled"
           :direction="isMobile ? 'vertical' : 'horizontal'"
         >
           <el-radio
-            v-for="option in field.options"
-            :key="option.value"
-            :label="option.value"
+            v-for="(option, optionIndex) in field.options"
+            :key="getOptionKey(option, optionIndex)"
+            :label="getOptionValue(option)"
             :disabled="option.disabled"
           >
             {{ option.label }}
@@ -159,14 +167,15 @@
         <!-- 复选框组 -->
         <el-checkbox-group
           v-else-if="field.type === 'checkbox'"
-          v-model="formData[field.prop]"
+          :model-value="getCheckboxValue(field)"
+          @update:model-value="setFieldValue(field, $event)"
           :disabled="field.disabled"
           :direction="isMobile ? 'vertical' : 'horizontal'"
         >
           <el-checkbox
-            v-for="option in field.options"
-            :key="option.value"
-            :label="option.value"
+            v-for="(option, optionIndex) in field.options"
+            :key="getOptionKey(option, optionIndex)"
+            :label="getOptionValue(option)"
             :disabled="option.disabled"
           >
             {{ option.label }}
@@ -176,7 +185,8 @@
         <!-- 滑块 -->
         <el-slider
           v-else-if="field.type === 'slider'"
-          v-model="formData[field.prop]"
+          :model-value="getSliderValue(field)"
+          @update:model-value="setFieldValue(field, $event)"
           :disabled="field.disabled"
           :min="field.min || 0"
           :max="field.max || 100"
@@ -188,7 +198,8 @@
         <!-- 评分 -->
         <el-rate
           v-else-if="field.type === 'rate'"
-          v-model="formData[field.prop]"
+          :model-value="getNumberValue(field)"
+          @update:model-value="setFieldValue(field, $event)"
           :disabled="field.disabled"
           :max="field.max || 5"
           :allow-half="field.allowHalf"
@@ -199,7 +210,8 @@
         <!-- 颜色选择器 -->
         <el-color-picker
           v-else-if="field.type === 'color'"
-          v-model="formData[field.prop]"
+          :model-value="getColorValue(field)"
+          @update:model-value="setFieldValue(field, $event)"
           :disabled="field.disabled"
           :show-alpha="field.showAlpha"
           :predefine="field.predefine"
@@ -216,7 +228,7 @@
           :multiple="field.multiple"
           :accept="field.accept"
           :limit="field.limit"
-          :file-list="formData[field.prop]"
+          :file-list="getUploadFileList(field)"
           :disabled="field.disabled"
           :list-type="field.listType || 'text'"
           :auto-upload="field.autoUpload !== false"
@@ -289,6 +301,20 @@ import type { CancelEmits } from '@/types/component'
 
 type FormModelValue = Record<string, unknown>
 type FormFieldOptionValue = string | number | boolean | null
+type FormFieldComponentValue = string | number | boolean | Date | Array<string | number | Date> | null | undefined
+type DatePickerType =
+  | 'year'
+  | 'years'
+  | 'month'
+  | 'months'
+  | 'date'
+  | 'dates'
+  | 'datetime'
+  | 'week'
+  | 'datetimerange'
+  | 'daterange'
+  | 'monthrange'
+  | 'yearrange'
 
 interface FormFieldOption {
   label: string
@@ -338,7 +364,7 @@ interface FormField {
   loading?: boolean
 
   // 日期选择器特有
-  dateType?: string
+  dateType?: DatePickerType
   format?: string
   valueFormat?: string
 
@@ -439,6 +465,119 @@ const formData = computed({
   get: () => props.modelValue,
   set: (value) => emit('update:modelValue', value)
 })
+
+const formRules = computed(() => props.rules)
+
+const setFieldValue = (field: FormField, value: unknown) => {
+  formData.value[field.prop] = value
+}
+
+const getFieldValue = (field: FormField) => formData.value[field.prop]
+
+const getInputValue = (field: FormField): string | number => {
+  const value = getFieldValue(field)
+  return typeof value === 'string' || typeof value === 'number' ? value : ''
+}
+
+const getNumberValue = (field: FormField): number | undefined => {
+  const value = getFieldValue(field)
+  return typeof value === 'number' ? value : undefined
+}
+
+const getSelectValue = (field: FormField): FormFieldComponentValue => {
+  const value = getFieldValue(field)
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string | number | Date =>
+      typeof item === 'string' || typeof item === 'number' || item instanceof Date
+    )
+  }
+
+  return isFormFieldComponentValue(value) ? value : undefined
+}
+
+const getDateValue = (field: FormField): FormFieldComponentValue => {
+  const value = getFieldValue(field)
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string | number | Date =>
+      typeof item === 'string' || typeof item === 'number' || item instanceof Date
+    )
+  }
+
+  return isDateCompatibleValue(value) ? value : undefined
+}
+
+const getSwitchValue = (field: FormField): string | number | boolean => {
+  const value = getFieldValue(field)
+  return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
+    ? value
+    : false
+}
+
+const getRadioValue = (field: FormField): string | number | boolean | undefined => {
+  const value = getFieldValue(field)
+  return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
+    ? value
+    : undefined
+}
+
+const getCheckboxValue = (field: FormField): Array<string | number> => {
+  const value = getFieldValue(field)
+  return Array.isArray(value)
+    ? value.filter((item): item is string | number => typeof item === 'string' || typeof item === 'number')
+    : []
+}
+
+const getSliderValue = (field: FormField): number | [number, number] => {
+  const value = getFieldValue(field)
+  if (field.range && Array.isArray(value)) {
+    const numbers = value.filter((item): item is number => typeof item === 'number')
+    return [numbers[0] ?? field.min ?? 0, numbers[1] ?? field.max ?? 100]
+  }
+
+  return typeof value === 'number' ? value : field.min ?? 0
+}
+
+const getColorValue = (field: FormField): string | undefined => {
+  const value = getFieldValue(field)
+  return typeof value === 'string' ? value : undefined
+}
+
+const getUploadFileList = (field: FormField): UploadFiles => {
+  const value = getFieldValue(field)
+  return Array.isArray(value) ? value as UploadFiles : []
+}
+
+const getControlsPosition = (field: FormField): '' | 'right' => (
+  field.controlsPosition === 'right' ? 'right' : ''
+)
+
+const getDatePickerType = (field: FormField): DatePickerType => field.dateType || 'date'
+
+const getOptionValue = (option: FormFieldOption): string | number | boolean => (
+  option.value ?? ''
+)
+
+const getOptionKey = (option: FormFieldOption, index: number): string | number => {
+  const value = option.value
+  return typeof value === 'string' || typeof value === 'number' ? value : `${String(value)}-${index}`
+}
+
+const isFormFieldComponentValue = (value: unknown): value is FormFieldComponentValue => (
+  typeof value === 'string' ||
+  typeof value === 'number' ||
+  typeof value === 'boolean' ||
+  value instanceof Date ||
+  value === null ||
+  value === undefined
+)
+
+const isDateCompatibleValue = (value: unknown): value is FormFieldComponentValue => (
+  typeof value === 'string' ||
+  typeof value === 'number' ||
+  value instanceof Date ||
+  value === null ||
+  value === undefined
+)
 
 // 获取字段包装器类名
 const getFieldWrapperClass = (field: FormField) => {
@@ -717,18 +856,26 @@ defineExpose({
 }
 
 /* 响应式栅格 */
-@for $breakpoint in (xs, sm, md, lg, xl) {
-  @media (min-width: map-get((xs: 0, sm: 576, md: 768, lg: 992, xl: 1200), $breakpoint)) {
+$mobile-form-breakpoints: (
+  xs: 0px,
+  sm: 576px,
+  md: 768px,
+  lg: 992px,
+  xl: 1200px
+);
+
+@each $breakpoint, $min-width in $mobile-form-breakpoints {
+  @media (min-width: $min-width) {
     @for $span from 1 through 24 {
       .responsive-field[class*="#{$breakpoint}-#{$span}"] {
-        flex: 0 0 percentage($span / 24);
-        max-width: percentage($span / 24);
+        flex: 0 0 percentage(calc($span / 24));
+        max-width: percentage(calc($span / 24));
       }
     }
 
     @for $offset from 1 through 23 {
       .responsive-field[class*="#{$breakpoint}-offset-#{$offset}"] {
-        margin-left: percentage($offset / 24);
+        margin-left: percentage(calc($offset / 24));
       }
     }
   }

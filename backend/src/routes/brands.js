@@ -5,6 +5,7 @@ const ApiResponse = require('../utils/response');
 const { cacheMiddleware, clearCache } = require('../middleware/cache');
 const { validateBody, validateQuery } = require('../middleware/validation');
 const { unifiedAuth, requirePermission } = require('../middleware/unified-auth');
+const { CACHE_TTL, PAGINATION } = require('../config/constants');
 const log = require('../utils/log');
 
 const clearBrandsRouteCache = () => {
@@ -20,9 +21,9 @@ router.get('/', unifiedAuth, requirePermission('brands:view'), validateQuery({
   name: { type: 'string', required: false, maxLength: 100 },
   status: { type: 'number', required: false, integer: true },
   page: { type: 'number', required: false, min: 1, integer: true },
-  limit: { type: 'number', required: false, min: 1, max: 10000, integer: true },
+  limit: { type: 'number', required: false, min: 1, max: PAGINATION.MAX_LIMIT, integer: true },
   suggest: { type: 'enum', required: false, allowedValues: ['true', 'false'] }
-}), cacheMiddleware({ ttl: 10 * 1000 }), async (req, res) => {
+}), cacheMiddleware({ ttl: CACHE_TTL.SHORT }), async (req, res) => {
   try {
     log.debug('收到获取品牌列表请求');
 
@@ -31,9 +32,9 @@ router.get('/', unifiedAuth, requirePermission('brands:view'), validateQuery({
     }
 
     const pool = getDatabase();
-    const { name, status, page = 1, limit = 10000, suggest = false } = req.query;  // 提高默认限制
-    const limitNum = parseInt(limit) || 10000;  // 提高默认限制
-    const pageNum = parseInt(page) || 1;
+    const { name, status, page = PAGINATION.DEFAULT_PAGE, limit = PAGINATION.DEFAULT_LIMIT, suggest = false } = req.query;
+    const limitNum = parseInt(limit) || PAGINATION.DEFAULT_LIMIT;
+    const pageNum = parseInt(page) || PAGINATION.DEFAULT_PAGE;
     const offset = (pageNum - 1) * limitNum;
 
     let query = 'SELECT * FROM brands';
@@ -87,28 +88,17 @@ router.get('/', unifiedAuth, requirePermission('brands:view'), validateQuery({
           ELSE 3
         END,
         sort_order ASC,
-        id DESC
+        name ASC,
+        id ASC
         LIMIT ? OFFSET ?`;
       params.unshift(`${name}%`, `%${name}%`);
       params.push(limitNum, offset);
     } else {
-      query += ' ORDER BY sort_order ASC, id DESC LIMIT ? OFFSET ?';
+      query += ' ORDER BY sort_order ASC, name ASC, id ASC LIMIT ? OFFSET ?';
       params.push(limitNum, offset);
     }
 
     // 使用pool.format来处理参数，避免LIMIT/OFFSET参数问题
-    const formattedQuery = pool.format(query, params);
-    const [brands] = await pool.execute(formattedQuery);
-
-    const formattedBrands = brands.map(row => ({
-      id: parseInt(row.id),
-      name: String(row.name || '').trim(),
-      status: parseInt(row.status) || 0,
-      sort_order: parseInt(row.sort_order) || 0,
-      created_at: row.created_at ? new Date(row.created_at).toISOString() : null,
-      updated_at: row.updated_at ? new Date(row.updated_at).toISOString() : null
-    }));
-
     // 获取总数
     let countQuery = 'SELECT COUNT(*) as total FROM brands';
     const countParams = [];
@@ -150,7 +140,21 @@ router.get('/', unifiedAuth, requirePermission('brands:view'), validateQuery({
       countParams.push(parseInt(status));
     }
 
-    const [countResult] = await pool.execute(countQuery, countParams);
+    const formattedQuery = pool.format(query, params);
+    const [[brands], [countResult]] = await Promise.all([
+      pool.execute(formattedQuery),
+      pool.execute(countQuery, countParams)
+    ]);
+
+    const formattedBrands = brands.map(row => ({
+      id: parseInt(row.id),
+      name: String(row.name || '').trim(),
+      status: parseInt(row.status) || 0,
+      sort_order: parseInt(row.sort_order) || 0,
+      created_at: row.created_at ? new Date(row.created_at).toISOString() : null,
+      updated_at: row.updated_at ? new Date(row.updated_at).toISOString() : null
+    }));
+
     const total = countResult[0].total;
 
     // 判断是否需要分页信息 - 如果没有分页参数，直接返回品牌列表

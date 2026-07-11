@@ -13,6 +13,7 @@ const {
   recognizeTextWithTesseract,
   validateImageResponse
 } = require('../utils/ocr-image');
+const { DEFAULT_BROWSER_USER_AGENT, EXTERNAL_PRICE } = require('../config/constants');
 
 class CaptchaRecognizer {
   constructor() {
@@ -28,7 +29,7 @@ class CaptchaRecognizer {
    */
   async fetchCaptchaImage(captchaUrl, referer = '') {
     const headers = {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'User-Agent': DEFAULT_BROWSER_USER_AGENT,
       'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
       'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
     };
@@ -119,14 +120,14 @@ class CaptchaRecognizer {
    * @param {number} count - 识别次数
    * @param {string} captchaUrl - 验证码URL模板
    */
-  async batchRecognize(count = 5, captchaUrl = 'https://81119.byb2b.cn/image.jsp?t=') {
+  async batchRecognize(count = 5, captchaUrl = EXTERNAL_PRICE.CAPTCHA_URL) {
     log.debug(`\n🔄 开始批量识别测试 (${count}次)`);
 
     const results = [];
     for (let i = 0; i < count; i++) {
       log.debug(`\n--- 第 ${i + 1}/${count} 次识别 ---`);
       const url = `${captchaUrl}${Date.now()}`;
-      const code = await this.recognize(url, 'https://81119.byb2b.cn/index.htm?ykflag=Y');
+      const code = await this.recognize(url, EXTERNAL_PRICE.REFERER_URL);
       results.push({
         index: i + 1,
         code: code,

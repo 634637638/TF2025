@@ -203,7 +203,7 @@
               :total="pagination.total"
               :page-sizes="[10, 20, 50, 100]"
               :show-range="true"
-              @change="loadPendingPreorders"
+              @change="handlePendingPaginationChange"
             />
           </div>
         </div>
@@ -468,7 +468,7 @@
               :total="pagination.total"
               :page-sizes="[10, 20, 50, 100]"
               :show-range="true"
-              @change="loadMatchedPreorders"
+              @change="handleMatchedPaginationChange"
             />
           </div>
         </div>
@@ -590,7 +590,7 @@
               :total="pagination.total"
               :page-sizes="[10, 20, 50, 100]"
               :show-range="true"
-              @change="loadDeliveredPreorders"
+              @change="handleDeliveredPaginationChange"
             />
           </div>
         </div>
@@ -798,6 +798,24 @@ const loadDeliveredPreorders = async (showLoadingState = true) => {
       loading.value = false
     }
   }
+}
+
+const handlePendingPaginationChange = (page: number, pageSize: number) => {
+  pagination.page = page
+  pagination.limit = pageSize
+  void loadPendingPreorders()
+}
+
+const handleMatchedPaginationChange = (page: number, pageSize: number) => {
+  pagination.page = page
+  pagination.limit = pageSize
+  void loadMatchedPreorders()
+}
+
+const handleDeliveredPaginationChange = (page: number, pageSize: number) => {
+  pagination.page = page
+  pagination.limit = pageSize
+  void loadDeliveredPreorders()
 }
 
 // TAB切换

@@ -398,6 +398,8 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { unifiedApi } from '@/utils/unified-api'
+import { formatImageUrl } from '@/utils/format'
+import { sortOptionsByOrder } from '@/utils/option-sort'
 import { useAuthStore } from '@/stores/auth'
 import { logger } from '@/utils/logger'
 import type { ModelValueProps, UpdateModelValueEmits, SuccessEmits, CloseEmits } from '@/types/component'
@@ -563,8 +565,7 @@ const handleImageError = (event) => {
 
 // 触发上传
 const triggerUpload = () => {
-  // @ts-ignore - 复杂选择器类型检查问题，运行时正常工作
-  const uploadInput = document.querySelector('.image-uploader input[type="file"]')
+  const uploadInput = document.querySelector<HTMLInputElement>('.image-uploader input[type="file"]')
   uploadInput?.click()
 }
 
@@ -572,8 +573,7 @@ const triggerUpload = () => {
 const loadBrands = async () => {
   try {
     const response = await unifiedApi.get('/options/phone-options')
-    brands.value = (response.data?.brands || [])
-      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+    brands.value = sortOptionsByOrder(response.data?.brands || [])
   } catch (err) {
     logger.error('加载品牌失败', err)
   }
@@ -582,8 +582,7 @@ const loadBrands = async () => {
 const loadModels = async () => {
   try {
     const response = await unifiedApi.get('/options/phone-options')
-    models.value = (response.data?.models || [])
-      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+    models.value = sortOptionsByOrder(response.data?.models || [])
   } catch (err) {
     logger.error('加载型号失败', err)
   }
@@ -592,8 +591,7 @@ const loadModels = async () => {
 const loadColors = async () => {
   try {
     const response = await unifiedApi.get('/options/phone-options')
-    colors.value = (response.data?.colors || [])
-      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+    colors.value = sortOptionsByOrder(response.data?.colors || [])
   } catch (err) {
     logger.error('加载颜色失败', err)
   }
@@ -606,7 +604,7 @@ const loadSuppliers = async () => {
     })
     suppliers.value = (response.data || [])
       .filter(s => s.status === 1)
-      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+    suppliers.value = sortOptionsByOrder(suppliers.value)
   } catch (err) {
     logger.error('加载供应商失败', err)
   }
@@ -617,7 +615,7 @@ const loadStores = async () => {
     const response = await unifiedApi.get('/options/phone-options')
     const storeOptions = (response.data?.stores || [])
 
-    stores.value = storeOptions
+    stores.value = sortOptionsByOrder(storeOptions)
       .map(s => ({
         ...s,
         checked: false,

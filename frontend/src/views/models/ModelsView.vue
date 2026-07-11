@@ -75,6 +75,7 @@
 
     <UnifiedSearchPanel
       v-model:expanded="searchExpanded"
+      :loading="tableLoading"
       @search="searchModels"
       @reset="resetSearch"
     >
@@ -363,7 +364,7 @@
       <template #footer>
         <el-button type="default" @click="attemptCloseModal">取消</el-button>
         <el-button type="primary" @click="submitForm" :disabled="submitting" :loading="submitting">
-          <InlineLoading v-if="submitting" :text="isEditMode ? '更新中...' : '创建中...'" size="small" variant="inherit" />
+          <span v-if="submitting">{{ isEditMode ? '更新中...' : '创建中...' }}</span>
           <template v-else>{{ isEditMode ? '更新' : '创建' }}</template>
         </el-button>
       </template>
@@ -393,6 +394,7 @@ import { handleApiErrorWithPermission } from '@/utils/apiPermissionError'
 import { logger } from '@/utils/logger'
 import { useMobile } from '@/composables/mobile'
 import { useLatestRequest } from '@/composables/useLatestRequest'
+import { sortOptionsByOrder } from '@/utils/option-sort'
 import type { Brand, Model } from '@/types'
 
 const router = useRouter()
@@ -541,13 +543,26 @@ const isEditMode = computed(() => showEditModal.value && currentEditingId.value 
 // 方法
 // 计算型号在品牌内的序号（从1开始）
 const getModelIndexInBrand = (model: Model): number => {
-  // 获取当前品牌下的所有型号
-  const brandModels = models.value.filter(m => m.brand_id === model.brand_id)
-  // 按 sort_order 排序
-  const sortedBrandModels = brandModels.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-  // 找到当前型号在排序后的位置
-  return sortedBrandModels.findIndex(m => m.id === model.id) + 1
+  return modelIndexMap.value.get(model.id) || 0
 }
+
+const modelIndexMap = computed(() => {
+  const grouped = new Map<number | string, Model[]>()
+  models.value.forEach((model) => {
+    const key = model.brand_id ?? 'none'
+    const items = grouped.get(key) || []
+    items.push(model)
+    grouped.set(key, items)
+  })
+
+  const indexMap = new Map<number, number>()
+  grouped.forEach((items) => {
+    sortOptionsByOrder(items).forEach((model, index) => {
+      indexMap.set(model.id, index + 1)
+    })
+  })
+  return indexMap
+})
 
 const getBrandName = (model: Model): string => {
   // 优先使用后端JOIN返回的brand_name
@@ -625,7 +640,7 @@ const loadModels = async (bustCache = false, silentError = false, _showLoadingSt
     }
 
     if (response.success) {
-      models.value = response.data.models || []
+      models.value = sortOptionsByOrder(response.data.models || [])
       // 确保 total 是数字类型
       const paginationData = response.data.pagination || { page: 1, limit: 10, total: 0, pages: 0 }
       pagination.value = {
@@ -633,8 +648,6 @@ const loadModels = async (bustCache = false, silentError = false, _showLoadingSt
         total: Number(paginationData.total) || 0
       }
 
-      // 按 sort_order 排序，确保序号和排序值一致
-      models.value.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
     } else {
       logger.error('API返回失败:', response.message)
       models.value = []

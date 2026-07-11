@@ -31,7 +31,7 @@ router.get('/', async (req, res) => {
       INNER JOIN roles r ON ur.role_id = r.id
       WHERE u.status = 1 AND r.is_active = 1
       GROUP BY u.id, u.username, u.name, u.status
-      ORDER BY u.created_at DESC
+      ORDER BY COALESCE(NULLIF(u.name, ''), u.username) ASC, u.id ASC
     `);
 
     // 转换为前端需要的格式 - 使用name字段作为显示名称

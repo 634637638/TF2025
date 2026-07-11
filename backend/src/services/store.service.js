@@ -1,5 +1,6 @@
 const BaseService = require('./base.service');
 const StoreRepository = require('../repositories/store.repository');
+const { PAGINATION } = require('../config/constants');
 
 /**
  * 商店Service类
@@ -382,7 +383,7 @@ class StoreService extends BaseService {
 
       // 获取所有符合条件的数据（不分页）
       const stores = await this.storeRepository.getStoresWithPagination(
-        { status, page: 1, limit: 10000 },
+        { status, page: PAGINATION.DEFAULT_PAGE, limit: PAGINATION.MAX_LIMIT },
         {
           select: `
             s.id, s.name, s.location, s.phone, s.status,

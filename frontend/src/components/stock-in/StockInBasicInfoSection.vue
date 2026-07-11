@@ -16,7 +16,7 @@
             :filter-method="handleSupplierFilter"
             clearable
             teleported
-            popper-class="stock-in-mobile-popper"
+            popper-class="tf2025-form-popper"
           >
             <el-option
               v-for="supplier in suppliers"
@@ -35,7 +35,7 @@
             :filter-method="handleStoreFilter"
             clearable
             teleported
-            popper-class="stock-in-mobile-popper"
+            popper-class="tf2025-form-popper"
           >
             <el-option
               v-for="store in stores"
@@ -54,7 +54,7 @@
             format="YYYY-MM-DD"
             value-format="YYYY-MM-DD"
             teleported
-            popper-class="stock-in-mobile-popper"
+            popper-class="tf2025-form-popper"
           />
         </el-form-item>
 
@@ -63,7 +63,7 @@
             v-model="formData.product_status"
             placeholder="请选择商品状态"
             teleported
-            popper-class="stock-in-mobile-popper"
+            popper-class="tf2025-form-popper"
           >
             <el-option label="全新" value="全新" />
             <el-option label="二手" value="二手" />
@@ -81,7 +81,7 @@
               :filter-method="handleSupplierFilter"
               clearable
               teleported
-              popper-class="stock-in-mobile-popper"
+              popper-class="tf2025-form-popper"
             >
               <el-option
                 v-for="supplier in suppliers"
@@ -100,7 +100,7 @@
               :filter-method="handleStoreFilter"
               clearable
               teleported
-              popper-class="stock-in-mobile-popper"
+              popper-class="tf2025-form-popper"
             >
               <el-option
                 v-for="store in stores"
@@ -121,7 +121,7 @@
               format="YYYY-MM-DD"
               value-format="YYYY-MM-DD"
               teleported
-              popper-class="stock-in-mobile-popper"
+              popper-class="tf2025-form-popper"
             />
           </el-form-item>
 
@@ -130,7 +130,7 @@
               v-model="formData.product_status"
               placeholder="请选择商品状态"
               teleported
-              popper-class="stock-in-mobile-popper"
+              popper-class="tf2025-form-popper"
             >
               <el-option label="全新" value="全新" />
               <el-option label="二手" value="二手" />

@@ -7,6 +7,7 @@ const puppeteer = require('puppeteer');
 const fs = require('fs');
 const log = require('../utils/log');
 const { ensureLogDir } = require('../utils/log-paths');
+const { DEFAULT_BROWSER_USER_AGENT, TIMEOUTS } = require('../config/constants');
 
 class PuppeteerLoginService {
   constructor() {
@@ -144,14 +145,14 @@ class PuppeteerLoginService {
 
     try {
       // 设置用户代理
-      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+      await page.setUserAgent(DEFAULT_BROWSER_USER_AGENT);
 
       log.debug(`📄 访问登录页面: ${config.login_url}`);
 
       // 访问登录页面
       await page.goto(config.login_url, {
         waitUntil: 'networkidle2',
-        timeout: 30000
+        timeout: TIMEOUTS.EXTERNAL_API
       });
 
       // 等待页面加载完成（使用new Promise代替waitForTimeout）
@@ -304,7 +305,7 @@ class PuppeteerLoginService {
 
       await page.goto(url, {
         waitUntil: 'networkidle2',
-        timeout: 30000
+        timeout: TIMEOUTS.EXTERNAL_API
       });
 
       // 获取页面内容

@@ -2,6 +2,7 @@ import { normalizePersonName, normalizePhoneDigits } from '@/utils/security'
 import { extractResponseData } from '@/utils/api-response'
 import { unifiedApi } from '@/utils/unified-api'
 import { TIME_FORMATS, TimeUtil } from '@/utils/time'
+import { sortOptionsByOrder } from '@/utils/option-sort'
 import type { User } from '@/types'
 import type { Store, Supplier } from '@/types/system'
 import type {
@@ -324,7 +325,7 @@ export const loadWholesaleStores = async (): Promise<Store[]> => {
   })
 
   return response.success && Array.isArray(response.data)
-    ? response.data as Store[]
+    ? sortOptionsByOrder(response.data as Store[])
     : []
 }
 
@@ -335,11 +336,11 @@ export const loadWholesaleUsers = async (): Promise<User[]> => {
   }
 
   if (Array.isArray(response.data?.users)) {
-    return response.data.users as User[]
+    return sortOptionsByOrder(response.data.users as User[])
   }
 
   return Array.isArray(response.data)
-    ? response.data as User[]
+    ? sortOptionsByOrder(response.data as User[])
     : []
 }
 

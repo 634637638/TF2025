@@ -1,6 +1,7 @@
 const QueryService = require('../services/query.service');
 const ApiResponse = require('../utils/response');
 const dataMaskingService = require('../services/dataMaskingService');
+const { PAGINATION } = require('../config/constants');
 const log = require('../utils/log');
 
 class QueryController {
@@ -158,7 +159,7 @@ class QueryController {
       const userStoreId = req.user?.store_id || null;
       const userStoreIds = req.user?.store_ids || [];
       const result = await this.queryService.getComprehensiveQuery(
-        { ...req.query, page: 1, limit: 10000 },
+        { ...req.query, page: PAGINATION.DEFAULT_PAGE, limit: PAGINATION.DEFAULT_LIMIT },
         userStoreId,
         userStoreIds
       );

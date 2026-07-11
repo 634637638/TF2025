@@ -199,6 +199,72 @@ html {
   max-width: 320px !important;
 }
 
+.el-select-dropdown {
+  background-color: #ffffff !important;
+  border: 1px solid #e4e7ed !important;
+}
+
+.el-select-dropdown .el-select-dropdown__item {
+  color: #606266 !important;
+  background-color: #ffffff !important;
+}
+
+.el-select-dropdown .el-select-dropdown__item:hover {
+  background-color: #f5f7fa !important;
+  color: #409eff !important;
+}
+
+.el-select-dropdown .el-select-dropdown__item.is-selected {
+  color: #409eff !important;
+  font-weight: 700 !important;
+}
+
+.el-select-dropdown .el-select-dropdown__item.is-disabled {
+  color: #c0c4cc !important;
+  cursor: not-allowed !important;
+}
+
+.el-select-dropdown .el-select-dropdown__empty {
+  color: #909399 !important;
+}
+
+.el-select-dropdown .el-select-dropdown__wrap,
+.el-select-dropdown .el-select-dropdown__list {
+  background-color: #ffffff !important;
+}
+
+@media (max-width: 767px) {
+  .tf2025-form-popper.el-popper,
+  .tf2025-form-popper.el-select__popper,
+  .tf2025-form-popper.el-picker__popper {
+    width: min(380px, calc(100vw - 12px)) !important;
+    max-width: calc(100vw - 12px) !important;
+  }
+
+  .tf2025-form-popper.el-select__popper .el-select-dropdown,
+  .tf2025-form-popper.el-select__popper .el-scrollbar,
+  .tf2025-form-popper.el-select__popper .el-select-dropdown__wrap,
+  .tf2025-form-popper.el-select__popper .el-select-dropdown__list,
+  .tf2025-form-popper.el-picker__popper .el-picker-panel,
+  .tf2025-form-popper.el-picker__popper .el-date-picker,
+  .tf2025-form-popper.el-picker__popper .el-date-picker__header,
+  .tf2025-form-popper.el-picker__popper .el-picker-panel__content {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+  }
+}
+
+@media (max-width: 480px) {
+  .tf2025-form-popper.el-popper,
+  .tf2025-form-popper.el-select__popper,
+  .tf2025-form-popper.el-picker__popper {
+    width: calc(100vw - 12px) !important;
+    max-width: calc(100vw - 12px) !important;
+  }
+}
+
 @media (max-width: 375px) {
   :root {
     --mobile-text-body: 14px;

@@ -353,7 +353,7 @@ const formatTime = (dateStr: string) => {
     if (days <= 7) {
       return `${days}天前`
     } else {
-      return date.toLocaleDateString('zh-CN')
+      return date.format('YYYY/M/D')
     }
   }
 }

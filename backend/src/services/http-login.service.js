@@ -12,10 +12,11 @@ const {
   recognizeTextWithTesseract,
   validateImageResponse
 } = require('../utils/ocr-image');
+const { DEFAULT_BROWSER_USER_AGENT, TIMEOUTS } = require('../config/constants');
 
 class HttpLoginService {
   constructor() {
-    this.userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+    this.userAgent = DEFAULT_BROWSER_USER_AGENT;
   }
 
   /**
@@ -77,7 +78,7 @@ class HttpLoginService {
           'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
           'Connection': 'keep-alive'
         },
-        timeout: 30000,
+        timeout: TIMEOUTS.EXTERNAL_API,
         maxRedirects: 5
       });
 

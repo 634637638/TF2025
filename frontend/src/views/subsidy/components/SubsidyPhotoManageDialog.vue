@@ -355,12 +355,19 @@ const queuePhotoWarmup = () => {
     })
   }
 
-  if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-    window.requestIdleCallback(warmup, { timeout: 1500 })
+  const browserWindow = typeof globalThis.window !== 'undefined' ? globalThis.window : null
+
+  if (browserWindow && 'requestIdleCallback' in browserWindow) {
+    browserWindow.requestIdleCallback(warmup, { timeout: 1500 })
     return
   }
 
-  window.setTimeout(warmup, 240)
+  if (browserWindow) {
+    browserWindow.setTimeout(warmup, 240)
+    return
+  }
+
+  warmup()
 }
 
 const handleViewerImageLoad = () => {

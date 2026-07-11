@@ -224,7 +224,7 @@
             :loading="saving"
             :disabled="!hasChanges"
           >
-            <InlineLoading v-if="saving" text="保存中..." size="small" variant="inherit" />
+            <span v-if="saving">保存中...</span>
             <template v-else>
               <i class="fas fa-save"></i>
               保存设置
@@ -248,7 +248,6 @@ import { unifiedApi } from '@/utils/unified-api'
 import { useAuthStore } from '@/stores/auth'
 import { formatImageUrl } from '@/utils/format'
 import Image from './Image.vue'
-import InlineLoading from '@/components/InlineLoading.vue'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { storage } from '@/services/storage'
 import { SECURITY_STORAGE_KEYS } from '@/constants/storage'

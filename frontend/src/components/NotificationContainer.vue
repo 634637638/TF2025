@@ -25,7 +25,6 @@
 </template>
 
 <script setup lang="ts">
-import { watch } from 'vue'
 import { useNotification, notifications } from '../composables/useNotification'
 
 const { removeNotification } = useNotification()

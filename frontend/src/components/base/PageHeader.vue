@@ -38,8 +38,10 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useSlots, watch } from 'vue'
+import type { CSSProperties } from 'vue'
 import { useRoute } from 'vue-router'
-import { useMenuStore, type MenuItem } from '@/stores/menu'
+import { useMenuStore } from '@/stores/menu'
+import type { MenuItem } from '@/types/menu'
 import IconRenderer from '@/components/IconRenderer.vue'
 /**
  * PageHeader - 统一页面头部组件
@@ -185,7 +187,7 @@ const shouldWrapActions = computed(() => actionCount.value > 4)
 const isDenseMobileHeader = computed(() => isMobile.value && actionCount.value >= 4)
 const isShortTitle = computed(() => props.title.trim().length <= 4 && !props.description)
 
-const rootStyle = computed(() => {
+const rootStyle = computed<CSSProperties>(() => {
   if (isTinyMobile.value) {
     return {
       padding: '0.5rem 0.75rem',
@@ -209,7 +211,7 @@ const rootStyle = computed(() => {
   }
 })
 
-const contentStyle = computed(() => ({
+const contentStyle = computed<CSSProperties>(() => ({
   flexDirection: 'row',
   flexWrap: 'nowrap',
   alignItems: isMobile.value ? 'flex-start' : 'center',
@@ -217,7 +219,7 @@ const contentStyle = computed(() => ({
   gap: isTinyMobile.value ? '8px' : isMobile.value ? '10px' : '12px'
 }))
 
-const leftStyle = computed(() => ({
+const leftStyle = computed<CSSProperties>(() => ({
   flex: isMobile.value ? '0 1 auto' : '0 1 auto',
   minWidth: '0',
   maxWidth: isDenseMobileHeader.value
@@ -241,7 +243,7 @@ const leftStyle = computed(() => ({
       : '50%'
 }))
 
-const titleStyle = computed(() => ({
+const titleStyle = computed<CSSProperties>(() => ({
   margin: '0',
   fontSize: isDenseMobileHeader.value
     ? isShortTitle.value
@@ -282,7 +284,7 @@ const titleStyle = computed(() => ({
   color: '#fff'
 }))
 
-const iconStyle = computed(() => ({
+const iconStyle = computed<CSSProperties>(() => ({
   fontSize: isDenseMobileHeader.value
     ? isShortTitle.value
       ? isTinyMobile.value
@@ -317,7 +319,7 @@ const iconStyle = computed(() => ({
   color: '#fff'
 }))
 
-const descriptionStyle = computed(() => ({
+const descriptionStyle = computed<CSSProperties>(() => ({
   margin: '0',
   paddingTop: '8px',
   fontSize: isTinyMobile.value ? '0.7rem' : isMobile.value ? '14px' : '16px',
@@ -325,7 +327,7 @@ const descriptionStyle = computed(() => ({
   color: 'rgba(232, 226, 226, 0.8)'
 }))
 
-const actionsStyle = computed(() => ({
+const actionsStyle = computed<CSSProperties>(() => ({
   display: 'flex',
   gap: isDenseMobileHeader.value && isShortTitle.value
     ? isTinyMobile.value

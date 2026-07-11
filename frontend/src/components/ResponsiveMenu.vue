@@ -149,10 +149,6 @@ defineExpose({
 .responsive-menu {
   position: relative;
   height: 100%;
-
-  &.is-mobile {
-    // 移动端样式
-  }
 }
 
 .desktop-menu {

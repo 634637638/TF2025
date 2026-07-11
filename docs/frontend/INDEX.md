@@ -11,6 +11,7 @@
 - [全局加载动画统一规范](global-loading-standard.md) - 页面切换、局部加载，以及“首屏加载 / 顶部静默刷新”规范
 - [菜单图标管理规范](menu-icon-management-standard.md) - 菜单图标在线检索、本地缓存、统一渲染规范
 - [前端最新请求规范](latest-request-standard.md) - 搜索、筛选、分页请求取消与旧响应防覆盖规范
+- [前端数据实时刷新规范](data-freshness-standard.md) - 新增、编辑、删除后缓存失效和列表即时刷新规范
 - [统一页面结构](unified-page-structure.md) - 页面统一架构
 
 ## 📖 指南文档

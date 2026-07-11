@@ -168,8 +168,7 @@ interface ScannerErrorLike {
   message?: string
 }
 
-interface ScannerDecodeResult {
-  text?: string
+interface ScanResultTextProvider {
   getText?: () => string
 }
 
@@ -178,32 +177,27 @@ interface FocusPoint {
   y: number
 }
 
-interface ScannerTrackCapabilities extends MediaTrackCapabilities {
+type TorchMediaTrackCapabilities = MediaTrackCapabilities & {
   torch?: boolean
   focusMode?: string[]
 }
 
-interface ScannerTrackConstraintSet extends MediaTrackConstraintSet {
+type TorchMediaTrackConstraintSet = MediaTrackConstraintSet & {
   torch?: boolean
   focusMode?: string
   pointsOfInterest?: FocusPoint[]
 }
 
-interface ScannerMediaTrack extends MediaStreamTrack {
-  getCapabilities?: () => ScannerTrackCapabilities
-  applyConstraints: (
-    constraints?: MediaTrackConstraints & { advanced?: ScannerTrackConstraintSet[] }
-  ) => Promise<void>
+type TorchMediaTrack = MediaStreamTrack & {
+  getCapabilities: () => TorchMediaTrackCapabilities
+  applyConstraints: (constraints?: MediaTrackConstraints & { advanced?: TorchMediaTrackConstraintSet[] }) => Promise<void>
 }
 
-interface ScannerCodeReader {
-  reset: () => void
-  decodeFromVideoDevice: (
-    deviceId: string | undefined,
-    videoElement: HTMLVideoElement,
-    callback: (result: ScannerDecodeResult | null, error: ScannerErrorLike | null) => void
-  ) => Promise<void>
-}
+const getTorchCapabilities = (track: MediaStreamTrack): TorchMediaTrackCapabilities => (
+  track.getCapabilities() as TorchMediaTrackCapabilities
+)
+
+type ZxingBrowserReader = InstanceType<typeof import('@zxing/library').BrowserMultiFormatReader>
 
 interface Props extends VisibleProps {
   scanType: 'imei' | 'serial'
@@ -268,7 +262,7 @@ const videoStyle = computed(() => {
 })
 
 // 摄像头和解码器实例
-let codeReader: ScannerCodeReader | null = null
+let codeReader: ZxingBrowserReader | null = null
 let stream: MediaStream | null = null
 let scanHistory: string[] = []
 let lastScanTime = 0
@@ -282,12 +276,12 @@ watch(() => props.visible, (newVal) => {
   }
 })
 
-const getScannerText = (result: ScannerDecodeResult): string => {
+const getScannerText = (result: ScanResultTextProvider): string => {
   if (typeof result.getText === 'function') {
     return result.getText().trim()
   }
 
-  return (result.text || '').trim()
+  return ''
 }
 
 // 开始扫码
@@ -347,7 +341,7 @@ const startScanning = async () => {
       ])
     }
 
-    codeReader = new BrowserMultiFormatReader(hints) as ScannerCodeReader
+    codeReader = new BrowserMultiFormatReader(hints)
 
     // 获取摄像头配置
     const cameraConfig = scanOptimizer.generateCameraConfig(deviceInfo.value)
@@ -369,8 +363,8 @@ const startScanning = async () => {
       }
 
       // 检查闪光灯
-      const videoTrack = stream.getVideoTracks()[0] as ScannerMediaTrack
-      const capabilities = videoTrack.getCapabilities?.()
+      const videoTrack = stream.getVideoTracks()[0] as TorchMediaTrack
+      const capabilities = getTorchCapabilities(videoTrack)
       hasFlash.value = capabilities?.torch || false
     }
 
@@ -399,7 +393,7 @@ const startDecoding = async () => {
   isScanning.value = true
   updateStatus('正在扫描...', 'status-scanning', 'fas fa-qrcode')
 
-  const scanCallback = (result: ScannerDecodeResult | null, error: ScannerErrorLike | null) => {
+  const scanCallback = (result: ScanResultTextProvider | null, error?: ScannerErrorLike) => {
     if (result) {
       handleScanSuccess(getScannerText(result))
     } else if (error) {
@@ -417,7 +411,7 @@ const startDecoding = async () => {
     logger.error('解码失败:', error)
     // 尝试使用默认摄像头
     if (cameraId.value) {
-      await codeReader.decodeFromVideoDevice(undefined, videoRef.value, scanCallback)
+      await codeReader.decodeFromVideoDevice(null, videoRef.value, scanCallback)
     }
   }
 }
@@ -491,8 +485,8 @@ const handleVideoClick = async (event: MouseEvent) => {
 
   // 尝试设置对焦点
   try {
-    const videoTrack = stream.getVideoTracks()[0] as ScannerMediaTrack
-    const capabilities = videoTrack.getCapabilities?.()
+    const videoTrack = stream.getVideoTracks()[0] as TorchMediaTrack
+    const capabilities = getTorchCapabilities(videoTrack)
 
     if (capabilities?.focusMode) {
       await videoTrack.applyConstraints({
@@ -638,8 +632,8 @@ const toggleFlash = async () => {
   if (!stream || !hasFlash.value) return
 
   try {
-    const videoTrack = stream.getVideoTracks()[0] as ScannerMediaTrack
-    const capabilities = videoTrack.getCapabilities?.()
+    const videoTrack = stream.getVideoTracks()[0] as TorchMediaTrack
+    const capabilities = getTorchCapabilities(videoTrack)
 
     if (capabilities.torch) {
       flashOn.value = !flashOn.value

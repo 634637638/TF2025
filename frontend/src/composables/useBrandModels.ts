@@ -6,6 +6,7 @@
 import { ref, reactive } from 'vue'
 import { unifiedApi } from '@/utils/unified-api'
 import { showElementError } from '@/utils/element-feedback'
+import { sortOptionsByOrder } from '@/utils/option-sort'
 import type { Brand, Model, Color, MemoryOption as Memory } from '@/types'
 
 // 全局状态 - 使用响应式数据
@@ -31,9 +32,8 @@ export function useBrandModels() {
         if (brandsData && typeof brandsData === 'object' && brandsData.data) {
           brandsData = brandsData.data
         }
-        // 按 sort_order 排序
         brands.value = (Array.isArray(brandsData) ? brandsData : [])
-          .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
+        brands.value = sortOptionsByOrder(brands.value)
         return brands.value
       } else {
         brands.value = []
@@ -59,14 +59,13 @@ export function useBrandModels() {
 
       if (response.success) {
         const modelsData = response.data || []
-        const formattedModels = modelsData
+        const formattedModels = sortOptionsByOrder(modelsData
           .map((model: any) => ({
             id: model.id,
             name: model.name,
             brand_id: model.brand_id,
             sort_order: model.sort_order || 0
-          }))
-          .sort((a: any, b: any) => a.sort_order - b.sort_order)
+          })))
 
         // 缓存型号数据
         brandModels[brandId] = formattedModels
@@ -101,9 +100,8 @@ export function useBrandModels() {
           }
         }
 
-        // 按 sort_order 排序
         colors.value = (Array.isArray(colorsData) ? colorsData : [])
-          .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
+        colors.value = sortOptionsByOrder(colors.value)
         return colors.value
       }
     } catch (error) {
@@ -139,9 +137,8 @@ export function useBrandModels() {
           }
         }
 
-        // 按 sort_order 排序
         memories.value = (Array.isArray(memoriesData) ? memoriesData : [])
-          .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
+        memories.value = sortOptionsByOrder(memories.value, { labelKeys: ['size', 'capacity', 'name'] })
         return memories.value
       }
     } catch (error) {

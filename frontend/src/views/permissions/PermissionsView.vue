@@ -822,6 +822,7 @@ import { User, Shop, Grid, Document, Avatar, Lock } from '@element-plus/icons-vu
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { unifiedApi } from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
+import { sortOptionsByOrder } from '@/utils/option-sort'
 import { useRouter } from 'vue-router'
 import { useNotification } from '@/composables/useNotification'
 import { useLoadingState } from '@/composables'
@@ -2924,7 +2925,7 @@ const formatDate = (dateString: string | undefined) => {
 
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
   } catch (err) {
-    logger.error('日期格式化错误:', err, dateString)
+    logger.error('日期格式化错误:', { err, dateString })
     return '格式错误'
   }
 }
@@ -3429,7 +3430,7 @@ const loadStoreList = async () => {
   try {
     const response = await unifiedApi.get('/stores', { params: { all: true } })
     if (response.success) {
-      storeList.value = response.data
+      storeList.value = sortOptionsByOrder(response.data || [])
     }
   } catch (err) {
     logger.error('加载门店列表失败:', err)
@@ -3589,7 +3590,7 @@ const saveStoreBinding = async () => {
     await loadStoreBindings()
   } catch (err) {
     logger.error('保存门店绑定失败:', err)
-    error('保存门店绑定失败')
+    handleApiError(err, '保存门店绑定失败')
   } finally {
     savingStoreBinding.value = false
   }

@@ -401,7 +401,7 @@ const {
   limit,
   total,
   setTotal,
-  setPage,
+  goToPage,
   setLimit
 } = usePagination({
   page: 1,
@@ -412,7 +412,7 @@ const {
 })
 
 // 创建 reactive 分页对象供模板使用（自动解包 ref）
-const pagination = reactive({ page, limit, total, setTotal, setPage, setLimit })
+const pagination = reactive({ page, limit, total, setTotal, goToPage, setLimit })
 
 // 数据状态
 const { loading } = useLoadingState()
@@ -519,7 +519,7 @@ const fetchLogs = async () => {
 }
 
 const handlePageChange = (page: number) => {
-  setPage(page)
+  goToPage(page)
 }
 
 const handlePageSizeChange = (limit: number) => {

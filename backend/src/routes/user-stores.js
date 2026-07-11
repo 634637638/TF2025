@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const ApiResponse = require('../utils/response');
-const { unifiedAuth, requirePermission } = require('../middleware/unified-auth');
+const { unifiedAuth, requirePermission, requireAnyPermission } = require('../middleware/unified-auth');
 const UserStoreRepository = require('../repositories/user-store.repository');
 const log = require('../utils/log');
 
@@ -54,7 +54,7 @@ router.get('/store/:storeId', unifiedAuth, requirePermission('stores:view'), asy
  * POST /api/user-stores/assign
  * Body: { userId: number, storeIds: number[], isPrimary?: boolean }
  */
-router.post('/assign', unifiedAuth, requirePermission('users:edit'), async (req, res) => {
+router.post('/assign', unifiedAuth, requireAnyPermission(['users:edit', 'permissions:admin']), async (req, res) => {
   try {
     const { userId, storeIds, isPrimary } = req.body;
     const assignedBy = req.user.id;
@@ -82,7 +82,7 @@ router.post('/assign', unifiedAuth, requirePermission('users:edit'), async (req,
  * PUT /api/user-stores/primary
  * Body: { userId: number, storeId: number }
  */
-router.put('/primary', unifiedAuth, requirePermission('users:edit'), async (req, res) => {
+router.put('/primary', unifiedAuth, requireAnyPermission(['users:edit', 'permissions:admin']), async (req, res) => {
   try {
     const { userId, storeId } = req.body;
 
@@ -104,7 +104,7 @@ router.put('/primary', unifiedAuth, requirePermission('users:edit'), async (req,
  * DELETE /api/user-stores/remove
  * Body: { userId: number, storeId: number }
  */
-router.delete('/remove', unifiedAuth, requirePermission('users:edit'), async (req, res) => {
+router.delete('/remove', unifiedAuth, requireAnyPermission(['users:edit', 'permissions:admin']), async (req, res) => {
   try {
     const { userId, storeId } = req.body;
 
@@ -125,7 +125,7 @@ router.delete('/remove', unifiedAuth, requirePermission('users:edit'), async (re
  * 移除用户的所有门店关联
  * DELETE /api/user-stores/user/:userId/all
  */
-router.delete('/user/:userId/all', unifiedAuth, requirePermission('users:edit'), async (req, res) => {
+router.delete('/user/:userId/all', unifiedAuth, requireAnyPermission(['users:edit', 'permissions:admin']), async (req, res) => {
   try {
     const { userId } = req.params;
 

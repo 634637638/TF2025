@@ -16,6 +16,7 @@ export const DEFAULT_CACHE_TTL = {
 
 // 请求去重 Map
 const pendingRequests = new Map<string, Promise<any>>()
+let cacheGeneration = 0
 
 /**
  * 缓存请求工具函数
@@ -48,6 +49,7 @@ export async function useCachedRequest<T>(
 
   // 3. 发起请求
   try {
+    const requestGeneration = cacheGeneration
     const requestPromise = fetcher()
 
     if (deduplicate) {
@@ -57,7 +59,9 @@ export async function useCachedRequest<T>(
     const data = await requestPromise
 
     // 4. 存入缓存
-    globalApiCache.set(key, data, ttl)
+    if (requestGeneration === cacheGeneration) {
+      globalApiCache.set(key, data, ttl)
+    }
 
     // 5. 清理去重标记
     pendingRequests.delete(key)
@@ -93,6 +97,7 @@ function getStaleCache(key: string): any {
  * 清除指定键的缓存
  */
 export function clearCache(key?: string): void {
+  cacheGeneration += 1
   if (key) {
     globalApiCache.delete(key)
     pendingRequests.delete(key)

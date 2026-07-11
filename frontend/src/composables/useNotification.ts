@@ -337,6 +337,7 @@ export const useNotification = (options: UseNotificationOptions = {}) => {
     handleApiSuccess,
 
     // 管理功能
+    removeNotification,
     clearAll,
     clearByType,
     batchNotify,

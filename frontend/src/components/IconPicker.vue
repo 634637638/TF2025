@@ -48,7 +48,7 @@
           clearable
           filterable
           class="category-filter"
-          popper-class="icon-picker-category-dropdown"
+          popper-class="tf2025-form-popper icon-picker-category-dropdown"
           @change="filterIcons"
           @keydown.enter.prevent
         >

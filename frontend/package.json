@@ -4,6 +4,8 @@
   "description": "Frontend for TF2025 project with Vue 3 + TypeScript",
   "scripts": {
     "dev": "vite",
+    "check:data-freshness": "node scripts/check-data-freshness.mjs",
+    "check:loading": "node scripts/check-loading-patterns.mjs",
     "build": "vite build",
     "build:debug": "vite build --config vite.config.debug.ts",
     "serve": "vite preview",

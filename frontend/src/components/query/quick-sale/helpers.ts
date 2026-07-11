@@ -5,6 +5,7 @@ import {
   normalizePhoneDigits,
   resolveAppleAccountEmail
 } from '@/utils/security'
+import { sortOptionsByOrder } from '@/utils/option-sort'
 import type {
   BrandModelOption,
   CustomerOption,
@@ -168,9 +169,9 @@ export const createQuickSaleInitialPatch = (
 }
 
 export const normalizeQuickSaleModelOptions = (models: BrandModelOption[]): string[] =>
-  models
+  sortOptionsByOrder(models
     .filter((model) => model.status === 1)
-    .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+  )
     .map((model) => model.name)
 
 export const calculateQuickSaleSubsidyRemarks = (salePriceInput: number | string | null | undefined) => {

@@ -1,17 +1,8 @@
 const cors = require('cors');
 const log = require('../utils/log');
+const { DEFAULT_CORS_ORIGINS } = require('../config/constants');
 
-// 从环境变量获取允许的域名，默认包含开发环境
-const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',')
-  : [
-      'http://localhost:5173',  // Vite开发服务器
-      'http://localhost:5176',  // Vite开发服务器（备用）
-      'http://localhost:3000',  // 备用前端端口
-      'http://127.0.0.1:5173',
-      'http://127.0.0.1:5176',
-      'http://127.0.0.1:3000'
-    ];
+const allowedOrigins = DEFAULT_CORS_ORIGINS;
 
 // CORS配置选项
 const corsOptions = {

@@ -4,12 +4,13 @@ const { unifiedAuth, requirePermission } = require('../middleware/unified-auth')
 const ApiResponse = require('../utils/response');
 const { getDatabase } = require('../config/database');
 const { getSalaryAccessScope } = require('../services/accessControl.service');
+const { PAGINATION } = require('../config/constants');
 const log = require('../utils/log');
 
 // 获取员工列表
 router.get('/', unifiedAuth, requirePermission('employee:view'), async (req, res) => {
   try {
-    const { page = 1, limit = 10000, status, search } = req.query;
+    const { page = PAGINATION.DEFAULT_PAGE, limit = PAGINATION.DEFAULT_LIMIT, status, search } = req.query;
 
     const db = getDatabase();
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -38,7 +39,7 @@ router.get('/', unifiedAuth, requirePermission('employee:view'), async (req, res
     const total = countResult[0].total;
 
     // 确保参数是正确的整数类型
-    const limitInt = parseInt(limit) || 10000;
+    const limitInt = parseInt(limit) || PAGINATION.DEFAULT_LIMIT;
     const offsetInt = parseInt(offset) || 0;
 
     // 查询员工列表，包含角色信息

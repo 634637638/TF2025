@@ -7,6 +7,7 @@ const multer = require('multer');
 const priceListController = require('../controllers/price-list.controller');
 const { unifiedAuth, requirePermission } = require('../middleware/unified-auth');
 const log = require('../utils/log');
+const { requireMockRoutesEnabled } = require('../middleware/mock-route-guard');
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -235,7 +236,7 @@ router.post('/update-iphone16-is-collect', unifiedAuth, requirePermission('price
  * @desc    测试仅按 price_list 采集功能
  * @access  Private
  */
-router.post('/test-no-inventory', unifiedAuth, requirePermission('price-list:edit'), async (req, res) => {
+router.post('/test-no-inventory', unifiedAuth, requirePermission('price-list:edit'), requireMockRoutesEnabled('价目表匹配测试模拟接口'), async (req, res) => {
   try {
     const service = req.app.get('priceListService');
 

@@ -79,7 +79,7 @@
                 :validate-imei-on-blur="validateIMEIOnBlur"
                 :scan-serial-number="scanSerialNumber"
                 :scan-imei="scanIMEI"
-                :enable-no-i-m-e-i-mode="enableNoIMEIMode"
+                :enable-no-imei-mode="enableNoIMEIMode"
                 @add="addPhone"
                 @batch="showBatchCountDialog = true"
                 @clear="clearAllPhones"
@@ -128,7 +128,7 @@
     <OptimizedScanner
       v-model:visible="optimizedScannerVisible"
       :scan-type="currentScanType"
-      :phone="currentScanningPhone"
+      :phone="scannerPhone"
       :showROIDisplay="true"
       :enableAndroidOptimization="true"
       :showPerformance="isDevMode"
@@ -281,6 +281,17 @@ const storeSearchQuery = ref('')
 const optimizedScannerVisible = ref(false)
 const currentScanType = ref<'imei' | 'serial'>('imei')
 const currentScanningPhone = ref<PhoneItem | null>(null)
+const scannerPhone = computed(() => {
+  if (!currentScanningPhone.value) {
+    return undefined
+  }
+
+  return {
+    brand: currentScanningPhone.value.brand === undefined
+      ? undefined
+      : String(currentScanningPhone.value.brand)
+  }
+})
 
 // 批量添加对话框
 const showBatchCountDialog = ref(false)
@@ -902,21 +913,6 @@ watch(
   --dialog-side-gap: 20px;
 }
 
-.stock-in-mobile-popper .el-select-dropdown__item,
-.stock-in-mobile-popper .el-picker-panel__shortcut {
-  min-height: 40px;
-  height: auto !important;
-  line-height: 1.4;
-  white-space: normal;
-  word-break: break-word;
-  padding-top: 10px;
-  padding-bottom: 10px;
-}
-
-.stock-in-mobile-popper .el-select-dropdown__wrap {
-  max-height: min(320px, 55vh);
-}
-
 /* StockInModal 使用自定义 header，需要隐藏默认的头部样式 */
 .stock-in-dialog .el-dialog__header {
   display: flex !important;
@@ -1045,26 +1041,6 @@ watch(
     padding: 12px 10px 10px !important;
   }
 
-  .stock-in-mobile-popper.el-popper,
-  .stock-in-mobile-popper.el-select__popper,
-  .stock-in-mobile-popper.el-picker__popper {
-    width: min(380px, calc(100vw - 12px)) !important;
-    max-width: calc(100vw - 12px) !important;
-  }
-
-  .stock-in-mobile-popper.el-select__popper .el-select-dropdown,
-  .stock-in-mobile-popper.el-select__popper .el-scrollbar,
-  .stock-in-mobile-popper.el-select__popper .el-select-dropdown__wrap,
-  .stock-in-mobile-popper.el-select__popper .el-select-dropdown__list,
-  .stock-in-mobile-popper.el-picker__popper .el-picker-panel,
-  .stock-in-mobile-popper.el-picker__popper .el-date-picker,
-  .stock-in-mobile-popper.el-picker__popper .el-date-picker__header,
-  .stock-in-mobile-popper.el-picker__popper .el-picker-panel__content {
-    width: 100% !important;
-    min-width: 0 !important;
-    box-sizing: border-box;
-  }
-
   .stock-in-dialog .delete-row-btn.el-button--danger.el-button--small {
     width: 22px !important;
     height: 22px !important;
@@ -1102,12 +1078,6 @@ watch(
     padding: 12px 4px !important;
   }
 
-  .stock-in-mobile-popper.el-popper,
-  .stock-in-mobile-popper.el-select__popper,
-  .stock-in-mobile-popper.el-picker__popper {
-    width: calc(100vw - 12px) !important;
-    max-width: calc(100vw - 12px) !important;
-  }
 }
 
 /* 提示文字样式 */

@@ -11,7 +11,7 @@
       <PageHeader icon="fas fa-database" title="备份管理">
         <template #actions>
           <el-button type="primary" @click="createBackup" :loading="isCreating" v-if="canCreate">
-            <InlineLoading v-if="isCreating" text="备份中..." size="small" variant="inherit" />
+            <span v-if="isCreating">备份中...</span>
             <template v-else>
               <i class="fas fa-plus"></i>
               <span>创建备份</span>
@@ -122,7 +122,7 @@
                     :disabled="downloadingFilename !== null && downloadingFilename !== row.filename"
                     @click="downloadBackup(row.filename)"
                   >
-                    <InlineLoading v-if="downloadingFilename === row.filename" text="下载中" size="small" variant="inherit" />
+                    <span v-if="downloadingFilename === row.filename">下载中</span>
                     <template v-else>
                       <i class="fas fa-download"></i>
                       下载
@@ -178,7 +178,6 @@ import { unifiedApi } from '@/utils/unified-api'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { PermissionGate, PageHeader } from '@/components/base'
-import InlineLoading from '@/components/InlineLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 
 const { success, error, loading } = useNotification()

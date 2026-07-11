@@ -83,7 +83,7 @@
                     clearable
                     :disabled="!phone.brand"
                     size="small"
-                    popper-class="model-select-dropdown"
+                    popper-class="tf2025-form-popper"
                   >
                     <el-option
                       v-for="model in getFilteredModelsForPhone(index)"
@@ -137,13 +137,13 @@
                   />
                 </td>
                 <td class="col-imei">
-                  <div class="cursor-pointer" @dblclick="enableNoIMEIMode(phone)">
+                  <div class="cursor-pointer" @dblclick="enableNoImeiMode(phone)">
                     <el-input
                       v-model="phone.imei"
                       :placeholder="phone.isNoIMEIMode ? '无IMEI' : 'IMEI'"
                       :maxlength="phone.isNoIMEIMode ? 30 : 15"
                       size="small"
-                      @input="formatIMEI(phone)"
+                      @input="formatImei(phone)"
                     />
                   </div>
                 </td>
@@ -203,7 +203,7 @@
                   :filter-method="(query) => handleBrandFilter(query, index)"
                   clearable
                   teleported
-                  popper-class="stock-in-mobile-popper"
+                  popper-class="tf2025-form-popper"
                   @change="handleBrandChange(phone)"
                 >
                   <el-option
@@ -224,7 +224,7 @@
                   filterable
                   :filter-method="(query) => handleModelFilter(query, index)"
                   teleported
-                  popper-class="stock-in-mobile-popper model-select-dropdown"
+                  popper-class="tf2025-form-popper"
                 >
                   <el-option
                     v-for="model in getFilteredModelsForPhone(index)"
@@ -245,7 +245,7 @@
                   filterable
                   :filter-method="(query) => handleColorFilter(query, index)"
                   teleported
-                  popper-class="stock-in-mobile-popper"
+                  popper-class="tf2025-form-popper"
                 >
                   <el-option
                     v-for="color in getFilteredColorsForPhone(index)"
@@ -264,7 +264,7 @@
                   filterable
                   :filter-method="(query) => handleMemoryFilter(query, index)"
                   teleported
-                  popper-class="stock-in-mobile-popper"
+                  popper-class="tf2025-form-popper"
                 >
                   <el-option
                     v-for="memory in getFilteredMemoriesForPhone(index)"
@@ -306,14 +306,14 @@
 
             <div class="grid-row single-column">
               <el-form-item label="IMEI号" :prop="`phones.${index}.imei`">
-                <div class="long-input-field imei-field" @dblclick="enableNoIMEIMode(phone)">
+                <div class="long-input-field imei-field" @dblclick="enableNoImeiMode(phone)">
                   <el-input
                     v-model="phone.imei"
                     :placeholder="phone.isNoIMEIMode ? '已启用无IMEI模式，允许字母+数字' : '请输入15位IMEI号（双击启用无IMEI模式）'"
                     :maxlength="phone.isNoIMEIMode ? 30 : 15"
                     clearable
-                    @input="formatIMEI(phone)"
-                    @blur="validateIMEIOnBlur(phone)"
+                    @input="formatImei(phone)"
+                    @blur="validateImeiOnBlur(phone)"
                   >
                     <template #suffix>
                       <span v-if="phone.isNoIMEIMode" class="text-xs text-success">
@@ -324,7 +324,7 @@
                         link
                         type="primary"
                         title="扫码识别IMEI"
-                        @click.stop="scanIMEI(phone)"
+                        @click.stop="scanImei(phone)"
                       >
                         <i class="fas fa-qrcode"></i>
                       </el-button>
@@ -399,15 +399,15 @@ interface Props {
   handleMemoryFilter: (query: string, index: number) => boolean
   handleBrandChange: (phone: StockInPhoneItem) => void | Promise<void>
   formatSerialNumber: (phone: StockInPhoneItem) => void
-  formatIMEI: (phone: StockInPhoneItem) => void
+  formatImei: (phone: StockInPhoneItem) => void
   formatPriceValue: (value: number | string | undefined) => string
   updatePurchasePrice: (phone: StockInPhoneItem, value: string) => void
   removePhone: (index: number) => void
   validateSerialOnBlur: (phone: StockInPhoneItem) => void
-  validateIMEIOnBlur: (phone: StockInPhoneItem) => void
+  validateImeiOnBlur: (phone: StockInPhoneItem) => void
   scanSerialNumber: (phone: StockInPhoneItem) => void
-  scanIMEI: (phone: StockInPhoneItem) => void
-  enableNoIMEIMode: (phone: StockInPhoneItem) => void
+  scanImei: (phone: StockInPhoneItem) => void
+  enableNoImeiMode: (phone: StockInPhoneItem) => void
 }
 
 const emit = defineEmits<{

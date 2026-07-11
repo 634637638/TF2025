@@ -4,7 +4,6 @@
     title="退库操作"
     :force-fullscreen="isMobile"
     :show-default-footer="false"
-    :loading="submitting"
     confirm-text="确认退库"
     width="680px"
     max-width="680px"
@@ -85,7 +84,7 @@
               v-model="formData.return_reason"
               placeholder="请选择退库原因"
               teleported
-              popper-class="query-return-stock-dialog-popper"
+              popper-class="tf2025-form-popper"
             >
               <el-option label="客户退货" value="客户退货" />
               <el-option label="质量问题" value="质量问题" />
@@ -105,7 +104,7 @@
               format="YYYY-MM-DD HH:mm"
               value-format="YYYY-MM-DDTHH:mm"
               teleported
-              popper-class="query-return-stock-dialog-popper"
+              popper-class="tf2025-form-popper"
               style="width: 180px"
             />
           </el-form-item>
@@ -115,7 +114,7 @@
               v-model="formData.return_type"
               placeholder="请选择退库类型"
               teleported
-              popper-class="query-return-stock-dialog-popper"
+              popper-class="tf2025-form-popper"
             >
               <el-option label="整单退库" value="整单退库" />
               <el-option label="部分退库" value="部分退库" />
@@ -128,7 +127,7 @@
               v-model="formData.handle_method"
               placeholder="请选择处理方式"
               teleported
-              popper-class="query-return-stock-dialog-popper"
+              popper-class="tf2025-form-popper"
             >
               <el-option label="重新入库" value="重新入库" />
               <el-option label="返厂维修" value="返厂维修" />
@@ -154,7 +153,7 @@
               placeholder="请选择退款方式"
               clearable
               teleported
-              popper-class="query-return-stock-dialog-popper"
+              popper-class="tf2025-form-popper"
             >
               <el-option label="现金退款" value="现金退款" />
               <el-option label="原路退回" value="原路退回" />
@@ -339,16 +338,6 @@ watch(
 :global(.query-return-stock-dialog .mobile-dialog-sheet-body),
 :global(.query-return-stock-dialog .mobile-dialog-sheet-footer) {
   background: #ffffff;
-}
-
-:global(.query-return-stock-dialog-popper) {
-  z-index: 3200 !important;
-}
-
-:global(.query-return-stock-dialog-popper.el-popper),
-:global(.query-return-stock-dialog-popper.el-select__popper),
-:global(.query-return-stock-dialog-popper.el-picker__popper) {
-  border-radius: 14px !important;
 }
 
 .device-info-card {
@@ -536,22 +525,6 @@ watch(
     gap: 8px;
   }
 
-  :global(.query-return-stock-dialog-popper.el-popper),
-  :global(.query-return-stock-dialog-popper.el-select__popper),
-  :global(.query-return-stock-dialog-popper.el-picker__popper) {
-    width: min(360px, calc(100vw - 12px)) !important;
-    max-width: calc(100vw - 12px) !important;
-  }
-
-  :global(.query-return-stock-dialog-popper .el-picker-panel) {
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-
-  :global(.query-return-stock-dialog-popper.el-picker__popper) {
-    left: 6px !important;
-    right: 6px !important;
-  }
 }
 
 @media (max-width: 480px) {

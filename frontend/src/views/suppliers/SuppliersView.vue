@@ -35,7 +35,7 @@
           @click="handleRefresh"
           plain
         >
-          <InlineLoading v-if="refreshing" text="刷新中..." size="small" variant="inherit" />
+          <span v-if="refreshing">刷新中...</span>
           <template v-else>
             <i class="fas fa-sync-alt"></i>
             刷新
@@ -88,6 +88,7 @@
 
     <UnifiedSearchPanel
       v-model:expanded="searchExpanded"
+      :loading="loading"
       @search="searchSuppliers"
       @reset="resetSearch"
     >
@@ -1074,7 +1075,7 @@ const deleteSupplier = async (supplier: Supplier) => {
 
     if (response.success) {
       success('供应商删除成功')
-      loadSuppliers()
+      await loadSuppliers()
     } else {
       error(response.message || '删除供应商失败')
     }
@@ -1107,7 +1108,7 @@ const submitForm = async () => {
       if (response.success) {
         success('供应商创建成功')
         closeModal()
-        loadSuppliers()
+        await loadSuppliers()
       } else {
         error(response.message || '创建供应商失败')
       }
@@ -1122,7 +1123,7 @@ const submitForm = async () => {
       if (response.success) {
         success('供应商更新成功')
         closeModal()
-        loadSuppliers()
+        await loadSuppliers()
       } else {
         error(response.message || '更新供应商失败')
       }

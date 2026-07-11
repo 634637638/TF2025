@@ -5,7 +5,9 @@ const { devPermissionCheck } = require('../middleware/dev-permission');
 const ApiResponse = require('../utils/response');
 const { getDatabase, isConnected } = require('../config/database');
 const { cacheMiddleware, clearCache } = require('../middleware/cache');
+const { CACHE_TTL, PAGINATION } = require('../config/constants');
 const log = require('../utils/log');
+const { parseStatusFilter } = require('../utils/status');
 
 const clearColorsRouteCache = () => {
   try {
@@ -17,7 +19,7 @@ const clearColorsRouteCache = () => {
 };
 
 // 获取颜色列表
-router.get('/', unifiedAuth, devPermissionCheck('colors:view'), cacheMiddleware({ ttl: 10 * 1000 }), async (req, res) => {
+router.get('/', unifiedAuth, devPermissionCheck('colors:view'), cacheMiddleware({ ttl: CACHE_TTL.SHORT }), async (req, res) => {
   try {
     log.debug('获取颜色列表请求，参数:', req.query);
 
@@ -27,8 +29,8 @@ router.get('/', unifiedAuth, devPermissionCheck('colors:view'), cacheMiddleware(
 
     const pool = getDatabase();
     const {
-      page = 1,
-      limit = 10000,  // 提高默认限制以支持获取所有数据
+      page = PAGINATION.DEFAULT_PAGE,
+      limit = PAGINATION.DEFAULT_LIMIT,
       brand_id,
       category,
       is_premium,
@@ -40,8 +42,8 @@ router.get('/', unifiedAuth, devPermissionCheck('colors:view'), cacheMiddleware(
       sortOrder = 'asc'
     } = req.query;
 
-    const limitNum = parseInt(limit) || 10000;  // 提高默认限制
-    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || PAGINATION.DEFAULT_LIMIT;
+    const pageNum = parseInt(page) || PAGINATION.DEFAULT_PAGE;
     const offset = (pageNum - 1) * limitNum;
 
     // 使用简单的查询方式，避免复杂的JOIN和参数问题
@@ -78,9 +80,9 @@ router.get('/', unifiedAuth, devPermissionCheck('colors:view'), cacheMiddleware(
     // 状态筛选
     let statusFilter = null;
     if (is_active !== undefined) {
-      statusFilter = is_active === 'true' ? 1 : 0;
+      statusFilter = parseStatusFilter(is_active);
     } else if (status !== undefined) {
-      statusFilter = status === 'true' ? 1 : 0;
+      statusFilter = parseStatusFilter(status);
     }
     if (statusFilter !== null) {
       conditions.push('status = ?');
@@ -104,7 +106,10 @@ router.get('/', unifiedAuth, devPermissionCheck('colors:view'), cacheMiddleware(
     const validSortColumns = ['id', 'name', 'created_at', 'updated_at', 'sort_order', 'category'];
     const sortColumn = validSortColumns.includes(sortBy) ? sortBy : 'sort_order';
     const sortDirection = sortOrder === 'desc' ? 'DESC' : 'ASC';
-    baseQuery += ` ORDER BY ${sortColumn} ${sortDirection}`;
+    const fallbackOrder = sortColumn === 'sort_order'
+      ? ', name ASC, id ASC'
+      : ', sort_order ASC, name ASC, id ASC';
+    baseQuery += ` ORDER BY ${sortColumn} ${sortDirection}${fallbackOrder}`;
 
     // 分页
     const finalQuery = `${baseQuery} LIMIT ${limitNum} OFFSET ${offset}`;
@@ -113,8 +118,10 @@ router.get('/', unifiedAuth, devPermissionCheck('colors:view'), cacheMiddleware(
     log.debug('查询参数:', queryParams);
 
     // 执行查询
-    const [colors] = await pool.execute(finalQuery, queryParams);
-    const [countResult] = await pool.execute(baseCountQuery, queryParams);
+    const [[colors], [countResult]] = await Promise.all([
+      pool.execute(finalQuery, queryParams),
+      pool.execute(baseCountQuery, queryParams)
+    ]);
     const total = countResult[0].total;
 
     log.debug(`查询结果: ${colors.length} 条记录，总数: ${total}`);

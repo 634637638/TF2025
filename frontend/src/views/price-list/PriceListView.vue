@@ -2275,7 +2275,7 @@ const loadPriceTrends = async (list: any[], seq: number) => {
         item.price_change_amount = '='
       }
     } catch (error) {
-      logger.error('获取价格历史失败:', item.price_list_id, error)
+      logger.error('获取价格历史失败:', { priceListId: item.price_list_id, error })
       item.price_trend = 'neutral'
       item.price_change_percent = 0
     }

@@ -19,6 +19,7 @@ const HttpLoginService = require('./http-login.service');
 const SystemSettingsService = require('./system-settings.service');
 const { matchProductName } = require('../config/product-name-mapping');
 const log = require('../utils/log');
+const { DEFAULT_BROWSER_USER_AGENT, EXTERNAL_PRICE, TIMEOUTS } = require('../config/constants');
 
 class PriceListService {
   constructor() {
@@ -1933,7 +1934,7 @@ class PriceListService {
       log.debug('👤 使用账户:', config.login_username);
 
       const headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'User-Agent': DEFAULT_BROWSER_USER_AGENT,
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
         'Connection': 'keep-alive'
@@ -2058,7 +2059,7 @@ class PriceListService {
       try {
         const response = await axios.get(config.source_url, {
           headers,
-          timeout: 30000,
+          timeout: TIMEOUTS.EXTERNAL_API,
           maxRedirects: 5
         });
 
@@ -2186,12 +2187,12 @@ class PriceListService {
           // 先搜索iPad（如果有）
           if (hasIPad) {
             log.debug(`  正在搜索所有iPad产品 (搜索词: "iPad")...`);
-            const searchUrl = `https://81119.byb2b.cn/quoteList.action?km=&pp=%E8%8B%B9%E6%9E%9C&network=&arg_name=iPad&s_jg=&e_jg=&policyid=&tykhgsdm=&isqh=0`;
+            const searchUrl = `${EXTERNAL_PRICE.BASE_URL}/quoteList.action?km=&pp=%E8%8B%B9%E6%9E%9C&network=&arg_name=iPad&s_jg=&e_jg=&policyid=&tykhgsdm=&isqh=0`;
 
             try {
               const response = await axios.get(searchUrl, {
                 headers,
-                timeout: 30000,
+                timeout: TIMEOUTS.EXTERNAL_API,
                 maxRedirects: 5
               });
 
@@ -2209,12 +2210,12 @@ class PriceListService {
           // 搜索AirPods（如果有）
           if (hasAirPods) {
             log.debug(`  正在搜索所有AirPods产品 (搜索词: "pods")...`);
-            const searchUrl = `https://81119.byb2b.cn/quoteList.action?km=&pp=&network=&arg_name=pods&s_jg=&e_jg=&policyid=&tykhgsdm=&isqh=0`;
+            const searchUrl = `${EXTERNAL_PRICE.BASE_URL}/quoteList.action?km=&pp=&network=&arg_name=pods&s_jg=&e_jg=&policyid=&tykhgsdm=&isqh=0`;
 
             try {
               const response = await axios.get(searchUrl, {
                 headers,
-                timeout: 30000,
+                timeout: TIMEOUTS.EXTERNAL_API,
                 maxRedirects: 5
               });
 
@@ -2243,14 +2244,14 @@ class PriceListService {
               log.debug(`  正在搜索 ${modelKey} (${modelCode})...`);
             }
 
-            const searchUrl = `https://81119.byb2b.cn/quoteList.action?km=&pp=%E8%8B%B9%E6%9E%9C&network=&arg_name=${searchTerm}&s_jg=&e_jg=&policyid=&tykhgsdm=&isqh=0`;
+            const searchUrl = `${EXTERNAL_PRICE.BASE_URL}/quoteList.action?km=&pp=%E8%8B%B9%E6%9E%9C&network=&arg_name=${searchTerm}&s_jg=&e_jg=&policyid=&tykhgsdm=&isqh=0`;
 
             try {
               log.debug(`  请求URL: ${searchUrl}`);
               log.debug(`  请求头Cookie: ${headers.Cookie?.substring(0, 100)}...`);
               const response = await axios.get(searchUrl, {
                 headers,
-                timeout: 30000,
+                timeout: TIMEOUTS.EXTERNAL_API,
                 maxRedirects: 5
               });
 

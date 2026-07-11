@@ -112,10 +112,10 @@ router.get('/phone-options', async (req, res) => {
 
     // 查询所有启用的店铺
     const [stores] = await pool.execute(`
-      SELECT id, name
+      SELECT id, name, sort_order
       FROM stores
       WHERE status = 1
-      ORDER BY name
+      ORDER BY sort_order ASC, name ASC, id ASC
     `);
 
     // 构造全新/二手选项（基于is_new字段）
@@ -154,7 +154,11 @@ router.get('/phone-options', async (req, res) => {
 
     const purchaseNumberOptions = purchaseNumbers.map(row => String(row.purchase_number));
     const conditionOptions = conditions.map(row => String(row.quality_grade));
-    const storeOptions = stores.map(row => ({ id: row.id, name: String(row.name) }));
+    const storeOptions = stores.map(row => ({
+      id: row.id,
+      name: String(row.name),
+      sort_order: row.sort_order || 0
+    }));
 
     ApiResponse.success(res, {
       colors: fullColorOptions, // 完整对象数组

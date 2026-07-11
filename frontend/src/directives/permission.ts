@@ -14,6 +14,9 @@ interface PermissionBinding {
   mode?: 'any' | 'all'
 }
 
+const permissionUnsubscribers = new WeakMap<HTMLElement, () => void>()
+const permissionNotUnsubscribers = new WeakMap<HTMLElement, () => void>()
+
 /**
  * v-permission 指令
  * 根据用户权限显示/隐藏元素
@@ -21,6 +24,12 @@ interface PermissionBinding {
 export const vPermission: Directive<HTMLElement, PermissionBinding | string> = {
   mounted(el: HTMLElement, binding: DirectiveBinding<PermissionBinding | string>) {
     applyPermissionVisibility(el, binding)
+
+    const authStore = useAuthStore()
+    const unsubscribe = authStore.$subscribe(() => {
+      applyPermissionVisibility(el, binding)
+    })
+    permissionUnsubscribers.set(el, unsubscribe)
   },
 
   updated(el: HTMLElement, binding: DirectiveBinding<PermissionBinding | string>) {
@@ -28,6 +37,11 @@ export const vPermission: Directive<HTMLElement, PermissionBinding | string> = {
     if (binding.oldValue !== binding.value) {
       applyPermissionVisibility(el, binding)
     }
+  },
+
+  unmounted(el: HTMLElement) {
+    permissionUnsubscribers.get(el)?.()
+    permissionUnsubscribers.delete(el)
   }
 }
 
@@ -72,16 +86,6 @@ const applyPermissionVisibility = (el: HTMLElement, binding: DirectiveBinding<Pe
     el.style.display = ''
     el.removeAttribute('data-permission-hidden')
   }
-
-  authStore.$subscribe(() => {
-    if (!checkPermission()) {
-      el.style.display = 'none'
-      el.setAttribute('data-permission-hidden', 'true')
-    } else {
-      el.style.display = ''
-      el.removeAttribute('data-permission-hidden')
-    }
-  })
 }
 
 /**
@@ -114,13 +118,19 @@ export const vPermissionNot: Directive<HTMLElement, PermissionBinding | string> 
       el.style.display = 'none'
     }
 
-    authStore.$subscribe(() => {
+    const unsubscribe = authStore.$subscribe(() => {
       if (!checkNoPermission()) {
         el.style.display = 'none'
       } else {
         el.style.display = ''
       }
     })
+    permissionNotUnsubscribers.set(el, unsubscribe)
+  },
+
+  unmounted(el: HTMLElement) {
+    permissionNotUnsubscribers.get(el)?.()
+    permissionNotUnsubscribers.delete(el)
   }
 }
 
@@ -144,6 +154,8 @@ interface FieldPermission {
 
 // 权限指令权限缓存
 const permissionCache = new Map<string, FieldPermission | null>()
+const modulePermissionCache = new Map<string, any[]>()
+const modulePermissionRequests = new Map<string, Promise<any[]>>()
 
 export const fieldPermissionDirective: Directive = {
   mounted(el: HTMLElement, binding: DirectiveBinding<FieldPermissionBinding>) {
@@ -178,18 +190,14 @@ async function checkPermission(el: HTMLElement, binding: DirectiveBinding<FieldP
     permission = permissionCache.get(cacheKey)
   } else {
     try {
-      const response = await unifiedApi.get(`/fields/permissions/${moduleKey}`)
+      const moduleFields = await fetchModulePermissionFields(moduleKey, currentRoleId)
+      // 查找字段的权限配置
+      const fieldPermission = moduleFields.find((f: any) =>
+        f.field === fieldName || f.id === fieldName || f.id.includes(fieldName)
+      )
 
-      if (response.success) {
-        const modulePermissions = response.data
-        // 查找字段的权限配置
-        const fieldPermission = modulePermissions.fields.find((f: any) =>
-          f.field === fieldName || f.id === fieldName || f.id.includes(fieldName)
-        )
-
-        permission = fieldPermission || null
-        permissionCache.set(cacheKey, permission)
-      }
+      permission = fieldPermission || null
+      permissionCache.set(cacheKey, permission)
     } catch (error) {
       // 获取字段权限失败，忽略
     }
@@ -225,6 +233,41 @@ async function checkPermission(el: HTMLElement, binding: DirectiveBinding<FieldP
   }
 }
 
+async function fetchModulePermissionFields(moduleKey: string, roleId: number): Promise<any[]> {
+  const moduleCacheKey = `${moduleKey}_${roleId}`
+
+  if (modulePermissionCache.has(moduleCacheKey)) {
+    return modulePermissionCache.get(moduleCacheKey) || []
+  }
+
+  const pendingRequest = modulePermissionRequests.get(moduleCacheKey)
+  if (pendingRequest) {
+    return pendingRequest
+  }
+
+  const request = unifiedApi.get(`/fields/permissions/${moduleKey}`, {
+    cacheTTL: 30_000
+  }).then((response) => {
+    const moduleFields = response.success && Array.isArray(response.data?.fields)
+      ? response.data.fields
+      : []
+
+    modulePermissionCache.set(moduleCacheKey, moduleFields)
+
+    moduleFields.forEach((field: any) => {
+      const fieldKey = `${moduleKey}_${field.field || field.id}_${roleId}`
+      permissionCache.set(fieldKey, field)
+    })
+
+    return moduleFields
+  }).finally(() => {
+    modulePermissionRequests.delete(moduleCacheKey)
+  })
+
+  modulePermissionRequests.set(moduleCacheKey, request)
+  return request
+}
+
 function hideElement(el: HTMLElement, binding: DirectiveBinding) {
   // 根据配置决定是隐藏还是禁用
   if (binding.modifiers.disabled) {
@@ -247,6 +290,8 @@ function showElement(el: HTMLElement, binding: DirectiveBinding) {
 // 清除权限缓存
 export function clearFieldPermissionCache() {
   permissionCache.clear()
+  modulePermissionCache.clear()
+  modulePermissionRequests.clear()
 }
 
 // 预加载模块权限

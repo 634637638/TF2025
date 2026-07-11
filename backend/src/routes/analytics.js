@@ -7,6 +7,7 @@ const SalaryCalculatorService = require('../services/salary-calculator.service')
 const { getBeijingTimeString } = require('../utils/time');
 const DashboardRepository = require('../repositories/dashboard.repository');
 const log = require('../utils/log');
+const { requireMockRoutesEnabled } = require('../middleware/mock-route-guard');
 
 const dashboardRepository = new DashboardRepository();
 
@@ -25,7 +26,7 @@ const mockPerformanceData = {
 };
 
 // 记录性能数据
-router.post('/performance', unifiedAuth, requireBusinessUser, (req, res) => {
+router.post('/performance', unifiedAuth, requireBusinessUser, requireMockRoutesEnabled('性能采集模拟接口'), (req, res) => {
   try {
     const { fcp, tti, cls, fid, lcp, url, userAgent, timestamp } = req.body;
 
@@ -37,7 +38,7 @@ router.post('/performance', unifiedAuth, requireBusinessUser, (req, res) => {
       cls: cls || mockPerformanceData.cls,
       fid: fid || mockPerformanceData.fid,
       lcp: lcp || mockPerformanceData.lcp,
-      url: url || window?.location?.href || 'unknown',
+      url: url || req.get('referer') || req.originalUrl || 'unknown',
       userAgent: userAgent || req.headers['user-agent'] || 'unknown',
       timestamp: timestamp || new Date().toISOString(),
       ip: req.ip || req.connection.remoteAddress || 'unknown'
@@ -60,7 +61,7 @@ router.post('/performance', unifiedAuth, requireBusinessUser, (req, res) => {
 });
 
 // 获取性能统计
-router.get('/performance/stats', unifiedAuth, requireBusinessUser, (req, res) => {
+router.get('/performance/stats', unifiedAuth, requireBusinessUser, requireMockRoutesEnabled('性能统计模拟接口'), (req, res) => {
   try {
     const { startDate, endDate, url } = req.query;
 
@@ -95,7 +96,7 @@ router.get('/performance/stats', unifiedAuth, requireBusinessUser, (req, res) =>
 });
 
 // 获取性能优化建议
-router.get('/performance/recommendations', unifiedAuth, requireBusinessUser, (req, res) => {
+router.get('/performance/recommendations', unifiedAuth, requireBusinessUser, requireMockRoutesEnabled('性能建议模拟接口'), (req, res) => {
   try {
     const recommendations = [
       {
@@ -358,7 +359,7 @@ async function calculatePayrollSnapshot(db, periodStart, periodEnd) {
 }
 
 // 记录页面访问
-router.post('/pageview', unifiedAuth, requireBusinessUser, (req, res) => {
+router.post('/pageview', unifiedAuth, requireBusinessUser, requireMockRoutesEnabled('页面访问模拟接口'), (req, res) => {
   try {
     const { url, referrer, userAgent, timestamp, sessionId } = req.body;
 
@@ -512,22 +513,22 @@ router.get('/sales', unifiedAuth, requireBusinessUser, async (req, res) => {
       },
       topProducts: topProducts[0].map(item => ({
         ...item,
-        growth: Math.random() * 20 - 5,
+        growth: 0,
         stockStatus: 'in_stock'
       })),
       salesByStore: storeSales[0].map(item => ({
         ...item,
         performance: item.totalSales > 50000 ? 'excellent' :
                      item.totalSales > 20000 ? 'good' : 'average',
-        growthRate: Math.random() * 15 - 5
+        growthRate: 0
       })),
       salesByPeriod: salesData[0].map(item => ({
         period: item.date,
         sales: parseFloat(item.totalSales || 0),
         orders: parseInt(item.totalOrders || 0),
         revenue: parseFloat(item.totalSales || 0),
-        target: Math.random() * 10000 + 5000,
-        achievement: (parseFloat(item.totalSales || 0) / (Math.random() * 10000 + 5000)) * 100
+        target: parseFloat(item.totalSales || 0),
+        achievement: parseFloat(item.totalSales || 0) > 0 ? 100 : 0
       }))
     };
 
@@ -738,7 +739,7 @@ router.get('/inventory', unifiedAuth, requireBusinessUser, async (req, res) => {
         totalValue: parseFloat(item.totalValue) || 0,
         turnoverRate: item.totalItems > 0 ? parseFloat(((soldLast30 / item.totalItems) * 30).toFixed(2)) : 0,
         margin: 15,
-        growth: Math.random() * 20 - 5
+        growth: 0
       })),
       supplierAnalysis: suppliers[0].map(item => {
         const totalProducts = parseInt(item.totalProducts, 10) || 0;
@@ -1258,7 +1259,7 @@ router.get('/customers', unifiedAuth, requireBusinessUser, async (req, res) => {
 });
 
 // 获取实时数据
-router.get('/realtime', unifiedAuth, requireBusinessUser, async (req, res) => {
+router.get('/realtime', unifiedAuth, requireBusinessUser, requireMockRoutesEnabled('实时看板模拟指标接口'), async (req, res) => {
   try {
     if (!isConnected()) {
       return ApiResponse.serverError(res, '数据库连接失败');
@@ -1374,8 +1375,8 @@ function generateCLVTrends() {
     const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
     trends.push({
       period: date.toISOString().slice(0, 7),
-      value: Math.random() * 5000 + 8000,
-      change: Math.random() * 1000 - 200
+      value: 0,
+      change: 0
     });
   }
 
@@ -1383,28 +1384,7 @@ function generateCLVTrends() {
 }
 
 function generateRealTimeAlerts() {
-  const alerts = [];
-
-  // 随机生成一些示例告警
-  if (Math.random() > 0.7) {
-    alerts.push({
-      type: 'warning',
-      message: '库存不足：iPhone 15 Pro 库存低于安全水平',
-      timestamp: new Date().toISOString(),
-      acknowledged: false
-    });
-  }
-
-  if (Math.random() > 0.8) {
-    alerts.push({
-      type: 'info',
-      message: '新订单：客户下单 iPhone 15',
-      timestamp: new Date().toISOString(),
-      acknowledged: false
-    });
-  }
-
-  return alerts;
+  return [];
 }
 
 // 获取客户增长数据
@@ -1583,7 +1563,7 @@ router.get('/customers/retention', unifiedAuth, requireBusinessUser, async (req,
       const cohortData = [100]; // 第一个月100%
 
       for (let j = 1; j < 6; j++) {
-        cohortData.push(Math.max(10, 100 - j * 15 - Math.random() * 10));
+        cohortData.push(Math.max(10, 100 - j * 15));
       }
 
       cohorts.push({
@@ -1699,7 +1679,7 @@ router.get('/customers/activity', unifiedAuth, requireBusinessUser, async (req, 
 });
 
 // 获取性能分析数据
-router.get('/performance', unifiedAuth, requireBusinessUser, async (req, res) => {
+router.get('/performance', unifiedAuth, requireBusinessUser, requireMockRoutesEnabled('性能分析模拟接口'), async (req, res) => {
   try {
     if (!isConnected()) {
       return ApiResponse.serverError(res, '数据库连接失败');
@@ -1752,7 +1732,7 @@ router.get('/performance', unifiedAuth, requireBusinessUser, async (req, res) =>
 });
 
 // 获取性能指标汇总（前端调用的路由）
-router.get('/performance/metrics', unifiedAuth, requireBusinessUser, async (req, res) => {
+router.get('/performance/metrics', unifiedAuth, requireBusinessUser, requireMockRoutesEnabled('性能指标模拟接口'), async (req, res) => {
   try {
     // 返回性能指标汇总数据
     const metricsData = {
@@ -1772,7 +1752,7 @@ router.get('/performance/metrics', unifiedAuth, requireBusinessUser, async (req,
 });
 
 // 获取实时性能数据
-router.get('/performance/realtime', unifiedAuth, requireBusinessUser, async (req, res) => {
+router.get('/performance/realtime', unifiedAuth, requireBusinessUser, requireMockRoutesEnabled('实时性能模拟接口'), async (req, res) => {
   try {
     // 模拟实时性能数据
     const realtimeData = {
@@ -1795,7 +1775,7 @@ router.get('/performance/realtime', unifiedAuth, requireBusinessUser, async (req
 });
 
 // 获取API性能指标
-router.get('/performance/api-metrics', unifiedAuth, requireBusinessUser, async (req, res) => {
+router.get('/performance/api-metrics', unifiedAuth, requireBusinessUser, requireMockRoutesEnabled('API性能模拟接口'), async (req, res) => {
   try {
     const { page = 1, pageSize = 20 } = req.query;
     const offset = (page - 1) * pageSize;
@@ -1839,7 +1819,7 @@ router.get('/performance/api-metrics', unifiedAuth, requireBusinessUser, async (
 });
 
 // 获取数据库性能指标
-router.get('/performance/database-metrics', unifiedAuth, requireBusinessUser, async (req, res) => {
+router.get('/performance/database-metrics', unifiedAuth, requireBusinessUser, requireMockRoutesEnabled('数据库性能模拟接口'), async (req, res) => {
   try {
     const { page = 1, pageSize = 20 } = req.query;
     const offset = (page - 1) * pageSize;

@@ -6,12 +6,13 @@ const { getDatabase, isConnected } = require('../config/database');
 const { cacheMiddleware, clearCache } = require('../middleware/cache');
 const XLSX = require('xlsx');
 const { LEGACY_USER_ROLE_SQL_LIST } = require('../services/accessControl.service');
+const { CACHE_TTL, PAGINATION } = require('../config/constants');
 const log = require('../utils/log');
 
 // 获取店铺列表
-router.get('/', unifiedAuth, requirePermission('stores:view'), cacheMiddleware({ ttl: 30000 }), async (req, res) => {
+router.get('/', unifiedAuth, requirePermission('stores:view'), cacheMiddleware({ ttl: CACHE_TTL.MEDIUM }), async (req, res) => {
   try {
-    const { name, status, page = 1, limit = 10000, all = false } = req.query;
+    const { name, status, page = PAGINATION.DEFAULT_PAGE, limit = PAGINATION.DEFAULT_LIMIT, all = false } = req.query;
 
     // 检查数据库连接状态
     if (!isConnected()) {
@@ -22,11 +23,11 @@ router.get('/', unifiedAuth, requirePermission('stores:view'), cacheMiddleware({
 
     // 如果请求所有数据，用于下拉选择
     if (all === 'true' || all === true) {
-      let query = 'SELECT id, name FROM stores WHERE status = 1 ORDER BY name';
+      let query = 'SELECT id, name, sort_order FROM stores WHERE status = 1 ORDER BY sort_order ASC, name ASC, id ASC';
       const params = [];
 
       if (name) {
-        query = 'SELECT id, name FROM stores WHERE status = 1 AND name LIKE ? ORDER BY name';
+        query = 'SELECT id, name, sort_order FROM stores WHERE status = 1 AND name LIKE ? ORDER BY sort_order ASC, name ASC, id ASC';
         params.push(`%${name}%`);
       }
 
@@ -34,7 +35,8 @@ router.get('/', unifiedAuth, requirePermission('stores:view'), cacheMiddleware({
 
       const formattedStores = stores.map(row => ({
         id: parseInt(row.id),
-        name: String(row.name || '')
+        name: String(row.name || ''),
+        sort_order: parseInt(row.sort_order) || 0
       }));
       ApiResponse.success(res, formattedStores);
       return;

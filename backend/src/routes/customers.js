@@ -5,6 +5,8 @@ const ApiResponse = require('../utils/response');
 const bcrypt = require('bcryptjs');
 const { generateMemberNumber } = require('../utils/member-number');
 const log = require('../utils/log');
+const { PAGINATION } = require('../config/constants');
+const { requireMockRoutesEnabled } = require('../middleware/mock-route-guard');
 
 const LEGACY_PERMISSION_CANONICAL_MAP = {
   'customers_customersview:create': 'customers:create',
@@ -351,8 +353,8 @@ router.get('/', unifiedAuth, requirePermission('customers:view'), async (req, re
     const db = getDatabase();
 
     const {
-      page = 1,
-      limit = 10000,
+      page = PAGINATION.DEFAULT_PAGE,
+      limit = PAGINATION.DEFAULT_LIMIT,
       customer_type,
       vip_level,
       gender,
@@ -542,7 +544,7 @@ router.get('/stats', unifiedAuth, requirePermission('customers:view'), async (re
 });
 
 // 获取客户统计信息（详细版本）
-router.get('/stats/overview', unifiedAuth, requirePermission('customers:view'), (req, res) => {
+router.get('/stats/overview', unifiedAuth, requirePermission('customers:view'), requireMockRoutesEnabled('客户详细统计模拟接口'), (req, res) => {
   try {
     const { start_date, end_date } = req.query;
 
@@ -1018,7 +1020,7 @@ router.get('/:id/purchases', unifiedAuth, requirePermission('customers:view'), a
 });
 
 // 添加消费记录
-router.post('/:id/purchases', unifiedAuth, requirePermission('customers:edit'), (req, res) => {
+router.post('/:id/purchases', unifiedAuth, requirePermission('customers:edit'), requireMockRoutesEnabled('客户消费记录模拟写入接口'), (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -1088,7 +1090,7 @@ router.post('/:id/purchases', unifiedAuth, requirePermission('customers:edit'), 
 });
 
 // 更新VIP等级
-router.patch('/:id/vip-level', unifiedAuth, requirePermission('customers:manage'), (req, res) => {
+router.patch('/:id/vip-level', unifiedAuth, requirePermission('customers:manage'), requireMockRoutesEnabled('客户VIP模拟更新接口'), (req, res) => {
   try {
     const { id } = req.params;
     const { vip_level } = req.body;

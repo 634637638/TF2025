@@ -7,6 +7,7 @@ const express = require('express');
 const router = express.Router();
 const { getDatabase } = require('../config/database');
 const { unifiedAuth, requirePermission } = require('../middleware/unified-auth');
+const { PAGINATION, TIMEOUTS } = require('../config/constants');
 const log = require('../utils/log');
 const {
   ensureIconSchema,
@@ -335,7 +336,7 @@ function translateKeywords(query) {
  */
 router.get('/search/online', async (req, res) => {
   try {
-    const { query, limit = 10000, prefix = '' } = req.query;
+    const { query, limit = PAGINATION.DEFAULT_LIMIT, prefix = '' } = req.query;
 
     if (!query || query.trim() === '') {
       return res.json({
@@ -364,7 +365,7 @@ router.get('/search/online', async (req, res) => {
         headers: {
           'Accept': 'application/json'
         },
-        timeout: 10000 // 10秒超时
+        timeout: TIMEOUTS.ICON_FETCH
       });
 
       if (!response.ok) {

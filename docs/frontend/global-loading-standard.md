@@ -87,7 +87,9 @@
 
 ### 3. 按钮 loading
 
-保留按钮级 `:loading` 或业务禁用状态，用于防重复点击；按钮内部的加载视觉统一使用 `InlineLoading`。
+Element Plus 的 `el-button` 统一使用自身的 `:loading` 作为唯一加载动画，并保留业务禁用状态防止重复点击。需要加载文案时，在按钮内部只切换纯文本，不再同时渲染 `InlineLoading`。
+
+原生按钮或不提供内置 loading 动画的自定义按钮，统一使用 `InlineLoading`。
 
 适用场景：
 
@@ -95,7 +97,7 @@
 - 删除确认后执行
 - 导入、导出、同步、备份等长操作
 
-按钮 loading 主要用于防重复点击，按钮内容不要再手写 `fa-spinner fa-spin`。
+按钮 loading 主要用于防重复点击，按钮内容不要再手写 `fa-spinner fa-spin`。禁止在同一个 `el-button` 中同时使用 `:loading` 和 `InlineLoading`，否则会出现两个加载动画。
 
 ## 禁止新增
 
@@ -151,10 +153,18 @@ ElLoading.service({ text: '加载中...' })
 - `InlineLoading`：只用于按钮、短文本、小范围提示。
 - `GlobalLoading`：只用于路由切换或全局长操作，不在业务页面重复挂载。
 
-按钮内 loading 建议使用：
+原生按钮或自定义按钮内 loading 建议使用：
 
 ```vue
 <InlineLoading text="保存中..." size="small" variant="inherit" />
+```
+
+Element Plus 按钮统一使用：
+
+```vue
+<el-button :loading="saving" :disabled="saving" @click="handleSave">
+  {{ saving ? '保存中...' : '保存' }}
+</el-button>
 ```
 
 ## 迁移计划

@@ -61,6 +61,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import type { CSSProperties } from 'vue'
 import { formatImageUrl, generateProductPlaceholder, getBackendOrigin, type ProductPlaceholderOptions } from '@/utils/format'
 import InlineLoading from '@/components/InlineLoading.vue'
 
@@ -125,8 +126,8 @@ const getFallbackSrc = (): string => {
 }
 
 // 样式
-const imageStyle = computed(() => {
-  const style: Record<string, any> = { objectFit: props.fit }
+const imageStyle = computed<CSSProperties>(() => {
+  const style: CSSProperties = { objectFit: props.fit }
 
   if (props.width) {
     style.width = typeof props.width === 'number' ? `${props.width}px` : props.width
@@ -139,7 +140,7 @@ const imageStyle = computed(() => {
   return style
 })
 
-const containerStyle = computed(() => ({
+const containerStyle = computed<CSSProperties>(() => ({
   width: props.width ? (typeof props.width === 'number' ? `${props.width}px` : props.width) : '100%',
   height: props.height ? (typeof props.height === 'number' ? `${props.height}px` : props.height) : '100%',
   position: 'relative',

@@ -700,6 +700,7 @@ import { useCachedRequest, DEFAULT_CACHE_TTL } from '@/composables/usePageCache'
 import { unifiedApi as api } from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import { normalizePermissionList } from '@/utils/permissionList'
+import { sortOptionsByOrder } from '@/utils/option-sort'
 import { useAuthStore } from '@/stores/auth'
 import { logger } from '@/utils/logger'
 import { useLoadingStore } from '@/stores/loading'
@@ -1290,9 +1291,9 @@ let basicDataWarmupTimer: ReturnType<typeof setTimeout> | null = null
 // 获取库存列表 - 优化权限集成
 const loadInventoryData = async (
   additionalParams: any = {},
-  options: { showLoadingState?: boolean } = {}
+  options: { showLoadingState?: boolean; useCache?: boolean } = {}
 ) => {
-  const { showLoadingState = true } = options
+  const { showLoadingState = true, useCache = true } = options
 
   if (showLoadingState) {
     loadingStore.setLoading(true)
@@ -1340,7 +1341,7 @@ const loadInventoryData = async (
 
 
     // 调用后端API - 使用inventory端点获取库存数据
-    const response = await api.get('/inventory/list', { params })
+    const response = await api.get('/inventory/list', { params, useCache })
 
     if (response.success) {
       let records = []
@@ -1417,16 +1418,16 @@ const loadInventoryData = async (
       inventory.value = []
       pagination.total = 0
     }
-  } catch (error: any) {
-    logger.error('❌ 获取库存数据失败:', error)
+  } catch (caughtError: any) {
+    logger.error('❌ 获取库存数据失败:', caughtError)
 
     // 权限相关错误处理
-    if (error.response?.status === 403) {
+    if (caughtError.response?.status === 403) {
       error('权限不足，无法访问库存数据')
-    } else if (error.response?.status === 401) {
+    } else if (caughtError.response?.status === 401) {
       error('登录已过期，请重新登录')
     } else {
-      error(error.response?.data?.message || '获取库存数据失败')
+      error(caughtError.response?.data?.message || '获取库存数据失败')
     }
 
     inventory.value = []
@@ -1578,7 +1579,7 @@ const loadStores = async () => {
       api.get('/stores?all=true'), DEFAULT_CACHE_TTL.STATIC)
     if (response.success) {
       let storesArray = Array.isArray(response.data) ? response.data : (response.data?.stores || response.data?.data || [])
-      stores.value = storesArray.sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
+      stores.value = sortOptionsByOrder(storesArray)
     }
   } catch (error) {
     logger.error('加载门店列表失败:', error)
@@ -1596,7 +1597,7 @@ const loadSuppliers = async () => {
       if (suppliersArray.data) {
         suppliersArray = suppliersArray.data
       }
-      suppliers.value = suppliersArray.sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
+      suppliers.value = sortOptionsByOrder(suppliersArray)
     }
   } catch (error) {
     logger.error('加载供应商列表失败:', error)
@@ -1623,19 +1624,10 @@ const extractOptionsFromInventory = () => {
     const mergedColors = [...new Set([...colors.value, ...uniqueColors])]
     const mergedMemories = [...new Set([...memories.value, ...uniqueMemories])]
 
-    // 按字母排序，方便用户查找
-    brands.value = mergedBrands.sort((a, b) => {
-      const aName = typeof a === 'string' ? a : a.name
-      const bName = typeof b === 'string' ? b : b.name
-      return aName.localeCompare(bName)
-    })
-    models.value = mergedModels.sort((a, b) => {
-      const aName = typeof a === 'string' ? a : a.name
-      const bName = typeof b === 'string' ? b : b.name
-      return aName.localeCompare(bName)
-    })
-    colors.value = mergedColors.sort((a, b) => a.localeCompare(b))
-    memories.value = mergedMemories.sort((a, b) => a.localeCompare(b))
+    brands.value = sortOptionsByOrder(mergedBrands)
+    models.value = sortOptionsByOrder(mergedModels)
+    colors.value = sortOptionsByOrder(mergedColors)
+    memories.value = sortOptionsByOrder(mergedMemories, { labelKeys: ['size', 'capacity', 'name'] })
 
 
     return {
@@ -1664,14 +1656,13 @@ const loadBrands = async () => {
       // 根据实际响应结构处理数据
       let brandList = Array.isArray(response.data) ? response.data : response.data?.data || response.data?.brands || []
 
-      brands.value = brandList
+      brands.value = sortOptionsByOrder(brandList
         .filter(item => item && item.name)  // 过滤掉空值
         .map(item => ({
           id: item.id,
           name: item.name,
           sort_order: item.sort_order || 0
-        }))
-        .sort((a, b) => a.sort_order - b.sort_order)  // 按 sort_order 排序
+        })))
 
     } else {
       brands.value = []
@@ -1692,14 +1683,13 @@ const loadModels = async () => {
       // 根据实际响应结构处理数据
       let modelList = Array.isArray(response.data) ? response.data : response.data?.data || response.data?.models || []
 
-      models.value = modelList
+      models.value = sortOptionsByOrder(modelList
         .filter(item => item && item.name)  // 过滤掉空值
         .map(item => ({
           id: item.id,
           name: item.name,
           sort_order: item.sort_order || 0
-        }))
-        .sort((a, b) => a.sort_order - b.sort_order)  // 按 sort_order 排序
+        })))
 
     } else {
       models.value = []
@@ -1735,14 +1725,13 @@ const handleBrandChange = async () => {
 
       if (response.success && response.data) {
         const modelList = Array.isArray(response.data) ? response.data : []
-        brandModels.value = modelList
+        brandModels.value = sortOptionsByOrder(modelList
           .filter(item => item && item.name)
           .map(item => ({
             id: item.id,
             name: item.name,
             sort_order: item.sort_order
-          }))
-        // 保持后端返回的排序（基于 sort_order），不再重新排序
+          })))
 
       } else {
         brandModels.value = []
@@ -1783,7 +1772,7 @@ const fetchBrandModels = async (brandName: string) => {
       // 将字符串数组转换为对象数组
       brandModels.value = Array.from(brandModelSet)
         .map(name => ({ id: 0, name }))
-        .sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
+      brandModels.value = sortOptionsByOrder(brandModels.value)
     } else {
       brandModels.value = []
     }
@@ -1799,7 +1788,7 @@ const loadOperators = async () => {
     const response = await useCachedRequest(CACHE_KEYS.operators, () =>
       api.get('/operators'), DEFAULT_CACHE_TTL.STATIC)
     if (response.success && response.data) {
-      operators.value = response.data
+      operators.value = sortOptionsByOrder(response.data)
     }
   } catch (error) {
     logger.error('加载操作员列表失败:', error)
@@ -1817,9 +1806,9 @@ const loadColors = async () => {
       // 根据实际响应结构处理数据
       const colorList = Array.isArray(response.data) ? response.data : response.data.colors || []
 
-      colors.value = colorList
+      colors.value = sortOptionsByOrder(colorList
         .filter(item => item && item.name)  // 过滤掉空值
-        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))  // 按 sort_order 排序
+      )
         .map(item => item.name)
 
     } else {
@@ -1841,9 +1830,8 @@ const loadMemories = async () => {
       // 根据实际响应结构处理数据
       const memoryList = Array.isArray(response.data) ? response.data : response.data.memories || []
 
-      memories.value = memoryList
+      memories.value = sortOptionsByOrder(memoryList, { labelKeys: ['size', 'capacity', 'name'] })
         .filter(item => item && item.name)  // 过滤掉空值
-        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))  // 按 sort_order 排序
         .map(item => item.name)
 
     } else {
@@ -2392,21 +2380,28 @@ const deleteItem = async (item: InventoryItem) => {
 
     if (response.success) {
       success('商品删除成功')
-      await loadInventoryData()
+
+      // 删除当前页最后一条时回到上一页，避免留在空白页。
+      if (inventory.value.length === 1 && pagination.page > 1) {
+        pagination.page -= 1
+      }
+
+      // 删除后必须绕过 GET 短缓存，否则可能重新显示已删除的旧数据。
+      await loadInventoryData({}, { showLoadingState: false, useCache: false })
     } else {
       error(response.message || '删除失败')
     }
-  } catch (error: any) {
-    if (error !== 'cancel') {
-      logger.error('❌ 删除商品失败:', error)
+  } catch (caughtError: any) {
+    if (caughtError !== 'cancel') {
+      logger.error('❌ 删除商品失败:', caughtError)
 
       // 权限相关错误处理
-      if (error.response?.status === 403) {
+      if (caughtError.response?.status === 403) {
         error('权限不足，无法删除商品')
-      } else if (error.response?.status === 401) {
+      } else if (caughtError.response?.status === 401) {
         error('登录已过期，请重新登录')
       } else {
-        error(error.response?.data?.message || '删除失败')
+        error(caughtError.response?.data?.message || '删除失败')
       }
     }
   } finally {

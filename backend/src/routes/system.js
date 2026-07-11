@@ -8,12 +8,95 @@ const mysql = require('mysql2/promise');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs').promises;
+const os = require('os');
 const {
   getUploadSubdir,
   getUploadUrl,
   getUploadPathFromUrl,
   getRelativeUploadPathFromUrl
 } = require('../utils/upload-paths');
+
+const PROJECT_ROOT = path.resolve(__dirname, '../../..');
+
+const formatBytes = (bytes = 0) => {
+  if (!Number.isFinite(bytes) || bytes <= 0) {
+    return '0 B';
+  }
+
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let value = bytes;
+  let unitIndex = 0;
+
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+
+  return `${value >= 100 ? value.toFixed(0) : value.toFixed(2)} ${units[unitIndex]}`;
+};
+
+const getUsageStatus = (usagePercent) => {
+  if (usagePercent >= 90) {
+    return 'error';
+  }
+
+  if (usagePercent >= 75) {
+    return 'warning';
+  }
+
+  return 'online';
+};
+
+const getDiskUsage = async () => {
+  try {
+    const stats = await fs.statfs(PROJECT_ROOT);
+    const total = stats.blocks * stats.bsize;
+    const available = stats.bavail * stats.bsize;
+    const used = Math.max(total - available, 0);
+    const usagePercent = total > 0 ? (used / total) * 100 : 0;
+
+    return {
+      status: getUsageStatus(usagePercent),
+      message: `${usagePercent.toFixed(1)}%`,
+      details: {
+        total: formatBytes(total),
+        used: formatBytes(used),
+        available: formatBytes(available)
+      }
+    };
+  } catch (error) {
+    log.warn('获取磁盘使用率失败:', error.message);
+    return {
+      status: 'unknown',
+      message: '未知',
+      details: {
+        total: '未知',
+        used: '未知',
+        available: '未知'
+      }
+    };
+  }
+};
+
+const getMemoryUsage = () => {
+  const total = os.totalmem();
+  const available = os.freemem();
+  const used = Math.max(total - available, 0);
+  const usagePercent = total > 0 ? (used / total) * 100 : 0;
+  const processMemory = process.memoryUsage();
+
+  return {
+    status: getUsageStatus(usagePercent),
+    message: `${usagePercent.toFixed(1)}%`,
+    details: {
+      total: formatBytes(total),
+      used: formatBytes(used),
+      available: formatBytes(available),
+      processRss: formatBytes(processMemory.rss),
+      processHeapUsed: formatBytes(processMemory.heapUsed)
+    }
+  };
+};
 
 const BRAND_IMAGE_ALLOWED_MIME_TYPES = {
   '.jpg': ['image/jpeg'],
@@ -329,12 +412,12 @@ router.get('/stats', unifiedAuth, requirePermission('system:view'), async (req, 
     }
 
     try {
-      // 获取店铺数量（如果没有stores表，使用模拟数据）
+      // 获取店铺数量
       const [storeCount] = await db.execute('SELECT COUNT(*) as count FROM stores');
       stats.storeCount = storeCount[0]?.count || 0;
     } catch (err) {
       log.warn('获取店铺数量失败:', err.message);
-      stats.storeCount = 1; // 模拟1个店铺
+      stats.storeCount = 0;
     }
 
     try {
@@ -349,11 +432,11 @@ router.get('/stats', unifiedAuth, requirePermission('system:view'), async (req, 
     ApiResponse.success(res, stats);
   } catch (error) {
     log.error('获取系统统计失败:', error);
-    // 即使出错也返回默认统计数据
+    // 出错时返回空统计，避免用模拟数据伪装真实状态
     ApiResponse.success(res, {
-      employeeCount: 5,
-      roleCount: 3,
-      storeCount: 1,
+      employeeCount: 0,
+      roleCount: 0,
+      storeCount: 0,
       logCount: 0
     });
   }
@@ -379,27 +462,10 @@ router.get('/status', unifiedAuth, requirePermission('system:view'), async (req,
       log.warn('数据库连接池状态检查失败:', poolError.message);
     }
 
-    // 模拟磁盘使用率（实际项目中应该使用真实的磁盘监控）
-    const diskUsage = {
-      status: 'warning', // 可以根据实际使用率设置 'online', 'warning', 'error'
-      message: '85%', // 模拟值
-      details: {
-        total: '100GB',
-        used: '85GB',
-        available: '15GB'
-      }
-    };
-
-    // 模拟内存使用率
-    const memoryUsage = {
-      status: 'online', // 可以根据实际内存使用率设置
-      message: '62%', // 模拟值
-      details: {
-        total: '8GB',
-        used: '4.96GB',
-        available: '3.04GB'
-      }
-    };
+    const [diskUsage, memoryUsage] = await Promise.all([
+      getDiskUsage(),
+      Promise.resolve(getMemoryUsage())
+    ]);
 
     const status = {
       database: {

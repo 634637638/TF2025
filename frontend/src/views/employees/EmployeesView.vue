@@ -78,6 +78,7 @@
 
     <UnifiedSearchPanel
       v-model:expanded="searchExpanded"
+      :loading="loading"
       @search="handleSearch"
       @reset="resetFilters"
     >

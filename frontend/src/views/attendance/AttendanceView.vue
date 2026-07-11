@@ -622,7 +622,7 @@
                   placeholder="开始日期"
                   value-format="YYYY-MM-DD"
                   teleported
-                  popper-class="attendance-dialog-popper"
+                  popper-class="tf2025-form-popper"
                   class="w-full"
                   @change="handleLeaveBoundaryChange('start', $event)"
                 />
@@ -635,7 +635,7 @@
                   placeholder="结束日期"
                   value-format="YYYY-MM-DD"
                   teleported
-                  popper-class="attendance-dialog-popper"
+                  popper-class="tf2025-form-popper"
                   class="w-full"
                   @change="handleLeaveBoundaryChange('end', $event)"
                 />
@@ -682,7 +682,7 @@
                   placeholder="开始日期"
                   value-format="YYYY-MM-DD"
                   teleported
-                  popper-class="attendance-dialog-popper"
+                  popper-class="tf2025-form-popper"
                   class="w-full"
                   @change="handleLeaveBoundaryChange('start', $event)"
                 />
@@ -695,7 +695,7 @@
                   placeholder="结束日期"
                   value-format="YYYY-MM-DD"
                   teleported
-                  popper-class="attendance-dialog-popper"
+                  popper-class="tf2025-form-popper"
                   class="w-full"
                   @change="handleLeaveBoundaryChange('end', $event)"
                 />
@@ -730,7 +730,7 @@
                 placeholder="选择加班日期"
                 value-format="YYYY-MM-DD"
                 teleported
-                popper-class="attendance-dialog-popper"
+                popper-class="tf2025-form-popper"
                 class="w-full"
               />
             </el-form-item>
@@ -750,7 +750,7 @@
             <i class="fas fa-times mr-1"></i>取消
           </el-button>
           <el-button plain type="primary" @click="handleSubmit" :disabled="submitting" :loading="submitting" class="btn-sm">
-            <InlineLoading v-if="submitting" text="提交中..." size="small" variant="inherit" />
+            <span v-if="submitting">提交中...</span>
             <template v-else>
               <i class="fas fa-paper-plane mr-1"></i>提交申请
             </template>
@@ -847,7 +847,7 @@
             <i class="fas fa-times mr-1"></i>取消
           </el-button>
           <el-button plain type="success" @click="handleApproveSubmit" :disabled="approving" :loading="approving" class="btn-sm">
-            <InlineLoading v-if="approving" text="处理中..." size="small" variant="inherit" />
+            <span v-if="approving">处理中...</span>
             <template v-else>
               <i class="fas fa-check mr-1"></i>确认
             </template>
@@ -875,6 +875,7 @@ import { useLoadingState } from '@/composables'
 import { unifiedApi } from '@/utils/unified-api'
 import { formatDate } from '@/utils/format'
 import { logger } from '@/utils/logger'
+import { sortOptionsByOrder } from '@/utils/option-sort'
 import Pagination from '@/components/Pagination.vue'
 import InlineLoading from '@/components/InlineLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
@@ -2136,7 +2137,7 @@ const handleDelete = async (row: AttendanceTableRow) => {
     await ElMessageBox.confirm('确认删除该考勤记录？', '删除确认')
     await attendanceApi.deleteAttendanceRecord(row.id)
     ElMessage.success('删除成功')
-    loadData()
+    await loadData()
   } catch (error) {
     if (error !== 'cancel') {
       logger.error('❌ 删除失败:', error)
@@ -2339,7 +2340,7 @@ const loadEmployees = async () => {
     // 使用新的员工列表接口，根据权限返回不同的数据
     const response = await unifiedApi.get('/users/employees')
     if (response.data) {
-      employees.value = response.data.employees || []
+      employees.value = sortOptionsByOrder(response.data.employees || [])
       // 兼容后端附带的扩展状态字段
       if (response.data.isAdmin !== undefined) {
         // 可以根据需要使用这个标识
@@ -3380,18 +3381,6 @@ onMounted(async () => {
   --dialog-max-width: 800px;
 }
 
-.attendance-dialog-popper {
-  z-index: 4005 !important;
-}
-
-.attendance-dialog-popper.el-popper[data-popper-placement^='top'] {
-  margin-bottom: 8px !important;
-}
-
-.attendance-dialog-popper.el-popper[data-popper-placement^='bottom'] {
-  margin-top: 8px !important;
-}
-
 @media (max-width: 767px) {
   .attendance-form-dialog,
   .attendance-detail-dialog {
@@ -3405,11 +3394,6 @@ onMounted(async () => {
   .mobile-dialog-sheet-overlay.attendance-form-dialog,
   .mobile-dialog-sheet-overlay.attendance-detail-dialog {
     padding: 12px 6px !important;
-  }
-
-  .attendance-dialog-popper.el-popper,
-  .attendance-dialog-popper .el-picker-panel {
-    max-width: calc(100vw - 12px) !important;
   }
 
 }

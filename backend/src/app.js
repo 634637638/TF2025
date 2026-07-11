@@ -17,10 +17,24 @@ const PORT = config.server.port;
 const HOST = process.env.HOST || '127.0.0.1';
 const APP_ENV = config.server.env || process.env.NODE_ENV || 'development';
 const IS_PRODUCTION = APP_ENV === 'production';
+const SLOW_REQUEST_THRESHOLD_MS = Number(process.env.SLOW_REQUEST_THRESHOLD_MS || 800);
 
 const formatBeijingTime = () => new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
 
 const requestLogger = (req, res, next) => {
+  const startedAt = process.hrtime.bigint();
+  res.on('finish', () => {
+    const durationMs = Number(process.hrtime.bigint() - startedAt) / 1e6;
+    if (durationMs >= SLOW_REQUEST_THRESHOLD_MS) {
+      log.warn('慢请求', {
+        method: req.method,
+        url: req.originalUrl,
+        status: res.statusCode,
+        durationMs: Math.round(durationMs)
+      });
+    }
+  });
+
   if (!IS_PRODUCTION) {
     log.debug(`🌐 [${formatBeijingTime()}] ${req.method} ${req.originalUrl}`);
   }

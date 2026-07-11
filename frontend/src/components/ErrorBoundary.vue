@@ -75,10 +75,10 @@
                   <strong>发生时间:</strong> {{ formatTime(Date.now()) }}
                 </div>
                 <div class="error-item">
-                  <strong>页面URL:</strong> {{ window.location.href }}
+                  <strong>页面URL:</strong> {{ currentUrl }}
                 </div>
                 <div class="error-item">
-                  <strong>用户代理:</strong> {{ navigator.userAgent }}
+                  <strong>用户代理:</strong> {{ userAgent }}
                 </div>
               </div>
             </el-collapse-item>
@@ -103,7 +103,7 @@ import {
   MessageBox,
   ArrowDown
 } from '@element-plus/icons-vue'
-import { useErrorBoundary } from '@/utils/error-boundary'
+import { ErrorType, useErrorBoundary } from '@/utils/error-boundary'
 import { formatBeijingTime } from '@/utils/time'
 import { logger } from '@/utils/logger'
 
@@ -156,9 +156,14 @@ const emit = defineEmits<Emits>()
 
 // Composables
 const router = useRouter()
-const { success, error: showError, warning, info, handleApiError, confirm } = useNotification()
+const { success, error: notifyError, warning, info } = useNotification()
 const { handleError } = useErrorBoundary()
 const instance = getCurrentInstance()
+
+type Html2Canvas = (element: HTMLElement) => Promise<HTMLCanvasElement>
+type WindowWithHtml2Canvas = Window & typeof globalThis & {
+  html2canvas?: Html2Canvas
+}
 
 // 响应式数据
 const hasError = ref(false)
@@ -169,7 +174,9 @@ const isDevelopment = ref(import.meta.env.DEV)
 
 // 计算属性
 const showRetry = computed(() => props.showRetry && retryCount.value < 3)
-const canScreenshot = computed(() => 'html2canvas' in window || import.meta.env.DEV)
+const currentUrl = computed(() => window.location.href)
+const userAgent = computed(() => navigator.userAgent)
+const canScreenshot = computed(() => Boolean((window as WindowWithHtml2Canvas).html2canvas) || import.meta.env.DEV)
 
 const errorTitle = computed(() => {
   if (props.title) return props.title
@@ -214,6 +221,16 @@ const errorType = computed(() => {
   return error.name || '运行时错误'
 })
 
+const errorReportType = computed<ErrorType>(() => {
+  const currentError = errorInfo.value?.error
+  const message = currentError?.message || ''
+
+  if (message.includes('Network') || message.includes('fetch')) return ErrorType.NETWORK
+  if (message.includes('permission') || message.includes('unauthorized')) return ErrorType.PERMISSION
+
+  return ErrorType.VUE
+})
+
 const errorDetails = computed(() => {
   if (!isDevelopment.value || !errorInfo.value) return null
 
@@ -232,7 +249,7 @@ const formatTime = (timestamp?: number) => {
 }
 
 const captureError = (capturedError: unknown, instance: unknown, info: string) => {
-  logger.error('ErrorBoundary caught an error:', capturedError, info)
+  logger.error('ErrorBoundary caught an error:', { error: capturedError, info })
   const errorLike = toErrorLike(capturedError)
 
   hasError.value = true
@@ -245,7 +262,7 @@ const captureError = (capturedError: unknown, instance: unknown, info: string) =
 
   // 记录到全局错误边界
   handleError({
-    type: errorType.value,
+    type: errorReportType.value,
     message: errorLike?.message || '未知错误',
     stack: errorLike?.stack,
     context: {
@@ -270,15 +287,15 @@ const captureError = (capturedError: unknown, instance: unknown, info: string) =
   emit('error', { error: capturedError, instance, info })
 
   // 显示错误通知
-  showError(errorTitle.value, errorMessage.value, {
+  notifyError(`${errorTitle.value}：${errorMessage.value}`, {
     duration: 0,
-    showClose: true
+    persistent: true
   })
 
   // 记录到性能监控系统
   if (window.__TF2025__?.performance) {
     window.__TF2025__.performance.recordMetric('componentError', {
-      type: errorType.value,
+      type: errorReportType.value,
       message: errorLike?.message,
       component: (instance as { $options?: { name?: string } } | null)?.$options?.name
     })
@@ -317,7 +334,7 @@ const retry = async () => {
 
   } catch (retryError) {
     logger.error('重试失败:', retryError)
-    error(`重试失败 (${retryCount.value}/3)`)
+    notifyError(`重试失败 (${retryCount.value}/3)`)
 
     if (retryCount.value >= 3) {
       warning('已达到最大重试次数，请联系技术支持')
@@ -371,7 +388,7 @@ ${errorInfo.value.errorInfo ? `组件信息:\n${errorInfo.value.errorInfo}` : ''
     success('错误信息已复制到剪贴板')
   } catch (err) {
     logger.error('复制失败:', err)
-    error('复制失败，请手动复制')
+    notifyError('复制失败，请手动复制')
   }
 }
 
@@ -386,9 +403,11 @@ const consoleError = () => {
 
 const takeScreenshot = async () => {
   try {
+    const html2canvas = (window as WindowWithHtml2Canvas).html2canvas
+
     // 在开发环境中尝试使用 html2canvas
-    if (import.meta.env.DEV && window.html2canvas) {
-      const canvas = await window.html2canvas(document.body)
+    if (import.meta.env.DEV && html2canvas) {
+      const canvas = await html2canvas(document.body)
       canvas.toBlob(blob => {
         if (blob) {
           const url = URL.createObjectURL(blob)
@@ -406,7 +425,7 @@ const takeScreenshot = async () => {
     }
   } catch (err) {
     logger.error('截图失败:', err)
-    error('截图功能不可用')
+    notifyError('截图功能不可用')
   }
 }
 

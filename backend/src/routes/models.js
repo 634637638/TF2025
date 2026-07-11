@@ -4,7 +4,9 @@ const { unifiedAuth, requirePermission } = require('../middleware/unified-auth')
 const ApiResponse = require('../utils/response');
 const { getDatabase, isConnected } = require('../config/database');
 const { cacheMiddleware, clearCache } = require('../middleware/cache');
+const { CACHE_TTL, PAGINATION } = require('../config/constants');
 const log = require('../utils/log');
+const { parseStatusFilter } = require('../utils/status');
 
 const clearModelsRouteCache = () => {
   try {
@@ -15,7 +17,7 @@ const clearModelsRouteCache = () => {
 };
 
 // 获取型号列表
-router.get('/', unifiedAuth, requirePermission('models:view'), cacheMiddleware({ ttl: 10 * 1000 }), async (req, res) => {
+router.get('/', unifiedAuth, requirePermission('models:view'), cacheMiddleware({ ttl: CACHE_TTL.SHORT }), async (req, res) => {
   try {
     if (!isConnected()) {
       return ApiResponse.error(res, '数据库未连接', 500);
@@ -23,8 +25,8 @@ router.get('/', unifiedAuth, requirePermission('models:view'), cacheMiddleware({
 
     const pool = getDatabase();
     const {
-      page = 1,
-      limit = 10000,  // 提高默认限制以支持获取所有数据
+      page = PAGINATION.DEFAULT_PAGE,
+      limit = PAGINATION.DEFAULT_LIMIT,
       brand_id,
       series,
       is_active,
@@ -35,8 +37,8 @@ router.get('/', unifiedAuth, requirePermission('models:view'), cacheMiddleware({
       sortOrder = 'asc'
     } = req.query;
 
-    const limitNum = parseInt(limit) || 10000;  // 提高默认限制
-    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || PAGINATION.DEFAULT_LIMIT;
+    const pageNum = parseInt(page) || PAGINATION.DEFAULT_PAGE;
     const offset = (pageNum - 1) * limitNum;
 
     // 使用JOIN查询，直接关联品牌表
@@ -69,9 +71,9 @@ router.get('/', unifiedAuth, requirePermission('models:view'), cacheMiddleware({
     // 状态筛选
     let statusFilter = null;
     if (is_active !== undefined) {
-      statusFilter = is_active === 'true' ? 1 : 0;
+      statusFilter = parseStatusFilter(is_active);
     } else if (status !== undefined && status !== '') {
-      statusFilter = parseInt(status) === 1 ? 1 : 0;
+      statusFilter = parseStatusFilter(status);
     }
     if (statusFilter !== null) {
       conditions.push('m.status = ?');
@@ -95,14 +97,19 @@ router.get('/', unifiedAuth, requirePermission('models:view'), cacheMiddleware({
     const validSortColumns = ['id', 'name', 'sort_order', 'created_at', 'updated_at', 'brand_id'];
     const sortColumn = validSortColumns.includes(sortBy) ? sortBy : 'sort_order';
     const sortDirection = sortOrder === 'asc' ? 'ASC' : 'DESC';
-    baseQuery += ` ORDER BY m.${sortColumn} ${sortDirection}`;
+    const fallbackOrder = sortColumn === 'sort_order'
+      ? ', m.name ASC, m.id ASC'
+      : ', m.sort_order ASC, m.name ASC, m.id ASC';
+    baseQuery += ` ORDER BY m.${sortColumn} ${sortDirection}${fallbackOrder}`;
 
     // 分页
     const finalQuery = `${baseQuery} LIMIT ${limitNum} OFFSET ${offset}`;
 
     // 执行查询
-    const [models] = await pool.execute(finalQuery, queryParams);
-    const [countResult] = await pool.execute(baseCountQuery, queryParams);
+    const [[models], [countResult]] = await Promise.all([
+      pool.execute(finalQuery, queryParams),
+      pool.execute(baseCountQuery, queryParams)
+    ]);
     const total = countResult[0].total;
 
     ApiResponse.success(res, {
@@ -128,7 +135,7 @@ router.get('/', unifiedAuth, requirePermission('models:view'), cacheMiddleware({
 });
 
 // 根据品牌ID获取型号列表
-router.get('/brand/:brandId', unifiedAuth, requirePermission('models:view'), cacheMiddleware({ ttl: 10 * 1000 }), async (req, res) => {
+router.get('/brand/:brandId', unifiedAuth, requirePermission('models:view'), cacheMiddleware({ ttl: CACHE_TTL.SHORT }), async (req, res) => {
   try {
     if (!isConnected()) {
       return ApiResponse.error(res, '数据库未连接', 500);
@@ -138,15 +145,15 @@ router.get('/brand/:brandId', unifiedAuth, requirePermission('models:view'), cac
     const pool = getDatabase();
     const {
       page = 1,
-      limit = 10000,  // 提高默认限制以支持获取所有数据
+      limit = PAGINATION.DEFAULT_LIMIT,
       search,
       name,
       status,
-      sortBy = 'id',
-      sortOrder = 'desc'
+      sortBy = 'sort_order',
+      sortOrder = 'asc'
     } = req.query;
 
-    const limitNum = parseInt(limit) || 10000;  // 提高默认限制
+    const limitNum = parseInt(limit) || PAGINATION.DEFAULT_LIMIT;
     const pageNum = parseInt(page) || 1;
     const offset = (pageNum - 1) * limitNum;
 
@@ -157,7 +164,7 @@ router.get('/brand/:brandId', unifiedAuth, requirePermission('models:view'), cac
     // 状态筛选
     let statusFilter = null;
     if (status !== undefined && status !== '') {
-      statusFilter = parseInt(status) === 1 ? 1 : 0;
+      statusFilter = parseStatusFilter(status);
       conditions.push('m.status = ?');
       queryParams.push(statusFilter);
     }
@@ -177,14 +184,19 @@ router.get('/brand/:brandId', unifiedAuth, requirePermission('models:view'), cac
     const validSortColumns = ['id', 'name', 'sort_order', 'created_at', 'updated_at'];
     const sortColumn = validSortColumns.includes(sortBy) ? sortBy : 'sort_order';
     const sortDirection = sortOrder === 'asc' ? 'ASC' : 'DESC';
-    baseQuery += ` ORDER BY m.${sortColumn} ${sortDirection}`;
+    const fallbackOrder = sortColumn === 'sort_order'
+      ? ', m.name ASC, m.id ASC'
+      : ', m.sort_order ASC, m.name ASC, m.id ASC';
+    baseQuery += ` ORDER BY m.${sortColumn} ${sortDirection}${fallbackOrder}`;
 
     // 分页
     const finalQuery = `${baseQuery} LIMIT ${limitNum} OFFSET ${offset}`;
 
     // 执行查询
-    const [models] = await pool.execute(finalQuery, queryParams);
-    const [countResult] = await pool.execute(baseCountQuery, queryParams);
+    const [[models], [countResult]] = await Promise.all([
+      pool.execute(finalQuery, queryParams),
+      pool.execute(baseCountQuery, queryParams)
+    ]);
     const total = countResult[0].total;
 
     ApiResponse.success(res, {

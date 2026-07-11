@@ -50,7 +50,7 @@
               allow-create
               teleported
               fit-input-width
-              popper-class="publish-to-h5-popper"
+              popper-class="tf2025-form-popper"
             >
               <el-option label="99新" value="99新" />
               <el-option label="98新" value="98新" />
@@ -100,7 +100,7 @@
               placeholder="请选择屏幕状况"
               teleported
               fit-input-width
-              popper-class="publish-to-h5-popper"
+              popper-class="tf2025-form-popper"
             >
               <el-option label="全原" value="original" />
               <el-option label="换原屏" value="replaced_original" />
@@ -119,7 +119,7 @@
               clearable
               teleported
               fit-input-width
-              popper-class="publish-to-h5-popper"
+              popper-class="tf2025-form-popper"
             >
               <el-option label="国行" value="国行" />
               <el-option label="美版" value="美版" />
@@ -141,7 +141,7 @@
                 value-format="YYYY-MM-DD"
                 :disabled="form.is_warranty_expired"
                 teleported
-                popper-class="publish-to-h5-popper"
+                popper-class="tf2025-form-popper"
               />
               <el-checkbox v-model="form.is_warranty_expired" @change="handleWarrantyExpiredChange">
                 已过保
@@ -197,7 +197,7 @@
                 <!-- 图片预览 -->
                 <Image
                   v-else
-                  :src="file.url || file.raw"
+                  :src="previewUrl(file)"
                   alt="预览"
                   mode="eager"
                   class="publish-to-h5-media-thumb is-previewable"
@@ -213,8 +213,6 @@
                 <div
                   @click.stop="removePendingFile(index)"
                   class="image-delete-btn"
-                  @mouseenter="$event.target.style.background = 'rgb(245, 108, 108)'"
-                  @mouseleave="$event.target.style.background = 'rgba(245, 108, 108, 0.9)'"
                 >
                   <i class="fas fa-times text-white text-xs"></i>
                 </div>
@@ -279,8 +277,6 @@
               <div
                 @click.stop="deleteImage(image)"
                 class="image-delete-btn"
-                @mouseenter="$event.target.style.background = 'rgb(245, 108, 108)'"
-                @mouseleave="$event.target.style.background = 'rgba(245, 108, 108, 0.9)'"
               >
                 <i class="fas fa-times text-white text-xs"></i>
               </div>
@@ -291,8 +287,6 @@
                   v-if="!image.is_primary && image.image_type !== 'video'"
                   @click.stop="setPrimaryImage(image)"
                   class="image-set-primary-btn"
-                  @mouseenter="$event.target.style.background = 'rgb(255, 255, 255)'"
-                  @mouseleave="$event.target.style.background = 'rgba(255, 255, 255, 0.9)'"
                 >
                   <i class="fas fa-star text-danger text-sm"></i>
                 </div>
@@ -329,6 +323,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { ElImageViewer, ElMessage } from 'element-plus'
+import type { UploadFile, UploadFiles } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { unifiedApi as api } from '@/utils/unified-api'
 import { formatImageUrl } from '@/utils/format'
@@ -364,6 +359,7 @@ import type {
   MediaUploadOptions,
   PendingUploadFile,
   PublishFormState,
+  PublishInspectionResponse,
   UploadResult,
   UploadedMediaItem
 } from './publish-to-h5/types'
@@ -420,7 +416,7 @@ const batteryDisplayValue = ref('')
 const salePriceDisplayValue = computed({
   get: () => {
     const value = form.value.sale_price
-    return value === null || value === undefined || value === '' ? '' : String(value)
+    return value === null || value === undefined ? '' : String(value)
   },
   set: (value: string) => {
     form.value.sale_price = normalizePublishSalePrice(value)
@@ -440,7 +436,7 @@ const applyInspectionData = (inspectionData: PublishInspectionResponse | null | 
 
 const normalizePublicProductImages = (rawImages: unknown[]): UploadedMediaItem[] => {
   return rawImages
-    .map((item, index) => {
+    .map<UploadedMediaItem | null>((item, index) => {
       if (typeof item === 'string') {
         return {
           id: -(index + 1),
@@ -468,7 +464,9 @@ const normalizePublicProductImages = (rawImages: unknown[]): UploadedMediaItem[]
             ? rawItem.image_type
             : 'other',
           image_url: imageUrl,
-          is_primary: rawItem.is_primary as UploadedMediaItem['is_primary'] ?? index === 0
+          is_primary: typeof rawItem.is_primary === 'boolean' || typeof rawItem.is_primary === 'number'
+            ? rawItem.is_primary
+            : index === 0
         } satisfies UploadedMediaItem
       }
 
@@ -728,25 +726,34 @@ const convertHeicToJpeg = async (file: File, index: number, total: number): Prom
 
     return convertedFile
   } catch (error) {
-    logger.error('[HEIC 转换] 转换失败:', file.name, error)
+    logger.error(`[HEIC 转换] 转换失败: ${file.name}`, error)
     ElMessage.error(`${file.name} 处理失败`)
     throw error
   }
 }
 
+const toPendingUploadFile = (file: UploadFile): PendingUploadFile => ({
+  uid: String(file.uid),
+  name: file.name,
+  raw: file.raw,
+  status: file.status,
+  url: file.url
+})
+
 // 文件选择变化（添加到待上传列表）
-const handleFileChange = async (_file: PendingUploadFile, fileList: PendingUploadFile[]) => {
+const handleFileChange = async (_file: UploadFile, fileList: UploadFiles) => {
   // 防止处理过程中重复触发
   if (uploading.value || isProcessingFiles.value) {
     return
   }
 
-  const newFiles = getNewPublishFiles(fileList, processedFileUids.value)
+  const pendingFileList = fileList.map(toPendingUploadFile)
+  const newFiles = getNewPublishFiles(pendingFileList, processedFileUids.value)
 
   // 如果没有新文件，只是删除操作，同步 pendingFiles
   if (newFiles.length === 0) {
-    revokePendingFileUrls(getRemovedPublishFiles(pendingFiles.value, fileList))
-    pendingFiles.value = filterValidPublishFiles(fileList)
+    revokePendingFileUrls(getRemovedPublishFiles(pendingFiles.value, pendingFileList))
+    pendingFiles.value = filterValidPublishFiles(pendingFileList)
     return
   }
 
@@ -786,13 +793,13 @@ const handleFileChange = async (_file: PendingUploadFile, fileList: PendingUploa
           convertHeicToJpeg(f.raw, heicIndex, heicFiles.length)
             .then((converted) => buildConvertedPublishFile(f, converted))
             .catch(error => {
-              logger.error('[HEIC 转换] 处理失败:', f.name, error)
+              logger.error(`[HEIC 转换] 处理失败: ${f.name}`, error)
               // 转换失败不添加到列表，跳过该文件
               return null
             })
         )
         // 占位，保持顺序
-        processedFiles.push({ uid: f.uid, status: 'converting' })
+        processedFiles.push({ uid: f.uid, name: f.name, status: 'converting' })
       }
     }
 

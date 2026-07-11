@@ -49,7 +49,7 @@
               placeholder="请选择"
               filterable
               teleported
-              popper-class="query-edit-dialog-popper"
+              popper-class="tf2025-form-popper"
               @change="handleBrandChange"
             >
               <el-option
@@ -67,7 +67,7 @@
               placeholder="请选择"
               filterable
               teleported
-              popper-class="query-edit-dialog-popper"
+              popper-class="tf2025-form-popper"
               :disabled="!formData.brand || availableModels.length === 0"
               @change="handleModelChange"
             >
@@ -86,7 +86,7 @@
               placeholder="请选择"
               filterable
               teleported
-              popper-class="query-edit-dialog-popper"
+              popper-class="tf2025-form-popper"
               @change="handleColorChange"
             >
               <el-option
@@ -104,7 +104,7 @@
               placeholder="请选择"
               filterable
               teleported
-              popper-class="query-edit-dialog-popper"
+              popper-class="tf2025-form-popper"
               @change="handleMemoryChange"
             >
               <el-option
@@ -158,7 +158,7 @@
               v-model="formData.is_new"
               placeholder="请选择"
               teleported
-              popper-class="query-edit-dialog-popper"
+              popper-class="tf2025-form-popper"
             >
               <el-option label="全新" value="1" />
               <el-option label="二手" value="0" />
@@ -174,7 +174,7 @@
               filterable
               clearable
               teleported
-              popper-class="query-edit-dialog-popper"
+              popper-class="tf2025-form-popper"
             >
               <el-option
                 v-for="supplier in options.suppliers"
@@ -192,7 +192,7 @@
               filterable
               clearable
               teleported
-              popper-class="query-edit-dialog-popper"
+              popper-class="tf2025-form-popper"
             >
               <el-option
                 v-for="store in options.stores"
@@ -361,7 +361,7 @@
               placeholder="请选择入库日期"
               format="YYYY-MM-DD"
               value-format="YYYY-MM-DD"
-              popper-class="query-edit-dialog-popper"
+              popper-class="tf2025-form-popper"
             />
           </el-form-item>
 
@@ -372,7 +372,7 @@
               placeholder="请选择销售日期"
               format="YYYY-MM-DD"
               value-format="YYYY-MM-DD"
-              popper-class="query-edit-dialog-popper"
+              popper-class="tf2025-form-popper"
             />
           </el-form-item>
 
@@ -397,7 +397,7 @@
               filterable
               clearable
               teleported
-              popper-class="query-edit-dialog-popper"
+              popper-class="tf2025-form-popper"
             >
               <el-option
                 v-for="user in options.users"
@@ -414,7 +414,7 @@
               placeholder="请选择"
               clearable
               teleported
-              popper-class="query-edit-dialog-popper"
+              popper-class="tf2025-form-popper"
               @change="handlePaymentMethodChange"
             >
               <el-option label="现金支付" value="cash" />
@@ -433,7 +433,7 @@
               placeholder="请选择"
               clearable
               teleported
-              popper-class="query-edit-dialog-popper"
+              popper-class="tf2025-form-popper"
               @change="handlePaymentChannelChange"
             >
               <template v-if="formData.payment_method === 'mobile'">
@@ -455,7 +455,7 @@
               v-model="formData.status"
               placeholder="请选择状态"
               teleported
-              popper-class="query-edit-dialog-popper"
+              popper-class="tf2025-form-popper"
             >
               <el-option
                 v-for="option in PHONE_STATUS_OPTIONS"
@@ -495,6 +495,7 @@ import unifiedApi from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { isValidMobilePhone, normalizeAppleId, normalizePersonName, normalizePhoneDigits, resolveAppleAccountEmail } from '@/utils/security'
+import { sortOptionsByOrder } from '@/utils/option-sort'
 import { PHONE_STATUS_OPTIONS } from '@/constants/phoneStatuses'
 import type { Customer } from '@/types/order'
 import type { IdNameOption, ModelOption, ModelValueProps, SuccessEmits, UpdateModelValueEmits, UserOption } from '@/types'
@@ -657,11 +658,7 @@ const cloneOptions = (source: EditModalOptions): EditModalOptions => ({
 })
 
 const sortByOrder = <T extends { sort_order?: number; id?: string | number }>(items: T[]) => {
-  return [...items].sort((a, b) => {
-    const orderDiff = (a.sort_order || 0) - (b.sort_order || 0)
-    if (orderDiff !== 0) return orderDiff
-    return Number(a.id || 0) - Number(b.id || 0)
-  })
+  return sortOptionsByOrder(items)
 }
 
 const toRecord = (value: unknown): Record<string, unknown> | null => {
@@ -866,10 +863,10 @@ const fetchEditOptions = async (): Promise<EditModalOptions> => {
               )
             : [],
           users: usersRes.success && Array.isArray(usersRes.data?.employees)
-            ? usersRes.data.employees.map((item) => ({
+            ? sortOptionsByOrder(usersRes.data.employees.map((item) => ({
                 id: Number(item.id || 0),
                 name: item.name
-              }))
+              })))
             : []
         }
 
@@ -1983,54 +1980,6 @@ onBeforeUnmount(() => {
   width: 140px !important;
 }
 
-:global(.query-edit-dialog-popper) {
-  z-index: 4001 !important;
-}
-
-:global(.query-edit-dialog-popper .el-select-dropdown__item),
-:global(.query-edit-dialog-popper .el-picker-panel__shortcut) {
-  min-height: 40px;
-  height: auto !important;
-  line-height: 1.4;
-  white-space: normal;
-  word-break: break-word;
-  padding-top: 10px;
-  padding-bottom: 10px;
-}
-
-:global(.query-edit-dialog-popper .el-select-dropdown__wrap) {
-  max-height: min(320px, 55vh);
-}
-
-:global(.query-edit-dialog-popper.el-select__popper .el-select-dropdown),
-:global(.query-edit-dialog-popper.el-select__popper .el-scrollbar),
-:global(.query-edit-dialog-popper.el-select__popper .el-select-dropdown__wrap),
-:global(.query-edit-dialog-popper.el-select__popper .el-select-dropdown__list) {
-  width: 100% !important;
-  min-width: 0 !important;
-}
-
-/* 日历弹出面板紧凑宽度 */
-:global(.query-edit-dialog-popper.el-picker__popper) {
-  width: auto !important;
-  min-width: 0 !important;
-  max-width: 320px !important;
-}
-
-:global(.query-edit-dialog-popper.el-picker__popper .el-picker-panel),
-:global(.query-edit-dialog-popper.el-picker__popper .el-date-picker__header),
-:global(.query-edit-dialog-popper.el-picker__popper .el-picker-panel__content) {
-  width: auto !important;
-  min-width: 0 !important;
-  max-width: 320px !important;
-  box-sizing: border-box;
-}
-
-:global(.query-edit-dialog-popper.el-picker__popper .el-picker-panel__body) {
-  width: auto !important;
-  min-width: 0 !important;
-}
-
 /* 日期选择器输入框使用紧凑宽度 - PC端 */
 :global(.query-edit-dialog .el-date-editor.el-input),
 :global(.query-edit-dialog .el-date-editor) {
@@ -2481,22 +2430,4 @@ onBeforeUnmount(() => {
   }
 }
 
-@media (max-width: 767px) {
-  :global(.query-edit-dialog-popper.el-popper),
-  :global(.query-edit-dialog-popper.el-select__popper),
-  :global(.query-edit-dialog-popper.el-picker__popper) {
-    width: min(360px, calc(100vw - 12px)) !important;
-    max-width: calc(100vw - 12px) !important;
-  }
-
-  :global(.query-edit-dialog-popper .el-picker-panel) {
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-
-  :global(.query-edit-dialog-popper.el-picker__popper) {
-    left: 6px !important;
-    right: 6px !important;
-  }
-}
 </style>

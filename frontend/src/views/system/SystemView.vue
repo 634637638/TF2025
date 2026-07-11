@@ -88,7 +88,7 @@
                     :loading="isLoading"
                     :disabled="!canUpdateSettings"
                   >
-                    <InlineLoading v-if="isLoading" text="保存中..." size="small" variant="inherit" />
+                    <span v-if="isLoading">保存中...</span>
                     <template v-else>
                       <i class="fas fa-save"></i>
                       <span>保存</span>
@@ -144,7 +144,7 @@
                       :loading="logoUploading"
                       :disabled="!canUpdateSettings"
                     >
-                      <InlineLoading v-if="logoUploading" text="上传中..." size="small" variant="inherit" />
+                      <span v-if="logoUploading">上传中...</span>
                       <template v-else>
                         <i class="fas fa-upload"></i>
                         <span>上传 Logo</span>
@@ -189,7 +189,7 @@
                     :loading="isLoading"
                     :disabled="!canUpdateSettings"
                   >
-                    <InlineLoading v-if="isLoading" text="保存中..." size="small" variant="inherit" />
+                    <span v-if="isLoading">保存中...</span>
                     <template v-else>
                       <i class="fas fa-save"></i>
                       <span>保存</span>
@@ -258,7 +258,7 @@
                     :loading="isLoading"
                     :disabled="!canUpdateSettings"
                   >
-                    <InlineLoading v-if="isLoading" text="保存中..." size="small" variant="inherit" />
+                    <span v-if="isLoading">保存中...</span>
                     <template v-else>
                       <i class="fas fa-save"></i>
                       <span>保存</span>

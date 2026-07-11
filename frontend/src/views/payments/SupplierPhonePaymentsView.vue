@@ -21,7 +21,7 @@
           export-type="success"
           @export="exportPaymentPhones"
         />
-        <el-button type="info" @click="refreshData" :disabled="refreshing">
+        <el-button type="info" @click="() => refreshData()" :disabled="refreshing">
           <InlineLoading v-if="refreshing" text="刷新中..." size="small" variant="inherit" />
           <template v-else>
             <i class="fas fa-sync-alt"></i>
@@ -292,8 +292,8 @@
             </td>
             <td v-if="shouldShowPaymentColumn('purchase_cost')" class="price">¥{{ formatAmount(phone.purchase_cost) }}</td>
             <td v-if="shouldShowPaymentColumn('sale_price')" class="price">¥{{ formatAmount(phone.sale_price) }}</td>
-            <td v-if="shouldShowPaymentColumn('profit')" :class="['price-cell', (phone.sale_price - phone.purchase_cost) >= 0 ? 'profit-positive' : 'profit-negative']">
-              ¥{{ formatAmount(phone.sale_price - phone.purchase_cost) }}
+            <td v-if="shouldShowPaymentColumn('profit')" :class="['price-cell', getPhoneProfit(phone) >= 0 ? 'profit-positive' : 'profit-negative']">
+              ¥{{ formatAmount(getPhoneProfit(phone)) }}
             </td>
             <td v-if="shouldShowPaymentColumn('sale_time')" class="time-cell">{{ formatDate(phone.purchase_date) }}</td>
             <td v-if="shouldShowPaymentColumn('sale_time')" class="time-cell">{{ formatDate(phone.sale_time) }}</td>
@@ -514,8 +514,8 @@
                     <span :class="['imei', phone.phone_status === 'peer_transfer' ? 'imei-wholesale' : '']">{{ phone.imei || '-' }}</span>
                   </td>
                   <td v-if="canViewPaymentField('purchase_cost')" class="price">¥{{ formatAmount(phone.purchase_cost) }}</td>
-                  <td v-if="canViewPaymentField('profit')" :class="['price-cell hide-in-capture', (phone.sale_price - phone.purchase_cost) >= 0 ? 'profit-positive' : 'profit-negative']">
-                    ¥{{ formatAmount(phone.sale_price - phone.purchase_cost) }}
+                  <td v-if="canViewPaymentField('profit')" :class="['price-cell hide-in-capture', getPhoneProfit(phone) >= 0 ? 'profit-positive' : 'profit-negative']">
+                    ¥{{ formatAmount(getPhoneProfit(phone)) }}
                   </td>
                   <td v-if="canViewPaymentField('payment_time')" class="time-cell">
                     <span class="payment-time-badge">{{ formatDateBeijing(phone.payment_time) }}</span>
@@ -565,7 +565,7 @@
             @click="saveBatchPaymentAsImage"
             :loading="savingImage"
           >
-            <InlineLoading v-if="savingImage" text="保存中..." size="small" variant="inherit" />
+            <span v-if="savingImage">保存中...</span>
             <template v-else>
               <i class="fas fa-camera"></i>
               <span>保存图片</span>
@@ -605,8 +605,8 @@
           </div>
           <div v-if="canViewPaymentField('profit')" class="info-row">
             <label>利润:</label>
-            <span :class="['amount', (currentPhone?.sale_price - currentPhone?.purchase_cost) >= 0 ? 'profit-positive' : 'profit-negative']">
-              ¥{{ formatAmount((currentPhone?.sale_price || 0) - (currentPhone?.purchase_cost || 0)) }}
+            <span :class="['amount', getPhoneProfit(currentPhone) >= 0 ? 'profit-positive' : 'profit-negative']">
+              ¥{{ formatAmount(getPhoneProfit(currentPhone)) }}
             </span>
           </div>
         </div>
@@ -651,8 +651,8 @@
                     <span :class="['imei', currentPhone?.phone_status === 'peer_transfer' ? 'imei-wholesale' : '']">{{ currentPhone?.imei || '-' }}</span>
                   </td>
                   <td v-if="canViewPaymentField('purchase_cost')" class="price">¥{{ formatAmount(currentPhone?.purchase_cost) }}</td>
-                  <td v-if="canViewPaymentField('profit')" :class="['price-cell', (currentPhone?.sale_price - currentPhone?.purchase_cost) >= 0 ? 'profit-positive' : 'profit-negative']">
-                    ¥{{ formatAmount((currentPhone?.sale_price || 0) - (currentPhone?.purchase_cost || 0)) }}
+                  <td v-if="canViewPaymentField('profit')" :class="['price-cell', getPhoneProfit(currentPhone) >= 0 ? 'profit-positive' : 'profit-negative']">
+                    ¥{{ formatAmount(getPhoneProfit(currentPhone)) }}
                   </td>
                   <td v-if="canViewPaymentField('payment_time')" class="time-cell">
                     <span class="payment-time-badge">{{ formatDateBeijing(currentPhone?.payment_time) }}</span>
@@ -702,7 +702,7 @@
             @click="saveSinglePaymentAsImage"
             :loading="savingImage"
           >
-            <InlineLoading v-if="savingImage" text="保存中..." size="small" variant="inherit" />
+            <span v-if="savingImage">保存中...</span>
             <template v-else>
               <i class="fas fa-camera"></i>
               <span>保存图片</span>
@@ -803,8 +803,8 @@
                     <span :class="['imei', phone.phone_status === 'peer_transfer' ? 'imei-wholesale' : '']">{{ phone.imei || '-' }}</span>
                   </td>
                   <td v-if="canViewPaymentField('purchase_cost')" class="price">¥{{ formatAmount(phone.purchase_cost) }}</td>
-                  <td v-if="canViewPaymentField('profit')" :class="['price-cell', (phone.sale_price - phone.purchase_cost) >= 0 ? 'profit-positive' : 'profit-negative', 'hide-in-capture']">
-                    ¥{{ formatAmount(phone.sale_price - phone.purchase_cost) }}
+                  <td v-if="canViewPaymentField('profit')" :class="['price-cell', getPhoneProfit(phone) >= 0 ? 'profit-positive' : 'profit-negative', 'hide-in-capture']">
+                    ¥{{ formatAmount(getPhoneProfit(phone)) }}
                   </td>
                   <td v-if="canViewPaymentField('payment_time')" class="time-cell">
                     <span class="payment-time-badge">{{ formatDateBeijing(phone.payment_time) }}</span>
@@ -832,7 +832,7 @@
             @click="savePaymentDetailsAsImage"
             :loading="savingImage"
           >
-            <InlineLoading v-if="savingImage" text="保存中..." size="small" variant="inherit" />
+            <span v-if="savingImage">保存中...</span>
             <template v-else>
               <i class="fas fa-camera"></i>
               <span>保存为图片</span>
@@ -929,6 +929,7 @@ import TableLoadingRow from '@/components/TableLoadingRow.vue';
 import { PageHeader, PermissionGate } from '@/components/base';
 import { TimeUtil, TIME_FORMATS } from '@/utils/time';
 import { loadHtml2Canvas } from '@/utils/html2canvas';
+import { sortOptionsByOrder } from '@/utils/option-sort';
 
 const router = useRouter();
 const { success, error, warning, info } = useNotification();
@@ -1174,6 +1175,10 @@ const getCurrentBeijingTime = (): string => {
 const toNumber = (value: number | string | null | undefined): number => {
   const parsed = Number.parseFloat(String(value ?? 0));
   return Number.isNaN(parsed) ? 0 : parsed;
+};
+
+const getPhoneProfit = (phone?: SupplierPaymentPhone | null): number => {
+  return toNumber(phone?.sale_price) - toNumber(phone?.purchase_cost);
 };
 
 const isSupplierPaymentError = (err: unknown): err is SupplierPaymentError => {
@@ -1751,7 +1756,7 @@ const loadStores = async () => {
     // 传递 all=true 参数获取所有店铺（用于下拉选择）
     const response = await unifiedApi.get('/stores?all=true') as SupplierPaymentApiResponse<StoreOption[]>;
     if (response.success) {
-      stores.value = Array.isArray(response.data) ? response.data : [];
+      stores.value = sortOptionsByOrder(Array.isArray(response.data) ? response.data : []);
     }
   } catch (err) {
     logger.error('加载店铺列表失败:', err);
@@ -4208,45 +4213,7 @@ onMounted(async () => {
 }
 </style>
 
-<!-- 修复 Element Plus 下拉菜单颜色问题 -->
 <style lang="scss">
-.el-select-dropdown {
-  background-color: #ffffff !important;
-  border: 1px solid #e4e7ed !important;
-
-  .el-select-dropdown__item {
-    color: #606266 !important;
-    background-color: #ffffff !important;
-
-    &:hover {
-      background-color: #f5f7fa !important;
-      color: #409eff !important;
-    }
-
-    &.is-selected {
-      color: #409eff !important;
-      font-weight: 700 !important;
-    }
-
-    &.is-disabled {
-      color: #c0c4cc !important;
-      cursor: not-allowed !important;
-    }
-  }
-
-  .el-select-dropdown__empty {
-    color: #909399 !important;
-  }
-
-  .el-select-dropdown__wrap {
-    background-color: #ffffff !important;
-  }
-
-  .el-select-dropdown__list {
-    background-color: #ffffff !important;
-  }
-}
-
 .supplier-phone-payments-dialog {
   .el-dialog__header,
   &.mobile-dialog-sheet-panel .mobile-dialog-sheet-header {

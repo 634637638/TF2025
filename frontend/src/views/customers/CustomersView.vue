@@ -799,7 +799,7 @@
             取消
           </el-button>
           <el-button type="primary" @click="saveCustomer" :disabled="isSubmitting" :loading="isSubmitting">
-            <InlineLoading v-if="isSubmitting" text="保存中..." size="small" variant="inherit" />
+            <span v-if="isSubmitting">保存中...</span>
             <template v-else>{{ modalMode === 'add' ? '新增' : '保存' }}</template>
           </el-button>
         </template>
@@ -1040,7 +1040,6 @@ import { useMobile } from '@/composables/mobile'
 import { ElEmpty, ElButton, ElMessageBox } from 'element-plus'
 import Pagination from '../../components/Pagination.vue'
 import CitySelector from '../../components/CitySelector.vue'
-import InlineLoading from '@/components/InlineLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
@@ -1923,7 +1922,7 @@ const resetCustomerForm = () => {
 }
 
 const saveCustomer = async () => {
-  if (submitLoading.value) return
+  if (isSubmitting.value) return
   if (modalMode.value === 'add' && !canCreate.value) {
     handleNoPermission('create')
     return
@@ -2020,8 +2019,7 @@ const saveCustomer = async () => {
     if (response.success) {
       success(modalMode.value === 'edit' ? '客户信息更新成功' : '客户创建成功')
       closeCustomerModal()
-      loadCustomers()
-      loadStats()
+      await Promise.all([loadCustomers(), loadStats()])
     } else {
       error(response.message || `${modalMode.value === 'edit' ? '更新' : '创建'}客户失败`)
     }
@@ -2159,8 +2157,7 @@ const deleteCustomer = async (customer: CustomerListItem) => {
 
     if (response.success) {
       success('客户删除成功')
-      loadCustomers()
-      loadStats()
+      await Promise.all([loadCustomers(), loadStats()])
     } else {
       setError(response.message || '删除客户失败')
     }

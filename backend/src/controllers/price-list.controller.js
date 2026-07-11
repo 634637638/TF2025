@@ -4,6 +4,7 @@
 const { getDatabase } = require('../config/database');
 const ApiResponse = require('../utils/response');
 const XLSX = require('xlsx');
+const { PAGINATION } = require('../config/constants');
 const log = require('../utils/log');
 
 function getPriceListService() {
@@ -90,8 +91,8 @@ class PriceListController {
       const priceListService = getPriceListService();
       const result = await priceListService.getPriceList({
         ...req.query,
-        page: 1,
-        limit: 10000
+        page: PAGINATION.DEFAULT_PAGE,
+        limit: PAGINATION.DEFAULT_LIMIT
       });
 
       if (!result.success) {

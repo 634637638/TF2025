@@ -142,7 +142,7 @@ import type { TableColumn } from '@/types'
 type TableRow = Record<string, unknown>
 type SortOrder = 'ascending' | 'descending' | null
 
-interface PaginatedTableColumn extends TableColumn {
+interface PaginatedTableColumn extends Omit<TableColumn, 'key' | 'formatter'> {
   key: string
   formatter?: (value: unknown, row: TableRow) => string
 }
@@ -229,6 +229,7 @@ const pageSize = ref(props.pageSize)
 const searchKeyword = ref('')
 const selected = ref<TableRow[]>([])
 const tableData = computed(() => props.data)
+const tableHeight = computed(() => props.height)
 
 // 计算属性
 const getIndex = (index: number) => {

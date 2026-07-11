@@ -19,7 +19,6 @@
     title="快速出库"
     :force-fullscreen="isMobile"
     :show-default-footer="false"
-    :loading="submitting"
     :close-on-click-modal="false"
     width="800px"
     dialog-class="quick-sale-dialog"
@@ -32,7 +31,7 @@
             取消
           </el-button>
           <el-button type="primary" :loading="submitting" @click="handleSubmit">
-            <InlineLoading v-if="submitting" text="处理中..." size="small" variant="inherit" />
+            <span v-if="submitting">处理中...</span>
             <template v-else>
               <i class="fas fa-bolt"></i>
               确认出库

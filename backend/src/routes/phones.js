@@ -6,6 +6,8 @@ const { cacheMiddleware, clearCache } = require('../middleware/cache');
 const { generateMemberNumber } = require('../utils/member-number');
 const { validateImei } = require('../utils/imei');
 const log = require('../utils/log');
+const { PAGINATION } = require('../config/constants');
+const { requireMockRoutesEnabled } = require('../middleware/mock-route-guard');
 
 // 模拟手机数据
 const mockPhones = [
@@ -317,8 +319,8 @@ router.get('/search-test', unifiedAuth, requirePermission('inventory:view'), asy
 router.get('/', unifiedAuth, requirePermission('inventory:view'), async (req, res) => {
   try {
     const {
-      page = 1,
-      limit = 10000,
+      page = PAGINATION.DEFAULT_PAGE,
+      limit = PAGINATION.DEFAULT_LIMIT,
       brand_id,
       model_id,
       store_id,
@@ -1331,7 +1333,7 @@ router.get('/:id', unifiedAuth, requirePermission('sales:view'), async (req, res
 });
 
 // 创建手机
-router.post('/', unifiedAuth, requirePermission('system:edit'), (req, res) => {
+router.post('/', unifiedAuth, requirePermission('system:edit'), requireMockRoutesEnabled('手机新增模拟接口'), (req, res) => {
   try {
     const {
       model_id,
@@ -2267,7 +2269,7 @@ router.delete(
 });
 
 // 获取手机统计信息
-router.get('/stats/overview', unifiedAuth, requirePermission('system:edit'), (req, res) => {
+router.get('/stats/overview', unifiedAuth, requirePermission('system:edit'), requireMockRoutesEnabled('手机统计模拟接口'), (req, res) => {
   try {
     const { store_id } = req.query;
 
@@ -2306,7 +2308,7 @@ router.get('/stats/overview', unifiedAuth, requirePermission('system:edit'), (re
 });
 
 // 获取单个手机详情
-router.patch('/:id/status', unifiedAuth, requirePermission('system:edit'), (req, res) => {
+router.patch('/:id/status', unifiedAuth, requirePermission('system:edit'), requireMockRoutesEnabled('手机状态模拟更新接口'), (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;

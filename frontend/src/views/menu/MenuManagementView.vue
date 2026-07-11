@@ -656,7 +656,7 @@
                     filterable
                     clearable
                     class="module-select-input"
-                    popper-class="module-select-dropdown"
+                    popper-class="tf2025-form-popper module-select-dropdown"
                     :teleported="false"
                     :fit-input-width="true"
                     @change="handleModuleChange"
@@ -1994,15 +1994,10 @@ onMounted(async () => {
   word-break: break-word;
 }
 
-/* 确保 el-select 下拉框不会被遮挡 */
+/* 模块选择器的选项内容较长，保留专用宽度和换行 */
 .module-selector-section {
   :deep(.el-select-dropdown) {
     max-width: 700px !important;
-  }
-
-  :deep(.el-select-dropdown__item) {
-    padding: 8px 12px;
-    height: auto;
   }
 
   :deep(.el-select__popper) {
@@ -3467,11 +3462,6 @@ onMounted(async () => {
 .module-select-dropdown {
   min-width: min(360px, 100%) !important;
   max-width: min(520px, calc(100vw - 48px)) !important;
-  z-index: 9999 !important;
-}
-
-.module-select-dropdown .el-select-dropdown__wrap {
-  max-height: 400px !important;
 }
 
 .module-select-dropdown .el-select-dropdown__list {
@@ -3492,7 +3482,6 @@ onMounted(async () => {
 
 .module-select-dropdown .el-select-dropdown__item {
   min-width: 0 !important;
-  height: auto !important;
   padding: 12px 16px !important;
   line-height: normal !important;
   display: flex !important;

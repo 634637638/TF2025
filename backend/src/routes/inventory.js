@@ -7,6 +7,7 @@ const { validateImei } = require('../utils/imei');
 const { normalizeDateTime } = require('../utils/time');
 const { generateMemberNumber } = require('../utils/member-number');
 const log = require('../utils/log');
+const { requireMockRoutesEnabled } = require('../middleware/mock-route-guard');
 
 const mockInventory = [
   {
@@ -726,7 +727,7 @@ router.get('/:id', unifiedAuth, requirePermission('inventory:view'), async (req,
 });
 
 // 获取库存变动记录
-router.get('/:id/movements', unifiedAuth, requirePermission('inventory:view'), (req, res) => {
+router.get('/:id/movements', unifiedAuth, requirePermission('inventory:view'), requireMockRoutesEnabled('库存变动模拟接口'), (req, res) => {
   try {
     const { id } = req.params;
     const { page = 1, limit = 20, movement_type, start_date, end_date } = req.query;
@@ -774,7 +775,7 @@ router.get('/:id/movements', unifiedAuth, requirePermission('inventory:view'), (
 });
 
 // 库存入库
-router.post('/:id/stock-in', unifiedAuth, requirePermission('inventory:create'), (req, res) => {
+router.post('/:id/stock-in', unifiedAuth, requirePermission('inventory:create'), requireMockRoutesEnabled('库存入库模拟接口'), (req, res) => {
   try {
     const { id } = req.params;
     const { quantity, reference_type, reference_id, reason } = req.body;
@@ -836,7 +837,7 @@ router.post('/:id/stock-in', unifiedAuth, requirePermission('inventory:create'),
 });
 
 // 库存出库
-router.post('/:id/stock-out', unifiedAuth, requirePermission('inventory:edit'), (req, res) => {
+router.post('/:id/stock-out', unifiedAuth, requirePermission('inventory:edit'), requireMockRoutesEnabled('库存出库模拟接口'), (req, res) => {
   try {
     const { id } = req.params;
     const { quantity, reference_type, reference_id, reason } = req.body;
@@ -904,7 +905,7 @@ router.post('/:id/stock-out', unifiedAuth, requirePermission('inventory:edit'), 
 });
 
 // 库存预留
-router.post('/:id/reserve', unifiedAuth, requirePermission('inventory:edit'), (req, res) => {
+router.post('/:id/reserve', unifiedAuth, requirePermission('inventory:edit'), requireMockRoutesEnabled('库存预留模拟接口'), (req, res) => {
   try {
     const { id } = req.params;
     const { quantity, reference_type, reference_id, reason } = req.body;
@@ -959,7 +960,7 @@ router.post('/:id/reserve', unifiedAuth, requirePermission('inventory:edit'), (r
 });
 
 // 取消预留
-router.post('/:id/unreserve', unifiedAuth, requirePermission('inventory:edit'), (req, res) => {
+router.post('/:id/unreserve', unifiedAuth, requirePermission('inventory:edit'), requireMockRoutesEnabled('取消库存预留模拟接口'), (req, res) => {
   try {
     const { id } = req.params;
     const { quantity, reference_type, reference_id, reason } = req.body;
@@ -1014,7 +1015,7 @@ router.post('/:id/unreserve', unifiedAuth, requirePermission('inventory:edit'), 
 });
 
 // 库存调整
-router.put('/:id/adjust', unifiedAuth, requirePermission('inventory:edit'), (req, res) => {
+router.put('/:id/adjust', unifiedAuth, requirePermission('inventory:edit'), requireMockRoutesEnabled('库存调整模拟接口'), (req, res) => {
   try {
     const { id } = req.params;
     const { current_stock, reason } = req.body;

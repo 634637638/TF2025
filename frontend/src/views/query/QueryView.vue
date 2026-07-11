@@ -632,6 +632,7 @@ import { useCachedRequest, DEFAULT_CACHE_TTL } from '@/composables/usePageCache'
 import unifiedApi from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import { formatImageUrl } from '@/utils/format'
+import { sortOptionsByOrder } from '@/utils/option-sort'
 import { createTempFileTracker, type TempFileTracker } from '@/utils/temp-file-cleaner'
 import { canAccessRoutePath } from '@/constants/routePermissions'
 import draggable from 'vuedraggable'
@@ -1512,7 +1513,7 @@ const loadSalesUsers = async () => {
   try {
     employeesPromise.value = (async () => {
       const usersRes = await unifiedApi.get('/users/employees?limit=10000')
-      return usersRes.success && usersRes.data?.employees ? usersRes.data.employees : []
+      return usersRes.success && usersRes.data?.employees ? sortOptionsByOrder(usersRes.data.employees) : []
     })()
 
     options.value.users = await employeesPromise.value
@@ -1551,24 +1552,15 @@ const loadEditModalOptions = async () => {
     // 更新编辑模态框选项 - 按 sort_order 排序，相同时按 id 排序确保一致性
     // 供应商按 sort_order 排序，相同时按 id 排序
     editModalOptions.suppliers = suppliersRes.success && suppliersRes.data
-      ? (suppliersRes.data || []).sort((a: any, b: any) => {
-          const orderA = a.sort_order || 0;
-          const orderB = b.sort_order || 0;
-          return orderA !== orderB ? orderA - orderB : (a.id || 0) - (b.id || 0);
-        })
+      ? sortOptionsByOrder(suppliersRes.data || [])
       : []
 
     // 店铺数据
-    editModalOptions.stores = storesRes.success ? extractResponseData<any[]>(storesRes) : []
+    editModalOptions.stores = storesRes.success ? sortOptionsByOrder(extractResponseData<any[]>(storesRes)) : []
 
     // 品牌按 sort_order 排序，相同时按 id 排序
     if (brandsRes.success) {
-      editModalOptions.brands = extractResponseData<any[]>(brandsRes)
-        .sort((a: any, b: any) => {
-          const orderA = a.sort_order || 0;
-          const orderB = b.sort_order || 0;
-          return orderA !== orderB ? orderA - orderB : (a.id || 0) - (b.id || 0);
-        })
+      editModalOptions.brands = sortOptionsByOrder(extractResponseData<any[]>(brandsRes))
         .map((brand: any) => brand.name)
     } else {
       editModalOptions.brands = []
@@ -1576,12 +1568,7 @@ const loadEditModalOptions = async () => {
 
     // 型号按 sort_order 排序，相同时按 id 排序
     if (modelsRes.success) {
-      editModalOptions.models = extractResponseData<any[]>(modelsRes)
-        .sort((a: any, b: any) => {
-          const orderA = a.sort_order || 0;
-          const orderB = b.sort_order || 0;
-          return orderA !== orderB ? orderA - orderB : (a.id || 0) - (b.id || 0);
-        })
+      editModalOptions.models = sortOptionsByOrder(extractResponseData<any[]>(modelsRes))
         .map((model: any) => model.name)
     } else {
       editModalOptions.models = []
@@ -1589,12 +1576,7 @@ const loadEditModalOptions = async () => {
 
     // 颜色按 sort_order 排序，相同时按 id 排序
     if (colorsRes.success) {
-      editModalOptions.colors = extractResponseData<any[]>(colorsRes)
-        .sort((a: any, b: any) => {
-          const orderA = a.sort_order || 0;
-          const orderB = b.sort_order || 0;
-          return orderA !== orderB ? orderA - orderB : (a.id || 0) - (b.id || 0);
-        })
+      editModalOptions.colors = sortOptionsByOrder(extractResponseData<any[]>(colorsRes))
         .map((color: any) => color.name)
     } else {
       editModalOptions.colors = []
@@ -1602,23 +1584,14 @@ const loadEditModalOptions = async () => {
 
     // 内存按 sort_order 排序，相同时按 id 排序确保一致性
     if (memoriesRes.success) {
-      editModalOptions.memories = extractResponseData<any[]>(memoriesRes)
-        .sort((a: any, b: any) => {
-          // 先按 sort_order 排序，相同时按 id 排序确保一致性
-          const orderA = a.sort_order || 0;
-          const orderB = b.sort_order || 0;
-          if (orderA !== orderB) {
-            return orderA - orderB;
-          }
-          return (a.id || 0) - (b.id || 0);
-        })
+      editModalOptions.memories = sortOptionsByOrder(extractResponseData<any[]>(memoriesRes), { labelKeys: ['size', 'capacity', 'name'] })
         .map((memory: any) => memory.size || memory.capacity || memory.name)
     } else {
       editModalOptions.memories = []
     }
 
     // users接口返回 { employees, total, isAdmin } 结构，需要提取 employees 数组
-    editModalOptions.users = usersRes.success && usersRes.data?.employees ? usersRes.data.employees : []
+    editModalOptions.users = usersRes.success && usersRes.data?.employees ? sortOptionsByOrder(usersRes.data.employees) : []
     editModalOptionsLoaded.value = true
     if (options.value.users.length === 0) {
       options.value.users = editModalOptions.users

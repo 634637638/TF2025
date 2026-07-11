@@ -343,6 +343,7 @@ import type { SalesAnalyticsProps, LoadingChangeEmits } from '@/types/component'
 import { useAnalyticsFieldVisibility } from './useAnalyticsFieldVisibility'
 import echarts, { ECharts } from '@/utils/echarts'
 import { buildCsvContent } from '@/utils/csv-export'
+import { sortOptionsByOrder } from '@/utils/option-sort'
 import dayjs from 'dayjs'
 import { logger } from '@/utils/logger'
 
@@ -625,7 +626,7 @@ const loadStoreComparisonData = async () => {
       unifiedApi.get('/stores', { params: { all: true } }), DEFAULT_CACHE_TTL.STATIC)
     if (!storesResponse.success || !storesResponse.data) return
 
-    const stores = Array.isArray(storesResponse.data) ? storesResponse.data : (storesResponse.data.stores || [])
+    const stores = sortOptionsByOrder(Array.isArray(storesResponse.data) ? storesResponse.data : (storesResponse.data.stores || []))
     const comparisonData = []
 
     // 获取每个店铺的全新和二手销售数据（使用缓存）

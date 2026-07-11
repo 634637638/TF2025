@@ -1,6 +1,7 @@
 import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import { extractResponseData } from '@/utils/api-response'
 import { unifiedApi } from '@/utils/unified-api'
+import { sortOptionsByOrder } from '@/utils/option-sort'
 import type { Brand, Color, MemoryOption, Model } from '@/types'
 import type { Store, Supplier } from '@/types/system'
 import type { StockInFormModel, StockInPhoneItem } from './types'
@@ -423,7 +424,7 @@ export const validateStockInPhones = (
 }
 
 const sortBySortOrder = <T extends { sort_order?: number }>(items: T[]): T[] =>
-  [...items].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+  sortOptionsByOrder(items)
 
 export interface StockInDropdownData {
   suppliers: Supplier[]

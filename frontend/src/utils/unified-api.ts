@@ -13,6 +13,7 @@ import { storage } from '@/services/storage'
 import { AUTH_STORAGE_KEYS, ROUTER_STORAGE_KEYS, SECURITY_STORAGE_KEYS } from '@/constants/storage'
 import type { ApiResponse as GlobalApiResponse } from '@/types'
 import logger from '@/utils/logger'
+import { clearCache as clearPageCache } from '@/composables/usePageCache'
 
 // API基础配置
 const DEFAULT_READ_TIMEOUT = 30000
@@ -42,6 +43,7 @@ export interface RequestConfig extends AxiosRequestConfig {
     startTime: number
     url?: string
     method?: string
+    cacheGeneration?: number
   }
   cachedResponse?: any
 }
@@ -58,6 +60,7 @@ class UnifiedApiManager {
   private loadingPromise: Promise<any> | null = null
   private requestCount = 0
   private cache = new Map<string, { data: any, timestamp: number, ttl: number }>()
+  private cacheGeneration = 0
   private refreshPromise: Promise<boolean> | null = null
   private csrfToken: string | null = null
   private csrfTokenExpiresAt = 0
@@ -120,7 +123,8 @@ class UnifiedApiManager {
       requestId: this.generateRequestId(),
       startTime: Date.now(),
       url: config.url,
-      method: config.method?.toUpperCase()
+      method: config.method?.toUpperCase(),
+      cacheGeneration: this.cacheGeneration
     }
 
     // 缓存检查（仅对GET请求）
@@ -164,8 +168,19 @@ class UnifiedApiManager {
     // 计算请求耗时
     const duration = Date.now() - metadata.startTime
 
-    // 缓存成功的GET请求响应
-    if (requestConfig.method?.toLowerCase() === 'get' && requestConfig.useCache !== false) {
+    const method = requestConfig.method?.toLowerCase()
+
+    // 写操作成功后统一失效读取缓存，确保页面紧接着重载时获得最新数据。
+    if (this.isMutationMethod(method) && response.data?.success !== false) {
+      this.invalidateReadCache()
+    }
+
+    // 只缓存当前代次的GET响应，避免写操作前发出的慢请求回填旧数据。
+    if (
+      method === 'get' &&
+      requestConfig.useCache !== false &&
+      metadata?.cacheGeneration === this.cacheGeneration
+    ) {
       const cacheKey = this.generateCacheKey(requestConfig)
       const ttl = requestConfig.cacheTTL || 3000 // 3秒默认缓存 - 平衡性能与实时性
       this.cache.set(cacheKey, {
@@ -1120,6 +1135,16 @@ class UnifiedApiManager {
     return `${method?.toUpperCase() || 'GET'}:${url}:${JSON.stringify(params || {})}:${JSON.stringify(data || {})}`
   }
 
+  private isMutationMethod(method?: string): boolean {
+    return method === 'post' || method === 'put' || method === 'patch' || method === 'delete'
+  }
+
+  private invalidateReadCache(): void {
+    this.cacheGeneration += 1
+    this.cache.clear()
+    clearPageCache()
+  }
+
   /**
    * 获取有效的JWT Token（浏览器兼容版本）
    */
@@ -1315,7 +1340,7 @@ class UnifiedApiManager {
    * 清除缓存
    */
   clearCache(): void {
-    this.cache.clear()
+    this.invalidateReadCache()
   }
 
   /**

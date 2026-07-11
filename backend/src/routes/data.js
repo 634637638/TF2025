@@ -4,12 +4,11 @@ const { getDatabase, isConnected, connectToDatabase, setConnected } = require('.
 const ApiResponse = require('../utils/response');
 const log = require('../utils/log');
 
-// 模拟数据存储（用于数据库未连接时的降级方案）
-let mockData = [
-  { id: 1, name: '示例数据1', description: '这是第一条示例数据' },
-  { id: 2, name: '示例数据2', description: '这是第二条示例数据' }
-];
-let nextId = 3;
+const DATA_TABLE_UNAVAILABLE_MESSAGE = '数据服务暂不可用，请检查数据库连接';
+
+const isConnectionError = (error) => error?.code === 'ECONNRESET' || error?.code === 'PROTOCOL_CONNECTION_LOST';
+
+const respondDatabaseUnavailable = (res) => ApiResponse.error(res, DATA_TABLE_UNAVAILABLE_MESSAGE, 503);
 
 // 获取数据列表
 router.get('/', async (req, res) => {
@@ -18,7 +17,7 @@ router.get('/', async (req, res) => {
       log.debug('数据库未连接，尝试重新连接...');
       const reconnected = await connectToDatabase(1);
       if (!reconnected) {
-        return ApiResponse.success(res, []);
+        return respondDatabaseUnavailable(res);
       }
     }
     
@@ -27,11 +26,11 @@ router.get('/', async (req, res) => {
     ApiResponse.success(res, rows);
   } catch (error) {
     log.error('获取数据失败:', error);
-    if (error.code === 'ECONNRESET' || error.code === 'PROTOCOL_CONNECTION_LOST') {
+    if (isConnectionError(error)) {
       setConnected(false);
-      return ApiResponse.success(res, []);
+      return respondDatabaseUnavailable(res);
     }
-    ApiResponse.success(res, []);
+    ApiResponse.error(res, '获取数据失败', 500);
   }
 });
 
@@ -47,9 +46,7 @@ router.post('/', async (req, res) => {
       log.debug('数据库未连接，尝试重新连接...');
       const reconnected = await connectToDatabase(1);
       if (!reconnected) {
-        const newItem = { id: nextId++, name, description };
-        mockData.push(newItem);
-        return ApiResponse.success(res, newItem, '创建成功', 201);
+        return respondDatabaseUnavailable(res);
       }
     }
     
@@ -62,12 +59,9 @@ router.post('/', async (req, res) => {
     ApiResponse.success(res, { id: result.insertId, name, description }, '创建成功', 201);
   } catch (error) {
     log.error('添加数据失败:', error);
-    if (error.code === 'ECONNRESET' || error.code === 'PROTOCOL_CONNECTION_LOST') {
+    if (isConnectionError(error)) {
       setConnected(false);
-      const { name, description } = req.body;
-      const newItem = { id: nextId++, name, description };
-      mockData.push(newItem);
-      return ApiResponse.success(res, newItem, '创建成功', 201);
+      return respondDatabaseUnavailable(res);
     }
     ApiResponse.error(res, '添加数据失败', 500);
   }
@@ -87,13 +81,7 @@ router.put('/:id', async (req, res) => {
       log.debug('数据库未连接，尝试重新连接...');
       const reconnected = await connectToDatabase(1);
       if (!reconnected) {
-        const index = mockData.findIndex(item => item.id === parseInt(id));
-        if (index !== -1) {
-          mockData[index] = { id: parseInt(id), name, description };
-          return ApiResponse.success(res, { id: parseInt(id), name, description });
-        } else {
-          return ApiResponse.error(res, '数据不存在', 404);
-        }
+        return respondDatabaseUnavailable(res);
       }
     }
     
@@ -110,17 +98,9 @@ router.put('/:id', async (req, res) => {
     ApiResponse.success(res, { id: parseInt(id), name, description });
   } catch (error) {
     log.error('更新数据失败:', error);
-    if (error.code === 'ECONNRESET' || error.code === 'PROTOCOL_CONNECTION_LOST') {
+    if (isConnectionError(error)) {
       setConnected(false);
-      const { name, description } = req.body;
-      const id = parseInt(req.params.id);
-      const index = mockData.findIndex(item => item.id === id);
-      if (index !== -1) {
-        mockData[index] = { id, name, description };
-        return ApiResponse.success(res, { id, name, description });
-      } else {
-        return ApiResponse.error(res, '数据不存在', 404);
-      }
+      return respondDatabaseUnavailable(res);
     }
     ApiResponse.error(res, '更新数据失败', 500);
   }
@@ -135,13 +115,7 @@ router.delete('/:id', async (req, res) => {
       log.debug('数据库未连接，尝试重新连接...');
       const reconnected = await connectToDatabase(1);
       if (!reconnected) {
-        const index = mockData.findIndex(item => item.id === parseInt(id));
-        if (index !== -1) {
-          mockData.splice(index, 1);
-          return ApiResponse.success(res, null, '删除成功');
-        } else {
-          return ApiResponse.error(res, '数据不存在', 404);
-        }
+        return respondDatabaseUnavailable(res);
       }
     }
     
@@ -155,15 +129,9 @@ router.delete('/:id', async (req, res) => {
     ApiResponse.success(res, null, '删除成功');
   } catch (error) {
     log.error('删除数据失败:', error);
-    if (error.code === 'ECONNRESET' || error.code === 'PROTOCOL_CONNECTION_LOST') {
+    if (isConnectionError(error)) {
       setConnected(false);
-      const index = mockData.findIndex(item => item.id === parseInt(req.params.id));
-      if (index !== -1) {
-        mockData.splice(index, 1);
-        return ApiResponse.success(res, null, '删除成功');
-      } else {
-        return ApiResponse.error(res, '数据不存在', 404);
-      }
+      return respondDatabaseUnavailable(res);
     }
     ApiResponse.error(res, '删除数据失败', 500);
   }

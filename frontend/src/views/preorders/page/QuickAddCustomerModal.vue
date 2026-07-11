@@ -54,13 +54,13 @@ import { useForm, ValidationRules } from '@/composables'
 import { unifiedApi } from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import { normalizePersonName, normalizePhoneDigits } from '@/utils/security'
-import type { ModalProps, UpdateVisibleEmits } from '@/types'
-interface Emits extends UpdateVisibleEmits {
-  (e: 'success', customer: any): void
-}
+import type { ModalProps } from '@/types'
 
 const props = defineProps<ModalProps>()
-const emit = defineEmits<Emits>()
+const emit = defineEmits<{
+  'update:visible': [value: boolean]
+  success: [customer: any]
+}>()
 
 const dialogVisible = computed({
   get: () => props.visible,

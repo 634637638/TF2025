@@ -428,6 +428,7 @@
 import { ref, reactive, computed, onMounted, onUnmounted, defineAsyncComponent, shallowRef, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { unifiedApi } from '@/utils/unified-api';
+import { sortOptionsByOrder } from '@/utils/option-sort';
 import { fieldPermissions } from '@/composables/useFieldPermissions';
 import { usePagePermissions } from '@/composables/usePagePermissions';
 import { useRefreshData } from '@/composables/useRefreshData';
@@ -1419,7 +1420,8 @@ const fetchStores = async () => {
       unifiedApi.get('/stores', { params: { all: true } }), DEFAULT_CACHE_TTL.STATIC)
     if (response.success && response.data) {
       // 当 all=true 时，API 直接返回数组
-      stores.value = Array.isArray(response.data) ? response.data : (response.data.stores || response.data || []);
+      const storeOptions = Array.isArray(response.data) ? response.data : (response.data.stores || response.data || []);
+      stores.value = sortOptionsByOrder(storeOptions);
     } else {
       stores.value = [];
     }

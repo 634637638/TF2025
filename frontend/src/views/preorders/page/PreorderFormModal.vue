@@ -295,6 +295,7 @@ import { preorderApi, Preorder } from '@/api/preorder'
 import { baseDataApi } from '@/api/base-data'
 import { unifiedApi } from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
+import { sortOptionsByOrder } from '@/utils/option-sort'
 import InlineLoading from '@/components/InlineLoading.vue'
 import dayjs from 'dayjs'
 import { logger } from '@/utils/logger'
@@ -498,11 +499,11 @@ const loadBaseData = async () => {
     const colorsData = extractResponseData<any[]>(colorsRes)
     const memoriesData = extractResponseData<any[]>(memoriesRes)
 
-    stores.value = storesData
-    brands.value = brandsData
-    models.value = Array.isArray(modelsData) ? modelsData : []
-    colors.value = Array.isArray(colorsData) ? colorsData : []
-    memories.value = Array.isArray(memoriesData) ? memoriesData : []
+    stores.value = sortOptionsByOrder(storesData)
+    brands.value = sortOptionsByOrder(brandsData)
+    models.value = sortOptionsByOrder(Array.isArray(modelsData) ? modelsData : [])
+    colors.value = sortOptionsByOrder(Array.isArray(colorsData) ? colorsData : [])
+    memories.value = sortOptionsByOrder(Array.isArray(memoriesData) ? memoriesData : [], { labelKeys: ['size', 'capacity', 'name'] })
     baseDataLoaded.value = true
   } catch (err) {
     logger.error('加载基础数据失败:', err)

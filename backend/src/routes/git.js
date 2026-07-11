@@ -6,6 +6,7 @@ const fsSync = require('fs');
 const path = require('path');
 const PROJECT_ROOT = path.resolve(__dirname, '../../..');
 const log = require('../utils/log');
+const { TIMEOUTS } = require('../config/constants');
 
 // 导入统一认证中间件
 const { unifiedAuth, requirePermission } = require('../middleware/unified-auth');
@@ -34,7 +35,7 @@ const GITHUB_BLOCKED_FILE_SIZE_BYTES = 100 * 1024 * 1024;
 
 const getGitExecOptions = () => ({
   cwd: PROJECT_ROOT,
-  timeout: 300000,
+  timeout: TIMEOUTS.LONG_RUNNING_TASK,
   maxBuffer: 50 * 1024 * 1024,
   env: {
     ...process.env,

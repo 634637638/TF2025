@@ -229,7 +229,7 @@
             placeholder="机况"
             clearable
             :teleported="true"
-            popper-class="condition-select-dropdown"
+            popper-class="tf2025-form-popper"
             @change="loadAvailablePhones"
           >
             <el-option label="全新" value="1" />
@@ -1289,7 +1289,7 @@
                       type="date"
                       class="sale-date-picker"
                       style="width: 140px"
-                      popper-class="sales-sale-dialog-popper"
+                      popper-class="tf2025-form-popper"
                       value-format="YYYY-MM-DD"
                       format="YYYY-M-D"
                       placeholder="请选择销售时间"
@@ -1330,7 +1330,7 @@
                       class="w-full"
                       clearable
                       teleported
-                      popper-class="sales-sale-dialog-popper"
+                      popper-class="tf2025-form-popper"
                     >
                       <el-option
                         v-for="store in stores"
@@ -1348,7 +1348,7 @@
                       class="w-full"
                       clearable
                       teleported
-                      popper-class="sales-sale-dialog-popper"
+                      popper-class="tf2025-form-popper"
                     >
                       <el-option
                         v-for="operator in operators"
@@ -1369,7 +1369,7 @@
                       class="w-full"
                       clearable
                       teleported
-                      popper-class="sales-sale-dialog-popper"
+                      popper-class="tf2025-form-popper"
                       @change="handlePaymentMethodChange"
                     >
                       <el-option label="现金支付" value="cash" />
@@ -1386,7 +1386,7 @@
                       class="w-full"
                       clearable
                       teleported
-                      popper-class="sales-sale-dialog-popper"
+                      popper-class="tf2025-form-popper"
                       @change="handlePaymentChannelChange"
                     >
                       <template v-if="saleForm.payment_method === 'mobile'">
@@ -1801,6 +1801,7 @@ import { useMobile, useMobileForm } from '@/composables/mobile'
 import { usePagination } from '@/composables/index'
 import { unifiedApi as api } from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
+import { sortOptionsByOrder } from '@/utils/option-sort'
 import InlineLoading from '@/components/InlineLoading.vue'
 import SectionLoading from '@/components/SectionLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
@@ -3559,7 +3560,7 @@ const loadStores = async () => {
     const response = await useCachedRequest(CACHE_KEYS.stores, () =>
       api.get('/stores?all=true'), DEFAULT_CACHE_TTL.STATIC)
     if (response.success) {
-      stores.value = response.data
+      stores.value = sortOptionsByOrder(response.data || [])
     }
   } catch (error) {
     logger.error('加载门店列表失败:', error)
@@ -3572,7 +3573,7 @@ const loadOperators = async () => {
     const response = await useCachedRequest(CACHE_KEYS.operators, () =>
       api.get('/operators'), DEFAULT_CACHE_TTL.STATIC)
     if (response.success && response.data) {
-      operators.value = response.data
+      operators.value = sortOptionsByOrder(response.data)
 
       // 获取当前登录用户信息
       const currentUser = authStore.user
@@ -3617,14 +3618,13 @@ const loadBrands = async () => {
 
       brandsFull.value = brandList || []
       // 存储完整的品牌对象（包含 id 和 name）
-      brands.value = brandList
+      brands.value = sortOptionsByOrder(brandList
         .filter(item => item && item.name)
         .map(item => ({
           id: item.id,
           name: item.name,
           sort_order: item.sort_order || 0
-        }))
-        .sort((a: any, b: any) => a.sort_order - b.sort_order)  // 按 sort_order 排序
+        })))
     }
   } catch (error) {
     logger.error('❌ 加载品牌数据失败:', error)
@@ -3643,14 +3643,13 @@ const loadModels = async () => {
       const modelList = Array.isArray(response.data.models)
         ? response.data.models
         : (Array.isArray(response.data) ? response.data : [])
-      models.value = modelList
+      models.value = sortOptionsByOrder(modelList
         .filter(item => item && item.name)
         .map(item => ({
           id: item.id,
           name: item.name,
           sort_order: item.sort_order || 0
-        }))
-        .sort((a: any, b: any) => a.sort_order - b.sort_order)  // 按 sort_order 排序
+        })))
     }
   } catch (error) {
     logger.error('❌ 加载型号数据失败:', error)
@@ -3665,9 +3664,9 @@ const loadColors = async () => {
       api.get('/colors'), DEFAULT_CACHE_TTL.STATIC)
     if (response.success && response.data) {
       const colorList = Array.isArray(response.data) ? response.data : response.data.colors || []
-      colors.value = colorList
+      colors.value = sortOptionsByOrder(colorList
         .filter(item => item && item.name)
-        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))  // 按 sort_order 排序
+      )
         .map(item => item.name)
     }
   } catch (error) {
@@ -3683,9 +3682,8 @@ const loadMemories = async () => {
       api.get('/memories'), DEFAULT_CACHE_TTL.STATIC)
     if (response.success && response.data) {
       const memoryList = Array.isArray(response.data) ? response.data : response.data.memories || []
-      memories.value = memoryList
+      memories.value = sortOptionsByOrder(memoryList, { labelKeys: ['size', 'capacity', 'name'] })
         .filter(item => item && item.name)
-        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))  // 按 sort_order 排序
         .map(item => item.name)
     }
   } catch (error) {
@@ -3699,7 +3697,7 @@ const loadSuppliers = async () => {
     const response = await useCachedRequest(CACHE_KEYS.suppliers, () =>
       api.get('/suppliers?page=1&limit=100'), DEFAULT_CACHE_TTL.STATIC)
     if (response.success) {
-      suppliers.value = response.data || []
+      suppliers.value = sortOptionsByOrder(response.data || [])
     }
   } catch (error) {
     logger.error('加载供应商列表失败:', error)
@@ -10137,17 +10135,8 @@ input.form-control:focus, textarea.form-control:focus {
 }
 </style>
 
-<!-- 非 scoped 样式：修复 el-select 下拉菜单问题 -->
+<!-- 非 scoped 样式：销售弹窗布局覆盖 -->
 <style lang="scss">
-/* 确保机况选择器的下拉菜单正常显示 */
-.condition-select-dropdown {
-  z-index: 9999 !important;
-}
-
-.sales-sale-dialog-popper {
-  z-index: 4001 !important;
-}
-
 .sales-sale-dialog,
 .sales-edit-dialog,
 .inventory-detail-modal {

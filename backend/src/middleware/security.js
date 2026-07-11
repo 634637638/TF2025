@@ -1,5 +1,6 @@
 const helmet = require('helmet');
 const log = require('../utils/log');
+const { DEFAULT_CSP_CONNECT_SRC } = require('../config/constants');
 
 // 内容安全策略配置
 const contentSecurityPolicy = {
@@ -24,11 +25,7 @@ const contentSecurityPolicy = {
       "'self'",
       'fonts.gstatic.com'
     ],
-    connectSrc: [
-      "'self'",
-      'http://localhost:3000',
-      'https://v4.cn9527.cn' // 数据库域名（如需要）
-    ],
+    connectSrc: DEFAULT_CSP_CONNECT_SRC,
     mediaSrc: ["'self'"],
     objectSrc: ["'none'"],
     childSrc: ["'none'"],

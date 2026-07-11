@@ -218,20 +218,25 @@ const getStatusText = (status: string) => {
   return statusMap[status] || status
 }
 
+const toNumber = (value: string | number | undefined) => {
+  const parsedValue = Number(value)
+  return Number.isFinite(parsedValue) ? parsedValue : 0
+}
+
 // 计算利润率
-const calculateProfitRate = () => {
-  if (!props.accessory) return 0
+const calculateProfitRate = (): string => {
+  if (!props.accessory) return '0.00'
 
-  const purchasePrice = parseFloat(props.accessory.purchase_price) || 0
-  const salePrice = parseFloat(props.accessory.sale_price) || 0
+  const purchasePrice = toNumber(props.accessory.purchase_price)
+  const salePrice = toNumber(props.accessory.sale_price)
 
-  if (purchasePrice === 0) return 0
+  if (purchasePrice === 0) return '0.00'
   return ((salePrice - purchasePrice) / purchasePrice * 100).toFixed(2)
 }
 
 // 获取利润率样式类
 const getProfitRateClass = () => {
-  const profitRate = parseFloat(calculateProfitRate())
+  const profitRate = toNumber(calculateProfitRate())
   if (profitRate > 30) return 'high-profit'
   if (profitRate > 10) return 'medium-profit'
   return 'low-profit'
@@ -241,8 +246,8 @@ const getProfitRateClass = () => {
 const getStockStatusClass = () => {
   if (!props.accessory) return ''
 
-  const currentStock = parseInt(props.accessory.stock_quantity) || 0
-  const minStock = parseInt(props.accessory.min_stock) || 0
+  const currentStock = toNumber(props.accessory.stock_quantity)
+  const minStock = toNumber(props.accessory.min_stock)
 
   if (currentStock === 0) return 'out-of-stock'
   if (currentStock <= minStock) return 'low-stock'
@@ -253,8 +258,8 @@ const getStockStatusClass = () => {
 const getStockStatusText = () => {
   if (!props.accessory) return '未知'
 
-  const currentStock = parseInt(props.accessory.stock_quantity) || 0
-  const minStock = parseInt(props.accessory.min_stock) || 0
+  const currentStock = toNumber(props.accessory.stock_quantity)
+  const minStock = toNumber(props.accessory.min_stock)
 
   if (currentStock === 0) return '缺货'
   if (currentStock <= minStock) return '库存不足'

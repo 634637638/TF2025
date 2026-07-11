@@ -75,6 +75,7 @@
 
     <UnifiedSearchPanel
       v-model:expanded="searchExpanded"
+      :loading="tableLoading"
       @search="searchBrands"
       @reset="resetSearch"
     >
@@ -98,6 +99,7 @@
           v-model="searchForm.status"
           placeholder="状态"
           clearable
+          @change="searchBrands"
         >
           <el-option label="启用" value="1" />
           <el-option label="禁用" value="0" />
@@ -322,7 +324,7 @@
       <template #footer>
         <el-button type="default" @click="attemptCloseModal">取消</el-button>
         <el-button type="primary" @click="submitForm" :disabled="submitting" :loading="submitting">
-          <InlineLoading v-if="submitting" :text="isEditMode ? '更新中...' : '创建中...'" size="small" variant="inherit" />
+          <span v-if="submitting">{{ isEditMode ? '更新中...' : '创建中...' }}</span>
           <template v-else>{{ isEditMode ? '更新' : '创建' }}</template>
         </el-button>
       </template>
@@ -584,6 +586,7 @@ const loadBrands = async (bustCache = false, silentError = false, _showLoadingSt
 }
 
 const searchBrands = () => {
+  if (tableLoading.value) return
   pagination.value.page = 1
   loadBrands(true) // 搜索时破坏缓存
 }

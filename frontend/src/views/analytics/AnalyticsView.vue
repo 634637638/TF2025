@@ -196,6 +196,7 @@ import { PermissionGate, PageHeader } from '@/components/base'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
+import { sortOptionsByOrder } from '@/utils/option-sort'
 
 const SalesAnalytics = defineAsyncComponent(() => import('./page/SalesAnalytics.vue'))
 const InventoryAnalytics = defineAsyncComponent(() => import('./page/InventoryAnalytics.vue'))
@@ -501,7 +502,7 @@ const loadStoreList = async () => {
     const { unifiedApi } = await import('@/utils/unified-api')
     const response = await unifiedApi.get('/stores', { params: { all: true } })
     if (response.success && response.data) {
-      storeList.value = response.data
+      storeList.value = sortOptionsByOrder(response.data)
     }
   } catch (err) {
     logger.error('加载店铺列表失败:', err)

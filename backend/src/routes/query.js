@@ -3,6 +3,7 @@ const router = express.Router();
 const QueryController = require('../controllers/query.controller');
 const { unifiedAuth, requirePermission, requireAnyPermission } = require('../middleware/unified-auth');
 const { cacheMiddleware } = require('../middleware/cache');
+const { CACHE_TTL } = require('../config/constants');
 
 // 实例化控制器
 const queryController = new QueryController();
@@ -32,7 +33,7 @@ router.use(unifiedAuth);
  * @param {string} query.sort_field - 排序字段
  * @param {string} query.sort_order - 排序方向
  */
-router.get('/comprehensive', requirePermission('query:view', 'business'), cacheMiddleware({ ttl: 10 * 1000 }), queryController.getComprehensiveQuery.bind(queryController));
+router.get('/comprehensive', requirePermission('query:view', 'business'), cacheMiddleware({ ttl: CACHE_TTL.SHORT }), queryController.getComprehensiveQuery.bind(queryController));
 
 /**
  * @route GET /api/query/statistics
@@ -40,14 +41,14 @@ router.get('/comprehensive', requirePermission('query:view', 'business'), cacheM
  * @access Private
  * @param {Object} query - 统计参数
  */
-router.get('/statistics', requirePermission('query:view', 'business'), cacheMiddleware({ ttl: 0 }), queryController.getStatistics.bind(queryController));
+router.get('/statistics', requirePermission('query:view', 'business'), cacheMiddleware({ ttl: CACHE_TTL.DISABLED }), queryController.getStatistics.bind(queryController));
 
 /**
  * @route GET /api/query/returngoods
  * @desc 获取退库记录列表
  * @access Private
  */
-router.get('/returngoods', requirePermission('return-goods:view'), cacheMiddleware({ ttl: 0 }), queryController.getReturnGoodsRecords.bind(queryController));
+router.get('/returngoods', requirePermission('return-goods:view'), cacheMiddleware({ ttl: CACHE_TTL.DISABLED }), queryController.getReturnGoodsRecords.bind(queryController));
 router.put('/returngoods/:id', requirePermission('return-goods:edit'), queryController.updateReturnGoodsRecord.bind(queryController));
 router.delete('/returngoods/:id', requirePermission('return-goods:delete'), queryController.deleteReturnGoodsRecord.bind(queryController));
 
@@ -56,7 +57,7 @@ router.delete('/returngoods/:id', requirePermission('return-goods:delete'), quer
  * @desc 获取查询选项数据
  * @access Private
  */
-router.get('/options', requirePermission('query:view', 'business'), cacheMiddleware({ ttl: 1000 }), queryController.getQueryOptions.bind(queryController));
+router.get('/options', requirePermission('query:view', 'business'), cacheMiddleware({ ttl: CACHE_TTL.NEAR_REALTIME }), queryController.getQueryOptions.bind(queryController));
 
 /**
  * @route POST /api/query/batch
