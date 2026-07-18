@@ -6,6 +6,8 @@ const { getDatabase } = require('../config/database');
 const XLSX = require('xlsx');
 const fs = require('fs');
 const log = require('../utils/log');
+const { getUploadsRoot } = require('../utils/upload-paths');
+const { validateSpreadsheetFile, sheetToJsonSafe } = require('../utils/spreadsheet-security');
 const {
   ensureIconSchema,
   ensureMenuIconSchema,
@@ -812,9 +814,10 @@ class MenuService {
     let cleanupError = null;
 
     try {
-      const workbook = XLSX.readFile(file.path);
+      const safeFilePath = validateSpreadsheetFile(file.path, { rootPath: getUploadsRoot() });
+      const workbook = XLSX.readFile(safeFilePath);
       const sheetName = workbook.SheetNames[0];
-      const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: '' });
+      const rows = sheetToJsonSafe(workbook.Sheets[sheetName], { defval: '' });
 
       if (!Array.isArray(rows) || rows.length === 0) {
         return { success: false, message: '导入文件没有有效数据', code: 'INVALID_FILE' };

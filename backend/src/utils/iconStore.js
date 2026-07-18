@@ -41,9 +41,11 @@ function sanitizeSvg(svg = '') {
   }
 
   return normalized
-    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+    .replace(/<(script|foreignObject|iframe|object|embed|style|link)\b[\s\S]*?>[\s\S]*?<\/\1\s*>/gi, '')
+    .replace(/<(script|foreignObject|iframe|object|embed|style|link)\b[^>]*\/?\s*>/gi, '')
     .replace(/\son[a-z]+\s*=\s*(['"]).*?\1/gi, '')
     .replace(/\son[a-z]+\s*=\s*[^\s>]+/gi, '')
+    .replace(/\s(?:href|xlink:href)\s*=\s*(['"])(?!#)[\s\S]*?\1/gi, '')
     .replace(/\sjavascript:/gi, '');
 }
 
@@ -84,7 +86,19 @@ async function ensureIconSchema(db) {
 async function ensureMenuIconSchema(db) {
   if (!menuIconSchemaReadyPromise) {
     menuIconSchemaReadyPromise = (async () => {
-      const [columns] = await db.execute('SHOW COLUMNS FROM menus LIKE ?', ['icon']);
+      const [columns] = await db.execute(
+        `SELECT
+          COLUMN_NAME AS Field,
+          COLUMN_TYPE AS Type,
+          IS_NULLABLE AS \`Null\`,
+          COLUMN_DEFAULT AS \`Default\`,
+          COLLATION_NAME AS Collation
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = ?
+          AND COLUMN_NAME = ?`,
+        ['menus', 'icon']
+      );
       const iconColumn = columns[0];
 
       if (!iconColumn) {

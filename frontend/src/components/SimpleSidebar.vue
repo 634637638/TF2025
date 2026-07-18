@@ -47,9 +47,10 @@
           </div>
           <!-- 展开/折叠图标 -->
           <div
-            v-if="menu.children && menu.children.length > 0 && (!props.collapsed)"
+            v-if="menu.children && menu.children.length > 0 && !props.collapsed"
             class="menu-arrow"
-            :class="{ 'expanded': expandedMenus.has(menu.id) }"
+            :class="{ expanded: expandedMenus.has(menu.id) }"
+            aria-hidden="true"
           >
             <i class="fas fa-chevron-down"></i>
           </div>
@@ -388,21 +389,11 @@ onUnmounted(() => {
   padding: 10px 0;
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: auto;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  scrollbar-width: none;
 }
 
 .menu-section::-webkit-scrollbar {
-  width: 4px;
-}
-
-.menu-section::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.menu-section::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 2px;
+  display: none;
 }
 
 /* 菜单项 */
@@ -501,20 +492,6 @@ onUnmounted(() => {
   display: inline-block;
 }
 
-/* 箭头图标 */
-.menu-arrow {
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 12px;
-  margin-right: 8px;
-  flex-shrink: 0;
-  position: relative;
-  z-index: 1;
-}
-
-.menu-arrow.expanded {
-  transform: none;
-}
-
 /* 子菜单 */
 .sub-menu {
   margin-left: 0;
@@ -537,6 +514,18 @@ onUnmounted(() => {
 .modern-sidebar.collapsed .menu-badge,
 .modern-sidebar.collapsed .menu-arrow {
   display: none;
+}
+
+.menu-arrow {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+  margin-right: 8px;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.menu-arrow.expanded {
+  transform: rotate(180deg);
 }
 
 .modern-sidebar.collapsed .menu-item {
@@ -724,6 +713,11 @@ onUnmounted(() => {
   padding: 0;
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: auto;
+  scrollbar-width: none;
+}
+
+.mobile-menu::-webkit-scrollbar {
+  display: none;
 }
 
 /* 手机端网格布局 */
@@ -852,21 +846,6 @@ onUnmounted(() => {
   width: 14px;
   text-align: center;
   flex-shrink: 0;
-}
-
-/* 优化移动端箭头图标 */
-.mobile-item .menu-arrow {
-  margin-left: auto;
-  font-size: 12px;
-  color: var(--theme-text-color-light, #999);
-  transition: transform 0.2s ease;
-  flex-shrink: 0;
-  width: 20px;
-  text-align: center;
-}
-
-.mobile-item .menu-arrow.expanded {
-  transform: rotate(180deg);
 }
 
 /* 移动端菜单项激活状态 */

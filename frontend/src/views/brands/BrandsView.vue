@@ -1,5 +1,5 @@
 <template>
-  <div class="brands-view admin-page">
+  <div class="brands-view admin-page admin-unified-base-data-page">
     <PermissionGate
       :can-view="canView"
       mode="denied"
@@ -116,155 +116,20 @@
       </div>
       
       <div class="table-responsive">
-        <table class="table">
-          <thead>
-            <tr>
-              <th v-if="showSortField" width="40"></th>
-              <th v-if="showSortOrderField" width="60">排序</th>
-              <th v-if="canViewField('id')" width="80">序号</th>
-              <th v-if="canViewField('name')" width="160">品牌名称</th>
-              <th v-if="canViewField('status')" width="200">状态</th>
-              <th v-if="showCreatedAtField" width="200">创建时间</th>
-              <th v-if="showActionField" width="220">操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <TableLoadingRow
-              v-if="tableLoading"
-              :colspan="visibleColumnCount"
-              text="加载品牌列表..."
-            />
-            <tr v-else-if="brands.length === 0" class="empty-row">
-              <td :colspan="visibleColumnCount">
-                <div class="empty-content">
-                  <i class="fas fa-inbox"></i>
-                  <div class="empty-text">
-                    <h4>暂无品牌数据</h4>
-                    <p>点击上方"新增品牌"按钮添加第一个品牌</p>
-                    <el-button class="mt-2" size="small" type="info" @click="loadBrands()">
-                      <i class="fas fa-sync-alt"></i>
-                      重新加载
-                    </el-button>
-                  </div>
-                </div>
-              </td>
-            </tr>
-            <template v-else v-for="(brand, index) in brands" :key="brand.id">
-            <tr
-              class="data-row"
-              :class="{ 'is-dragging': draggingIndex === index, 'is-drag-over': dragOverIndex === index }"
-              :draggable="canEdit"
-              @click="handleMobileRowTap(brand.id)"
-              @dblclick="toggleMobileActions(brand.id)"
-              @dragstart="canEdit ? handleDragStart(index, $event) : null"
-              @dragend="canEdit ? handleDragEnd : null"
-              @dragover="canEdit ? handleDragOver(index, $event) : null"
-              @dragenter="canEdit ? handleDragEnter(index) : null"
-              @dragleave="canEdit ? handleDragLeave : null"
-              @drop="canEdit ? handleDrop(index, $event) : null"
-            >
-              <td v-if="showSortField" class="drag-handle-cell">
-                <div class="drag-handle" :class="{ 'disabled': !canEdit }">
-                  <i class="fas fa-grip-vertical"></i>
-                </div>
-              </td>
-              <td v-if="showSortOrderField">
-                <input
-                  v-model.number="brand.sort_order"
-                  type="number"
-                  class="sort-order-input"
-                  :disabled="!canEdit"
-                  min="0"
-                  max="9999"
-                  @change="canEdit ? handleSortOrderChange(index, brand.sort_order) : null"
-                />
-              </td>
-              <td v-if="canViewField('id')">
-                <span class="id-badge">{{ index + 1 }}</span>
-              </td>
-              <td v-if="canViewField('name')">
-                <div class="brand-info">
-                  <div class="brand-name">
-                    <strong>{{ brand.name || '未命名品牌' }}</strong>
-                    <span v-if="!brand.name" class="warning-badge">未命名</span>
-                  </div>
-                </div>
-              </td>
-              <td v-if="canViewField('status')">
-                <span :class="['status-badge', brand.status ? 'status-active' : 'status-inactive']">
-                  <i :class="brand.status ? 'fas fa-check' : 'fas fa-times'"></i>
-                  {{ brand.status ? '启用' : '禁用' }}
-                </span>
-              </td>
-              <td v-if="showCreatedAtField">
-                <div class="time-info">
-                  <i class="fas fa-clock"></i>
-                  {{ formatDate(brand.created_at) }}
-                </div>
-              </td>
-              <td v-if="showActionField" class="actions">
-                <div class="action-buttons">
-                  <el-button
-                    v-if="canEdit"
-                    v-permission="'brands:edit'"
-                    type="primary"
-                    size="small"
-                    @click="editBrand(brand)"
-                    title="编辑"
-                  >
-                    <i class="fas fa-edit"></i>
-                    <span>编辑</span>
-                  </el-button>
-                  <el-button
-                    v-if="canDelete"
-                    v-permission="'brands:delete'"
-                    type="danger"
-                    size="small"
-                    @click="deleteBrand(brand)"
-                    title="删除"
-                  >
-                    <i class="fas fa-trash"></i>
-                    <span>删除</span>
-                  </el-button>
-                </div>
-                <!-- 如果没有任何操作权限，显示提示 -->
-                <span v-if="!canEdit && !canDelete" class="no-permission-text">
-                  无操作权限
-                </span>
-              </td>
-            </tr>
-            <tr
-              v-if="isMobile && mobileActionRowId === brand.id && (canEdit || canDelete)"
-              class="mobile-action-row"
-            >
-              <td :colspan="visibleColumnCount">
-                <div class="mobile-row-actions">
-                  <el-button
-                    v-if="canEdit"
-                    v-permission="'brands:edit'"
-                    type="primary"
-                    size="small"
-                    @click.stop="editBrand(brand)"
-                  >
-                    <i class="fas fa-edit"></i>
-                    <span>编辑</span>
-                  </el-button>
-                  <el-button
-                    v-if="canDelete"
-                    v-permission="'brands:delete'"
-                    type="danger"
-                    size="small"
-                    @click.stop="deleteBrand(brand)"
-                  >
-                    <i class="fas fa-trash"></i>
-                    <span>删除</span>
-                  </el-button>
-                </div>
-              </td>
-            </tr>
-            </template>
-          </tbody>
-        </table>
+        <el-table ref="brandsTableRef" :data="tableLoading ? [] : brands" border stripe class="data-table devices-table base-data-table brands-data-table" table-layout="fixed" :fit="true" :row-key="getBrandRowKey" :expand-row-keys="isMobile && mobileActionRowId ? [mobileActionRowId] : []" @row-click="(row) => handleMobileRowTap(row.id)">
+          <template #empty>
+            <TableLoadingRow v-if="tableLoading" mode="block" text="加载品牌列表..." />
+            <div v-else class="empty-state"><i class="fas fa-inbox"></i><p>暂无品牌数据</p><el-button size="small" type="info" @click="loadBrands()">重新加载</el-button></div>
+          </template>
+          <el-table-column v-if="showSortField" width="44" align="center" class-name="drag-handle-cell"><template #default><div class="drag-handle" :class="{ disabled: !canEdit }"><i class="fas fa-grip-vertical"></i></div></template></el-table-column>
+          <el-table-column v-if="showSortOrderField" label="排序" width="70" align="center"><template #default="{ row, $index }"><input v-model.number="row.sort_order" type="number" class="sort-order-input" :disabled="!canEdit" min="0" max="9999" @change="handleSortOrderChange($index, row.sort_order)" /></template></el-table-column>
+          <el-table-column v-if="canViewField('id')" label="序号" width="70" align="center"><template #default="{ $index }"><span class="id-badge">{{ $index + 1 }}</span></template></el-table-column>
+          <el-table-column v-if="canViewField('name')" prop="name" label="品牌名称" min-width="130" align="center" />
+          <el-table-column v-if="canViewField('status')" label="状态" min-width="84" align="center"><template #default="{ row }"><span :class="['status-badge', row.status ? 'status-active' : 'status-inactive']"><i :class="row.status ? 'fas fa-check' : 'fas fa-times'"></i>{{ row.status ? '启用' : '禁用' }}</span></template></el-table-column>
+          <el-table-column v-if="showCreatedAtField" label="创建时间" min-width="156" align="center"><template #default="{ row }"><div class="time-info"><i class="fas fa-clock"></i>{{ formatDate(row.created_at) }}</div></template></el-table-column>
+          <el-table-column v-if="showActionField" label="操作" min-width="170" align="center" class-name="actions-column"><template #default="{ row }"><div class="action-buttons"><el-button v-if="canEdit" v-permission="'brands:edit'" type="primary" size="small" @click.stop="editBrand(row)"><i class="fas fa-edit"></i><span>编辑</span></el-button><el-button v-if="canDelete" v-permission="'brands:delete'" type="danger" size="small" @click.stop="deleteBrand(row)"><i class="fas fa-trash"></i><span>删除</span></el-button></div></template></el-table-column>
+          <el-table-column v-if="isMobile && (canEdit || canDelete)" type="expand" width="1" class-name="mobile-expand-column" label-class-name="mobile-expand-header"><template #default="{ row }"><div class="mobile-row-actions"><el-button v-if="canEdit" v-permission="'brands:edit'" type="primary" size="small" @click.stop="editBrand(row)"><i class="fas fa-edit"></i><span>编辑</span></el-button><el-button v-if="canDelete" v-permission="'brands:delete'" type="danger" size="small" @click.stop="deleteBrand(row)"><i class="fas fa-trash"></i><span>删除</span></el-button></div></template></el-table-column>
+        </el-table>
       </div>
 
       <!-- 分页组件 -->
@@ -355,6 +220,7 @@ import { usePermissionToast } from '@/utils/permissionToastSimple'
 import { handleApiErrorWithPermission } from '@/utils/apiPermissionError'
 import { useMobile } from '@/composables/mobile'
 import { useLatestRequest } from '@/composables/useLatestRequest'
+import { useElementTableSortable } from '@/composables/useElementTableSortable'
 import { logger } from '@/utils/logger'
 import type { Brand } from '@/types'
 
@@ -417,18 +283,6 @@ const showStatsCards = computed(() => (
   canViewField('stats_inactive_brands') ||
   canViewField('stats_related_phones')
 ))
-const visibleColumnCount = computed(() => {
-  return [
-    showSortField.value,
-    showSortOrderField.value,
-    canViewField('id'),
-    canViewField('name'),
-    canViewField('status'),
-    showCreatedAtField.value,
-    showActionField.value
-  ].filter(Boolean).length || 1
-})
-
 // 模态框显示状态
 const dialogVisible = computed({
   get: () => showCreateModal.value || showEditModal.value,
@@ -439,27 +293,30 @@ const dialogVisible = computed({
   }
 })
 
-const mobileActionRowId = ref<number | null>(null)
-const lastTappedRowId = ref<number | null>(null)
+const brandsTableRef = ref<any>(null)
+const mobileActionRowId = ref<string | null>(null)
+const lastTappedRowId = ref<string | null>(null)
 const lastTapTimestamp = ref(0)
 
 const toggleMobileActions = (id: number) => {
   if (!isMobile.value) return
-  mobileActionRowId.value = mobileActionRowId.value === id ? null : id
+  const rowKey = String(id)
+  mobileActionRowId.value = mobileActionRowId.value === rowKey ? null : rowKey
 }
 
 const handleMobileRowTap = (id: number) => {
   if (!isMobile.value) return
+  const rowKey = String(id)
 
   const now = Date.now()
-  if (lastTappedRowId.value === id && now - lastTapTimestamp.value <= 320) {
+  if (lastTappedRowId.value === rowKey && now - lastTapTimestamp.value <= 320) {
     toggleMobileActions(id)
     lastTappedRowId.value = null
     lastTapTimestamp.value = 0
     return
   }
 
-  lastTappedRowId.value = id
+  lastTappedRowId.value = rowKey
   lastTapTimestamp.value = now
 }
 
@@ -473,13 +330,10 @@ const tableLoading = ref(true)
 const submitting = ref(false)
 const savingOrder = ref(false)
 const brands = ref<Brand[]>([])
+const getBrandRowKey = (brand: Brand) => String(brand.id)
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
 const currentEditingId = ref<number | null>(null)
-
-// 拖拽排序状态
-const draggingIndex = ref<number | null>(null)
-const dragOverIndex = ref<number | null>(null)
 
 // 搜索表单
 const searchForm = ref({
@@ -879,63 +733,6 @@ const getPhoneCount = () => {
   return Math.floor(Math.random() * 100) + 20
 }
 
-// 拖拽排序方法
-const handleDragStart = (index: number, event: DragEvent) => {
-  draggingIndex.value = index
-  if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = 'move'
-  }
-}
-
-const handleDragEnd = () => {
-  draggingIndex.value = null
-  dragOverIndex.value = null
-}
-
-const handleDragOver = (index: number, event: DragEvent) => {
-  event.preventDefault()
-  if (draggingIndex.value === null || draggingIndex.value === index) return
-  dragOverIndex.value = index
-}
-
-const handleDragEnter = (index: number) => {
-  if (draggingIndex.value === null || draggingIndex.value === index) return
-  dragOverIndex.value = index
-}
-
-const handleDragLeave = () => {
-  // 不清除 dragOverIndex，避免闪烁
-}
-
-const handleDrop = async (dropIndex: number, event: DragEvent) => {
-  event.preventDefault()
-  const dragIndex = draggingIndex.value
-  if (dragIndex === null || dragIndex === dropIndex) {
-    handleDragEnd()
-    return
-  }
-
-  // 重新排列数组
-  const newBrands = [...brands.value]
-  const [movedItem] = newBrands.splice(dragIndex, 1)
-  newBrands.splice(dropIndex, 0, movedItem)
-
-  // 更新 sort_order 值
-  newBrands.forEach((item, index) => {
-    item.sort_order = index
-  })
-
-  brands.value = newBrands
-
-  // 自动保存排序
-  await saveSortOrder()
-
-  // 保存后重新加载数据以确保与数据库同步
-  await loadBrands(true, false, false)
-
-  handleDragEnd()
-}
-
 // 保存排序到服务器
 const saveSortOrder = async () => {
   if (savingOrder.value) return
@@ -967,6 +764,25 @@ const handleSortOrderChange = async (index: number, value: number) => {
   brands.value.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
   await saveSortOrder()
 }
+
+const handleBrandRowMove = async (oldIndex: number, newIndex: number) => {
+  if (!canEdit.value || oldIndex === newIndex) return false
+  const reordered = [...brands.value]
+  const [movedItem] = reordered.splice(oldIndex, 1)
+  reordered.splice(newIndex, 0, movedItem)
+  reordered.forEach((item, index) => { item.sort_order = index })
+  brands.value = reordered
+  await saveSortOrder()
+  await loadBrands(true, false, false)
+  return true
+}
+
+useElementTableSortable({
+  tableRef: brandsTableRef,
+  enabled: computed(() => canEdit.value && !isMobile.value && showSortField.value),
+  orderKey: () => brands.value.map(brand => brand.id).join('|'),
+  onMove: handleBrandRowMove
+})
 
 // 处理新增品牌
 const handleCreateBrand = () => {
@@ -1674,32 +1490,6 @@ onMounted(async () => {
     padding: 8px;
   }
 
-  /* 统计卡片优化 */
-  .stats-cards {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-    margin-bottom: 16px;
-    padding: 0 4px;
-  }
-
-  .stat-card {
-    padding: 14px 12px;
-  }
-
-  .stat-icon {
-    width: 40px;
-    height: 40px;
-    font-size: 18px;
-  }
-
-  .stat-value {
-    font-size: 20px;
-  }
-
-  .stat-label {
-    font-size: 12px;
-  }
-
   .form-group {
     width: 100%;
   }
@@ -1712,9 +1502,6 @@ onMounted(async () => {
 
   /* 表格区域优化 */
   .table-section {
-    margin: 0;
-    padding: 14px 10px;
-    border-radius: 16px;
     overflow: hidden;
     max-width: 100%;
     box-sizing: border-box;
@@ -1862,39 +1649,12 @@ onMounted(async () => {
 
 /* 小屏手机调整 - 保持2个一行，参考销售页面 */
 @media (max-width: 480px) {
-  .stats-cards {
-    gap: 12px;
-    margin: 0 0 12px 0;
-    grid-template-columns: repeat(2, 1fr); /* 强制2列，确保2个一行 */
-  }
-
   .page-title {
     font-size: 22px;
   }
 
   .page-description {
     font-size: 14px;
-  }
-
-  .table th,
-  .table td {
-    padding: 6px 4px;
-    font-size: 11px;
-  }
-
-  .table th:nth-child(1),
-  .table td:nth-child(1) {
-    width: 18%;
-  }
-
-  .table th:nth-child(2),
-  .table td:nth-child(2) {
-    width: 48%;
-  }
-
-  .table th:nth-child(3),
-  .table td:nth-child(3) {
-    width: 34%;
   }
 
   .brand-name {
@@ -1910,26 +1670,8 @@ onMounted(async () => {
   }
 }
 
-/* 超小屏幕优化 - 保持2个一行 */
-@media (max-width: 375px) {
-  .stats-cards {
-    gap: 8px;
-    margin: 0 0 8px 0;
-    grid-template-columns: repeat(2, 1fr); /* 强制2列，确保2个一行 */
-  }
-}
-
 /* 横屏优化 */
 @media (max-width: 767px) and (orientation: landscape) {
-  .stats-cards {
-    grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
-  }
-
-  .stat-card {
-    padding: 12px;
-  }
-
   .form-group {
     flex: 1;
     min-width: 150px;

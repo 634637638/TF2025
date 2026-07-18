@@ -15,6 +15,35 @@ class DatabaseSyncService {
     this.syncTasks = new Map();
   }
 
+  normalizeIdentifier(value, label = '标识符') {
+    const normalized = String(value || '').trim();
+    if (!/^[A-Za-z_][A-Za-z0-9_$]{0,63}$/.test(normalized)) {
+      const error = new Error(`${label}不合法`);
+      error.statusCode = 400;
+      throw error;
+    }
+    return normalized;
+  }
+
+  async assertTableExists(connection, tableName) {
+    const safeTableName = this.normalizeIdentifier(tableName, '表名');
+    const [rows] = await connection.query(
+      `SELECT 1
+       FROM INFORMATION_SCHEMA.TABLES
+       WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
+       LIMIT 1`,
+      [connection.config.database, safeTableName]
+    );
+
+    if (rows.length === 0) {
+      const error = new Error('数据表不存在');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    return safeTableName;
+  }
+
   /**
    * 创建外部数据库连接
    */
@@ -140,6 +169,7 @@ class DatabaseSyncService {
     const connection = this.getConnection(connectionId);
 
     try {
+      const safeTableName = await this.assertTableExists(connection, tableName);
       // 获取列信息
       const [columns] = await connection.query(`
         SELECT
@@ -153,21 +183,21 @@ class DatabaseSyncService {
         FROM INFORMATION_SCHEMA.COLUMNS
         WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
         ORDER BY ORDINAL_POSITION
-      `, [connection.config.database, tableName]);
+      `, [connection.config.database, safeTableName]);
 
       // 获取表注释
       const [tableComment] = await connection.query(`
         SELECT TABLE_COMMENT as comment
         FROM INFORMATION_SCHEMA.TABLES
         WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
-      `, [connection.config.database, tableName]);
+      `, [connection.config.database, safeTableName]);
 
       // 获取记录数
-      const [count] = await connection.query(`SELECT COUNT(*) as total FROM \`${tableName}\``);
+      const [count] = await connection.query(`SELECT COUNT(*) as total FROM \`${safeTableName}\``);
 
       return {
         success: true,
-        table: tableName,
+        table: safeTableName,
         comment: tableComment[0]?.comment || '',
         recordCount: count[0].total,
         columns
@@ -187,31 +217,15 @@ class DatabaseSyncService {
     const connection = this.getConnection(connectionId);
 
     try {
-      const {
-        limit = 10,
-        offset = 0,
-        where = '',
-        orderBy = ''
-      } = options;
+      const safeTableName = await this.assertTableExists(connection, tableName);
+      const limit = Math.min(Math.max(Number.parseInt(options.limit, 10) || 10, 1), 200);
+      const offset = Math.max(Number.parseInt(options.offset, 10) || 0, 0);
+      const query = `SELECT * FROM \`${safeTableName}\` LIMIT ? OFFSET ?`;
 
-      let query = `SELECT * FROM \`${tableName}\``;
-      const params = [];
-
-      if (where) {
-        query += ` WHERE ${where}`;
-      }
-
-      if (orderBy) {
-        query += ` ORDER BY ${orderBy}`;
-      }
-
-      query += ` LIMIT ? OFFSET ?`;
-      params.push(limit, offset);
-
-      const [rows] = await connection.query(query, params);
+      const [rows] = await connection.query(query, [limit, offset]);
 
       // 获取总数
-      let countQuery = `SELECT COUNT(*) as total FROM \`${tableName}\``;
+      const countQuery = `SELECT COUNT(*) as total FROM \`${safeTableName}\``;
       const [countResult] = await connection.query(countQuery);
 
       return {
@@ -237,11 +251,20 @@ class DatabaseSyncService {
   saveMappingConfig(config) {
     const { id, sourceTable, targetTable, fieldMappings, syncOptions } = config;
 
+    const safeSourceTable = this.normalizeIdentifier(sourceTable, '源表名');
+    const safeTargetTable = this.normalizeIdentifier(targetTable, '目标表名');
+    const safeFieldMappings = Object.fromEntries(
+      Object.entries(fieldMappings || {}).map(([sourceField, targetField]) => [
+        this.normalizeIdentifier(sourceField, '源字段名'),
+        this.normalizeIdentifier(targetField, '目标字段名')
+      ])
+    );
+
     this.mappingConfigs.set(id, {
       id,
-      sourceTable,
-      targetTable,
-      fieldMappings, // { sourceField: targetField }
+      sourceTable: safeSourceTable,
+      targetTable: safeTargetTable,
+      fieldMappings: safeFieldMappings, // { sourceField: targetField }
       syncOptions: {
         mode: syncOptions?.mode || 'insert', // insert, update, upsert
         keyFields: syncOptions?.keyFields || [], // 用于匹配更新的字段

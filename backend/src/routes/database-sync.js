@@ -5,10 +5,10 @@
 const express = require('express');
 const router = express.Router();
 const controller = require('../controllers/database-sync.controller');
-const { unifiedAuth } = require('../middleware/unified-auth');
+const { unifiedAuth, requirePermission } = require('../middleware/unified-auth');
 
-// 所有路由都需要认证
-router.use(unifiedAuth);
+// 数据库同步可连接外部数据库并执行写操作，整组接口要求数据优化编辑权限。
+router.use(unifiedAuth, requirePermission('data-check:edit'));
 
 /**
  * 外部数据库连接管理

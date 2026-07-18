@@ -229,99 +229,140 @@
         </el-button>
       </div>
 
-      <div class="table-responsive">
-        <table class="data-table">
-        <thead>
-          <tr>
-            <th width="60">
+      <div class="table-responsive payment-list-table-wrapper">
+        <el-table
+          :data="loading ? [] : phones"
+          border
+          stripe
+          class="data-table supplier-payment-table"
+          row-key="id"
+          :row-class-name="getPaymentRowClassName"
+          @row-click="(row) => handlePaymentMobileRowTap(row.id)"
+          @row-dblclick="(row) => togglePaymentMobileActions(row.id)"
+        >
+          <el-table-column :width="isMobile ? 42 : 60" align="center" class-name="selection-col">
+            <template #header>
               <input
                 type="checkbox"
                 v-model="selectAll"
                 @change="handleSelectAll"
                 :disabled="phones.length === 0"
               />
-            </th>
-            <th width="60">序号</th>
-            <th v-if="shouldShowPaymentColumn('supplier_name')" class="col-supplier">供应商</th>
-            <th v-if="shouldShowPaymentColumn('store_name')">店铺</th>
-            <th v-if="shouldShowPaymentColumn('brand_name')">品牌</th>
-            <th v-if="shouldShowPaymentColumn('model_name')" class="col-model">型号</th>
-            <th v-if="shouldShowPaymentColumn('color_name')" class="col-color">颜色</th>
-            <th v-if="shouldShowPaymentColumn('memory_name')" class="col-memory">内存</th>
-            <th v-if="shouldShowPaymentColumn('serial_number')" class="col-serial">序列号</th>
-            <th v-if="shouldShowPaymentColumn('imei')">IMEI</th>
-            <th v-if="shouldShowPaymentColumn('purchase_cost')">入库价格</th>
-            <th v-if="shouldShowPaymentColumn('sale_price')">销售价格</th>
-            <th v-if="shouldShowPaymentColumn('profit')">利润</th>
-            <th v-if="shouldShowPaymentColumn('sale_time')">入库时间</th>
-            <th v-if="shouldShowPaymentColumn('sale_time')">销售时间</th>
-            <th v-if="shouldShowPaymentColumn('payment_status')" class="col-status">打款状态</th>
-            <th v-if="shouldShowPaymentColumn('payment_time')">打款时间</th>
-            <th v-if="shouldShowPaymentActionColumn" class="col-actions">操作</th>
-          </tr>
-        </thead>
-        <tbody v-if="!loading && phones.length > 0">
-          <template v-for="(phone, index) in phones" :key="phone.id">
-          <tr
-            :class="{ 'row-selected': selectedPhones.includes(phone.id), 'mobile-action-expanded': isMobile && mobileActionRowId === phone.id }"
-            @click="handlePaymentMobileRowTap(phone.id)"
-            @dblclick="togglePaymentMobileActions(phone.id)"
-          >
-            <td>
+            </template>
+            <template #default="{ row }">
               <input
                 type="checkbox"
                 v-model="selectedPhones"
-                :value="phone.id"
-                :disabled="phone.payment_status === 'paid'"
+                :value="row.id"
+                :disabled="row.payment_status === 'paid'"
+                @click.stop
               />
-            </td>
-            <td>
-              <span class="index-badge">{{ (pagination.page - 1) * pagination.limit + index + 1 }}</span>
-            </td>
-            <td v-if="shouldShowPaymentColumn('supplier_name')" class="col-supplier">{{ phone.supplier_name || '-' }}</td>
-            <td v-if="shouldShowPaymentColumn('store_name')">{{ phone.store_name || '-' }}</td>
-            <td v-if="shouldShowPaymentColumn('brand_name')">{{ phone.brand_name || '-' }}</td>
-            <td v-if="shouldShowPaymentColumn('model_name')" class="col-model">{{ phone.model_name || '-' }}</td>
-            <td v-if="shouldShowPaymentColumn('color_name')" class="col-color">{{ phone.color_name || '-' }}</td>
-            <td v-if="shouldShowPaymentColumn('memory_name')" class="col-memory">{{ phone.memory_name || '-' }}</td>
-            <td v-if="shouldShowPaymentColumn('serial_number')" class="col-serial">
-              <span class="serial-number">{{ phone.serial_number || '-' }}</span>
-            </td>
-            <td v-if="shouldShowPaymentColumn('imei')">
-              <span :class="['imei', phone.phone_status === 'peer_transfer' ? 'imei-wholesale' : '']">{{ phone.imei || '-' }}</span>
-            </td>
-            <td v-if="shouldShowPaymentColumn('purchase_cost')" class="price">¥{{ formatAmount(phone.purchase_cost) }}</td>
-            <td v-if="shouldShowPaymentColumn('sale_price')" class="price">¥{{ formatAmount(phone.sale_price) }}</td>
-            <td v-if="shouldShowPaymentColumn('profit')" :class="['price-cell', getPhoneProfit(phone) >= 0 ? 'profit-positive' : 'profit-negative']">
-              ¥{{ formatAmount(getPhoneProfit(phone)) }}
-            </td>
-            <td v-if="shouldShowPaymentColumn('sale_time')" class="time-cell">{{ formatDate(phone.purchase_date) }}</td>
-            <td v-if="shouldShowPaymentColumn('sale_time')" class="time-cell">{{ formatDate(phone.sale_time) }}</td>
-            <td v-if="shouldShowPaymentColumn('payment_status')" class="col-status">
-              <span :class="['status-badge', phone.payment_status === 'paid' ? 'status-paid' : 'status-unpaid']">
-                {{ phone.payment_status === 'paid' ? '已打款' : '未打款' }}
+            </template>
+          </el-table-column>
+          <el-table-column label="序号" :width="isMobile ? 50 : 70" align="center">
+            <template #default="{ $index }">
+              <span class="index-badge">{{ (pagination.page - 1) * pagination.limit + $index + 1 }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column v-if="shouldShowPaymentColumn('supplier_name')" prop="supplier_name" label="供应商" min-width="120" align="center" class-name="col-supplier" show-overflow-tooltip>
+            <template #default="{ row }">{{ row.supplier_name || '-' }}</template>
+          </el-table-column>
+          <el-table-column v-if="shouldShowPaymentColumn('store_name')" prop="store_name" label="店铺" min-width="100" align="center" show-overflow-tooltip>
+            <template #default="{ row }">{{ row.store_name || '-' }}</template>
+          </el-table-column>
+          <el-table-column v-if="shouldShowPaymentColumn('brand_name')" prop="brand_name" label="品牌" min-width="90" align="center" show-overflow-tooltip>
+            <template #default="{ row }">{{ row.brand_name || '-' }}</template>
+          </el-table-column>
+          <el-table-column v-if="shouldShowPaymentColumn('model_name')" prop="model_name" label="型号" :min-width="isMobile ? 110 : 130" align="center" class-name="col-model" show-overflow-tooltip>
+            <template #default="{ row }">{{ row.model_name || '-' }}</template>
+          </el-table-column>
+          <el-table-column v-if="shouldShowPaymentColumn('color_name')" prop="color_name" label="颜色" min-width="90" align="center" class-name="col-color" show-overflow-tooltip>
+            <template #default="{ row }">{{ row.color_name || '-' }}</template>
+          </el-table-column>
+          <el-table-column v-if="shouldShowPaymentColumn('memory_name')" prop="memory_name" label="内存" min-width="90" align="center" class-name="col-memory" show-overflow-tooltip>
+            <template #default="{ row }">{{ row.memory_name || '-' }}</template>
+          </el-table-column>
+          <el-table-column v-if="shouldShowPaymentColumn('serial_number')" label="序列号" :width="isMobile ? 150 : 190" :min-width="isMobile ? 150 : 190" align="center" class-name="col-serial" show-overflow-tooltip>
+            <template #default="{ row }">
+              <span class="serial-number">{{ row.serial_number || '-' }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column v-if="shouldShowPaymentColumn('imei')" label="IMEI" width="190" min-width="190" align="center" class-name="col-imei" show-overflow-tooltip>
+            <template #default="{ row }">
+              <span :class="['imei', row.phone_status === 'peer_transfer' ? 'imei-wholesale' : '']">{{ row.imei || '-' }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column v-if="shouldShowPaymentColumn('purchase_cost')" label="入库价格" min-width="110" align="center">
+            <template #default="{ row }">
+              <span class="price">¥{{ formatAmount(row.purchase_cost) }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column v-if="shouldShowPaymentColumn('sale_price')" label="销售价格" min-width="110" align="center">
+            <template #default="{ row }">
+              <span class="price">¥{{ formatAmount(row.sale_price) }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column v-if="shouldShowPaymentColumn('profit')" label="利润" min-width="110" align="center">
+            <template #default="{ row }">
+              <span :class="['price-cell', getPhoneProfit(row) >= 0 ? 'profit-positive' : 'profit-negative']">
+                ¥{{ formatAmount(getPhoneProfit(row)) }}
               </span>
-            </td>
-            <td v-if="shouldShowPaymentColumn('payment_time')" class="time-cell">
+            </template>
+          </el-table-column>
+          <el-table-column v-if="shouldShowPaymentColumn('sale_time')" label="入库时间" min-width="120" align="center" class-name="time-cell">
+            <template #default="{ row }">{{ formatDate(row.purchase_date) }}</template>
+          </el-table-column>
+          <el-table-column v-if="shouldShowPaymentColumn('sale_time')" label="销售时间" min-width="120" align="center" class-name="time-cell">
+            <template #default="{ row }">{{ formatDate(row.sale_time) }}</template>
+          </el-table-column>
+          <el-table-column
+            v-if="shouldShowPaymentColumn('payment_status')"
+            label="打款状态"
+            :min-width="isMobile ? 74 : 100"
+            align="center"
+            class-name="col-status"
+          >
+            <template #default="{ row }">
+              <span :class="['status-badge', row.payment_status === 'paid' ? 'status-paid' : 'status-unpaid']">
+                {{ row.payment_status === 'paid' ? '已打款' : '未打款' }}
+              </span>
+            </template>
+          </el-table-column>
+          <el-table-column
+            v-if="shouldShowPaymentColumn('payment_time')"
+            label="打款时间"
+            :min-width="isMobile ? 178 : 210"
+            align="center"
+            class-name="time-cell payment-time-column"
+          >
+            <template #default="{ row }">
               <div
-                v-if="phone.payment_time"
+                v-if="row.payment_time"
                 class="time-badge payment-time-badge"
-                :style="getPaymentTimeStyle(phone)"
-                @click="handleShowPaymentDetails(phone)"
+                :style="getPaymentTimeStyle(row)"
+                @click.stop="handleShowPaymentDetails(row)"
                 title="点击查看详情"
               >
                 <i class="fas fa-clock"></i>
-                {{ formatDateTimeBeijing(phone.payment_time) }}
+                {{ formatDateTimeBeijing(row.payment_time) }}
               </div>
               <span v-else>-</span>
-            </td>
-            <td v-if="shouldShowPaymentActionColumn" class="actions-col col-actions">
-              <div class="action-buttons" v-if="phone.payment_status === 'unpaid'">
+            </template>
+          </el-table-column>
+          <el-table-column
+            v-if="showPaymentActionField"
+            label="操作"
+            :width="isMobile ? 128 : 310"
+            align="center"
+            class-name="actions-col col-actions"
+          >
+            <template #default="{ row }">
+              <div class="action-buttons" v-if="row.payment_status === 'unpaid'">
                 <el-button
                   v-if="canCreatePayment && canViewPaymentField('actions')"
                   type="success"
                   size="small"
-                  @click="handleSinglePayment(phone)"
+                  @click.stop="handleSinglePayment(row)"
                 >
                   <i class="fas fa-money-bill-wave"></i>
                   <span>打款</span>
@@ -332,7 +373,7 @@
                   v-if="canViewPayments && canViewPaymentField('actions')"
                   type="primary"
                   size="small"
-                  @click="handleShowPaymentDetails(phone)"
+                  @click.stop="handleShowPaymentDetails(row)"
                 >
                   <i class="fas fa-eye"></i>
                   <span>查看</span>
@@ -341,7 +382,7 @@
                   v-if="canEditPayment && canViewPaymentField('actions')"
                   type="warning"
                   size="small"
-                  @click="handleEditPayment(phone)"
+                  @click.stop="handleEditPayment(row)"
                 >
                   <i class="fas fa-edit"></i>
                   <span>编辑</span>
@@ -349,7 +390,8 @@
                 <el-button
                   v-if="canDeletePayment && canViewPaymentField('actions')"
                   type="danger"
-                  @click="handleCancelPayment(phone)"
+                  size="small"
+                  @click.stop="handleCancelPayment(row)"
                   title="取消打款"
                   :disabled="removingPayment"
                 >
@@ -357,73 +399,16 @@
                   <span>取消打款</span>
                 </el-button>
               </div>
-            </td>
-          </tr>
-          <tr
-            v-if="isMobile && mobileActionRowId === phone.id && showPaymentActionField"
-            class="mobile-action-row"
-          >
-            <td :colspan="paymentVisibleColumnCount">
-              <div class="mobile-row-actions" v-if="phone.payment_status === 'unpaid'">
-                <el-button
-                  v-if="canCreatePayment && canViewPaymentField('actions')"
-                  type="success"
-                  size="small"
-                  class="mobile-action-btn mobile-action-btn-pay"
-                  @click.stop="handleSinglePayment(phone)"
-                >
-                  <i class="fas fa-money-bill-wave"></i>
-                  <span>打款</span>
-                </el-button>
-              </div>
-              <div class="mobile-row-actions" v-else>
-                <el-button
-                  v-if="canViewPayments && canViewPaymentField('actions')"
-                  type="primary"
-                  size="small"
-                  class="mobile-action-btn mobile-action-btn-view"
-                  @click.stop="handleShowPaymentDetails(phone)"
-                >
-                  <i class="fas fa-eye"></i>
-                  <span>查看</span>
-                </el-button>
-                <el-button
-                  v-if="canEditPayment && canViewPaymentField('actions')"
-                  type="warning"
-                  size="small"
-                  class="mobile-action-btn mobile-action-btn-edit"
-                  @click.stop="handleEditPayment(phone)"
-                >
-                  <i class="fas fa-edit"></i>
-                  <span>编辑</span>
-                </el-button>
-                <el-button
-                  v-if="canDeletePayment && canViewPaymentField('actions')"
-                  type="danger"
-                  size="small"
-                  class="mobile-action-btn mobile-action-btn-delete"
-                  @click.stop="handleCancelPayment(phone)"
-                  :disabled="removingPayment"
-                >
-                  <i class="fas fa-times-circle"></i>
-                  <span>取消打款</span>
-                </el-button>
-              </div>
-            </td>
-          </tr>
-          </template>
-        </tbody>
-        <tbody v-else-if="loading">
-          <TableLoadingRow :colspan="paymentVisibleColumnCount" />
-        </tbody>
-        <tbody v-else>
-          <tr>
-            <td :colspan="paymentVisibleColumnCount" class="text-center text-muted">
+            </template>
+          </el-table-column>
+
+          <template #empty>
+            <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
+            <div v-else class="text-center text-muted">
               <i class="fas fa-inbox"></i> 暂无数据
-            </td>
-          </tr>
-        </tbody>
-      </table>
+            </div>
+          </template>
+        </el-table>
 
       <!-- 分页 - 使用统一的 Pagination 组件 -->
       <div class="pagination-wrapper">
@@ -468,7 +453,7 @@
             <label>价格:</label>
             <span class="amount">¥{{ formatAmount(selectedTotalAmount) }}</span>
           </div>
-          <div v-if="canViewPaymentField('profit')" class="info-row hide-in-capture">
+          <div v-if="canViewPaymentField('profit') && !isPaymentImageCaptureMode" class="info-row hide-in-capture">
             <label>利润:</label>
             <span :class="['amount', selectedTotalProfit >= 0 ? 'profit-positive' : 'profit-negative']">
               ¥{{ formatAmount(selectedTotalProfit) }}
@@ -478,51 +463,52 @@
 
         <!-- 手机明细表格 - 显示所有待打款手机的完整信息 -->
         <div class="batch-details-table">
-          <div class="table-responsive">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th width="60">序号</th>
-                  <th v-if="canViewPaymentField('supplier_name')">供应商</th>
-                  <th v-if="canViewPaymentField('sale_time')" width="120">销售时间</th>
-                  <th v-if="canViewPaymentField('store_name')">店铺</th>
-                  <th v-if="canViewPaymentField('brand_name')">品牌</th>
-                  <th v-if="canViewPaymentField('model_name')">型号</th>
-                  <th v-if="canViewPaymentField('color_name')">颜色</th>
-                  <th v-if="canViewPaymentField('memory_name')">内存</th>
-                  <th v-if="canViewPaymentField('serial_number')">序列号</th>
-                  <th v-if="canViewPaymentField('imei')">IMEI</th>
-                  <th v-if="canViewPaymentField('purchase_cost')">入库价格</th>
-                  <th v-if="canViewPaymentField('profit')" class="hide-in-capture">利润</th>
-                  <th v-if="canViewPaymentField('payment_time')" width="120">打款时间</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(phone, index) in selectedPhoneObjects" :key="phone.id">
-                  <td><span class="index-badge">{{ index + 1 }}</span></td>
-                  <td v-if="canViewPaymentField('supplier_name')">{{ phone.supplier_name || '-' }}</td>
-                  <td v-if="canViewPaymentField('sale_time')" class="time-cell">{{ formatDateBeijing(phone.sale_time) }}</td>
-                  <td v-if="canViewPaymentField('store_name')">{{ phone.store_name || '-' }}</td>
-                  <td v-if="canViewPaymentField('brand_name')">{{ phone.brand_name || '-' }}</td>
-                  <td v-if="canViewPaymentField('model_name')">{{ phone.model_name || '-' }}</td>
-                  <td v-if="canViewPaymentField('color_name')">{{ phone.color_name || '-' }}</td>
-                  <td v-if="canViewPaymentField('memory_name')">{{ phone.memory_name || '-' }}</td>
-                  <td v-if="canViewPaymentField('serial_number')">
-                    <span class="serial-number">{{ phone.serial_number || '-' }}</span>
-                  </td>
-                  <td v-if="canViewPaymentField('imei')">
-                    <span :class="['imei', phone.phone_status === 'peer_transfer' ? 'imei-wholesale' : '']">{{ phone.imei || '-' }}</span>
-                  </td>
-                  <td v-if="canViewPaymentField('purchase_cost')" class="price">¥{{ formatAmount(phone.purchase_cost) }}</td>
-                  <td v-if="canViewPaymentField('profit')" :class="['price-cell hide-in-capture', getPhoneProfit(phone) >= 0 ? 'profit-positive' : 'profit-negative']">
-                    ¥{{ formatAmount(getPhoneProfit(phone)) }}
-                  </td>
-                  <td v-if="canViewPaymentField('payment_time')" class="time-cell">
-                    <span class="payment-time-badge">{{ formatDateBeijing(phone.payment_time) }}</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <div class="table-responsive payment-dialog-table-container">
+            <el-table :data="selectedPhoneObjects" border stripe class="data-table payment-detail-table" table-layout="fixed" :fit="true" row-key="id">
+              <el-table-column label="序号" width="60" align="center">
+                <template #default="{ $index }"><span class="index-badge">{{ $index + 1 }}</span></template>
+              </el-table-column>
+              <el-table-column v-if="canViewPaymentField('supplier_name')" prop="supplier_name" label="供应商" :min-width="getPaymentDialogColumnWidth(selectedPhoneObjects, 'supplier_name')" align="center">
+                <template #default="{ row }">{{ row.supplier_name || '-' }}</template>
+              </el-table-column>
+              <el-table-column v-if="canViewPaymentField('sale_time')" label="销售时间" :min-width="getPaymentDialogColumnWidth(selectedPhoneObjects, 'sale_time')" align="center" class-name="time-cell">
+                <template #default="{ row }">{{ formatDateBeijing(row.sale_time) }}</template>
+              </el-table-column>
+              <el-table-column v-if="canViewPaymentField('store_name')" prop="store_name" label="店铺" :min-width="getPaymentDialogColumnWidth(selectedPhoneObjects, 'store_name')" align="center">
+                <template #default="{ row }">{{ row.store_name || '-' }}</template>
+              </el-table-column>
+              <el-table-column v-if="canViewPaymentField('brand_name')" prop="brand_name" label="品牌" :min-width="getPaymentDialogColumnWidth(selectedPhoneObjects, 'brand_name')" align="center">
+                <template #default="{ row }">{{ row.brand_name || '-' }}</template>
+              </el-table-column>
+              <el-table-column v-if="canViewPaymentField('model_name')" prop="model_name" label="型号" :min-width="getPaymentDialogColumnWidth(selectedPhoneObjects, 'model_name')" align="center">
+                <template #default="{ row }">{{ row.model_name || '-' }}</template>
+              </el-table-column>
+              <el-table-column v-if="canViewPaymentField('color_name')" prop="color_name" label="颜色" :min-width="getPaymentDialogColumnWidth(selectedPhoneObjects, 'color_name')" align="center">
+                <template #default="{ row }">{{ row.color_name || '-' }}</template>
+              </el-table-column>
+              <el-table-column v-if="canViewPaymentField('memory_name')" prop="memory_name" label="内存" :min-width="getPaymentDialogColumnWidth(selectedPhoneObjects, 'memory_name')" align="center">
+                <template #default="{ row }">{{ row.memory_name || '-' }}</template>
+              </el-table-column>
+              <el-table-column v-if="canViewPaymentField('serial_number')" label="序列号" :min-width="getPaymentDialogColumnWidth(selectedPhoneObjects, 'serial_number')" align="center" class-name="identifier-column serial-imei-column">
+                <template #default="{ row }"><span class="serial-number">{{ row.serial_number || '-' }}</span></template>
+              </el-table-column>
+              <el-table-column v-if="canViewPaymentField('imei')" label="IMEI" :min-width="getPaymentDialogColumnWidth(selectedPhoneObjects, 'imei')" align="center" class-name="identifier-column serial-imei-column">
+                <template #default="{ row }"><span :class="['imei', row.phone_status === 'peer_transfer' ? 'imei-wholesale' : '']">{{ row.imei || '-' }}</span></template>
+              </el-table-column>
+              <el-table-column v-if="canViewPaymentField('purchase_cost')" label="入库价格" :min-width="getPaymentDialogColumnWidth(selectedPhoneObjects, 'purchase_cost')" align="center">
+                <template #default="{ row }"><span class="price">¥{{ formatAmount(row.purchase_cost) }}</span></template>
+              </el-table-column>
+              <el-table-column v-if="canViewPaymentField('profit') && !isPaymentImageCaptureMode" label="利润" :min-width="getPaymentDialogColumnWidth(selectedPhoneObjects, 'profit')" align="center" class-name="hide-in-capture">
+                <template #default="{ row }">
+                  <span :class="['price-cell', 'hide-in-capture', getPhoneProfit(row) >= 0 ? 'profit-positive' : 'profit-negative']">
+                    ¥{{ formatAmount(getPhoneProfit(row)) }}
+                  </span>
+                </template>
+              </el-table-column>
+              <el-table-column v-if="canViewPaymentField('payment_time')" label="打款时间" :min-width="getPaymentDialogColumnWidth(selectedPhoneObjects, 'payment_time')" align="center" class-name="time-cell">
+                <template #default="{ row }"><span class="payment-time-badge">{{ formatDateBeijing(row.payment_time) }}</span></template>
+              </el-table-column>
+            </el-table>
           </div>
         </div>
 
@@ -603,7 +589,7 @@
             <label>价格:</label>
             <span class="amount">¥{{ formatAmount(currentPhone?.purchase_cost) }}</span>
           </div>
-          <div v-if="canViewPaymentField('profit')" class="info-row">
+          <div v-if="canViewPaymentField('profit') && !isPaymentImageCaptureMode" class="info-row hide-in-capture">
             <label>利润:</label>
             <span :class="['amount', getPhoneProfit(currentPhone) >= 0 ? 'profit-positive' : 'profit-negative']">
               ¥{{ formatAmount(getPhoneProfit(currentPhone)) }}
@@ -613,53 +599,52 @@
 
         <!-- 手机明细表格 - 显示单个手机的完整信息 -->
         <div class="batch-details-table">
-          <div class="table-responsive">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th width="60">序号</th>
-                  <th v-if="canViewPaymentField('supplier_name')">供应商</th>
-                  <th v-if="canViewPaymentField('sale_time')" width="120">销售时间</th>
-                  <th v-if="canViewPaymentField('store_name')">店铺</th>
-                  <th v-if="canViewPaymentField('brand_name')">品牌</th>
-                  <th v-if="canViewPaymentField('model_name')">型号</th>
-                  <th v-if="canViewPaymentField('color_name')">颜色</th>
-                  <th v-if="canViewPaymentField('memory_name')">内存</th>
-                  <th v-if="canViewPaymentField('serial_number')">序列号</th>
-                  <th v-if="canViewPaymentField('imei')">IMEI</th>
-                  <th v-if="canViewPaymentField('purchase_cost')">入库价格</th>
-                  <th v-if="canViewPaymentField('profit')">利润</th>
-                  <th v-if="canViewPaymentField('payment_time')" width="120">打款时间</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>
-                    <span class="index-badge">1</span>
-                  </td>
-                  <td v-if="canViewPaymentField('supplier_name')">{{ currentPhone?.supplier_name || '-' }}</td>
-                  <td v-if="canViewPaymentField('sale_time')" class="time-cell">{{ formatDateBeijing(currentPhone?.sale_time) }}</td>
-                  <td v-if="canViewPaymentField('store_name')">{{ currentPhone?.store_name || '-' }}</td>
-                  <td v-if="canViewPaymentField('brand_name')">{{ currentPhone?.brand_name || '-' }}</td>
-                  <td v-if="canViewPaymentField('model_name')">{{ currentPhone?.model_name || '-' }}</td>
-                  <td v-if="canViewPaymentField('color_name')">{{ currentPhone?.color_name || '-' }}</td>
-                  <td v-if="canViewPaymentField('memory_name')">{{ currentPhone?.memory_name || '-' }}</td>
-                  <td v-if="canViewPaymentField('serial_number')">
-                    <span class="serial-number">{{ currentPhone?.serial_number || '-' }}</span>
-                  </td>
-                  <td v-if="canViewPaymentField('imei')">
-                    <span :class="['imei', currentPhone?.phone_status === 'peer_transfer' ? 'imei-wholesale' : '']">{{ currentPhone?.imei || '-' }}</span>
-                  </td>
-                  <td v-if="canViewPaymentField('purchase_cost')" class="price">¥{{ formatAmount(currentPhone?.purchase_cost) }}</td>
-                  <td v-if="canViewPaymentField('profit')" :class="['price-cell', getPhoneProfit(currentPhone) >= 0 ? 'profit-positive' : 'profit-negative']">
-                    ¥{{ formatAmount(getPhoneProfit(currentPhone)) }}
-                  </td>
-                  <td v-if="canViewPaymentField('payment_time')" class="time-cell">
-                    <span class="payment-time-badge">{{ formatDateBeijing(currentPhone?.payment_time) }}</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <div class="table-responsive payment-dialog-table-container">
+            <el-table :data="currentPhone ? [currentPhone] : []" border stripe class="data-table payment-detail-table" table-layout="fixed" :fit="true" row-key="id">
+              <el-table-column label="序号" width="60" align="center">
+                <template #default><span class="index-badge">1</span></template>
+              </el-table-column>
+              <el-table-column v-if="canViewPaymentField('supplier_name')" prop="supplier_name" label="供应商" :min-width="getPaymentDialogColumnWidth(currentPhone ? [currentPhone] : [], 'supplier_name')" align="center">
+                <template #default="{ row }">{{ row.supplier_name || '-' }}</template>
+              </el-table-column>
+              <el-table-column v-if="canViewPaymentField('sale_time')" label="销售时间" :min-width="getPaymentDialogColumnWidth(currentPhone ? [currentPhone] : [], 'sale_time')" align="center" class-name="time-cell">
+                <template #default="{ row }">{{ formatDateBeijing(row.sale_time) }}</template>
+              </el-table-column>
+              <el-table-column v-if="canViewPaymentField('store_name')" prop="store_name" label="店铺" :min-width="getPaymentDialogColumnWidth(currentPhone ? [currentPhone] : [], 'store_name')" align="center">
+                <template #default="{ row }">{{ row.store_name || '-' }}</template>
+              </el-table-column>
+              <el-table-column v-if="canViewPaymentField('brand_name')" prop="brand_name" label="品牌" :min-width="getPaymentDialogColumnWidth(currentPhone ? [currentPhone] : [], 'brand_name')" align="center">
+                <template #default="{ row }">{{ row.brand_name || '-' }}</template>
+              </el-table-column>
+              <el-table-column v-if="canViewPaymentField('model_name')" prop="model_name" label="型号" :min-width="getPaymentDialogColumnWidth(currentPhone ? [currentPhone] : [], 'model_name')" align="center">
+                <template #default="{ row }">{{ row.model_name || '-' }}</template>
+              </el-table-column>
+              <el-table-column v-if="canViewPaymentField('color_name')" prop="color_name" label="颜色" :min-width="getPaymentDialogColumnWidth(currentPhone ? [currentPhone] : [], 'color_name')" align="center">
+                <template #default="{ row }">{{ row.color_name || '-' }}</template>
+              </el-table-column>
+              <el-table-column v-if="canViewPaymentField('memory_name')" prop="memory_name" label="内存" :min-width="getPaymentDialogColumnWidth(currentPhone ? [currentPhone] : [], 'memory_name')" align="center">
+                <template #default="{ row }">{{ row.memory_name || '-' }}</template>
+              </el-table-column>
+              <el-table-column v-if="canViewPaymentField('serial_number')" label="序列号" :min-width="getPaymentDialogColumnWidth(currentPhone ? [currentPhone] : [], 'serial_number')" align="center" class-name="identifier-column serial-imei-column">
+                <template #default="{ row }"><span class="serial-number">{{ row.serial_number || '-' }}</span></template>
+              </el-table-column>
+              <el-table-column v-if="canViewPaymentField('imei')" label="IMEI" :min-width="getPaymentDialogColumnWidth(currentPhone ? [currentPhone] : [], 'imei')" align="center" class-name="identifier-column serial-imei-column">
+                <template #default="{ row }"><span :class="['imei', row.phone_status === 'peer_transfer' ? 'imei-wholesale' : '']">{{ row.imei || '-' }}</span></template>
+              </el-table-column>
+              <el-table-column v-if="canViewPaymentField('purchase_cost')" label="入库价格" :min-width="getPaymentDialogColumnWidth(currentPhone ? [currentPhone] : [], 'purchase_cost')" align="center">
+                <template #default="{ row }"><span class="price">¥{{ formatAmount(row.purchase_cost) }}</span></template>
+              </el-table-column>
+              <el-table-column v-if="canViewPaymentField('profit') && !isPaymentImageCaptureMode" label="利润" :min-width="getPaymentDialogColumnWidth(currentPhone ? [currentPhone] : [], 'profit')" align="center" class-name="hide-in-capture">
+                <template #default="{ row }">
+                  <span :class="['price-cell', 'hide-in-capture', getPhoneProfit(row) >= 0 ? 'profit-positive' : 'profit-negative']">
+                    ¥{{ formatAmount(getPhoneProfit(row)) }}
+                  </span>
+                </template>
+              </el-table-column>
+              <el-table-column v-if="canViewPaymentField('payment_time')" label="打款时间" :min-width="getPaymentDialogColumnWidth(currentPhone ? [currentPhone] : [], 'payment_time')" align="center" class-name="time-cell">
+                <template #default="{ row }"><span class="payment-time-badge">{{ formatDateBeijing(row.payment_time) }}</span></template>
+              </el-table-column>
+            </el-table>
           </div>
         </div>
 
@@ -726,37 +711,43 @@
     >
       <div class="payment-details">
         <!-- 批次信息 -->
-        <div class="details-info payment-summary-cards" style="grid-template-columns: repeat(4, 1fr);">
-          <div v-if="canViewPaymentField('supplier_name')" class="info-row">
-            <label>供应商:</label>
+        <div class="details-info payment-summary-cards payment-batch-summary-cards" style="grid-template-columns: repeat(4, 1fr);">
+          <div v-if="canViewPaymentField('supplier_name')" class="info-row batch-summary-supplier">
+            <label><i class="fas fa-truck-loading"></i>供应商</label>
             <span>{{ paymentDetails.supplier_name }}</span>
           </div>
-          <div v-if="canViewPaymentField('payment_time')" class="info-row">
-            <label>打款时间:</label>
+          <div v-if="canViewPaymentField('payment_time')" class="info-row batch-summary-time">
+            <label><i class="fas fa-clock"></i>打款时间</label>
             <span>{{ formatDateTimeBeijing(paymentDetails.payment_time) }}</span>
           </div>
-          <div v-if="canViewPaymentField('payment_method')" class="info-row">
-            <label>支付方式:</label>
+          <div v-if="canViewPaymentField('payment_method')" class="info-row batch-summary-method">
+            <label><i class="fas fa-credit-card"></i>支付方式</label>
             <span class="highlight">{{ getPaymentMethodLabel(paymentDetails.payment_method) }}</span>
           </div>
-          <div v-if="canViewPaymentField('payment_operator')" class="info-row">
-            <label>打款人:</label>
+          <div v-if="canViewPaymentField('payment_operator')" class="info-row batch-summary-operator">
+            <label><i class="fas fa-user-check"></i>打款人</label>
             <span class="highlight">{{ paymentDetails.payment_operator || '-' }}</span>
           </div>
-          <div class="info-row">
-            <label>手机数量:</label>
+          <div class="info-row batch-summary-count">
+            <label><i class="fas fa-mobile-alt"></i>手机数量</label>
             <span class="highlight">{{ paymentDetails.phones?.length || 0 }} 台</span>
           </div>
-          <div v-if="canViewPaymentField('purchase_cost')" class="info-row">
-            <label>总成本:</label>
+          <div v-if="canViewPaymentField('purchase_cost')" class="info-row batch-summary-cost">
+            <label><i class="fas fa-coins"></i>总成本</label>
             <span class="amount">¥{{ formatAmount(paymentDetails.total_cost) }}</span>
           </div>
-          <div v-if="canViewPaymentField('sale_price')" class="info-row">
-            <label>总销售:</label>
+          <div v-if="canViewPaymentField('sale_price')" class="info-row batch-summary-sales">
+            <label><i class="fas fa-tags"></i>总销售</label>
             <span class="amount">¥{{ formatAmount(paymentDetails.total_sale) }}</span>
           </div>
-          <div v-if="canViewPaymentField('profit')" class="info-row hide-in-capture">
-            <label>总利润:</label>
+          <div
+            v-if="canViewPaymentField('profit') && !isPaymentImageCaptureMode"
+            :class="[
+              'info-row batch-summary-profit hide-in-capture',
+              paymentDetails.total_profit >= 0 ? 'is-positive' : 'is-negative'
+            ]"
+          >
+            <label><i class="fas fa-chart-line"></i>总利润</label>
             <span :class="['amount', 'profit-value', paymentDetails.total_profit >= 0 ? 'profit-positive' : 'profit-negative']">
               ¥{{ formatAmount(paymentDetails.total_profit) }}
             </span>
@@ -765,53 +756,52 @@
 
         <!-- 手机明细表格 -->
         <div ref="paymentDetailsForCapture" class="batch-details-table">
-          <div class="table-responsive">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th width="60">序号</th>
-                  <th v-if="canViewPaymentField('supplier_name')">供应商</th>
-                  <th v-if="canViewPaymentField('sale_time')" width="120">销售时间</th>
-                  <th v-if="canViewPaymentField('store_name')">店铺</th>
-                  <th v-if="canViewPaymentField('brand_name')">品牌</th>
-                  <th v-if="canViewPaymentField('model_name')">型号</th>
-                  <th v-if="canViewPaymentField('color_name')">颜色</th>
-                  <th v-if="canViewPaymentField('memory_name')">内存</th>
-                  <th v-if="canViewPaymentField('serial_number')">序列号</th>
-                  <th v-if="canViewPaymentField('imei')">IMEI</th>
-                  <th v-if="canViewPaymentField('purchase_cost')">入库价格</th>
-                  <th v-if="canViewPaymentField('profit')" class="hide-in-capture">利润</th>
-                  <th v-if="canViewPaymentField('payment_time')" width="120">打款时间</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(phone, index) in paymentDetails.phones" :key="phone.id">
-                  <td>
-                    <span class="index-badge">{{ index + 1 }}</span>
-                  </td>
-                  <td v-if="canViewPaymentField('supplier_name')">{{ phone.supplier_name || '-' }}</td>
-                  <td v-if="canViewPaymentField('sale_time')" class="time-cell">{{ formatDateBeijing(phone.sale_time) }}</td>
-                  <td v-if="canViewPaymentField('store_name')">{{ phone.store_name || '-' }}</td>
-                  <td v-if="canViewPaymentField('brand_name')">{{ phone.brand_name || '-' }}</td>
-                  <td v-if="canViewPaymentField('model_name')">{{ phone.model_name || '-' }}</td>
-                  <td v-if="canViewPaymentField('color_name')">{{ phone.color_name || '-' }}</td>
-                  <td v-if="canViewPaymentField('memory_name')">{{ phone.memory_name || '-' }}</td>
-                  <td v-if="canViewPaymentField('serial_number')">
-                    <span class="serial-number">{{ phone.serial_number || '-' }}</span>
-                  </td>
-                  <td v-if="canViewPaymentField('imei')">
-                    <span :class="['imei', phone.phone_status === 'peer_transfer' ? 'imei-wholesale' : '']">{{ phone.imei || '-' }}</span>
-                  </td>
-                  <td v-if="canViewPaymentField('purchase_cost')" class="price">¥{{ formatAmount(phone.purchase_cost) }}</td>
-                  <td v-if="canViewPaymentField('profit')" :class="['price-cell', getPhoneProfit(phone) >= 0 ? 'profit-positive' : 'profit-negative', 'hide-in-capture']">
-                    ¥{{ formatAmount(getPhoneProfit(phone)) }}
-                  </td>
-                  <td v-if="canViewPaymentField('payment_time')" class="time-cell">
-                    <span class="payment-time-badge">{{ formatDateBeijing(phone.payment_time) }}</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <div class="table-responsive payment-dialog-table-container">
+            <el-table :data="paymentDetails.phones || []" border stripe class="data-table payment-detail-table" table-layout="fixed" :fit="true" row-key="id">
+              <el-table-column label="序号" width="60" align="center">
+                <template #default="{ $index }"><span class="index-badge">{{ $index + 1 }}</span></template>
+              </el-table-column>
+              <el-table-column v-if="canViewPaymentField('supplier_name')" prop="supplier_name" label="供应商" :min-width="getPaymentDialogColumnWidth(paymentDetails.phones || [], 'supplier_name')" align="center">
+                <template #default="{ row }">{{ row.supplier_name || '-' }}</template>
+              </el-table-column>
+              <el-table-column v-if="canViewPaymentField('sale_time')" label="销售时间" :min-width="getPaymentDialogColumnWidth(paymentDetails.phones || [], 'sale_time')" align="center" class-name="time-cell">
+                <template #default="{ row }">{{ formatDateBeijing(row.sale_time) }}</template>
+              </el-table-column>
+              <el-table-column v-if="canViewPaymentField('store_name')" prop="store_name" label="店铺" :min-width="getPaymentDialogColumnWidth(paymentDetails.phones || [], 'store_name')" align="center">
+                <template #default="{ row }">{{ row.store_name || '-' }}</template>
+              </el-table-column>
+              <el-table-column v-if="canViewPaymentField('brand_name')" prop="brand_name" label="品牌" :min-width="getPaymentDialogColumnWidth(paymentDetails.phones || [], 'brand_name')" align="center">
+                <template #default="{ row }">{{ row.brand_name || '-' }}</template>
+              </el-table-column>
+              <el-table-column v-if="canViewPaymentField('model_name')" prop="model_name" label="型号" :min-width="getPaymentDialogColumnWidth(paymentDetails.phones || [], 'model_name')" align="center">
+                <template #default="{ row }">{{ row.model_name || '-' }}</template>
+              </el-table-column>
+              <el-table-column v-if="canViewPaymentField('color_name')" prop="color_name" label="颜色" :min-width="getPaymentDialogColumnWidth(paymentDetails.phones || [], 'color_name')" align="center">
+                <template #default="{ row }">{{ row.color_name || '-' }}</template>
+              </el-table-column>
+              <el-table-column v-if="canViewPaymentField('memory_name')" prop="memory_name" label="内存" :min-width="getPaymentDialogColumnWidth(paymentDetails.phones || [], 'memory_name')" align="center">
+                <template #default="{ row }">{{ row.memory_name || '-' }}</template>
+              </el-table-column>
+              <el-table-column v-if="canViewPaymentField('serial_number')" label="序列号" :min-width="getPaymentDialogColumnWidth(paymentDetails.phones || [], 'serial_number')" align="center" class-name="identifier-column serial-imei-column">
+                <template #default="{ row }"><span class="serial-number">{{ row.serial_number || '-' }}</span></template>
+              </el-table-column>
+              <el-table-column v-if="canViewPaymentField('imei')" label="IMEI" :min-width="getPaymentDialogColumnWidth(paymentDetails.phones || [], 'imei')" align="center" class-name="identifier-column serial-imei-column">
+                <template #default="{ row }"><span :class="['imei', row.phone_status === 'peer_transfer' ? 'imei-wholesale' : '']">{{ row.imei || '-' }}</span></template>
+              </el-table-column>
+              <el-table-column v-if="canViewPaymentField('purchase_cost')" label="入库价格" :min-width="getPaymentDialogColumnWidth(paymentDetails.phones || [], 'purchase_cost')" align="center">
+                <template #default="{ row }"><span class="price">¥{{ formatAmount(row.purchase_cost) }}</span></template>
+              </el-table-column>
+              <el-table-column v-if="canViewPaymentField('profit') && !isPaymentImageCaptureMode" label="利润" :min-width="getPaymentDialogColumnWidth(paymentDetails.phones || [], 'profit')" align="center" class-name="hide-in-capture">
+                <template #default="{ row }">
+                  <span :class="['price-cell', getPhoneProfit(row) >= 0 ? 'profit-positive' : 'profit-negative', 'hide-in-capture']">
+                    ¥{{ formatAmount(getPhoneProfit(row)) }}
+                  </span>
+                </template>
+              </el-table-column>
+              <el-table-column v-if="canViewPaymentField('payment_time')" label="打款时间" :min-width="getPaymentDialogColumnWidth(paymentDetails.phones || [], 'payment_time')" align="center" class-name="time-cell">
+                <template #default="{ row }"><span class="payment-time-badge">{{ formatDateBeijing(row.payment_time) }}</span></template>
+              </el-table-column>
+            </el-table>
           </div>
         </div>
       </div>
@@ -914,6 +904,7 @@ import { ref, reactive, onMounted, computed, watch, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import unifiedApi from '@/utils/unified-api';
+import logger from '@/utils/logger';
 import { useNotification } from '@/composables/useNotification';
 import { useImportExport } from '@/composables/useImportExport';
 import { usePagePermissions } from '@/composables/usePagePermissions';
@@ -930,6 +921,7 @@ import { PageHeader, PermissionGate } from '@/components/base';
 import { TimeUtil, TIME_FORMATS } from '@/utils/time';
 import { loadHtml2Canvas } from '@/utils/html2canvas';
 import { sortOptionsByOrder } from '@/utils/option-sort';
+import { getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout';
 
 const router = useRouter();
 const { success, error, warning, info } = useNotification();
@@ -1061,6 +1053,35 @@ interface SupplierPaymentApiResponse<T> {
   pagination?: SupplierPaymentPagination
 }
 
+type PaymentDialogColumnField =
+  | 'supplier_name'
+  | 'sale_time'
+  | 'store_name'
+  | 'brand_name'
+  | 'model_name'
+  | 'color_name'
+  | 'memory_name'
+  | 'serial_number'
+  | 'imei'
+  | 'purchase_cost'
+  | 'profit'
+  | 'payment_time'
+
+const paymentDialogColumnConfig: Record<PaymentDialogColumnField, { label: string; minWidth: number }> = {
+  supplier_name: { label: '供应商', minWidth: 80 },
+  sale_time: { label: '销售时间', minWidth: 104 },
+  store_name: { label: '店铺', minWidth: 64 },
+  brand_name: { label: '品牌', minWidth: 64 },
+  model_name: { label: '型号', minWidth: 96 },
+  color_name: { label: '颜色', minWidth: 56 },
+  memory_name: { label: '内存', minWidth: 64 },
+  serial_number: { label: '序列号', minWidth: 104 },
+  imei: { label: 'IMEI', minWidth: 136 },
+  purchase_cost: { label: '入库价格', minWidth: 84 },
+  profit: { label: '利润', minWidth: 72 },
+  payment_time: { label: '打款时间', minWidth: 120 }
+}
+
 interface SupplierPaymentErrorResponse {
   message?: string
   error?: string | { message?: string }
@@ -1095,38 +1116,13 @@ const paymentMobileCoreFields = new Set([
   'color_name',
   'memory_name',
   'serial_number',
-  'payment_status',
-  'actions'
+  'payment_status'
 ])
 const shouldShowPaymentColumn = (fieldName: string) => {
   if (!canViewPaymentField(fieldName)) return false
   if (!isMobile.value) return true
   return paymentMobileCoreFields.has(fieldName)
 }
-const shouldShowPaymentActionColumn = computed(() => showPaymentActionField.value && !isMobile.value)
-const paymentVisibleColumnCount = computed(() => {
-  return [
-    true,
-    true,
-    shouldShowPaymentColumn('supplier_name'),
-    shouldShowPaymentColumn('store_name'),
-    shouldShowPaymentColumn('brand_name'),
-    shouldShowPaymentColumn('model_name'),
-    shouldShowPaymentColumn('color_name'),
-    shouldShowPaymentColumn('memory_name'),
-    shouldShowPaymentColumn('serial_number'),
-    shouldShowPaymentColumn('imei'),
-    shouldShowPaymentColumn('purchase_cost'),
-    shouldShowPaymentColumn('sale_price'),
-    shouldShowPaymentColumn('profit'),
-    shouldShowPaymentColumn('sale_time'),
-    shouldShowPaymentColumn('sale_time'),
-    shouldShowPaymentColumn('payment_status'),
-    shouldShowPaymentColumn('payment_time'),
-    shouldShowPaymentActionColumn.value
-  ].filter(Boolean).length || 1
-})
-
 // 定义颜色调色板（扩展到20种颜色以更好地区分不同批次）
 const paymentTimeColors = [
   { bg: '#ecf5ff', text: '#409eff' },   // 蓝色
@@ -1229,11 +1225,16 @@ const savingImage = ref(false);
 const paymentDetailsForCapture = ref<HTMLElement | null>(null);
 const batchPaymentTableForCapture = ref<HTMLElement | null>(null);
 const singlePaymentForCapture = ref<HTMLElement | null>(null);
+const isPaymentImageCaptureMode = ref(false);
 
 const withCaptureLayout = async (
   element: HTMLElement,
   action: () => Promise<void>
 ) => {
+  const previousCaptureMode = isPaymentImageCaptureMode.value;
+  isPaymentImageCaptureMode.value = true;
+  await nextTick();
+
   const hideElements = Array.from(element.querySelectorAll('.hide-in-capture')) as HTMLElement[];
   const responsiveContainers = [
     element,
@@ -1278,6 +1279,9 @@ const withCaptureLayout = async (
     hideElements.forEach((node) => {
       node.style.display = '';
     });
+
+    isPaymentImageCaptureMode.value = previousCaptureMode;
+    await nextTick();
   }
 };
 
@@ -1511,7 +1515,8 @@ const currentTotalCount = computed(() => {
     return pagination.total;
   } else {
     // 无筛选条件时，使用全局统计数据
-    return Number((summaryStatistics.value.total_unpaid_count || 0) + (summaryStatistics.value.total_paid_count || 0));
+    return Number(summaryStatistics.value.total_unpaid_count || 0)
+      + Number(summaryStatistics.value.total_paid_count || 0);
   }
 });
 
@@ -1535,6 +1540,13 @@ const handlePaymentMobileRowTap = (phoneId: number) => {
   lastTapTimestamp.value = now
 }
 
+const getPaymentRowClassName = ({ row }: { row: SupplierPaymentPhone }) => {
+  return [
+    selectedPhones.value.includes(row.id) ? 'row-selected' : '',
+    isMobile.value && mobileActionRowId.value === row.id ? 'mobile-action-expanded' : ''
+  ].filter(Boolean).join(' ')
+}
+
 const currentTotalAmount = computed(() => {
   if (hasFilters.value) {
     // 有筛选条件时，根据当前筛选的手机列表计算总金额
@@ -1543,7 +1555,8 @@ const currentTotalAmount = computed(() => {
     }, 0);
   } else {
     // 无筛选条件时，使用全局统计数据
-    return Number((summaryStatistics.value.total_unpaid_amount || 0) + (summaryStatistics.value.total_paid_amount || 0));
+    return Number(summaryStatistics.value.total_unpaid_amount || 0)
+      + Number(summaryStatistics.value.total_paid_amount || 0);
   }
 });
 
@@ -2417,6 +2430,40 @@ const formatDateBeijing = (dateString: string | null) => {
   return `${year}-${month}-${day}`;
 };
 
+const getPaymentDialogColumnWidth = (
+  rows: SupplierPaymentPhone[],
+  field: PaymentDialogColumnField
+) => {
+  const config = paymentDialogColumnConfig[field];
+  const values = rows.map((phone) => {
+    if (field === 'sale_time' || field === 'payment_time') {
+      return formatDateBeijing(phone[field] || null);
+    }
+    if (field === 'purchase_cost') {
+      return `¥${formatAmount(phone.purchase_cost ?? 0)}`;
+    }
+    if (field === 'profit') {
+      return `¥${formatAmount(getPhoneProfit(phone))}`;
+    }
+    return phone[field] ?? '-';
+  });
+  const widthOptions = {
+    minWidth: config.minWidth,
+    horizontalPadding: field === 'payment_time'
+      ? 36
+      : field === 'serial_number' || field === 'imei'
+        ? 20
+        : 16,
+    asciiCharacterWidth: 7,
+    wideCharacterWidth: 12
+  };
+
+  if (field === 'serial_number' || field === 'imei') {
+    return getIdentifierColumnMinWidth([config.label, ...values], widthOptions);
+  }
+  return getTextColumnMinWidth([config.label, ...values], widthOptions);
+};
+
 // 获取手机状态文本
 const getPhoneStatusText = (status: string | null) => {
   const statusMap: Record<string, string> = {
@@ -2463,22 +2510,10 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .supplier-phone-payments-view {
-  padding: 20px;
-
   // 统计卡片样式
   .stats-cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 20px;
-    margin-bottom: 24px;
-
     .stat-card {
       background: #fff;
-      border-radius: 12px;
-      padding: 24px;
-      display: flex;
-      align-items: center;
-      gap: 16px;
       box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
       border: 1px solid #e8ecef;
       transition: all 0.3s ease;
@@ -2558,22 +2593,7 @@ onMounted(async () => {
 
   @media (max-width: 768px) {
     .stats-cards {
-      display: flex !important;
-      flex-wrap: wrap !important;
-      gap: 12px !important;
-      margin-bottom: 16px !important;
-
       .stat-card {
-        display: flex !important;
-        flex: 0 0 calc((100% - 12px) / 2) !important;
-        width: calc((100% - 12px) / 2) !important;
-        min-width: calc((100% - 12px) / 2) !important;
-        max-width: calc((100% - 12px) / 2) !important;
-        flex-direction: column !important;
-        align-items: flex-start !important;
-        justify-content: flex-start !important;
-        gap: 6px !important;
-        padding: 14px !important;
         position: relative !important;
         overflow: hidden !important;
       }
@@ -2634,18 +2654,6 @@ onMounted(async () => {
 
   @media (max-width: 480px) {
     .stats-cards {
-      gap: 10px !important;
-      margin-bottom: 12px !important;
-
-      .stat-card {
-        flex: 0 0 calc((100% - 10px) / 2) !important;
-        width: calc((100% - 10px) / 2) !important;
-        min-width: calc((100% - 10px) / 2) !important;
-        max-width: calc((100% - 10px) / 2) !important;
-        gap: 4px !important;
-        padding: 12px !important;
-      }
-
       .stat-card .stat-icon-primary {
         top: 8px !important;
         right: 8px !important;
@@ -3204,9 +3212,20 @@ onMounted(async () => {
         -webkit-overflow-scrolling: touch;
       }
 
+      .payment-dialog-table-container {
+        --admin-data-table-min-width: 0px;
+        scrollbar-width: none;
+
+        &::-webkit-scrollbar {
+          display: none;
+          width: 0;
+          height: 0;
+        }
+      }
+
       .data-table {
         width: 100%;
-        min-width: 1200px;
+        min-width: 0 !important;
         border-collapse: separate;
         border-spacing: 0;
         margin: 0;
@@ -3529,87 +3548,6 @@ onMounted(async () => {
   box-shadow: none !important;
 }
 
-/* ==================== 全局数据表格样式 ==================== */
-/* 表格响应式容器 */
-.table-responsive {
-  overflow-x: auto;
-  border-radius: 8px;
-  border: 1px solid #dee2e6;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  /* 强制水平滚动 */
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-}
-
-/* 数据表格基础样式 */
-.data-table {
-  width: 100%;
-  min-width: 1200px; /* 确保表格有最小宽度，触发横向滚动 */
-  border-collapse: separate;
-  border-spacing: 0;
-  margin: 0;
-  background: white;
-}
-
-/* 表头样式 */
-.data-table th {
-  background: linear-gradient(135deg, #495057 0%, #343a40 100%);
-  color: white;
-  padding: 12px 10px;
-  text-align: center;
-  font-weight: 600;
-  font-size: 14px;
-  border-right: 1px solid #dee2e6;
-  border-bottom: 2px solid #dee2e6;
-  position: relative;
-  white-space: nowrap;
-}
-
-.data-table th:last-child {
-  border-right: none;
-}
-
-.data-table th::after {
-  display: none;
-}
-
-/* 表格单元格样式 */
-.data-table td {
-  padding: 6px 6px;
-  border-right: 1px solid #e9ecef;
-  border-bottom: 1px solid #e9ecef;
-  vertical-align: middle;
-  font-size: 14px;
-  color: #2c3e50;
-  font-weight: 500;
-  text-align: center;
-  position: relative;
-}
-
-.data-table td:last-child {
-  border-right: none;
-}
-
-/* 表格行样式 */
-.data-table tbody tr {
-  transition: all 0.2s ease;
-  position: relative;
-}
-
-.data-table tbody tr:nth-child(even) {
-  background: #f8f9fa;
-}
-
-.data-table tbody tr:hover {
-  background: #e3f2fd;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-.data-table tbody tr:hover td {
-  border-bottom-color: #dee2e6;
-}
-
 /* 已选中行的样式 */
 .data-table tbody tr.row-selected {
   background: #fff9c4 !important;
@@ -3696,12 +3634,16 @@ onMounted(async () => {
 /* 打款时间徽章 */
 .data-table .payment-time-badge {
   display: inline-block;
+  max-width: 100%;
   padding: 4px 10px;
+  box-sizing: border-box;
   background: linear-gradient(135deg, #f56c6c 0%, #e74c3c 100%);
   color: white;
   border-radius: 12px;
   font-size: 12px;
   font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
   box-shadow: 0 2px 4px rgba(245, 108, 108, 0.3);
 }
 
@@ -3740,6 +3682,13 @@ onMounted(async () => {
   display: flex;
   gap: 8px;
   justify-content: center;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.data-table .action-buttons :deep(.el-button) {
+  flex-shrink: 0;
+  margin-left: 0 !important;
 }
 
 .data-table .mobile-action-row td {
@@ -3789,8 +3738,74 @@ onMounted(async () => {
   accent-color: #409eff;
 }
 
+/* 主列表统一字号，颜色和字重仍由各业务字段控制。 */
+.supplier-payment-table :deep(.el-table__header th),
+.supplier-payment-table :deep(.el-table__header th .cell),
+.supplier-payment-table :deep(.el-table__body td),
+.supplier-payment-table :deep(.el-table__body td .cell),
+.supplier-payment-table :deep(.el-button),
+.supplier-payment-table .index-badge,
+.supplier-payment-table .serial-number,
+.supplier-payment-table .imei,
+.supplier-payment-table .imei-cell,
+.supplier-payment-table .price,
+.supplier-payment-table .price-cell,
+.supplier-payment-table .time-badge,
+.supplier-payment-table .payment-time-badge,
+.supplier-payment-table .status-badge {
+  font-size: var(--admin-data-table-cell-font-size) !important;
+}
+
 /* 移动端响应式 */
 @media (max-width: 768px) {
+  .payment-list-table-wrapper {
+    overflow-x: hidden !important;
+    overscroll-behavior-x: contain;
+
+    :deep(.supplier-payment-table .el-scrollbar__wrap) {
+      overflow-x: auto !important;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    :deep(.supplier-payment-table .el-scrollbar__wrap::-webkit-scrollbar) {
+      display: none;
+      width: 0;
+      height: 0;
+    }
+
+    :deep(.supplier-payment-table .el-scrollbar__bar.is-horizontal) {
+      display: none !important;
+    }
+  }
+
+  .supplier-payment-table .action-buttons {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .supplier-payment-table .action-buttons :deep(.el-button) {
+    width: 100%;
+    min-width: 0;
+    padding-right: 4px !important;
+    padding-left: 4px !important;
+    margin: 0 !important;
+  }
+
+  .supplier-payment-table :deep(.actions-col .cell) {
+    padding-right: 4px !important;
+    padding-left: 4px !important;
+    overflow: visible !important;
+  }
+
+  .supplier-payment-table .status-badge {
+    padding-right: 6px;
+    padding-left: 6px;
+  }
+
   .supplier-phone-payments-view {
     .table-section {
       .section-title {
@@ -3935,6 +3950,135 @@ onMounted(async () => {
       .info-row:first-child {
         grid-column: 1 / -1;
         min-height: 76px;
+      }
+    }
+
+    .details-info.payment-batch-summary-cards {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      gap: 8px !important;
+      padding: 0 !important;
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+      box-shadow: none;
+
+      .info-row {
+        --batch-summary-accent: #64748b;
+        --batch-summary-tint: #f8fafc;
+        min-width: 0;
+        min-height: 78px;
+        padding: 9px 10px 10px;
+        gap: 6px;
+        justify-content: center;
+        overflow: hidden;
+        background: var(--batch-summary-tint);
+        border: 1px solid #e2e8f0;
+        border-top: 3px solid var(--batch-summary-accent);
+        border-radius: 8px;
+        box-shadow: 0 3px 10px rgba(15, 23, 42, 0.08);
+
+        label {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          margin: 0;
+          color: #64748b;
+          font-size: 11px;
+          font-weight: 600;
+          line-height: 1.2;
+          letter-spacing: 0;
+          text-transform: none;
+          white-space: nowrap;
+
+          i {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            flex: 0 0 22px;
+            color: var(--batch-summary-accent);
+            font-size: 11px;
+            text-align: center;
+            background: #ffffff;
+            border: 1px solid rgba(148, 163, 184, 0.22);
+            border-radius: 6px;
+          }
+        }
+
+        span {
+          width: 100%;
+          color: #1f2937;
+          font-size: 14px;
+          font-weight: 700;
+          line-height: 1.25;
+          letter-spacing: 0;
+          overflow-wrap: anywhere;
+          word-break: normal;
+        }
+
+        .highlight,
+        .amount,
+        .profit-value {
+          font-size: 15px;
+          font-weight: 800;
+        }
+      }
+
+      @media (min-width: 481px) {
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+      }
+
+      .batch-summary-supplier {
+        --batch-summary-accent: #d97706;
+        --batch-summary-tint: #fffbeb;
+      }
+
+      .batch-summary-time {
+        --batch-summary-accent: #2563eb;
+        --batch-summary-tint: #eff6ff;
+
+        span {
+          font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+          font-size: 11px;
+          overflow-wrap: normal;
+          white-space: normal;
+        }
+      }
+
+      .batch-summary-method {
+        --batch-summary-accent: #7c3aed;
+        --batch-summary-tint: #f5f3ff;
+      }
+
+      .batch-summary-operator {
+        --batch-summary-accent: #0891b2;
+        --batch-summary-tint: #ecfeff;
+      }
+
+      .batch-summary-count {
+        --batch-summary-accent: #475569;
+        --batch-summary-tint: #f8fafc;
+      }
+
+      .batch-summary-cost {
+        --batch-summary-accent: #ca8a04;
+        --batch-summary-tint: #fefce8;
+      }
+
+      .batch-summary-sales {
+        --batch-summary-accent: #0284c7;
+        --batch-summary-tint: #f0f9ff;
+      }
+
+      .batch-summary-profit {
+        --batch-summary-accent: #16a34a;
+        --batch-summary-tint: #f0fdf4;
+
+        &.is-negative {
+          --batch-summary-accent: #dc2626;
+          --batch-summary-tint: #fef2f2;
+        }
       }
     }
 
@@ -4147,22 +4291,6 @@ onMounted(async () => {
         display: none;
       }
     }
-  }
-
-  .table-responsive {
-    overflow-x: scroll;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .data-table {
-    min-width: 760px;
-  }
-
-  .data-table th,
-  .data-table td {
-    padding: 8px 6px;
-    font-size: 13px;
-    white-space: nowrap;
   }
 
   .data-table .col-supplier,

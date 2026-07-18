@@ -1,5 +1,5 @@
 <template>
-  <div class="suppliers-view admin-page">
+  <div class="suppliers-view admin-page admin-unified-base-data-page">
     <PermissionGate
       :can-view="canView"
       module-name="供应商管理"
@@ -129,219 +129,34 @@
       </div>
       
       <div class="table-responsive">
-        <table class="table">
-          <thead>
-            <tr>
-              <th v-if="showSortField" width="40"></th>
-              <th v-if="showSortOrderField" width="60">排序</th>
-              <th v-if="canViewField('id')" width="80">序号</th>
-              <th v-if="canViewField('name')" width="160">供应商名称</th>
-              <th v-if="showContactField" width="200">联系人</th>
-              <th v-if="showPhoneField" width="160">电话</th>
-              <th v-if="showAddressField" width="200">地址</th>
-              <th v-if="canViewField('status')" width="200">状态</th>
-              <th v-if="showCreatedAtField" width="160">创建时间</th>
-              <th v-if="showActionField" width="200">操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <TableLoadingRow v-if="loading" :colspan="visibleColumnCount" />
-            <tr v-else-if="suppliers.length === 0" class="empty-row">
-              <td :colspan="visibleColumnCount">
-                <div class="empty-content">
-                  <i class="fas fa-inbox"></i>
-                  <div class="empty-text">
-                    <h4>暂无供应商数据</h4>
-                    <p>点击上方"新增供应商"按钮添加第一个供应商</p>
-                    <el-button size="small" @click="loadSuppliers()" :disabled="loading" plain>
-                      <InlineLoading v-if="loading" text="加载中..." size="small" variant="inherit" />
-                      <template v-else>
-                        <i class="fas fa-sync-alt"></i>
-                        重新加载
-                      </template>
-                    </el-button>
-                  </div>
-                </div>
-              </td>
-            </tr>
-            <template v-else v-for="(supplier, index) in suppliers" :key="supplier.id">
-            <tr
-              class="data-row"
-              :class="{ 'is-dragging': draggingIndex === index, 'is-drag-over': dragOverIndex === index }"
-              :draggable="canEdit"
-              @click="handleMobileRowTap(supplier.id)"
-              @dblclick="toggleMobileActions(supplier.id)"
-              @dragstart="canEdit ? handleDragStart(index, $event) : null"
-              @dragend="canEdit ? handleDragEnd : null"
-              @dragover="canEdit ? handleDragOver(index, $event) : null"
-              @dragenter="canEdit ? handleDragEnter(index) : null"
-              @dragleave="canEdit ? handleDragLeave : null"
-              @drop="canEdit ? handleDrop(index, $event) : null"
-            >
-              <td v-if="showSortField" class="drag-handle-cell">
-                <div class="drag-handle" :class="{ 'disabled': !canEdit }">
-                  <i class="fas fa-grip-vertical"></i>
-                </div>
-              </td>
-              <td v-if="showSortOrderField">
-                <input
-                  v-model.number="supplier.sort_order"
-                  type="number"
-                  class="sort-order-input"
-                  :disabled="!canEdit"
-                  min="0"
-                  max="9999"
-                  @change="canEdit ? handleSortOrderChange(index, supplier.sort_order) : null"
-                />
-              </td>
-              <td v-if="canViewField('id')">
-                <span class="id-badge">{{ index + 1 }}</span>
-              </td>
-              <td v-if="canViewField('name')">
-                <div class="supplier-info">
-                  <div class="supplier-name">
-                    <strong>{{ supplier.name || '未命名供应商' }}</strong>
-                    <span v-if="!supplier.name" class="warning-badge">未命名</span>
-                  </div>
-                  <div v-if="isMobile && canViewField('contact') && supplier.contact" class="mobile-supplier-meta">
-                    <i class="fas fa-user"></i>
-                    <span>{{ supplier.contact }}</span>
-                  </div>
-                  <div v-if="isMobile && canViewField('phone') && supplier.phone" class="mobile-supplier-meta">
-                    <i class="fas fa-phone"></i>
-                    <span>{{ supplier.phone }}</span>
-                  </div>
-                  <div v-if="isMobile && canViewField('address') && supplier.address" class="mobile-supplier-meta">
-                    <i class="fas fa-map-marker-alt"></i>
-                    <span>{{ supplier.address }}</span>
-                  </div>
-                  <div v-if="canViewField('remarks') && supplier.remarks" class="supplier-remarks">
-                    <i class="fas fa-comment"></i>
-                    {{ supplier.remarks }}
-                  </div>
-                </div>
-              </td>
-              <td v-if="showContactField">
-                <div class="contact-info">
-                  <span v-if="supplier.contact" class="contact-name">
-                    <i class="fas fa-user"></i>
-                    {{ supplier.contact }}
-                  </span>
-                  <span v-else class="no-data">-</span>
-                </div>
-              </td>
-              <td v-if="showPhoneField">
-                <div class="phone-info">
-                  <span v-if="supplier.phone" class="phone-number">
-                    <i class="fas fa-phone"></i>
-                    {{ supplier.phone }}
-                  </span>
-                  <span v-else class="no-data">-</span>
-                </div>
-              </td>
-              <td v-if="showAddressField">
-                <div class="address-info">
-                  <span v-if="supplier.address" class="address-text" :title="supplier.address">
-                    <i class="fas fa-map-marker-alt"></i>
-                    {{ supplier.address.length > 20 ? supplier.address.substring(0, 20) + '...' : supplier.address }}
-                  </span>
-                  <span v-else class="no-data">-</span>
-                </div>
-              </td>
-              <td v-if="canViewField('status')">
-                <span :class="['status-badge', supplier.status ? 'status-active' : 'status-inactive']">
-                  <i :class="supplier.status ? 'fas fa-check' : 'fas fa-times'"></i>
-                  {{ supplier.status ? '正常' : '禁用' }}
-                </span>
-              </td>
-              <td v-if="showCreatedAtField">
-                <div class="time-info">
-                  <i class="fas fa-clock"></i>
-                  {{ formatDate(supplier.created_at) }}
-                </div>
-              </td>
-              <td v-if="showActionField" class="actions">
-                <el-button type="success" size="small" @click="viewSupplier(supplier)">
-                  <template #icon>
-                    <i class="fas fa-eye"></i>
-                  </template>
-                  查看
-                </el-button>
-                <el-button
-                  v-if="canEdit"
-                  v-permission="'suppliers:edit'"
-                  type="primary"
-                  size="small"
-                  @click="editSupplier(supplier)"
-                >
-                  <template #icon>
-                    <i class="fas fa-edit"></i>
-                  </template>
-                  编辑
-                </el-button>
-                <el-button
-                  v-if="canDelete"
-                  v-permission="'suppliers:delete'"
-                  type="danger"
-                  size="small"
-                  @click="deleteSupplier(supplier)"
-                >
-                  <template #icon>
-                    <i class="fas fa-trash"></i>
-                  </template>
-                  删除
-                </el-button>
-              </td>
-            </tr>
-            <tr
-              v-if="isMobile && mobileActionRowId === supplier.id"
-              class="mobile-action-row"
-            >
-              <td :colspan="visibleColumnCount">
-                <div class="mobile-row-actions">
-                  <el-button
-                    type="success"
-                    size="small"
-                    class="mobile-action-btn mobile-action-btn-view"
-                    @click.stop="viewSupplier(supplier)"
-                  >
-                    <template #icon>
-                      <i class="fas fa-eye"></i>
-                    </template>
-                    查看
-                  </el-button>
-                  <el-button
-                    v-if="canEdit"
-                    v-permission="'suppliers:edit'"
-                    type="primary"
-                    size="small"
-                    class="mobile-action-btn mobile-action-btn-edit"
-                    @click.stop="editSupplier(supplier)"
-                  >
-                    <template #icon>
-                      <i class="fas fa-edit"></i>
-                    </template>
-                    编辑
-                  </el-button>
-                  <el-button
-                    v-if="canDelete"
-                    v-permission="'suppliers:delete'"
-                    type="danger"
-                    size="small"
-                    class="mobile-action-btn mobile-action-btn-delete"
-                    @click.stop="deleteSupplier(supplier)"
-                  >
-                    <template #icon>
-                      <i class="fas fa-trash"></i>
-                    </template>
-                    删除
-                  </el-button>
-                </div>
-              </td>
-            </tr>
-            </template>
-          </tbody>
-        </table>
+        <el-table
+          ref="suppliersTableRef"
+          :data="loading ? [] : suppliers"
+          border
+          stripe
+          class="data-table devices-table base-data-table suppliers-data-table"
+          table-layout="fixed"
+          :fit="true"
+          :row-key="getSupplierRowKey"
+          :expand-row-keys="isMobile && mobileActionRowId ? [mobileActionRowId] : []"
+          @row-click="(row) => handleMobileRowTap(row.id)"
+        >
+          <template #empty>
+            <TableLoadingRow v-if="loading" mode="block" text="加载供应商列表..." />
+            <div v-else class="empty-state"><i class="fas fa-inbox"></i><p>暂无供应商数据</p><el-button size="small" type="info" @click="loadSuppliers()">重新加载</el-button></div>
+          </template>
+          <el-table-column v-if="showSortField" width="44" align="center" class-name="drag-handle-cell"><template #default><div class="drag-handle" :class="{ disabled: !canEdit }"><i class="fas fa-grip-vertical"></i></div></template></el-table-column>
+          <el-table-column v-if="showSortOrderField" label="排序" width="70" align="center"><template #default="{ row, $index }"><input v-model.number="row.sort_order" type="number" class="sort-order-input" :disabled="!canEdit" min="0" max="9999" @change="handleSortOrderChange($index, row.sort_order || 0)" /></template></el-table-column>
+          <el-table-column v-if="canViewField('id')" label="序号" :width="isMobile ? 54 : 70" align="center"><template #default="{ $index }"><span class="id-badge">{{ $index + 1 }}</span></template></el-table-column>
+          <el-table-column v-if="canViewField('name')" prop="name" label="供应商名称" :min-width="isMobile ? 126 : 160" align="center"><template #default="{ row }"><strong>{{ row.name || '未命名供应商' }}</strong></template></el-table-column>
+          <el-table-column v-if="showContactField" label="联系人" :min-width="isMobile ? 92 : 120" align="center"><template #default="{ row }"><span v-if="row.contact" class="contact-name"><i class="fas fa-user"></i>{{ row.contact }}</span><span v-else class="no-data">-</span></template></el-table-column>
+          <el-table-column v-if="showPhoneField" label="电话" min-width="132" align="center"><template #default="{ row }"><span v-if="row.phone" class="phone-number"><i class="fas fa-phone"></i>{{ row.phone }}</span><span v-else class="no-data">-</span></template></el-table-column>
+          <el-table-column v-if="showAddressField" label="地址" min-width="220" align="center" show-overflow-tooltip><template #default="{ row }"><span v-if="row.address" class="address-text"><i class="fas fa-map-marker-alt"></i>{{ row.address }}</span><span v-else class="no-data">-</span></template></el-table-column>
+          <el-table-column v-if="canViewField('status')" label="状态" :min-width="isMobile ? 72 : 84" align="center"><template #default="{ row }"><span :class="['status-badge', isSupplierActive(row.status) ? 'status-active' : 'status-inactive']"><i :class="isSupplierActive(row.status) ? 'fas fa-check' : 'fas fa-times'"></i>{{ isSupplierActive(row.status) ? '正常' : '禁用' }}</span></template></el-table-column>
+          <el-table-column v-if="showCreatedAtField" label="创建时间" min-width="156" align="center"><template #default="{ row }"><div class="time-info"><i class="fas fa-clock"></i>{{ formatDate(row.created_at) }}</div></template></el-table-column>
+          <el-table-column v-if="showActionField" label="操作" min-width="238" align="center" class-name="actions-column"><template #default="{ row }"><div class="action-buttons"><el-button type="success" size="small" @click.stop="viewSupplier(row)"><i class="fas fa-eye"></i><span>查看</span></el-button><el-button v-if="canEdit" v-permission="'suppliers:edit'" type="primary" size="small" @click.stop="editSupplier(row)"><i class="fas fa-edit"></i><span>编辑</span></el-button><el-button v-if="canDelete" v-permission="'suppliers:delete'" type="danger" size="small" @click.stop="deleteSupplier(row)"><i class="fas fa-trash"></i><span>删除</span></el-button></div></template></el-table-column>
+          <el-table-column v-if="isMobile" type="expand" width="1" class-name="mobile-expand-column" label-class-name="mobile-expand-header"><template #default="{ row }"><div class="mobile-row-actions"><el-button type="success" size="small" @click.stop="viewSupplier(row)"><i class="fas fa-eye"></i><span>查看</span></el-button><el-button v-if="canEdit" v-permission="'suppliers:edit'" type="primary" size="small" @click.stop="editSupplier(row)"><i class="fas fa-edit"></i><span>编辑</span></el-button><el-button v-if="canDelete" v-permission="'suppliers:delete'" type="danger" size="small" @click.stop="deleteSupplier(row)"><i class="fas fa-trash"></i><span>删除</span></el-button></div></template></el-table-column>
+        </el-table>
       </div>
 
       <!-- 分页组件 -->
@@ -606,7 +421,6 @@ import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { PageHeader, PermissionGate } from '@/components/base'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
-import DraggableRow from '../../components/DraggableRow.vue'
 import { usePermissionToast } from '@/utils/permissionToastSimple'
 import { handleApiErrorWithPermission } from '@/utils/apiPermissionError'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
@@ -614,6 +428,7 @@ import { useMobile } from '@/composables/mobile'
 import { useLatestRequest } from '@/composables/useLatestRequest'
 import type { Supplier } from '@/types/system'
 import { logger } from '@/utils/logger'
+import { useElementTableSortable } from '@/composables/useElementTableSortable'
 
 // 供应商详情扩展类型
 interface SupplierDetail extends Supplier {
@@ -690,7 +505,7 @@ const canEditField = (fieldName: string) => {
 
 const showSortField = computed(() => canViewField('sort_order') && !isMobile.value)
 const showSortOrderField = computed(() => canViewField('sort_order') && !isMobile.value)
-const showContactField = computed(() => canViewField('contact') && !isMobile.value)
+const showContactField = computed(() => canViewField('contact'))
 const showPhoneField = computed(() => canViewField('phone') && !isMobile.value)
 const showAddressField = computed(() => canViewField('address') && !isMobile.value)
 const showCreatedAtField = computed(() => canViewField('created_at') && !isMobile.value)
@@ -707,9 +522,9 @@ const supplierStats = computed(() => {
   let phoneCompletion = 0
 
   suppliers.value.forEach((supplier) => {
-    if (supplier.status === 1) {
+    if (isSupplierActive(supplier.status)) {
       active++
-    } else if (supplier.status === 0) {
+    } else {
       inactive++
     }
 
@@ -723,20 +538,6 @@ const supplierStats = computed(() => {
     inactive,
     phoneCompletion
   }
-})
-const visibleColumnCount = computed(() => {
-  return [
-    showSortField.value,
-    showSortOrderField.value,
-    canViewField('id'),
-    canViewField('name'),
-    showContactField.value,
-    showPhoneField.value,
-    showAddressField.value,
-    canViewField('status'),
-    showCreatedAtField.value,
-    showActionField.value
-  ].filter(Boolean).length || 1
 })
 const authStore = useAuthStore()
 
@@ -782,13 +583,11 @@ const showCreateModal = ref(false)
 const showEditModal = ref(false)
 const showDetailModal = ref(false)
 const currentEditingId = ref<number | null>(null)
-const mobileActionRowId = ref<number | null>(null)
-const lastTappedRowId = ref<number | null>(null)
+const suppliersTableRef = ref<any>(null)
+const mobileActionRowId = ref<string | null>(null)
+const lastTappedRowId = ref<string | null>(null)
 const lastTapTimestamp = ref(0)
-
-// 拖拽排序状态
-const draggingIndex = ref<number | null>(null)
-const dragOverIndex = ref<number | null>(null)
+const getSupplierRowKey = (supplier: Supplier) => String(supplier.id)
 
 // 搜索表单
 const searchForm = ref({
@@ -1001,21 +800,23 @@ const viewSupplier = async (supplier: Supplier) => {
 
 const toggleMobileActions = (id: number) => {
   if (!isMobile.value) return
-  mobileActionRowId.value = mobileActionRowId.value === id ? null : id
+  const rowKey = String(id)
+  mobileActionRowId.value = mobileActionRowId.value === rowKey ? null : rowKey
 }
 
 const handleMobileRowTap = (id: number) => {
   if (!isMobile.value) return
+  const rowKey = String(id)
 
   const now = Date.now()
-  if (lastTappedRowId.value === id && now - lastTapTimestamp.value <= 320) {
+  if (lastTappedRowId.value === rowKey && now - lastTapTimestamp.value <= 320) {
     toggleMobileActions(id)
     lastTappedRowId.value = null
     lastTapTimestamp.value = 0
     return
   }
 
-  lastTappedRowId.value = id
+  lastTappedRowId.value = rowKey
   lastTapTimestamp.value = now
 }
 
@@ -1212,63 +1013,6 @@ const formatDate = (dateString: string) => {
   return TimeUtil.format(dateString, TIME_FORMATS.DATETIME)
 }
 
-// 拖拽排序方法
-const handleDragStart = (index: number, event: DragEvent) => {
-  draggingIndex.value = index
-  if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = 'move'
-  }
-}
-
-const handleDragEnd = () => {
-  draggingIndex.value = null
-  dragOverIndex.value = null
-}
-
-const handleDragOver = (index: number, event: DragEvent) => {
-  event.preventDefault()
-  if (draggingIndex.value === null || draggingIndex.value === index) return
-  dragOverIndex.value = index
-}
-
-const handleDragEnter = (index: number) => {
-  if (draggingIndex.value === null || draggingIndex.value === index) return
-  dragOverIndex.value = index
-}
-
-const handleDragLeave = () => {
-  // 不清除 dragOverIndex，避免闪烁
-}
-
-const handleDrop = async (dropIndex: number, event: DragEvent) => {
-  event.preventDefault()
-  const dragIndex = draggingIndex.value
-  if (dragIndex === null || dragIndex === dropIndex) {
-    handleDragEnd()
-    return
-  }
-
-  // 重新排列数组
-  const newSuppliers = [...suppliers.value]
-  const [movedItem] = newSuppliers.splice(dragIndex, 1)
-  newSuppliers.splice(dropIndex, 0, movedItem)
-
-  // 更新 sort_order 值
-  newSuppliers.forEach((item, index) => {
-    item.sort_order = index
-  })
-
-  suppliers.value = newSuppliers
-
-  // 自动保存排序
-  await saveSortOrder()
-
-  // 保存后重新加载数据以确保与数据库同步
-  await loadSuppliers(true, false, false)
-
-  handleDragEnd()
-}
-
 // 保存排序到服务器
 const saveSortOrder = async () => {
   if (savingOrder.value) return
@@ -1302,6 +1046,27 @@ const handleSortOrderChange = async (index: number, value: number) => {
   suppliers.value.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
   await saveSortOrder()
 }
+
+const isSupplierActive = (status: Supplier['status']) => status === 1 || status === 'active'
+
+const handleSupplierRowMove = async (oldIndex: number, newIndex: number) => {
+  if (!canEdit.value || oldIndex === newIndex) return false
+  const reordered = [...suppliers.value]
+  const [movedItem] = reordered.splice(oldIndex, 1)
+  reordered.splice(newIndex, 0, movedItem)
+  reordered.forEach((item, index) => { item.sort_order = index })
+  suppliers.value = reordered
+  await saveSortOrder()
+  await loadSuppliers(true, false, false)
+  return true
+}
+
+useElementTableSortable({
+  tableRef: suppliersTableRef,
+  enabled: computed(() => canEdit.value && !isMobile.value && showSortField.value),
+  orderKey: () => suppliers.value.map(supplier => supplier.id).join('|'),
+  onMove: handleSupplierRowMove
+})
 
 const getAccountTypeText = (type: string) => {
   const typeMap: Record<string, string> = {
@@ -2043,23 +1808,8 @@ onUnmounted(() => {
     white-space: nowrap;
   }
 
-  .stats-cards {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-    margin-bottom: 16px;
-    padding: 0 4px;
-  }
-
-  .stat-card {
-    padding: 14px 12px;
-  }
-
   .form-actions {
     flex-direction: column;
-  }
-
-  .table-section {
-    padding: 16px;
   }
 
   .pagination-section {
@@ -2300,207 +2050,4 @@ onUnmounted(() => {
     grid-template-columns: 1fr;
   }
 }
-</style>
-
-<style>
-@media (max-width: 767px) {
-  .suppliers-view {
-    padding: 8px;
-  }
-
-  .suppliers-view .stats-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-    margin-bottom: 16px;
-    padding: 0 4px;
-  }
-
-  .suppliers-view .stat-card {
-    padding: 14px 12px;
-    border-radius: 16px;
-    gap: 12px;
-  }
-
-  .suppliers-view .stat-icon {
-    width: 40px;
-    height: 40px;
-    font-size: 16px;
-  }
-
-  .suppliers-view .stat-value {
-    font-size: 20px;
-  }
-
-  .suppliers-view .stat-label {
-    font-size: 12px;
-  }
-
-  .suppliers-view .table-section {
-    margin: 0;
-    padding: 14px 10px;
-    border-radius: 16px;
-    overflow: hidden;
-  }
-
-  .suppliers-view .table-responsive {
-    width: 100%;
-    max-width: 100%;
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
-    border-radius: 12px;
-  }
-
-  .suppliers-view .table {
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    table-layout: fixed;
-  }
-
-  .suppliers-view .table th,
-  .suppliers-view .table td {
-    white-space: normal;
-    word-break: break-word;
-    box-sizing: border-box;
-  }
-
-  .suppliers-view .supplier-info {
-    width: 100%;
-    max-width: none;
-  }
-
-  .suppliers-view .supplier-name {
-    font-size: 14px;
-    line-height: 1.4;
-    font-weight: 700;
-    text-align: center;
-  }
-
-  .mobile-supplier-meta {
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    gap: 6px;
-    margin-top: 6px;
-    font-size: 11px;
-    line-height: 1.4;
-    color: #5f6b7a;
-    text-align: center;
-  }
-
-  .mobile-supplier-meta i {
-    margin-top: 2px;
-    color: #64748b;
-  }
-
-  .suppliers-view .supplier-remarks {
-    margin-top: 6px;
-    font-size: 11px;
-    line-height: 1.4;
-    text-align: center;
-  }
-
-  .suppliers-view .status-badge.status-active,
-  .suppliers-view .status-badge.status-inactive {
-    width: 100%;
-    max-width: 76px;
-    margin: 0 auto;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    white-space: normal;
-    line-height: 1.35;
-  }
-
-}
-
-@media (max-width: 480px) {
-  .suppliers-view {
-    padding: 12px;
-  }
-
-  .suppliers-view .stats-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-    margin: 0 0 12px 0;
-    padding: 0;
-  }
-
-  .suppliers-view .stat-card {
-    padding: 12px 10px;
-    gap: 10px;
-  }
-
-  .suppliers-view .stat-icon {
-    width: 36px;
-    height: 36px;
-    font-size: 15px;
-  }
-
-  .suppliers-view .stat-value {
-    font-size: 18px;
-  }
-
-  .suppliers-view .stat-label {
-    font-size: 11px;
-  }
-
-  .suppliers-view .table-section {
-    margin: 0;
-    padding: 12px 8px;
-  }
-
-  .suppliers-view .table th,
-  .suppliers-view .table td {
-    padding: 6px 4px;
-    font-size: 11px;
-  }
-
-  .suppliers-view .table th:nth-child(1),
-  .suppliers-view .table td:nth-child(1) {
-    width: 18%;
-  }
-
-  .suppliers-view .table th:nth-child(2),
-  .suppliers-view .table td:nth-child(2) {
-    width: 50%;
-  }
-
-  .suppliers-view .table th:nth-child(3),
-  .suppliers-view .table td:nth-child(3) {
-    width: 32%;
-  }
-
-  .suppliers-view .supplier-name {
-    font-size: 13px;
-  }
-
-  .mobile-supplier-meta,
-  .suppliers-view .supplier-remarks {
-    font-size: 10px;
-  }
-
-  .suppliers-view .id-badge {
-    min-width: 44px;
-    height: 28px;
-    padding: 4px 8px;
-    font-size: 11px;
-    border-radius: 14px;
-  }
-
-  .mobile-row-actions .el-button {
-    min-height: 26px;
-    padding: 3px 7px;
-    font-size: 10px;
-    border-radius: 999px;
-  }
-
-  .mobile-row-actions .el-button .el-icon,
-  .mobile-row-actions .el-button i {
-    font-size: 10px;
-    margin-right: 1px;
-  }
-}
-
 </style>

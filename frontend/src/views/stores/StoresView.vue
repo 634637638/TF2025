@@ -1,5 +1,5 @@
 <template>
-  <div class="stores-view admin-page">
+  <div class="stores-view admin-page admin-unified-base-data-page">
     <PermissionGate
       :can-view="canView"
       mode="denied"
@@ -77,7 +77,7 @@
             <i class="fas fa-phone"></i>
           </div>
           <div class="stat-content">
-            <div class="stat-value">{{ stats.withManager }}</div>
+            <div class="stat-value">{{ stats.withPhone }}</div>
             <div class="stat-label">已留电话</div>
           </div>
         </div>
@@ -127,202 +127,61 @@
         </div>
 
         <div class="table-responsive">
-          <table class="table">
-            <thead>
-              <tr>
-                <th v-if="showSortField" width="40"></th>
-                <th v-if="showSortOrderField" width="60">排序</th>
-                <th v-if="canViewField('id')" width="80">ID</th>
-                <th v-if="canViewField('name')" width="160">店铺名称</th>
-                <th v-if="showAddressField" width="200">地址</th>
-                <th v-if="showManagerField" width="160">联系人</th>
-                <th v-if="showPhoneField" width="200">电话</th>
-                <th v-if="canViewField('status')" width="180">状态</th>
-                <th v-if="showCreatedAtField" width="160">创建时间</th>
-                <th v-if="showActionField" width="180">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              <TableLoadingRow v-if="isLoading" :colspan="visibleColumnCount" />
-              <tr v-else-if="stores.length === 0" class="empty-row">
-                <td :colspan="visibleColumnCount">
-                  <div class="empty-content">
-                    <i class="fas fa-inbox"></i>
-                    <div class="empty-text">
-                      <h4>暂无店铺数据</h4>
-                      <p v-if="canCreate">点击上方"新增门店"按钮添加第一个店铺</p>
-                      <p v-else>暂无数据，请联系有权限的角色维护人员添加门店</p>
-                      <el-button size="small" class="mt-2" @click="loadStores()" :disabled="isLoading">
-                        <InlineLoading v-if="isLoading" text="加载中..." size="small" variant="inherit" />
-                        <template v-else>
-                          <i class="fas fa-sync-alt"></i>
-                          重新加载
-                        </template>
-                      </el-button>
-                    </div>
-                  </div>
-                </td>
-              </tr>
-              <template v-else v-for="(store, index) in stores" :key="store.id">
-              <tr
-                class="data-row"
-                :class="{ 'is-dragging': draggingIndex === index, 'is-drag-over': dragOverIndex === index }"
-                :draggable="canEdit"
-                @click="handleMobileRowTap(store.id)"
-                @dblclick="toggleMobileActions(store.id)"
-                @dragstart="canEdit ? handleDragStart(index, $event) : null"
-                @dragend="canEdit ? handleDragEnd : null"
-                @dragover="canEdit ? handleDragOver(index, $event) : null"
-                @dragenter="canEdit ? handleDragEnter(index) : null"
-                @dragleave="canEdit ? handleDragLeave : null"
-                @drop="canEdit ? handleDrop(index, $event) : null"
-              >
-                <td v-if="showSortField" class="drag-handle-cell">
-                  <div class="drag-handle" :class="{ 'disabled': !canEdit }">
-                    <i class="fas fa-grip-vertical"></i>
-                  </div>
-                </td>
-                <td v-if="showSortOrderField">
-                  <input
-                    v-model.number="store.sort_order"
-                    type="number"
-                    class="sort-order-input"
-                    :disabled="!canEdit"
-                    min="0"
-                    max="9999"
-                    @change="canEdit ? handleSortOrderChange(index, store.sort_order) : null"
-                  />
-                </td>
-                <td v-if="canViewField('id')">
-                  <span class="id-badge">{{ (pagination.page - 1) * pagination.limit + (stores.length - index) }}</span>
-                </td>
-                <td v-if="canViewField('name')">
-                  <div class="store-info">
-                    <div class="store-name">
-                      <strong>{{ store.name || '未命名店铺' }}</strong>
-                      <span v-if="!store.name" class="warning-badge">未命名</span>
-                    </div>
-                    <div v-if="isMobile && canViewField('address') && (store.address || store.location)" class="mobile-store-meta">
-                      <i class="fas fa-map-marker-alt"></i>
-                      <span>{{ store.location || store.address }}</span>
-                    </div>
-                    <div v-if="isMobile && canViewField('manager') && store.manager" class="mobile-store-meta">
-                      <i class="fas fa-user"></i>
-                      <span>{{ store.manager }}</span>
-                    </div>
-                    <div v-if="isMobile && canViewField('phone') && store.phone" class="mobile-store-meta">
-                      <i class="fas fa-phone"></i>
-                      <span>{{ store.phone }}</span>
-                    </div>
-                  </div>
-                </td>
-                <td v-if="showAddressField">
-                  <div class="address-info">
-                    <span v-if="store.address" class="address-text" :title="store.address">
-                      <i class="fas fa-map-marker-alt"></i>
-                      {{ store.address.length > 30 ? store.address.substring(0, 30) + '...' : store.address }}
-                    </span>
-                    <span v-else class="no-data">-</span>
-                  </div>
-                </td>
-                <td v-if="showManagerField">
-                  <div class="contact-info">
-                    <span v-if="store.manager" class="contact-name">
-                      <i class="fas fa-user"></i>
-                      {{ store.manager }}
-                    </span>
-                    <span v-else class="no-data">-</span>
-                  </div>
-                </td>
-                <td v-if="showPhoneField">
-                  <div class="phone-info">
-                    <span v-if="store.phone" class="phone-number">
-                      <i class="fas fa-phone"></i>
-                      {{ store.phone }}
-                    </span>
-                    <span v-else class="no-data">-</span>
-                  </div>
-                </td>
-                <td v-if="canViewField('status')">
-                  <span :class="['status-badge', store.status ? 'status-active' : 'status-inactive']">
-                    <i :class="store.status ? 'fas fa-check' : 'fas fa-times'"></i>
-                    {{ store.status ? '正常' : '禁用' }}
-                  </span>
-                </td>
-                <td v-if="showCreatedAtField">
-                  <div class="time-info">
-                    <i class="fas fa-clock"></i>
-                    {{ formatDate(store.created_at) }}
-                  </div>
-                </td>
-                <td v-if="showActionField" class="actions">
-                  <el-button type="success" size="small" @click="viewStore(store)" title="查看详情">
-                    <i class="fas fa-eye"></i>
-                    <span>查看</span>
-                  </el-button>
-                  <el-button
-                    v-if="canEdit"
-                    type="primary"
-                    size="small"
-                    @click="editStore(store)"
-                    title="编辑"
-                  >
-                    <i class="fas fa-edit"></i>
-                    <span>编辑</span>
-                  </el-button>
-                  <el-button
-                    v-if="canDelete"
-                    type="danger"
-                    size="small"
-                    @click="deleteStore(store)"
-                    title="删除"
-                  >
-                    <i class="fas fa-trash"></i>
-                    <span>删除</span>
-                  </el-button>
-                </td>
-              </tr>
-              <tr
-                v-if="isMobile && mobileActionRowId === store.id"
-                class="mobile-action-row"
-              >
-                <td :colspan="visibleColumnCount">
-                  <div class="mobile-row-actions">
-                    <el-button
-                      type="success"
-                      size="small"
-                      class="mobile-action-btn mobile-action-btn-view"
-                      @click.stop="viewStore(store)"
-                    >
-                      <i class="fas fa-eye"></i>
-                      <span>查看</span>
-                    </el-button>
-                    <el-button
-                      v-if="canEdit"
-                      type="primary"
-                      size="small"
-                      class="mobile-action-btn mobile-action-btn-edit"
-                      @click.stop="editStore(store)"
-                    >
-                      <i class="fas fa-edit"></i>
-                      <span>编辑</span>
-                    </el-button>
-                    <el-button
-                      v-if="canDelete"
-                      type="danger"
-                      size="small"
-                      class="mobile-action-btn mobile-action-btn-delete"
-                      @click.stop="deleteStore(store)"
-                    >
-                      <i class="fas fa-trash"></i>
-                      <span>删除</span>
-                    </el-button>
-                  </div>
-                </td>
-              </tr>
-              </template>
-            </tbody>
-          </table>
+          <el-table
+            ref="storesTableRef"
+            :data="isLoading ? [] : stores"
+            border
+            stripe
+            class="data-table devices-table base-data-table stores-data-table"
+            table-layout="fixed"
+            :fit="true"
+            :row-key="getStoreRowKey"
+            :expand-row-keys="isMobile && mobileActionRowId ? [mobileActionRowId] : []"
+            @row-click="(row) => handleMobileRowTap(row.id)"
+          >
+            <template #empty>
+              <TableLoadingRow v-if="isLoading" mode="block" text="加载店铺列表..." />
+              <div v-else class="empty-state">
+                <i class="fas fa-inbox"></i>
+                <p>暂无店铺数据</p>
+                <el-button size="small" type="info" @click="loadStores()">重新加载</el-button>
+              </div>
+            </template>
+
+            <el-table-column v-if="showSortField" width="44" align="center" class-name="drag-handle-cell">
+              <template #default><div class="drag-handle" :class="{ disabled: !canEdit }"><i class="fas fa-grip-vertical"></i></div></template>
+            </el-table-column>
+            <el-table-column v-if="showSortOrderField" label="排序" width="70" align="center">
+              <template #default="{ row, $index }"><input v-model.number="row.sort_order" type="number" class="sort-order-input" :disabled="!canEdit" min="0" max="9999" @change="handleSortOrderChange($index, row.sort_order || 0)" /></template>
+            </el-table-column>
+            <el-table-column v-if="canViewField('id')" label="ID" :width="isMobile ? 54 : 70" align="center">
+              <template #default="{ $index }"><span class="id-badge">{{ (pagination.page - 1) * pagination.limit + (stores.length - $index) }}</span></template>
+            </el-table-column>
+            <el-table-column v-if="canViewField('name')" prop="name" label="店铺名称" :min-width="isMobile ? 126 : 160" align="center">
+              <template #default="{ row }"><strong>{{ row.name || '未命名店铺' }}</strong></template>
+            </el-table-column>
+            <el-table-column v-if="showAddressField" label="地址" min-width="220" align="center" show-overflow-tooltip>
+              <template #default="{ row }"><span v-if="row.address || row.location" class="address-text"><i class="fas fa-map-marker-alt"></i>{{ row.address || row.location }}</span><span v-else class="no-data">-</span></template>
+            </el-table-column>
+            <el-table-column v-if="showManagerField" label="联系人" :min-width="isMobile ? 92 : 120" align="center">
+              <template #default="{ row }"><span v-if="row.manager" class="contact-name"><i class="fas fa-user"></i>{{ row.manager }}</span><span v-else class="no-data">-</span></template>
+            </el-table-column>
+            <el-table-column v-if="showPhoneField" label="电话" min-width="132" align="center">
+              <template #default="{ row }"><span v-if="row.phone" class="phone-number"><i class="fas fa-phone"></i>{{ row.phone }}</span><span v-else class="no-data">-</span></template>
+            </el-table-column>
+            <el-table-column v-if="canViewField('status')" label="状态" :min-width="isMobile ? 72 : 84" align="center">
+              <template #default="{ row }"><span :class="['status-badge', isStoreActive(row.status) ? 'status-active' : 'status-inactive']"><i :class="isStoreActive(row.status) ? 'fas fa-check' : 'fas fa-times'"></i>{{ isStoreActive(row.status) ? '正常' : '禁用' }}</span></template>
+            </el-table-column>
+            <el-table-column v-if="showCreatedAtField" label="创建时间" min-width="156" align="center">
+              <template #default="{ row }"><div class="time-info"><i class="fas fa-clock"></i>{{ formatDate(row.created_at) }}</div></template>
+            </el-table-column>
+            <el-table-column v-if="showActionField" label="操作" min-width="238" align="center" class-name="actions-column">
+              <template #default="{ row }"><div class="action-buttons"><el-button type="success" size="small" @click.stop="viewStore(row)"><i class="fas fa-eye"></i><span>查看</span></el-button><el-button v-if="canEdit" type="primary" size="small" @click.stop="editStore(row)"><i class="fas fa-edit"></i><span>编辑</span></el-button><el-button v-if="canDelete" type="danger" size="small" @click.stop="deleteStore(row)"><i class="fas fa-trash"></i><span>删除</span></el-button></div></template>
+            </el-table-column>
+            <el-table-column v-if="isMobile" type="expand" width="1" class-name="mobile-expand-column" label-class-name="mobile-expand-header">
+              <template #default="{ row }"><div class="mobile-row-actions"><el-button type="success" size="small" @click.stop="viewStore(row)"><i class="fas fa-eye"></i><span>查看</span></el-button><el-button v-if="canEdit" type="primary" size="small" @click.stop="editStore(row)"><i class="fas fa-edit"></i><span>编辑</span></el-button><el-button v-if="canDelete" type="danger" size="small" @click.stop="deleteStore(row)"><i class="fas fa-trash"></i><span>删除</span></el-button></div></template>
+            </el-table-column>
+          </el-table>
         </div>
 
         <!-- 分页组件 -->
@@ -397,13 +256,16 @@
             style="width: 100%"
             :class="{ 'is-invalid': formErrors.manager_id }"
             :disabled="!canEditField('manager')"
+            :loading="managerOptionsLoading"
+            filterable
+            clearable
+            @change="handleManagerChange"
           >
-            <el-option value="" label="请选择门店负责人" />
             <el-option
               v-for="user in users"
               :key="user.id"
               :value="user.id"
-              :label="`${user.name} (${user.username})${formatUserRoleSuffix(user.role)}`"
+              :label="formatManagerOptionLabel(user)"
             />
           </el-select>
           <div v-if="formErrors.manager_id" class="invalid-feedback">{{ formErrors.manager_id }}</div>
@@ -412,9 +274,9 @@
         <el-form-item v-if="canViewField('phone')" label="电话">
           <el-input
             v-model="storeForm.phone"
-            placeholder="请输入联系电话"
+            :placeholder="storeForm.manager_id ? '取自负责人联系方式' : '请输入联系电话'"
             :class="{ 'is-invalid': formErrors.phone }"
-            :disabled="!canEditField('phone')"
+            :disabled="!canEditField('phone') || Boolean(storeForm.manager_id)"
           />
           <div v-if="formErrors.phone" class="invalid-feedback">{{ formErrors.phone }}</div>
         </el-form-item>
@@ -464,9 +326,9 @@
           <div v-if="canViewField('status')" class="detail-row">
             <span class="label">状态：</span>
             <span class="value">
-              <span class="status-badge" :class="selectedStore.status === 1 ? 'active' : 'inactive'">
-                <i :class="selectedStore.status === 1 ? 'fas fa-check' : 'fas fa-times'"></i>
-                {{ selectedStore.status === 1 ? '正常营业' : '已禁用' }}
+              <span class="status-badge" :class="isStoreActive(selectedStore.status) ? 'active' : 'inactive'">
+                <i :class="isStoreActive(selectedStore.status) ? 'fas fa-check' : 'fas fa-times'"></i>
+                {{ isStoreActive(selectedStore.status) ? '正常营业' : '已禁用' }}
               </span>
             </span>
           </div>
@@ -477,7 +339,7 @@
           <h4>负责人信息</h4>
           <div class="detail-row">
             <span class="label">门店负责人：</span>
-            <span class="value">{{ getManagerName(selectedStore.manager_id) }}</span>
+            <span class="value">{{ selectedStore.manager || getManagerName(selectedStore.manager_id) }}</span>
           </div>
         </div>
 
@@ -533,6 +395,7 @@ import type { Store, StoreFormData } from '@/types/system'
 import type { User } from '@/types'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
+import { useElementTableSortable } from '@/composables/useElementTableSortable'
 
 // 类型别名 - 兼容原有代码
 
@@ -542,7 +405,7 @@ interface SearchForm {
 }
 
 // 使用统一的 composable
-const { success: showSuccess, error: showError, warning: showWarning, info: showInfo, confirm, handleApiError } = useNotification()
+const { success: showSuccess, error: showError, warning: showWarning, info: showInfo, handleApiError } = useNotification()
 const { canView, canCreate, canEdit, canDelete, canExport, handleNoPermission } = usePagePermissions('stores')
 const { showViewDenied, showEditDenied, showDeleteDenied, showCreateDenied } = usePermissionToast()
 const { refreshing, refresh } = useRefreshData()
@@ -557,7 +420,7 @@ const {
   errorMessage,
   setError,
   clearError
-} = usePageState(24)
+} = usePageState({ initialPageSize: 24 })
 setDataLoading(true)
 const { init: initFieldPermissions } = fieldPermissions
 const { isMobile } = useMobile()
@@ -601,7 +464,7 @@ const canEditField = (fieldName: string) => {
 const showSortField = computed(() => canViewField('sort_order') && !isMobile.value)
 const showSortOrderField = computed(() => canViewField('sort_order') && !isMobile.value)
 const showAddressField = computed(() => canViewField('address') && !isMobile.value)
-const showManagerField = computed(() => canViewField('manager') && !isMobile.value)
+const showManagerField = computed(() => canViewField('manager'))
 const showPhoneField = computed(() => canViewField('phone') && !isMobile.value)
 const showCreatedAtField = computed(() => canViewField('created_at') && !isMobile.value)
 const showActionField = computed(() => canViewField('actions') && (canEdit.value || canDelete.value) && !isMobile.value)
@@ -611,21 +474,6 @@ const showStatsCards = computed(() => (
   canViewField('stats_inactive_stores') ||
   canViewField('stats_phone_completion')
 ))
-const visibleColumnCount = computed(() => {
-  return [
-    showSortField.value,
-    showSortOrderField.value,
-    canViewField('id'),
-    canViewField('name'),
-    showAddressField.value,
-    showManagerField.value,
-    showPhoneField.value,
-    canViewField('status'),
-    showCreatedAtField.value,
-    showActionField.value
-  ].filter(Boolean).length || 1
-})
-
 const hasBasicDetailFields = computed(() => {
   return ['name', 'address', 'phone', 'status'].some(fieldName => canViewField(fieldName))
 })
@@ -633,6 +481,7 @@ const hasBasicDetailFields = computed(() => {
 // 响应式数据
 const stores = ref<Store[]>([])
 const users = ref<User[]>([])
+const managerOptionsLoading = ref(false)
 const saving = ref(false)
 const savingOrder = ref(false)
 const showAddModal = ref(false)
@@ -640,13 +489,11 @@ const showEditModal = ref(false)
 const showViewModal = ref(false)
 const currentEditingId = ref<number | null>(null)
 const selectedStore = ref<Store | null>(null)
-const mobileActionRowId = ref<number | null>(null)
-const lastTappedRowId = ref<number | null>(null)
+const storesTableRef = ref<any>(null)
+const mobileActionRowId = ref<string | null>(null)
+const lastTappedRowId = ref<string | null>(null)
 const lastTapTimestamp = ref(0)
-
-// 拖拽排序状态
-const draggingIndex = ref<number | null>(null)
-const dragOverIndex = ref<number | null>(null)
+const getStoreRowKey = (store: Store) => String(store.id)
 
 // 表单验证
 const formErrors = ref<Record<string, string>>({})
@@ -667,6 +514,13 @@ const formatRoleLabel = (role: unknown) => {
 const formatUserRoleSuffix = (role: unknown) => {
   const roleLabel = formatRoleLabel(role)
   return roleLabel ? ` - ${roleLabel}` : ''
+}
+
+const formatManagerOptionLabel = (user: User) => {
+  const account = user.username ? ` (${user.username})` : ''
+  const role = formatUserRoleSuffix(user.role)
+  const phone = user.phone ? ` - ${user.phone}` : ''
+  return `${user.name}${account}${role}${phone}`
 }
 
 const handlePermissionsUpdated = async () => {
@@ -704,7 +558,7 @@ const stats = reactive({
   total: 0,
   active: 0,
   inactive: 0,
-  withManager: 0,
+  withPhone: 0,
   recent: 0
 })
 
@@ -812,31 +666,35 @@ const loadStores = async () => {
   }
 }
 
-const loadUsers = async () => {
-  // 避免重复加载用户数据
-  if (users.value.length > 0) {
-    return
-  }
-
+const fetchManagerOptions = async (notifyOnError: boolean) => {
+  managerOptionsLoading.value = true
   try {
-    // 获取当前用户信息作为负责人选项（避免调用需要 users:view 权限的 API）
-    const currentUser = authStore.user
-    if (currentUser) {
-      users.value = [{
-        id: currentUser.id,
-        username: currentUser.username,
-        name: currentUser.name || currentUser.username,
-        role: authStore.userRole,
-        status: 'active' as const
-      }]
-    } else {
-      users.value = []
+    const response = await unifiedApi.get('/stores/managers', { showError: false })
+    if (!response.success) {
+      throw new Error(response.message || '获取员工列表失败')
     }
-  } catch (err: any) {
-    logger.error('创建用户选项失败:', err)
+
+    const employees = extractResponseData<any[]>(response)
+    users.value = (Array.isArray(employees) ? employees : []).map(employee => ({
+      id: Number(employee.id),
+      username: String(employee.username || ''),
+      name: String(employee.name || employee.username || ''),
+      phone: String(employee.phone || ''),
+      role: String(employee.role || employee.roles || ''),
+      status: 'active' as const
+    }))
+  } catch (error) {
+    logger.error('获取门店负责人选项失败:', error)
     users.value = []
+    if (notifyOnError) {
+      showError('获取员工列表失败，请稍后重试')
+    }
+  } finally {
+    managerOptionsLoading.value = false
   }
 }
+
+const loadUsers = () => fetchManagerOptions(true)
 
 // 静默加载门店数据
 const loadStoresSilent = async () => {
@@ -888,23 +746,19 @@ const loadStoresSilent = async () => {
 }
 
 // 静默加载用户数据
-const loadUsersSilent = async () => {
-  try {
-    const currentUser = authStore.user
-    if (currentUser) {
-      users.value = [{
-        id: currentUser.id,
-        username: currentUser.username,
-        name: currentUser.name || currentUser.username,
-        role: authStore.userRole,
-        status: 'active' as const
-      }]
-    } else {
-      users.value = []
-    }
-  } catch (error) {
-    // 静默处理错误
-    logger.error('静默加载用户数据失败:', error)
+const loadUsersSilent = () => fetchManagerOptions(false)
+
+const handleManagerChange = (managerId: string | number | null | undefined) => {
+  if (!managerId) {
+    storeForm.phone = ''
+    return
+  }
+
+  const manager = users.value.find(user => user.id === Number(managerId))
+  if (manager) {
+    storeForm.phone = manager.phone || ''
+    delete formErrors.value.manager_id
+    delete formErrors.value.phone
   }
 }
 
@@ -944,6 +798,7 @@ const editStore = (store: Store) => {
     status: store.status,
     sort_order: store.sort_order || 0
   })
+  handleManagerChange(store.manager_id)
 
   // 确保先关闭其他模态框
   showAddModal.value = false
@@ -1011,7 +866,7 @@ const saveStore = async () => {
   }
 
   // 手机号码可以为空，如果填写了应该是有效的格式
-  if (storeForm.phone && !/^1[3-9]\d{9}$/.test(storeForm.phone)) {
+  if (!storeForm.manager_id && storeForm.phone && !/^1[3-9]\d{9}$/.test(storeForm.phone)) {
     // 如果不是手机号格式，检查是否是其他有效的电话格式
     if (!/^\d{7,15}$/.test(storeForm.phone)) {
       showError('请输入有效的电话号码（7-15位数字）')
@@ -1088,47 +943,8 @@ const saveStore = async () => {
   }
 }
 
-const hasUnsavedChanges = (): boolean => {
-  if (!showAddModal.value && !showEditModal.value && !showViewModal.value) return false
-
-  // View modal doesn't have editable fields, so no unsaved changes
-  if (showViewModal.value) return false
-
-  const currentForm = storeForm
-
-  if (showEditModal.value && currentEditingId.value) {
-    const originalStore = stores.value.find(s => s.id === currentEditingId.value)
-    if (originalStore) {
-      return (
-        currentForm.name !== (originalStore.name || '') ||
-        currentForm.address !== (originalStore.address || '') ||
-        currentForm.manager_id !== originalStore.manager_id ||
-        currentForm.phone !== (originalStore.phone || '') ||
-        currentForm.status !== originalStore.status ||
-        currentForm.sort_order !== (originalStore.sort_order || 0)
-      )
-    }
-  }
-
-  // For add modal, check if any field has been filled
-  return (
-    currentForm.name !== '' ||
-    currentForm.address !== '' ||
-    currentForm.manager_id !== '' ||
-    currentForm.phone !== '' ||
-    currentForm.status !== 1 ||
-    currentForm.sort_order !== 0
-  )
-}
-
 const attemptCloseModal = () => {
-  if (hasUnsavedChanges()) {
-    if (confirm('您有未保存的更改，确定要关闭吗？')) {
-      closeModal()
-    }
-  } else {
-    closeModal()
-  }
+  closeModal()
 }
 
 const closeModal = () => {
@@ -1179,9 +995,9 @@ const updateStats = () => {
   const storesArray = Array.isArray(stores.value) ? stores.value : []
 
   stats.total = storesArray.length
-  stats.active = storesArray.filter(store => store.status === 1).length
-  stats.inactive = storesArray.filter(store => store.status === 0).length
-  stats.withManager = storesArray.filter(store => store.manager_id !== null).length
+  stats.active = storesArray.filter(store => isStoreActive(store.status)).length
+  stats.inactive = storesArray.filter(store => !isStoreActive(store.status)).length
+  stats.withPhone = storesArray.filter(store => Boolean(store.phone?.trim())).length
 
   // 最近创建的门店（7天内）
   const sevenDaysAgo = TimeUtil.subtract(TimeUtil.now(), 7, 'day')
@@ -1189,6 +1005,8 @@ const updateStats = () => {
     store.created_at && TimeUtil.parse(store.created_at).isAfter(sevenDaysAgo)
   ).length
 }
+
+const isStoreActive = (status: Store['status']) => status === 1 || status === 'active'
 
 const getManagerName = (managerId: string | number | null) => {
   if (!managerId) return '-'
@@ -1228,21 +1046,23 @@ const viewStore = (store: Store) => {
 
 const toggleMobileActions = (id: number) => {
   if (!isMobile.value) return
-  mobileActionRowId.value = mobileActionRowId.value === id ? null : id
+  const rowKey = String(id)
+  mobileActionRowId.value = mobileActionRowId.value === rowKey ? null : rowKey
 }
 
 const handleMobileRowTap = (id: number) => {
   if (!isMobile.value) return
+  const rowKey = String(id)
 
   const now = Date.now()
-  if (lastTappedRowId.value === id && now - lastTapTimestamp.value <= 320) {
+  if (lastTappedRowId.value === rowKey && now - lastTapTimestamp.value <= 320) {
     toggleMobileActions(id)
     lastTappedRowId.value = null
     lastTapTimestamp.value = 0
     return
   }
 
-  lastTappedRowId.value = id
+  lastTappedRowId.value = rowKey
   lastTapTimestamp.value = now
 }
 
@@ -1260,63 +1080,6 @@ const handleExport = async () => {
     successMessage: '门店列表导出成功',
     errorMessage: '门店列表导出失败'
   })
-}
-
-// 拖拽排序方法
-const handleDragStart = (index: number, event: DragEvent) => {
-  draggingIndex.value = index
-  if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = 'move'
-  }
-}
-
-const handleDragEnd = () => {
-  draggingIndex.value = null
-  dragOverIndex.value = null
-}
-
-const handleDragOver = (index: number, event: DragEvent) => {
-  event.preventDefault()
-  if (draggingIndex.value === null || draggingIndex.value === index) return
-  dragOverIndex.value = index
-}
-
-const handleDragEnter = (index: number) => {
-  if (draggingIndex.value === null || draggingIndex.value === index) return
-  dragOverIndex.value = index
-}
-
-const handleDragLeave = () => {
-  // 不清除 dragOverIndex，避免闪烁
-}
-
-const handleDrop = async (dropIndex: number, event: DragEvent) => {
-  event.preventDefault()
-  const dragIndex = draggingIndex.value
-  if (dragIndex === null || dragIndex === dropIndex) {
-    handleDragEnd()
-    return
-  }
-
-  // 重新排列数组
-  const newStores = [...stores.value]
-  const [movedItem] = newStores.splice(dragIndex, 1)
-  newStores.splice(dropIndex, 0, movedItem)
-
-  // 更新 sort_order 值
-  newStores.forEach((item, index) => {
-    item.sort_order = index
-  })
-
-  stores.value = newStores
-
-  // 自动保存排序
-  await saveSortOrder()
-
-  // 保存后重新加载数据以确保与数据库同步
-  await loadStoresSilent()
-
-  handleDragEnd()
 }
 
 // 保存排序到服务器
@@ -1353,6 +1116,25 @@ const handleSortOrderChange = async (index: number, value: number) => {
   stores.value.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
   await saveSortOrder()
 }
+
+const handleStoreRowMove = async (oldIndex: number, newIndex: number) => {
+  if (!canEdit.value || oldIndex === newIndex) return false
+  const reordered = [...stores.value]
+  const [movedItem] = reordered.splice(oldIndex, 1)
+  reordered.splice(newIndex, 0, movedItem)
+  reordered.forEach((item, index) => { item.sort_order = index })
+  stores.value = reordered
+  await saveSortOrder()
+  await loadStoresSilent()
+  return true
+}
+
+useElementTableSortable({
+  tableRef: storesTableRef,
+  enabled: computed(() => canEdit.value && !isMobile.value && showSortField.value),
+  orderKey: () => stores.value.map(store => store.id).join('|'),
+  onMove: handleStoreRowMove
+})
 
 // 生命周期
 onMounted(async () => {
@@ -2050,108 +1832,12 @@ onUnmounted(() => {
     white-space: nowrap;
   }
 
-  .stats-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-  }
-
-  .stat-card {
-    padding: 14px 12px;
-    border-radius: 16px;
-    gap: 12px;
-  }
-
-  .stat-icon {
-    width: 40px;
-    height: 40px;
-    font-size: 16px;
-  }
-
-  .stat-value {
-    font-size: 20px;
-  }
-
-  .stat-label {
-    font-size: 12px;
-  }
-
   .form-actions {
     flex-direction: column;
   }
 
   .form-actions .btn {
     width: 100%;
-  }
-
-  .table-section {
-    margin: 0;
-    padding: 14px 10px;
-    border-radius: 16px;
-    overflow: hidden;
-  }
-
-  .table-responsive {
-    width: 100%;
-    max-width: 100%;
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
-    border-radius: 12px;
-  }
-
-  .table {
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    table-layout: fixed;
-  }
-
-  .table th,
-  .table td {
-    white-space: normal;
-    word-break: break-word;
-    box-sizing: border-box;
-  }
-
-  .store-info {
-    width: 100%;
-    max-width: none;
-  }
-
-  .store-name {
-    font-size: 14px;
-    line-height: 1.4;
-    font-weight: 700;
-    text-align: center;
-  }
-
-  .mobile-store-meta {
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    gap: 6px;
-    margin-top: 6px;
-    font-size: 11px;
-    line-height: 1.4;
-    color: #5f6b7a;
-    text-align: center;
-  }
-
-  .mobile-store-meta i {
-    margin-top: 2px;
-    color: #64748b;
-  }
-
-  .status-badge.status-active,
-  .status-badge.status-inactive {
-    width: 100%;
-    max-width: 76px;
-    margin: 0 auto;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    white-space: normal;
-    line-height: 1.35;
   }
 
   /* 详情视图移动端适配 */
@@ -2177,69 +1863,5 @@ onUnmounted(() => {
     padding: 12px;
   }
 
-  .stats-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-  }
-
-  .table-section {
-    margin: 0;
-    padding: 12px 8px;
-  }
-
-  .table th,
-  .table td {
-    padding: 6px 4px;
-    font-size: 11px;
-  }
-
-  .table th:nth-child(1),
-  .table td:nth-child(1) {
-    width: 18%;
-  }
-
-  .table th:nth-child(2),
-  .table td:nth-child(2) {
-    width: 50%;
-  }
-
-  .table th:nth-child(3),
-  .table td:nth-child(3) {
-    width: 32%;
-  }
-
-  .stat-card {
-    padding: 12px 10px;
-  }
-
-  .stat-icon {
-    width: 36px;
-    height: 36px;
-    font-size: 15px;
-  }
-
-  .stat-value {
-    font-size: 18px;
-  }
-
-  .store-name {
-    font-size: 13px;
-  }
-
-  .mobile-store-meta {
-    font-size: 10px;
-  }
-
-  .id-badge {
-    min-width: 44px;
-    height: 28px;
-    padding: 4px 8px;
-    font-size: 11px;
-    border-radius: 14px;
-  }
-
-  .actions .el-button span {
-    display: none;
-  }
 }
 </style>

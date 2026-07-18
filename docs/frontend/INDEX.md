@@ -13,6 +13,8 @@
 - [前端最新请求规范](latest-request-standard.md) - 搜索、筛选、分页请求取消与旧响应防覆盖规范
 - [前端数据实时刷新规范](data-freshness-standard.md) - 新增、编辑、删除后缓存失效和列表即时刷新规范
 - [统一页面结构](unified-page-structure.md) - 页面统一架构
+- [后台卡片与表格统一规范](admin-table-standards.md) - 后台卡片、表格、字体、移动端滚动与新增页面强制标准
+- [移动端开发标准](../guides/mobile-development-standards.md) - 移动端适配与表格公共样式规范
 
 ## 📖 指南文档
 

@@ -183,10 +183,12 @@ interface InventoryResultError {
 // Props
 interface Props extends ModelValueProps {
   product: Product
+  queryToken: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
   modelValue: false,
+  queryToken: '',
   product: () => ({
     brand: '',
     model: '',
@@ -231,7 +233,12 @@ const loadData = async () => {
     if (props.product.color) params.color = props.product.color
     if (props.product.memory) params.memory = props.product.memory
 
-    const response = await unifiedApi.get('/phones/longest-inventory', { params })
+    const response = await unifiedApi.get('/phones/longest-inventory', {
+      params,
+      headers: {
+        'X-Inventory-Query-Token': props.queryToken
+      }
+    })
 
     if (response.success) {
       inventoryData.value = extractResponseData<InventoryItem[]>(response)

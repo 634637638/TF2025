@@ -219,111 +219,26 @@
     </UnifiedSearchPanel>
 
     <!-- 价格列表 -->
-    <el-card class="table-card admin-panel admin-table-panel">
-      <div v-if="isMobile" class="table-responsive">
-        <table class="data-table price-mobile-table">
-          <thead>
-            <tr>
-              <th>型号</th>
-              <th>颜色</th>
-              <th>内存</th>
-              <th>价格趋势</th>
-              <th>批发价格</th>
-            </tr>
-          </thead>
-          <tbody>
-            <TableLoadingRow
-              v-if="loading"
-              :colspan="5"
-              text="加载报价列表..."
-            />
-            <tr v-else-if="!priceList.length">
-              <td colspan="5" class="text-center py-8">
-                <div class="empty-state mobile-empty-state">
-                  <i class="fas fa-tags"></i>
-                  <p>暂无价目表数据</p>
-                </div>
-              </td>
-            </tr>
-            <template v-for="row in priceList" :key="`${row.price_list_id || row.id}-${row.model_number}-${row.color_name}-${row.memory}`">
-              <tr
-                class="data-row"
-                @click="handleMobileRowTap(row.price_list_id || row.id)"
-                @dblclick="toggleMobileActions(row.price_list_id || row.id)"
-              >
-                <td>{{ row.model_number || '-' }}</td>
-                <td>{{ row.color_name || '-' }}</td>
-                <td>{{ row.memory || '-' }}</td>
-                <td>
-                  <span
-                    v-if="row.price_trend === 'up'"
-                    class="price-trend-up"
-                    @click.stop="handleViewHistory(row)"
-                  >
-                    <i class="fas fa-arrow-up"></i>
-                    <span v-if="row.price_change_amount && row.price_change_amount !== '='">¥{{ Math.round(Number(row.price_change_amount)) }}</span>
-                  </span>
-                  <span
-                    v-else-if="row.price_trend === 'down'"
-                    class="price-trend-down"
-                    @click.stop="handleViewHistory(row)"
-                  >
-                    <i class="fas fa-arrow-down"></i>
-                    <span v-if="row.price_change_amount && row.price_change_amount !== '='">¥{{ Math.round(Number(row.price_change_amount)) }}</span>
-                  </span>
-                  <span
-                    v-else
-                    class="price-trend-neutral"
-                    @click.stop="handleViewHistory(row)"
-                  >
-                    =
-                  </span>
-                </td>
-                <td>
-                  <span v-if="row.wholesale_price" class="wholesale-price-tag">
-                    ¥{{ Number(row.wholesale_price).toFixed(0) }}
-                  </span>
-                  <span v-else class="text-gray">-</span>
-                </td>
-              </tr>
-              <tr
-                v-if="mobileActionRowId === (row.price_list_id || row.id)"
-                class="mobile-action-row"
-              >
-                <td colspan="5">
-                  <div class="mobile-row-actions">
-                    <el-button type="primary" size="small" @click.stop="handleViewInventory(row)">
-                      <i class="fas fa-eye"></i>
-                      查看
-                    </el-button>
-                    <el-button type="success" size="small" @click.stop="handleViewHistory(row)">
-                      <i class="fas fa-history"></i>
-                      历史
-                    </el-button>
-                    <el-button v-if="canEdit" type="warning" size="small" @click.stop="handleEdit(row)">
-                      <i class="fas fa-edit"></i>
-                      编辑
-                    </el-button>
-                    <el-button v-if="canDelete" type="danger" size="small" @click.stop="handleDelete(row)">
-                      <i class="fas fa-trash"></i>
-                      删除
-                    </el-button>
-                  </div>
-                </td>
-              </tr>
-            </template>
-          </tbody>
-        </table>
+    <div class="table-card admin-panel admin-table-panel">
+      <div class="section-title">
+        <i class="fas fa-tags"></i>
+        <span>报价列表</span>
+        <span class="record-count">共 {{ pagination.total }} 条记录</span>
       </div>
 
-      <el-table
-        v-else
-        :data="loading ? [] : priceList"
-        stripe
-        border
-        class="w-full"
-        :table-layout="'auto'"
-      >
+      <div class="table-responsive price-list-table-wrapper">
+        <el-table
+          :data="loading ? [] : priceList"
+          stripe
+          border
+          class="data-table devices-table price-list-data-table"
+          table-layout="fixed"
+          :fit="true"
+          :row-key="getPriceListRowKey"
+          :expand-row-keys="isMobile && mobileActionRowId ? [mobileActionRowId] : []"
+          @expand-change="handleMobileExpandChange"
+          @row-click="(row) => handleMobileRowTap(row.price_list_id || row.id)"
+        >
         <template #empty>
           <TableLoadingRow v-if="loading" mode="block" text="加载报价列表..." />
           <div v-else class="empty-state">
@@ -331,12 +246,13 @@
             <p>暂无价目表数据</p>
           </div>
         </template>
-        <el-table-column type="index" label="序号" width="60" align="center" />
-        <el-table-column prop="brand_name" label="品牌" min-width="80" align="center" show-overflow-tooltip />
-        <el-table-column prop="model_number" label="型号" min-width="120" align="center" show-overflow-tooltip />
-        <el-table-column prop="color_name" label="颜色" min-width="70" align="center" show-overflow-tooltip />
-        <el-table-column prop="memory" label="内存" min-width="70" align="center" show-overflow-tooltip />
-        <el-table-column prop="retail_price" label="零售价" min-width="100" align="center">
+
+        <el-table-column v-if="!isMobile" type="index" label="序号" width="60" align="center" />
+        <el-table-column v-if="!isMobile" prop="brand_name" label="品牌" min-width="80" align="center" show-overflow-tooltip />
+        <el-table-column prop="model_number" label="型号" :min-width="getPriceListColumnWidth('model_number')" align="center" />
+        <el-table-column prop="color_name" label="颜色" :min-width="getPriceListColumnWidth('color_name')" align="center" />
+        <el-table-column prop="memory" label="内存" :min-width="getPriceListColumnWidth('memory')" align="center" />
+        <el-table-column v-if="!isMobile" prop="retail_price" label="零售价" min-width="100" align="center">
           <template #default="{ row }">
             <span v-if="row.retail_price !== null && row.retail_price !== undefined && row.retail_price > 0" class="retail-price-tag">
               ¥{{ Number(row.retail_price).toFixed(0) }}
@@ -344,12 +260,12 @@
             <span v-else class="text-gray">-</span>
           </template>
         </el-table-column>
-        <el-table-column label="价格趋势" width="100" align="center">
+        <el-table-column label="价格趋势" :min-width="isMobile ? 82 : 100" align="center">
           <template #default="{ row }">
             <span
               v-if="row.price_trend === 'up'"
               class="price-trend-up"
-              @click="handleViewHistory(row)"
+              @click.stop="handleViewHistory(row)"
             >
               <i class="fas fa-arrow-up"></i>
               <span v-if="row.price_change_amount && row.price_change_amount !== '='">¥{{ Math.round(Number(row.price_change_amount)) }}</span>
@@ -357,7 +273,7 @@
             <span
               v-else-if="row.price_trend === 'down'"
               class="price-trend-down"
-              @click="handleViewHistory(row)"
+              @click.stop="handleViewHistory(row)"
             >
               <i class="fas fa-arrow-down"></i>
               <span v-if="row.price_change_amount && row.price_change_amount !== '='">¥{{ Math.round(Number(row.price_change_amount)) }}</span>
@@ -365,13 +281,13 @@
             <span
               v-else
               class="price-trend-neutral"
-              @click="handleViewHistory(row)"
+              @click.stop="handleViewHistory(row)"
             >
               =
             </span>
           </template>
         </el-table-column>
-        <el-table-column prop="wholesale_price" label="批发价格" min-width="100" align="center">
+        <el-table-column prop="wholesale_price" label="批发价格" :min-width="getPriceListColumnWidth('wholesale_price')" align="center">
           <template #default="{ row }">
             <span v-if="row.wholesale_price" class="wholesale-price-tag">
               ¥{{ Number(row.wholesale_price).toFixed(0) }}
@@ -379,13 +295,13 @@
             <span v-else class="text-gray">-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="stock_quantity" label="库存数" min-width="80" align="center">
+        <el-table-column v-if="!isMobile" prop="stock_quantity" label="库存数" min-width="80" align="center">
           <template #default="{ row }">
             <el-tag v-if="row.stock_quantity > 0" type="primary" size="small">{{ row.stock_quantity }}台</el-tag>
             <el-tag v-else type="danger" size="small">0台</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="last_sync_time" label="同步时间" min-width="150" align="center">
+        <el-table-column v-if="!isMobile" prop="last_sync_time" label="同步时间" min-width="150" align="center">
           <template #default="{ row }">
             <el-tag v-if="row.last_sync_time" type="danger" effect="plain" size="small">
               {{ formatDateTime(row.last_sync_time) }}
@@ -393,13 +309,13 @@
             <span v-else class="text-gray">未同步</span>
           </template>
         </el-table-column>
-        <el-table-column prop="is_collect" label="采集状态" min-width="90" align="center">
+        <el-table-column v-if="!isMobile" prop="is_collect" label="采集状态" min-width="90" align="center">
           <template #default="{ row }">
             <el-tag v-if="row.is_collect === 0" type="info" size="small">不采集</el-tag>
             <el-tag v-else type="success" size="small">采集</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="show_price" label="报价" min-width="70" align="center">
+        <el-table-column v-if="!isMobile" prop="show_price" label="报价" min-width="70" align="center">
           <template #default="{ row }">
             <el-switch
               v-model="row.show_price"
@@ -410,29 +326,59 @@
             />
           </template>
         </el-table-column>
-        <el-table-column label="操作" min-width="260" fixed="right" align="center">
+        <el-table-column v-if="!isMobile" label="操作" min-width="260" fixed="right" align="center" class-name="actions-column">
           <template #default="{ row }">
             <div class="action-buttons">
-              <el-button type="primary" size="small" @click="handleViewInventory(row)">
+              <el-button type="primary" size="small" @click.stop="handleViewInventory(row)">
                 <i class="fas fa-eye"></i>
                 查看
               </el-button>
-              <el-button type="success" size="small" @click="handleViewHistory(row)">
+              <el-button type="success" size="small" @click.stop="handleViewHistory(row)">
                 <i class="fas fa-history"></i>
                 历史
               </el-button>
-              <el-button v-if="canEdit" type="warning" size="small" @click="handleEdit(row)">
+              <el-button v-if="canEdit" type="warning" size="small" @click.stop="handleEdit(row)">
                 <i class="fas fa-edit"></i>
                 编辑
               </el-button>
-              <el-button v-if="canDelete" type="danger" size="small" @click="handleDelete(row)">
+              <el-button v-if="canDelete" type="danger" size="small" @click.stop="handleDelete(row)">
                 <i class="fas fa-trash"></i>
                 删除
               </el-button>
             </div>
           </template>
         </el-table-column>
-      </el-table>
+
+        <el-table-column
+          v-if="isMobile"
+          type="expand"
+          width="1"
+          class-name="mobile-expand-column"
+          label-class-name="mobile-expand-header"
+        >
+          <template #default="{ row }">
+            <div class="mobile-row-actions">
+              <el-button type="primary" size="small" title="查看库存" @click.stop="handleViewInventory(row)">
+                <i class="fas fa-eye"></i>
+                查看
+              </el-button>
+              <el-button type="success" size="small" title="价格历史" @click.stop="handleViewHistory(row)">
+                <i class="fas fa-history"></i>
+                历史
+              </el-button>
+              <el-button v-if="canEdit" type="warning" size="small" title="编辑报价" @click.stop="handleEdit(row)">
+                <i class="fas fa-edit"></i>
+                编辑
+              </el-button>
+              <el-button v-if="canDelete" type="danger" size="small" title="删除报价" @click.stop="handleDelete(row)">
+                <i class="fas fa-trash"></i>
+                删除
+              </el-button>
+            </div>
+          </template>
+        </el-table-column>
+        </el-table>
+      </div>
 
       <div class="pagination-container">
         <Pagination
@@ -443,7 +389,7 @@
           :show-range="true"
         />
       </div>
-    </el-card>
+    </div>
     </div>
 
     <!-- 编辑对话框 -->
@@ -997,6 +943,7 @@ import { canAccessRoutePath } from '@/constants/routePermissions'
 import { TimeUtil } from '@/utils/time'
 import { logger } from '@/utils/logger'
 import { useLoadingState } from '@/composables'
+import { getTextColumnMinWidth } from '@/utils/table-layout'
 
 const PriceMarkupConfig = defineAsyncComponent(() => import('@/components/PriceMarkupConfig.vue'))
 
@@ -1153,9 +1100,43 @@ const inventoryData = ref<any[]>([])
 const inventoryTotal = ref(0)
 const currentInventoryItem = ref<any>(null)
 const isMobile = ref(false)
-const mobileActionRowId = ref<number | null>(null)
-const lastTappedRowId = ref<number | null>(null)
+const mobileActionRowId = ref<string | null>(null)
+const lastTappedRowId = ref<string | null>(null)
 const lastTapTimestamp = ref(0)
+
+type PriceListAdaptiveField = 'model_number' | 'color_name' | 'memory' | 'wholesale_price'
+
+const getPriceListColumnWidth = (field: PriceListAdaptiveField) => {
+  const labels: Record<PriceListAdaptiveField, string> = {
+    model_number: '型号',
+    color_name: '颜色',
+    memory: '内存',
+    wholesale_price: '批发价格'
+  }
+  const minimumWidths: Record<PriceListAdaptiveField, number> = {
+    model_number: isMobile.value ? 104 : 120,
+    color_name: isMobile.value ? 56 : 70,
+    memory: isMobile.value ? 64 : 70,
+    wholesale_price: isMobile.value ? 84 : 100
+  }
+  const values = priceList.value.map((row) => {
+    if (field === 'wholesale_price') {
+      return row.wholesale_price ? `¥${Number(row.wholesale_price).toFixed(0)}` : '-'
+    }
+    return row[field] || '-'
+  })
+
+  return getTextColumnMinWidth([labels[field], ...values], {
+    minWidth: minimumWidths[field],
+    horizontalPadding: 20,
+    asciiCharacterWidth: 7,
+    wideCharacterWidth: 12
+  })
+}
+
+const getPriceListRowKey = (row: any) => {
+  return String(row.price_list_id || row.id || `${row.model_number}-${row.color_name}-${row.memory}`)
+}
 
 const updateMobileState = () => {
   if (typeof window === 'undefined') return
@@ -1167,23 +1148,34 @@ const updateMobileState = () => {
   }
 }
 
-const toggleMobileActions = (id: number | null) => {
+const toggleMobileActions = (id: number | string | null) => {
   if (!isMobile.value || !id) return
-  mobileActionRowId.value = mobileActionRowId.value === id ? null : id
+  const rowKey = String(id)
+  mobileActionRowId.value = mobileActionRowId.value === rowKey ? null : rowKey
 }
 
-const handleMobileRowTap = (id: number | null) => {
+const handleMobileExpandChange = (row: any, expandedRows: any[]) => {
+  if (!isMobile.value) return
+  const rowKey = getPriceListRowKey(row)
+
+  mobileActionRowId.value = expandedRows.some((item) => getPriceListRowKey(item) === rowKey)
+    ? rowKey
+    : null
+}
+
+const handleMobileRowTap = (id: number | string | null) => {
   if (!isMobile.value || !id) return
+  const rowKey = String(id)
 
   const now = Date.now()
-  if (lastTappedRowId.value === id && now - lastTapTimestamp.value <= 320) {
-    toggleMobileActions(id)
+  if (lastTappedRowId.value === rowKey && now - lastTapTimestamp.value <= 320) {
+    toggleMobileActions(rowKey)
     lastTappedRowId.value = null
     lastTapTimestamp.value = 0
     return
   }
 
-  lastTappedRowId.value = id
+  lastTappedRowId.value = rowKey
   lastTapTimestamp.value = now
 }
 
@@ -2589,9 +2581,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped lang="scss">
-.price-list-view {
-  padding: 20px;
-}
 
 // 同步设置样式
 .sync-settings-container {
@@ -2671,42 +2660,6 @@ onUnmounted(() => {
     margin-top: 20px;
     display: flex;
     justify-content: flex-end;
-  }
-}
-
-.mobile-empty-state {
-  padding: 28px 16px;
-  text-align: center;
-}
-
-.price-mobile-table {
-  table-layout: fixed;
-  border-collapse: collapse;
-  border: 1px solid #dbe2ea;
-  border-radius: 0;
-  background: #ffffff;
-
-  th,
-  td {
-    padding: 12px 6px;
-    text-align: center;
-    vertical-align: middle;
-    word-break: break-word;
-    border: 1px solid #dbe2ea;
-  }
-
-  th {
-    font-size: 11px;
-    font-weight: 700;
-    color: #475569;
-    background: #f5f7fa;
-  }
-
-  td {
-    font-size: 15px;
-    font-weight: 600;
-    color: #334155;
-    background: #ffffff;
   }
 }
 
@@ -2871,11 +2824,12 @@ onUnmounted(() => {
   align-items: center;
   gap: 4px;
   cursor: pointer;
-  padding: 4px 8px;
+  padding: 2px 6px;
   border-radius: 4px;
   transition: all 0.2s;
   font-weight: 600;
   font-size: 13px;
+  line-height: 1.2;
 
   &:hover {
     transform: scale(1.1);
@@ -2909,42 +2863,50 @@ onUnmounted(() => {
   }
 }
 
-// 操作按钮样式
-.action-buttons {
-  display: flex;
-  gap: 4px;
-  justify-content: center;
-  align-items: center;
+.mobile-row-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  width: 100%;
+  padding: 8px;
+  background: #f8fafc;
+
+  .el-button {
+    width: 100%;
+    min-width: 0;
+    margin: 0 !important;
+  }
+}
+
+:deep(.price-list-data-table .el-table__expanded-cell) {
+  padding: 0 !important;
+  background: #f8fafc !important;
+}
+
+:deep(.price-list-data-table th.mobile-expand-header),
+:deep(.price-list-data-table td.mobile-expand-column) {
+  width: 1px !important;
+  min-width: 1px !important;
+  padding: 0 !important;
+  border-right: 0 !important;
+}
+
+:deep(.price-list-data-table th.mobile-expand-header .cell),
+:deep(.price-list-data-table td.mobile-expand-column .cell) {
+  display: none !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
 }
 
 @media (max-width: 768px) {
-  .price-list-view {
-    padding: 12px;
-  }
-
   .table-card {
-    border-radius: 16px;
-
     .pagination-container {
       justify-content: center;
       margin-top: 14px;
     }
   }
-}
-
-@media (max-width: 480px) {
-  .price-mobile-table {
-    th,
-    td {
-      padding: 11px 4px;
-      font-size: 13px;
-    }
-
-    th {
-      font-size: 10px;
-    }
-  }
-
 }
 
 // 库存对话框样式

@@ -1,5 +1,5 @@
 <template>
-  <div class="page-container admin-page">
+  <div class="page-container admin-page admin-unified-base-data-page">
     <PermissionGate
       :can-view="canView"
       mode="denied"
@@ -194,74 +194,50 @@
             </div>
 
             <!-- 正常内容 -->
-            <div v-else>
-              <table
-                class="data-table"
-                :class="{
-                  'customers-mobile-table': isMobile,
-                  'customers-mobile-one-col': isMobile && visibleColumnCount === 1,
-                  'customers-mobile-two-cols': isMobile && visibleColumnCount === 2,
-                  'customers-mobile-has-member': isMobile && showMemberNumberColumn,
-                  'customers-mobile-has-name': isMobile && showCustomerInfoColumn,
-                  'customers-mobile-has-phone': isMobile && showContactColumn
-                }"
+            <el-table
+              v-else
+              ref="customersTableRef"
+              :data="isLoading ? [] : customers"
+              border
+              stripe
+              class="data-table devices-table base-data-table customers-data-table"
+              table-layout="fixed"
+              :fit="true"
+              :row-key="getCustomerRowKey"
+              :expand-row-keys="isMobile && mobileActionRowId ? [mobileActionRowId] : []"
+              @selection-change="handleSelectionChange"
+              @row-click="handleCustomerRowClick"
+            >
+              <template #empty>
+                <TableLoadingRow v-if="isLoading" mode="block" text="加载客户列表..." />
+                <div v-else class="empty-state">
+                  <i class="fas fa-users"></i>
+                  <p>暂无客户数据</p>
+                </div>
+              </template>
+
+              <el-table-column v-if="!isMobile" type="selection" width="48" align="center" />
+
+              <el-table-column
+                v-if="isMobile && showMemberNumberColumn"
+                label="会员号"
+                :min-width="customerMobileColumnWidths.memberNumber"
+                align="center"
+                class-name="identifier-column customers-cell-member"
               >
-                <colgroup v-if="isMobile">
-                  <col v-if="showMemberNumberColumn" class="customers-col-member" />
-                  <col v-if="showCustomerInfoColumn" class="customers-col-name" />
-                  <col v-if="showContactColumn" class="customers-col-phone" />
-                </colgroup>
-                <thead>
-                  <tr>
-                    <th v-if="!isMobile" width="40">
-                      <input
-                        type="checkbox"
-                        :checked="isAllSelected"
-                        @change="handleSelectAll"
-                      />
-                    </th>
-                    <th v-if="isMobile && showMemberNumberColumn" class="customers-cell-member">会员号</th>
-                    <th v-if="showCustomerInfoColumn" class="customers-cell-name">{{ isMobile ? '姓名' : '客户信息' }}</th>
-                    <th v-if="showContactColumn" class="customers-cell-phone">{{ isMobile ? '手机号' : '联系方式' }}</th>
-                    <th v-if="!isMobile && showCustomerTypeColumn">客户类型</th>
-                    <th v-if="!isMobile && showVipColumn">VIP等级</th>
-                    <th v-if="!isMobile && showAccountColumn">账户信息</th>
-                    <th v-if="!isMobile && showRegionColumn">地区</th>
-                    <th v-if="!isMobile && showStatsColumn">消费统计</th>
-                    <th v-if="!isMobile && showStatusColumn">状态</th>
-                    <th v-if="showActionField" width="150">操作</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <TableLoadingRow
-                    v-if="isLoading"
-                    :colspan="visibleColumnCount"
-                    text="加载客户列表..."
-                  />
-                  <tr v-else-if="!customers.length">
-                    <td :colspan="visibleColumnCount" class="text-center py-8">
-                      <div class="empty-state">
-                        <i class="fas fa-users"></i>
-                        <p>暂无客户数据</p>
-                      </div>
-                    </td>
-                  </tr>
-                  <template v-else v-for="customer in customers" :key="customer.id">
-                  <tr class="customers-data-row" @click="handleMobileRowTap(customer.id)" @dblclick="toggleMobileActions(customer.id)">
-                    <td v-if="!isMobile">
-                      <input
-                        type="checkbox"
-                        :checked="isSelected(customer)"
-                        @change="toggleRowSelection(customer)"
-                      />
-                    </td>
-                    <td v-if="isMobile && showMemberNumberColumn" class="customers-cell-member">
-                      <div class="mobile-member-number">
-                        <span v-if="customer.member_number" v-html="highlightText(customer.member_number, searchKeyword)"></span>
-                        <span v-else>-</span>
-                      </div>
-                    </td>
-                    <td v-if="showCustomerInfoColumn" class="customers-cell-name">
+                <template #default="{ row: customer }">
+                  <span v-if="customer.member_number" class="mobile-member-number" v-html="highlightText(customer.member_number, searchKeyword)"></span>
+                  <span v-else>-</span>
+                </template>
+              </el-table-column>
+
+              <el-table-column
+                v-if="showCustomerInfoColumn"
+                :label="isMobile ? '姓名' : '客户信息'"
+                :min-width="isMobile ? customerMobileColumnWidths.name : 150"
+                align="center"
+              >
+                <template #default="{ row: customer }">
                       <div class="customer-info">
                         <div v-if="canViewField('name')" class="customer-name">
                           <strong v-html="highlightText(customer.name || '-', searchKeyword)"></strong>
@@ -280,8 +256,17 @@
                           <span v-if="canViewField('birthday') && customer.birthday" class="text-muted">({{ customer.birthday }})</span>
                         </div>
                       </div>
-                    </td>
-                    <td v-if="showContactColumn" class="customers-cell-phone">
+                </template>
+              </el-table-column>
+
+              <el-table-column
+                v-if="showContactColumn"
+                :label="isMobile ? '手机号' : '联系方式'"
+                :min-width="isMobile ? customerMobileColumnWidths.phone : 168"
+                align="center"
+                class-name="customers-cell-phone"
+              >
+                <template #default="{ row: customer }">
                       <div class="contact-info">
                         <div v-if="canViewField('phone') && customer.phone" class="phone primary">
                           <i class="fas fa-phone"></i>
@@ -306,22 +291,31 @@
                           </span>
                         </div>
                       </div>
-                    </td>
-                    <td v-if="!isMobile && showCustomerTypeColumn">
+                </template>
+              </el-table-column>
+
+              <el-table-column v-if="!isMobile && showCustomerTypeColumn" label="客户类型" min-width="104" align="center">
+                <template #default="{ row: customer }">
                       <el-tag v-if="canViewField('customer_type')" :type="getCustomerTypeTagType(customer.customer_type)" size="small">
                         {{ getCustomerTypeLabel(customer.customer_type) }}
                       </el-tag>
                       <div v-if="canViewField('blacklist') && customer.blacklist" class="small text-danger mt-1">
                         <i class="fas fa-exclamation-triangle"></i> 黑名单
                       </div>
-                    </td>
-                    <td v-if="!isMobile && showVipColumn">
+                </template>
+              </el-table-column>
+
+              <el-table-column v-if="!isMobile && showVipColumn" label="VIP等级" min-width="112" align="center">
+                <template #default="{ row: customer }">
                       <el-tag :type="getVipLevelType(customer.vip_level)" size="small">
                         <i :class="getVipLevelIcon(customer.vip_level)" class="mr-1"></i>
                         {{ getVipLevelLabel(customer.vip_level) }}
                       </el-tag>
-                    </td>
-                    <td v-if="!isMobile && showAccountColumn">
+                </template>
+              </el-table-column>
+
+              <el-table-column v-if="!isMobile && showAccountColumn" label="账户信息" min-width="126" align="center">
+                <template #default="{ row: customer }">
                       <div class="account-info">
                         <div v-if="canViewField('balance')" class="balance">
                           <span class="amount-label">余额:</span>
@@ -332,8 +326,11 @@
                           <span class="points-value">{{ customer.points || 0 }}</span>
                         </div>
                       </div>
-                    </td>
-                    <td v-if="!isMobile && showRegionColumn">
+                </template>
+              </el-table-column>
+
+              <el-table-column v-if="!isMobile && showRegionColumn" label="地区" min-width="178" align="center">
+                <template #default="{ row: customer }">
                       <div class="location-info">
                         <div v-if="canViewField('city') && customer.city" class="city">
                           <i class="fas fa-map-marker-alt"></i>
@@ -354,8 +351,11 @@
                           </span>
                         </div>
                       </div>
-                    </td>
-                    <td v-if="!isMobile && showStatsColumn">
+                </template>
+              </el-table-column>
+
+              <el-table-column v-if="!isMobile && showStatsColumn" label="消费统计" min-width="170" align="center">
+                <template #default="{ row: customer }">
                       <div class="purchase-info">
                         <div v-if="canViewField('total_spent')" class="total-spent">
                           <span class="spent-label">总消费:</span>
@@ -374,19 +374,25 @@
                           {{ formatDate(customer.created_at) }}
                         </div>
                       </div>
-                    </td>
-                    <td v-if="!isMobile && showStatusColumn">
+                </template>
+              </el-table-column>
+
+              <el-table-column v-if="!isMobile && showStatusColumn" label="状态" min-width="82" align="center">
+                <template #default="{ row: customer }">
                       <el-tag :type="getStatusTagType(customer.status)" size="small">
                         {{ getStatusLabel(customer.status) }}
                       </el-tag>
-                    </td>
-                    <td v-if="showActionField">
+                </template>
+              </el-table-column>
+
+              <el-table-column v-if="showActionField" label="操作" min-width="254" align="center" class-name="actions-column">
+                <template #default="{ row: customer }">
                       <div class="action-buttons">
                         <el-button
                           v-if="canEdit"
                           type="primary"
                           size="small"
-                          @click="requirePermission('edit', () => editCustomer(customer))"
+                          @click.stop="requirePermission('edit', () => editCustomer(customer))"
                           title="编辑客户"
                         >
                           <i class="fas fa-edit"></i>
@@ -395,7 +401,7 @@
                         <el-button
                           type="info"
                           size="small"
-                          @click="viewCustomerDetail(customer)"
+                          @click.stop="viewCustomerDetail(customer)"
                           title="查看详情"
                         >
                           <i class="fas fa-eye"></i>
@@ -405,21 +411,25 @@
                           v-if="canDelete"
                           type="danger"
                           size="small"
-                          @click="requirePermission('delete', () => deleteCustomer(customer))"
+                          @click.stop="requirePermission('delete', () => deleteCustomer(customer))"
                           title="删除客户"
                         >
                           <i class="fas fa-trash"></i>
                           删除
                         </el-button>
                       </div>
-                    </td>
-                  </tr>
-                  <tr
-                    v-if="isMobile && mobileActionRowId === customer.id && (canEdit || canDelete || canView)"
-                    class="mobile-action-row"
-                  >
-                    <td :colspan="visibleColumnCount">
-                      <div class="mobile-row-actions">
+                </template>
+              </el-table-column>
+
+              <el-table-column
+                v-if="isMobile && canViewField('actions') && (canEdit || canDelete || canView)"
+                type="expand"
+                width="1"
+                class-name="mobile-expand-column"
+                label-class-name="mobile-expand-header"
+              >
+                <template #default="{ row: customer }">
+                  <div class="mobile-row-actions">
                         <el-button
                           v-if="canEdit"
                           type="primary"
@@ -449,13 +459,10 @@
                           <i class="fas fa-trash"></i>
                           <span>删除</span>
                         </el-button>
-                      </div>
-                    </td>
-                  </tr>
-                  </template>
-                </tbody>
-              </table>
-            </div>
+                  </div>
+                </template>
+              </el-table-column>
+            </el-table>
           </div>
 
           <!-- 统一分页组件 -->
@@ -815,7 +822,7 @@
         @close="closeDetailModal"
         :show-default-footer="false"
       >
-        <div v-if="selectedCustomer" class="customer-detail-view">
+        <div v-if="selectedCustomer" class="customer-detail-view admin-page">
           <!-- 客户信息面板 - 简洁设计 -->
           <div class="customer-info-panel">
             <!-- 左侧：基本信息和属性 -->
@@ -952,46 +959,60 @@
           </el-divider>
 
           <div v-if="customerPurchases.length > 0" class="purchases-section">
-            <!-- 购买记录表格 - 参考供应商打款明细样式 -->
             <div class="table-responsive">
-              <table class="data-table">
-                <thead>
-                  <tr>
-                    <th width="60">序号</th>
-                    <th>型号</th>
-                    <th>颜色</th>
-                    <th>内存</th>
-                    <th>成色</th>
-                    <th>IMEI</th>
-                    <th>序列号</th>
-                    <th>售价</th>
-                    <th>利润</th>
-                    <th width="110">销售日期</th>
-                    <th>销售员</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(purchase, index) in customerPurchases" :key="index">
-                    <td><span class="index-badge">{{ index + 1 }}</span></td>
-                    <td>{{ purchase.model || '-' }}</td>
-                    <td>{{ purchase.color || '-' }}</td>
-                    <td>{{ purchase.memory || '-' }}</td>
-                    <td>
+              <el-table
+                :data="customerPurchases"
+                border
+                stripe
+                class="data-table devices-table customer-purchases-table"
+                table-layout="fixed"
+                :fit="true"
+                row-key="id"
+              >
+                <el-table-column label="序号" width="60" align="center">
+                  <template #default="{ $index }">
+                    <span class="index-badge">{{ $index + 1 }}</span>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="model" label="型号" min-width="116" align="center">
+                  <template #default="{ row }">{{ row.model || '-' }}</template>
+                </el-table-column>
+                <el-table-column prop="color" label="颜色" min-width="82" align="center">
+                  <template #default="{ row }">{{ row.color || '-' }}</template>
+                </el-table-column>
+                <el-table-column prop="memory" label="内存" min-width="86" align="center">
+                  <template #default="{ row }">{{ row.memory || '-' }}</template>
+                </el-table-column>
+                <el-table-column label="成色" min-width="82" align="center">
+                  <template #default="{ row: purchase }">
                       <el-tag :type="purchase.is_new === '全新' ? 'success' : 'warning'" size="small">
                         {{ purchase.is_new }}
                       </el-tag>
-                    </td>
-                    <td><span class="imei">{{ purchase.imei || '-' }}</span></td>
-                    <td><span class="serial-number">{{ purchase.serial_number || '-' }}</span></td>
-                    <td class="price">¥{{ formatNumber(purchase.sale_price) }}</td>
-                    <td :class="['price-cell', purchase.profit > 0 ? 'profit-positive' : 'profit-negative']">
+                  </template>
+                </el-table-column>
+                <el-table-column label="IMEI" :min-width="purchaseImeiColumnWidth" align="center" class-name="identifier-column">
+                  <template #default="{ row: purchase }"><span class="imei">{{ purchase.imei || '-' }}</span></template>
+                </el-table-column>
+                <el-table-column label="序列号" :min-width="purchaseSerialColumnWidth" align="center" class-name="identifier-column">
+                  <template #default="{ row: purchase }"><span class="serial-number">{{ purchase.serial_number || '-' }}</span></template>
+                </el-table-column>
+                <el-table-column label="售价" min-width="96" align="center">
+                  <template #default="{ row: purchase }"><span class="price">¥{{ formatNumber(purchase.sale_price) }}</span></template>
+                </el-table-column>
+                <el-table-column label="利润" min-width="96" align="center">
+                  <template #default="{ row: purchase }">
+                    <span :class="['price-cell', Number(purchase.profit) > 0 ? 'profit-positive' : 'profit-negative']">
                       ¥{{ formatNumber(purchase.profit) }}
-                    </td>
-                    <td class="time-cell">{{ formatDate(purchase.sale_date) }}</td>
-                    <td>{{ purchase.salesperson || '-' }}</td>
-                  </tr>
-                </tbody>
-              </table>
+                    </span>
+                  </template>
+                </el-table-column>
+                <el-table-column label="销售日期" min-width="132" align="center">
+                  <template #default="{ row: purchase }"><span class="time-cell">{{ formatDate(purchase.sale_date) }}</span></template>
+                </el-table-column>
+                <el-table-column prop="salesperson" label="销售员" min-width="96" align="center">
+                  <template #default="{ row }">{{ row.salesperson || '-' }}</template>
+                </el-table-column>
+              </el-table>
             </div>
 
             <Pagination
@@ -1037,7 +1058,7 @@ import { useSearchHighlight } from '@/composables/useSearchHighlight'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
 import { unifiedApi } from '@/utils/unified-api'
 import { useMobile } from '@/composables/mobile'
-import { ElEmpty, ElButton, ElMessageBox } from 'element-plus'
+import { ElEmpty, ElButton, ElMessageBox, ElTable } from 'element-plus'
 import Pagination from '../../components/Pagination.vue'
 import CitySelector from '../../components/CitySelector.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
@@ -1045,6 +1066,7 @@ import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { PermissionGate, PageHeader } from '@/components/base'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
+import { getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 import { isValidAppleAccount, isValidEmail, isValidIdCard, isValidMobilePhone, normalizeAppleId, normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
 
 interface CustomerListItem {
@@ -1114,6 +1136,9 @@ interface CustomerPurchaseItem {
   created_at?: string
   payment_method?: string
   status?: string
+  is_new?: string
+  profit?: number | string
+  salesperson?: string
 }
 
 interface CustomerPurchasesPagination {
@@ -1193,6 +1218,7 @@ const pagination = reactive({
   total: 0
 })
 const selectedRows = ref<CustomerListItem[]>([])
+const customersTableRef = ref<InstanceType<typeof ElTable> | null>(null)
 const searchKeyword = ref('')
 const hasSelection = computed(() => selectedRows.value.length > 0)
 const selectedCount = computed(() => selectedRows.value.length)
@@ -1289,21 +1315,22 @@ const showStatsCards = computed(() => (
   canViewField('stats_new_customers') ||
   canViewField('stats_premium_customers')
 ))
-const visibleColumnCount = computed(() => {
-  return [
-    !isMobile.value,
-    isMobile.value ? showMemberNumberColumn.value : false,
-    showCustomerInfoColumn.value,
-    showContactColumn.value,
-    isMobile.value ? false : showCustomerTypeColumn.value,
-    isMobile.value ? false : showVipColumn.value,
-    isMobile.value ? false : showAccountColumn.value,
-    isMobile.value ? false : showRegionColumn.value,
-    isMobile.value ? false : showStatsColumn.value,
-    isMobile.value ? false : showStatusColumn.value,
-    showActionField.value
-  ].filter(Boolean).length || 1
-})
+const customerMobileColumnWidths = computed(() => ({
+  memberNumber: getIdentifierColumnMinWidth(
+    ['会员号', ...customers.value.map(customer => customer.member_number)],
+    { minWidth: 88, horizontalPadding: 24 }
+  ),
+  name: getTextColumnMinWidth(
+    ['姓名', ...customers.value.map(customer => customer.name)],
+    { minWidth: 84, horizontalPadding: 24 }
+  ),
+  phone: getIdentifierColumnMinWidth(
+    ['手机号', ...customers.value.map(customer => customer.phone)],
+    { minWidth: 116, horizontalPadding: 24 }
+  )
+}))
+
+const getCustomerRowKey = (row: CustomerListItem) => row.id
 
 const toggleMobileActions = (id: number) => {
   if (!isMobile.value) return
@@ -1325,30 +1352,22 @@ const handleMobileRowTap = (id: number) => {
   lastTapTimestamp.value = now
 }
 
+const handleCustomerRowClick = (row: CustomerListItem, _column: unknown, event: Event) => {
+  if (!isMobile.value) return
+
+  const target = event.target as HTMLElement | null
+  if (target?.closest('button, a, input, textarea, select, .el-button, .el-input, .el-select')) return
+  handleMobileRowTap(row.id)
+}
+
 // 表格操作方法
-const toggleRowSelection = (row) => {
-  const index = selectedRows.value.findIndex(r => r.id === row.id)
-  if (index > -1) {
-    selectedRows.value.splice(index, 1)
-  } else {
-    selectedRows.value.push(row)
-  }
-}
-
-const selectAllRows = (rows) => {
-  selectedRows.value = [...rows]
-}
-
 const clearSelection = () => {
+  customersTableRef.value?.clearSelection()
   selectedRows.value = []
 }
 
-const toggleAllSelection = (checked) => {
-  if (checked) {
-    selectAllRows(customers.value)
-  } else {
-    clearSelection()
-  }
+const handleSelectionChange = (rows: CustomerListItem[]) => {
+  selectedRows.value = rows
 }
 
 const setPagination = (page, pageSize, total) => {
@@ -1570,6 +1589,14 @@ const errors = ref<Record<string, string>>({})
 
 // 客户消费记录
 const customerPurchases = ref<CustomerPurchaseItem[]>([])
+const purchaseImeiColumnWidth = computed(() => getIdentifierColumnMinWidth(
+  ['IMEI', ...customerPurchases.value.map(purchase => purchase.imei)],
+  { minWidth: 146, horizontalPadding: 32 }
+))
+const purchaseSerialColumnWidth = computed(() => getIdentifierColumnMinWidth(
+  ['序列号', ...customerPurchases.value.map(purchase => purchase.serial_number)],
+  { minWidth: 132, horizontalPadding: 32 }
+))
 const purchasesPagination = ref<CustomerPurchasesPagination>({
   page: 1,
   limit: 10,
@@ -1622,11 +1649,6 @@ const handleAppleIdInput = (value: string) => {
     delete errors.value.apple_id
   }
 }
-
-// 计算属性
-const isAllSelected = computed(() => {
-  return customers.value.length > 0 && selectedRows.value.length === customers.value.length
-})
 
 // 方法
 const performSearch = (keyword: string) => {
@@ -1685,19 +1707,6 @@ const handleReset = () => {
 const handlePaginationChange = (page: number, pageSize: number) => {
   setPagination(page, pageSize, pagination.total)
   loadCustomers()
-}
-
-const handleSelectAll = (event: Event) => {
-  const isChecked = (event.target as HTMLInputElement).checked
-  if (isChecked) {
-    selectAllRows(customers.value)
-  } else {
-    clearSelection()
-  }
-}
-
-const isSelected = (customer: CustomerListItem) => {
-  return selectedRows.value.some(row => row.id === customer.id)
 }
 
 const loadCustomers = async (showLoadingState = true) => {
@@ -2383,436 +2392,113 @@ onUnmounted(() => {
   margin-top: 24px;
 }
 
-.stats-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 20px;
-  margin-bottom: 24px;
-
-  .stat-card {
-    background: white;
-    border-radius: 12px;
-    padding: 24px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-    transition: all 0.3s ease;
-    border: 1px solid #e8ecef;
-
-    &:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(0,0,0,0.12);
-    }
-
-    .stat-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
-      background: linear-gradient(135deg, #667eea, #764ba2);
-      color: white;
-
-      &.active {
-        background: linear-gradient(135deg, #28a745, #20c997);
-      }
-
-      &.recent {
-        background: linear-gradient(135deg, #ffc107, #ff9800);
-      }
-
-      &.premium {
-        background: linear-gradient(135deg, #dc3545, #fd7e14);
-      }
-    }
-
-    .stat-content {
-      flex: 1;
-
-      .stat-value {
-        font-size: 24px;
-        font-weight: 700;
-        color: #2c3e50;
-        margin-bottom: 4px;
-      }
-
-      .stat-label {
-        font-size: 14px;
-        color: #6c757d;
-        font-weight: 500;
-      }
-    }
-  }
-}
-
 .table-section {
-  background: var(--el-bg-color);
-  border-radius: 8px;
-  border: 1px solid var(--el-border-color-light);
-  overflow: hidden;
-
-  .section-header {
+  .selection-info {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 16px 24px;
-    border-bottom: 1px solid var(--el-border-color-light);
-
-    .section-title {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 16px;
-      font-weight: 500;
-      color: var(--el-text-color-primary);
-
-      .record-count {
-        font-size: 12px;
-        color: var(--el-text-color-regular);
-        background: var(--el-color-primary-light-9);
-        padding: 2px 8px;
-        border-radius: 12px;
-      }
-    }
-
-    .table-actions {
-      .selection-info {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 12px;
-        color: var(--el-text-color-regular);
-      }
-    }
+    gap: 8px;
+    color: var(--el-text-color-regular);
   }
 
-  .table-responsive {
-    min-height: 400px;
-  }
-
-  .table-loading,
   .table-error {
     display: flex;
     align-items: center;
     justify-content: center;
     min-height: 300px;
   }
+}
 
-  .table-pagination {
-    padding: 16px 24px;
-    border-top: 1px solid var(--el-border-color-light);
+.stat-icon {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+
+  &.active {
+    background: linear-gradient(135deg, #28a745, #20c997);
+  }
+
+  &.recent {
+    background: linear-gradient(135deg, #ffc107, #ff9800);
+  }
+
+  &.premium {
+    background: linear-gradient(135deg, #dc3545, #fd7e14);
   }
 }
 
-// 表格样式（与库存管理页面保持一致）
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-
-  th,
-  td {
-    padding: 12px;
-    text-align: left;
-    border-bottom: 1px solid var(--el-border-color-lighter);
-    vertical-align: middle;
-  }
-
-  th {
-    background: var(--el-bg-color-page);
-    font-weight: 500;
-    color: var(--el-text-color-primary);
-    font-size: 14px;
-  }
-
-  tbody tr:hover {
-    background: var(--el-bg-color-page);
-  }
-
-  // 客户信息样式
-  .customer-name {
-    .customer-id {
-      font-size: 12px;
-      color: var(--el-text-color-placeholder);
-    }
-  }
-
-  // 会员编号样式
-  .member-number {
-    font-family: monospace;
-    font-size: 13px;
-    color: var(--el-color-primary);
-    font-weight: 500;
-  }
-
-  // 联系信息样式
-  .phone-info {
-    .phone {
-      color: var(--el-text-color-primary);
-      font-weight: 500;
-    }
-  }
-
-  .email {
-    font-size: 13px;
-    color: var(--el-text-color-regular);
-    word-break: break-all;
-  }
-
-  // 金额样式
-  .amount {
-    .price {
-      color: var(--el-color-danger);
-      font-weight: 500;
-    }
-  }
-
-  // 积分样式
-  .points {
-    font-weight: 500;
-    color: var(--el-color-warning);
-  }
-
-  // 性别图标样式
-  .gender-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    font-size: 13px;
-  }
-
-  // 地址信息样式
-  .city {
-    font-weight: 500;
-  }
-
-  .province {
-    color: var(--el-text-color-placeholder);
-  }
-
-  // 日期信息样式
-  .date-info {
-    font-size: 13px;
-    color: var(--el-text-color-regular);
-  }
-
-  // 新增的客户信息样式
-  .customer-info {
-    .customer-name {
-      strong {
-        color: var(--el-text-color-primary);
-        font-size: 14px;
-      }
-
-      .customer-id {
-        font-size: 11px;
-        color: var(--el-text-color-placeholder);
-      }
-    }
-
-    .member-number {
-      font-family: monospace;
-      font-size: 12px;
-      color: var(--el-color-primary);
-      font-weight: 500;
-    }
-
-    .gender-info {
-      color: var(--el-text-color-regular);
-      font-size: 12px;
-
-      i {
-        margin-right: 2px;
-      }
-    }
-  }
-
-  // 联系信息样式
-  .contact-info {
-    .phone {
-      color: var(--el-text-color-primary);
-      font-weight: 500;
-      font-size: 14px;
-
-      i {
-        color: var(--el-color-success);
-        margin-right: 4px;
-      }
-    }
-
-    .email {
-      font-size: 12px;
-      color: var(--el-text-color-regular);
-
-      i {
-        color: var(--el-color-info);
-        margin-right: 4px;
-      }
-    }
-
-    .social-links {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-top: 4px;
-
-      .social-tag {
-        font-size: 11px;
-        color: var(--el-text-color-regular);
-        background: var(--el-bg-color-page);
-        padding: 2px 6px;
-        border-radius: 4px;
-
-        i {
-          margin-right: 2px;
-        }
-
-        &:hover {
-          background: var(--el-color-primary-light-9);
-          color: var(--el-color-primary);
-        }
-      }
-    }
-  }
-
-  // 账户信息样式
-  .account-info {
-    .balance {
-      margin-bottom: 4px;
-
-      .amount-label {
-        font-size: 11px;
-        color: var(--el-text-color-placeholder);
-      }
-
-      .amount-value {
-        color: var(--el-color-success);
-        font-weight: 500;
-        margin-left: 4px;
-      }
-    }
-
-    .points {
-      .points-label {
-        font-size: 11px;
-        color: var(--el-text-color-placeholder);
-      }
-
-      .points-value {
-        color: var(--el-color-warning);
-        font-weight: 500;
-        margin-left: 4px;
-      }
-    }
-  }
-
-  // 地区信息样式
-  .location-info {
-    .city {
-      font-weight: 500;
-      color: var(--el-text-color-primary);
-      font-size: 13px;
-    }
-
-    .province {
-      color: var(--el-text-color-placeholder);
-      font-size: 11px;
-    }
-
-    .address {
-      color: var(--el-text-color-regular);
-      font-size: 11px;
-      line-height: 1.3;
-    }
-  }
-
-  // 消费信息样式
+.customers-data-table {
+  .customer-info,
+  .contact-info,
+  .account-info,
+  .location-info,
   .purchase-info {
-    .total-spent {
-      margin-bottom: 4px;
-
-      .spent-label {
-        font-size: 11px;
-        color: var(--el-text-color-placeholder);
-      }
-
-      .spent-value {
-        color: var(--el-color-danger);
-        font-weight: 600;
-        margin-left: 4px;
-      }
-    }
-
-    .last-purchase,
-    .register-date {
-      font-size: 11px;
-      color: var(--el-text-color-placeholder);
-
-      .purchase-label,
-      .register-label {
-        color: var(--el-text-color-placeholder);
-      }
-    }
-  }
-
-  // 操作按钮样式（与库存页面一致）
-  .action-buttons {
     display: flex;
-    gap: 4px;
-    flex-wrap: wrap;
-
-    .btn {
-      padding: 4px 8px;
-      font-size: 12px;
-      white-space: nowrap;
-
-      i {
-        font-size: 11px;
-        margin-right: 2px;
-      }
-    }
-  }
-
-  // 空状态样式
-  .empty-state {
-    display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 40px 20px;
+    gap: 6px;
+    min-width: 0;
+    white-space: nowrap;
+  }
+
+  .customer-name strong {
+    color: var(--el-text-color-primary);
+  }
+
+  .customer-id,
+  .province,
+  .address,
+  .last-purchase,
+  .register-date {
     color: var(--el-text-color-placeholder);
+  }
+
+  .member-number,
+  .mobile-member-number {
+    color: var(--el-color-primary);
+    font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+
+  .contact-info .phone {
+    color: var(--el-text-color-primary);
+    font-weight: 500;
 
     i {
-      font-size: 48px;
-      margin-bottom: 16px;
-      color: var(--el-border-color-darker);
-    }
-
-    p {
-      margin: 0;
-      font-size: 14px;
+      color: var(--el-color-success);
+      margin-right: 4px;
     }
   }
 
-  // 辅助文本样式
-  .text-muted {
-    color: var(--el-text-color-placeholder);
+  .contact-info .email i {
+    color: var(--el-color-info);
+    margin-right: 4px;
   }
 
-  .small {
-    font-size: 12px;
+  .social-links {
+    display: flex;
+    align-items: center;
+    gap: 4px;
   }
 
-  .text-center {
-    text-align: center;
+  .amount-value {
+    color: var(--el-color-success);
+    font-weight: 500;
   }
 
-  .py-8 {
-    padding-top: 32px;
-    padding-bottom: 32px;
+  .points-value {
+    color: var(--el-color-warning);
+    font-weight: 500;
+  }
+
+  .spent-value {
+    color: var(--el-color-danger);
+    font-weight: 600;
+  }
+
+  .location-info .address {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 
@@ -2847,43 +2533,6 @@ onUnmounted(() => {
     overflow: visible;
   }
 
-  .stats-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-    margin-bottom: 16px;
-  }
-
-  .stats-cards .stat-card {
-    padding: 12px 10px;
-    border-radius: 16px;
-    gap: 10px;
-    align-items: center;
-    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
-  }
-
-  .stats-cards .stat-card .stat-icon {
-    width: 38px;
-    height: 38px;
-    border-radius: 12px;
-    font-size: 16px;
-    flex-shrink: 0;
-  }
-
-  .stats-cards .stat-card .stat-content {
-    min-width: 0;
-  }
-
-  .stats-cards .stat-card .stat-content .stat-value {
-    font-size: 18px;
-    line-height: 1.1;
-    margin-bottom: 2px;
-  }
-
-  .stats-cards .stat-card .stat-content .stat-label {
-    font-size: 11px;
-    line-height: 1.35;
-  }
-
   .page-title {
     font-size: 24px;
     margin-bottom: 6px;
@@ -2906,32 +2555,6 @@ onUnmounted(() => {
     padding: 0;
   }
 
-  .stats-cards {
-    gap: 8px;
-    margin-bottom: 14px;
-  }
-
-  .stats-cards .stat-card {
-    padding: 10px 8px;
-    gap: 8px;
-    border-radius: 14px;
-  }
-
-  .stats-cards .stat-card .stat-icon {
-    width: 34px;
-    height: 34px;
-    font-size: 14px;
-    border-radius: 10px;
-  }
-
-  .stats-cards .stat-card .stat-content .stat-value {
-    font-size: 16px;
-  }
-
-  .stats-cards .stat-card .stat-content .stat-label {
-    font-size: 10px;
-  }
-
 }
 
 .page-body {
@@ -2944,147 +2567,6 @@ onUnmounted(() => {
     margin-top: 0;
     overflow: visible;
   }
-}
-
-// 继续添加移动端适配的媒体查询
-@media (max-width: 767px) {
-  .table-section {
-    .section-header {
-      padding: 12px 16px;
-      flex-direction: column;
-      align-items: stretch;
-      gap: 12px;
-    }
-
-    .table-pagination {
-      padding: 12px 16px;
-    }
-
-    // 移动端表格适配
-    .data-table {
-      font-size: 12px;
-      width: 100%;
-      table-layout: fixed;
-
-      th,
-      td {
-        padding: 8px 4px;
-        font-size: 11px;
-        white-space: normal;
-        word-break: break-word;
-        box-sizing: border-box;
-      }
-
-      th:nth-child(1),
-      td:nth-child(1) {
-        width: 32%;
-      }
-
-      th:nth-child(2),
-      td:nth-child(2) {
-        width: 30%;
-      }
-
-      th:nth-child(3),
-      td:nth-child(3) {
-        width: 38%;
-      }
-
-      .customer-info {
-        width: 100%;
-        text-align: center;
-
-        .customer-name {
-          strong {
-            font-size: 13px;
-            line-height: 1.35;
-          }
-        }
-
-        .member-number {
-          font-size: 10px;
-        }
-
-        .gender-info {
-          font-size: 10px;
-        }
-      }
-
-      .contact-info {
-        text-align: center;
-
-        .phone {
-          justify-content: center;
-          font-size: 11px;
-          line-height: 1.35;
-        }
-      }
-
-      .action-buttons {
-        flex-direction: column;
-        gap: 2px;
-
-        .btn {
-          font-size: 10px;
-          padding: 2px 6px;
-          min-height: 24px;
-          min-width: auto;
-        }
-      }
-    }
-  }
-
-  .table-section .table-responsive {
-    overflow-x: hidden;
-  }
-
-  .mobile-member-number {
-    font-size: 10px;
-    line-height: 1.35;
-    color: var(--el-color-primary);
-    font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
-    font-weight: 600;
-    text-align: center;
-  }
-
-  // 搜索和操作按钮适配
-  .search-actions {
-    flex-direction: column;
-    gap: 8px;
-
-    .btn {
-      width: 100%;
-      justify-content: center;
-    }
-  }
-
-  // 分页适配
-  .table-pagination {
-    .Pagination {
-      text-align: center;
-    }
-  }
-}
-
-@media (max-width: 480px) {
-  .table-section .data-table th,
-  .table-section .data-table td {
-    padding: 6px 4px;
-    font-size: 10px;
-  }
-
-  .mobile-member-number {
-    font-size: 9px;
-  }
-
-  .table-section .customer-info .customer-name strong {
-    font-size: 12px;
-  }
-
-  .table-section .contact-info .phone {
-    font-size: 10px;
-  }
-
 }
 
 // 对话框表单样式
@@ -3552,31 +3034,6 @@ onUnmounted(() => {
       }
     }
 
-    .purchases-section {
-      // 移动端表格适配
-      .table-responsive {
-        overflow-x: scroll;
-        -webkit-overflow-scrolling: touch;
-      }
-
-      .data-table {
-        thead th {
-          padding: 10px 8px;
-          font-size: 11px;
-        }
-
-        tbody td {
-          padding: 8px 6px;
-          font-size: 11px;
-        }
-
-        .imei,
-        .serial-number {
-          font-size: 10px;
-        }
-      }
-    }
-
     .panel-left {
       .info-grid {
         padding: 0;
@@ -3649,272 +3106,6 @@ onUnmounted(() => {
   }
 }
 
-@media (max-width: 767px) {
-  .table-section {
-    .table-responsive {
-      overflow-x: auto;
-      padding: var(--mobile-table-block-gap) var(--admin-table-panel-padding-x) 2px;
-      background:
-        radial-gradient(circle at top left, rgba(59, 130, 246, 0.08), transparent 36%),
-        linear-gradient(180deg, #f8fbff 0%, #ffffff 70%);
-      -webkit-overflow-scrolling: touch;
-    }
-
-    .customers-mobile-table {
-      width: 100%;
-      min-width: 0;
-      table-layout: auto;
-      border-collapse: separate;
-      border-spacing: 0 7px;
-      font-size: 12px;
-
-      col.customers-col-member {
-        width: auto;
-      }
-
-      col.customers-col-name {
-        width: auto;
-      }
-
-      col.customers-col-phone {
-        width: auto;
-      }
-
-      &.customers-mobile-two-cols {
-        col.customers-col-member,
-        col.customers-col-name,
-        col.customers-col-phone {
-          width: 50%;
-        }
-      }
-
-      &.customers-mobile-one-col {
-        col.customers-col-member,
-        col.customers-col-name,
-        col.customers-col-phone {
-          width: 100%;
-        }
-      }
-
-      thead th,
-      tbody td {
-        display: table-cell;
-        box-sizing: border-box;
-        min-width: 0;
-        white-space: nowrap;
-        word-break: normal;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      thead th {
-        padding: 9px 8px;
-        background: linear-gradient(135deg, #1e3a5f 0%, #0f2742 100%);
-        color: rgba(255, 255, 255, 0.92);
-        border-bottom: none;
-        font-size: 11px;
-        font-weight: 800;
-        letter-spacing: 0.05em;
-
-        &:first-child {
-          border-radius: 12px 0 0 12px;
-        }
-
-        &:last-child {
-          border-radius: 0 12px 12px 0;
-        }
-      }
-
-      tbody td {
-        padding: 10px 8px;
-        background: rgba(255, 255, 255, 0.98);
-        color: var(--el-text-color-primary);
-        border-top: 1px solid rgba(219, 231, 248, 0.92);
-        border-bottom: 1px solid rgba(219, 231, 248, 0.92);
-        font-size: 12px;
-        line-height: 1.35;
-        vertical-align: middle;
-
-        &:first-child {
-          border-left: 1px solid rgba(219, 231, 248, 0.92);
-          border-radius: 12px 0 0 12px;
-        }
-
-        &:last-child {
-          border-right: 1px solid rgba(219, 231, 248, 0.92);
-          border-radius: 0 12px 12px 0;
-        }
-      }
-
-      .customers-data-row {
-        filter: drop-shadow(0 5px 12px rgba(15, 39, 66, 0.06));
-        transition: filter 0.16s ease;
-
-        &:active {
-          filter: drop-shadow(0 3px 8px rgba(37, 99, 235, 0.15));
-
-          td {
-            background: #eef6ff;
-            border-color: rgba(96, 165, 250, 0.5);
-          }
-        }
-      }
-
-      .customers-cell-member {
-        text-align: center;
-        width: 1%;
-        max-width: none;
-        overflow: visible;
-        text-overflow: clip;
-      }
-
-      .customers-cell-name {
-        text-align: left;
-        width: auto;
-      }
-
-      .customers-cell-phone {
-        text-align: right;
-        width: 1%;
-        max-width: none;
-        overflow: visible;
-        text-overflow: clip;
-      }
-
-      .mobile-member-number,
-      .customer-info,
-      .customer-info .customer-name,
-      .customer-info .customer-name strong,
-      .contact-info,
-      .contact-info .phone,
-      .contact-info .phone span {
-        display: block;
-        max-width: 100%;
-        min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      .mobile-member-number {
-        display: inline-block;
-        width: auto;
-        max-width: none;
-        color: var(--el-color-primary);
-        background: #eff6ff;
-        border: 1px solid #bfdbfe;
-        border-radius: 999px;
-        font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
-        font-size: 10px;
-        font-weight: 700;
-        letter-spacing: -0.01em;
-        line-height: 1.2;
-        padding: 4px 7px;
-        text-align: center;
-      }
-
-      .customer-info {
-        text-align: left;
-
-        .customer-name strong {
-          color: #111827;
-          font-size: 13px;
-          font-weight: 800;
-          letter-spacing: 0.01em;
-        }
-      }
-
-      .contact-info {
-        text-align: right;
-
-        .phone {
-          display: inline-block;
-          width: auto;
-          max-width: 100%;
-          color: #0f172a;
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
-          border-radius: 999px;
-          font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
-          font-size: 11px;
-          font-variant-numeric: tabular-nums;
-          font-weight: 700;
-          line-height: 1.2;
-          padding: 4px 7px;
-
-          i {
-            display: none;
-          }
-        }
-      }
-
-      .mobile-action-row td {
-        padding: 0;
-        background: #f8fbff;
-        border: 1px solid #dbe7f8;
-        border-radius: 12px;
-      }
-
-      .mobile-row-actions {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(86px, 1fr));
-        gap: 8px;
-        padding: 10px 12px 12px;
-      }
-
-      .mobile-action-btn {
-        width: 100%;
-        min-height: 34px;
-        margin: 0;
-        border-radius: 10px;
-        font-weight: 700;
-
-        span {
-          display: inline;
-        }
-      }
-    }
-  }
-}
-
-@media (max-width: 480px) {
-  .table-section .customers-mobile-table {
-    thead th {
-      padding: 9px 6px;
-      font-size: 10px;
-    }
-
-    tbody td {
-      padding: 10px 6px;
-      font-size: 11px;
-    }
-
-    col.customers-col-member {
-      width: auto;
-    }
-
-    col.customers-col-name {
-      width: auto;
-    }
-
-    col.customers-col-phone {
-      width: auto;
-    }
-
-    .mobile-member-number {
-      font-size: 10px;
-    }
-
-    .customer-info .customer-name strong {
-      font-size: 12px;
-    }
-
-    .contact-info .phone {
-      font-size: 11px;
-      max-width: none;
-    }
-  }
-}
 </style>
 
 <style>
@@ -3982,320 +3173,40 @@ onUnmounted(() => {
 </style>
 
 <style lang="scss">
-// 客户详情对话框中的购买记录表格样式
-.customer-detail-view {
-  .purchases-section {
-    .table-responsive {
-      overflow-x: auto;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      overflow-y: hidden;
-      -webkit-overflow-scrolling: touch;
-    }
-
-    .data-table {
-      width: 100%;
-      border-collapse: separate;
-      border-spacing: 0;
-      margin: 0;
-      background: white;
-
-      // 表头样式 - 深色渐变背景
-      thead {
-        th {
-          background: linear-gradient(135deg, #495057 0%, #343a40 100%);
-          color: white;
-          padding: 12px 10px;
-          text-align: center;
-          font-weight: 600;
-          font-size: 14px;
-          text-transform: none;
-          letter-spacing: 0.5px;
-          border-right: 1px solid #dee2e6;
-          border-bottom: 2px solid #dee2e6;
-          position: relative;
-          white-space: nowrap;
-          min-width: 60px;
-
-          &:last-child {
-            border-right: none;
-          }
-
-          // 底部装饰线
-          &::after {
-            content: '';
-            position: absolute;
-            bottom: -2px;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, #667eea, #764ba2);
-          }
-        }
-      }
-
-      // 表格单元格样式
-      tbody {
-        tr {
-          transition: all 0.2s ease;
-          position: relative;
-
-          &:nth-child(even) {
-            background: #f8f9fa;
-          }
-
-          &:hover {
-            background: #e3f2fd;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-
-            td {
-              border-bottom-color: #dee2e6;
-            }
-          }
-
-          td {
-            padding: 6px 6px;
-            border-right: 1px solid #e9ecef;
-            border-bottom: 1px solid #e9ecef;
-            vertical-align: middle;
-            font-size: 14px;
-            color: #2c3e50;
-            font-weight: 500;
-            text-align: center;
-            position: relative;
-
-            &:last-child {
-              border-right: none;
-            }
-          }
-        }
-      }
-
-      // 序号徽章样式 - 紫色渐变
-      .index-badge {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: #fff;
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 11px;
-        font-weight: 600;
-      }
-
-      // IMEI 样式 - 等宽字体
-      .imei {
-        font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
-        font-size: 11px;
-        font-weight: 600;
-        color: #495057;
-        letter-spacing: 0.5px;
-      }
-
-      // 序列号样式 - 等宽字体
-      .serial-number {
-        font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
-        font-size: 11px;
-        font-weight: 600;
-        color: #495057;
-        letter-spacing: 0.5px;
-      }
-
-      // 价格单元格样式
-      .price {
-        font-family: 'Monaco', 'Consolas', monospace;
-        font-weight: 600;
-        color: #e6a23c;
-        font-size: 13px;
-        text-align: center;
-      }
-
-      // 利润单元格样式
-      .price-cell {
-        font-family: 'Monaco', 'Consolas', monospace;
-        font-weight: 600;
-        font-size: 13px;
-        text-align: center;
-
-        &.profit-positive {
-          color: #67c23a;
-        }
-
-        &.profit-negative {
-          color: #f56c6c;
-        }
-      }
-
-      // 时间单元格样式
-      .time-cell {
-        font-size: 12px;
-        color: #2c3e50;
-        font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
-        text-align: center;
-        font-weight: 500;
-      }
-    }
-  }
-}
-
-// 移动端响应式
-@media (max-width: 768px) {
-  .customer-detail-view {
-    .purchases-section {
-      .table-responsive {
-        overflow-x: scroll;
-        -webkit-overflow-scrolling: touch;
-      }
-
-      .data-table {
-        thead th {
-          padding: 6px 4px;
-          font-size: 10px;
-        }
-
-        tbody td {
-          padding: 4px 2px;
-          font-size: 10px;
-        }
-
-        .imei,
-        .serial-number {
-          font-size: 9px;
-        }
-      }
-    }
+.customer-purchases-table {
+  .index-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 5px;
+    border-radius: 6px;
+    background: var(--el-color-primary);
+    color: #fff;
+    font-weight: 600;
   }
 
-  // 主页面客户列表表格移动端自适应
-  .table-section {
-    border-radius: 0;
-    border-left: none;
-    border-right: none;
-
-    .section-header {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 8px;
-      padding: 12px;
-
-      h4 {
-        font-size: 14px;
-      }
-
-      .record-count {
-        font-size: 12px;
-      }
-    }
-
-    .table-responsive {
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      border-radius: 0;
-    }
-
-    .data-table {
-      font-size: 12px;
-
-      thead th {
-        padding: 8px 6px;
-        font-size: 11px;
-        white-space: nowrap;
-      }
-
-      tbody td {
-        padding: 6px 4px;
-        font-size: 11px;
-      }
-
-      // 移动端隐藏次要列 - 使用 nth-child
-      // 第1列: checkbox, 第2列: 客户信息, 第3列: 联系方式, 第4列: 客户类型
-      // 第5列: VIP等级, 第6列: 账户信息, 第7列: 地区, 第8列: 消费统计
-      // 第9列: 状态, 第10列: 操作
-      thead th:nth-child(5),
-      thead th:nth-child(6),
-      thead th:nth-child(7),
-      thead th:nth-child(8),
-      tbody td:nth-child(5),
-      tbody td:nth-child(6),
-      tbody td:nth-child(7),
-      tbody td:nth-child(8) {
-        display: none;
-      }
-
-      // 优化联系方式列显示
-      tbody td:nth-child(3) {
-        .contact-info {
-          .email,
-          .social-links {
-            display: none;
-          }
-        }
-      }
-
-      // 优化客户信息列显示
-      tbody td:nth-child(2) {
-        .customer-info {
-          .gender-info,
-          .member-number {
-            font-size: 10px;
-          }
-        }
-      }
-
-      // 操作按钮只显示图标
-      .action-buttons {
-        .btn-action {
-          padding: 4px 8px;
-          font-size: 11px;
-
-          .btn-text {
-            display: none;
-          }
-
-          i {
-            margin: 0;
-          }
-        }
-      }
-    }
-
-    .table-pagination {
-      padding: 10px;
-      flex-direction: column;
-      gap: 8px;
-
-      .pagination-info {
-        font-size: 12px;
-      }
-    }
+  .imei,
+  .serial-number,
+  .price,
+  .price-cell,
+  .time-cell {
+    font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
   }
 
-  // 客户信息卡片样式移动端优化
-  .customer-info {
-    .customer-name {
-      font-size: 14px;
-    }
-
-    .customer-phone {
-      font-size: 12px;
-    }
+  .price {
+    color: var(--el-color-warning);
   }
 
-  // 操作按钮移动端优化
-  .action-buttons {
-    gap: 4px;
+  .profit-positive {
+    color: var(--el-color-success);
+  }
 
-    .btn-action {
-      padding: 4px 8px;
-      font-size: 11px;
-
-      span {
-        display: none; // 移动端只显示图标
-      }
-    }
+  .profit-negative {
+    color: var(--el-color-danger);
   }
 }
 </style>

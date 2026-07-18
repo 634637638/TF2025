@@ -11,7 +11,6 @@ const settingsController = new SettingsController();
 // 公开路由（不需要认证）- 必须在最前面
 router.get('/public/menu-width', settingsController.getMenuWidth);
 router.get('/public/menu-widths', settingsController.getAllMenuWidths);
-router.post('/public/menu-widths', settingsController.setBothMenuWidths);
 
 // 需要认证的路由中间件
 router.use(unifiedAuth);

@@ -1,7 +1,7 @@
 const express = require('express');
 const path = require('path');
 const config = require('./config');
-const { connectToDatabase, getDatabase } = require('./config/database');
+const { connectToDatabase, getDatabase, isConnected } = require('./config/database');
 const errorHandler = require('./middleware/error-handler');
 const log = require('./utils/log');
 const { getUploadsRoot } = require('./utils/upload-paths');
@@ -21,6 +21,20 @@ const SLOW_REQUEST_THRESHOLD_MS = Number(process.env.SLOW_REQUEST_THRESHOLD_MS |
 
 const formatBeijingTime = () => new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
 
+const redactSensitiveQuery = (requestUrl = '') => {
+  try {
+    const url = new URL(requestUrl, 'http://localhost');
+    for (const key of ['token', 'access_token', 'refresh_token']) {
+      if (url.searchParams.has(key)) {
+        url.searchParams.set(key, '[REDACTED]');
+      }
+    }
+    return `${url.pathname}${url.search}`;
+  } catch {
+    return String(requestUrl).replace(/([?&](?:token|access_token|refresh_token)=)[^&]*/gi, '$1[REDACTED]');
+  }
+};
+
 const requestLogger = (req, res, next) => {
   const startedAt = process.hrtime.bigint();
   res.on('finish', () => {
@@ -28,7 +42,7 @@ const requestLogger = (req, res, next) => {
     if (durationMs >= SLOW_REQUEST_THRESHOLD_MS) {
       log.warn('慢请求', {
         method: req.method,
-        url: req.originalUrl,
+        url: redactSensitiveQuery(req.originalUrl),
         status: res.statusCode,
         durationMs: Math.round(durationMs)
       });
@@ -36,7 +50,7 @@ const requestLogger = (req, res, next) => {
   });
 
   if (!IS_PRODUCTION) {
-    log.debug(`🌐 [${formatBeijingTime()}] ${req.method} ${req.originalUrl}`);
+    log.debug(`🌐 [${formatBeijingTime()}] ${req.method} ${redactSensitiveQuery(req.originalUrl)}`);
   }
   next();
 };
@@ -68,10 +82,15 @@ const uploadStaticMiddleware = (req, res, next) => {
  */
 async function initializeApp() {
   try {
-    // 连接数据库（允许失败，服务器仍然可以启动）
+    // 连接数据库（允许失败，HTTP 服务仍可以降级启动）
     try {
-      await connectToDatabase();
-      log.success('数据库连接成功');
+      const connected = await connectToDatabase();
+      if (connected) {
+        log.success('数据库连接成功');
+      } else {
+        log.warn('数据库连接失败，服务器将以降级模式启动');
+        log.warn('业务接口和后台任务将在数据库恢复前不可用');
+      }
     } catch (dbError) {
       log.warn('数据库连接失败，服务器将以降级模式启动');
       log.warn('某些功能可能无法正常使用');
@@ -152,14 +171,20 @@ async function startServer() {
     server.keepAliveTimeout = 65000; // 65秒
     server.headersTimeout = 66000; // 略长于 keepAliveTimeout
 
+    const databaseReady = isConnected();
+
     // 启动价格自动同步调度器
     let priceScheduler = null;
     try {
+      if (!databaseReady) {
+        log.warn('数据库未连接，跳过价格同步调度器启动');
+      } else {
       priceScheduler = require('./scripts/price-sync-scheduler');
       // 初始化调度器并启动定时任务
       priceScheduler.init().catch(err => {
         log.warn('价格同步调度器初始化失败:', err.message);
       });
+      }
     } catch (error) {
       log.warn('价格同步调度器启动失败:', error.message);
     }
@@ -167,11 +192,15 @@ async function startServer() {
     // 启动订单过期检查定时任务
     let orderExpireChecker = null;
     try {
+      if (!databaseReady) {
+        log.warn('数据库未连接，跳过订单过期检查任务启动');
+      } else {
       orderExpireChecker = require('./scripts/order-expire-checker');
       // 初始化并启动定时任务
       orderExpireChecker.init().catch(err => {
         log.warn('订单过期检查定时任务初始化失败:', err.message);
       });
+      }
     } catch (error) {
       log.warn('订单过期检查定时任务启动失败:', error.message);
     }

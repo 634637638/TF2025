@@ -78,8 +78,8 @@
           :key="index"
           :data-aos="'fade-up'"
           :data-aos-delay="index * 100"
+          :data-stat-key="stat.key"
           class="stat-card"
-          :class="{ 'hide-on-mobile': stat.key === 'in_stock_count' }"
         >
           <div class="stat-icon" :class="stat.iconClass">
             <i :class="stat.icon"></i>
@@ -314,110 +314,110 @@
         </div>
 
         <div class="table-responsive">
-          <table class="devices-table">
-            <thead>
-              <tr>
-                <!-- 动态生成表头 -->
-                <th
-                  v-for="column in tableColumns"
-                  :key="column.key"
+          <el-table
+            :data="loading ? [] : queryData"
+            border
+            stripe
+            class="data-table devices-table"
+            table-layout="fixed"
+            :fit="true"
+            :row-key="getQueryRowKey"
+            :row-class-name="getQueryRowClassName"
+            @row-click="handleRowTap"
+            @row-dblclick="handleRowDoubleClick"
+          >
+            <el-table-column
+              v-for="column in tableColumns"
+              :key="column.key"
+              :label="column.label"
+              :min-width="getQueryColumnMinWidth(column)"
+              align="center"
+              :class-name="getQueryColumnClass(column)"
+            >
+              <template #default="{ row }">
+                <span v-if="column.key === 'basic_info.serial_number'" class="serial-imei-cell">
+                  {{ getCellValue(row, column) }}
+                </span>
+
+                <span v-else-if="column.key === 'basic_info.imei'" class="serial-imei-cell">
+                  {{ getCellValue(row, column) }}
+                </span>
+
+                <span
+                  v-else-if="column.key === 'basic_info.is_new'"
+                  :class="{ 'clickable-cell': Number(row.基本信息?.is_new) === 0 }"
+                  @dblclick.stop="handleConditionDoubleClick(row)"
                 >
-                  {{ column.label }}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <TableLoadingRow v-if="loading" :colspan="tableColumns.length" />
-              <tr v-else-if="queryData.length === 0">
-                <td :colspan="tableColumns.length" class="empty-cell">
-                  <i class="fas fa-inbox"></i>
-                  <span>暂无数据</span>
-                </td>
-              </tr>
-              <tr
-                v-for="(item, index) in queryData"
-                :key="index"
-                v-else
-                @touchstart="handleRowTouch(item, $event)"
-                :data-index="index"
-                class="data-row"
-              >
-                <!-- 动态生成数据单元格，与表头保持一致 -->
-                <template v-for="column in tableColumns" :key="column.key">
-                  <!-- 序列号列 - 与IMEI样式一致 -->
-                  <td v-if="column.key === 'basic_info.serial_number'" class="serial-imei-cell">
-                    {{ getCellValue(item, column) }}
-                  </td>
+                  <span :class="['condition-badge', Number(row.基本信息?.is_new) === 1 ? 'new' : 'used']">
+                    {{ getCellValue(row, column) }}
+                  </span>
+                  <i v-if="Number(row.基本信息?.is_new) === 0 && row.基本信息?.has_images" class="fas fa-images image-hint"></i>
+                </span>
 
-                  <!-- IMEI 列 - 与序列号样式一致 -->
-                  <td v-else-if="column.key === 'basic_info.imei'" class="serial-imei-cell">
-                    {{ getCellValue(item, column) }}
-                  </td>
+                <span
+                  v-else-if="column.key === 'basic_info.status'"
+                  class="status-cell clickable-cell"
+                  @dblclick.stop="handleCellDoubleClick(row, column)"
+                >
+                  <span :class="['status-badge', getStatusBadgeClass(row.基本信息?.status_code)]">
+                    {{ getCellValue(row, column) }}
+                  </span>
+                </span>
 
-                  <!-- 全新/二手 列 - 双击管理图片（二手机） -->
-                  <td v-else-if="column.key === 'basic_info.is_new'" @dblclick.stop="handleConditionDoubleClick(item)" :class="{ 'clickable-cell': Number(item.基本信息?.is_new) === 0 }">
-                    <span :class="['condition-badge', Number(item.基本信息?.is_new) === 1 ? 'new' : 'used']">
-                      {{ getCellValue(item, column) }}
-                    </span>
-                    <i v-if="Number(item.基本信息?.is_new) === 0 && item.基本信息?.has_images" class="fas fa-images image-hint"></i>
-                  </td>
+                <div v-else-if="column.key === 'system_info.operations'" class="actions-cell">
+                  <div class="action-buttons">
+                    <el-button
+                      v-if="canEdit"
+                      @click.stop="openEditModal(row)"
+                      type="primary"
+                      size="small"
+                      title="编辑"
+                    >
+                      <i class="fas fa-edit"></i>
+                      编辑
+                    </el-button>
+                    <el-button
+                      v-if="canDelete"
+                      @click.stop="deleteItem(row)"
+                      type="danger"
+                      size="small"
+                      title="删除"
+                    >
+                      <i class="fas fa-trash"></i>
+                      删除
+                    </el-button>
+                    <el-button
+                      v-if="canReturnToStock"
+                      @click.stop="confirmReturnToStock(row)"
+                      type="warning"
+                      size="small"
+                      title="退库"
+                    >
+                      <i class="fas fa-undo-alt"></i>
+                      退库
+                    </el-button>
+                  </div>
+                </div>
 
-                  <!-- 状态列 - 双击打开销售单（PC端） -->
-                  <td v-else-if="column.key === 'basic_info.status'" @dblclick.stop="handleCellDoubleClick(item, column)" class="status-cell clickable-cell">
-                    <span :class="['status-badge', getStatusBadgeClass(item.基本信息?.status_code)]">
-                      {{ getCellValue(item, column) }}
-                    </span>
-                  </td>
+                <span v-else-if="column.key === 'basic_info.purchase_price' || column.key === 'basic_info.sale_price'" class="price-cell">
+                  {{ getCellValue(row, column) }}
+                </span>
 
-                  <!-- 操作列 - 特殊渲染 -->
-                  <td v-else-if="column.key === 'system_info.operations'" class="actions-cell">
-                    <div class="action-buttons">
-                      <el-button
-                        v-if="canEdit"
-                        @click="openEditModal(item)"
-                        type="primary"
-                        size="small"
-                        title="编辑"
-                      >
-                        <i class="fas fa-edit"></i>
-                        编辑
-                      </el-button>
-                      <el-button
-                        v-if="canDelete"
-                        @click="deleteItem(item)"
-                        type="danger"
-                        size="small"
-                        title="删除"
-                      >
-                        <i class="fas fa-trash"></i>
-                        删除
-                      </el-button>
-                      <el-button
-                        v-if="canReturnToStock"
-                        @click="confirmReturnToStock(item)"
-                        type="warning"
-                        size="small"
-                        title="退库"
-                      >
-                        <i class="fas fa-undo-alt"></i>
-                        退库
-                      </el-button>
-                    </div>
-                  </td>
+                <span v-else>
+                  {{ getCellValue(row, column) }}
+                </span>
+              </template>
 
-                  <!-- 价格列 - 不可点击 -->
-                  <td v-else-if="column.key === 'basic_info.purchase_price' || column.key === 'basic_info.sale_price'" class="price-cell">
-                    {{ getCellValue(item, column) }}
-                  </td>
+            </el-table-column>
 
-                  <!-- 普通列 - 不可点击 -->
-                  <td v-else>
-                    {{ getCellValue(item, column) }}
-                  </td>
-                </template>
-              </tr>
-            </tbody>
-          </table>
+            <template #empty>
+              <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
+              <div v-else class="empty-cell">
+                <i class="fas fa-inbox"></i>
+                <span>暂无数据</span>
+              </div>
+            </template>
+          </el-table>
         </div>
 
         <!-- 分页组件 -->
@@ -623,7 +623,6 @@ import { ElMessage, ElMessageBox, ElImageViewer } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { useNotification } from '@/composables/useNotification'
 import { useImportExport } from '@/composables/useImportExport'
-import { useMobileDetection } from '@/composables/mobile'
 import { usePagination } from '@/composables/index'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useRefreshData } from '@/composables/useRefreshData'
@@ -633,6 +632,7 @@ import unifiedApi from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import { formatImageUrl } from '@/utils/format'
 import { sortOptionsByOrder } from '@/utils/option-sort'
+import { getIdentifierColumnMinWidth } from '@/utils/table-layout'
 import { createTempFileTracker, type TempFileTracker } from '@/utils/temp-file-cleaner'
 import { canAccessRoutePath } from '@/constants/routePermissions'
 import draggable from 'vuedraggable'
@@ -668,7 +668,6 @@ const authStore = useAuthStore()
 const { success, handleApiError } = useNotification()
 const { canView, canCreate, canEdit, canDelete, canExport, hasPermission: hasQueryPagePermission, handleNoPermission } = usePagePermissions('query')
 const { refreshing, refresh } = useRefreshData()
-const { isMobile } = useMobileDetection()
 const canReturnToStock = computed(() => hasQueryPagePermission('return-to-stock'))
 const { exportFile, buildDateFilename, sanitizeParams } = useImportExport()
 
@@ -768,9 +767,14 @@ const updateWindowWidth = () => {
   windowWidth.value = window.innerWidth
 }
 
-// 移动端触摸事件处理（模拟双击）
-const handleRowTouch = (item: QueryItem, event: TouchEvent) => {
-  const rowKey = (event.currentTarget as HTMLElement).dataset.index || JSON.stringify(item)
+// Element Plus 表格不会在移动端可靠触发 dblclick，使用两次 row-click 模拟双击。
+const handleRowTap = (item: QueryItem, _column: unknown, event: MouseEvent) => {
+  if (windowWidth.value > 1024) return
+
+  const target = event.target as HTMLElement | null
+  if (target?.closest('button, a, input, select, textarea, .actions-cell')) return
+
+  const rowKey = String(item.基本信息?.phone_id ?? item.基本信息?.imei ?? JSON.stringify(item))
   const now = Date.now()
   const lastTime = lastTapTime.value.get(rowKey) || 0
   const timeDiff = now - lastTime
@@ -782,8 +786,8 @@ const handleRowTouch = (item: QueryItem, event: TouchEvent) => {
     touchTimers.value.delete(rowKey)
   }
 
-  // 如果两次点击间隔小于 300ms，视为双击
-  if (timeDiff < 300 && timeDiff > 0) {
+  // 手机端点击事件可能略有延迟，400ms 内点击同一行视为双击。
+  if (timeDiff <= 400 && timeDiff > 0) {
     // 双击触发
     handleRowDoubleClick(item)
     lastTapTime.value.delete(rowKey)
@@ -793,7 +797,7 @@ const handleRowTouch = (item: QueryItem, event: TouchEvent) => {
       // 超时后视为单击，可以做单击处理（如果需要）
       lastTapTime.value.delete(rowKey)
       touchTimers.value.delete(rowKey)
-    }, 300)
+    }, 400)
     touchTimers.value.set(rowKey, timer)
   }
 
@@ -1831,10 +1835,7 @@ const handleUploadImage = async (event: Event) => {
         }
       })
 
-      // 跟踪新上传的文件（用于取消时清理）
-      if (response.data?.image_url) {
-        tempFileTracker?.addUploadedFile(response.data.image_url)
-      }
+      // 上传接口已立即写入图片记录，不作为未保存的临时文件清理。
     }
 
     ElMessage.success('图片上传成功')
@@ -2438,7 +2439,10 @@ const shouldShowField = (fieldId: string) => {
 }
 
 const visibleStatsConfig = computed(() => {
-  return statsConfig.filter(stat => shouldShowField(stat.fieldId))
+  return statsConfig.filter(stat => (
+    shouldShowField(stat.fieldId) &&
+    (windowWidth.value > 768 || stat.key !== 'in_stock_count')
+  ))
 })
 
 const showStatsCards = computed(() => visibleStatsConfig.value.length > 0)
@@ -2527,6 +2531,70 @@ const tableColumns = computed(() => {
   return filteredColumns
 })
 
+const queryColumnWidths: Record<string, number> = {
+  'supplier_info.supplier_name': 92,
+  'store_info.store_name': 72,
+  'time_info.Inventorytime': 92,
+  'time_info.salestime': 92,
+  'basic_info.brand': 54,
+  'basic_info.model': 90,
+  'basic_info.color': 52,
+  'basic_info.memory': 70,
+  'basic_info.purchase_price': 74,
+  'basic_info.sale_price': 74,
+  'customer_info.customer_name': 78,
+  'customer_info.customer_phone': 112,
+  'basic_info.serial_number': 126,
+  'basic_info.imei': 128,
+  'other_info.remarks': 194,
+  'customer_info.apple_id': 110,
+  'operator_info.inventory_operator': 72,
+  'operator_info.sale_operator': 72,
+  'basic_info.is_new': 54,
+  'basic_info.status': 60,
+  'system_info.operations': 238
+}
+
+const getQueryColumnMinWidth = (column: any) => {
+  if (column.key === 'basic_info.serial_number') {
+    return getIdentifierColumnMinWidth(
+      ['序列号', ...queryData.value.map(item => item.基本信息?.serial_number)],
+      { minWidth: queryColumnWidths[column.key], horizontalPadding: 32 }
+    )
+  }
+
+  if (column.key === 'basic_info.imei') {
+    return getIdentifierColumnMinWidth(
+      ['IMEI', ...queryData.value.map(item => item.基本信息?.imei)],
+      { minWidth: queryColumnWidths[column.key], horizontalPadding: 32 }
+    )
+  }
+
+  return queryColumnWidths[column.key] || 112
+}
+
+const getQueryColumnClass = (column: any) => {
+  if (column.key === 'basic_info.serial_number' || column.key === 'basic_info.imei') {
+    return 'identifier-column serial-imei-column'
+  }
+
+  if (column.key === 'basic_info.purchase_price' || column.key === 'basic_info.sale_price') {
+    return 'price-column'
+  }
+
+  if (column.key === 'system_info.operations') {
+    return 'actions-column'
+  }
+
+  return ''
+}
+
+const getQueryRowKey = (row: QueryItem) => String(
+  row.基本信息?.phone_id ?? row.基本信息?.imei ?? JSON.stringify(row)
+)
+
+const getQueryRowClassName = ({ rowIndex }: { rowIndex: number }) => `data-row query-row-${rowIndex}`
+
 onMounted(async () => {
   // 字段权限改为后台加载，不阻塞首屏数据
   loadFieldPermissions().catch(error => {
@@ -2609,41 +2677,6 @@ onUnmounted(() => {
   display: inline;
 }
 
-/* 区域标题样式 */
-.section-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 16px;
-  font-weight: 600;
-  color: #2c3e50;
-  margin-bottom: 20px;
-  padding-bottom: 12px;
-  /* 移除下边框横线 */
-  /* border-bottom: 2px solid #f8f9fa; */
-}
-
-.section-title i {
-  color: #667eea;
-}
-
-.record-count {
-  margin-left: auto;
-  font-size: 14px;
-  color: #6c757d;
-  font-weight: 400;
-}
-
-/* 表格区域样式 */
-.table-section {
-  background: #f8f9fa;
-  border-radius: 12px;
-  padding: 24px 16px;
-  margin-bottom: 24px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-  border: 1px solid #e8ecef;
-}
-
 /* 选中统计栏样式 */
 .selected-summary {
   display: flex;
@@ -2699,15 +2732,6 @@ onUnmounted(() => {
 
 .checkbox-column :deep(.el-checkbox) {
   margin: 0;
-}
-
-/* 选中行样式 */
-.devices-table tbody tr.selected-row {
-  background: #e8f4fd !important;
-}
-
-.devices-table tbody tr.selected-row td {
-  background: transparent !important;
 }
 
 /* 编辑模态框的表单组样式 */
@@ -2851,21 +2875,8 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
-/* 统计卡片样式 */
-.stats-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 20px;
-  margin-bottom: 24px;
-}
-
 .stat-card {
   background: white;
-  border-radius: 12px;
-  padding: 24px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.08);
   transition: all 0.3s ease;
   border: 1px solid #e8ecef;
@@ -2874,11 +2885,6 @@ onUnmounted(() => {
 .stat-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(0,0,0,0.12);
-}
-
-/* PC端确保在库数量卡片正常显示 */
-.stat-card.hide-on-mobile {
-  display: flex;
 }
 
 .stat-icon {
@@ -2927,87 +2933,6 @@ onUnmounted(() => {
   font-size: 14px;
   color: #6c757d;
   font-weight: 500;
-}
-
-/* 表格样式 - 使用与销售页面一致的devices-table样式 */
-.table-responsive {
-  overflow-x: auto;
-  border-radius: 8px;
-}
-
-.devices-table {
-  width: 100%;
-  min-width: 1200px;
-  table-layout: auto;
-  border-collapse: separate;
-  border-spacing: 0;
-  margin: 0;
-  background: white;
-}
-
-.devices-table th {
-  background: linear-gradient(135deg, #495057 0%, #343a40 100%);
-  color: white;
-  padding: 12px 10px;
-  text-align: center;
-  font-weight: 600;
-  font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border-right: 1px solid #dee2e6;
-  border-bottom: 2px solid #dee2e6;
-  position: relative;
-  white-space: nowrap;
-}
-
-.devices-table th:last-child {
-  border-right: none;
-}
-
-.devices-table th::after {
-  content: '';
-  position: absolute;
-  bottom: -2px;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, #667eea, #764ba2);
-}
-
-.devices-table td {
-  padding: 10px 8px;
-  border-right: 1px solid #e9ecef;
-  border-bottom: 1px solid #e9ecef;
-  vertical-align: middle;
-  font-size: 13px;
-  color: #2c3e50;
-  font-weight: 500;
-  text-align: center;
-  position: relative;
-  white-space: nowrap;
-}
-
-.devices-table td:last-child {
-  border-right: none;
-}
-
-.devices-table tbody tr {
-  transition: all 0.2s ease;
-  position: relative;
-}
-
-.devices-table tbody tr:nth-child(even) {
-  background: #f8f9fa;
-}
-
-.devices-table tbody tr:hover {
-  background: #e3f2fd;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-.devices-table tbody tr:hover td {
-  border-bottom-color: #dee2e6;
 }
 
 /* 特殊列样式 */
@@ -3183,7 +3108,15 @@ onUnmounted(() => {
 .action-buttons {
   display: flex;
   gap: 4px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.action-buttons :deep(.el-button) {
+  margin-left: 0 !important;
+  padding: 6px 10px !important;
+  min-width: 66px;
 }
 
 /* 分页样式 */
@@ -3700,101 +3633,14 @@ textarea.form-control {
   grid-column: 1 / -1;
 }
 
-/* 响应式设计 */
-
-/* 平板端优化 (768px - 1024px) */
-@media (min-width: 768px) and (max-width: 1024px) {
-  .table-section {
-    padding: 20px;
-  }
-
-  .stats-cards {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-  }
-}
-
 /* 手机端优化 (≤768px) */
 @media (max-width: 768px) {
-  .query-view {
-    padding: 4px 0;
-  }
-
-  .table-section {
-    padding: 10px 4px;
-    border-radius: 8px;
-  }
-
-  .section-title {
-    font-size: 15px;
-    margin-bottom: 16px;
-    padding-bottom: 8px;
-  }
-
-
-  /* 统计卡片优化 */
-  .stats-cards {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-    margin-bottom: 16px;
-  }
-
-  .stat-card {
-    padding: 16px;
-  }
-
-  .stat-icon {
-    width: 40px;
-    height: 40px;
-    font-size: 18px;
-  }
-
-  .stat-value {
-    font-size: 22px;
-  }
-
-  .stat-label {
-    font-size: 12px;
-  }
-
-  /* 平板及手机端隐藏在库数量卡片 */
-  .stat-card.hide-on-mobile {
-    display: none;
-  }
-
-  /* 表格区域优化 */
-  .table-section {
-    padding: 8px 2px;
-  }
-
-  .table-responsive {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    /* 手机端优化：移除滚动条，让表格自适应 */
-    overflow-x: visible;
+  .query-view.admin-page .stats-cards .stat-card[data-stat-key='in_stock_count'] {
+    display: none !important;
   }
 
   .table-responsive::-webkit-scrollbar {
     display: none;
-  }
-
-  .devices-table {
-    font-size: 13px;
-    min-width: 100%; /* 移除固定最小宽度 */
-    /* 手机端表格自适应布局 */
-    table-layout: fixed;
-    width: 100%;
-  }
-
-  .devices-table th,
-  .devices-table td {
-    padding: 8px 6px;
-    /* 允许内容换行 */
-    white-space: normal;
-    word-break: break-word;
-    overflow-wrap: break-word;
-    font-size: 13px;
-    line-height: 1.4;
   }
 
   /* 手机端关键列自适应宽度（7列时：品牌、型号、颜色、内存、客户姓名、手机号、状态） */
@@ -3841,17 +3687,11 @@ textarea.form-control {
     min-width: 50px;
   }
 
-  /* 手机端文本溢出优化 - 对于特别长的型号或客户名 */
+  /* 手机端保持真实 table-cell 布局，避免表头与内容列宽错位 */
   .devices-table td:nth-child(2), /* 型号 */
   .devices-table td:nth-child(5) { /* 客户姓名 */
-    max-width: 80px;
     overflow: hidden;
     text-overflow: ellipsis;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
-    box-orient: vertical;
   }
 
   /* 操作按钮优化 */
@@ -3900,7 +3740,6 @@ textarea.form-control {
 /* 小屏手机优化 (≤480px) */
 @media (max-width: 480px) {
   .query-view {
-    padding: 4px 0;
     overflow-x: hidden;
     width: 100%;
     max-width: 100vw;
@@ -3913,62 +3752,7 @@ textarea.form-control {
   }
 
   .table-section {
-    padding: 10px 4px;
-    margin-bottom: 10px;
-    border-radius: 8px;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .table-section {
-    padding: 8px 2px;
     overflow: hidden;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .table-responsive {
-    overflow-x: hidden;
-    margin: 0;
-    border-radius: 8px;
-    width: 100%;
-    max-width: 100%;
-  }
-
-  /* 表格边框优化 */
-  .devices-table {
-    border-collapse: separate;
-    border-spacing: 0;
-    width: 100%;
-    max-width: 100%;
-    table-layout: fixed;
-  }
-
-  /* 统计卡片 - 小屏幕2列布局 */
-  .stats-cards {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 4px;
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-  }
-
-  .stat-card {
-    padding: 6px;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    gap: 4px;
-    min-height: 55px;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .stat-icon {
-    width: 32px;
-    height: 32px;
-    font-size: 14px;
-    flex-shrink: 0;
   }
 
   .stat-content {
@@ -3987,34 +3771,9 @@ textarea.form-control {
     line-height: 1.2;
   }
 
-  /* 手机端隐藏在库数量卡片 */
-  .stat-card.hide-on-mobile {
-    display: none;
-  }
-
   .action-buttons .btn {
     padding: 8px 12px;
     font-size: 11px;
-  }
-
-  /* 表格 */
-  .devices-table {
-    font-size: 13px;
-    table-layout: fixed;
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-  }
-
-  .devices-table th,
-  .devices-table td {
-    padding: 10px 8px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    text-align: center;
-    line-height: 1.45;
-    font-size: 13px;
   }
 
   .devices-table th:nth-child(1),
@@ -4089,22 +3848,6 @@ textarea.form-control {
   gap: 8px;
   color: #856404;
   font-size: 14px;
-}
-
-.section-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #2c3e50;
-  margin-bottom: 16px;
-  padding-bottom: 8px;
-  border-bottom: 2px solid #e0e0e0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.section-title i {
-  color: #1976d2;
 }
 
 /* 表格行样式 */
@@ -4205,22 +3948,6 @@ textarea.form-control {
 @media (max-width: 375px) {
   .query-view {
     padding: 4px 0;
-  }
-
-  /* 统计卡片优化 */
-  .stats-cards {
-    gap: 4px;
-  }
-
-  .stat-card {
-    padding: 10px;
-    min-height: 60px;
-  }
-
-  .stat-icon {
-    width: 32px;
-    height: 32px;
-    font-size: 14px;
   }
 
   .stat-value {

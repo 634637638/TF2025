@@ -1,31 +1,132 @@
-/* 后台页面主体左右宽度统一
- * 以综合查询页为基准，只区分桌面端 / 手机端两档。
+/* 后台页面与数据列表的统一视觉入口。
+ * 页面组件只保留业务专属样式，不应重复定义卡片间距、标题、表头或数据行视觉。
+ * 统一调整请修改下方变量，响应式只区分桌面端 / 手机端两档。
  */
 
 :root {
   --admin-page-gap-x: 12px;
   --admin-page-gap-y: 16px;
+  --admin-page-padding-top: 24px;
+  --admin-page-padding-bottom: 0px;
+  --admin-page-bg: #f5f7fa;
   --admin-panel-gap: 16px;
   --admin-panel-padding: 14px;
-  --admin-table-panel-padding-y: 16px;
-  --admin-table-panel-padding-x: 8px;
+  --admin-panel-radius: 12px;
+  --admin-search-panel-padding-y: 12px;
+  --admin-search-panel-padding-x: 16px;
+  --admin-table-panel-padding-y: 24px;
+  --admin-table-panel-padding-x: 16px;
+  --admin-table-panel-bg: #f8f9fa;
+  --admin-table-panel-border: #e8ecef;
+  --admin-table-panel-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  --admin-stats-grid-gap: 20px;
+  --admin-stat-card-bg: #ffffff;
+  --admin-stat-card-border: #e8ecef;
+  --admin-stat-card-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  --admin-stat-card-hover-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+  --admin-stat-card-accent-height: 3px;
+  --admin-stat-card-padding: 24px;
+  --admin-stat-card-gap: 16px;
+  --admin-stat-icon-size: 48px;
+  --admin-stat-icon-font-size: 20px;
+  --admin-stat-icon-radius: 12px;
+  --admin-stat-icon-bg: linear-gradient(135deg, #667eea, #764ba2);
+  --admin-stat-icon-color: #ffffff;
+  --admin-stat-icon-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  --admin-stat-value-size: 22px;
+  --admin-stat-value-color: #2c3e50;
+  --admin-stat-label-size: 12px;
+  --admin-stat-label-color: #6c757d;
+  --admin-section-title-gap: 20px;
+  --admin-section-title-padding-bottom: 12px;
+  --admin-section-title-font-size: 16px;
+  --admin-section-title-font-weight: 600;
+  --admin-section-title-color: #2c3e50;
+  --admin-section-title-icon-color: #667eea;
+  --admin-section-title-border: #e0e0e0;
+  --admin-record-count-font-size: 14px;
+  --admin-record-count-font-weight: 400;
+  --admin-record-count-color: #6c757d;
+  --admin-data-table-radius: 8px;
+  --admin-data-table-min-width: 1200px;
+  --admin-data-table-bg: #ffffff;
+  --admin-data-table-container-border: #dee2e6;
+  --admin-data-table-container-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --admin-data-table-header-bg: linear-gradient(135deg, #495057 0%, #343a40 100%);
+  --admin-data-table-header-color: #ffffff;
+  --admin-data-table-header-padding-y: 12px;
+  --admin-data-table-header-padding-x: 10px;
+  --admin-data-table-header-height: 44px;
+  --admin-data-table-header-font-size: 13px;
+  --admin-data-table-header-font-weight: 600;
+  --admin-data-table-header-letter-spacing: 0;
+  --admin-data-table-header-border: #dee2e6;
+  --admin-data-table-header-accent: linear-gradient(90deg, #667eea, #764ba2);
+  --admin-data-table-cell-padding-y: 10px;
+  --admin-data-table-cell-padding-x: 8px;
+  --admin-data-table-row-height: 40px;
+  --admin-data-table-cell-font-size: 13px;
+  --admin-data-table-cell-font-weight: 500;
+  --admin-data-table-cell-color: #2c3e50;
+  --admin-data-table-cell-border: #e9ecef;
+  --admin-data-table-row-even-bg: #f8f9fa;
+  --admin-data-table-row-hover-bg: #e3f2fd;
+  --admin-data-table-row-hover-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --admin-data-table-row-selected-bg: #e8f4fd;
+  --admin-data-table-line-height: 1.45;
+  --admin-data-table-action-gap: 6px;
+  --admin-data-table-action-height: 28px;
+  --admin-data-table-action-padding-y: 5px;
+  --admin-data-table-action-padding-x: 10px;
+  --admin-data-table-action-font-size: 13px;
+  --admin-data-table-action-radius: 4px;
+  --admin-data-table-action-icon-size: 14px;
+  --admin-data-table-badge-padding-y: 3px;
+  --admin-data-table-badge-padding-x: 8px;
+  --admin-data-table-badge-radius: 999px;
 }
 
 @media (max-width: 768px) {
   :root {
     --admin-page-gap-x: 6px;
     --admin-page-gap-y: 8px;
+    --admin-page-padding-top: 10px;
     --admin-panel-gap: 10px;
     --admin-panel-padding: 10px;
+    --admin-search-panel-padding-y: 12px;
+    --admin-search-panel-padding-x: 12px;
     --admin-table-panel-padding-y: 10px;
     --admin-table-panel-padding-x: 6px;
+    --admin-stats-grid-gap: 10px;
+    --admin-stat-card-padding: 12px;
+    --admin-stat-card-gap: 10px;
+    --admin-stat-icon-size: 40px;
+    --admin-stat-icon-font-size: 18px;
+    --admin-stat-value-size: 22px;
+    --admin-stat-label-size: 12px;
+    --admin-section-title-gap: 16px;
+    --admin-section-title-padding-bottom: 8px;
+    --admin-section-title-font-size: var(--mobile-text-section-title);
+    --admin-data-table-min-width: 100%;
+    --admin-data-table-header-padding-y: 9px;
+    --admin-data-table-header-padding-x: 4px;
+    --admin-data-table-header-height: 40px;
+    --admin-data-table-cell-padding-y: 8px;
+    --admin-data-table-cell-padding-x: 4px;
+    --admin-data-table-row-height: 38px;
+    --admin-data-table-cell-font-size: var(--mobile-text-table);
+    --admin-data-table-header-font-size: var(--mobile-text-table-header);
+    --admin-data-table-action-height: 32px;
+    --admin-data-table-action-padding-y: 6px;
+    --admin-data-table-action-padding-x: 12px;
+    --admin-data-table-action-font-size: var(--mobile-text-table);
   }
 }
 
 .admin-page {
   padding-inline: var(--admin-page-gap-x) !important;
-  padding-top: 24px !important;
-  padding-bottom: 0 !important;
+  padding-top: var(--admin-page-padding-top) !important;
+  padding-bottom: var(--admin-page-padding-bottom) !important;
 }
 
 .admin-page-content {
@@ -41,8 +142,590 @@
   padding: var(--admin-panel-padding) !important;
 }
 
+.admin-page .unified-search-panel {
+  width: 100% !important;
+  max-width: 100% !important;
+  padding: var(--admin-search-panel-padding-y) var(--admin-search-panel-padding-x) !important;
+  margin-bottom: 0 !important;
+  border-radius: var(--admin-panel-radius) !important;
+}
+
+.admin-page .stats-cards {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+  gap: var(--admin-stats-grid-gap) !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-bottom: 0 !important;
+  padding: 0 !important;
+}
+
+.admin-page .stat-card,
+.admin-page .el-card.stat-card,
+.admin-page .module-stat-card {
+  display: flex !important;
+  align-items: center !important;
+  background: var(--admin-stat-card-bg) !important;
+  border: 1px solid var(--admin-stat-card-border) !important;
+  box-shadow: var(--admin-stat-card-shadow) !important;
+  border-radius: var(--admin-panel-radius) !important;
+  padding: var(--admin-stat-card-padding) !important;
+  gap: var(--admin-stat-card-gap) !important;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.admin-page .stat-card:hover,
+.admin-page .el-card.stat-card:hover,
+.admin-page .module-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--admin-stat-card-hover-shadow) !important;
+}
+
+.admin-page .stat-card::before,
+.admin-page .el-card.stat-card::before,
+.admin-page .module-stat-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: var(--admin-stat-card-accent-height) !important;
+  background: var(--card-accent, var(--admin-stat-icon-bg));
+}
+
+.admin-page .stat-card .stat-content,
+.admin-page .module-stat-card .stat-content {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.admin-page .el-card.stat-card .el-card__body {
+  width: 100%;
+  padding: 0 !important;
+}
+
+.admin-page .el-card.stat-card .stat-content {
+  display: flex !important;
+  align-items: center !important;
+  width: 100%;
+  gap: var(--admin-stat-card-gap) !important;
+}
+
+.admin-page .el-card.stat-card .stat-info {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.admin-page .stat-card .stat-icon,
+.admin-page .module-stat-card .stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--admin-stat-icon-size) !important;
+  height: var(--admin-stat-icon-size) !important;
+  flex: 0 0 var(--admin-stat-icon-size) !important;
+  border-radius: var(--admin-stat-icon-radius) !important;
+  background: var(--admin-stat-icon-bg);
+  color: var(--admin-stat-icon-color);
+  font-size: var(--admin-stat-icon-font-size) !important;
+  box-shadow: var(--admin-stat-icon-shadow);
+}
+
+.admin-page .stat-card .stat-value,
+.admin-page .stat-card .number,
+.admin-page .stat-card .stat-value-primary,
+.admin-page .module-stat-card .stat-value {
+  margin-bottom: 4px !important;
+  color: var(--admin-stat-value-color) !important;
+  font-size: var(--admin-stat-value-size) !important;
+  font-weight: 700;
+  line-height: 1.2 !important;
+}
+
+.admin-page .stat-card .stat-label,
+.admin-page .stat-card .stat-sub,
+.admin-page .module-stat-card .stat-label {
+  color: var(--admin-stat-label-color) !important;
+  font-size: var(--admin-stat-label-size) !important;
+  font-weight: 500;
+  line-height: 1.4 !important;
+}
+
+/* 品牌、型号、颜色、内存共用此入口，旧页面局部样式不得改变公共卡片尺寸。 */
+.admin-page.admin-unified-base-data-page {
+  min-height: 100vh;
+  background: var(--admin-page-bg) !important;
+}
+
+.admin-page.admin-unified-base-data-page .stats-cards {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+  gap: var(--admin-stats-grid-gap) !important;
+  margin-bottom: 0 !important;
+}
+
+.admin-page.admin-unified-base-data-page .stat-card {
+  min-height: 0 !important;
+  padding: var(--admin-stat-card-padding) !important;
+  gap: var(--admin-stat-card-gap) !important;
+  border: 1px solid var(--admin-stat-card-border) !important;
+  border-radius: var(--admin-panel-radius) !important;
+  background: var(--admin-stat-card-bg) !important;
+  box-shadow: var(--admin-stat-card-shadow) !important;
+}
+
+.admin-page.admin-unified-base-data-page .stat-card:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: var(--admin-stat-card-hover-shadow) !important;
+}
+
+.admin-page.admin-unified-base-data-page .stat-card .stat-icon {
+  width: var(--admin-stat-icon-size) !important;
+  height: var(--admin-stat-icon-size) !important;
+  flex: 0 0 var(--admin-stat-icon-size) !important;
+  border-radius: var(--admin-stat-icon-radius) !important;
+  font-size: var(--admin-stat-icon-font-size) !important;
+}
+
+.admin-page.admin-unified-base-data-page .stat-card .stat-value {
+  margin-bottom: 4px !important;
+  color: var(--admin-stat-value-color) !important;
+  font-size: var(--admin-stat-value-size) !important;
+  line-height: 1.2 !important;
+}
+
+.admin-page.admin-unified-base-data-page .stat-card .stat-label {
+  color: var(--admin-stat-label-color) !important;
+  font-size: var(--admin-stat-label-size) !important;
+  line-height: 1.4 !important;
+}
+
 .admin-table-panel {
   padding: var(--admin-table-panel-padding-y) var(--admin-table-panel-padding-x) !important;
+}
+
+.admin-page .table-section,
+.admin-page .table-card,
+.admin-page .dashboard-card,
+.admin-page .menu-table-section,
+.admin-page .modules-section,
+.admin-page .toolbar-section,
+.admin-page .search-section,
+.admin-page .toolbar,
+.admin-page .el-tabs,
+.admin-page .el-card {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-bottom: 0 !important;
+  border-radius: var(--admin-panel-radius) !important;
+}
+
+.admin-page .table-section {
+  padding: var(--admin-table-panel-padding-y) var(--admin-table-panel-padding-x) !important;
+}
+
+.admin-page .table-section.admin-table-panel:not(.el-row),
+.admin-page .table-card.admin-table-panel {
+  background: var(--admin-table-panel-bg) !important;
+  border: 1px solid var(--admin-table-panel-border) !important;
+  box-shadow: var(--admin-table-panel-shadow) !important;
+}
+
+.admin-page .admin-table-panel .section-title {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin-bottom: var(--admin-section-title-gap) !important;
+  padding-bottom: var(--admin-section-title-padding-bottom) !important;
+  border-bottom: 2px solid var(--admin-section-title-border) !important;
+  color: var(--admin-section-title-color) !important;
+  font-size: var(--admin-section-title-font-size) !important;
+  font-weight: var(--admin-section-title-font-weight) !important;
+  line-height: 1.35 !important;
+}
+
+.admin-page .admin-table-panel .section-title > i {
+  color: var(--admin-section-title-icon-color) !important;
+}
+
+.admin-page .admin-table-panel .record-count {
+  margin-left: auto !important;
+  color: var(--admin-record-count-color) !important;
+  font-size: var(--admin-record-count-font-size) !important;
+  font-weight: var(--admin-record-count-font-weight) !important;
+  line-height: 1.35 !important;
+}
+
+.admin-page .table-responsive {
+  overflow-x: auto !important;
+  border-radius: var(--admin-data-table-radius) !important;
+  border: 1px solid var(--admin-data-table-container-border) !important;
+  box-shadow: var(--admin-data-table-container-shadow) !important;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.admin-page .table-responsive::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.admin-page .admin-data-table,
+.admin-page .devices-table,
+.admin-page table.data-table,
+.admin-page table.table,
+.admin-page .table-section .table-responsive > table {
+  width: 100% !important;
+  min-width: var(--admin-data-table-min-width) !important;
+  table-layout: auto !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  margin: 0 !important;
+  background: var(--admin-data-table-bg) !important;
+}
+
+.admin-page .admin-data-table th,
+.admin-page .devices-table th,
+.admin-page table.data-table th,
+.admin-page table.table th,
+.admin-page .table-section .table-responsive > table th {
+  background: var(--admin-data-table-header-bg) !important;
+  color: var(--admin-data-table-header-color) !important;
+  padding: var(--admin-data-table-header-padding-y) var(--admin-data-table-header-padding-x) !important;
+  height: var(--admin-data-table-header-height) !important;
+  box-sizing: border-box !important;
+  text-align: center !important;
+  font-weight: var(--admin-data-table-header-font-weight) !important;
+  font-size: var(--admin-data-table-header-font-size) !important;
+  text-transform: uppercase !important;
+  letter-spacing: var(--admin-data-table-header-letter-spacing) !important;
+  border-right: 1px solid var(--admin-data-table-header-border) !important;
+  border-bottom: 2px solid var(--admin-data-table-header-border) !important;
+  position: relative !important;
+  white-space: nowrap !important;
+}
+
+.admin-page .admin-data-table th:first-child,
+.admin-page .devices-table th:first-child,
+.admin-page table.data-table th:first-child,
+.admin-page table.table th:first-child,
+.admin-page .table-section .table-responsive > table th:first-child {
+  border-top-left-radius: var(--admin-data-table-radius) !important;
+}
+
+.admin-page .admin-data-table th:last-child,
+.admin-page .devices-table th:last-child,
+.admin-page table.data-table th:last-child,
+.admin-page table.table th:last-child,
+.admin-page .table-section .table-responsive > table th:last-child {
+  border-right: none !important;
+  border-top-right-radius: var(--admin-data-table-radius) !important;
+}
+
+.admin-page .admin-data-table th::after,
+.admin-page .devices-table th::after,
+.admin-page table.data-table th::after,
+.admin-page table.table th::after,
+.admin-page .table-section .table-responsive > table th::after {
+  content: '' !important;
+  position: absolute !important;
+  bottom: -2px !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 2px !important;
+  background: var(--admin-data-table-header-accent) !important;
+}
+
+.admin-page .admin-data-table td,
+.admin-page .devices-table td,
+.admin-page table.data-table td,
+.admin-page table.table td,
+.admin-page .table-section .table-responsive > table td {
+  padding: var(--admin-data-table-cell-padding-y) var(--admin-data-table-cell-padding-x) !important;
+  height: var(--admin-data-table-row-height) !important;
+  box-sizing: border-box !important;
+  border-right: 1px solid var(--admin-data-table-cell-border) !important;
+  border-bottom: 1px solid var(--admin-data-table-cell-border) !important;
+  vertical-align: middle !important;
+  font-size: var(--admin-data-table-cell-font-size) !important;
+  color: var(--admin-data-table-cell-color) !important;
+  font-weight: var(--admin-data-table-cell-font-weight) !important;
+  text-align: center !important;
+  position: relative !important;
+  white-space: nowrap !important;
+  line-height: var(--admin-data-table-line-height) !important;
+}
+
+.admin-page .admin-data-table td:last-child,
+.admin-page .devices-table td:last-child,
+.admin-page table.data-table td:last-child,
+.admin-page table.table td:last-child,
+.admin-page .table-section .table-responsive > table td:last-child {
+  border-right: none !important;
+}
+
+.admin-page .admin-data-table tbody tr,
+.admin-page .devices-table tbody tr,
+.admin-page table.data-table tbody tr,
+.admin-page table.table tbody tr,
+.admin-page .table-section .table-responsive > table tbody tr {
+  transition: all 0.2s ease !important;
+  position: relative !important;
+}
+
+.admin-page .admin-data-table tbody tr:nth-child(even),
+.admin-page .devices-table tbody tr:nth-child(even),
+.admin-page table.data-table tbody tr:nth-child(even),
+.admin-page table.table tbody tr:nth-child(even),
+.admin-page .table-section .table-responsive > table tbody tr:nth-child(even) {
+  background: var(--admin-data-table-row-even-bg) !important;
+}
+
+.admin-page .admin-data-table tbody tr:hover,
+.admin-page .devices-table tbody tr:hover,
+.admin-page table.data-table tbody tr:hover,
+.admin-page table.table tbody tr:hover,
+.admin-page .table-section .table-responsive > table tbody tr:hover {
+  background: var(--admin-data-table-row-hover-bg) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: var(--admin-data-table-row-hover-shadow) !important;
+}
+
+.admin-page .admin-data-table tbody tr:hover td,
+.admin-page .devices-table tbody tr:hover td,
+.admin-page table.data-table tbody tr:hover td,
+.admin-page table.table tbody tr:hover td,
+.admin-page .table-section .table-responsive > table tbody tr:hover td {
+  border-bottom-color: var(--admin-data-table-header-border) !important;
+}
+
+.admin-page .admin-data-table tbody tr.selected-row,
+.admin-page .devices-table tbody tr.selected-row,
+.admin-page table.data-table tbody tr.selected-row,
+.admin-page table.table tbody tr.selected-row,
+.admin-page .admin-data-table tbody tr.row-selected,
+.admin-page .devices-table tbody tr.row-selected,
+.admin-page table.data-table tbody tr.row-selected,
+.admin-page table.table tbody tr.row-selected,
+.admin-page .table-section .table-responsive > table tbody tr.selected-row,
+.admin-page .table-section .table-responsive > table tbody tr.row-selected {
+  background: var(--admin-data-table-row-selected-bg) !important;
+}
+
+.admin-page .admin-data-table tbody tr.selected-row td,
+.admin-page .devices-table tbody tr.selected-row td,
+.admin-page table.data-table tbody tr.selected-row td,
+.admin-page table.table tbody tr.selected-row td,
+.admin-page .admin-data-table tbody tr.row-selected td,
+.admin-page .devices-table tbody tr.row-selected td,
+.admin-page table.data-table tbody tr.row-selected td,
+.admin-page table.table tbody tr.row-selected td,
+.admin-page .table-section .table-responsive > table tbody tr.selected-row td,
+.admin-page .table-section .table-responsive > table tbody tr.row-selected td {
+  background: transparent !important;
+}
+
+.admin-page .data-table.el-table,
+.admin-page .devices-table.el-table,
+.admin-page .admin-data-table.el-table {
+  width: 100% !important;
+  min-width: var(--admin-data-table-min-width) !important;
+  border-radius: var(--admin-data-table-radius) !important;
+  overflow: hidden !important;
+  background: var(--admin-data-table-bg) !important;
+}
+
+.admin-page .data-table.el-table .el-table__inner-wrapper::before,
+.admin-page .devices-table.el-table .el-table__inner-wrapper::before,
+.admin-page .admin-data-table.el-table .el-table__inner-wrapper::before {
+  background-color: var(--admin-data-table-cell-border) !important;
+}
+
+.admin-page .data-table.el-table .el-table__header th,
+.admin-page .devices-table.el-table .el-table__header th,
+.admin-page .admin-data-table.el-table .el-table__header th {
+  background: var(--admin-data-table-header-bg) !important;
+  color: var(--admin-data-table-header-color) !important;
+  padding: var(--admin-data-table-header-padding-y) var(--admin-data-table-header-padding-x) !important;
+  height: var(--admin-data-table-header-height) !important;
+  box-sizing: border-box !important;
+  text-align: center !important;
+  font-weight: var(--admin-data-table-header-font-weight) !important;
+  font-size: var(--admin-data-table-header-font-size) !important;
+  text-transform: uppercase !important;
+  letter-spacing: var(--admin-data-table-header-letter-spacing) !important;
+  border-right: 1px solid var(--admin-data-table-header-border) !important;
+  border-bottom: 2px solid var(--admin-data-table-header-border) !important;
+}
+
+.admin-page .data-table.el-table .el-table__header th .cell,
+.admin-page .devices-table.el-table .el-table__header th .cell,
+.admin-page .admin-data-table.el-table .el-table__header th .cell {
+  color: inherit !important;
+  min-height: 0 !important;
+  line-height: var(--admin-data-table-line-height) !important;
+  white-space: nowrap !important;
+}
+
+.admin-page .data-table.el-table .el-table__body td,
+.admin-page .devices-table.el-table .el-table__body td,
+.admin-page .admin-data-table.el-table .el-table__body td {
+  padding: var(--admin-data-table-cell-padding-y) var(--admin-data-table-cell-padding-x) !important;
+  height: var(--admin-data-table-row-height) !important;
+  box-sizing: border-box !important;
+  border-right: 1px solid var(--admin-data-table-cell-border) !important;
+  border-bottom: 1px solid var(--admin-data-table-cell-border) !important;
+  vertical-align: middle !important;
+  font-size: var(--admin-data-table-cell-font-size) !important;
+  min-height: 0 !important;
+  color: var(--admin-data-table-cell-color) !important;
+  font-weight: var(--admin-data-table-cell-font-weight) !important;
+  text-align: center !important;
+}
+
+.admin-page .data-table.el-table .el-table__body td .cell,
+.admin-page .devices-table.el-table .el-table__body td .cell,
+.admin-page .admin-data-table.el-table .el-table__body td .cell {
+  font-size: var(--admin-data-table-cell-font-size) !important;
+  min-height: 0 !important;
+  line-height: var(--admin-data-table-line-height) !important;
+  white-space: nowrap !important;
+}
+
+/* responsive.scss 的通用 span 字号不得放大表格内容。 */
+.admin-page .data-table.el-table .el-table__body td .cell span,
+.admin-page .devices-table.el-table .el-table__body td .cell span,
+.admin-page .admin-data-table.el-table .el-table__body td .cell span {
+  font-size: inherit !important;
+}
+
+.admin-page .data-table.el-table .el-table__body tr.el-table__row--striped > td,
+.admin-page .devices-table.el-table .el-table__body tr.el-table__row--striped > td,
+.admin-page .admin-data-table.el-table .el-table__body tr.el-table__row--striped > td {
+  background: var(--admin-data-table-row-even-bg) !important;
+}
+
+.admin-page .data-table.el-table .el-table__body tr:hover > td,
+.admin-page .devices-table.el-table .el-table__body tr:hover > td,
+.admin-page .admin-data-table.el-table .el-table__body tr:hover > td {
+  background: var(--admin-data-table-row-hover-bg) !important;
+  border-bottom-color: var(--admin-data-table-header-border) !important;
+}
+
+.admin-page .data-table.el-table .el-table__body tr.row-selected > td,
+.admin-page .devices-table.el-table .el-table__body tr.row-selected > td,
+.admin-page .admin-data-table.el-table .el-table__body tr.row-selected > td {
+  background: var(--admin-data-table-row-selected-bg) !important;
+}
+
+/* 基础资料表格：PC 拖拽排序，手机双击展开操作。 */
+.admin-page .base-data-table th.mobile-expand-header,
+.admin-page .base-data-table td.mobile-expand-column {
+  width: 1px !important;
+  min-width: 1px !important;
+  padding: 0 !important;
+  border-right: 0 !important;
+}
+
+.admin-page .base-data-table th.mobile-expand-header .cell,
+.admin-page .base-data-table td.mobile-expand-column .cell {
+  display: none !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+.admin-page .base-data-table .el-table__expanded-cell {
+  padding: 0 !important;
+  background: #f8fafc !important;
+}
+
+.admin-page .base-data-table .mobile-row-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  width: 100%;
+  padding: 8px;
+}
+
+.admin-page .base-data-table .mobile-row-actions .el-button {
+  width: 100%;
+  min-width: 0;
+  margin: 0 !important;
+}
+
+.admin-page .base-data-table .drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: #9ca3af;
+  cursor: grab;
+  user-select: none;
+}
+
+.admin-page .base-data-table .drag-handle:active {
+  cursor: grabbing;
+}
+
+.admin-page .base-data-table .drag-handle.disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.admin-page .base-data-table .status-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: auto !important;
+  max-width: none !important;
+  padding: var(--admin-data-table-badge-padding-y) var(--admin-data-table-badge-padding-x) !important;
+  border-radius: var(--admin-data-table-badge-radius) !important;
+  gap: 4px !important;
+  font-size: inherit !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+}
+
+.admin-page .base-data-table .id-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: auto !important;
+  min-width: 0 !important;
+  height: auto !important;
+  padding: var(--admin-data-table-badge-padding-y) var(--admin-data-table-badge-padding-x) !important;
+  border-radius: 6px !important;
+  font-size: inherit !important;
+  line-height: 1.2 !important;
+  box-shadow: none !important;
+  white-space: nowrap !important;
+}
+
+.admin-page .base-data-table .role-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: auto !important;
+  max-width: 100% !important;
+  padding: var(--admin-data-table-badge-padding-y) var(--admin-data-table-badge-padding-x) !important;
+  border-radius: var(--admin-data-table-badge-radius) !important;
+  gap: 4px !important;
+  font-size: inherit !important;
+  line-height: 1.2 !important;
+  box-shadow: none !important;
+  white-space: nowrap !important;
+}
+
+.element-table-sort-ghost > td {
+  background: #eff6ff !important;
+}
+
+.element-table-sort-chosen > td {
+  box-shadow: inset 0 2px 0 #3b82f6, inset 0 -2px 0 #3b82f6;
 }
 
 @media (max-width: 768px) {
@@ -51,7 +734,6 @@
     max-width: 100vw;
     overflow-x: clip;
     box-sizing: border-box;
-    padding-top: 10px !important;
   }
 
   .admin-page,
@@ -72,44 +754,64 @@
   .admin-page .page-header {
     width: 100% !important;
     max-width: 100% !important;
-    margin-bottom: 0 !important;
+    margin-bottom: var(--admin-panel-gap) !important;
     border-radius: var(--mobile-card-radius) !important;
   }
 
-  .admin-page .unified-search-panel {
-    width: 100% !important;
-    max-width: 100% !important;
+  .admin-page .admin-page-content > .page-header,
+  .admin-page .admin-page-content > [data-aos] > .page-header {
     margin-bottom: 0 !important;
+  }
+
+  .admin-page .unified-search-panel {
     border-radius: var(--mobile-card-radius) !important;
   }
 
   .admin-page .stats-cards {
-    display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 10px !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    margin-bottom: 0 !important;
+  }
+
+  /* 基础资料页桌面端的 200px 最小列宽不得覆盖手机端固定两列。 */
+  .admin-page.admin-unified-base-data-page .stats-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 
   .admin-page .stat-card,
   .admin-page .el-card.stat-card,
   .admin-page .module-stat-card {
-    min-height: 88px;
-    padding: var(--mobile-card-padding) !important;
+    min-height: 88px !important;
     border-radius: var(--mobile-card-radius) !important;
+    align-items: center !important;
+  }
+
+  .admin-page .stats-cards > .stat-card:not(.total-card):not(.approval-card):not(.amount-card):not(.handler-card),
+  .admin-page .stats-cards > .el-card.stat-card {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    text-align: left !important;
   }
 
   .admin-page .stat-card .stat-content,
   .admin-page .module-stat-card .stat-content {
     min-width: 0;
+    flex: 1 1 auto !important;
+    text-align: right !important;
+  }
+
+  .admin-page .stat-card .stat-icon,
+  .admin-page .module-stat-card .stat-icon {
+    width: var(--admin-stat-icon-size) !important;
+    height: var(--admin-stat-icon-size) !important;
+    font-size: var(--admin-stat-icon-font-size) !important;
+    flex-shrink: 0 !important;
   }
 
   .admin-page .stat-card .stat-value,
   .admin-page .stat-card .number,
   .admin-page .stat-card .stat-value-primary,
   .admin-page .module-stat-card .stat-value {
-    font-size: var(--mobile-text-stat-value) !important;
+    font-size: var(--admin-stat-value-size) !important;
     line-height: 1.15 !important;
     font-weight: 700 !important;
   }
@@ -117,7 +819,7 @@
   .admin-page .stat-card .stat-label,
   .admin-page .stat-card .stat-sub,
   .admin-page .module-stat-card .stat-label {
-    font-size: var(--mobile-text-stat-label) !important;
+    font-size: var(--admin-stat-label-size) !important;
     line-height: 1.35 !important;
   }
 
@@ -131,9 +833,6 @@
   .admin-page .toolbar,
   .admin-page .el-tabs,
   .admin-page .el-card {
-    width: 100% !important;
-    max-width: 100% !important;
-    margin-bottom: 0 !important;
     border-radius: var(--mobile-card-radius) !important;
   }
 
@@ -161,68 +860,86 @@
     padding-inline: var(--admin-table-panel-padding-x) !important;
   }
 
+  .admin-page .section-title,
+  .admin-page .table-section .section-title,
+  .admin-page .panel-title,
+  .admin-page .card-title {
+    font-size: var(--mobile-text-section-title) !important;
+    line-height: 1.35 !important;
+    margin-bottom: var(--admin-section-title-gap) !important;
+    padding-bottom: var(--admin-section-title-padding-bottom) !important;
+  }
+
+  .admin-page .section-title .record-count,
+  .admin-page .record-count {
+    font-size: 14px !important;
+    line-height: 1.35 !important;
+  }
+
   .admin-page .table-responsive {
     overflow-x: auto !important;
     overflow-y: hidden !important;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-x: contain;
+    scrollbar-width: none;
     width: 100%;
     max-width: 100%;
   }
 
-  .admin-page .table-responsive .table,
-  .admin-page .table-responsive .data-table:not(.customers-mobile-table) {
-    width: max-content !important;
+  .admin-page .table-responsive::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
+  .admin-page .admin-data-table,
+  .admin-page .devices-table,
+  .admin-page table.data-table,
+  .admin-page table.table,
+  .admin-page .table-section .table-responsive > table {
+    width: 100% !important;
     min-width: 100% !important;
-    max-width: none !important;
-    table-layout: auto !important;
+    max-width: 100% !important;
+    table-layout: fixed !important;
   }
 
-  .admin-page .table-responsive .table th,
-  .admin-page .table-responsive .table td,
-  .admin-page .table-responsive .data-table:not(.customers-mobile-table) th,
-  .admin-page .table-responsive .data-table:not(.customers-mobile-table) td {
-    white-space: nowrap !important;
+  .admin-page .admin-data-table th,
+  .admin-page .admin-data-table td,
+  .admin-page .devices-table th,
+  .admin-page .devices-table td,
+  .admin-page table.data-table th,
+  .admin-page table.data-table td,
+  .admin-page table.table th,
+  .admin-page table.table td,
+  .admin-page .table-section .table-responsive > table th,
+  .admin-page .table-section .table-responsive > table td {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    box-sizing: border-box !important;
   }
 
-  .admin-page .el-table,
-  .admin-page .table,
-  .admin-page table {
+  .admin-page .el-table {
     font-size: var(--mobile-text-table) !important;
     line-height: var(--mobile-line-height-compact) !important;
   }
 
   .admin-page .el-table th,
-  .admin-page .el-table td,
-  .admin-page .table th,
-  .admin-page .table td {
+  .admin-page .el-table td {
     padding-top: 8px !important;
     padding-bottom: 8px !important;
   }
 
-  .admin-page .el-table th,
-  .admin-page .table th {
+  .admin-page .el-table th {
     font-size: var(--mobile-text-table-header) !important;
     font-weight: 600 !important;
   }
 }
 
 @media (max-width: 480px) {
-  .admin-page .stats-cards {
-    gap: 8px !important;
-  }
-
   .admin-page .stat-card,
   .admin-page .el-card.stat-card,
   .admin-page .module-stat-card {
-    min-height: 82px;
-    padding: 10px !important;
+    min-height: 82px !important;
   }
 
-  .admin-page .stat-card .stat-value,
-  .admin-page .stat-card .number,
-  .admin-page .stat-card .stat-value-primary,
-  .admin-page .module-stat-card .stat-value {
-    font-size: 20px !important;
-  }
 }

@@ -50,7 +50,7 @@
     <div v-if="showStatsCards" class="stats-cards">
       <div v-if="canViewField('stats_total_and_handler')" class="stat-card total-card">
         <div class="stat-card__glow"></div>
-        <div class="stat-card__head">
+        <div class="stat-card__head stat-card__head--with-progress">
           <div class="stat-card__icon">
             <i class="fas fa-layer-group"></i>
           </div>
@@ -58,26 +58,34 @@
             <div class="stat-card__eyebrow">办理</div>
             <div class="stat-card__title">总单数</div>
           </div>
+          <div class="stat-card__head-progress" aria-hidden="true">
+            <div class="stat-card__head-progress-fill" :style="{ width: `${handlerRate}%` }"></div>
+          </div>
           <div class="stat-card__badge">代办 {{ stats.handler_count || 0 }}</div>
         </div>
-        <div class="stat-card__value-row">
-          <div class="stat-card__value">{{ stats.total_count || 0 }}</div>
-          <div class="stat-card__value-unit">单</div>
-        </div>
-        <div class="stat-card__metrics">
-          <div class="stat-metric">
-            <span class="stat-metric__label">待审</span>
-            <strong class="stat-metric__value">{{ stats.pending_count || 0 }}</strong>
+        <div class="stat-card__body-row">
+          <div class="stat-card__value-row">
+            <div class="stat-card__value">{{ stats.total_count || 0 }}</div>
+            <div class="stat-card__value-unit">单</div>
           </div>
-          <div class="stat-metric">
-            <span class="stat-metric__label">代办</span>
-            <strong class="stat-metric__value">{{ stats.handler_count || 0 }}</strong>
+          <div class="stat-progress stat-progress--mobile-only">
+            <div class="stat-progress__track">
+              <div class="stat-progress__fill" :style="{ width: `${handlerRate}%` }"></div>
+            </div>
+            <div class="stat-progress__meta">
+              <span>代办 {{ handlerRate }}%</span>
+              <span>共 {{ stats.total_count || 0 }} 单</span>
+            </div>
+          </div>
+          <div class="stat-card__facts">
+            <div class="stat-fact"><span>待审</span><strong>{{ stats.pending_count || 0 }}</strong></div>
+            <div class="stat-fact"><span>代办</span><strong>{{ stats.handler_count || 0 }}</strong></div>
           </div>
         </div>
       </div>
       <div v-if="canViewField('stats_approval_progress')" class="stat-card approval-card">
         <div class="stat-card__glow"></div>
-        <div class="stat-card__head">
+        <div class="stat-card__head stat-card__head--with-progress">
           <div class="stat-card__icon">
             <i class="fas fa-stamp"></i>
           </div>
@@ -85,35 +93,34 @@
             <div class="stat-card__eyebrow">审批</div>
             <div class="stat-card__title">已审批</div>
           </div>
+          <div class="stat-card__head-progress" aria-hidden="true">
+            <div class="stat-card__head-progress-fill" :style="{ width: `${approvalRate}%` }"></div>
+          </div>
           <div class="stat-card__badge">{{ approvalRate }}%</div>
         </div>
-        <div class="stat-card__value-row">
-          <div class="stat-card__value">{{ stats.completed_count || 0 }}</div>
-          <div class="stat-card__value-unit">单</div>
-        </div>
-        <div class="stat-progress">
-          <div class="stat-progress__track">
-            <div class="stat-progress__fill" :style="{ width: `${approvalRate}%` }"></div>
+        <div class="stat-card__body-row">
+          <div class="stat-card__value-row">
+            <div class="stat-card__value">{{ stats.completed_count || 0 }}</div>
+            <div class="stat-card__value-unit">单</div>
           </div>
-          <div class="stat-progress__meta">
-            <span>完成 {{ approvalRate }}%</span>
-            <span>待 {{ stats.pending_count || 0 }}</span>
+          <div class="stat-progress stat-progress--mobile-only">
+            <div class="stat-progress__track">
+              <div class="stat-progress__fill" :style="{ width: `${approvalRate}%` }"></div>
+            </div>
+            <div class="stat-progress__meta">
+              <span>完成 {{ approvalRate }}%</span>
+              <span>待 {{ stats.pending_count || 0 }}</span>
+            </div>
           </div>
-        </div>
-        <div class="stat-card__metrics">
-          <div class="stat-metric">
-            <span class="stat-metric__label">已审</span>
-            <strong class="stat-metric__value">{{ stats.completed_count || 0 }}</strong>
-          </div>
-          <div class="stat-metric">
-            <span class="stat-metric__label">待审</span>
-            <strong class="stat-metric__value">{{ stats.pending_count || 0 }}</strong>
+          <div class="stat-card__facts">
+            <div class="stat-fact"><span>已审</span><strong>{{ stats.completed_count || 0 }}</strong></div>
+            <div class="stat-fact"><span>待审</span><strong>{{ stats.pending_count || 0 }}</strong></div>
           </div>
         </div>
       </div>
       <div v-if="canViewField('stats_amount_progress')" class="stat-card amount-card">
         <div class="stat-card__glow"></div>
-        <div class="stat-card__head">
+        <div class="stat-card__head stat-card__head--with-progress">
           <div class="stat-card__icon">
             <i class="fas fa-wallet"></i>
           </div>
@@ -121,34 +128,33 @@
             <div class="stat-card__eyebrow">到账</div>
             <div class="stat-card__title">已到账</div>
           </div>
+          <div class="stat-card__head-progress" aria-hidden="true">
+            <div class="stat-card__head-progress-fill" :style="{ width: `${arrivalRate}%` }"></div>
+          </div>
           <div class="stat-card__badge">{{ arrivalRate }}%</div>
         </div>
-        <div class="stat-card__value-row stat-card__value-row--money">
-          <div class="stat-card__value">¥{{ formatAmount(stats.total_arrived_amount || 0) }}</div>
-        </div>
-        <div class="stat-progress">
-          <div class="stat-progress__track">
-            <div class="stat-progress__fill" :style="{ width: `${arrivalRate}%` }"></div>
+        <div class="stat-card__body-row">
+          <div class="stat-card__value-row stat-card__value-row--money">
+            <div class="stat-card__value">¥{{ formatAmount(stats.total_arrived_amount || 0) }}</div>
           </div>
-          <div class="stat-progress__meta">
-            <span>到账 {{ arrivalRate }}%</span>
-            <span>待 ¥{{ formatAmount(pendingArrivalAmount) }}</span>
+          <div class="stat-progress stat-progress--mobile-only">
+            <div class="stat-progress__track">
+              <div class="stat-progress__fill" :style="{ width: `${arrivalRate}%` }"></div>
+            </div>
+            <div class="stat-progress__meta">
+              <span>到账 {{ arrivalRate }}%</span>
+              <span>待 ¥{{ formatAmount(pendingArrivalAmount) }}</span>
+            </div>
           </div>
-        </div>
-        <div class="stat-card__metrics">
-          <div class="stat-metric">
-            <span class="stat-metric__label">应到</span>
-            <strong class="stat-metric__value">¥{{ formatAmount(stats.total_subsidy_amount || 0) }}</strong>
-          </div>
-          <div class="stat-metric">
-            <span class="stat-metric__label">待到</span>
-            <strong class="stat-metric__value">¥{{ formatAmount(pendingArrivalAmount) }}</strong>
+          <div class="stat-card__facts stat-card__facts--money">
+            <div class="stat-fact"><span>应到</span><strong>¥{{ formatAmount(stats.total_subsidy_amount || 0) }}</strong></div>
+            <div class="stat-fact"><span>待到</span><strong>¥{{ formatAmount(pendingArrivalAmount) }}</strong></div>
           </div>
         </div>
       </div>
       <div v-if="canViewField('stats_store_overview')" class="stat-card handler-card">
         <div class="stat-card__glow"></div>
-        <div class="stat-card__head">
+        <div class="stat-card__head stat-card__head--with-progress">
           <div class="stat-card__icon">
             <i class="fas fa-store"></i>
           </div>
@@ -156,21 +162,35 @@
             <div class="stat-card__eyebrow">店铺</div>
             <div class="stat-card__title">参与店铺</div>
           </div>
+          <div class="stat-card__head-progress" aria-hidden="true">
+            <div class="stat-card__head-progress-fill" :style="{ width: `${topStoreRate}%` }"></div>
+          </div>
           <div class="stat-card__badge">TOP</div>
         </div>
-        <div class="stat-card__value-row">
-          <div class="stat-card__value">{{ stats.store_stats?.length || 0 }}</div>
-          <div class="stat-card__value-unit">家</div>
-        </div>
-        <div class="store-pill-list">
-          <template v-if="stats.store_stats && stats.store_stats.length > 0">
-            <div v-for="store in topStores" :key="store.store_id" class="store-pill">
+        <div class="stat-card__body-row">
+          <div class="stat-card__value-row">
+            <div class="stat-card__value">{{ stats.store_stats?.length || 0 }}</div>
+            <div class="stat-card__value-unit">家</div>
+          </div>
+          <div class="stat-progress stat-progress--mobile-only">
+            <div class="stat-progress__track">
+              <div class="stat-progress__fill" :style="{ width: `${topStoreRate}%` }"></div>
+            </div>
+            <div class="stat-progress__meta">
+              <span>TOP店铺 {{ topStoreRate }}%</span>
+              <span>共 {{ stats.store_stats?.length || 0 }} 家</span>
+            </div>
+          </div>
+          <div class="store-pill-list store-pill-list--compact">
+            <template v-if="stats.store_stats && stats.store_stats.length > 0">
+            <div v-for="store in topStores.slice(0, 2)" :key="store.store_id" class="store-pill">
               <span class="store-pill__name">{{ store.store_name || '未知店铺' }}</span>
               <strong class="store-pill__value">{{ store.total_count || 0 }}单</strong>
             </div>
-          </template>
-          <div v-else class="store-pill store-pill--empty">
-            <span class="store-pill__name">暂无店铺数据</span>
+            </template>
+            <div v-else class="store-pill store-pill--empty">
+              <span class="store-pill__name">暂无店铺数据</span>
+            </div>
           </div>
         </div>
       </div>
@@ -626,6 +646,12 @@ const approvalRate = computed(() => {
   return Math.round((Number(stats.value.completed_count || 0) / total) * 100)
 })
 
+const handlerRate = computed(() => {
+  const total = Number(stats.value.total_count || 0)
+  if (total <= 0) return 0
+  return Math.min(100, Math.round((Number(stats.value.handler_count || 0) / total) * 100))
+})
+
 const pendingArrivalAmount = computed(() => {
   return Math.max(
     Number(stats.value.total_subsidy_amount || 0) - Number(stats.value.total_arrived_amount || 0),
@@ -643,6 +669,15 @@ const topStores = computed(() => {
   return [...(stats.value.store_stats || [])]
     .sort((a, b) => Number(b.total_count || 0) - Number(a.total_count || 0))
     .slice(0, 2)
+})
+
+const topStoreRate = computed(() => {
+  const storeTotal = (stats.value.store_stats || []).reduce(
+    (sum, store) => sum + Number(store.total_count || 0),
+    0
+  )
+  if (storeTotal <= 0) return 0
+  return Math.min(100, Math.round((Number(topStores.value[0]?.total_count || 0) / storeTotal) * 100))
 })
 
 const filters = reactive({
@@ -1484,30 +1519,16 @@ onUnmounted(() => {
 .subsidy-view {
   min-height: 100vh;
   background: var(--bg-color, #f5f7fa);
-  padding: var(--spacing-md);
-
-  @media (max-width: 768px) {
-    padding: 8px;
-  }
 }
 
 .content {
   .stats-cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-    gap: 14px;
-    margin: 0 0 18px 0;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 12px !important;
 
     @media (max-width: 768px) {
-      margin: 0 0 14px 0;
-      gap: 10px;
-      grid-template-columns: repeat(2, 1fr);
-      padding: 0;
-    }
-
-    @media (max-width: 480px) {
-      margin: 0 0 12px 0;
-      gap: 8px;
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      gap: 8px !important;
     }
 
     .stat-card {
@@ -1517,20 +1538,20 @@ onUnmounted(() => {
         radial-gradient(circle at top right, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.98) 42%, rgba(255, 255, 255, 1) 100%),
         linear-gradient(160deg, rgba(37, 99, 235, 0.08), rgba(37, 99, 235, 0.01));
       border-radius: 14px;
-      padding: 16px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      gap: 9px;
       box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
       transition: all 0.3s ease;
       border: 1px solid rgba(148, 163, 184, 0.18);
       overflow: hidden;
+      min-height: 118px !important;
+      padding: 15px !important;
+      gap: 12px;
+      justify-content: flex-start;
 
       @media (max-width: 768px) {
-        padding: 10px;
         border-radius: 12px;
-        gap: 7px;
         box-shadow: 0 8px 18px rgba(15, 23, 42, 0.1);
       }
 
@@ -1577,6 +1598,70 @@ onUnmounted(() => {
         display: flex;
         align-items: center;
         gap: 9px;
+        width: 100%;
+      }
+
+      .stat-card__head--with-progress .stat-card__head-copy {
+        flex: 0 1 auto;
+      }
+
+      .stat-card__head-progress {
+        flex: 1 1 48px;
+        min-width: 28px;
+        height: 6px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: rgba(226, 232, 240, 0.95);
+      }
+
+      .stat-card__head-progress-fill {
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--card-accent), color-mix(in srgb, var(--card-accent) 54%, white 46%));
+        transition: width 0.35s ease;
+      }
+
+      .stat-card__body-row {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: minmax(72px, auto) minmax(0, 1fr);
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        min-width: 0;
+      }
+
+      .stat-card__facts {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 5px;
+        min-width: 0;
+      }
+
+      .stat-fact {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+        min-width: 0;
+        padding: 5px 7px;
+        border: 1px solid rgba(226, 232, 240, 0.9);
+        border-radius: 8px;
+        background: rgba(248, 250, 252, 0.88);
+        color: #64748b;
+        font-size: 10px;
+        line-height: 1.15;
+      }
+
+      .stat-fact strong {
+        min-width: 0;
+        overflow: hidden;
+        color: #0f172a;
+        font-size: 12px;
+        font-weight: 800;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
       .stat-card__icon {
@@ -1688,6 +1773,10 @@ onUnmounted(() => {
         z-index: 1;
       }
 
+      .stat-progress--mobile-only {
+        display: none;
+      }
+
       .stat-progress__track {
         height: 6px;
         border-radius: 999px;
@@ -1718,6 +1807,16 @@ onUnmounted(() => {
         display: flex;
         flex-direction: column;
         gap: 5px;
+      }
+
+      .store-pill-list--compact {
+        min-width: 0;
+        gap: 5px;
+      }
+
+      .store-pill-list--compact .store-pill {
+        padding: 5px 7px;
+        border-radius: 8px;
       }
 
       .store-pill {
@@ -1753,6 +1852,56 @@ onUnmounted(() => {
       }
 
       @media (max-width: 768px) {
+        min-height: 112px !important;
+        padding: 10px !important;
+        gap: 8px;
+        flex-direction: column !important;
+
+        .stat-card__body-row {
+          grid-template-columns: 1fr;
+          gap: 6px;
+        }
+
+        .stat-card__head-progress {
+          display: none;
+        }
+
+        .stat-card__head--with-progress .stat-card__head-copy {
+          flex: 1;
+        }
+
+        .stat-card__facts {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .stat-fact {
+          flex-direction: column;
+          align-items: flex-start;
+          padding: 4px 5px;
+        }
+
+        .stat-fact strong {
+          width: 100%;
+          overflow: visible;
+          font-size: 11px;
+          text-overflow: clip;
+        }
+
+        .store-pill-list--compact {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .store-pill-list--compact .store-pill__name {
+          overflow: visible;
+          text-overflow: clip;
+        }
+
+        .stat-progress--mobile-only {
+          display: block;
+        }
+
         .stat-card__icon {
           width: 30px;
           height: 30px;

@@ -226,7 +226,6 @@ const loadDetail = async (item: any) => {
   const cachedDetail = getCachedDetail(item?.id)
   if (cachedDetail) {
     currentDetail.value = normalizeSubsidyRecord(cachedDetail)
-    return
   }
 
   try {

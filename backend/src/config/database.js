@@ -147,6 +147,13 @@ function updateActiveConnectionMetadata(connection, updates = {}) {
   });
 }
 
+function markConnectionPurpose(connection, purpose, options = {}) {
+  updateActiveConnectionMetadata(connection?.connection || connection, {
+    purpose: String(purpose || 'unspecified'),
+    longLived: options.longLived === true
+  });
+}
+
 function getPoolStats() {
   const corePool = getCorePool();
   if (!corePool) {
@@ -193,6 +200,15 @@ function setupTrackedConnection(poolConnection, checkoutStack) {
     checkoutAt: Date.now()
   });
 
+  if (!poolConnection.__tf2025DestroyTracked) {
+    const originalDestroy = poolConnection.destroy.bind(poolConnection);
+    poolConnection.destroy = (...args) => {
+      activeConnections.delete(coreConnection.threadId);
+      return originalDestroy(...args);
+    };
+    poolConnection.__tf2025DestroyTracked = true;
+  }
+
   return poolConnection;
 }
 
@@ -223,7 +239,7 @@ function startPoolMonitoring() {
 
     for (const [threadId, metadata] of activeConnections.entries()) {
       const heldMs = now - metadata.acquiredAt;
-      if (heldMs < POOL_MONITOR_CONFIG.leakThresholdMs || metadata.warned) {
+      if (metadata.longLived || heldMs < POOL_MONITOR_CONFIG.leakThresholdMs || metadata.warned) {
         continue;
       }
 
@@ -236,6 +252,7 @@ function startPoolMonitoring() {
       log.warn('检测到长时间占用的数据库连接，可能存在连接泄漏风险:', {
         threadId,
         heldMs,
+        purpose: metadata.purpose || 'unspecified',
         acquiredAt: new Date(metadata.acquiredAt).toISOString(),
         checkoutAt: metadata.checkoutAt ? new Date(metadata.checkoutAt).toISOString() : null,
         checkoutStack: metadata.checkoutStack || '未捕获调用栈'
@@ -280,10 +297,11 @@ function setupPoolInstrumentation() {
     const metadata = activeConnections.get(connection.threadId);
     if (metadata) {
       const heldMs = Date.now() - metadata.acquiredAt;
-      if (heldMs >= POOL_MONITOR_CONFIG.leakThresholdMs) {
+      if (heldMs >= POOL_MONITOR_CONFIG.leakThresholdMs && !metadata.longLived) {
         log.warn('数据库连接已释放，但占用时间过长:', {
           threadId: connection.threadId,
           heldMs,
+          purpose: metadata.purpose || 'unspecified',
           checkoutStack: metadata.checkoutStack || '未捕获调用栈'
         });
       }
@@ -448,5 +466,6 @@ module.exports = {
   isConnected,
   setConnected,
   closeDatabase,
-  getPoolStats
+  getPoolStats,
+  markConnectionPurpose
 };

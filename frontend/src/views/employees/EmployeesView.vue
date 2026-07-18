@@ -1,5 +1,5 @@
 <template>
-  <div class="employees-view admin-page">
+  <div class="employees-view admin-page admin-unified-base-data-page">
     <PermissionGate
       :can-view="canView"
       module-name="员工管理"
@@ -110,19 +110,8 @@
       </div>
     </UnifiedSearchPanel>
 
-    <!-- 标签页导航 -->
-    <div class="tab-navigation">
-      <el-button
-        :type="activeTab === 'employees' ? 'primary' : 'default'"
-        @click="activeTab = 'employees'"
-        :icon="User"
-      >
-        员工管理
-      </el-button>
-    </div>
-
     <!-- 员工管理区域 -->
-    <div v-if="activeTab === 'employees'" class="table-section admin-panel admin-table-panel">
+    <div class="table-section admin-panel admin-table-panel">
       <div class="section-title">
         <i class="fas fa-list"></i>
         员工列表
@@ -130,211 +119,36 @@
       </div>
 
       <div class="table-responsive">
-        <table class="table">
-          <thead>
-            <tr>
-              <th v-if="showIdColumn" width="80">ID</th>
-              <th v-if="canViewField('name')" width="120">姓名</th>
-              <th v-if="canViewField('username')" width="120">工号</th>
-              <th v-if="showRoleColumn" width="150">角色</th>
-              <th v-if="showContactColumn" width="200">联系方式</th>
-              <th v-if="showStatusColumn" width="100">状态</th>
-              <th v-if="showLastLoginColumn" width="160">最后登录</th>
-              <th v-if="showCreatedAtColumn" width="120">创建时间</th>
-              <th v-if="showHireDateColumn" width="120">入职时间</th>
-              <th v-if="showActionField" width="200">操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <TableLoadingRow v-if="loading" :colspan="visibleColumnCount" />
-            <tr v-else-if="filteredEmployees.length === 0" class="empty-row">
-              <td :colspan="visibleColumnCount">
-                <div class="empty-content">
-                  <i class="fas fa-inbox"></i>
-                  <div class="empty-text">
-                    <h4>暂无员工数据</h4>
-                    <p>点击上方"新增员工"按钮添加第一个员工</p>
-                    <el-button type="info" size="small" @click="loadEmployees()" :disabled="loading">
-                      <InlineLoading v-if="loading" text="加载中..." size="small" variant="inherit" />
-                      <template v-else>
-                        <el-icon><Refresh /></el-icon>
-                        重新加载
-                      </template>
-                    </el-button>
-                  </div>
-                </div>
-              </td>
-            </tr>
-            <template v-else v-for="employee in paginatedEmployees" :key="employee.id">
-            <tr
-              :class="['data-row', employee.status === 1 ? 'status-active-row' : 'status-inactive-row']"
-              @click="handleMobileRowTap(employee.id)"
-              @dblclick="toggleMobileActions(employee.id)"
-            >
-              <td v-if="showIdColumn">
-                <span class="id-badge">{{ getEmployeeIndex(employee.id) }}</span>
-              </td>
-              <td v-if="canViewField('name')">
-                <div class="employee-name">
-                  <strong>{{ employee.name || '未命名' }}</strong>
-                  <span v-if="!employee.name" class="warning-badge">未命名</span>
-                </div>
-              </td>
-              <td v-if="canViewField('username')">
-                <span class="employee-code">{{ employee.username }}</span>
-              </td>
-              <td v-if="showRoleColumn">
-                <div class="role-info">
-                  <div :class="['role-badge', getRoleBadgeClass(employee)]">
-                    <i :class="getRoleIcon(employee)"></i>
-                    {{ getRoleDisplayName(employee) }}
-                  </div>
-                </div>
-              </td>
-              <td v-if="showContactColumn">
-                <div class="contact-info">
-                  <div v-if="canViewField('phone') && employee.phone" class="phone-number">
-                    <i class="fas fa-phone"></i>
-                    {{ employee.phone }}
-                  </div>
-                  <div v-if="canViewField('email') && employee.email" class="phone-number">
-                    <i class="fas fa-envelope"></i>
-                    {{ employee.email }}
-                  </div>
-                  <div v-if="(!canViewField('phone') || !employee.phone) && (!canViewField('email') || !employee.email)" class="no-data">-</div>
-                </div>
-              </td>
-              <td v-if="showStatusColumn">
-                <span :class="['status-badge', employee.status === 1 ? 'status-active' : 'status-inactive']">
-                  <i :class="employee.status === 1 ? 'fas fa-circle' : 'fas fa-user-slash'"></i>
-                  <strong>{{ employee.status === 1 ? '在职' : '离职' }}</strong>
-                </span>
-              </td>
-              <td v-if="showLastLoginColumn">
-                <div class="time-info last-login">
-                  <i class="fas fa-clock"></i>
-                  <span v-if="employee.last_login">{{ formatDate(employee.last_login) }}</span>
-                  <span v-else class="no-data">从未登录</span>
-                </div>
-              </td>
-              <td v-if="showCreatedAtColumn">
-                <div class="time-info created-time">
-                  <i class="fas fa-clock"></i>
-                  {{ formatDate(employee.created_at, false) }}
-                </div>
-              </td>
-              <td v-if="showHireDateColumn">
-                <div class="time-info hire-date">
-                  <i class="fas fa-user-clock"></i>
-                  <span v-if="employee.hire_date">{{ formatDate(employee.hire_date, false) }}</span>
-                  <span v-else class="no-data">未设置</span>
-                </div>
-              </td>
-              <td v-if="showActionField" class="actions">
-                <div class="action-buttons">
-                  <el-button
-                    v-if="canEdit"
-                    v-permission="'employee:edit'"
-                    type="primary"
-                    size="small"
-                    @click="editEmployee(employee)"
-                    title="编辑"
-                    :icon="Edit"
-                  >
-                    编辑
-                  </el-button>
-                  <el-button
-                    v-if="canEdit && employee.status === 1"
-                    v-permission="'employee:edit'"
-                    size="small"
-                    type="warning"
-                    @click="toggleStatus(employee)"
-                    title="设为离职"
-                    :icon="UserFilled"
-                  >
-                    离职
-                  </el-button>
-                  <el-button
-                    v-else-if="canEdit && employee.status === 0"
-                    v-permission="'employee:edit'"
-                    size="small"
-                    type="info"
-                    @click="toggleStatus(employee)"
-                    title="恢复在职"
-                    :icon="CircleCheck"
-                  >
-                    恢复
-                  </el-button>
-                  <el-button
-                    v-if="canDelete"
-                    v-permission="'employee:delete'"
-                    type="danger"
-                    size="small"
-                    @click="deleteEmployee(employee)"
-                    title="删除员工"
-                    :icon="Delete"
-                  >
-                    删除
-                  </el-button>
-                </div>
-              </td>
-            </tr>
-            <tr
-              v-if="isMobile && mobileActionRowId === employee.id && (canEdit || canDelete)"
-              class="mobile-action-row"
-            >
-              <td :colspan="visibleColumnCount">
-                <div class="mobile-row-actions">
-                  <el-button
-                    v-if="canEdit"
-                    v-permission="'employee:edit'"
-                    type="primary"
-                    size="small"
-                    class="mobile-action-btn mobile-action-btn-edit"
-                    @click.stop="editEmployee(employee)"
-                  >
-                    <i class="fas fa-edit"></i>
-                    <span>编辑</span>
-                  </el-button>
-                  <el-button
-                    v-if="canEdit && employee.status === 1"
-                    v-permission="'employee:edit'"
-                    size="small"
-                    type="warning"
-                    class="mobile-action-btn mobile-action-btn-status"
-                    @click.stop="toggleStatus(employee)"
-                  >
-                    <i class="fas fa-user-slash"></i>
-                    <span>离职</span>
-                  </el-button>
-                  <el-button
-                    v-else-if="canEdit && employee.status === 0"
-                    v-permission="'employee:edit'"
-                    size="small"
-                    type="info"
-                    class="mobile-action-btn mobile-action-btn-status"
-                    @click.stop="toggleStatus(employee)"
-                  >
-                    <i class="fas fa-rotate-left"></i>
-                    <span>恢复</span>
-                  </el-button>
-                  <el-button
-                    v-if="canDelete"
-                    v-permission="'employee:delete'"
-                    type="danger"
-                    size="small"
-                    class="mobile-action-btn mobile-action-btn-delete"
-                    @click.stop="deleteEmployee(employee)"
-                  >
-                    <i class="fas fa-trash"></i>
-                    <span>删除</span>
-                  </el-button>
-                </div>
-              </td>
-            </tr>
-            </template>
-          </tbody>
-        </table>
+        <el-table
+          ref="employeesTableRef"
+          :data="loading ? [] : paginatedEmployees"
+          border
+          stripe
+          class="data-table devices-table base-data-table employees-data-table"
+          table-layout="fixed"
+          :fit="true"
+          :row-key="getEmployeeRowKey"
+          :row-class-name="getEmployeeRowClass"
+          :expand-row-keys="isMobile && mobileActionRowId ? [mobileActionRowId] : []"
+          @row-click="(row) => handleMobileRowTap(row.id)"
+        >
+          <template #empty>
+            <TableLoadingRow v-if="loading" mode="block" text="加载员工列表..." />
+            <div v-else class="empty-state"><i class="fas fa-inbox"></i><p>暂无员工数据</p><el-button size="small" type="info" @click="loadEmployees()">重新加载</el-button></div>
+          </template>
+          <el-table-column v-if="showIdColumn" label="ID" width="70" align="center"><template #default="{ row }"><span class="id-badge">{{ getEmployeeIndex(row.id) }}</span></template></el-table-column>
+          <el-table-column v-if="canViewField('name')" prop="name" label="姓名" :min-width="isMobile ? 72 : 110" align="center"><template #default="{ row }"><strong>{{ row.name || '未命名' }}</strong></template></el-table-column>
+          <el-table-column v-if="canViewField('username')" prop="username" label="工号" :min-width="isMobile ? 76 : 110" align="center" />
+          <el-table-column v-if="showRoleColumn" label="角色" :min-width="isMobile ? 102 : 130" align="center"><template #default="{ row }"><span :class="['role-badge', getRoleBadgeClass(row)]"><i :class="getRoleIcon(row)"></i>{{ getRoleDisplayName(row) }}</span></template></el-table-column>
+          <el-table-column v-if="showPhoneColumn" label="电话" min-width="132" align="center"><template #default="{ row }"><span v-if="row.phone" class="phone-number"><i class="fas fa-phone"></i>{{ row.phone }}</span><span v-else class="no-data">-</span></template></el-table-column>
+          <el-table-column v-if="showEmailColumn" label="邮箱" min-width="190" align="center" show-overflow-tooltip><template #default="{ row }"><span v-if="row.email" class="phone-number"><i class="fas fa-envelope"></i>{{ row.email }}</span><span v-else class="no-data">-</span></template></el-table-column>
+          <el-table-column v-if="showStatusColumn" label="状态" :min-width="isMobile ? 72 : 84" align="center"><template #default="{ row }"><span :class="['status-badge', isEmployeeActive(row.status) ? 'status-active' : 'status-inactive']"><i :class="isEmployeeActive(row.status) ? 'fas fa-circle' : 'fas fa-user-slash'"></i>{{ isEmployeeActive(row.status) ? '在职' : '离职' }}</span></template></el-table-column>
+          <el-table-column v-if="showLastLoginColumn" label="最后登录" min-width="156" align="center"><template #default="{ row }"><div class="time-info"><i class="fas fa-clock"></i><span v-if="row.last_login">{{ formatDate(row.last_login) }}</span><span v-else class="no-data">从未登录</span></div></template></el-table-column>
+          <el-table-column v-if="showCreatedAtColumn" label="创建时间" min-width="126" align="center"><template #default="{ row }"><div class="time-info"><i class="fas fa-clock"></i>{{ formatDate(row.created_at, false) }}</div></template></el-table-column>
+          <el-table-column v-if="showHireDateColumn" label="入职时间" min-width="126" align="center"><template #default="{ row }"><div class="time-info"><i class="fas fa-user-clock"></i><span v-if="row.hire_date">{{ formatDate(row.hire_date, false) }}</span><span v-else class="no-data">未设置</span></div></template></el-table-column>
+          <el-table-column v-if="showActionField" label="操作" min-width="270" align="center" class-name="actions-column"><template #default="{ row }"><div class="action-buttons"><el-button v-if="canEdit" v-permission="'employee:edit'" type="primary" size="small" :icon="Edit" @click.stop="editEmployee(row)">编辑</el-button><el-button v-if="canEdit && isEmployeeActive(row.status)" v-permission="'employee:edit'" type="warning" size="small" :icon="UserFilled" @click.stop="toggleStatus(row)">离职</el-button><el-button v-else-if="canEdit" v-permission="'employee:edit'" type="info" size="small" :icon="CircleCheck" @click.stop="toggleStatus(row)">恢复</el-button><el-button v-if="canDelete" v-permission="'employee:delete'" type="danger" size="small" :icon="Delete" @click.stop="deleteEmployee(row)">删除</el-button></div></template></el-table-column>
+          <el-table-column v-if="isMobile && (canEdit || canDelete)" type="expand" width="1" class-name="mobile-expand-column" label-class-name="mobile-expand-header"><template #default="{ row }"><div class="mobile-row-actions"><el-button v-if="canEdit" v-permission="'employee:edit'" type="primary" size="small" @click.stop="editEmployee(row)"><i class="fas fa-edit"></i><span>编辑</span></el-button><el-button v-if="canEdit && isEmployeeActive(row.status)" v-permission="'employee:edit'" type="warning" size="small" @click.stop="toggleStatus(row)"><i class="fas fa-user-slash"></i><span>离职</span></el-button><el-button v-else-if="canEdit" v-permission="'employee:edit'" type="info" size="small" @click.stop="toggleStatus(row)"><i class="fas fa-rotate-left"></i><span>恢复</span></el-button><el-button v-if="canDelete" v-permission="'employee:delete'" type="danger" size="small" @click.stop="deleteEmployee(row)"><i class="fas fa-trash"></i><span>删除</span></el-button></div></template></el-table-column>
+        </el-table>
       </div>
 
       <!-- 分页组件 -->
@@ -784,7 +598,6 @@ import {
   Key,
   Search,
   RefreshRight,
-  User,
   Edit,
   UserFilled,
   CircleCheck,
@@ -815,9 +628,13 @@ loading.value = true
 const { loading: submitting } = useLoadingState()
 const { loading: exporting } = useLoadingState()
 const { exportFile, buildDateFilename, sanitizeParams } = useImportExport()
-const mobileActionRowId = ref<number | null>(null)
-const lastTappedRowId = ref<number | null>(null)
+const employeesTableRef = ref<any>(null)
+const mobileActionRowId = ref<string | null>(null)
+const lastTappedRowId = ref<string | null>(null)
 const lastTapTimestamp = ref(0)
+const getEmployeeRowKey = (employee: Employee) => String(employee.id)
+const isEmployeeActive = (status: Employee['status'] | string) => status === 1 || status === 'active'
+const getEmployeeRowClass = ({ row }: { row: Employee }) => isEmployeeActive(row.status) ? 'status-active-row' : 'status-inactive-row'
 
 // 搜索相关状态
 const searchExpanded = ref(false)
@@ -872,7 +689,8 @@ const showSearchKeyword = computed(() => {
 
 const showIdColumn = computed(() => canViewField('id') && !isMobile.value)
 const showRoleColumn = computed(() => canViewField('role') || canViewField('role_ids'))
-const showContactColumn = computed(() => (canViewField('phone') || canViewField('email')) && !isMobile.value)
+const showPhoneColumn = computed(() => canViewField('phone') && !isMobile.value)
+const showEmailColumn = computed(() => canViewField('email') && !isMobile.value)
 const showStatusColumn = computed(() => canViewField('status'))
 const showLastLoginColumn = computed(() => canViewField('last_login') && !isMobile.value)
 const showCreatedAtColumn = computed(() => canViewField('created_at') && !isMobile.value)
@@ -884,43 +702,27 @@ const showStatsCards = computed(() => (
   canViewField('stats_inactive_employees') ||
   canViewField('stats_phone_completion')
 ))
-const visibleColumnCount = computed(() => {
-  return [
-    showIdColumn.value,
-    canViewField('name'),
-    canViewField('username'),
-    showRoleColumn.value,
-    showContactColumn.value,
-    showStatusColumn.value,
-    showLastLoginColumn.value,
-    showCreatedAtColumn.value,
-    showHireDateColumn.value,
-    showActionField.value
-  ].filter(Boolean).length || 1
-})
-
 const toggleMobileActions = (id: number) => {
   if (!isMobile.value) return
-  mobileActionRowId.value = mobileActionRowId.value === id ? null : id
+  const rowKey = String(id)
+  mobileActionRowId.value = mobileActionRowId.value === rowKey ? null : rowKey
 }
 
 const handleMobileRowTap = (id: number) => {
   if (!isMobile.value) return
+  const rowKey = String(id)
 
   const now = Date.now()
-  if (lastTappedRowId.value === id && now - lastTapTimestamp.value <= 320) {
+  if (lastTappedRowId.value === rowKey && now - lastTapTimestamp.value <= 320) {
     toggleMobileActions(id)
     lastTappedRowId.value = null
     lastTapTimestamp.value = 0
     return
   }
 
-  lastTappedRowId.value = id
+  lastTappedRowId.value = rowKey
   lastTapTimestamp.value = now
 }
-
-// 标签页状态
-const activeTab = ref('employees')
 
 // 模态框状态
 const showAddModal = ref(false)
@@ -1489,7 +1291,7 @@ const formatDate = (dateString: string | undefined, showTime = true) => {
 
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
   } catch (error) {
-    logger.error('日期格式化错误:', error, dateString)
+    logger.error('日期格式化错误:', { error, dateString })
     return '格式错误'
   }
 }
@@ -1746,61 +1548,6 @@ onMounted(async () => {
   min-height: 100vh;
 }
 
-/* 标签页导航样式 */
-.tab-navigation {
-  display: flex;
-  gap: 0;
-  margin-bottom: 24px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  border: 1px solid #e8ecef;
-  overflow: hidden;
-}
-
-.tab-btn {
-  flex: 1;
-  padding: 16px 24px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  font-size: 15px;
-  font-weight: 500;
-  color: #6c757d;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  transition: all 0.3s ease;
-  position: relative;
-}
-
-.tab-btn:hover {
-  background: rgba(102, 126, 234, 0.1);
-  color: #667eea;
-}
-
-.tab-btn.active {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-}
-
-.tab-btn.active::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.tab-btn i {
-  font-size: 16px;
-}
-
-
 /* 统计卡片样式 */
 .stats-cards {
   display: grid;
@@ -1896,35 +1643,6 @@ onMounted(async () => {
   font-size: 14px;
   color: #6c757d;
   font-weight: 400;
-}
-
-@media (max-width: 768px) {
-  .employees-view .stats-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-    margin-bottom: 16px;
-    padding: 0 4px;
-  }
-
-  .employees-view .stat-card {
-    padding: 14px 12px;
-    border-radius: 16px;
-    gap: 12px;
-  }
-
-  .employees-view .stat-icon {
-    width: 40px;
-    height: 40px;
-    font-size: 16px;
-  }
-
-  .employees-view .stat-value {
-    font-size: 20px;
-  }
-
-  .employees-view .stat-label {
-    font-size: 12px;
-  }
 }
 
 .table-section {
@@ -2198,7 +1916,10 @@ onMounted(async () => {
   color: #495057;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
+  width: 100%;
+  text-align: center;
 }
 
 .no-data {
@@ -2803,32 +2524,6 @@ onMounted(async () => {
 
 /* 响应式设计 */
 @media (max-width: 767px) {
-  .employees-view .stats-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-    margin: 0 0 12px 0;
-    padding: 0;
-  }
-
-  .employees-view .stat-card {
-    padding: 12px 10px;
-    gap: 10px;
-  }
-
-  .employees-view .stat-icon {
-    width: 36px;
-    height: 36px;
-    font-size: 15px;
-  }
-
-  .employees-view .stat-value {
-    font-size: 18px;
-  }
-
-  .employees-view .stat-label {
-    font-size: 11px;
-  }
-
   .employees-view {
     padding: 8px;
   }
@@ -2862,21 +2557,8 @@ onMounted(async () => {
     white-space: nowrap;
   }
 
-  .stats-cards {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-    margin-bottom: 16px;
-    padding: 0 4px;
-  }
-
   .form-actions {
     flex-direction: column;
-  }
-
-  .table-section {
-    margin: 0;
-    padding: 14px 10px;
-    border-radius: 16px;
   }
 
   .pagination-section {
@@ -2908,73 +2590,6 @@ onMounted(async () => {
 
   .action-buttons .btn {
     width: 100%;
-  }
-
-  .table-responsive {
-    width: 100%;
-    max-width: 100%;
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
-    border-radius: 12px;
-  }
-
-  .table {
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    table-layout: fixed;
-  }
-
-  .table th,
-  .table td {
-    white-space: normal;
-    word-break: break-word;
-    box-sizing: border-box;
-    padding: 6px 4px;
-    font-size: 11px;
-  }
-
-  .table th:nth-child(2) {
-    font-size: 10px;
-  }
-
-  .table th:nth-child(1),
-  .table td:nth-child(1) {
-    width: 26%;
-  }
-
-  .table th:nth-child(2),
-  .table td:nth-child(2) {
-    width: 22%;
-  }
-
-  .table th:nth-child(3),
-  .table td:nth-child(3) {
-    width: 30%;
-  }
-
-  .table th:nth-child(4),
-  .table td:nth-child(4) {
-    width: 22%;
-  }
-
-  .employee-name strong,
-  .role-badge,
-  .status-badge {
-    font-size: 11px;
-    line-height: 1.35;
-  }
-
-  .employee-code {
-    font-size: 10px;
-    line-height: 1.3;
-    padding: 3px 6px;
-    letter-spacing: 0.2px;
-    border-radius: 8px;
-  }
-
-  .status-badge {
-    padding: 4px 6px;
   }
 
 }

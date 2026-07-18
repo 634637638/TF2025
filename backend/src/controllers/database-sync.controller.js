@@ -122,13 +122,11 @@ class DatabaseSyncController {
   async getTableData(req, res) {
     try {
       const { connectionId, tableName } = req.params;
-      const { limit, offset, where, orderBy } = req.query;
+      const { limit, offset } = req.query;
 
       const result = await syncService.getTableData(connectionId, tableName, {
         limit: parseInt(limit) || 10,
-        offset: parseInt(offset) || 0,
-        where: where || '',
-        orderBy: orderBy || ''
+        offset: parseInt(offset) || 0
       });
 
       res.json(result);
@@ -171,7 +169,7 @@ class DatabaseSyncController {
    */
   async getLocalTableStructure(req, res) {
     try {
-      const { tableName } = req.params;
+      const tableName = syncService.normalizeIdentifier(req.params.tableName, '表名');
       const connection = await getDatabase().getConnection();
 
       try {
@@ -189,6 +187,10 @@ class DatabaseSyncController {
           WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?
           ORDER BY ORDINAL_POSITION
         `, [tableName]);
+
+        if (columns.length === 0) {
+          return res.status(404).json({ success: false, message: '数据表不存在' });
+        }
 
         // 获取表注释
         const [tableComment] = await connection.query(`

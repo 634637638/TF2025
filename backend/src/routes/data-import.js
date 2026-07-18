@@ -12,6 +12,9 @@ const DataImportService = require('../services/data-import.service');
 const { unifiedAuth, requirePermission } = require('../middleware/unified-auth');
 const log = require('../utils/log');
 const { getUploadSubdir } = require('../utils/upload-paths');
+const { validateSpreadsheetFile, sheetToJsonSafe } = require('../utils/spreadsheet-security');
+
+const IMPORT_UPLOAD_DIR = getUploadSubdir('import');
 
 // 实例化服务
 const dataImportService = new DataImportService();
@@ -46,7 +49,7 @@ const upload = multer({
     }
   },
   limits: {
-    fileSize: 50 * 1024 * 1024 // 50MB
+    fileSize: 10 * 1024 * 1024 // 10MB
   }
 });
 
@@ -66,9 +69,10 @@ router.post('/upload', requirePermission('data-import:upload'), upload.single('f
     }
 
     // 读取Excel文件
-    const workbook = XLSX.readFile(req.file.path);
+    const safeFilePath = validateSpreadsheetFile(req.file.path, { rootPath: IMPORT_UPLOAD_DIR });
+    const workbook = XLSX.readFile(safeFilePath);
     const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-    const data = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+    const data = sheetToJsonSafe(worksheet, { defval: '' });
 
     // 获取字段列表
     const headers = data.length > 0 ? Object.keys(data[0]) : [];
@@ -91,7 +95,7 @@ router.post('/upload', requirePermission('data-import:upload'), upload.single('f
     if (req.file && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
-    res.status(500).json({
+    res.status(error.statusCode || 500).json({
       success: false,
       message: '上传文件失败: ' + error.message
     });
@@ -105,14 +109,8 @@ router.post('/analyze', requirePermission('data-import:upload'), async (req, res
   try {
     const { filePath, options = {} } = req.body;
 
-    if (!filePath || !fs.existsSync(filePath)) {
-      return res.status(400).json({
-        success: false,
-        message: '文件不存在'
-      });
-    }
-
-    const result = await dataImportService.analyzeData(filePath, options);
+    const safeFilePath = validateSpreadsheetFile(filePath, { rootPath: IMPORT_UPLOAD_DIR });
+    const result = await dataImportService.analyzeData(safeFilePath, options);
 
     res.json({
       success: true,
@@ -121,7 +119,7 @@ router.post('/analyze', requirePermission('data-import:upload'), async (req, res
     });
   } catch (error) {
     log.error('分析数据失败:', error);
-    res.status(500).json({
+    res.status(error.statusCode || 500).json({
       success: false,
       message: '分析数据失败: ' + error.message
     });
@@ -138,28 +136,13 @@ router.post('/analyze', requirePermission('data-import:upload'), async (req, res
  */
 router.post('/import', requirePermission('data-import:execute'), async (req, res) => {
   try {
-    log.debug('='.repeat(50));
-    log.debug('📥 收到的请求体:', JSON.stringify(req.body, null, 2));
     const { filePath, options = {} } = req.body;
 
-    log.debug('🔍 解构后 - filePath:', filePath);
-    log.debug('🔍 解构后 - options:', JSON.stringify(options, null, 2));
-    log.debug('🔍 options.strategy:', options.strategy, typeof options.strategy);
-    log.debug('='.repeat(50));
-
-    if (!filePath || !fs.existsSync(filePath)) {
-      return res.status(400).json({
-        success: false,
-        message: '文件不存在'
-      });
-    }
+    const safeFilePath = validateSpreadsheetFile(filePath, { rootPath: IMPORT_UPLOAD_DIR });
 
     // 验证选项
     const validStrategies = ['smart', 'skip', 'overwrite', 'merge', 'replace_all'];
     const strategy = options?.strategy || 'smart';
-
-    log.debug('🔍 最终 strategy:', strategy, '类型:', typeof strategy);
-    log.debug('🔍 有效策略列表:', validStrategies);
 
     if (!validStrategies.includes(strategy)) {
       log.error('❌ 无效的策略:', strategy, '有效策略:', validStrategies);
@@ -180,7 +163,7 @@ router.post('/import', requirePermission('data-import:execute'), async (req, res
     log.debug('✓ 进度已初始化:', dataImportService.getImportProgress(importId));
 
     // 异步执行导入
-    dataImportService.importData(filePath, options, req.user)
+    dataImportService.importData(safeFilePath, options, req.user)
       .then(result => {
         log.debug(`✓ 导入 ${importId} 完成`);
       })
@@ -198,7 +181,7 @@ router.post('/import', requirePermission('data-import:execute'), async (req, res
     });
   } catch (error) {
     log.error('启动导入失败:', error);
-    res.status(500).json({
+    res.status(error.statusCode || 500).json({
       success: false,
       message: '启动导入失败: ' + error.message
     });

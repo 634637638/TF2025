@@ -218,8 +218,8 @@
                     </template>
                   </el-table-column>
                   <el-table-column v-if="showAttendanceIdColumn" prop="id" label="ID" width="80" align="center" />
-                  <el-table-column v-if="showAttendanceEmployeeColumn" prop="employee_name" label="员工" :width="isMobile ? 96 : 130" align="center" />
-                  <el-table-column v-if="showAttendanceTypeColumn" label="类型" :width="isMobile ? 82 : 130" align="center">
+                  <el-table-column v-if="showAttendanceEmployeeColumn" prop="employee_name" label="员工" :width="isMobile ? 76 : 130" align="center" />
+                  <el-table-column v-if="showAttendanceTypeColumn" label="类型" :width="isMobile ? 66 : 130" align="center">
                     <template #default="{ row }">
                       <el-tag v-if="row.record_type === 'monthly_leave'" type="success">
                         <i class="fas fa-umbrella-beach"></i>
@@ -242,7 +242,7 @@
                   <el-table-column
                     v-if="showAttendanceDetailColumn"
                     label="详情"
-                    :width="isMobile ? 88 : 180"
+                    :width="isMobile ? 74 : 180"
                     align="center"
                   >
                     <template #default="{ row }">
@@ -264,7 +264,7 @@
                       </span>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="showAttendanceDateColumn" prop="record_date" label="日期" :width="isMobile ? 96 : 130" align="center" />
+                  <el-table-column v-if="showAttendanceDateColumn" prop="record_date" label="日期" :width="isMobile ? 82 : 130" align="center" />
                   <el-table-column v-if="showAttendanceReasonColumn" label="原因" min-width="150" show-overflow-tooltip>
                     <template #default="{ row }">
                       <span>{{ getReasonText(row) }}</span>
@@ -430,7 +430,7 @@
                     </template>
                   </el-table-column>
                   <el-table-column v-if="showMyAttendanceIdColumn" prop="id" label="ID" width="80" align="center" />
-                  <el-table-column v-if="showMyAttendanceTypeColumn" label="类型" :width="isMobile ? 88 : 130" align="center">
+                  <el-table-column v-if="showMyAttendanceTypeColumn" label="类型" :width="isMobile ? 70 : 130" align="center">
                     <template #default="{ row }">
                       <el-tag v-if="row.record_type === 'monthly_leave'" type="success">
                         <i class="fas fa-umbrella-beach"></i>
@@ -453,7 +453,7 @@
                   <el-table-column
                     v-if="showMyAttendanceDetailColumn"
                     label="详情"
-                    :width="isMobile ? 92 : 180"
+                    :width="isMobile ? 74 : 180"
                     align="center"
                   >
                     <template #default="{ row }">
@@ -475,7 +475,7 @@
                       </span>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="showMyAttendanceDateColumn" prop="record_date" label="日期" :width="isMobile ? 104 : 130" align="center" />
+                  <el-table-column v-if="showMyAttendanceDateColumn" prop="record_date" label="日期" :width="isMobile ? 82 : 130" align="center" />
                   <el-table-column v-if="showMyAttendanceReasonColumn" label="原因" min-width="150" show-overflow-tooltip>
                     <template #default="{ row }">
                       <span>{{ getReasonText(row) }}</span>
@@ -3052,44 +3052,6 @@ onMounted(async () => {
     align-items: stretch;
   }
 
-  .stats-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-    margin-bottom: 16px;
-  }
-
-  .stat-card {
-    padding: 12px 10px;
-    gap: 10px;
-    border-radius: 16px;
-    align-items: center;
-    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
-  }
-
-  .stat-icon {
-    width: 38px;
-    height: 38px;
-    border-radius: 12px;
-    font-size: 16px;
-    flex-shrink: 0;
-  }
-
-  .stat-content {
-    min-width: 0;
-  }
-
-  .stat-value {
-    font-size: 16px;
-    line-height: 1.2;
-    margin-bottom: 2px;
-    word-break: break-word;
-  }
-
-  .stat-label {
-    font-size: 11px;
-    line-height: 1.35;
-  }
-
   .stat-detail,
   .stat-desc {
     margin-top: 4px;
@@ -3123,13 +3085,37 @@ onMounted(async () => {
     margin-top: 16px;
   }
 
+  .attendance-tabs {
+    padding: 10px;
+    overflow: hidden;
+  }
+
+  .attendance-page.admin-page .table-section.admin-table-panel {
+    overflow: hidden;
+  }
+
   .table-responsive {
-    overflow-x: hidden;
+    overflow-x: hidden !important;
     border-radius: 12px;
   }
 
-  .data-table {
+  .attendance-page.admin-page .table-responsive,
+  .attendance-page.admin-page .table-responsive .data-table {
     width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .attendance-page.admin-page .table-responsive .data-table {
+    width: 100% !important;
+    table-layout: fixed !important;
+  }
+
+  .attendance-page.admin-page .table-responsive .data-table :deep(table) {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    table-layout: fixed !important;
   }
 
   .data-table :deep(.el-table__body-wrapper) {
@@ -3154,6 +3140,7 @@ onMounted(async () => {
     font-size: 11px;
     line-height: 1.35;
     word-break: break-word;
+    white-space: normal !important;
   }
 
   .data-table :deep(.el-tag) {
@@ -3161,6 +3148,25 @@ onMounted(async () => {
     font-size: 10px;
     gap: 3px;
     white-space: nowrap;
+  }
+
+  .detail-item {
+    gap: 3px;
+    max-width: 100%;
+    font-size: 11px;
+  }
+
+  .mobile-inline-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-start;
+    max-width: 100%;
+  }
+
+  .mobile-inline-actions :deep(.el-button) {
+    margin: 0 !important;
+    min-width: 0 !important;
   }
 
   .data-table :deep(.el-tag i) {
@@ -3271,32 +3277,6 @@ onMounted(async () => {
     padding: 10px;
   }
 
-  .stats-cards {
-    gap: 8px;
-    margin-bottom: 14px;
-  }
-
-  .stat-card {
-    padding: 10px 8px;
-    gap: 8px;
-    border-radius: 14px;
-  }
-
-  .stat-icon {
-    width: 34px;
-    height: 34px;
-    border-radius: 10px;
-    font-size: 14px;
-  }
-
-  .stat-value {
-    font-size: 14px;
-  }
-
-  .stat-label {
-    font-size: 10px;
-  }
-
   .stat-detail,
   .stat-desc {
     font-size: 9px;
@@ -3304,6 +3284,10 @@ onMounted(async () => {
 
   .table-responsive {
     border-radius: 10px;
+  }
+
+  .attendance-tabs {
+    padding: 8px 6px;
   }
 
   .data-table :deep(.el-table__header th) {

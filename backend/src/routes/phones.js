@@ -8,6 +8,7 @@ const { validateImei } = require('../utils/imei');
 const log = require('../utils/log');
 const { PAGINATION } = require('../config/constants');
 const { requireMockRoutesEnabled } = require('../middleware/mock-route-guard');
+const { requireInventoryQueryToken } = require('../utils/inventory-query-token');
 
 // 模拟手机数据
 const mockPhones = [
@@ -1129,7 +1130,7 @@ router.get('/search-by-identifier', unifiedAuth, requirePermission('query:view')
 // 注意：这些路由必须在 /:id 之前定义，否则会被 /:id 路由拦截
 
 // 获取在库最久的商品信息（用于同行咨询，无需登录）
-router.get('/longest-inventory', async (req, res) => {
+router.get('/longest-inventory', requireInventoryQueryToken, async (req, res) => {
   log.debug('🔓 [公开端点] longest-inventory 被调用！');
   let connection;
   try {
@@ -1175,16 +1176,8 @@ router.get('/longest-inventory', async (req, res) => {
       SELECT
         p.id,
         p.imei,
-        p.serial_number,
-        b.name as brand,
-        m.name as model,
-        co.name as color,
-        mem.size as memory,
         st.name as store_name,
-        p.Inventorytime as inventory_time,
-        p.sale_price,
-        p.purchase_cost,
-        p.remarks
+        p.Inventorytime as inventory_time
       FROM phones p
       LEFT JOIN brands b ON p.brand_id = b.id
       LEFT JOIN models m ON p.model_id = m.id

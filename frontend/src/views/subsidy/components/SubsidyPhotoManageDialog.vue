@@ -246,26 +246,6 @@ const cleanupUnSavedUploads = async () => {
   }
 }
 
-watch(
-  () => [props.modelValue, props.item],
-  ([visible]) => {
-    if (visible) {
-      resetState()
-      queuePhotoWarmup()
-      return
-    }
-
-    clearPhotoRuntimeCache()
-  },
-  { immediate: true }
-)
-
-watch(currentPhotoIndex, (index) => {
-  if (!showPhotoViewer.value) return
-  syncViewerLoading(index)
-  preloadNearbyPhotos(index)
-})
-
 const handleDialogChange = (visible: boolean) => {
   emit('update:modelValue', visible)
 }
@@ -309,7 +289,7 @@ const preloadPhoto = async (photo?: string) => {
 
     image.onerror = () => {
       pendingPhotoLoads.delete(resolvedUrl)
-      reject(new Error(`图片预加载失败: ${resolvedUrl}`))
+      reject(new Error('图片预加载失败'))
     }
 
     image.src = resolvedUrl
@@ -369,6 +349,26 @@ const queuePhotoWarmup = () => {
 
   warmup()
 }
+
+watch(
+  () => [props.modelValue, props.item],
+  ([visible]) => {
+    if (visible) {
+      resetState()
+      queuePhotoWarmup()
+      return
+    }
+
+    clearPhotoRuntimeCache()
+  },
+  { immediate: true }
+)
+
+watch(currentPhotoIndex, (index) => {
+  if (!showPhotoViewer.value) return
+  syncViewerLoading(index)
+  preloadNearbyPhotos(index)
+})
 
 const handleViewerImageLoad = () => {
   viewerLoading.value = false
@@ -865,16 +865,52 @@ const savePhotoChanges = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 420px;
+  width: 100%;
+  height: clamp(360px, 62vh, 640px);
+  min-height: 0;
   padding: 20px;
+  overflow: hidden;
   background: #f5f5f5;
   border-radius: 8px;
+  box-sizing: border-box;
 }
 
 .photo-nav-btn {
   position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
+  top: calc(50% - 22px);
+  z-index: 2;
+  width: 44px !important;
+  min-width: 44px !important;
+  max-width: 44px;
+  height: 44px !important;
+  min-height: 44px !important;
+  max-height: 44px;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 44px;
+  border-radius: 50% !important;
+  box-sizing: border-box;
+  transform: none !important;
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease !important;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
+
+  :deep(span) {
+    width: 100%;
+    height: 100%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  i {
+    width: 1em;
+    line-height: 1;
+    text-align: center;
+  }
 
   &.prev {
     left: 16px;
@@ -885,13 +921,25 @@ const savePhotoChanges = async () => {
   }
 }
 
+.photo-viewer-content .photo-viewer-main .photo-nav-btn.el-button,
+.photo-viewer-content .photo-viewer-main .photo-nav-btn.el-button:hover,
+.photo-viewer-content .photo-viewer-main .photo-nav-btn.el-button:focus,
+.photo-viewer-content .photo-viewer-main .photo-nav-btn.el-button:active {
+  transform: none !important;
+}
+
 .photo-viewer-image {
   position: relative;
-  max-width: calc(100% - 100px);
+  width: 100%;
+  height: 100%;
+  max-width: calc(100% - 120px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
   :deep(img) {
     max-width: 100%;
-    max-height: 70vh;
+    max-height: 100%;
     object-fit: contain;
   }
 }
@@ -933,8 +981,15 @@ const savePhotoChanges = async () => {
   }
 
   .photo-viewer-actions {
-    flex-direction: column;
-    align-items: stretch;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+
+    :deep(.el-button) {
+      width: 100%;
+      min-width: 0;
+      margin-left: 0 !important;
+    }
   }
 
   .photo-upload-area,
@@ -1008,7 +1063,31 @@ const savePhotoChanges = async () => {
   }
 
   .photo-viewer-main {
-    min-height: 300px;
+    height: clamp(280px, 52vh, 480px);
+    min-height: 0;
+    padding: 12px;
+  }
+
+  .photo-nav-btn {
+    width: 44px !important;
+    min-width: 44px !important;
+    max-width: 44px;
+    height: 44px !important;
+    min-height: 44px !important;
+    max-height: 44px;
+    flex-basis: 44px;
+
+    &.prev {
+      left: 10px;
+    }
+
+    &.next {
+      right: 10px;
+    }
+  }
+
+  .photo-viewer-image {
+    max-width: calc(100% - 104px);
   }
 }
 </style>

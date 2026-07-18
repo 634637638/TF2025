@@ -6,6 +6,10 @@ const XLSX = require('xlsx');
 const fs = require('fs');
 const { getDatabase } = require('../config/database');
 const log = require('../utils/log');
+const { getUploadSubdir } = require('../utils/upload-paths');
+const { validateSpreadsheetFile, sheetToJsonSafe } = require('../utils/spreadsheet-security');
+
+const IMPORT_UPLOAD_DIR = getUploadSubdir('import');
 
 class DataImportService {
   constructor() {
@@ -67,6 +71,7 @@ class DataImportService {
    * 分析Excel数据并检查重复（优化版本 - 批量查询）
    */
   async analyzeData(filePath, options = {}) {
+    const safeFilePath = validateSpreadsheetFile(filePath, { rootPath: IMPORT_UPLOAD_DIR });
     const connection = await this.getPool().getConnection();
 
     try {
@@ -74,9 +79,9 @@ class DataImportService {
       log.debug('📊 开始分析数据...');
 
       // 读取Excel
-      const workbook = XLSX.readFile(filePath);
+      const workbook = XLSX.readFile(safeFilePath);
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      const data = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+      const data = sheetToJsonSafe(worksheet, { defval: '' });
 
       if (data.length === 0) {
         return {
@@ -419,12 +424,13 @@ class DataImportService {
    * 导入数据
    */
   async importData(filePath, options = {}, user = null) {
+    const safeFilePath = validateSpreadsheetFile(filePath, { rootPath: IMPORT_UPLOAD_DIR });
     const connection = await this.getPool().getConnection();
     const importId = options.importId || Date.now();
     const startTime = Date.now();
 
     // 从文件路径提取文件名
-    const fileName = filePath.split('/').pop() || 'unknown.xlsx';
+    const fileName = safeFilePath.split('/').pop() || 'unknown.xlsx';
 
     log.debug('🔄 importData 开始 - importId:', importId, 'options:', options);
 
@@ -438,9 +444,9 @@ class DataImportService {
       log.debug('✓ importData 进度初始化完成');
 
       // 读取Excel
-      const workbook = XLSX.readFile(filePath);
+      const workbook = XLSX.readFile(safeFilePath);
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      const data = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+      const data = sheetToJsonSafe(worksheet, { defval: '' });
 
       this.updateProgress(importId, 10, `正在分析 ${data.length} 条数据...`);
 
@@ -1557,10 +1563,11 @@ class DataImportService {
       suffix++;
     }
 
-    // 生成默认密码（使用 MD5 或 bcrypt，这里简化处理）
+    // 导入创建的账号使用不可预测密码，需由管理员后续重置后再交付员工。
     const bcrypt = require('bcryptjs');
-    const defaultPassword = '123456'; // 默认密码
-    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+    const crypto = require('crypto');
+    const temporaryPassword = crypto.randomBytes(24).toString('base64url');
+    const hashedPassword = await bcrypt.hash(temporaryPassword, 12);
 
     // 创建新员工
     const [result] = await connection.execute(
@@ -1573,7 +1580,7 @@ class DataImportService {
     map.set(name, userId);
     map.set(username, userId); // 同时注册 username 映射
 
-    log.debug(`  ✓ 新员工创建成功: ID=${userId}, name="${name}", username="${username}", 默认密码="123456"`);
+    log.debug(`  ✓ 新员工创建成功: ID=${userId}, name="${name}", username="${username}"，登录前需由管理员重置密码`);
 
     return userId;
   }

@@ -4,7 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const convert = require('heic-convert');
-const { unifiedAuth, requirePermission } = require('../middleware/unified-auth');
+const { unifiedAuth, requirePermission, requireAnyPermission } = require('../middleware/unified-auth');
 const { verifyToken } = require('../middleware/jwt-blacklist');
 const { cacheMiddleware, clearCache } = require('../middleware/cache');
 const { CACHE_TTL } = require('../config/constants');
@@ -80,7 +80,10 @@ const authenticateSubsidyFileAccess = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization || '';
     const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
-    const queryToken = typeof req.query.token === 'string' ? req.query.token.trim() : '';
+    const rawQueryToken = Array.isArray(req.query.token)
+      ? req.query.token[req.query.token.length - 1]
+      : req.query.token;
+    const queryToken = typeof rawQueryToken === 'string' ? rawQueryToken.trim() : '';
     const token = bearerToken || queryToken;
 
     if (!token) {
@@ -2030,7 +2033,7 @@ router.get('/stats/summary', unifiedAuth, requirePermission('subsidy:view'), cac
  * POST /api/subsidy/upload/photo
  * 权限：需要登录
  */
-router.post('/upload/photo', unifiedAuth, (req, res, next) => {
+router.post('/upload/photo', unifiedAuth, requireAnyPermission(['subsidy:create', 'subsidy:edit']), (req, res, next) => {
   // 使用 multer 处理上传，字段名为 'file'
   const uploadHandler = upload.single('file');
 

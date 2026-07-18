@@ -4,11 +4,53 @@
 const AttendanceRepository = require('../repositories/attendance.repository');
 const ApiResponse = require('../utils/response');
 const SystemSettingsService = require('./system-settings.service');
+const SalaryRecordService = require('./salary-record.service');
+const { getMonthDateRange } = require('../utils/time');
 const log = require('../utils/log');
 
 class AttendanceService {
   constructor() {
     this.repository = new AttendanceRepository();
+  }
+
+  isSalaryAffectingAttendance(record) {
+    return record && ['leave', 'monthly_leave', 'overtime', 'absent'].includes(record.record_type);
+  }
+
+  getAttendanceSalaryPeriodKey(record) {
+    const period = getMonthDateRange(record?.record_date);
+    if (!period || !record?.employee_id) {
+      return null;
+    }
+
+    return `${record.employee_id}:${period.period_start}:${period.period_end}`;
+  }
+
+  async recalculateSalaryForAttendanceChanges(records, operatorId) {
+    const seen = new Set();
+
+    for (const record of records) {
+      if (!record || record.status !== 'approved' || !this.isSalaryAffectingAttendance(record)) {
+        continue;
+      }
+
+      const key = this.getAttendanceSalaryPeriodKey(record);
+      if (!key || seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+
+      try {
+        await SalaryRecordService.recalculateExistingSalaryForAttendanceRecord(record, operatorId);
+      } catch (error) {
+        log.error('考勤变更后自动重算工资失败:', {
+          attendance_id: record.id,
+          employee_id: record.employee_id,
+          record_date: record.record_date,
+          message: error.message
+        });
+      }
+    }
   }
 
   /**
@@ -66,17 +108,28 @@ class AttendanceService {
     }
   }
 
-  async updateAttendanceRecord(id, data) {
+  async updateAttendanceRecord(id, data, operatorId = null) {
     try {
-      return await this.repository.updateAttendanceRecord(id, data);
+      const before = await this.repository.getAttendanceRecordById(id);
+      const result = await this.repository.updateAttendanceRecord(id, data);
+      const after = await this.repository.getAttendanceRecordById(id);
+
+      await this.recalculateSalaryForAttendanceChanges([before, after], operatorId || data.updated_by || data.approved_by || data.created_by);
+
+      return result;
     } catch (error) {
       throw error;
     }
   }
 
-  async deleteAttendanceRecord(id) {
+  async deleteAttendanceRecord(id, operatorId = null) {
     try {
-      return await this.repository.deleteAttendanceRecord(id);
+      const before = await this.repository.getAttendanceRecordById(id);
+      const result = await this.repository.deleteAttendanceRecord(id);
+
+      await this.recalculateSalaryForAttendanceChanges([before], operatorId || before?.approved_by || before?.created_by);
+
+      return result;
     } catch (error) {
       throw error;
     }
@@ -115,7 +168,13 @@ class AttendanceService {
 
   async approveAttendanceRecord(id, approverId, status, note) {
     try {
-      return await this.repository.approveAttendanceRecord(id, approverId, status, note);
+      const before = await this.repository.getAttendanceRecordById(id);
+      const result = await this.repository.approveAttendanceRecord(id, approverId, status, note);
+      const after = await this.repository.getAttendanceRecordById(id);
+
+      await this.recalculateSalaryForAttendanceChanges([before, after], approverId);
+
+      return result;
     } catch (error) {
       throw error;
     }

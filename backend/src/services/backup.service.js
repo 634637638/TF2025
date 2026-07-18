@@ -53,6 +53,14 @@ class BackupService {
       && path.basename(filename) === filename;
   }
 
+  resolveBackupPath(filename) {
+    if (!this.isValidBackupFilename(filename)) {
+      throw new Error('无效的备份文件名');
+    }
+
+    return path.join(BACKUP_DIR, filename);
+  }
+
   /**
    * 清理残留的临时备份目录
    */
@@ -495,7 +503,7 @@ class BackupService {
    * 获取备份文件路径
    */
   getBackupPath(filename) {
-    const filePath = path.join(BACKUP_DIR, filename);
+    const filePath = this.resolveBackupPath(filename);
     if (!fs.existsSync(filePath)) {
       return null;
     }
@@ -506,7 +514,7 @@ class BackupService {
    * 删除备份
    */
   deleteBackup(filename) {
-    const filePath = path.join(BACKUP_DIR, filename);
+    const filePath = this.resolveBackupPath(filename);
     if (!fs.existsSync(filePath)) {
       throw new Error('备份文件不存在');
     }

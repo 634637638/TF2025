@@ -1,5 +1,5 @@
 <template>
-  <div class="colors-view admin-page">
+  <div class="colors-view admin-page admin-unified-base-data-page">
     <PermissionGate
       :can-view="canView"
       mode="denied"
@@ -116,174 +116,83 @@
       </div>
       
       <div class="table-responsive">
-        <table class="table">
-          <thead>
-            <tr>
-              <th v-if="showSortField" width="40"></th>
-              <th v-if="showSortOrderField" width="60">排序</th>
-              <th v-if="canViewField('id')" width="80">ID</th>
-              <th v-if="canViewField('name')" width="160">颜色名称</th>
-              <th v-if="showCodeField" width="200">颜色预览</th>
-              <th v-if="canViewField('status')" width="200">状态</th>
-              <th v-if="showCreatedAtField" width="160">创建时间</th>
-              <th v-if="showActionField" width="180">操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <TableLoadingRow
-              v-if="tableLoading"
-              :colspan="visibleColumnCount"
-              text="加载颜色列表..."
-            />
-            <tr v-else-if="colors.length === 0" class="empty-row">
-              <td :colspan="visibleColumnCount">
-                <div class="empty-content">
-                  <i class="fas fa-inbox"></i>
-                  <div class="empty-text">
-                    <h4>暂无颜色数据</h4>
-                    <p>点击上方"新增颜色"按钮添加第一个颜色</p>
-                    <el-button size="small" type="info" class="mt-2" @click="loadColors()">
-                      <i class="fas fa-sync-alt"></i>
-                      重新加载
-                    </el-button>
-                  </div>
-                </div>
-              </td>
-            </tr>
-            <template v-else v-for="(color, index) in colors" :key="color.id">
-            <tr
-              class="data-row"
-              :class="{ 'is-dragging': draggingIndex === index, 'is-drag-over': dragOverIndex === index }"
-              :draggable="canEdit"
-              @click="handleMobileRowTap(color.id)"
-              @dblclick="toggleMobileActions(color.id)"
-              @dragstart="canEdit ? handleDragStart(index, $event) : null"
-              @dragend="canEdit ? handleDragEnd : null"
-              @dragover="canEdit ? handleDragOver(index, $event) : null"
-              @dragenter="canEdit ? handleDragEnter(index) : null"
-              @dragleave="canEdit ? handleDragLeave : null"
-              @drop="canEdit ? handleDrop(index, $event) : null"
-            >
-              <td v-if="showSortField" class="drag-handle-cell">
-                <div class="drag-handle" :class="{ 'disabled': !canEdit }">
-                  <i class="fas fa-grip-vertical"></i>
-                </div>
-              </td>
-              <td v-if="showSortOrderField">
-                <input
-                  v-model.number="color.sort_order"
-                  type="number"
-                  class="sort-order-input"
-                  :disabled="!canEdit"
-                  min="0"
-                  max="9999"
-                  @change="canEdit ? handleSortOrderChange(index, color.sort_order) : null"
-                />
-              </td>
-              <td v-if="canViewField('id')">
-                <span class="id-badge">{{ index + 1 }}</span>
-              </td>
-              <td v-if="canViewField('name')">
-                <div class="color-info">
-                  <div class="color-name">
-                    <strong>{{ color.name || '未命名颜色' }}</strong>
-                    <span v-if="!color.name" class="warning-badge">未命名</span>
-                  </div>
-                  <div v-if="isMobile && canViewField('code')" class="mobile-color-preview">
-                    <span
-                      class="color-circle"
-                      :style="{ backgroundColor: color.hex_code || getColorCode(color.name) }"
-                      :title="color.hex_code || color.name"
-                    ></span>
-                    <span class="mobile-sub-value">{{ color.hex_code || getColorCode(color.name) }}</span>
-                  </div>
-                </div>
-              </td>
-              <td v-if="showCodeField">
-                <div class="color-preview">
-                  <div
-                    class="color-circle"
-                    :style="{ backgroundColor: color.hex_code || getColorCode(color.name) }"
-                    :title="color.hex_code || color.name"
-                  ></div>
-                  <span class="color-code">{{ color.hex_code || getColorCode(color.name) }}</span>
-                </div>
-              </td>
-              <td v-if="canViewField('status')">
-                <span :class="['status-badge', (color.status === 1 || color.is_active === true) ? 'status-active' : 'status-inactive']">
-                  <i :class="(color.status === 1 || color.is_active === true) ? 'fas fa-check' : 'fas fa-times'"></i>
-                  {{ (color.status === 1 || color.is_active === true) ? '启用' : '禁用' }}
-                </span>
-              </td>
-              <td v-if="showCreatedAtField">
-                <div class="time-info">
-                  <i class="fas fa-clock"></i>
-                  {{ formatDate(color.created_at) }}
-                </div>
-              </td>
-              <td v-if="showActionField" class="actions">
-                <div class="action-buttons">
-                  <el-button
-                    v-if="canEdit"
-                    v-permission="'colors:edit'"
-                    type="primary"
-                    size="small"
-                    @click="editColor(color)"
-                    title="编辑"
-                  >
-                    <i class="fas fa-edit"></i>
-                    <span>编辑</span>
-                  </el-button>
-                  <el-button
-                    v-if="canDelete"
-                    v-permission="'colors:delete'"
-                    type="danger"
-                    size="small"
-                    @click="deleteColor(color)"
-                    title="删除"
-                  >
-                    <i class="fas fa-trash"></i>
-                    <span>删除</span>
-                  </el-button>
-                </div>
-                <!-- 如果没有任何操作权限，显示提示 -->
-                <span v-if="!canEdit && !canDelete" class="no-permission-text">
-                  无操作权限
-                </span>
-              </td>
-            </tr>
-            <tr
-              v-if="isMobile && mobileActionRowId === color.id && (canEdit || canDelete)"
-              class="mobile-action-row"
-            >
-              <td :colspan="visibleColumnCount">
-                <div class="mobile-row-actions">
-                  <el-button
-                    v-if="canEdit"
-                    v-permission="'colors:edit'"
-                    type="primary"
-                    size="small"
-                    @click.stop="editColor(color)"
-                  >
-                    <i class="fas fa-edit"></i>
-                    <span>编辑</span>
-                  </el-button>
-                  <el-button
-                    v-if="canDelete"
-                    v-permission="'colors:delete'"
-                    type="danger"
-                    size="small"
-                    @click.stop="deleteColor(color)"
-                  >
-                    <i class="fas fa-trash"></i>
-                    <span>删除</span>
-                  </el-button>
-                </div>
-              </td>
-            </tr>
+        <el-table
+          ref="colorsTableRef"
+          :data="tableLoading ? [] : colors"
+          border
+          stripe
+          class="data-table devices-table base-data-table colors-data-table"
+          table-layout="fixed"
+          :fit="true"
+          :row-key="getColorRowKey"
+          :expand-row-keys="isMobile && mobileActionRowId ? [mobileActionRowId] : []"
+          @row-click="(row) => handleMobileRowTap(row.id)"
+        >
+          <template #empty>
+            <TableLoadingRow v-if="tableLoading" mode="block" text="加载颜色列表..." />
+            <div v-else class="empty-state">
+              <i class="fas fa-inbox"></i>
+              <p>暂无颜色数据</p>
+              <el-button size="small" type="info" @click="loadColors()">重新加载</el-button>
+            </div>
+          </template>
+
+          <el-table-column v-if="showSortField" width="44" align="center" class-name="drag-handle-cell">
+            <template #default>
+              <div class="drag-handle" :class="{ disabled: !canEdit }"><i class="fas fa-grip-vertical"></i></div>
             </template>
-          </tbody>
-        </table>
+          </el-table-column>
+          <el-table-column v-if="showSortOrderField" label="排序" width="70" align="center">
+            <template #default="{ row, $index }">
+              <input v-model.number="row.sort_order" type="number" class="sort-order-input" :disabled="!canEdit" min="0" max="9999" @change="handleSortOrderChange($index, row.sort_order)" />
+            </template>
+          </el-table-column>
+          <el-table-column v-if="canViewField('id')" label="序号" width="70" align="center">
+            <template #default="{ $index }"><span class="id-badge">{{ $index + 1 }}</span></template>
+          </el-table-column>
+          <el-table-column v-if="canViewField('name')" label="颜色名称" min-width="130" align="center">
+            <template #default="{ row }">
+              <div class="color-info">
+                <div class="color-name"><strong>{{ row.name || '未命名颜色' }}</strong></div>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column v-if="showCodeField" label="颜色预览" :min-width="isMobile ? 104 : 150" align="center">
+            <template #default="{ row }">
+              <div class="color-preview">
+                <span class="color-circle" :style="{ backgroundColor: row.hex_code || getColorCode(row.name) }"></span>
+                <span class="color-code">{{ row.hex_code || getColorCode(row.name) }}</span>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column v-if="canViewField('status')" label="状态" min-width="84" align="center">
+            <template #default="{ row }">
+              <span :class="['status-badge', (row.status === 1 || row.is_active === true) ? 'status-active' : 'status-inactive']">
+                <i :class="(row.status === 1 || row.is_active === true) ? 'fas fa-check' : 'fas fa-times'"></i>
+                {{ (row.status === 1 || row.is_active === true) ? '启用' : '禁用' }}
+              </span>
+            </template>
+          </el-table-column>
+          <el-table-column v-if="showCreatedAtField" label="创建时间" min-width="156" align="center">
+            <template #default="{ row }"><div class="time-info"><i class="fas fa-clock"></i>{{ formatDate(row.created_at) }}</div></template>
+          </el-table-column>
+          <el-table-column v-if="showActionField" label="操作" min-width="170" align="center" class-name="actions-column">
+            <template #default="{ row }">
+              <div class="action-buttons">
+                <el-button v-if="canEdit" v-permission="'colors:edit'" type="primary" size="small" @click.stop="editColor(row)"><i class="fas fa-edit"></i><span>编辑</span></el-button>
+                <el-button v-if="canDelete" v-permission="'colors:delete'" type="danger" size="small" @click.stop="deleteColor(row)"><i class="fas fa-trash"></i><span>删除</span></el-button>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column v-if="isMobile && (canEdit || canDelete)" type="expand" width="1" class-name="mobile-expand-column" label-class-name="mobile-expand-header">
+            <template #default="{ row }">
+              <div class="mobile-row-actions">
+                <el-button v-if="canEdit" v-permission="'colors:edit'" type="primary" size="small" @click.stop="editColor(row)"><i class="fas fa-edit"></i><span>编辑</span></el-button>
+                <el-button v-if="canDelete" v-permission="'colors:delete'" type="danger" size="small" @click.stop="deleteColor(row)"><i class="fas fa-trash"></i><span>删除</span></el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
       </div>
 
       <!-- 分页组件 -->
@@ -389,6 +298,7 @@ import { usePermissionToast } from '@/utils/permissionToastSimple'
 import { handleApiErrorWithPermission } from '@/utils/apiPermissionError'
 import { useMobile } from '@/composables/mobile'
 import { useLatestRequest } from '@/composables/useLatestRequest'
+import { useElementTableSortable } from '@/composables/useElementTableSortable'
 import { logger } from '@/utils/logger'
 import type { Color } from '@/types'
 
@@ -441,52 +351,44 @@ const showSortField = computed(() => canViewField('sort_order') && !isMobile.val
 const showSortOrderField = computed(() => canViewField('sort_order') && !isMobile.value)
 const showActionField = computed(() => canViewField('actions') && (canEdit.value || canDelete.value) && !isMobile.value)
 const showCreatedAtField = computed(() => canViewField('created_at') && !isMobile.value)
-const showCodeField = computed(() => canViewField('code') && !isMobile.value)
+const showCodeField = computed(() => canViewField('code'))
 const showStatsCards = computed(() => (
   canViewField('stats_total_colors') ||
   canViewField('stats_active_colors') ||
   canViewField('stats_inactive_colors') ||
   canViewField('stats_related_phones')
 ))
-const visibleColumnCount = computed(() => {
-  return [
-    showSortField.value,
-    showSortOrderField.value,
-    canViewField('id'),
-    canViewField('name'),
-    showCodeField.value,
-    canViewField('status'),
-    showCreatedAtField.value,
-    showActionField.value
-  ].filter(Boolean).length || 1
-})
-
 // 响应式数据
 const submitting = ref(false)
 const savingOrder = ref(false)
 const tableLoading = ref(true)
-const mobileActionRowId = ref<number | null>(null)
-const lastTappedRowId = ref<number | null>(null)
+const colorsTableRef = ref<any>(null)
+const mobileActionRowId = ref<string | null>(null)
+const lastTappedRowId = ref<string | null>(null)
 const lastTapTimestamp = ref(0)
 const colors = ref<Color[]>([])
 
+const getColorRowKey = (color: Color) => String(color.id)
+
 const toggleMobileActions = (id: number) => {
   if (!isMobile.value) return
-  mobileActionRowId.value = mobileActionRowId.value === id ? null : id
+  const rowKey = String(id)
+  mobileActionRowId.value = mobileActionRowId.value === rowKey ? null : rowKey
 }
 
 const handleMobileRowTap = (id: number) => {
   if (!isMobile.value) return
+  const rowKey = String(id)
 
   const now = Date.now()
-  if (lastTappedRowId.value === id && now - lastTapTimestamp.value <= 320) {
+  if (lastTappedRowId.value === rowKey && now - lastTapTimestamp.value <= 320) {
     toggleMobileActions(id)
     lastTappedRowId.value = null
     lastTapTimestamp.value = 0
     return
   }
 
-  lastTappedRowId.value = id
+  lastTappedRowId.value = rowKey
   lastTapTimestamp.value = now
 }
 const showCreateModal = ref(false)
@@ -495,10 +397,6 @@ const showEditModal = ref(false)
 // 搜索相关状态
 const searchExpanded = ref(false)
 const currentEditingId = ref<number | null>(null)
-
-// 拖拽排序状态
-const draggingIndex = ref<number | null>(null)
-const dragOverIndex = ref<number | null>(null)
 
 // 搜索表单
 const searchForm = ref({
@@ -956,63 +854,6 @@ const handleCreateColor = () => {
   showCreateModal.value = true
 }
 
-// 拖拽排序方法
-const handleDragStart = (index: number, event: DragEvent) => {
-  draggingIndex.value = index
-  if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = 'move'
-  }
-}
-
-const handleDragEnd = () => {
-  draggingIndex.value = null
-  dragOverIndex.value = null
-}
-
-const handleDragOver = (index: number, event: DragEvent) => {
-  event.preventDefault()
-  if (draggingIndex.value === null || draggingIndex.value === index) return
-  dragOverIndex.value = index
-}
-
-const handleDragEnter = (index: number) => {
-  if (draggingIndex.value === null || draggingIndex.value === index) return
-  dragOverIndex.value = index
-}
-
-const handleDragLeave = () => {
-  // 不清除 dragOverIndex，避免闪烁
-}
-
-const handleDrop = async (dropIndex: number, event: DragEvent) => {
-  event.preventDefault()
-  const dragIndex = draggingIndex.value
-  if (dragIndex === null || dragIndex === dropIndex) {
-    handleDragEnd()
-    return
-  }
-
-  // 重新排列数组
-  const newColors = [...colors.value]
-  const [movedItem] = newColors.splice(dragIndex, 1)
-  newColors.splice(dropIndex, 0, movedItem)
-
-  // 更新 sort_order 值
-  newColors.forEach((item, index) => {
-    item.sort_order = index
-  })
-
-  colors.value = newColors
-
-  // 自动保存排序
-  await saveSortOrder()
-
-  // 保存后重新加载数据以确保与数据库同步
-  await loadColors(true, false, false)
-
-  handleDragEnd()
-}
-
 // 保存排序到服务器
 const saveSortOrder = async () => {
   if (savingOrder.value) return
@@ -1048,6 +889,29 @@ const handleSortOrderChange = async (index: number, value: number) => {
   colors.value.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
   await saveSortOrder()
 }
+
+const handleColorRowMove = async (oldIndex: number, newIndex: number) => {
+  if (!canEdit.value || oldIndex === newIndex) return false
+
+  const reordered = [...colors.value]
+  const [movedItem] = reordered.splice(oldIndex, 1)
+  reordered.splice(newIndex, 0, movedItem)
+  reordered.forEach((item, index) => {
+    item.sort_order = index
+  })
+  colors.value = reordered
+
+  await saveSortOrder()
+  await loadColors(true, false, false)
+  return true
+}
+
+useElementTableSortable({
+  tableRef: colorsTableRef,
+  enabled: computed(() => canEdit.value && !isMobile.value && showSortField.value),
+  orderKey: () => colors.value.map(color => color.id).join('|'),
+  onMove: handleColorRowMove
+})
 
 // 键盘快捷键处理
 const handleKeyboardShortcuts = (event: KeyboardEvent) => {
@@ -1970,27 +1834,6 @@ onBeforeUnmount(() => {
     padding: 6px 4px 10px !important;
     background: linear-gradient(180deg, #f8fbff 0%, #f4f7ff 100%);
     border-top: none !important;
-  }
-
-  .colors-view .table th,
-  .colors-view .table td {
-    padding: 6px 4px;
-    font-size: 11px;
-  }
-
-  .colors-view .table th:nth-child(1),
-  .colors-view .table td:nth-child(1) {
-    width: 56px;
-  }
-
-  .colors-view .table th:nth-child(2),
-  .colors-view .table td:nth-child(2) {
-    width: auto;
-  }
-
-  .colors-view .table th:nth-child(3),
-  .colors-view .table td:nth-child(3) {
-    width: 92px;
   }
 
   .colors-view .color-name {

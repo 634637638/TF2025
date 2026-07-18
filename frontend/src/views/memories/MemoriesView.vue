@@ -1,5 +1,5 @@
 <template>
-  <div class="memories-view admin-page">
+  <div class="memories-view admin-page admin-unified-base-data-page">
     <PermissionGate
       :can-view="canView"
       module-name="内存管理"
@@ -114,171 +114,18 @@
       </div>
       
       <div class="table-responsive">
-        <table class="table">
-          <thead>
-            <tr>
-              <th v-if="showSortField" width="40"></th>
-              <th v-if="showSortOrderField" width="60">排序</th>
-              <th v-if="canViewField('id')" width="80">ID</th>
-              <th v-if="canViewField('capacity')" width="160">内存规格</th>
-              <th v-if="showTypeField" width="200">存储大小</th>
-              <th v-if="canViewField('status')" width="200">状态</th>
-              <th v-if="showCreatedAtField" width="160">创建时间</th>
-              <th v-if="showActionField" width="180">操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <TableLoadingRow
-              v-if="tableLoading"
-              :colspan="visibleColumnCount"
-              text="加载内存规格..."
-            />
-            <tr v-else-if="memories.length === 0" class="empty-row">
-              <td :colspan="visibleColumnCount">
-                <div class="empty-content">
-                  <i class="fas fa-inbox"></i>
-                  <div class="empty-text">
-                    <h4>暂无内存规格数据</h4>
-                    <p>点击上方"新增内存"按钮添加第一个内存规格</p>
-                    <el-button size="small" type="info" class="mt-2" @click="loadMemories()">
-                      <i class="fas fa-sync-alt"></i>
-                      重新加载
-                    </el-button>
-                  </div>
-                </div>
-              </td>
-            </tr>
-            <template v-else v-for="(memory, index) in memories" :key="memory.id">
-            <tr
-              class="data-row"
-              :class="{ 'is-dragging': draggingIndex === index, 'is-drag-over': dragOverIndex === index }"
-              :draggable="canEdit"
-              @click="handleMobileRowTap(memory.id)"
-              @dblclick="toggleMobileActions(memory.id)"
-              @dragstart="canEdit ? handleDragStart(index, $event) : null"
-              @dragend="canEdit ? handleDragEnd : null"
-              @dragover="canEdit ? handleDragOver(index, $event) : null"
-              @dragenter="canEdit ? handleDragEnter(index) : null"
-              @dragleave="canEdit ? handleDragLeave : null"
-              @drop="canEdit ? handleDrop(index, $event) : null"
-            >
-              <td v-if="showSortField" class="drag-handle-cell">
-                <div class="drag-handle" :class="{ 'disabled': !canEdit }">
-                  <i class="fas fa-grip-vertical"></i>
-                </div>
-              </td>
-              <td v-if="showSortOrderField">
-                <input
-                  v-model.number="memory.sort_order"
-                  type="number"
-                  class="sort-order-input"
-                  :disabled="!canEdit"
-                  min="0"
-                  max="9999"
-                  @change="canEdit ? handleSortOrderChange(index, memory.sort_order) : null"
-                />
-              </td>
-              <td v-if="canViewField('id')">
-                <span class="id-badge">{{ index + 1 }}</span>
-              </td>
-              <td v-if="canViewField('capacity')">
-                <div class="memory-info">
-                  <div class="memory-size">
-                    <strong>{{ memory.display_name || memory.name || '未命名规格' }}</strong>
-                    <span v-if="!memory.name && !memory.display_name" class="warning-badge">未命名</span>
-                  </div>
-                  <div v-if="memory.description" class="memory-desc">
-                    {{ memory.description }}
-                  </div>
-                  <div v-if="isMobile && canViewField('type')" class="mobile-sub-meta">
-                    <span class="mobile-sub-label">存储</span>
-                    <span class="mobile-sub-value">
-                      {{ memory.storage_size || 'N/A' }} {{ memory.storage_unit || 'GB' }}
-                    </span>
-                  </div>
-                </div>
-              </td>
-              <td v-if="showTypeField">
-                <div class="storage-type">
-                  <div class="storage-spec">
-                    <span class="storage-size">{{ memory.storage_size || 'N/A' }}</span>
-                    <span class="storage-unit" :class="getStorageUnitClass(memory.storage_unit)">
-                      {{ memory.storage_unit || 'GB' }}
-                    </span>
-                  </div>
-                  </div>
-              </td>
-              <td v-if="canViewField('status')">
-                <span :class="['status-badge', (memory.status === 1 || memory.is_active === true) ? 'status-active' : 'status-inactive']">
-                  <i :class="(memory.status === 1 || memory.is_active === true) ? 'fas fa-check' : 'fas fa-times'"></i>
-                  {{ (memory.status === 1 || memory.is_active === true) ? '启用' : '禁用' }}
-                </span>
-              </td>
-              <td v-if="showCreatedAtField">
-                <div class="time-info">
-                  <i class="fas fa-clock"></i>
-                  {{ formatDate(memory.created_at) }}
-                </div>
-              </td>
-              <td v-if="showActionField" class="actions">
-                <div class="action-buttons">
-                  <el-button
-                    v-if="canEdit"
-                    v-permission="'memories:edit'"
-                    type="primary"
-                    size="small"
-                    @click="editMemory(memory)"
-                    title="编辑"
-                  >
-                    <i class="fas fa-edit"></i>
-                    <span>编辑</span>
-                  </el-button>
-                  <el-button
-                    v-if="canDelete"
-                    v-permission="'memories:delete'"
-                    type="danger"
-                    size="small"
-                    @click="deleteMemory(memory)"
-                    title="删除"
-                  >
-                    <i class="fas fa-trash"></i>
-                    <span>删除</span>
-                  </el-button>
-                </div>
-              </td>
-            </tr>
-            <tr
-              v-if="isMobile && mobileActionRowId === memory.id && (canEdit || canDelete)"
-              class="mobile-action-row"
-            >
-              <td :colspan="visibleColumnCount">
-                <div class="mobile-row-actions">
-                  <el-button
-                    v-if="canEdit"
-                    v-permission="'memories:edit'"
-                    type="primary"
-                    size="small"
-                    @click.stop="editMemory(memory)"
-                  >
-                    <i class="fas fa-edit"></i>
-                    <span>编辑</span>
-                  </el-button>
-                  <el-button
-                    v-if="canDelete"
-                    v-permission="'memories:delete'"
-                    type="danger"
-                    size="small"
-                    @click.stop="deleteMemory(memory)"
-                  >
-                    <i class="fas fa-trash"></i>
-                    <span>删除</span>
-                  </el-button>
-                </div>
-              </td>
-            </tr>
-            </template>
-          </tbody>
-        </table>
+        <el-table ref="memoriesTableRef" :data="tableLoading ? [] : memories" border stripe class="data-table devices-table base-data-table memories-data-table" table-layout="fixed" :fit="true" :row-key="getMemoryRowKey" :expand-row-keys="isMobile && mobileActionRowId ? [mobileActionRowId] : []" @row-click="(row) => handleMobileRowTap(row.id)">
+          <template #empty><TableLoadingRow v-if="tableLoading" mode="block" text="加载内存规格..." /><div v-else class="empty-state"><i class="fas fa-inbox"></i><p>暂无内存规格数据</p><el-button size="small" type="info" @click="loadMemories()">重新加载</el-button></div></template>
+          <el-table-column v-if="showSortField" width="44" align="center" class-name="drag-handle-cell"><template #default><div class="drag-handle" :class="{ disabled: !canEdit }"><i class="fas fa-grip-vertical"></i></div></template></el-table-column>
+          <el-table-column v-if="showSortOrderField" label="排序" width="70" align="center"><template #default="{ row, $index }"><input v-model.number="row.sort_order" type="number" class="sort-order-input" :disabled="!canEdit" min="0" max="9999" @change="handleSortOrderChange($index, row.sort_order)" /></template></el-table-column>
+          <el-table-column v-if="canViewField('id')" label="序号" :width="isMobile ? 54 : 70" align="center"><template #default="{ $index }"><span class="id-badge">{{ $index + 1 }}</span></template></el-table-column>
+          <el-table-column v-if="canViewField('capacity')" label="内存规格" :min-width="memorySpecColumnWidth" align="center"><template #default="{ row }"><div class="memory-info"><strong>{{ row.display_name || row.name || '未命名规格' }}</strong></div></template></el-table-column>
+          <el-table-column v-if="showTypeField" label="存储大小" :min-width="storageColumnWidth" align="center"><template #default="{ row }"><div class="storage-spec"><span class="storage-size">{{ row.storage_size || 'N/A' }}</span><span class="storage-unit" :class="getStorageUnitClass(row.storage_unit)">{{ row.storage_unit || 'GB' }}</span></div></template></el-table-column>
+          <el-table-column v-if="canViewField('status')" label="状态" :min-width="isMobile ? 72 : 84" align="center"><template #default="{ row }"><span :class="['status-badge', (row.status === 1 || row.is_active === true) ? 'status-active' : 'status-inactive']"><i :class="(row.status === 1 || row.is_active === true) ? 'fas fa-check' : 'fas fa-times'"></i>{{ (row.status === 1 || row.is_active === true) ? '启用' : '禁用' }}</span></template></el-table-column>
+          <el-table-column v-if="showCreatedAtField" label="创建时间" min-width="156" align="center"><template #default="{ row }"><div class="time-info"><i class="fas fa-clock"></i>{{ formatDate(row.created_at) }}</div></template></el-table-column>
+          <el-table-column v-if="showActionField" label="操作" min-width="170" align="center" class-name="actions-column"><template #default="{ row }"><div class="action-buttons"><el-button v-if="canEdit" v-permission="'memories:edit'" type="primary" size="small" @click.stop="editMemory(row)"><i class="fas fa-edit"></i><span>编辑</span></el-button><el-button v-if="canDelete" v-permission="'memories:delete'" type="danger" size="small" @click.stop="deleteMemory(row)"><i class="fas fa-trash"></i><span>删除</span></el-button></div></template></el-table-column>
+          <el-table-column v-if="isMobile && (canEdit || canDelete)" type="expand" width="1" class-name="mobile-expand-column" label-class-name="mobile-expand-header"><template #default="{ row }"><div class="mobile-row-actions"><el-button v-if="canEdit" v-permission="'memories:edit'" type="primary" size="small" @click.stop="editMemory(row)"><i class="fas fa-edit"></i><span>编辑</span></el-button><el-button v-if="canDelete" v-permission="'memories:delete'" type="danger" size="small" @click.stop="deleteMemory(row)"><i class="fas fa-trash"></i><span>删除</span></el-button></div></template></el-table-column>
+        </el-table>
       </div>
 
       <!-- 分页组件 -->
@@ -370,6 +217,8 @@ import { handleApiErrorWithPermission } from '@/utils/apiPermissionError'
 import { useMobile } from '@/composables/mobile'
 import { useLatestRequest } from '@/composables/useLatestRequest'
 import { logger } from '@/utils/logger'
+import { useElementTableSortable } from '@/composables/useElementTableSortable'
+import { getTextColumnMinWidth } from '@/utils/table-layout'
 
 // 获取路由实例
 const router = useRouter()
@@ -418,26 +267,13 @@ const showSortField = computed(() => canViewField('sort_order') && !isMobile.val
 const showSortOrderField = computed(() => canViewField('sort_order') && !isMobile.value)
 const showActionField = computed(() => canViewField('actions') && (canEdit.value || canDelete.value) && !isMobile.value)
 const showCreatedAtField = computed(() => canViewField('created_at') && !isMobile.value)
-const showTypeField = computed(() => canViewField('type') && !isMobile.value)
+const showTypeField = computed(() => canViewField('type'))
 const showStatsCards = computed(() => (
   canViewField('stats_total_memories') ||
   canViewField('stats_active_memories') ||
   canViewField('stats_inactive_memories') ||
   canViewField('stats_related_phones')
 ))
-const visibleColumnCount = computed(() => {
-  return [
-    showSortField.value,
-    showSortOrderField.value,
-    canViewField('id'),
-    canViewField('capacity'),
-    showTypeField.value,
-    canViewField('status'),
-    showCreatedAtField.value,
-    showActionField.value
-  ].filter(Boolean).length || 1
-})
-
 interface Memory {
   id: number
   name: string
@@ -455,27 +291,30 @@ interface Memory {
   updated_at: string
 }
 
-const mobileActionRowId = ref<number | null>(null)
-const lastTappedRowId = ref<number | null>(null)
+const memoriesTableRef = ref<any>(null)
+const mobileActionRowId = ref<string | null>(null)
+const lastTappedRowId = ref<string | null>(null)
 const lastTapTimestamp = ref(0)
 
 const toggleMobileActions = (id: number) => {
   if (!isMobile.value) return
-  mobileActionRowId.value = mobileActionRowId.value === id ? null : id
+  const rowKey = String(id)
+  mobileActionRowId.value = mobileActionRowId.value === rowKey ? null : rowKey
 }
 
 const handleMobileRowTap = (id: number) => {
   if (!isMobile.value) return
+  const rowKey = String(id)
 
   const now = Date.now()
-  if (lastTappedRowId.value === id && now - lastTapTimestamp.value <= 320) {
+  if (lastTappedRowId.value === rowKey && now - lastTapTimestamp.value <= 320) {
     toggleMobileActions(id)
     lastTappedRowId.value = null
     lastTapTimestamp.value = 0
     return
   }
 
-  lastTappedRowId.value = id
+  lastTappedRowId.value = rowKey
   lastTapTimestamp.value = now
 }
 
@@ -486,13 +325,28 @@ const tableLoading = ref(true)
 const submitting = ref(false)
 const savingOrder = ref(false)
 const memories = ref<Memory[]>([])
+const getMemoryRowKey = (memory: Memory) => String(memory.id)
+const memorySpecColumnWidth = computed(() => getTextColumnMinWidth(
+  ['内存规格', ...memories.value.map(memory => memory.display_name || memory.name || '未命名规格')],
+  {
+    minWidth: isMobile.value ? 104 : 130,
+    horizontalPadding: isMobile.value ? 20 : 32,
+    asciiCharacterWidth: isMobile.value ? 7 : 8,
+    wideCharacterWidth: isMobile.value ? 11 : 13
+  }
+))
+const storageColumnWidth = computed(() => getTextColumnMinWidth(
+  ['存储大小', ...memories.value.map(memory => `${memory.storage_size ?? 'N/A'}${memory.storage_unit || 'GB'}`)],
+  {
+    minWidth: isMobile.value ? 86 : 110,
+    horizontalPadding: isMobile.value ? 24 : 32,
+    asciiCharacterWidth: isMobile.value ? 7 : 8,
+    wideCharacterWidth: isMobile.value ? 11 : 13
+  }
+))
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
 const currentEditingId = ref<number | null>(null)
-
-// 拖拽排序状态
-const draggingIndex = ref<number | null>(null)
-const dragOverIndex = ref<number | null>(null)
 
 // 搜索表单
 const searchForm = ref({
@@ -862,63 +716,6 @@ const handleCreateMemory = () => {
   showCreateModal.value = true
 }
 
-// 拖拽排序方法
-const handleDragStart = (index: number, event: DragEvent) => {
-  draggingIndex.value = index
-  if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = 'move'
-  }
-}
-
-const handleDragEnd = () => {
-  draggingIndex.value = null
-  dragOverIndex.value = null
-}
-
-const handleDragOver = (index: number, event: DragEvent) => {
-  event.preventDefault()
-  if (draggingIndex.value === null || draggingIndex.value === index) return
-  dragOverIndex.value = index
-}
-
-const handleDragEnter = (index: number) => {
-  if (draggingIndex.value === null || draggingIndex.value === index) return
-  dragOverIndex.value = index
-}
-
-const handleDragLeave = () => {
-  // 不清除 dragOverIndex，避免闪烁
-}
-
-const handleDrop = async (dropIndex: number, event: DragEvent) => {
-  event.preventDefault()
-  const dragIndex = draggingIndex.value
-  if (dragIndex === null || dragIndex === dropIndex) {
-    handleDragEnd()
-    return
-  }
-
-  // 重新排列数组
-  const newMemories = [...memories.value]
-  const [movedItem] = newMemories.splice(dragIndex, 1)
-  newMemories.splice(dropIndex, 0, movedItem)
-
-  // 更新 sort_order 值
-  newMemories.forEach((item, index) => {
-    item.sort_order = index
-  })
-
-  memories.value = newMemories
-
-  // 自动保存排序
-  await saveSortOrder()
-
-  // 保存后重新加载数据以确保与数据库同步
-  await loadMemories(true, false, false)
-
-  handleDragEnd()
-}
-
 // 保存排序到服务器
 const saveSortOrder = async () => {
   if (savingOrder.value) return
@@ -954,6 +751,25 @@ const handleSortOrderChange = async (index: number, value: number) => {
   memories.value.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
   await saveSortOrder()
 }
+
+const handleMemoryRowMove = async (oldIndex: number, newIndex: number) => {
+  if (!canEdit.value || oldIndex === newIndex) return false
+  const reordered = [...memories.value]
+  const [movedItem] = reordered.splice(oldIndex, 1)
+  reordered.splice(newIndex, 0, movedItem)
+  reordered.forEach((item, index) => { item.sort_order = index })
+  memories.value = reordered
+  await saveSortOrder()
+  await loadMemories(true, false, false)
+  return true
+}
+
+useElementTableSortable({
+  tableRef: memoriesTableRef,
+  enabled: computed(() => canEdit.value && !isMobile.value && showSortField.value),
+  orderKey: () => memories.value.map(memory => memory.id).join('|'),
+  onMove: handleMemoryRowMove
+})
 
 // 生命周期
 onMounted(() => {
@@ -1305,6 +1121,7 @@ onMounted(() => {
 }
 
 .memory-info {
+  width: 100%;
   max-width: 200px;
   text-align: center;
   margin: 0 auto;
@@ -1377,7 +1194,9 @@ onMounted(() => {
 .storage-spec {
   display: flex;
   align-items: baseline;
+  justify-content: center;
   gap: 4px;
+  width: 100%;
 }
 
 .storage-size {
@@ -1582,13 +1401,6 @@ onMounted(() => {
     white-space: nowrap;
   }
 
-  .stats-cards {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-    margin-bottom: 16px;
-    padding: 0 4px;
-  }
-
   .user-info-section {
     order: 2;
     width: 100%;
@@ -1601,25 +1413,10 @@ onMounted(() => {
     justify-content: center;
   }
 
-  .stats-cards {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-    margin-bottom: 16px;
-    padding: 0 4px;
-  }
-
   .form-actions {
     flex-direction: column;
   }
 
-  .table-section {
-    padding: 16px;
-  }
-
-  
-  .memory-info {
-    max-width: 150px;
-  }
 }
 
 </style>
@@ -1636,82 +1433,6 @@ onMounted(() => {
 }
 
 @media (max-width: 767px) {
-  .memories-view .stats-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-    margin-bottom: 16px;
-    padding: 0 4px;
-  }
-
-  .memories-view .stat-card {
-    padding: 14px 12px;
-    border-radius: 16px;
-    gap: 12px;
-  }
-
-  .memories-view .stat-icon {
-    width: 40px;
-    height: 40px;
-    font-size: 16px;
-  }
-
-  .memories-view .stat-value {
-    font-size: 20px;
-  }
-
-  .memories-view .stat-label {
-    font-size: 12px;
-  }
-
-  .memories-view .table-section {
-    margin: 0;
-    padding: 14px 10px;
-    border-radius: 16px;
-  }
-
-  .memories-view .table-responsive {
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
-    border-radius: 12px;
-  }
-
-  .memories-view .table {
-    width: 100%;
-    min-width: 0;
-    table-layout: fixed;
-  }
-
-  .memories-view .table th,
-  .memories-view .table td {
-    white-space: normal;
-    word-break: break-word;
-  }
-
-  .memories-view .memory-info {
-    width: 100%;
-    max-width: none;
-  }
-
-  .memories-view .memory-size {
-    line-height: 1.4;
-    text-align: center;
-  }
-
-  .memories-view .memory-desc {
-    margin-top: 4px;
-    line-height: 1.4;
-    text-align: center;
-  }
-
-  .memories-view .status-badge {
-    width: 100%;
-    max-width: 88px;
-    justify-content: center;
-    white-space: normal;
-    line-height: 1.35;
-    padding: 6px 8px;
-  }
-
   .memories-dialog-form .el-form-item {
     margin-bottom: 12px;
   }
@@ -1746,90 +1467,4 @@ onMounted(() => {
   }
 }
 
-@media (max-width: 480px) {
-  .memories-view .stats-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-    margin: 0 0 12px 0;
-    padding: 0;
-  }
-
-  .memories-view .stat-card {
-    padding: 12px 10px;
-    gap: 10px;
-  }
-
-  .memories-view .stat-icon {
-    width: 36px;
-    height: 36px;
-    font-size: 15px;
-  }
-
-  .memories-view .stat-value {
-    font-size: 18px;
-  }
-
-  .memories-view .stat-label {
-    font-size: 11px;
-  }
-
-  .mobile-action-row td {
-    padding: 6px 4px 10px !important;
-    background: linear-gradient(180deg, #f8fbff 0%, #f4f7ff 100%);
-    border-top: none !important;
-  }
-
-  .memories-view .table th,
-  .memories-view .table td {
-    padding: 6px 4px;
-    font-size: 11px;
-  }
-
-  .memories-view .table th:nth-child(1),
-  .memories-view .table td:nth-child(1) {
-    width: 56px;
-  }
-
-  .memories-view .table th:nth-child(2),
-  .memories-view .table td:nth-child(2) {
-    width: auto;
-  }
-
-  .memories-view .table th:nth-child(3),
-  .memories-view .table td:nth-child(3) {
-    width: 92px;
-  }
-
-  .memories-view .memory-size {
-    font-size: 14px;
-    font-weight: 700;
-  }
-
-  .mobile-sub-meta {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    margin-top: 6px;
-    font-size: 11px;
-    line-height: 1.35;
-    color: #5f6b7a;
-    text-align: center;
-  }
-
-  .mobile-sub-label {
-    flex: 0 0 auto;
-    padding: 2px 6px;
-    border-radius: 999px;
-    background: #eef4ff;
-    color: #4c6ef5;
-    font-weight: 600;
-  }
-
-  .mobile-sub-value {
-    min-width: 0;
-    font-weight: 600;
-  }
-
-}
 </style>

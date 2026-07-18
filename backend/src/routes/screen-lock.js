@@ -13,6 +13,8 @@ const { getDatabase, isConnected } = require('../config/database');
 const ApiResponse = require('../utils/response');
 const log = require('../utils/log');
 const { getUploadSubdir, getUploadUrl } = require('../utils/upload-paths');
+const { authRateLimit } = require('../middleware/rate-limit');
+const { createInventoryQueryToken } = require('../utils/inventory-query-token');
 
 // 存储配置
 const storage = multer.diskStorage({
@@ -511,7 +513,7 @@ router.delete('/query-users/:id', unifiedAuth, requirePermission('system:delete'
 });
 
 // 验证在库查询密码（无需登录，使用多密码验证）
-router.post('/verify-inventory-query', async (req, res) => {
+router.post('/verify-inventory-query', authRateLimit, async (req, res) => {
   let connection;
   try {
     log.debug('📦 开始验证在库查询密码（无需登录）');
@@ -558,7 +560,9 @@ router.post('/verify-inventory-query', async (req, res) => {
         success: true,
         message: '密码验证成功',
         data: {
-          userName: matchedUser.name
+          userName: matchedUser.name,
+          queryToken: createInventoryQueryToken(matchedUser),
+          expiresIn: 600
         }
       });
     } else {
@@ -573,7 +577,6 @@ router.post('/verify-inventory-query', async (req, res) => {
     }
   } catch (error) {
     log.error('验证在库查询密码失败:', error);
-    if (connection) connection.release();
     res.status(500).json({
       success: false,
       error: {

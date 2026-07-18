@@ -240,126 +240,105 @@
 
     <!-- 数据表格 -->
     <div class="table-section admin-panel admin-table-panel">
-      <div class="section-header">
-        <div class="section-title">
-          <i class="fas fa-list"></i>
-          库存列表
-        </div>
-        <div class="table-info">
-          <span>共 {{ pagination.total }} 条记录</span>
-        </div>
+      <div class="section-title">
+        <i class="fas fa-list"></i>
+        库存列表
+        <span class="record-count">共 {{ pagination.total }} 条记录</span>
       </div>
 
-      <div class="table-responsive table-mobile-friendly">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <!-- 动态生成表头 -->
-              <th
-                v-for="column in tableColumns"
-                :key="column.key"
-              >
-                {{ column.label }}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <TableLoadingRow
-              v-if="isLoading"
-              :colspan="tableColumns.length || 1"
-              text="加载库存列表..."
-            />
-            <tr v-else-if="inventory.length === 0">
-              <td :colspan="tableColumns.length" class="text-center py-8">
-                <div class="empty-state">
-                  <i class="fas fa-box-open"></i>
-                  <p>暂无库存数据</p>
-                </div>
-              </td>
-            </tr>
-            <tr
-              v-for="item in inventory"
-              :key="item.id"
-              @touchstart="handleRowTouch(item, $event)"
-              :data-index="item.id"
-              class="data-row"
-            >
-              <!-- 动态生成数据单元格 -->
-              <template v-for="column in tableColumns" :key="column.key">
+      <div class="table-responsive">
+        <el-table
+          :data="isLoading ? [] : inventory"
+          border
+          stripe
+          class="data-table devices-table inventory-table"
+          table-layout="fixed"
+          :fit="true"
+          row-key="id"
+          @row-click="handleInventoryRowTap"
+        >
+          <el-table-column
+            v-for="column in tableColumns"
+            :key="column.key"
+            :label="column.label"
+            :min-width="getInventoryColumnMinWidth(column)"
+            align="center"
+            :class-name="getInventoryColumnClass(column)"
+          >
+            <template #default="{ row: item }">
                 <!-- 供应商列 -->
-                <td v-if="column.key === 'supplier_name'">
+                <span v-if="column.key === 'supplier_name'">
                   {{ item.supplier_name || '-' }}
-                </td>
+                </span>
 
                 <!-- 店铺列 -->
-                <td v-else-if="column.key === 'store_name'">
+                <span v-else-if="column.key === 'store_name'">
                   {{ item.store_name || '-' }}
-                </td>
+                </span>
 
                 <!-- 品牌列 -->
-                <td v-else-if="column.key === 'brand'">
+                <span v-else-if="column.key === 'brand'">
                   {{ item.brand_name || item.brand || '-' }}
-                </td>
+                </span>
 
                 <!-- 型号列 -->
-                <td v-else-if="column.key === 'model'">
+                <span v-else-if="column.key === 'model'">
                   {{ item.model_name || item.model || '-' }}
-                </td>
+                </span>
 
                 <!-- 颜色列 -->
-                <td v-else-if="column.key === 'color'">
+                <span v-else-if="column.key === 'color'">
                   {{ item.color_name || item.color || '-' }}
-                </td>
+                </span>
 
                 <!-- 内存列 -->
-                <td v-else-if="column.key === 'memory'">
+                <span v-else-if="column.key === 'memory'">
                   {{ item.memory_name || item.memory || '-' }}
-                </td>
+                </span>
 
                 <!-- 序列号列 -->
-                <td v-else-if="column.key === 'serial_number'">
-                  <span class="serial-number">{{ item.serial_number || '-' }}</span>
-                </td>
+                <span v-else-if="column.key === 'serial_number'" class="serial-number">
+                  {{ item.serial_number || '-' }}
+                </span>
 
                 <!-- IMEI列 -->
-                <td v-else-if="column.key === 'imei'">
+                <span v-else-if="column.key === 'imei'">
                   <span class="imei">{{ item.imei || '-' }}</span>
-                </td>
+                </span>
 
                 <!-- 入库价格列 -->
-                <td v-else-if="column.key === 'purchase_price'" class="price">
+                <span v-else-if="column.key === 'purchase_price'" class="price">
                   ¥{{ formatNumber(item.purchase_cost || item.purchase_price || item.purchase_unit_price) }}
-                </td>
+                </span>
 
                 <!-- 入库员列 -->
-                <td v-else-if="column.key === 'inventory_operator_name'">
+                <span v-else-if="column.key === 'inventory_operator_name'">
                   {{ item.inventory_operator_name || item.operator_name || '-' }}
-                </td>
+                </span>
 
                 <!-- 机况列 -->
-                <td v-else-if="column.key === 'is_new'">
+                <span v-else-if="column.key === 'is_new'">
                   <span class="condition-badge" :class="getConditionClass(item.is_new ?? 0)">
                     {{ getConditionText(item.is_new ?? 0) }}
                   </span>
-                </td>
+                </span>
 
                 <!-- 状态列 -->
-                <td v-else-if="column.key === 'is_preordered'">
+                <span v-else-if="column.key === 'is_preordered'">
                   <span :class="['status-badge', getSaleStatusClass(item)]">
                     {{ getSaleStatusLabel(item) }}
                   </span>
-                </td>
+                </span>
 
                 <!-- 入库时间列 -->
-                <td v-else-if="column.key === 'Inventorytime'">
+                <span v-else-if="column.key === 'Inventorytime'">
                   {{ formatDate(item.Inventorytime || item.created_at) }}
-                </td>
+                </span>
 
                 <!-- 操作列 -->
-                <td v-else-if="column.key === 'actions'">
-                  <div class="action-buttons">
+                <div v-else-if="column.key === 'actions'" class="action-buttons">
                     <el-button
-                      @click="viewDetails(item)"
+                      @click.stop="viewDetails(item)"
                       type="primary"
                       size="small"
                       title="查看详情"
@@ -369,7 +348,7 @@
                     </el-button>
                     <el-button
                       v-if="canCreate && item.status === 'in_stock'"
-                      @click="quickSaleItem(item)"
+                      @click.stop="quickSaleItem(item)"
                       type="warning"
                       size="small"
                       title="商品出库"
@@ -379,7 +358,7 @@
                     </el-button>
                     <el-button
                       v-if="canEdit && item.status === 'in_stock'"
-                      @click="editItem(item)"
+                      @click.stop="editItem(item)"
                       type="success"
                       size="small"
                       title="编辑"
@@ -389,7 +368,7 @@
                     </el-button>
                     <el-button
                       v-if="canDelete && item.status === 'in_stock'"
-                      @click="deleteItem(item)"
+                      @click.stop="deleteItem(item)"
                       type="danger"
                       size="small"
                       title="删除"
@@ -397,12 +376,22 @@
                       <i class="fas fa-trash"></i>
                       删除
                     </el-button>
-                  </div>
-                </td>
-              </template>
-            </tr>
-          </tbody>
-        </table>
+                </div>
+            </template>
+          </el-table-column>
+
+          <template #empty>
+            <TableLoadingRow
+              v-if="isLoading"
+              mode="block"
+              text="加载库存列表..."
+            />
+            <div v-else class="empty-state">
+              <i class="fas fa-box-open"></i>
+              <p>暂无库存数据</p>
+            </div>
+          </template>
+        </el-table>
       </div>
 
   
@@ -701,6 +690,7 @@ import { unifiedApi as api } from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import { normalizePermissionList } from '@/utils/permissionList'
 import { sortOptionsByOrder } from '@/utils/option-sort'
+import { getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 import { useAuthStore } from '@/stores/auth'
 import { logger } from '@/utils/logger'
 import { useLoadingStore } from '@/stores/loading'
@@ -770,9 +760,14 @@ const updateWindowWidth = () => {
   windowWidth.value = window.innerWidth
 }
 
-// 移动端触摸事件处理（模拟双击）
-const handleRowTouch = (item: InventoryItem, event: TouchEvent) => {
-  const rowKey = (event.currentTarget as HTMLElement).dataset.index || String(item.id)
+// Element Plus 表格在移动端不会可靠触发 dblclick，使用两次 row-click 模拟双击。
+const handleInventoryRowTap = (item: InventoryItem, _column: unknown, event: MouseEvent) => {
+  if (windowWidth.value > 1024) return
+
+  const target = event.target as HTMLElement | null
+  if (target?.closest('button, a, input, select, textarea, .action-buttons')) return
+
+  const rowKey = String(item.id ?? item.imei ?? item.serial_number)
   const now = Date.now()
   const lastTime = lastTapTime.value.get(rowKey) || 0
   const timeDiff = now - lastTime
@@ -784,9 +779,8 @@ const handleRowTouch = (item: InventoryItem, event: TouchEvent) => {
     touchTimers.value.delete(rowKey)
   }
 
-  // 如果两次点击间隔小于 300ms，视为双击
-  if (timeDiff < 300 && timeDiff > 0) {
-    // 双击触发 - 打开详情模态框
+  // 手机端点击事件可能略有延迟，400ms 内点击同一行视为双击。
+  if (timeDiff <= 400 && timeDiff > 0) {
     viewDetails(item)
     lastTapTime.value.delete(rowKey)
   } else {
@@ -794,7 +788,7 @@ const handleRowTouch = (item: InventoryItem, event: TouchEvent) => {
     const timer = setTimeout(() => {
       lastTapTime.value.delete(rowKey)
       touchTimers.value.delete(rowKey)
-    }, 300)
+    }, 400)
     touchTimers.value.set(rowKey, timer)
   }
 
@@ -896,10 +890,103 @@ const tableColumns = computed(() => {
   return visibleColumns
 })
 
-
-
 // 响应式数据 - 强制初始化为空状态
 const inventory = ref<InventoryItem[]>([])
+
+const inventoryColumnWidths: Record<string, number> = {
+  supplier_name: 100,
+  store_name: 80,
+  brand: 68,
+  model: 88,
+  color: 44,
+  memory: 52,
+  serial_number: 156,
+  imei: 168,
+  purchase_price: 92,
+  inventory_operator_name: 82,
+  is_new: 64,
+  is_preordered: 72,
+  Inventorytime: 108,
+  actions: 310
+}
+
+const getInventoryColumnMinWidth = (column: { key: string }) => {
+  const useCompactMobileWidth = windowWidth.value <= 768
+
+  if (useCompactMobileWidth && column.key === 'model') {
+    return getTextColumnMinWidth(
+      ['型号', ...inventory.value.map(item => item.model_name || item.model)],
+      {
+        minWidth: inventoryColumnWidths.model,
+        horizontalPadding: 18,
+        asciiCharacterWidth: 6.5,
+        wideCharacterWidth: 11
+      }
+    )
+  }
+
+  if (useCompactMobileWidth && column.key === 'color') {
+    return getTextColumnMinWidth(
+      ['颜色', ...inventory.value.map(item => item.color_name || item.color)],
+      {
+        minWidth: inventoryColumnWidths.color,
+        horizontalPadding: 16,
+        asciiCharacterWidth: 6.5,
+        wideCharacterWidth: 11
+      }
+    )
+  }
+
+  if (useCompactMobileWidth && column.key === 'memory') {
+    return getTextColumnMinWidth(
+      ['内存', ...inventory.value.map(item => item.memory_name || item.memory)],
+      {
+        minWidth: inventoryColumnWidths.memory,
+        horizontalPadding: 16,
+        asciiCharacterWidth: 6.5,
+        wideCharacterWidth: 11
+      }
+    )
+  }
+
+  if (column.key === 'serial_number') {
+    return getIdentifierColumnMinWidth(
+      ['序列号', ...inventory.value.map(item => item.serial_number)],
+      {
+        minWidth: useCompactMobileWidth ? 128 : inventoryColumnWidths.serial_number,
+        horizontalPadding: useCompactMobileWidth ? 20 : 40,
+        asciiCharacterWidth: useCompactMobileWidth ? 6.5 : 8,
+        wideCharacterWidth: useCompactMobileWidth ? 11 : 13
+      }
+    )
+  }
+
+  if (column.key === 'imei') {
+    return getIdentifierColumnMinWidth(
+      ['IMEI', ...inventory.value.map(item => item.imei)],
+      {
+        minWidth: useCompactMobileWidth ? 128 : inventoryColumnWidths.imei,
+        horizontalPadding: useCompactMobileWidth ? 20 : 40,
+        asciiCharacterWidth: useCompactMobileWidth ? 6.5 : 8,
+        wideCharacterWidth: useCompactMobileWidth ? 11 : 13
+      }
+    )
+  }
+
+  return inventoryColumnWidths[column.key] || 96
+}
+
+const getInventoryColumnClass = (column: { key: string }) => {
+  if (column.key === 'serial_number' || column.key === 'imei') {
+    return 'identifier-column serial-imei-column'
+  }
+  if (column.key === 'purchase_price') return 'price-column'
+  if (column.key === 'actions') return 'actions-column'
+  return ''
+}
+
+
+
 const selectedItem = ref<InventoryItem | null>(null)
 const showDetailsModal = ref(false)
 
@@ -4164,174 +4251,6 @@ const handleSelect = (item: InventoryItem) => {
   margin-right: 16px;
 }
 
-.action-buttons {
-  display: flex;
-  gap: 12px;
-}
-
-/* 统计卡片样式 - 参考销售页面布局，PC端4个一行，手机端2个一行 */
-.stats-cards {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr); /* PC端固定4列 */
-  gap: 20px;
-  margin: 0 0 24px 0;
-
-  /* 大屏幕优化 */
-  @media (min-width: 1400px) {
-    gap: 24px;
-  }
-
-  /* 中等屏幕调整 */
-  @media (max-width: 1200px) {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 18px;
-  }
-
-  /* 平板调整 */
-  @media (max-width: 992px) {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
-    margin: 0 0 20px 0;
-  }
-
-  /* 手机端调整 - 参考销售页面，使用自适应布局但保持2个一行 */
-  @media (max-width: 768px) {
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 12px;
-    margin: 0 0 16px 0;
-  }
-
-  /* 小屏手机调整 - 保持2个一行，参考销售页面 */
-  @media (max-width: 480px) {
-    gap: 12px;
-    margin: 0 0 12px 0;
-    grid-template-columns: repeat(2, 1fr); /* 强制2列，确保2个一行 */
-  }
-
-  /* 超小屏幕优化 - 保持2个一行 */
-  @media (max-width: 375px) {
-    gap: 8px;
-    margin: 0 0 8px 0;
-    grid-template-columns: repeat(2, 1fr); /* 强制2列，确保2个一行 */
-  }
-
-  /* 加载状态动画 */
-  &.loading .stat-card {
-    animation: slideInUp 0.6s ease-out;
-  }
-}
-
-.stat-card {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-  transition: all 0.3s ease;
-  border: 1px solid #e8ecef;
-  position: relative;
-  overflow: hidden;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: var(--card-accent, linear-gradient(90deg, var(--el-color-primary), var(--el-color-success)));
-    opacity: 0;
-    transition: opacity 0.3s ease;
-  }
-
-  /* 平板调整 */
-  @media (max-width: 992px) {
-    padding: 20px;
-    gap: 14px;
-  }
-
-  /* 手机端调整 - 参考销售页面，保持水平布局 */
-  @media (max-width: 768px) {
-    padding: 16px;
-    gap: 12px;
-  }
-
-  /* 小屏手机调整 - 参考销售页面，保持水平布局，2个一行 */
-  @media (max-width: 480px) {
-    padding: 12px;
-    gap: 10px;
-  }
-
-  /* 超小屏幕优化 */
-  @media (max-width: 375px) {
-    padding: 10px;
-    gap: 8px;
-  }
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0,0,0,0.12);
-
-  &::before {
-    opacity: 1;
-  }
-
-  .stat-value {
-    color: var(--el-color-primary);
-    transform: scale(1.02);
-  }
-
-  .stat-label {
-    color: var(--el-text-color-regular);
-    opacity: 0.9;
-  }
-
-  .stat-icon {
-    transform: scale(1.1) rotate(5deg);
-    box-shadow: 0 6px 20px rgba(0,0,0,0.25);
-  }
-}
-
-.stat-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-
-  /* 平板调整 */
-  @media (max-width: 992px) {
-    width: 44px;
-    height: 44px;
-    font-size: 18px;
-  }
-
-  /* 手机端调整 - 2个一行时适中的图标 */
-  @media (max-width: 768px) {
-    width: 40px;
-    height: 40px;
-    font-size: 16px;
-    margin: 0 auto 4px;
-  }
-
-  /* 小屏幕调整 - 单个一行时稍大的图标 */
-  @media (max-width: 480px) {
-    width: 36px;
-    height: 36px;
-    font-size: 14px;
-    margin: 0 auto 6px;
-  }
-}
-
 .stat-icon.in-stock {
   background: linear-gradient(135deg, #28a745, #20c997);
 }
@@ -4371,59 +4290,6 @@ const handleSelect = (item: InventoryItem) => {
 
 .stat-card:nth-child(4) .stat-icon {
   background: linear-gradient(135deg, #17a2b8, #6f42c1);
-}
-
-.stat-content {
-  flex: 1;
-}
-
-.stat-value {
-  font-size: 24px;
-  font-weight: 700;
-  color: #2c3e50;
-  margin-bottom: 4px;
-  line-height: 1.2;
-  transition: all 0.3s ease;
-
-  /* 平板调整 */
-  @media (max-width: 992px) {
-    font-size: 22px;
-  }
-
-  /* 手机端调整 - 2个一行时适中的字体 */
-  @media (max-width: 768px) {
-    font-size: 20px;
-    margin-bottom: 2px;
-  }
-
-  /* 小屏幕调整 - 单个一行时稍大的字体 */
-  @media (max-width: 480px) {
-    font-size: 18px;
-    margin-bottom: 3px;
-  }
-}
-
-.stat-label {
-  font-size: 14px;
-  color: #6c757d;
-  font-weight: 500;
-  line-height: 1.4;
-  transition: all 0.3s ease;
-
-  /* 平板调整 */
-  @media (max-width: 992px) {
-    font-size: 13px;
-  }
-
-  /* 手机端调整 - 2个一行时适中的字体 */
-  @media (max-width: 768px) {
-    font-size: 12px;
-  }
-
-  /* 小屏幕调整 - 单个一行时稍大的字体 */
-  @media (max-width: 480px) {
-    font-size: 11px;
-  }
 }
 
 /* 基础表单组样式 */
@@ -4577,128 +4443,24 @@ const handleSelect = (item: InventoryItem) => {
   font-size: 12px;
 }
 
-/* 表格区域样式 - 参考品牌页面 */
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-}
-
-.table-responsive {
-  overflow-x: auto;
-  border-radius: 8px;
-  border: 1px solid #dee2e6;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.data-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  margin: 0;
-  background: white;
-}
-
-.data-table th {
-  background: linear-gradient(135deg, #495057 0%, #343a40 100%);
-  color: white;
-  padding: 12px 10px;
-  text-align: center;
-  font-weight: 600;
-  font-size: 14px;
-  border-right: 1px solid #dee2e6;
-  border-bottom: 2px solid #dee2e6;
-  position: relative;
-  white-space: nowrap;
-}
-
-.data-table th:last-child {
-  border-right: none;
-}
-
-.data-table th::after {
-  display: none;
-}
-
-.data-table td {
-  padding: 6px 6px;
-  border-right: 1px solid #e9ecef;
-  border-bottom: 1px solid #e9ecef;
-  vertical-align: middle;
-  font-size: 14px;
-  color: #2c3e50;
-  font-weight: 500;
-  text-align: center;
-  position: relative;
-}
-
-.data-table td:last-child {
-  border-right: none;
-}
-
-.data-table tbody tr {
-  transition: all 0.2s ease;
-  position: relative;
-}
-
-.data-table tbody tr:nth-child(even) {
-  background: #f8f9fa;
-}
-
-.data-table tbody tr:hover {
-  background: #e3f2fd;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-.data-table tbody tr:hover td {
-  border-bottom-color: #dee2e6;
-}
-
 .imei {
   font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
-  font-size: 13px;
+  font-size: inherit;
   font-weight: 600;
   color: #495057;
-  letter-spacing: 0.8px;
-  background: #f8f9fa;
-  padding: 6px 10px;
-  border-radius: 4px;
-  border: 1px solid #e9ecef;
-  display: inline-block;
-  min-width: 80px;
+  letter-spacing: 0;
+  background: transparent;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  display: inline;
+  min-width: 0;
   text-align: center !important;
-  position: relative;
 }
 
 .imei:hover {
-  background: #e9ecef;
-  border-color: #dee2e6;
-  transform: scale(1.02);
-  transition: all 0.2s ease;
-}
-
-/* 特殊列样式 */
-.data-table td:nth-child(1), /* 供应商列 */
-.data-table td:nth-child(2), /* 品牌列 */
-.data-table td:nth-child(3) { /* 型号列 */
-  font-weight: 600;
-  color: #2c3e50;
-  background: rgba(102, 126, 234, 0.03);
-}
-
-.data-table td:nth-child(8), /* 入库价格列 */
-.data-table td:nth-child(10) { /* 店铺列 */
-  font-weight: 600;
-  color: #495057;
-  background: rgba(40, 167, 69, 0.05);
-}
-
-.data-table td:nth-child(9) { /* 入库员列 */
-  font-weight: 500;
-  color: #6c757d;
-  font-style: italic;
+  background: transparent;
+  transform: none;
 }
 
 /* 状态徽章样式 - 参考品牌页面 */
@@ -4844,63 +4606,6 @@ const handleSelect = (item: InventoryItem) => {
 .permission-disabled:hover {
   background: #e5e7eb;
   border-color: #9ca3af;
-}
-
-/* 操作按钮样式 - 参考销售页面 */
-.action-buttons {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.action-buttons .btn {
-  white-space: nowrap;
-}
-
-
-/* 查看按钮 - 蓝色边框 */
-.action-buttons .btn-outline-primary {
-  background: white;
-  color: #007bff;
-  border-color: #007bff;
-}
-
-.action-buttons .btn-outline-primary:hover {
-  background: #007bff;
-  color: white;
-  border-color: #0056b3;
-}
-
-/* 编辑按钮 - 蓝色边框 */
-.action-buttons .btn-outline-primary:hover {
-  background: #007bff;
-  color: white;
-  border-color: #0056b3;
-}
-
-/* 删除按钮 - 红色 */
-.action-buttons .btn-danger {
-  background: linear-gradient(135deg, #dc3545, #e74c3c);
-  color: white;
-  border-color: #dc3545;
-}
-
-.action-buttons .btn-danger:hover {
-  background: linear-gradient(135deg, #c82333, #c0392b);
-  border-color: #bd2130;
-}
-
-/* 按钮加载状态 */
-.action-buttons .btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}
-
-.action-buttons .btn:disabled .fa-spin {
-  animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
@@ -5079,50 +4784,8 @@ const handleSelect = (item: InventoryItem) => {
     min-width: 120px;
   }
 
-  .action-buttons {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 6px;
-    width: auto;
-  }
-
-  /* 主要操作按钮 - 保持文字 */
-  .action-buttons .btn-primary {
-    min-width: 70px;
-    padding: 8px 14px;
-    font-size: 12px;
-    gap: 6px;
-  }
-
-  .action-buttons .btn-primary i {
-    font-size: 12px;
-  }
-
-  /* 次要按钮 - 可以只显示图标 */
-  .action-buttons .btn-outline-secondary {
-    min-width: 36px;
-    padding: 8px 12px;
-    font-size: 11px;
-    gap: 4px;
-  }
-
-  .action-buttons .btn-outline-secondary i {
-    font-size: 12px;
-  }
-
-  .stats-cards {
-    grid-template-columns: repeat(2, 1fr); /* 手机端保持2个一行 */
-    gap: 12px;
-    margin: 0 0 16px 0;
-  }
-
   .form-actions {
     flex-direction: column;
-  }
-
-  .table-section {
-    padding: 8px 2px;
   }
 
   .detail-grid {
@@ -5781,173 +5444,6 @@ const handleSelect = (item: InventoryItem) => {
   margin-top: 8px;
 }
 
-/* 移动端表格优化 */
-.table-mobile-friendly {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-.table-mobile-friendly .data-table {
-  min-width: 800px; /* 确保表格有最小宽度，可以横向滚动 */
-  font-size: 14px;
-}
-
-/* 所有手机端适配 (480px 及以下) - 参考综合查询表格样式 */
-@media (max-width: 480px) {
-  /* 通用移动端表格样式 - 适配所有手机端 */
-  .data-table {
-    font-size: 11px;
-  }
-
-  .data-table th {
-    font-size: 11px;
-    padding: 6px 4px;
-    letter-spacing: 0.3px;
-  }
-
-  .data-table th,
-  .data-table td {
-    white-space: nowrap;
-  }
-
-  .data-table td {
-    padding: 6px 4px;
-    font-size: 11px;
-  }
-
-  .data-table .btn-sm {
-    padding: 3px 6px;
-    font-size: 10px;
-  }
-
-  .table-mobile-friendly .data-table {
-    font-size: 11px;
-  }
-
-  .table-mobile-friendly .data-table th {
-    font-size: 11px;
-    padding: 6px 4px;
-    letter-spacing: 0.3px;
-  }
-
-  .table-mobile-friendly .data-table th,
-  .table-mobile-friendly .data-table td {
-    white-space: nowrap;
-  }
-
-  .table-mobile-friendly .data-table td {
-    padding: 6px 4px;
-    font-size: 11px;
-  }
-
-  .table-mobile-friendly .data-table .btn-sm {
-    padding: 3px 6px;
-    font-size: 10px;
-  }
-
-}
-
-/* 平板适配 (481px - 768px) */
-@media (min-width: 481px) and (max-width: 768px) {
-  .data-table {
-    font-size: 11px;
-  }
-
-  .data-table th {
-    font-size: 11px;
-    padding: 10px 6px;
-    letter-spacing: 0.3px;
-  }
-
-  .data-table th,
-  .data-table td {
-    white-space: nowrap;
-  }
-
-  .data-table td {
-    padding: 8px 6px;
-    font-size: 10px;
-  }
-
-  .data-table .btn-sm {
-    padding: 3px 6px;
-    font-size: 10px;
-  }
-
-  .table-mobile-friendly .data-table {
-    font-size: 11px;
-  }
-
-  .table-mobile-friendly .data-table th {
-    font-size: 11px;
-    padding: 10px 6px;
-    letter-spacing: 0.3px;
-  }
-
-  .table-mobile-friendly .data-table th,
-  .table-mobile-friendly .data-table td {
-    white-space: nowrap;
-  }
-
-  .table-mobile-friendly .data-table td {
-    padding: 8px 6px;
-    font-size: 10px;
-  }
-
-  .table-mobile-friendly .data-table .btn-sm {
-    padding: 3px 6px;
-    font-size: 10px;
-  }
-}
-
-/* 小屏幕手机适配 (360px 及以下) */
-@media (max-width: 360px) {
-  .data-table {
-    font-size: 9px;
-  }
-
-  .data-table th {
-    font-size: 9px;
-    padding: 8px 4px;
-    letter-spacing: 0.2px;
-  }
-
-  .data-table th,
-  .data-table td {
-    white-space: nowrap;
-  }
-
-  .data-table td {
-    padding: 6px 4px;
-    font-size: 8px;
-  }
-
-  .data-table .btn-sm {
-    padding: 2px 4px;
-    font-size: 9px;
-  }
-
-  .table-mobile-friendly .data-table {
-    font-size: 9px;
-  }
-
-  .table-mobile-friendly .data-table th {
-    font-size: 9px;
-    padding: 8px 4px;
-    letter-spacing: 0.2px;
-  }
-
-  .table-mobile-friendly .data-table td {
-    padding: 6px 4px;
-    font-size: 8px;
-  }
-
-  .table-mobile-friendly .data-table .btn-sm {
-    padding: 2px 4px;
-    font-size: 9px;
-  }
-}
-
 /* iPhone SE (390x844) 适配 - 最低适配尺寸 */
 @media (max-width: 390px) and (min-height: 800px) {
   .modal-header-content {
@@ -6068,140 +5564,6 @@ const handleSelect = (item: InventoryItem) => {
   html {
     overflow-x: hidden;
     width: 100%;
-  }
-
-  .table-section {
-    padding: 10px 4px;
-    margin-bottom: 10px;
-    border-radius: 8px;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .table-section {
-    padding: 8px 2px;
-    overflow: hidden;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .table-responsive {
-    overflow-x: hidden;
-    margin: 0;
-    border-radius: 8px;
-    width: 100%;
-    max-width: 100%;
-  }
-
-  /* 表格边框优化 */
-  .data-table {
-    border-collapse: separate;
-    border-spacing: 0;
-    width: 100%;
-    max-width: 100%;
-    table-layout: fixed;
-  }
-
-  /* 统计卡片 - 小屏幕2列布局 */
-  .stats-cards {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 4px;
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-  }
-
-  .stat-card {
-    padding: 6px;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    gap: 4px;
-    min-height: 55px;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .stat-icon {
-    width: 32px;
-    height: 32px;
-    font-size: 14px;
-    flex-shrink: 0;
-  }
-
-  .stat-content {
-    flex: 1;
-    text-align: right;
-  }
-
-  .stat-value {
-    font-size: 20px;
-    font-weight: 600;
-    line-height: 1.2;
-  }
-
-  .stat-label {
-    font-size: 11px;
-    line-height: 1.2;
-  }
-
-  /* 表格样式 */
-  .data-table {
-    font-size: 11px;
-    table-layout: fixed;
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-  }
-
-  .data-table th,
-  .data-table td {
-    padding: 10px 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    text-align: center;
-    line-height: 1.3;
-  }
-
-  /* 表头字体更小 - 自适应 */
-  .data-table th {
-    font-size: clamp(8px, 1.5vw, 9px);
-    font-weight: 600;
-  }
-
-  /* 4列布局优化 - 型号、颜色、内存、序列号 - 字体自适应 */
-  .data-table th:nth-child(1), /* 型号列 */
-  .data-table td:nth-child(1) {
-    width: 35%;
-    font-size: clamp(9px, 2vw, 10px);
-    font-weight: 600;
-  }
-
-  .data-table th:nth-child(2), /* 颜色列 */
-  .data-table td:nth-child(2) {
-    width: 20%;
-    font-size: clamp(9px, 2vw, 10px);
-  }
-
-  .data-table th:nth-child(3), /* 内存列 */
-  .data-table td:nth-child(3) {
-    width: 18%;
-    font-size: clamp(8px, 1.8vw, 9px);
-  }
-
-  .data-table th:nth-child(4), /* 序列号列 */
-  .data-table td:nth-child(4) {
-    width: 27%;
-    font-size: clamp(9px, 2vw, 10px);
-    font-weight: 500;
-  }
-
-  /* 确保所有单元格内容单行显示 */
-  .data-table td {
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
   }
 
   /* 分页 */
@@ -6330,66 +5692,6 @@ const handleSelect = (item: InventoryItem) => {
   }
 }
 
-/* 430px断点 - 专门为430*932分辨率优化 */
-@media (max-width: 430px) {
-  /* 表格优化 - 确保四个字段一行展示 */
-  .data-table {
-    font-size: clamp(9px, 1.6vw, 11px);
-    table-layout: fixed;
-    width: 100%;
-  }
-
-  .data-table th,
-  .data-table td {
-    padding: 8px 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    text-align: center;
-    line-height: 1.25;
-  }
-
-  /* 表头字体更小 - 自适应 */
-  .data-table th {
-    font-size: clamp(8px, 1.4vw, 9px);
-    font-weight: 600;
-  }
-
-  /* 4列布局优化 - 字体自适应 */
-  .data-table th:nth-child(1), /* 型号列 */
-  .data-table td:nth-child(1) {
-    width: 35%;
-    font-size: clamp(9px, 1.9vw, 10px);
-    font-weight: 600;
-  }
-
-  .data-table th:nth-child(2), /* 颜色列 */
-  .data-table td:nth-child(2) {
-    width: 20%;
-    font-size: clamp(9px, 1.9vw, 10px);
-  }
-
-  .data-table th:nth-child(3), /* 内存列 */
-  .data-table td:nth-child(3) {
-    width: 18%;
-    font-size: clamp(8px, 1.7vw, 9px);
-  }
-
-  .data-table th:nth-child(4), /* 序列号列 */
-  .data-table td:nth-child(4) {
-    width: 27%;
-    font-size: clamp(9px, 1.9vw, 10px);
-    font-weight: 500;
-  }
-
-  /* 确保所有单元格内容单行显示 */
-  .data-table td {
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-  }
-}
-
 /* 超小屏幕优化（375px及以下 - iPhone SE） */
 @media (max-width: 375px) {
   .inventory-view {
@@ -6404,220 +5706,11 @@ const handleSelect = (item: InventoryItem) => {
     flex-shrink: 0;
   }
 
-  /* 统计卡片优化 */
-  .stats-cards {
-    gap: 4px;
-  }
-
-  .stat-card {
-    padding: 10px;
-    min-height: 60px;
-  }
-
-  .stat-icon {
-    width: 32px;
-    height: 32px;
-    font-size: 14px;
-  }
-
-  .stat-value {
-    font-size: 16px;
-  }
-
-  .stat-label {
-    font-size: 10px;
-  }
-
-  /* 表格区域优化 */
-  .table-section {
-    padding: 4px 0;
-    margin-bottom: 4px;
-  }
-
-  /* 表格优化 - 确保四个字段一行展示 */
-  .data-table {
-    font-size: clamp(8px, 1.5vw, 9px);
-    table-layout: fixed;
-    width: 100%;
-  }
-
-  .data-table th,
-  .data-table td {
-    padding: 6px 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    line-height: 1.2;
-  }
-
-  /* 表头字体更小 - 自适应 */
-  .data-table th {
-    font-size: clamp(7px, 1.3vw, 8px);
-    font-weight: 600;
-  }
-
-  /* 四列布局 - 型号、颜色、内存、序列号一行展示 - 字体自适应 */
-  .data-table th:nth-child(1),
-  .data-table td:nth-child(1) {
-    width: 35%;
-    font-size: clamp(8px, 1.8vw, 9px);
-    font-weight: 600;
-  }
-
-  .data-table th:nth-child(2),
-  .data-table td:nth-child(2) {
-    width: 20%;
-    font-size: clamp(8px, 1.8vw, 9px);
-  }
-
-  .data-table th:nth-child(3),
-  .data-table td:nth-child(3) {
-    width: 18%;
-    font-size: clamp(7px, 1.5vw, 8px);
-  }
-
-  .data-table th:nth-child(4),
-  .data-table td:nth-child(4) {
-    width: 27%;
-    font-size: clamp(8px, 1.8vw, 9px);
-  }
-
-  /* 确保所有单元格内容单行显示 */
-  .data-table td {
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-  }
-
   /* 分页组件优化 */
   .pagination-wrapper {
     padding: 10px;
   }
 }
-
-/* 360px断点 - 为430*932等中等尺寸屏幕优化 */
-@media (max-width: 360px) {
-  /* 表格优化 */
-  .data-table {
-    font-size: clamp(7px, 1.4vw, 9px);
-    table-layout: fixed;
-    width: 100%;
-  }
-
-  .data-table th,
-  .data-table td {
-    padding: 5px 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    line-height: 1.15;
-  }
-
-  /* 表头字体更小 - 自适应 */
-  .data-table th {
-    font-size: clamp(7px, 1.3vw, 8px);
-    font-weight: 600;
-  }
-
-  /* 四列布局 - 字体自适应 */
-  .data-table th:nth-child(1),
-  .data-table td:nth-child(1) {
-    width: 35%;
-    font-size: clamp(8px, 1.7vw, 9px);
-    font-weight: 600;
-  }
-
-  .data-table th:nth-child(2),
-  .data-table td:nth-child(2) {
-    width: 20%;
-    font-size: clamp(8px, 1.7vw, 9px);
-  }
-
-  .data-table th:nth-child(3),
-  .data-table td:nth-child(3) {
-    width: 18%;
-    font-size: clamp(7px, 1.5vw, 8px);
-  }
-
-  .data-table th:nth-child(4),
-  .data-table td:nth-child(4) {
-    width: 27%;
-    font-size: clamp(8px, 1.7vw, 9px);
-    font-weight: 500;
-  }
-
-  /* 确保所有单元格内容单行显示 */
-  .data-table td {
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-  }
-}
-
-/* 超超小屏幕优化（320px及以下） */
-@media (max-width: 320px) {
-  .inventory-view {
-    padding: 4px 0;
-  }
-
-  /* 统计卡片优化 */
-  .stat-card {
-    padding: 6px;
-    min-height: 50px;
-  }
-
-  .stat-icon {
-    width: 24px;
-    height: 24px;
-    font-size: 12px;
-  }
-
-  /* 表格区域优化 */
-  .table-section {
-    padding: 2px 0;
-    margin-bottom: 2px;
-  }
-
-  /* 表格优化 */
-  .data-table {
-    font-size: clamp(7px, 1.5vw, 8px);
-  }
-
-  .data-table th,
-  .data-table td {
-    padding: 4px 0;
-    line-height: 1.1;
-  }
-
-  /* 表头字体更小 - 自适应 */
-  .data-table th {
-    font-size: clamp(6px, 1.2vw, 7px);
-  }
-
-  /* 四列布局 - 字体自适应 */
-  .data-table th:nth-child(1),
-  .data-table td:nth-child(1) {
-    width: 34%;
-    font-size: clamp(7px, 1.6vw, 8px);
-  }
-
-  .data-table th:nth-child(2),
-  .data-table td:nth-child(2) {
-    width: 20%;
-    font-size: clamp(7px, 1.6vw, 8px);
-  }
-
-  .data-table th:nth-child(3),
-  .data-table td:nth-child(3) {
-    width: 17%;
-    font-size: clamp(6px, 1.4vw, 7px);
-  }
-
-  .data-table th:nth-child(4),
-  .data-table td:nth-child(4) {
-    width: 29%;
-    font-size: clamp(7px, 1.6vw, 8px);
-  }
 
 /* ===== 商品详情模态框移动端优化 ===== */
 @media (max-width: 767px) {

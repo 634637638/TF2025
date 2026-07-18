@@ -20,6 +20,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import DOMPurify from 'dompurify'
 import { extractIconifyName } from '@/utils/iconify'
 
 const props = withDefaults(defineProps<{
@@ -40,11 +41,11 @@ const safeSvg = computed(() => {
     return ''
   }
 
-  return svg
-    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
-    .replace(/\son[a-z]+\s*=\s*(['"]).*?\1/gi, '')
-    .replace(/\son[a-z]+\s*=\s*[^\s>]+/gi, '')
-    .replace(/\sjavascript:/gi, '')
+  return DOMPurify.sanitize(svg, {
+    USE_PROFILES: { svg: true, svgFilters: true },
+    FORBID_TAGS: ['foreignObject', 'script', 'style', 'iframe', 'object', 'embed'],
+    FORBID_ATTR: ['onload', 'onerror', 'onclick', 'style']
+  })
 })
 
 const iconifyName = computed(() => extractIconifyName(String(props.icon || '').trim()) || '')

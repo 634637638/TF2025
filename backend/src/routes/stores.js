@@ -5,9 +5,34 @@ const { unifiedAuth, requirePermission } = require('../middleware/unified-auth')
 const { getDatabase, isConnected } = require('../config/database');
 const { cacheMiddleware, clearCache } = require('../middleware/cache');
 const XLSX = require('xlsx');
-const { LEGACY_USER_ROLE_SQL_LIST } = require('../services/accessControl.service');
 const { CACHE_TTL, PAGINATION } = require('../config/constants');
 const log = require('../utils/log');
+
+const resolveManagerAssignment = async (pool, rawManagerId, fallbackPhone = '') => {
+  const phone = String(fallbackPhone || '').trim();
+  if (rawManagerId === undefined || rawManagerId === null || rawManagerId === '') {
+    return { managerId: null, phone };
+  }
+
+  const managerId = Number.parseInt(rawManagerId, 10);
+  if (!Number.isInteger(managerId) || managerId <= 0) {
+    return { error: '请选择有效的门店负责人' };
+  }
+
+  const [employees] = await pool.execute(
+    'SELECT id, phone FROM users WHERE id = ? AND status = 1 LIMIT 1',
+    [managerId]
+  );
+
+  if (employees.length === 0) {
+    return { error: '所选负责人不存在或已停用，请重新选择' };
+  }
+
+  return {
+    managerId,
+    phone: String(employees[0].phone || '').trim()
+  };
+};
 
 // 获取店铺列表
 router.get('/', unifiedAuth, requirePermission('stores:view'), cacheMiddleware({ ttl: CACHE_TTL.MEDIUM }), async (req, res) => {
@@ -221,6 +246,11 @@ router.post('/', unifiedAuth, requirePermission('stores:create'), async (req, re
 
     const pool = getDatabase();
 
+    const managerAssignment = await resolveManagerAssignment(pool, manager, phone);
+    if (managerAssignment.error) {
+      return ApiResponse.error(res, managerAssignment.error, 400);
+    }
+
     // 检查店铺名称是否已存在
     const [existingStores] = await pool.execute(
       'SELECT id FROM stores WHERE name = ?',
@@ -233,7 +263,7 @@ router.post('/', unifiedAuth, requirePermission('stores:create'), async (req, re
 
     const [result] = await pool.execute(
       'INSERT INTO stores (name, location, phone, manager_id, status, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
-      [name.trim(), address || '', phone || '', manager || '', parseInt(status), parseInt(sort_order)]
+      [name.trim(), address || '', managerAssignment.phone, managerAssignment.managerId, parseInt(status), parseInt(sort_order)]
     );
 
     if (result.insertId) {
@@ -284,6 +314,11 @@ router.put('/:id', unifiedAuth, requirePermission('stores:edit'), async (req, re
 
     const pool = getDatabase();
 
+    const managerAssignment = await resolveManagerAssignment(pool, manager, phone);
+    if (managerAssignment.error) {
+      return ApiResponse.error(res, managerAssignment.error, 400);
+    }
+
     // 获取当前店铺的name值
     const [currentStore] = await pool.execute('SELECT name FROM stores WHERE id = ?', [parseInt(id)]);
     const currentName = currentStore[0]?.name;
@@ -302,7 +337,7 @@ router.put('/:id', unifiedAuth, requirePermission('stores:edit'), async (req, re
 
     const [result] = await pool.execute(
       'UPDATE stores SET name = ?, location = ?, phone = ?, manager_id = ?, status = ?, sort_order = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [name.trim(), address || '', phone || '', manager || '', parseInt(status), parseInt(sort_order) || 0, parseInt(id)]
+      [name.trim(), address || '', managerAssignment.phone, managerAssignment.managerId, parseInt(status), parseInt(sort_order) || 0, parseInt(id)]
     );
 
     if (result.affectedRows > 0) {
@@ -363,7 +398,7 @@ router.delete('/:id', unifiedAuth, requirePermission('stores:delete'), async (re
   }
 });
 
-// 获取管理员列表
+// 获取在职员工列表，供门店负责人选择使用
 router.get('/managers', unifiedAuth, requirePermission('stores:view'), async (req, res) => {
   try {
     // 检查数据库连接状态
@@ -373,13 +408,29 @@ router.get('/managers', unifiedAuth, requirePermission('stores:view'), async (re
 
     const pool = getDatabase();
     const [managers] = await pool.execute(`
-      SELECT id, name, username
-      FROM users
-      WHERE status = 1 AND role IN (${LEGACY_USER_ROLE_SQL_LIST})
-      ORDER BY name
+      SELECT
+        u.id,
+        u.name,
+        u.username,
+        u.phone,
+        (
+          SELECT GROUP_CONCAT(r.name ORDER BY r.id SEPARATOR ', ')
+          FROM user_roles ur
+          JOIN roles r ON ur.role_id = r.id
+          WHERE ur.user_id = u.id
+        ) AS roles
+      FROM users u
+      WHERE u.status = 1
+      ORDER BY u.name ASC, u.username ASC, u.id ASC
     `);
 
-    ApiResponse.success(res, managers);
+    ApiResponse.success(res, managers.map(manager => ({
+      id: Number(manager.id),
+      name: String(manager.name || manager.username || ''),
+      username: String(manager.username || ''),
+      phone: String(manager.phone || ''),
+      role: String(manager.roles || '')
+    })));
   } catch (error) {
     log.error('获取管理员列表失败:', error);
     ApiResponse.error(res, '获取管理员列表失败', 500);

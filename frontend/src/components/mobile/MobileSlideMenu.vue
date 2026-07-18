@@ -14,10 +14,10 @@
       class="menu-container"
       :class="{ 'is-open': isOpen }"
       :style="menuStyles"
-      @touchstart="handleMenuTouchStart"
-      @touchmove="handleMenuTouchMove"
-      @touchend="handleMenuTouchEnd"
-      @touchcancel="handleMenuTouchEnd"
+      @touchstart.passive="handleMenuTouchStart"
+      @touchmove.passive="handleMenuTouchMove"
+      @touchend.passive="handleMenuTouchEnd"
+      @touchcancel.passive="handleMenuTouchEnd"
       @transitionend="handleTransitionEnd"
     >
       <!-- 菜单头部 -->
@@ -74,10 +74,7 @@
                     @click.stop="toggleMenuExpansion(menu)"
                     :aria-label="expandedMenus.has(String(menu.id)) ? '收起子菜单' : '展开子菜单'"
                   >
-                    <i
-                      v-if="menu.children && menu.children.length > 0"
-                      class="expand-icon fas fa-chevron-down"
-                    ></i>
+                    <i class="expand-icon fas fa-chevron-down"></i>
                   </button>
                 </div>
               </div>
@@ -605,6 +602,11 @@ onUnmounted(() => {
   overscroll-behavior: contain;
   touch-action: pan-y;
   padding: 0 0 20px 0;
+  scrollbar-width: none;
+}
+
+.menu-content::-webkit-scrollbar {
+  display: none;
 }
 
 .menu-loading-state {

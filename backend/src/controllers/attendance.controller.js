@@ -134,7 +134,7 @@ class AttendanceController {
   async updateAttendanceRecord(req, res) {
     try {
       const { id } = req.params;
-      const result = await AttendanceService.updateAttendanceRecord(id, req.body);
+      const result = await AttendanceService.updateAttendanceRecord(id, req.body, req.user.id);
       ApiResponse.success(res, '更新考勤记录成功', result, 200);
     } catch (error) {
       log.error('更新考勤记录失败:', error);
@@ -148,7 +148,7 @@ class AttendanceController {
   async deleteAttendanceRecord(req, res) {
     try {
       const { id } = req.params;
-      await AttendanceService.deleteAttendanceRecord(id);
+      await AttendanceService.deleteAttendanceRecord(id, req.user.id);
       ApiResponse.success(res, '删除考勤记录成功', null, 200);
     } catch (error) {
       log.error('删除考勤记录失败:', error);

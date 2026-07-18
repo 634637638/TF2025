@@ -263,6 +263,7 @@
       v-if="showInventoryResult"
       v-model="showInventoryResult"
       :product="selectedProduct"
+      :query-token="inventoryQueryToken"
     />
 
     <!-- iOS 图片保存弹窗 -->
@@ -313,6 +314,7 @@ const showInStockOnly = ref(false)
 // 在库查询相关状态
 const passwordVerified = ref(false)
 const verifiedUserName = ref('') // 验证成功的用户名
+const inventoryQueryToken = ref('')
 const showInventoryResult = ref(false)
 const selectedProduct = ref<{
   brand: string
@@ -430,6 +432,7 @@ const verifyInventoryPassword = async (password: string): Promise<boolean> => {
 
     if (response.success) {
       passwordVerified.value = true
+      inventoryQueryToken.value = response.data?.queryToken || ''
       // 从后端返回的用户名
       verifiedUserName.value = response.data?.userName || '用户'
       applyInventoryFilter()

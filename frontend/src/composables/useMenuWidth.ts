@@ -296,39 +296,27 @@ export function useMenuWidth(options: MenuWidthOptions = {}) {
         setMenuWidth(pcWidth)
       }
 
-      // 同步到数据库 - 使用公开API，不需要认证
-      // 注意：数据库同步是可选的，失败不会影响本地功能
+      // 数据库同步是可选的，失败不会影响本地宽度更新
       setTimeout(async () => {
         try {
-          const response = await fetch('/api/settings/public/menu-widths', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              widths: {
-                pc: pcWidth,
-                mobile: mobileWidth
-              }
-            })
+          const response = await unifiedApi.post('/settings/menu-widths', {
+            widths: {
+              pc: pcWidth,
+              mobile: mobileWidth
+            }
           })
 
-          const data = await response.json()
-
-          if (response.ok && data.success) {
+          if (response.success) {
             // 触发自定义事件，通知其他组件
             window.dispatchEvent(new CustomEvent('menuWidthUpdated', {
               detail: { pc: pcWidth, mobile: mobileWidth }
             }))
           } else {
-            logger.error('❌ 数据库同步失败:', data?.message || '未知错误')
-            // 抛出错误，让调用者知道数据库同步失败
-            throw new Error(data?.message || '数据库同步失败')
+            logger.error('❌ 数据库同步失败:', response?.message || '未知错误')
           }
         } catch (dbError) {
-          logger.error('❌ 同步菜单宽度到数据库失败:', dbError.message || dbError)
-          // 不再静默处理，抛出错误让上层处理
-          throw dbError
+          const message = dbError instanceof Error ? dbError.message : dbError
+          logger.error('❌ 同步菜单宽度到数据库失败:', message)
         }
       }, 100) // 延迟100ms执行，不阻塞主要功能
 
@@ -353,27 +341,15 @@ export function useMenuWidth(options: MenuWidthOptions = {}) {
 
       // 同步默认值到数据库
       try {
-        const response = await fetch('/api/settings/public/menu-widths', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            widths: {
-              pc: defaultConfig.desktop,
-              mobile: defaultConfig.mobile
-            }
-          })
+        const response = await unifiedApi.post('/settings/menu-widths', {
+          widths: {
+            pc: defaultConfig.desktop,
+            mobile: defaultConfig.mobile
+          }
         })
 
-        if (response.ok) {
-          const data = await response.json()
-          if (data.success) {
-          } else {
-            throw new Error(data.message || '数据库同步失败')
-          }
-        } else {
-          throw new Error(`HTTP ${response.status}`)
+        if (!response.success) {
+          throw new Error(response.message || '数据库同步失败')
         }
       } catch (dbError) {
         // 数据库失败不影响本地功能

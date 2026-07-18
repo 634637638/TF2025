@@ -92,6 +92,7 @@
 
     <UnifiedSearchPanel
       v-model:expanded="searchExpanded"
+      :loading="loading"
       @search="loadAvailablePhones"
       @reset="resetFilters"
     >
@@ -744,7 +745,7 @@
         </div>
 
         <!-- 库存统计表视图 -->
-        <div v-if="viewMode === 'summary'" class="table-section admin-panel admin-table-panel">
+        <div v-if="viewMode === 'summary'" class="sales-view-panel">
           <TableLoadingRow v-if="inventorySummaryLoading" mode="block" text="加载中..." />
           <div v-else-if="sortedInventorySummary.length === 0" class="empty-state">
             <i class="fas fa-inbox"></i>
@@ -754,138 +755,173 @@
           <div v-else>
             <!-- 库存统计表 -->
             <div class="table-responsive">
-              <table ref="inventorySummaryTableRef" class="devices-table summary-table">
-                <thead>
-                  <tr>
-                    <th v-if="canViewSaleField('supplier_name')">供应商</th>
-                    <th v-if="canViewSaleField('store_name')">店铺</th>
-                    <th v-if="canViewSaleField('brand')">品牌</th>
-                    <th v-if="canViewSaleField('model')">型号</th>
-                    <th v-if="canViewSaleField('color')">颜色</th>
-                    <th v-if="canViewSaleField('memory')">内存</th>
-                    <th v-if="canViewSaleField('condition')">机况</th>
-                    <th>数量</th>
-                    <th v-if="canViewSaleField('Inventorytime')">在库时间</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr
-                    v-for="(item, index) in sortedInventorySummary"
-                    :key="index"
-                    @dblclick="showInventoryDetail(item)"
-                    class="inventory-row"
-                  >
-                    <td v-if="canViewSaleField('supplier_name')">{{ item.supplier_name || '-' }}</td>
-                    <td v-if="canViewSaleField('store_name')">{{ item.store_name || '-' }}</td>
-                    <td v-if="canViewSaleField('brand')">{{ item.brand || '-' }}</td>
-                    <td v-if="canViewSaleField('model')">{{ item.model || '-' }}</td>
-                    <td v-if="canViewSaleField('color')">{{ item.color || '-' }}</td>
-                    <td v-if="canViewSaleField('memory')">
-                      <span :class="['memory-badge', getMemoryBadgeClass(item.memory)]">
-                        {{ item.memory || '-' }}
+              <div ref="inventorySummaryTableRef" class="inventory-summary-capture">
+                <el-table
+                  :data="sortedInventorySummary"
+                  border
+                  stripe
+                  class="data-table devices-table summary-table"
+                  table-layout="fixed"
+                  :fit="true"
+                  row-class-name="inventory-row"
+                  @row-dblclick="showInventoryDetail"
+                >
+                  <el-table-column v-if="canViewSaleField('supplier_name')" label="供应商" min-width="100" align="center">
+                    <template #default="{ row }">{{ row.supplier_name || '-' }}</template>
+                  </el-table-column>
+                  <el-table-column v-if="canViewSaleField('store_name')" label="店铺" min-width="80" align="center">
+                    <template #default="{ row }">{{ row.store_name || '-' }}</template>
+                  </el-table-column>
+                  <el-table-column v-if="canViewSaleField('brand')" label="品牌" min-width="76" align="center">
+                    <template #default="{ row }">{{ row.brand || '-' }}</template>
+                  </el-table-column>
+                  <el-table-column v-if="canViewSaleField('model')" label="型号" min-width="112" align="center">
+                    <template #default="{ row }">{{ row.model || '-' }}</template>
+                  </el-table-column>
+                  <el-table-column v-if="canViewSaleField('color')" label="颜色" min-width="64" align="center">
+                    <template #default="{ row }">{{ row.color || '-' }}</template>
+                  </el-table-column>
+                  <el-table-column v-if="canViewSaleField('memory')" label="内存" min-width="72" align="center">
+                    <template #default="{ row }">
+                      <span :class="['memory-badge', getMemoryBadgeClass(row.memory)]">
+                        {{ row.memory || '-' }}
                       </span>
-                    </td>
-                    <td v-if="canViewSaleField('condition')">
-                      <span :class="['badge', item.condition === '全新' ? 'badge-new' : 'badge-used']">
-                        {{ item.condition }}
+                    </template>
+                  </el-table-column>
+                  <el-table-column v-if="canViewSaleField('condition')" label="机况" min-width="68" align="center">
+                    <template #default="{ row }">
+                      <span :class="['badge', row.condition === '全新' ? 'badge-new' : 'badge-used']">
+                        {{ row.condition || '-' }}
                       </span>
-                    </td>
-                    <td>
-                      <span class="quantity-badge">{{ item.quantity }}</span>
-                    </td>
-                    <td v-if="canViewSaleField('Inventorytime')">
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="数量" min-width="72" align="center">
+                    <template #default="{ row }">
+                      <span class="quantity-badge">{{ row.quantity ?? 0 }}</span>
+                    </template>
+                  </el-table-column>
+                  <el-table-column v-if="canViewSaleField('Inventorytime')" label="在库时间" min-width="100" align="center">
+                    <template #default="{ row }">
                       <span
-                        :class="['days-badge', getInventoryDaysClass(getInventoryDays(item.earliest_date))]"
-                        :title="`入库时间范围: ${item.earliest_date} ~ ${item.latest_date}\n最早入库: ${item.earliest_date} (${getInventoryDaysText(getInventoryDays(item.earliest_date))})\n最新入库: ${item.latest_date} (${getInventoryDaysText(getInventoryDays(item.latest_date))})`"
+                        :class="['days-badge', getInventoryDaysClass(getInventoryDays(row.earliest_date))]"
+                        :title="`入库时间范围: ${row.earliest_date} ~ ${row.latest_date}\n最早入库: ${row.earliest_date} (${getInventoryDaysText(getInventoryDays(row.earliest_date))})\n最新入库: ${row.latest_date} (${getInventoryDaysText(getInventoryDays(row.latest_date))})`"
                       >
-                        {{ getInventoryDaysText(getInventoryDays(item.earliest_date)) }}
+                        {{ getInventoryDaysText(getInventoryDays(row.earliest_date)) }}
                       </span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+                    </template>
+                  </el-table-column>
+                </el-table>
+              </div>
             </div>
           </div>
         </div>
 
         <!-- 表格视图 -->
-        <div v-if="viewMode === 'table'" class="table-section admin-panel admin-table-panel">
+        <div v-if="viewMode === 'table'" class="sales-view-panel">
           <div class="table-responsive">
-            <table class="devices-table">
-              <thead>
-                <tr>
-                  <th v-if="batchMode || operationMode" class="checkbox-column">
+            <el-table
+              :data="loading ? [] : sortedAvailablePhones"
+              border
+              stripe
+              class="data-table devices-table sales-data-table"
+              table-layout="fixed"
+              :fit="true"
+              row-key="id"
+              :row-class-name="getSalesRowClassName"
+            >
+              <el-table-column
+                v-if="batchMode || operationMode"
+                width="54"
+                align="center"
+                class-name="checkbox-column"
+              >
+                <template #header>
                     <el-checkbox
                       v-model="selectAll"
                       @change="toggleSelectAll"
                       size="large"
                     />
-                  </th>
-                  <th v-if="canViewSaleField('supplier_name')">供应商</th>
-                  <th v-if="canViewSaleField('store_name')">店铺</th>
-                  <th v-if="canViewSaleField('brand')">品牌</th>
-                  <th v-if="canViewSaleField('model')">型号</th>
-                  <th v-if="canViewSaleField('color')">颜色</th>
-                  <th v-if="canViewSaleField('memory')">内存</th>
-                  <th v-if="canViewSaleField('serial_number')">序列号</th>
-                  <th v-if="canViewSaleField('imei')">IMEI</th>
-                  <th v-if="canViewPrice">入库价格</th>
-                  <th v-if="canViewSaleField('inventory_operator_name')">入库员</th>
-                  <th v-if="canViewSaleField('condition')">机况</th>
-                  <th>状态</th>
-                  <th v-if="canViewSaleField('Inventorytime')">入库时间</th>
-                  <th v-if="!batchMode && !operationMode && canViewSaleField('actions')">操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                <TableLoadingRow v-if="loading" :colspan="salesTableVisibleColumnCount" />
-                <tr v-else-if="availablePhones.length === 0">
-                  <td :colspan="salesTableVisibleColumnCount" class="empty-cell">
-                    <div class="empty-cell-content">
-                      <i class="fas" :class="hasActiveFilters ? 'fa-search' : 'fa-inbox'"></i>
-                      <span>{{ hasActiveFilters ? '未找到匹配的设备' : '暂无可销售设备' }}</span>
-                      <div v-if="hasActiveFilters" class="mt-2">
-                        <el-button @click="resetFilters" type="primary" plain size="small">
-                          <i class="fas fa-redo"></i> 清空筛选条件
-                        </el-button>
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-                <tr v-for="phone in sortedAvailablePhones" :key="phone.id" v-else :class="{ 'selected-row': isPhoneSelected(phone) }">
-                  <td v-if="batchMode || operationMode" class="checkbox-column">
+                </template>
+                <template #default="{ row: phone }">
                     <el-checkbox
                       :model-value="isPhoneSelected(phone)"
                       @change="togglePhoneSelection(phone)"
                       size="large"
                     />
-                  </td>
-                  <td v-if="canViewSaleField('supplier_name')">{{ phone.supplier_name || '-' }}</td>
-                  <td v-if="canViewSaleField('store_name')">{{ phone.store_name || '-' }}</td>
-                  <td v-if="canViewSaleField('brand')">{{ phone.brand || '-' }}</td>
-                  <td v-if="canViewSaleField('model')">{{ phone.model || '-' }}</td>
-                  <td v-if="canViewSaleField('color')">{{ phone.color || '-' }}</td>
-                  <td v-if="canViewSaleField('memory')">{{ phone.memory || '-' }}</td>
-                  <td v-if="canViewSaleField('serial_number')">{{ phone.serial_number || '-' }}</td>
-                  <td v-if="canViewSaleField('imei')">
+                </template>
+              </el-table-column>
+
+              <el-table-column v-if="canViewSaleField('supplier_name')" label="供应商" min-width="100" align="center">
+                <template #default="{ row: phone }">{{ phone.supplier_name || '-' }}</template>
+              </el-table-column>
+              <el-table-column v-if="canViewSaleField('store_name')" label="店铺" min-width="80" align="center">
+                <template #default="{ row: phone }">{{ phone.store_name || '-' }}</template>
+              </el-table-column>
+              <el-table-column v-if="canViewSaleField('brand')" label="品牌" min-width="68" align="center">
+                <template #default="{ row: phone }">{{ phone.brand || '-' }}</template>
+              </el-table-column>
+              <el-table-column v-if="canViewSaleField('model')" label="型号" min-width="96" align="center">
+                <template #default="{ row: phone }">{{ phone.model || '-' }}</template>
+              </el-table-column>
+              <el-table-column v-if="canViewSaleField('color')" label="颜色" min-width="52" align="center">
+                <template #default="{ row: phone }">{{ phone.color || '-' }}</template>
+              </el-table-column>
+              <el-table-column v-if="canViewSaleField('memory')" label="内存" min-width="64" align="center">
+                <template #default="{ row: phone }">{{ phone.memory || '-' }}</template>
+              </el-table-column>
+              <el-table-column
+                v-if="canViewSaleField('serial_number')"
+                label="序列号"
+                :min-width="getSalesIdentifierColumnWidth('serial_number')"
+                align="center"
+                class-name="identifier-column serial-imei-column"
+              >
+                <template #default="{ row: phone }">{{ phone.serial_number || '-' }}</template>
+              </el-table-column>
+              <el-table-column
+                v-if="canViewSaleField('imei')"
+                label="IMEI"
+                :min-width="getSalesIdentifierColumnWidth('imei')"
+                align="center"
+                class-name="identifier-column serial-imei-column"
+              >
+                <template #default="{ row: phone }">
                     <span class="imei">{{ phone.imei || '-' }}</span>
-                  </td>
-                  <td v-if="canViewPrice" class="price-cell">
+                </template>
+              </el-table-column>
+              <el-table-column v-if="canViewPrice" label="入库价格" min-width="92" align="center" class-name="price-column">
+                <template #default="{ row: phone }">
                     <div class="price">{{ canViewPrice ? `¥${formatNumber(phone.purchase_cost || 0)}` : '***' }}</div>
-                  </td>
-                  <td v-if="canViewSaleField('inventory_operator_name')">{{ phone.inventory_operator_name || '-' }}</td>
-                  <td v-if="canViewSaleField('condition')">
+                </template>
+              </el-table-column>
+              <el-table-column v-if="canViewSaleField('inventory_operator_name')" label="入库员" min-width="82" align="center">
+                <template #default="{ row: phone }">{{ phone.inventory_operator_name || '-' }}</template>
+              </el-table-column>
+              <el-table-column v-if="canViewSaleField('condition')" label="机况" min-width="64" align="center">
+                <template #default="{ row: phone }">
                     <span :class="['condition-badge', phone.is_new ? 'new' : 'used']">
                       {{ getNewConditionLabel(phone.is_new) }}
                     </span>
-                  </td>
-                  <td>
+                </template>
+              </el-table-column>
+              <el-table-column label="状态" min-width="68" align="center">
+                <template #default="{ row: phone }">
                     <span :class="['status-badge', getSaleStatusClass(phone)]">
                       {{ getSaleStatusLabel(phone) }}
                     </span>
-                  </td>
-                  <td v-if="canViewSaleField('Inventorytime')">{{ formatDate((phone as any).Inventorytime || phone.purchase_date || phone.created_at) }}</td>
-                  <td class="actions-cell" v-if="!batchMode && !operationMode && canViewSaleField('actions')">
+                </template>
+              </el-table-column>
+              <el-table-column v-if="canViewSaleField('Inventorytime')" label="入库时间" min-width="108" align="center">
+                <template #default="{ row: phone }">{{ formatDate((phone as any).Inventorytime || phone.purchase_date || phone.created_at) }}</template>
+              </el-table-column>
+              <el-table-column
+                v-if="!batchMode && !operationMode && canViewSaleField('actions')"
+                label="操作"
+                min-width="248"
+                align="center"
+                class-name="actions-column"
+              >
+                <template #default="{ row: phone }">
                     <div class="action-buttons">
                       <el-button
                         v-if="canCreate"
@@ -918,10 +954,22 @@
                         删除
                       </el-button>
                     </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                </template>
+              </el-table-column>
+
+              <template #empty>
+                <TableLoadingRow v-if="loading" mode="block" text="加载可销售设备..." />
+                <div v-else class="empty-cell-content">
+                  <i class="fas" :class="hasActiveFilters ? 'fa-search' : 'fa-inbox'"></i>
+                  <span>{{ hasActiveFilters ? '未找到匹配的设备' : '暂无可销售设备' }}</span>
+                  <div v-if="hasActiveFilters" class="mt-2">
+                    <el-button @click="resetFilters" type="primary" plain size="small">
+                      <i class="fas fa-redo"></i> 清空筛选条件
+                    </el-button>
+                  </div>
+                </div>
+              </template>
+            </el-table>
           </div>
 
         </div>
@@ -1523,51 +1571,84 @@
             <h4>设备列表</h4>
             <span class="record-count">共 {{ inventoryDetailData.length }} 条记录</span>
           </div>
-          <div class="table-responsive">
-            <table class="devices-table detail-table">
-              <thead>
-                <tr>
-                  <th>优先</th>
-                  <th v-if="canViewSaleField('imei')">IMEI</th>
-                  <th v-if="canViewSaleField('serial_number')">序列号</th>
-                  <th v-if="canViewSaleField('model')">型号</th>
-                  <th v-if="canViewSaleField('color')">颜色</th>
-                  <th v-if="canViewSaleField('memory')">内存</th>
-                  <th v-if="canViewPrice">入库价格</th>
-                  <th v-if="canViewSaleField('Inventorytime')">入库时间</th>
-                  <th>在库</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="phone in inventoryDetailData"
-                  :key="phone.id"
-                  :class="{ 'priority-row': phone.id === longestInventoryDevice?.id }"
-                >
-                  <td class="priority-column">
-                    <span v-if="phone.id === longestInventoryDevice?.id" class="priority-badge">
+          <div class="table-responsive inventory-detail-table-container">
+            <el-table
+              :data="inventoryDetailData"
+              border
+              stripe
+              class="data-table devices-table detail-table"
+              table-layout="fixed"
+              :fit="true"
+              row-key="id"
+              :row-class-name="getSalesDetailRowClassName"
+            >
+              <el-table-column label="优先" min-width="64" align="center" class-name="priority-column">
+                <template #default="{ row: phone }">
+                    <span
+                      v-if="phone.id === longestInventoryDevice?.id"
+                      class="priority-badge"
+                      title="最长在库"
+                      aria-label="最长在库"
+                    >
                       <i class="fas fa-star"></i>
-                      优先
                     </span>
                     <span v-else class="priority-rank">
                       {{ inventoryDetailData.indexOf(phone) + 1 }}
                     </span>
-                  </td>
-                  <td v-if="canViewSaleField('imei')" class="imei-cell">{{ phone.imei || '-' }}</td>
-                  <td v-if="canViewSaleField('serial_number')" class="sn-cell">{{ phone.serial_number || '-' }}</td>
-                  <td v-if="canViewSaleField('model')">{{ phone.model || '-' }}</td>
-                  <td v-if="canViewSaleField('color')">{{ phone.color || '-' }}</td>
-                  <td v-if="canViewSaleField('memory')">{{ phone.memory || '-' }}</td>
-                  <td v-if="canViewPrice">¥{{ formatPrice(phone.purchase_cost) }}</td>
-                  <td v-if="canViewSaleField('Inventorytime')">{{ phone.Inventorytime ? formatInventoryDate(phone.Inventorytime) : '-' }}</td>
-                  <td>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="canViewSaleField('imei')"
+                label="IMEI"
+                :min-width="getSalesDetailIdentifierColumnWidth('imei')"
+                align="center"
+                class-name="identifier-column serial-imei-column imei-cell"
+              >
+                <template #default="{ row: phone }">{{ phone.imei || '-' }}</template>
+              </el-table-column>
+              <el-table-column
+                v-if="canViewSaleField('serial_number')"
+                label="序列号"
+                :min-width="getSalesDetailIdentifierColumnWidth('serial_number')"
+                align="center"
+                class-name="identifier-column serial-imei-column sn-cell"
+              >
+                <template #default="{ row: phone }">{{ phone.serial_number || '-' }}</template>
+              </el-table-column>
+              <el-table-column
+                v-if="canViewSaleField('model')"
+                label="型号"
+                :min-width="getSalesDetailTextColumnWidth('model')"
+                align="center"
+              >
+                <template #default="{ row: phone }">{{ phone.model || '-' }}</template>
+              </el-table-column>
+              <el-table-column v-if="canViewSaleField('color')" label="颜色" min-width="56" align="center">
+                <template #default="{ row: phone }">{{ phone.color || '-' }}</template>
+              </el-table-column>
+              <el-table-column v-if="canViewSaleField('memory')" label="内存" min-width="68" align="center">
+                <template #default="{ row: phone }">{{ phone.memory || '-' }}</template>
+              </el-table-column>
+              <el-table-column
+                v-if="canViewPrice"
+                label="入库价格"
+                :min-width="getSalesDetailPriceColumnWidth()"
+                align="center"
+                class-name="price-column"
+              >
+                <template #default="{ row: phone }">¥{{ formatPrice(phone.purchase_cost) }}</template>
+              </el-table-column>
+              <el-table-column v-if="canViewSaleField('Inventorytime')" label="入库时间" min-width="108" align="center">
+                <template #default="{ row: phone }">{{ phone.Inventorytime ? formatInventoryDate(phone.Inventorytime) : '-' }}</template>
+              </el-table-column>
+              <el-table-column label="在库" min-width="76" align="center">
+                <template #default="{ row: phone }">
                     <span :class="['days-badge', getInventoryDaysClass(phone.inventory_days || 0)]">
                       {{ getInventoryDaysText(phone.inventory_days || 0) }}
                     </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                </template>
+              </el-table-column>
+            </el-table>
           </div>
         </div>
       </div>
@@ -1825,6 +1906,7 @@ import { storage } from '@/services/storage'
 import { isValidMobilePhone, normalizeAppleId, normalizePersonName, normalizePhoneDigits, resolveAppleAccountEmail } from '@/utils/security'
 import { loadHtml2Canvas } from '@/utils/html2canvas'
 import { extractBrandName, extractSeriesNumber, getBrandOrderWeight, getMemoryOrderWeight } from '@/utils/productSort'
+import { getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 
 // 导入格式化工具函数
 import { formatNumber, generateProductPlaceholder } from '@/utils/format'
@@ -1836,6 +1918,21 @@ import type { Phone, Store, Operator, Supplier, Customer, PhoneBrand, PhoneModel
 
 interface BatchCustomer extends Customer {
   apple_id?: string
+}
+
+interface SalesNamedOption {
+  id?: number | string
+  name?: string
+  sort_order?: number
+  size?: string
+  capacity?: string
+}
+
+type SalesColorResponse = SalesNamedOption[] | { colors?: SalesNamedOption[] }
+type SalesMemoryResponse = SalesNamedOption[] | { memories?: SalesNamedOption[] }
+
+const hasSalesOptionName = (item: SalesNamedOption): item is SalesNamedOption & { name: string } => {
+  return typeof item?.name === 'string' && item.name.trim().length > 0
 }
 
 interface InventorySummaryItem {
@@ -2469,24 +2566,66 @@ const showSalesSearchKeyword = computed(() => {
   return ['brand', 'model', 'color', 'memory', 'serial_number', 'imei', 'customer_name', 'customer_phone'].some(fieldName => canViewSaleField(fieldName))
 })
 
-const salesTableVisibleColumnCount = computed(() => {
-  return [
-    batchMode.value || operationMode.value,
-    canViewSaleField('supplier_name'),
-    canViewSaleField('store_name'),
-    canViewSaleField('brand'),
-    canViewSaleField('model'),
-    canViewSaleField('color'),
-    canViewSaleField('memory'),
-    canViewSaleField('serial_number'),
-    canViewSaleField('imei'),
-    canViewPrice.value,
-    canViewSaleField('inventory_operator_name'),
-    canViewSaleField('condition'),
-    canViewSaleField('Inventorytime'),
-    !batchMode.value && !operationMode.value && canViewSaleField('actions')
-  ].filter(Boolean).length || 1
-})
+const getSalesIdentifierColumnWidth = (field: 'serial_number' | 'imei') => {
+  const compact = isMobile.value || isTablet.value
+  const label = field === 'serial_number' ? '序列号' : 'IMEI'
+
+  return getIdentifierColumnMinWidth(
+    [label, ...availablePhones.value.map(phone => phone[field])],
+    {
+      minWidth: compact ? 128 : field === 'serial_number' ? 156 : 168,
+      horizontalPadding: compact ? 20 : 36,
+      asciiCharacterWidth: compact ? 6.5 : 8,
+      wideCharacterWidth: compact ? 11 : 13
+    }
+  )
+}
+
+const getSalesRowClassName = ({ row }: { row: Phone }) => {
+  return isPhoneSelected(row) ? 'row-selected' : ''
+}
+
+const getSalesDetailIdentifierColumnWidth = (field: 'serial_number' | 'imei') => {
+  const label = field === 'serial_number' ? '序列号' : 'IMEI'
+
+  return getIdentifierColumnMinWidth(
+    [label, ...inventoryDetailData.value.map(phone => phone[field])],
+    {
+      minWidth: field === 'serial_number' ? 104 : 136,
+      horizontalPadding: 20,
+      asciiCharacterWidth: 7,
+      wideCharacterWidth: 12
+    }
+  )
+}
+
+const getSalesDetailTextColumnWidth = (field: 'model') => {
+  return getTextColumnMinWidth(
+    ['型号', ...inventoryDetailData.value.map(phone => phone[field])],
+    {
+      minWidth: 104,
+      horizontalPadding: 20,
+      asciiCharacterWidth: 7,
+      wideCharacterWidth: 12
+    }
+  )
+}
+
+const getSalesDetailPriceColumnWidth = () => {
+  return getTextColumnMinWidth(
+    ['入库价格', ...inventoryDetailData.value.map(phone => `¥${formatPrice(phone.purchase_cost)}`)],
+    {
+      minWidth: 84,
+      horizontalPadding: 16,
+      asciiCharacterWidth: 7,
+      wideCharacterWidth: 12
+    }
+  )
+}
+
+const getSalesDetailRowClassName = ({ row }: { row: InventoryDetailItem }) => {
+  return row.id === longestInventoryDevice.value?.id ? 'priority-row' : ''
+}
 
 // GlobalSearch 筛选配置
 const searchFilters = computed(() => [
@@ -3303,6 +3442,8 @@ const saveInventorySummaryAsImage = async () => {
     return
   }
 
+  let restoreCaptureStyles: (() => void) | null = null
+
   try {
     savingInventorySummary.value = true
 
@@ -3315,10 +3456,22 @@ const saveInventorySummaryAsImage = async () => {
       return
     }
 
-    // 保存原始样式
+    const tables = Array.from(element.querySelectorAll<HTMLTableElement>('table'))
+    const elementTable = element.querySelector<HTMLElement>('.el-table')
+    if (tables.length === 0 || !elementTable) {
+      showError('无法找到库存统计表内容')
+      return
+    }
+
+    // Element Plus 使用独立的表头和内容表格，截图时需要同步调整并恢复。
     const originalWidth = element.style.width
-    const originalTableLayout = (element as HTMLTableElement).style.tableLayout
-    const originalBorderSpacing = (element as HTMLTableElement).style.borderSpacing
+    const originalElementTableWidth = elementTable.style.width
+    const originalTables = tables.map(table => ({
+      element: table,
+      width: table.style.width,
+      tableLayout: table.style.tableLayout,
+      borderSpacing: table.style.borderSpacing
+    }))
 
     // 保存所有单元格的原始样式
     const cells = element.querySelectorAll('td, th')
@@ -3358,10 +3511,37 @@ const saveInventorySummaryAsImage = async () => {
       })
     })
 
-    // 临时设置表格宽度为2000px，并使用紧凑样式
+    restoreCaptureStyles = () => {
+      element.style.width = originalWidth
+      elementTable.style.width = originalElementTableWidth
+
+      originalTables.forEach(item => {
+        item.element.style.width = item.width
+        item.element.style.tableLayout = item.tableLayout
+        item.element.style.borderSpacing = item.borderSpacing
+      })
+
+      originalCells.forEach(item => {
+        item.element.style.padding = item.padding
+        item.element.style.fontSize = item.fontSize
+        item.element.style.height = item.height
+        item.element.style.lineHeight = item.lineHeight
+      })
+
+      originalRows.forEach(item => {
+        item.element.style.height = item.height
+        item.element.style.display = item.display
+      })
+    }
+
+    // 临时设置截图容器宽度，表头和内容表格保持相同布局。
     element.style.width = '2000px'
-    ;(element as HTMLTableElement).style.tableLayout = 'fixed'
-    ;(element as HTMLTableElement).style.borderSpacing = '0'
+    elementTable.style.width = '100%'
+    tables.forEach(table => {
+      table.style.width = '100%'
+      table.style.tableLayout = 'fixed'
+      table.style.borderSpacing = '0'
+    })
 
     // 设置紧凑的单元格样式
     cells.forEach(cell => {
@@ -3411,22 +3591,8 @@ const saveInventorySummaryAsImage = async () => {
       ctx.drawImage(canvas, 0, 0, targetWidth, newHeight)
     }
 
-    // 恢复原始样式
-    element.style.width = originalWidth
-    ;(element as HTMLTableElement).style.tableLayout = originalTableLayout
-    ;(element as HTMLTableElement).style.borderSpacing = originalBorderSpacing
-
-    originalCells.forEach(item => {
-      item.element.style.padding = item.padding
-      item.element.style.fontSize = item.fontSize
-      item.element.style.height = item.height
-      item.element.style.lineHeight = item.lineHeight
-    })
-
-    originalRows.forEach(item => {
-      item.element.style.height = item.height
-      item.element.style.display = item.display
-    })
+    restoreCaptureStyles()
+    restoreCaptureStyles = null
 
     // 转换为图片并下载
     const finalCanvas = resizedCanvas || canvas
@@ -3447,6 +3613,7 @@ const saveInventorySummaryAsImage = async () => {
     logger.error('保存库存统计表失败:', err)
     showError('保存库存统计表失败')
   } finally {
+    restoreCaptureStyles?.()
     savingInventorySummary.value = false
   }
 }
@@ -3661,11 +3828,11 @@ const loadModels = async () => {
 const loadColors = async () => {
   try {
     const response = await useCachedRequest(CACHE_KEYS.colors, () =>
-      api.get('/colors'), DEFAULT_CACHE_TTL.STATIC)
+      api.get<SalesColorResponse>('/colors'), DEFAULT_CACHE_TTL.STATIC)
     if (response.success && response.data) {
       const colorList = Array.isArray(response.data) ? response.data : response.data.colors || []
       colors.value = sortOptionsByOrder(colorList
-        .filter(item => item && item.name)
+        .filter(hasSalesOptionName)
       )
         .map(item => item.name)
     }
@@ -3679,11 +3846,11 @@ const loadColors = async () => {
 const loadMemories = async () => {
   try {
     const response = await useCachedRequest(CACHE_KEYS.memories, () =>
-      api.get('/memories'), DEFAULT_CACHE_TTL.STATIC)
+      api.get<SalesMemoryResponse>('/memories'), DEFAULT_CACHE_TTL.STATIC)
     if (response.success && response.data) {
       const memoryList = Array.isArray(response.data) ? response.data : response.data.memories || []
       memories.value = sortOptionsByOrder(memoryList, { labelKeys: ['size', 'capacity', 'name'] })
-        .filter(item => item && item.name)
+        .filter(hasSalesOptionName)
         .map(item => item.name)
     }
   } catch (error) {
@@ -5804,41 +5971,12 @@ onUnmounted(() => {
 
 <style scoped>
 .sales-view {
-  padding: 24px;
-  padding-bottom: 0; /* 覆盖全局的safe-area-bottom */
   background: #f8fafc;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   max-width: 100%;
   overflow-x: hidden;
-
-  /* 移动端通用样式 - 适用于所有手机设备 */
-  @media (max-width: 768px) {
-    padding: 16px 0;
-    height: 100vh;
-    height: -webkit-fill-available; /* iOS Safari */
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 0; /* 确保所有移动设备都没有底部padding */
-
-    /* 隐藏滚动条 */
-    &::-webkit-scrollbar {
-      display: none;
-    }
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-
-  /* 小屏幕手机优化 */
-  @media (max-width: 480px) {
-    padding: 14px 0;
-  }
-
-  /* 超小屏幕手机优化 */
-  @media (max-width: 375px) {
-    padding: 12px 0;
-  }
 }
 
 /* 限制内容区域最大宽度并居中 */
@@ -5857,69 +5995,6 @@ onUnmounted(() => {
     padding-bottom: 0 !important;
   }
 }
-
-/* 区域标题样式 */
-.section-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 16px;
-  font-weight: 600;
-  color: #2c3e50;
-  margin-bottom: 20px;
-  padding-bottom: 12px;
-  border-bottom: 2px solid #f8f9fa;
-  cursor: pointer;
-  user-select: none;
-  position: relative;
-}
-
-.section-title:hover {
-  opacity: 0.8;
-}
-
-.section-title .toggle-icon {
-  margin-left: auto;
-  transition: transform 0.3s ease;
-}
-
-.section-title .toggle-icon.expanded {
-  transform: rotate(180deg);
-}
-
-.section-title i {
-  color: #28a745;
-}
-
-.record-count {
-  margin-left: auto;
-  font-size: 14px;
-  color: #6c757d;
-  font-weight: 400;
-}
-
-.table-section {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 24px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-  border: 1px solid #e8ecef;
-  overflow: hidden; /* 防止内容溢出 */
-
-  /* 移动端去除左右内边距，让内容占据全屏宽度 */
-  @media (max-width: 768px) {
-    padding: 16px 0;
-    margin: 0 0 0 0; /* 移除所有间距 */
-  }
-
-  @media (max-width: 375px) {
-    padding: 12px 0;
-    margin: 0 0 0 0; /* 移除所有间距 */
-  }
-}
-
-
 
 .input-group {
   position: relative;
@@ -6218,104 +6293,15 @@ input.form-control:focus, textarea.form-control:focus {
   font-size: 12px;
 }
 
-/* 统计卡片样式 */
-.stats-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 20px;
-  margin-bottom: 24px;
-
-  /* 移动端调整 */
-  @media (max-width: 768px) {
-    margin: 0 0 16px 0;
-    gap: 16px;
-  }
-
-  /* 小屏幕进一步优化 */
-  @media (max-width: 480px) {
-    margin: 0 0 12px 0;
-    gap: 12px;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  }
-
-  /* 超小屏幕优化 */
-  @media (max-width: 375px) {
-    margin: 0 0 8px 0;
-    gap: 8px;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  }
-}
-
+/* 统计卡片的尺寸和排版由 admin-layout.css 统一控制，仅保留销售业务配色。 */
 .stat-card {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-  transition: all 0.3s ease;
-  border: 1px solid #e8ecef;
-
-  /* 移动端调整 */
-  @media (max-width: 768px) {
-    padding: 16px;
-    gap: 12px;
-  }
-
-  /* 小屏幕优化 */
-  @media (max-width: 480px) {
-    padding: 12px;
-    gap: 10px;
-  }
-
-  /* 超小屏幕优化 */
-  @media (max-width: 375px) {
-    padding: 10px;
-    gap: 8px;
-  }
+  --admin-stat-icon-bg: linear-gradient(135deg, #28a745, #20c997);
+  --card-accent: linear-gradient(90deg, #28a745, #20c997);
 }
 
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0,0,0,0.12);
-}
-
-.stat-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  background: linear-gradient(135deg, #28a745, #20c997);
-  color: white;
-}
-
-.stat-icon.active {
-  background: linear-gradient(135deg, #28a745, #20c997);
-}
-
-.stat-icon.inactive {
-  background: linear-gradient(135deg, #dc3545, #fd7e14);
-}
-
-.stat-content {
-  flex: 1;
-}
-
-.stat-value {
-  font-size: 24px;
-  font-weight: 700;
-  color: #2c3e50;
-  margin-bottom: 4px;
-}
-
-.stat-label {
-  font-size: 14px;
-  color: #6c757d;
-  font-weight: 500;
+.stat-card:nth-child(4) {
+  --admin-stat-icon-bg: linear-gradient(135deg, #dc3545, #fd7e14);
+  --card-accent: linear-gradient(90deg, #dc3545, #fd7e14);
 }
 
 /* 视图控制 */
@@ -6451,66 +6437,6 @@ input.form-control:focus, textarea.form-control:focus {
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-.table-responsive {
-  overflow-x: auto;
-  border-radius: 8px;
-  max-width: 100%;
-  /* 确保横向滚动条正常显示 */
-  -webkit-overflow-scrolling: touch;
-
-  /* 自定义滚动条样式 */
-  &::-webkit-scrollbar {
-    height: 8px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 4px;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: #888;
-    border-radius: 4px;
-
-    &:hover {
-      background: #555;
-    }
-  }
-}
-
-.table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  margin: 0;
-}
-
-.table th {
-  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-  padding: 16px 12px;
-  text-align: left;
-  font-weight: 600;
-  color: #495057;
-  font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border-bottom: 2px solid #e8ecef;
-}
-
-.table td {
-  padding: 16px 12px;
-  border-bottom: 1px solid #f8f9fa;
-  vertical-align: middle;
-}
-
-.table tbody tr {
-  transition: all 0.2s ease;
-}
-
-.table tbody tr:hover {
-  background: #f8f9fa;
 }
 
 /* 分页样式 */
@@ -6901,82 +6827,6 @@ input.form-control:focus, textarea.form-control:focus {
   margin-top: 2px;
 }
 
-/* 表格特定样式 - 使用库存页面的现代表格样式 */
-.devices-table {
-  width: 100%;
-  min-width: 1200px;
-  table-layout: auto;
-  border-collapse: separate;
-  border-spacing: 0;
-  margin: 0;
-  background: white;
-}
-
-.devices-table th {
-  background: linear-gradient(135deg, #495057 0%, #343a40 100%);
-  color: white;
-  padding: 12px 10px;
-  text-align: center;
-  font-weight: 600;
-  font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border-right: 1px solid #dee2e6;
-  border-bottom: 2px solid #dee2e6;
-  position: relative;
-  white-space: nowrap;
-}
-
-.devices-table th:last-child {
-  border-right: none;
-}
-
-.devices-table th::after {
-  content: '';
-  position: absolute;
-  bottom: -2px;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, #667eea, #764ba2);
-}
-
-.devices-table td {
-  padding: 6px 6px;
-  border-right: 1px solid #e9ecef;
-  border-bottom: 1px solid #e9ecef;
-  vertical-align: middle;
-  font-size: 13px;
-  color: #2c3e50;
-  font-weight: 500;
-  text-align: center;
-  position: relative;
-  white-space: nowrap;
-}
-
-.devices-table td:last-child {
-  border-right: none;
-}
-
-.devices-table tbody tr {
-  transition: all 0.2s ease;
-  position: relative;
-}
-
-.devices-table tbody tr:nth-child(even) {
-  background: #f8f9fa;
-}
-
-.devices-table tbody tr:hover {
-  background: #e3f2fd;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-.devices-table tbody tr:hover td {
-  border-bottom-color: #dee2e6;
-}
-
 .image-cell {
   width: 60px;
 }
@@ -7013,25 +6863,22 @@ input.form-control:focus, textarea.form-control:focus {
 
 .imei {
   font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
-  font-size: 13px;
+  font-size: inherit;
   font-weight: 600;
   color: #495057;
-  letter-spacing: 0.8px;
-  background: #f8f9fa;
-  padding: 16px 20px;
-  border-radius: 4px;
-  border: 1px solid #e9ecef;
-  display: inline-block;
-  min-width: 120px;
+  letter-spacing: 0;
+  background: transparent;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  display: inline;
+  min-width: 0;
   text-align: center !important;
-  position: relative;
 }
 
 .imei:hover {
-  background: #e9ecef;
-  border-color: #dee2e6;
-  transform: scale(1.02);
-  transition: all 0.2s ease;
+  background: transparent;
+  transform: none;
 }
 
 .condition-badge {
@@ -7840,23 +7687,12 @@ input.form-control:focus, textarea.form-control:focus {
     grid-template-columns: 1fr;
   }
 
-  .stat-card {
-    padding: 20px;
-  }
-
-  .stat-value {
-    font-size: 24px;
-  }
-
   .card-footer {
     flex-direction: column;
     align-items: stretch;
     gap: 12px;
   }
 
-  .action-buttons {
-    justify-content: center;
-  }
 }
 
 /* 暗色模式支持 */
@@ -8227,28 +8063,6 @@ input.form-control:focus, textarea.form-control:focus {
   .create-new-customer i {
     font-size: 12px;
   }
-}
-
-/* 特殊列样式 - 与库存页面保持一致 */
-.devices-table td:nth-child(1), /* 供应商列 */
-.devices-table td:nth-child(2), /* 品牌列 */
-.devices-table td:nth-child(3) { /* 型号列 */
-  font-weight: 600;
-  color: #2c3e50;
-  background: rgba(102, 126, 234, 0.03);
-}
-
-.devices-table td:nth-child(8), /* 入库价格列 */
-.devices-table td:nth-child(13) { /* 店铺列 */
-  font-weight: 600;
-  color: #495057;
-  background: rgba(40, 167, 69, 0.05);
-}
-
-.devices-table td:nth-child(9) { /* 入库员列 */
-  font-weight: 500;
-  color: #6c757d;
-  font-style: italic;
 }
 
 /* ===== 桌面端搜索样式 ===== */
@@ -9159,44 +8973,22 @@ input.form-control:focus, textarea.form-control:focus {
   }
 }
 
-/* 库存统计表样式 */
-.summary-table {
-  border-collapse: separate;
-  border-spacing: 0;
-}
-
+/* 库存统计业务徽章 */
 .summary-table .quantity-badge {
   display: inline-block;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  padding: 6px 14px;
+  padding: 2px 10px;
   border-radius: 20px;
   font-weight: 700;
-  font-size: 15px;
+  font-size: inherit;
   min-width: 40px;
   text-align: center;
   box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
 
-.summary-table .date-range {
-  font-size: 13px;
-  color: #6c757d;
-  white-space: nowrap;
-}
-
-.summary-table tbody tr:hover {
-  background: linear-gradient(90deg, #f8f9ff 0%, #fff 100%) !important;
-}
-
-/* 库存表行样式 */
-.inventory-row {
+:deep(.summary-table .inventory-row) {
   cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.inventory-row:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 /* 在库天数样式 */
@@ -9205,7 +8997,7 @@ input.form-control:focus, textarea.form-control:focus {
   padding: 4px 12px;
   border-radius: 12px;
   font-weight: 600;
-  font-size: 14px;
+  font-size: inherit;
 }
 
 .days-normal {
@@ -9444,7 +9236,7 @@ input.form-control:focus, textarea.form-control:focus {
   color: #2c3e50;
 }
 
-.record-count {
+.inventory-detail-modal .record-count {
   font-size: 13px;
   color: #6c757d;
 }
@@ -9456,7 +9248,7 @@ input.form-control:focus, textarea.form-control:focus {
   color: #2c3e50;
 }
 
-.record-count {
+.inventory-detail-modal .record-count {
   font-size: 14px;
   color: #6c757d;
   background: #f8f9fa;
@@ -9473,112 +9265,36 @@ input.form-control:focus, textarea.form-control:focus {
   white-space: nowrap;
 }
 
-/* 库存明细表格禁用滚动条 */
-.inventory-detail-modal .table-responsive {
-  overflow-x: auto !important;
-  overflow-y: visible;
-  -webkit-overflow-scrolling: touch;
-  max-height: calc(100vh - 400px);
-  width: 100%;
-}
-
 .inventory-detail-modal .detail-table-wrapper {
-  overflow: visible;
   margin: 0;
   padding: 0;
-  max-height: calc(100vh - 400px);
   width: 100%;
 }
 
-/* 库存明细表格紧凑样式 */
-.inventory-detail-modal .devices-table {
-  min-width: 100%;
-  width: 100%;
-  table-layout: auto;
-  font-size: 13px;
+.inventory-detail-table-container {
+  --admin-data-table-min-width: 0px;
+  scrollbar-width: none;
 }
 
-.inventory-detail-modal .devices-table th {
-  padding: 10px 6px;
-  font-size: 12px;
-  white-space: nowrap;
+.inventory-detail-table-container::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
-.inventory-detail-modal .devices-table td {
-  padding: 10px 6px;
-  font-size: 13px;
-  white-space: normal;
-  word-wrap: break-word;
-}
-
-/* 优化各列宽度 - 使用最小宽度确保内容完整显示 */
-.inventory-detail-modal .priority-column {
-  min-width: 55px;
-  width: auto;
-}
-
-.inventory-detail-modal .imei-cell {
-  min-width: 160px;
-  width: auto;
-  font-size: 12px;
-  word-break: break-all;
-  white-space: normal;
-  line-height: 1.4;
-  max-width: none;
-}
-
-.inventory-detail-modal .sn-cell {
-  min-width: 140px;
-  width: auto;
-  font-size: 12px;
-  word-break: break-all;
-  white-space: normal;
-  line-height: 1.4;
-  max-width: none;
-}
-
-/* 型号列 */
-.inventory-detail-modal .devices-table td:nth-of-type(4) {
-  min-width: 90px;
-  width: auto;
-}
-
-/* 颜色列 */
-.inventory-detail-modal .devices-table td:nth-of-type(5) {
-  min-width: 55px;
-  width: auto;
-}
-
-/* 内存列 */
-.inventory-detail-modal .devices-table td:nth-of-type(6) {
-  min-width: 55px;
-  width: auto;
-}
-
-/* 价格列 */
-.inventory-detail-modal .devices-table td:nth-of-type(7) {
-  min-width: 75px;
-  width: auto;
-}
-
-/* 入库时间列 */
-.inventory-detail-modal .devices-table td:nth-of-type(8) {
-  min-width: 100px;
-  width: auto;
-  font-size: 12px;
-}
-
-/* 在库天数列 */
-.inventory-detail-modal .devices-table td:last-child {
-  min-width: 65px;
-  width: auto;
+.inventory-detail-table-container :deep(.detail-table.el-table) {
+  min-width: 0 !important;
 }
 
 /* 库存明细模态框中的优先徽章紧凑样式 */
 .inventory-detail-modal .priority-badge {
-  padding: 3px 8px;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  justify-content: center;
+  border-radius: 50%;
   font-size: 11px;
-  gap: 3px;
+  gap: 0;
 }
 
 .inventory-detail-modal .priority-badge i {
@@ -10411,76 +10127,12 @@ input.form-control:focus, textarea.form-control:focus {
     font-size: 11px;
   }
 
-  /* 表格模式优化 */
-  .table-container {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .modern-table {
-    min-width: 600px;
-    font-size: 12px;
-  }
-
-  .modern-table thead th {
-    padding: 10px 8px;
-    font-size: 11px;
-    white-space: nowrap;
-  }
-
-  .modern-table tbody td {
-    padding: 10px 8px;
-    font-size: 11px;
-  }
-
-  /* 表格中的操作按钮 */
-  .modern-table .action-buttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 3px;
-    justify-content: flex-start;
-  }
-
-  .modern-table .action-buttons .btn {
-    min-width: 40px !important;
-    height: 26px !important;
-    font-size: 10px !important;
-    padding: 3px 6px !important;
-  }
-
-  .modern-table .action-buttons .btn i {
-    font-size: 9px !important;
-  }
-
   /* 批量模式选择框 */
   .device-checkbox {
     width: 18px;
     height: 18px;
   }
 
-  /* 统计卡片优化 */
-  .stats-cards {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-  }
-
-  .stat-card {
-    padding: 12px;
-  }
-
-  .stat-icon {
-    width: 36px;
-    height: 36px;
-    font-size: 16px;
-  }
-
-  .stat-value {
-    font-size: 18px;
-  }
-
-  .stat-label {
-    font-size: 11px;
-  }
 }
 
 /* 超小屏幕优化 */
@@ -10503,18 +10155,5 @@ input.form-control:focus, textarea.form-control:focus {
     height: 30px !important;
   }
 
-  .modern-table {
-    font-size: 11px;
-  }
-
-  .modern-table thead th {
-    padding: 8px 6px;
-    font-size: 10px;
-  }
-
-  .modern-table tbody td {
-    padding: 8px 6px;
-    font-size: 10px;
-  }
 }
 </style>

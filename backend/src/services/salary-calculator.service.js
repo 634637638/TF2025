@@ -4,6 +4,14 @@
  */
 const { getDatabase } = require('../config/database');
 const log = require('../utils/log');
+const {
+  formatLocalDate,
+  parseLocalDate
+} = require('../utils/time');
+const {
+  buildLeaveExclusionRules,
+  shouldExcludeSaleByLeave
+} = require('../utils/leave-sales-filter');
 
 const EXPECTED_SALARY_ERRORS = new Set([
   '员工不存在',
@@ -106,16 +114,17 @@ class SalaryCalculatorService {
       salaryBreakdown.leave_deduction = deductions.leaveDeduction;
       salaryBreakdown.leave_days = deductions.actualLeaveDays;
 
-      // 10. 检查长期请假（请假超过当月天数的一半）
-      // 长期请假则无工资、无提成
+      // 10. 检查长期/整月请假
+      // 长期请假则无工资、无提成；整月请假也必须明确归零，避免扣款抵消后仍计算提成或加班费。
       const workDays = this._calculateWorkDays(periodStart, periodEnd);
-      if (attendanceData.leaveDays > workDays / 2) {
+      const isFullPeriodLeave = attendanceData.leaveDays >= periodDays;
+      if (isFullPeriodLeave || attendanceData.leaveDays > workDays / 2) {
         salaryBreakdown.base_salary = 0;
         salaryBreakdown.base_salary_adjustment = 0;
         salaryBreakdown.commission_amount = 0;
         salaryBreakdown.overtime_pay = 0;
         salaryBreakdown.leave_deduction = 0;
-        salaryBreakdown.base_salary_note = '长期请假，无工资无提成';
+        salaryBreakdown.base_salary_note = isFullPeriodLeave ? '整月请假，无工资无提成' : '长期请假，无工资无提成';
       }
 
       // 11. 计算实发工资（不扣社保个税）
@@ -194,7 +203,7 @@ class SalaryCalculatorService {
     try {
       // 首先获取该员工在周期内的请假日期
       const leaveQuery = `
-        SELECT record_date, leave_days
+        SELECT record_date, leave_days, leave_type, leave_reason
         FROM attendance_records
         WHERE employee_id = ?
           AND record_date BETWEEN ? AND ?
@@ -203,17 +212,7 @@ class SalaryCalculatorService {
       `;
       const [leaveRows] = await conn.execute(leaveQuery, [employeeId, periodStart, periodEnd]);
 
-      // 构建请假日期集合（考虑到leave_days可能>1）
-      const leaveDates = new Set();
-      leaveRows.forEach(row => {
-        const leaveDate = new Date(row.record_date);
-        const leaveDays = parseInt(row.leave_days) || 1;
-        for (let i = 0; i < leaveDays; i++) {
-          const date = new Date(leaveDate);
-          date.setDate(date.getDate() + i);
-          leaveDates.add(date.toISOString().split('T')[0]);
-        }
-      });
+      const leaveRules = buildLeaveExclusionRules(leaveRows);
 
       // 查询周期内该员工的销售记录（统计全新机和二手机）
       // 排除请假日期的销售
@@ -256,12 +255,11 @@ class SalaryCalculatorService {
       // 调试：记录查询结果
       log.debug(`[工资计算] 员工 ${employeeId} 在 ${periodStart} ~ ${periodEnd} 的销售查询：`);
       log.debug(`  - 原始查询结果数: ${rows.length}`);
-      log.debug(`  - 请假日期集合: ${leaveDates.size > 0 ? Array.from(leaveDates).sort().join(', ') : '无'}`);
+      log.debug(`  - 请假日期集合: ${leaveRules.fullDayDates.size > 0 ? Array.from(leaveRules.fullDayDates).sort().join(', ') : '无'}`);
 
       // 过滤掉请假日期的销售
       let filteredRows = rows.filter(r => {
-        const saleDate = new Date(r.salestime).toISOString().split('T')[0];
-        return !leaveDates.has(saleDate);
+        return !shouldExcludeSaleByLeave(r.salestime, leaveRules);
       });
 
       log.debug(`  - 过滤请假日期后结果数: ${filteredRows.length}`);
@@ -342,13 +340,13 @@ class SalaryCalculatorService {
     const conn = await db.getConnection();
 
     try {
-      const currentMonthStartDate = new Date(periodStart);
+      const currentMonthStartDate = parseLocalDate(periodStart);
       currentMonthStartDate.setDate(1);
-      const currentMonthStart = currentMonthStartDate.toISOString().split('T')[0];
+      const currentMonthStart = formatLocalDate(currentMonthStartDate);
 
       const lastMonthStartDate = new Date(currentMonthStartDate);
       lastMonthStartDate.setMonth(lastMonthStartDate.getMonth() - 1);
-      const lastMonthStart = lastMonthStartDate.toISOString().split('T')[0];
+      const lastMonthStart = formatLocalDate(lastMonthStartDate);
 
       // 查询1：当月的请假和加班记录（只查询计算周期内的）
       const currentPeriodQuery = `
@@ -454,8 +452,8 @@ class SalaryCalculatorService {
    * 计算周期天数
    */
   _calculatePeriodDays(startDate, endDate) {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
+    const start = parseLocalDate(startDate);
+    const end = parseLocalDate(endDate);
     return Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
   }
 
@@ -464,8 +462,8 @@ class SalaryCalculatorService {
    */
   _calculateWorkDays(startDate, endDate) {
     let count = 0;
-    let current = new Date(startDate);
-    const end = new Date(endDate);
+    let current = parseLocalDate(startDate);
+    const end = parseLocalDate(endDate);
 
     while (current <= end) {
       const dayOfWeek = current.getDay();

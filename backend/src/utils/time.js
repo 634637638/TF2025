@@ -11,6 +11,10 @@ const DATETIME_NO_SECONDS_RE = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/;
 const ISO_LOCAL_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/;
 const ISO_TZ_RE = /[zZ]$|[+-]\d{2}:\d{2}$/;
 
+function pad2(value) {
+  return String(value).padStart(2, '0');
+}
+
 function formatBeijingDateTime(date) {
   const utcMs = date.getTime() + date.getTimezoneOffset() * 60 * 1000;
   const beijingMs = utcMs + BEIJING_OFFSET_HOURS * 60 * 60 * 1000;
@@ -19,6 +23,91 @@ function formatBeijingDateTime(date) {
 
 function getBeijingTimeString() {
   return formatBeijingDateTime(new Date());
+}
+
+function parseLocalDate(input) {
+  if (input instanceof Date) {
+    return new Date(input.getFullYear(), input.getMonth(), input.getDate());
+  }
+
+  if (typeof input === 'string') {
+    const match = input.trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) {
+      return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+    }
+  }
+
+  const parsed = new Date(input);
+  if (isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+}
+
+function formatLocalDate(input) {
+  if (typeof input === 'string') {
+    const match = input.trim().match(/^(\d{4}-\d{2}-\d{2})/);
+    if (match) {
+      return match[1];
+    }
+  }
+
+  const date = input instanceof Date ? input : new Date(input);
+  if (isNaN(date.getTime())) {
+    return '';
+  }
+
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+}
+
+function addDaysToDateKey(input, days) {
+  const date = parseLocalDate(input);
+  if (!date) {
+    return '';
+  }
+
+  date.setDate(date.getDate() + days);
+  return formatLocalDate(date);
+}
+
+function getMonthDateRange(input) {
+  const date = parseLocalDate(input);
+  if (!date) {
+    return null;
+  }
+
+  const start = new Date(date.getFullYear(), date.getMonth(), 1);
+  const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+
+  return {
+    period_start: formatLocalDate(start),
+    period_end: formatLocalDate(end)
+  };
+}
+
+function getTimeMinutes(input) {
+  if (input === undefined || input === null || input === '') {
+    return null;
+  }
+
+  if (input instanceof Date) {
+    return input.getHours() * 60 + input.getMinutes();
+  }
+
+  if (typeof input === 'string') {
+    const match = input.trim().match(/(?:^|\s|T)(\d{2}):(\d{2})(?::\d{2})?/);
+    if (match) {
+      return Number(match[1]) * 60 + Number(match[2]);
+    }
+  }
+
+  const parsed = new Date(input);
+  if (isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed.getHours() * 60 + parsed.getMinutes();
 }
 
 /**
@@ -82,5 +171,10 @@ function normalizeDateTime(input, defaultToNow = true) {
 
 module.exports = {
   getBeijingTimeString,
-  normalizeDateTime
+  normalizeDateTime,
+  parseLocalDate,
+  formatLocalDate,
+  addDaysToDateKey,
+  getMonthDateRange,
+  getTimeMinutes
 };

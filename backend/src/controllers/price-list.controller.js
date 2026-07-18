@@ -6,6 +6,7 @@ const ApiResponse = require('../utils/response');
 const XLSX = require('xlsx');
 const { PAGINATION } = require('../config/constants');
 const log = require('../utils/log');
+const { validateSpreadsheetBuffer, sheetToJsonSafe } = require('../utils/spreadsheet-security');
 
 function getPriceListService() {
   return require('../services/price-list.service');
@@ -147,9 +148,10 @@ class PriceListController {
         return ApiResponse.error(res, '请选择要导入的 Excel 文件', 400);
       }
 
+      validateSpreadsheetBuffer(req.file.buffer);
       const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
       const sheetName = workbook.SheetNames[0];
-      const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: '' });
+      const rows = sheetToJsonSafe(workbook.Sheets[sheetName], { defval: '' });
 
       if (!Array.isArray(rows) || rows.length === 0) {
         return ApiResponse.error(res, '导入文件没有有效数据', 400);
@@ -206,7 +208,7 @@ class PriceListController {
       }, `价目表导入完成，成功 ${imported} 条，失败 ${failed} 条`);
     } catch (error) {
       log.error('导入价格列表失败:', error);
-      return ApiResponse.error(res, '导入价格列表失败', 500);
+      return ApiResponse.error(res, error.message || '导入价格列表失败', error.statusCode || 500);
     }
   }
 

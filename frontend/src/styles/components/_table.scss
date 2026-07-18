@@ -1,19 +1,20 @@
 /**
- * TF2025 统一 Element Plus 表格样式
- * 参考库存管理页面样式 - 深色渐变表头 + 统一字体大小颜色
+ * TF2025 统一 Element Plus 表格结构样式。
+ * 所有视觉数值读取 admin-layout.css 的 --admin-data-table-* 变量。
  */
 
 // ==================== 表格容器圆角 ====================
 
 .el-table {
   // 表格外层容器圆角
-  border-radius: 8px !important;
+  border-radius: var(--admin-data-table-radius, 8px) !important;
   overflow: hidden !important;
-  border: 1px solid #dee2e6 !important;
+  border: 1px solid var(--admin-data-table-container-border, #dee2e6) !important;
+  background: var(--admin-data-table-bg, #ffffff) !important;
 
   // 移除默认边框
   &.el-table--border {
-    border: 1px solid #dee2e6 !important;
+    border: 1px solid var(--admin-data-table-container-border, #dee2e6) !important;
 
     &::after,
     .el-table__inner-wrapper::before {
@@ -23,7 +24,7 @@
 
   // 表格内部包装器
   .el-table__inner-wrapper {
-    border-radius: 8px !important;
+    border-radius: var(--admin-data-table-radius, 8px) !important;
     overflow: hidden !important;
   }
 }
@@ -33,34 +34,38 @@
 .el-table__header-wrapper {
   // 表头第一行圆角（顶部左右）
   tr:first-child th:first-child {
-    border-top-left-radius: 8px !important;
+    border-top-left-radius: var(--admin-data-table-radius, 8px) !important;
   }
 
   tr:first-child th:last-child {
-    border-top-right-radius: 8px !important;
+    border-top-right-radius: var(--admin-data-table-radius, 8px) !important;
   }
 }
 
 .el-table__header-wrapper th {
   // 深色渐变背景 - 与销售管理完全一致
-  background: linear-gradient(135deg, #495057 0%, #343a40 100%) !important;
-  color: white !important;
-  font-weight: 600 !important;
-  font-size: 13px !important;           // 销售管理使用 13px
-  padding: 12px 10px !important;        // 销售管理使用 12px 10px（最合适的高度）
+  background: var(--admin-data-table-header-bg, linear-gradient(135deg, #495057 0%, #343a40 100%)) !important;
+  color: var(--admin-data-table-header-color, #ffffff) !important;
+  font-weight: var(--admin-data-table-header-font-weight, 600) !important;
+  font-size: var(--admin-data-table-header-font-size, 13px) !important;
+  padding: var(--admin-data-table-header-padding-y, 12px) var(--admin-data-table-header-padding-x, 10px) !important;
+  height: var(--admin-data-table-header-height, 44px) !important;
+  box-sizing: border-box !important;
   text-align: center !important;
-  border-right: 1px solid #dee2e6 !important;
-  border-bottom: 2px solid #dee2e6 !important;
+  border-right: 1px solid var(--admin-data-table-header-border, #dee2e6) !important;
+  border-bottom: 2px solid var(--admin-data-table-header-border, #dee2e6) !important;
   position: relative !important;
   white-space: nowrap !important;
   user-select: none;
   text-transform: uppercase;
-  letter-spacing: 0.5px;                // 销售管理使用 0.5px
+  letter-spacing: var(--admin-data-table-header-letter-spacing, 0);
 
   .cell {
     padding: 0 !important;
+    min-height: 0 !important;
     font-weight: 600 !important;
-    color: white !important;
+    color: var(--admin-data-table-header-color, #ffffff) !important;
+    line-height: var(--admin-data-table-line-height, 1.45) !important;
   }
 
   // 渐变下划线效果 - 与销售管理完全一致
@@ -71,31 +76,45 @@
     left: 0;
     right: 0;
     height: 2px;
-    background: linear-gradient(90deg, #667eea, #764ba2);
+    background: var(--admin-data-table-header-accent, linear-gradient(90deg, #667eea, #764ba2));
   }
 
   &:hover {
-    background: linear-gradient(135deg, #495057 0%, #343a40 100%) !important;
+    background: var(--admin-data-table-header-bg, linear-gradient(135deg, #495057 0%, #343a40 100%)) !important;
   }
 }
 
 // ==================== 表格单元格样式（与销售管理一致） ====================
 
 .el-table__body-wrapper td {
-  padding: 10px 8px !important;         // 销售管理使用 10px 8px
-  border-right: 1px solid #e9ecef !important;
-  border-bottom: 1px solid #e9ecef !important;
+  padding: var(--admin-data-table-cell-padding-y, 10px) var(--admin-data-table-cell-padding-x, 8px) !important;
+  height: var(--admin-data-table-row-height, 40px) !important;
+  box-sizing: border-box !important;
+  border-right: 1px solid var(--admin-data-table-cell-border, #e9ecef) !important;
+  border-bottom: 1px solid var(--admin-data-table-cell-border, #e9ecef) !important;
   vertical-align: middle !important;
-  font-size: 13px !important;           // 销售管理使用 13px
-  color: #2c3e50 !important;            // 销售管理使用 #2c3e50
-  font-weight: 500 !important;
+  font-size: var(--admin-data-table-cell-font-size, 13px) !important;
+  color: var(--admin-data-table-cell-color, #2c3e50) !important;
+  font-weight: var(--admin-data-table-cell-font-weight, 500) !important;
   text-align: center !important;
   position: relative !important;
   white-space: nowrap !important;       // 销售管理使用 nowrap
 
   .cell {
     padding: 0 !important;
+    min-height: 0 !important;
+    line-height: var(--admin-data-table-line-height, 1.45) !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
+}
+
+// 序列号、IMEI、业务单号等关键标识必须完整显示，列宽由公共宽度工具计算。
+.el-table__body-wrapper td.identifier-column .cell,
+.el-table__body-wrapper td.serial-imei-column .cell {
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
 }
 
 // ==================== 表格行样式 ====================
@@ -103,53 +122,53 @@
 .el-table__body-wrapper {
   // 表格底部最后一行圆角
   tr:last-child td:first-child {
-    border-bottom-left-radius: 8px !important;
+    border-bottom-left-radius: var(--admin-data-table-radius, 8px) !important;
   }
 
   tr:last-child td:last-child {
-    border-bottom-right-radius: 8px !important;
+    border-bottom-right-radius: var(--admin-data-table-radius, 8px) !important;
   }
 }
 
 .el-table__body tr {
-  background: #ffffff;
+  background: var(--admin-data-table-bg, #ffffff);
   // 移除 transition 以防止 v-show 切换时斑马效果闪烁
   // transition: all 0.2s ease;
 
   // 偶数行斑马纹 - 与库存管理完全一致
   &:nth-child(even) {
-    background: #f8f9fa;
+    background: var(--admin-data-table-row-even-bg, #f8f9fa);
 
     > td {
-      background: #f8f9fa;
+      background: var(--admin-data-table-row-even-bg, #f8f9fa);
     }
   }
 
   // 悬停效果 - 与库存管理完全一致
   &:hover > td {
-    background: #e3f2fd !important;
+    background: var(--admin-data-table-row-hover-bg, #e3f2fd) !important;
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--admin-data-table-row-hover-shadow, 0 4px 12px rgba(0, 0, 0, 0.08));
   }
 
   &.current-row > td {
-    background: #f0f9ff !important;
+    background: var(--admin-data-table-row-selected-bg, #e8f4fd) !important;
   }
 
   // 条纹行悬停效果
   &.el-table__row--striped > td {
-    background: #f8f9fa;
+    background: var(--admin-data-table-row-even-bg, #f8f9fa);
   }
 
   &.el-table__row--striped:hover > td {
-    background: #e3f2fd !important;
+    background: var(--admin-data-table-row-hover-bg, #e3f2fd) !important;
   }
 }
 
 // ==================== 空状态样式 ====================
 
 .el-table__empty-block {
-  background: #fff !important;
+  background: var(--admin-data-table-bg, #ffffff) !important;
   padding: 40px 0 !important;
   min-height: auto !important;
 
@@ -165,21 +184,23 @@
 // 操作列按钮统一样式 - 全局生效
 .action-buttons {
   display: inline-flex;
-  gap: 6px;
+  gap: var(--admin-data-table-action-gap, 6px);
   justify-content: center;
   flex-wrap: nowrap; // 确保按钮在一行显示，不换行
   align-items: center;
 
   // 统一操作按钮为 small 尺寸
   .el-button {
-    height: 28px !important;
-    padding: 5px 10px !important;
-    font-size: 13px !important;
-    border-radius: 4px !important;
+    height: var(--admin-data-table-action-height, 28px) !important;
+    min-height: var(--admin-data-table-action-height, 28px) !important;
+    padding: var(--admin-data-table-action-padding-y, 5px) var(--admin-data-table-action-padding-x, 10px) !important;
+    margin: 0 !important;
+    font-size: var(--admin-data-table-action-font-size, 13px) !important;
+    border-radius: var(--admin-data-table-action-radius, 4px) !important;
     white-space: nowrap; // 防止按钮文字换行
 
     i {
-      font-size: 14px !important;
+      font-size: var(--admin-data-table-action-icon-size, 14px) !important;
     }
 
     span {
@@ -188,13 +209,30 @@
       gap: 4px;
     }
 
-    // 移动端适配
-    @media (max-width: 768px) {
-      height: 32px !important;
-      padding: 6px 12px !important;
-      font-size: 12px !important;
-    }
   }
+}
+
+// Unified admin tables remain horizontally scrollable without a visible drag bar.
+.admin-page .el-table .el-scrollbar__wrap {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.admin-page .el-table .el-scrollbar__wrap::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.admin-page .el-table .el-scrollbar__bar.is-horizontal {
+  display: none !important;
+}
+
+.admin-page .data-table.el-table td.actions-column .cell,
+.admin-page .devices-table.el-table td.actions-column .cell,
+.admin-page .admin-data-table.el-table td.actions-column .cell {
+  overflow: visible !important;
+  padding-inline: var(--admin-data-table-cell-padding-x, 8px) !important;
 }
 
 .el-table {
@@ -215,10 +253,11 @@
 
   // 普通小型按钮
   .el-button--small {
-    padding: 5px 10px !important;
-    font-size: 13px !important;
-    height: 28px !important;
-    border-radius: 4px !important;
+    padding: var(--admin-data-table-action-padding-y, 5px) var(--admin-data-table-action-padding-x, 10px) !important;
+    font-size: var(--admin-data-table-action-font-size, 13px) !important;
+    height: var(--admin-data-table-action-height, 28px) !important;
+    min-height: var(--admin-data-table-action-height, 28px) !important;
+    border-radius: var(--admin-data-table-action-radius, 4px) !important;
   }
 }
 
@@ -238,12 +277,26 @@
 
     .el-table__body-wrapper,
     .el-table__header-wrapper,
-    .el-table__footer-wrapper,
+    .el-table__footer-wrapper {
+      overflow: hidden !important;
+    }
+
     .el-table .el-scrollbar__wrap {
       overflow-x: auto !important;
       overflow-y: auto !important;
       -webkit-overflow-scrolling: touch;
       overscroll-behavior-x: contain;
+      scrollbar-width: none;
+    }
+
+    .el-table .el-scrollbar__wrap::-webkit-scrollbar {
+      display: none;
+      width: 0;
+      height: 0;
+    }
+
+    .el-table .el-scrollbar__bar.is-horizontal {
+      display: none !important;
     }
 
     .el-table .cell {

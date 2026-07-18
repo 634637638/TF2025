@@ -8,7 +8,7 @@ const { getTargetPorts, stopPortProcesses } = require('./port-utils');
   await stopPortProcesses(ports);
 
   const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-  const child = spawn(npmCommand, ['run', 'dev'], {
+  const child = spawn(npmCommand, ['run', 'dev:raw'], {
     cwd: process.cwd(),
     stdio: 'inherit'
   });

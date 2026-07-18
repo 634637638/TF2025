@@ -39,7 +39,8 @@ const corsOptions = {
     'Cache-Control',
     'X-Device-Info',
     'X-Required-Permission',
-    'X-CSRF-Token'
+    'X-CSRF-Token',
+    'X-Inventory-Query-Token'
   ],
 
   // 暴露给客户端的响应头

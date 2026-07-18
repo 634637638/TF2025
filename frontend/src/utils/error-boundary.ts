@@ -6,6 +6,18 @@
 import { ref, computed, readonly, inject, type App } from 'vue'
 import logger from '@/utils/logger'
 
+const sanitizeResourceUrl = (value: unknown): string => {
+  if (typeof value !== 'string' || !value) return 'unknown resource'
+
+  try {
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost'
+    const url = new URL(value, baseUrl)
+    return `${url.origin}${url.pathname}`
+  } catch {
+    return value.split('?')[0]
+  }
+}
+
 /**
  * 错误级别定义
  */
@@ -163,10 +175,15 @@ export class ErrorBoundary {
     // 资源加载错误
     window.addEventListener('error', (event) => {
       if (event.target !== window) {
+        const resourceTarget = event.target as HTMLImageElement | HTMLScriptElement | HTMLLinkElement | null
+        const resourceUrl = sanitizeResourceUrl(resourceTarget?.src || resourceTarget?.href)
         this.handleError({
           type: ErrorType.NETWORK,
-          message: `Resource loading failed: ${(event.target as any)?.src || (event.target as any)?.href}`,
-          context: { target: event.target }
+          message: `Resource loading failed: ${resourceUrl}`,
+          context: {
+            tagName: resourceTarget?.tagName || 'unknown',
+            resourceUrl
+          }
         })
       }
     }, true)

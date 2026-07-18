@@ -11,7 +11,7 @@
     permission-code="h5-orders:view"
   >
 
-  <div class="sales-management-page">
+  <div class="sales-management-page admin-page-content">
     <!-- 统计卡片 -->
     <div v-if="showStatsCards" class="stats-cards">
       <div v-if="canViewOrderField('stats_total_orders')" class="stat-card" @click="filterByStatus('')">
@@ -71,7 +71,7 @@
     </div>
 
     <!-- 筛选栏 -->
-    <el-card class="filter-card" shadow="never">
+    <el-card class="filter-card admin-panel" shadow="never">
       <el-form :model="filters" :inline="true" class="filter-form">
         <el-form-item v-if="canViewOrderField('filter_status')" label="订单状态">
           <el-select v-model="filters.status" placeholder="全部状态" clearable @change="handleFilterChange">
@@ -115,7 +115,7 @@
     </el-card>
 
     <!-- 订单列表 -->
-    <el-card class="table-card" shadow="never">
+    <el-card class="table-card admin-panel admin-table-panel" shadow="never">
       <el-table :data="loading ? [] : orders" class="w-full" :border="true">
         <template #empty>
           <TableLoadingRow v-if="loading" mode="block" text="加载中..." />

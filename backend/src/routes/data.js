@@ -3,6 +3,7 @@ const router = express.Router();
 const { getDatabase, isConnected, connectToDatabase, setConnected } = require('../config/database');
 const ApiResponse = require('../utils/response');
 const log = require('../utils/log');
+const { unifiedAuth, requirePermission } = require('../middleware/unified-auth');
 
 const DATA_TABLE_UNAVAILABLE_MESSAGE = '数据服务暂不可用，请检查数据库连接';
 
@@ -10,8 +11,10 @@ const isConnectionError = (error) => error?.code === 'ECONNRESET' || error?.code
 
 const respondDatabaseUnavailable = (res) => ApiResponse.error(res, DATA_TABLE_UNAVAILABLE_MESSAGE, 503);
 
+router.use(unifiedAuth);
+
 // 获取数据列表
-router.get('/', async (req, res) => {
+router.get('/', requirePermission('data-check:view'), async (req, res) => {
   try {
     if (!isConnected()) {
       log.debug('数据库未连接，尝试重新连接...');
@@ -35,7 +38,7 @@ router.get('/', async (req, res) => {
 });
 
 // 创建数据
-router.post('/', async (req, res) => {
+router.post('/', requirePermission('data-check:edit'), async (req, res) => {
   try {
     const { name, description } = req.body;
     if (!name || !description) {
@@ -68,7 +71,7 @@ router.post('/', async (req, res) => {
 });
 
 // 更新数据
-router.put('/:id', async (req, res) => {
+router.put('/:id', requirePermission('data-check:edit'), async (req, res) => {
   try {
     const { id } = req.params;
     const { name, description } = req.body;
@@ -107,7 +110,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // 删除数据
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requirePermission('data-check:delete'), async (req, res) => {
   try {
     const { id } = req.params;
     

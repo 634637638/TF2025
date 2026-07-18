@@ -1,14 +1,19 @@
 const express = require('express');
 const { getDatabase } = require('../config/database');
 const log = require('../utils/log');
+const { unifiedAuth, requireAnyPermission } = require('../middleware/unified-auth');
 
 const router = express.Router();
 
 /**
- * 获取操作员列表 (销售员) - 公开接口，不需要认证
+ * 获取操作员列表（销售员）
  * GET /api/operators
  */
-router.get('/', async (req, res) => {
+router.get(
+  '/',
+  unifiedAuth,
+  requireAnyPermission(['sales:view', 'inventory:view']),
+  async (req, res) => {
   try {
     const { store_id } = req.query;
     log.debug('操作员API被调用, store_id:', store_id);
@@ -23,9 +28,7 @@ router.get('/', async (req, res) => {
         u.id,
         u.username,
         u.name,
-        u.status,
-        GROUP_CONCAT(DISTINCT r.name SEPARATOR ', ') as role_name,
-        GROUP_CONCAT(DISTINCT COALESCE(r.code, CONCAT('role_', r.id)) SEPARATOR ', ') as role_codes
+        u.status
       FROM users u
       INNER JOIN user_roles ur ON u.id = ur.user_id
       INNER JOIN roles r ON ur.role_id = r.id
@@ -38,14 +41,13 @@ router.get('/', async (req, res) => {
     const formattedOperators = operators.map(user => ({
       id: user.id,
       name: user.name || user.username, // 优先使用真实姓名，没有则使用用户名
-      username: user.username,
-      role: user.role_name,
-      role_codes: user.role_codes ? user.role_codes.split(', ') : [],
-      store_id: store_id || null,
-      store_name: store_id ? `店铺${store_id}` : '默认店铺'
+      username: user.username
     }));
 
-    log.debug('获取到的操作员列表:', formattedOperators);
+    log.debug('操作员列表加载完成:', {
+      storeId: store_id || null,
+      count: formattedOperators.length
+    });
 
     // 手动构造成功响应
     res.json({
@@ -62,6 +64,7 @@ router.get('/', async (req, res) => {
       error: error.message
     });
   }
-});
+  }
+);
 
 module.exports = router;

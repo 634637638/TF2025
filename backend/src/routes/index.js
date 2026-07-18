@@ -1,12 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const log = require('../utils/log');
+const { isConnected } = require('../config/database');
+const { unifiedAuth, requirePermission } = require('../middleware/unified-auth');
 
 // 健康检查端点（无需认证）
 router.get('/health', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Backend is healthy',
+  const databaseConnected = isConnected();
+  res.status(databaseConnected ? 200 : 503).json({
+    success: databaseConnected,
+    message: databaseConnected ? 'Backend is healthy' : 'Backend is running but database is disconnected',
+    database: databaseConnected ? 'connected' : 'disconnected',
     timestamp: new Date().toISOString(),
     uptime: process.uptime()
   });
@@ -260,7 +264,7 @@ router.use('/sales-management', salesManagementRoutes);
 const enableDevTempRoutes = process.env.NODE_ENV === 'development' && process.env.ENABLE_DEV_TEMP_ROUTES === 'true';
 
 if (enableDevTempRoutes) {
-  router.post('/temp/make-admin', async (req, res) => {
+  router.post('/temp/make-admin', unifiedAuth, requirePermission('permissions:admin'), async (req, res) => {
     try {
       const db = require('../config/database');
       const { username } = req.body;
@@ -288,7 +292,7 @@ if (enableDevTempRoutes) {
   });
 
   // 临时端点：执行首页推荐表迁移
-  router.post('/temp/migrate-home-sections', async (req, res) => {
+  router.post('/temp/migrate-home-sections', unifiedAuth, requirePermission('permissions:admin'), async (req, res) => {
     try {
       const db = require('../config/database');
       const fs = require('fs');

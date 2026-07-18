@@ -7,7 +7,7 @@
     permission-code="preorders:view"
   >
 
-  <div class="preorders-view admin-page admin-page-content safe-area-top safe-area-bottom">
+  <div class="preorders-view admin-page admin-page-content admin-unified-preorders-page safe-area-top safe-area-bottom">
     <!-- 页面标题 -->
     <PageHeader title="预定管理">
       <template #actions>
@@ -79,12 +79,14 @@
           </div>
 
           <!-- 待匹配预定单列表 -->
+          <div class="table-responsive">
           <el-table
             ref="pendingTableRef"
             :data="pendingPreorders"
+            border
             stripe
-            class="preorders-table"
-            @row-dblclick="handleRowDblClick"
+            class="data-table devices-table base-data-table preorders-table"
+            @row-click="handleRowTap"
             :row-key="(row: Preorder) => String(row.id)"
             :expand-row-keys="expandedRows"
           >
@@ -92,7 +94,7 @@
               <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
               <el-empty v-else description="暂无预定单" />
             </template>
-            <el-table-column v-if="isMobile" type="expand" width="1">
+            <el-table-column v-if="isMobile" type="expand" width="1" class-name="mobile-expand-column" label-class-name="mobile-expand-header">
               <template #default="{ row }">
                 <div class="mobile-row-actions">
                   <el-button
@@ -116,7 +118,7 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column prop="preorder_number" label="预定单号" min-width="150" />
+            <el-table-column prop="preorder_number" label="预定单号" :min-width="preorderNumberColumnWidth" class-name="identifier-column" />
             <el-table-column label="供应商" min-width="100">
               <template #default="{ row }">
                 <span :class="getStatusClass(row.status)">
@@ -154,12 +156,12 @@
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="advance_payment" label="定金" min-width="80" align="right">
+            <el-table-column prop="advance_payment" label="定金" min-width="80" align="center">
               <template #default="{ row }">
                 ¥{{ formatNumber(row.advance_payment) }}
               </template>
             </el-table-column>
-            <el-table-column label="销售价格" min-width="90" align="right">
+            <el-table-column label="销售价格" min-width="90" align="center">
               <template #default="{ row }">
                 {{ row.expected_price ? '¥' + formatNumber(row.expected_price) : '-' }}
               </template>
@@ -194,6 +196,7 @@
               </template>
             </el-table-column>
           </el-table>
+          </div>
 
           <!-- 分页 -->
           <div class="pagination-container">
@@ -220,12 +223,14 @@
             </el-radio-group>
           </div>
 
+          <div class="table-responsive">
           <el-table
             ref="matchedTableRef"
             :data="matchedPreorders"
+            border
             stripe
-            class="preorders-table"
-            @row-dblclick="handleRowDblClick"
+            class="data-table devices-table base-data-table preorders-table"
+            @row-click="handleRowTap"
             :row-key="(row: Preorder) => String(row.id)"
             :expand-row-keys="expandedRows"
           >
@@ -233,7 +238,7 @@
               <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
               <el-empty v-else description="暂无预定单" />
             </template>
-            <el-table-column v-if="isMobile" type="expand" width="1">
+            <el-table-column v-if="isMobile" type="expand" width="1" class-name="mobile-expand-column" label-class-name="mobile-expand-header">
               <template #default="{ row }">
                 <div class="mobile-row-actions">
                   <!-- 待匹配状态：编辑、取消 -->
@@ -311,7 +316,7 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column prop="preorder_number" label="预定单号" min-width="150" />
+            <el-table-column prop="preorder_number" label="预定单号" :min-width="preorderNumberColumnWidth" class-name="identifier-column" />
             <el-table-column label="供应商" min-width="100">
               <template #default="{ row }">
                 <span :class="getStatusClass(row.status)">
@@ -349,19 +354,19 @@
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="imei" label="IMEI" min-width="130">
+            <el-table-column prop="imei" label="IMEI" :min-width="imeiColumnWidth" class-name="identifier-column">
               <template #default="{ row }">
                 <span :class="getStatusClass(row.status)">
                   {{ getStatusText(row.status, row.imei) }}
                 </span>
               </template>
             </el-table-column>
-            <el-table-column prop="advance_payment" label="定金" min-width="80" align="right">
+            <el-table-column prop="advance_payment" label="定金" min-width="80" align="center">
               <template #default="{ row }">
                 ¥{{ formatNumber(row.advance_payment) }}
               </template>
             </el-table-column>
-            <el-table-column label="销售价格" min-width="90" align="right">
+            <el-table-column label="销售价格" min-width="90" align="center">
               <template #default="{ row }">
                 {{ row.expected_price ? '¥' + formatNumber(row.expected_price) : '-' }}
               </template>
@@ -459,6 +464,7 @@
               </template>
             </el-table-column>
           </el-table>
+          </div>
 
           <!-- 分页 -->
           <div class="pagination-container">
@@ -477,12 +483,14 @@
       <!-- TAB 3: 已交付 -->
       <el-tab-pane label="已交付" name="delivered">
         <div class="tab-content">
+          <div class="table-responsive">
           <el-table
             ref="deliveredTableRef"
             :data="deliveredPreorders"
+            border
             stripe
-            class="preorders-table"
-            @row-dblclick="handleRowDblClick"
+            class="data-table devices-table base-data-table preorders-table"
+            @row-click="handleRowTap"
             :row-key="(row: Preorder) => String(row.id)"
             :expand-row-keys="expandedRows"
           >
@@ -490,7 +498,7 @@
               <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
               <el-empty v-else description="暂无预定单" />
             </template>
-            <el-table-column v-if="isMobile" type="expand" width="1">
+            <el-table-column v-if="isMobile" type="expand" width="1" class-name="mobile-expand-column" label-class-name="mobile-expand-header">
               <template #default="{ row }">
                 <div class="mobile-row-actions">
                   <el-button
@@ -505,7 +513,7 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column prop="preorder_number" label="预定单号" min-width="140" />
+            <el-table-column prop="preorder_number" label="预定单号" :min-width="preorderNumberColumnWidth" class-name="identifier-column" />
             <el-table-column label="供应商" min-width="100">
               <template #default="{ row }">
                 <span :class="getStatusClass(row.status)">
@@ -543,18 +551,18 @@
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="imei" label="IMEI" min-width="125" />
-            <el-table-column prop="advance_payment" label="定金" min-width="75" align="right">
+            <el-table-column prop="imei" label="IMEI" :min-width="imeiColumnWidth" class-name="identifier-column" />
+            <el-table-column prop="advance_payment" label="定金" min-width="75" align="center">
               <template #default="{ row }">
                 ¥{{ formatNumber(row.advance_payment) }}
               </template>
             </el-table-column>
-            <el-table-column prop="actual_price" label="销售价格" min-width="85" align="right">
+            <el-table-column prop="actual_price" label="销售价格" min-width="85" align="center">
               <template #default="{ row }">
                 ¥{{ formatNumber(row.actual_price) }}
               </template>
             </el-table-column>
-            <el-table-column prop="remaining_amount" label="尾款" min-width="75" align="right">
+            <el-table-column prop="remaining_amount" label="尾款" min-width="75" align="center">
               <template #default="{ row }">
                 ¥{{ formatNumber(row.remaining_amount || 0) }}
               </template>
@@ -581,6 +589,7 @@
               </template>
             </el-table-column>
           </el-table>
+          </div>
 
           <!-- 分页 -->
           <div class="pagination-container">
@@ -622,6 +631,7 @@ import { PageHeader, PermissionGate } from '@/components/base'
 import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { logger } from '@/utils/logger'
+import { getIdentifierColumnMinWidth } from '@/utils/table-layout'
 
 const PreorderFormModal = defineAsyncComponent(() => import('./page/PreorderFormModal.vue'))
 
@@ -642,6 +652,8 @@ const deliveredTableRef = ref()
 
 // 当前展开的行
 const expandedRows = ref<string[]>([])
+const lastTappedRowId = ref<string | null>(null)
+const lastTapTimestamp = ref(0)
 
 const preorderFieldMap: Record<string, string> = {
   stats_pending_count: 'stats.pending_count',
@@ -706,6 +718,19 @@ const pagination = reactive({
 const pendingPreorders = ref<Preorder[]>([])
 const matchedPreorders = ref<Preorder[]>([])
 const deliveredPreorders = ref<Preorder[]>([])
+const visiblePreorders = computed(() => [
+  ...pendingPreorders.value,
+  ...matchedPreorders.value,
+  ...deliveredPreorders.value
+])
+const preorderNumberColumnWidth = computed(() => getIdentifierColumnMinWidth(
+  ['预定单号', ...visiblePreorders.value.map(preorder => preorder.preorder_number)],
+  { minWidth: 150, horizontalPadding: 32 }
+))
+const imeiColumnWidth = computed(() => getIdentifierColumnMinWidth(
+  ['IMEI', ...visiblePreorders.value.map(preorder => preorder.imei)],
+  { minWidth: 130, horizontalPadding: 32 }
+))
 
 // 模态框状态
 const showFormModal = ref(false)
@@ -866,19 +891,20 @@ const handleRefresh = async () => {
   }
 }
 
-// 双击行处理
-const handleRowDblClick = (row: Preorder) => {
-  if (isMobile.value) {
-    const rowKey = String(row.id)
-    const index = expandedRows.value.indexOf(rowKey)
-    if (index > -1) {
-      // 如果已展开，则收起
-      expandedRows.value.splice(index, 1)
-    } else {
-      // 如果未展开，则展开（只保留当前行）
-      expandedRows.value = [rowKey]
-    }
+const handleRowTap = (row: Preorder) => {
+  if (!isMobile.value) return
+  const rowKey = String(row.id)
+  const now = Date.now()
+
+  if (lastTappedRowId.value === rowKey && now - lastTapTimestamp.value <= 320) {
+    expandedRows.value = expandedRows.value.includes(rowKey) ? [] : [rowKey]
+    lastTappedRowId.value = null
+    lastTapTimestamp.value = 0
+    return
   }
+
+  lastTappedRowId.value = rowKey
+  lastTapTimestamp.value = now
 }
 
 // 编辑预定单
@@ -1273,10 +1299,11 @@ onMounted(async () => {
     }
 
     .tab-content {
-      background: #fff;
-      border-radius: 0 0 8px 8px;
-      padding: 20px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      background: var(--admin-table-panel-bg);
+      border: 1px solid var(--admin-table-panel-border);
+      border-radius: 0 0 var(--admin-panel-radius) var(--admin-panel-radius);
+      padding: var(--admin-table-panel-padding-y) var(--admin-table-panel-padding-x);
+      box-shadow: var(--admin-table-panel-shadow);
 
       .actions-bar,
       .filter-bar {
@@ -1344,9 +1371,6 @@ onMounted(async () => {
           background: #ebeef5;
         }
 
-        .el-table__body-wrapper {
-          overflow-x: auto !important;
-        }
       }
 
       // 修复操作列按钮显示
@@ -1384,33 +1408,6 @@ onMounted(async () => {
   @media (max-width: 768px) {
     padding: 0;
 
-    // 手机端操作行样式
-    .mobile-row-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      padding: 12px;
-      background: #f5f7fa;
-      border-radius: 4px;
-
-      .el-button {
-        flex: 1;
-        min-width: calc(50% - 4px);
-        margin: 0;
-
-        span {
-          margin-left: 4px;
-        }
-      }
-    }
-
-    // 展开列样式
-    :deep(.el-table__expand-column) {
-      .cell {
-        padding: 0 !important;
-      }
-    }
-
     .stats-cards {
       gap: 8px;
       margin-bottom: 16px;
@@ -1418,7 +1415,6 @@ onMounted(async () => {
 
       .stat-card {
         padding: 12px;
-        min-height: 80px;
 
         :deep(.el-card__body) {
           padding: 0;
@@ -1459,8 +1455,6 @@ onMounted(async () => {
       }
 
       .tab-content {
-        padding: 12px;
-
         .actions-bar,
         .filter-bar {
           flex-direction: column;
@@ -1471,20 +1465,6 @@ onMounted(async () => {
             width: 100%;
           }
         }
-      }
-    }
-
-    .preorders-table {
-      font-size: 12px;
-
-      :deep(.el-table__header) th {
-        padding: 8px 4px;
-        font-size: 12px;
-      }
-
-      :deep(.el-table__body) td {
-        padding: 8px 4px;
-        font-size: 12px;
       }
     }
 
@@ -1508,7 +1488,6 @@ onMounted(async () => {
 
       .stat-card {
         padding: 10px;
-        min-height: 70px;
 
         .stat-content {
           gap: 8px;
@@ -1544,9 +1523,6 @@ onMounted(async () => {
         line-height: 38px;
       }
 
-      .tab-content {
-        padding: 8px;
-      }
     }
   }
 }

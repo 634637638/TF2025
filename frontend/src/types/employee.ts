@@ -41,6 +41,7 @@ export interface EmployeeForm {
   role: string
   role_ids?: number[]
   password?: string
+  confirmPassword?: string
   store_id?: number
   hire_date?: string
   salary_template_id?: number

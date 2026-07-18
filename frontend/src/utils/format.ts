@@ -501,8 +501,10 @@ export const formatImageUrl = (path: string | null | undefined): string => {
       return protectedSubsidyPath
     }
 
-    const separator = protectedSubsidyPath.includes('?') ? '&' : '?'
-    return `${protectedSubsidyPath}${separator}token=${encodeURIComponent(token)}`
+    const [pathname, query = ''] = protectedSubsidyPath.split('?', 2)
+    const searchParams = new URLSearchParams(query)
+    searchParams.set('token', token)
+    return `${pathname}?${searchParams.toString()}`
   }
 
   // 开发环境：使用相对路径，通过 Vite 代理处理

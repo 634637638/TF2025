@@ -259,16 +259,12 @@ router.post('/delete-image',
       if (image_url) {
         try {
           const fs = require('fs').promises;
-          const path = require('path');
-
-          // 图片 URL 格式：/uploads/shop/xxx.jpg
-          const baseUploadPath = getUploadsRoot();
-
-          // 去掉开头的 /uploads/ 然后构建完整路径
-          const relativePath = image_url.startsWith('/uploads/')
-            ? image_url.substring('/uploads/'.length)
-            : image_url;
-          const filePath = path.join(baseUploadPath, relativePath);
+          const { getRelativeUploadPathFromUrl, getUploadPathFromUrl } = require('../utils/upload-paths');
+          const relativePath = getRelativeUploadPathFromUrl(image_url);
+          if (!relativePath.startsWith('shop/')) {
+            return ApiResponse.error(res, '只能删除商城图片目录中的文件', 400);
+          }
+          const filePath = getUploadPathFromUrl(image_url);
 
           // 检查文件是否存在并删除
           await fs.unlink(filePath);

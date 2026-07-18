@@ -5,6 +5,11 @@ const SalaryRecordRepository = require('../repositories/salary-record.repository
 const SalaryCalculatorService = require('./salary-calculator.service');
 const { getDatabase } = require('../config/database');
 const log = require('../utils/log');
+const { getMonthDateRange } = require('../utils/time');
+const {
+  buildLeaveExclusionRules,
+  shouldExcludeSaleByLeave
+} = require('../utils/leave-sales-filter');
 
 class SalaryRecordService {
   constructor() {
@@ -67,11 +72,90 @@ class SalaryRecordService {
    */
   async saveCalculatedSalary(salaryData, userId) {
     try {
-      salaryData.created_by = userId;
-      return await this.repository.upsertSalaryRecord(salaryData);
+      const { employee_id, period_start, period_end } = salaryData;
+      if (!employee_id || !period_start || !period_end) {
+        throw new Error('请提供员工ID和工资周期');
+      }
+
+      const calculated = await this.calculator.calculateSalary(employee_id, period_start, period_end);
+      const existing = await this.repository.getRecordByEmployeePeriod(employee_id, period_start, period_end);
+      const merged = this.mergeCalculatedSalaryState(calculated, existing, userId, {
+        status: salaryData.status,
+        payment_method: salaryData.payment_method,
+        paid_at: salaryData.paid_at,
+        payment_date: salaryData.payment_date
+      });
+
+      return await this.repository.upsertSalaryRecord(merged);
     } catch (error) {
       throw error;
     }
+  }
+
+  mergeCalculatedSalaryState(calculated, existing, operatorId, overrides = {}) {
+    const allowedStatuses = new Set(['draft', 'pending', 'approved', 'paid']);
+    const nextStatus = allowedStatuses.has(overrides.status) ? overrides.status : null;
+    const merged = { ...calculated };
+
+    if (existing) {
+      merged.status = existing.status === 'paid'
+        ? 'paid'
+        : (nextStatus || existing.status || calculated.status);
+      merged.payment_method = overrides.payment_method !== undefined
+        ? overrides.payment_method
+        : (existing.payment_method || null);
+      merged.paid_at = overrides.paid_at !== undefined
+        ? overrides.paid_at
+        : (existing.paid_at || null);
+      merged.payment_date = overrides.payment_date !== undefined
+        ? overrides.payment_date
+        : (existing.payment_date || null);
+      merged.approved_by = existing.approved_by || null;
+      merged.approved_at = existing.approved_at || null;
+      merged.created_by = existing.created_by || operatorId;
+      return merged;
+    }
+
+    merged.status = nextStatus || calculated.status;
+    merged.payment_method = overrides.payment_method || null;
+    merged.paid_at = overrides.paid_at || null;
+    merged.payment_date = overrides.payment_date || null;
+    merged.created_by = operatorId;
+    return merged;
+  }
+
+  async recalculateExistingSalaryForPeriod(employeeId, periodStart, periodEnd, operatorId) {
+    const existing = await this.repository.getRecordByEmployeePeriod(employeeId, periodStart, periodEnd);
+    if (!existing) {
+      return null;
+    }
+
+    const calculated = await this.calculator.calculateSalary(employeeId, periodStart, periodEnd);
+    const merged = this.mergeCalculatedSalaryState(calculated, existing, operatorId);
+    return await this.repository.upsertSalaryRecord(merged);
+  }
+
+  async recalculateExistingSalaryForAttendanceRecord(attendanceRecord, operatorId) {
+    if (!attendanceRecord || !attendanceRecord.employee_id || !attendanceRecord.record_date) {
+      return null;
+    }
+
+    const salaryAffectingTypes = new Set(['leave', 'monthly_leave', 'overtime', 'absent']);
+    if (!salaryAffectingTypes.has(attendanceRecord.record_type)) {
+      return null;
+    }
+
+    const period = getMonthDateRange(attendanceRecord.record_date);
+    if (!period) {
+      return null;
+    }
+
+    return await this.recalculateExistingSalaryForPeriod(
+      attendanceRecord.employee_id,
+      period.period_start,
+      period.period_end,
+      operatorId
+    );
   }
 
   async batchCalculateSalaries(employeeIds, periodStart, periodEnd) {
@@ -185,9 +269,9 @@ class SalaryRecordService {
     const conn = await db.getConnection();
 
     try {
-      // 首先获取所有员工在周期内的请假日期
+      // 首先获取所有员工在周期内的请假记录
       const leaveQuery = `
-        SELECT employee_id, record_date, leave_days
+        SELECT employee_id, record_date, leave_days, leave_type, leave_reason
         FROM attendance_records
         WHERE record_date BETWEEN ? AND ?
           AND status = 'approved'
@@ -195,20 +279,18 @@ class SalaryRecordService {
       `;
       const [leaveRows] = await conn.execute(leaveQuery, [periodStart, periodEnd]);
 
-      // 构建每个员工的请假日期集合
-      const employeeLeaveDates = new Map();
+      // 构建每个员工的请假过滤规则
+      const employeeLeaveRows = new Map();
       leaveRows.forEach(row => {
         const employeeId = row.employee_id;
-        if (!employeeLeaveDates.has(employeeId)) {
-          employeeLeaveDates.set(employeeId, new Set());
+        if (!employeeLeaveRows.has(employeeId)) {
+          employeeLeaveRows.set(employeeId, []);
         }
-        const leaveDate = new Date(row.record_date);
-        const leaveDays = parseInt(row.leave_days) || 1;
-        for (let i = 0; i < leaveDays; i++) {
-          const date = new Date(leaveDate);
-          date.setDate(date.getDate() + i);
-          employeeLeaveDates.get(employeeId).add(date.toISOString().split('T')[0]);
-        }
+        employeeLeaveRows.get(employeeId).push(row);
+      });
+      const employeeLeaveRules = new Map();
+      employeeLeaveRows.forEach((rows, employeeId) => {
+        employeeLeaveRules.set(employeeId, buildLeaveExclusionRules(rows));
       });
 
       // 查询所有员工在指定时间段内的销售记录（不聚合，便于过滤请假日期）
@@ -273,11 +355,10 @@ class SalaryRecordService {
       const result = {};
       rows.forEach(row => {
         const empId = row.employee_id;
-        const saleDate = new Date(row.salestime).toISOString().split('T')[0];
-        const leaveDates = employeeLeaveDates.get(empId);
+        const leaveRules = employeeLeaveRules.get(empId);
 
         // 如果该员工有请假记录，且销售日期在请假期间，则跳过
-        if (leaveDates && leaveDates.has(saleDate)) {
+        if (leaveRules && shouldExcludeSaleByLeave(row.salestime, leaveRules)) {
           return; // 跳过请假日期的销售
         }
 
@@ -372,9 +453,9 @@ class SalaryRecordService {
     const conn = await db.getConnection();
 
     try {
-      // 首先获取该员工在周期内的请假日期
+      // 首先获取该员工在周期内的请假记录
       const leaveQuery = `
-        SELECT record_date, leave_days
+        SELECT record_date, leave_days, leave_type, leave_reason
         FROM attendance_records
         WHERE employee_id = ?
           AND record_date BETWEEN ? AND ?
@@ -383,17 +464,7 @@ class SalaryRecordService {
       `;
       const [leaveRows] = await conn.execute(leaveQuery, [employeeId, periodStart, periodEnd]);
 
-      // 构建请假日期集合
-      const leaveDates = new Set();
-      leaveRows.forEach(row => {
-        const leaveDate = new Date(row.record_date);
-        const leaveDays = parseInt(row.leave_days) || 1;
-        for (let i = 0; i < leaveDays; i++) {
-          const date = new Date(leaveDate);
-          date.setDate(date.getDate() + i);
-          leaveDates.add(date.toISOString().split('T')[0]);
-        }
-      });
+      const leaveRules = buildLeaveExclusionRules(leaveRows);
 
       // 获取该员工的模板信息（用于过滤无提成的销售）
       const templateQuery = `
@@ -449,9 +520,8 @@ class SalaryRecordService {
 
       // 过滤掉请假日期的销售记录和没有提成的销售
       const filteredRows = rows.filter(row => {
-        const saleDate = new Date(row.salestime).toISOString().split('T')[0];
         // 排除请假日期的销售
-        if (leaveDates.has(saleDate)) return false;
+        if (shouldExcludeSaleByLeave(row.salestime, leaveRules)) return false;
 
         // 排除没有提成的销售（如果模板存在）
         if (template) {

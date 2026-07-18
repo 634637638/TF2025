@@ -614,43 +614,44 @@ body {
 /* 5.3 Table - 移动端通用适配 */
 @media (max-width: 767px) {
   .el-table {
-    font-size: var(--mobile-text-table) !important;
+    font-size: var(--admin-data-table-cell-font-size, var(--mobile-text-table)) !important;
     font-family: var(--app-font-family-sans) !important;
   }
 
-  .el-table th,
+  .el-table th {
+    padding: var(--admin-data-table-header-padding-y, 9px) var(--admin-data-table-header-padding-x, 6px) !important;
+    font-size: var(--admin-data-table-header-font-size, var(--mobile-text-table-header)) !important;
+  }
+
   .el-table td {
-    padding: 8px 6px !important;
+    padding: var(--admin-data-table-cell-padding-y, 8px) var(--admin-data-table-cell-padding-x, 6px) !important;
+    font-size: var(--admin-data-table-cell-font-size, var(--mobile-text-table)) !important;
   }
 
   .el-table__cell {
     word-break: break-word;
-    line-height: var(--mobile-line-height-compact) !important;
+    line-height: var(--admin-data-table-line-height, var(--mobile-line-height-compact)) !important;
   }
 
   /* 表格操作列 */
   .el-table .el-table__cell .el-button {
-    padding: 4px 8px;
-    font-size: var(--mobile-text-caption) !important;
-    margin: 2px;
+    min-height: var(--admin-data-table-action-height, 32px) !important;
+    padding: var(--admin-data-table-action-padding-y, 6px) var(--admin-data-table-action-padding-x, 12px) !important;
+    margin: 0 !important;
+    font-size: var(--admin-data-table-action-font-size, var(--mobile-text-caption)) !important;
   }
 }
 
 /* 小屏手机特定适配 */
 @media (max-width: 479px) {
   .el-table {
-    font-size: var(--mobile-text-table) !important;
-  }
-
-  .el-table th,
-  .el-table td {
-    padding: 7px 4px !important;
+    font-size: var(--admin-data-table-cell-font-size, var(--mobile-text-table)) !important;
   }
 
   .el-table .el-table__cell .el-button {
-    padding: 2px 6px;
-    font-size: 11px !important;
-    min-height: 32px;
+    min-height: var(--admin-data-table-action-height, 32px) !important;
+    padding: var(--admin-data-table-action-padding-y, 6px) var(--admin-data-table-action-padding-x, 12px) !important;
+    font-size: var(--admin-data-table-action-font-size, var(--mobile-text-caption)) !important;
   }
 }
 

@@ -90,6 +90,59 @@ if (isMobile.value) {
 
 ## 📐 布局规范
 
+### 0. 后台页面公共布局基准
+
+后台管理页面必须以综合查询页为移动端视觉基准，并统一复用 `src/styles/admin-layout.css` 中的公共 class。新增或调整页面时，不要在业务页面里重新定义统计卡片、页面标题、搜索面板、列表标题之间的间距。
+
+标准页面结构：
+
+```vue
+<template>
+  <div class="xxx-view admin-page safe-area-top safe-area-bottom">
+    <div class="admin-page-content">
+      <PageHeader title="页面标题" />
+
+      <div class="admin-page-content">
+        <div class="stats-cards">
+          <div class="stat-card">
+            <!-- 统计内容 -->
+          </div>
+        </div>
+
+        <UnifiedSearchPanel />
+
+        <div class="table-section admin-panel admin-table-panel">
+          <div class="section-title">
+            <i class="fas fa-list"></i>
+            列表标题
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+```
+
+手机端统一数值，来源为综合查询当前基准：
+
+- 页面横向留白：`--admin-page-gap-x: 6px`
+- 页面模块纵向间距：`--admin-panel-gap: 10px`
+- 统计卡片网格：固定 2 列，使用 `repeat(2, minmax(0, 1fr))`，基础资料页和普通后台页面不得退化成单列
+- 统计卡片内边距：`--admin-stat-card-padding: 12px`
+- 普通面板内边距：`--admin-panel-padding: 10px`
+- 表格面板内边距：`--admin-table-panel-padding-y: 10px`，`--admin-table-panel-padding-x: 6px`
+- 列表标题底部间距：`--admin-section-title-gap: 16px`
+- 列表标题底部内边距：`--admin-section-title-padding-bottom: 8px`
+
+统一要求：
+
+- 页面外层必须带 `admin-page`。
+- 页面主内容必须带 `admin-page-content`，模块间距由公共 `gap` 控制。
+- 统计区必须使用 `stats-cards` 和 `stat-card`。
+- 表格/列表容器必须使用 `admin-panel`，表格类列表再叠加 `admin-table-panel`。
+- 列表标题必须使用 `section-title`，记录数使用 `record-count`。
+- 手机端统计卡片、标题、搜索面板、列表面板间距不得在业务页面里按 `max-width: 480px` 或 `max-width: 375px` 二次改小。
+
 ### 1. 页面结构
 
 ```vue
@@ -156,6 +209,89 @@ if (isMobile.value) {
 }
 </style>
 ```
+
+### 4. 移动端表格统一规则
+
+移动端表格应优先使用公共 class 承载布局、表头高度、字号、行高等共性规则，页面或业务表只保留内容差异。禁止在单个业务表里单独覆写表头高度，避免同一页面不同 TAB 的页头高度不一致。
+
+综合查询列表是当前移动端表格视觉基准。所有手机端统一使用同一套表头标准，不按单个机型或 `≤480px` 单独分叉。
+
+适配范围：
+
+- 手机端统一范围：`max-width: 767px`
+- 覆盖常见宽度：`360px`、`375px`、`390px`、`393px`、`414px`、`428px`、`480px`、`767px`
+
+表头标准：
+
+- 字号：`13px`
+- 行高：`1.45`
+- 左右内边距：`8px`
+- 表头视觉高度：约 `40px`
+- 文本：单行展示，超长省略
+
+#### 工资页表格
+
+工资管理页的手机端表格必须统一使用 `salary-mobile-table`：
+
+- 工资模板：`data-table salary-template-table salary-mobile-table`
+- 员工工资：`data-table salary-employee-table salary-mobile-table`
+- 工资发放：`data-table salary-payout-table salary-mobile-table`
+- 工资计算：`data-table salary-mobile-table`
+
+Element Plus 表格公共规则：
+
+```scss
+@media (max-width: 767px) {
+  .salary-page.admin-page .table-responsive .salary-mobile-table {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    table-layout: fixed !important;
+  }
+
+  .salary-page.admin-page .salary-mobile-table :deep(.el-table__header th) {
+    height: 40px !important;
+    padding: 0 !important;
+  }
+
+  .salary-page.admin-page .salary-mobile-table :deep(.el-table__header th .cell) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    padding: 0 8px !important;
+    font-size: 13px !important;
+    line-height: 1.45 !important;
+    white-space: nowrap;
+    word-break: keep-all;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+```
+
+原生表格公共规则（综合查询 `devices-table` 基准）：
+
+```scss
+@media (max-width: 767px) {
+  .devices-table th,
+  .devices-table td {
+    padding: 10px 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+}
+```
+
+新增或调整工资页手机端表格时：
+
+- 先复用 `salary-mobile-table`，不要新建只服务某个 TAB 的表头高度规则。
+- 长表头优先缩短文案或压缩列宽，不能用换行撑高表头。
+- 业务表自己的 class 只处理列内容、颜色、按钮、展开行等差异。
+- 修改后至少检查 `360px`、`375px`、`390px`、`414px`、`428px`、`480px`、`767px`，确保同一页面不同 TAB 表头高度一致且页面不横向溢出。
 
 ## 🎨 样式规范
 

@@ -2,10 +2,49 @@ const express = require('express');
 const router = express.Router();
 const fs = require('fs');
 const path = require('path');
-const { unifiedAuth } = require('../middleware/unified-auth');
+const { unifiedAuth, requireAnyPermission } = require('../middleware/unified-auth');
 const ApiResponse = require('../utils/response');
 const log = require('../utils/log');
 const { getUploadsRoot, getUploadPathFromUrl, getRelativeUploadPathFromUrl } = require('../utils/upload-paths');
+
+const MAX_TEMP_FILE_AGE_MS = 2 * 60 * 60 * 1000;
+const TEMP_DIRECTORY_PERMISSIONS = {
+  subsidy: ['subsidy:create', 'subsidy:edit'],
+  shop: [
+    'h5-config:edit',
+    'h5-admin:edit',
+    'h5-banners:create',
+    'h5-banners:edit',
+    'h5-templates:create',
+    'h5-templates:edit'
+  ]
+};
+
+const requireTempFilePermissions = (req, res, next) => {
+  const files = Array.isArray(req.body?.files) ? req.body.files : [];
+  const directories = new Set();
+
+  for (const fileUrl of files) {
+    const relativePath = getRelativeUploadPathFromUrl(fileUrl);
+    const directory = relativePath.split('/')[0];
+    if (!directory || !TEMP_DIRECTORY_PERMISSIONS[directory]) {
+      return ApiResponse.error(res, '该目录不允许通过临时文件接口删除', 403);
+    }
+    directories.add(directory);
+  }
+
+  const pendingDirectories = [...directories];
+  const verifyNextDirectory = (index) => {
+    if (index >= pendingDirectories.length) {
+      return next();
+    }
+
+    const permissions = TEMP_DIRECTORY_PERMISSIONS[pendingDirectories[index]];
+    return requireAnyPermission(permissions)(req, res, () => verifyNextDirectory(index + 1));
+  };
+
+  return verifyNextDirectory(0);
+};
 
 /**
  * 删除临时文件（通用接口）
@@ -17,7 +56,7 @@ const { getUploadsRoot, getUploadPathFromUrl, getRelativeUploadPathFromUrl } = r
  *   files: string[] // 文件URL数组
  * }
  */
-router.post('/delete-temp-files', unifiedAuth, async (req, res) => {
+router.post('/delete-temp-files', unifiedAuth, requireTempFilePermissions, async (req, res) => {
   try {
     const { files } = req.body;
 
@@ -40,10 +79,8 @@ router.post('/delete-temp-files', unifiedAuth, async (req, res) => {
         const filePath = getUploadPathFromUrl(fileUrl);
 
         // 安全检查：确保文件路径在上传目录内
-        const normalizedFilePath = path.normalize(filePath);
-        const normalizedUploadDir = path.normalize(uploadDirPath);
-
-        if (!normalizedFilePath.startsWith(normalizedUploadDir)) {
+        const relativeToUploads = path.relative(uploadDirPath, filePath);
+        if (!relativeToUploads || relativeToUploads.startsWith('..') || path.isAbsolute(relativeToUploads)) {
           log.warn(`⚠️ 安全警告：尝试删除上传目录外的文件: ${filePath}`);
           failedFiles.push(fileUrl);
           continue;
@@ -51,6 +88,12 @@ router.post('/delete-temp-files', unifiedAuth, async (req, res) => {
 
         // 删除文件
         if (fs.existsSync(filePath)) {
+          const stats = fs.statSync(filePath);
+          if (!stats.isFile() || Date.now() - stats.mtimeMs > MAX_TEMP_FILE_AGE_MS) {
+            log.warn(`⚠️ 拒绝删除非近期临时文件: ${relativePath}`);
+            failedFiles.push(fileUrl);
+            continue;
+          }
           fs.unlinkSync(filePath);
           deletedFiles.push(relativePath);
           log.debug(`✅ 已删除临时文件: ${relativePath}`);

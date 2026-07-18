@@ -1,4 +1,4 @@
-const rateLimit = require('express-rate-limit');
+const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const { getDatabase, isConnected } = require('../config/database');
 const log = require('../utils/log');
 
@@ -62,14 +62,9 @@ const baseRateLimit = rateLimit({
   },
   standardHeaders: true, // 返回标准的RateLimit头
   legacyHeaders: false, // 禁用X-RateLimit-*头
-  store: store,
   keyGenerator: (req) => {
-    // 优先使用真实IP
-    return req.ip ||
-           req.connection.remoteAddress ||
-           req.socket.remoteAddress ||
-           (req.connection.socket ? req.connection.socket.remoteAddress : null) ||
-           'unknown';
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    return ipKeyGenerator(ip);
   },
   skip: (req) => {
     // 跳过健康检查等内部请求
@@ -89,11 +84,10 @@ const authRateLimit = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  store: store,
   keyGenerator: (req) => {
     const ip = req.ip || req.connection.remoteAddress || 'unknown';
     const identifier = req.body.username || req.body.email || 'anonymous';
-    return `${ip}:${identifier}`;
+    return `${ipKeyGenerator(ip)}:${identifier}`;
   }
 });
 
@@ -108,8 +102,7 @@ const searchRateLimit = rateLimit({
     retryAfter: '60'
   },
   standardHeaders: true,
-  legacyHeaders: false,
-  store: store
+  legacyHeaders: false
 });
 
 // 文件上传限流（更严格）
@@ -123,8 +116,7 @@ const uploadRateLimit = rateLimit({
     retryAfter: '3600'
   },
   standardHeaders: true,
-  legacyHeaders: false,
-  store: store
+  legacyHeaders: false
 });
 
 // 数据库操作限流
@@ -139,7 +131,6 @@ const dbRateLimit = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  store: store,
   skip: (req) => {
     // 跳过静态资源和健康检查
     return req.path.startsWith('/static') ||
@@ -174,8 +165,7 @@ const adaptiveRateLimit = (req, res, next) => {
         success: false,
         message: '服务器负载较高，请稍后再试',
         code: 'HIGH_LOAD_RATE_LIMIT'
-      },
-      store: store
+      }
     });
 
     return strictLimit(req, res, next);

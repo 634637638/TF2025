@@ -170,8 +170,7 @@ const unifiedAuth = async (req, res, next) => {
       method: req.method,
       authHeader: authHeader ? `Bearer [${token ? token.length : 0} chars]` : 'MISSING',
       tokenExists: !!token,
-      tokenLength: token ? token.length : 0,
-      tokenPreview: token ? token.substring(0, 30) + '...' : 'null'
+      tokenLength: token ? token.length : 0
     });
 
     if (!token || INVALID_TOKEN_MARKERS.has(token.toLowerCase())) {
@@ -204,7 +203,6 @@ const unifiedAuth = async (req, res, next) => {
         message: jwtError.message,
         tokenType: typeof token,
         tokenLength: token ? token.length : 0,
-        tokenPreview: token ? token.substring(0, 16) : 'null',
         path: req.originalUrl || req.url
       });
       throw jwtError;
@@ -221,14 +219,9 @@ const unifiedAuth = async (req, res, next) => {
 
     debugLog('JWT验证成功，用户:', {
       sub: decoded.sub,
-      username: decoded.username,
-      name: decoded.name,
-      role: decoded.role,
       type: decoded.type,
       iat: decoded.iat,
-      exp: decoded.exp,
-      iss: decoded.iss,
-      aud: decoded.aud
+      exp: decoded.exp
     });
 
     const cacheKey = getAuthProfileCacheKey(decoded);
@@ -311,10 +304,10 @@ const unifiedAuth = async (req, res, next) => {
       permission_type: p.permission_type
     }));
 
-    // 调试：记录用户权限
-    debugLog(`🔑 用户 ${decoded.username} (ID: ${decoded.sub}) 权限列表:`);
-    debugLog(`   总权限数: ${permissions.length}`);
-    debugLog(`   考勤权限:`, permissions.filter(p => p.includes('attendance')));
+    debugLog('用户权限加载完成:', {
+      userId: decoded.sub,
+      permissionCount: permissions.length
+    });
 
     req.user = {
       ...user,
@@ -585,12 +578,7 @@ const checkUnifiedPermission = (options = {}) => {
           if (process.env.NODE_ENV === 'development') {
             log.debug('权限检查失败', {
               required: requiredPermissions,
-              userPermissions: userPermissions.map(p =>
-                p.module_key && p.permission_type
-                  ? `${p.module_key}:${p.permission_type}`
-                  : p
-              ),
-              user: req.user.username,
+              permissionCount: userPermissions.length,
               userId: req.user.id
             });
           }
@@ -665,9 +653,10 @@ const checkSinglePermission = (userPermissions, requiredPermission, _moduleType)
   const normalizedUserPermissions = userPermissions.map(normalizePermissionString);
 
   // 开发环境输出详细权限检查日志，避免污染生产日志
-  debugLog('🔍 权限检查详情:');
-  debugLog('   需要权限:', requiredPermission);
-  debugLog('   标准化用户权限:', normalizedUserPermissions);
+  debugLog('权限检查:', {
+    requiredPermission,
+    permissionCount: normalizedUserPermissions.length
+  });
 
   // 提取所需权限的模块前缀
   const moduleMatch = requiredPermission.match(/^([^:]+):/);

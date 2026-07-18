@@ -4,7 +4,7 @@
  */
 
 const priceListService = require('../services/price-list.service');
-const { getDatabase } = require('../config/database');
+const { getDatabase, markConnectionPurpose } = require('../config/database');
 const log = require('../utils/log');
 
 class PriceSyncScheduler {
@@ -86,6 +86,7 @@ class PriceSyncScheduler {
       }
 
       this.schedulerLockConnection = connection;
+      markConnectionPurpose(connection, 'price-sync-leadership-lock', { longLived: true });
       this.isLeader = true;
       log.success(`当前进程已取得价格同步主调度锁 (PID: ${process.pid})`);
       return true;
@@ -340,6 +341,8 @@ class PriceSyncScheduler {
         connection.release();
         return null;
       }
+
+      markConnectionPurpose(connection, `price-sync-execution-lock:${configId}`, { longLived: true });
 
       return {
         connection,

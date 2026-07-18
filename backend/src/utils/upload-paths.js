@@ -11,8 +11,23 @@ function getUploadsRoot() {
   return configuredPath ? path.resolve(configuredPath) : DEFAULT_UPLOADS_DIR;
 }
 
+function resolveWithinUploads(...segments) {
+  const uploadsRoot = path.resolve(getUploadsRoot());
+  const resolvedPath = path.resolve(uploadsRoot, ...segments.map(segment => String(segment || '')));
+  const relativePath = path.relative(uploadsRoot, resolvedPath);
+
+  if (!relativePath || relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+    if (!relativePath && segments.length === 0) {
+      return uploadsRoot;
+    }
+    throw new Error('文件路径超出上传目录');
+  }
+
+  return resolvedPath;
+}
+
 function getUploadSubdir(...segments) {
-  return path.join(getUploadsRoot(), ...segments);
+  return segments.length > 0 ? resolveWithinUploads(...segments) : path.resolve(getUploadsRoot());
 }
 
 function getUploadUrl(...segments) {
@@ -36,12 +51,15 @@ function getRelativeUploadPathFromUrl(fileUrl) {
 
   return urlPath.startsWith(`${UPLOADS_URL_PREFIX}/`)
     ? urlPath.slice(`${UPLOADS_URL_PREFIX}/`.length)
-    : urlPath.replace(/^\/+/, '');
+    : '';
 }
 
 function getUploadPathFromUrl(fileUrl) {
   const relativePath = getRelativeUploadPathFromUrl(fileUrl);
-  return relativePath ? path.join(getUploadsRoot(), relativePath) : getUploadsRoot();
+  if (!relativePath) {
+    throw new Error('无效的上传文件 URL');
+  }
+  return resolveWithinUploads(relativePath);
 }
 
 module.exports = {

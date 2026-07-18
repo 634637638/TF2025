@@ -6,251 +6,273 @@
     module-name="维修管理"
     permission-code="repairs:view"
   >
-
-  <div class="repairs-management admin-page admin-page-content safe-area-top safe-area-bottom">
-    <PageHeader title="维修管理" description="管理手机维修记录和进度">
-      <template #actions>
-        <el-button v-if="canCreate" @click="showAddModal" type="primary">
-          <i class="fas fa-plus"></i> 新建维修单
-        </el-button>
-        <el-button @click="refreshData" type="info" :disabled="refreshing">
-          <InlineLoading v-if="refreshing" text="刷新中..." size="small" variant="inherit" />
-          <template v-else>
-            <i class="fas fa-refresh"></i> 刷新
-          </template>
-        </el-button>
-      </template>
-    </PageHeader>
-
-    <div class="toolbar">
-      <div class="filter-tabs">
-        <button 
-          v-for="tab in statusTabs" 
-          :key="tab.key"
-          @click="activeTab = tab.key"
-          :class="['tab-btn', { active: activeTab === tab.key }]"
-        >
-          {{ tab.label }}
-        </button>
-      </div>
-      <div class="search-box">
-        <input 
-          v-model="searchQuery" 
-          type="text" 
-          placeholder="搜索客户、手机型号..." 
-          class="form-control"
-        />
-      </div>
-    </div>
-
-    <!-- 维修统计 -->
-    <div v-if="showStatsCards" class="stats-cards">
-      <div v-if="canViewRepairField('stats_pending')" class="stat-card">
-        <h3>待维修</h3>
-        <p class="number pending">{{ stats.pending }}</p>
-      </div>
-      <div v-if="canViewRepairField('stats_processing')" class="stat-card">
-        <h3>维修中</h3>
-        <p class="number processing">{{ stats.processing }}</p>
-      </div>
-      <div v-if="canViewRepairField('stats_completed')" class="stat-card">
-        <h3>已完成</h3>
-        <p class="number completed">{{ stats.completed }}</p>
-      </div>
-      <div v-if="canViewRepairField('stats_monthly_revenue')" class="stat-card">
-        <h3>本月收入</h3>
-        <p class="amount">¥{{ stats.monthlyRevenue }}</p>
-      </div>
-    </div>
-
-    <!-- 维修记录列表 -->
-    <div class="repairs-table table-section admin-table-panel">
-      <table>
-        <thead>
-          <tr>
-            <th>维修单号</th>
-            <th>客户</th>
-            <th>手机型号</th>
-            <th>故障描述</th>
-            <th>预计费用</th>
-            <th>维修状态</th>
-            <th>维修员</th>
-            <th>创建时间</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="repair in filteredRepairs" :key="repair.id">
-            <td>{{ repair.order_no }}</td>
-            <td class="customer">{{ repair.customer_name }}</td>
-            <td>{{ repair.phone_model }}</td>
-            <td class="description">{{ repair.problem_description }}</td>
-            <td class="amount">¥{{ repair.estimated_cost }}</td>
-            <td>
-              <span class="status-badge" :class="repair.status">
-                {{ getStatusText(repair.status) }}
-              </span>
-            </td>
-            <td>{{ repair.technician_name || '-' }}</td>
-            <td>{{ formatDate(repair.created_at) }}</td>
-            <td>
-              <el-button @click="viewRepair(repair)" type="primary" size="small" title="查看详情">
-                <i class="fas fa-eye"></i>
-              </el-button>
-              <el-button v-if="canEdit" @click="editRepair(repair)" type="warning" size="small" title="编辑">
-                <i class="fas fa-edit"></i>
-              </el-button>
-              <el-button v-if="canEdit" @click="updateStatus(repair)" type="success" size="small" title="更新状态">
-                <i class="fas fa-sync"></i>
-              </el-button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      
-      <div v-if="filteredRepairs.length === 0" class="empty-state">
-        <i class="fas fa-tools"></i>
-        <p>暂无维修记录</p>
-      </div>
-    </div>
-
-    <!-- 新建维修单模态框 -->
-    <MobileDialog
-      v-model="showModal"
-      title="新建维修单"
-      width="600px"
-      dialog-class="repairs-dialog"
-      :show-default-footer="false"
-      :close-on-click-modal="false"
-    >
-      <div class="modal-body">
-        <form @submit.prevent="handleSubmit">
-          <div class="form-group">
-            <label>客户 *</label>
-            <select v-model="formData.customer_id" class="form-control" required>
-              <option value="">请选择客户</option>
-              <option v-for="customer in customers" :key="customer.id" :value="customer.id">
-                {{ customer.name }} - {{ customer.phone }}
-              </option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label>手机品牌 *</label>
-            <select v-model="formData.brand_id" class="form-control" @change="onBrandChange" required>
-              <option value="">请选择品牌</option>
-              <option v-for="brand in brands" :key="brand.id" :value="brand.id">
-                {{ brand.name }}
-              </option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label>手机型号 *</label>
-            <input 
-              v-model="formData.phone_model" 
-              type="text" 
-              class="form-control" 
-              required
-              placeholder="请输入手机型号"
-            />
-          </div>
-
-          <div class="form-group">
-            <label>IMEI/序列号</label>
-            <input 
-              v-model="formData.imei" 
-              type="text" 
-              class="form-control" 
-              placeholder="请输入IMEI或序列号"
-            />
-          </div>
-
-          <div class="form-group">
-            <label>故障描述 *</label>
-            <textarea 
-              v-model="formData.problem_description" 
-              class="form-control" 
-              rows="4"
-              required
-              placeholder="请详细描述故障情况"
-            ></textarea>
-          </div>
-
-          <div class="form-group">
-            <label>预计费用</label>
-            <input 
-              v-model.number="formData.estimated_cost" 
-              type="number" 
-              class="form-control" 
-              step="0.01" 
-              min="0"
-              placeholder="预计维修费用"
-            />
-          </div>
-
-          <div class="form-group">
-            <label>维修员</label>
-            <select v-model="formData.technician_id" class="form-control">
-              <option value="">请选择维修员</option>
-              <option v-for="technician in technicians" :key="technician.id" :value="technician.id">
-                {{ technician.name }}
-              </option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label>备注</label>
-            <textarea 
-              v-model="formData.remarks" 
-              class="form-control" 
-              rows="3"
-              placeholder="其他备注信息"
-            ></textarea>
-          </div>
-        </form>
-      </div>
-
-      <template #footer>
-        <div class="modal-footer">
-          <el-button @click="closeModal" type="info">取消</el-button>
-          <el-button @click="handleSubmit" type="primary" :disabled="submitting">
-            {{ submitting ? '提交中...' : '创建维修单' }}
+    <div class="repairs-management admin-page admin-unified-base-data-page safe-area-top safe-area-bottom">
+      <PageHeader icon="fas fa-screwdriver-wrench" title="维修管理" description="管理手机维修记录和进度">
+        <template #actions>
+          <el-button v-if="canCreate" type="primary" @click="showAddModal">
+            <i class="fas fa-plus"></i> 新建维修单
           </el-button>
+          <el-button type="info" :disabled="refreshing" @click="refreshData">
+            <InlineLoading v-if="refreshing" text="刷新中..." size="small" variant="inherit" />
+            <template v-else><i class="fas fa-refresh"></i> 刷新</template>
+          </el-button>
+        </template>
+      </PageHeader>
+
+      <div class="repairs-content admin-page-content">
+        <div v-if="showStatsCards" class="stats-cards">
+          <div v-if="canViewRepairField('stats_pending')" class="stat-card">
+            <div class="stat-icon pending"><i class="fas fa-clock"></i></div>
+            <div class="stat-content">
+              <div class="stat-value">{{ stats.pending }}</div>
+              <div class="stat-label">待维修</div>
+            </div>
+          </div>
+          <div v-if="canViewRepairField('stats_processing')" class="stat-card">
+            <div class="stat-icon processing"><i class="fas fa-screwdriver-wrench"></i></div>
+            <div class="stat-content">
+              <div class="stat-value">{{ stats.processing }}</div>
+              <div class="stat-label">维修中</div>
+            </div>
+          </div>
+          <div v-if="canViewRepairField('stats_completed')" class="stat-card">
+            <div class="stat-icon completed"><i class="fas fa-circle-check"></i></div>
+            <div class="stat-content">
+              <div class="stat-value">{{ stats.completed }}</div>
+              <div class="stat-label">已完成</div>
+            </div>
+          </div>
+          <div v-if="canViewRepairField('stats_monthly_revenue')" class="stat-card">
+            <div class="stat-icon revenue"><i class="fas fa-yen-sign"></i></div>
+            <div class="stat-content">
+              <div class="stat-value">¥{{ stats.monthlyRevenue }}</div>
+              <div class="stat-label">本月收入</div>
+            </div>
+          </div>
         </div>
-      </template>
-    </MobileDialog>
-  </div>
+
+        <UnifiedSearchPanel
+          v-model:expanded="searchExpanded"
+          :loading="loading"
+          @search="handleSearch"
+          @reset="handleReset"
+        >
+          <template #primary>
+            <el-input
+              v-model="searchQuery"
+              placeholder="搜索维修单号、客户、手机型号"
+              clearable
+              @keyup.enter="handleSearch"
+            >
+              <template #prefix><i class="fas fa-search"></i></template>
+            </el-input>
+          </template>
+          <div class="form-group filter-item">
+            <el-select v-model="activeTab" placeholder="维修状态" @change="handleSearch">
+              <el-option v-for="tab in statusTabs" :key="tab.key" :label="tab.label" :value="tab.key" />
+            </el-select>
+          </div>
+        </UnifiedSearchPanel>
+
+        <div class="repairs-table table-section admin-panel admin-table-panel">
+          <div class="section-header">
+            <div class="section-title">
+              <i class="fas fa-list"></i>
+              维修记录
+              <span class="record-count">共 {{ filteredRepairs.length }} 条记录</span>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <el-table
+              :data="loading ? [] : paginatedRepairs"
+              border
+              stripe
+              class="data-table devices-table base-data-table repairs-data-table"
+              table-layout="fixed"
+              :fit="true"
+              :row-key="getRepairRowKey"
+              :expand-row-keys="isMobile && mobileActionRowId ? [mobileActionRowId] : []"
+              @row-click="handleRepairRowClick"
+            >
+              <template #empty>
+                <TableLoadingRow v-if="loading" mode="block" text="加载维修记录中..." />
+                <div v-else class="empty-state"><i class="fas fa-tools"></i><p>暂无维修记录</p></div>
+              </template>
+
+              <el-table-column
+                label="维修单号"
+                :min-width="repairNumberColumnWidth"
+                align="center"
+                class-name="identifier-column"
+              >
+                <template #default="{ row }"><span class="repair-number">{{ row.order_no }}</span></template>
+              </el-table-column>
+              <el-table-column prop="customer_name" label="客户" :min-width="customerColumnWidth" align="center">
+                <template #default="{ row }"><strong>{{ row.customer_name || '-' }}</strong></template>
+              </el-table-column>
+              <el-table-column prop="phone_model" label="手机型号" :min-width="modelColumnWidth" align="center">
+                <template #default="{ row }">{{ row.phone_model || '-' }}</template>
+              </el-table-column>
+              <el-table-column v-if="!isMobile" prop="problem_description" label="故障描述" min-width="190" align="center" show-overflow-tooltip />
+              <el-table-column v-if="!isMobile" label="预计费用" min-width="104" align="center">
+                <template #default="{ row }"><span class="amount-value">¥{{ formatAmount(row.estimated_cost) }}</span></template>
+              </el-table-column>
+              <el-table-column label="维修状态" :min-width="isMobile ? 78 : 94" align="center">
+                <template #default="{ row }">
+                  <span :class="['status-badge', `status-${row.status}`]">{{ getStatusText(row.status) }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column v-if="!isMobile" prop="technician_name" label="维修员" min-width="96" align="center">
+                <template #default="{ row }">{{ row.technician_name || '-' }}</template>
+              </el-table-column>
+              <el-table-column v-if="!isMobile" label="创建时间" min-width="154" align="center">
+                <template #default="{ row }"><span class="time-value">{{ formatDate(row.created_at) }}</span></template>
+              </el-table-column>
+              <el-table-column v-if="showActionField" label="操作" min-width="176" align="center" class-name="actions-column">
+                <template #default="{ row }">
+                  <div class="action-buttons">
+                    <el-button type="primary" size="small" title="查看详情" @click.stop="viewRepair(row)"><i class="fas fa-eye"></i></el-button>
+                    <el-button v-if="canEdit" type="warning" size="small" title="编辑" @click.stop="editRepair(row)"><i class="fas fa-edit"></i></el-button>
+                    <el-button v-if="canEdit" type="success" size="small" title="更新状态" @click.stop="updateStatus(row)"><i class="fas fa-sync"></i></el-button>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="isMobile && canViewRepairField('actions')"
+                type="expand"
+                width="1"
+                class-name="mobile-expand-column"
+                label-class-name="mobile-expand-header"
+              >
+                <template #default="{ row }">
+                  <div class="mobile-row-actions">
+                    <el-button type="primary" size="small" @click.stop="viewRepair(row)"><i class="fas fa-eye"></i><span>详情</span></el-button>
+                    <el-button v-if="canEdit" type="warning" size="small" @click.stop="editRepair(row)"><i class="fas fa-edit"></i><span>编辑</span></el-button>
+                    <el-button v-if="canEdit" type="success" size="small" @click.stop="updateStatus(row)"><i class="fas fa-sync"></i><span>状态</span></el-button>
+                  </div>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+
+          <Pagination
+            v-if="filteredRepairs.length > 0"
+            v-model:current="currentPage"
+            v-model:page-size="pageSize"
+            :total="filteredRepairs.length"
+            :page-sizes="[20, 50, 100]"
+            :show-total="true"
+            :show-range="true"
+            :show-page-sizes="true"
+            :show-quick-jumper="true"
+            :disabled="loading"
+            @change="handlePaginationChange"
+          />
+        </div>
+      </div>
+
+      <MobileDialog
+        v-model="showModal"
+        title="新建维修单"
+        width="600px"
+        dialog-class="repairs-dialog"
+        :show-default-footer="false"
+        :close-on-click-modal="false"
+      >
+        <el-form :model="formData" label-width="100px" :disabled="submitting">
+          <el-form-item label="客户" required>
+            <el-select v-model="formData.customer_id" placeholder="请选择客户" filterable>
+              <el-option v-for="customer in customers" :key="customer.id" :label="`${customer.name} - ${customer.phone}`" :value="customer.id" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="手机品牌" required>
+            <el-select v-model="formData.brand_id" placeholder="请选择品牌" @change="onBrandChange">
+              <el-option v-for="brand in brands" :key="brand.id" :label="brand.name" :value="brand.id" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="手机型号" required><el-input v-model="formData.phone_model" placeholder="请输入手机型号" /></el-form-item>
+          <el-form-item label="IMEI/序列号"><el-input v-model="formData.imei" placeholder="请输入IMEI或序列号" /></el-form-item>
+          <el-form-item label="故障描述" required><el-input v-model="formData.problem_description" type="textarea" :rows="4" placeholder="请详细描述故障情况" /></el-form-item>
+          <el-form-item label="预计费用"><el-input-number v-model="formData.estimated_cost" :min="0" :precision="2" :step="10" controls-position="right" /></el-form-item>
+          <el-form-item label="维修员">
+            <el-select v-model="formData.technician_id" placeholder="请选择维修员" clearable>
+              <el-option v-for="technician in technicians" :key="technician.id" :label="technician.name" :value="technician.id" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="备注"><el-input v-model="formData.remarks" type="textarea" :rows="3" placeholder="其他备注信息" /></el-form-item>
+        </el-form>
+        <template #footer>
+          <div class="modal-footer">
+            <el-button type="info" @click="closeModal">取消</el-button>
+            <el-button type="primary" :loading="submitting" @click="handleSubmit">创建维修单</el-button>
+          </div>
+        </template>
+      </MobileDialog>
+    </div>
   </PermissionGate>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
-import { usePagePermissions } from '@/composables/usePagePermissions'
-import { useNotification } from '@/composables/useNotification'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useLoadingState } from '@/composables'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
+import { useMobile } from '@/composables/mobile'
+import { useNotification } from '@/composables/useNotification'
+import { usePagePermissions } from '@/composables/usePagePermissions'
 import { PageHeader, PermissionGate } from '@/components/base'
 import InlineLoading from '@/components/InlineLoading.vue'
-import type { RepairOrder } from '@/types/repair'
-import type { Customer } from '@/types/order'
-import type { Brand, Technician } from '@/types'
+import Pagination from '@/components/Pagination.vue'
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
+import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { logger } from '@/utils/logger'
+import { getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
+
+type RepairStatus = 'pending' | 'processing' | 'completed' | 'cancelled'
+
+interface RepairItem {
+  id: number
+  order_no: string
+  customer_id: number
+  customer_name: string
+  brand_id: number
+  phone_model: string
+  imei?: string
+  problem_description: string
+  estimated_cost: number
+  actual_cost?: number
+  status: RepairStatus
+  technician_id?: number
+  technician_name?: string
+  remarks?: string
+  created_at: string
+  updated_at: string
+}
+
+interface CustomerOption { id: number; name: string; phone: string }
+interface BrandOption { id: number; name: string }
+interface TechnicianOption { id: number; name: string }
 
 const { canView, canCreate, canEdit, handleNoPermission } = usePagePermissions('repairs')
-const { success, error } = useNotification()
+const { success, error: notifyError, info } = useNotification()
+const { isMobile } = useMobile()
+const { loading } = useLoadingState()
 
-// 维修单别名
-type Repair = RepairOrder
-
-const repairs = ref<Repair[]>([])
-const customers = ref<Customer[]>([])
-const brands = ref<Brand[]>([])
-const technicians = ref<Technician[]>([])
+const repairs = ref<RepairItem[]>([])
+const customers = ref<CustomerOption[]>([])
+const brands = ref<BrandOption[]>([])
+const technicians = ref<TechnicianOption[]>([])
 const showModal = ref(false)
 const submitting = ref(false)
 const refreshing = ref(false)
 const searchQuery = ref('')
-const activeTab = ref('all')
+const searchExpanded = ref(false)
+const activeTab = ref<'all' | RepairStatus>('all')
+const currentPage = ref(1)
+const pageSize = ref(20)
+const mobileActionRowId = ref<string | null>(null)
+const lastTappedRowId = ref<string | null>(null)
+const lastTapTimestamp = ref(0)
 
 const repairFieldMap: Record<string, string> = {
   stats_pending: 'stats.pending',
@@ -260,26 +282,20 @@ const repairFieldMap: Record<string, string> = {
   actions: 'system_info.operations'
 }
 
-const getRepairFieldKey = (fieldName: string) => repairFieldMap[fieldName] || fieldName
-const canViewRepairField = (fieldName: string) => {
-  return fieldPermissions.isFieldVisible('repairs_repairsview', getRepairFieldKey(fieldName))
-}
+const canViewRepairField = (fieldName: string) => fieldPermissions.isFieldVisible(
+  'repairs_repairsview',
+  repairFieldMap[fieldName] || fieldName
+)
 
-const showStatsCards = computed(() => (
-  canViewRepairField('stats_pending') ||
-  canViewRepairField('stats_processing') ||
-  canViewRepairField('stats_completed') ||
-  canViewRepairField('stats_monthly_revenue')
-))
+const showStatsCards = computed(() => [
+  'stats_pending', 'stats_processing', 'stats_completed', 'stats_monthly_revenue'
+].some(canViewRepairField))
 
-const stats = ref({
-  pending: 0,
-  processing: 0,
-  completed: 0,
-  monthlyRevenue: '0'
-})
+const showActionField = computed(() => !isMobile.value && canViewRepairField('actions'))
 
-const statusTabs = [
+const stats = ref({ pending: 0, processing: 0, completed: 0, monthlyRevenue: '0' })
+
+const statusTabs: Array<{ key: 'all' | RepairStatus; label: string }> = [
   { key: 'all', label: '全部' },
   { key: 'pending', label: '待维修' },
   { key: 'processing', label: '维修中' },
@@ -287,522 +303,249 @@ const statusTabs = [
 ]
 
 const formData = reactive({
-  customer_id: '',
-  brand_id: '',
+  customer_id: null as number | null,
+  brand_id: null as number | null,
   phone_model: '',
   imei: '',
   problem_description: '',
   estimated_cost: 0,
-  technician_id: '',
+  technician_id: null as number | null,
   remarks: ''
 })
 
 const filteredRepairs = computed(() => {
-  let filtered = repairs.value
-
-  // 按状态过滤
-  if (activeTab.value !== 'all') {
-    filtered = filtered.filter(repair => repair.status === activeTab.value)
-  }
-
-  // 按搜索词过滤
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(repair => 
-      repair.customer_name.toLowerCase().includes(query) ||
-      repair.phone_model.toLowerCase().includes(query) ||
-      repair.order_no.toLowerCase().includes(query)
-    )
-  }
-
-  return filtered
+  const keyword = searchQuery.value.trim().toLowerCase()
+  return repairs.value.filter(repair => {
+    if (activeTab.value !== 'all' && repair.status !== activeTab.value) return false
+    if (!keyword) return true
+    return [repair.customer_name, repair.phone_model, repair.order_no]
+      .some(value => value.toLowerCase().includes(keyword))
+  })
 })
 
-const getStatusText = (status: string) => {
-  const statusMap = {
-    'pending': '待维修',
-    'processing': '维修中',
-    'completed': '已完成',
-    'cancelled': '已取消'
-  }
-  return statusMap[status] || status
-}
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredRepairs.value.length / pageSize.value)))
+const paginatedRepairs = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return filteredRepairs.value.slice(start, start + pageSize.value)
+})
+
+const repairNumberColumnWidth = computed(() => getIdentifierColumnMinWidth(
+  ['维修单号', ...paginatedRepairs.value.map(repair => repair.order_no)],
+  { minWidth: 132, horizontalPadding: 30 }
+))
+const customerColumnWidth = computed(() => getTextColumnMinWidth(
+  ['客户', ...paginatedRepairs.value.map(repair => repair.customer_name)],
+  { minWidth: isMobile.value ? 84 : 96, horizontalPadding: 28 }
+))
+const modelColumnWidth = computed(() => getTextColumnMinWidth(
+  ['手机型号', ...paginatedRepairs.value.map(repair => repair.phone_model)],
+  { minWidth: isMobile.value ? 116 : 132, horizontalPadding: 28 }
+))
+
+const getRepairRowKey = (repair: RepairItem) => String(repair.id)
+
+const getStatusText = (status: RepairStatus) => ({
+  pending: '待维修', processing: '维修中', completed: '已完成', cancelled: '已取消'
+}[status])
 
 const loadRepairs = async () => {
+  loading.value = true
   try {
-    // 模拟数据
     repairs.value = [
       {
-        id: 1,
-        order_no: 'RX20251122001',
-        customer_id: 1,
-        customer_name: '张三',
-        brand_id: 1,
-        phone_model: 'iPhone 15 Pro',
-        imei: '35 12345678901234',
-        problem_description: '屏幕碎裂，触摸失灵',
-        estimated_cost: 1200,
-        status: 'pending',
-        technician_id: 2,
-        technician_name: '李师傅',
-        remarks: '客户同意更换屏幕总成',
-        created_at: '2025-11-22T09:30:00Z',
-        updated_at: '2025-11-22T09:30:00Z'
+        id: 1, order_no: 'RX20251122001', customer_id: 1, customer_name: '张三', brand_id: 1,
+        phone_model: 'iPhone 15 Pro', imei: '35 12345678901234', problem_description: '屏幕碎裂，触摸失灵',
+        estimated_cost: 1200, status: 'pending', technician_id: 2, technician_name: '李师傅',
+        remarks: '客户同意更换屏幕总成', created_at: '2025-11-22T09:30:00Z', updated_at: '2025-11-22T09:30:00Z'
       },
       {
-        id: 2,
-        order_no: 'RX20251122002',
-        customer_id: 2,
-        customer_name: '李四',
-        brand_id: 2,
-        phone_model: '华为Mate 60 Pro',
-        problem_description: '电池不耐用，需要更换电池',
-        estimated_cost: 300,
-        actual_cost: 280,
-        status: 'processing',
-        technician_id: 3,
-        technician_name: '王师傅',
-        created_at: '2025-11-21T14:20:00Z',
-        updated_at: '2025-11-22T10:15:00Z'
+        id: 2, order_no: 'RX20251122002', customer_id: 2, customer_name: '李四', brand_id: 2,
+        phone_model: '华为Mate 60 Pro', problem_description: '电池不耐用，需要更换电池', estimated_cost: 300,
+        actual_cost: 280, status: 'processing', technician_id: 3, technician_name: '王师傅',
+        created_at: '2025-11-21T14:20:00Z', updated_at: '2025-11-22T10:15:00Z'
       }
     ]
-
-    // 计算统计数据
     stats.value = {
-      pending: repairs.value.filter(r => r.status === 'pending').length,
-      processing: repairs.value.filter(r => r.status === 'processing').length,
-      completed: repairs.value.filter(r => r.status === 'completed').length,
+      pending: repairs.value.filter(repair => repair.status === 'pending').length,
+      processing: repairs.value.filter(repair => repair.status === 'processing').length,
+      completed: repairs.value.filter(repair => repair.status === 'completed').length,
       monthlyRevenue: '8,560'
     }
-  } catch (error) {
-    logger.error('加载维修数据失败:', error)
+  } catch (err) {
+    logger.error('加载维修数据失败:', err)
+    repairs.value = []
+  } finally {
+    loading.value = false
   }
 }
 
-const loadCustomers = async () => {
-  try {
-    customers.value = [
-      { id: 1, name: '张三', phone: '13800138001' },
-      { id: 2, name: '李四', phone: '13800138002' }
-    ]
-  } catch (error) {
-    logger.error('加载客户数据失败:', error)
-  }
-}
+const loadCustomers = async () => { customers.value = [{ id: 1, name: '张三', phone: '13800138001' }, { id: 2, name: '李四', phone: '13800138002' }] }
+const loadBrands = async () => { brands.value = [{ id: 1, name: 'Apple' }, { id: 2, name: '华为' }, { id: 3, name: '小米' }] }
+const loadTechnicians = async () => { technicians.value = [{ id: 2, name: '李师傅' }, { id: 3, name: '王师傅' }] }
 
-const loadBrands = async () => {
-  try {
-    brands.value = [
-      { id: 1, name: 'Apple' },
-      { id: 2, name: '华为' },
-      { id: 3, name: '小米' }
-    ]
-  } catch (error) {
-    logger.error('加载品牌数据失败:', error)
-  }
-}
-
-const loadTechnicians = async () => {
-  try {
-    technicians.value = [
-      { id: 2, name: '李师傅' },
-      { id: 3, name: '王师傅' }
-    ]
-  } catch (error) {
-    logger.error('加载维修员数据失败:', error)
-  }
-}
+const resetForm = () => Object.assign(formData, {
+  customer_id: null, brand_id: null, phone_model: '', imei: '', problem_description: '',
+  estimated_cost: 0, technician_id: null, remarks: ''
+})
 
 const showAddModal = () => {
-  if (!canCreate.value) {
-    handleNoPermission('create')
-    return
-  }
-
+  if (!canCreate.value) return handleNoPermission('create')
   resetForm()
   showModal.value = true
 }
 
-const closeModal = () => {
-  showModal.value = false
-  resetForm()
-}
-
-const resetForm = () => {
-  Object.assign(formData, {
-    customer_id: '',
-    brand_id: '',
-    phone_model: '',
-    imei: '',
-    problem_description: '',
-    estimated_cost: 0,
-    technician_id: '',
-    remarks: ''
-  })
-}
-
-const onBrandChange = () => {
-  // 根据品牌设置默认型号
-  const brand = brands.value.find(b => b.id === formData.brand_id)
-  if (brand) {
-    // 这里可以根据品牌预填充一些常见型号
-  }
-}
+const closeModal = () => { showModal.value = false; resetForm() }
+const onBrandChange = () => undefined
 
 const handleSubmit = async () => {
   if (submitting.value) return
-  if (!canCreate.value) {
-    handleNoPermission('create')
+  if (!canCreate.value) return handleNoPermission('create')
+  if (!formData.customer_id || !formData.brand_id || !formData.phone_model || !formData.problem_description) {
+    notifyError('请完整填写必填项')
     return
   }
-
   submitting.value = true
-
   try {
-    await new Promise(resolve => setTimeout(resolve, 1000)) // 模拟API调用
-
+    await new Promise(resolve => setTimeout(resolve, 500))
     await loadRepairs()
     closeModal()
-  } catch (error) {
-    logger.error('创建维修单失败:', error)
+    success('维修单创建成功')
+  } catch (err) {
+    logger.error('创建维修单失败:', err)
+    notifyError('创建维修单失败')
   } finally {
     submitting.value = false
   }
 }
 
-const viewRepair = (repair: Repair) => {
+const viewRepair = (repair: RepairItem) => info(`维修单 ${repair.order_no} 详情功能待接入`)
+const editRepair = (repair: RepairItem) => {
+  if (!canEdit.value) return handleNoPermission('edit')
+  info(`维修单 ${repair.order_no} 编辑功能待接入`)
 }
-
-const editRepair = (repair: Repair) => {
-  if (!canEdit.value) {
-    handleNoPermission('edit')
-    return
-  }
-}
-
-const updateStatus = (repair: Repair) => {
-  if (!canEdit.value) {
-    handleNoPermission('edit')
-    return
-  }
+const updateStatus = (repair: RepairItem) => {
+  if (!canEdit.value) return handleNoPermission('edit')
+  info(`维修单 ${repair.order_no} 状态更新功能待接入`)
 }
 
 const refreshData = async () => {
-  if (refreshing.value) {
-    return
-  }
-
+  if (refreshing.value) return
   refreshing.value = true
   try {
-    await Promise.all([
-      loadRepairs(),
-      loadCustomers(),
-      loadBrands(),
-      loadTechnicians()
-    ])
+    await Promise.all([loadRepairs(), loadCustomers(), loadBrands(), loadTechnicians()])
     success('数据刷新成功')
   } catch (err) {
     logger.error('刷新维修数据失败:', err)
-    error('数据刷新失败')
+    notifyError('数据刷新失败')
   } finally {
     refreshing.value = false
   }
 }
 
-const formatDate = (date: string) => {
-  return new Date(date).toLocaleString('zh-CN')
+const handleSearch = () => { currentPage.value = 1; mobileActionRowId.value = null }
+const handleReset = () => { searchQuery.value = ''; activeTab.value = 'all'; handleSearch() }
+const handlePaginationChange = (page: number, newPageSize: number) => {
+  currentPage.value = page
+  pageSize.value = newPageSize
+  mobileActionRowId.value = null
 }
 
-onMounted(async () => {
-  if (!canView.value) {
+const toggleMobileActions = (rowId: string) => {
+  if (!isMobile.value) return
+  mobileActionRowId.value = mobileActionRowId.value === rowId ? null : rowId
+}
+
+const handleRepairRowClick = (repair: RepairItem, _column: unknown, event: Event) => {
+  if (!isMobile.value) return
+  const target = event.target as HTMLElement | null
+  if (target?.closest('button, a, input, textarea, select, .el-button, .el-input, .el-select')) return
+  const rowId = getRepairRowKey(repair)
+  const now = Date.now()
+  if (lastTappedRowId.value === rowId && now - lastTapTimestamp.value <= 320) {
+    toggleMobileActions(rowId)
+    lastTappedRowId.value = null
+    lastTapTimestamp.value = 0
     return
   }
+  lastTappedRowId.value = rowId
+  lastTapTimestamp.value = now
+}
 
+const formatAmount = (amount?: number) => Number(amount || 0).toLocaleString('zh-CN', { maximumFractionDigits: 2 })
+const formatDate = (date: string) => new Date(date).toLocaleString('zh-CN')
+
+watch([filteredRepairs, pageSize], () => {
+  if (currentPage.value > totalPages.value) currentPage.value = totalPages.value
+})
+
+onMounted(async () => {
+  if (!canView.value) return
   await fieldPermissions.init()
-  loadRepairs()
-  loadCustomers()
-  loadBrands()
-  loadTechnicians()
+  await Promise.all([loadRepairs(), loadCustomers(), loadBrands(), loadTechnicians()])
 })
 </script>
 
 <style scoped>
-.repairs-management {
-  padding: 20px;
+.stat-icon.pending {
+  background: var(--el-color-warning);
 }
 
-.toolbar {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-  align-items: center;
-  flex-wrap: wrap;
+.stat-icon.processing {
+  background: var(--el-color-primary);
 }
 
-.filter-tabs {
-  display: flex;
-  gap: 5px;
-  background: #f8f9fa;
-  padding: 4px;
-  border-radius: 6px;
+.stat-icon.completed {
+  background: var(--el-color-success);
 }
 
-.tab-btn {
-  padding: 6px 12px;
-  border: none;
-  background: transparent;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 13px;
-  transition: all 0.2s;
+.stat-icon.revenue {
+  background: var(--el-color-danger);
 }
 
-.tab-btn.active {
-  background: white;
-  color: #007bff;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+.repair-number,
+.amount-value,
+.time-value {
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  font-variant-numeric: tabular-nums;
 }
 
-.search-box {
-  margin-left: auto;
-}
-
-.search-box .form-control {
-  width: 250px;
-}
-
-.stats-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 20px;
-  margin-bottom: 30px;
-}
-
-.stat-card {
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  text-align: center;
-}
-
-.stat-card h3 {
-  margin: 0 0 10px 0;
-  font-size: 14px;
-  color: #666;
-}
-
-.stat-card .number {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 700;
-}
-
-.stat-card .number.pending {
-  color: #ffc107;
-}
-
-.stat-card .number.processing {
-  color: #17a2b8;
-}
-
-.stat-card .number.completed {
-  color: #28a745;
-}
-
-.stat-card .amount {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 700;
-  color: #007bff;
-}
-
-.btn {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  transition: all 0.2s;
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-primary {
-  background: #007bff;
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: #0056b3;
-}
-
-.btn-secondary {
-  background: #6c757d;
-  color: white;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: #545b62;
-}
-
-.btn-sm {
-  padding: 4px 8px;
-  font-size: 12px;
-}
-
-.btn-info {
-  background: #17a2b8;
-  color: white;
-}
-
-.btn-warning {
-  background: #ffc107;
-  color: #212529;
-}
-
-.btn-success {
-  background: #28a745;
-  color: white;
-}
-
-.form-control {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
-}
-
-.form-control:focus {
-  outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
-}
-
-.repairs-table {
-  background: white;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.repairs-table table {
-  width: 100%;
-  border-collapse: separate;  border-spacing: 0;
-}
-
-.repairs-table th,
-.repairs-table td {
-  padding: 12px;
-  text-align: left;
-  border-bottom: 1px solid #eee;
-}
-
-.repairs-table th {
-  background: #f8f9fa;
+.repair-number,
+.amount-value {
   font-weight: 600;
-  color: #333;
 }
 
-.repairs-table .customer {
-  font-weight: 600;
-  color: #333;
+.amount-value {
+  color: var(--el-color-success);
 }
 
-.repairs-table .description {
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.status-pending {
+  background: var(--el-color-warning-light-9);
+  color: var(--el-color-warning);
 }
 
-.repairs-table .amount {
-  font-weight: 600;
-  color: #28a745;
+.status-processing {
+  background: var(--el-color-primary-light-9);
+  color: var(--el-color-primary);
 }
 
-.status-badge {
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
+.status-completed {
+  background: var(--el-color-success-light-9);
+  color: var(--el-color-success);
 }
 
-.status-badge.pending {
-  background: #fff3cd;
-  color: #856404;
-}
-
-.status-badge.processing {
-  background: #cce7ff;
-  color: #0066cc;
-}
-
-.status-badge.completed {
-  background: #d4edda;
-  color: #155724;
-}
-
-.status-badge.cancelled {
-  background: #f8d7da;
-  color: #721c24;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 60px 20px;
-  color: #7f8c8d;
-}
-
-.empty-state i {
-  font-size: 48px;
-  margin-bottom: 20px;
-  opacity: 0.5;
-}
-
-.modal-body {
-  padding: 0;
-}
-
-.form-group {
-  margin-bottom: 20px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 6px;
-  font-weight: 500;
-  color: #333;
+.status-cancelled {
+  background: var(--el-color-danger-light-9);
+  color: var(--el-color-danger);
 }
 
 .modal-footer {
-  padding: 0;
-  border-top: 1px solid #eee;
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 8px;
 }
 
-@media (max-width: 767px) {
-  .toolbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .search-box {
-    margin-left: 0;
-    margin-top: 10px;
-  }
-  
-  .search-box .form-control {
-    width: 100%;
-  }
+:deep(.repairs-dialog .el-select),
+:deep(.repairs-dialog .el-input-number) {
+  width: 100%;
 }
 </style>

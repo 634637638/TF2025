@@ -8,7 +8,7 @@
   >
 
   <ElConfigProvider :locale="locale">
-    <div class="page-container salary-page admin-page">
+    <div class="page-container salary-page admin-page admin-unified-base-data-page">
       <!-- 页面头部 - 使用公共组件 -->
       <PageHeader icon="fas fa-money-bill-wave" title="工资管理">
         <template #actions>
@@ -140,14 +140,17 @@
 
             <!-- 数据表格 -->
             <div class="table-section admin-panel admin-table-panel">
+              <div class="section-header"><div class="section-title"><i class="fas fa-list"></i>工资模板<span class="record-count">共 {{ filteredTemplates.length }} 条记录</span></div></div>
               <div class="table-responsive">
                 <el-table
                   ref="templateTableRef"
-                  :data="templatesLoading ? [] : filteredTemplates"
+                  :data="templatesLoading ? [] : paginatedTemplates"
                   border
                   stripe
+                  table-layout="fixed"
+                  :fit="true"
                   row-key="id"
-                  class="data-table salary-template-table"
+                  class="data-table devices-table base-data-table salary-template-table"
                   @row-click="handleTemplateRowTap"
                 >
                   <template #empty>
@@ -155,16 +158,16 @@
                     <el-empty v-else description="暂无工资模板" />
                   </template>
 
-                  <el-table-column v-if="isMobile" type="expand" width="1" class-name="mobile-expand-column">
+                  <el-table-column v-if="isMobile" type="expand" width="1" class-name="mobile-expand-column" label-class-name="mobile-expand-header">
                     <template #default="{ row }">
-                      <div class="mobile-inline-actions">
+                      <div class="mobile-row-actions">
                         <el-button
                           v-if="!row.is_default && canEditSalaryTemplate"
                           v-permission="'salary-templates:edit'"
                           size="small"
                           type="warning"
                           class="mobile-action-btn mobile-action-btn-default"
-                          @click="handleSetDefault(row)"
+                          @click.stop="handleSetDefault(row)"
                         >
                           <i class="fas fa-star"></i>
                           <span>默认</span>
@@ -175,7 +178,7 @@
                           size="small"
                           :type="row.is_active ? 'warning' : 'success'"
                           class="mobile-action-btn mobile-action-btn-status"
-                          @click="handleToggleTemplateStatus(row)"
+                          @click.stop="handleToggleTemplateStatus(row)"
                         >
                           <i :class="row.is_active ? 'fas fa-pause' : 'fas fa-play'"></i>
                           <span>{{ row.is_active ? '禁用' : '启用' }}</span>
@@ -186,7 +189,7 @@
                           size="small"
                           type="primary"
                           class="mobile-action-btn mobile-action-btn-edit"
-                          @click="handleEditTemplate(row)"
+                          @click.stop="handleEditTemplate(row)"
                         >
                           <i class="fas fa-edit"></i>
                           <span>编辑</span>
@@ -197,7 +200,7 @@
                           size="small"
                           type="danger"
                           class="mobile-action-btn mobile-action-btn-delete"
-                          @click="handleDeleteTemplate(row)"
+                          @click.stop="handleDeleteTemplate(row)"
                         >
                           <i class="fas fa-trash"></i>
                           <span>删除</span>
@@ -206,10 +209,10 @@
                     </template>
                   </el-table-column>
                   <!-- 序号列 -->
-                  <el-table-column type="index" label="序号" width="70" align="center" class-name="index-col" />
+                  <el-table-column type="index" label="序号" :width="isMobile ? 54 : 60" :index="getTemplateIndex" align="center" class-name="index-col" />
 
                   <!-- 模板名称 -->
-                  <el-table-column v-if="showTemplateNameColumn" prop="name" label="模板名称" min-width="140" align="left" class-name="name-col">
+                  <el-table-column v-if="showTemplateNameColumn" prop="name" label="模板名称" :min-width="templateNameColumnWidth" align="center" class-name="name-col">
                     <template #default="{ row }">
                       <div class="template-name-cell whitespace-nowrap">
                         <span class="name-text">{{ row.name }}</span>
@@ -219,10 +222,10 @@
                   </el-table-column>
 
                   <!-- 说明 -->
-                  <el-table-column v-if="showTemplateDescriptionColumn" prop="description" label="说明" min-width="200" align="left" show-overflow-tooltip class-name="hide-on-tablet" />
+                  <el-table-column v-if="showTemplateDescriptionColumn && !isMobile" prop="description" label="说明" :min-width="templateDescriptionColumnWidth" align="center" show-overflow-tooltip />
 
                   <!-- 底薪 -->
-                  <el-table-column v-if="showTemplateBaseSalaryColumn" label="底薪" min-width="120" align="center" class-name="salary-col">
+                  <el-table-column v-if="showTemplateBaseSalaryColumn" label="底薪" :min-width="templateBaseSalaryColumnWidth" align="center" class-name="salary-col">
                     <template #default="{ row }">
                       <span class="whitespace-nowrap">¥{{ formatNumber(row.base_salary) }}</span>
                     </template>
@@ -230,9 +233,9 @@
 
                   <!-- 提成设置 -->
                   <el-table-column
-                    v-if="showTemplateCommissionColumn"
+                    v-if="showTemplateCommissionColumn && !isMobile"
                     label="提成设置"
-                    min-width="280"
+                    :min-width="templateCommissionColumnWidth"
                     align="left"
                   >
                     <template #default="{ row }">
@@ -253,11 +256,10 @@
 
                   <!-- 考勤费率 -->
                   <el-table-column
-                    v-if="showTemplateRateColumn"
+                    v-if="showTemplateRateColumn && !isMobile"
                     label="考勤费率"
-                    min-width="180"
+                    :min-width="templateRateColumnWidth"
                     align="center"
-                    class-name="hide-on-mobile"
                   >
                     <template #default="{ row }">
                       <div class="whitespace-nowrap">
@@ -268,16 +270,16 @@
                   </el-table-column>
 
                   <!-- 使用人数 -->
-                  <el-table-column v-if="showTemplateEmployeeCountColumn" label="使用人数" min-width="100" align="center">
+                  <el-table-column v-if="showTemplateEmployeeCountColumn" label="使用人数" :min-width="templateEmployeeCountColumnWidth" align="center">
                     <template #default="{ row }">
                       <span class="whitespace-nowrap">{{ getEmployeeCountByTemplate(row.id) }}人</span>
                     </template>
                   </el-table-column>
 
                   <!-- 操作 -->
-                  <el-table-column v-if="showTemplateActionColumn" label="操作" width="280" align="center">
+                  <el-table-column v-if="showTemplateActionColumn" label="操作" :width="templateActionColumnWidth" fixed="right" align="center" class-name="actions-column">
                     <template #default="{ row }">
-                      <div class="template-action-buttons">
+                      <div class="template-action-buttons action-buttons">
                         <!-- 设为默认按钮 -->
                         <el-button
                           v-if="!row.is_default && canEditSalaryTemplate"
@@ -334,12 +336,8 @@
                   </el-table-column>
                 </el-table>
 
-                <!-- 空状态 -->
-                <div v-if="!templatesLoading && filteredTemplates.length === 0" class="empty-state">
-                  <i class="fas fa-file-invoice"></i>
-                  <p>暂无工资模板</p>
-                </div>
               </div>
+              <Pagination v-if="filteredTemplates.length > 0" v-model:current="templatePage" v-model:page-size="templatePageSize" :total="filteredTemplates.length" :page-sizes="[20, 50, 100]" :show-total="true" :show-range="true" :show-page-sizes="true" :show-quick-jumper="true" :disabled="templatesLoading" @change="handleTemplatePaginationChange" />
             </div>
           </el-tab-pane>
 
@@ -393,15 +391,17 @@
 
             <!-- 数据表格 -->
             <div class="table-section admin-panel admin-table-panel">
+              <div class="section-header"><div class="section-title"><i class="fas fa-list"></i>员工工资<span class="record-count">共 {{ filteredEmployees.length }} 条记录</span></div></div>
               <div class="table-responsive">
                 <el-table
-                  v-if="isMobile"
                   ref="employeeTableRef"
-                  :data="employeesLoading ? [] : filteredEmployees"
+                  :data="employeesLoading ? [] : paginatedEmployees"
                   border
                   stripe
+                  table-layout="fixed"
+                  :fit="true"
                   row-key="id"
-                  class="data-table salary-employee-table"
+                  class="data-table devices-table base-data-table salary-employee-table"
                   @row-click="handleEmployeeRowTap"
                 >
                   <template #empty>
@@ -409,16 +409,16 @@
                     <el-empty v-else description="暂无员工工资数据" />
                   </template>
 
-                  <el-table-column type="expand" width="1" class-name="mobile-expand-column">
+                  <el-table-column v-if="isMobile" type="expand" width="1" class-name="mobile-expand-column" label-class-name="mobile-expand-header">
                     <template #default="{ row }">
-                      <div class="mobile-inline-actions">
+                      <div class="mobile-row-actions">
                         <el-button
                           v-if="canEditSalaryTemplate"
                           v-permission="'salary-templates:edit'"
                           size="small"
                           type="primary"
                           class="mobile-action-btn mobile-action-btn-edit"
-                          @click="handleEditEmployeeTemplate(row)"
+                          @click.stop="handleEditEmployeeTemplate(row)"
                         >
                           <i class="fas fa-file-invoice-dollar"></i>
                           <span>模板</span>
@@ -429,7 +429,7 @@
                           size="small"
                           type="success"
                           class="mobile-action-btn mobile-action-btn-status"
-                          @click="handleViewAttendance(row)"
+                          @click.stop="handleViewAttendance(row)"
                         >
                           <i class="fas fa-calendar-check"></i>
                           <span>考勤</span>
@@ -438,7 +438,7 @@
                           size="small"
                           type="warning"
                           class="mobile-action-btn mobile-action-btn-default"
-                          @click="handleViewEmployeeSalesDetail(row)"
+                          @click.stop="handleViewEmployeeSalesDetail(row)"
                         >
                           <i class="fas fa-chart-line"></i>
                           <span>销售</span>
@@ -446,74 +446,24 @@
                       </div>
                     </template>
                   </el-table-column>
-                  <el-table-column
-                    v-if="canViewSalaryField('salary_salaryrecordsview', 'employee_name')"
-                    label="姓名"
-                    min-width="92"
-                    align="left"
-                    class-name="employee-name-col"
-                  >
-                    <template #default="{ row }">
-                      <span class="employee-name-text">{{ row.name || '-' }}</span>
-                    </template>
-                  </el-table-column>
-                  <el-table-column
-                    v-if="canViewSalaryField('salary_salaryrecordsview', 'commission_amount')"
-                    label="提成"
-                    min-width="74"
-                    align="center"
-                  >
-                    <template #default="{ row }">
-                      <span class="mobile-salary-value is-commission">{{ formatNumber(calculateSalesCommission(row.id)) }}</span>
-                    </template>
-                  </el-table-column>
-                  <el-table-column
-                    v-if="canViewSalaryField('salary_salaryrecordsview', 'overtime_pay')"
-                    label="加班"
-                    min-width="70"
-                    align="center"
-                  >
-                    <template #default="{ row }">
-                      <span class="mobile-salary-value is-overtime">{{ formatNumber(calculateOvertimePay(row.id, getEmployeeAttendanceStats(row.id).overtime_hours)) }}</span>
-                    </template>
-                  </el-table-column>
-                  <el-table-column
-                    v-if="canViewSalaryField('salary_salaryrecordsview', 'leave_deduction')"
-                    label="请假扣款"
-                    min-width="82"
-                    align="center"
-                  >
-                    <template #default="{ row }">
-                      <span class="mobile-salary-value is-deduction">
-                        {{ formatNumber(calculateLeaveDeduction(row.id, getEmployeeAttendanceStats(row.id).leave_days)) }}
-                      </span>
-                    </template>
-                  </el-table-column>
-                </el-table>
 
-                <el-table v-else :data="employeesLoading ? [] : filteredEmployees" border stripe class="data-table">
-                  <template #empty>
-                    <TableLoadingRow v-if="employeesLoading" mode="block" text="加载中..." />
-                    <el-empty v-else description="暂无员工工资数据" />
-                  </template>
-
-                  <el-table-column label="序号" min-width="60" align="center">
+                  <el-table-column v-if="!isMobile" label="序号" min-width="60" align="center">
                     <template #default="{ $index }">
-                      {{ $index + 1 }}
+                      {{ getEmployeeIndex($index) }}
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'employee_username')" label="员工工号" min-width="100" align="center">
+                  <el-table-column v-if="!isMobile && canViewSalaryField('salary_salaryrecordsview', 'employee_username')" label="员工工号" min-width="100" align="center">
                     <template #default="{ row }">
                       <span>{{ row.username }}</span>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'employee_name')" label="员工姓名" min-width="100" align="center">
+                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'employee_name')" :label="isMobile ? '姓名' : '员工姓名'" :min-width="isMobile ? 88 : 100" align="center">
                     <template #default="{ row }">
                       <span>{{ row.name }}</span>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'employee_phone')" prop="phone" label="联系电话" min-width="115" align="center" />
-                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'salary_template_name')" label="工资模板" min-width="160" align="center">
+                  <el-table-column v-if="!isMobile && canViewSalaryField('salary_salaryrecordsview', 'employee_phone')" prop="phone" label="联系电话" min-width="115" align="center" />
+                  <el-table-column v-if="!isMobile && canViewSalaryField('salary_salaryrecordsview', 'salary_template_name')" label="工资模板" min-width="160" align="center">
                     <template #default="{ row }">
                       <el-tag v-if="row.salary_template_id" type="success" size="large">
                         <i class="fas fa-file-invoice-dollar"></i>
@@ -525,13 +475,13 @@
                       </el-tag>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'base_salary')" label="底薪" min-width="90" align="center">
+                  <el-table-column v-if="!isMobile && canViewSalaryField('salary_salaryrecordsview', 'base_salary')" label="底薪" min-width="90" align="center">
                     <template #default="{ row }">
                       <span class="amount-text">¥{{ getEmployeeBaseSalary(row.id) }}</span>
                     </template>
                   </el-table-column>
                   <el-table-column
-                    v-if="canViewSalaryField('salary_salaryrecordsview', 'salary_template_name') || canViewSalaryField('salary_salaryrecordsview', 'commission_amount')"
+                    v-if="!isMobile && (canViewSalaryField('salary_salaryrecordsview', 'salary_template_name') || canViewSalaryField('salary_salaryrecordsview', 'commission_amount'))"
                     label="提成方式"
                     min-width="160"
                     align="center"
@@ -556,7 +506,7 @@
                       <span v-else class="text-muted">-</span>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'sales_count')" label="销售数量" min-width="90" align="center">
+                  <el-table-column v-if="!isMobile && canViewSalaryField('salary_salaryrecordsview', 'sales_count')" label="销售数量" min-width="90" align="center">
                     <template #default="{ row }">
                       <span
                         v-if="getEmployeeCommissionCount(row.id) > 0"
@@ -568,16 +518,16 @@
                       <span v-else class="text-secondary">0台</span>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'commission_amount')" label="销售提成" min-width="100" align="center">
+                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'commission_amount')" :label="isMobile ? '提成' : '销售提成'" :min-width="isMobile ? 82 : 100" align="center">
                     <template #default="{ row }">
-                      <span v-if="getEmployeeSalesStats(row.id).sales_count > 0" class="text-danger font-semibold">
-                        ¥{{ calculateSalesCommission(row.id) }}
+                      <span v-if="getEmployeeSalesStats(row.id).sales_count > 0" class="text-danger font-semibold salary-mobile-commission">
+                        {{ isMobile ? calculateSalesCommission(row.id) : `¥${calculateSalesCommission(row.id)}` }}
                       </span>
-                      <span v-else class="text-secondary">0</span>
+                      <span v-else class="text-secondary salary-mobile-commission">0</span>
                     </template>
                   </el-table-column>
                   <el-table-column
-                    v-if="canViewSalaryField('salary_salaryrecordsview', 'overtime_pay') || canViewSalaryField('salary_salaryrecordsview', 'leave_deduction')"
+                    v-if="!isMobile && (canViewSalaryField('salary_salaryrecordsview', 'overtime_pay') || canViewSalaryField('salary_salaryrecordsview', 'leave_deduction'))"
                     label="费率"
                     min-width="140"
                     align="center"
@@ -590,7 +540,7 @@
                       <span v-else class="text-muted">-</span>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'monthly_leave_days')" label="休假(天)" min-width="105" align="center">
+                  <el-table-column v-if="!isMobile && canViewSalaryField('salary_salaryrecordsview', 'monthly_leave_days')" label="休假(天)" min-width="105" align="center">
                     <template #default="{ row }">
                       <div v-if="getEmployeeAttendanceStats(row.id).monthly_leave_days_available > 0" class="attendance-cell">
                         <span class="leave-days-display">
@@ -602,7 +552,7 @@
                       <span v-else class="text-secondary">0/0</span>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'leave_days')" label="请假(天)" min-width="90" align="center">
+                  <el-table-column v-if="!isMobile && canViewSalaryField('salary_salaryrecordsview', 'leave_days')" label="请假(天)" min-width="90" align="center">
                     <template #default="{ row }">
                       <el-tag v-if="getEmployeeAttendanceStats(row.id).leave_days > 0" type="warning" size="small">
                         {{ getEmployeeAttendanceStats(row.id).leave_days }}天
@@ -610,15 +560,7 @@
                       <el-tag v-else type="info" size="small">0</el-tag>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'leave_deduction')" label="请假扣款" min-width="100" align="center">
-                    <template #default="{ row }">
-                      <span v-if="getEmployeeAttendanceStats(row.id).leave_days > 0" class="text-danger font-semibold">
-                        -¥{{ calculateLeaveDeduction(row.id, getEmployeeAttendanceStats(row.id).leave_days) }}
-                      </span>
-                      <span v-else class="text-secondary">0</span>
-                    </template>
-                  </el-table-column>
-                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'overtime_hours')" label="加班时间" min-width="100" align="center">
+                  <el-table-column v-if="!isMobile && canViewSalaryField('salary_salaryrecordsview', 'overtime_hours')" label="加班时间" min-width="100" align="center">
                     <template #default="{ row }">
                       <span v-if="getEmployeeAttendanceStats(row.id).overtime_hours > 0" class="text-blue font-semibold">
                         {{ Math.round(getEmployeeAttendanceStats(row.id).overtime_hours) }}小时
@@ -626,22 +568,30 @@
                       <span v-else class="text-secondary">0小时</span>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'overtime_pay')" label="加班费" min-width="90" align="center">
+                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'overtime_pay')" :label="isMobile ? '加班' : '加班费'" :min-width="isMobile ? 82 : 90" align="center">
                     <template #default="{ row }">
-                      <span v-if="getEmployeeAttendanceStats(row.id).overtime_hours > 0" class="text-danger font-semibold">
-                        ¥{{ calculateOvertimePay(row.id, getEmployeeAttendanceStats(row.id).overtime_hours) }}
+                      <span v-if="getEmployeeAttendanceStats(row.id).overtime_hours > 0" class="text-danger font-semibold salary-mobile-overtime">
+                        {{ isMobile ? calculateOvertimePay(row.id, getEmployeeAttendanceStats(row.id).overtime_hours) : `¥${calculateOvertimePay(row.id, getEmployeeAttendanceStats(row.id).overtime_hours)}` }}
                       </span>
-                      <span v-else class="text-secondary">0</span>
+                      <span v-else class="text-secondary salary-mobile-overtime">0</span>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'net_salary')" label="预计工资" min-width="110" align="center">
+                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'leave_deduction')" label="请假扣款" :min-width="isMobile ? 92 : 100" align="center">
+                    <template #default="{ row }">
+                      <span v-if="getEmployeeAttendanceStats(row.id).leave_days > 0" class="text-danger font-semibold salary-mobile-deduction">
+                        {{ isMobile ? calculateLeaveDeduction(row.id, getEmployeeAttendanceStats(row.id).leave_days) : `-¥${calculateLeaveDeduction(row.id, getEmployeeAttendanceStats(row.id).leave_days)}` }}
+                      </span>
+                      <span v-else class="text-secondary salary-mobile-deduction">0</span>
+                    </template>
+                  </el-table-column>
+                  <el-table-column v-if="!isMobile && canViewSalaryField('salary_salaryrecordsview', 'net_salary')" label="预计工资" min-width="110" align="center">
                     <template #default="{ row }">
                       <span class="estimated-salary">¥{{ calculateEstimatedSalary(row.id) }}</span>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'actions')" label="操作" width="228" fixed="right" align="center" class-name="employee-action-column">
+                  <el-table-column v-if="!isMobile && canViewSalaryField('salary_salaryrecordsview', 'actions')" label="操作" width="270" fixed="right" align="center" class-name="actions-column employee-action-column">
                     <template #default="{ row }">
-                      <div class="employee-action-buttons">
+                      <div class="employee-action-buttons action-buttons">
                         <!-- 设置模板按钮 -->
                         <span v-if="canEditSalaryTemplate" class="employee-action-item">
                           <el-button
@@ -687,12 +637,8 @@
                   </el-table-column>
                 </el-table>
 
-                <!-- 空状态 -->
-                <div v-if="!employeesLoading && filteredEmployees.length === 0" class="empty-state">
-                  <i class="fas fa-users"></i>
-                  <p>暂无员工数据</p>
-                </div>
               </div>
+              <Pagination v-if="filteredEmployees.length > 0" v-model:current="employeePage" v-model:page-size="employeePageSize" :total="filteredEmployees.length" :page-sizes="[20, 50, 100]" :show-total="true" :show-range="true" :show-page-sizes="true" :show-quick-jumper="true" :disabled="employeesLoading" @change="handleEmployeePaginationChange" />
             </div>
           </el-tab-pane>
 
@@ -747,15 +693,17 @@
 
             <!-- 数据表格 -->
             <div class="table-section admin-panel admin-table-panel">
+              <div class="section-header"><div class="section-title"><i class="fas fa-list"></i>工资计算<span class="record-count">共 {{ salaryPayoutData.length }} 条记录</span></div></div>
               <div class="table-responsive">
                 <el-table
-                  v-if="isMobile"
                   ref="payoutTableRef"
-                  :data="payoutLoading ? [] : salaryPayoutData"
+                  :data="payoutLoading ? [] : paginatedPayoutData"
                   border
                   stripe
+                  table-layout="fixed"
+                  :fit="true"
                   row-key="id"
-                  class="data-table salary-payout-table"
+                  class="data-table devices-table base-data-table salary-payout-table"
                   @row-click="handlePayoutRowTap"
                 >
                   <template #empty>
@@ -763,16 +711,16 @@
                     <el-empty v-else description="暂无工资发放数据" />
                   </template>
 
-                  <el-table-column type="expand" width="1" class-name="mobile-expand-column">
+                  <el-table-column v-if="isMobile" type="expand" width="1" class-name="mobile-expand-column" label-class-name="mobile-expand-header">
                     <template #default="{ row }">
-                      <div class="mobile-inline-actions">
+                      <div class="mobile-row-actions">
                         <el-button
                           v-if="canCreateSalaryRecord"
                           v-permission="'salary-records:create'"
                           size="small"
                           :type="row.payoutRecord ? 'warning' : 'primary'"
                           class="mobile-action-btn mobile-action-btn-default"
-                          @click="!row.payoutRecord ? handlePayoutByEmployee(row) : handleRecalculatePayout(row)"
+                          @click.stop="!row.payoutRecord ? handlePayoutByEmployee(row) : handleRecalculatePayout(row)"
                         >
                           <span>{{ row.payoutRecord ? '重算' : '结算' }}</span>
                         </el-button>
@@ -782,7 +730,7 @@
                           size="small"
                           type="success"
                           class="mobile-action-btn mobile-action-btn-status"
-                          @click="handleEditPayoutByEmployee(row)"
+                          @click.stop="handleEditPayoutByEmployee(row)"
                         >
                           <span>编辑</span>
                         </el-button>
@@ -792,114 +740,60 @@
                           size="small"
                           type="danger"
                           class="mobile-action-btn mobile-action-btn-delete"
-                          @click="handleDeletePayout(row)"
+                          @click.stop="handleDeletePayout(row)"
                         >
                           <span>删除</span>
                         </el-button>
                       </div>
                     </template>
                   </el-table-column>
-                  <el-table-column
-                    v-if="canViewSalaryField('salary_salaryrecordsview', 'employee_name')"
-                    label="姓名"
-                    min-width="92"
-                    align="left"
-                    class-name="employee-name-col"
-                  >
-                    <template #default="{ row }">
-                      <span class="employee-name-text">{{ row.name || '-' }}</span>
-                    </template>
-                  </el-table-column>
-                  <el-table-column
-                    v-if="canViewSalaryField('salary_salaryrecordsview', 'commission_amount')"
-                    label="提成"
-                    min-width="74"
-                    align="center"
-                  >
-                    <template #default="{ row }">
-                      <span class="mobile-salary-value is-commission">{{ formatNumber(calculateSalesCommission(row.id)) }}</span>
-                    </template>
-                  </el-table-column>
-                  <el-table-column
-                    v-if="canViewSalaryField('salary_salaryrecordsview', 'overtime_pay')"
-                    label="加班"
-                    min-width="70"
-                    align="center"
-                  >
-                    <template #default="{ row }">
-                      <span class="mobile-salary-value is-overtime">{{ formatNumber(calculateOvertimePay(row.id, getEmployeeAttendanceStats(row.id).overtime_hours)) }}</span>
-                    </template>
-                  </el-table-column>
-                  <el-table-column
-                    v-if="canViewSalaryField('salary_salaryrecordsview', 'net_salary')"
-                    label="预计工资"
-                    min-width="82"
-                    align="right"
-                  >
-                    <template #default="{ row }">
-                      <span class="mobile-salary-value is-estimated">{{ formatNumber(calculateEstimatedSalary(row.id)) }}</span>
-                    </template>
-                  </el-table-column>
-                </el-table>
 
-                <el-table
-                  v-else
-                  :data="payoutLoading ? [] : salaryPayoutData"
-                  border
-                  stripe
-                  class="data-table"
-                >
-                  <template #empty>
-                    <TableLoadingRow v-if="payoutLoading" mode="block" text="加载中..." />
-                    <el-empty v-else description="暂无工资发放数据" />
-                  </template>
-
-                  <el-table-column label="序号" min-width="50" align="center">
+                  <el-table-column v-if="!isMobile" label="序号" min-width="50" align="center">
                     <template #default="{ $index }">
-                      {{ $index + 1 }}
+                      {{ getPayoutIndex($index) }}
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'employee_username')" label="员工工号" min-width="90" align="center">
+                  <el-table-column v-if="!isMobile && canViewSalaryField('salary_salaryrecordsview', 'employee_username')" label="员工工号" min-width="90" align="center">
                     <template #default="{ row }">
                       <span>{{ row.username }}</span>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'employee_name')" label="员工姓名" min-width="90" align="center">
+                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'employee_name')" :label="isMobile ? '姓名' : '员工姓名'" :min-width="isMobile ? 86 : 90" align="center">
                     <template #default="{ row }">
                       <span>{{ row.name }}</span>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'base_salary')" label="底薪" min-width="80" align="center">
+                  <el-table-column v-if="!isMobile && canViewSalaryField('salary_salaryrecordsview', 'base_salary')" label="底薪" min-width="80" align="center">
                     <template #default="{ row }">
                       <span class="amount-text">¥{{ getEmployeeBaseSalary(row.id) }}</span>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'sales_count')" label="数量" min-width="70" align="center">
+                  <el-table-column v-if="!isMobile && canViewSalaryField('salary_salaryrecordsview', 'sales_count')" label="数量" min-width="70" align="center">
                     <template #default="{ row }">
                       <span class="text-regular font-semibold">{{ getEmployeeSalesStats(row.id).sales_count }}台</span>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'commission_amount')" label="提成" min-width="90" align="center">
+                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'commission_amount')" label="提成" :min-width="isMobile ? 80 : 90" align="center">
                     <template #default="{ row }">
-                      <span v-if="getEmployeeSalesStats(row.id).sales_count > 0" class="text-danger font-semibold">
-                        ¥{{ calculateSalesCommission(row.id) }}
+                      <span v-if="getEmployeeSalesStats(row.id).sales_count > 0" class="text-danger font-semibold salary-mobile-commission">
+                        {{ isMobile ? calculateSalesCommission(row.id) : `¥${calculateSalesCommission(row.id)}` }}
                       </span>
-                      <span v-else class="text-secondary">0</span>
+                      <span v-else class="text-secondary salary-mobile-commission">0</span>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'actual_work_days')" label="工作天数" min-width="85" align="center">
+                  <el-table-column v-if="!isMobile && canViewSalaryField('salary_salaryrecordsview', 'actual_work_days')" label="工作天数" min-width="85" align="center">
                     <template #default="{ row }">
                       <span class="text-success font-semibold">{{ calculateWorkDays(row.id) }}天</span>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'monthly_leave_days')" label="休假" min-width="80" align="center">
+                  <el-table-column v-if="!isMobile && canViewSalaryField('salary_salaryrecordsview', 'monthly_leave_days')" label="休假" min-width="80" align="center">
                     <template #default="{ row }">
                       <span class="text-success">
                         {{ getEmployeeAttendanceStats(row.id).monthly_leave_days_used || 0 }}/{{ getEmployeeAttendanceStats(row.id).monthly_leave_days_available || 0 }}
                       </span>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'leave_days')" label="请假" min-width="70" align="center">
+                  <el-table-column v-if="!isMobile && canViewSalaryField('salary_salaryrecordsview', 'leave_days')" label="请假" min-width="70" align="center">
                     <template #default="{ row }">
                       <span v-if="getEmployeeAttendanceStats(row.id).leave_days > 0" class="text-danger font-semibold">
                         {{ getEmployeeAttendanceStats(row.id).leave_days }}天
@@ -907,7 +801,7 @@
                       <span v-else class="text-secondary">0</span>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'leave_deduction')" label="请假扣款" min-width="90" align="center">
+                  <el-table-column v-if="!isMobile && canViewSalaryField('salary_salaryrecordsview', 'leave_deduction')" label="请假扣款" min-width="90" align="center">
                     <template #default="{ row }">
                       <span v-if="getEmployeeAttendanceStats(row.id).leave_days > 0" class="text-danger font-semibold">
                         -¥{{ calculateLeaveDeduction(row.id, getEmployeeAttendanceStats(row.id).leave_days) }}
@@ -915,7 +809,7 @@
                       <span v-else class="text-secondary">0</span>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'overtime_hours')" label="加班" min-width="80" align="center">
+                  <el-table-column v-if="!isMobile && canViewSalaryField('salary_salaryrecordsview', 'overtime_hours')" label="加班" min-width="80" align="center">
                     <template #default="{ row }">
                       <span v-if="getEmployeeAttendanceStats(row.id).overtime_hours > 0" class="text-blue font-semibold">
                         {{ Math.round(getEmployeeAttendanceStats(row.id).overtime_hours) }}小时
@@ -923,36 +817,45 @@
                       <span v-else class="text-secondary">0</span>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'overtime_pay')" label="加班费" min-width="90" align="center">
+                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'overtime_pay')" :label="isMobile ? '加班' : '加班费'" :min-width="isMobile ? 80 : 90" align="center">
                     <template #default="{ row }">
-                      <span v-if="getEmployeeAttendanceStats(row.id).overtime_hours > 0" class="text-blue font-semibold">
-                        ¥{{ calculateOvertimePay(row.id, getEmployeeAttendanceStats(row.id).overtime_hours) }}
+                      <span v-if="getEmployeeAttendanceStats(row.id).overtime_hours > 0" class="text-blue font-semibold salary-mobile-overtime">
+                        {{ isMobile ? calculateOvertimePay(row.id, getEmployeeAttendanceStats(row.id).overtime_hours) : `¥${calculateOvertimePay(row.id, getEmployeeAttendanceStats(row.id).overtime_hours)}` }}
                       </span>
-                      <span v-else class="text-secondary">0</span>
+                      <span v-else class="text-secondary salary-mobile-overtime">0</span>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'net_salary')" label="应发工资" min-width="100" align="center">
+                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'net_salary')" :label="isMobile ? '预计工资' : '应发工资'" :min-width="isMobile ? 100 : 100" align="center">
                     <template #default="{ row }">
-                      <span class="net-salary-large text-base font-semibold text-blue">
-                        ¥{{ calculateEstimatedSalary(row.id) }}
+                      <span class="payout-salary-amount text-blue salary-mobile-net">
+                        {{ isMobile ? calculateEstimatedSalary(row.id) : `¥${calculateEstimatedSalary(row.id)}` }}
                       </span>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'net_salary')" label="已发工资" min-width="100" align="center">
+                  <el-table-column v-if="!isMobile && canViewSalaryField('salary_salaryrecordsview', 'net_salary')" label="已发工资" min-width="100" align="center">
                     <template #default="{ row }">
-                      <span v-if="row.payoutRecord" class="net-salary-large text-base font-semibold text-success">
+                      <span v-if="row.payoutRecord" class="payout-salary-amount text-success">
                         ¥{{ Number(row.payoutRecord.net_salary || 0).toFixed(2) }}
                       </span>
                       <span v-else class="text-secondary">-</span>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'salary_status')" label="状态" min-width="85" align="center">
+                  <el-table-column v-if="!isMobile && canViewSalaryField('salary_salaryrecordsview', 'salary_status')" label="状态" min-width="85" align="center">
                     <template #default="{ row }">
-                      <el-tag v-if="row.payoutRecord" type="success" size="small">已结算</el-tag>
+                      <div v-if="row.payoutRecord" class="salary-status-cell">
+                        <el-tag type="success" size="small">已结算</el-tag>
+                        <el-tooltip
+                          v-if="getSalaryRecalculationNotice(row.id)"
+                          :content="getSalaryRecalculationNotice(row.id)?.message"
+                          placement="top"
+                        >
+                          <el-tag type="warning" effect="plain" size="small">需重算</el-tag>
+                        </el-tooltip>
+                      </div>
                       <el-tag v-else type="info" size="small">未结算</el-tag>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'paid_at')" label="结算时间" min-width="95" align="center">
+                  <el-table-column v-if="!isMobile && canViewSalaryField('salary_salaryrecordsview', 'paid_at')" label="结算时间" min-width="95" align="center">
                     <template #default="{ row }">
                       <span v-if="row.payoutRecord?.status === 'paid' && row.payoutRecord?.paid_at" class="text-regular">
                         {{ formatPayoutTime(row.payoutRecord.paid_at) }}
@@ -960,7 +863,7 @@
                       <span v-else class="text-secondary">-</span>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'payment_method')" label="支付方式" min-width="100" align="center">
+                  <el-table-column v-if="!isMobile && canViewSalaryField('salary_salaryrecordsview', 'payment_method')" label="支付方式" min-width="100" align="center">
                     <template #default="{ row }">
                       <span v-if="row.payoutRecord?.payment_method" class="text-regular">
                         {{ getPaymentMethodName(row.payoutRecord.payment_method) }}
@@ -968,13 +871,14 @@
                       <span v-else class="text-secondary">-</span>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'actions')" label="操作" width="220" fixed="right" align="center">
+                  <el-table-column v-if="!isMobile && canViewSalaryField('salary_salaryrecordsview', 'actions')" label="操作" width="190" fixed="right" align="center" class-name="actions-column payout-action-column">
                     <template #default="{ row }">
-                      <div class="payout-action-buttons">
+                      <div class="payout-action-buttons action-buttons">
                         <!-- 结算/重新计算按钮 -->
                         <el-button
                           v-if="canCreateSalaryRecord"
                           v-permission="'salary-records:create'"
+                          class="payout-action-button"
                           size="small"
                           :type="row.payoutRecord ? 'warning' : 'primary'"
                           plain
@@ -987,6 +891,7 @@
                         <el-button
                           v-if="row.payoutRecord && canEditSalaryRecord"
                           v-permission="'salary-records:edit'"
+                          class="payout-action-button"
                           size="small"
                           type="success"
                           plain
@@ -999,6 +904,7 @@
                         <el-button
                           v-if="row.payoutRecord && canDeleteSalaryRecord"
                           v-permission="'salary-records:delete'"
+                          class="payout-action-button"
                           size="small"
                           type="danger"
                           plain
@@ -1011,12 +917,8 @@
                   </el-table-column>
                 </el-table>
 
-                <!-- 空状态 -->
-                <div v-if="!payoutLoading && salaryPayoutData.length === 0" class="empty-state">
-                  <i class="fas fa-money-bill-wave"></i>
-                  <p>暂无工资数据</p>
-                </div>
               </div>
+              <Pagination v-if="salaryPayoutData.length > 0" v-model:current="payoutPage" v-model:page-size="payoutPageSize" :total="salaryPayoutData.length" :page-sizes="[20, 50, 100]" :show-total="true" :show-range="true" :show-page-sizes="true" :show-quick-jumper="true" :disabled="payoutLoading" @change="handlePayoutPaginationChange" />
             </div>
           </el-tab-pane>
 
@@ -1075,12 +977,17 @@
 
             <!-- 数据表格 -->
             <div class="table-section admin-panel admin-table-panel">
+              <div class="section-header"><div class="section-title"><i class="fas fa-list"></i>工资发放记录<span class="record-count">共 {{ myPagination.total }} 条记录</span></div></div>
               <div class="table-responsive my-salary-table">
-                <el-table :data="myLoading ? [] : myRecords" border stripe class="data-table">
+                <el-table ref="mySalaryTableRef" :data="myLoading ? [] : myRecords" border stripe table-layout="fixed" :fit="true" row-key="id" class="data-table devices-table base-data-table salary-records-table" @row-click="handleMySalaryRowTap">
                   <template #empty>
                     <TableLoadingRow v-if="myLoading" mode="block" text="加载中..." />
                     <el-empty v-else description="暂无工资记录" />
                   </template>
+
+                  <el-table-column v-if="isMobile && canViewSalaryField('salary_mysalaryview', 'actions')" type="expand" width="1" class-name="mobile-expand-column" label-class-name="mobile-expand-header">
+                    <template #default="{ row }"><div class="mobile-row-actions"><el-button type="primary" size="small" @click.stop="handleViewMyRecord(row)"><i class="fas fa-eye"></i><span>详情</span></el-button></div></template>
+                  </el-table-column>
 
                   <el-table-column v-if="canViewSalaryField('salary_mysalaryview', 'paid_at')" label="发放时间" min-width="100" align="center">
                     <template #default="{ row }">
@@ -1131,7 +1038,7 @@
                         size="small"
                         type="primary"
                         plain
-                        @click="handleViewSalesDetail(row)"
+                        @click.stop="handleViewSalesDetail(row)"
                       >
                         <i class="fas fa-list"></i>
                         <span class="btn-text">明细</span>
@@ -1169,9 +1076,9 @@
                       <span class="net-salary">¥{{ formatAmount(row.net_salary) }}</span>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSalaryField('salary_mysalaryview', 'actions')" label="操作" min-width="110" align="center">
+                  <el-table-column v-if="!isMobile && canViewSalaryField('salary_mysalaryview', 'actions')" label="操作" min-width="110" align="center">
                     <template #default="{ row }">
-                      <div class="my-salary-action-buttons">
+                      <div class="my-salary-action-buttons action-buttons">
                         <el-button
                           size="small"
                           type="primary"
@@ -1186,11 +1093,6 @@
                   </el-table-column>
                 </el-table>
 
-                <!-- 空状态 -->
-                <div v-if="!myLoading && myRecords.length === 0" class="empty-state">
-                  <i class="fas fa-file-invoice-dollar"></i>
-                  <p>暂无工资记录</p>
-                </div>
               </div>
 
               <!-- 分页 -->
@@ -1287,11 +1189,11 @@
       <MobileDialog
         v-model="salesDetailDialogVisible"
         title="销售明细"
-        width="900px"
+        :width="salesDetailDialogWidth"
         dialog-class="salary-dialog salary-dialog-large"
         :show-default-footer="false"
       >
-        <div v-if="currentSalesRecord" class="sales-details">
+        <div v-if="currentSalesRecord" class="sales-details admin-page">
           <SectionLoading v-if="salesDetailLoading" text="加载中..." />
 
           <template v-else>
@@ -1318,35 +1220,32 @@
           <!-- 销售明细表格 -->
           <div class="sales-details-table">
             <h4 class="section-title">销售明细列表</h4>
-            <div v-if="salesDetailList.length > 0" class="table-responsive">
-              <table class="data-table">
-                <thead>
-                  <tr>
-                    <th width="60">序号</th>
-                    <th v-if="canViewSalaryField('salary_mysalaryview', 'sales_count')" width="120">型号</th>
-                    <th v-if="canViewSalaryField('salary_mysalaryview', 'sales_count')" width="100">颜色</th>
-                    <th v-if="canViewSalaryField('salary_mysalaryview', 'sales_count')" width="200">IMEI</th>
-                    <th v-if="canViewSalaryField('salary_mysalaryview', 'employee_name')" width="150">客户</th>
-                    <th v-if="canViewSalaryField('salary_mysalaryview', 'commission_amount')" width="120">销售价格</th>
-                    <th v-if="canViewSalaryField('salary_mysalaryview', 'paid_at')">销售时间</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(item, index) in salesDetailList" :key="index">
-                    <td>
-                      <span class="index-badge">{{ index + 1 }}</span>
-                    </td>
-                    <td v-if="canViewSalaryField('salary_mysalaryview', 'sales_count')">{{ item.model_name || '-' }}</td>
-                    <td v-if="canViewSalaryField('salary_mysalaryview', 'sales_count')">{{ item.color_name || '-' }}</td>
-                    <td v-if="canViewSalaryField('salary_mysalaryview', 'sales_count')">
-                      <span class="imei">{{ item.imei }}</span>
-                    </td>
-                    <td v-if="canViewSalaryField('salary_mysalaryview', 'employee_name')">{{ item.customer_name || '-' }}</td>
-                    <td v-if="canViewSalaryField('salary_mysalaryview', 'commission_amount')" class="price">¥{{ item.sale_price }}</td>
-                    <td v-if="canViewSalaryField('salary_mysalaryview', 'paid_at')" class="time-cell">{{ formatSaleTime(item.sale_time) }}</td>
-                  </tr>
-                </tbody>
-              </table>
+            <div
+              v-if="salesDetailList.length > 0"
+              class="table-responsive salary-detail-table-wrap"
+              :style="{ '--salary-detail-table-width': `${salesDetailTableWidth}px` }"
+              @pointerdown="startDetailTableDrag"
+              @pointermove="moveDetailTableDrag"
+              @pointerup="stopDetailTableDrag"
+              @pointercancel="stopDetailTableDrag"
+              @wheel="handleDetailTableWheel"
+            >
+              <el-table
+                :data="salesDetailList"
+                border
+                stripe
+                class="data-table devices-table base-data-table salary-sales-detail-table"
+                table-layout="fixed"
+                :fit="false"
+              >
+                <el-table-column label="序号" width="60" align="center"><template #default="{ $index }"><span class="id-badge">{{ $index + 1 }}</span></template></el-table-column>
+                <el-table-column v-if="canViewSalaryField('salary_mysalaryview', 'sales_count')" prop="model_name" label="型号" :width="salesDetailModelColumnWidth" align="center"><template #default="{ row }">{{ row.model_name || '-' }}</template></el-table-column>
+                <el-table-column v-if="canViewSalaryField('salary_mysalaryview', 'sales_count')" prop="color_name" label="颜色" width="78" align="center"><template #default="{ row }">{{ row.color_name || '-' }}</template></el-table-column>
+                <el-table-column v-if="canViewSalaryField('salary_mysalaryview', 'sales_count')" label="IMEI" :width="salesDetailImeiColumnWidth" align="center" class-name="identifier-column"><template #default="{ row }"><span class="imei-text">{{ row.imei || '-' }}</span></template></el-table-column>
+                <el-table-column v-if="canViewSalaryField('salary_mysalaryview', 'employee_name')" prop="customer_name" label="客户" :width="salesDetailCustomerColumnWidth" align="center"><template #default="{ row }">{{ row.customer_name || '-' }}</template></el-table-column>
+                <el-table-column v-if="canViewSalaryField('salary_mysalaryview', 'commission_amount')" label="销售价格" width="96" align="center"><template #default="{ row }"><span class="price">¥{{ formatAmount(row.sale_price) }}</span></template></el-table-column>
+                <el-table-column v-if="canViewSalaryField('salary_mysalaryview', 'paid_at')" label="销售时间" width="132" align="center"><template #default="{ row }"><span class="time-cell">{{ formatSaleTime(row.sale_time) }}</span></template></el-table-column>
+              </el-table>
             </div>
             <div v-else class="empty-state">
               <i class="fas fa-box-open"></i>
@@ -1365,11 +1264,11 @@
       <MobileDialog
         v-model="employeeSalesDetailDialogVisible"
         title="员工销售明细"
-        width="1100px"
+        :width="employeeSalesDetailDialogWidth"
         dialog-class="salary-dialog salary-dialog-large"
         :show-default-footer="false"
       >
-        <div v-if="currentEmployeeSales" class="sales-details">
+        <div v-if="currentEmployeeSales" class="sales-details admin-page">
           <!-- 汇总信息 -->
           <div class="details-info">
             <div v-if="canViewSalaryField('salary_salaryrecordsview', 'employee_name')" class="info-row">
@@ -1399,45 +1298,34 @@
             <h4 class="section-title">销售明细列表</h4>
             <SectionLoading v-if="employeeSalesDetailLoading" text="加载中..." />
 
-            <div v-else-if="employeeSalesDetailList.length > 0" class="table-responsive">
-              <table class="data-table">
-                <thead>
-                  <tr>
-                    <th width="60">序号</th>
-                    <th v-if="canViewSalaryField('salary_salaryrecordsview', 'sales_count')" width="80">机型</th>
-                    <th v-if="canViewSalaryField('salary_salaryrecordsview', 'sales_count')" width="120">型号</th>
-                    <th v-if="canViewSalaryField('salary_salaryrecordsview', 'sales_count')" width="100">颜色</th>
-                    <th v-if="canViewSalaryField('salary_salaryrecordsview', 'sales_count')" width="200">IMEI</th>
-                    <th v-if="canViewSalaryField('salary_salaryrecordsview', 'employee_name')" width="150">客户</th>
-                    <th v-if="canViewSalaryField('salary_salaryrecordsview', 'commission_amount')" width="120">销售价</th>
-                    <th v-if="canViewSalaryField('salary_salaryrecordsview', 'commission_amount')" width="120">利润</th>
-                    <th v-if="canViewSalaryField('salary_salaryrecordsview', 'paid_at')">销售时间</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(item, index) in employeeSalesDetailList" :key="index">
-                    <td>
-                      <span class="index-badge">{{ index + 1 }}</span>
-                    </td>
-                    <td v-if="canViewSalaryField('salary_salaryrecordsview', 'sales_count')">
-                      <el-tag :type="item.is_new ? 'success' : 'warning'" size="small">
-                        {{ item.is_new ? '全新' : '二手' }}
-                      </el-tag>
-                    </td>
-                    <td v-if="canViewSalaryField('salary_salaryrecordsview', 'sales_count')">{{ item.model || '-' }}</td>
-                    <td v-if="canViewSalaryField('salary_salaryrecordsview', 'sales_count')">{{ item.color || '-' }}</td>
-                    <td v-if="canViewSalaryField('salary_salaryrecordsview', 'sales_count')">
-                      <span class="imei">{{ item.imei }}</span>
-                    </td>
-                    <td v-if="canViewSalaryField('salary_salaryrecordsview', 'employee_name')">{{ item.customer_name || '-' }}</td>
-                    <td v-if="canViewSalaryField('salary_salaryrecordsview', 'commission_amount')" class="text-danger">¥{{ formatAmount(item.sale_price) }}</td>
-                    <td v-if="canViewSalaryField('salary_salaryrecordsview', 'commission_amount')" :style="item.profit >= 0 ? 'color: #67c23a' : 'color: #f56c6c'">
-                      ¥{{ formatAmount(item.profit) }}
-                    </td>
-                    <td v-if="canViewSalaryField('salary_salaryrecordsview', 'paid_at')" class="time-cell">{{ formatSaleTime(item.salestime) }}</td>
-                  </tr>
-                </tbody>
-              </table>
+            <div
+              v-else-if="employeeSalesDetailList.length > 0"
+              class="table-responsive salary-detail-table-wrap"
+              :style="{ '--salary-detail-table-width': `${employeeSalesDetailTableWidth}px` }"
+              @pointerdown="startDetailTableDrag"
+              @pointermove="moveDetailTableDrag"
+              @pointerup="stopDetailTableDrag"
+              @pointercancel="stopDetailTableDrag"
+              @wheel="handleDetailTableWheel"
+            >
+              <el-table
+                :data="employeeSalesDetailList"
+                border
+                stripe
+                class="data-table devices-table base-data-table salary-sales-detail-table"
+                table-layout="fixed"
+                :fit="false"
+              >
+                <el-table-column label="序号" width="60" align="center"><template #default="{ $index }"><span class="id-badge">{{ $index + 1 }}</span></template></el-table-column>
+                <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'sales_count')" label="机型" width="72" align="center"><template #default="{ row }"><el-tag :type="row.is_new ? 'success' : 'warning'" size="small">{{ row.is_new ? '全新' : '二手' }}</el-tag></template></el-table-column>
+                <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'sales_count')" prop="model" label="型号" :width="employeeSalesDetailModelColumnWidth" align="center"><template #default="{ row }">{{ row.model || '-' }}</template></el-table-column>
+                <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'sales_count')" prop="color" label="颜色" width="78" align="center"><template #default="{ row }">{{ row.color || '-' }}</template></el-table-column>
+                <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'sales_count')" label="IMEI" :width="employeeSalesDetailImeiColumnWidth" align="center" class-name="identifier-column"><template #default="{ row }"><span class="imei-text">{{ row.imei || '-' }}</span></template></el-table-column>
+                <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'employee_name')" prop="customer_name" label="客户" :width="employeeSalesDetailCustomerColumnWidth" align="center"><template #default="{ row }">{{ row.customer_name || '-' }}</template></el-table-column>
+                <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'commission_amount')" label="销售价" width="96" align="center"><template #default="{ row }"><span class="price">¥{{ formatAmount(row.sale_price) }}</span></template></el-table-column>
+                <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'commission_amount')" label="利润" width="92" align="center"><template #default="{ row }"><span :class="row.profit >= 0 ? 'profit-positive' : 'profit-negative'">¥{{ formatAmount(row.profit) }}</span></template></el-table-column>
+                <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'paid_at')" label="销售时间" width="132" align="center"><template #default="{ row }"><span class="time-cell">{{ formatSaleTime(row.salestime) }}</span></template></el-table-column>
+              </el-table>
             </div>
             <div v-else class="empty-state">
               <i class="fas fa-box-open"></i>
@@ -2271,6 +2159,7 @@ import { PageHeader, PermissionGate } from '@/components/base'
 import dayjs from 'dayjs'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
+import { getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 
 // 配置中文语言环境
 const locale = zhCn
@@ -2435,15 +2324,15 @@ const showSalaryStatsCards = computed(() => (
 
 const showTemplateDefaultColumn = computed(() => canViewSalaryField('salary_salarytemplatesview', 'template_is_default') && !isMobile.value)
 const showTemplateNameColumn = computed(() => canViewSalaryField('salary_salarytemplatesview', 'template_name'))
-const showTemplateDescriptionColumn = computed(() => canViewSalaryField('salary_salarytemplatesview', 'template_description') && !isMobile.value)
+const showTemplateDescriptionColumn = computed(() => canViewSalaryField('salary_salarytemplatesview', 'template_description'))
 const showTemplateBaseSalaryColumn = computed(() => canViewSalaryField('salary_salarytemplatesview', 'template_base_salary'))
-const showTemplateCommissionColumn = computed(() => !isMobile.value && (
+const showTemplateCommissionColumn = computed(() => (
   canViewSalaryField('salary_salarytemplatesview', 'template_commission_type') ||
   canViewSalaryField('salary_salarytemplatesview', 'template_commission_new_fixed') ||
   canViewSalaryField('salary_salarytemplatesview', 'template_commission_used_fixed') ||
   canViewSalaryField('salary_salarytemplatesview', 'template_commission_percentage')
 ))
-const showTemplateRateColumn = computed(() => !isMobile.value && (
+const showTemplateRateColumn = computed(() => (
   canViewSalaryField('salary_salarytemplatesview', 'template_overtime_hourly_rate') ||
   canViewSalaryField('salary_salarytemplatesview', 'template_rest_days')
 ))
@@ -2543,6 +2432,66 @@ const filteredTemplates = computed(() => {
 
   return result
 })
+const templatePage = ref(1)
+const templatePageSize = ref(20)
+const paginatedTemplates = computed(() => {
+  const start = (templatePage.value - 1) * templatePageSize.value
+  return filteredTemplates.value.slice(start, start + templatePageSize.value)
+})
+
+const templateNameColumnWidth = computed(() => getTextColumnMinWidth(
+  ['模板名称', ...paginatedTemplates.value.map((item: any) => `${item.name || '-'}${item.is_active ? '' : ' 已禁用'}`)],
+  { minWidth: 110, maxWidth: 180, horizontalPadding: 28 }
+))
+const templateDescriptionColumnWidth = computed(() => getTextColumnMinWidth(
+  ['说明', ...paginatedTemplates.value.map((item: any) => item.description)],
+  { minWidth: 96, maxWidth: 180, horizontalPadding: 28 }
+))
+const templateBaseSalaryColumnWidth = computed(() => getTextColumnMinWidth(
+  ['底薪', ...paginatedTemplates.value.map((item: any) => `¥${formatNumber(item.base_salary)}`)],
+  { minWidth: 88, maxWidth: 110, horizontalPadding: 24 }
+))
+const templateCommissionColumnWidth = computed(() => getTextColumnMinWidth(
+  [
+    '提成设置',
+    ...paginatedTemplates.value.map((item: any) => item.commission_type === 'fixed'
+      ? `固定 新机¥${formatNumber(item.commission_new_fixed || item.commission_fixed || 0)} 二手¥${formatNumber(item.commission_used_fixed || 0)}`
+      : `利润 ${formatNumber(item.commission_percentage || 0)}%`)
+  ],
+  { minWidth: 130, maxWidth: 220, horizontalPadding: 38 }
+))
+const templateRateColumnWidth = computed(() => getTextColumnMinWidth(
+  [
+    '考勤费率',
+    ...paginatedTemplates.value.map((item: any) => `加班¥${formatNumber(item.overtime_hourly_rate)}/h 月休${item.rest_days || 0}天`)
+  ],
+  { minWidth: 130, maxWidth: 180, horizontalPadding: 26 }
+))
+const templateEmployeeCountColumnWidth = computed(() => getTextColumnMinWidth(
+  ['使用人数', ...paginatedTemplates.value.map((item: any) => `${getEmployeeCountByTemplate(item.id)}人`)],
+  { minWidth: 82, maxWidth: 100, horizontalPadding: 24 }
+))
+const templateActionColumnWidth = computed(() => {
+  let buttonCount = 0
+  if (canEditSalaryTemplate.value) {
+    buttonCount += 2
+    if (paginatedTemplates.value.some((item: any) => !item.is_default)) {
+      buttonCount += 1
+    }
+  }
+  if (canDeleteSalaryTemplate.value) {
+    buttonCount += 1
+  }
+
+  return Math.max(96, buttonCount * 82 + Math.max(0, buttonCount - 1) * 6 + 16)
+})
+
+const getTemplateIndex = (index: number) => (templatePage.value - 1) * templatePageSize.value + index + 1
+const handleTemplatePaginationChange = (page: number, pageSize: number) => {
+  templatePage.value = page
+  templatePageSize.value = pageSize
+  mobileExpandedTemplateId.value = null
+}
 
 const templateTableRef = ref()
 const mobileExpandedTemplateId = ref<number | null>(null)
@@ -2593,6 +2542,29 @@ const myPagination = reactive({
   size: 20,
   total: 0
 })
+const mySalaryTableRef = ref()
+const mobileExpandedMySalaryId = ref<number | null>(null)
+const lastTappedMySalaryId = ref<number | null>(null)
+const lastMySalaryTapTimestamp = ref(0)
+
+const handleMySalaryRowTap = (row: any) => {
+  if (!isMobile.value) return
+  const now = Date.now()
+  if (lastTappedMySalaryId.value === row.id && now - lastMySalaryTapTimestamp.value <= 320) {
+    const shouldExpand = mobileExpandedMySalaryId.value !== row.id
+    if (mobileExpandedMySalaryId.value && mobileExpandedMySalaryId.value !== row.id) {
+      const previous = myRecords.value.find((record: any) => record.id === mobileExpandedMySalaryId.value)
+      if (previous) mySalaryTableRef.value?.toggleRowExpansion(previous, false)
+    }
+    mySalaryTableRef.value?.toggleRowExpansion(row, shouldExpand)
+    mobileExpandedMySalaryId.value = shouldExpand ? row.id : null
+    lastTappedMySalaryId.value = null
+    lastMySalaryTapTimestamp.value = 0
+    return
+  }
+  lastTappedMySalaryId.value = row.id
+  lastMySalaryTapTimestamp.value = now
+}
 
 // 团队工资视角：选择要查看的员工
 const selectedViewEmployeeId = ref<number | undefined>(undefined)
@@ -2702,6 +2674,18 @@ const salaryPayoutData = computed(() => {
 
   return result
 })
+const payoutPage = ref(1)
+const payoutPageSize = ref(20)
+const paginatedPayoutData = computed(() => {
+  const start = (payoutPage.value - 1) * payoutPageSize.value
+  return salaryPayoutData.value.slice(start, start + payoutPageSize.value)
+})
+const getPayoutIndex = (index: number) => (payoutPage.value - 1) * payoutPageSize.value + index + 1
+const handlePayoutPaginationChange = (page: number, pageSize: number) => {
+  payoutPage.value = page
+  payoutPageSize.value = pageSize
+  mobileExpandedPayoutId.value = null
+}
 
 const payoutTableRef = ref()
 const mobileExpandedPayoutId = ref<number | null>(null)
@@ -2768,6 +2752,28 @@ const filteredEmployees = computed(() => {
 
   return result
 })
+const employeePage = ref(1)
+const employeePageSize = ref(20)
+const paginatedEmployees = computed(() => {
+  const start = (employeePage.value - 1) * employeePageSize.value
+  return filteredEmployees.value.slice(start, start + employeePageSize.value)
+})
+const getEmployeeIndex = (index: number) => (employeePage.value - 1) * employeePageSize.value + index + 1
+const handleEmployeePaginationChange = (page: number, pageSize: number) => {
+  employeePage.value = page
+  employeePageSize.value = pageSize
+  mobileExpandedEmployeeId.value = null
+}
+
+watch([templateSearch, () => templateFilters.is_active], () => {
+  templatePage.value = 1
+})
+watch([employeeSearch, employeeTemplateFilter], () => {
+  employeePage.value = 1
+})
+watch([payoutSearch, () => payoutFilters.status], () => {
+  payoutPage.value = 1
+})
 
 const employeeTableRef = ref()
 const mobileExpandedEmployeeId = ref<number | null>(null)
@@ -2812,7 +2818,105 @@ const currentRecord = ref<any>(null)
 const salesDetailDialogVisible = ref(false)
 const currentSalesRecord = ref<any>(null)
 const salesDetailList = ref<any[]>([])
+const salesDetailImeiColumnWidth = computed(() => getIdentifierColumnMinWidth(
+  ['IMEI', ...salesDetailList.value.map((item: any) => item.imei)],
+  { minWidth: 146, horizontalPadding: 30 }
+))
+const salesDetailModelColumnWidth = computed(() => getTextColumnMinWidth(
+  ['型号', ...salesDetailList.value.map((item: any) => item.model_name)],
+  { minWidth: 104, horizontalPadding: 28 }
+))
+const salesDetailCustomerColumnWidth = computed(() => getTextColumnMinWidth(
+  ['客户', ...salesDetailList.value.map((item: any) => item.customer_name)],
+  { minWidth: 92, horizontalPadding: 28 }
+))
+const employeeSalesDetailImeiColumnWidth = computed(() => getIdentifierColumnMinWidth(
+  ['IMEI', ...employeeSalesDetailList.value.map((item: any) => item.imei)],
+  { minWidth: 146, horizontalPadding: 30 }
+))
+const employeeSalesDetailModelColumnWidth = computed(() => getTextColumnMinWidth(
+  ['型号', ...employeeSalesDetailList.value.map((item: any) => item.model)],
+  { minWidth: 104, horizontalPadding: 28 }
+))
+const employeeSalesDetailCustomerColumnWidth = computed(() => getTextColumnMinWidth(
+  ['客户', ...employeeSalesDetailList.value.map((item: any) => item.customer_name)],
+  { minWidth: 92, horizontalPadding: 28 }
+))
+const salesDetailTableWidth = computed(() => {
+  return 60
+    + (canViewSalaryField('salary_mysalaryview', 'sales_count') ? salesDetailModelColumnWidth.value + 78 + salesDetailImeiColumnWidth.value : 0)
+    + (canViewSalaryField('salary_mysalaryview', 'employee_name') ? salesDetailCustomerColumnWidth.value : 0)
+    + (canViewSalaryField('salary_mysalaryview', 'commission_amount') ? 96 : 0)
+    + (canViewSalaryField('salary_mysalaryview', 'paid_at') ? 132 : 0)
+})
+
+const employeeSalesDetailTableWidth = computed(() => {
+  return 60
+    + (canViewSalaryField('salary_salaryrecordsview', 'sales_count') ? 72 + employeeSalesDetailModelColumnWidth.value + 78 + employeeSalesDetailImeiColumnWidth.value : 0)
+    + (canViewSalaryField('salary_salaryrecordsview', 'employee_name') ? employeeSalesDetailCustomerColumnWidth.value : 0)
+    + (canViewSalaryField('salary_salaryrecordsview', 'commission_amount') ? 96 + 92 : 0)
+    + (canViewSalaryField('salary_salaryrecordsview', 'paid_at') ? 132 : 0)
+})
+
+const salesDetailDialogWidth = computed(() => `${Math.max(360, salesDetailTableWidth.value + 48)}px`)
+const employeeSalesDetailDialogWidth = computed(() => `${Math.max(360, employeeSalesDetailTableWidth.value + 48)}px`)
 const salesDetailLoading = ref(false)
+
+const detailTableDragState: {
+  element: HTMLElement | null
+  pointerId: number | null
+  startX: number
+  startScrollLeft: number
+} = {
+  element: null,
+  pointerId: null,
+  startX: 0,
+  startScrollLeft: 0
+}
+
+const startDetailTableDrag = (event: PointerEvent) => {
+  if (event.pointerType !== 'mouse' || event.button !== 0) return
+
+  const element = event.currentTarget as HTMLElement
+  if (element.scrollWidth <= element.clientWidth) return
+
+  detailTableDragState.element = element
+  detailTableDragState.pointerId = event.pointerId
+  detailTableDragState.startX = event.clientX
+  detailTableDragState.startScrollLeft = element.scrollLeft
+  element.setPointerCapture(event.pointerId)
+  element.classList.add('is-dragging')
+}
+
+const moveDetailTableDrag = (event: PointerEvent) => {
+  const { element, pointerId, startX, startScrollLeft } = detailTableDragState
+  if (!element || pointerId !== event.pointerId) return
+
+  event.preventDefault()
+  element.scrollLeft = startScrollLeft - (event.clientX - startX)
+}
+
+const stopDetailTableDrag = (event: PointerEvent) => {
+  const { element, pointerId } = detailTableDragState
+  if (!element || pointerId !== event.pointerId) return
+
+  if (element.hasPointerCapture(pointerId)) {
+    element.releasePointerCapture(pointerId)
+  }
+  element.classList.remove('is-dragging')
+  detailTableDragState.element = null
+  detailTableDragState.pointerId = null
+}
+
+const handleDetailTableWheel = (event: WheelEvent) => {
+  if (!event.shiftKey) return
+
+  const element = event.currentTarget as HTMLElement
+  if (element.scrollWidth <= element.clientWidth) return
+
+  event.preventDefault()
+  element.scrollLeft += event.deltaY || event.deltaX
+}
 
 // 销售汇总数据
 const salesSummary = computed(() => {
@@ -3384,6 +3488,7 @@ const resetMyFilters = () => {
 const handleMyPaginationChange = (page: number, pageSize: number) => {
   myPagination.page = page
   myPagination.size = pageSize
+  mobileExpandedMySalaryId.value = null
   loadMyRecords()
 }
 
@@ -3536,7 +3641,9 @@ const loadAllEmployeesAttendance = async (monthParam?: string) => {
             leave_days: 0,
             overtime_hours: 0,
             monthly_leave_days_used: 0, // 本月已用
-            monthly_leave_days_available: 0 // 本月可用（含累积）
+            monthly_leave_days_available: 0, // 本月可用（含累积）
+            latest_leave_activity_at: null,
+            latest_leave_record_date: null
           })
         }
         const stats = attendanceMap.get(record.employee_id)
@@ -3545,6 +3652,11 @@ const loadAllEmployeesAttendance = async (monthParam?: string) => {
           // 只统计当前月的请假和加班
           if (record.record_type === 'leave') {
             stats.leave_days += parseFloat(record.leave_days || 0)
+            const leaveActivityAt = record.approved_at || record.updated_at || record.created_at
+            if (leaveActivityAt && (!stats.latest_leave_activity_at || dayjs(leaveActivityAt).isAfter(dayjs(stats.latest_leave_activity_at)))) {
+              stats.latest_leave_activity_at = leaveActivityAt
+              stats.latest_leave_record_date = recordDate
+            }
           } else if (record.record_type === 'overtime') {
             const hours = parseFloat(record.overtime_hours || 0)
             stats.overtime_hours += hours
@@ -3816,7 +3928,9 @@ const getEmployeeAttendanceStats = (employeeId: number) => {
     leave_days: 0,
     overtime_hours: 0,
     monthly_leave_days_used: 0,
-    monthly_leave_days_available: 0
+    monthly_leave_days_available: 0,
+    latest_leave_activity_at: null,
+    latest_leave_record_date: null
   }
 }
 
@@ -3958,6 +4072,38 @@ const getEmployeePayoutStatus = (employeeId: number) => {
 // 获取员工工资记录
 const getEmployeePayoutRecord = (employeeId: number) => {
   return payoutList.value.find((r: any) => r.employee_id === employeeId)
+}
+
+const parseTimestamp = (value: any) => {
+  if (!value) return null
+  const parsed = dayjs(value)
+  return parsed.isValid() ? parsed.valueOf() : null
+}
+
+const getPayoutSettledTimestamp = (record: any) => {
+  return parseTimestamp(record?.paid_at || record?.updated_at || record?.created_at)
+}
+
+const getSalaryRecalculationNotice = (employeeId: number) => {
+  const record = getEmployeePayoutRecord(employeeId)
+  if (!record) return null
+
+  const stats = getEmployeeAttendanceStats(employeeId)
+  const settledAt = getPayoutSettledTimestamp(record)
+  const leaveActivityAt = parseTimestamp(stats.latest_leave_activity_at)
+
+  if (!settledAt || !leaveActivityAt || leaveActivityAt <= settledAt) {
+    return null
+  }
+
+  const leaveDateText = stats.latest_leave_record_date ? `请假日期：${stats.latest_leave_record_date}` : '存在后补请假'
+  const activityText = dayjs(stats.latest_leave_activity_at).isValid()
+    ? dayjs(stats.latest_leave_activity_at).format('YYYY-MM-DD HH:mm')
+    : stats.latest_leave_activity_at
+
+  return {
+    message: `${leaveDateText}，审批时间晚于工资结算时间（${activityText}），建议重新结算`
+  }
 }
 
 // 格式化结算时间（只显示年月日）
@@ -5256,11 +5402,6 @@ watch(activeTab, async (newTab, oldTab) => {
 </script>
 
 <style lang="scss" scoped>
-/* 页面容器 */
-.page-container {
-  padding: 20px;
-}
-
 /* 按钮样式 */
 .btn {
   display: inline-flex;
@@ -5302,42 +5443,6 @@ watch(activeTab, async (newTab, oldTab) => {
   border-color: #c6e2ff;
 }
 
-/* 统计卡片 */
-.stats-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 20px;
-  margin-bottom: 24px;
-}
-
-.stat-card {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 24px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
-  border: 1px solid #e8ecef;
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
-}
-
-.stat-icon {
-  width: 56px;
-  height: 56px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 12px;
-  font-size: 24px;
-  color: white;
-}
-
 .stat-icon.blue {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
@@ -5354,35 +5459,9 @@ watch(activeTab, async (newTab, oldTab) => {
   background: linear-gradient(135deg, #f56c6c 0%, #fab6b6 100%);
 }
 
-.stat-content {
-  flex: 1;
-}
-
-.stat-value {
-  font-size: 24px;
-  font-weight: 700;
-  color: #303133;
-  line-height: 1;
-  margin-bottom: 4px;
-}
-
-.stat-label {
-  font-size: 13px;
-  color: #909399;
-}
-
 .stat-desc {
-  font-size: 12px;
   color: #c0c4cc;
   margin-top: 2px;
-}
-
-/* TAB 样式 */
-.salary-tabs {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
 /* 筛选区域 */
@@ -5433,21 +5512,6 @@ watch(activeTab, async (newTab, oldTab) => {
 }
 
 
-/* 表格区域 */
-.table-section {
-  margin-top: 20px;
-}
-
-.table-responsive {
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-}
-
-.data-table {
-  width: 100%;
-}
-
 /* 操作按钮容器 - 确保按钮在一行内并排显示 */
 .operation-buttons {
   display: flex;
@@ -5457,87 +5521,20 @@ watch(activeTab, async (newTab, oldTab) => {
   flex-wrap: nowrap;
 }
 
-/* 表格头部样式 */
-.data-table :deep(.el-table__header-wrapper) {
-  background: linear-gradient(135deg, #495057 0%, #343a40 100%) !important;
-}
-
-.data-table :deep(.el-table__header th) {
-  background: linear-gradient(135deg, #495057 0%, #343a40 100%) !important;
-  color: #ffffff;
-  font-weight: 600;
-  font-size: 14px;
-  padding: 16px 0;
-  border-bottom: 2px solid #2f343a;
-}
-
-.data-table :deep(.el-table__header tr) {
-  background: linear-gradient(135deg, #495057 0%, #343a40 100%) !important;
-}
-
-.data-table :deep(.el-table__header th .cell) {
-  padding: 0 12px;
-  color: #ffffff;
-}
-
-/* 表格行样式 */
-.data-table :deep(.el-table__body tr) {
-  transition: all 0.3s;
-}
-
-.data-table :deep(.el-table__body tr:hover > td) {
-  background: #f5f7fa !important;
-}
-
-.data-table :deep(.el-table__body td) {
-  padding: 14px 0;
-  border-bottom: 1px solid #f0f2f5;
-}
-
-.data-table :deep(.el-table__body td .cell) {
-  padding: 0 12px;
-}
-
-/* 斑马纹 */
-.data-table :deep(.el-table__body tr.el-table__row--striped > td) {
-  background: #fafbfc;
-}
-
-/* 表格标签样式 */
-.data-table :deep(.el-tag) {
+.salary-status-cell {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  font-size: 12px;
-  font-weight: 500;
-  border-radius: 6px;
-  border: none;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
-.data-table :deep(.el-tag.el-tag--success) {
-  background: linear-gradient(135deg, #67c23a 0%, #85ce61 100%);
-  color: white;
-}
-
-.data-table :deep(.el-tag.el-tag--warning) {
-  background: linear-gradient(135deg, #e6a23c 0%, #f0c78a 100%);
-  color: white;
-}
-
-.data-table :deep(.el-tag.el-tag--primary) {
-  background: linear-gradient(135deg, #409eff 0%, #66b1ff 100%);
-  color: white;
-}
-
-.data-table :deep(.el-tag.el-tag--danger) {
-  background: linear-gradient(135deg, #f56c6c 0%, #fab6b6 100%);
-  color: white;
-}
-
-.data-table :deep(.el-tag.el-tag--info) {
-  background: linear-gradient(135deg, #909399 0%, #b1b3b8 100%);
-  color: white;
+.payout-salary-amount {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
 }
 
 /* 金额文本样式 */
@@ -5588,41 +5585,6 @@ watch(activeTab, async (newTab, oldTab) => {
 .work-days {
   color: #606266;
   font-size: 13px;
-}
-
-/* 操作按钮样式 */
-.data-table :deep(.el-button) {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  font-size: 13px;
-  border-radius: 6px;
-  transition: all 0.3s;
-  margin: 0 2px;
-}
-
-.data-table :deep(.el-button:hover) {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.data-table :deep(.el-button--primary) {
-  background: linear-gradient(135deg, #409eff 0%, #66b1ff 100%);
-  border: none;
-  color: white;
-}
-
-.data-table :deep(.el-button--success) {
-  background: linear-gradient(135deg, #67c23a 0%, #85ce61 100%);
-  border: none;
-  color: white;
-}
-
-.data-table :deep(.el-button--danger) {
-  background: linear-gradient(135deg, #f56c6c 0%, #fab6b6 100%);
-  border: none;
-  color: white;
 }
 
 /* 空状态 */
@@ -6367,8 +6329,36 @@ input:checked + .slider:before {
 
 /* 响应式 */
 @media (max-width: 768px) {
-  .page-container {
-    padding: 12px;
+  .salary-tabs :deep(.el-tabs__header) {
+    margin-bottom: 8px;
+  }
+
+  .salary-tabs .table-section > .section-header {
+    display: none;
+  }
+
+  .salary-template-table .template-name-cell {
+    justify-content: center;
+  }
+
+  .salary-mobile-commission {
+    color: #f07a2f !important;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .salary-mobile-overtime {
+    color: #2f7d76 !important;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .salary-mobile-deduction {
+    color: #cf3732 !important;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .salary-mobile-net {
+    color: #3568df !important;
+    font-variant-numeric: tabular-nums;
   }
 
   .header-content {
@@ -6376,47 +6366,8 @@ input:checked + .slider:before {
     align-items: stretch;
   }
 
-  .stats-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-    margin-bottom: 16px;
-  }
-
-  .stat-card {
-    padding: 12px 10px;
-    gap: 10px;
-    border-radius: 16px;
-    align-items: center;
-    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
-  }
-
-  .stat-icon {
-    width: 38px;
-    height: 38px;
-    border-radius: 12px;
-    font-size: 16px;
-    flex-shrink: 0;
-  }
-
-  .stat-content {
-    min-width: 0;
-  }
-
-  .stat-value {
-    font-size: 16px;
-    line-height: 1.2;
-    margin-bottom: 2px;
-    word-break: break-word;
-  }
-
-  .stat-label {
-    font-size: 11px;
-    line-height: 1.35;
-  }
-
   .stat-desc {
     margin-top: 4px;
-    font-size: 10px;
     line-height: 1.35;
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -6445,42 +6396,6 @@ input:checked + .slider:before {
   .filter-item.actions .btn {
     flex: 1;
     justify-content: center;
-  }
-}
-
-@media (max-width: 480px) {
-  .page-container {
-    padding: 10px;
-  }
-
-  .stats-cards {
-    gap: 8px;
-    margin-bottom: 14px;
-  }
-
-  .stat-card {
-    padding: 10px 8px;
-    gap: 8px;
-    border-radius: 14px;
-  }
-
-  .stat-icon {
-    width: 34px;
-    height: 34px;
-    border-radius: 10px;
-    font-size: 14px;
-  }
-
-  .stat-value {
-    font-size: 14px;
-  }
-
-  .stat-label {
-    font-size: 10px;
-  }
-
-  .stat-desc {
-    font-size: 9px;
   }
 }
 
@@ -6594,7 +6509,7 @@ input:checked + .slider:before {
   margin: 20px 0;
 }
 
-.section-title {
+.salary-detail-table-section > .section-title {
   font-size: 15px;
   font-weight: 600;
   color: #303133;
@@ -6827,135 +6742,16 @@ input:checked + .slider:before {
       border-bottom: 2px solid #e4e7ed;
     }
 
-    .table-responsive {
-      overflow-x: auto;
-      border-radius: 8px;
-      border: 1px solid #dee2e6;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
-
-    .data-table {
-      width: 100%;
-      border-collapse: separate;
-      border-spacing: 0;
-      margin: 0;
-      background: white;
-    }
-
-    .data-table th {
-      background: linear-gradient(135deg, #495057 0%, #343a40 100%);
-      color: white;
-      padding: 12px 10px;
-      text-align: center;
-      font-weight: 600;
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      border-right: 1px solid #dee2e6;
-      border-bottom: 2px solid #dee2e6;
-      position: relative;
-    }
-
-    .data-table th:last-child {
-      border-right: none;
-    }
-
-    .data-table th::after {
-      content: '';
-      position: absolute;
-      bottom: -2px;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, #667eea, #764ba2);
-    }
-
-    .data-table td {
-      padding: 10px 8px;
-      border-right: 1px solid #e9ecef;
-      border-bottom: 1px solid #e9ecef;
-      vertical-align: middle;
-      font-size: 12px;
-      color: #2c3e50;
-      font-weight: 500;
-      text-align: center;
-      position: relative;
-    }
-
-    .data-table td:last-child {
-      border-right: none;
-    }
-
-    .data-table tbody tr {
-      transition: all 0.2s ease;
-      position: relative;
-    }
-
-    .data-table tbody tr:nth-child(even) {
-      background: #f8f9fa;
-    }
-
-    .data-table tbody tr:hover {
-      background: #e3f2fd;
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    }
-
-    .data-table tbody tr:hover td {
-      border-bottom-color: #dee2e6;
-    }
-
-    // IMEI 样式
-    .imei {
-      font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
-      font-size: 11px;
-      font-weight: 600;
-      color: #495057;
-      letter-spacing: 0.8px;
-      background: #f8f9fa;
-      padding: 6px 10px;
-      border-radius: 4px;
-      border: 1px solid #e9ecef;
-      display: inline-block;
-      min-width: 100px;
-      text-align: center;
-      position: relative;
-    }
-
-    .imei:hover {
-      background: #e9ecef;
-      border-color: #dee2e6;
-      transform: scale(1.02);
-      transition: all 0.2s ease;
-    }
-
-    // 序号徽章
-    .index-badge {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: #fff;
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
-      font-weight: 600;
-      box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
-    }
-
     // 价格单元格
     .price {
       font-family: 'Monaco', 'Consolas', monospace;
       font-weight: 600;
       color: #67c23a;
-      font-size: 13px;
     }
 
     // 时间单元格
     .time-cell {
       font-family: 'Monaco', 'Consolas', monospace;
-      font-size: 12px;
       color: #606266;
     }
 
@@ -6990,6 +6786,66 @@ input:checked + .slider:before {
       font-weight: 600;
       font-size: 12px;
     }
+  }
+}
+
+.sales-details.admin-page .salary-detail-table-wrap {
+  width: min(100%, var(--salary-detail-table-width)) !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x pan-y;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .sales-details.admin-page .salary-detail-table-wrap {
+    cursor: grab;
+  }
+
+  .sales-details.admin-page .salary-detail-table-wrap.is-dragging {
+    cursor: grabbing;
+    user-select: none;
+  }
+}
+
+.sales-details.admin-page .salary-sales-detail-table {
+  width: var(--salary-detail-table-width) !important;
+  min-width: var(--salary-detail-table-width) !important;
+  max-width: none !important;
+
+  .imei-text,
+  .price,
+  .time-cell {
+    font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .imei-text {
+    display: inline;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    color: var(--el-text-color-primary);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .price,
+  .profit-positive,
+  .profit-negative {
+    font-weight: 600;
+  }
+
+  .profit-positive {
+    color: var(--el-color-success);
+  }
+
+  .profit-negative {
+    color: var(--el-color-danger);
   }
 }
 
@@ -7176,380 +7032,15 @@ input:checked + .slider:before {
     }
   }
 
-  // 操作按钮组 - 统一样式
-  .template-action-buttons,
-  .my-salary-action-buttons {
-    display: flex !important;
-    flex-direction: row !important;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    flex-wrap: nowrap !important;
-    width: 100%;
-
-    .el-button {
-      display: inline-flex !important;
-      flex-direction: row !important;
-      align-items: center;
-      justify-content: center;
-      gap: 3px;
-      padding: 4px 8px;
-      font-size: 12px;
-      border-radius: 6px;
-      min-width: 50px !important;
-      max-width: 58px;
-      height: 28px;
-      flex: 0 0 auto;
-      white-space: nowrap;
-
-      i {
-        font-size: 11px;
-      }
-
-      .btn-text {
-        font-size: 11px;
-      }
-      transition: all 0.2s ease;
-
-      &:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
-      }
-
-      &:active {
-        transform: translateY(0);
-      }
-
-      i {
-        font-size: 10px;
-      }
-
-      .btn-text {
-        display: inline;
-      }
-    }
-
-    // Tooltip 样式
-    :deep(.el-tooltip__popper) {
-      font-size: 11px;
-    }
-  }
-
-  // 工资发放操作按钮 - 强制一行显示（无图标）
-  .payout-action-buttons {
-    display: flex !important;
-    flex-direction: row !important;
-    align-items: center;
-    justify-content: center;
-    gap: 6px !important;
-    flex-wrap: nowrap !important;
-    white-space: nowrap !important;
-    width: 100% !important;
-    overflow: visible !important;
-
-    .el-button {
-      display: inline-flex !important;
-      align-items: center;
-      justify-content: center;
-      padding: 4px 8px !important;
-      font-size: 12px !important;
-      border-radius: 4px;
-      transition: all 0.2s ease;
-      white-space: nowrap !important;
-      flex-shrink: 0 !important;
-
-      &:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
-      }
-
-      &:active {
-        transform: translateY(0);
-      }
-    }
-  }
-
-  // 深度选择器 - 确保表格单元格内的按钮容器也是一行
-  :deep(.el-table__cell) {
-    .payout-action-buttons {
-      flex-wrap: nowrap !important;
-
-      .el-button {
-        flex-shrink: 0 !important;
-      }
-    }
-  }
-
-  // 移除紧凑型样式，统一使用标准样式
-}
-
-.employee-action-buttons {
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  flex-wrap: nowrap !important;
-  white-space: nowrap;
-  width: 100%;
 }
 
 .employee-action-buttons .employee-action-item {
-  display: inline-flex !important;
-  flex: 1 1 0;
-  min-width: 0;
-}
-
-.employee-action-buttons .employee-action-item :deep(.el-button) {
-  display: inline-flex !important;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  width: 100%;
-  min-width: 0 !important;
-  max-width: none;
-  height: 26px;
-  padding: 4px 6px !important;
-  margin: 0 !important;
-  border-radius: 6px;
-  white-space: nowrap;
-  flex: 0 0 auto;
-}
-
-.employee-action-buttons .employee-action-item :deep(.el-button i) {
-  font-size: 10px;
-}
-
-.employee-action-buttons .employee-action-item :deep(.el-button .btn-text) {
-  font-size: 11px;
-  line-height: 1;
-}
-
-.salary-employee-table,
-.salary-payout-table {
-  .employee-name-text {
-    display: block;
-    font-size: 12px;
-    font-weight: 700;
-    color: #1f2937;
-    line-height: 1.25;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .mobile-salary-value {
-    display: inline-block;
-    font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
-    font-size: 10px;
-    font-weight: 700;
-    line-height: 1.2;
-    white-space: nowrap;
-  }
-
-  .mobile-salary-value.is-commission {
-    color: #f97316;
-  }
-
-  .mobile-salary-value.is-overtime {
-    color: #0f766e;
-  }
-
-  .mobile-salary-value.is-deduction {
-    color: #dc2626;
-  }
-
-  .mobile-salary-value.is-estimated {
-    color: #2563eb;
-  }
+  display: contents;
 }
 
 :deep(.employee-action-column .cell) {
   padding: 0 6px !important;
   overflow: visible;
-}
-
-// 响应式优化 - 移动端表格样式调整
-@media (max-width: 767px) {
-  .salary-template-table,
-  .salary-employee-table {
-    :deep(.mobile-expand-column) {
-      width: 0 !important;
-      min-width: 0 !important;
-      padding: 0 !important;
-    }
-
-    :deep(.mobile-expand-column .cell) {
-      display: none !important;
-    }
-
-    :deep(.el-table__expand-column) {
-      width: 0 !important;
-      min-width: 0 !important;
-    }
-
-    :deep(.el-table__expand-icon) {
-      display: none !important;
-    }
-
-    :deep(.el-table__expanded-cell) {
-      padding: 6px 4px 10px !important;
-      background: linear-gradient(180deg, #f8fbff 0%, #f4f7ff 100%) !important;
-    }
-
-    :deep(.el-table__body-wrapper) {
-      overflow-x: hidden !important;
-    }
-
-    :deep(.el-table__header th .cell),
-    :deep(.el-table__body td .cell) {
-      padding: 0 4px;
-    }
-
-    :deep(.el-table__body td .cell) {
-      font-size: 10px;
-      line-height: 1.25;
-      word-break: keep-all;
-    }
-
-    .name-col {
-      .template-name-cell {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-      }
-
-      .name-text {
-        font-size: 13px;
-        font-weight: 700;
-        line-height: 1.35;
-      }
-    }
-
-    .salary-col .salary-cell {
-      justify-content: center;
-      font-size: 11px;
-    }
-
-    .employee-name-col {
-      .employee-name-text {
-        font-size: 12px;
-      }
-    }
-
-    .employee-count {
-      justify-content: center;
-      font-size: 11px;
-      gap: 4px;
-    }
-
-    // 移动端隐藏费率列
-    .hide-on-mobile {
-      display: none !important;
-    }
-
-    // 简化提成显示
-    .commission-cell {
-      .commission-details {
-        .detail-item {
-          font-size: 11px;
-        }
-      }
-    }
-
-    // 调整单元格内边距
-    :deep(.el-table__body td) {
-      padding: 7px 4px;
-    }
-
-    .mobile-inline-actions {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      flex-wrap: nowrap;
-      width: 100%;
-    }
-
-    // 移动端操作按钮简化
-    .template-action-buttons,
-    .employee-action-buttons,
-    .payout-action-buttons,
-    .my-salary-action-buttons {
-      gap: 3px;
-
-      .el-button {
-        padding: 3px 6px;
-        font-size: 10px;
-
-        i {
-          font-size: 9px;
-        }
-
-        .btn-text {
-          display: inline; // 移动端也显示文字
-        }
-      }
-    }
-
-    .mobile-inline-actions .mobile-action-btn {
-      min-width: 0;
-      height: 28px;
-      padding: 4px 10px !important;
-      border-radius: 8px;
-      font-size: 11px;
-      gap: 4px;
-      box-shadow: none;
-
-      i {
-        font-size: 10px;
-      }
-    }
-  }
-
-}
-
-@media (max-width: 767px) {
-  .employee-action-buttons {
-    gap: 3px;
-  }
-
-  .employee-action-buttons .employee-action-item :deep(.el-button) {
-    height: 24px;
-    padding: 2px 5px !important;
-  }
-}
-
-@media (max-width: 1023px) {
-  .salary-template-table {
-    // 平板隐藏说明列
-    .hide-on-tablet {
-      display: none !important;
-    }
-
-    // 平板操作按钮保持原样
-    .template-action-buttons,
-    .employee-action-buttons,
-    .payout-action-buttons,
-    .my-salary-action-buttons {
-      gap: 4px;
-
-      .el-button {
-        padding: 4px 8px;
-        font-size: 11px;
-      }
-    }
-  }
-}
-
-@media (max-width: 1023px) {
-  .employee-action-buttons {
-    gap: 4px;
-  }
-
-  .employee-action-buttons .employee-action-item :deep(.el-button) {
-    padding: 4px 6px !important;
-  }
 }
 
 // ==================== 模态框响应式优化 ====================
@@ -7743,14 +7234,6 @@ input:checked + .slider:before {
     word-break: break-word;
   }
 
-  .sales-details .table-responsive {
-    border-radius: 10px;
-  }
-
-  .sales-details .data-table {
-    min-width: 640px;
-  }
-
   .attendance-actions {
     display: flex;
     flex-direction: column;
@@ -7787,8 +7270,5 @@ input:checked + .slider:before {
     font-size: 20px;
   }
 
-  .sales-details .data-table {
-    min-width: 560px;
-  }
 }
 </style>
