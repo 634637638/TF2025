@@ -4,7 +4,12 @@ const { unifiedAuth, requirePermission } = require('../middleware/unified-auth')
 const { getDatabase } = require('../config/database');
 const getMenuWithPermissionFilter = require('../permissions/menuPermissionFilter');
 const { manualCleanup } = require('../services/permissionCleanupService');
-const { logRoleOperation, logUserRoleOperation, logPermissionModification } = require('./permission-logs');
+const {
+  logPermissionOperation,
+  logRoleOperation,
+  logUserRoleOperation,
+  logPermissionModification
+} = require('./permission-logs');
 const {
   getModulePermissionMetadata,
   getModulePermissionTypes,
@@ -146,6 +151,94 @@ function mergeManagedModules(rows = [], keyField = 'module_key') {
     const nameB = b.module_name || b.name || b.module_key || b.key || '';
     return nameA.localeCompare(nameB, 'zh-CN');
   });
+}
+
+function normalizeAuditPermissions(rows = []) {
+  const permissionMap = new Map();
+
+  rows.forEach((row) => {
+    const moduleKey = normalizeManagedModuleKey(row?.module_key || row?.moduleKey);
+    const permissionType = normalizePermissionType(row?.permission_type || row?.permissionType);
+    if (!moduleKey || !permissionType || moduleKey === 'undefined' || permissionType === 'undefined') {
+      return;
+    }
+
+    permissionMap.set(`${moduleKey}:${permissionType}`, {
+      module_key: moduleKey,
+      permission_type: permissionType
+    });
+  });
+
+  return Array.from(permissionMap.values()).sort((a, b) => (
+    a.module_key.localeCompare(b.module_key) || a.permission_type.localeCompare(b.permission_type)
+  ));
+}
+
+async function loadAuditModuleNames(db, permissions = []) {
+  const moduleKeys = Array.from(new Set(permissions.map((item) => item.module_key).filter(Boolean)));
+  const moduleNameMap = new Map();
+
+  if (moduleKeys.length > 0) {
+    const placeholders = moduleKeys.map(() => '?').join(',');
+    const [moduleRows] = await db.execute(
+      `SELECT \`key\`, name FROM modules WHERE \`key\` IN (${placeholders})`,
+      moduleKeys
+    );
+    moduleRows.forEach((module) => moduleNameMap.set(module.key, module.name || module.key));
+  }
+
+  moduleKeys.forEach((moduleKey) => {
+    if (!moduleNameMap.has(moduleKey)) {
+      const metadata = getModulePermissionMetadata(moduleKey) || {};
+      moduleNameMap.set(moduleKey, metadata.name || moduleKey);
+    }
+  });
+
+  return moduleNameMap;
+}
+
+async function buildPermissionChangeAudit(db, previousRows, nextRows, auditType = 'role_action_permissions') {
+  const previousPermissions = normalizeAuditPermissions(previousRows);
+  const permissions = normalizeAuditPermissions(nextRows);
+  const previousSet = new Set(previousPermissions.map((item) => `${item.module_key}:${item.permission_type}`));
+  const nextSet = new Set(permissions.map((item) => `${item.module_key}:${item.permission_type}`));
+  const addedPermissions = permissions.filter((item) => !previousSet.has(`${item.module_key}:${item.permission_type}`));
+  const removedPermissions = previousPermissions.filter((item) => !nextSet.has(`${item.module_key}:${item.permission_type}`));
+  const moduleNameMap = await loadAuditModuleNames(
+    db,
+    [...previousPermissions, ...permissions]
+  );
+  const withModuleName = (item) => ({
+    ...item,
+    module_name: moduleNameMap.get(item.module_key) || item.module_key
+  });
+  const affectedModuleKeys = Array.from(new Set(
+    [...addedPermissions, ...removedPermissions].map((item) => item.module_key)
+  ));
+  const moduleChanges = affectedModuleKeys.map((moduleKey) => ({
+    module_key: moduleKey,
+    module_name: moduleNameMap.get(moduleKey) || moduleKey,
+    added_permissions: addedPermissions
+      .filter((item) => item.module_key === moduleKey)
+      .map((item) => item.permission_type),
+    removed_permissions: removedPermissions
+      .filter((item) => item.module_key === moduleKey)
+      .map((item) => item.permission_type)
+  })).sort((a, b) => a.module_name.localeCompare(b.module_name, 'zh-CN'));
+
+  return {
+    audit_type: auditType,
+    previous_permissions_count: previousPermissions.length,
+    permissions_count: permissions.length,
+    added_count: addedPermissions.length,
+    removed_count: removedPermissions.length,
+    affected_modules_count: affectedModuleKeys.length,
+    previous_permissions: previousPermissions.map(withModuleName),
+    permissions: permissions.map(withModuleName),
+    added_permissions: addedPermissions.map(withModuleName),
+    removed_permissions: removedPermissions.map(withModuleName),
+    module_changes: moduleChanges
+  };
 }
 
 // 权限验证中间件
@@ -900,7 +993,7 @@ router.put('/menu/:roleId', requirePermission('permissions:admin'), async (req, 
 
     try {
       await connection.query('START TRANSACTION');
-      const [roleRows] = await connection.execute('SELECT id FROM roles WHERE id = ?', [roleId]);
+      const [roleRows] = await connection.execute('SELECT id, name FROM roles WHERE id = ?', [roleId]);
       if (roleRows.length === 0) {
         throw new Error('角色不存在');
       }
@@ -908,7 +1001,7 @@ router.put('/menu/:roleId', requirePermission('permissions:admin'), async (req, 
       const normalizedMenuPermissions = menuPermissions
         .filter((perm) => perm && perm.module_key)
         .map((perm) => ({
-          module_key: perm.module_key,
+          module_key: normalizeManagedModuleKey(perm.module_key),
           menu_visible: perm.menu_visible ? 1 : 0
         }));
 
@@ -922,6 +1015,13 @@ router.put('/menu/:roleId', requirePermission('permissions:admin'), async (req, 
         `SELECT id, \`key\` FROM modules ${supportsModuleIsActive ? 'WHERE is_active = 1' : ''}`
       );
       const moduleIdMap = new Map(moduleRows.map((row) => [row.key, row.id]));
+      const previousVisibility = await getRoleMenuVisibility(roleId, connection);
+      const previousMenuPermissions = Array.from(previousVisibility.entries())
+        .filter(([, visible]) => visible)
+        .map(([moduleKey]) => ({
+          module_key: moduleKey,
+          permission_type: 'menu_view'
+        }));
 
       await connection.execute(
         'DELETE FROM role_permissions WHERE role_id = ? AND permission_type = ?',
@@ -990,7 +1090,30 @@ router.put('/menu/:roleId', requirePermission('permissions:admin'), async (req, 
         }
       }
 
+      const nextMenuPermissions = normalizedMenuPermissions
+        .filter((permission) => permission.menu_visible === 1)
+        .map((permission) => ({
+          module_key: permission.module_key,
+          permission_type: 'menu_view'
+        }));
+      const auditDetails = await buildPermissionChangeAudit(
+        connection,
+        previousMenuPermissions,
+        nextMenuPermissions,
+        'role_menu_permissions'
+      );
+
       await connection.query('COMMIT');
+
+      if (auditDetails.added_count > 0 || auditDetails.removed_count > 0) {
+        await logPermissionModification(
+          req,
+          roleId,
+          roleRows[0].name,
+          nextMenuPermissions,
+          auditDetails
+        );
+      }
 
       res.json({
         success: true,
@@ -1409,6 +1532,15 @@ router.put('/roles/:id', requirePermission('permissions:admin'), async (req, res
     }
 
     const role = currentRole[0];
+    const storedCode = supportsRoleCode ? (role.code || `role_${id}`) : null;
+
+    // 角色编码是跨接口使用的稳定标识，创建后禁止修改。
+    if (supportsRoleCode && normalizedCode && normalizedCode !== storedCode) {
+      return res.status(400).json({
+        success: false,
+        message: '角色编码创建后不可修改'
+      });
+    }
 
     // 检查角色名称是否被其他角色使用
     const [nameCheck] = await pool.execute(
@@ -1423,20 +1555,6 @@ router.put('/roles/:id', requirePermission('permissions:admin'), async (req, res
       });
     }
 
-    if (supportsRoleCode && normalizedCode) {
-      const [codeCheck] = await pool.execute(
-        'SELECT id FROM roles WHERE code = ? AND id != ?',
-        [normalizedCode, id]
-      );
-
-      if (codeCheck.length > 0) {
-        return res.status(400).json({
-          success: false,
-          message: '角色编码已存在'
-        });
-      }
-    }
-
     // 检查role_type是否有效
     if (role_type) {
       const validRoleTypes = ['super_admin', 'admin', 'manager', 'employee', 'system', 'business'];
@@ -1449,18 +1567,8 @@ router.put('/roles/:id', requirePermission('permissions:admin'), async (req, res
     }
 
     // 更新角色
-    const finalCode = supportsRoleCode ? (normalizedCode || role.code || `role_${id}`) : null;
-    if (supportsRoleCode && supportsRoleType) {
-      await pool.execute(
-        'UPDATE roles SET name = ?, code = ?, description = ?, role_type = COALESCE(?, role_type), updated_at = NOW() WHERE id = ?',
-        [name.trim(), finalCode, description.trim(), role_type || null, id]
-      );
-    } else if (supportsRoleCode) {
-      await pool.execute(
-        'UPDATE roles SET name = ?, code = ?, description = ?, updated_at = NOW() WHERE id = ?',
-        [name.trim(), finalCode, description.trim(), id]
-      );
-    } else if (supportsRoleType) {
+    const finalCode = storedCode;
+    if (supportsRoleType) {
       await pool.execute(
         'UPDATE roles SET name = ?, description = ?, role_type = COALESCE(?, role_type), updated_at = NOW() WHERE id = ?',
         [name.trim(), description.trim(), role_type || null, id]
@@ -1652,6 +1760,15 @@ router.put('/roles/:id/status', requirePermission('permissions:admin'), async (r
     }
 
     const action = is_active === '1' ? '启用' : '停用';
+    if (Number(role.is_active) !== Number(is_active)) {
+      await logRoleOperation(req, 'edit', id, role.name, {
+        audit_type: 'role_status',
+        previous_is_active: Number(role.is_active),
+        is_active: Number(is_active),
+        affected_users: affectedUsersCount,
+        status_action: action
+      });
+    }
     res.json({
       success: true,
       message: `角色${action}成功`,
@@ -1688,7 +1805,7 @@ router.put('/users/:id/roles', requirePermission('permissions:admin'), async (re
 
     // 检查用户是否存在
     const [existingUser] = await pool.execute(
-      'SELECT id FROM users WHERE id = ?',
+      'SELECT id, username FROM users WHERE id = ?',
       [id]
     );
 
@@ -1698,6 +1815,15 @@ router.put('/users/:id/roles', requirePermission('permissions:admin'), async (re
         message: '用户不存在'
       });
     }
+
+    const [previousRoles] = await pool.execute(
+      `SELECT r.id, r.name
+       FROM user_roles ur
+       JOIN roles r ON r.id = ur.role_id
+       WHERE ur.user_id = ?
+       ORDER BY r.id`,
+      [id]
+    );
 
     // 验证所有角色ID是否存在
     if (roleIds.length > 0) {
@@ -1725,7 +1851,11 @@ router.put('/users/:id/roles', requirePermission('permissions:admin'), async (re
     }
 
     // 记录权限操作日志
-    await logUserRoleOperation(req, 'assign', id, null, { role_ids: roleIds, role_count: roleIds.length });
+    await logUserRoleOperation(req, id, existingUser[0].username, roleIds, {
+      role_count: roleIds.length,
+      previous_role_ids: previousRoles.map(role => role.id),
+      previous_role_names: previousRoles.map(role => role.name)
+    });
 
     res.json({
       success: true,
@@ -1795,7 +1925,7 @@ router.get('/roles/:id/permissions', requirePermission('permissions:admin'), asy
 
     // 检查角色是否存在
     const [existingRole] = await pool.execute(
-      'SELECT id FROM roles WHERE id = ?',
+      'SELECT id, name FROM roles WHERE id = ?',
       [id]
     );
 
@@ -1972,6 +2102,13 @@ router.put('/roles/:id/permissions', requirePermission('permissions:admin'), asy
     }
 
     const roleName = existingRole[0].name;
+    const [previousPermissions] = await pool.execute(
+      `SELECT module_key, permission_type
+       FROM role_permissions
+       WHERE role_id = ? AND permission_type != ?`,
+      [id, 'menu_view']
+    );
+    const validPermissions = normalizeAuditPermissions(Array.isArray(permissions) ? permissions : []);
 
     // 删除角色现有的非菜单权限（保留菜单权限）
     await pool.execute(
@@ -1980,26 +2117,11 @@ router.put('/roles/:id/permissions', requirePermission('permissions:admin'), asy
     );
 
     // 添加新的权限
-    let addedCount = 0;
-    if (permissions && permissions.length > 0) {
-      // 过滤掉无效的权限数据
-      const validPermissions = permissions.filter(perm => {
-        if (!perm.module_key || perm.module_key === 'undefined' || perm.module_key === null) {
-          log.warn(`跳过无效的权限数据:`, perm);
-          return false;
-        }
-        if (!perm.permission_type || perm.permission_type === 'undefined' || perm.permission_type === null) {
-          log.warn(`跳过无效的权限类型:`, perm);
-          return false;
-        }
-        return true;
-      });
-
-      if (validPermissions.length > 0) {
+    if (validPermissions.length > 0) {
         const values = validPermissions.map(perm => [
           id,
-          normalizeManagedModuleKey(perm.module_key),
-          normalizePermissionType(perm.permission_type)
+          perm.module_key,
+          perm.permission_type
         ]);
         const placeholders = values.map(() => '(?, ?, ?)').join(', ');
         const flatValues = values.flat();
@@ -2009,15 +2131,18 @@ router.put('/roles/:id/permissions', requirePermission('permissions:admin'), asy
           flatValues
         );
 
-        addedCount = validPermissions.length;
         log.debug(`成功为角色 ${id} 更新了 ${validPermissions.length} 个权限（保留原有菜单权限）`);
-      } else {
-        log.warn(`没有有效的权限数据可以更新给角色 ${id}`);
-      }
     }
 
-    // 记录权限修改日志
-    await logPermissionModification(req, id, roleName, permissions, { permissions_count: addedCount });
+    const auditDetails = await buildPermissionChangeAudit(
+      pool,
+      previousPermissions,
+      validPermissions,
+      'role_action_permissions'
+    );
+    if (auditDetails.added_count > 0 || auditDetails.removed_count > 0) {
+      await logPermissionModification(req, id, roleName, validPermissions, auditDetails);
+    }
 
     // 🔥 清除所有拥有该角色的用户的权限缓存
     const { permissionCache } = require('../config/redis');
@@ -2058,7 +2183,7 @@ router.put('/roles/:id/permissions/select-all', requirePermission('permissions:a
 
     // 检查角色是否存在
     const [existingRole] = await pool.execute(
-      'SELECT id FROM roles WHERE id = ?',
+      'SELECT id, name FROM roles WHERE id = ?',
       [id]
     );
 
@@ -2068,6 +2193,13 @@ router.put('/roles/:id/permissions/select-all', requirePermission('permissions:a
         message: '角色不存在'
       });
     }
+
+    const [previousPermissions] = await pool.execute(
+      `SELECT module_key, permission_type
+       FROM role_permissions
+       WHERE role_id = ? AND permission_type != ?`,
+      [id, 'menu_view']
+    );
 
     // 获取所有模块（优先从数据库，如果为空则从扫描获取）
     let allModules = [];
@@ -2132,6 +2264,26 @@ router.put('/roles/:id/permissions/select-all', requirePermission('permissions:a
       );
     }
 
+    const nextPermissions = allPermissions.map((permission) => ({
+      module_key: permission[1],
+      permission_type: permission[2]
+    }));
+    const auditDetails = await buildPermissionChangeAudit(
+      pool,
+      previousPermissions,
+      nextPermissions,
+      'role_action_permissions'
+    );
+    if (auditDetails.added_count > 0 || auditDetails.removed_count > 0) {
+      await logPermissionModification(
+        req,
+        id,
+        existingRole[0].name,
+        nextPermissions,
+        { ...auditDetails, batch_action: 'select_all' }
+      );
+    }
+
     // 🔥 清除所有拥有该角色的用户的权限缓存
     const { permissionCache } = require('../config/redis');
     const [roleUsers] = await pool.execute(
@@ -2171,7 +2323,7 @@ router.put('/roles/:id/permissions/clear-all', requirePermission('permissions:ad
 
     // 检查角色是否存在
     const [existingRole] = await pool.execute(
-      'SELECT id FROM roles WHERE id = ?',
+      'SELECT id, name FROM roles WHERE id = ?',
       [id]
     );
 
@@ -2182,11 +2334,34 @@ router.put('/roles/:id/permissions/clear-all', requirePermission('permissions:ad
       });
     }
 
+    const [previousPermissions] = await pool.execute(
+      `SELECT module_key, permission_type
+       FROM role_permissions
+       WHERE role_id = ? AND permission_type != ?`,
+      [id, 'menu_view']
+    );
+
     // 删除角色的非菜单权限（保留菜单权限）
     const [result] = await pool.execute(
       'DELETE FROM role_permissions WHERE role_id = ? AND permission_type != ?',
       [id, 'menu_view']
     );
+
+    const auditDetails = await buildPermissionChangeAudit(
+      pool,
+      previousPermissions,
+      [],
+      'role_action_permissions'
+    );
+    if (auditDetails.removed_count > 0) {
+      await logPermissionModification(
+        req,
+        id,
+        existingRole[0].name,
+        [],
+        { ...auditDetails, batch_action: 'clear_all' }
+      );
+    }
 
     // 🔥 清除所有拥有该角色的用户的权限缓存
     const { permissionCache } = require('../config/redis');
@@ -2492,7 +2667,7 @@ router.put('/field-permissions/:roleId', requirePermission('permissions:admin'),
 
       // 检查角色是否存在
       const [existingRole] = await connection.execute(
-        `SELECT id FROM roles WHERE id = ? ${supportsRoleIsActive ? 'AND is_active = 1' : ''}`,
+        `SELECT id, name FROM roles WHERE id = ? ${supportsRoleIsActive ? 'AND is_active = 1' : ''}`,
         [roleId]
       );
 
@@ -2506,7 +2681,7 @@ router.put('/field-permissions/:roleId', requirePermission('permissions:admin'),
 
       // 检查模块是否存在
       const [existingModule] = await connection.execute(
-        `SELECT \`key\` FROM modules WHERE \`key\` = ? ${supportsModuleIsActive ? 'AND is_active = 1' : ''}`,
+        `SELECT \`key\`, name FROM modules WHERE \`key\` = ? ${supportsModuleIsActive ? 'AND is_active = 1' : ''}`,
         [moduleKey]
       );
 
@@ -2516,9 +2691,20 @@ router.put('/field-permissions/:roleId', requirePermission('permissions:admin'),
 
       // 检查是否已存在字段权限配置
       const [existingFieldPerm] = await connection.execute(
-        'SELECT id FROM role_field_permissions WHERE role_id = ? AND module_key = ?',
+        'SELECT id, field_config FROM role_field_permissions WHERE role_id = ? AND module_key = ?',
         [roleId, moduleKey]
       );
+
+      let previousFieldConfig = { hiddenFields: [] };
+      if (existingFieldPerm[0]?.field_config) {
+        try {
+          previousFieldConfig = typeof existingFieldPerm[0].field_config === 'string'
+            ? JSON.parse(existingFieldPerm[0].field_config)
+            : existingFieldPerm[0].field_config;
+        } catch (parseError) {
+          log.warn(`解析原字段权限失败: role=${roleId}, module=${moduleKey}`, parseError);
+        }
+      }
 
       const fieldConfigJson = JSON.stringify(fieldConfig);
 
@@ -2567,6 +2753,40 @@ router.put('/field-permissions/:roleId', requirePermission('permissions:admin'),
       }
 
       await connection.commit();
+
+      const previousHiddenFields = Array.isArray(previousFieldConfig.hiddenFields)
+        ? previousFieldConfig.hiddenFields
+        : [];
+      const hiddenFields = Array.isArray(fieldConfig.hiddenFields) ? fieldConfig.hiddenFields : [];
+      const addedHiddenFields = hiddenFields.filter((field) => !previousHiddenFields.includes(field));
+      const removedHiddenFields = previousHiddenFields.filter((field) => !hiddenFields.includes(field));
+      if (addedHiddenFields.length > 0 || removedHiddenFields.length > 0) {
+        const moduleName = existingModule[0]?.name || moduleKey;
+        await logPermissionOperation(
+          req,
+          'permission',
+          'role',
+          roleId,
+          existingRole[0].name,
+          `修改角色 ${existingRole[0].name} 的字段权限：隐藏 ${addedHiddenFields.length} 项，恢复显示 ${removedHiddenFields.length} 项`,
+          {
+            audit_type: 'role_field_permissions',
+            module_key: moduleKey,
+            module_name: moduleName,
+            previous_hidden_fields: previousHiddenFields,
+            hidden_fields: hiddenFields,
+            added_count: addedHiddenFields.length,
+            removed_count: removedHiddenFields.length,
+            affected_modules_count: 1,
+            module_changes: [{
+              module_key: moduleKey,
+              module_name: moduleName,
+              added_permissions: addedHiddenFields,
+              removed_permissions: removedHiddenFields
+            }]
+          }
+        );
+      }
 
       res.json({
         success: true,

@@ -616,7 +616,7 @@ const deleteColor = async (color: Color) => {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning',
-        customClass: 'message-box-purple'
+        customClass: 'message-box-unified'
       }
     )
   } catch {
@@ -1325,49 +1325,6 @@ onBeforeUnmount(() => {
   justify-content: center;
   gap: 8px;
 }
-
-.btn-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  white-space: nowrap;
-  min-width: 60px;
-  justify-content: center;
-}
-
-.btn-action i {
-  font-size: 12px;
-}
-
-.btn-edit {
-  background: #007bff;
-  color: white;
-}
-
-.btn-edit:hover {
-  background: #0056b3;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
-}
-
-.btn-delete {
-  background: #dc3545;
-  color: white;
-}
-
-.btn-delete:hover {
-  background: #c82333;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
-}
-
 .empty-row td {
   padding: 60px 12px;
   text-align: center;
@@ -1582,15 +1539,7 @@ onBeforeUnmount(() => {
   .actions {
     min-width: 80px;
   }
-
-  .btn-action {
-    width: 100%;
-    justify-content: center;
-    padding: 8px 12px;
-    font-size: 12px;
-  }
-
-  .color-info {
+.color-info {
     max-width: 120px;
   }
 

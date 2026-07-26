@@ -1,0 +1,80 @@
+/* Unified dialog body and form spacing. Keep dialog content aligned on both sides. */
+:root {
+  --tf-image-viewer-z-index: 12000;
+  --tf-dialog-body-padding-inline: 24px;
+  --tf-dialog-body-padding-block: 24px;
+  --tf-dialog-form-label-width: 72px;
+  --tf-dialog-body-padding-inline-mobile: 16px;
+  --tf-dialog-body-padding-block-mobile: 16px;
+  --tf-dialog-form-label-width-mobile: 62px;
+}
+
+/* Image preview must sit above dialogs and their overlays. */
+.el-image-viewer__wrapper {
+  z-index: var(--tf-image-viewer-z-index) !important;
+}
+
+.el-dialog__body {
+  box-sizing: border-box !important;
+  padding: var(--tf-dialog-body-padding-block) var(--tf-dialog-body-padding-inline) !important;
+}
+
+/* Explicit workspace variant for complex full-bleed dialog tools. */
+.tf-dialog-body-flush .el-dialog__body,
+.el-dialog.tf-dialog-body-flush .el-dialog__body {
+  padding: 0 !important;
+}
+
+.tf-dialog-form {
+  --tf-dialog-form-current-label-width: var(--tf-dialog-form-label-width);
+}
+
+.tf-dialog-form .el-form-item__label,
+.tf-dialog-form .el-form-item__content {
+  box-sizing: border-box;
+}
+
+.tf-dialog-form .el-form-item__label {
+  width: var(--tf-dialog-form-current-label-width) !important;
+  padding-right: 8px !important;
+  text-align: left !important;
+}
+
+.tf-dialog-form .el-form-item__content {
+  min-width: 0;
+  margin-left: 0 !important;
+}
+
+/* Full-width fields for editors and other wide controls. */
+.tf-dialog-form--stacked .el-form-item__label {
+  width: auto !important;
+  height: auto;
+  padding: 0 0 6px !important;
+  line-height: 20px;
+}
+
+.tf-dialog-form--stacked .el-form-item__content {
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .el-dialog__body {
+    padding: var(--tf-dialog-body-padding-block-mobile) var(--tf-dialog-body-padding-inline-mobile) !important;
+  }
+
+  .tf-dialog-form {
+    --tf-dialog-form-current-label-width: var(--tf-dialog-form-label-width-mobile);
+  }
+
+  .tf-dialog-form--stacked .el-form-item__label {
+    padding-bottom: 4px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --tf-dialog-body-padding-inline-mobile: 12px;
+    --tf-dialog-body-padding-block-mobile: 12px;
+    --tf-dialog-form-label-width-mobile: 58px;
+  }
+}

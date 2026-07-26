@@ -1,5 +1,5 @@
 <template>
-  <div class="module-management admin-page">
+  <div class="module-management">
     <PermissionGate
       :can-view="canView"
       mode="denied"
@@ -10,64 +10,8 @@
 
     <!-- 主要内容 - 只有有权限时才显示 -->
     <div class="admin-page-content">
-    <PageHeader title="模块管理">
-      <template #actions>
-        <div class="action-buttons">
-          <button class="btn btn-back" @click="$router.back()">
-            <i class="fas fa-arrow-left"></i>
-            返回上一步
-          </button>
-          <el-button type="info" plain @click="refreshModules" :disabled="isLoading">
-            <InlineLoading v-if="isLoading" text="刷新中..." size="small" variant="inherit" />
-            <template v-else>
-              <i class="fas fa-sync-alt"></i>
-              <span>刷新</span>
-            </template>
-          </el-button>
-          <el-button type="primary" plain @click="handleFixMenuLinks" :disabled="isFixingMenuLinks">
-            <InlineLoading v-if="isFixingMenuLinks" text="修复中..." size="small" variant="inherit" />
-            <template v-else>
-              <i class="fas fa-link"></i>
-              <span>修复菜单关联</span>
-            </template>
-          </el-button>
-        </div>
-      </template>
-    </PageHeader>
-
     <!-- 主要内容区域 -->
     <div class="main-content admin-page-content">
-      <!-- 统计信息 -->
-      <div class="stats-overview">
-      <div class="stat-card total">
-        <div class="stat-icon">
-          <i class="fas fa-cubes"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ stats.totalModules }}</div>
-          <div class="stat-label">已注册模块</div>
-        </div>
-      </div>
-      <div class="stat-card custom">
-        <div class="stat-icon">
-          <i class="fas fa-lock"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ stats.customModules }}</div>
-          <div class="stat-label">自定义名称</div>
-        </div>
-      </div>
-      <div class="stat-card auto">
-        <div class="stat-icon">
-          <i class="fas fa-robot"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ stats.autoModules }}</div>
-          <div class="stat-label">自动名称</div>
-        </div>
-      </div>
-    </div>
-
     <UnifiedSearchPanel
       :expanded="searchExpanded"
       @update:expanded="searchExpanded = $event"
@@ -103,9 +47,16 @@
       </div>
       <div class="form-group filter-item">
         <select v-model="nameStatus" class="form-control" @change="handleNameStatusFilter">
-          <option value="">全部状态</option>
+          <option value="">全部名称状态</option>
           <option value="custom">🔒 自定义名称</option>
           <option value="auto">🤖 自动生成</option>
+        </select>
+      </div>
+      <div class="form-group filter-item">
+        <select v-model="activeStatus" class="form-control" @change="handleActiveStatusFilter">
+          <option value="">全部启用状态</option>
+          <option value="active">已启用</option>
+          <option value="inactive">已禁用</option>
         </select>
       </div>
     </UnifiedSearchPanel>
@@ -168,7 +119,7 @@
           <i class="fas fa-inbox"></i>
         </div>
         <h3>暂无模块数据</h3>
-        <p v-if="searchText || filterCategory || nameStatus">
+        <p v-if="searchText || filterCategory || nameStatus || activeStatus">
           没有符合筛选条件的模块
           <button class="btn-link" @click="clearFilters">清除筛选条件</button>
         </p>
@@ -181,97 +132,16 @@
 
       <!-- 模块列表 - 列表视图 -->
       <div v-else-if="viewMode === 'list'" class="table-responsive">
-        <table class="module-table">
-          <thead>
-            <tr>
-              <th width="40">状态</th>
-              <th>模块标识</th>
-              <th>模块名称</th>
-              <th>分类</th>
-              <th>权限数量</th>
-              <th>名称状态</th>
-              <th>创建时间</th>
-              <th width="120">操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="module in paginatedModules" :key="module.id" class="module-row">
-              <td>
-                <span class="status-badge" :class="module.is_active ? 'active' : 'inactive'">
-                  {{ module.is_active ? '✅' : '❌' }}
-                </span>
-              </td>
-              <td>
-                <code class="module-key">{{ module.key }}</code>
-              </td>
-              <td>
-                <div class="module-name-cell">
-                  <div class="module-name">
-                    {{ module.name }}
-                    <span v-if="module.is_custom_name === 1" class="custom-badge">🔒</span>
-                  </div>
-                  <div class="module-description">{{ module.description }}</div>
-                </div>
-              </td>
-              <td>
-                <span class="category-badge" :class="module.category">{{ getCategoryName(module.category) }}</span>
-              </td>
-              <td>
-                <span class="permission-count">{{ module.permission_count || 0 }}</span>
-              </td>
-              <td>
-                <span class="name-status-badge" :class="module.is_custom_name ? 'custom' : 'auto'">
-                  {{ module.name_status }}
-                </span>
-              </td>
-              <td>
-                {{ formatDate(module.created_at) }}
-              </td>
-              <td>
-                <div class="action-buttons">
-                  <el-button
-                    v-if="canEdit"
-                    :type="module.is_active ? 'success' : 'info'"
-                    size="small"
-                    @click="toggleModuleStatus(module)"
-                    :title="module.is_active ? '点击禁用模块' : '点击启用模块'"
-                  >
-                    <i :class="module.is_active ? 'fas fa-toggle-on' : 'fas fa-toggle-off'"></i>
-                    {{ module.is_active ? '已启用' : '已禁用' }}
-                  </el-button>
-                  <el-button
-                    v-if="canEdit"
-                    type="primary"
-                    size="small"
-                    @click="editModuleName(module)"
-                    :title="module.is_custom_name === 1 ? '编辑自定义名称' : '设为自定义名称'"
-                  >
-                    <i class="fas fa-edit"></i>
-                    {{ module.is_custom_name === 1 ? '编辑' : '自定义' }}
-                  </el-button>
-                  <el-button
-                    v-if="module.is_custom_name === 1"
-                    type="warning"
-                    size="small"
-                    @click="restoreModuleName(module)"
-                    title="恢复原始名称"
-                  >
-                    <i class="fas fa-undo"></i>
-                    恢复
-                  </el-button>
-                  <el-button
-                    type="info"
-                    size="small"
-                    @click="showModuleDetails(module)"
-                  >
-                    <i class="fas fa-info-circle"></i>
-                    详情
-                  </el-button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <el-table :data="paginatedModules" border stripe class="data-table devices-table permissions-module-table" table-layout="fixed" :fit="true" row-key="id">
+          <el-table-column label="状态" min-width="86" align="center"><template #default="{ row }"><span class="status-badge" :class="row.is_active ? 'active' : 'inactive'">{{ row.is_active ? '启用' : '禁用' }}</span></template></el-table-column>
+          <el-table-column label="模块标识" min-width="210" align="center" class-name="complete-text-column"><template #default="{ row }"><code class="module-key">{{ row.key }}</code></template></el-table-column>
+          <el-table-column label="模块名称" min-width="240" align="center"><template #default="{ row }"><div class="module-name-cell"><div class="module-name">{{ row.name }}<span v-if="row.is_custom_name === 1" class="custom-badge">自定义</span></div><div class="module-description">{{ row.description }}</div></div></template></el-table-column>
+          <el-table-column label="分类" min-width="110" align="center"><template #default="{ row }"><span class="category-badge" :class="row.category">{{ getCategoryName(row.category) }}</span></template></el-table-column>
+          <el-table-column label="权限数量" min-width="96" align="center"><template #default="{ row }"><span class="permission-count">{{ row.permission_count || 0 }}</span></template></el-table-column>
+          <el-table-column label="名称状态" min-width="110" align="center"><template #default="{ row }"><span class="name-status-badge" :class="row.is_custom_name ? 'custom' : 'auto'">{{ row.name_status }}</span></template></el-table-column>
+          <el-table-column label="创建时间" min-width="156" align="center" class-name="complete-text-column"><template #default="{ row }">{{ formatDate(row.created_at) }}</template></el-table-column>
+          <el-table-column label="操作" min-width="330" align="center" class-name="actions-column"><template #default="{ row }"><div class="action-buttons"><el-button v-if="canEdit" :type="isProtectedModule(row) ? 'info' : (row.is_active ? 'warning' : 'success')" size="small" :disabled="isProtectedModule(row) && Number(row.is_active) === 1" :title="isProtectedModule(row) ? '权限管理核心模块不能禁用' : (row.is_active ? '禁用模块' : '启用模块')" @click.stop="toggleModuleStatus(row)"><i :class="isProtectedModule(row) ? 'fas fa-shield-alt' : (row.is_active ? 'fas fa-toggle-off' : 'fas fa-toggle-on')"></i><span>{{ isProtectedModule(row) && Number(row.is_active) === 1 ? '核心模块' : (row.is_active ? '禁用' : '启用') }}</span></el-button><el-button v-if="canEdit" type="primary" size="small" :title="row.is_custom_name === 1 ? '编辑自定义名称' : '设为自定义名称'" @click.stop="editModuleName(row)"><i class="fas fa-edit"></i><span>{{ row.is_custom_name === 1 ? '编辑' : '自定义' }}</span></el-button><el-button v-if="row.is_custom_name === 1" type="warning" size="small" title="恢复原始名称" @click.stop="restoreModuleName(row)"><i class="fas fa-undo"></i><span>恢复</span></el-button><el-button type="info" size="small" title="详情" @click.stop="showModuleDetails(row)"><i class="fas fa-info-circle"></i><span>详情</span></el-button></div></template></el-table-column>
+        </el-table>
       </div>
 
       <!-- 模块列表 - 网格视图 -->
@@ -280,24 +150,27 @@
           v-for="module in paginatedModules"
           :key="module.id"
           class="module-card"
-          :class="{ 'custom-name': module.is_custom_name === 1 }"
+          :class="{
+            'custom-name': module.is_custom_name === 1,
+            'inactive-module': !module.is_active
+          }"
         >
           <div class="card-header">
             <div class="module-header-main">
-              <div class="module-status">
-                <span class="status-indicator" :class="module.is_active ? 'active' : 'inactive'"></span>
-                <span class="module-status-text">{{ module.is_active ? '已启用' : '已禁用' }}</span>
-              </div>
-              <div class="module-name-actions">
-                <div class="module-name-row">
-                  <div class="module-name">
-                    {{ module.name }}
-                    <span v-if="module.is_custom_name === 1" class="custom-badge">🔒</span>
-                  </div>
-                  <span class="category-badge" :class="module.category">{{ getCategoryName(module.category) }}</span>
+              <div class="module-primary-row">
+                <div class="module-name" :title="module.name">
+                  <span class="module-name-text">{{ module.name }}</span>
+                  <span v-if="module.is_custom_name === 1" class="custom-badge">🔒</span>
                 </div>
-                <div class="module-key">{{ module.key }}</div>
-                <div class="module-description-text">{{ module.description }}</div>
+                <span class="category-badge" :class="module.category">{{ getCategoryName(module.category) }}</span>
+                <div class="module-status">
+                  <span class="status-indicator" :class="module.is_active ? 'active' : 'inactive'"></span>
+                  <span class="module-status-text">{{ module.is_active ? '已启用' : '已禁用' }}</span>
+                </div>
+              </div>
+              <div class="module-secondary-row">
+                <div class="module-key" :title="module.key">{{ module.key }}</div>
+                <div class="module-description-text" :title="module.description">{{ module.description }}</div>
               </div>
             </div>
           </div>
@@ -315,7 +188,7 @@
               </div>
               <div class="info-item info-meta-card">
                 <label>创建时间</label>
-                <span class="info-value">{{ formatDate(module.created_at) }}</span>
+                <span class="info-value">{{ formatDateOnly(module.created_at) }}</span>
               </div>
               <div class="info-item info-meta-card">
                 <label>模块类型</label>
@@ -324,19 +197,18 @@
             </div>
           </div>
           <div class="card-footer">
-            <div class="module-stats">
+            <div class="module-actions card-actions tf-actions--fit-row">
               <el-button
                 v-if="canEdit"
-                :type="module.is_active ? 'success' : 'info'"
+                :type="isProtectedModule(module) ? 'info' : (module.is_active ? 'warning' : 'success')"
                 size="small"
+                :disabled="isProtectedModule(module) && Number(module.is_active) === 1"
                 @click="toggleModuleStatus(module)"
-                :title="module.is_active ? '点击禁用模块' : '点击启用模块'"
+                :title="isProtectedModule(module) ? '权限管理核心模块不能禁用' : (module.is_active ? '禁用模块' : '启用模块')"
               >
-                <i :class="module.is_active ? 'fas fa-toggle-on' : 'fas fa-toggle-off'"></i>
-                <span>{{ module.is_active ? '已启用' : '已禁用' }}</span>
+                <i :class="isProtectedModule(module) ? 'fas fa-shield-alt' : (module.is_active ? 'fas fa-toggle-off' : 'fas fa-toggle-on')"></i>
+                <span>{{ isProtectedModule(module) && Number(module.is_active) === 1 ? '核心模块' : (module.is_active ? '禁用' : '启用') }}</span>
               </el-button>
-            </div>
-            <div class="module-actions">
               <el-button
                 type="info"
                 size="small"
@@ -439,7 +311,7 @@
       </div>
 
       <template #footer>
-        <div class="modal-footer">
+        <div class="tf-dialog-actions">
           <el-button type="info" @click="editDialogVisible = false" :disabled="isSubmitting">
             取消
           </el-button>
@@ -473,7 +345,7 @@
       </div>
 
       <template #footer>
-        <div class="modal-footer">
+        <div class="tf-dialog-actions">
           <el-button type="info" @click="restoreDialogVisible = false" :disabled="isSubmitting">
             取消
           </el-button>
@@ -557,7 +429,7 @@
       </div>
 
       <template #footer>
-        <div class="modal-footer">
+        <div class="tf-dialog-actions">
           <el-button type="info" @click="detailsDialogVisible = false">
             关闭
           </el-button>
@@ -672,7 +544,7 @@
       </div>
 
       <template #footer>
-        <div class="modal-footer">
+        <div class="tf-dialog-actions">
           <el-button type="info" @click="showAddModuleDialog = false">
             <i class="fas fa-times"></i>
             取消
@@ -698,7 +570,7 @@
 
 <script>
 import { ref, reactive, computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { ElMessageBox } from 'element-plus';
 import { useNotification } from '@/composables/useNotification'
 import { usePageState } from '@/composables/usePageState'
 import { usePagePermissions } from '@/composables/usePagePermissions'
@@ -707,7 +579,7 @@ import unifiedApi from '@/utils/unified-api';
 import Pagination from '@/components/Pagination.vue';
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue';
 import InlineLoading from '@/components/InlineLoading.vue';
-import { PageHeader, PermissionGate } from '@/components/base';
+import { PermissionGate } from '@/components/base';
 
 export default {
   name: 'ModuleManagementView',
@@ -718,14 +590,11 @@ export default {
     PermissionGate
   },
   setup() {
-    // 路由
-    const router = useRouter();
-
     // 权限检查 - 使用 module-management 映射到 permissions_modulemanagementview
     const { canView, canCreate, canEdit, canDelete } = usePagePermissions('module-management');
 
     // 使用统一提示服务和状态管理
-    const { success: showSuccess, error: showError, warning: showWarning, info: showInfo } = useNotification();
+    const { success: showSuccess, error: showError, warning: showWarning } = useNotification();
     const {
       isLoading,
       isSubmitting,
@@ -743,6 +612,7 @@ export default {
     const searchText = ref('');
     const filterCategory = ref('');
     const nameStatus = ref('');
+    const activeStatus = ref('');
     const viewMode = ref('grid');
     const searchExpanded = ref(false);
 
@@ -784,7 +654,6 @@ export default {
       isActive: true
     });
     const formErrors = ref({});
-    const isFixingMenuLinks = ref(false);
 
     // 计算属性
     const filteredModules = computed(() => {
@@ -813,6 +682,12 @@ export default {
         }
       }
 
+      if (activeStatus.value === 'active') {
+        result = result.filter(module => Number(module.is_active) === 1);
+      } else if (activeStatus.value === 'inactive') {
+        result = result.filter(module => Number(module.is_active) === 0);
+      }
+
       // 更新分页总数
       pagination.total = result.length;
 
@@ -824,12 +699,6 @@ export default {
       const end = start + pagination.pageSize;
       return filteredModules.value.slice(start, end);
     });
-
-    const stats = computed(() => ({
-      totalModules: modules.value.length,
-      customModules: modules.value.filter(m => m.is_custom_name === 1).length,
-      autoModules: modules.value.filter(m => m.is_custom_name === 0).length
-    }));
 
     // 方法
     const loadModules = async () => {
@@ -853,16 +722,6 @@ export default {
       }
     };
 
-    const refreshModules = async () => {
-      try {
-        showInfo('正在刷新模块列表...');
-        await loadModules();
-        showSuccess('模块列表刷新成功');
-      } catch (error) {
-        showError('刷新失败，请重试');
-      }
-    };
-
     const handleSearch = () => {
       pagination.page = 1;
     };
@@ -876,6 +735,7 @@ export default {
       searchText.value = '';
       filterCategory.value = '';
       nameStatus.value = '';
+      activeStatus.value = '';
       pagination.page = 1;
     };
 
@@ -884,6 +744,10 @@ export default {
     };
 
     const handleNameStatusFilter = () => {
+      pagination.page = 1;
+    };
+
+    const handleActiveStatusFilter = () => {
       pagination.page = 1;
     };
 
@@ -903,6 +767,10 @@ export default {
 
     const formatDate = (dateString) => {
       return TimeUtil.format(dateString, TIME_FORMATS.DATETIME)
+    };
+
+    const formatDateOnly = (dateString) => {
+      return TimeUtil.format(dateString, TIME_FORMATS.DATE)
     };
 
     const editModuleName = (module) => {
@@ -983,25 +851,46 @@ export default {
       detailsDialogVisible.value = true;
     };
 
+    const isProtectedModule = (module) => [
+      'permissions_permissionsview',
+      'permissions_modulemanagementview'
+    ].includes(module?.key);
+
     // 切换模块启用/禁用状态
     const toggleModuleStatus = async (module) => {
-      const newStatus = module.is_active === 1 ? 0 : 1;
+      const newStatus = Number(module.is_active) === 1 ? 0 : 1;
       const actionText = newStatus === 1 ? '启用' : '禁用';
 
+      if (newStatus === 0 && isProtectedModule(module)) {
+        showWarning('权限管理核心模块不能禁用，否则会导致管理入口无法访问');
+        return;
+      }
+
       try {
+        const message = newStatus === 1
+          ? `确定要启用模块“${module.name}”吗？启用后可重新用于菜单关联和权限配置。`
+          : `确定要禁用模块“${module.name}”吗？禁用后将不能用于菜单关联、权限配置和模块选择，已有业务页面代码不会被删除。`;
+
+        await ElMessageBox.confirm(message, `${actionText}模块`, {
+          confirmButtonText: `确认${actionText}`,
+          cancelButtonText: '取消',
+          type: newStatus === 1 ? 'success' : 'warning',
+          customClass: 'message-box-unified'
+        });
+
         const response = await unifiedApi.put(`/modules/${module.id}/status`, {
           is_active: newStatus
         });
 
         if (response.success) {
-          showNotification.success(`模块"${module.name}"已${actionText}`);
+          showSuccess(`模块"${module.name}"已${actionText}`);
           await loadModules(); // 重新加载模块列表
         } else {
-          showNotification.error(response.message || `${actionText}失败`);
+          showError(response.message || `${actionText}失败`);
         }
       } catch (error) {
-        logger.error(`${actionText}模块失败:`, error);
-        showNotification.error(`${actionText}模块失败，请稍后重试`);
+        if (error === 'cancel' || error === 'close') return;
+        showError(`${actionText}模块失败，请稍后重试`);
       }
     };
 
@@ -1045,7 +934,7 @@ export default {
         });
 
         if (response.success) {
-          showNotification.success(`模块"${newModule.name}"添加成功`);
+          showSuccess(`模块"${newModule.name}"添加成功`);
           showAddModuleDialog.value = false;
 
           // 重置表单
@@ -1061,40 +950,16 @@ export default {
 
           await loadModules(); // 重新加载模块列表
         } else {
-          showNotification.error(response.message || '添加模块失败');
+          showError(response.message || '添加模块失败');
         }
       } catch (error) {
-        logger.error('添加模块失败:', error);
         if (error.response?.data?.message) {
-          showNotification.error(error.response.data.message);
+          showError(error.response.data.message);
         } else {
-          showNotification.error('添加模块失败，请稍后重试');
+          showError('添加模块失败，请稍后重试');
         }
       } finally {
         isSubmitting.value = false;
-      }
-    };
-
-    // 修复菜单关联
-    const handleFixMenuLinks = async () => {
-      try {
-        isFixingMenuLinks.value = true;
-
-        const response = await unifiedApi.post('/modules/fix-menu-links');
-
-        if (response.success) {
-          showNotification.success(response.message || `修复成功：更新了 ${response.data?.updatedCount || 0} 个菜单关联`);
-
-          // 刷新模块列表
-          await loadModules();
-        } else {
-          showNotification.error(response.message || '修复菜单关联失败');
-        }
-      } catch (error) {
-        logger.error('修复菜单关联失败:', error);
-        showNotification.error(error.response?.data?.message || '修复菜单关联失败，请稍后重试');
-      } finally {
-        isFixingMenuLinks.value = false;
       }
     };
 
@@ -1118,7 +983,6 @@ export default {
       modules,
       filteredModules,
       paginatedModules,
-      stats,
       editDialogVisible,
       editForm,
       restoreDialogVisible,
@@ -1128,34 +992,35 @@ export default {
       searchText,
       filterCategory,
       nameStatus,
+      activeStatus,
       pagination,
       viewMode,
       searchExpanded,
 
       // 方法
       loadModules,
-      refreshModules,
       handleSearch,
       clearSearch,
       clearFilters,
       handleCategoryFilter,
       handleNameStatusFilter,
+      handleActiveStatusFilter,
       handlePaginationChange,
       getCategoryName,
       formatDate,
+      formatDateOnly,
       editModuleName,
       resetEditForm,
       saveModuleName,
       restoreModuleName,
       confirmRestore,
       showModuleDetails,
+      isProtectedModule,
       toggleModuleStatus,
       showAddModuleDialog,
       newModule,
       formErrors,
-      handleAddModule,
-      isFixingMenuLinks,
-      handleFixMenuLinks
+      handleAddModule
     };
   }
 };
@@ -1168,187 +1033,10 @@ export default {
   cursor: not-allowed;
 }
 
-.btn.disabled:hover {
-  transform: none;
-}
-
 .module-management {
   padding: 0;
-  background: #f8f9fa;
-  min-height: calc(100vh - 60px);
-}
-
-.btn-back {
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-right: 0;
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.3);
-    transform: translateY(-1px);
-  }
-}
-
-.btn {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  transition: all 0.2s;
-}
-
-.btn:hover {
-  transform: translateY(-1px);
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.btn-primary {
-  background: #3498db;
-  color: white;
-}
-
-.btn-primary:hover {
-  background: #2980b9;
-}
-
-.btn-outline-primary {
-  background: white;
-  color: #3498db;
-  border: 1px solid #3498db;
-}
-
-.btn-outline-primary:hover {
-  background: #3498db;
-  color: white;
-}
-
-.btn-outline-secondary {
-  background: white;
-  color: #95a5a6;
-  border: 1px solid #ddd;
-}
-
-.btn-outline-secondary:hover {
-  background: #95a5a6;
-  color: white;
-}
-
-.btn-outline-warning {
-  background: white;
-  color: #f39c12;
-  border: 1px solid #f39c12;
-}
-
-.btn-outline-warning:hover {
-  background: #f39c12;
-  color: white;
-}
-
-.btn-outline-info {
-  background: white;
-  color: #17a2b8;
-  border: 1px solid #17a2b8;
-}
-
-.btn-outline-info:hover {
-  background: #17a2b8;
-  color: white;
-}
-
-.btn-success {
-  background: #28a745;
-  color: white;
-  border: 1px solid #28a745;
-}
-
-.btn-success:hover {
-  background: #218838;
-  color: white;
-}
-
-.btn-sm {
-  padding: 4px 8px;
-  font-size: 12px;
-}
-
-.stats-overview {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 20px;
-  margin-bottom: 20px;
-}
-
-.stat-card {
-  background: white;
-  border-radius: 8px;
-  padding: 20px;
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  transition: all 0.2s;
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-}
-
-.stat-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  color: white;
-}
-
-.stat-card.total .stat-icon {
-  background: #3498db;
-}
-
-.stat-card.custom .stat-icon {
-  background: #e74c3c;
-}
-
-.stat-card.auto .stat-icon {
-  background: #95a5a6;
-}
-
-.stat-content {
-  flex: 1;
-}
-
-.stat-value {
-  font-size: 24px;
-  font-weight: 600;
-  color: #2c3e50;
-  margin-bottom: 4px;
-}
-
-.stat-label {
-  font-size: 14px;
-  color: #7f8c8d;
+  min-height: 0;
+  background: transparent;
 }
 
 .form-group {
@@ -1684,18 +1372,18 @@ export default {
 .module-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 20px;
-  padding: 10px;
+  gap: var(--admin-panel-gap);
+  padding: var(--admin-panel-padding) 0 0;
 }
 
 .module-card {
-  background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
-  border-radius: 22px;
-  border: 1px solid rgba(37, 99, 235, 0.12);
+  background: #ffffff;
+  border-radius: var(--admin-panel-radius);
+  border: 1px solid #dbe4f0;
   overflow: hidden;
   transition: all 0.25s ease;
   position: relative;
-  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
 }
 
 .module-card.custom-name {
@@ -1703,23 +1391,38 @@ export default {
   box-shadow: 0 16px 34px rgba(245, 158, 11, 0.12);
 }
 
+.module-card.inactive-module {
+  border-color: rgba(100, 116, 139, 0.28);
+  box-shadow: 0 12px 28px rgba(100, 116, 139, 0.1);
+}
+
+.module-card.inactive-module .card-header {
+  background: #f8fafc;
+}
+
 .module-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.14);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.1);
 }
 
 .card-header {
-  padding: 18px 18px 14px;
+  padding: 16px;
   border-bottom: 1px solid rgba(226, 232, 240, 0.9);
-  background:
-    radial-gradient(circle at top right, rgba(96, 165, 250, 0.16), transparent 34%),
-    linear-gradient(135deg, #f8fbff 0%, #f3f6ff 100%);
+  background: #f8fafc;
 }
 
 .module-header-main {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+}
+
+.module-primary-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 .module-status {
@@ -1727,6 +1430,7 @@ export default {
   align-items: center;
   gap: 8px;
   min-width: 0;
+  white-space: nowrap;
 }
 
 .status-indicator {
@@ -1751,7 +1455,7 @@ export default {
   color: #475569;
 }
 
-.module-key {
+.module-card .module-key {
   font-family: 'Courier New', monospace;
   display: inline-flex;
   align-items: center;
@@ -1761,33 +1465,37 @@ export default {
   color: #64748b;
   background: #eef4ff;
   padding: 4px 8px;
-  border-radius: 10px;
-  word-break: break-all;
+  border-radius: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.module-name-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.module-secondary-row {
+  display: grid;
+  grid-template-columns: minmax(96px, 44%) minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
   min-width: 0;
 }
 
-.module-name-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.module-name {
+.module-card .module-name {
   font-weight: 700;
   color: #0f172a;
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 18px;
+  min-width: 0;
+  font-size: 16px;
   line-height: 1.25;
-  word-break: break-word;
+  white-space: nowrap;
+}
+
+.module-name-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .module-card .custom-badge {
@@ -1820,49 +1528,56 @@ export default {
 
 .module-description-text {
   font-size: 13px;
-  line-height: 1.55;
+  line-height: 1.4;
   color: #64748b;
-  word-break: break-word;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .card-body {
-  padding: 16px 18px;
+  padding: 12px 16px;
 }
 
 .module-info {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 1px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #dbe4f0;
 }
 
 .info-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   min-width: 0;
-}
-
-.info-chip-card,
-.info-meta-card {
-  border-radius: 16px;
-  border: 1px solid #e6edf7;
   background: #f8fbff;
-  padding: 12px 14px;
+  padding: 10px 12px;
 }
 
 .info-item label {
-  display: block;
-  margin-bottom: 6px;
+  flex: 0 0 auto;
+  margin: 0;
   font-size: 12px;
   color: #64748b;
   font-weight: 600;
   line-height: 1.2;
+  white-space: nowrap;
 }
 
 .info-item span {
   display: inline-flex;
   align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
   font-size: 13px;
   color: #1e293b;
   line-height: 1.45;
-  word-break: break-word;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .info-value {
@@ -1900,44 +1615,16 @@ export default {
 }
 
 .card-footer {
-  padding: 14px 18px 18px;
+  padding: 12px 16px;
   border-top: 1px solid rgba(226, 232, 240, 0.9);
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   gap: 12px;
 }
 
-.module-stats {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
 .module-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
   min-width: 0;
-}
-
-.module-stats :deep(.el-button),
-.module-actions :deep(.el-button) {
-  height: 34px;
-  padding: 0 14px;
-  border-radius: 12px;
-  font-weight: 600;
-  min-width: 0;
-}
-
-.pagination-wrapper {
-  padding: 20px 0;
-  text-align: center;
-  border-top: 1px solid #eee;
-  margin-top: 20px;
-  padding-top: 20px;
 }
 
 /* 编辑对话框样式 */
@@ -2068,11 +1755,6 @@ export default {
 
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .stats-overview {
-    grid-template-columns: 1fr;
-    gap: 15px;
-  }
-
   .section-title {
     flex-direction: column;
     align-items: flex-start;
@@ -2095,65 +1777,51 @@ export default {
 
   .module-grid {
     grid-template-columns: 1fr;
-    gap: 15px;
-    padding: 4px 0;
+    gap: var(--admin-panel-gap);
+    padding: var(--admin-panel-padding) 0 0;
   }
 
   .card-header {
-    padding: 16px 16px 12px;
+    padding: 12px;
   }
 
   .module-info {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .card-body {
-    padding: 14px 16px;
+    padding: 10px 12px;
   }
 
   .card-footer {
-    padding: 12px 16px 16px;
-    flex-direction: column;
-    align-items: stretch;
+    padding: 10px 12px 12px;
   }
 
-  .module-name-row {
-    align-items: flex-start;
-    gap: 8px;
-  }
-
-  .module-name {
-    font-size: 17px;
+  .module-card .module-name {
+    font-size: 14px;
   }
 
   .module-description-text {
     font-size: 12px;
-    line-height: 1.5;
+    line-height: 1.4;
   }
 
-  .module-stats,
-  .module-actions {
-    width: 100%;
+  .info-item {
+    gap: 6px;
+    padding: 9px 10px;
   }
 
-  .module-actions {
-    justify-content: flex-start;
+  .info-item label {
+    font-size: 11px;
   }
 
-  .module-stats :deep(.el-button),
-  .module-actions :deep(.el-button) {
-    height: 32px;
-    padding: 0 12px;
-    border-radius: 11px;
+  .info-item span {
     font-size: 12px;
   }
+
 }
 
 @media (max-width: 480px) {
-  .module-management {
-    padding: 15px;
-  }
-
   .module-table {
     font-size: 12px;
   }
@@ -2162,44 +1830,18 @@ export default {
     grid-template-columns: 1fr;
   }
 
-  .module-card {
-    border-radius: 18px;
-  }
-
-  .module-name-row {
-    flex-direction: column;
-  }
-
-  .module-card .category-badge {
-    width: fit-content;
-  }
-
-  .module-actions {
-    gap: 6px;
-  }
-
-  .module-actions :deep(.el-button) {
-    flex: 1 1 calc(50% - 3px);
-    padding: 0 10px;
-  }
 }
 
 /* 主要内容区域 */
 .main-content {
-  background: white;
-  border-radius: 0 0 16px 16px;
-  margin: 0 24px 24px 24px;
-  padding: 24px;
-  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.1);
-}
-
-/* 分页样式 */
-.pagination-wrapper {
-  display: flex;
-  justify-content: center;
-  margin-top: 24px;
-  padding: 20px 0;
-  border-top: 1px solid #eee;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 /* 统一模态框样式 */
@@ -2322,57 +1964,6 @@ export default {
   justify-content: flex-end;
   gap: 12px;
 
-  .btn {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 80px;
-    justify-content: center;
-
-    &:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    &.btn-secondary {
-      background: #6b7280;
-      color: white;
-
-      &:hover:not(:disabled) {
-        background: #4b5563;
-        transform: translateY(-1px);
-      }
-    }
-
-    &.btn-primary {
-      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-      color: white;
-      box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
-
-      &:hover:not(:disabled) {
-        background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
-        transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
-      }
-    }
-
-    &.btn-warning {
-      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-      color: white;
-
-      &:hover:not(:disabled) {
-        background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
-        transform: translateY(-1px);
-      }
-    }
-  }
 }
 
 /* 详情对话框样式 */
@@ -2580,23 +2171,7 @@ export default {
 /* 响应式设计 */
 @media (max-width: 768px) {
   .modal-body {
-    padding: 20px;
     max-height: calc(100vh - 180px);
-  }
-
-  .modal-footer {
-    padding: 16px 20px;
-    flex-direction: column;
-    gap: 8px;
-
-    .btn {
-      width: 100%;
-      justify-content: center;
-    }
-
-    .btn-secondary {
-      order: 1;
-    }
   }
 }
 </style>
@@ -2609,10 +2184,6 @@ export default {
 
 .module-management-dialog-wide .el-dialog {
   max-width: min(760px, calc(100vw - 32px)) !important;
-}
-
-.module-management-dialog .el-dialog__body {
-  padding: 0 !important;
 }
 
 /* 表单输入框样式 */
@@ -2656,10 +2227,6 @@ export default {
   }
 }
 
-.module-management-dialog .modal-footer {
-  background: #f9fafb !important;
-  border-top: 1px solid #e5e7eb !important;
-}
 </style>
 
 <style lang="scss">
@@ -2668,8 +2235,11 @@ export default {
   --permission-card: rgba(255, 255, 255, 0.94);
   --permission-border: rgba(15, 23, 42, 0.08);
   --permission-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
-  background: var(--permission-bg);
-  min-height: 100%;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  background: transparent;
+  min-height: 0;
 }
 
 .module-management > div {
@@ -2678,19 +2248,10 @@ export default {
   gap: 20px;
 }
 
-.module-management .stats-overview .stat-card,
 .module-management .modules-section {
   background: var(--permission-card);
   border: 1px solid var(--permission-border);
   box-shadow: var(--permission-shadow);
-}
-
-.module-management .stats-overview {
-  gap: 16px;
-}
-
-.module-management .stats-overview .stat-card {
-  border-radius: 22px;
 }
 
 .module-management .modules-section {

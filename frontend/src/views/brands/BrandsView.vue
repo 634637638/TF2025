@@ -509,7 +509,7 @@ const deleteBrand = async (brand: Brand) => {
         confirmButtonText: '确定删除',
         cancelButtonText: '取消',
         type: 'warning',
-        customClass: 'message-box-purple'
+        customClass: 'message-box-unified'
       }
     )
   } catch {
@@ -1346,49 +1346,6 @@ onMounted(async () => {
   justify-content: center;
   gap: 8px;
 }
-
-.btn-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  white-space: nowrap;
-  min-width: 60px;
-  justify-content: center;
-}
-
-.btn-action i {
-  font-size: 12px;
-}
-
-.btn-edit {
-  background: #007bff;
-  color: white;
-}
-
-.btn-edit:hover {
-  background: #0056b3;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
-}
-
-.btn-delete {
-  background: #dc3545;
-  color: white;
-}
-
-.btn-delete:hover {
-  background: #c82333;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
-}
-
 .no-permission-text {
   color: #999;
   font-size: 12px;
@@ -1576,15 +1533,7 @@ onMounted(async () => {
     width: 100%;
     margin: 0 auto;
   }
-
-  .btn-action {
-    width: 100%;
-    min-height: 32px;
-    font-size: 11px;
-    padding: 4px 8px;
-  }
-
-  /* 分页优化 */
+/* 分页优化 */
   .pagination-section {
     flex-direction: column;
     gap: 12px;
@@ -1637,12 +1586,6 @@ onMounted(async () => {
 
   .brands-form-dialog :deep(.mobile-dialog-footer) {
     width: 100%;
-  }
-
-  .brands-form-dialog :deep(.mobile-dialog-footer .el-button) {
-    flex: 1;
-    min-height: 42px;
-    margin: 0;
   }
 
 }

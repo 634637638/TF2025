@@ -40,3 +40,33 @@ export const getIdentifierColumnMinWidth = (
   values: Array<string | number | null | undefined>,
   options: TextColumnWidthOptions = {}
 ) => getTextColumnMinWidth(values, options)
+
+export interface ActionColumnWidthOptions {
+  minWidth?: number
+  buttonWidth?: number
+  buttonGap?: number
+  horizontalPadding?: number
+}
+
+/**
+ * Reserves enough width for the visible global table-action buttons on one row.
+ */
+export const getActionColumnMinWidth = (
+  actionCount: number,
+  options: ActionColumnWidthOptions = {}
+) => {
+  const {
+    minWidth = 54,
+    buttonWidth = 66,
+    buttonGap = 6,
+    horizontalPadding = 18
+  } = options
+  const visibleCount = Math.max(0, Math.floor(actionCount))
+
+  if (visibleCount === 0) return minWidth
+
+  return Math.max(
+    minWidth,
+    horizontalPadding + (visibleCount * buttonWidth) + ((visibleCount - 1) * buttonGap)
+  )
+}

@@ -62,7 +62,7 @@ const uploadStaticMiddleware = (req, res, next) => {
     log.error('URL 解码失败:', error);
   }
 
-  if (req.path.startsWith('/subsidy/')) {
+  if (req.path.startsWith('/subsidy/') || req.path.startsWith('/shared/')) {
     return res.status(404).json({
       success: false,
       message: '资源不存在'

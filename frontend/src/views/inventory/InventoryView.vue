@@ -2317,9 +2317,18 @@ const handleStartStockIn = () => {
   showStockInModal.value = true
 }
 
+const clearStockInRouteFlag = () => {
+  if (route.query.openStockIn !== 'true') return
+
+  const query = { ...route.query }
+  delete query.openStockIn
+  void router.replace({ path: route.path, query })
+}
+
 // 入库成功回调
 const handleStockInSuccess = () => {
   showStockInModal.value = false
+  clearStockInRouteFlag()
   // 刷新库存数据
   refreshInventory()
   success('入库成功！')
@@ -2333,6 +2342,7 @@ const refreshInventory = async () => {
 // 入库取消回调
 const handleStockInCancel = () => {
   showStockInModal.value = false
+  clearStockInRouteFlag()
 }
 
 const quickSaleItem = (item: InventoryItem) => {
@@ -3172,8 +3182,6 @@ onMounted(async () => {
   // 检查 URL 参数，如果有 openStockIn=true 则自动打开入库模态框
   if (route.query.openStockIn === 'true') {
     showStockInModal.value = true
-    // 清除 URL 参数，避免刷新时再次打开
-    router.replace({ query: {} })
   }
 
   // 添加窗口大小监听
@@ -3831,13 +3839,6 @@ const handleSelect = (item: InventoryItem) => {
   gap: 12px;
 }
 
-/* 确保详情模态框按钮使用全局样式 */
-.footer-actions .el-button {
-  min-width: 120px;
-  height: 44px;
-  font-size: 15px;
-}
-
 /* 响应式设计 */
 @media (max-width: 768px) {
   .modal-header-content {
@@ -3931,13 +3932,6 @@ const handleSelect = (item: InventoryItem) => {
     gap: 8px;
   }
 
-  .footer-actions .el-button {
-    width: auto;
-    flex: 1;
-    min-width: calc(50% - 4px);
-    font-size: 14px;
-    height: 40px;
-  }
 }
 
 /* ===== 桌面端搜索样式 ===== */
@@ -4334,113 +4328,6 @@ const handleSelect = (item: InventoryItem) => {
   display: flex;
   gap: 12px;
   grid-column: 1 / -1;
-}
-
-/* 按钮样式 - 参考销售页面 */
-.btn {
-  padding: 10px 16px;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  position: relative;
-  overflow: hidden;
-  text-decoration: none;
-}
-
-.btn::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.2);
-  transform: translate(-50%, -50%);
-  transition: width 0.6s, height 0.6s;
-}
-
-.btn:hover::before {
-  width: 300px;
-  height: 300px;
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-}
-
-.btn-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-outline-secondary {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
-  border: 2px solid transparent;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.25);
-}
-
-.btn-outline-secondary:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-}
-
-.btn-outline-primary {
-  background: white;
-  color: #007bff;
-  border: 2px solid #007bff;
-}
-
-.btn-outline-primary:hover:not(:disabled) {
-  background: #f8f9fa;
-  border-color: #007bff;
-}
-
-.btn-outline-success {
-  background: white;
-  color: #28a745;
-  border: 2px solid #28a745;
-}
-
-.btn-outline-success:hover:not(:disabled) {
-  background: #f8fff9;
-  border-color: #28a745;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.2);
-}
-
-.btn-danger {
-  background: linear-gradient(135deg, #dc3545, #e74c3c);
-  color: white;
-}
-
-.btn-danger:hover:not(:disabled) {
-  background: linear-gradient(135deg, #c82333, #c0392b);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-sm {
-  padding: 6px 12px;
-  font-size: 12px;
 }
 
 .imei {
@@ -5539,12 +5426,6 @@ const handleSelect = (item: InventoryItem) => {
     gap: 10px;
   }
 
-  .footer-actions .el-button {
-    min-height: 40px;
-    padding: 0 16px;
-    font-size: 14px;
-    flex: 1;
-  }
 }
 
 /* 编辑弹窗样式已使用内联样式，此处保留旧样式以备后用 */
@@ -5636,11 +5517,6 @@ const handleSelect = (item: InventoryItem) => {
   .footer-actions {
     flex-direction: column;
     gap: 8px;
-  }
-
-  .footer-actions .el-button {
-    width: 100%;
-    flex: none;
   }
 
 }
@@ -5901,15 +5777,6 @@ const handleSelect = (item: InventoryItem) => {
     gap: 8px;
   }
 
-  .footer-actions .el-button {
-    flex: 1;
-    height: 42px;
-    font-size: 14px;
-  }
-
-  .footer-actions .el-button i {
-    margin-right: 4px;
-  }
 }
 
 /* 超小屏幕优化 */
@@ -5981,8 +5848,4 @@ const handleSelect = (item: InventoryItem) => {
     font-size: 13px;
   }
 
-  .footer-actions .el-button {
-    height: 40px;
-    font-size: 13px;
-  }
 }

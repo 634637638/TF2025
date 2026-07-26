@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { getDatabase } = require('../config/database');
 const MenuModuleLinker = require('./menuModuleLinker');
-const { getModulePermissionTypes } = require('../config/module-permission-actions');
+const { getModulePermissionMetadata, getModulePermissionTypes } = require('../config/module-permission-actions');
 const { hasColumn } = require('./schemaInspector.service');
 const log = require('../utils/log');
 
@@ -10,7 +10,8 @@ class ModuleScanner {
   constructor() {
     this.viewsPath = path.join(__dirname, '../../../frontend/src/views');
     this.routerPath = path.join(__dirname, '../../../frontend/src/router/index.ts');
-    this.excludeDirs = ['components', 'layouts', 'common', 'shared', 'admin', 'auth'];
+    // shared 是经验分享业务页面，必须参与权限模块扫描。
+    this.excludeDirs = ['components', 'layouts', 'common', 'admin', 'auth'];
     this.excludeFiles = ['index.vue', 'Home.vue', 'Login.vue'];
     this.standardPermissions = ['view', 'create', 'edit', 'delete', 'export', 'import', 'sell'];
     this.menuLinker = new MenuModuleLinker();
@@ -59,11 +60,14 @@ class ModuleScanner {
         filename: path.basename(normalizedPath),
         folder: category,
         icon: 'fas fa-cube',
-        permissions: ['view'],
+        permissions: getModulePermissionTypes(moduleKey),
         lastModified: new Date().toISOString()
       };
 
-      return moduleInfo;
+      return {
+        ...moduleInfo,
+        ...(getModulePermissionMetadata(moduleKey) || {})
+      };
     } catch (error) {
       log.error(`分析文件失败 ${category}/${filename}:`, error);
       return null;
@@ -220,6 +224,8 @@ class ModuleScanner {
       'MemoriesView': '内存管理',
       'ProductsView': '商品管理',
       'QueryView': '查询管理',
+      'ReminderView': '待办提醒',
+      'SharedView': '经验分享',
 
       // 系统相关
       'DashboardView': '仪表盘',
@@ -540,6 +546,7 @@ class ModuleScanner {
             );
           }
 
+          await this.createModulePermissions(moduleInfo.key);
           return {
             success: true,
             message: `模块 ${moduleInfo.name} 信息已更新 (名称受保护)`,
@@ -564,6 +571,7 @@ class ModuleScanner {
             );
           }
 
+          await this.createModulePermissions(moduleInfo.key);
           return {
             success: true,
             message: `模块 ${moduleInfo.name} 更新成功`,
@@ -588,6 +596,8 @@ class ModuleScanner {
           // 自动关联对应的菜单
           await this.autoLinkMenusToModule(moduleInfo.key, moduleInfo.name);
         }
+
+        await this.createModulePermissions(moduleInfo.key);
 
         return {
           success: true,
@@ -629,7 +639,8 @@ class ModuleScanner {
         'attendance_attendanceview': '考勤管理',
         'attendance_myattendanceview': '我的考勤',
         'subsidy_subsidyview': '国补管理',
-        'system_gitmanagement': 'Git管理'
+        'system_gitmanagement': 'Git管理',
+        'shared_sharedview': '经验分享'
       };
 
       if (specialMappings[moduleKey]) {

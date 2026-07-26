@@ -1588,10 +1588,6 @@ onUnmounted(() => {
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 8px;
 
-      .el-button {
-        width: 100%;
-        margin: 0;
-      }
     }
   }
 
@@ -1721,10 +1717,6 @@ onUnmounted(() => {
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 8px;
 
-      .el-button {
-        width: 100%;
-        margin: 0;
-      }
     }
   }
 

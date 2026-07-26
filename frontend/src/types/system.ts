@@ -194,8 +194,12 @@ export interface LogStats {
 export interface PermissionLog {
   id: number
   action: string
+  target_type?: string
+  target_id?: number | string | null
+  target_name?: string | null
   username: string
   description: string
+  details?: string | Record<string, unknown> | null
   ip_address: string
   status: 'success' | 'error'
   created_at: string

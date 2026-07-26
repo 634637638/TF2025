@@ -136,7 +136,7 @@
     <!-- 核心分析标签页 -->
     <div class="analytics-tabs admin-page-content">
       <!-- TAB导航 -->
-      <div v-if="visibleAnalyticsTabs.length" class="tab-navigation">
+      <div v-if="visibleAnalyticsTabs.length" class="tab-navigation tf-page-tabs">
         <el-button
           v-for="tab in visibleAnalyticsTabs"
           :key="tab.key"
@@ -149,11 +149,11 @@
       </div>
 
       <!-- TAB内容 -->
-      <div v-if="visibleAnalyticsTabs.length" class="tab-content">
+      <div v-if="visibleAnalyticsTabs.length" class="tab-content tf-tab-content">
         <template v-for="tab in visibleAnalyticsTabs" :key="tab.key">
           <div
             v-if="activeTab === tab.key"
-            class="tab-panel"
+            class="tab-panel tf-tab-panel"
           >
             <KeepAlive>
               <component
@@ -597,49 +597,6 @@ onMounted(() => {
   min-height: 100vh;
 }
 
-/* TAB导航 */
-.tab-navigation {
-  display: flex;
-  gap: 0;
-  margin-bottom: 24px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  border: 1px solid #e8ecef;
-  overflow: hidden;
-}
-
-.tab-navigation .el-button {
-  flex: 0 1 auto;
-  min-width: 120px;
-  border-radius: 0;
-  border: none;
-  border-right: 1px solid #e8ecef;
-  padding: 12px 20px;
-  font-size: 14px;
-}
-
-.tab-navigation .el-button:last-child {
-  border-right: none;
-}
-
-.tab-navigation .el-button--default {
-  background: transparent;
-  color: #606266;
-}
-
-.tab-navigation .el-button--default:hover {
-  background: rgba(102, 126, 234, 0.1);
-  color: #667eea;
-}
-
-.tab-navigation .el-button--primary {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  border-color: #667eea;
-  color: white;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-}
-
 .analytics-empty-state {
   display: flex;
   align-items: center;
@@ -653,29 +610,6 @@ onMounted(() => {
   text-align: center;
 }
 
-.tab-navigation .el-button--primary:hover {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  opacity: 0.9;
-}
-
-.tab-navigation .el-button i {
-  margin-right: 6px;
-}
-
-/* TAB内容 */
-.tab-content {
-  background: transparent;
-}
-
-.tab-panel {
-  animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
 // 响应式
 @media (max-width: 768px) {
   .analytics-view {
@@ -683,49 +617,5 @@ onMounted(() => {
     padding-top: 10px;
   }
 
-  .tab-navigation {
-    position: relative;
-    flex-wrap: nowrap;
-    gap: 6px;
-    margin-bottom: 0;
-    padding: 6px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    border-radius: var(--mobile-card-radius);
-    scroll-snap-type: x proximity;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    background:
-      linear-gradient(90deg, rgba(255, 255, 255, 0.98), rgba(248, 251, 255, 0.96));
-  }
-
-  .tab-navigation::-webkit-scrollbar {
-    display: none;
-  }
-
-  .tab-navigation .el-button {
-    flex: 0 0 auto;
-    min-width: max-content;
-    height: 36px;
-    min-height: 36px;
-    margin: 0;
-    padding: 0 14px;
-    border-right: none;
-    border-bottom: none;
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 700;
-    scroll-snap-align: start;
-    white-space: nowrap;
-  }
-
-  .tab-navigation .el-button:last-child {
-    border-bottom: none;
-  }
-
-  .tab-navigation .el-button i {
-    margin-right: 4px;
-    font-size: 12px;
-  }
 }
 </style>

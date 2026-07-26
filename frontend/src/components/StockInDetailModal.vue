@@ -797,10 +797,6 @@ const generatePrintContent = (record: StockInRecord) => {
   justify-content: stretch;
 }
 
-.dialog-footer.mobile .el-button {
-  flex: 1;
-}
-
 .empty-content {
   display: flex;
   justify-content: center;

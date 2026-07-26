@@ -2066,16 +2066,6 @@ onUnmounted(() => {
     width: 100%;
   }
 
-  .action-buttons .el-button {
-    width: 100%;
-    min-width: 0;
-    height: 34px;
-    margin: 0;
-    justify-content: center;
-    border-radius: 10px;
-    background: #f8fafc;
-  }
-
   .center {
     text-align: center;
   }
@@ -2277,12 +2267,6 @@ onUnmounted(() => {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
     width: 100%;
-  }
-
-  :deep(.template-dialog .mobile-dialog-footer .el-button),
-  :global(.template-dialog .mobile-dialog-footer .el-button) {
-    width: 100%;
-    margin: 0;
   }
 
   :deep(.template-dialog .el-form-item) {

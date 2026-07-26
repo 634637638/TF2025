@@ -528,41 +528,6 @@ defineExpose({
   justify-content: center;
 }
 
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.3s;
-  text-decoration: none;
-}
-
-.btn-primary {
-  background-color: #409eff;
-  border-color: #409eff;
-  color: #fff;
-}
-
-.btn-primary:hover {
-  background-color: #66b1ff;
-  border-color: #66b1ff;
-}
-
-.btn-secondary {
-  background-color: #fff;
-  border-color: #dcdfe6;
-  color: #606266;
-}
-
-.btn-secondary:hover {
-  background-color: #f5f7fa;
-  border-color: #c0c4cc;
-}
-
 .error-details {
   margin-top: 20px;
   max-width: 800px;

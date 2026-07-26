@@ -10,6 +10,8 @@ import './styles/responsive.scss'
 import './styles/permission-toast.scss'
 import './styles/admin-layout.css'
 import './styles/analytics-cards.css'
+import './styles/components/_dialog.scss'
+import './styles/components/_dialog-actions.scss'
 
 // 配置 dayjs 中文（如果项目使用 dayjs）
 import dayjs from 'dayjs'
@@ -57,6 +59,7 @@ import { initializeSiteSettings } from '@/stores/siteSettings'
 import { waitForIconify } from '@/utils/iconify'
 import { enhanceGlobalMessageBox } from '@/utils/message-box'
 import logger from '@/utils/logger'
+import { initAdminTableDragScroll } from '@/utils/admin-table-drag-scroll'
 
 // 导入 Token 过期检测
 import { startTokenExpiryCheck } from '@/utils/token-expiry-check'
@@ -126,6 +129,7 @@ const initializeApp = async () => {
   try {
     // 立即挂载应用，减少首屏等待时间
     app.mount('#app')
+    initAdminTableDragScroll()
 
     // 非关键初始化延后执行
     setTimeout(async () => {

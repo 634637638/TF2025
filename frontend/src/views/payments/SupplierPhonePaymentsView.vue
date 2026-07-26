@@ -214,7 +214,7 @@
         <el-button
           type="danger"
           class="selected-action-btn selected-action-btn-danger"
-          @click="clearSelection"
+          @click.stop="clearSelection"
         >
           <i class="fas fa-times"></i> 清空选择
         </el-button>
@@ -234,7 +234,9 @@
           :data="loading ? [] : phones"
           border
           stripe
-          class="data-table supplier-payment-table"
+          class="data-table devices-table supplier-payment-table"
+          table-layout="fixed"
+          :fit="true"
           row-key="id"
           :row-class-name="getPaymentRowClassName"
           @row-click="(row) => handlePaymentMobileRowTap(row.id)"
@@ -244,18 +246,22 @@
             <template #header>
               <input
                 type="checkbox"
-                v-model="selectAll"
+                :checked="isCurrentPageAllSelected"
+                :indeterminate.prop="isCurrentPagePartiallySelected"
+                :disabled="currentPageSelectableIds.length === 0"
+                aria-label="选择当前页全部未打款手机"
+                @click.stop
                 @change="handleSelectAll"
-                :disabled="phones.length === 0"
               />
             </template>
             <template #default="{ row }">
               <input
                 type="checkbox"
-                v-model="selectedPhones"
-                :value="row.id"
+                :checked="selectedPhones.includes(row.id)"
                 :disabled="row.payment_status === 'paid'"
+                :aria-label="`选择手机 ${row.serial_number || row.id}`"
                 @click.stop
+                @change="handlePhoneSelectionChange(row, $event)"
               />
             </template>
           </el-table-column>
@@ -264,32 +270,32 @@
               <span class="index-badge">{{ (pagination.page - 1) * pagination.limit + $index + 1 }}</span>
             </template>
           </el-table-column>
-          <el-table-column v-if="shouldShowPaymentColumn('supplier_name')" prop="supplier_name" label="供应商" min-width="120" align="center" class-name="col-supplier" show-overflow-tooltip>
+          <el-table-column v-if="shouldShowPaymentColumn('supplier_name')" prop="supplier_name" label="供应商" :min-width="paymentSupplierColumnWidth" align="center" class-name="complete-text-column col-supplier">
             <template #default="{ row }">{{ row.supplier_name || '-' }}</template>
           </el-table-column>
-          <el-table-column v-if="shouldShowPaymentColumn('store_name')" prop="store_name" label="店铺" min-width="100" align="center" show-overflow-tooltip>
+          <el-table-column v-if="shouldShowPaymentColumn('store_name')" prop="store_name" label="店铺" :min-width="paymentStoreColumnWidth" align="center" class-name="complete-text-column">
             <template #default="{ row }">{{ row.store_name || '-' }}</template>
           </el-table-column>
-          <el-table-column v-if="shouldShowPaymentColumn('brand_name')" prop="brand_name" label="品牌" min-width="90" align="center" show-overflow-tooltip>
+          <el-table-column v-if="shouldShowPaymentColumn('brand_name')" prop="brand_name" label="品牌" :min-width="paymentBrandColumnWidth" align="center" class-name="complete-text-column">
             <template #default="{ row }">{{ row.brand_name || '-' }}</template>
           </el-table-column>
-          <el-table-column v-if="shouldShowPaymentColumn('model_name')" prop="model_name" label="型号" :min-width="isMobile ? 110 : 130" align="center" class-name="col-model" show-overflow-tooltip>
+          <el-table-column v-if="shouldShowPaymentColumn('model_name')" prop="model_name" label="型号" :min-width="paymentModelColumnWidth" align="center" class-name="complete-text-column col-model">
             <template #default="{ row }">{{ row.model_name || '-' }}</template>
           </el-table-column>
-          <el-table-column v-if="shouldShowPaymentColumn('color_name')" prop="color_name" label="颜色" min-width="90" align="center" class-name="col-color" show-overflow-tooltip>
+          <el-table-column v-if="shouldShowPaymentColumn('color_name')" prop="color_name" label="颜色" :min-width="paymentColorColumnWidth" align="center" class-name="complete-text-column col-color">
             <template #default="{ row }">{{ row.color_name || '-' }}</template>
           </el-table-column>
-          <el-table-column v-if="shouldShowPaymentColumn('memory_name')" prop="memory_name" label="内存" min-width="90" align="center" class-name="col-memory" show-overflow-tooltip>
+          <el-table-column v-if="shouldShowPaymentColumn('memory_name')" prop="memory_name" label="内存" :min-width="paymentMemoryColumnWidth" align="center" class-name="complete-text-column col-memory">
             <template #default="{ row }">{{ row.memory_name || '-' }}</template>
           </el-table-column>
-          <el-table-column v-if="shouldShowPaymentColumn('serial_number')" label="序列号" :width="isMobile ? 150 : 190" :min-width="isMobile ? 150 : 190" align="center" class-name="col-serial" show-overflow-tooltip>
+          <el-table-column v-if="shouldShowPaymentColumn('serial_number')" label="序列号" :min-width="paymentSerialColumnWidth" align="center" class-name="identifier-column col-serial">
             <template #default="{ row }">
               <span class="serial-number">{{ row.serial_number || '-' }}</span>
             </template>
           </el-table-column>
-          <el-table-column v-if="shouldShowPaymentColumn('imei')" label="IMEI" width="190" min-width="190" align="center" class-name="col-imei" show-overflow-tooltip>
+          <el-table-column v-if="shouldShowPaymentColumn('imei')" label="IMEI" :min-width="paymentImeiColumnWidth" align="center" class-name="identifier-column col-imei">
             <template #default="{ row }">
-              <span :class="['imei', row.phone_status === 'peer_transfer' ? 'imei-wholesale' : '']">{{ row.imei || '-' }}</span>
+              <span :class="['imei', row.phone_status === 'peer_transfer' ? 'admin-wholesale-text' : '']">{{ row.imei || '-' }}</span>
             </template>
           </el-table-column>
           <el-table-column v-if="shouldShowPaymentColumn('purchase_cost')" label="入库价格" min-width="110" align="center">
@@ -464,7 +470,7 @@
         <!-- 手机明细表格 - 显示所有待打款手机的完整信息 -->
         <div class="batch-details-table">
           <div class="table-responsive payment-dialog-table-container">
-            <el-table :data="selectedPhoneObjects" border stripe class="data-table payment-detail-table" table-layout="fixed" :fit="true" row-key="id">
+            <el-table :data="selectedPhoneObjects" border stripe class="data-table devices-table payment-detail-table" table-layout="fixed" :fit="true" row-key="id" :row-class-name="getPaymentDialogRowClassName" :cell-class-name="getPaymentDialogCellClassName">
               <el-table-column label="序号" width="60" align="center">
                 <template #default="{ $index }"><span class="index-badge">{{ $index + 1 }}</span></template>
               </el-table-column>
@@ -493,7 +499,7 @@
                 <template #default="{ row }"><span class="serial-number">{{ row.serial_number || '-' }}</span></template>
               </el-table-column>
               <el-table-column v-if="canViewPaymentField('imei')" label="IMEI" :min-width="getPaymentDialogColumnWidth(selectedPhoneObjects, 'imei')" align="center" class-name="identifier-column serial-imei-column">
-                <template #default="{ row }"><span :class="['imei', row.phone_status === 'peer_transfer' ? 'imei-wholesale' : '']">{{ row.imei || '-' }}</span></template>
+                <template #default="{ row }"><span :class="['imei', row.phone_status === 'peer_transfer' ? 'admin-wholesale-text' : '']">{{ row.imei || '-' }}</span></template>
               </el-table-column>
               <el-table-column v-if="canViewPaymentField('purchase_cost')" label="入库价格" :min-width="getPaymentDialogColumnWidth(selectedPhoneObjects, 'purchase_cost')" align="center">
                 <template #default="{ row }"><span class="price">¥{{ formatAmount(row.purchase_cost) }}</span></template>
@@ -600,7 +606,7 @@
         <!-- 手机明细表格 - 显示单个手机的完整信息 -->
         <div class="batch-details-table">
           <div class="table-responsive payment-dialog-table-container">
-            <el-table :data="currentPhone ? [currentPhone] : []" border stripe class="data-table payment-detail-table" table-layout="fixed" :fit="true" row-key="id">
+            <el-table :data="currentPhone ? [currentPhone] : []" border stripe class="data-table devices-table payment-detail-table" table-layout="fixed" :fit="true" row-key="id" :row-class-name="getPaymentDialogRowClassName" :cell-class-name="getPaymentDialogCellClassName">
               <el-table-column label="序号" width="60" align="center">
                 <template #default><span class="index-badge">1</span></template>
               </el-table-column>
@@ -629,7 +635,7 @@
                 <template #default="{ row }"><span class="serial-number">{{ row.serial_number || '-' }}</span></template>
               </el-table-column>
               <el-table-column v-if="canViewPaymentField('imei')" label="IMEI" :min-width="getPaymentDialogColumnWidth(currentPhone ? [currentPhone] : [], 'imei')" align="center" class-name="identifier-column serial-imei-column">
-                <template #default="{ row }"><span :class="['imei', row.phone_status === 'peer_transfer' ? 'imei-wholesale' : '']">{{ row.imei || '-' }}</span></template>
+                <template #default="{ row }"><span :class="['imei', row.phone_status === 'peer_transfer' ? 'admin-wholesale-text' : '']">{{ row.imei || '-' }}</span></template>
               </el-table-column>
               <el-table-column v-if="canViewPaymentField('purchase_cost')" label="入库价格" :min-width="getPaymentDialogColumnWidth(currentPhone ? [currentPhone] : [], 'purchase_cost')" align="center">
                 <template #default="{ row }"><span class="price">¥{{ formatAmount(row.purchase_cost) }}</span></template>
@@ -757,7 +763,7 @@
         <!-- 手机明细表格 -->
         <div ref="paymentDetailsForCapture" class="batch-details-table">
           <div class="table-responsive payment-dialog-table-container">
-            <el-table :data="paymentDetails.phones || []" border stripe class="data-table payment-detail-table" table-layout="fixed" :fit="true" row-key="id">
+            <el-table :data="paymentDetails.phones || []" border stripe class="data-table devices-table payment-detail-table" table-layout="fixed" :fit="true" row-key="id" :row-class-name="getPaymentDialogRowClassName" :cell-class-name="getPaymentDialogCellClassName">
               <el-table-column label="序号" width="60" align="center">
                 <template #default="{ $index }"><span class="index-badge">{{ $index + 1 }}</span></template>
               </el-table-column>
@@ -786,7 +792,7 @@
                 <template #default="{ row }"><span class="serial-number">{{ row.serial_number || '-' }}</span></template>
               </el-table-column>
               <el-table-column v-if="canViewPaymentField('imei')" label="IMEI" :min-width="getPaymentDialogColumnWidth(paymentDetails.phones || [], 'imei')" align="center" class-name="identifier-column serial-imei-column">
-                <template #default="{ row }"><span :class="['imei', row.phone_status === 'peer_transfer' ? 'imei-wholesale' : '']">{{ row.imei || '-' }}</span></template>
+                <template #default="{ row }"><span :class="['imei', row.phone_status === 'peer_transfer' ? 'admin-wholesale-text' : '']">{{ row.imei || '-' }}</span></template>
               </el-table-column>
               <el-table-column v-if="canViewPaymentField('purchase_cost')" label="入库价格" :min-width="getPaymentDialogColumnWidth(paymentDetails.phones || [], 'purchase_cost')" align="center">
                 <template #default="{ row }"><span class="price">¥{{ formatAmount(row.purchase_cost) }}</span></template>
@@ -922,6 +928,7 @@ import { TimeUtil, TIME_FORMATS } from '@/utils/time';
 import { loadHtml2Canvas } from '@/utils/html2canvas';
 import { sortOptionsByOrder } from '@/utils/option-sort';
 import { getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout';
+import { formatAmount } from '@/utils/format';
 
 const router = useRouter();
 const { success, error, warning, info } = useNotification();
@@ -1227,13 +1234,35 @@ const batchPaymentTableForCapture = ref<HTMLElement | null>(null);
 const singlePaymentForCapture = ref<HTMLElement | null>(null);
 const isPaymentImageCaptureMode = ref(false);
 
+const waitForCaptureLayout = async () => {
+  await nextTick();
+  await new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
+};
+
+const getCaptureContentWidth = (element: HTMLElement) => {
+  const tableElements = Array.from(element.querySelectorAll<HTMLElement>(
+    '.el-table__header-wrapper table, .el-table__body-wrapper table'
+  ));
+  const tableWidth = tableElements.reduce((maxWidth, table) => {
+    return Math.max(maxWidth, table.scrollWidth, table.getBoundingClientRect().width);
+  }, 0);
+
+  if (tableWidth > 0) {
+    return Math.ceil(tableWidth);
+  }
+
+  return Math.ceil(Math.max(element.scrollWidth, element.getBoundingClientRect().width));
+};
+
 const withCaptureLayout = async (
   element: HTMLElement,
   action: () => Promise<void>
 ) => {
   const previousCaptureMode = isPaymentImageCaptureMode.value;
   isPaymentImageCaptureMode.value = true;
-  await nextTick();
+  await waitForCaptureLayout();
 
   const hideElements = Array.from(element.querySelectorAll('.hide-in-capture')) as HTMLElement[];
   const responsiveContainers = [
@@ -1253,9 +1282,7 @@ const withCaptureLayout = async (
       node.style.display = 'none';
     });
 
-    const captureWidth = responsiveContainers.reduce((maxWidth, node) => {
-      return Math.max(maxWidth, node.scrollWidth, node.clientWidth);
-    }, element.scrollWidth || element.clientWidth || 0);
+    const captureWidth = getCaptureContentWidth(element);
 
     styleSnapshots.forEach(({ node }) => {
       node.style.overflowX = 'visible';
@@ -1266,7 +1293,8 @@ const withCaptureLayout = async (
       }
     });
 
-    await nextTick();
+    window.dispatchEvent(new Event('resize'));
+    await waitForCaptureLayout();
     await action();
   } finally {
     styleSnapshots.forEach(({ node, overflowX, overflowY, maxWidth, width }) => {
@@ -1281,7 +1309,8 @@ const withCaptureLayout = async (
     });
 
     isPaymentImageCaptureMode.value = previousCaptureMode;
-    await nextTick();
+    window.dispatchEvent(new Event('resize'));
+    await waitForCaptureLayout();
   }
 };
 
@@ -1289,8 +1318,8 @@ const downloadCaptureImage = async (
   element: HTMLElement,
   fileName: string
 ) => {
-  const captureWidth = Math.max(element.scrollWidth, element.clientWidth, 1200);
-  const captureHeight = Math.max(element.scrollHeight, element.clientHeight);
+  const captureWidth = getCaptureContentWidth(element);
+  const captureHeight = Math.ceil(Math.max(element.scrollHeight, element.getBoundingClientRect().height));
   const html2canvas = await loadHtml2Canvas();
 
   const canvas = await html2canvas(element, {
@@ -1334,6 +1363,57 @@ const summaryStatistics = ref<SupplierPaymentSummary>({
   total_paid_amount: 0
 });
 const phones = ref<SupplierPaymentPhone[]>([]);
+const getPaymentTextColumnWidth = (
+  label: string,
+  values: Array<string | number | null | undefined>,
+  minWidth: number
+) => getTextColumnMinWidth(
+  [label, ...values],
+  {
+    minWidth,
+    horizontalPadding: 40,
+    asciiCharacterWidth: 9,
+    wideCharacterWidth: 15
+  }
+);
+const paymentSupplierColumnWidth = computed(() => getPaymentTextColumnWidth(
+  '供应商',
+  phones.value.map((phone) => phone.supplier_name),
+  isMobile.value ? 112 : 120
+));
+const paymentStoreColumnWidth = computed(() => getPaymentTextColumnWidth(
+  '店铺',
+  phones.value.map((phone) => phone.store_name),
+  isMobile.value ? 92 : 100
+));
+const paymentBrandColumnWidth = computed(() => getPaymentTextColumnWidth(
+  '品牌',
+  phones.value.map((phone) => phone.brand_name),
+  isMobile.value ? 82 : 90
+));
+const paymentModelColumnWidth = computed(() => getPaymentTextColumnWidth(
+  '型号',
+  phones.value.map((phone) => phone.model_name),
+  isMobile.value ? 110 : 130
+));
+const paymentColorColumnWidth = computed(() => getPaymentTextColumnWidth(
+  '颜色',
+  phones.value.map((phone) => phone.color_name),
+  isMobile.value ? 82 : 90
+));
+const paymentMemoryColumnWidth = computed(() => getPaymentTextColumnWidth(
+  '内存',
+  phones.value.map((phone) => phone.memory_name),
+  isMobile.value ? 82 : 90
+));
+const paymentSerialColumnWidth = computed(() => getIdentifierColumnMinWidth(
+  ['序列号', ...phones.value.map((phone) => phone.serial_number)],
+  { minWidth: isMobile.value ? 150 : 156, horizontalPadding: 28 }
+));
+const paymentImeiColumnWidth = computed(() => getIdentifierColumnMinWidth(
+  ['IMEI', ...phones.value.map((phone) => phone.imei)],
+  { minWidth: isMobile.value ? 150 : 156, horizontalPadding: 28 }
+));
 const currentPhone = ref<SupplierPaymentPhone | null>(null);
 const editingPhone = ref<SupplierPaymentPhone | null>(null);
 const paymentDetails = ref<PaymentDetailsState>({
@@ -1347,10 +1427,20 @@ const paymentDetails = ref<PaymentDetailsState>({
   total_profit: 0
 });
 
-const selectAll = ref(false);
 const selectedPhones = ref<number[]>([]);
 // 存储已选择手机的完整对象，确保在任何筛选条件下都能获取完整数据
 const selectedPhoneMap = ref<Map<number, SupplierPaymentPhone>>(new Map());
+const currentPageSelectableIds = computed(() => phones.value
+  .filter((phone) => phone.payment_status === 'unpaid')
+  .map((phone) => phone.id));
+const isCurrentPageAllSelected = computed(() => {
+  return currentPageSelectableIds.value.length > 0
+    && currentPageSelectableIds.value.every((id) => selectedPhones.value.includes(id));
+});
+const isCurrentPagePartiallySelected = computed(() => {
+  const selectedCount = currentPageSelectableIds.value.filter((id) => selectedPhones.value.includes(id)).length;
+  return selectedCount > 0 && selectedCount < currentPageSelectableIds.value.length;
+});
 const exportingPaymentPhones = ref(false);
 const mobileActionRowId = ref<number | null>(null);
 const lastTappedRowId = ref<number | null>(null);
@@ -1542,10 +1632,17 @@ const handlePaymentMobileRowTap = (phoneId: number) => {
 
 const getPaymentRowClassName = ({ row }: { row: SupplierPaymentPhone }) => {
   return [
+    row.phone_status === 'peer_transfer' ? 'admin-row--peer-transfer' : '',
     selectedPhones.value.includes(row.id) ? 'row-selected' : '',
     isMobile.value && mobileActionRowId.value === row.id ? 'mobile-action-expanded' : ''
   ].filter(Boolean).join(' ')
 }
+
+const getPaymentDialogRowClassName = ({ row }: { row: SupplierPaymentPhone }) => {
+  return row.phone_status === 'peer_transfer' ? 'admin-row--peer-transfer' : ''
+}
+
+const getPaymentDialogCellClassName = () => 'complete-text-column'
 
 const currentTotalAmount = computed(() => {
   if (hasFilters.value) {
@@ -1816,7 +1913,6 @@ const loadPhones = async (showLoadingState = true) => {
           selectedPhoneMap.value.set(phone.id, phone);
         }
       });
-      selectAll.value = false;
     }
   } catch (err: unknown) {
     // 忽略被取消的请求
@@ -1872,7 +1968,6 @@ const handleFilterChange = () => {
 
   pagination.page = 1;
   // 注意：不清空已选择的数据，允许跨筛选条件批量选择
-  selectAll.value = false;
   loadSummaryStatistics();
   loadStatistics();
   loadPhones();
@@ -1889,16 +1984,18 @@ const clearKeyword = () => {
 // 清空所有选择
 const clearSelection = () => {
   selectedPhones.value = [];
-  selectedPhoneMap.value.clear();
-  selectAll.value = false;
+  selectedPhoneMap.value = new Map();
   info('已清空所有选择');
 };
 
-const handleSelectAll = () => {
-  if (selectAll.value) {
+const handleSelectAll = (event: Event) => {
+  const checked = (event.target as HTMLInputElement).checked;
+
+  if (checked) {
     const unpaidPhones = phones.value.filter((phone) => phone.payment_status === 'unpaid');
     // 增量选择：合并已选择的数据，而不是替换
     const newPhoneIds = unpaidPhones.map((phone) => phone.id);
+    const previousIds = new Set(selectedPhones.value);
     const combinedIds = [...new Set([...selectedPhones.value, ...newPhoneIds])];
     selectedPhones.value = combinedIds;
     // 更新 map
@@ -1908,23 +2005,36 @@ const handleSelectAll = () => {
 
     // 如果当前页有已打款的手机，提示用户
     const paidCount = phones.value.length - unpaidPhones.length;
-    const newlySelected = newPhoneIds.filter((id: number) => !selectedPhones.value.slice(0, -newPhoneIds.length).includes(id));
+    const newlySelected = newPhoneIds.filter((id: number) => !previousIds.has(id));
     if (paidCount > 0) {
       info(`当前页有 ${paidCount} 台手机已打款，已自动跳过。共选择 ${selectedPhones.value.length} 台未打款手机。`);
     } else if (newlySelected.length > 0) {
       info(`已选择 ${selectedPhones.value.length} 台手机（新增 ${newlySelected.length} 台）。`);
     }
-    } else {
+  } else {
     // 取消全选时，只取消当前页的选择
-    const currentPageIds = phones.value
-      .filter((phone) => phone.payment_status === 'unpaid')
-      .map((phone) => phone.id);
+    const currentPageIds = currentPageSelectableIds.value;
     selectedPhones.value = selectedPhones.value.filter((id: number) => !currentPageIds.includes(id));
     // 从 map 中移除当前页的数据
     currentPageIds.forEach((id: number) => {
       selectedPhoneMap.value.delete(id);
     });
   }
+};
+
+const handlePhoneSelectionChange = (phone: SupplierPaymentPhone, event: Event) => {
+  const checked = (event.target as HTMLInputElement).checked;
+
+  if (checked) {
+    if (!selectedPhones.value.includes(phone.id)) {
+      selectedPhones.value = [...selectedPhones.value, phone.id];
+    }
+    selectedPhoneMap.value.set(phone.id, phone);
+    return;
+  }
+
+  selectedPhones.value = selectedPhones.value.filter((id) => id !== phone.id);
+  selectedPhoneMap.value.delete(phone.id);
 };
 
 // 打开批量打款对话框时更新时间为当前时间
@@ -2311,7 +2421,6 @@ const handlePaginationChange = (page: number, pageSize: number) => {
   pagination.page = page;
   pagination.limit = pageSize;
   // 不再重置选中状态，保持跨页选择
-  selectAll.value = false;
   loadPhones();
 };
 
@@ -2348,19 +2457,6 @@ const resetFilters = () => {
   filters.end_date = '';
   syncVisiblePaymentFilters();
   handleFilterChange();
-};
-
-const formatAmount = (amount: number | string) => {
-  const num = parseFloat(String(amount));
-  // 如果是整数，不显示小数
-  if (Number.isInteger(num)) {
-    return num.toLocaleString('zh-CN');
-  }
-  // 如果有小数，只显示必要的小数位（最多2位）
-  return num.toLocaleString('zh-CN', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2
-  });
 };
 
 const formatDate = (dateString: string | null) => {
@@ -2450,12 +2546,12 @@ const getPaymentDialogColumnWidth = (
   const widthOptions = {
     minWidth: config.minWidth,
     horizontalPadding: field === 'payment_time'
-      ? 36
+      ? 44
       : field === 'serial_number' || field === 'imei'
-        ? 20
-        : 16,
-    asciiCharacterWidth: 7,
-    wideCharacterWidth: 12
+        ? 32
+        : 40,
+    asciiCharacterWidth: 9,
+    wideCharacterWidth: 15
   };
 
   if (field === 'serial_number' || field === 'imei') {
@@ -2685,116 +2781,7 @@ onMounted(async () => {
     }
   }
 
-  // 统一的表格区域样式
   .table-section {
-    background: #fff;
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 20px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-
-    .section-title {
-      font-size: 16px;
-      font-weight: 600;
-      color: #303133;
-      margin-bottom: 16px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-
-      i {
-        color: #409eff;
-      }
-    }
-
-    .search-form {
-      display: flex;
-      gap: 16px;
-      flex-wrap: wrap;
-      align-items: flex-end;
-
-      .form-group {
-        flex: 1;
-        min-width: 200px;
-
-        .form-label {
-          display: block;
-          font-size: 14px;
-          color: #606266;
-          margin-bottom: 8px;
-          font-weight: 500;
-        }
-
-        .input-group {
-          position: relative;
-
-          .input-icon {
-            position: absolute;
-            left: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #909399;
-            font-size: 14px;
-          }
-
-          .form-control {
-            width: 100%;
-            padding: 8px 12px 8px 36px;
-            border: 1px solid #dcdfe6;
-            border-radius: 4px;
-            font-size: 14px;
-            color: #606266;
-            background: #fff;
-            transition: all 0.3s;
-
-            &:focus {
-              outline: none;
-              border-color: #409eff;
-              box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.1);
-            }
-
-            &::placeholder {
-              color: #c0c4cc;
-            }
-          }
-        }
-      }
-
-      .form-actions {
-        display: flex;
-        gap: 8px;
-      }
-    }
-  }
-
-  // 统一的表格区域样式
-  .table-section {
-    background: #fff;
-    border-radius: 8px;
-    padding: 20px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-
-    .section-title {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 16px;
-      font-size: 16px;
-      font-weight: 600;
-      color: #303133;
-
-      i {
-        color: #409eff;
-        margin-right: 8px;
-      }
-
-      .record-count {
-        font-size: 14px;
-        color: #909399;
-        font-weight: normal;
-      }
-    }
-
     .title-main {
       display: inline-flex;
       align-items: center;
@@ -2891,71 +2878,6 @@ onMounted(async () => {
     }
   }
 
-  // 统一的表格样式
-  .table-responsive {
-    overflow-x: auto;
-
-    .table {
-      width: 100%;
-      border-collapse: collapse;
-
-      thead {
-        tr {
-          background: #fafafa;
-
-          th {
-            padding: 12px 16px;
-            text-align: left;
-            font-size: 14px;
-            font-weight: 600;
-            color: #606266;
-            border-bottom: 2px solid #ebeef5;
-            white-space: nowrap;
-          }
-        }
-      }
-
-      tbody {
-        tr {
-          transition: all 0.3s;
-
-          &:hover {
-            background: #f5f7fa;
-          }
-
-          td {
-            padding: 12px 16px;
-            font-size: 14px;
-            color: #606266;
-            border-bottom: 1px solid #ebeef5;
-
-            &.amount {
-              font-weight: 600;
-              color: #303133;
-
-              &.profit-positive {
-                color: #67c23a;
-              }
-
-              &.profit-negative {
-                color: #f56c6c;
-              }
-            }
-          }
-
-          &.empty-row {
-            background: #fff;
-
-            td {
-              text-align: center;
-              padding: 40px 16px;
-            }
-          }
-        }
-      }
-    }
-  }
-
   // 状态徽章样式
   .status-badge {
     display: inline-block;
@@ -3033,13 +2955,6 @@ onMounted(async () => {
     }
   }
 
-  // 操作按钮组 - 统一使用 el-button 组件
-  .action-buttons {
-    display: flex;
-    gap: 8px;
-    justify-content: center;
-  }
-
   // 文本辅助类
   .text-muted {
     color: #909399;
@@ -3047,61 +2962,6 @@ onMounted(async () => {
 
   .text-center {
     text-align: center;
-  }
-
-  // 按钮样式
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 16px;
-    border-radius: 4px;
-    font-size: 14px;
-    font-weight: 500;
-    transition: all 0.3s;
-    cursor: pointer;
-    border: 1px solid transparent;
-
-    &.btn-primary {
-      background: #409eff;
-      color: #fff;
-
-      &:hover {
-        background: #66b1ff;
-      }
-    }
-
-    &.btn-outline-primary {
-      background: transparent;
-      border-color: #409eff;
-      color: #409eff;
-
-      &:hover {
-        background: #409eff;
-        color: #fff;
-      }
-    }
-
-    &.btn-outline-secondary {
-      background: transparent;
-      border-color: #dcdfe6;
-      color: #606266;
-
-      &:hover {
-        border-color: #409eff;
-        color: #409eff;
-      }
-    }
-
-    &.btn-sm {
-      padding: 6px 12px;
-      font-size: 13px;
-    }
-
-    &:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
   }
 
   // 分页样式
@@ -3203,33 +3063,8 @@ onMounted(async () => {
 
     // 手机明细表格 - 使用全局样式
     .batch-details-table {
-      .table-responsive {
-        overflow-x: auto;
-        border-radius: 8px;
-        border: 1px solid #dee2e6;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        overflow-y: hidden;
-        -webkit-overflow-scrolling: touch;
-      }
-
       .payment-dialog-table-container {
         --admin-data-table-min-width: 0px;
-        scrollbar-width: none;
-
-        &::-webkit-scrollbar {
-          display: none;
-          width: 0;
-          height: 0;
-        }
-      }
-
-      .data-table {
-        width: 100%;
-        min-width: 0 !important;
-        border-collapse: separate;
-        border-spacing: 0;
-        margin: 0;
-        background: white;
       }
     }
   }
@@ -3549,12 +3384,12 @@ onMounted(async () => {
 }
 
 /* 已选中行的样式 */
-.data-table tbody tr.row-selected {
+.data-table tbody tr.row-selected > td.el-table__cell {
   background: #fff9c4 !important;
   border-left: 3px solid #ffc107;
 }
 
-.data-table tbody tr.row-selected:hover {
+.data-table tbody tr.row-selected:hover > td.el-table__cell {
   background: #fff59d !important;
 }
 
@@ -3570,31 +3405,14 @@ onMounted(async () => {
 .data-table .imei,
 .data-table .imei-cell {
   font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
-  font-size: 11px;
   font-weight: 600;
   color: #495057;
   letter-spacing: 0.5px;
 }
 
-/* 批发数据的 IMEI 特殊颜色标识 */
-.data-table .imei.imei-wholesale {
-  color: #409eff;
-  font-weight: 700;
-  background: linear-gradient(135deg, #e6f4ff 0%, #d4e8ff 100%);
-  padding: 4px 8px;
-  border-radius: 4px;
-  display: inline-block;
-  box-shadow: 0 1px 3px rgba(64, 158, 255, 0.2);
-}
-
-.data-table td.imei-cell {
-  padding: 10px 8px;
-}
-
 /* 序列号样式 */
 .data-table .serial-number {
   font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
-  font-size: 11px;
   font-weight: 600;
   color: #495057;
   letter-spacing: 0.5px;
@@ -3610,21 +3428,11 @@ onMounted(async () => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
   font-weight: 600;
-}
-
-/* 金额单元格 */
-.data-table .price {
-  font-family: 'Monaco', 'Consolas', monospace;
-  font-weight: 600;
-  color: #e6a23c;
-  font-size: 13px;
 }
 
 /* 时间单元格 */
 .data-table .time-cell {
-  font-size: 12px;
   color: #2c3e50;
   font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
   text-align: center;
@@ -3640,7 +3448,6 @@ onMounted(async () => {
   background: linear-gradient(135deg, #f56c6c 0%, #e74c3c 100%);
   color: white;
   border-radius: 12px;
-  font-size: 12px;
   font-weight: 600;
   line-height: 1.2;
   white-space: nowrap;
@@ -3652,7 +3459,6 @@ onMounted(async () => {
   font-family: 'Monaco', 'Consolas', monospace;
   font-weight: 600;
   color: #e6a23c;
-  font-size: 13px;
   text-align: center;
 }
 
@@ -3660,7 +3466,6 @@ onMounted(async () => {
 .data-table .price-cell {
   font-family: 'Monaco', 'Consolas', monospace;
   font-weight: 600;
-  font-size: 13px;
   text-align: center;
 
   &.profit-positive {
@@ -3670,25 +3475,6 @@ onMounted(async () => {
   &.profit-negative {
     color: #f56c6c;
   }
-}
-
-/* 操作列 - 统一使用 el-button 组件，遵循 Element Plus 颜色系统 */
-.data-table .actions-col {
-  min-width: 100px;
-  text-align: center;
-}
-
-.data-table .action-buttons {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-  flex-wrap: nowrap;
-  white-space: nowrap;
-}
-
-.data-table .action-buttons :deep(.el-button) {
-  flex-shrink: 0;
-  margin-left: 0 !important;
 }
 
 .data-table .mobile-action-row td {
@@ -3708,28 +3494,6 @@ onMounted(async () => {
   min-width: 92px;
 }
 
-.data-table .col-supplier,
-.data-table .col-model {
-  min-width: 120px;
-}
-
-.data-table .col-color,
-.data-table .col-memory {
-  min-width: 82px;
-}
-
-.data-table .col-serial {
-  min-width: 148px;
-}
-
-.data-table .col-status {
-  min-width: 96px;
-}
-
-.data-table .col-actions {
-  min-width: 110px;
-}
-
 /* 复选框样式 */
 .data-table input[type="checkbox"] {
   width: 16px;
@@ -3738,22 +3502,24 @@ onMounted(async () => {
   accent-color: #409eff;
 }
 
-/* 主列表统一字号，颜色和字重仍由各业务字段控制。 */
-.supplier-payment-table :deep(.el-table__header th),
-.supplier-payment-table :deep(.el-table__header th .cell),
-.supplier-payment-table :deep(.el-table__body td),
-.supplier-payment-table :deep(.el-table__body td .cell),
-.supplier-payment-table :deep(.el-button),
-.supplier-payment-table .index-badge,
-.supplier-payment-table .serial-number,
-.supplier-payment-table .imei,
-.supplier-payment-table .imei-cell,
-.supplier-payment-table .price,
-.supplier-payment-table .price-cell,
-.supplier-payment-table .time-badge,
-.supplier-payment-table .payment-time-badge,
-.supplier-payment-table .status-badge {
-  font-size: var(--admin-data-table-cell-font-size) !important;
+/* 主表和弹窗表格统一继承公共字号，业务颜色和字重继续保留。 */
+.supplier-payment-table,
+.payment-detail-table {
+  :deep(.el-table__header th),
+  :deep(.el-table__header th .cell),
+  :deep(.el-table__body td),
+  :deep(.el-table__body td .cell),
+  .index-badge,
+  .serial-number,
+  .imei,
+  .imei-cell,
+  .price,
+  .price-cell,
+  .time-badge,
+  .payment-time-badge,
+  .status-badge {
+    font-size: var(--admin-data-table-cell-font-size) !important;
+  }
 }
 
 /* 移动端响应式 */
@@ -3785,14 +3551,6 @@ onMounted(async () => {
     flex-direction: column;
     align-items: stretch;
     gap: 6px;
-  }
-
-  .supplier-payment-table .action-buttons :deep(.el-button) {
-    width: 100%;
-    min-width: 0;
-    padding-right: 4px !important;
-    padding-left: 4px !important;
-    margin: 0 !important;
   }
 
   .supplier-payment-table :deep(.actions-col .cell) {
@@ -4293,37 +4051,10 @@ onMounted(async () => {
     }
   }
 
-  .data-table .col-supplier,
-  .data-table .col-model {
-    min-width: 110px;
-  }
-
-  .data-table .col-color,
-  .data-table .col-memory {
-    min-width: 74px;
-  }
-
-  .data-table .col-serial {
-    min-width: 136px;
-  }
-
-  .data-table .col-status {
-    min-width: 88px;
-  }
-
-  .data-table .col-actions {
-    min-width: 96px;
-  }
-
   .data-table .serial-number,
   .data-table .imei,
   .data-table .imei-cell {
-    font-size: 10px;
     letter-spacing: 0.3px;
-  }
-
-  .data-table .action-buttons {
-    gap: 6px;
   }
 
   .data-table .mobile-action-row td {
@@ -4400,16 +4131,6 @@ onMounted(async () => {
   gap: 10px;
   width: 100%;
 
-  .el-button {
-    min-width: 104px;
-    min-height: 40px;
-    padding: 0 18px;
-    border-radius: 12px;
-    font-weight: 600;
-    box-shadow: none;
-    margin-left: 0 !important;
-  }
-
   .el-button span {
     display: inline-flex;
     align-items: center;
@@ -4440,13 +4161,6 @@ onMounted(async () => {
 
   .payment-dialog-footer {
     gap: 8px;
-
-    .el-button {
-      flex: 1 1 calc(50% - 4px);
-      min-width: 0;
-      min-height: 40px;
-      padding: 0 12px;
-    }
   }
 }
 
@@ -4458,11 +4172,5 @@ onMounted(async () => {
     }
   }
 
-  .payment-dialog-footer {
-    .el-button {
-      width: 100%;
-      flex-basis: 100%;
-    }
-  }
 }
 </style>

@@ -7,84 +7,16 @@
         </div>
 
         <div class="table-responsive">
-          <table class="table">
-            <thead>
-              <tr>
-                <th width="80">ID</th>
-                <th width="150">用户名</th>
-                <th width="200">姓名</th>
-                <th width="300">角色</th>
-                <th width="100">状态</th>
-                <th width="160">最后登录</th>
-                <th width="200">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              <TableLoadingRow v-if="ctx.usersLoading" :colspan="7" />
-              <tr v-else-if="ctx.filteredUsers.length === 0" class="empty-row">
-                <td colspan="7" class="text-center">
-                  <i class="fas fa-inbox"></i>
-                  <span>暂无用户数据 (总数: {{ ctx.usersData.length }}, 筛选后: {{ ctx.filteredUsers.length }})</span>
-                </td>
-              </tr>
-              <tr v-else v-for="(user, index) in ctx.paginatedUsers" :key="user.id" class="user-row">
-                <td class="user-id">
-                  <span class="id-badge">{{ Number(ctx.usersPagination.total) - (Number(ctx.usersPagination.page) - 1) * Number(ctx.usersPagination.size) - Number(index) }}</span>
-                </td>
-                <td>
-                  <div class="user-info">
-                    <div class="user-username">
-                      <i class="fas fa-user-circle"></i>
-                      {{ user.username }}
-                    </div>
-                  </div>
-                </td>
-                <td>
-                  <div class="user-name">{{ user.full_name || user.username || '-' }}</div>
-                </td>
-                <td>
-                  <div class="user-roles">
-                    <span
-                      v-for="(roleName, index) in ctx.getUserRoleNames(user.roles)"
-                      :key="index"
-                      :class="['role-tag', ctx.getRoleTagClass(roleName)]"
-                    >
-                      {{ roleName }}
-                    </span>
-                    <span v-if="!user.roles || user.roles.length === 0" class="no-roles">
-                      暂无角色
-                    </span>
-                  </div>
-                </td>
-                <td>
-                  <span :class="['status-badge', user.status == 1 ? 'active' : 'inactive']">
-                    <i :class="user.status == 1 ? 'fas fa-check' : 'fas fa-times'"></i>
-                    {{ user.status == 1 ? '启用' : '禁用' }}
-                  </span>
-                </td>
-                <td>
-                  <div class="last-login">
-                    <span v-if="user.last_login" :title="user.last_login">
-                      {{ ctx.formatDate(user.last_login) }}
-                    </span>
-                    <span v-else class="never-login" :title="'last_login: ' + user.last_login">从未登录</span>
-                  </div>
-                </td>
-                <td>
-                  <div class="action-buttons">
-                    <el-button type="primary" size="small" @click="ctx.handleEditUserRoles(user)" title="分配角色">
-                      <i class="fas fa-user-tag"></i>
-                      <span>分配角色</span>
-                    </el-button>
-                    <el-button type="danger" size="small" @click="ctx.handleDeleteUser(user)" title="删除用户">
-                      <i class="fas fa-trash"></i>
-                      <span>删除</span>
-                    </el-button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <el-table :data="ctx.usersLoading ? [] : ctx.paginatedUsers" border stripe class="data-table devices-table permissions-data-table" table-layout="fixed" :fit="true" row-key="id">
+            <el-table-column label="ID" width="80" align="center"><template #default="{ $index }"><span class="id-badge">{{ Number(ctx.usersPagination.total) - (Number(ctx.usersPagination.page) - 1) * Number(ctx.usersPagination.size) - Number($index) }}</span></template></el-table-column>
+            <el-table-column label="用户名" min-width="140" align="center" class-name="complete-text-column"><template #default="{ row }"><div class="user-username"><i class="fas fa-user-circle"></i>{{ row.username }}</div></template></el-table-column>
+            <el-table-column label="姓名" min-width="140" align="center" class-name="complete-text-column"><template #default="{ row }"><div class="user-name">{{ row.full_name || row.username || '-' }}</div></template></el-table-column>
+            <el-table-column label="角色" min-width="240" align="center"><template #default="{ row }"><div class="user-roles"><span v-for="(roleName, index) in ctx.getUserRoleNames(row.roles)" :key="index" :class="['role-tag', ctx.getRoleTagClass(roleName)]">{{ roleName }}</span><span v-if="!row.roles || row.roles.length === 0" class="no-roles">暂无角色</span></div></template></el-table-column>
+            <el-table-column label="状态" min-width="90" align="center"><template #default="{ row }"><span :class="['status-badge', row.status == 1 ? 'active' : 'inactive']"><i :class="row.status == 1 ? 'fas fa-check' : 'fas fa-times'"></i>{{ row.status == 1 ? '启用' : '禁用' }}</span></template></el-table-column>
+            <el-table-column label="最后登录" min-width="156" align="center" class-name="complete-text-column"><template #default="{ row }"><div class="last-login"><span v-if="row.last_login" :title="row.last_login">{{ ctx.formatDate(row.last_login) }}</span><span v-else class="never-login">从未登录</span></div></template></el-table-column>
+            <el-table-column label="操作" min-width="190" align="center" class-name="actions-column"><template #default="{ row }"><div class="action-buttons"><el-button type="primary" size="small" title="分配角色" @click.stop="ctx.handleEditUserRoles(row)"><i class="fas fa-user-tag"></i><span>分配角色</span></el-button><el-button type="danger" size="small" title="删除用户" @click.stop="ctx.handleDeleteUser(row)"><i class="fas fa-trash"></i><span>删除</span></el-button></div></template></el-table-column>
+            <template #empty><TableLoadingRow v-if="ctx.usersLoading" mode="block" text="加载用户列表..." /><div v-else class="empty-state"><i class="fas fa-inbox"></i><span>暂无用户数据</span></div></template>
+          </el-table>
         </div>
 
         <Pagination

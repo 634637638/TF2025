@@ -3,7 +3,11 @@
 ## 📚 标准文档
 
 - [CRUD 标准](crud-standards.md) - 增删改查操作规范
+- [全局按钮统一规范](button-standards.md) - 普通、表格、手机端和模态框按钮的唯一标准
+- [全局 TAB 统一规范](tab-standards.md) - 页面标签导航的唯一样式、手机布局和自动审计标准
+- [前端规范审计接入指南](standards-audit-guide.md) - 新增审计规则及接入一键启动、构建的标准流程
 - [对话框标准](dialog-standards.md) - 模态框开发规范
+- [Shared 经验分享规范](shared-standards.md) - 经验内容、附件和权限规则
 - [页面结构标准](page-structure-standards.md) - 页面布局规范
 - [分页标准](pagination-standards.md) - 分页组件规范
 - [搜索标准](search-standards.md) - 搜索功能规范
@@ -13,7 +17,7 @@
 - [前端最新请求规范](latest-request-standard.md) - 搜索、筛选、分页请求取消与旧响应防覆盖规范
 - [前端数据实时刷新规范](data-freshness-standard.md) - 新增、编辑、删除后缓存失效和列表即时刷新规范
 - [统一页面结构](unified-page-structure.md) - 页面统一架构
-- [后台卡片与表格统一规范](admin-table-standards.md) - 后台卡片、表格、字体、移动端滚动与新增页面强制标准
+- [后台卡片与表格统一规范](admin-table-standards.md) - 后台卡片、内容驱动列宽、完整字段、表头内容同步横移、全选与批量选择的强制标准
 - [移动端开发标准](../guides/mobile-development-standards.md) - 移动端适配与表格公共样式规范
 
 ## 📖 指南文档

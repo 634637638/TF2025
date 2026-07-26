@@ -2083,7 +2083,7 @@ const handleBatchDeleteHistory = async () => {
   try {
     await ElMessageBox.confirm(`确定要删除选中的 ${selectedHistoryItems.value.length} 条历史记录吗？`, '提示', {
       type: 'warning',
-      customClass: 'message-box-purple'
+      customClass: 'message-box-unified'
     })
 
     const priceListId = currentProduct.value?.price_list_id || currentProduct.value?.id
@@ -2643,14 +2643,6 @@ onUnmounted(() => {
       width: 100%;
       flex-wrap: nowrap;
 
-      .el-button {
-        flex: 1;
-        padding: 4px 6px;
-        font-size: 13px;
-        white-space: nowrap;
-        min-width: fit-content;
-        text-align: center;
-      }
     }
   }
 }
@@ -2871,11 +2863,6 @@ onUnmounted(() => {
   padding: 8px;
   background: #f8fafc;
 
-  .el-button {
-    width: 100%;
-    min-width: 0;
-    margin: 0 !important;
-  }
 }
 
 :deep(.price-list-data-table .el-table__expanded-cell) {

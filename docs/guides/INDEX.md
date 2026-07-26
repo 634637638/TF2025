@@ -15,7 +15,7 @@
 ### 前端开发
 - [TypeScript 标准](typescript-standards.md) - TypeScript 使用规范
 - [错误处理标准](error-handling-standards.md) - 统一错误处理机制
-- [后台卡片与表格统一规范](../frontend/admin-table-standards.md) - 后台页面卡片、表格和移动端滚动的唯一公共标准
+- [后台卡片与表格统一规范](../frontend/admin-table-standards.md) - 后台页面卡片、表格、移动端滚动、全选与批量选择的唯一公共标准
 - [移动端开发标准](mobile-development-standards.md) - 移动端适配开发，含移动端表格公共样式规范
 - [移动端适配指南](mobile-adaptation-guide.md) - 响应式布局适配
 - [移动端响应式指南](MOBILE_RESPONSIVE_GUIDE.md) - 移动端完整指南

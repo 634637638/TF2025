@@ -11,6 +11,7 @@
 - [权限系统完整指南](permission-system-guide.md) - 数据库驱动 RBAC、权限汇总与接入规范
 - [页面扫描与模块注册规范](page-module-scan-guide.md) - 新增页面、`page/` 目录与模块扫描规则
 - [字段权限完整指南](field-permissions-complete-guide.md) - 字段级别权限控制
+- [权限操作日志规范](permission-operation-log.md) - 日志写入、详情、分页和长期保留规则
 
 ## 权限缓存
 
@@ -64,6 +65,10 @@ if (checkUserPermission('sales_salesview:create')) {
 - [业务文档](../business/)
 
 ## 最近更新
+
+### 2026-07-26
+
+- 新增权限操作日志规范，明确后端唯一写入、服务端分页、详情字段和长期保留策略。
 
 ### 2026-03-19
 

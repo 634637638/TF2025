@@ -452,34 +452,6 @@ const editAccessory = () => {
   background: #f9fafb;
 }
 
-.btn {
-  padding: 10px 20px;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none;
-}
-
-.btn-primary {
-  background-color: #3b82f6;
-  color: white;
-}
-
-.btn-primary:hover {
-  background-color: #2563eb;
-}
-
-.btn-secondary {
-  background-color: #6b7280;
-  color: white;
-}
-
-.btn-secondary:hover {
-  background-color: #4b5563;
-}
-
 /* 响应式设计 */
 @media (max-width: 640px) {
   .detail-grid {
@@ -503,12 +475,5 @@ const editAccessory = () => {
     padding: 16px;
   }
 
-  .modal-footer {
-    flex-direction: column;
-  }
-
-  .btn {
-    width: 100%;
-  }
 }
 </style>

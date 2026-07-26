@@ -1,21 +1,23 @@
 <template>
   <div class="unified-search-panel" @click.capture="handlePanelClick">
     <div class="unified-search-panel__form" :class="{ 'is-expanded': expanded }" @click.stop>
-      <div class="unified-search-panel__primary">
-        <slot name="primary" />
-      </div>
+      <div class="unified-search-panel__main">
+        <div class="unified-search-panel__primary">
+          <slot name="primary" />
+        </div>
 
-      <div class="unified-search-panel__actions" @click.stop>
-        <slot name="actions">
-          <el-button type="primary" size="small" @click="$emit('search')" :disabled="loading">
-            <i class="fas fa-search"></i>
-            搜索
-          </el-button>
-          <el-button type="default" size="small" @click="$emit('reset')">
-            <i class="fas fa-redo"></i>
-            重置
-          </el-button>
-        </slot>
+        <div class="unified-search-panel__actions" @click.stop>
+          <slot name="actions">
+            <el-button type="primary" @click="$emit('search')" :disabled="loading">
+              <i class="fas fa-search"></i>
+              搜索
+            </el-button>
+            <el-button type="default" @click="$emit('reset')">
+              <i class="fas fa-redo"></i>
+              重置
+            </el-button>
+          </slot>
+        </div>
       </div>
 
       <slot />
@@ -90,6 +92,10 @@ const handlePanelClick = (event: MouseEvent) => {
   align-items: center;
 }
 
+.unified-search-panel__main {
+  display: contents;
+}
+
 .unified-search-panel__primary {
   flex: 1 1 220px;
   min-width: 200px;
@@ -117,7 +123,9 @@ const handlePanelClick = (event: MouseEvent) => {
 .unified-search-panel__form :deep(.el-select),
 .unified-search-panel__form :deep(.el-date-picker),
 .unified-search-panel__form :deep(.el-button) {
-  height: 34px;
+  height: var(--tf-search-control-height, 34px) !important;
+  min-height: var(--tf-search-control-height, 34px) !important;
+  box-sizing: border-box;
 }
 
 .unified-search-panel__form :deep(.el-input),
@@ -128,8 +136,21 @@ const handlePanelClick = (event: MouseEvent) => {
 
 .unified-search-panel__form :deep(.el-input__wrapper),
 .unified-search-panel__form :deep(.el-select .el-input__wrapper),
+.unified-search-panel__form :deep(.el-select__wrapper),
+.unified-search-panel__form :deep(.el-date-editor.el-input__wrapper),
 .unified-search-panel__form :deep(.el-date-editor .el-input__wrapper) {
-  min-height: 34px;
+  height: var(--tf-search-control-height, 34px) !important;
+  min-height: var(--tf-search-control-height, 34px) !important;
+  box-sizing: border-box;
+}
+
+.unified-search-panel__form :deep(.el-input__inner),
+.unified-search-panel__form :deep(.el-date-editor .el-range-input) {
+  height: 100% !important;
+  min-height: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  box-sizing: border-box;
 }
 
 @media (min-width: 769px) {
@@ -156,11 +177,19 @@ const handlePanelClick = (event: MouseEvent) => {
     align-items: stretch;
   }
 
-  .unified-search-panel__form:not(.is-expanded) {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+  .unified-search-panel__main {
+    display: flex;
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+    gap: 8px;
     align-items: center;
-    column-gap: 8px;
+  }
+
+  .unified-search-panel__form:not(.is-expanded) {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
   }
 
   .unified-search-panel__form:not(.is-expanded) .unified-search-panel__primary {
@@ -169,27 +198,24 @@ const handlePanelClick = (event: MouseEvent) => {
     width: auto;
     order: 1;
     display: flex;
+    flex: 1 1 0;
   }
 
   .unified-search-panel__form:not(.is-expanded) .unified-search-panel__actions {
     order: 2;
-    width: 118px;
-    min-width: 118px;
-    max-width: 118px;
     gap: 4px;
     display: flex;
     align-items: center;
     align-self: center;
-    justify-self: end;
     flex-wrap: nowrap;
-    height: 34px;
-    min-height: 34px;
+    height: var(--tf-search-control-height, 34px);
+    min-height: var(--tf-search-control-height, 34px);
     box-sizing: border-box;
   }
 
   .unified-search-panel__form.is-expanded .unified-search-panel__primary {
-    flex: 1 1 calc(100% - 126px);
-    max-width: calc(100% - 126px);
+    flex: 1 1 0;
+    max-width: none;
     min-width: 0;
     order: 1;
     display: flex;
@@ -197,22 +223,22 @@ const handlePanelClick = (event: MouseEvent) => {
 
   .unified-search-panel__form.is-expanded .unified-search-panel__actions {
     order: 2;
-    flex: 0 0 118px;
-    width: 118px;
-    max-width: 118px;
+    flex: 0 0 auto;
+    width: auto;
+    max-width: none;
     gap: 4px;
     display: flex;
     align-items: center;
     align-self: center;
     flex-wrap: nowrap;
     min-width: 0;
-    height: 34px;
-    min-height: 34px;
+    height: var(--tf-search-control-height, 34px);
+    min-height: var(--tf-search-control-height, 34px);
     box-sizing: border-box;
   }
 
   .unified-search-panel__primary :deep(.el-input) {
-    height: 34px !important;
+    height: var(--tf-search-control-height, 34px) !important;
   }
 
   .unified-search-panel__primary :deep(.el-input__wrapper),
@@ -221,41 +247,21 @@ const handlePanelClick = (event: MouseEvent) => {
   }
 
   .unified-search-panel__primary :deep(.el-input__wrapper) {
-    min-height: 34px !important;
-    height: 34px !important;
+    min-height: var(--tf-search-control-height, 34px) !important;
+    height: var(--tf-search-control-height, 34px) !important;
     padding-top: 0 !important;
     padding-bottom: 0 !important;
   }
 
   .unified-search-panel__actions :deep(.el-button) {
-    height: 34px !important;
-    min-height: 34px !important;
-    box-sizing: border-box;
-    font-size: 11px;
-    flex: 0 1 auto;
-    min-width: 0;
-  }
-
-  .unified-search-panel__actions :deep(.el-button) {
-    min-width: 0;
-    width: calc(50% - 2px);
-    padding: 0 7px !important;
+    flex: 0 0 auto;
+    width: auto;
     margin: 0;
     line-height: 1;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     align-self: center;
-  }
-
-  .unified-search-panel__actions :deep(.el-button i),
-  .unified-search-panel__actions :deep(.el-button .el-icon) {
-    font-size: 11px;
-  }
-
-  .unified-search-panel__actions :deep(.el-button span) {
-    font-size: 11px;
-    line-height: 1;
   }
 
   .unified-search-panel__form.is-expanded :deep(.filter-item) {
@@ -274,57 +280,28 @@ const handlePanelClick = (event: MouseEvent) => {
     gap: 6px;
   }
 
-  .unified-search-panel__form.is-expanded .unified-search-panel__primary {
-    flex-basis: calc(100% - 112px);
-    max-width: calc(100% - 112px);
-  }
-
-  .unified-search-panel__form:not(.is-expanded) {
-    column-gap: 6px;
-  }
-
-  .unified-search-panel__form:not(.is-expanded) .unified-search-panel__actions {
-    width: 106px;
-    min-width: 106px;
-    max-width: 106px;
-    height: 32px;
-    min-height: 32px;
+  .unified-search-panel__main {
+    gap: 6px;
   }
 
   .unified-search-panel__primary :deep(.el-input) {
-    height: 32px !important;
+    height: var(--tf-search-control-height, 30px) !important;
   }
 
   .unified-search-panel__form :deep(.el-input__wrapper),
   .unified-search-panel__form :deep(.el-select .el-input__wrapper),
+  .unified-search-panel__form :deep(.el-select__wrapper),
+  .unified-search-panel__form :deep(.el-date-editor.el-input__wrapper),
   .unified-search-panel__form :deep(.el-date-editor .el-input__wrapper) {
-    min-height: 32px !important;
-    height: 32px !important;
+    min-height: var(--tf-search-control-height, 30px) !important;
+    height: var(--tf-search-control-height, 30px) !important;
     box-sizing: border-box;
   }
 
   .unified-search-panel__actions :deep(.el-button) {
-    height: 32px !important;
-    min-height: 32px !important;
     min-width: 0;
-    padding: 0 6px !important;
-    font-size: 10px;
   }
 
-  .unified-search-panel__actions :deep(.el-button i),
-  .unified-search-panel__actions :deep(.el-button .el-icon),
-  .unified-search-panel__actions :deep(.el-button span) {
-    font-size: 10px;
-    line-height: 1;
-  }
-
-  .unified-search-panel__form.is-expanded .unified-search-panel__actions {
-    flex-basis: 106px;
-    width: 106px;
-    max-width: 106px;
-    height: 32px;
-    min-height: 32px;
-  }
 }
 
 @media (max-width: 390px) {
@@ -332,24 +309,17 @@ const handlePanelClick = (event: MouseEvent) => {
     gap: 4px;
   }
 
-  .unified-search-panel__form.is-expanded .unified-search-panel__primary {
-    flex-basis: calc(100% - 100px);
-    max-width: calc(100% - 100px);
+  .unified-search-panel__main {
+    gap: 4px;
   }
 
   .unified-search-panel__form.is-expanded .unified-search-panel__actions,
   .unified-search-panel__form:not(.is-expanded) .unified-search-panel__actions {
-    flex-basis: 96px;
-    width: 96px;
-    min-width: 96px;
-    max-width: 96px;
     gap: 3px;
   }
 
-  .unified-search-panel__actions :deep(.el-button) {
-    min-width: 0;
-    padding: 0 5px !important;
-    font-size: 10px;
+  .unified-search-panel__actions :deep(.el-button > span) {
+    gap: 4px;
   }
 }
 </style>

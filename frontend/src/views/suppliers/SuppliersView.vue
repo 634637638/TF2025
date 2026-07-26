@@ -864,7 +864,7 @@ const deleteSupplier = async (supplier: Supplier) => {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning',
-        customClass: 'message-box-purple'
+        customClass: 'message-box-unified'
       }
     )
   } catch {
@@ -1117,7 +1117,7 @@ const deleteSupplierWithPermission = async (supplier: Supplier) => {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning',
-        customClass: 'message-box-purple'
+        customClass: 'message-box-unified'
       }
     )
   } catch {
@@ -1319,79 +1319,6 @@ onUnmounted(() => {
   font-size: 14px;
   color: #6c757d;
   font-weight: 400;
-}
-
-/* 按钮样式 */
-.btn {
-  padding: 10px 16px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  text-decoration: none;
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-}
-
-.btn-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-outline-secondary {
-  background: white;
-  color: #6c757d;
-  border: 2px solid #e8ecef;
-}
-
-.btn-outline-secondary:hover:not(:disabled) {
-  background: #f8f9fa;
-  border-color: #6c757d;
-}
-
-.btn-sm {
-  padding: 6px 12px;
-  font-size: 12px;
-}
-
-.btn-info {
-  background: #17a2b8;
-  color: white;
-}
-
-.btn-info:hover {
-  background: #138496;
-}
-
-.btn-warning {
-  background: #ffc107;
-  color: #212529;
-}
-
-.btn-warning:hover {
-  background: #e0a800;
-}
-
-.btn-danger {
-  background: #dc3545;
-  color: white;
-}
-
-.btn-danger:hover {
-  background: #c82333;
 }
 
 /* 表格区域样式 */
@@ -1667,65 +1594,6 @@ onUnmounted(() => {
   gap: 8px;
   justify-content: center;
 }
-
-.btn-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  white-space: nowrap;
-  min-width: 60px;
-  justify-content: center;
-}
-
-.btn-action i {
-  font-size: 12px;
-}
-
-.btn-view {
-  background: #28a745;
-  color: white;
-}
-
-.btn-view:hover {
-  background: #218838;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
-}
-
-.btn-edit {
-  background: #007bff;
-  color: white;
-}
-
-.btn-edit:hover {
-  background: #0056b3;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
-}
-
-.btn-delete {
-  background: #dc3545;
-  color: white;
-}
-
-.btn-delete:hover {
-  background: #c82333;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
-}
-
-.btn-action:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
 /* 空状态样式 */
 .empty-row td {
   padding: 60px 12px;
@@ -1799,13 +1667,6 @@ onUnmounted(() => {
     flex-direction: row;
     width: auto;
     gap: 8px;
-  }
-
-  .action-buttons .btn {
-    flex: 0 0 auto;
-    padding: 8px 12px;
-    font-size: 12px;
-    white-space: nowrap;
   }
 
   .form-actions {

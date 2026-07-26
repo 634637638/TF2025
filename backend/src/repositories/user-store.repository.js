@@ -107,7 +107,12 @@ class UserStoreRepository {
       // await pool.execute('DELETE FROM user_stores WHERE user_id = ?', [userId]);
 
       // 批量插入新的关联
-      const values = storeIdArray.map(storeId => [userId, storeId, isPrimary, assignedBy]);
+      const values = storeIdArray.map((storeId, index) => [
+        userId,
+        storeId,
+        isPrimary && index === 0 ? 1 : 0,
+        assignedBy
+      ]);
       const placeholders = values.map(() => '(?, ?, ?, ?)').join(', ');
       const flatValues = values.flat();
 

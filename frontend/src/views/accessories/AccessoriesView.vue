@@ -352,7 +352,7 @@ const deleteAccessory = async (accessory: AccessoryItem) => {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning',
-      customClass: 'message-box-purple'
+      customClass: 'message-box-unified'
     })
   } catch {
     return

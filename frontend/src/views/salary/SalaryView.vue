@@ -98,9 +98,9 @@
         </div>
 
         <!-- TAB 切换 -->
-        <el-tabs v-model="activeTab" class="salary-tabs" @tab-change="handleTabChange">
+        <el-tabs v-model="activeTab" class="salary-tabs tf-page-tabs" @tab-change="handleTabChange">
           <!-- 工资模板 -->
-          <el-tab-pane label="工资模板" name="templates" v-if="canViewSalaryTemplates">
+          <el-tab-pane label="工资模板" name="templates" class="tf-tab-panel" v-if="canViewSalaryTemplates">
             <UnifiedSearchPanel
               v-model:expanded="templateSearchExpanded"
               :loading="templatesLoading"
@@ -342,7 +342,7 @@
           </el-tab-pane>
 
           <!-- 员工工资 -->
-          <el-tab-pane label="员工工资" name="employees" v-if="canViewSalaryRecords">
+          <el-tab-pane label="员工工资" name="employees" class="tf-tab-panel" v-if="canViewSalaryRecords">
             <UnifiedSearchPanel
               v-model:expanded="employeeSearchExpanded"
               :loading="employeesLoading"
@@ -643,7 +643,7 @@
           </el-tab-pane>
 
           <!-- 工资计算 -->
-          <el-tab-pane label="工资计算" name="payout" v-if="canViewSalaryRecords">
+          <el-tab-pane label="工资计算" name="payout" class="tf-tab-panel" v-if="canViewSalaryRecords">
             <UnifiedSearchPanel
               v-model:expanded="payoutSearchExpanded"
               :loading="payoutLoading"
@@ -923,7 +923,7 @@
           </el-tab-pane>
 
           <!-- 工资发放 -->
-          <el-tab-pane label="工资发放" name="my" v-if="canViewPayoutRecords">
+          <el-tab-pane label="工资发放" name="my" class="tf-tab-panel" v-if="canViewPayoutRecords">
             <UnifiedSearchPanel
               v-model:expanded="recordsSearchExpanded"
               :loading="myLoading"
@@ -4632,7 +4632,7 @@ const handleDeletePayout = async (employee: any) => {
   try {
     await ElMessageBox.confirm(`确认删除 ${employee.name || employee.username} 的工资记录？此操作不可恢复！`, '警告', {
       type: 'warning',
-      customClass: 'message-box-purple'
+      customClass: 'message-box-unified'
     })
     await salaryApi.records.deleteSalaryRecord(record.id)
     ElMessage.success('删除成功')
@@ -5159,7 +5159,7 @@ const handleSetDefault = async (row: any) => {
 
   try {
     await ElMessageBox.confirm(`确认将 "${row.name}" 设为默认模板？`, '确认', {
-      customClass: 'message-box-purple'
+      customClass: 'message-box-unified'
     })
     await salaryTemplateApi.setAsDefault(row.id)
     ElMessage.success('设置成功')
@@ -5180,7 +5180,7 @@ const handleToggleTemplateStatus = async (row: any) => {
     const newStatus = !row.is_active
     const actionText = newStatus ? '启用' : '禁用'
     await ElMessageBox.confirm(`确认${actionText}模板 "${row.name}"？`, '确认', {
-      customClass: 'message-box-purple'
+      customClass: 'message-box-unified'
     })
     await salaryTemplateApi.updateTemplate(row.id, { is_active: newStatus })
     ElMessage.success(`${actionText}成功`)
@@ -5213,7 +5213,7 @@ const handleDeleteTemplate = async (row: any) => {
   try {
     await ElMessageBox.confirm(`确认删除模板 "${row.name}"？`, '警告', {
       type: 'warning',
-      customClass: 'message-box-purple'
+      customClass: 'message-box-unified'
     })
     await salaryTemplateApi.deleteTemplate(row.id)
     ElMessage.success('删除成功')
@@ -5402,47 +5402,6 @@ watch(activeTab, async (newTab, oldTab) => {
 </script>
 
 <style lang="scss" scoped>
-/* 按钮样式 */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  font-size: 14px;
-  border-radius: 6px;
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.btn:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-primary {
-  background: white;
-  color: #667eea;
-  border-color: white;
-}
-
-.btn-outline-secondary {
-  background: white;
-  color: #606266;
-  border-color: #dcdfe6;
-}
-
-.btn-outline-secondary:hover:not(:disabled) {
-  background: #f5f7fa;
-  color: #409eff;
-  border-color: #c6e2ff;
-}
-
 .stat-icon.blue {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
@@ -5785,17 +5744,6 @@ watch(activeTab, async (newTab, oldTab) => {
   color: #909399;
 }
 
-/* 按钮样式 */
-.btn-success {
-  background: linear-gradient(135deg, #67c23a 0%, #85ce61 100%);
-  border: none;
-  color: white;
-}
-
-.btn-success:hover:not(:disabled) {
-  background: linear-gradient(135deg, #85ce61 0%, #67c23a 100%);
-}
-
 .attendance-actions {
   margin-bottom: 16px;
   display: flex;
@@ -5996,46 +5944,6 @@ input:checked + .slider:before {
 
 .divider i {
   margin-right: 6px;
-}
-
-/* 按钮样式 */
-.btn {
-  padding: 8px 20px;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 36px;
-}
-
-.btn-secondary {
-  background: #fff;
-  border: 1px solid #d9d9d9;
-  color: #595959;
-}
-
-.btn-secondary:hover {
-  color: #40a9ff;
-  border-color: #40a9ff;
-}
-
-.btn-primary {
-  background: #1890ff;
-  color: white;
-}
-
-.btn-primary:hover {
-  background: #40a9ff;
-}
-
-.btn-primary:disabled {
-  background: #d9d9d9;
-  cursor: not-allowed;
 }
 
 /* 表单提示文字 */
@@ -6278,30 +6186,6 @@ input:checked + .slider:before {
   flex-wrap: wrap;
 }
 
-.attendance-actions .btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.btn-success {
-  background: #52c41a;
-  color: white;
-}
-
-.btn-success:hover {
-  background: #73d13d;
-}
-
-.btn-warning {
-  background: #faad14;
-  color: white;
-}
-
-.btn-warning:hover {
-  background: #ffc53d;
-}
-
 /* 空状态 */
 .empty-state {
   text-align: center;
@@ -6329,10 +6213,6 @@ input:checked + .slider:before {
 
 /* 响应式 */
 @media (max-width: 768px) {
-  .salary-tabs :deep(.el-tabs__header) {
-    margin-bottom: 8px;
-  }
-
   .salary-tabs .table-section > .section-header {
     display: none;
   }

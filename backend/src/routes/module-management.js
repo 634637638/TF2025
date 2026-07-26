@@ -2,12 +2,55 @@ const express = require('express');
 const router = express.Router();
 const ModuleScanner = require('../services/moduleScanner_simple');
 const MenuModuleLinker = require('../services/menuModuleLinker');
-const { unifiedAuth, requirePermission } = require('../middleware/unified-auth');
+const { unifiedAuth, requirePermission, requireAnyPermission } = require('../middleware/unified-auth');
 const { getDatabase } = require('../config/database');
+const { MODULE_PERMISSION_TYPES, getModulePermissionMetadata } = require('../config/module-permission-actions');
+const { logPermissionOperation } = require('./permission-logs');
 const log = require('../utils/log');
 
 const moduleScanner = new ModuleScanner();
 const menuLinker = new MenuModuleLinker();
+
+const PROTECTED_MODULE_KEYS = new Set([
+  'permissions_permissionsview',
+  'permissions_modulemanagementview'
+]);
+
+let configuredModuleSyncPromise = null;
+
+async function ensureConfiguredModulesRegistered() {
+  if (configuredModuleSyncPromise) return configuredModuleSyncPromise;
+
+  configuredModuleSyncPromise = (async () => {
+    const pool = getDatabase();
+    const [rows] = await pool.execute('SELECT `key` FROM modules');
+    const existingKeys = new Set(rows.map(item => item.key));
+    const missingKeys = new Set(
+      Object.keys(MODULE_PERMISSION_TYPES).filter(key => !existingKeys.has(key))
+    );
+
+    if (missingKeys.size === 0) return;
+
+    const scannedModules = await moduleScanner.scanViewsDirectory();
+    for (const scannedModule of scannedModules) {
+      if (!missingKeys.has(scannedModule.key)) continue;
+
+      const metadata = getModulePermissionMetadata(scannedModule.key);
+      const result = await moduleScanner.registerModule({
+        ...scannedModule,
+        ...(metadata || {})
+      });
+
+      if (!result?.success) {
+        log.warn(`自动注册模块失败: ${scannedModule.key} ${result?.message || ''}`);
+      }
+    }
+  })().finally(() => {
+    configuredModuleSyncPromise = null;
+  });
+
+  return configuredModuleSyncPromise;
+}
 
 // 权限验证中间件
 router.use(unifiedAuth);
@@ -15,13 +58,16 @@ router.use(unifiedAuth);
 /**
  * 获取所有模块列表（用于菜单管理中的模块选择）
  */
-router.get('/', requirePermission('permissions:admin'), async (req, res) => {
+router.get('/', requireAnyPermission(['permissions:admin', 'menus:create', 'menus:edit']), async (req, res) => {
   try {
     const pool = getDatabase();
+
+    await ensureConfiguredModulesRegistered();
 
     const [modules] = await pool.execute(`
       SELECT id, \`key\`, name, description, icon, is_active
       FROM modules
+      WHERE is_active = 1
       ORDER BY name ASC
     `);
 
@@ -122,6 +168,22 @@ router.post('/register', requirePermission('permissions:admin'), async (req, res
 
     const result = await moduleScanner.registerModule(targetModule);
 
+    if (result?.success !== false) {
+      await logPermissionOperation(
+        req,
+        'create',
+        'module',
+        result?.moduleId || null,
+        targetModule.name || moduleKey,
+        `注册模块：${targetModule.name || moduleKey}`,
+        {
+          audit_type: 'module_register',
+          module_key: moduleKey,
+          module_name: targetModule.name || moduleKey
+        }
+      );
+    }
+
     res.json(result);
   } catch (error) {
     log.error('注册模块失败:', error);
@@ -159,6 +221,22 @@ router.post('/register-batch', requirePermission('permissions:admin'), async (re
 
     const result = await moduleScanner.registerModules(targetModules);
 
+    await logPermissionOperation(
+      req,
+      'create',
+      'module_batch',
+      null,
+      '批量注册模块',
+      `批量注册 ${targetModules.length} 个模块`,
+      {
+        audit_type: 'module_register_batch',
+        modules: targetModules.map((module) => ({
+          module_key: module.key,
+          module_name: module.name || module.key
+        }))
+      }
+    );
+
     res.json({
       success: true,
       message: '批量注册完成',
@@ -179,6 +257,30 @@ router.post('/register-batch', requirePermission('permissions:admin'), async (re
 router.post('/sync-all', requirePermission('permissions:admin'), async (req, res) => {
   try {
     const result = await moduleScanner.syncAllModules();
+
+    await logPermissionOperation(
+      req,
+      'sync',
+      'module_batch',
+      null,
+      '同步全部模块',
+      `同步模块：成功 ${result.success || 0} 个，失败 ${result.errors || 0} 个，清理 ${result.deleted || 0} 个`,
+      {
+        audit_type: 'module_sync',
+        total: result.total || 0,
+        success_count: result.success || 0,
+        error_count: result.errors || 0,
+        deleted_count: result.deleted || 0,
+        modules: Array.isArray(result.results)
+          ? result.results.map((item) => ({
+              module_key: item.moduleKey,
+              action: item.action || (item.success ? 'registered_or_updated' : 'failed'),
+              success: item.success !== false,
+              message: item.message || ''
+            }))
+          : []
+      }
+    );
 
     res.json({
       success: true,
@@ -201,13 +303,12 @@ router.get('/registered', requirePermission('permissions:admin'), async (req, re
   try {
     const pool = getDatabase();
 
-    // 获取所有已注册的模块
+    // 管理列表必须包含已禁用模块，否则禁用后将无法从界面重新启用。
     const [rows] = await pool.execute(`
       SELECT m.*,
              CASE WHEN m.is_custom_name = 1 THEN "🔒 自定义" ELSE "🤖 自动" END as name_status
       FROM modules m
-      WHERE m.is_active = 1
-      ORDER BY m.category, m.sort_order, m.\`key\`
+      ORDER BY m.is_active DESC, m.category, m.sort_order, m.\`key\`
     `);
 
     log.debug(`🔍 已注册模块查询结果: ${rows.length}个模块`);
@@ -293,6 +394,10 @@ router.put('/:moduleKey', requirePermission('permissions:admin'), async (req, re
     const { name, description, category, icon, sortOrder } = req.body;
 
     const pool = getDatabase();
+    const [existingModules] = await pool.execute(
+      'SELECT * FROM modules WHERE `key` = ?',
+      [moduleKey]
+    );
     const [result] = await pool.execute(`
       UPDATE modules
       SET name = ?, description = ?, category = ?, icon = ?, sort_order = ?, updated_at = NOW()
@@ -305,6 +410,21 @@ router.put('/:moduleKey', requirePermission('permissions:admin'), async (req, re
         message: '模块不存在或未更新'
       });
     }
+
+    await logPermissionOperation(
+      req,
+      'edit',
+      'module',
+      existingModules[0]?.id || null,
+      name || existingModules[0]?.name || moduleKey,
+      `编辑模块：${name || existingModules[0]?.name || moduleKey}`,
+      {
+        audit_type: 'module_edit',
+        module_key: moduleKey,
+        previous: existingModules[0] || null,
+        current: { name, description, category, icon, sort_order: sortOrder }
+      }
+    );
 
     res.json({
       success: true,
@@ -328,6 +448,10 @@ router.patch('/:moduleKey/toggle', requirePermission('permissions:admin'), async
     const { isActive } = req.body;
 
     const pool = getDatabase();
+    const [modules] = await pool.execute(
+      'SELECT id, `key`, name, is_active FROM modules WHERE `key` = ?',
+      [moduleKey]
+    );
     const [result] = await pool.execute(
       'UPDATE modules SET is_active = ?, updated_at = NOW() WHERE `key` = ?',
       [isActive, moduleKey]
@@ -339,6 +463,21 @@ router.patch('/:moduleKey/toggle', requirePermission('permissions:admin'), async
         message: '模块不存在'
       });
     }
+
+    await logPermissionOperation(
+      req,
+      isActive ? 'enable' : 'disable',
+      'module',
+      modules[0]?.id || null,
+      modules[0]?.name || moduleKey,
+      `${isActive ? '启用' : '禁用'}模块：${modules[0]?.name || moduleKey}`,
+      {
+        audit_type: 'module_status',
+        module_key: moduleKey,
+        previous_is_active: Number(modules[0]?.is_active),
+        is_active: isActive ? 1 : 0
+      }
+    );
 
     res.json({
       success: true,
@@ -378,6 +517,19 @@ router.delete('/:moduleKey', requirePermission('permissions:admin'), async (req,
       );
 
       await connection.commit();
+
+      await logPermissionOperation(
+        req,
+        'delete',
+        'module',
+        null,
+        moduleKey,
+        `删除模块：${moduleKey}`,
+        {
+          audit_type: 'module_delete',
+          module_key: moduleKey
+        }
+      );
 
       res.json({
         success: true,
@@ -502,6 +654,22 @@ router.put('/:moduleKey/name', requirePermission('permissions:admin'), async (re
       [name.trim(), isCustom ? 1 : 0, moduleKey]
     );
 
+    await logPermissionOperation(
+      req,
+      'edit',
+      'module',
+      module.id,
+      name.trim(),
+      `修改模块名称：${module.name} -> ${name.trim()}`,
+      {
+        audit_type: 'module_rename',
+        module_key: moduleKey,
+        previous_name: module.name,
+        name: name.trim(),
+        is_custom_name: isCustom
+      }
+    );
+
     res.json({
       success: true,
       message: `模块名称修改成功`,
@@ -558,6 +726,21 @@ router.put('/:moduleKey/restore-name', requirePermission('permissions:admin'), a
     await pool.execute(
       'UPDATE modules SET name = ?, is_custom_name = 0, updated_at = NOW() WHERE `key` = ?',
       [module.original_name, moduleKey]
+    );
+
+    await logPermissionOperation(
+      req,
+      'edit',
+      'module',
+      module.id,
+      module.original_name,
+      `恢复模块名称：${module.name} -> ${module.original_name}`,
+      {
+        audit_type: 'module_restore_name',
+        module_key: moduleKey,
+        previous_name: module.name,
+        name: module.original_name
+      }
     );
 
     res.json({
@@ -707,7 +890,7 @@ router.put('/:id/status', requirePermission('permissions:admin'), async (req, re
     const { id } = req.params;
     const { is_active } = req.body;
 
-    if (typeof is_active !== 'number') {
+    if (!Number.isInteger(is_active) || ![0, 1].includes(is_active)) {
       return res.status(400).json({
         success: false,
         message: '状态值必须是数字 (0 或 1)'
@@ -729,10 +912,32 @@ router.put('/:id/status', requirePermission('permissions:admin'), async (req, re
       });
     }
 
+    if (is_active === 0 && PROTECTED_MODULE_KEYS.has(modules[0].key)) {
+      return res.status(400).json({
+        success: false,
+        message: '权限管理核心模块不能禁用，否则会导致管理入口无法访问'
+      });
+    }
+
     // 更新模块状态
     await pool.execute(
       'UPDATE modules SET is_active = ?, updated_at = NOW() WHERE id = ?',
       [is_active, id]
+    );
+
+    await logPermissionOperation(
+      req,
+      is_active === 1 ? 'enable' : 'disable',
+      'module',
+      modules[0].id,
+      modules[0].name || modules[0].key,
+      `${is_active === 1 ? '启用' : '禁用'}模块：${modules[0].name || modules[0].key}`,
+      {
+        audit_type: 'module_status',
+        module_key: modules[0].key,
+        previous_is_active: Number(modules[0].is_active),
+        is_active
+      }
     );
 
     res.json({
@@ -806,6 +1011,24 @@ router.post('/manual-create', requirePermission('permissions:admin'), async (req
     await connection.commit();
 
     log.debug(`✅ 手动创建模块成功: ${key} (${name})`);
+
+    await logPermissionOperation(
+      req,
+      'create',
+      'module',
+      moduleId,
+      name,
+      `创建模块：${name}`,
+      {
+        audit_type: 'module_create',
+        module_key: key,
+        module_name: name,
+        description: description || `${name}管理模块`,
+        category,
+        icon: icon || 'fas fa-cube',
+        is_active: is_active !== undefined ? (is_active ? 1 : 0) : 1
+      }
+    );
 
     // 自动修复菜单关联
     try {

@@ -19,32 +19,29 @@ const logger = require('./logger')
 /**
  * 格式化参数
  */
+const formatValue = (arg) => {
+  if (arg instanceof Error) {
+    const details = [arg.message, arg.code ? `code=${arg.code}` : '', arg.stack || ''].filter(Boolean)
+    return details.join('\n')
+  }
+
+  if (typeof arg === 'object' && arg !== null) {
+    try {
+      return JSON.stringify(arg, null, 2)
+    } catch (e) {
+      return String(arg)
+    }
+  }
+
+  return String(arg)
+}
+
 const formatArgs = (args) => {
   if (args.length === 0) return ''
   if (args.length === 1) {
-    const arg = args[0]
-    if (typeof arg === 'object' && arg !== null) {
-      if (arg instanceof Error) {
-        return `${arg.message}\n${arg.stack || ''}`
-      }
-      try {
-        return JSON.stringify(arg, null, 2)
-      } catch (e) {
-        return String(arg)
-      }
-    }
-    return String(arg)
+    return formatValue(args[0])
   }
-  return args.map(arg => {
-    if (typeof arg === 'object' && arg !== null) {
-      try {
-        return JSON.stringify(arg)
-      } catch (e) {
-        return String(arg)
-      }
-    }
-    return String(arg)
-  }).join(' ')
+  return args.map(formatValue).join(' ')
 }
 
 /**

@@ -847,11 +847,6 @@ watch(
       gap: 8px;
     }
 
-    .footer-actions :deep(.el-button) {
-      width: 100%;
-      min-height: 42px;
-      margin: 0;
-    }
   }
 
   .info-card {
@@ -953,71 +948,6 @@ watch(
   transform: none !important;
 }
 
-/* ==================== 删除按钮样式优化 ==================== */
-
-/* 表格中的删除按钮 - 简洁方形设计 */
-.stock-in-dialog .delete-row-btn.el-button--danger.el-button--small {
-  width: 24px !important;
-  height: 24px !important;
-  min-width: 24px !important;
-  max-width: 24px !important;
-  padding: 0 !important;
-  background: #f5f5f5 !important;
-  border: 1px solid #e0e0e0 !important;
-  box-shadow: none !important;
-  --el-button-bg-color: #f5f5f5 !important;
-  --el-button-border-color: #e0e0e0 !important;
-  --el-button-hover-bg-color: #ffebee !important;
-  --el-button-hover-border-color: #ffcdd2 !important;
-  transition: all 0.2s ease !important;
-  border-radius: 4px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-}
-
-/* 删除按钮悬停效果 */
-.stock-in-dialog .delete-row-btn.el-button--danger.el-button--small:hover {
-  background: #ffebee !important;
-  border-color: #ffcdd2 !important;
-  transform: scale(1.05) !important;
-}
-
-/* 删除按钮点击效果 */
-.stock-in-dialog .delete-row-btn.el-button--danger.el-button--small:active {
-  transform: scale(0.95) !important;
-}
-
-/* 减号图标样式 */
-.stock-in-dialog .delete-row-btn .delete-icon {
-  color: #757575 !important;
-  font-size: 16px !important;
-  font-weight: bold !important;
-  line-height: 1 !important;
-  display: block !important;
-}
-
-/* 悬停时图标颜色 */
-.stock-in-dialog .delete-row-btn.el-button--danger.el-button--small:hover .delete-icon {
-  color: #f44336 !important;
-}
-
-/* 隐藏原有图标 */
-.stock-in-dialog .delete-row-btn .el-icon {
-  display: none !important;
-}
-
-/* 手机卡片头部中的删除按钮 */
-.stock-in-dialog .phone-header .el-button--danger {
-  padding: 4px 8px !important;
-  height: 28px !important;
-  font-size: 13px !important;
-}
-
-.stock-in-dialog .phone-header .el-button--danger i {
-  font-size: 12px !important;
-}
-
 /* 移动端样式 */
 @media (max-width: 767px) {
   .stock-in-dialog {
@@ -1041,30 +971,6 @@ watch(
     padding: 12px 10px 10px !important;
   }
 
-  .stock-in-dialog .delete-row-btn.el-button--danger.el-button--small {
-    width: 22px !important;
-    height: 22px !important;
-    min-width: 22px !important;
-    max-width: 22px !important;
-  }
-
-  .stock-in-dialog .delete-row-btn .delete-icon {
-    font-size: 14px !important;
-  }
-
-  .stock-in-dialog .delete-row-btn.el-button--danger.el-button--small:hover .delete-icon {
-    color: #f44336 !important;
-  }
-
-  .stock-in-dialog .phone-header .el-button--danger {
-    padding: 3px 6px !important;
-    height: 24px !important;
-    font-size: 12px !important;
-  }
-
-  .stock-in-dialog .phone-header .el-button--danger i {
-    font-size: 11px !important;
-  }
 }
 
 @media (max-width: 480px) {

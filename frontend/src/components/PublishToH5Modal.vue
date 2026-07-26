@@ -1148,6 +1148,19 @@ defineExpose({
   min-width: 0;
 }
 
+.publish-to-h5-media {
+  width: 100%;
+  max-width: 100%;
+}
+
+.publish-to-h5-media .image-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
 .publish-to-h5-column {
   display: flex;
   flex-direction: column;
@@ -1165,6 +1178,8 @@ defineExpose({
 
 .publish-to-h5-media-card {
   position: relative;
+  width: 100%;
+  min-width: 0;
   aspect-ratio: 1;
   border-radius: 8px;
   overflow: hidden;
@@ -1193,14 +1208,6 @@ defineExpose({
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   padding-top: 2px;
-}
-
-.publish-to-h5-footer :deep(.el-button) {
-  width: 100%;
-  height: 44px;
-  border-radius: 14px;
-  font-size: 15px;
-  margin: 0;
 }
 
 :deep(.publish-to-h5-form .el-form-item) {
@@ -1328,9 +1335,9 @@ defineExpose({
     gap: 8px;
   }
 
-  .publish-to-h5-footer :deep(.el-button) {
-    height: 44px;
-    font-size: 14px;
+  .publish-to-h5-media .image-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
   }
 
   :deep(.publish-to-h5-form .publish-to-h5-input-control),

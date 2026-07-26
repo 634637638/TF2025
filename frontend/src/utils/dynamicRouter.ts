@@ -55,7 +55,6 @@ const COMPONENT_MAP: Record<string, RouteComponentLoader> = {
   '/inventory': () => import('@/views/inventory/InventoryView.vue'),
   '/customers': () => import('@/views/customers/CustomersView.vue'),
   '/permissions': () => import('@/views/permissions/PermissionsView.vue'),
-  '/permissions/module-management': () => import('@/views/permissions/page/ModuleManagementView.vue'),
   '/1/': () => import('@/views/brands/BrandsView.vue')
 }
 

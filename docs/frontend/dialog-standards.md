@@ -1,878 +1,119 @@
-# TF2025 对话框/编辑框规范
+# TF2025 对话框统一规范
 
-## 📝 概述
+## 适用范围
 
-本文档定义了 TF2025 项目中所有对话框（Dialog/Modal）和编辑框的统一设计规范，确保用户界面的一致性和良好的用户体验。
+本规范适用于 Vue 3 页面中的 Element Plus `el-dialog`、全局 `MobileDialog`、自定义历史模态框和 `ElMessageBox`。新增功能优先使用 `el-dialog` 或 `MobileDialog`，不得继续创建另一套遮罩、弹窗和按钮主题。
 
-## 🎯 设计原则
+按钮颜色、尺寸和语义统一遵循《[全局按钮统一规范](button-standards.md)》。对话框文档不再维护任何页面级 `.btn-primary` 或 `.el-button--primary` CSS。
 
-### 1. 一致性
-- 所有对话框遵循统一的视觉风格
-- 统一的交互模式和动画效果
-- 一致的按钮布局和操作流程
+## 全局入口
 
-### 2. 可用性
-- 清晰的标题和操作提示
-- 合理的按钮位置和大小
-- 支持键盘快捷键操作
+| 文件 | 职责 |
+|---|---|
+| `frontend/src/styles/components/_dialog.scss` | 正文内边距、表单标签宽度、图片预览层级 |
+| `frontend/src/styles/components/_dialog-actions.scss` | footer 按钮排列、尺寸和 MessageBox 语义 |
+| `frontend/src/styles/components/_buttons.scss` | 按钮颜色、状态和普通尺寸 |
 
-### 3. 响应式
-- 适配不同屏幕尺寸
-- 移动端友好的触摸区域
-- 合理的弹窗大小限制
+以上文件由 `frontend/src/main.ts` 全局加载。业务页面只添加弹窗用途 class、宽度和内容布局，不得复制公共正文间距或 footer 按钮规则。
 
-## 🎨 视觉规范
-
-### 1. 基础样式
-
-```scss
-// 遮罩层
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  backdrop-filter: blur(2px);
-  padding: 20px;
-}
-
-// 对话框容器
-.modal-content {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  width: 90%;
-  max-width: 500px;
-  max-height: 90vh;
-  overflow: hidden;
-  animation: modalSlideIn 0.3s ease-out;
-}
-
-// 动画
-@keyframes modalSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-50px) scale(0.9);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-```
-
-### 2. 对话框头部
-
-```scss
-.modal-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 20px 24px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-radius: 12px 12px 0 0;
-
-  h3 {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .btn-close {
-    background: none;
-    border: none;
-    color: white;
-    font-size: 24px;
-    cursor: pointer;
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    transition: background 0.2s;
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.2);
-    }
-  }
-}
-```
-
-### 3. 对话框内容
-
-```scss
-.modal-body {
-  padding: 24px;
-  max-height: 60vh;
-  overflow-y: auto;
-
-  .form-group {
-    margin-bottom: 20px;
-
-    &:last-child {
-      margin-bottom: 0;
-    }
-
-    label {
-      display: block;
-      margin-bottom: 8px;
-      font-weight: 500;
-      color: #374151;
-      font-size: 14px;
-
-      .required {
-        color: #ef4444;
-      }
-    }
-
-    .form-control {
-      width: 100%;
-      padding: 12px 16px;
-      border: 2px solid #e5e7eb;
-      border-radius: 8px;
-      font-size: 14px;
-      transition: border-color 0.2s ease, box-shadow 0.2s ease;
-      background: white;
-      box-sizing: border-box;
-
-      &:focus {
-        outline: none;
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-      }
-
-      &::placeholder {
-        color: #9ca3af;
-      }
-    }
-
-    textarea.form-control {
-      resize: vertical;
-      min-height: 80px;
-      font-family: inherit;
-      line-height: 1.5;
-    }
-
-    select.form-control {
-      cursor: pointer;
-      padding-right: 40px;
-      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
-      background-position: right 12px center;
-      background-repeat: no-repeat;
-      background-size: 16px;
-      appearance: none;
-      -webkit-appearance: none;
-      -moz-appearance: none;
-    }
-  }
-}
-```
-
-### 4. 对话框底部
-
-```scss
-.modal-footer {
-  background: #f9fafb;
-  padding: 20px 24px;
-  border-top: 1px solid #e5e7eb;
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  border-radius: 0 0 12px 12px;
-
-  .btn {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 80px;
-    justify-content: center;
-
-    &:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    &.btn-secondary {
-      background: #6b7280;
-      color: white;
-
-      &:hover:not(:disabled) {
-        background: #4b5563;
-        transform: translateY(-1px);
-      }
-    }
-
-    &.btn-primary {
-      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-      color: white;
-      box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
-
-      &:hover:not(:disabled) {
-        background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
-        transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
-      }
-    }
-
-    &.btn-danger {
-      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-      color: white;
-
-      &:hover:not(:disabled) {
-        background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-      }
-    }
-  }
-}
-```
-
-## 📐 标准模板
-
-### 1. 基础编辑对话框
+## 标准结构
 
 ```vue
-<template>
-  <!-- 对话框遮罩 -->
-  <div v-if="visible" class="modal-overlay" @click.self="handleClose">
-    <div class="modal-content">
-      <!-- 对话框头部 -->
-      <div class="modal-header">
-        <h3>
-          <i :class="icon"></i>
-          {{ title }}
-        </h3>
-        <button class="btn-close" @click="handleClose">×</button>
-      </div>
+<el-dialog
+  v-model="visible"
+  title="编辑资料"
+  width="min(720px, calc(100vw - 16px))"
+  append-to-body
+  destroy-on-close
+>
+  <el-form class="tf-dialog-form" :model="form">
+    <el-form-item label="名称">
+      <el-input v-model="form.name" />
+    </el-form-item>
+  </el-form>
 
-      <!-- 对话框内容 -->
-      <div class="modal-body">
-        <form @submit.prevent="handleSubmit">
-          <div class="form-group">
-            <label>
-              名称 <span class="required">*</span>
-            </label>
-            <input
-              v-model="formData.name"
-              type="text"
-              class="form-control"
-              placeholder="请输入名称"
-              required
-            >
-          </div>
-
-          <div class="form-group">
-            <label>描述</label>
-            <textarea
-              v-model="formData.description"
-              class="form-control"
-              placeholder="请输入描述信息"
-              rows="4"
-            ></textarea>
-          </div>
-        </form>
-      </div>
-
-      <!-- 对话框底部 -->
-      <div class="modal-footer">
-        <button class="btn btn-secondary" @click="handleClose">
-          取消
-        </button>
-        <button
-          class="btn btn-primary"
-          @click="handleSubmit"
-          :disabled="submitting"
-        >
-          <InlineLoading v-if="submitting" text="提交中..." size="small" variant="inherit" />
-          {{ isEdit ? '更新' : '创建' }}
-        </button>
-      </div>
+  <template #footer>
+    <div class="tf-dialog-actions">
+      <el-button @click="visible = false">取消</el-button>
+      <el-button type="primary" @click="save">保存</el-button>
     </div>
-  </div>
-</template>
-
-<script setup>
-import { ref, reactive, watch } from 'vue'
-
-// Props
-const props = defineProps({
-  visible: {
-    type: Boolean,
-    default: false
-  },
-  title: {
-    type: String,
-    required: true
-  },
-  icon: {
-    type: String,
-    default: 'fas fa-edit'
-  },
-  data: {
-    type: Object,
-    default: () => ({})
-  },
-  isEdit: {
-    type: Boolean,
-    default: false
-  }
-})
-
-// Emits
-const emit = defineEmits(['close', 'submit'])
-
-// 状态
-const submitting = ref(false)
-
-// 表单数据
-const formData = reactive({
-  name: '',
-  description: ''
-})
-
-// 监听数据变化
-watch(() => props.data, (newData) => {
-  if (newData) {
-    Object.assign(formData, newData)
-  }
-}, { immediate: true })
-
-// 监听显示状态
-watch(() => props.visible, (visible) => {
-  if (visible && !props.isEdit) {
-    // 新建时重置表单
-    Object.assign(formData, {
-      name: '',
-      description: ''
-    })
-  }
-})
-
-// 方法
-const handleClose = () => {
-  emit('close')
-}
-
-const handleSubmit = async () => {
-  if (submitting.value) return
-
-  submitting.value = true
-  try {
-    await emit('submit', { ...formData })
-  } finally {
-    submitting.value = false
-  }
-}
-</script>
+  </template>
+</el-dialog>
 ```
 
-### 2. 确认对话框
+弹窗传送到 `body` 后，页面的 scoped CSS 不一定能命中内部结构。公共视觉必须放在全局文件；页面差异使用 `custom-class` 或明确的弹窗 class，并通过非 scoped 样式只控制业务布局。
 
-```vue
-<template>
-  <div v-if="visible" class="modal-overlay" @click.self="handleClose">
-    <div class="modal-content modal-confirm">
-      <div class="modal-header">
-        <h3>
-          <i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i>
-          {{ title }}
-        </h3>
-        <button class="btn-close" @click="handleClose">×</button>
-      </div>
+## 正文和表单
 
-      <div class="modal-body">
-        <div class="confirm-content">
-          <i :class="typeIcon" :style="{ color: typeColor }"></i>
-          <div class="confirm-message">
-            <p>{{ message }}</p>
-            <small v-if="detail">{{ detail }}</small>
-          </div>
-        </div>
-      </div>
+普通弹窗正文统一读取以下变量：
 
-      <div class="modal-footer">
-        <button class="btn btn-secondary" @click="handleClose">
-          取消
-        </button>
-        <button
-          class="btn"
-          :class="`btn-${type}`"
-          @click="handleConfirm"
-          :disabled="submitting"
-        >
-          <InlineLoading v-if="submitting" text="处理中..." size="small" variant="inherit" />
-          确认
-        </button>
-      </div>
-    </div>
-  </div>
-</template>
+- PC 左右间距 `--tf-dialog-body-padding-inline: 24px`；
+- PC 上下间距 `--tf-dialog-body-padding-block: 24px`；
+- 手机左右间距 `16px`，`480px` 以下 `12px`；
+- 普通横向表单标签宽度 `72px`，手机逐步收窄。
 
-<script setup>
-import { computed } from 'vue'
+横向表单使用 `.tf-dialog-form`。富文本、说明、长标题等需要标签在上方时使用 `.tf-dialog-form.tf-dialog-form--stacked`。复杂全屏工具确需取消正文间距时使用 `.tf-dialog-body-flush`，不得给普通编辑框设置 `padding: 0`。
 
-const props = defineProps({
-  visible: Boolean,
-  title: String,
-  message: String,
-  detail: String,
-  type: {
-    type: String,
-    default: 'danger',
-    validator: (value) => ['danger', 'warning', 'info'].includes(value)
-  }
+所有输入控件必须 `min-width: 0`，长文本允许自然换行。表格、富文本表格或媒体确实超出时，只在内容容器内提供一个横向滚动区域，不得撑宽弹窗或制造页面级双滚动条。
+
+## Footer 按钮
+
+标准 footer 必须使用 `.tf-dialog-actions`。历史别名如 `.dialog-footer`、`.modal-footer`、`.payment-dialog-footer`、`.image-modal-footer` 已由全局兼容，但修改历史弹窗时应逐步补上 `.tf-dialog-actions`。
+
+PC 端：
+
+- 按钮按内容自适应，靠右排列；
+- 最小宽度 `80px`，高度 `40px`；
+- 多按钮间距 `10px`。
+
+手机端：
+
+- 取消在左，保存/确认在右；
+- 所有按钮在一行等宽收缩；
+- 不允许 `flex-direction: column`；
+- 不允许给每个按钮写 `width: 100%` 造成上下堆叠；
+- 安全区内边距由弹窗 footer 负责，按钮本身不重复增加。
+
+关闭、取消使用默认中性按钮；保存、确认使用 `primary`；删除使用 `danger`；完成/通过使用 `success`；停用/拒绝使用 `warning`。
+
+## 表格弹窗
+
+模态框内表格继续遵循《[后台卡片与表格统一规范](admin-table-standards.md)》：
+
+- 列宽按表头和完整内容计算，禁止用省略号隐藏关键字段；
+- 内容较少时按紧凑列宽铺满可用空间，避免尾部大片空白；
+- 内容超宽时 PC 和手机均在表格内部同步横向移动；
+- 操作按钮使用 `.action-buttons` 和显式 `table-action--*`；
+- 纯图标操作必须有 tooltip；
+- 页面不得重新定义表头、行高和操作按钮尺寸。
+
+## 多层弹窗和预览
+
+图片预览使用 Element Plus `ElImageViewer` 并设置 `teleported`，公共层级为 `--tf-image-viewer-z-index: 12000`。颜色选择器、日期选择器等 popper 使用 Element Plus 传送机制，不能放在会裁切的 `overflow: hidden` 业务容器中。
+
+禁止通过随意增加页面 z-index 解决遮挡。新增全局浮层类型时，应先确认现有遮罩、Dialog、MessageBox 和 Viewer 层级，再在全局文件中定义。
+
+## 确认提示框
+
+删除、停用、完成等确认操作使用 `frontend/src/utils/message-box.ts` 的统一增强。页面只传标题、正文、确认文字和业务类型，不直接写确认按钮颜色。
+
+```ts
+await ElMessageBox.confirm('确定删除该记录吗？', '删除确认', {
+  type: 'warning',
+  confirmButtonText: '删除',
+  cancelButtonText: '取消'
 })
-
-const emit = defineEmits(['close', 'confirm'])
-
-const submitting = ref(false)
-
-const typeIcon = computed(() => {
-  const icons = {
-    danger: 'fas fa-exclamation-circle',
-    warning: 'fas fa-exclamation-triangle',
-    info: 'fas fa-info-circle'
-  }
-  return icons[props.type] || icons.info
-})
-
-const typeColor = computed(() => {
-  const colors = {
-    danger: '#ef4444',
-    warning: '#f59e0b',
-    info: '#3b82f6'
-  }
-  return colors[props.type] || colors.info
-})
-
-const handleClose = () => {
-  emit('close')
-}
-
-const handleConfirm = async () => {
-  if (submitting.value) return
-
-  submitting.value = true
-  try {
-    await emit('confirm')
-  } finally {
-    submitting.value = false
-  }
-}
-</script>
-
-<style lang="scss" scoped>
-.modal-confirm {
-  max-width: 400px;
-}
-
-.confirm-content {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-
-  i {
-    font-size: 48px;
-    flex-shrink: 0;
-    margin-top: 8px;
-  }
-
-  .confirm-message {
-    flex: 1;
-
-    p {
-      font-size: 16px;
-      color: #374151;
-      margin: 0 0 8px 0;
-    }
-
-    small {
-      color: #6b7280;
-      font-size: 14px;
-    }
-  }
-}
-</style>
 ```
 
-### 3. 表格选择对话框
+全局会根据操作语义应用 `message-box-danger`、`message-box-warning`、`message-box-success` 或 `message-box-primary`。
 
-```vue
-<template>
-  <div v-if="visible" class="modal-overlay" @click.self="handleClose">
-    <div class="modal-content modal-table">
-      <div class="modal-header">
-        <h3>
-          <i :class="icon"></i>
-          {{ title }}
-        </h3>
-        <button class="btn-close" @click="handleClose">×</button>
-      </div>
+## 检查清单
 
-      <div class="modal-body">
-        <!-- 搜索栏 -->
-        <div class="search-bar" v-if="searchable">
-          <input
-            v-model="searchQuery"
-            type="text"
-            class="form-control"
-            :placeholder="searchPlaceholder"
-          >
-        </div>
-
-        <!-- 表格内容 -->
-        <div class="table-container">
-          <table class="selection-table">
-            <thead>
-              <tr>
-                <th width="40">
-                  <input
-                    type="checkbox"
-                    :checked="isAllSelected"
-                    @change="handleSelectAll"
-                  >
-                </th>
-                <th v-for="column in columns" :key="column.key">
-                  {{ column.title }}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="item in filteredItems"
-                :key="item.id"
-                :class="{ selected: isSelected(item) }"
-                @click="handleToggleSelect(item)"
-              >
-                <td>
-                  <input
-                    type="checkbox"
-                    :checked="isSelected(item)"
-                    @change="handleToggleSelect(item)"
-                  >
-                </td>
-                <td v-for="column in columns" :key="column.key">
-                  {{ item[column.key] }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="modal-footer">
-        <div class="selection-info">
-          已选择 {{ selectedItems.length }} 项
-        </div>
-        <div class="footer-actions">
-          <button class="btn btn-secondary" @click="handleClose">
-            取消
-          </button>
-          <button
-            class="btn btn-primary"
-            @click="handleConfirm"
-            :disabled="selectedItems.length === 0"
-          >
-            确认选择
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-
-<script setup>
-import { ref, computed } from 'vue'
-
-const props = defineProps({
-  visible: Boolean,
-  title: String,
-  icon: String,
-  items: Array,
-  columns: Array,
-  multiple: {
-    type: Boolean,
-    default: false
-  },
-  searchable: {
-    type: Boolean,
-    default: true
-  },
-  searchPlaceholder: {
-    type: String,
-    default: '搜索...'
-  }
-})
-
-const emit = defineEmits(['close', 'confirm'])
-
-const searchQuery = ref('')
-const selectedItems = ref([])
-
-const filteredItems = computed(() => {
-  if (!searchQuery.value) return props.items
-  return props.items.filter(item =>
-    Object.values(item).some(value =>
-      String(value).toLowerCase().includes(searchQuery.value.toLowerCase())
-    )
-  )
-})
-
-const isAllSelected = computed(() => {
-  return filteredItems.value.length > 0 &&
-         filteredItems.value.every(item => isSelected(item))
-})
-
-const isSelected = (item) => {
-  return selectedItems.value.some(selected => selected.id === item.id)
-}
-
-const handleSelectAll = () => {
-  if (isAllSelected.value) {
-    selectedItems.value = []
-  } else {
-    selectedItems.value = props.multiple
-      ? [...filteredItems.value]
-      : [filteredItems.value[0]]
-  }
-}
-
-const handleToggleSelect = (item) => {
-  if (props.multiple) {
-    const index = selectedItems.value.findIndex(selected => selected.id === item.id)
-    if (index > -1) {
-      selectedItems.value.splice(index, 1)
-    } else {
-      selectedItems.value.push(item)
-    }
-  } else {
-    selectedItems.value = [item]
-  }
-}
-
-const handleClose = () => {
-  emit('close')
-}
-
-const handleConfirm = () => {
-  emit('confirm', props.multiple ? selectedItems.value : selectedItems.value[0])
-}
-</script>
-
-<style lang="scss" scoped>
-.modal-table {
-  max-width: 800px;
-  width: 95%;
-  max-height: 90vh;
-}
-
-.search-bar {
-  margin-bottom: 20px;
-}
-
-.table-container {
-  max-height: 400px;
-  overflow-y: auto;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-}
-
-.selection-table {
-  width: 100%;
-  border-collapse: collapse;
-
-  th {
-    background: #f9fafb;
-    padding: 12px;
-    text-align: left;
-    font-weight: 600;
-    color: #374151;
-    border-bottom: 1px solid #e5e7eb;
-    position: sticky;
-    top: 0;
-  }
-
-  td {
-    padding: 12px;
-    border-bottom: 1px solid #e5e7eb;
-  }
-
-  tbody tr {
-    cursor: pointer;
-    transition: background 0.2s;
-
-    &:hover {
-      background: #f9fafb;
-    }
-
-    &.selected {
-      background: #eff6ff;
-    }
-  }
-}
-
-.selection-info {
-  color: #6b7280;
-  font-size: 14px;
-}
-
-.footer-actions {
-  display: flex;
-  gap: 12px;
-}
-</style>
-```
-
-## 📱 响应式适配
-
-```scss
-// 移动端适配
-@media (max-width: 768px) {
-  .modal-overlay {
-    padding: 10px;
-  }
-
-  .modal-content {
-    width: 100%;
-    max-height: 95vh;
-    border-radius: 12px 12px 0 0;
-    margin-top: auto;
-  }
-
-  .modal-header {
-    padding: 16px 20px;
-
-    h3 {
-      font-size: 16px;
-    }
-  }
-
-  .modal-body {
-    padding: 20px;
-    max-height: calc(100vh - 180px);
-  }
-
-  .modal-footer {
-    padding: 16px 20px;
-    flex-direction: column;
-    gap: 8px;
-
-    .btn {
-      width: 100%;
-      order: 2;
-    }
-
-    .btn-secondary {
-      order: 1;
-    }
-  }
-}
-```
-
-## 🔧 使用指南
-
-### 1. 基础使用
-
-```vue
-<template>
-  <div>
-    <button @click="showEditDialog = true">编辑</button>
-
-    <EditDialog
-      v-model:visible="showEditDialog"
-      title="编辑用户"
-      icon="fas fa-user-edit"
-      :data="selectedUser"
-      :is-edit="true"
-      @close="showEditDialog = false"
-      @submit="handleSave"
-    />
-  </div>
-</template>
-```
-
-### 2. 确认对话框使用
-
-```vue
-<template>
-  <button @click="showDeleteConfirm = true">删除</button>
-
-  <ConfirmDialog
-    v-model:visible="showDeleteConfirm"
-    title="确认删除"
-    message="确定要删除这条数据吗？"
-    detail="删除后将无法恢复，请谨慎操作"
-    type="danger"
-    @close="showDeleteConfirm = false"
-    @confirm="handleDelete"
-  />
-</template>
-```
-
-### 3. 选择对话框使用
-
-```vue
-<template>
-  <button @click="showSelectDialog = true">选择用户</button>
-
-  <SelectDialog
-    v-model:visible="showSelectDialog"
-    title="选择用户"
-    icon="fas fa-users"
-    :items="userList"
-    :columns="[
-      { key: 'name', title: '姓名' },
-      { key: 'email', title: '邮箱' },
-      { key: 'department', title: '部门' }
-    ]"
-    :multiple="true"
-    @close="showSelectDialog = false"
-    @confirm="handleSelect"
-  />
-</template>
-```
-
-## ⚠️ 注意事项
-
-### 1. 可访问性
-- 确保键盘可以操作（Tab导航、Enter确认、Esc取消）
-- 提供合适的ARIA属性
-- 确保焦点管理正确
-
-### 2. 性能优化
-- 使用v-if而非v-show控制显示
-- 大数据量时使用虚拟滚动
-- 及时清理事件监听器
-
-### 3. 用户体验
-- 提供加载状态反馈
-- 错误信息清晰明确
-- 操作结果及时提示
-
-## 📚 相关文档
-
-- [移动端开发规范](./mobile-development-standards.md)
-- [组件开发规范](./component-standards.md)
-- [样式定义规范](./style-standards.md)
-
----
-
-**最后更新**：2025-12-18
-**维护团队**：TF2025前端开发团队
+- PC 弹窗在可视区内居中，正文可滚动，footer 始终可操作；
+- 手机宽度不超过 `100vw`，左右间距对称；
+- 手机 footer 按钮保持一行；
+- 取消和保存顺序一致；
+- 长文本、表格、图片和富文本不撑宽弹窗；
+- 图片预览位于弹窗最上层；
+- 页面没有按钮颜色、固定宽度或 footer 子按钮覆盖；
+- `npm run check:buttons` 和 `npm run build` 均通过。

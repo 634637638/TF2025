@@ -250,6 +250,20 @@ module.exports = Object.freeze({
   'preorders:deliver': ['preorders_preordersview:deliver'],
   'preorders:cancel': ['preorders_preordersview:cancel'],
 
+  // 待办提醒权限
+  'reminders:view': ['reminders_reminderview:view'],
+  'reminders:create': ['reminders_reminderview:create'],
+  'reminders:edit': ['reminders_reminderview:edit'],
+  'reminders:delete': ['reminders_reminderview:delete'],
+  'reminders:manage': ['reminders_reminderview:manage'],
+
+  // 经验分享权限映射
+  'shared:view': ['shared_sharedview:view'],
+  'shared:create': ['shared_sharedview:create'],
+  'shared:edit': ['shared_sharedview:edit'],
+  'shared:delete': ['shared_sharedview:delete'],
+  'shared:manage': ['shared_sharedview:manage'],
+
   // 价目表管理权限映射
   'price-list:view': ['price_list_pricelistview:view', 'price_list_pricelistview:menu_view'],
   'price-list:create': ['price_list_pricelistview:create'],

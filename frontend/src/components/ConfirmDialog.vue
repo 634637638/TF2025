@@ -16,7 +16,7 @@
           </div>
         </div>
 
-        <div class="confirm-footer">
+        <div class="confirm-footer tf-dialog-actions">
           <button
             class="btn btn-outline-secondary"
             @click="handleCancel"
@@ -288,90 +288,12 @@ watch(() => props.visible, (visible) => {
 }
 
 .confirm-footer {
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
   padding: 16px 24px 24px;
   border-top: 1px solid #f0f0f0;
 }
 
 .theme-dark .confirm-footer {
   border-top-color: #434343;
-}
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  text-decoration: none;
-  min-height: 36px;
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-outline-secondary {
-  background: transparent;
-  color: #666666;
-  border: 1px solid #d9d9d9;
-}
-
-.btn-outline-secondary:hover:not(:disabled) {
-  background: #f5f5f5;
-  color: #333333;
-}
-
-.btn-primary {
-  background: #1890ff;
-  color: white;
-  border: 1px solid #1890ff;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: #40a9ff;
-  border-color: #40a9ff;
-}
-
-.btn-success {
-  background: #52c41a;
-  color: white;
-  border: 1px solid #52c41a;
-}
-
-.btn-success:hover:not(:disabled) {
-  background: #73d13d;
-  border-color: #73d13d;
-}
-
-.btn-warning {
-  background: #faad14;
-  color: white;
-  border: 1px solid #faad14;
-}
-
-.btn-warning:hover:not(:disabled) {
-  background: #ffc53d;
-  border-color: #ffc53d;
-}
-
-.btn-danger {
-  background: #ff4d4f;
-  color: white;
-  border: 1px solid #ff4d4f;
-}
-
-.btn-danger:hover:not(:disabled) {
-  background: #ff7875;
-  border-color: #ff7875;
 }
 
 /* 动画 */
@@ -420,13 +342,7 @@ watch(() => props.visible, (visible) => {
   }
 
   .confirm-footer {
-    flex-direction: column-reverse;
     gap: 8px;
-  }
-
-  .btn {
-    width: 100%;
-    justify-content: center;
   }
 }
 
@@ -441,9 +357,6 @@ watch(() => props.visible, (visible) => {
     transition: none;
   }
 
-  .btn {
-    transition: none;
-  }
 }
 
 /* 高对比度模式支持 */
@@ -452,8 +365,5 @@ watch(() => props.visible, (visible) => {
     border: 2px solid currentColor;
   }
 
-  .btn {
-    border-width: 2px;
-  }
 }
 </style>

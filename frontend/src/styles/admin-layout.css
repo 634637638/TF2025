@@ -54,9 +54,9 @@
   --admin-data-table-container-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   --admin-data-table-header-bg: linear-gradient(135deg, #495057 0%, #343a40 100%);
   --admin-data-table-header-color: #ffffff;
-  --admin-data-table-header-padding-y: 12px;
+  --admin-data-table-header-padding-y: 6px;
   --admin-data-table-header-padding-x: 10px;
-  --admin-data-table-header-height: 44px;
+  --admin-data-table-header-height: 38px;
   --admin-data-table-header-font-size: 13px;
   --admin-data-table-header-font-weight: 600;
   --admin-data-table-header-letter-spacing: 0;
@@ -70,9 +70,18 @@
   --admin-data-table-cell-color: #2c3e50;
   --admin-data-table-cell-border: #e9ecef;
   --admin-data-table-row-even-bg: #f8f9fa;
-  --admin-data-table-row-hover-bg: #e3f2fd;
-  --admin-data-table-row-hover-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  --admin-data-table-row-selected-bg: #e8f4fd;
+  --admin-data-table-row-hover-bg: #ede9fe;
+  --admin-interactive-hover-border: #94a3b8;
+  --admin-interactive-hover-shadow: 0 5px 16px rgba(15, 23, 42, 0.08);
+  --admin-data-table-row-hover-border: var(--admin-interactive-hover-border);
+  --admin-data-table-row-hover-shadow: var(--admin-interactive-hover-shadow);
+  --admin-data-table-row-selected-bg: #bfdbfe;
+  --admin-data-table-row-selected-hover-bg: #93c5fd;
+  --admin-data-table-row-selected-accent: #1d4ed8;
+  --admin-data-table-wholesale-bg: #eef1ff;
+  --admin-data-table-wholesale-hover-bg: #e2e7ff;
+  --admin-data-table-wholesale-accent: #667eea;
+  --admin-data-table-wholesale-color: #4f5fc7;
   --admin-data-table-line-height: 1.45;
   --admin-data-table-action-gap: 6px;
   --admin-data-table-action-height: 28px;
@@ -81,9 +90,88 @@
   --admin-data-table-action-font-size: 13px;
   --admin-data-table-action-radius: 4px;
   --admin-data-table-action-icon-size: 14px;
+  --admin-data-table-inline-action-padding-x: 7px;
+  --admin-data-table-inline-action-icon-size: 12px;
+  --admin-data-table-inline-action-icon-gap: 3px;
+  --admin-action-view-bg: #ecfeff;
+  --admin-action-view-border: #a5f3fc;
+  --admin-action-view-color: #0e7490;
+  --admin-action-view-hover-bg: #cffafe;
+  --admin-action-view-hover-border: #22d3ee;
+  --admin-action-view-hover-color: #155e75;
+  --admin-action-edit-bg: #eff6ff;
+  --admin-action-edit-border: #bfdbfe;
+  --admin-action-edit-color: #1d4ed8;
+  --admin-action-edit-hover-bg: #dbeafe;
+  --admin-action-edit-hover-border: #60a5fa;
+  --admin-action-edit-hover-color: #1e40af;
+  --admin-action-delete-bg: #fef2f2;
+  --admin-action-delete-border: #fecaca;
+  --admin-action-delete-color: #b91c1c;
+  --admin-action-delete-hover-bg: #fee2e2;
+  --admin-action-delete-hover-border: #f87171;
+  --admin-action-delete-hover-color: #991b1b;
+  --admin-action-pin-bg: #fffbeb;
+  --admin-action-pin-border: #fde68a;
+  --admin-action-pin-color: #a16207;
+  --admin-action-pin-hover-bg: #fef3c7;
+  --admin-action-pin-hover-border: #fbbf24;
+  --admin-action-pin-hover-color: #854d0e;
+  --admin-action-success-bg: #f0fdf4;
+  --admin-action-success-border: #bbf7d0;
+  --admin-action-success-color: #15803d;
+  --admin-action-success-hover-bg: #dcfce7;
+  --admin-action-success-hover-border: #4ade80;
+  --admin-action-success-hover-color: #166534;
+  --admin-action-neutral-bg: #f8fafc;
+  --admin-action-neutral-border: #cbd5e1;
+  --admin-action-neutral-color: #475569;
+  --admin-action-neutral-hover-bg: #f1f5f9;
+  --admin-action-neutral-hover-border: #94a3b8;
+  --admin-action-neutral-hover-color: #334155;
+  --admin-action-manage-bg: #eef2ff;
+  --admin-action-manage-border: #c7d2fe;
+  --admin-action-manage-color: #4338ca;
+  --admin-action-manage-hover-bg: #e0e7ff;
+  --admin-action-manage-hover-border: #818cf8;
+  --admin-action-manage-hover-color: #3730a3;
+  --admin-action-finance-bg: #f0fdfa;
+  --admin-action-finance-border: #99f6e4;
+  --admin-action-finance-color: #0f766e;
+  --admin-action-finance-hover-bg: #ccfbf1;
+  --admin-action-finance-hover-border: #2dd4bf;
+  --admin-action-finance-hover-color: #115e59;
+  --admin-action-transfer-bg: #f5f3ff;
+  --admin-action-transfer-border: #ddd6fe;
+  --admin-action-transfer-color: #6d28d9;
+  --admin-action-transfer-hover-bg: #ede9fe;
+  --admin-action-transfer-hover-border: #a78bfa;
+  --admin-action-transfer-hover-color: #5b21b6;
+  --admin-action-export-bg: #f0f9ff;
+  --admin-action-export-border: #bae6fd;
+  --admin-action-export-color: #0369a1;
+  --admin-action-export-hover-bg: #e0f2fe;
+  --admin-action-export-hover-border: #38bdf8;
+  --admin-action-export-hover-color: #075985;
+  --admin-action-warning-bg: #fff7ed;
+  --admin-action-warning-border: #fed7aa;
+  --admin-action-warning-color: #c2410c;
+  --admin-action-warning-hover-bg: #ffedd5;
+  --admin-action-warning-hover-border: #fb923c;
+  --admin-action-warning-hover-color: #9a3412;
+  --admin-action-disabled-bg: #f3f4f6;
+  --admin-action-disabled-border: #e5e7eb;
+  --admin-action-disabled-color: #9ca3af;
   --admin-data-table-badge-padding-y: 3px;
   --admin-data-table-badge-padding-x: 8px;
   --admin-data-table-badge-radius: 999px;
+}
+
+/* Keep the viewport width stable when switching between short and long TAB panels. */
+@media (min-width: 769px) {
+  html {
+    scrollbar-gutter: stable;
+  }
 }
 
 @media (max-width: 768px) {
@@ -120,6 +208,7 @@
     --admin-data-table-action-padding-y: 6px;
     --admin-data-table-action-padding-x: 12px;
     --admin-data-table-action-font-size: var(--mobile-text-table);
+    --admin-data-table-inline-action-padding-x: 8px;
   }
 }
 
@@ -136,6 +225,11 @@
   width: 100%;
   max-width: 100%;
   min-width: 0;
+}
+
+/* The parent gap is the only spacing between a button TAB bar and its content. */
+.admin-page-content > .tf-page-tabs.tab-navigation {
+  margin-bottom: 0;
 }
 
 .admin-panel {
@@ -488,8 +582,23 @@
 .admin-page table.table tbody tr:hover,
 .admin-page .table-section .table-responsive > table tbody tr:hover {
   background: var(--admin-data-table-row-hover-bg) !important;
-  transform: translateY(-1px) !important;
+  outline: 1px solid var(--admin-data-table-row-hover-border) !important;
+  outline-offset: -1px;
   box-shadow: var(--admin-data-table-row-hover-shadow) !important;
+  z-index: 2;
+}
+
+/* Element Plus keeps hover-row synchronized across main and fixed-column tables. */
+.admin-page .el-table__body tr.hover-row {
+  position: relative !important;
+  outline: 1px solid var(--admin-data-table-row-hover-border) !important;
+  outline-offset: -1px;
+  box-shadow: var(--admin-data-table-row-hover-shadow) !important;
+  z-index: 2;
+}
+
+.admin-page .el-table__body tr.hover-row > td.el-table__cell {
+  background: var(--admin-data-table-row-hover-bg) !important;
 }
 
 .admin-page .admin-data-table tbody tr:hover td,
@@ -562,6 +671,8 @@
 .admin-page .data-table.el-table .el-table__header th .cell,
 .admin-page .devices-table.el-table .el-table__header th .cell,
 .admin-page .admin-data-table.el-table .el-table__header th .cell {
+  justify-content: center !important;
+  text-align: center !important;
   color: inherit !important;
   min-height: 0 !important;
   line-height: var(--admin-data-table-line-height) !important;
@@ -587,6 +698,8 @@
 .admin-page .data-table.el-table .el-table__body td .cell,
 .admin-page .devices-table.el-table .el-table__body td .cell,
 .admin-page .admin-data-table.el-table .el-table__body td .cell {
+  justify-content: center !important;
+  text-align: center !important;
   font-size: var(--admin-data-table-cell-font-size) !important;
   min-height: 0 !important;
   line-height: var(--admin-data-table-line-height) !important;
@@ -619,6 +732,37 @@
   background: var(--admin-data-table-row-selected-bg) !important;
 }
 
+.admin-page .data-table.el-table .el-table__body tr.row-selected:hover > td,
+.admin-page .devices-table.el-table .el-table__body tr.row-selected:hover > td,
+.admin-page .admin-data-table.el-table .el-table__body tr.row-selected:hover > td {
+  background: var(--admin-data-table-row-selected-hover-bg) !important;
+}
+
+.admin-page .data-table.el-table .el-table__body tr.row-selected > td:first-child,
+.admin-page .devices-table.el-table .el-table__body tr.row-selected > td:first-child,
+.admin-page .admin-data-table.el-table .el-table__body tr.row-selected > td:first-child {
+  box-shadow: inset 3px 0 0 var(--admin-data-table-row-selected-accent) !important;
+}
+
+/* 调货/同行批发行：选择态优先，其余状态保持统一紫蓝识别色。 */
+.admin-page .data-table.el-table .el-table__body tr.admin-row--peer-transfer:not(.row-selected) > td,
+.admin-page .devices-table.el-table .el-table__body tr.admin-row--peer-transfer:not(.row-selected) > td,
+.admin-page .admin-data-table.el-table .el-table__body tr.admin-row--peer-transfer:not(.row-selected) > td {
+  background: var(--admin-data-table-wholesale-bg) !important;
+}
+
+.admin-page .data-table.el-table .el-table__body tr.admin-row--peer-transfer:not(.row-selected):hover > td,
+.admin-page .devices-table.el-table .el-table__body tr.admin-row--peer-transfer:not(.row-selected):hover > td,
+.admin-page .admin-data-table.el-table .el-table__body tr.admin-row--peer-transfer:not(.row-selected):hover > td {
+  background: var(--admin-data-table-wholesale-hover-bg) !important;
+}
+
+.admin-page .data-table.el-table .el-table__body tr.admin-row--peer-transfer:not(.row-selected) > td:first-child,
+.admin-page .devices-table.el-table .el-table__body tr.admin-row--peer-transfer:not(.row-selected) > td:first-child,
+.admin-page .admin-data-table.el-table .el-table__body tr.admin-row--peer-transfer:not(.row-selected) > td:first-child {
+  box-shadow: inset 3px 0 0 var(--admin-data-table-wholesale-accent) !important;
+}
+
 /* 基础资料表格：PC 拖拽排序，手机双击展开操作。 */
 .admin-page .base-data-table th.mobile-expand-header,
 .admin-page .base-data-table td.mobile-expand-column {
@@ -648,12 +792,6 @@
   gap: 6px;
   width: 100%;
   padding: 8px;
-}
-
-.admin-page .base-data-table .mobile-row-actions .el-button {
-  width: 100%;
-  min-width: 0;
-  margin: 0 !important;
 }
 
 .admin-page .base-data-table .drag-handle {
@@ -899,8 +1037,7 @@
   .admin-page .table-section .table-responsive > table {
     width: 100% !important;
     min-width: 100% !important;
-    max-width: 100% !important;
-    table-layout: fixed !important;
+    table-layout: auto !important;
   }
 
   .admin-page .admin-data-table th,
@@ -913,8 +1050,6 @@
   .admin-page table.table td,
   .admin-page .table-section .table-responsive > table th,
   .admin-page .table-section .table-responsive > table td {
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
     box-sizing: border-box !important;
   }
 

@@ -31,6 +31,7 @@
 
       <!-- 全局通知容器 -->
       <NotificationContainer />
+      <ReminderHost />
 
       <!-- 主内容区域 -->
       <div class="main-content" :class="{ expanded: sidebarCollapsed }">
@@ -61,13 +62,13 @@
                 </span>
               </div>
             </div>
-            <div class="action-buttons">
+            <div class="topbar-buttons">
               <!-- 屏幕锁定按钮 -->
-              <button class="btn btn-lock" @click="toggleScreenLock" :title="isLocked ? '解锁屏幕' : '锁定屏幕'">
+              <button class="btn tf-button--topbar tf-button--manage btn-lock" @click="toggleScreenLock" :title="isLocked ? '解锁屏幕' : '锁定屏幕'">
                 <i :class="isLocked ? 'fas fa-unlock' : 'fas fa-lock'"></i>
                 <span>{{ isLocked ? '解锁' : '锁定' }}</span>
               </button>
-              <button class="logout-btn" @click="handleLogout" title="退出登录">
+              <button class="btn tf-button--topbar tf-button--danger logout-btn" @click="handleLogout" title="退出登录">
                 <i class="fas fa-power-off"></i>
                 <span class="btn-text">退出登录</span>
               </button>
@@ -90,6 +91,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import ResponsiveMenu from '@/components/ResponsiveMenu.vue'
 import SimpleSidebar from '@/components/SimpleSidebar.vue'
 import NotificationContainer from '@/components/NotificationContainer.vue'
+import ReminderHost from '@/components/ReminderHost.vue'
 import ScreenLock from '@/components/ScreenLock.vue'
 import TabsBar from '@/components/TabsBar.vue'
 import { useMenuWidth } from '@/composables/useMenuWidth'
@@ -505,7 +507,8 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 40px; /* 与按钮高度保持一致 */
+  height: var(--tf-topbar-control-height, 40px);
+  margin: 0;
   padding: 0 14px;
   background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
   border-radius: 5px; /* 与按钮圆角保持一致 */
@@ -644,66 +647,11 @@ onUnmounted(() => {
   color: #bdc3c7;
 }
 
-.action-buttons {
+.topbar-buttons {
   display: flex;
-  gap: 10px;
-}
-
-.btn {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s ease;
-  text-decoration: none;
-  display: inline-flex;
   align-items: center;
-  gap: 5px;
-}
-
-.btn-primary {
-  background: #3498db;
-  color: white;
-}
-
-.btn-primary:hover {
-  background: #2980b9;
-}
-
-.btn-primary:disabled {
-  background: #bdc3c7;
-  cursor: not-allowed;
-}
-
-.btn-lock {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-}
-
-.btn-lock:hover {
-  background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
-}
-
-.btn-lock:active {
-  transform: translateY(0);
-}
-
-.logout-btn {
-  background: #e74c3c;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 5px;
-  cursor: pointer;
-  transition: background 0.3s ease;
-  font-size: 14px;
-}
-
-.logout-btn:hover {
-  background: #c0392b;
+  gap: 10px;
+  flex-shrink: 0;
 }
 
 .content-area {
@@ -865,7 +813,7 @@ onUnmounted(() => {
 
   .user-info {
     gap: 6px;
-    height: 40px;
+    height: var(--tf-topbar-control-height, 36px);
     padding: 4px 10px;
     min-width: 0;
     flex: 1 1 auto;
@@ -919,18 +867,10 @@ onUnmounted(() => {
     font-size: 10px;
   }
 
-  .action-buttons {
+  .topbar-buttons {
     display: flex;
     align-items: center;
     gap: 6px;
-    flex-shrink: 0;
-  }
-
-  .btn {
-    padding: 8px 10px;
-    font-size: 12px;
-    min-height: 36px;
-    white-space: nowrap;
     flex-shrink: 0;
   }
 
@@ -939,11 +879,6 @@ onUnmounted(() => {
     display: none; /* 隐藏按钮文字，只显示图标 */
   }
 
-  .btn-lock {
-    padding: 8px;
-    min-width: 36px;
-    justify-content: center;
-  }
 }
 
 @media (max-width: 480px) {
@@ -964,7 +899,7 @@ onUnmounted(() => {
   }
 
   .user-info {
-    height: 36px;
+    height: var(--tf-topbar-control-height, 36px);
     padding: 4px 10px;
     justify-content: flex-start;
     width: auto;
@@ -1014,20 +949,9 @@ onUnmounted(() => {
     flex-shrink: 0;
   }
 
-  .action-buttons {
+  .topbar-buttons {
     gap: 6px;
     flex-shrink: 0;
-  }
-
-  /* 强制统一按钮样式 */
-  .btn, .btn-lock, .logout-btn {
-    padding: 5px !important;
-    min-width: 30px !important;
-    min-height: 30px !important;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    box-sizing: border-box;
   }
 
   .btn-lock i {
@@ -1052,33 +976,6 @@ onUnmounted(() => {
     display: none; /* 隐藏文字，只显示图标 */
   }
 
-  /* 添加工具提示说明 */
-  .btn {
-    position: relative;
-  }
-
-  .btn::before {
-    content: attr(title);
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.8);
-    color: white;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 12px;
-    white-space: nowrap;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s;
-    z-index: 1000;
-    margin-bottom: 4px;
-  }
-
-  .btn:hover::before {
-    opacity: 1;
-  }
 }
 
 /* 滚动条样式 */

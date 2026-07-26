@@ -1142,7 +1142,7 @@ const resetToDefaultPassword = async () => {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning',
-        customClass: 'message-box-purple'
+        customClass: 'message-box-unified'
       }
     )
   } catch {
@@ -1204,7 +1204,7 @@ const toggleStatus = async (employee: Employee) => {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning',
-        customClass: 'message-box-purple'
+        customClass: 'message-box-unified'
       }
     )
   } catch {
@@ -1234,7 +1234,7 @@ const deleteEmployee = async (employee: Employee) => {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning',
-        customClass: 'message-box-purple'
+        customClass: 'message-box-unified'
       }
     )
   } catch {
@@ -1471,7 +1471,7 @@ const deleteRole = async (role: Role) => {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning',
-        customClass: 'message-box-purple'
+        customClass: 'message-box-unified'
       }
     )
   } catch {
@@ -2140,23 +2140,6 @@ onMounted(async () => {
   flex-wrap: wrap;
 }
 
-.password-actions .btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  padding: 8px 16px;
-}
-
-.password-actions .btn i {
-  font-size: 12px;
-}
-
-.password-actions .btn-sm {
-  padding: 6px 12px;
-  font-size: 12px;
-}
-
 /* 密码输入框特殊样式 */
 .password-fields input[type="password"] {
   border: 2px solid #ced4da;
@@ -2550,13 +2533,6 @@ onMounted(async () => {
     gap: 8px;
   }
 
-  .action-buttons .btn {
-    flex: 0 0 auto;
-    padding: 8px 12px;
-    font-size: 12px;
-    white-space: nowrap;
-  }
-
   .form-actions {
     flex-direction: column;
   }
@@ -2588,10 +2564,6 @@ onMounted(async () => {
     gap: 4px;
   }
 
-  .action-buttons .btn {
-    width: 100%;
-  }
-
 }
 
 @media (max-width: 1024px) {
@@ -2599,10 +2571,6 @@ onMounted(async () => {
     gap: 6px;
   }
 
-  .action-buttons .btn-sm {
-    min-width: 65px;
-    padding: 7px 12px;
-  }
 }
 /* 角色复选框样式 */
 .role-checkboxes {

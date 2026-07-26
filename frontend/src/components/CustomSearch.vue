@@ -759,39 +759,6 @@ watch(() => props.filterValues, (newValues) => {
   display: flex;
   gap: 8px;
   margin-left: auto;
-
-  .btn {
-    height: 32px;
-    padding: 0 16px;
-    border: none;
-    border-radius: 4px;
-    font-size: 14px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    transition: all 0.2s;
-
-    &.btn-primary {
-      background: #409eff;
-      color: white;
-
-      &:hover {
-        background: #66b1ff;
-      }
-    }
-
-    &.btn-secondary {
-      background: #f5f7fa;
-      color: #606266;
-      border: 1px solid #dcdfe6;
-
-      &:hover {
-        background: #ecf5ff;
-        color: #409eff;
-      }
-    }
-  }
 }
 
 // 移动端样式

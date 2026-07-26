@@ -10,21 +10,33 @@ import { storage } from '@/services/storage'
  * 格式化货币
  * @param amount 金额
  * @param currency 货币符号，默认为'¥'
- * @param decimals 小数位数，默认为2
+ * @param decimals 指定小数位数；不传时整数不显示小数，小数固定保留2位
  * @returns 格式化后的货币字符串
  */
 export const formatCurrency = (
-  amount: number | string,
+  amount: number | string | null | undefined,
   currency: string = '¥',
-  decimals: number = 2
+  decimals?: number
 ): string => {
-  const num = typeof amount === 'string' ? parseFloat(amount) : amount
+  return `${currency}${formatAmount(amount, decimals)}`
+}
 
-  if (isNaN(num)) {
-    return `${currency}0.00`
+/**
+ * 格式化金额数值。金额不使用千分位，整数不显示小数，小数固定保留2位。
+ */
+export const formatAmount = (amount: number | string | null | undefined, decimals?: number): string => {
+  if (amount === null || amount === undefined || amount === '') {
+    return decimals === undefined || decimals === 0 ? '0' : (0).toFixed(decimals)
   }
 
-  return `${currency}${num.toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`
+  const num = typeof amount === 'string' ? Number.parseFloat(amount) : amount
+
+  if (!Number.isFinite(num)) {
+    return decimals === undefined || decimals === 0 ? '0' : (0).toFixed(decimals)
+  }
+
+  const fractionDigits = decimals ?? (Number.isInteger(num) ? 0 : 2)
+  return num.toFixed(fractionDigits)
 }
 
 /**
@@ -764,6 +776,7 @@ const escapeHtml = (text: string): string => {
 
 export default {
   formatCurrency,
+  formatAmount,
   formatNumber,
   formatPercentage,
   formatDateTime,

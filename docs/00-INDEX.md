@@ -30,7 +30,8 @@
 - [日志系统规范](guides/LOG_SYSTEM_STANDARDS.md) - ⭐ **NEW** 统一日志入口，后端 `backend/src/utils/log.js` / 前端 `frontend/src/utils/logger.ts`
 - [前端类型统一进展](development/FRONTEND_TYPE_UNIFICATION_PROGRESS.md) - ⭐ **NEW** 公共类型、表格组件、业务页面去 `any` 收口记录
 - [全局加载动画统一规范](frontend/global-loading-standard.md) - ⭐ **NEW** 页面切换、局部加载与按钮 loading 分层规范
-- [后台卡片与表格统一规范](frontend/admin-table-standards.md) - ⭐ **NEW** 后台卡片、表格、字体与移动端滚动统一入口
+- [全局按钮统一规范](frontend/button-standards.md) - ⭐ **NEW** 普通、表格、手机端与模态框按钮统一入口及自动审计
+- [后台卡片与表格统一规范](frontend/admin-table-standards.md) - ⭐ **NEW** 后台卡片、内容驱动列宽、完整字段、表头内容同步横移、全选与批量选择统一入口
 - [菜单图标管理规范](frontend/menu-icon-management-standard.md) - ⭐ **NEW** 菜单图标在线检索、本地缓存、统一渲染规范
 - [前端最新请求规范](frontend/latest-request-standard.md) - ⭐ **NEW** 搜索、筛选、分页请求取消与旧响应防覆盖规范
 - [近期 UI 与数据修复记录](frontend/recent-ui-and-data-fixes-2026-06-01.md) - ⭐ **NEW** 基础资料、菜单点击、价格采集相关修复记录

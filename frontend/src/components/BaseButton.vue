@@ -53,7 +53,7 @@ interface Emits {
 const emit = defineEmits<Emits>()
 
 const buttonClasses = computed(() => {
-  const classes = ['base-button', `btn-${props.variant}`, `btn-${props.size}`]
+  const classes = ['base-button', 'btn', `btn-${props.variant}`, `btn-${props.size}`]
 
   if (props.outline) classes.push('btn-outline')
   if (props.rounded) classes.push('btn-rounded')
@@ -98,130 +98,6 @@ const handleClick = (event: MouseEvent) => {
 .base-button:focus {
   outline: none;
   box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.25);
-}
-
-/* 尺寸 */
-.btn-sm {
-  padding: 6px 12px;
-  font-size: 12px;
-  border-radius: 4px;
-}
-
-.btn-md {
-  padding: 8px 16px;
-  font-size: 14px;
-  border-radius: 6px;
-}
-
-.btn-lg {
-  padding: 12px 24px;
-  font-size: 16px;
-  border-radius: 8px;
-}
-
-/* 变体 */
-.btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-color: #667eea;
-  color: white;
-}
-
-.btn-primary:hover:not(.btn-disabled) {
-  background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-}
-
-.btn-secondary {
-  background: #6c757d;
-  border-color: #6c757d;
-  color: white;
-}
-
-.btn-secondary:hover:not(.btn-disabled) {
-  background: #5a6268;
-  transform: translateY(-1px);
-}
-
-.btn-success {
-  background: #28a745;
-  border-color: #28a745;
-  color: white;
-}
-
-.btn-success:hover:not(.btn-disabled) {
-  background: #218838;
-  transform: translateY(-1px);
-}
-
-.btn-warning {
-  background: #ffc107;
-  border-color: #ffc107;
-  color: #212529;
-}
-
-.btn-warning:hover:not(.btn-disabled) {
-  background: #e0a800;
-  transform: translateY(-1px);
-}
-
-.btn-danger {
-  background: #dc3545;
-  border-color: #dc3545;
-  color: white;
-}
-
-.btn-danger:hover:not(.btn-disabled) {
-  background: #c82333;
-  transform: translateY(-1px);
-}
-
-.btn-info {
-  background: #17a2b8;
-  border-color: #17a2b8;
-  color: white;
-}
-
-.btn-info:hover:not(.btn-disabled) {
-  background: #138496;
-  transform: translateY(-1px);
-}
-
-.btn-light {
-  background: #f8f9fa;
-  border-color: #f8f9fa;
-  color: #212529;
-}
-
-.btn-light:hover:not(.btn-disabled) {
-  background: #e2e6ea;
-  transform: translateY(-1px);
-}
-
-.btn-dark {
-  background: #343a40;
-  border-color: #343a40;
-  color: white;
-}
-
-.btn-dark:hover:not(.btn-disabled) {
-  background: #23272b;
-  transform: translateY(-1px);
-}
-
-/* 轮廓样式 */
-.btn-outline {
-  background: transparent;
-}
-
-.btn-outline.btn-primary {
-  color: #667eea;
-  border-color: #667eea;
-}
-
-.btn-outline.btn-primary:hover:not(.btn-disabled) {
-  background: #667eea;
-  color: white;
 }
 
 /* 圆角 */
@@ -290,21 +166,4 @@ const handleClick = (event: MouseEvent) => {
   height: 300px;
 }
 
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .btn-lg {
-    padding: 10px 20px;
-    font-size: 15px;
-  }
-
-  .btn-md {
-    padding: 7px 14px;
-    font-size: 13px;
-  }
-
-  .btn-sm {
-    padding: 5px 10px;
-    font-size: 11px;
-  }
-}
 </style>

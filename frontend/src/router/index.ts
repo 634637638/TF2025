@@ -203,6 +203,24 @@ const routes: RouteRecordRaw[] = [
         }
       },
       {
+        path: 'reminders',
+        name: 'Reminders',
+        component: () => import('@/views/reminders/ReminderView.vue'),
+        meta: {
+          title: '待办提醒',
+          icon: 'fas fa-bell'
+        }
+      },
+      {
+        path: 'shared',
+        name: 'Shared',
+        component: () => import('@/views/shared/SharedView.vue'),
+        meta: {
+          title: '经验分享',
+          icon: 'fas fa-lightbulb'
+        }
+      },
+      {
         path: 'error-management',
         name: 'ErrorManagement',
         component: () => import('@/components/ErrorManagement/ErrorDashboardSimple.vue'),
@@ -227,15 +245,6 @@ const routes: RouteRecordRaw[] = [
         meta: {
           title: '权限管理',
           icon: 'fas fa-shield-alt'
-        }
-      },
-      {
-        path: 'permissions/module-management',
-        name: 'ModuleManagement',
-        component: () => import('@/views/permissions/page/ModuleManagementView.vue'),
-        meta: {
-          title: '模块管理',
-          icon: 'fas fa-cubes'
         }
       },
       {

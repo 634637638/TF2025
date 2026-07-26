@@ -605,15 +605,20 @@
                 </el-col>
                 <el-col :xs="24" :sm="15">
                   <el-form-item label="模块 Key">
-                    <el-input
+                    <el-select
                       v-model="formData.module_key"
-                      placeholder="例如：supplier-payments"
+                      placeholder="请选择或搜索模块"
+                      filterable
                       clearable
+                      class="w-full"
                     >
-                      <template #prefix>
-                        <i class="fas fa-key"></i>
-                      </template>
-                    </el-input>
+                      <el-option
+                        v-for="module in modules"
+                        :key="module.key"
+                        :label="`${module.name} (${module.key})`"
+                        :value="module.key"
+                      />
+                    </el-select>
                   </el-form-item>
                 </el-col>
               </el-row>
@@ -1345,13 +1350,14 @@ watch(() => formData.value.module_id, (newModuleId) => {
 
 // 监听 module_key 变化，自动查找 module_id
 watch(() => formData.value.module_key, (newModuleKey) => {
-  if (newModuleKey && !formData.value.module_id) {
+  if (newModuleKey) {
     const module = modules.value.find(m => m.key === newModuleKey)
-    if (module) {
+    if (module && formData.value.module_id !== module.id) {
       formData.value.module_id = module.id
     }
+  } else if (formData.value.module_id) {
+    formData.value.module_id = 0
   }
-  // 注意：如果 module_id 已经有值，不覆盖，因为那是用户主动选择的
 })
 
 const handleIconSelect = (iconName, icon) => {
@@ -1688,7 +1694,7 @@ const executeDelete = async (menu) => {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: hasChildren ? 'error' : 'warning',
-        customClass: 'message-box-purple',
+        customClass: 'message-box-unified',
         dangerouslyUseHTMLString: true
       }
     )
@@ -2274,115 +2280,6 @@ onMounted(async () => {
   box-shadow: 0 0 0 3px rgba(89, 126, 247, 0.12);
 }
 
-/* ===== 按钮样式 ===== */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  text-decoration: none;
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
-}
-
-.btn-secondary {
-  background: #6c757d;
-  color: white;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: #5a6268;
-}
-
-.btn-outline-secondary {
-  background: transparent;
-  color: #6c757d;
-  border: 2px solid #6c757d;
-}
-
-.btn-outline-secondary:hover:not(:disabled) {
-  background: #6c757d;
-  color: white;
-}
-
-.btn-outline-primary {
-  background: transparent;
-  color: #667eea;
-  border: 2px solid #667eea;
-}
-
-.btn-outline-primary:hover:not(:disabled) {
-  background: #667eea;
-  color: white;
-}
-
-.btn-outline-success {
-  background: transparent;
-  color: #28a745;
-  border: 2px solid #28a745;
-}
-
-.btn-outline-success:hover:not(:disabled) {
-  background: #28a745;
-  color: white;
-}
-
-.btn-outline-danger {
-  background: transparent;
-  color: #dc3545;
-  border: 2px solid #dc3545;
-}
-
-.btn-outline-danger:hover:not(:disabled) {
-  background: #dc3545;
-  color: white;
-}
-
-.btn-outline-warning {
-  background: transparent;
-  color: #ffc107;
-  border: 2px solid #ffc107;
-}
-
-.btn-outline-warning:hover:not(:disabled) {
-  background: #ffc107;
-  color: #212529;
-}
-
-.btn-success {
-  background: linear-gradient(135deg, #28a745, #20c997);
-  color: white;
-}
-
-.btn-success:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
-}
-
-.btn-sm {
-  padding: 6px 12px;
-  font-size: 12px;
-}
-
 .btn-group {
   display: flex;
   gap: 8px;
@@ -2731,19 +2628,6 @@ onMounted(async () => {
   flex-wrap: nowrap;
   gap: 6px;
   max-width: 100%;
-}
-
-.action-buttons :deep(.el-button) {
-  min-width: 62px;
-  margin: 0;
-  padding-left: 8px;
-  padding-right: 8px;
-}
-
-.action-buttons :deep(.el-button span) {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
 }
 
 /* ===== 空状态样式 ===== */
@@ -3108,11 +2992,6 @@ onMounted(async () => {
     gap: 12px !important;
   }
 
-  .modal-footer.mobile-dialog-footer :deep(.el-button) {
-    width: auto !important;
-    flex: 0 0 auto !important;
-  }
-
   .menu-management {
     padding: 12px;
   }
@@ -3332,12 +3211,6 @@ onMounted(async () => {
     -webkit-tap-highlight-color: transparent;
   }
 
-  /* 按钮触摸反馈 */
-  .btn:active {
-    transform: scale(0.98);
-    transition: transform 0.1s ease;
-  }
-
   .stat-card {
     padding: 16px;
   }
@@ -3355,11 +3228,6 @@ onMounted(async () => {
   .form-actions {
     flex-direction: column;
     width: 100%;
-  }
-
-  .btn {
-    width: 100%;
-    justify-content: center;
   }
 
   /* 响应式优化：改善触摸体验 */
@@ -3432,12 +3300,6 @@ onMounted(async () => {
     flex-direction: column;
     gap: 4px;
     min-width: 120px;
-  }
-
-  .action-buttons .btn-sm {
-    width: 100%;
-    justify-content: center;
-    min-height: 32px;
   }
 
   .menu-header-actions {

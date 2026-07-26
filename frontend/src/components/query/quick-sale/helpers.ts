@@ -126,7 +126,6 @@ export const buildQuickSaleSubmitPayload = (formData: QuickSaleFormState) => {
     customer_phone: normalizedCustomerPhone,
     apple_id: normalizedAppleId || '',
     stock_in_date: formData.stock_in_date,
-    stock_in_operator_id: formData.stock_in_operator_id,
     sale_date: formData.sale_date,
     operator_id: formData.sale_operator_id,
     payment_method: formData.payment_method || '现金',

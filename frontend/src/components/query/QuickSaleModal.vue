@@ -719,7 +719,7 @@ const formRules = computed<FormRules>(() => ({
   sale_date: [
     ValidationRules.required('请选择销售日期')
   ],
-  operator_id: [
+  sale_operator_id: [
     ValidationRules.required('请选择销售员')
   ]
 }))
@@ -1906,9 +1906,6 @@ watch(
   gap: 10px;
   width: 100%;
 
-  .el-button {
-    min-width: 100px;
-  }
 }
 
 // 移动端适配
@@ -1962,11 +1959,6 @@ watch(
     width: 100%;
     gap: 6px;
 
-    .el-button {
-      flex: 1;
-      min-width: auto;
-      margin: 0;
-    }
   }
 
   .customer-lock-button {

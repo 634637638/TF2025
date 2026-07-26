@@ -1642,7 +1642,6 @@ router.post('/quick-sale', unifiedAuth, requirePermission('inventory:create'), a
       customer_idcard,
       // 入库和销售信息
       stock_in_date,
-      stock_in_operator_id,
       sale_date,
       operator_id,
       payment_method,
@@ -1696,6 +1695,17 @@ router.post('/quick-sale', unifiedAuth, requirePermission('inventory:create'), a
     }
     if (!customer_phone) {
       throw new Error('客户手机号不能为空');
+    }
+
+    // 入库员只能取当前登录账户，销售员则使用表单中选择的账户。
+    // 不接受客户端传入的入库员 ID，避免两个操作人被混写或被伪造。
+    const inventoryOperatorId = Number(req.user?.id);
+    const saleOperatorId = Number(operator_id);
+    if (!Number.isInteger(inventoryOperatorId) || inventoryOperatorId <= 0) {
+      throw new Error('当前登录账户无效，请重新登录');
+    }
+    if (!Number.isInteger(saleOperatorId) || saleOperatorId <= 0) {
+      throw new Error('请选择有效的销售员');
     }
 
     // 1. 获取品牌ID - 支持直接ID或名称查询
@@ -1981,7 +1991,7 @@ router.post('/quick-sale', unifiedAuth, requirePermission('inventory:create'), a
 
     const insertParams = [
       purchase_number,
-      operator_id, // inventory_operator_id
+      inventoryOperatorId,
       finalBrandId, finalModelId, finalColorId, finalMemoryId,
       normalizedImei, normalizedSerialNumber,
       purchase_price || null, sale_price || null,
@@ -1992,7 +2002,7 @@ router.post('/quick-sale', unifiedAuth, requirePermission('inventory:create'), a
       remarks || null,
       inventoryTimeStr, // Inventorytime (北京时间 YYYY-MM-DD HH:mm:ss)
       saleTimeStr, // salestime (北京时间 YYYY-MM-DD HH:mm:ss)
-      operator_id // sale_operator_id: 销售员ID
+      saleOperatorId
     ];
 
     log.debug('📝 准备插入phones表，参数数量:', insertParams.length);
@@ -2017,7 +2027,7 @@ router.post('/quick-sale', unifiedAuth, requirePermission('inventory:create'), a
       phone_id,
       customer_id,
       'retail',
-      operator_id,
+      saleOperatorId,
       store_id,  // 🔥 添加店铺ID
       sale_price || 0,  // 🔥 添加销售价
       purchase_price || 0,  // 🔥 添加入库成本

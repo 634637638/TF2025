@@ -1157,15 +1157,6 @@ onMounted(async () => {
   gap: 12px;
 }
 
-.dialog-footer .el-button {
-  min-width: 100px;
-  border-radius: 6px;
-}
-
-.dialog-footer .el-button i {
-  margin-right: 4px;
-}
-
 /* 响应式 */
 @media (max-width: 768px) {
   .scan-image-section {
@@ -1197,8 +1188,5 @@ onMounted(async () => {
     flex-direction: column;
   }
 
-  .dialog-footer .el-button {
-    width: 100%;
-  }
 }
 </style>

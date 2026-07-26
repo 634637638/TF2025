@@ -323,10 +323,6 @@ body {
     padding: 16px;
   }
 
-  .btn-lg {
-    padding: 10px 20px;
-    font-size: 14px;
-  }
 }
 
 /* 滚动条样式 */
@@ -464,12 +460,6 @@ body {
 
   .safe-area-right {
     padding-right: var(--safe-area-inset-right);
-  }
-
-  /* 移动端按钮优化 */
-  .btn {
-    min-height: 44px; /* iOS推荐的最小触摸目标 */
-    padding: 12px 16px;
   }
 
   /* 移动端表单优化 */
@@ -662,19 +652,14 @@ table tbody tr:hover {
 }
 
 /* 修复表格内按钮的点击区域 */
-table .btn,
 table button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 32px;
-  min-width: 32px;
-  padding: 6px 12px;
   margin: 0;
   position: relative;
   z-index: 2; /* 确保按钮在最上层 */
   white-space: nowrap;
-  border: none;
   cursor: pointer;
 }
 
@@ -734,12 +719,7 @@ table th .vue-component {
     font-size: 14px;
   }
 
-  table .btn,
   table button {
-    min-height: 40px;
-    min-width: 40px;
-    padding: 8px 12px;
-    font-size: 14px;
   }
 }
 

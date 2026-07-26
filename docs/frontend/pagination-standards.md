@@ -41,6 +41,8 @@ TF2025 项目采用统一的分页组件和数据管理模式，确保所有列�
 
 ## 📚 组件使用规范
 
+所有业务页面使用公共 `Pagination` 组件，并以 `.pagination-wrapper`、`.pagination-container`、`.table-pagination` 或 `.pagination-section` 作为外层容器。容器布局和手机响应式统一由 `frontend/src/styles/components/_pagination.scss` 控制；业务页面不得重复定义这些容器的间距、边框、对齐方式或分页按钮尺寸。
+
 ### 1. 基础分页组件
 
 ```vue

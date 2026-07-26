@@ -1,0 +1,274 @@
+:root {
+  --tf-dialog-action-min-width: 80px;
+  --tf-dialog-action-height: 40px;
+  --tf-dialog-action-padding-x: 16px;
+  --tf-dialog-action-gap: 10px;
+  --tf-dialog-action-mobile-gap: 8px;
+}
+
+/*
+ * Unified dialog action layout.
+ * Desktop: content-sized actions aligned right.
+ * Mobile: actions share one row and shrink equally.
+ */
+:where(
+  .tf-dialog-actions,
+  .mobile-dialog-footer,
+  .default-footer,
+  .dialog-footer,
+  .modal-footer,
+  .image-modal-footer,
+  .confirm-footer,
+  .icon-picker-footer,
+  .photo-preview-footer,
+  .photo-viewer-footer,
+  .quick-sale-footer,
+  .publish-to-h5-footer,
+  .receipt-footer,
+  .record-footer,
+  .scanner-footer,
+  .mobile-footer,
+  .inventory-mobile-footer,
+  .payment-dialog-footer,
+  .sale-dialog-footer,
+  .apply-dialog-footer,
+  .detail-modal-footer,
+  .return-dialog-footer,
+  .edit-dialog-footer,
+  .scanner-dialog-footer,
+  .wholesale-modal-footer,
+  .footer-actions,
+  .user-role-footer-actions
+) {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  width: 100% !important;
+  gap: var(--tf-dialog-action-gap) !important;
+  flex-wrap: nowrap !important;
+}
+
+.el-dialog__footer > .el-button,
+.el-message-box__btns > .el-button,
+:where(
+  .tf-dialog-actions,
+  .mobile-dialog-footer,
+  .default-footer,
+  .dialog-footer,
+  .modal-footer,
+  .image-modal-footer,
+  .confirm-footer,
+  .icon-picker-footer,
+  .photo-preview-footer,
+  .photo-viewer-footer,
+  .quick-sale-footer,
+  .publish-to-h5-footer,
+  .receipt-footer,
+  .record-footer,
+  .scanner-footer,
+  .mobile-footer,
+  .inventory-mobile-footer,
+  .payment-dialog-footer,
+  .sale-dialog-footer,
+  .apply-dialog-footer,
+  .detail-modal-footer,
+  .return-dialog-footer,
+  .edit-dialog-footer,
+  .scanner-dialog-footer,
+  .wholesale-modal-footer,
+  .footer-actions,
+  .user-role-footer-actions
+) > .el-button,
+:where(
+  .tf-dialog-actions,
+  .mobile-dialog-footer,
+  .default-footer,
+  .dialog-footer,
+  .modal-footer,
+  .image-modal-footer,
+  .confirm-footer,
+  .icon-picker-footer,
+  .photo-preview-footer,
+  .photo-viewer-footer,
+  .quick-sale-footer,
+  .publish-to-h5-footer,
+  .receipt-footer,
+  .record-footer,
+  .scanner-footer,
+  .mobile-footer,
+  .inventory-mobile-footer,
+  .payment-dialog-footer,
+  .sale-dialog-footer,
+  .apply-dialog-footer,
+  .detail-modal-footer,
+  .return-dialog-footer,
+  .edit-dialog-footer,
+  .scanner-dialog-footer,
+  .wholesale-modal-footer,
+  .footer-actions,
+  .user-role-footer-actions
+) > .btn {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: var(--tf-dialog-action-min-width) !important;
+  min-height: var(--tf-dialog-action-height) !important;
+  height: var(--tf-dialog-action-height) !important;
+  margin: 0 !important;
+  padding-inline: var(--tf-dialog-action-padding-x) !important;
+  border-radius: var(--tf-button-radius, 6px) !important;
+  font-size: var(--tf-button-font-size, 14px) !important;
+  font-weight: var(--tf-button-font-weight, 600) !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+}
+
+/* Global confirmation semantics are assigned by utils/message-box.ts. */
+.message-box-danger .el-message-box__status {
+  color: var(--tf-button-danger-bg) !important;
+}
+
+.message-box-danger .el-message-box__btns .el-button--primary {
+  background: var(--tf-button-danger-bg) !important;
+  border-color: var(--tf-button-danger-border) !important;
+  color: var(--tf-button-danger-color) !important;
+}
+
+.message-box-danger .el-message-box__btns .el-button--primary:hover,
+.message-box-danger .el-message-box__btns .el-button--primary:focus {
+  background: var(--tf-button-danger-hover-bg) !important;
+  border-color: var(--tf-button-danger-hover-border) !important;
+}
+
+.message-box-warning .el-message-box__status {
+  color: var(--tf-button-warning-bg) !important;
+}
+
+.message-box-warning .el-message-box__btns .el-button--primary {
+  background: var(--tf-button-warning-bg) !important;
+  border-color: var(--tf-button-warning-border) !important;
+  color: var(--tf-button-warning-color) !important;
+}
+
+.message-box-warning .el-message-box__btns .el-button--primary:hover,
+.message-box-warning .el-message-box__btns .el-button--primary:focus {
+  background: var(--tf-button-warning-hover-bg) !important;
+  border-color: var(--tf-button-warning-hover-border) !important;
+}
+
+.message-box-success .el-message-box__status {
+  color: var(--tf-button-success-bg) !important;
+}
+
+.message-box-success .el-message-box__btns .el-button--primary {
+  background: var(--tf-button-success-bg) !important;
+  border-color: var(--tf-button-success-border) !important;
+  color: var(--tf-button-success-color) !important;
+}
+
+.message-box-success .el-message-box__btns .el-button--primary:hover,
+.message-box-success .el-message-box__btns .el-button--primary:focus {
+  background: var(--tf-button-success-hover-bg) !important;
+  border-color: var(--tf-button-success-hover-border) !important;
+}
+
+@media (max-width: 768px) {
+  .el-message-box__btns,
+  :where(
+    .tf-dialog-actions,
+    .mobile-dialog-footer,
+    .default-footer,
+    .dialog-footer,
+    .modal-footer,
+    .image-modal-footer,
+    .confirm-footer,
+    .icon-picker-footer,
+    .photo-preview-footer,
+    .photo-viewer-footer,
+    .quick-sale-footer,
+    .publish-to-h5-footer,
+    .receipt-footer,
+    .record-footer,
+    .scanner-footer,
+    .mobile-footer,
+    .inventory-mobile-footer,
+    .payment-dialog-footer,
+    .sale-dialog-footer,
+    .apply-dialog-footer,
+    .detail-modal-footer,
+    .return-dialog-footer,
+    .edit-dialog-footer,
+    .scanner-dialog-footer,
+    .wholesale-modal-footer,
+    .footer-actions,
+    .user-role-footer-actions
+  ) {
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    gap: var(--tf-dialog-action-mobile-gap) !important;
+  }
+
+  .el-message-box__btns > .el-button,
+  :where(
+    .tf-dialog-actions,
+    .mobile-dialog-footer,
+    .default-footer,
+    .dialog-footer,
+    .modal-footer,
+    .image-modal-footer,
+    .confirm-footer,
+    .icon-picker-footer,
+    .photo-preview-footer,
+    .photo-viewer-footer,
+    .quick-sale-footer,
+    .publish-to-h5-footer,
+    .receipt-footer,
+    .record-footer,
+    .scanner-footer,
+    .mobile-footer,
+    .inventory-mobile-footer,
+    .payment-dialog-footer,
+    .sale-dialog-footer,
+    .apply-dialog-footer,
+    .detail-modal-footer,
+    .return-dialog-footer,
+    .edit-dialog-footer,
+    .scanner-dialog-footer,
+    .wholesale-modal-footer,
+    .footer-actions,
+    .user-role-footer-actions
+  ) > .el-button,
+  :where(
+    .tf-dialog-actions,
+    .mobile-dialog-footer,
+    .default-footer,
+    .dialog-footer,
+    .modal-footer,
+    .image-modal-footer,
+    .confirm-footer,
+    .icon-picker-footer,
+    .photo-preview-footer,
+    .photo-viewer-footer,
+    .quick-sale-footer,
+    .publish-to-h5-footer,
+    .receipt-footer,
+    .record-footer,
+    .scanner-footer,
+    .mobile-footer,
+    .inventory-mobile-footer,
+    .payment-dialog-footer,
+    .sale-dialog-footer,
+    .apply-dialog-footer,
+    .detail-modal-footer,
+    .return-dialog-footer,
+    .edit-dialog-footer,
+    .scanner-dialog-footer,
+    .wholesale-modal-footer,
+    .footer-actions,
+    .user-role-footer-actions
+  ) > .btn {
+    flex: 1 1 0 !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    padding-inline: 10px !important;
+  }
+}

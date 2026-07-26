@@ -35,7 +35,7 @@
     <!-- 系统功能模块 -->
     <div class="system-container admin-page-content">
       <!-- TAB导航 -->
-      <div class="tab-navigation">
+      <div class="tab-navigation tf-page-tabs">
         <el-button
           :type="activeTab === 'settings' ? 'primary' : 'default'"
           @click="activeTab = 'settings'"
@@ -68,9 +68,9 @@
       </div>
 
       <!-- TAB内容区域 -->
-      <div class="tab-content">
+      <div class="tab-content tf-tab-content">
         <!-- 站点信息设置TAB -->
-        <div v-if="activeTab === 'settings'" class="tab-panel">
+        <div v-if="activeTab === 'settings'" class="tab-panel tf-tab-panel">
           <div class="system-settings-section">
 
             <!-- 站点 Logo 设置和编辑站点信息 - PC端一行展示 -->
@@ -240,7 +240,7 @@
         </div>
 
         <!-- 锁屏设置TAB -->
-        <div v-if="activeTab === 'screenlock'" class="tab-panel">
+        <div v-if="activeTab === 'screenlock'" class="tab-panel tf-tab-panel">
           <div class="screen-lock-settings-wrapper">
             <!-- 设置卡片组 -->
             <div class="settings-cards-group">
@@ -470,13 +470,13 @@
         </div>
 
         <!-- 预警配置TAB -->
-        <div v-if="activeTab === 'warning'" class="tab-panel">
+        <div v-if="activeTab === 'warning'" class="tab-panel tf-tab-panel">
           <div class="phone-warning-config-wrapper">
             <PhoneWarningConfigView ref="warningConfigRef" />
           </div>
         </div>
 
-        <div v-if="activeTab === 'returngoods' && canViewReturngoods" class="tab-panel">
+        <div v-if="activeTab === 'returngoods' && canViewReturngoods" class="tab-panel tf-tab-panel">
           <Returngoods ref="returngoodsRef" />
         </div>
       </div>
@@ -1161,67 +1161,6 @@ onBeforeUnmount(() => {
   background: transparent;
 }
 
-/* TAB导航 */
-.tab-navigation {
-  display: flex;
-  gap: 0;
-  margin-bottom: 24px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  border: 1px solid #e8ecef;
-  overflow: hidden;
-}
-
-.tab-navigation .el-button {
-  flex: 0 1 auto;
-  min-width: 150px;
-  border-radius: 0;
-  border: none;
-  border-right: 1px solid #e8ecef;
-  padding: 12px 24px;
-}
-
-.tab-navigation .el-button:last-child {
-  border-right: none;
-}
-
-.tab-navigation .el-button--default {
-  background: transparent;
-  color: #606266;
-}
-
-.tab-navigation .el-button--default:hover {
-  background: rgba(102, 126, 234, 0.1);
-  color: #667eea;
-}
-
-.tab-navigation .el-button--primary {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  border-color: #667eea;
-  color: white;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-}
-
-.tab-navigation .el-button--primary:hover {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  opacity: 0.9;
-}
-
-/* TAB内容 */
-.tab-content {
-  background: transparent;
-}
-
-.tab-panel {
-  animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
 /* 站点信息设置部分 */
 .system-settings-section {
   margin-bottom: 0;
@@ -1584,46 +1523,6 @@ onBeforeUnmount(() => {
     padding: 16px;
   }
 
-  .tab-navigation {
-    position: relative;
-    flex-wrap: nowrap;
-    gap: 6px;
-    margin-bottom: 0;
-    padding: 6px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    border-radius: var(--mobile-card-radius, 14px);
-    scroll-snap-type: x proximity;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    background:
-      linear-gradient(90deg, rgba(255, 255, 255, 0.98), rgba(248, 251, 255, 0.96));
-  }
-
-  .tab-navigation::-webkit-scrollbar {
-    display: none;
-  }
-
-  .tab-navigation .el-button {
-    flex: 0 0 auto;
-    min-width: max-content;
-    height: 36px;
-    min-height: 36px;
-    margin: 0;
-    padding: 0 14px;
-    border-right: none;
-    border-bottom: none;
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 700;
-    scroll-snap-align: start;
-    white-space: nowrap;
-  }
-
-  .tab-navigation .el-button:last-child {
-    border-bottom: none;
-  }
-
   /* 站点信息卡片响应式 */
   .site-logo-panel {
     grid-template-columns: 1fr;
@@ -1702,46 +1601,6 @@ onBeforeUnmount(() => {
 }
 
 /* 按钮样式 */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  text-decoration: none;
-  outline: none;
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-primary {
-  background: var(--primary-color, #667eea);
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: #5a6fd8;
-}
-
-.btn-outline-secondary {
-  background: transparent;
-  color: var(--text-secondary, #6c757d);
-  border: 1px solid var(--border-light, #e9ecef);
-}
-
-.btn-outline-secondary:hover:not(:disabled) {
-  background: var(--bg-tertiary, #f8f9fa);
-  color: var(--text-primary, #2c3e50);
-}
-
 /* 锁屏设置样式 */
 .screen-lock-settings-wrapper {
   background: transparent;
@@ -1946,12 +1805,6 @@ onBeforeUnmount(() => {
   flex-wrap: nowrap;
 }
 
-.action-buttons .el-button {
-  margin: 0;
-  padding: 4px 8px;
-  white-space: nowrap;
-}
-
 /* 响应式设计 - 锁屏设置 */
 @media (max-width: 768px) {
   .screen-lock-settings-wrapper {
@@ -2136,12 +1989,6 @@ onBeforeUnmount(() => {
   .screen-lock-settings-wrapper .action-buttons {
     justify-content: flex-end;
     gap: 4px;
-  }
-
-  .screen-lock-settings-wrapper .action-buttons .el-button {
-    flex: 0 0 auto;
-    min-width: 0;
-    padding: 2px 4px;
   }
 
   .screen-lock-settings-wrapper :deep(.mobile-password-table) {

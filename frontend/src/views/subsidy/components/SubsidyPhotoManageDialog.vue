@@ -464,6 +464,38 @@ const downloadPhotoBlob = async (photoUrl: string, filename: string) => {
   })
 }
 
+const sanitizeDownloadNamePart = (value: unknown, fallback: string) => {
+  const sanitized = String(value || '')
+    .trim()
+    .replace(/[\\/:*?"<>|]/g, '_')
+    .replace(/\s+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^[._]+|[._]+$/g, '')
+
+  return sanitized || fallback
+}
+
+const getPhotoExtension = (photoUrl: string) => {
+  try {
+    const pathname = new URL(photoUrl, window.location.origin).pathname
+    const extension = pathname.match(/\.([a-zA-Z0-9]{2,5})$/)?.[1]?.toLowerCase()
+    if (extension && ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension)) {
+      return extension === 'jpeg' ? 'jpg' : extension
+    }
+  } catch {
+    // 无法解析旧照片地址时使用系统默认图片扩展名。
+  }
+
+  return 'jpg'
+}
+
+const getPhotoDownloadFilename = (index: number, photoUrl: string) => {
+  const customerName = sanitizeDownloadNamePart(props.item?.customer_name, '未知客户')
+  const serialNumber = sanitizeDownloadNamePart(props.item?.serial_number, '无序列号')
+  const extension = getPhotoExtension(photoUrl)
+  return `${customerName}_${serialNumber}_${index + 1}.${extension}`
+}
+
 const togglePhotoSelection = (index: number) => {
   const selectedIndex = selectedPhotos.value.indexOf(index)
   if (selectedIndex > -1) {
@@ -521,9 +553,12 @@ const downloadSelectedPhotos = async () => {
 
   try {
     for (const index of selectedPhotos.value) {
+      const photoUrl = previewPhotos.value[index]
+      if (!photoUrl) continue
+
       await downloadPhotoBlob(
-        previewPhotos.value[index],
-        `国补照片_${props.item?.serial_number || 'unknown'}_${index + 1}.jpg`
+        photoUrl,
+        getPhotoDownloadFilename(index, photoUrl)
       )
       await new Promise(resolve => setTimeout(resolve, 300))
     }
@@ -626,7 +661,10 @@ const downloadCurrentPhoto = async () => {
   if (!photoUrl) return
 
   try {
-    await downloadPhotoBlob(photoUrl, `国补照片_${currentPhotoIndex.value + 1}.jpg`)
+    await downloadPhotoBlob(
+      photoUrl,
+      getPhotoDownloadFilename(currentPhotoIndex.value, photoUrl)
+    )
     ElMessage.success('照片下载成功')
   } catch {
     ElMessage.error('照片下载失败')
@@ -639,7 +677,7 @@ const downloadAllPhotos = async () => {
     if (!photoUrl) continue
 
     try {
-      await downloadPhotoBlob(photoUrl, `国补照片_${i + 1}.jpg`)
+      await downloadPhotoBlob(photoUrl, getPhotoDownloadFilename(i, photoUrl))
       await new Promise(resolve => setTimeout(resolve, 300))
     } catch (error) {
       logger.error(`下载第${i + 1}张照片失败:`, error)
@@ -1040,20 +1078,11 @@ const savePhotoChanges = async () => {
     justify-content: stretch;
     gap: 8px;
 
-    :deep(.el-button) {
-      flex: 1 1 0;
-      min-width: 0;
-      margin-left: 0 !important;
-      padding-left: 10px;
-      padding-right: 10px;
-    }
-
     :deep(.el-button > span) {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 4px;
-      width: 100%;
       white-space: nowrap;
     }
   }

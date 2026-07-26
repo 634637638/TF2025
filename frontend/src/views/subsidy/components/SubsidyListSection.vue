@@ -50,7 +50,7 @@
         </div>
       </div>
 
-      <div class="table-container">
+      <div class="table-container table-responsive">
         <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
 
         <div v-else-if="subsidyList.length === 0" class="empty-state">
@@ -58,207 +58,165 @@
           <p>暂无国补申请记录</p>
         </div>
 
-        <table v-else-if="!isMobile" class="data-table">
-          <thead>
-            <tr>
-              <th class="checkbox-col" style="width: 50px;">
-                <el-checkbox
-                  :model-value="selectAll"
-                  :indeterminate="isIndeterminate"
-                  @change="handleSelectAll"
-                />
-              </th>
-              <th
-                v-for="column in tableColumns"
-                :key="column.key"
-                :class="{ 'actions-col': column.key === 'actions' }"
+        <el-table
+          v-else-if="!isMobile"
+          :data="displayList"
+          border
+          stripe
+          class="data-table devices-table subsidy-data-table"
+          table-layout="fixed"
+          :fit="true"
+          row-key="id"
+          :row-class-name="getTableRowClassName"
+          @row-dblclick="(row) => emit('row-double-click', row)"
+        >
+          <el-table-column width="54" align="center" class-name="selection-column">
+            <template #header>
+              <el-checkbox
+                :model-value="selectAll"
+                :indeterminate="isIndeterminate"
+                @click.stop
+                @change="handleSelectAll"
+              />
+            </template>
+            <template #default="{ row }">
+              <el-checkbox
+                :model-value="isSelectedItem(row.id)"
+                @click.stop
+                @change="(value) => emit('select-item', { id: row.id, checked: !!value })"
+              />
+            </template>
+          </el-table-column>
+
+          <el-table-column
+            v-for="column in tableColumns"
+            :key="column.key"
+            :label="column.label"
+            :min-width="getColumnMinWidth(column)"
+            :class-name="getColumnClassName(column.key)"
+            align="center"
+            header-align="center"
+          >
+            <template #default="{ row }">
+              <template v-if="column.key === 'store_name'">{{ row.store_name || '-' }}</template>
+              <template v-else-if="column.key === 'sale_time'">{{ formatDate(row.sale_time) }}</template>
+
+              <span
+                v-else-if="column.key === 'customer_name'"
+                class="clickable-text customer-info-toggle"
+                :class="{
+                  'has-handler-but-showing-purchaser': hasHandlerInfo(row) && !isShowingHandlerInfo(row),
+                  'showing-handler': isShowingHandlerInfo(row)
+                }"
+                :title="hasHandlerInfo(row) ? (isShowingHandlerInfo(row) ? '点击切换到购买者' : '点击切换到办理人') : '点击复制'"
+                @click.stop="hasHandlerInfo(row) ? toggleListItemCustomerInfo(row.id) : copyToClipboard(getDisplayInfo(row, 'name'), '姓名')"
+              >{{ getDisplayInfo(row, 'name') || '-' }}</span>
+
+              <span
+                v-else-if="column.key === 'customer_phone'"
+                class="clickable-text"
+                title="点击复制"
+                @click.stop="copyToClipboard(getDisplayInfo(row, 'phone'), '手机号')"
+              >{{ getDisplayInfo(row, 'phone') || '-' }}</span>
+
+              <template v-else-if="column.key === 'customer_idcard'">
+                <span
+                  v-if="getDisplayInfo(row, 'idcard') && canViewCustomerIdcard"
+                  class="clickable-text"
+                  title="点击复制"
+                  @click.stop="copyToClipboard(getDisplayInfo(row, 'idcard'), '身份证号')"
+                >{{ getDisplayInfo(row, 'idcard') }}</span>
+                <span v-else class="text-muted">-</span>
+              </template>
+
+              <template v-else-if="column.key === 'brand'">{{ row.phone_brand || '-' }}</template>
+              <template v-else-if="column.key === 'model'">{{ row.phone_model || '-' }}</template>
+              <template v-else-if="column.key === 'color'">{{ row.phone_color || '-' }}</template>
+              <template v-else-if="column.key === 'memory'">{{ row.phone_memory || '-' }}</template>
+
+              <span
+                v-else-if="column.key === 'serial_number'"
+                class="clickable-text qrcode-trigger"
+                title="点击复制，悬停显示二维码"
+                @click.stop="copyToClipboard(row.serial_number, '序列号')"
+                @mouseenter="showQRCode($event, row.serial_number, '序列号')"
+                @mouseleave="hideQRCode"
+              >{{ row.serial_number || '-' }}</span>
+
+              <span
+                v-else-if="column.key === 'imei1'"
+                class="clickable-text qrcode-trigger"
+                title="点击复制，悬停显示二维码"
+                @click.stop="copyToClipboard(row.imei1, 'IMEI1')"
+                @mouseenter="showQRCode($event, row.imei1, 'IMEI1')"
+                @mouseleave="hideQRCode"
+              >{{ row.imei1 || '-' }}</span>
+
+              <template v-else-if="column.key === 'imei2'">
+                <span
+                  v-if="row.imei2"
+                  class="clickable-text qrcode-trigger"
+                  title="点击复制，悬停显示二维码"
+                  @click.stop="copyToClipboard(row.imei2, 'IMEI2')"
+                  @mouseenter="showQRCode($event, row.imei2, 'IMEI2')"
+                  @mouseleave="hideQRCode"
+                >{{ row.imei2 }}</span>
+                <span v-else class="text-muted">-</span>
+              </template>
+
+              <span v-else-if="column.key === 'sale_price'" class="table-price sale-price">¥{{ formatMoney(row.sale_price) }}</span>
+              <span v-else-if="column.key === 'subsidy_amount'" class="table-price subsidy-price">¥{{ formatMoney(getSubsidyFinalPrice(row)) }}</span>
+
+              <template v-else-if="column.key === 'remarks'">
+                <span v-if="row.remarks" class="remarks-tag" :title="row.remarks" @click.stop="copyRemarks(row.remarks)">备注</span>
+                <span v-else class="text-muted">-</span>
+              </template>
+
+              <div
+                v-else-if="column.key === 'subsidy_photos'"
+                class="photo-icon-wrapper clickable"
+                :title="photoCount(row) > 0 ? '点击查看/管理国补照片' : '点击上传国补照片'"
+                @click.stop="emit('open-photo-manage', row)"
               >
-                {{ column.label }}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="item in displayList"
-              :key="item.id"
-              v-memo="[item, isSelectedItem(item.id), isPinnedItem(item.id), isShowingHandlerInfo(item)]"
-              :class="{ 'selected-row': isSelectedItem(item.id), 'pinned-row': isPinnedItem(item.id) }"
-              @dblclick="emit('row-double-click', item)"
-            >
-              <td class="checkbox-col">
-                <el-checkbox
-                  :model-value="isSelectedItem(item.id)"
-                  @change="(value) => emit('select-item', { id: item.id, checked: !!value })"
-                />
-              </td>
-              <td v-if="fieldVisibility.storeName">{{ item.store_name }}</td>
-              <td v-if="fieldVisibility.saleTime">{{ formatDate(item.sale_time) }}</td>
-              <td v-if="fieldVisibility.customerName">
-                <span
-                  class="clickable-text customer-info-toggle"
-                  :class="{
-                    'has-handler-but-showing-purchaser': hasHandlerInfo(item) && !isShowingHandlerInfo(item),
-                    'showing-handler': isShowingHandlerInfo(item)
-                  }"
-                  :title="hasHandlerInfo(item) ? (isShowingHandlerInfo(item) ? '点击切换到购买者' : '点击切换到办理人') : '点击复制'"
-                  @click="hasHandlerInfo(item) ? toggleListItemCustomerInfo(item.id) : copyToClipboard(getDisplayInfo(item, 'name'), '姓名')"
-                >
-                  {{ getDisplayInfo(item, 'name') }}
-                </span>
-              </td>
-              <td v-if="fieldVisibility.customerPhone">
-                <span
-                  class="clickable-text"
-                  title="点击复制"
-                  @click="copyToClipboard(getDisplayInfo(item, 'phone'), '手机号')"
-                >
-                  {{ getDisplayInfo(item, 'phone') }}
-                </span>
-              </td>
-              <td v-if="fieldVisibility.customerIdcard">
-                <span
-                  v-if="getDisplayInfo(item, 'idcard') && canViewCustomerIdcard"
-                  class="clickable-text"
-                  title="点击复制"
-                  @click="copyToClipboard(getDisplayInfo(item, 'idcard'), '身份证号')"
-                >
-                  {{ getDisplayInfo(item, 'idcard') }}
-                </span>
-                <span v-else class="text-muted">-</span>
-              </td>
-              <td v-if="fieldVisibility.brand">{{ item.phone_brand }}</td>
-              <td v-if="fieldVisibility.model">{{ item.phone_model }}</td>
-              <td v-if="fieldVisibility.color">{{ item.phone_color }}</td>
-              <td v-if="fieldVisibility.memory">{{ item.phone_memory }}</td>
-              <td v-if="fieldVisibility.serialNumber">
-                <span
-                  class="clickable-text qrcode-trigger"
-                  title="点击复制，悬停显示二维码"
-                  @click="copyToClipboard(item.serial_number, '序列号')"
-                  @mouseenter="showQRCode($event, item.serial_number, '序列号')"
-                  @mouseleave="hideQRCode"
-                >
-                  {{ item.serial_number }}
-                </span>
-              </td>
-              <td v-if="fieldVisibility.imei1">
-                <span
-                  class="clickable-text qrcode-trigger"
-                  title="点击复制，悬停显示二维码"
-                  @click="copyToClipboard(item.imei1, 'IMEI1')"
-                  @mouseenter="showQRCode($event, item.imei1, 'IMEI1')"
-                  @mouseleave="hideQRCode"
-                >
-                  {{ item.imei1 }}
-                </span>
-              </td>
-              <td v-if="fieldVisibility.imei2">
-                <span
-                  v-if="item.imei2"
-                  class="clickable-text qrcode-trigger"
-                  title="点击复制，悬停显示二维码"
-                  @click="copyToClipboard(item.imei2, 'IMEI2')"
-                  @mouseenter="showQRCode($event, item.imei2, 'IMEI2')"
-                  @mouseleave="hideQRCode"
-                >
-                  {{ item.imei2 }}
-                </span>
-                <span v-else class="text-muted">-</span>
-              </td>
-              <td v-if="fieldVisibility.salePrice" class="text-right">
-                <span class="table-price sale-price">¥{{ item.sale_price?.toFixed(2) }}</span>
-              </td>
-              <td v-if="fieldVisibility.subsidyAmount" class="text-right">
-                <span class="table-price subsidy-price">¥{{ (item.sale_price - item.subsidy_amount).toFixed(2) }}</span>
-              </td>
-              <td v-if="fieldVisibility.remarks" class="text-left">
-                <span
-                  v-if="item.remarks"
-                  class="remarks-tag"
-                  :title="item.remarks"
-                  @click="copyRemarks(item.remarks)"
-                >备注</span>
-                <span v-else class="text-muted">-</span>
-              </td>
-              <td class="text-center subsidy-photo-cell">
-                <div
-                  class="photo-icon-wrapper clickable"
-                  :title="item.subsidy_photos && item.subsidy_photos.length > 0 ? '点击查看/管理国补照片' : '点击上传国补照片'"
-                  @click.stop="emit('open-photo-manage', item)"
-                >
-                  <template v-if="item.subsidy_photos && item.subsidy_photos.length > 0">
-                    <i class="fas fa-images photo-icon"></i>
-                    <span class="photo-count">{{ item.subsidy_photos.length }}</span>
-                  </template>
-                  <template v-else>
-                    <i class="fas fa-image photo-icon-empty"></i>
-                    <span class="upload-hint">图片</span>
-                  </template>
+                <template v-if="photoCount(row) > 0">
+                  <i class="fas fa-images photo-icon"></i>
+                  <span class="photo-count">{{ photoCount(row) }}</span>
+                </template>
+                <template v-else>
+                  <i class="fas fa-image photo-icon-empty"></i>
+                  <span class="upload-hint">图片</span>
+                </template>
+              </div>
+
+              <template v-else-if="column.key === 'apply_time'">
+                <div v-if="hasApplyTime(row)" class="time-badge approval-time">
+                  {{ formatDate(row.apply_time) }}
                 </div>
-              </td>
-              <td v-if="fieldVisibility.applyTime">
-                <div
-                  v-if="item.apply_time && item.apply_time !== '' && item.apply_time !== null"
-                  class="time-badge approval-time"
-                >
-                  <i class="fas fa-check-circle"></i>
-                  {{ formatDate(item.apply_time) }}
-                </div>
-                <el-button
-                  v-else-if="canApprove"
-                  type="warning"
-                  size="small"
-                  @click="emit('audit', item)"
-                >
-                  <i class="fas fa-clipboard-check"></i>
-                  <span>审批</span>
+                <el-button v-else-if="canApprove" type="primary" size="small" class="table-action table-action--manage table-inline-action" title="审批" @click.stop="emit('audit', row)">
+                  <i class="fas fa-clipboard-check"></i><span>审批</span>
                 </el-button>
-              </td>
-              <td v-if="fieldVisibility.arrivalTime">
-                <div
-                  v-if="item.arrival_time && item.arrival_time !== '' && item.arrival_time !== null"
-                  class="time-badge arrival-time"
-                >
-                  <i class="fas fa-coins"></i>
-                  {{ formatDate(item.arrival_time) }}
+              </template>
+
+              <template v-else-if="column.key === 'arrival_time'">
+                <div v-if="hasArrivalTime(row)" class="time-badge arrival-time">
+                  {{ formatDate(row.arrival_time) }}
                 </div>
-                <el-button
-                  v-else-if="canEdit"
-                  type="success"
-                  size="small"
-                  @click="emit('confirm-arrival', item)"
-                >
-                  <i class="fas fa-hand-holding-usd"></i>
-                  <span>到账</span>
+                <el-button v-else-if="canEdit" type="success" size="small" class="table-action table-action--finance table-inline-action" title="到账" @click.stop="emit('confirm-arrival', row)">
+                  <i class="fas fa-hand-holding-usd"></i><span>到账</span>
                 </el-button>
-              </td>
-              <td v-if="canShowActions" class="actions-col">
-                <div class="action-buttons">
-                  <el-button
-                    v-if="canEdit"
-                    type="primary"
-                    size="small"
-                    title="编辑"
-                    @click="emit('edit', item)"
-                  >
-                    <i class="fas fa-edit"></i>
-                    <span class="btn-text">编辑</span>
-                  </el-button>
-                  <el-button
-                    v-if="canDelete"
-                    type="danger"
-                    size="small"
-                    title="删除"
-                    @click="emit('delete', item)"
-                  >
-                    <i class="fas fa-trash-alt"></i>
-                    <span class="btn-text">删除</span>
-                  </el-button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+              </template>
+
+              <div v-else-if="column.key === 'actions'" class="action-buttons">
+                <el-button v-if="canEdit" type="primary" size="small" class="table-action table-action--edit" title="编辑" @click.stop="emit('edit', row)">
+                  <i class="fas fa-edit"></i><span class="btn-text">编辑</span>
+                </el-button>
+                <el-button v-if="canDelete" type="danger" size="small" class="table-action table-action--delete" title="删除" @click.stop="emit('delete', row)">
+                  <i class="fas fa-trash-alt"></i><span class="btn-text">删除</span>
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
 
         <div v-else class="mobile-card-list">
           <div
@@ -274,6 +232,7 @@
               <div class="mobile-select-cell" @click.stop>
                 <el-checkbox
                   :model-value="isSelectedItem(item.id)"
+                  @click.stop
                   @change="(value) => emit('select-item', { id: item.id, checked: !!value })"
                 />
               </div>
@@ -325,16 +284,18 @@
                     class="mobile-action-mark mobile-photo-action"
                     :class="{ 'has-photos': photoCount(item) > 0 }"
                     :title="photoCount(item) > 0 ? '查看/管理国补照片' : '上传国补照片'"
-                    @click="emit('open-photo-manage', item)"
+                    @click.stop="emit('open-photo-manage', item)"
                   >
                     <i :class="photoCount(item) > 0 ? 'fas fa-images' : 'far fa-image'"></i>
                     <span v-if="photoCount(item) > 0" class="mobile-photo-count">{{ photoCount(item) }}</span>
                   </button>
                   <el-button
                     v-if="fieldVisibility.applyTime && canApprove && !hasApplyTime(item)"
-                    type="warning"
+                    type="primary"
                     size="small"
-                    @click="emit('audit', item)"
+                    class="table-action table-action--manage table-inline-action"
+                    title="审批"
+                    @click.stop="emit('audit', item)"
                   >
                     审批
                   </el-button>
@@ -349,7 +310,9 @@
                     v-if="fieldVisibility.arrivalTime && canEdit && !hasArrivalTime(item)"
                     type="success"
                     size="small"
-                    @click="emit('confirm-arrival', item)"
+                    class="table-action table-action--finance table-inline-action"
+                    title="到账"
+                    @click.stop="emit('confirm-arrival', item)"
                   >
                     到账
                   </el-button>
@@ -364,7 +327,8 @@
                     v-if="canEdit"
                     type="primary"
                     size="small"
-                    @click="emit('edit', item)"
+                    class="table-action table-action--edit"
+                    @click.stop="emit('edit', item)"
                   >
                     编辑
                   </el-button>
@@ -372,7 +336,8 @@
                     v-if="canDelete"
                     type="danger"
                     size="small"
-                    @click="emit('delete', item)"
+                    class="table-action table-action--delete"
+                    @click.stop="emit('delete', item)"
                   >
                     删除
                   </el-button>
@@ -389,8 +354,13 @@
           @mouseenter="keepQRCodeVisible"
           @mouseleave="hideQRCode"
         >
-          <div class="qrcode-title">{{ qrCodeTitle }}</div>
-          <div class="qrcode-value">{{ qrCodeValue }}</div>
+          <div
+            class="qrcode-meta"
+            :class="qrCodeTitle === '序列号' ? 'is-serial' : 'is-imei'"
+          >
+            <span class="qrcode-title">{{ qrCodeTitle }}</span>
+            <span class="qrcode-value">{{ qrCodeValue }}</span>
+          </div>
           <canvas ref="qrCodeCanvas"></canvas>
         </div>
       </div>
@@ -419,6 +389,8 @@ import PaginationComponent from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
+import { getActionColumnMinWidth, getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
+import { formatAmount } from '@/utils/format'
 
 interface TableColumn {
   key: string
@@ -482,6 +454,100 @@ let qrCodeRenderToken = 0
 const selectedItemIdSet = computed(() => new Set(props.selectedItems))
 const pinnedItemIdSet = computed(() => new Set(props.pinnedItems.map(item => item.id)))
 
+const columnBaseWidths: Record<string, number> = {
+  store_name: 54,
+  sale_time: 82,
+  customer_name: 54,
+  customer_phone: 92,
+  customer_idcard: 138,
+  brand: 54,
+  model: 64,
+  color: 52,
+  memory: 60,
+  serial_number: 96,
+  imei1: 112,
+  imei2: 112,
+  sale_price: 68,
+  subsidy_amount: 76,
+  remarks: 54,
+  subsidy_photos: 72,
+  apply_time: 76,
+  arrival_time: 76
+}
+
+const getColumnValue = (row: any, key: string) => {
+  const valueMap: Record<string, unknown> = {
+    store_name: row.store_name,
+    sale_time: formatDate(row.sale_time),
+    customer_name: getDisplayInfo(row, 'name'),
+    customer_phone: getDisplayInfo(row, 'phone'),
+    customer_idcard: getDisplayInfo(row, 'idcard'),
+    brand: row.phone_brand,
+    model: row.phone_model,
+    color: row.phone_color,
+    memory: row.phone_memory,
+    serial_number: row.serial_number,
+    imei1: row.imei1,
+    imei2: row.imei2,
+    sale_price: `¥${formatMoney(row.sale_price)}`,
+    subsidy_amount: `¥${formatMoney(getSubsidyFinalPrice(row))}`,
+    remarks: row.remarks ? '备注' : '-',
+    subsidy_photos: photoCount(row) > 0 ? String(photoCount(row)) : '图片',
+    apply_time: hasApplyTime(row) ? formatDate(row.apply_time) : '审批',
+    arrival_time: hasArrivalTime(row) ? formatDate(row.arrival_time) : '到账'
+  }
+  return valueMap[key] as string | number | null | undefined
+}
+
+const getColumnMinWidth = (column: TableColumn) => {
+  if (column.key === 'actions') {
+    const actionCount = Number(props.canEdit) + Number(props.canDelete)
+    return getActionColumnMinWidth(actionCount)
+  }
+
+  const values: Array<string | number | null | undefined> = [
+    column.label,
+    ...props.displayList.map(row => getColumnValue(row, column.key))
+  ]
+
+  // 姓名、电话、身份证可以切换为办理人，隐藏状态下也要为完整内容预留宽度。
+  if (column.key === 'customer_name') {
+    values.push(...props.displayList.map(row => row?.handlerInfo?.handlerName))
+  } else if (column.key === 'customer_phone') {
+    values.push(...props.displayList.map(row => row?.handlerInfo?.handlerPhone))
+  } else if (column.key === 'customer_idcard') {
+    values.push(...props.displayList.map(row => row?.handlerInfo?.handlerIdcard))
+  }
+
+  const minWidth = columnBaseWidths[column.key] || 88
+  const horizontalPadding = ['apply_time', 'arrival_time'].includes(column.key) ? 32 : 24
+  const options = {
+    minWidth,
+    horizontalPadding,
+    asciiCharacterWidth: 7.5
+  }
+
+  if (['customer_idcard', 'serial_number', 'imei1', 'imei2'].includes(column.key)) {
+    return getIdentifierColumnMinWidth(values, options)
+  }
+
+  return getTextColumnMinWidth(values, options)
+}
+
+const getColumnClassName = (key: string) => {
+  if (['customer_idcard', 'serial_number', 'imei1', 'imei2'].includes(key)) {
+    return 'identifier-column'
+  }
+  if (key === 'actions') return 'actions-column'
+  if (key === 'subsidy_photos') return 'complete-text-column subsidy-photo-cell'
+  return 'complete-text-column'
+}
+
+const getTableRowClassName = ({ row }: { row: any }) => [
+  isSelectedItem(row.id) ? 'row-selected' : '',
+  isPinnedItem(row.id) ? 'pinned-row' : ''
+].filter(Boolean).join(' ')
+
 const handleSelectAll = (value: boolean | string | number) => {
   emit('select-all', Boolean(value))
 }
@@ -490,8 +556,7 @@ const isSelectedItem = (id: number) => selectedItemIdSet.value.has(id)
 const isPinnedItem = (id: number) => pinnedItemIdSet.value.has(id)
 
 const formatMoney = (value: unknown) => {
-  const amount = Number(value)
-  return Number.isFinite(amount) ? amount.toFixed(2) : '0.00'
+  return formatAmount(value as number | string | null | undefined)
 }
 
 const getSubsidyFinalPrice = (item: any) => {
@@ -630,7 +695,7 @@ const showQRCode = (event: MouseEvent, value: string, title: string) => {
   const rect = target.getBoundingClientRect()
   const scrollTop = window.pageYOffset || document.documentElement.scrollTop
   const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft
-  const tooltipHeight = 300
+  const tooltipHeight = 270
   const tooltipWidth = 252
   const gap = 10
   const spaceBelow = window.innerHeight - rect.bottom
@@ -721,34 +786,6 @@ onUnmounted(() => {
 
 <style scoped lang="scss">
 .subsidy-list-section {
-  .table-section {
-    background: white;
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-
-    @media (max-width: 768px) {
-      padding: 16px;
-    }
-  }
-
-  .section-title {
-    font-size: 1.125rem;
-    font-weight: 600;
-    color: #2c3e50;
-    margin-bottom: 16px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .record-count {
-    margin-left: auto;
-    font-size: 0.875rem;
-    font-weight: 400;
-    color: #6c757d;
-  }
-
   .batch-actions-bar {
     display: flex;
     align-items: center;
@@ -801,54 +838,6 @@ onUnmounted(() => {
     color: #dee2e6;
   }
 
-  .data-table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-    background: white;
-    border-radius: 8px;
-    overflow: hidden;
-  }
-
-  .data-table thead th {
-    background: linear-gradient(135deg, #495057 0%, #343a40 100%);
-    color: white;
-    padding: 12px 10px;
-    text-align: center;
-    font-weight: 600;
-    font-size: 14px;
-    border-right: 1px solid #dee2e6;
-    border-bottom: 2px solid #dee2e6;
-    white-space: nowrap;
-  }
-
-  .data-table tbody tr {
-    transition: all 0.2s ease;
-    position: relative;
-    cursor: pointer;
-  }
-
-  .data-table tbody tr:nth-child(even) {
-    background: #f8f9fa;
-  }
-
-  .data-table tbody tr:hover {
-    background: #e3f2fd !important;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    z-index: 1;
-  }
-
-  .data-table tbody td {
-    padding: 6px;
-    border-right: 1px solid #e9ecef;
-    border-bottom: 1px solid #e9ecef;
-    font-size: 14px;
-    color: #2c3e50;
-    font-weight: 500;
-    text-align: center;
-  }
-
   .table-price {
     display: inline-block;
     font-weight: 700;
@@ -863,55 +852,27 @@ onUnmounted(() => {
     color: #16a34a;
   }
 
-  .action-buttons {
-    display: flex;
-    gap: 8px;
-    justify-content: center;
-  }
-
-  .data-table :deep(.el-button--small),
-  .batch-actions-buttons :deep(.el-button--small),
-  .mobile-card-list :deep(.el-button--small) {
-    height: 28px !important;
-    min-height: 28px !important;
-    padding: 0 10px !important;
-    font-size: 12px !important;
-    line-height: 1 !important;
-    border-radius: 4px !important;
-    white-space: nowrap;
-
-    i {
-      font-size: 12px !important;
-      line-height: 1 !important;
-    }
-
-    span {
-      display: inline-flex;
-      align-items: center;
-      line-height: 1 !important;
-      white-space: nowrap;
-    }
-  }
-
   .time-badge {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 8px 14px;
-    border-radius: 6px;
+    gap: 4px;
+    padding: 3px 6px;
+    border-radius: 4px;
     font-size: 13px;
     font-weight: 600;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    box-shadow: none;
   }
 
   .time-badge.approval-time {
-    background: linear-gradient(135deg, #28a745, #20c997);
-    color: white;
+    color: var(--admin-action-manage-color);
+    background: var(--admin-action-manage-bg);
+    border: 1px solid var(--admin-action-manage-border);
   }
 
   .time-badge.arrival-time {
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    color: white;
+    color: var(--admin-action-finance-color);
+    background: var(--admin-action-finance-bg);
+    border: 1px solid var(--admin-action-finance-border);
   }
 
   .clickable-text {
@@ -972,10 +933,10 @@ onUnmounted(() => {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 4px;
-    padding: 6px 12px;
+    gap: 3px;
+    padding: 3px 7px;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 8px;
+    border-radius: 4px;
     cursor: pointer;
     transition: all 0.3s;
   }
@@ -986,18 +947,29 @@ onUnmounted(() => {
   }
 
   .photo-icon,
+  .photo-icon-empty {
+    font-size: 12px;
+  }
+
+  .photo-icon,
   .photo-icon-empty,
   .upload-hint,
   .photo-count {
     color: #fff;
   }
 
+  .upload-hint {
+    font-size: 11px;
+  }
+
   .photo-count {
-    font-size: 12px;
+    min-width: 14px;
+    font-size: 10px;
     font-weight: 600;
     background: rgba(255, 255, 255, 0.2);
-    padding: 2px 6px;
-    border-radius: 10px;
+    padding: 1px 4px;
+    border-radius: 7px;
+    line-height: 1.2;
   }
 
   .mobile-card-list {
@@ -1258,8 +1230,8 @@ onUnmounted(() => {
 
   .mobile-card-actions {
     align-items: center;
-    flex-wrap: wrap;
-    gap: 6px;
+    flex-wrap: nowrap;
+    gap: 4px;
     margin-top: 2px;
     padding-top: 8px;
     border-top: 1px dashed #e2e8f0;
@@ -1296,17 +1268,6 @@ onUnmounted(() => {
     color: #b91c1c;
   }
 
-  @media (max-width: 768px) {
-    .data-table :deep(.el-button--small),
-    .batch-actions-buttons :deep(.el-button--small),
-    .mobile-card-list :deep(.el-button--small) {
-      height: 32px !important;
-      min-height: 32px !important;
-      padding: 0 10px !important;
-      font-size: 12px !important;
-    }
-  }
-
   .qrcode-tooltip {
     position: fixed;
     background: white;
@@ -1320,21 +1281,49 @@ onUnmounted(() => {
     pointer-events: auto;
   }
 
+  .qrcode-meta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-width: 0;
+    margin-bottom: 12px;
+    white-space: nowrap;
+  }
+
   .qrcode-title {
+    flex: 0 0 auto;
     font-weight: 600;
-    color: #495057;
-    margin-bottom: 8px;
-    font-size: 14px;
+    color: #fff;
+    font-size: 12px;
+    line-height: 22px;
+    padding: 0 7px;
+    background: #4f46e5;
+    border-radius: 4px;
   }
 
   .qrcode-value {
+    flex: 0 0 auto;
     font-size: 12px;
-    color: #6c757d;
-    margin-bottom: 12px;
-    word-break: break-all;
-    padding: 8px;
-    background: #f8f9fa;
+    font-weight: 600;
+    line-height: 20px;
+    color: #4338ca;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    padding: 0 6px;
+    background: #eef2ff;
+    border: 1px solid #c7d2fe;
     border-radius: 4px;
+    white-space: nowrap;
+  }
+
+  .qrcode-meta.is-imei .qrcode-title {
+    background: #059669;
+  }
+
+  .qrcode-meta.is-imei .qrcode-value {
+    color: #047857;
+    background: #ecfdf5;
+    border-color: #a7f3d0;
   }
 
   .qrcode-tooltip canvas {

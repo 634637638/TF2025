@@ -2153,7 +2153,7 @@ const deleteCustomer = async (customer: CustomerListItem) => {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning',
-        customClass: 'message-box-purple'
+        customClass: 'message-box-unified'
       }
     )
   } catch {
@@ -2542,11 +2542,6 @@ onUnmounted(() => {
     font-size: 14px;
   }
 
-  // 新增客户按钮在移动端保持突出
-  .btn-add-customer {
-    background: linear-gradient(135deg, #10b981, #059669);
-    min-width: 120px !important;
-  }
 }
 
 // 小屏幕手机适配（小于480px）
@@ -3095,10 +3090,6 @@ onUnmounted(() => {
     flex-direction: column;
     gap: 10px;
     padding: 10px;
-
-    .btn {
-      width: 100%;
-    }
 
     .pagination-info {
       font-size: 12px;

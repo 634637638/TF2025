@@ -26,7 +26,7 @@
     </PageHeader>
 
     <!-- 标签页导航 -->
-    <div class="tab-navigation">
+    <div class="tab-navigation tf-page-tabs">
       <el-button
         :type="isActiveTab('/H5-admin/page/templates') ? 'primary' : 'default'"
         @click="navigateTo('/H5-admin/page/templates')"
@@ -72,10 +72,10 @@
     </div>
 
     <!-- 页面内容 -->
-    <div class="admin-content">
+    <div class="admin-content tf-tab-content">
       <router-view v-slot="{ Component, route: viewRoute }">
         <KeepAlive :max="6">
-          <component :is="Component" :key="viewRoute.name || viewRoute.fullPath" />
+          <component :is="Component" :key="viewRoute.name || viewRoute.fullPath" class="tf-tab-panel" />
         </KeepAlive>
       </router-view>
     </div>
@@ -198,53 +198,6 @@ onMounted(() => {
   margin-left: 8px;
 }
 
-/* 标签页导航样式 - 与系统管理页面一致 */
-.tab-navigation {
-  display: flex;
-  gap: 0;
-  margin-bottom: 24px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  border: 1px solid #e8ecef;
-  overflow: hidden;
-}
-
-.tab-navigation .el-button {
-  flex: 0 1 auto;
-  min-width: 120px;
-  border-radius: 0;
-  border: none;
-  border-right: 1px solid #e8ecef;
-  padding: 12px 24px;
-}
-
-.tab-navigation .el-button:last-child {
-  border-right: none;
-}
-
-.tab-navigation .el-button--default {
-  background: transparent;
-  color: #606266;
-}
-
-.tab-navigation .el-button--default:hover {
-  background: rgba(102, 126, 234, 0.1);
-  color: #667eea;
-}
-
-.tab-navigation .el-button--primary {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  border-color: #667eea;
-  color: white;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-}
-
-.tab-navigation .el-button--primary:hover {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  opacity: 0.9;
-}
-
 .admin-content {
   min-width: 0;
 }
@@ -254,46 +207,6 @@ onMounted(() => {
   .h5-admin-layout {
     padding-inline: var(--admin-page-gap-x);
     padding-top: 10px;
-  }
-
-  .tab-navigation {
-    position: relative;
-    flex-wrap: nowrap;
-    gap: 6px;
-    margin-bottom: 12px;
-    padding: 6px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    border-radius: var(--mobile-card-radius, 14px);
-    scroll-snap-type: x proximity;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    background:
-      linear-gradient(90deg, rgba(255, 255, 255, 0.98), rgba(248, 251, 255, 0.96));
-  }
-
-  .tab-navigation::-webkit-scrollbar {
-    display: none;
-  }
-
-  .tab-navigation .el-button {
-    flex: 0 0 auto;
-    min-width: max-content;
-    height: 36px;
-    min-height: 36px;
-    margin: 0;
-    padding: 0 14px;
-    border-right: none;
-    border-bottom: none;
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 700;
-    scroll-snap-align: start;
-    white-space: nowrap;
-  }
-
-  .tab-navigation .el-button .el-icon {
-    font-size: 12px;
   }
 
   .admin-content {

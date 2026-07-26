@@ -62,7 +62,7 @@ const inferConfirmSemantic = (message: string, title = ''): ConfirmSemantic => {
       title: /清除/.test(source) ? '清除确认' : '清空确认',
       confirmText: /清除/.test(source) ? '清除' : '清空',
       type: 'warning',
-      customClass: ['message-box-purple', 'message-box-danger']
+      customClass: ['message-box-unified', 'message-box-danger']
     }
   }
 
@@ -71,7 +71,7 @@ const inferConfirmSemantic = (message: string, title = ''): ConfirmSemantic => {
       title: '删除确认',
       confirmText: '删除',
       type: 'warning',
-      customClass: ['message-box-purple', 'message-box-danger']
+      customClass: ['message-box-unified', 'message-box-danger']
     }
   }
 
@@ -80,7 +80,7 @@ const inferConfirmSemantic = (message: string, title = ''): ConfirmSemantic => {
       title: '重置确认',
       confirmText: '重置',
       type: 'warning',
-      customClass: ['message-box-purple', 'message-box-warning']
+      customClass: ['message-box-unified', 'message-box-warning']
     }
   }
 
@@ -89,7 +89,7 @@ const inferConfirmSemantic = (message: string, title = ''): ConfirmSemantic => {
       title: '设为默认',
       confirmText: '设为默认',
       type: 'warning',
-      customClass: ['message-box-purple']
+      customClass: ['message-box-unified', 'message-box-warning']
     }
   }
 
@@ -98,7 +98,7 @@ const inferConfirmSemantic = (message: string, title = ''): ConfirmSemantic => {
       title: '启用确认',
       confirmText: '启用',
       type: 'warning',
-      customClass: ['message-box-purple']
+      customClass: ['message-box-unified', 'message-box-success']
     }
   }
 
@@ -107,7 +107,7 @@ const inferConfirmSemantic = (message: string, title = ''): ConfirmSemantic => {
       title: '禁用确认',
       confirmText: '禁用',
       type: 'warning',
-      customClass: ['message-box-purple']
+      customClass: ['message-box-unified', 'message-box-warning']
     }
   }
 
@@ -116,7 +116,7 @@ const inferConfirmSemantic = (message: string, title = ''): ConfirmSemantic => {
       title: '发布确认',
       confirmText: '发布',
       type: 'warning',
-      customClass: ['message-box-purple']
+      customClass: ['message-box-unified', 'message-box-success']
     }
   }
 
@@ -125,7 +125,7 @@ const inferConfirmSemantic = (message: string, title = ''): ConfirmSemantic => {
       title: '导入确认',
       confirmText: '导入',
       type: 'warning',
-      customClass: ['message-box-purple']
+      customClass: ['message-box-unified', 'message-box-primary']
     }
   }
 
@@ -134,7 +134,7 @@ const inferConfirmSemantic = (message: string, title = ''): ConfirmSemantic => {
       title: '同步确认',
       confirmText: '同步',
       type: 'warning',
-      customClass: ['message-box-purple']
+      customClass: ['message-box-unified', 'message-box-primary']
     }
   }
 
@@ -143,7 +143,7 @@ const inferConfirmSemantic = (message: string, title = ''): ConfirmSemantic => {
       title: '退出确认',
       confirmText: '退出',
       type: 'warning',
-      customClass: ['message-box-purple']
+      customClass: ['message-box-unified', 'message-box-warning']
     }
   }
 
@@ -152,7 +152,7 @@ const inferConfirmSemantic = (message: string, title = ''): ConfirmSemantic => {
       title: '撤销确认',
       confirmText: '撤销',
       type: 'warning',
-      customClass: ['message-box-purple']
+      customClass: ['message-box-unified', 'message-box-warning']
     }
   }
 
@@ -161,7 +161,7 @@ const inferConfirmSemantic = (message: string, title = ''): ConfirmSemantic => {
       title: '断开确认',
       confirmText: '断开',
       type: 'warning',
-      customClass: ['message-box-purple']
+      customClass: ['message-box-unified', 'message-box-warning']
     }
   }
 
@@ -170,7 +170,7 @@ const inferConfirmSemantic = (message: string, title = ''): ConfirmSemantic => {
       title: '审核确认',
       confirmText: /通过/.test(source) ? '通过' : '确认',
       type: 'warning',
-      customClass: ['message-box-purple']
+      customClass: ['message-box-unified', 'message-box-success']
     }
   }
 
@@ -178,7 +178,7 @@ const inferConfirmSemantic = (message: string, title = ''): ConfirmSemantic => {
     title: '操作确认',
     confirmText: '确定',
     type: 'warning',
-    customClass: ['message-box-purple']
+    customClass: ['message-box-unified', 'message-box-primary']
   }
 }
 

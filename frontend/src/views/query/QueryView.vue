@@ -368,6 +368,7 @@
                   <div class="action-buttons">
                     <el-button
                       v-if="canEdit"
+                      class="table-action table-action--edit"
                       @click.stop="openEditModal(row)"
                       type="primary"
                       size="small"
@@ -378,6 +379,7 @@
                     </el-button>
                     <el-button
                       v-if="canDelete"
+                      class="table-action table-action--delete"
                       @click.stop="deleteItem(row)"
                       type="danger"
                       size="small"
@@ -388,6 +390,7 @@
                     </el-button>
                     <el-button
                       v-if="canReturnToStock"
+                      class="table-action table-action--warning"
                       @click.stop="confirmReturnToStock(row)"
                       type="warning"
                       size="small"
@@ -398,6 +401,14 @@
                     </el-button>
                   </div>
                 </div>
+
+                <span
+                  v-else-if="column.key === 'other_info.remarks'"
+                  class="remark-cell"
+                  @dblclick="handleRemarkDoubleClick($event, row)"
+                >
+                  {{ getCellValue(row, column) }}
+                </span>
 
                 <span v-else-if="column.key === 'basic_info.purchase_price' || column.key === 'basic_info.sale_price'" class="price-cell">
                   {{ getCellValue(row, column) }}
@@ -632,7 +643,11 @@ import unifiedApi from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import { formatImageUrl } from '@/utils/format'
 import { sortOptionsByOrder } from '@/utils/option-sort'
-import { getIdentifierColumnMinWidth } from '@/utils/table-layout'
+import {
+  getActionColumnMinWidth,
+  getIdentifierColumnMinWidth,
+  getTextColumnMinWidth
+} from '@/utils/table-layout'
 import { createTempFileTracker, type TempFileTracker } from '@/utils/temp-file-cleaner'
 import { canAccessRoutePath } from '@/constants/routePermissions'
 import draggable from 'vuedraggable'
@@ -2013,6 +2028,25 @@ const getCellValue = (item: QueryItem, column: any) => {
   }
 }
 
+const handleRemarkDoubleClick = (event: MouseEvent, item: QueryItem) => {
+  if (windowWidth.value <= 1024) return
+  event.stopPropagation()
+
+  const remarks = String(
+    item.基本信息?.remarks || (item as any).销售信息?.sale_remarks || ''
+  ).trim()
+  if (!remarks) {
+    ElMessage.info('暂无备注')
+    return
+  }
+
+  void ElMessageBox.alert(remarks, '备注详情', {
+    confirmButtonText: '关闭',
+    closeOnClickModal: true,
+    customClass: 'message-box-unified query-remark-message-box'
+  }).catch(() => undefined)
+}
+
 const confirmReturnToStock = (item: QueryItem) => {
   if (!canReturnToStock.value) {
     handleNoPermission('return-to-stock')
@@ -2354,7 +2388,7 @@ const deleteItem = async (item: QueryItem) => {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning',
-        customClass: 'message-box-purple'
+        customClass: 'message-box-unified'
       }
     )
     await performDelete(item)
@@ -2532,45 +2566,80 @@ const tableColumns = computed(() => {
 })
 
 const queryColumnWidths: Record<string, number> = {
-  'supplier_info.supplier_name': 92,
-  'store_info.store_name': 72,
-  'time_info.Inventorytime': 92,
-  'time_info.salestime': 92,
-  'basic_info.brand': 54,
-  'basic_info.model': 90,
-  'basic_info.color': 52,
-  'basic_info.memory': 70,
-  'basic_info.purchase_price': 74,
-  'basic_info.sale_price': 74,
-  'customer_info.customer_name': 78,
-  'customer_info.customer_phone': 112,
-  'basic_info.serial_number': 126,
-  'basic_info.imei': 128,
-  'other_info.remarks': 194,
-  'customer_info.apple_id': 110,
-  'operator_info.inventory_operator': 72,
-  'operator_info.sale_operator': 72,
-  'basic_info.is_new': 54,
-  'basic_info.status': 60,
-  'system_info.operations': 238
+  'supplier_info.supplier_name': 84,
+  'store_info.store_name': 64,
+  'time_info.Inventorytime': 88,
+  'time_info.salestime': 88,
+  'basic_info.brand': 48,
+  'basic_info.model': 74,
+  'basic_info.color': 48,
+  'basic_info.memory': 64,
+  'basic_info.purchase_price': 68,
+  'basic_info.sale_price': 68,
+  'customer_info.customer_name': 72,
+  'customer_info.customer_phone': 108,
+  'basic_info.serial_number': 120,
+  'basic_info.imei': 124,
+  'other_info.remarks': 88,
+  'customer_info.apple_id': 180,
+  'operator_info.inventory_operator': 64,
+  'operator_info.sale_operator': 64,
+  'basic_info.is_new': 50,
+  'basic_info.status': 50,
+  'system_info.operations': 260
 }
 
 const getQueryColumnMinWidth = (column: any) => {
+  if (column.key === 'system_info.operations') {
+    const actionCount = Number(canEdit.value) + Number(canDelete.value) + Number(canReturnToStock.value)
+    return getActionColumnMinWidth(actionCount, {
+      minWidth: queryColumnWidths[column.key]
+    })
+  }
+
+  const values = [column.label, ...queryData.value.map(item => getCellValue(item, column))]
+
   if (column.key === 'basic_info.serial_number') {
     return getIdentifierColumnMinWidth(
-      ['序列号', ...queryData.value.map(item => item.基本信息?.serial_number)],
-      { minWidth: queryColumnWidths[column.key], horizontalPadding: 32 }
+      values,
+      { minWidth: queryColumnWidths[column.key], horizontalPadding: 24 }
     )
   }
 
   if (column.key === 'basic_info.imei') {
     return getIdentifierColumnMinWidth(
-      ['IMEI', ...queryData.value.map(item => item.基本信息?.imei)],
-      { minWidth: queryColumnWidths[column.key], horizontalPadding: 32 }
+      values,
+      { minWidth: queryColumnWidths[column.key], horizontalPadding: 24 }
     )
   }
 
-  return queryColumnWidths[column.key] || 112
+  if (column.key === 'other_info.remarks') {
+    return getTextColumnMinWidth(values, {
+      minWidth: queryColumnWidths[column.key],
+      maxWidth: 144,
+      horizontalPadding: 20
+    })
+  }
+
+  if (column.key === 'basic_info.model') {
+    return getTextColumnMinWidth(values, {
+      minWidth: queryColumnWidths[column.key],
+      horizontalPadding: 16,
+      asciiCharacterWidth: 7
+    })
+  }
+
+  if (column.key === 'basic_info.is_new' || column.key === 'basic_info.status') {
+    return getTextColumnMinWidth(values, {
+      minWidth: queryColumnWidths[column.key],
+      horizontalPadding: 44
+    })
+  }
+
+  return getTextColumnMinWidth(values, {
+    minWidth: queryColumnWidths[column.key] || 72,
+    horizontalPadding: 20
+  })
 }
 
 const getQueryColumnClass = (column: any) => {
@@ -2579,14 +2648,18 @@ const getQueryColumnClass = (column: any) => {
   }
 
   if (column.key === 'basic_info.purchase_price' || column.key === 'basic_info.sale_price') {
-    return 'price-column'
+    return 'complete-text-column price-column'
+  }
+
+  if (column.key === 'other_info.remarks') {
+    return 'ellipsis-text-column remark-column'
   }
 
   if (column.key === 'system_info.operations') {
-    return 'actions-column'
+    return 'complete-text-column actions-column'
   }
 
-  return ''
+  return 'complete-text-column'
 }
 
 const getQueryRowKey = (row: QueryItem) => String(
@@ -2758,123 +2831,6 @@ onUnmounted(() => {
   margin: 0;
 }
 
-/* 按钮样式 */
-.btn {
-  padding: 10px 20px; /* 调整为与输入框一致的高度 */
-  border: none;
-  border-radius: 8px;
-  font-size: 14px; /* 与输入框字体一致 */
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  position: relative;
-  overflow: hidden;
-  text-decoration: none;
-}
-
-.btn::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.2);
-  transform: translate(-50%, -50%);
-  transition: width 0.6s, height 0.6s;
-}
-
-.btn:hover::before {
-  width: 300px;
-  height: 300px;
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-}
-
-.btn-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-success {
-  background: linear-gradient(135deg, #28a745, #20c997);
-  color: white;
-}
-
-.btn-outline-secondary {
-  /* 紫色渐变背景 - 与高级搜索按钮保持一致 */
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
-  border: 2px solid transparent;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.25);
-  transition: all 0.3s ease;
-}
-
-.btn-outline-secondary:hover:not(:disabled) {
-  /* 悬停时增强效果 */
-  background: linear-gradient(135deg, #7c8ef0, #8a5bb8);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-  transform: translateY(-1px);
-}
-
-.btn-outline-secondary:active:not(:disabled) {
-  /* 点击时的按压效果 */
-  background: linear-gradient(135deg, #5a6fd8, #6a4190);
-  transform: translateY(0);
-  box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
-}
-
-.btn-outline-primary {
-  background: white;
-  color: #667eea;
-  border: 2px solid #667eea;
-}
-
-.btn-outline-primary:hover:not(:disabled) {
-  background: #667eea;
-  color: white;
-}
-
-.btn-warning {
-  background: linear-gradient(135deg, #ffc107, #fd7e14);
-  color: #212529;
-}
-
-.btn-danger {
-  background: linear-gradient(135deg, #dc3545, #e74c3c);
-  color: white;
-}
-
-.btn-sm {
-  padding: 8px 16px;
-  font-size: 13px;
-  font-weight: 500;
-  min-width: 70px;
-}
-
-/* 操作按钮容器样式 */
-.action-buttons {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.action-buttons .btn {
-  white-space: nowrap;
-}
-
 .stat-card {
   background: white;
   box-shadow: 0 2px 12px rgba(0,0,0,0.08);
@@ -2933,34 +2889,6 @@ onUnmounted(() => {
   font-size: 14px;
   color: #6c757d;
   font-weight: 500;
-}
-
-/* 特殊列样式 */
-.devices-table td:nth-child(1), /* 供应商列 */
-.devices-table td:nth-child(2), /* 店铺列 */
-.devices-table td:nth-child(6) { /* 品牌列 */
-  font-weight: 600;
-  color: #2c3e50;
-  background: rgba(102, 126, 234, 0.03);
-}
-
-.devices-table td:nth-child(7), /* 型号列 */
-.devices-table td:nth-child(8), /* 颜色列 */
-.devices-table td:nth-child(9) { /* 内存列 */
-  font-weight: 600;
-  color: #495057;
-}
-
-.devices-table td:nth-child(10), /* IMEI列 */
-.devices-table td:nth-child(11) { /* 序列号列 */
-  font-weight: 500;
-  color: #6c757d;
-  font-style: italic;
-}
-
-.devices-table td:nth-child(12), /* 入库价格列 */
-.devices-table td:nth-child(13) { /* 销售价格列 */
-  font-weight: 600;
 }
 
 /* 状态列可点击样式 */
@@ -3103,20 +3031,6 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   gap: 12px;
-}
-
-.action-buttons {
-  display: flex;
-  gap: 4px;
-  flex-wrap: nowrap;
-  justify-content: center;
-  white-space: nowrap;
-}
-
-.action-buttons :deep(.el-button) {
-  margin-left: 0 !important;
-  padding: 6px 10px !important;
-  min-width: 66px;
 }
 
 /* 分页样式 */
@@ -3354,53 +3268,9 @@ textarea.form-control {
   margin-top: 20px;
 }
 
-.form-actions .btn {
-  padding: 10px 24px;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 120px;
-  justify-content: center;
-}
-
 .form-actions .btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
-}
-
-.form-actions .btn-secondary,
-.form-actions .btn-outline {
-  background: #f1f5f9;
-  color: #475569;
-  border: 1px solid #e2e8f0;
-}
-
-.form-actions .btn-secondary:hover:not(:disabled),
-.form-actions .btn-outline:hover:not(:disabled) {
-  background: #e2e8f0;
-  color: #334155;
-}
-
-.form-actions .btn-warning {
-  background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
-  color: white;
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
-}
-
-.form-actions .btn-warning:hover:not(:disabled) {
-  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
-  transform: translateY(-1px);
-}
-
-.form-actions .btn i {
-  font-size: 14px;
 }
 
 .form-actions .btn .fa-spin {
@@ -3643,69 +3513,6 @@ textarea.form-control {
     display: none;
   }
 
-  /* 手机端关键列自适应宽度（7列时：品牌、型号、颜色、内存、客户姓名、手机号、状态） */
-  .devices-table th:nth-child(1), /* 品牌列 */
-  .devices-table td:nth-child(1) {
-    width: 14%;
-    min-width: 50px;
-  }
-
-  .devices-table th:nth-child(2), /* 型号列 */
-  .devices-table td:nth-child(2) {
-    width: 18%;
-    min-width: 60px;
-  }
-
-  .devices-table th:nth-child(3), /* 颜色列 */
-  .devices-table td:nth-child(3) {
-    width: 12%;
-    min-width: 45px;
-  }
-
-  .devices-table th:nth-child(4), /* 内存列 */
-  .devices-table td:nth-child(4) {
-    width: 11%;
-    min-width: 50px;
-  }
-
-  .devices-table th:nth-child(5), /* 客户姓名列 */
-  .devices-table td:nth-child(5) {
-    width: 16%;
-    min-width: 55px;
-  }
-
-  .devices-table th:nth-child(6), /* 手机号列 */
-  .devices-table td:nth-child(6) {
-    width: 17%;
-    min-width: 60px;
-    font-size: 12px;
-  }
-
-  .devices-table th:nth-child(7), /* 状态列 */
-  .devices-table td:nth-child(7) {
-    width: 12%;
-    min-width: 50px;
-  }
-
-  /* 手机端保持真实 table-cell 布局，避免表头与内容列宽错位 */
-  .devices-table td:nth-child(2), /* 型号 */
-  .devices-table td:nth-child(5) { /* 客户姓名 */
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  /* 操作按钮优化 */
-  .action-buttons {
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .action-buttons .btn {
-    width: 100%;
-    font-size: 12px;
-    padding: 6px 10px;
-  }
-
   .form-grid {
     grid-template-columns: 1fr;
     gap: 12px;
@@ -3769,47 +3576,6 @@ textarea.form-control {
   .stat-label {
     font-size: 11px;
     line-height: 1.2;
-  }
-
-  .action-buttons .btn {
-    padding: 8px 12px;
-    font-size: 11px;
-  }
-
-  .devices-table th:nth-child(1),
-  .devices-table td:nth-child(1) {
-    width: 35%;
-    min-width: 80px;
-    font-size: 13px;
-    font-weight: 600;
-  }
-
-  .devices-table th:nth-child(2),
-  .devices-table td:nth-child(2) {
-    width: 20%;
-    min-width: 55px;
-    font-size: 13px;
-  }
-
-  .devices-table th:nth-child(3),
-  .devices-table td:nth-child(3) {
-    width: 18%;
-    min-width: 55px;
-    font-size: 13px;
-  }
-
-  .devices-table th:nth-child(4),
-  .devices-table td:nth-child(4) {
-    width: 27%;
-    min-width: 75px;
-    font-size: 13px;
-    font-weight: 500;
-  }
-
-  .devices-table th,
-  .devices-table td {
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 
   /* 分页 */
@@ -4233,5 +3999,29 @@ textarea.form-control {
 .el-image-viewer__wrapper .el-image-viewer__img[style] {
   max-width: 80vw !important;
   max-height: 80vh !important;
+}
+
+.remark-cell {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.query-remark-message-box {
+  width: min(520px, calc(100vw - 32px)) !important;
+}
+
+.query-remark-message-box .el-message-box__message {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.query-remark-message-box .el-message-box__message p {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 </style>

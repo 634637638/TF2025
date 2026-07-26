@@ -65,29 +65,44 @@ const DEFAULT_ACTION_META: ActionMeta = {
 
 const ACTION_META_MAP: Record<string, ActionMeta> = {
   create: {
-    className: 'success',
+    className: 'action-create',
     icon: 'fas fa-plus',
     name: '创建'
   },
   edit: {
-    className: 'warning',
+    className: 'action-edit',
     icon: 'fas fa-edit',
     name: '编辑'
   },
   delete: {
-    className: 'danger',
+    className: 'action-delete',
     icon: 'fas fa-trash',
     name: '删除'
   },
   assign: {
-    className: 'primary',
+    className: 'action-assign',
     icon: 'fas fa-user-tag',
     name: '分配'
   },
   permission: {
-    className: 'info',
+    className: 'action-permission',
     icon: 'fas fa-lock',
     name: '权限'
+  },
+  enable: {
+    className: 'action-enable',
+    icon: 'fas fa-toggle-on',
+    name: '启用'
+  },
+  disable: {
+    className: 'action-disable',
+    icon: 'fas fa-toggle-off',
+    name: '禁用'
+  },
+  sync: {
+    className: 'action-sync',
+    icon: 'fas fa-sync-alt',
+    name: '同步'
   }
 }
 

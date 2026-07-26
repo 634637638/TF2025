@@ -67,10 +67,10 @@
     </div>
 
     <!-- TAB切换 -->
-    <el-tabs v-model="activeTab" class="preorders-tabs" @tab-change="handleTabChange">
+    <el-tabs v-model="activeTab" class="preorders-tabs tf-page-tabs" @tab-change="handleTabChange">
       <!-- TAB 1: 新增预定 -->
-      <el-tab-pane label="新增预定" name="new">
-        <div class="tab-content">
+      <el-tab-pane label="新增预定" name="new" class="tf-tab-panel">
+        <div class="tab-content tf-tab-content table-section admin-panel admin-table-panel">
           <div class="actions-bar">
             <el-button v-if="canCreate" type="primary" @click="openCreateModal">
               <i class="fas fa-plus"></i>
@@ -213,8 +213,8 @@
       </el-tab-pane>
 
       <!-- TAB 2: 已预定（包含已取消） -->
-      <el-tab-pane label="已预定" name="matched">
-        <div class="tab-content">
+      <el-tab-pane label="已预定" name="matched" class="tf-tab-panel">
+        <div class="tab-content tf-tab-content table-section admin-panel admin-table-panel">
           <div class="filter-bar">
             <el-radio-group v-model="matchedStatus" @change="loadMatchedPreorders">
               <el-radio-button value="all">全部</el-radio-button>
@@ -481,8 +481,8 @@
       </el-tab-pane>
 
       <!-- TAB 3: 已交付 -->
-      <el-tab-pane label="已交付" name="delivered">
-        <div class="tab-content">
+      <el-tab-pane label="已交付" name="delivered" class="tf-tab-panel">
+        <div class="tab-content tf-tab-content table-section admin-panel admin-table-panel">
           <div class="table-responsive">
           <el-table
             ref="deliveredTableRef"
@@ -1272,42 +1272,9 @@ onMounted(async () => {
   }
 
   .preorders-tabs {
-    :deep(.el-tabs__header) {
-      background: #fff;
-      border-radius: 8px 8px 0 0;
-      padding: 0 20px;
-      margin-bottom: 0;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    }
-
-    :deep(.el-tabs__nav-wrap::after) {
-      display: none;
-    }
-
-    :deep(.el-tabs__item) {
-      font-size: 15px;
-      font-weight: 500;
-      color: #606266;
-      padding: 0 20px;
-      height: 48px;
-      line-height: 48px;
-
-      &.is-active {
-        color: #409eff;
-        font-weight: 600;
-      }
-    }
-
-    .tab-content {
-      background: var(--admin-table-panel-bg);
-      border: 1px solid var(--admin-table-panel-border);
-      border-radius: 0 0 var(--admin-panel-radius) var(--admin-panel-radius);
-      padding: var(--admin-table-panel-padding-y) var(--admin-table-panel-padding-x);
-      box-shadow: var(--admin-table-panel-shadow);
-
-      .actions-bar,
-      .filter-bar {
-        margin-bottom: 16px;
+    .actions-bar,
+    .filter-bar {
+        margin-bottom: 0;
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -1315,38 +1282,25 @@ onMounted(async () => {
         border-bottom: 1px solid #ebeef5;
       }
 
-      .pagination-container {
+    .pagination-container {
         display: flex;
         justify-content: flex-end;
         padding-top: 16px;
         border-top: 1px solid #ebeef5;
-      }
+    }
 
       // 操作按钮容器样式
-      .action-buttons {
+    .action-buttons {
         display: flex;
         justify-content: center;
         align-items: center;
         gap: 8px;
         padding: 0 4px;
 
-        .el-button {
-          padding: 6px 12px;
-          min-width: 70px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          gap: 4px;
-          white-space: nowrap;
-
-          i {
-            font-size: 14px;
-          }
-        }
-      }
+    }
 
       // 修复表格固定列按钮被遮挡的问题
-      :deep(.el-table) {
+    :deep(.el-table) {
         .el-table__fixed,
         .el-table__fixed-right {
           z-index: 2 !important;
@@ -1371,15 +1325,14 @@ onMounted(async () => {
           background: #ebeef5;
         }
 
-      }
+    }
 
       // 修复操作列按钮显示
-      :deep(.el-table__fixed-right) {
+    :deep(.el-table__fixed-right) {
         .el-button {
           position: relative;
           z-index: 10;
         }
-      }
     }
   }
 
@@ -1443,20 +1396,8 @@ onMounted(async () => {
     }
 
     .preorders-tabs {
-      :deep(.el-tabs__header) {
-        padding: 0 12px;
-      }
-
-      :deep(.el-tabs__item) {
-        font-size: 13px;
-        padding: 0 12px;
-        height: 42px;
-        line-height: 42px;
-      }
-
-      .tab-content {
-        .actions-bar,
-        .filter-bar {
+      .actions-bar,
+      .filter-bar {
           flex-direction: column;
           align-items: stretch;
           gap: 8px;
@@ -1464,7 +1405,6 @@ onMounted(async () => {
           .el-button {
             width: 100%;
           }
-        }
       }
     }
 
@@ -1511,19 +1451,6 @@ onMounted(async () => {
       }
     }
 
-    .preorders-tabs {
-      :deep(.el-tabs__header) {
-        padding: 0 8px;
-      }
-
-      :deep(.el-tabs__item) {
-        font-size: 12px;
-        padding: 0 8px;
-        height: 38px;
-        line-height: 38px;
-      }
-
-    }
   }
 }
 </style>

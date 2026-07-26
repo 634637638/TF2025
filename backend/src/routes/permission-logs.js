@@ -46,14 +46,33 @@ async function logRoleOperation(req, action, roleId, roleName, extraDetails = {}
  */
 async function logUserRoleOperation(req, userId, username, roleIds, extraDetails = {}) {
   const db = getDatabase();
+  const normalizedRoleIds = Array.isArray(roleIds)
+    ? roleIds.map(Number).filter(Number.isInteger)
+    : [];
 
-  // 获取角色名称
-  const [roles] = await db.execute(
-    'SELECT id, name FROM roles WHERE id IN (?)',
-    [roleIds]
-  );
+  let roles = [];
+  if (normalizedRoleIds.length > 0) {
+    const placeholders = normalizedRoleIds.map(() => '?').join(',');
+    [roles] = await db.execute(
+      `SELECT id, name FROM roles WHERE id IN (${placeholders})`,
+      normalizedRoleIds
+    );
+  }
 
-  const roleNames = roles.map(r => r.name).join(', ');
+  const previousRoleIds = Array.isArray(extraDetails.previous_role_ids)
+    ? extraDetails.previous_role_ids.map(Number).filter(Number.isInteger)
+    : [];
+  const previousRoleNames = Array.isArray(extraDetails.previous_role_names)
+    ? extraDetails.previous_role_names
+    : [];
+  const addedRoles = roles.filter((role) => !previousRoleIds.includes(Number(role.id)));
+  const removedRoles = previousRoleIds
+    .map((roleId, index) => ({ id: roleId, name: previousRoleNames[index] || String(roleId) }))
+    .filter((role) => !normalizedRoleIds.includes(role.id));
+
+  if (addedRoles.length === 0 && removedRoles.length === 0) {
+    return;
+  }
 
   await logPermissionOperation(
     req,
@@ -61,8 +80,15 @@ async function logUserRoleOperation(req, userId, username, roleIds, extraDetails
     'user',
     userId,
     username,
-    `为用户 ${username} 分配角色: ${roleNames}`,
-    { ...extraDetails, role_ids: roleIds, role_names: roleNames }
+    `调整用户 ${username} 的角色：新增 ${addedRoles.length} 个，移除 ${removedRoles.length} 个`,
+    {
+      ...extraDetails,
+      audit_type: 'user_role_assignment',
+      role_ids: normalizedRoleIds,
+      role_names: roles.map(role => role.name),
+      added_roles: addedRoles,
+      removed_roles: removedRoles
+    }
   );
 }
 
@@ -70,14 +96,36 @@ async function logUserRoleOperation(req, userId, username, roleIds, extraDetails
  * 记录权限修改操作
  */
 async function logPermissionModification(req, roleId, roleName, permissions, extraDetails = {}) {
+  const permissionDetails = Array.isArray(permissions)
+    ? permissions.map(permission => ({
+        module_key: permission.module_key || permission.moduleKey,
+        permission_type: permission.permission_type || permission.permissionType
+      }))
+    : [];
+
+  const addedCount = Number(extraDetails.added_count) || 0;
+  const removedCount = Number(extraDetails.removed_count) || 0;
+  const affectedModulesCount = Number(extraDetails.affected_modules_count) || 0;
+  const isMenuPermission = extraDetails.audit_type === 'role_menu_permissions';
+  const actionSummary = isMenuPermission
+    ? `显示 ${addedCount} 项，隐藏 ${removedCount} 项`
+    : `开启 ${addedCount} 项，关闭 ${removedCount} 项`;
+  const description = addedCount > 0 || removedCount > 0
+    ? `修改角色 ${roleName} 的${isMenuPermission ? '菜单显示' : '操作'}权限：${actionSummary}，涉及 ${affectedModulesCount} 个模块`
+    : `检查角色 ${roleName} 的${isMenuPermission ? '菜单显示' : '操作'}权限，配置未发生变化`;
+
   await logPermissionOperation(
     req,
     'permission',
     'role',
     roleId,
     roleName,
-    `修改角色 ${roleName} 的权限配置`,
-    { ...extraDetails, permissions_count: permissions?.length || 0 }
+    description,
+    {
+      ...extraDetails,
+      permissions_count: permissionDetails.length,
+      permissions: permissionDetails
+    }
   );
 }
 

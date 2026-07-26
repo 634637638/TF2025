@@ -256,32 +256,6 @@ const addChild = () => {
 .menu-content:hover .menu-actions {
   opacity: 1;
 }
-
-.btn-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  white-space: nowrap;
-  min-width: 65px;
-  justify-content: center;
-}
-
-.btn-action i {
-  font-size: 12px;
-}
-
-.btn-action:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
 .btn-add {
   background: #28a745;
   color: white;
@@ -291,27 +265,6 @@ const addChild = () => {
   background: #218838;
   box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
 }
-
-.btn-edit {
-  background: #007bff;
-  color: white;
-}
-
-.btn-edit:hover {
-  background: #0056b3;
-  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
-}
-
-.btn-delete {
-  background: #dc3545;
-  color: white;
-}
-
-.btn-delete:hover {
-  background: #c82333;
-  box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
-}
-
 /* 保留原有的 btn-icon 样式以防其他地方使用 */
 .btn-icon {
   width: 32px;
@@ -329,26 +282,6 @@ const addChild = () => {
 
 .btn-icon:hover {
   transform: scale(1.1);
-}
-
-.btn-icon:not(.btn-danger) {
-  background: #007bff;
-  color: white;
-}
-
-.btn-icon:not(.btn-danger):hover {
-  background: #0056b3;
-  box-shadow: 0 2px 4px rgba(0,123,255,0.3);
-}
-
-.btn-icon.btn-danger {
-  background: #dc3545;
-  color: white;
-}
-
-.btn-icon.btn-danger:hover {
-  background: #c82333;
-  box-shadow: 0 2px 4px rgba(220,53,69,0.3);
 }
 
 .menu-children {

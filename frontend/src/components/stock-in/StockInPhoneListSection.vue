@@ -758,13 +758,6 @@ defineProps<Props>()
     gap: 6px;
   }
 
-  .card-actions :deep(.el-button) {
-    width: 100%;
-    min-width: 0;
-    padding-left: 8px;
-    padding-right: 8px;
-  }
-
   .card-content {
     padding: 12px 10px 10px;
   }

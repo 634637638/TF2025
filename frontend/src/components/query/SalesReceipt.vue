@@ -739,10 +739,6 @@ const handleSearchClear = () => {
     flex-direction: column;
   }
 
-  .action-buttons :deep(.el-button) {
-    width: 100%;
-    min-width: auto;
-  }
 }
 
 @media (max-width: 480px) {

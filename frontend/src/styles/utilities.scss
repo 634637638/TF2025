@@ -204,30 +204,6 @@
   clear: both;
 }
 
-// ==================== 按钮样式工具类 ====================
-// 小按钮样式
-.btn-sm {
-  padding: 4px 8px;
-  min-width: 60px;
-}
-
-.btn-md {
-  padding: 4px 8px;
-  min-width: 70px;
-}
-
-.btn-lg {
-  padding: 4px 12px;
-  min-width: 80px;
-}
-
-// 危险按钮样式
-.btn-danger {
-  background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%) !important;
-  border-color: #dc2626 !important;
-  color: #fff !important;
-}
-
 // ==================== 颜色工具类 ====================
 .bg-white { background-color: var(--color-bg-white); }
 .bg-page { background-color: var(--color-bg-page); }

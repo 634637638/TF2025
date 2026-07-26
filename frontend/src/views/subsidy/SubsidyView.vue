@@ -790,22 +790,18 @@ const currentEditItem = shallowRef<any>(null);
 // 批量操作相关
 const batchUpdating = ref(false);
 
-// 计算属性：全选状态
-const selectAll = computed({
-  get: () => selectedItems.value.length > 0 && selectedItems.value.length === displayList.value.length,
-  set: (value: boolean) => {
-    if (value) {
-      selectedItems.value = displayList.value.map(item => item.id);
-    } else {
-      selectedItems.value = [];
-    }
-  }
+const currentDisplayIds = computed(() => displayList.value.map(item => item.id));
+
+// 表头选择状态只反映当前展示记录，已选择的其他页面记录继续保留。
+const selectAll = computed(() => {
+  return currentDisplayIds.value.length > 0
+    && currentDisplayIds.value.every(id => selectedItemIdSet.value.has(id));
 });
 
 // 计算属性：半选状态
 const isIndeterminate = computed(() => {
-  const len = selectedItems.value.length;
-  return len > 0 && len < displayList.value.length;
+  const selectedCount = currentDisplayIds.value.filter(id => selectedItemIdSet.value.has(id)).length;
+  return selectedCount > 0 && selectedCount < currentDisplayIds.value.length;
 });
 
 const normalizeHandlerInfo = (handlerInfo?: Record<string, any> | null) => {
@@ -1161,7 +1157,14 @@ const handleSelectItem = (id: number, checked: boolean) => {
 };
 
 const handleSelectAll = (value: boolean) => {
-  selectAll.value = value;
+  const currentIds = new Set(currentDisplayIds.value);
+
+  if (value) {
+    selectedItems.value = [...new Set([...selectedItems.value, ...currentDisplayIds.value])];
+    return;
+  }
+
+  selectedItems.value = selectedItems.value.filter(id => !currentIds.has(id));
 };
 
 const clearSelection = () => {
@@ -2182,20 +2185,6 @@ onUnmounted(() => {
           background: rgba(108, 117, 125, 0.05);
         }
 
-        // 操作按钮容器布局
-        .action-buttons {
-          display: flex;
-          flex-direction: row;
-          gap: 8px;
-          align-items: center;
-          justify-content: center;
-
-          .action-btn {
-            flex: 1;
-            min-width: 70px;
-          }
-        }
-
         // 时间徽章样式
         .time-badge {
           display: inline-flex;
@@ -2236,17 +2225,6 @@ onUnmounted(() => {
           }
         }
 
-        // 操作按钮组 - 统一使用 el-button 组件
-        .action-buttons {
-          display: flex;
-          gap: 8px;
-          justify-content: center;
-
-          .action-btn {
-            flex: 1;
-            min-width: 70px;
-          }
-        }
       }
 
       .loading-state,
@@ -3705,10 +3683,6 @@ onUnmounted(() => {
   .device-selected-actions {
     flex-direction: column !important;
 
-    .btn {
-      width: 100%;
-      justify-content: center;
-    }
   }
 }
 
@@ -4442,10 +4416,6 @@ onUnmounted(() => {
     .photo-preview-footer {
       flex-wrap: wrap;
 
-      .el-button {
-        flex: 1;
-        min-width: 100px;
-      }
     }
   }
 

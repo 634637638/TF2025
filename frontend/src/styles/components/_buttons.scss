@@ -1,0 +1,454 @@
+:root {
+  --tf-button-height: 36px;
+  --tf-button-height-small: 28px;
+  --tf-button-height-large: 44px;
+  --tf-button-padding-x: 16px;
+  --tf-button-padding-x-small: 10px;
+  --tf-button-radius: 6px;
+  --tf-button-font-size: 14px;
+  --tf-button-font-size-small: 13px;
+  --tf-button-font-weight: 600;
+  --tf-toolbar-button-height: 34px;
+  --tf-toolbar-button-padding-x: 12px;
+  --tf-toolbar-button-font-size: 13px;
+  --tf-search-control-height: var(--tf-toolbar-button-height);
+  --tf-topbar-control-height: 40px;
+
+  --tf-button-primary-bg: #2563eb;
+  --tf-button-primary-border: #2563eb;
+  --tf-button-primary-color: #ffffff;
+  --tf-button-primary-hover-bg: #1d4ed8;
+  --tf-button-primary-hover-border: #1d4ed8;
+
+  --tf-button-success-bg: #16a34a;
+  --tf-button-success-border: #16a34a;
+  --tf-button-success-color: #ffffff;
+  --tf-button-success-hover-bg: #15803d;
+  --tf-button-success-hover-border: #15803d;
+
+  --tf-button-warning-bg: #d97706;
+  --tf-button-warning-border: #d97706;
+  --tf-button-warning-color: #ffffff;
+  --tf-button-warning-hover-bg: #b45309;
+  --tf-button-warning-hover-border: #b45309;
+
+  --tf-button-danger-bg: #dc2626;
+  --tf-button-danger-border: #dc2626;
+  --tf-button-danger-color: #ffffff;
+  --tf-button-danger-hover-bg: #b91c1c;
+  --tf-button-danger-hover-border: #b91c1c;
+
+  --tf-button-info-bg: #0f766e;
+  --tf-button-info-border: #0f766e;
+  --tf-button-info-color: #ffffff;
+  --tf-button-info-hover-bg: #115e59;
+  --tf-button-info-hover-border: #115e59;
+
+  --tf-button-neutral-bg: #ffffff;
+  --tf-button-neutral-border: #cbd5e1;
+  --tf-button-neutral-color: #475569;
+  --tf-button-neutral-hover-bg: #f1f5f9;
+  --tf-button-neutral-hover-border: #94a3b8;
+  --tf-button-neutral-hover-color: #334155;
+
+  --tf-button-manage-bg: #4f46e5;
+  --tf-button-manage-border: #4f46e5;
+  --tf-button-manage-hover-bg: #4338ca;
+  --tf-button-manage-hover-border: #4338ca;
+  --tf-button-finance-bg: #0f766e;
+  --tf-button-finance-border: #0f766e;
+  --tf-button-finance-hover-bg: #115e59;
+  --tf-button-finance-hover-border: #115e59;
+  --tf-button-transfer-bg: #7c3aed;
+  --tf-button-transfer-border: #7c3aed;
+  --tf-button-transfer-hover-bg: #6d28d9;
+  --tf-button-transfer-hover-border: #6d28d9;
+  --tf-button-export-bg: #0369a1;
+  --tf-button-export-border: #0369a1;
+  --tf-button-export-hover-bg: #075985;
+  --tf-button-export-hover-border: #075985;
+
+  --tf-button-disabled-bg: #f3f4f6;
+  --tf-button-disabled-border: #e5e7eb;
+  --tf-button-disabled-color: #9ca3af;
+}
+
+@mixin tf-filled-button($bg, $border, $color, $hover-bg, $hover-border) {
+  --el-button-bg-color: #{$bg} !important;
+  --el-button-border-color: #{$border} !important;
+  --el-button-text-color: #{$color} !important;
+  --el-button-hover-bg-color: #{$hover-bg} !important;
+  --el-button-hover-border-color: #{$hover-border} !important;
+  --el-button-hover-text-color: #{$color} !important;
+  background: #{$bg} !important;
+  border-color: #{$border} !important;
+  color: #{$color} !important;
+
+  &:hover,
+  &:focus {
+    background: #{$hover-bg} !important;
+    border-color: #{$hover-border} !important;
+    color: #{$color} !important;
+  }
+}
+
+.el-button:not(.is-circle):not(.is-text):not(.is-link),
+button.btn,
+button[class*='btn-']:not(.btn-close) {
+  width: auto;
+  min-width: 0;
+  height: var(--tf-button-height) !important;
+  min-height: var(--tf-button-height) !important;
+  padding-inline: var(--tf-button-padding-x) !important;
+  border-radius: var(--tf-button-radius) !important;
+  box-shadow: none !important;
+  font-size: var(--tf-button-font-size) !important;
+  font-weight: var(--tf-button-font-weight) !important;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.el-button.el-button--small:not(.is-circle) {
+  height: var(--tf-button-height-small) !important;
+  min-height: var(--tf-button-height-small) !important;
+  padding-inline: var(--tf-button-padding-x-small) !important;
+  font-size: var(--tf-button-font-size-small) !important;
+}
+
+.btn.btn-sm {
+  height: var(--tf-button-height-small) !important;
+  min-height: var(--tf-button-height-small) !important;
+  padding-inline: var(--tf-button-padding-x-small) !important;
+  font-size: var(--tf-button-font-size-small) !important;
+}
+
+.el-button.el-button--large:not(.is-circle) {
+  height: var(--tf-button-height-large) !important;
+  min-height: var(--tf-button-height-large) !important;
+}
+
+.btn.btn-lg {
+  height: var(--tf-button-height-large) !important;
+  min-height: var(--tf-button-height-large) !important;
+}
+
+/* Main application topbar controls share one stable desktop height. */
+.btn.tf-button--topbar {
+  height: var(--tf-topbar-control-height) !important;
+  min-height: var(--tf-topbar-control-height) !important;
+}
+
+.el-button > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+button.btn i,
+button[class*='btn-']:not(.btn-close) i {
+  font-size: 14px;
+}
+
+.el-button--primary,
+.btn-primary,
+.btn.btn-primary,
+.btn.btn-outline-primary,
+.el-button.tf-button--primary,
+.el-button.tf-button--create,
+.el-button.tf-button--save {
+  @include tf-filled-button(
+    var(--tf-button-primary-bg), var(--tf-button-primary-border), var(--tf-button-primary-color),
+    var(--tf-button-primary-hover-bg), var(--tf-button-primary-hover-border)
+  );
+}
+
+.el-button--success,
+.btn-success,
+.btn.btn-success,
+.btn.btn-outline-success,
+.el-button.tf-button--success,
+.el-button.tf-button--approve,
+.el-button.tf-button--complete {
+  @include tf-filled-button(
+    var(--tf-button-success-bg), var(--tf-button-success-border), var(--tf-button-success-color),
+    var(--tf-button-success-hover-bg), var(--tf-button-success-hover-border)
+  );
+}
+
+.el-button--warning,
+.btn-warning,
+.btn.btn-warning,
+.btn.btn-outline-warning,
+.el-button.tf-button--warning,
+.el-button.tf-button--disable,
+.el-button.tf-button--reject {
+  @include tf-filled-button(
+    var(--tf-button-warning-bg), var(--tf-button-warning-border), var(--tf-button-warning-color),
+    var(--tf-button-warning-hover-bg), var(--tf-button-warning-hover-border)
+  );
+}
+
+.el-button--danger,
+.btn-danger,
+.btn.btn-danger,
+.btn.btn-outline-danger,
+.btn.tf-button--danger,
+.el-button.tf-button--danger,
+.el-button.tf-button--delete {
+  @include tf-filled-button(
+    var(--tf-button-danger-bg), var(--tf-button-danger-border), var(--tf-button-danger-color),
+    var(--tf-button-danger-hover-bg), var(--tf-button-danger-hover-border)
+  );
+}
+
+.el-button--info,
+.btn-info,
+.btn.btn-info,
+.btn.btn-outline-info,
+.el-button.tf-button--info,
+.el-button.tf-button--view {
+  @include tf-filled-button(
+    var(--tf-button-info-bg), var(--tf-button-info-border), var(--tf-button-info-color),
+    var(--tf-button-info-hover-bg), var(--tf-button-info-hover-border)
+  );
+}
+
+.el-button.tf-button--manage,
+.btn.tf-button--manage,
+.el-button.tf-button--permission,
+.el-button.tf-button--config {
+  @include tf-filled-button(
+    var(--tf-button-manage-bg), var(--tf-button-manage-border), #ffffff,
+    var(--tf-button-manage-hover-bg), var(--tf-button-manage-hover-border)
+  );
+}
+
+.el-button.tf-button--finance,
+.el-button.tf-button--payment {
+  @include tf-filled-button(
+    var(--tf-button-finance-bg), var(--tf-button-finance-border), #ffffff,
+    var(--tf-button-finance-hover-bg), var(--tf-button-finance-hover-border)
+  );
+}
+
+.el-button.tf-button--transfer,
+.el-button.tf-button--stock {
+  @include tf-filled-button(
+    var(--tf-button-transfer-bg), var(--tf-button-transfer-border), #ffffff,
+    var(--tf-button-transfer-hover-bg), var(--tf-button-transfer-hover-border)
+  );
+}
+
+.el-button.tf-button--export,
+.el-button.tf-button--download,
+.el-button.tf-button--sync,
+.el-button.tf-button--refresh {
+  @include tf-filled-button(
+    var(--tf-button-export-bg), var(--tf-button-export-border), #ffffff,
+    var(--tf-button-export-hover-bg), var(--tf-button-export-hover-border)
+  );
+}
+
+.el-button--default,
+.btn-default,
+.btn-secondary,
+.btn.btn-default,
+.btn.btn-secondary,
+.btn.btn-light,
+.btn.btn-outline-secondary,
+.el-button.tf-button--neutral,
+.el-button.tf-button--cancel,
+.el-button.tf-button--close,
+.el-button:not([class*='el-button--']):not(.is-text):not(.is-link):not([link]) {
+  --el-button-bg-color: var(--tf-button-neutral-bg) !important;
+  --el-button-border-color: var(--tf-button-neutral-border) !important;
+  --el-button-text-color: var(--tf-button-neutral-color) !important;
+  background: var(--tf-button-neutral-bg) !important;
+  border-color: var(--tf-button-neutral-border) !important;
+  color: var(--tf-button-neutral-color) !important;
+
+  &:hover,
+  &:focus {
+    background: var(--tf-button-neutral-hover-bg) !important;
+    border-color: var(--tf-button-neutral-hover-border) !important;
+    color: var(--tf-button-neutral-hover-color) !important;
+  }
+}
+
+.btn.btn-dark {
+  @include tf-filled-button(#334155, #334155, #ffffff, #1e293b, #1e293b);
+}
+
+.btn.active,
+.btn.is-active {
+  @include tf-filled-button(
+    var(--tf-button-primary-bg), var(--tf-button-primary-border), var(--tf-button-primary-color),
+    var(--tf-button-primary-hover-bg), var(--tf-button-primary-hover-border)
+  );
+}
+
+button.btn-icon {
+  width: var(--tf-button-height-small) !important;
+  min-width: var(--tf-button-height-small) !important;
+  max-width: var(--tf-button-height-small) !important;
+  height: var(--tf-button-height-small) !important;
+  min-height: var(--tf-button-height-small) !important;
+  padding: 0 !important;
+  background: var(--tf-button-neutral-bg) !important;
+  border-color: var(--tf-button-neutral-border) !important;
+  color: var(--tf-button-neutral-color) !important;
+}
+
+button.btn-icon.btn-danger {
+  background: var(--tf-button-danger-bg) !important;
+  border-color: var(--tf-button-danger-border) !important;
+  color: var(--tf-button-danger-color) !important;
+}
+
+.el-button.is-text,
+.el-button.is-link,
+.el-button[link] {
+  min-width: 0;
+  height: auto;
+  min-height: 0;
+  padding: 4px 6px;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--tf-button-primary-bg) !important;
+}
+
+.el-button.is-disabled,
+.el-button.is-disabled:hover,
+.el-button.is-disabled:focus {
+  --el-button-disabled-bg-color: var(--tf-button-disabled-bg) !important;
+  --el-button-disabled-border-color: var(--tf-button-disabled-border) !important;
+  --el-button-disabled-text-color: var(--tf-button-disabled-color) !important;
+  background: var(--tf-button-disabled-bg) !important;
+  border-color: var(--tf-button-disabled-border) !important;
+  color: var(--tf-button-disabled-color) !important;
+  box-shadow: none !important;
+}
+
+.tf-button-surface--dark .el-button:not(.el-button--primary) {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  color: #f8fafc !important;
+}
+
+/* Element Plus color picker footer keeps clear/confirm on one compact row. */
+.el-color-picker-panel__footer,
+.el-color-picker-panel__footer > div,
+.el-color-dropdown__btns {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  flex-wrap: nowrap !important;
+  width: 100% !important;
+}
+
+.el-color-picker-panel__footer .el-button,
+.el-color-dropdown__btns .el-button,
+.el-color-dropdown__btns .el-color-dropdown__link-btn {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: max-content !important;
+  height: var(--tf-button-height-small) !important;
+  min-height: var(--tf-button-height-small) !important;
+  margin: 0 !important;
+  padding-inline: var(--tf-button-padding-x-small) !important;
+}
+
+/* PageHeader commands use the shared compact toolbar size. */
+.page-header .header-actions {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.page-header .header-actions::-webkit-scrollbar {
+  display: none;
+}
+
+.page-header .header-actions .el-button {
+  flex: 0 0 auto;
+  height: var(--tf-toolbar-button-height) !important;
+  min-height: var(--tf-toolbar-button-height) !important;
+  padding-inline: var(--tf-toolbar-button-padding-x) !important;
+  font-size: var(--tf-toolbar-button-font-size) !important;
+}
+
+.unified-search-panel__actions .el-button.el-button:not(.is-circle) {
+  height: var(--tf-search-control-height) !important;
+  min-height: var(--tf-search-control-height) !important;
+  padding-inline: var(--tf-toolbar-button-padding-x) !important;
+  font-size: var(--tf-toolbar-button-font-size) !important;
+}
+
+@media (max-width: 768px) {
+  :root {
+    --tf-button-height: clamp(34px, 9.6vw, 36px);
+    --tf-button-height-small: clamp(30px, 8.54vw, 32px);
+    --tf-button-padding-x: clamp(10px, 3.2vw, 12px);
+    --tf-button-padding-x-small: clamp(6px, 2.14vw, 8px);
+    --tf-button-font-size: 13px;
+    --tf-button-font-size-small: 12px;
+    --tf-toolbar-button-height: clamp(28px, 7.5vw, 30px);
+    --tf-toolbar-button-padding-x: clamp(5px, 1.6vw, 7px);
+    --tf-toolbar-button-font-size: 12px;
+    --tf-search-control-height: var(--tf-toolbar-button-height);
+    --tf-topbar-control-height: var(--tf-button-height);
+  }
+
+  .page-header .header-actions .el-button {
+    height: var(--tf-toolbar-button-height) !important;
+    min-height: var(--tf-toolbar-button-height) !important;
+    padding-inline: var(--tf-toolbar-button-padding-x) !important;
+    font-size: var(--tf-toolbar-button-font-size) !important;
+  }
+
+  .unified-search-panel__actions .el-button.el-button:not(.is-circle) {
+    height: var(--tf-search-control-height) !important;
+    min-height: var(--tf-search-control-height) !important;
+    padding-inline: var(--tf-toolbar-button-padding-x) !important;
+    font-size: var(--tf-toolbar-button-font-size) !important;
+  }
+
+  .page-header .header-actions .el-button > span,
+  .unified-search-panel__actions .el-button > span {
+    gap: 4px;
+  }
+
+  .page-header .header-actions .el-button i,
+  .unified-search-panel__actions .el-button i {
+    font-size: 12px;
+  }
+
+  /* Four common page commands share the available header width on mobile. */
+  .page-header .header-actions[data-action-count='4'] .el-button {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+    padding-inline: clamp(3px, 1.2vw, 5px) !important;
+    font-size: 11px !important;
+  }
+
+  .page-header .header-actions[data-action-count='4'] .el-button i {
+    flex: 0 0 auto;
+    font-size: 11px;
+  }
+
+  .page-header .header-actions[data-action-count='4'] .el-button > span {
+    min-width: 0;
+    gap: 3px;
+  }
+}
+
+@media (prefers-contrast: high) {
+  .el-button:not(.is-text):not(.is-link),
+  button.btn {
+    border-width: 2px !important;
+  }
+}

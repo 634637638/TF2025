@@ -823,7 +823,7 @@ const deleteStore = async (store: Store) => {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning',
-        customClass: 'message-box-purple'
+        customClass: 'message-box-unified'
       }
     )
   } catch {
@@ -1483,78 +1483,6 @@ onUnmounted(() => {
   gap: 8px;
   justify-content: center;
 }
-
-.btn-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  white-space: nowrap;
-  min-width: 60px;
-  justify-content: center;
-}
-
-.btn-action i {
-  font-size: 12px;
-}
-
-.btn-view {
-  background: #28a745;
-  color: white;
-}
-
-.btn-view:hover {
-  background: #218838;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
-}
-
-.btn-view span {
-  display: inline-block;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.btn-edit {
-  background: #007bff;
-  color: white;
-}
-
-.btn-edit:hover {
-  background: #0056b3;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
-}
-
-.btn-edit span {
-  display: inline-block;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.btn-delete {
-  background: #dc3545;
-  color: white;
-}
-
-.btn-delete:hover {
-  background: #c82333;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
-}
-
-.btn-delete span {
-  display: inline-block;
-  font-size: 12px;
-  font-weight: 500;
-}
-
 /* 新增的样式类 */
 .id-badge {
   display: inline-flex;
@@ -1825,19 +1753,8 @@ onUnmounted(() => {
     gap: 8px;
   }
 
-  .action-buttons .btn {
-    flex: 0 0 auto;
-    padding: 8px 12px;
-    font-size: 12px;
-    white-space: nowrap;
-  }
-
   .form-actions {
     flex-direction: column;
-  }
-
-  .form-actions .btn {
-    width: 100%;
   }
 
   /* 详情视图移动端适配 */

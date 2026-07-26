@@ -2,10 +2,68 @@ const express = require('express');
 const router = express.Router();
 const ApiResponse = require('../utils/response');
 const { unifiedAuth, requirePermission, requireAnyPermission } = require('../middleware/unified-auth');
+const { getDatabase } = require('../config/database');
 const UserStoreRepository = require('../repositories/user-store.repository');
+const { logPermissionOperation } = require('./permission-logs');
 const log = require('../utils/log');
 
 const userStoreRepository = new UserStoreRepository();
+
+async function getUserAuditInfo(userId) {
+  const db = getDatabase();
+  const [users] = await db.execute(
+    'SELECT id, username, name FROM users WHERE id = ?',
+    [userId]
+  );
+  return users[0] || { id: Number(userId), username: String(userId), name: '' };
+}
+
+function normalizeStoreAuditRows(stores = []) {
+  return stores.map((store) => ({
+    store_id: Number(store.store_id || store.id),
+    store_name: store.store_name || store.name || String(store.store_id || store.id),
+    is_primary: Number(store.is_primary) === 1
+  }));
+}
+
+function buildStoreBindingDetails(previousStores, stores, extraDetails = {}) {
+  const previous = normalizeStoreAuditRows(previousStores);
+  const current = normalizeStoreAuditRows(stores);
+  const previousIds = new Set(previous.map((store) => store.store_id));
+  const currentIds = new Set(current.map((store) => store.store_id));
+
+  const previousPrimaryStore = previous.find((store) => store.is_primary) || null;
+  const primaryStore = current.find((store) => store.is_primary) || null;
+
+  return {
+    audit_type: 'user_store_binding',
+    ...extraDetails,
+    previous_stores: previous,
+    stores: current,
+    added_stores: current.filter((store) => !previousIds.has(store.store_id)),
+    removed_stores: previous.filter((store) => !currentIds.has(store.store_id)),
+    previous_primary_store: previousPrimaryStore,
+    primary_store: primaryStore
+  };
+}
+
+async function logStoreBindingChange(req, userId, previousStores, stores, actionLabel, extraDetails = {}) {
+  const user = await getUserAuditInfo(userId);
+  const details = buildStoreBindingDetails(previousStores, stores, extraDetails);
+  const primaryChanged = details.previous_primary_store?.store_id !== details.primary_store?.store_id;
+  if (details.added_stores.length === 0 && details.removed_stores.length === 0 && !primaryChanged) {
+    return;
+  }
+  await logPermissionOperation(
+    req,
+    'assign',
+    'user_store',
+    userId,
+    user.name || user.username,
+    `${actionLabel}：${user.name || user.username}`,
+    details
+  );
+}
 
 /**
  * 获取用户关联的所有门店
@@ -56,19 +114,25 @@ router.get('/store/:storeId', unifiedAuth, requirePermission('stores:view'), asy
  */
 router.post('/assign', unifiedAuth, requireAnyPermission(['users:edit', 'permissions:admin']), async (req, res) => {
   try {
-    const { userId, storeIds, isPrimary } = req.body;
+    const { userId, storeIds, isPrimary, replaceExisting = false } = req.body;
     const assignedBy = req.user.id;
 
     if (!userId || !storeIds || !Array.isArray(storeIds) || storeIds.length === 0) {
       return ApiResponse.error(res, '用户ID和门店ID列表不能为空', 400);
     }
 
+    const previousStores = await userStoreRepository.getUserStores(userId);
+    if (replaceExisting) {
+      await userStoreRepository.removeAllUserStores(userId);
+    }
     const result = await userStoreRepository.assignStoresToUser(
       userId,
       storeIds,
       assignedBy,
       isPrimary ? 1 : 0
     );
+    const currentStores = await userStoreRepository.getUserStores(userId);
+    await logStoreBindingChange(req, userId, previousStores, currentStores, '更新用户门店绑定');
 
     return ApiResponse.success(res, result, result.message);
   } catch (error) {
@@ -90,7 +154,17 @@ router.put('/primary', unifiedAuth, requireAnyPermission(['users:edit', 'permiss
       return ApiResponse.error(res, '用户ID和门店ID不能为空', 400);
     }
 
+    const previousStores = await userStoreRepository.getUserStores(userId);
     const result = await userStoreRepository.setPrimaryStore(userId, storeId);
+    const currentStores = await userStoreRepository.getUserStores(userId);
+    await logStoreBindingChange(
+      req,
+      userId,
+      previousStores,
+      currentStores,
+      '设置用户主门店',
+      { primary_store_id: Number(storeId) }
+    );
 
     return ApiResponse.success(res, result, result.message);
   } catch (error) {
@@ -112,7 +186,10 @@ router.delete('/remove', unifiedAuth, requireAnyPermission(['users:edit', 'permi
       return ApiResponse.error(res, '用户ID和门店ID不能为空', 400);
     }
 
+    const previousStores = await userStoreRepository.getUserStores(userId);
     const result = await userStoreRepository.removeUserStore(userId, storeId);
+    const currentStores = await userStoreRepository.getUserStores(userId);
+    await logStoreBindingChange(req, userId, previousStores, currentStores, '移除用户门店绑定');
 
     return ApiResponse.success(res, result, result.message);
   } catch (error) {
@@ -133,7 +210,11 @@ router.delete('/user/:userId/all', unifiedAuth, requireAnyPermission(['users:edi
       return ApiResponse.error(res, '用户ID不能为空', 400);
     }
 
+    const previousStores = await userStoreRepository.getUserStores(userId);
     const result = await userStoreRepository.removeAllUserStores(userId);
+    if (result.affectedRows > 0) {
+      await logStoreBindingChange(req, userId, previousStores, [], '清空用户门店绑定');
+    }
 
     return ApiResponse.success(res, result, result.message);
   } catch (error) {

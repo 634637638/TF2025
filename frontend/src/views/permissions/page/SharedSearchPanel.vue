@@ -149,11 +149,14 @@
           @change="ctx.searchLogs"
         >
           <el-option label="全部操作" value="" />
-          <el-option label="创建角色" value="create" />
-          <el-option label="编辑角色" value="edit" />
-          <el-option label="删除角色" value="delete" />
-          <el-option label="分配角色" value="assign" />
+          <el-option label="创建" value="create" />
+          <el-option label="编辑" value="edit" />
+          <el-option label="删除" value="delete" />
+          <el-option label="分配" value="assign" />
           <el-option label="权限配置" value="permission" />
+          <el-option label="启用" value="enable" />
+          <el-option label="禁用" value="disable" />
+          <el-option label="同步" value="sync" />
         </el-select>
       </div>
 

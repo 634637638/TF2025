@@ -2355,15 +2355,6 @@ onBeforeUnmount(() => {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;
 
-    :deep(.el-button) {
-      width: 100%;
-      height: 42px;
-      margin: 0;
-      border-radius: 12px;
-      font-size: 13px;
-      padding: 0 10px;
-    }
-
     :deep(.el-button [class*='fa-']) {
       margin-right: 4px;
     }

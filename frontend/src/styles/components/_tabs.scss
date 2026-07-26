@@ -1,0 +1,229 @@
+:root {
+  --tf-tabs-height: 38px;
+  --tf-tabs-padding: 6px;
+  --tf-tabs-gap: 4px;
+  --tf-tabs-radius: var(--admin-panel-radius, 12px);
+  --tf-tab-radius: 6px;
+  --tf-tab-padding-x: 16px;
+  --tf-tab-font-size: 14px;
+  --tf-tab-font-weight: 600;
+  --tf-tabs-bg: #e9eff7;
+  --tf-tabs-border: #cbd6e5;
+  --tf-tabs-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+  --tf-tab-color: #334155;
+  --tf-tab-hover-bg: #ffffff;
+  --tf-tab-hover-color: #1d4ed8;
+  --tf-tab-active-bg: var(--tf-button-primary-bg, #2563eb);
+  --tf-tab-active-color: #ffffff;
+  --tf-tab-active-shadow: 0 3px 9px rgba(37, 99, 235, 0.24);
+}
+
+/* Top-level page tabs. Business-specific segmented controls must not use this class. */
+.tf-page-tabs.tab-navigation {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: var(--tf-tabs-gap);
+  width: 100%;
+  max-width: 100%;
+  margin: 0 0 var(--admin-panel-gap, 16px);
+  padding: var(--tf-tabs-padding);
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 1px solid var(--tf-tabs-border);
+  border-radius: var(--tf-tabs-radius);
+  background: var(--tf-tabs-bg);
+  box-shadow: var(--tf-tabs-shadow);
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tf-page-tabs.tab-navigation::-webkit-scrollbar {
+  display: none;
+}
+
+.tf-page-tabs.tab-navigation .el-button {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: 0 !important;
+  height: var(--tf-tabs-height) !important;
+  min-height: var(--tf-tabs-height) !important;
+  margin: 0 !important;
+  padding-inline: var(--tf-tab-padding-x) !important;
+  border: 0 !important;
+  border-radius: var(--tf-tab-radius) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--tf-tab-color) !important;
+  font-size: var(--tf-tab-font-size) !important;
+  font-weight: var(--tf-tab-font-weight) !important;
+  white-space: nowrap;
+}
+
+.tf-page-tabs.tab-navigation .el-button:hover,
+.tf-page-tabs.tab-navigation .el-button:focus-visible {
+  background: var(--tf-tab-hover-bg) !important;
+  color: var(--tf-tab-hover-color) !important;
+}
+
+.tf-page-tabs.tab-navigation .el-button.el-button--primary {
+  background: var(--tf-tab-active-bg) !important;
+  box-shadow: var(--tf-tab-active-shadow) !important;
+  color: var(--tf-tab-active-color) !important;
+}
+
+.tf-page-tabs.tab-navigation .el-button .el-icon,
+.tf-page-tabs.tab-navigation .el-button i {
+  font-size: 14px;
+}
+
+.tf-page-tabs.el-tabs {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.tf-page-tabs.el-tabs > .el-tabs__header {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 0 var(--admin-panel-gap, 16px);
+  padding: var(--tf-tabs-padding);
+  overflow: hidden;
+  border: 1px solid var(--tf-tabs-border);
+  border-radius: var(--tf-tabs-radius);
+  background: var(--tf-tabs-bg);
+  box-shadow: var(--tf-tabs-shadow);
+}
+
+.tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__nav-wrap::after,
+.tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__active-bar {
+  display: none;
+}
+
+.tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__nav-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__nav-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__nav {
+  display: flex;
+  gap: var(--tf-tabs-gap);
+  border: 0;
+}
+
+.tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__item {
+  flex: 0 0 auto;
+  height: var(--tf-tabs-height);
+  padding: 0 var(--tf-tab-padding-x) !important;
+  border: 0 !important;
+  border-radius: var(--tf-tab-radius);
+  color: var(--tf-tab-color);
+  font-size: var(--tf-tab-font-size);
+  font-weight: var(--tf-tab-font-weight);
+  line-height: var(--tf-tabs-height);
+  white-space: nowrap;
+}
+
+.tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__item:hover,
+.tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__item:focus-visible {
+  background: var(--tf-tab-hover-bg);
+  color: var(--tf-tab-hover-color);
+}
+
+.tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__item.is-active {
+  background: var(--tf-tab-active-bg);
+  box-shadow: var(--tf-tab-active-shadow);
+  color: var(--tf-tab-active-color);
+}
+
+.tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__nav-prev,
+.tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__nav-next {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  color: var(--tf-tab-color);
+}
+
+.tf-page-tabs.el-tabs > .el-tabs__content {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: visible;
+}
+
+/* Every page TAB uses the same zero-inset content frame. Business panels own their
+ * internal padding; nesting another page frame here would create stepped edges. */
+.tf-tab-content,
+.tf-tab-panel,
+.tf-page-tabs.el-tabs > .el-tabs__content > .el-tab-pane {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.tf-tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--admin-panel-gap, 16px);
+}
+
+.tf-page-tabs.el-tabs > .el-tabs__content > .el-tab-pane.tf-tab-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--admin-panel-gap, 16px);
+}
+
+.tf-tab-content > .tf-tab-panel {
+  flex: 0 0 auto;
+}
+
+/* A standalone admin page embedded in a TAB must not apply page padding twice. */
+.tf-tab-panel.admin-page,
+.tf-tab-panel > .admin-page,
+.tf-page-tabs.el-tabs > .el-tabs__content > .el-tab-pane.tf-tab-panel > .admin-page {
+  min-height: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+}
+
+.tf-page-tabs .tab-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+@media (max-width: 768px) {
+  :root {
+    --tf-tabs-height: 34px;
+    --tf-tabs-padding: 4px;
+    --tf-tabs-gap: 4px;
+    --tf-tabs-radius: var(--mobile-card-radius, 12px);
+    --tf-tab-radius: 6px;
+    --tf-tab-padding-x: 11px;
+    --tf-tab-font-size: 12px;
+  }
+
+  .tf-page-tabs.tab-navigation,
+  .tf-page-tabs.el-tabs > .el-tabs__header {
+    margin-bottom: var(--admin-panel-gap, 10px);
+  }
+
+  .tf-page-tabs.tab-navigation .el-button .el-icon,
+  .tf-page-tabs.tab-navigation .el-button i,
+  .tf-page-tabs .tab-label i {
+    font-size: 12px;
+  }
+}

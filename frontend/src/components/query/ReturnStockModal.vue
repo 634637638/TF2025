@@ -489,11 +489,6 @@ watch(
   gap: 10px;
 }
 
-.return-dialog-footer :deep(.el-button) {
-  width: 100%;
-  margin: 0;
-}
-
 @media (max-width: 767px) {
   :global(.query-return-stock-dialog) {
     --dialog-side-gap: 4px;

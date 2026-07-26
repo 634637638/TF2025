@@ -702,11 +702,6 @@ onMounted(() => {
   white-space: nowrap;
 }
 
-.table-actions :deep(.el-button) {
-  margin: 0;
-  min-width: 0;
-}
-
 .pagination-wrapper {
   display: flex;
   justify-content: flex-end;

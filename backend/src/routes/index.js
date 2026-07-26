@@ -106,6 +106,12 @@ const accessoriesRoutes = require('./accessories');
 // 预定管理路由
 const preordersRoutes = require('./preorders');
 
+// 待办提醒管理路由
+const remindersRoutes = require('./reminders');
+
+// 经验分享
+const sharedRoutes = require('./shared');
+
 // 备份管理路由
 const backupRoutes = require('./backup');
 
@@ -222,6 +228,12 @@ router.use('/accessories', accessoriesRoutes);
 
 // 预定管理路由
 router.use('/preorders', preordersRoutes);
+
+// 待办提醒
+router.use('/reminders', remindersRoutes);
+
+// 经验分享（所有登录用户可阅读和发布）
+router.use('/shared', sharedRoutes);
 
 // 备份管理路由
 router.use('/backup', backupRoutes);

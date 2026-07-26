@@ -125,6 +125,9 @@ export const MODULE_KEY_MAP: Record<string, string> = {
   // 预定管理映射
   'preorders': 'preorders_preordersview',
   'preorder': 'preorders_preordersview',
+  'reminders': 'reminders_reminderview',
+  'reminder': 'reminders_reminderview',
+  'shared': 'shared_sharedview',
 
   // 价目表映射
   'price-list': 'price_list_pricelistview',
@@ -199,6 +202,8 @@ export const BACKEND_MODULE_MAP: Record<string, string> = {
   'salary_salaryrecordsview': 'salary-records',
   'salary_mysalaryview': 'my-salary',
   'preorders_preordersview': 'preorders',
+  'reminders_reminderview': 'reminders',
+  'shared_sharedview': 'shared',
   'payments_supplierphonepaymentsview': 'supplier-payments',
   'price_list_pricelistview': 'price-list',
   'price_list_synclogview': 'price-list-sync-logs',

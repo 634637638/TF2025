@@ -7,86 +7,16 @@
         </div>
 
         <div class="table-responsive">
-          <table class="table">
-            <thead>
-              <tr>
-                <th width="80">序号</th>
-                <th width="150">用户名</th>
-                <th width="150">真实姓名</th>
-                <th width="120">角色</th>
-                <th width="200">当前门店</th>
-                <th width="100">绑定状态</th>
-                <th width="200">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              <TableLoadingRow v-if="ctx.storeBindingsLoading" :colspan="7" />
-              <tr v-else-if="ctx.filteredStoreBindings.length === 0">
-                <td :colspan="7" class="text-center empty-cell">
-                  <i class="fas fa-inbox"></i>
-                  <span>暂无数据</span>
-                </td>
-              </tr>
-              <tr v-else v-for="(user, index) in ctx.paginatedStoreBindings" :key="user.id">
-                <td>{{ (Number(ctx.storeBindingsPagination.page) - 1) * Number(ctx.storeBindingsPagination.size) + Number(index) + 1 }}</td>
-                <td>{{ user.username }}</td>
-                <td>{{ user.name || '-' }}</td>
-                <td>
-                  <div class="user-roles">
-                    <span
-                      v-for="(roleName, index) in ctx.getUserRoleNames(user.roles)"
-                      :key="index"
-                      :class="['role-tag', ctx.getRoleTagClass(roleName)]"
-                    >
-                      {{ roleName }}
-                    </span>
-                    <span v-if="!user.roles || user.roles === ''" class="no-roles">
-                      无角色
-                    </span>
-                  </div>
-                </td>
-                <td>
-                  <span v-if="user.stores && user.stores.length > 0" class="stores-cell">
-                    <span v-for="store in user.stores" :key="store.store_id" class="store-badge-small">
-                      {{ store.store_name }}{{ store.is_primary ? ' (主)' : '' }}
-                    </span>
-                  </span>
-                  <span v-else class="text-muted">未绑定</span>
-                </td>
-                <td>
-                  <span v-if="user.stores && user.stores.length > 0" class="store-status-badge store-status-bound">
-                    <i class="fas fa-store"></i>
-                    已绑定 {{ user.stores.length }} 个门店
-                  </span>
-                  <span v-else class="store-status-badge store-status-unbound">
-                    <i class="fas fa-store-slash"></i>
-                    未绑定
-                  </span>
-                </td>
-                <td>
-                  <el-button
-                    type="primary"
-                    size="small"
-                    @click="ctx.openStoreBindingDialog(user)"
-                    title="管理门店"
-                  >
-                    <i class="fas fa-link"></i>
-                    {{ user.stores && user.stores.length > 0 ? '管理门店' : '绑定门店' }}
-                  </el-button>
-                  <el-button
-                    v-if="user.stores && user.stores.length > 0"
-                    type="danger"
-                    size="small"
-                    @click="ctx.unbindStore(user)"
-                    title="解绑所有门店"
-                  >
-                    <i class="fas fa-unlink"></i>
-                    解绑
-                  </el-button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <el-table :data="ctx.storeBindingsLoading ? [] : ctx.paginatedStoreBindings" border stripe class="data-table devices-table permissions-data-table" table-layout="fixed" :fit="true" row-key="id">
+            <el-table-column label="序号" width="80" align="center"><template #default="{ $index }">{{ (Number(ctx.storeBindingsPagination.page) - 1) * Number(ctx.storeBindingsPagination.size) + Number($index) + 1 }}</template></el-table-column>
+            <el-table-column prop="username" label="用户名" min-width="140" align="center" class-name="complete-text-column" />
+            <el-table-column label="真实姓名" min-width="140" align="center" class-name="complete-text-column"><template #default="{ row }">{{ row.name || '-' }}</template></el-table-column>
+            <el-table-column label="角色" min-width="180" align="center"><template #default="{ row }"><div class="user-roles"><span v-for="(roleName, index) in ctx.getUserRoleNames(row.roles)" :key="index" :class="['role-tag', ctx.getRoleTagClass(roleName)]">{{ roleName }}</span><span v-if="!row.roles || row.roles === ''" class="no-roles">无角色</span></div></template></el-table-column>
+            <el-table-column label="当前门店" min-width="220" align="center"><template #default="{ row }"><span v-if="row.stores && row.stores.length > 0" class="stores-cell"><span v-for="store in row.stores" :key="store.store_id" class="store-badge-small">{{ store.store_name }}{{ store.is_primary ? ' (主)' : '' }}</span></span><span v-else class="text-muted">未绑定</span></template></el-table-column>
+            <el-table-column label="绑定状态" min-width="150" align="center"><template #default="{ row }"><span v-if="row.stores && row.stores.length > 0" class="store-status-badge store-status-bound"><i class="fas fa-store"></i>已绑定 {{ row.stores.length }} 个门店</span><span v-else class="store-status-badge store-status-unbound"><i class="fas fa-store-slash"></i>未绑定</span></template></el-table-column>
+            <el-table-column label="操作" min-width="190" align="center" class-name="actions-column"><template #default="{ row }"><div class="action-buttons"><el-button type="primary" size="small" title="管理门店" @click.stop="ctx.openStoreBindingDialog(row)"><i class="fas fa-link"></i><span>{{ row.stores && row.stores.length > 0 ? '管理门店' : '绑定门店' }}</span></el-button><el-button v-if="row.stores && row.stores.length > 0" type="danger" size="small" title="解绑所有门店" @click.stop="ctx.unbindStore(row)"><i class="fas fa-unlink"></i><span>解绑</span></el-button></div></template></el-table-column>
+            <template #empty><TableLoadingRow v-if="ctx.storeBindingsLoading" mode="block" text="加载门店绑定列表..." /><div v-else class="empty-state"><i class="fas fa-inbox"></i><span>暂无数据</span></div></template>
+          </el-table>
         </div>
 
         <Pagination

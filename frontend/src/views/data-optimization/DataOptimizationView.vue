@@ -16,12 +16,13 @@
 
     <!-- TAB 标签页 -->
     <div class="optimization-tabs-wrapper admin-page-content">
-      <el-tabs v-if="visibleOptimizationTabs.length" v-model="activeTab" class="optimization-tabs">
+      <el-tabs v-if="visibleOptimizationTabs.length" v-model="activeTab" class="optimization-tabs tf-page-tabs">
         <el-tab-pane
           v-for="tab in visibleOptimizationTabs"
           :key="tab.key"
           :label="tab.label"
           :name="tab.key"
+          class="tf-tab-panel"
         >
           <template #label>
             <span class="tab-label">
@@ -148,54 +149,6 @@ onMounted(async () => {
   border-radius: 16px !important;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1) !important;
   padding: 32px 2rem !important;
-}
-
-.optimization-tabs {
-  :deep(.el-tabs__header) {
-    background: white;
-    border-radius: 8px 8px 0 0;
-    padding: 0 20px;
-    margin: 0;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  }
-
-  :deep(.el-tabs__nav-wrap::after) {
-    display: none;
-  }
-
-  :deep(.el-tabs__item) {
-    height: 60px;
-    line-height: 60px;
-    font-size: 16px;
-    color: #606266;
-
-    &.is-active {
-      color: #409eff;
-      font-weight: 600;
-    }
-  }
-
-  :deep(.el-tabs__active-bar) {
-    height: 3px;
-    background: #409eff;
-  }
-
-  :deep(.el-tabs__content) {
-    background: white;
-    border-radius: 0 0 8px 8px;
-    padding: 20px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  }
-
-  .tab-label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-
-    i {
-      font-size: 18px;
-    }
-  }
 }
 
 .optimization-empty-state {

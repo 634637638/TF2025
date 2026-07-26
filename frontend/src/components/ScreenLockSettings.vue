@@ -11,9 +11,9 @@
 
       <div class="card-content">
         <!-- TAB 切换 -->
-        <el-tabs v-model="activeTab" class="settings-tabs">
+        <el-tabs v-model="activeTab" class="settings-tabs tf-page-tabs">
           <!-- 屏幕保护设置 TAB -->
-          <el-tab-pane label="屏幕保护" name="screen-lock">
+          <el-tab-pane label="屏幕保护" name="screen-lock" class="tf-tab-panel">
             <el-form
               ref="screenLockFormRef"
               :model="screenLockForm"
@@ -151,7 +151,7 @@
           </el-tab-pane>
 
           <!-- 在库查询设置 TAB -->
-          <el-tab-pane label="在库查询" name="inventory-query">
+          <el-tab-pane label="在库查询" name="inventory-query" class="tf-tab-panel">
             <el-form
               ref="inventoryQueryFormRef"
               :model="inventoryQueryForm"
@@ -565,25 +565,6 @@ onMounted(() => {
 
   .card-content {
     padding: 24px;
-  }
-
-  .settings-tabs {
-    :deep(.el-tabs__header) {
-      margin-bottom: 24px;
-    }
-
-    :deep(.el-tabs__item) {
-      font-size: 15px;
-      padding: 0 24px;
-    }
-
-    :deep(.el-tabs__active-bar) {
-      background-color: #667eea;
-    }
-
-    :deep(.el-tabs__item.is-active) {
-      color: #667eea;
-    }
   }
 
   .form-help {

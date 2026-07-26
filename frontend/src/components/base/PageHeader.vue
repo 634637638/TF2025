@@ -1,7 +1,10 @@
 <template>
   <div
     class="page-header"
-    :class="{ 'page-header--dense-short': isDenseMobileHeader && isShortTitle }"
+    :class="{
+      'page-header--dense-actions': isDenseMobileHeader,
+      'page-header--dense-short': isDenseMobileHeader && isShortTitle
+    }"
     :style="rootStyle"
   >
     <div class="header-content" :style="contentStyle">
@@ -26,6 +29,7 @@
         v-if="$slots.actions || $slots.default"
         ref="actionsRef"
         class="header-actions"
+        :data-action-count="actionCount"
         :style="actionsStyle"
       >
         <slot name="actions">
@@ -183,7 +187,6 @@ const resolvedIconSvg = computed(() => menuIcon.value.svg || '')
 const isMobile = computed(() => viewportWidth.value <= 768)
 const isSmallMobile = computed(() => viewportWidth.value <= 480)
 const isTinyMobile = computed(() => viewportWidth.value <= 375)
-const shouldWrapActions = computed(() => actionCount.value > 4)
 const isDenseMobileHeader = computed(() => isMobile.value && actionCount.value >= 4)
 const isShortTitle = computed(() => props.title.trim().length <= 4 && !props.description)
 
@@ -339,8 +342,8 @@ const actionsStyle = computed<CSSProperties>(() => ({
         ? '0.18rem'
         : '12px',
   alignItems: 'center',
-  flexWrap: shouldWrapActions.value ? 'wrap' : 'nowrap',
-  justifyContent: 'flex-end',
+  flexWrap: 'nowrap',
+  justifyContent: isDenseMobileHeader.value ? 'flex-start' : 'flex-end',
   flex: isMobile.value ? '1 1 0' : '1 1 auto',
   minWidth: '0',
   maxWidth: isDenseMobileHeader.value
@@ -378,20 +381,6 @@ const actionsStyle = computed<CSSProperties>(() => ({
     margin-bottom: 1rem;
   }
 
-  &.page-header--dense-short {
-    .header-actions :deep(.el-button) {
-      padding: 0 2px !important;
-      height: 27px !important;
-      min-height: 27px !important;
-      font-size: 9.5px !important;
-      border-radius: 999px !important;
-
-      i,
-      span {
-        font-size: 9.5px !important;
-      }
-    }
-  }
 }
 
 .header-content {
@@ -515,59 +504,7 @@ const actionsStyle = computed<CSSProperties>(() => ({
     flex-wrap: nowrap;
     gap: 3px;
 
-    :deep(.el-button) {
-      flex: 0 0 auto;
-      width: auto;
-      min-width: 0;
-      max-width: 100%;
-      height: 30px !important;
-      min-height: 30px !important;
-      padding: 0 5px !important;
-      font-size: 8px;
-      font-weight: 500 !important;
-      letter-spacing: -0.01em;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      line-height: 1;
-      gap: 2px;
-
-      i {
-        font-size: 8px;
-        margin-right: 0;
-      }
-
-      span {
-        font-size: 8px;
-        line-height: 1;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-    }
   }
-}
-
-.header-actions :deep(.el-button) {
-  flex: 0 0 auto;
-  min-width: 0;
-  height: 34px;
-  min-height: 34px;
-  padding: 0 12px;
-  font-size: 13px;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.header-actions :deep(.el-button > span) {
-  display: inline-flex;
-  align-items: center;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.header-actions :deep(.el-button i) {
-  font-size: 12px;
-  line-height: 1;
 }
 
 // 移动端按钮文字简化
@@ -577,48 +514,6 @@ const actionsStyle = computed<CSSProperties>(() => ({
     flex-wrap: nowrap;
     max-width: none;
 
-    :deep(.el-button) {
-      flex: 0 0 auto;
-      width: auto;
-      min-width: 0;
-      max-width: 100%;
-      height: 28px !important;
-      min-height: 28px !important;
-      padding: 0 4px !important;
-      font-size: 7px;
-      font-weight: 500 !important;
-      letter-spacing: -0.01em;
-      overflow: hidden;
-      line-height: 1;
-      gap: 1px;
-
-      i {
-        font-size: 7px;
-        margin-right: 0;
-      }
-
-      span {
-        font-size: 7px;
-        line-height: 1;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-    }
-  }
-
-  .page-header--dense-short {
-    .header-actions :deep(.el-button) {
-      padding: 0 2px !important;
-      height: 25px !important;
-      min-height: 25px !important;
-      font-size: 9px !important;
-
-      i,
-      span {
-        font-size: 9px !important;
-      }
-    }
   }
 }
 
@@ -650,82 +545,6 @@ const actionsStyle = computed<CSSProperties>(() => ({
     max-width: none;
     width: auto;
 
-    :deep(.el-button) {
-      flex: 0 0 auto;
-      width: auto;
-      min-width: 0;
-      max-width: 100%;
-      height: 28px !important;
-      min-height: 28px !important;
-      padding: 0 6px !important;
-      font-size: 9px;
-      overflow: hidden;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      line-height: 1;
-
-      i {
-        font-size: 9px;
-        margin-right: 1px;
-        flex-shrink: 0;
-      }
-
-      span {
-        font-size: 9px;
-        line-height: 1;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: clip;
-        flex-shrink: 0;
-      }
-    }
-  }
-}
-
-@media (max-width: 390px) {
-  .header-actions {
-    :deep(.el-button) {
-      height: 27px !important;
-      min-height: 27px !important;
-      padding: 0 3px !important;
-      font-size: 6.5px !important;
-      gap: 1px;
-
-      i {
-        font-size: 6.5px !important;
-      }
-
-      span {
-        font-size: 6.5px !important;
-      }
-    }
-  }
-
-  .page-header--dense-short {
-    .header-actions :deep(.el-button) {
-      padding: 0 2px !important;
-      height: 24px !important;
-      min-height: 24px !important;
-      font-size: 8.5px !important;
-
-      i,
-      span {
-        font-size: 8.5px !important;
-      }
-    }
-  }
-}
-
-// 按钮样式增强
-:deep(.el-button) {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-weight: 500;
-
-  i {
-    font-size: 0.9em;
   }
 }
 

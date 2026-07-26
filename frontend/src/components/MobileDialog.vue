@@ -630,16 +630,6 @@ onUnmounted(() => {
   justify-content: flex-end;
   gap: 12px;
 
-  // 移动端按钮布局
-  @media (max-width: 767px) {
-    flex-direction: column-reverse;
-
-    .el-button {
-      width: 100%;
-      margin-left: 0;
-      margin-right: 0;
-    }
-  }
 }
 
 // 对话框内容区域

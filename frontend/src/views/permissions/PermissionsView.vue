@@ -46,10 +46,6 @@
             <i class="fas fa-sync"></i>
             一键同步
           </el-button>
-          <el-button type="info" @click="goToRegisteredModules">
-            <i class="fas fa-list"></i>
-            已注册模块
-          </el-button>
         </template>
 
         <template v-else-if="activeTab === 'logs'">
@@ -153,7 +149,7 @@
     </div>
 
     <!-- TAB导航 -->
-    <div class="tab-navigation">
+    <div class="tab-navigation tf-page-tabs">
       <el-button
         :type="activeTab === 'roles' ? 'primary' : 'default'"
         @click="handleTabClick('roles')"
@@ -202,13 +198,13 @@
     <SharedSearchPanel />
 
     <!-- 权限管理内容 -->
-    <div class="permissions-content admin-page-content">
-      <RolesPage v-if="activeTab === 'roles'" />
-      <UserRolesPage v-else-if="activeTab === 'userRoles'" />
-      <StoreBindingsPage v-else-if="activeTab === 'storeBindings'" />
-      <ModulesPage v-else-if="activeTab === 'modules'" />
-      <LogsPage v-else-if="activeTab === 'logs'" />
-      <RolePermissionsPage v-else-if="activeTab === 'pagePermissions'" />
+    <div class="permissions-content admin-page-content tf-tab-content">
+      <RolesPage v-if="activeTab === 'roles'" class="tf-tab-panel" />
+      <UserRolesPage v-else-if="activeTab === 'userRoles'" class="tf-tab-panel" />
+      <StoreBindingsPage v-else-if="activeTab === 'storeBindings'" class="tf-tab-panel" />
+      <ModulesPage v-else-if="activeTab === 'modules'" ref="modulesPageRef" class="tf-tab-panel" />
+      <LogsPage v-else-if="activeTab === 'logs'" class="tf-tab-panel" />
+      <RolePermissionsPage v-else-if="activeTab === 'pagePermissions'" class="tf-tab-panel" />
     </div>
 
     <!-- 角色编辑对话框 -->
@@ -238,9 +234,16 @@
               v-model="roleForm.code"
               type="text"
               class="form-control"
-              placeholder="请输入稳定编码，如：store_manager，留空则系统自动生成"
+              :readonly="isEditRole"
+              :aria-readonly="isEditRole"
+              :title="isEditRole ? '角色编码创建后不可修改' : ''"
+              :placeholder="isEditRole ? '' : '请输入稳定编码，如：store_manager，留空则系统自动生成'"
             />
-            <small class="form-help-text">建议使用字母、数字、下划线、中划线或冒号，作为角色的稳定标识。</small>
+            <small class="form-help-text">
+              {{ isEditRole
+                ? '角色编码是系统稳定标识，创建后不可修改。'
+                : '建议使用字母、数字、下划线、中划线或冒号，留空则系统自动生成。' }}
+            </small>
           </div>
           <div class="form-group">
             <label>角色描述 <span class="required">*</span></label>
@@ -256,7 +259,7 @@
       </div>
 
       <template #footer>
-        <div class="modal-footer">
+        <div class="tf-dialog-actions">
           <el-button type="info" @click="closeRoleDialog">取消</el-button>
           <el-button type="primary" @click="saveRole" :disabled="savingRole">
             <InlineLoading v-if="savingRole" :text="isEditRole ? '更新中...' : '创建中...'" size="small" variant="inherit" />
@@ -450,7 +453,7 @@
             <i class="fas fa-shield-alt"></i>
             <span>本次将为 {{ currentUser?.username || '该用户' }} 更新 {{ selectedUserRoleIds.length }} 个角色</span>
           </div>
-          <div class="user-role-footer-actions">
+          <div class="tf-dialog-actions user-role-footer-actions">
             <el-button type="info" @click="closeUserRoleDialog">取消</el-button>
             <el-button type="primary" @click="saveUserRoles" :disabled="savingUserRoles">
               <InlineLoading v-if="savingUserRoles" text="保存中..." size="small" variant="inherit" />
@@ -546,11 +549,11 @@
         </div>
 
         <template #footer>
-          <div class="modal-footer">
+          <div class="modal-footer permission-summary-footer">
             <div class="selection-summary">
               <span>已选择 {{ selectedFields.length }} / {{ totalFieldCount }} 个字段</span>
             </div>
-            <div class="footer-actions">
+            <div class="tf-dialog-actions footer-actions">
               <el-button type="info" @click="closeFieldPermissionDialog">
                 取消
               </el-button>
@@ -572,7 +575,7 @@
         v-model="roleFieldPermissionDialogVisible"
         :title="`${selectedRoleForFieldPermission?.name || ''} - 字段权限配置`"
         width="1200px"
-        dialog-class="permissions-dialog role-field-permission-dialog"
+        dialog-class="permissions-dialog role-field-permission-dialog tf-dialog-body-flush"
         :show-default-footer="false"
       >
         <div class="dialog-body">
@@ -733,11 +736,11 @@
         </div>
 
         <template #footer>
-          <div class="dialog-footer">
+          <div class="dialog-footer permission-summary-footer">
             <div class="selection-summary" v-if="selectedRoleModule">
               <span>已选择 {{ selectedRoleFields.length }} 个字段隐藏</span>
             </div>
-            <div class="footer-actions">
+            <div class="tf-dialog-actions footer-actions">
               <el-button type="info" @click="closeRoleFieldPermissionDialog">
                 取消
               </el-button>
@@ -798,7 +801,7 @@
         </div>
 
         <template #footer>
-          <div class="modal-footer">
+          <div class="tf-dialog-actions">
             <el-button type="info" @click="closeStoreBindingDialog">取消</el-button>
             <el-button
               type="primary"
@@ -904,6 +907,7 @@ const { loading } = useLoadingState()
 const { refreshing, refresh } = useRefreshData()
 const { exportTextFile, buildDateFilename } = useImportExport()
 const activeTab = ref('roles')
+const modulesPageRef = ref<{ refreshModules: () => Promise<void> } | null>(null)
 const router = useRouter()
 const authStore = useAuthStore()
 const permissionsPageContext = reactive<Record<string, any>>({})
@@ -1016,7 +1020,7 @@ const logsPagination = reactive({
 const logSearchForm = reactive({
   action: '',
   username: '',
-  dateRange: ''
+  dateRange: [] as string[]
 })
 const logSearchExpanded = ref(false)
 
@@ -1215,7 +1219,7 @@ const currentTabHeader = computed(() => {
     return {
       icon: 'fas fa-users',
       title: '角色分配',
-      description: '为现有用户分配和管理系统角色'
+      description: ''
     }
   }
 
@@ -1223,7 +1227,7 @@ const currentTabHeader = computed(() => {
     return {
       icon: 'fas fa-store',
       title: '门店绑定',
-      description: '管理员工与门店的关联关系，绑定后员工只能查看自己门店的数据'
+      description: ''
     }
   }
 
@@ -1231,7 +1235,7 @@ const currentTabHeader = computed(() => {
     return {
       icon: 'fas fa-cube',
       title: '模块管理',
-      description: '自动扫描、同步和管理系统模块权限'
+      description: ''
     }
   }
 
@@ -1239,7 +1243,7 @@ const currentTabHeader = computed(() => {
     return {
       icon: 'fas fa-history',
       title: '权限日志',
-      description: '查看所有权限相关的操作记录和审计信息'
+      description: ''
     }
   }
 
@@ -1256,7 +1260,7 @@ const currentTabHeader = computed(() => {
   return {
     icon: 'fas fa-user-tag',
     title: '角色管理',
-    description: '创建、编辑和管理系统中的所有角色'
+    description: ''
   }
 })
 
@@ -1324,34 +1328,11 @@ const paginatedUsers = computed(() => {
 
 
 const filteredLogs = computed(() => {
-  let filtered = logsData.value
-
-  if (logSearchForm.action !== '') {
-    filtered = filtered.filter(log =>
-      log.action === logSearchForm.action
-    )
-  }
-
-  if (logSearchForm.username !== '') {
-    filtered = filtered.filter(log =>
-      log.username.toLowerCase().includes(logSearchForm.username.toLowerCase())
-    )
-  }
-
-  if (logSearchForm.dateRange !== '') {
-    filtered = filtered.filter(log => {
-      const logDate = new Date(log.created_at).toISOString().split('T')[0]
-      return logDate === logSearchForm.dateRange
-    })
-  }
-
-  return filtered
+  return logsData.value
 })
 
 const paginatedLogs = computed(() => {
-  const start = (logsPagination.page - 1) * logsPagination.size
-  const end = start + logsPagination.size
-  return filteredLogs.value.slice(start, end)
+  return filteredLogs.value
 })
 
 // 模块管理相关方法
@@ -1359,15 +1340,6 @@ const goToModuleManagement = () => {
   activeTab.value = 'modules'
 }
 
-
-const goToRegisteredModules = () => {
-  if (!canAccessRoutePath('/permissions/module-management', authStore)) {
-    ElMessage.warning('您没有访问此页面的权限')
-    return
-  }
-
-  router.push('/permissions/module-management')
-}
 
 const goToRoleManagement = () => {
   if (!canAccessRoutePath('/roles', authStore)) {
@@ -1409,6 +1381,7 @@ const syncAllModules = async () => {
       success(`同步完成，成功 ${data.success || 0} 个，失败 ${data.errors || 0} 个`)
       await loadModuleStats()
       await loadRoles() // 刷新角色列表以获取最新权限
+      await modulesPageRef.value?.refreshModules()
     } else {
       error('同步失败: ' + (response.message || '未知错误'))
     }
@@ -1791,8 +1764,10 @@ const refreshCurrentPage = async () => {
     promises.push(loadLogs())
   } else if (activeTab.value === 'pagePermissions' && selectedRoleForPermission.value) {
     promises.push(loadPermissionDialog())
-  } else if (activeTab.value === 'modules' && selectedRoleId.value) {
-    promises.push(loadPermissionMatrix(false, false))
+  } else if (activeTab.value === 'modules') {
+    const moduleRefresh = modulesPageRef.value?.refreshModules()
+    if (moduleRefresh) promises.push(moduleRefresh)
+    if (selectedRoleId.value) promises.push(loadPermissionMatrix(false, false))
   }
 
   // 总是刷新统计数据
@@ -1897,22 +1872,6 @@ const saveRole = async () => {
     if (response.success) {
       success(isEditRole.value ? '角色更新成功' : '角色创建成功')
 
-      // 记录操作日志
-      try {
-        await unifiedApi.post('/permission-logs/log', {
-          action: isEditRole.value ? 'edit' : 'create',
-          targetType: 'role',
-          targetId: response.data?.id || roleForm.id,
-          targetName: roleForm.name,
-          description: `${isEditRole.value ? '修改' : '创建'}角色: ${roleForm.name}`,
-          details: {
-            code: roleData.code
-          }
-        })
-      } catch (logError) {
-        // 静默处理
-      }
-
       closeRoleDialog()
       // 重新加载角色和统计数据
       await loadRoles()
@@ -1959,7 +1918,7 @@ const handleDeleteRole = async (role: Role) => {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning',
-        customClass: 'message-box-purple'
+        customClass: 'message-box-unified'
       }
     )
 
@@ -2676,22 +2635,6 @@ const saveUserRoles = async () => {
     if (response.success) {
       success('用户角色分配成功')
 
-      // 记录操作日志
-      try {
-        await unifiedApi.post('/permission-logs/log', {
-          action: 'assign',
-          targetType: 'user',
-          targetId: currentUser.value.id,
-          targetName: currentUser.value.username,
-          description: `为用户 ${currentUser.value.username} 分配了 ${selectedUserRoleIds.value.length} 个角色`,
-          details: {
-            role_ids: selectedUserRoleIds.value
-          }
-        })
-      } catch (logError) {
-        // 静默处理
-      }
-
       closeUserRoleDialog()
       await loadUsers()
     } else {
@@ -2716,7 +2659,7 @@ const handleDeleteUser = async (user: User) => {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning',
-        customClass: 'message-box-purple'
+        customClass: 'message-box-unified'
       }
     )
 
@@ -2788,7 +2731,11 @@ const exportLogs = async () => {
         page: 1,
         size: exportSize,
         action: logSearchForm.action || undefined,
-        username: logSearchForm.username || undefined
+        username: logSearchForm.username || undefined,
+        startDate: logSearchForm.dateRange[0] || undefined,
+        endDate: logSearchForm.dateRange[1]
+          ? `${logSearchForm.dateRange[1]} 23:59:59`
+          : undefined
       }
     })
 
@@ -2798,25 +2745,19 @@ const exportLogs = async () => {
 
     let exportLogsList: PermissionLog[] = response.data?.logs || []
 
-    if (logSearchForm.dateRange !== '') {
-      exportLogsList = exportLogsList.filter((log) => {
-        const logDate = new Date(log.created_at).toISOString().split('T')[0]
-        return logDate === logSearchForm.dateRange
-      })
-    }
-
     if (exportLogsList.length === 0) {
       warning('当前筛选条件下没有可导出的日志')
       return
     }
 
     const csvContent = buildCsvContent(
-      ['ID', '用户名', '操作类型', '操作说明', 'IP地址', '状态', '创建时间'],
+      ['ID', '用户名', '操作类型', '操作说明', '详细记录', 'IP地址', '状态', '创建时间'],
       exportLogsList.map((log) => ([
         log.id,
         log.username,
         getActionName(log.action),
         log.description,
+        typeof log.details === 'string' ? log.details : JSON.stringify(log.details || {}),
         log.ip_address,
         log.status === 'success' ? '成功' : '失败',
         log.created_at
@@ -2841,7 +2782,7 @@ const exportLogs = async () => {
 
 const searchLogs = () => {
   logsPagination.page = 1
-  // 客户端搜索，不需要重新加载
+  void loadLogs()
 }
 
 // 角色分页变化处理
@@ -2854,14 +2795,14 @@ const handleUsersPaginationChange = (page: number, pageSize: number) =>
 
 // 日志分页变化处理
 const handleLogsPaginationChange = (page: number, pageSize: number) =>
-  updatePaginationState(logsPagination, page, pageSize)
+  updatePaginationState(logsPagination, page, pageSize, loadLogs)
 
 const resetLogSearch = () => {
   logSearchForm.action = ''
   logSearchForm.username = ''
-  logSearchForm.dateRange = ''
+  logSearchForm.dateRange = []
   logsPagination.page = 1
-  // 客户端搜索，不需要重新加载
+  void loadLogs()
 }
 
 const loadLogs = async () => {
@@ -2874,7 +2815,11 @@ const loadLogs = async () => {
         page: logsPagination.page,
         size: logsPagination.size,
         action: logSearchForm.action || undefined,
-        username: logSearchForm.username || undefined
+        username: logSearchForm.username || undefined,
+        startDate: logSearchForm.dateRange[0] || undefined,
+        endDate: logSearchForm.dateRange[1]
+          ? `${logSearchForm.dateRange[1]} 23:59:59`
+          : undefined
       }
     })
 
@@ -3575,14 +3520,12 @@ const saveStoreBinding = async () => {
 
   savingStoreBinding.value = true
   try {
-    // 先移除用户的所有门店关联
-    await unifiedApi.delete(`/user-stores/user/${currentUserForBinding.value.id}/all`)
-
-    // 批量关联新的门店
+    // 由后端一次性替换门店关系，确保一次保存只生成一条完整审计日志。
     await unifiedApi.post('/user-stores/assign', {
       userId: currentUserForBinding.value.id,
       storeIds: selectedStoreIds.value,
-      isPrimary: true  // 第一个门店会被设为主门店
+      isPrimary: true,  // 第一个门店会被设为主门店
+      replaceExisting: true
     })
 
     success('门店绑定成功')
@@ -3606,7 +3549,7 @@ const unbindStore = async (user: any) => {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning',
-        customClass: 'message-box-purple'
+        customClass: 'message-box-unified'
       }
     )
   } catch {
@@ -3867,6 +3810,14 @@ onActivated(() => {
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
+.modal-body .form-control[readonly] {
+  color: #64748b;
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 .modal-body textarea.form-control {
   resize: vertical;
   min-height: 80px;
@@ -3895,46 +3846,9 @@ onActivated(() => {
   gap: 12px;
 }
 
-.modal-footer .btn {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 80px;
-  justify-content: center;
-}
-
 .modal-footer .btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
-}
-
-.modal-footer .btn-secondary {
-  background: #6b7280;
-  color: white;
-}
-
-.modal-footer .btn-secondary:hover:not(:disabled) {
-  background: #4b5563;
-  transform: translateY(-1px);
-}
-
-.modal-footer .btn-primary {
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-  color: white;
-  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
-}
-
-.modal-footer .btn-primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
 }
 
 .permissions-view {
@@ -4014,75 +3928,6 @@ onActivated(() => {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-/* 统一标签页样式 */
-/* TAB导航样式 */
-.tab-navigation {
-  display: flex;
-  gap: 0;
-  margin-bottom: 20px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  border: 1px solid #e8ecef;
-  overflow: hidden;
-  flex-wrap: wrap;
-}
-
-.tab-navigation .el-button {
-  flex: 0 1 auto;
-  min-width: 120px;
-  border-radius: 0;
-  border: none;
-  border-right: 1px solid #e8ecef;
-  padding: 12px 20px;
-}
-
-.tab-navigation .el-button:last-child {
-  border-right: none;
-}
-
-.tab-navigation .el-button--default {
-  background: transparent;
-  color: #6c757d;
-}
-
-.tab-navigation .el-button--default:hover {
-  background: rgba(102, 126, 234, 0.1);
-  color: #667eea;
-}
-
-.tab-navigation .el-button--primary {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  border-color: #667eea;
-  color: white;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-}
-
-.tab-navigation .el-button--primary:hover {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  opacity: 0.9;
-}
-
-/* TAB内容样式 */
-.tab-content {
-  background: transparent;
-}
-
-.tab-panel {
-  animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 /* 标签页头部样式 */
 .tab-pane-header {
   display: flex;
@@ -4126,30 +3971,6 @@ onActivated(() => {
   gap: 12px;
 }
 
-.tab-content {
-  padding: 0 24px 24px 24px;
-}
-
-@media (max-width: 768px) {
-  /* TAB导航响应式 */
-  .tab-navigation {
-    flex-wrap: wrap;
-  }
-
-  .tab-navigation .el-button {
-    flex: 1 1 auto;
-    min-width: 100px;
-    padding: 12px 16px;
-    font-size: 13px;
-    border-right: none;
-    border-bottom: 1px solid #e8ecef;
-  }
-
-  .tab-navigation .el-button:last-child {
-    border-bottom: none;
-  }
-}
-
 /* 表单组 */
 .form-group {
   display: flex;
@@ -4179,50 +4000,6 @@ onActivated(() => {
 }
 
 /* 表格区域 */
-.table-section {
-  margin-bottom: 24px;
-}
-
-.section-title {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  font-size: 18px;
-  font-weight: 600;
-  color: #2c3e50;
-}
-
-.record-count {
-  font-size: 14px;
-  color: #7f8c8d;
-  font-weight: normal;
-}
-
-.table-responsive {
-  overflow-x: auto;
-}
-
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  background: white;
-}
-
-.table th,
-.table td {
-  padding: 12px;
-  text-align: left;
-  border-bottom: 1px solid #eee;
-}
-
-.table th {
-  background: #f8f9fa;
-  font-weight: 600;
-  color: #495057;
-  font-size: 14px;
-}
-
 .role-id .id-badge,
 .user-id .id-badge {
   background: #f3e5f5;
@@ -4532,139 +4309,6 @@ onActivated(() => {
   flex-wrap: wrap;
 }
 
-.btn-action {
-  padding: 4px 8px;
-  border: none;
-  border-radius: 4px;
-  font-size: 12px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-
-.btn-edit {
-  background: #e3f2fd;
-  color: #3498db;
-}
-
-.btn-edit:hover {
-  background: #3498db;
-  color: white;
-}
-
-.btn-permission {
-  background: #f3e5f5;
-  color: #9b59b6;
-}
-
-.btn-permission:hover {
-  background: #9b59b6;
-  color: white;
-}
-
-.btn-field-permission {
-  background: #fff3e0;
-  color: #ff9800;
-}
-
-.btn-field-permission:hover {
-  background: #ff9800;
-  color: white;
-}
-
-.btn-role {
-  background: #e8f5e8;
-  color: #27ae60;
-}
-
-.btn-role:hover {
-  background: #27ae60;
-  color: white;
-}
-
-.btn-delete {
-  background: #f8d7da;
-  color: #721c24;
-}
-
-.btn-delete:hover:not(:disabled) {
-  background: #dc3545;
-  color: white;
-}
-
-.btn-delete:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* 按钮样式 */
-.btn {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.2s;
-  text-decoration: none;
-}
-
-.btn-primary {
-  background: #3498db;
-  color: white;
-}
-
-.btn-primary:hover {
-  background: #2980b9;
-}
-
-.btn-outline-primary {
-  background: white;
-  color: #3498db;
-  border: 1px solid #3498db;
-}
-
-.btn-outline-primary:hover {
-  background: #3498db;
-  color: white;
-}
-
-.btn-secondary {
-  background: #6c757d;
-  color: white;
-}
-
-.btn-secondary:hover {
-  background: #5a6268;
-}
-
-.btn-outline-secondary {
-  background: white;
-  color: #6c757d;
-  border: 1px solid #6c757d;
-}
-
-.btn-outline-secondary:hover {
-  background: #6c757d;
-  color: white;
-}
-
-.btn-xs {
-  padding: 4px 8px;
-  font-size: 12px;
-}
-
-.btn-sm {
-  padding: 6px 12px;
-  font-size: 13px;
-}
-
 /* 分页 */
 .pagination-section {
   display: flex;
@@ -4793,35 +4437,6 @@ onActivated(() => {
   align-items: center;
 }
 
-.global-actions .btn {
-  padding: 8px 16px;
-  font-size: 13px;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.global-actions .btn-success {
-  background: #27ae60;
-  color: white;
-  border: none;
-}
-
-.global-actions .btn-success:hover:not(:disabled) {
-  background: #219a52;
-}
-
-.global-actions .btn-warning {
-  background: #f39c12;
-  color: white;
-  border: none;
-}
-
-.global-actions .btn-warning:hover:not(:disabled) {
-  background: #e67e22;
-}
-
 .matrix-content {
   margin-top: 20px;
 }
@@ -4930,7 +4545,7 @@ onActivated(() => {
 }
 
 /* 用户角色表单 */
-.user-info {
+.permissions-view .user-info {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -4940,7 +4555,7 @@ onActivated(() => {
   margin-bottom: 16px;
 }
 
-.user-info i {
+.permissions-view .user-info i {
   font-size: 24px;
   color: #3498db;
 }
@@ -4952,21 +4567,12 @@ onActivated(() => {
   }
 
   
-  .btn-lg {
-    padding: 12px 24px;
-    font-size: 16px;
-  }
-
   .stats-cards {
     grid-template-columns: 1fr;
   }
 
   .form-row {
     grid-template-columns: 1fr;
-  }
-
-  .tab-content {
-    padding: 16px;
   }
 
   .pagination-section {
@@ -4993,37 +4599,62 @@ onActivated(() => {
 .action-tag {
   padding: 4px 8px;
   border-radius: 4px;
+  border: 1px solid transparent;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   display: flex;
   align-items: center;
   gap: 4px;
   width: fit-content;
+  white-space: nowrap;
 }
 
-.action-tag.primary {
-  background: #e3f2fd;
-  color: #1976d2;
+.action-tag.action-create {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #047857;
 }
 
-.action-tag.success {
-  background: #e8f5e8;
-  color: #2e7d32;
+.action-tag.action-edit {
+  background: #fff7ed;
+  border-color: #fed7aa;
+  color: #c2410c;
 }
 
-.action-tag.warning {
-  background: #fff3cd;
-  color: #f57c00;
+.action-tag.action-delete {
+  background: #fff1f2;
+  border-color: #fecdd3;
+  color: #be123c;
 }
 
-.action-tag.danger {
-  background: #f8d7da;
-  color: #c62828;
+.action-tag.action-assign {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  color: #4338ca;
 }
 
-.action-tag.info {
-  background: #e1f5fe;
-  color: #0277bd;
+.action-tag.action-permission {
+  background: #faf5ff;
+  border-color: #e9d5ff;
+  color: #7e22ce;
+}
+
+.action-tag.action-enable {
+  background: #f0fdfa;
+  border-color: #99f6e4;
+  color: #0f766e;
+}
+
+.action-tag.action-disable {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+.action-tag.action-sync {
+  background: #ecfeff;
+  border-color: #a5f3fc;
+  color: #0e7490;
 }
 
 .action-tag.secondary {
@@ -5286,176 +4917,16 @@ onActivated(() => {
   gap: 12px;
 }
 
-.footer-actions .el-button {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-/* 模块管理相关样式 */
-.module-stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 20px;
-  margin-bottom: 30px;
-}
-
-.module-stat-card {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  border: 2px solid transparent;
-  transition: all 0.3s ease;
-}
-
-.module-stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
-}
-
-.module-stat-card.warning {
-  border-color: #ffc107;
-  background: linear-gradient(135deg, #fff9e6 0%, #ffffff 100%);
-}
-
-.module-stat-card .stat-icon {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-}
-
-.module-stat-card.warning .stat-icon {
-  background: linear-gradient(135deg, #ffc107 0%, #ff8f00 100%);
-}
-
-.module-stat-content {
-  flex: 1;
-}
-
-.stat-number {
-  font-size: 32px;
-  font-weight: 700;
-  color: #2c3e50;
-  margin-bottom: 4px;
-  line-height: 1;
-}
-
 .stat-label {
   color: #7f8c8d;
   font-size: 14px;
   font-weight: 500;
 }
 
-.module-info-section {
-  margin-top: 30px;
-}
-
-.info-card {
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  border-radius: 12px;
-  padding: 24px;
-  border: 1px solid #dee2e6;
-}
-
-.info-card h4 {
-  margin: 0 0 16px 0;
-  color: #2c3e50;
-  font-size: 18px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.info-card h4 i {
-  color: #3498db;
-}
-
-.info-content {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 16px;
-}
-
-.info-item {
-  padding: 12px 16px;
-  background: white;
-  border-radius: 8px;
-  border-left: 4px solid #3498db;
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.info-item strong {
-  color: #2c3e50;
-  font-weight: 600;
-}
-
 /* 未注册模块的特殊样式 */
 .stat-icon.unregistered {
   background: linear-gradient(135deg, #ffc107 0%, #ff8f00 100%);
   color: white;
-}
-
-/* 响应式设计优化 */
-@media (max-width: 767px) {
-  .module-stats-grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-
-  .module-stat-card {
-    padding: 20px;
-  }
-
-  .stat-number {
-    font-size: 28px;
-  }
-
-  .info-content {
-    grid-template-columns: 1fr;
-  }
-
-  .module-info-section {
-    margin-top: 20px;
-  }
-
-  .info-card {
-    padding: 20px;
-  }
-}
-
-@media (max-width: 480px) {
-  .module-stats-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .module-stat-card {
-    padding: 16px;
-    flex-direction: column;
-    text-align: center;
-    gap: 12px;
-  }
-
-  .module-stat-card .stat-icon {
-    width: 50px;
-    height: 50px;
-    font-size: 20px;
-  }
-
-  .stat-number {
-    font-size: 24px;
-  }
 }
 
 /* 字段权限配置样式 */
@@ -5865,12 +5336,6 @@ onActivated(() => {
   pointer-events: none;
 }
 
-.module-actions .btn.active {
-  background: #409eff;
-  color: white;
-  border-color: #409eff;
-}
-
 .permission-item {
   transition: all 0.3s ease;
 }
@@ -6043,10 +5508,6 @@ onActivated(() => {
 .role-field-permission-dialog .el-dialog {
   max-width: 1200px;
   width: min(1200px, 96vw);
-}
-
-.role-field-permission-dialog .el-dialog__body {
-  padding: 0 !important;
 }
 
 .role-field-permission-dialog .dialog-body {
@@ -6574,18 +6035,6 @@ onActivated(() => {
   }
 }
 
-/* 下拉菜单样式 */
-.btn-more {
-  background: #f3f4f6 !important;
-  color: #374151 !important;
-  border: 1px solid #d1d5db !important;
-}
-
-.btn-more:hover {
-  background: #e5e7eb !important;
-  border-color: #9ca3af !important;
-}
-
 :deep(.el-dropdown-menu__item) {
   display: flex;
   align-items: center;
@@ -6873,8 +6322,7 @@ onActivated(() => {
   gap: 16px;
 }
 
-.permissions-view .stat-card,
-.permissions-view .table-section {
+.permissions-view .stat-card {
   background: var(--permission-card);
   border: 1px solid var(--permission-border);
   box-shadow: var(--permission-shadow-soft);
@@ -6883,49 +6331,6 @@ onActivated(() => {
 .permissions-view .stat-card {
   border-radius: 22px;
   overflow: hidden;
-}
-
-.permissions-view .tab-navigation {
-  position: sticky;
-  top: 0;
-  z-index: 8;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 10px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(14px);
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  box-shadow: var(--permission-shadow-soft);
-}
-
-.permissions-view .tab-navigation .el-button {
-  min-width: 104px;
-  height: 34px;
-  padding: 0 14px;
-  border-radius: 10px;
-  font-size: 13px;
-  font-weight: 600;
-  border-width: 1px;
-}
-
-.permissions-view .tab-navigation .el-button--default {
-  background: rgba(248, 250, 252, 0.92);
-  border-color: rgba(148, 163, 184, 0.24);
-  color: #334155;
-}
-
-.permissions-view .tab-navigation .el-button--default:hover {
-  color: var(--permission-primary);
-  border-color: rgba(36, 87, 245, 0.24);
-  background: rgba(255, 255, 255, 0.98);
-}
-
-.permissions-view .tab-navigation .el-button--primary {
-  border-color: transparent;
-  background: linear-gradient(135deg, #2457f5 0%, #1d4ed8 100%);
-  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.24);
 }
 
 .permissions-view .permissions-content {
@@ -6937,11 +6342,50 @@ onActivated(() => {
   overflow: visible;
 }
 
-.permissions-view .tab-panel {
-  padding: 0;
-  background: transparent;
-  border: none;
-  box-shadow: none;
+/* Permission tables follow the global centered-table rule, including custom flex cells. */
+.permissions-view .permissions-data-table :is(
+  .role-name,
+  .user-username,
+  .user-count,
+  .user-roles,
+  .stores-cell,
+  .action-tag,
+  .action-buttons
+) {
+  justify-content: center;
+  margin-inline: auto;
+  text-align: center;
+}
+
+.permissions-view .permissions-data-table :is(
+  .role-description,
+  .role-code,
+  .user-name,
+  .last-login,
+  .create-time,
+  .log-description,
+  .ip-address
+) {
+  margin-inline: auto;
+  text-align: center;
+}
+
+.permissions-view .permissions-module-table .module-name-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-inline: auto;
+  text-align: center;
+}
+
+.permissions-view .permissions-module-table .module-name-cell .module-name {
+  justify-content: center;
+  text-align: center;
+}
+
+.permissions-view .permissions-module-table .module-description {
+  text-align: center;
 }
 
 .permissions-view .tab-pane-header {
@@ -6961,55 +6405,6 @@ onActivated(() => {
 
 .permissions-view .tab-pane-header p {
   opacity: 0.78;
-}
-
-.permissions-view .tab-pane-header .el-button:not(.el-button--primary) {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.16);
-  color: #f8fafc;
-}
-
-.permissions-view .tab-pane-header .el-button--primary {
-  background: linear-gradient(135deg, #38bdf8 0%, #2563eb 100%);
-  border-color: transparent;
-}
-
-.permissions-view .table-section {
-  border-radius: 22px;
-}
-
-.permissions-view .section-title {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--permission-accent);
-}
-
-.permissions-view .table-section {
-  padding: 18px;
-}
-
-.permissions-view .table {
-  border-radius: 18px;
-  overflow: hidden;
-}
-
-.permissions-view .table thead th {
-  background: #eef4ff;
-  color: #0f172a;
-  border-bottom: 1px solid rgba(37, 99, 235, 0.12);
-}
-
-.permissions-view .table tbody tr {
-  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
-}
-
-.permissions-view .table tbody tr:hover {
-  background: rgba(36, 87, 245, 0.03);
-}
-
-.permissions-view .action-buttons {
-  gap: 8px;
 }
 
 .permissions-view .permission-settings-page .dialog-global-controls,
@@ -7509,27 +6904,10 @@ onActivated(() => {
     border-radius: 0;
   }
 
-  .permissions-view .tab-panel {
-    padding: 0;
-  }
-
   .permissions-view .tab-pane-header {
     padding: 18px;
     border-radius: 18px;
   }
 
-  .permissions-view .tab-navigation {
-    padding: 8px;
-    gap: 8px;
-  }
-
-  .permissions-view .tab-navigation .el-button {
-    flex: 1 1 calc(50% - 8px);
-    min-width: 0;
-    height: 32px;
-    padding: 0 10px;
-    border-radius: 9px;
-    font-size: 12px;
-  }
 }
 </style>

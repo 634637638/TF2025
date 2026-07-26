@@ -1105,10 +1105,5 @@ onUnmounted(() => {
   display: flex;
   gap: 12px;
 
-  .el-button {
-    flex: 1;
-    height: 44px;
-    border-radius: 22px;
-  }
 }
 </style>

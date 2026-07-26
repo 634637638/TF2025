@@ -48,8 +48,8 @@
   color: var(--admin-data-table-header-color, #ffffff) !important;
   font-weight: var(--admin-data-table-header-font-weight, 600) !important;
   font-size: var(--admin-data-table-header-font-size, 13px) !important;
-  padding: var(--admin-data-table-header-padding-y, 12px) var(--admin-data-table-header-padding-x, 10px) !important;
-  height: var(--admin-data-table-header-height, 44px) !important;
+  padding: var(--admin-data-table-header-padding-y, 6px) var(--admin-data-table-header-padding-x, 10px) !important;
+  height: var(--admin-data-table-header-height, 38px) !important;
   box-sizing: border-box !important;
   text-align: center !important;
   border-right: 1px solid var(--admin-data-table-header-border, #dee2e6) !important;
@@ -109,11 +109,37 @@
   }
 }
 
-// 序列号、IMEI、业务单号等关键标识必须完整显示，列宽由公共宽度工具计算。
+// Unified tables never hide unknown legacy fields. Until a page adopts
+// content-driven widths, cells wrap as a complete-display fallback.
+.data-table .el-table__body-wrapper td.el-table__cell .cell,
+.admin-data-table .el-table__body-wrapper td.el-table__cell .cell {
+  overflow: visible !important;
+  overflow-wrap: anywhere !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+}
+
+// 内容驱动列、序列号、IMEI、业务单号必须完整显示，列宽由公共宽度工具计算。
+.el-table__body-wrapper td.complete-text-column .cell,
 .el-table__body-wrapper td.identifier-column .cell,
 .el-table__body-wrapper td.serial-imei-column .cell {
   overflow: visible !important;
   text-overflow: clip !important;
+  white-space: nowrap !important;
+}
+
+// Remarks and descriptions stay complete without creating an unbounded column.
+.el-table__body-wrapper td.wrapped-text-column .cell {
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  white-space: normal !important;
+}
+
+// Explicit long-text exception: the page must provide a complete-content viewer.
+.el-table__body-wrapper td.ellipsis-text-column .cell {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
   white-space: nowrap !important;
 }
 
@@ -144,15 +170,35 @@
     }
   }
 
-  // 悬停效果 - 与库存管理完全一致
-  &:hover > td {
-    background: var(--admin-data-table-row-hover-bg, #e3f2fd) !important;
-    transform: translateY(-1px);
-    box-shadow: var(--admin-data-table-row-hover-shadow, 0 4px 12px rgba(0, 0, 0, 0.08));
+  // 悬停效果：整行使用统一外包围，避免每个单元格分别浮起。
+  &:hover,
+  &.hover-row {
+    position: relative;
+    z-index: 2;
+    outline: 1px solid var(--admin-data-table-row-hover-border, #94a3b8);
+    outline-offset: -1px;
+    box-shadow: var(--admin-data-table-row-hover-shadow, 0 5px 16px rgba(15, 23, 42, 0.08));
+  }
+
+  &:hover > td,
+  &.hover-row > td {
+    background: var(--admin-data-table-row-hover-bg, #ede9fe) !important;
   }
 
   &.current-row > td {
-    background: var(--admin-data-table-row-selected-bg, #e8f4fd) !important;
+    background: var(--admin-data-table-row-selected-bg, #bfdbfe) !important;
+  }
+
+  &.row-selected > td {
+    background: var(--admin-data-table-row-selected-bg, #bfdbfe) !important;
+  }
+
+  &.row-selected:hover > td {
+    background: var(--admin-data-table-row-selected-hover-bg, #93c5fd) !important;
+  }
+
+  &.row-selected > td:first-child {
+    box-shadow: inset 3px 0 0 var(--admin-data-table-row-selected-accent, #1d4ed8) !important;
   }
 
   // 条纹行悬停效果
@@ -160,9 +206,30 @@
     background: var(--admin-data-table-row-even-bg, #f8f9fa);
   }
 
-  &.el-table__row--striped:hover > td {
-    background: var(--admin-data-table-row-hover-bg, #e3f2fd) !important;
+  &.el-table__row--striped:hover > td,
+  &.el-table__row--striped.hover-row > td {
+    background: var(--admin-data-table-row-hover-bg, #ede9fe) !important;
   }
+}
+
+// 调货/同行批发数据统一识别色。业务页面只需返回 admin-row--peer-transfer。
+.el-table__body tr.admin-row--peer-transfer:not(.row-selected) > td.el-table__cell,
+.el-table__body tr.admin-row--peer-transfer.el-table__row--striped:not(.row-selected) > td.el-table__cell {
+  background: var(--admin-data-table-wholesale-bg, #eef1ff) !important;
+}
+
+.el-table__body tr.admin-row--peer-transfer:not(.row-selected):hover > td.el-table__cell,
+.el-table__body tr.admin-row--peer-transfer.hover-row:not(.row-selected) > td.el-table__cell {
+  background: var(--admin-data-table-wholesale-hover-bg, #e2e7ff) !important;
+}
+
+.el-table__body tr.admin-row--peer-transfer:not(.row-selected) > td.el-table__cell:first-child {
+  box-shadow: inset 3px 0 0 var(--admin-data-table-wholesale-accent, #667eea);
+}
+
+.admin-wholesale-text {
+  color: var(--admin-data-table-wholesale-color, #4f5fc7) !important;
+  font-weight: 700 !important;
 }
 
 // ==================== 空状态样式 ====================
@@ -181,58 +248,407 @@
 
 // ==================== 表格内按钮样式 ====================
 
+// 普通业务列中的单个动作按钮按内容自适应，不占满整个单元格。
+.table-inline-action.el-button,
+.table-inline-action.el-button.table-action {
+  display: inline-flex !important;
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: var(--admin-data-table-action-height, 28px) !important;
+  min-height: var(--admin-data-table-action-height, 28px) !important;
+  margin: 0 !important;
+  padding: var(--admin-data-table-action-padding-y, 5px) var(--admin-data-table-inline-action-padding-x, 7px) !important;
+  border-radius: var(--admin-data-table-action-radius, 4px) !important;
+  font-size: var(--admin-data-table-action-font-size, 13px) !important;
+  white-space: nowrap !important;
+}
+
+.table-inline-action.el-button > span,
+.table-inline-action.el-button.table-action > span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--admin-data-table-inline-action-icon-gap, 3px);
+  white-space: nowrap;
+}
+
+.table-inline-action.el-button i,
+.table-inline-action.el-button.table-action i {
+  font-size: var(--admin-data-table-inline-action-icon-size, 12px) !important;
+}
+
 // 操作列按钮统一样式 - 全局生效
-.action-buttons {
+.action-buttons,
+.mobile-row-actions,
+.mobile-inline-actions,
+.table-actions,
+.tf-table-actions,
+.card-actions,
+.batch-actions-buttons {
   display: inline-flex;
   gap: var(--admin-data-table-action-gap, 6px);
   justify-content: center;
-  flex-wrap: nowrap; // 确保按钮在一行显示，不换行
+  flex-direction: row !important;
+  flex-wrap: nowrap !important; // 确保按钮在一行显示，不换行
   align-items: center;
+}
 
-  // 统一操作按钮为 small 尺寸
-  .el-button {
-    height: var(--admin-data-table-action-height, 28px) !important;
-    min-height: var(--admin-data-table-action-height, 28px) !important;
-    padding: var(--admin-data-table-action-padding-y, 5px) var(--admin-data-table-action-padding-x, 10px) !important;
-    margin: 0 !important;
-    font-size: var(--admin-data-table-action-font-size, 13px) !important;
-    border-radius: var(--admin-data-table-action-radius, 4px) !important;
-    white-space: nowrap; // 防止按钮文字换行
+// Operation buttons use semantic colors instead of the global filled button theme.
+// New code should prefer table-action--* classes; Element types remain as a
+// compatibility fallback for existing pages.
+body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button,
+.action-buttons button.btn,
+.mobile-row-actions button.btn,
+.mobile-inline-actions button.btn,
+.table-actions button.btn,
+.tf-table-actions button.btn,
+.card-actions button.btn,
+.batch-actions-buttons button.btn,
+.btn-action,
+.el-button.table-action {
+  display: inline-flex !important;
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: var(--admin-data-table-action-height, 28px) !important;
+  min-height: var(--admin-data-table-action-height, 28px) !important;
+  margin: 0 !important;
+  padding: var(--admin-data-table-action-padding-y, 5px) var(--admin-data-table-action-padding-x, 10px) !important;
+  border-width: 1px !important;
+  border-style: solid !important;
+  border-radius: var(--admin-data-table-action-radius, 4px) !important;
+  box-shadow: none !important;
+  font-size: var(--admin-data-table-action-font-size, 13px) !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+}
 
-    i {
-      font-size: var(--admin-data-table-action-icon-size, 14px) !important;
-    }
+body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button i,
+.action-buttons button.btn i,
+.mobile-row-actions button.btn i,
+.mobile-inline-actions button.btn i,
+.table-actions button.btn i,
+.tf-table-actions button.btn i,
+.card-actions button.btn i,
+.batch-actions-buttons button.btn i,
+.btn-action i,
+.el-button.table-action i {
+  font-size: var(--admin-data-table-action-icon-size, 14px) !important;
+}
 
-    span {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-    }
+body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button > span,
+.el-button.table-action > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
 
+/* Compact card commands: share available width and always remain on one row. */
+.tf-actions--fit-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  gap: 6px;
+  flex-wrap: nowrap !important;
+}
+
+body .tf-actions--fit-row .el-button {
+  flex: 1 1 0 !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding-inline: 6px !important;
+}
+
+body .tf-actions--fit-row .el-button > span {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+@mixin tf-action-colors($bg, $border, $color, $hover-bg, $hover-border, $hover-color) {
+  --el-button-bg-color: #{$bg} !important;
+  --el-button-border-color: #{$border} !important;
+  --el-button-text-color: #{$color} !important;
+  --el-button-hover-bg-color: #{$hover-bg} !important;
+  --el-button-hover-border-color: #{$hover-border} !important;
+  --el-button-hover-text-color: #{$hover-color} !important;
+  background: #{$bg} !important;
+  border-color: #{$border} !important;
+  color: #{$color} !important;
+
+  &:hover,
+  &:focus {
+    background: #{$hover-bg} !important;
+    border-color: #{$hover-border} !important;
+    color: #{$hover-color} !important;
   }
 }
 
-// Unified admin tables remain horizontally scrollable without a visible drag bar.
-.admin-page .el-table .el-scrollbar__wrap {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button.el-button--primary,
+body .el-button.table-action--edit,
+body .el-button.mobile-action-btn-edit {
+  @include tf-action-colors(
+    var(--admin-action-edit-bg), var(--admin-action-edit-border), var(--admin-action-edit-color),
+    var(--admin-action-edit-hover-bg), var(--admin-action-edit-hover-border), var(--admin-action-edit-hover-color)
+  );
 }
 
-.admin-page .el-table .el-scrollbar__wrap::-webkit-scrollbar {
+body .el-button.table-action--view,
+body .el-button.mobile-action-btn-view,
+body .el-button.mobile-action-btn-default,
+body .btn-action.btn-view {
+  @include tf-action-colors(
+    var(--admin-action-view-bg), var(--admin-action-view-border), var(--admin-action-view-color),
+    var(--admin-action-view-hover-bg), var(--admin-action-view-hover-border), var(--admin-action-view-hover-color)
+  );
+}
+
+body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button.el-button--danger,
+body .el-button.table-action--delete,
+body .el-button.mobile-action-btn-delete,
+body .btn-action.btn-delete {
+  @include tf-action-colors(
+    var(--admin-action-delete-bg), var(--admin-action-delete-border), var(--admin-action-delete-color),
+    var(--admin-action-delete-hover-bg), var(--admin-action-delete-hover-border), var(--admin-action-delete-hover-color)
+  );
+}
+
+body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button.el-button--warning,
+body .el-button.table-action--pin {
+  @include tf-action-colors(
+    var(--admin-action-pin-bg), var(--admin-action-pin-border), var(--admin-action-pin-color),
+    var(--admin-action-pin-hover-bg), var(--admin-action-pin-hover-border), var(--admin-action-pin-hover-color)
+  );
+}
+
+body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button.el-button--success,
+body .el-button.table-action--success,
+body .el-button.mobile-action-btn-status,
+body .el-button.mobile-action-btn-approve {
+  @include tf-action-colors(
+    var(--admin-action-success-bg), var(--admin-action-success-border), var(--admin-action-success-color),
+    var(--admin-action-success-hover-bg), var(--admin-action-success-hover-border), var(--admin-action-success-hover-color)
+  );
+}
+
+body .btn-action.btn-edit,
+body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) button.btn-outline-primary {
+  @include tf-action-colors(
+    var(--admin-action-edit-bg), var(--admin-action-edit-border), var(--admin-action-edit-color),
+    var(--admin-action-edit-hover-bg), var(--admin-action-edit-hover-border), var(--admin-action-edit-hover-color)
+  );
+}
+
+body .btn-action.btn-permission,
+body .btn-action.btn-field-permission,
+body .btn-action.btn-role,
+body .btn-action.btn-manage {
+  @include tf-action-colors(
+    var(--admin-action-manage-bg), var(--admin-action-manage-border), var(--admin-action-manage-color),
+    var(--admin-action-manage-hover-bg), var(--admin-action-manage-hover-border), var(--admin-action-manage-hover-color)
+  );
+}
+
+body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button.el-button--info,
+body .el-button.table-action--neutral {
+  @include tf-action-colors(
+    var(--admin-action-neutral-bg), var(--admin-action-neutral-border), var(--admin-action-neutral-color),
+    var(--admin-action-neutral-hover-bg), var(--admin-action-neutral-hover-border), var(--admin-action-neutral-hover-color)
+  );
+}
+
+body .el-button.table-action--manage {
+  @include tf-action-colors(
+    var(--admin-action-manage-bg), var(--admin-action-manage-border), var(--admin-action-manage-color),
+    var(--admin-action-manage-hover-bg), var(--admin-action-manage-hover-border), var(--admin-action-manage-hover-color)
+  );
+}
+
+body .el-button.table-action--finance {
+  @include tf-action-colors(
+    var(--admin-action-finance-bg), var(--admin-action-finance-border), var(--admin-action-finance-color),
+    var(--admin-action-finance-hover-bg), var(--admin-action-finance-hover-border), var(--admin-action-finance-hover-color)
+  );
+}
+
+body .el-button.table-action--transfer {
+  @include tf-action-colors(
+    var(--admin-action-transfer-bg), var(--admin-action-transfer-border), var(--admin-action-transfer-color),
+    var(--admin-action-transfer-hover-bg), var(--admin-action-transfer-hover-border), var(--admin-action-transfer-hover-color)
+  );
+}
+
+body .el-button.table-action--export {
+  @include tf-action-colors(
+    var(--admin-action-export-bg), var(--admin-action-export-border), var(--admin-action-export-color),
+    var(--admin-action-export-hover-bg), var(--admin-action-export-hover-border), var(--admin-action-export-hover-color)
+  );
+}
+
+body .el-button.table-action--warning {
+  @include tf-action-colors(
+    var(--admin-action-warning-bg), var(--admin-action-warning-border), var(--admin-action-warning-color),
+    var(--admin-action-warning-hover-bg), var(--admin-action-warning-hover-border), var(--admin-action-warning-hover-color)
+  );
+}
+
+// Compatibility inference makes existing pages semantic without relying on
+// their historical Element type. Explicit table-action--* remains preferred.
+body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons)
+  .el-button:is([title*='查看'], [title*='详情'], [title*='预览'], :has(.fa-eye), :has(.fa-info-circle)) {
+  @include tf-action-colors(
+    var(--admin-action-view-bg), var(--admin-action-view-border), var(--admin-action-view-color),
+    var(--admin-action-view-hover-bg), var(--admin-action-view-hover-border), var(--admin-action-view-hover-color)
+  );
+}
+
+body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons)
+  .el-button:is([title*='编辑'], [title*='修改'], :has(.fa-edit), :has(.fa-pen)) {
+  @include tf-action-colors(
+    var(--admin-action-edit-bg), var(--admin-action-edit-border), var(--admin-action-edit-color),
+    var(--admin-action-edit-hover-bg), var(--admin-action-edit-hover-border), var(--admin-action-edit-hover-color)
+  );
+}
+
+body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons)
+  .el-button:is([title*='删除'], [title*='移除'], :has(.fa-trash)) {
+  @include tf-action-colors(
+    var(--admin-action-delete-bg), var(--admin-action-delete-border), var(--admin-action-delete-color),
+    var(--admin-action-delete-hover-bg), var(--admin-action-delete-hover-border), var(--admin-action-delete-hover-color)
+  );
+}
+
+body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons)
+  .el-button:is([title*='置顶'], :has(.fa-thumbtack)) {
+  @include tf-action-colors(
+    var(--admin-action-pin-bg), var(--admin-action-pin-border), var(--admin-action-pin-color),
+    var(--admin-action-pin-hover-bg), var(--admin-action-pin-hover-border), var(--admin-action-pin-hover-color)
+  );
+}
+
+body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons)
+  .el-button:is([title*='权限'], [title*='配置'], [title*='设置'], [title*='管理'], [title*='绑定'], :has(.fa-lock), :has(.fa-cog), :has(.fa-link), :has(.fa-columns), :has(.fa-user-tag)) {
+  @include tf-action-colors(
+    var(--admin-action-manage-bg), var(--admin-action-manage-border), var(--admin-action-manage-color),
+    var(--admin-action-manage-hover-bg), var(--admin-action-manage-hover-border), var(--admin-action-manage-hover-color)
+  );
+}
+
+body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons)
+  .el-button:is([title*='打款'], [title*='付款'], [title*='到账'], [title*='结算'], :has(.fa-wallet), :has(.fa-credit-card), :has(.fa-money-bill)) {
+  @include tf-action-colors(
+    var(--admin-action-finance-bg), var(--admin-action-finance-border), var(--admin-action-finance-color),
+    var(--admin-action-finance-hover-bg), var(--admin-action-finance-hover-border), var(--admin-action-finance-hover-color)
+  );
+}
+
+body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons)
+  .el-button:is([title*='入库'], [title*='出库'], [title*='退库'], [title*='调货'], [title*='交付'], [title*='发货'], [title*='销售']) {
+  @include tf-action-colors(
+    var(--admin-action-transfer-bg), var(--admin-action-transfer-border), var(--admin-action-transfer-color),
+    var(--admin-action-transfer-hover-bg), var(--admin-action-transfer-hover-border), var(--admin-action-transfer-hover-color)
+  );
+}
+
+body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons)
+  .el-button:is([title*='导出'], [title*='下载'], [title*='上传'], [title*='同步'], [title*='刷新'], :has(.fa-download), :has(.fa-upload), :has(.fa-sync), :has(.fa-refresh)) {
+  @include tf-action-colors(
+    var(--admin-action-export-bg), var(--admin-action-export-border), var(--admin-action-export-color),
+    var(--admin-action-export-hover-bg), var(--admin-action-export-hover-border), var(--admin-action-export-hover-color)
+  );
+}
+
+body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons)
+  .el-button:is([title*='禁用'], [title*='停用'], [title*='离职'], [title*='拒绝'], [title*='撤销'], [title*='重置']) {
+  @include tf-action-colors(
+    var(--admin-action-warning-bg), var(--admin-action-warning-border), var(--admin-action-warning-color),
+    var(--admin-action-warning-hover-bg), var(--admin-action-warning-hover-border), var(--admin-action-warning-hover-color)
+  );
+}
+
+body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons)
+  .el-button:is([title*='完成'], [title*='通过'], [title*='审批'], [title*='审核'], [title*='启用'], :has(.fa-check), :has(.fa-check-circle)) {
+  @include tf-action-colors(
+    var(--admin-action-success-bg), var(--admin-action-success-border), var(--admin-action-success-color),
+    var(--admin-action-success-hover-bg), var(--admin-action-success-hover-border), var(--admin-action-success-hover-color)
+  );
+}
+
+body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button.is-disabled,
+.el-button.table-action.is-disabled {
+  --el-button-disabled-bg-color: var(--admin-action-disabled-bg) !important;
+  --el-button-disabled-border-color: var(--admin-action-disabled-border) !important;
+  --el-button-disabled-text-color: var(--admin-action-disabled-color) !important;
+  background: var(--admin-action-disabled-bg) !important;
+  border-color: var(--admin-action-disabled-border) !important;
+  color: var(--admin-action-disabled-color) !important;
+  box-shadow: none !important;
+}
+
+// Unified tables keep one hidden horizontal scroller. Touch scrolls natively;
+// desktop users can hold the left mouse button and drag the table content.
+.admin-page .el-table .el-scrollbar__wrap,
+.data-table .el-scrollbar__wrap,
+.admin-data-table .el-scrollbar__wrap {
+  overflow-x: auto !important;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  cursor: grab;
+}
+
+.admin-page .el-table .el-scrollbar__wrap::-webkit-scrollbar,
+.data-table .el-scrollbar__wrap::-webkit-scrollbar,
+.admin-data-table .el-scrollbar__wrap::-webkit-scrollbar {
   display: none;
   width: 0;
   height: 0;
 }
 
-.admin-page .el-table .el-scrollbar__bar.is-horizontal {
+.admin-page .el-table .el-scrollbar__bar.is-horizontal,
+.data-table .el-scrollbar__bar.is-horizontal,
+.admin-data-table .el-scrollbar__bar.is-horizontal {
   display: none !important;
+}
+
+.data-table .el-scrollbar__wrap.is-admin-table-dragging,
+.admin-data-table .el-scrollbar__wrap.is-admin-table-dragging {
+  cursor: grabbing !important;
+  scroll-behavior: auto !important;
+}
+
+body.is-admin-table-dragging,
+body.is-admin-table-dragging * {
+  cursor: grabbing !important;
+  user-select: none !important;
 }
 
 .admin-page .data-table.el-table td.actions-column .cell,
 .admin-page .devices-table.el-table td.actions-column .cell,
 .admin-page .admin-data-table.el-table td.actions-column .cell {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
   overflow: visible !important;
   padding-inline: var(--admin-data-table-cell-padding-x, 8px) !important;
+}
+
+.admin-page td.actions-column :where(.actions-cell, .action-buttons, .table-actions, .tf-table-actions) {
+  margin-inline: auto !important;
+}
+
+.admin-page td.actions-column .actions-cell {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
 }
 
 .el-table {
@@ -269,6 +685,37 @@
 }
 
 @media (max-width: 768px) {
+  .mobile-row-actions,
+  .mobile-inline-actions {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    width: 100% !important;
+    flex-wrap: nowrap !important;
+  }
+
+  .mobile-row-actions {
+    padding: 2px !important;
+    background: rgba(255, 255, 255, 0.96) !important;
+    border: 1px solid #dbe7f5 !important;
+    border-radius: 8px !important;
+  }
+
+  :where(.mobile-row-actions, .mobile-inline-actions) :where(.el-button, .mobile-action-btn, button.btn) {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+  }
+
+  :where(.mobile-row-actions, .mobile-inline-actions) :where(.el-button, button.btn) i {
+    margin-right: 2px !important;
+  }
+
+  :where(.mobile-row-actions, .mobile-inline-actions) :where(.el-button, button.btn):hover {
+    transform: none !important;
+    box-shadow: none !important;
+  }
+
   .admin-page {
     .el-table {
       width: 100% !important;

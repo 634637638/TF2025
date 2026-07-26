@@ -415,11 +415,6 @@ const handleClose = () => {
   padding-top: 2px;
 }
 
-.detail-modal-footer :deep(.el-button) {
-  width: 100%;
-  margin: 0;
-}
-
 @media (max-width: 1024px) {
   .detail-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

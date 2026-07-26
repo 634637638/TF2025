@@ -19,6 +19,8 @@ const ACTION_ORDER = [
 const MODULE_PERMISSION_TYPES = {
   dashboard_dashboardview: ['view'],
   preorders_preordersview: ['view', 'create', 'edit', 'delete', 'match', 'deliver', 'cancel'],
+  reminders_reminderview: ['view', 'create', 'edit', 'delete', 'manage'],
+  shared_sharedview: ['view', 'create', 'edit', 'delete', 'manage'],
   suppliers_suppliersview: ['view', 'create', 'edit', 'delete', 'export'],
   payments_supplierphonepaymentsview: ['view', 'create', 'edit', 'delete', 'approve', 'export'],
   system_systemview: ['view', 'edit', 'delete'],
@@ -73,6 +75,18 @@ const MODULE_PERMISSION_METADATA = {
     description: '管理预定单、匹配库存、交付和取消操作',
     category: 'business',
     icon: 'fas fa-clipboard-check'
+  },
+  reminders_reminderview: {
+    name: '待办提醒',
+    description: '创建周期待办、分配员工并查看完成和忽略记录',
+    category: 'system',
+    icon: 'fas fa-bell'
+  },
+  shared_sharedview: {
+    name: '经验分享',
+    description: '记录和共享问题经验、公共文档及多媒体附件',
+    category: 'system',
+    icon: 'fas fa-lightbulb'
   },
   suppliers_suppliersview: {
     name: '供应商管理',

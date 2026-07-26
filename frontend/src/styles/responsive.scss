@@ -5,7 +5,7 @@
    最后更新: 2025-12-20
    ================================ */
 
-/* 导入统一模态框样式规范（包含渐变按钮样式） */
+/* 导入旧版自定义模态框的结构样式；按钮视觉由 _buttons.scss 统一控制。 */
 @use '../assets/css/modal-styles.scss' as *;
 
 /* 基础断点定义 */
@@ -107,14 +107,6 @@ body {
   /* 显示移动端元素 */
   .mobile-only {
     display: block !important;
-  }
-
-  /* 统一触摸优化 */
-  .btn,
-  .el-button {
-    min-height: 44px !important;
-    min-width: 44px !important;
-    margin: 4px;
   }
 
   /* 统一字体大小 */
@@ -633,13 +625,6 @@ body {
     line-height: var(--admin-data-table-line-height, var(--mobile-line-height-compact)) !important;
   }
 
-  /* 表格操作列 */
-  .el-table .el-table__cell .el-button {
-    min-height: var(--admin-data-table-action-height, 32px) !important;
-    padding: var(--admin-data-table-action-padding-y, 6px) var(--admin-data-table-action-padding-x, 12px) !important;
-    margin: 0 !important;
-    font-size: var(--admin-data-table-action-font-size, var(--mobile-text-caption)) !important;
-  }
 }
 
 /* 小屏手机特定适配 */
@@ -648,63 +633,6 @@ body {
     font-size: var(--admin-data-table-cell-font-size, var(--mobile-text-table)) !important;
   }
 
-  .el-table .el-table__cell .el-button {
-    min-height: var(--admin-data-table-action-height, 32px) !important;
-    padding: var(--admin-data-table-action-padding-y, 6px) var(--admin-data-table-action-padding-x, 12px) !important;
-    font-size: var(--admin-data-table-action-font-size, var(--mobile-text-caption)) !important;
-  }
-}
-
-/* 5.4 Button - 移动端通用适配 */
-@media (max-width: 767px) {
-  .el-button {
-    min-height: var(--mobile-button-height) !important; /* iOS 触摸最小尺寸 */
-    padding: 0 16px;
-    font-size: var(--mobile-text-button) !important;
-    line-height: 1 !important;
-    font-family: var(--app-font-family-sans) !important;
-    font-weight: 600 !important;
-    margin: 4px; /* 增加间距避免误触 */
-    border-radius: 12px !important;
-  }
-
-  .el-button--small {
-    min-height: var(--mobile-button-height-sm) !important;
-    font-size: var(--mobile-text-caption) !important;
-    padding: 0 12px;
-  }
-
-  .el-button--large {
-    min-height: var(--mobile-button-height-lg) !important;
-    padding: 0 20px;
-    font-size: var(--mobile-text-body-lg) !important;
-  }
-
-  /* 按钮组 */
-  .el-button-group .el-button {
-    margin: 2px;
-  }
-}
-
-/* 小屏手机特定适配 */
-@media (max-width: 479px) {
-  .el-button {
-    min-height: var(--mobile-button-height) !important;
-    padding: 0 12px;
-    font-size: var(--mobile-text-button) !important;
-  }
-
-  .el-button--small {
-    min-height: var(--mobile-button-height-sm) !important;
-    font-size: 11px !important;
-    padding: 0 8px;
-  }
-
-  .el-button--large {
-    min-height: var(--mobile-button-height-lg) !important;
-    padding: 0 16px;
-    font-size: var(--mobile-text-body-lg) !important;
-  }
 }
 
 /* ================================
@@ -759,10 +687,6 @@ body {
    ================================ */
 
 @media (prefers-contrast: high) {
-  .btn {
-    border: 2px solid currentColor;
-  }
-
   a {
     text-decoration: underline;
   }

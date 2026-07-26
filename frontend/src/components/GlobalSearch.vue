@@ -1101,11 +1101,6 @@ onBeforeUnmount(() => {
         gap: 8px;
         flex-shrink: 0; /* 防止按钮被压缩 */
 
-        .btn {
-          min-height: 44px; /* iOS recommended touch target size */
-          white-space: nowrap;
-          padding: 0 16px;
-        }
       }
     }
 
@@ -1115,15 +1110,6 @@ onBeforeUnmount(() => {
       gap: 8px;
       flex-shrink: 0; 
 
-      .btn {
-        min-height: 44px; /* iOS recommended touch target size */
-        white-space: nowrap;
-        padding: 0 16px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-      }
     }
 
     
@@ -1324,12 +1310,6 @@ onBeforeUnmount(() => {
       }
     }
 
-    .search-actions {
-      .btn {
-        font-size: 14px;
-        min-height: 40px;
-      }
-    }
   }
 
   
@@ -1350,11 +1330,6 @@ onBeforeUnmount(() => {
       flex-direction: row;
       gap: 4px;
 
-      .btn {
-        flex: 1;
-        justify-content: center;
-        min-width: 80px;
-      }
     }
   }
 }
@@ -1503,14 +1478,6 @@ onBeforeUnmount(() => {
 
     .search-row {
       gap: 10px;
-    }
-
-    .search-actions {
-      .btn {
-        height: 40px;
-        font-size: 14px;
-        padding: 0 16px;
-      }
     }
 
     .filter-container {
@@ -1868,48 +1835,6 @@ onBeforeUnmount(() => {
 
     &:hover {
       opacity: 0.8;
-    }
-  }
-}
-
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  border: 1px solid;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  &.btn-primary {
-    background: var(--el-color-primary);
-    border-color: var(--el-color-primary);
-    color: white;
-
-    &:hover:not(:disabled) {
-      background: var(--el-color-primary-light-3);
-      border-color: var(--el-color-primary-light-3);
-    }
-  }
-
-  &.btn-outline-secondary {
-    background: transparent;
-    border-color: var(--el-border-color);
-    color: var(--el-text-color-regular);
-
-    &:hover:not(:disabled) {
-      background: var(--el-fill-color-light);
-      color: var(--el-text-color-primary);
     }
   }
 }

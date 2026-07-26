@@ -711,9 +711,6 @@ onBeforeUnmount(() => {
 </style>
 
 <style lang="scss" scoped>
-/* 导入统一模态框样式 */
-@use '@/assets/css/modal-styles.scss' as *;
-
 .scanner-dialog-header {
   background: linear-gradient(135deg, #6d28d9 0%, #8b5cf6 48%, #ec4899 100%);
   color: #ffffff;
@@ -925,46 +922,6 @@ onBeforeUnmount(() => {
     &:last-child {
       margin-bottom: 0;
     }
-  }
-}
-
-.btn.btn-outline-primary {
-  background: transparent;
-  color: #409eff;
-  border: 1px solid #409eff;
-
-  &:hover {
-    background: rgba(64, 158, 255, 0.1);
-  }
-
-  &.active {
-    background: #409eff;
-    color: white;
-  }
-}
-
-.btn.btn-outline-info {
-  background: transparent;
-  color: #909399;
-  border: 1px solid #909399;
-
-  &:hover {
-    background: rgba(144, 147, 153, 0.1);
-  }
-
-  &.active {
-    background: #909399;
-    color: white;
-  }
-}
-
-.btn.btn-outline-success {
-  background: transparent;
-  color: #67c23a;
-  border: 1px solid #67c23a;
-
-  &:hover {
-    background: rgba(103, 194, 58, 0.1);
   }
 }
 

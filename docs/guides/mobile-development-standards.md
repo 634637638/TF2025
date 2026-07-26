@@ -212,86 +212,22 @@ if (isMobile.value) {
 
 ### 4. 移动端表格统一规则
 
-移动端表格应优先使用公共 class 承载布局、表头高度、字号、行高等共性规则，页面或业务表只保留内容差异。禁止在单个业务表里单独覆写表头高度，避免同一页面不同 TAB 的页头高度不一致。
-
-综合查询列表是当前移动端表格视觉基准。所有手机端统一使用同一套表头标准，不按单个机型或 `≤480px` 单独分叉。
+移动端表格统一以 [后台卡片与表格统一规范](../frontend/admin-table-standards.md) 为唯一详细标准。综合查询列表是当前视觉和交互基准，后台数据列表使用 Element Plus `el-table.data-table.devices-table`，不得把综合查询恢复为原生 `<table>`，也不得在业务页面复制一套移动端表格 CSS。
 
 适配范围：
 
 - 手机端统一范围：`max-width: 767px`
 - 覆盖常见宽度：`360px`、`375px`、`390px`、`393px`、`414px`、`428px`、`480px`、`767px`
 
-表头标准：
+强制规则：
 
-- 字号：`13px`
-- 行高：`1.45`
-- 左右内边距：`8px`
-- 表头视觉高度：约 `40px`
-- 文本：单行展示，超长省略
-
-#### 工资页表格
-
-工资管理页的手机端表格必须统一使用 `salary-mobile-table`：
-
-- 工资模板：`data-table salary-template-table salary-mobile-table`
-- 员工工资：`data-table salary-employee-table salary-mobile-table`
-- 工资发放：`data-table salary-payout-table salary-mobile-table`
-- 工资计算：`data-table salary-mobile-table`
-
-Element Plus 表格公共规则：
-
-```scss
-@media (max-width: 767px) {
-  .salary-page.admin-page .table-responsive .salary-mobile-table {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    table-layout: fixed !important;
-  }
-
-  .salary-page.admin-page .salary-mobile-table :deep(.el-table__header th) {
-    height: 40px !important;
-    padding: 0 !important;
-  }
-
-  .salary-page.admin-page .salary-mobile-table :deep(.el-table__header th .cell) {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 40px;
-    padding: 0 8px !important;
-    font-size: 13px !important;
-    line-height: 1.45 !important;
-    white-space: nowrap;
-    word-break: keep-all;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-}
-```
-
-原生表格公共规则（综合查询 `devices-table` 基准）：
-
-```scss
-@media (max-width: 767px) {
-  .devices-table th,
-  .devices-table td {
-    padding: 10px 8px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-size: 13px;
-    line-height: 1.45;
-  }
-}
-```
-
-新增或调整工资页手机端表格时：
-
-- 先复用 `salary-mobile-table`，不要新建只服务某个 TAB 的表头高度规则。
-- 长表头优先缩短文案或压缩列宽，不能用换行撑高表头。
-- 业务表自己的 class 只处理列内容、颜色、按钮、展开行等差异。
-- 修改后至少检查 `360px`、`375px`、`390px`、`414px`、`428px`、`480px`、`767px`，确保同一页面不同 TAB 表头高度一致且页面不横向溢出。
+- 表头高度、字号、行高、内边距和字体断点只读取全局变量；页面不得按单个机型重新定义。
+- 普通文本、序列号、IMEI、名称、价格和状态按当前页内容计算列宽并完整展示，不自动缩小单元格字号。
+- 不允许把 `overflow: hidden` 和 `text-overflow: ellipsis` 作为所有字段的移动端默认规则。只有主规范明确允许且提供完整查看入口的长文本字段可以省略。
+- 字段较少时由 `fit` 铺满表格；字段总宽度超过容器时只使用 Element Plus 内部一个横向滚动层，表头和内容同步移动。
+- 手机端使用原生触摸横移，不显示第二个外层横向滚动条，也不得让页面本身横向溢出。
+- 不同用户按实际可见字段和操作重新计算宽度。普通用户字段减少后自动铺满，不能继承管理员全字段的空白列宽。
+- 修改后至少检查 `360px`、`375px`、`390px`、`414px`、`428px`、`480px`、`767px`，并分别检查管理员和普通用户。
 
 ## 🎨 样式规范
 

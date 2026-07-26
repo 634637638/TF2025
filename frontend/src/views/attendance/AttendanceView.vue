@@ -12,19 +12,17 @@
     <div class="page-container attendance-page admin-page">
       <PageHeader title="考勤管理">
         <template #actions>
-          <div class="action-buttons">
-            <el-button v-if="canCreateRequest" type="primary" @click="showCreateDialog" :disabled="loading">
-              <i class="fas fa-plus"></i>
-              <span>新增</span>
-            </el-button>
-            <el-button type="info" @click="refreshData" :disabled="refreshing">
-              <InlineLoading v-if="refreshing" text="刷新中..." size="small" variant="inherit" />
-              <template v-else>
-                <i class="fas fa-sync-alt"></i>
-                <span>刷新</span>
-              </template>
-            </el-button>
-          </div>
+          <el-button v-if="canCreateRequest" type="primary" @click="showCreateDialog" :disabled="loading">
+            <i class="fas fa-plus"></i>
+            <span>新增</span>
+          </el-button>
+          <el-button type="info" @click="refreshData" :disabled="refreshing">
+            <InlineLoading v-if="refreshing" text="刷新中..." size="small" variant="inherit" />
+            <template v-else>
+              <i class="fas fa-sync-alt"></i>
+              <span>刷新</span>
+            </template>
+          </el-button>
         </template>
       </PageHeader>
 
@@ -104,9 +102,9 @@
         </div>
 
         <!-- TAB 切换 -->
-        <el-tabs v-model="activeTab" class="attendance-tabs" @tab-change="handleTabChange">
+        <el-tabs v-model="activeTab" class="attendance-tabs tf-page-tabs" @tab-change="handleTabChange">
           <!-- 所有考勤 -->
-          <el-tab-pane label="所有考勤" name="all" v-if="canViewAllAttendance">
+          <el-tab-pane label="所有考勤" name="all" class="tf-tab-panel" v-if="canViewAllAttendance">
             <UnifiedSearchPanel
               v-model:expanded="searchExpanded"
               :loading="loading"
@@ -173,7 +171,7 @@
             <!-- 数据表格 -->
             <div class="table-section admin-panel admin-table-panel">
               <div class="table-responsive">
-                <el-table ref="attendanceTableRef" :data="loading ? [] : tableData" border stripe class="data-table" row-key="id" @row-click="handleMobileRowTap($event, 'all')">
+                <el-table ref="attendanceTableRef" :data="loading ? [] : tableData" border stripe class="data-table devices-table" row-key="id" @row-click="handleMobileRowTap($event, 'all')">
                   <template #empty>
                     <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
                     <el-empty v-else description="暂无考勤记录" />
@@ -182,7 +180,7 @@
                   <el-table-column v-if="isMobile" type="expand" width="1" class-name="mobile-expand-column">
                     <template #default="{ row }">
                       <div class="mobile-inline-actions">
-                        <el-button size="small" plain type="primary" class="mobile-action-btn mobile-action-btn-view btn-sm">
+                        <el-button size="small" plain type="primary" class="table-action table-action--view" title="查看" @click.stop="handleView(row)">
                           <i class="fas fa-eye mr-1"></i><span>查看</span>
                         </el-button>
                         <el-button
@@ -190,8 +188,9 @@
                           size="small"
                           plain
                           type="primary"
-                          class="mobile-action-btn mobile-action-btn-edit btn-sm"
-                          @click="handleEdit(row)"
+                          class="table-action table-action--edit"
+                          title="编辑"
+                          @click.stop="handleEdit(row)"
                         >
                           <i class="fas fa-edit mr-1"></i><span>{{ row.status === 'pending' ? '编辑' : '修改' }}</span>
                         </el-button>
@@ -200,8 +199,9 @@
                           size="small"
                           plain
                           type="success"
-                          class="mobile-action-btn mobile-action-btn-approve btn-sm"
-                          @click="handleApprove(row)"
+                          class="table-action table-action--manage"
+                          title="审批"
+                          @click.stop="handleApprove(row)"
                         >
                           <i class="fas fa-check mr-1"></i><span>审批</span>
                         </el-button>
@@ -209,8 +209,9 @@
                           v-if="canDelete"
                           size="small"
                           type="danger"
-                          @click="handleDelete(row)"
-                          class="btn-sm btn-danger"
+                          class="table-action table-action--delete"
+                          title="删除"
+                          @click.stop="handleDelete(row)"
                         >
                           <i class="fas fa-trash mr-1"></i><span>删除</span>
                         </el-button>
@@ -287,40 +288,45 @@
                     </template>
                   </el-table-column>
                   <el-table-column v-if="showAttendanceApprovalColumn" prop="approval_note" label="审批备注" min-width="120" show-overflow-tooltip />
-                  <el-table-column v-if="showAttendanceActionField" label="操作" width="320" fixed="right" align="center">
+                  <el-table-column v-if="showAttendanceActionField" label="操作" :width="attendanceActionColumnWidth" align="center" header-align="center" class-name="actions-column">
                     <template #default="{ row }">
-                      <el-button size="small" plain type="primary" @click="handleView(row)" class="btn-sm">
-                        <i class="fas fa-eye mr-1"></i>查看
-                      </el-button>
-                      <el-button
-                        size="small"
-                        plain
-                        type="primary"
-                        @click="handleEdit(row)"
-                        v-if="canEdit"
-                        class="btn-sm"
-                      >
-                        <i class="fas fa-edit mr-1"></i>{{ row.status === 'pending' ? '编辑' : '修改' }}
-                      </el-button>
-                      <el-button
-                        size="small"
-                        plain
-                        type="success"
-                        @click="handleApprove(row)"
-                        v-if="canApprove && row.status === 'pending'"
-                        class="btn-sm"
-                      >
-                        <i class="fas fa-check mr-1"></i>审批
-                      </el-button>
-                      <el-button
-                        size="small"
-                        type="danger"
-                        @click="handleDelete(row)"
-                        v-if="canDelete"
-                        class="btn-sm btn-danger"
-                      >
-                        <i class="fas fa-trash mr-1"></i>删除
-                      </el-button>
+                      <div class="action-buttons">
+                        <el-button size="small" plain type="primary" class="table-action table-action--view" title="查看" @click.stop="handleView(row)">
+                          <i class="fas fa-eye mr-1"></i>查看
+                        </el-button>
+                        <el-button
+                          v-if="canEdit"
+                          size="small"
+                          plain
+                          type="primary"
+                          class="table-action table-action--edit"
+                          title="编辑"
+                          @click.stop="handleEdit(row)"
+                        >
+                          <i class="fas fa-edit mr-1"></i>{{ row.status === 'pending' ? '编辑' : '修改' }}
+                        </el-button>
+                        <el-button
+                          v-if="canApprove && row.status === 'pending'"
+                          size="small"
+                          plain
+                          type="success"
+                          class="table-action table-action--manage"
+                          title="审批"
+                          @click.stop="handleApprove(row)"
+                        >
+                          <i class="fas fa-check mr-1"></i>审批
+                        </el-button>
+                        <el-button
+                          v-if="canDelete"
+                          size="small"
+                          type="danger"
+                          class="table-action table-action--delete"
+                          title="删除"
+                          @click.stop="handleDelete(row)"
+                        >
+                          <i class="fas fa-trash mr-1"></i>删除
+                        </el-button>
+                      </div>
                     </template>
                   </el-table-column>
                 </el-table>
@@ -350,7 +356,7 @@
           </el-tab-pane>
 
           <!-- 我的考勤（所有用户） -->
-          <el-tab-pane label="我的考勤" name="my" v-if="canViewOwnAttendance">
+          <el-tab-pane label="我的考勤" name="my" class="tf-tab-panel" v-if="canViewOwnAttendance">
             <UnifiedSearchPanel
               v-model:expanded="mySearchExpanded"
               :loading="myLoading"
@@ -405,7 +411,7 @@
             <!-- 数据表格 -->
             <div class="table-section admin-panel admin-table-panel">
               <div class="table-responsive">
-                <el-table ref="myAttendanceTableRef" :data="myLoading ? [] : myTableData" border stripe class="data-table" row-key="id" @row-click="handleMobileRowTap($event, 'my')">
+                <el-table ref="myAttendanceTableRef" :data="myLoading ? [] : myTableData" border stripe class="data-table devices-table" row-key="id" @row-click="handleMobileRowTap($event, 'my')">
                   <template #empty>
                     <TableLoadingRow v-if="myLoading" mode="block" text="加载中..." />
                     <el-empty v-else description="暂无我的考勤记录" />
@@ -414,15 +420,16 @@
                   <el-table-column v-if="isMobile" type="expand" width="1" class-name="mobile-expand-column">
                     <template #default="{ row }">
                       <div class="mobile-inline-actions">
-                        <el-button size="small" plain type="primary" class="mobile-action-btn mobile-action-btn-view btn-sm">
+                        <el-button size="small" plain type="primary" class="table-action table-action--view" title="查看" @click.stop="handleView(row)">
                           <i class="fas fa-eye mr-1"></i><span>查看</span>
                         </el-button>
                         <el-button
                           v-if="row.status === 'pending'"
                           size="small"
                           type="danger"
-                          @click="handleCancel(row)"
-                          class="btn-sm btn-danger"
+                          class="table-action table-action--warning"
+                          title="撤销"
+                          @click.stop="handleCancel(row)"
                         >
                           <i class="fas fa-times mr-1"></i><span>撤销</span>
                         </el-button>
@@ -498,20 +505,23 @@
                     </template>
                   </el-table-column>
                   <el-table-column v-if="showMyAttendanceApprovalColumn" prop="approval_note" label="审批备注" min-width="140" show-overflow-tooltip />
-                  <el-table-column v-if="showMyAttendanceActionField" label="操作" width="160" fixed="right" align="center">
+                  <el-table-column v-if="showMyAttendanceActionField" label="操作" :width="myAttendanceActionColumnWidth" align="center" header-align="center" class-name="actions-column">
                     <template #default="{ row }">
-                      <el-button size="small" plain type="primary" @click="handleView(row)" class="btn-sm">
-                        <i class="fas fa-eye mr-1"></i>查看
-                      </el-button>
-                      <el-button
-                        size="small"
-                        type="danger"
-                        @click="handleCancel(row)"
-                        v-if="row.status === 'pending'"
-                        class="btn-sm btn-danger"
-                      >
-                        <i class="fas fa-times mr-1"></i>撤销
-                      </el-button>
+                      <div class="action-buttons">
+                        <el-button size="small" plain type="primary" class="table-action table-action--view" title="查看" @click.stop="handleView(row)">
+                          <i class="fas fa-eye mr-1"></i>查看
+                        </el-button>
+                        <el-button
+                          v-if="row.status === 'pending'"
+                          size="small"
+                          type="danger"
+                          class="table-action table-action--warning"
+                          title="撤销"
+                          @click.stop="handleCancel(row)"
+                        >
+                          <i class="fas fa-times mr-1"></i>撤销
+                        </el-button>
+                      </div>
                     </template>
                   </el-table-column>
                 </el-table>
@@ -520,7 +530,7 @@
                 <div v-if="!myLoading && myTableData.length === 0" class="empty-state">
                   <i class="fas fa-inbox"></i>
                   <p>暂无考勤记录</p>
-                  <el-button v-if="canCreateRequest" plain type="primary" @click="showCreateDialog" class="btn-sm">
+                  <el-button v-if="canCreateRequest" plain type="primary" @click="showCreateDialog">
                     <i class="fas fa-plus mr-1"></i>新增申请
                   </el-button>
                 </div>
@@ -746,10 +756,10 @@
         </el-form>
 
         <template #footer>
-          <el-button plain type="default" @click="closeAttendanceDialog" class="btn-sm">
+          <el-button plain type="default" @click="closeAttendanceDialog">
             <i class="fas fa-times mr-1"></i>取消
           </el-button>
-          <el-button plain type="primary" @click="handleSubmit" :disabled="submitting" :loading="submitting" class="btn-sm">
+          <el-button plain type="primary" @click="handleSubmit" :disabled="submitting" :loading="submitting">
             <span v-if="submitting">提交中...</span>
             <template v-else>
               <i class="fas fa-paper-plane mr-1"></i>提交申请
@@ -802,7 +812,7 @@
         </el-descriptions>
 
         <template #footer>
-          <el-button plain type="default" @click="detailDialogVisible = false" class="btn-sm">
+          <el-button plain type="default" @click="detailDialogVisible = false">
             <i class="fas fa-times mr-1"></i>关闭
           </el-button>
         </template>
@@ -843,10 +853,10 @@
         </el-form>
 
         <template #footer>
-          <el-button plain type="default" @click="approveDialogVisible = false" class="btn-sm">
+          <el-button plain type="default" @click="approveDialogVisible = false">
             <i class="fas fa-times mr-1"></i>取消
           </el-button>
-          <el-button plain type="success" @click="handleApproveSubmit" :disabled="approving" :loading="approving" class="btn-sm">
+          <el-button plain type="success" @click="handleApproveSubmit" :disabled="approving" :loading="approving">
             <span v-if="approving">处理中...</span>
             <template v-else>
               <i class="fas fa-check mr-1"></i>确认
@@ -876,6 +886,7 @@ import { unifiedApi } from '@/utils/unified-api'
 import { formatDate } from '@/utils/format'
 import { logger } from '@/utils/logger'
 import { sortOptionsByOrder } from '@/utils/option-sort'
+import { getActionColumnMinWidth } from '@/utils/table-layout'
 import Pagination from '@/components/Pagination.vue'
 import InlineLoading from '@/components/InlineLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
@@ -1125,6 +1136,10 @@ const showMyAttendanceReasonColumn = computed(() => canViewAttendanceField('atte
 const showMyAttendanceStatusColumn = computed(() => canViewAttendanceField('attendance_myattendanceview', 'status') && !isMobile.value)
 const showMyAttendanceApprovalColumn = computed(() => canViewAttendanceField('attendance_myattendanceview', 'approval_note') && !isMobile.value)
 const showMyAttendanceActionField = computed(() => canViewAttendanceField('attendance_myattendanceview', 'actions') && !isMobile.value)
+const attendanceActionColumnWidth = computed(() => getActionColumnMinWidth(
+  1 + Number(canEdit.value) + Number(canApprove.value) + Number(canDelete.value)
+))
+const myAttendanceActionColumnWidth = computed(() => getActionColumnMinWidth(2))
 const attendanceVisibleColumnCount = computed(() => {
   return [
     showAttendanceIdColumn.value,
@@ -2507,14 +2522,6 @@ onMounted(async () => {
   color: #f56c6c;
 }
 
-/* TAB 样式 */
-.attendance-tabs {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-}
-
 /* 筛选区域 */
 .filter-section {
   margin-bottom: 20px;
@@ -2555,67 +2562,6 @@ onMounted(async () => {
   margin-left: auto;
 }
 
-/* 表格区域 */
-.table-section {
-  margin-top: 20px;
-}
-
-.table-responsive {
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-}
-
-.data-table {
-  width: 100%;
-}
-
-/* 表格头部样式 */
-.data-table :deep(.el-table__header-wrapper) {
-  background: linear-gradient(135deg, #495057 0%, #343a40 100%) !important;
-}
-
-.data-table :deep(.el-table__header th) {
-  background: linear-gradient(135deg, #495057 0%, #343a40 100%) !important;
-  color: #ffffff;
-  font-weight: 600;
-  font-size: 14px;
-  padding: 16px 0;
-  border-bottom: 2px solid #2f343a;
-}
-
-.data-table :deep(.el-table__header tr) {
-  background: linear-gradient(135deg, #495057 0%, #343a40 100%) !important;
-}
-
-.data-table :deep(.el-table__header th .cell) {
-  padding: 0 12px;
-  color: #ffffff;
-}
-
-/* 表格行样式 */
-.data-table :deep(.el-table__body tr) {
-  transition: all 0.3s;
-}
-
-.data-table :deep(.el-table__body tr:hover > td) {
-  background: #f5f7fa !important;
-}
-
-.data-table :deep(.el-table__body td) {
-  padding: 14px 0;
-  border-bottom: 1px solid #f0f2f5;
-}
-
-.data-table :deep(.el-table__body td .cell) {
-  padding: 0 12px;
-}
-
-/* 斑马纹 */
-.data-table :deep(.el-table__body tr.el-table__row--striped > td) {
-  background: #fafbfc;
-}
-
 /* 表格标签样式 */
 .data-table :deep(.el-tag) {
   display: inline-flex;
@@ -2653,17 +2599,6 @@ onMounted(async () => {
   color: white;
 }
 
-/* 表格详情列样式 */
-.data-table :deep(.el-table__body td .cell) {
-  font-size: 14px;
-  color: #606266;
-  line-height: 1.6;
-}
-
-.data-table :deep(.el-table__body tr:hover > td .cell) {
-  color: #303133;
-}
-
 /* 详情项样式 */
 .detail-item {
   display: inline-flex;
@@ -2680,245 +2615,6 @@ onMounted(async () => {
 
 .data-table :deep(.el-table__body tr:hover .detail-icon) {
   color: #409eff;
-}
-
-/* 日期列样式 */
-.data-table :deep(.el-table__body td .cell) {
-  font-size: 13px;
-  font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
-  color: #606266;
-}
-
-/* ==================== 优化后的按钮样式 ==================== */
-
-/* 全局按钮样式优化 */
-.attendance-page :deep(.el-button) {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 6px 12px;
-  font-size: 13px;
-  border-radius: 6px;
-  font-weight: 500;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  border: 1px solid transparent;
-  min-width: auto;
-  height: 32px;
-  line-height: 1;
-}
-
-/* 头部操作按钮 - 稍大一点 */
-.header-actions :deep(.el-button) {
-  padding: 8px 16px;
-  height: 36px;
-  font-size: 14px;
-  gap: 6px;
-}
-
-/* 表格内操作按钮 - 紧凑型 */
-.data-table :deep(.el-button) {
-  padding: 4px 10px;
-  font-size: 12px;
-  height: 28px;
-  gap: 3px;
-  margin: 0 2px;
-}
-
-.data-table :deep(.el-button .el-icon) {
-  font-size: 13px;
-}
-
-/* 筛选区域按钮 */
-.filter-item.actions :deep(.el-button) {
-  padding: 7px 14px;
-  height: 32px;
-  font-size: 13px;
-}
-
-/* ==================== 按钮类型样式 ==================== */
-
-/* 主要按钮 - 蓝色渐变 */
-:deep(.el-button--primary) {
-  background: linear-gradient(135deg, #409eff 0%, #66b1ff 100%);
-  border: none;
-  color: white;
-  box-shadow: 0 2px 6px rgba(64, 158, 255, 0.25);
-}
-
-:deep(.el-button--primary:hover) {
-  background: linear-gradient(135deg, #66b1ff 0%, #409eff 100%);
-  box-shadow: 0 4px 10px rgba(64, 158, 255, 0.35);
-  transform: translateY(-1px);
-}
-
-:deep(.el-button--primary:active) {
-  transform: translateY(0);
-}
-
-/* 成功按钮 - 绿色渐变 */
-:deep(.el-button--success) {
-  background: linear-gradient(135deg, #67c23a 0%, #85ce61 100%);
-  border: none;
-  color: white;
-  box-shadow: 0 2px 6px rgba(103, 194, 58, 0.25);
-}
-
-:deep(.el-button--success:hover) {
-  background: linear-gradient(135deg, #85ce61 0%, #67c23a 100%);
-  box-shadow: 0 4px 10px rgba(103, 194, 58, 0.35);
-  transform: translateY(-1px);
-}
-
-/* 危险按钮 - 红色渐变 */
-:deep(.el-button--danger) {
-  background: linear-gradient(135deg, #f56c6c 0%, #fab6b6 100%);
-  border: none;
-  color: white;
-  box-shadow: 0 2px 6px rgba(245, 108, 108, 0.25);
-}
-
-:deep(.el-button--danger:hover) {
-  background: linear-gradient(135deg, #fab6b6 0%, #f56c6c 100%);
-  box-shadow: 0 4px 10px rgba(245, 108, 108, 0.35);
-  transform: translateY(-1px);
-}
-
-/* 信息按钮 - 青色渐变 */
-:deep(.el-button--info) {
-  background: linear-gradient(135deg, #909399 0%, #b1b3b8 100%);
-  border: none;
-  color: white;
-  box-shadow: 0 2px 6px rgba(144, 147, 153, 0.25);
-}
-
-:deep(.el-button--info:hover) {
-  background: linear-gradient(135deg, #b1b3b8 0%, #909399 100%);
-  box-shadow: 0 4px 10px rgba(144, 147, 153, 0.35);
-  transform: translateY(-1px);
-}
-
-/* 默认按钮 */
-:deep(.el-button--default) {
-  background: #f5f7fa;
-  border-color: #dcdfe6;
-  color: #606266;
-}
-
-:deep(.el-button--default:hover) {
-  background: #ecf5ff;
-  border-color: #409eff;
-  color: #409eff;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(64, 158, 255, 0.15);
-}
-
-/* 文字按钮 */
-:deep(.el-button.is-link) {
-  border: none;
-  background: transparent;
-  color: #409eff;
-  padding: 4px 8px;
-}
-
-:deep(.el-button.is-link:hover) {
-  color: #66b1ff;
-  background: rgba(64, 158, 255, 0.1);
-}
-
-/* ==================== 按钮尺寸变体 ==================== */
-
-/* 超小按钮 */
-:deep(.el-button--small) {
-  padding: 4px 10px;
-  font-size: 12px;
-  height: 28px;
-}
-
-/* 大按钮 */
-:deep(.el-button--large) {
-  padding: 10px 18px;
-  font-size: 15px;
-  height: 40px;
-}
-
-/* ==================== 按钮状态 ==================== */
-
-/* 禁用状态 */
-:deep(.el-button.is-disabled) {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none !important;
-  box-shadow: none !important;
-}
-
-/* 加载状态 */
-:deep(.el-button.is-loading) {
-  position: relative;
-  pointer-events: none;
-}
-
-:deep(.el-button.is-loading::before) {
-  pointer-events: none;
-  content: '';
-  position: absolute;
-  left: -1px;
-  top: -1px;
-  right: -1px;
-  bottom: -1px;
-  border-radius: inherit;
-}
-
-/* 圆形按钮 */
-:deep(.el-button.is-circle) {
-  padding: 8px;
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
-}
-
-/* ==================== 按钮组样式 ==================== */
-:deep(.el-button-group) {
-  display: inline-flex;
-  gap: 0;
-}
-
-:deep(.el-button-group .el-button) {
-  border-radius: 0;
-  margin: 0;
-}
-
-:deep(.el-button-group .el-button:first-child) {
-  border-radius: 6px 0 0 6px;
-}
-
-:deep(.el-button-group .el-button:last-child) {
-  border-radius: 0 6px 6px 0;
-}
-
-:deep(.el-button-group .el-button:only-child) {
-  border-radius: 6px;
-}
-
-/* 表格加载状态 */
-.data-table :deep(.el-loading-mask) {
-  background-color: rgba(255, 255, 255, 0.9);
-  border-radius: 12px;
-}
-
-/* 边框样式 */
-.data-table.el-table--border {
-  border: 1px solid #ebeef5;
-}
-
-.data-table.el-table--border::after,
-.data-table.el-table--border::before {
-  display: none;
-}
-
-.data-table.el-table--border :deep(.el-table__body td),
-.data-table.el-table--border :deep(.el-table__header th) {
-  border-right: 1px solid #f0f2f5;
 }
 
 /* 空状态 */
@@ -3081,98 +2777,6 @@ onMounted(async () => {
     margin-left: 0;
   }
 
-  .table-section {
-    margin-top: 16px;
-  }
-
-  .attendance-tabs {
-    padding: 10px;
-    overflow: hidden;
-  }
-
-  .attendance-page.admin-page .table-section.admin-table-panel {
-    overflow: hidden;
-  }
-
-  .table-responsive {
-    overflow-x: hidden !important;
-    border-radius: 12px;
-  }
-
-  .attendance-page.admin-page .table-responsive,
-  .attendance-page.admin-page .table-responsive .data-table {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-  }
-
-  .attendance-page.admin-page .table-responsive .data-table {
-    width: 100% !important;
-    table-layout: fixed !important;
-  }
-
-  .attendance-page.admin-page .table-responsive .data-table :deep(table) {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    table-layout: fixed !important;
-  }
-
-  .data-table :deep(.el-table__body-wrapper) {
-    overflow-x: hidden !important;
-  }
-
-  .data-table :deep(.el-table__header th) {
-    font-size: 11px;
-    padding: 10px 0;
-  }
-
-  .data-table :deep(.el-table__header th .cell),
-  .data-table :deep(.el-table__body td .cell) {
-    padding: 0 6px;
-  }
-
-  .data-table :deep(.el-table__body td) {
-    padding: 10px 0;
-  }
-
-  .data-table :deep(.el-table__body td .cell) {
-    font-size: 11px;
-    line-height: 1.35;
-    word-break: break-word;
-    white-space: normal !important;
-  }
-
-  .data-table :deep(.el-tag) {
-    padding: 3px 8px;
-    font-size: 10px;
-    gap: 3px;
-    white-space: nowrap;
-  }
-
-  .detail-item {
-    gap: 3px;
-    max-width: 100%;
-    font-size: 11px;
-  }
-
-  .mobile-inline-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    justify-content: flex-start;
-    max-width: 100%;
-  }
-
-  .mobile-inline-actions :deep(.el-button) {
-    margin: 0 !important;
-    min-width: 0 !important;
-  }
-
-  .data-table :deep(.el-tag i) {
-    font-size: 10px;
-  }
-
   .data-table :deep(.mobile-expand-column) {
     width: 0 !important;
     min-width: 0 !important;
@@ -3279,37 +2883,6 @@ onMounted(async () => {
 
   .stat-detail,
   .stat-desc {
-    font-size: 9px;
-  }
-
-  .table-responsive {
-    border-radius: 10px;
-  }
-
-  .attendance-tabs {
-    padding: 8px 6px;
-  }
-
-  .data-table :deep(.el-table__header th) {
-    font-size: 10px;
-    padding: 8px 0;
-  }
-
-  .data-table :deep(.el-table__header th .cell),
-  .data-table :deep(.el-table__body td .cell) {
-    padding: 0 4px;
-  }
-
-  .data-table :deep(.el-table__body td) {
-    padding: 8px 0;
-  }
-
-  .data-table :deep(.el-table__body td .cell) {
-    font-size: 10px;
-  }
-
-  .data-table :deep(.el-tag) {
-    padding: 2px 6px;
     font-size: 9px;
   }
 

@@ -5073,7 +5073,7 @@ const showConfirm = async (message) => {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning',
-        customClass: 'message-box-purple'
+        customClass: 'message-box-unified'
       }
     )
     return true
@@ -5597,7 +5597,7 @@ const deletePhone = async (phone: any) => {
         confirmButtonText: '确定删除',
         cancelButtonText: '取消',
         type: 'warning',
-        customClass: 'message-box-purple'
+        customClass: 'message-box-unified'
       }
     )
   } catch {
@@ -6012,8 +6012,6 @@ onUnmounted(() => {
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
   border-left: none;
-  min-width: 40px;
-  padding: 10px 12px;
 }
 
 .customer-lock-button {
@@ -6159,13 +6157,6 @@ input.form-control:focus, textarea.form-control:focus {
   flex-shrink: 0;
 }
 
-/* 紧凑模式下的小按钮 */
-.btn-sm {
-  padding: 16px 32px;
-  font-size: 13px;
-  font-weight: 500;
-}
-
 /* 响应式调整 */
 @media (max-width: 1200px) {
   .search-filters .input-group {
@@ -6209,88 +6200,6 @@ input.form-control:focus, textarea.form-control:focus {
     margin-top: 0;
   }
 
-  .search-actions .btn {
-    flex: 1;
-    min-width: 80px;
-  }
-}
-
-/* 按钮样式 */
-.btn {
-  padding: 16px 32px;
-  border: none;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  position: relative;
-  overflow: hidden;
-  text-decoration: none;
-}
-
-.btn::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.2);
-  transform: translate(-50%, -50%);
-  transition: width 0.6s, height 0.6s;
-}
-
-.btn:hover::before {
-  width: 300px;
-  height: 300px;
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-}
-
-.btn-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-outline-secondary {
-  /* 紫色渐变背景 - 与搜索按钮保持一致 */
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
-  border: 2px solid transparent;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.25);
-  transition: all 0.3s ease;
-}
-
-.btn-outline-secondary:hover:not(:disabled) {
-  /* 悬停时增强效果 */
-  background: linear-gradient(135deg, #7c8ef0, #8a5bb8);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-  transform: translateY(-1px);
-}
-
-.btn-outline-secondary:active:not(:disabled) {
-  /* 点击时的按压效果 */
-  background: linear-gradient(135deg, #5a6fd8, #6a4190);
-  transform: translateY(0);
-  box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
-}
-
-.btn-sm {
-  padding: 14px 28px;
-  font-size: 12px;
 }
 
 /* 统计卡片的尺寸和排版由 admin-layout.css 统一控制，仅保留销售业务配色。 */
@@ -6786,23 +6695,6 @@ input.form-control:focus, textarea.form-control:focus {
   flex-wrap: nowrap;
 }
 
-.card-actions .btn,
-.card-actions .el-button {
-  flex: 1;
-  min-width: 0;
-  font-size: 12px;
-  padding: 4px 8px;
-  margin: 0;
-}
-
-.card-actions .el-button :deep(.el-button__content) {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  white-space: nowrap;
-}
-
 .card-footer {
   display: flex;
   justify-content: space-between;
@@ -7213,14 +7105,6 @@ input.form-control:focus, textarea.form-control:focus {
   width: 100%;
 }
 
-.sale-dialog-footer :deep(.el-button) {
-  width: 100%;
-  height: 44px;
-  margin: 0;
-  border-radius: 14px;
-  font-size: 15px;
-}
-
 .sale-form-section :deep(.el-input),
 .sale-form-section :deep(.el-select),
 .sale-form-section :deep(.el-date-editor.el-input),
@@ -7418,21 +7302,7 @@ input.form-control:focus, textarea.form-control:focus {
 
 .batch-summary .value.negative {
   color: #dc3545;
-}
-
-/* 批量选择按钮样式 */
-.actions-cell .btn-warning {
-  background-color: #ffc107;
-  border-color: #ffc107;
-  color: #212529;
-}
-
-.actions-cell .btn-warning:hover {
-  background-color: #e0a800;
-  border-color: #d39e00;
-}
-
-/* 批量销售表单样式 */
+}/* 批量销售表单样式 */
 .batch-sale-form {
   background: white;
   border: 1px solid #e0e0e0;
@@ -7550,22 +7420,10 @@ input.form-control:focus, textarea.form-control:focus {
     gap: 10px;
   }
 
-  .sale-form .form-actions .btn {
-    flex: 1;
-    width: auto;
-    height: 48px;
-    font-size: 16px;
-  }
-
   /* 批量销售表单的按钮也保持水平排列 */
   .batch-sale-form .form-actions {
     flex-direction: row !important;
     gap: 10px;
-  }
-
-  .batch-sale-form .form-actions .btn {
-    flex: 1;
-    width: auto;
   }
 
   /* 其他表单的按钮保持垂直排列 */
@@ -7573,9 +7431,6 @@ input.form-control:focus, textarea.form-control:focus {
     flex-direction: column;
   }
 
-  .form-actions:not(.sale-form .form-actions):not(.batch-sale-form .form-actions) .btn {
-    width: 100%;
-  }
 }
 
 .profit-calculator {
@@ -7733,44 +7588,6 @@ input.form-control:focus, textarea.form-control:focus {
   align-items: center;
 }
 
-.action-buttons .btn {
-  min-width: 60px;
-  height: 32px;
-  padding: 4px 8px;
-  font-size: 12px;
-  font-weight: 500;
-  border-radius: 4px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  transition: all 0.2s ease;
-  text-decoration: none;
-  border: 1px solid transparent;
-  cursor: pointer;
-}
-
-.action-buttons .btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-.action-buttons .btn i {
-  font-size: 11px;
-}
-
-/* 出库按钮 - 绿色 */
-.action-buttons .btn-success {
-  background: linear-gradient(135deg, #28a745, #20c997);
-  color: white;
-  border-color: #28a745;
-}
-
-.action-buttons .btn-success:hover {
-  background: linear-gradient(135deg, #218838, #1ea085);
-  border-color: #1e7e34;
-}
-
 /* 按钮加载状态 */
 .btn-loading {
   position: relative;
@@ -7790,45 +7607,6 @@ input.form-control:focus, textarea.form-control:focus {
   border-radius: inherit;
 }
 
-/* 编辑按钮 - 蓝色边框 */
-.action-buttons .btn-outline-primary {
-  background: white;
-  color: #007bff;
-  border-color: #007bff;
-}
-
-.action-buttons .btn-outline-primary:hover {
-  background: #007bff;
-  color: white;
-  border-color: #0056b3;
-}
-
-/* 销售按钮 - 橙色/黄色 */
-.action-buttons .btn-warning {
-  background: linear-gradient(135deg, #ffc107, #fd7e14);
-  color: #212529;
-  border-color: #ffc107;
-  font-weight: 600;
-}
-
-.action-buttons .btn-warning:hover {
-  background: linear-gradient(135deg, #e0a800, #dc6502);
-  border-color: #d39e00;
-  color: white;
-}
-
-/* 删除按钮 - 红色 */
-.action-buttons .btn-danger {
-  background: linear-gradient(135deg, #dc3545, #e74c3c);
-  color: white;
-  border-color: #dc3545;
-}
-
-.action-buttons .btn-danger:hover {
-  background: linear-gradient(135deg, #c82333, #c0392b);
-  border-color: #bd2130;
-}
-
 /* 响应式设计 - 移动端优化 */
 @media (max-width: 768px) {
   .action-buttons {
@@ -7838,56 +7616,11 @@ input.form-control:focus, textarea.form-control:focus {
     flex-wrap: wrap;
   }
 
-  .action-buttons .btn {
-    flex: 1;
-    min-width: 60px;
-    height: 28px;
-    font-size: 11px;
-    padding: 4px 8px;
-  }
-
-  .action-buttons .btn i {
-    font-size: 10px;
-  }
-
   /* 图文卡片中的按钮特殊优化 */
   .device-card .action-buttons {
     gap: 3px;
   }
 
-  .device-card .action-buttons .btn {
-    height: 26px;
-    font-size: 10px;
-    padding: 3px 6px;
-    min-width: 50px;
-  }
-
-  .device-card .action-buttons .btn i {
-    font-size: 9px;
-  }
-}
-
-@media (max-width: 480px) {
-  .action-buttons .btn {
-    height: 30px;
-    font-size: 12px;
-    padding: 6px 10px;
-  }
-
-  .action-buttons .btn i {
-    font-size: 11px;
-  }
-
-  /* 图文卡片中的按钮 */
-  .device-card .action-buttons .btn {
-    height: 28px;
-    font-size: 11px;
-    padding: 4px 8px;
-  }
-
-  .device-card .action-buttons .btn i {
-    font-size: 10px;
-  }
 }
 
 /* 客户搜索样式 */
@@ -8387,10 +8120,6 @@ input.form-control:focus, textarea.form-control:focus {
   padding-top: 12px;
   border-top: 1px solid #f0f0f0;
 
-  .btn {
-    flex: 1;
-    height: 36px;
-  }
 }
 
 .mobile-search {
@@ -9677,12 +9406,6 @@ input.form-control:focus, textarea.form-control:focus {
     gap: 8px;
   }
 
-  .sale-dialog-footer :deep(.el-button) {
-    height: 42px;
-    border-radius: 12px;
-    font-size: 14px;
-  }
-
   .sale-form-section :deep(.el-input__wrapper),
   .sale-form-section :deep(.el-select__wrapper),
   .sale-form-section :deep(.el-date-editor .el-input__wrapper) {
@@ -9964,25 +9687,7 @@ input.form-control:focus, textarea.form-control:focus {
 </style>
 
 <style scoped lang="scss">
-/* PC端图文模式按钮优化 */
-@media (min-width: 769px) {
-  .device-card .card-actions {
-    gap: 4px;
-  }
-
-  .device-card .card-actions .btn {
-    min-height: 30px;
-    font-size: 12px;
-    padding: 6px 10px;
-  }
-
-  .device-card .card-actions .btn i {
-    font-size: 11px;
-  }
-}
-
 /* ===== PC端图文模式按钮优化 ===== */
-/* 图文卡片中的 el-button 优化 */
 @media (min-width: 769px) {
   .device-card .card-actions {
     display: flex;
@@ -9991,23 +9696,6 @@ input.form-control:focus, textarea.form-control:focus {
     flex-wrap: nowrap;
   }
 
-  /* 减小 el-button 的尺寸 */
-  .device-card .card-actions .el-button {
-    height: 28px !important;
-    min-height: 28px !important;
-    padding: 4px 8px !important;
-    font-size: 11px !important;
-  }
-
-  /* 减小图标大小 */
-  .device-card .card-actions .el-button i {
-    font-size: 11px !important;
-  }
-
-  /* 减小按钮内部间距 */
-  .device-card .card-actions .el-button :deep(.el-button__content) {
-    gap: 3px !important;
-  }
 }
 
 /* ===== 手机端图文卡片和表格优化 ===== */
@@ -10083,28 +9771,6 @@ input.form-control:focus, textarea.form-control:focus {
     border-top: 1px solid #f0f0f0;
   }
 
-  .card-actions .el-button {
-    flex: 1 !important;
-    min-width: 0 !important;
-    max-width: none !important;
-    height: 32px !important;
-    padding: 4px 6px !important;
-    font-size: 11px !important;
-    margin: 0 !important;
-  }
-
-  .card-actions .el-button i {
-    font-size: 10px !important;
-    margin-right: 2px;
-  }
-
-  .card-actions .el-button :deep(.el-button__content) {
-    gap: 2px !important;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
   /* 卡片底部信息优化 */
   .card-footer {
     padding: 10px 12px;
@@ -10148,11 +9814,6 @@ input.form-control:focus, textarea.form-control:focus {
   .card-meta .meta-item,
   .card-specs .spec-item {
     font-size: 10px;
-  }
-
-  .card-actions .el-button {
-    font-size: 10px !important;
-    height: 30px !important;
   }
 
 }
