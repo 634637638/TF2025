@@ -249,8 +249,8 @@
 // ==================== 表格内按钮样式 ====================
 
 // 普通业务列中的单个动作按钮按内容自适应，不占满整个单元格。
-.table-inline-action.el-button,
-.table-inline-action.el-button.table-action {
+body .el-button.el-button.el-button.table-inline-action,
+body .el-button.el-button.el-button.table-inline-action.table-action {
   display: inline-flex !important;
   flex: 0 0 auto !important;
   width: auto !important;
@@ -287,7 +287,7 @@
 .card-actions,
 .batch-actions-buttons {
   display: inline-flex;
-  gap: var(--admin-data-table-action-gap, 6px);
+  gap: var(--admin-data-table-action-gap, 8px) !important;
   justify-content: center;
   flex-direction: row !important;
   flex-wrap: nowrap !important; // 确保按钮在一行显示，不换行
@@ -297,7 +297,10 @@
 // Operation buttons use semantic colors instead of the global filled button theme.
 // New code should prefer table-action--* classes; Element types remain as a
 // compatibility fallback for existing pages.
-body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button,
+// Repeating the Element class is intentional: the global button baseline uses
+// three :not() clauses. This public table selector must win so rendered button
+// padding stays synchronized with getActionColumnMinWidth().
+body :is(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button.el-button.el-button,
 .action-buttons button.btn,
 .mobile-row-actions button.btn,
 .mobile-inline-actions button.btn,
@@ -306,7 +309,7 @@ body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table
 .card-actions button.btn,
 .batch-actions-buttons button.btn,
 .btn-action,
-.el-button.table-action {
+body .el-button.el-button.el-button.table-action {
   display: inline-flex !important;
   flex: 0 0 auto !important;
   width: auto !important;
@@ -336,6 +339,9 @@ body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table
 .batch-actions-buttons button.btn i,
 .btn-action i,
 .el-button.table-action i {
+  // Historical mr-* helpers and page-level icon margins must not change the
+  // public icon/text spacing or make the measured action width inaccurate.
+  margin-inline: 0 !important;
   font-size: var(--admin-data-table-action-icon-size, 14px) !important;
 }
 
@@ -580,6 +586,16 @@ body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table
   );
 }
 
+// Destructive intent has final precedence over compatibility inference. For
+// example, "取消打款" contains a finance keyword but must remain danger red.
+body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons)
+  .el-button:is(.el-button--danger, .tf-button--danger, .tf-button--delete, .table-action--delete, [title*='取消打款'], [title*='取消付款']) {
+  @include tf-action-colors(
+    var(--admin-action-delete-bg), var(--admin-action-delete-border), var(--admin-action-delete-color),
+    var(--admin-action-delete-hover-bg), var(--admin-action-delete-hover-border), var(--admin-action-delete-hover-color)
+  );
+}
+
 body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button.is-disabled,
 .el-button.table-action.is-disabled {
   --el-button-disabled-bg-color: var(--admin-action-disabled-bg) !important;
@@ -637,7 +653,7 @@ body.is-admin-table-dragging * {
   width: 100% !important;
   box-sizing: border-box !important;
   overflow: visible !important;
-  padding-inline: var(--admin-data-table-cell-padding-x, 8px) !important;
+  padding-inline: var(--admin-data-table-action-edge-space, 16px) !important;
 }
 
 .admin-page td.actions-column :where(.actions-cell, .action-buttons, .table-actions, .tf-table-actions) {
@@ -685,12 +701,23 @@ body.is-admin-table-dragging * {
 }
 
 @media (max-width: 768px) {
+  .tf-action-row--compact {
+    gap: 4px !important;
+  }
+
+  body .tf-action-row--compact .el-button.el-button.el-button {
+    height: var(--tf-toolbar-button-height, 30px) !important;
+    min-height: var(--tf-toolbar-button-height, 30px) !important;
+    padding-inline: var(--tf-toolbar-button-padding-x, 7px) !important;
+    font-size: var(--tf-toolbar-button-font-size, 12px) !important;
+  }
+
   .mobile-row-actions,
   .mobile-inline-actions {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 4px !important;
+    gap: var(--admin-data-table-action-gap, 8px);
     width: 100% !important;
     flex-wrap: nowrap !important;
   }
@@ -749,5 +776,11 @@ body.is-admin-table-dragging * {
     .el-table .cell {
       white-space: nowrap !important;
     }
+  }
+}
+
+@media (max-width: 480px) {
+  .tf-action-row--compact .el-button i {
+    display: none !important;
   }
 }

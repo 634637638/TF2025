@@ -1173,7 +1173,7 @@ onActivated(async () => {
       width: 36px;
       height: 36px;
       border-radius: 50%;
-      background: rgba(255, 255, 255, 0.2);
+      background: var(--tf-button-overlay-bg);
       backdrop-filter: blur(10px);
       display: flex;
       align-items: center;
@@ -1183,12 +1183,12 @@ onActivated(async () => {
 
       &:active {
         transform: scale(0.95);
-        background: rgba(255, 255, 255, 0.3);
+        background: var(--tf-button-overlay-hover-bg);
       }
 
       i {
         font-size: 16px;
-        color: #fff;
+        color: var(--tf-button-on-color);
       }
     }
   }
@@ -1402,9 +1402,9 @@ onActivated(async () => {
   .brand-reset-btn {
     padding: 6px 10px;
     border-radius: 999px;
-    background: #fff;
-    color: #888;
-    border: 1px solid #f0d7c4;
+    background: var(--tf-button-neutral-bg);
+    color: var(--tf-button-tool-color);
+    border: 1px solid var(--tf-button-neutral-border);
   }
 
   .brand-search-grid {
@@ -1521,17 +1521,17 @@ onActivated(async () => {
   .ghost-btn {
     padding: 9px 14px;
     border-radius: 999px;
-    background: #fff;
-    color: #777;
-    border: 1px solid #ecd8c5;
+    background: var(--tf-button-neutral-bg);
+    color: var(--tf-button-tool-color);
+    border: 1px solid var(--tf-button-neutral-border);
   }
 
   .search-btn {
     padding: 9px 16px;
     border-radius: 999px;
-    background: linear-gradient(135deg, #ff8a2a 0%, #ff6b00 100%);
-    color: #fff;
-    box-shadow: 0 10px 20px rgba(255, 107, 0, 0.18);
+    background: var(--tf-button-warning-bg);
+    color: var(--tf-button-on-color);
+    box-shadow: var(--tf-button-warning-shadow);
   }
 }
 

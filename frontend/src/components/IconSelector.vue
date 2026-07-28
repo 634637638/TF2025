@@ -321,8 +321,8 @@ onMounted(async () => {
 
 .category-btn {
   padding: 8px 16px;
-  border: 1px solid #ddd;
-  background: white;
+  border: 1px solid var(--tf-button-neutral-border);
+  background: var(--tf-button-neutral-bg);
   border-radius: 20px;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -330,13 +330,13 @@ onMounted(async () => {
 }
 
 .category-btn:hover {
-  background: #f8f9fa;
+  background: var(--tf-button-neutral-hover-bg);
 }
 
 .category-btn.active {
-  background: #007bff;
-  color: white;
-  border-color: #007bff;
+  background: var(--tf-button-primary-hover-bg);
+  color: var(--tf-button-on-color);
+  border-color: var(--tf-button-primary-soft-hover-border);
 }
 
 .loading {

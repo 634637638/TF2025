@@ -139,7 +139,7 @@
         </table>
       </div>
 
-      <el-table
+      <el-table class="data-table"
         v-else
         :data="loading ? [] : logList"
         stripe
@@ -195,7 +195,7 @@
             <span v-else class="text-gray">-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="error_message" label="错误信息" min-width="200" show-overflow-tooltip>
+        <el-table-column prop="error_message" label="错误信息" min-width="200" class-name="complete-text-column wrapped-text-column">
           <template #default="{ row }">
             <span
               v-if="getLogErrorSummary(row)"
@@ -206,18 +206,19 @@
             <span v-else class="text-gray">-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="config_name" label="配置" min-width="120" show-overflow-tooltip>
+        <el-table-column prop="config_name" label="配置" min-width="120" class-name="complete-text-column">
           <template #default="{ row }">
             {{ row.config_name || '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" min-width="150" fixed="right" align="center">
+            <el-table-column label="操作" :width="$getActionColumnWidth(1 + Number(canDelete))" align="center" class-name="actions-column">
           <template #default="{ row }">
+            <div class="action-buttons">
             <el-button
               link
               type="primary"
               size="small"
-              @click="handleViewDetail(row)"
+              @click.stop="handleViewDetail(row)"
             >
               详情
             </el-button>
@@ -226,10 +227,11 @@
               link
               type="danger"
               size="small"
-              @click="handleDeleteLog(row)"
+              @click.stop="handleDeleteLog(row)"
             >
               删除
             </el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -324,7 +326,7 @@
             <i class="fas fa-check-circle"></i>
             成功列表 ({{ parsedSyncDetails.items.success.length }})
           </div>
-          <el-table :data="parsedSyncDetails.items.success" stripe border size="small" max-height="300">
+          <el-table class="data-table" :data="parsedSyncDetails.items.success" stripe border size="small" max-height="300">
             <el-table-column prop="brand" label="品牌" width="80" />
             <el-table-column prop="model" label="型号" width="120" />
             <el-table-column prop="color" label="颜色" width="80" />
@@ -343,12 +345,12 @@
             <i class="fas fa-times-circle"></i>
             失败列表 ({{ parsedSyncDetails.items.failed.length }})
           </div>
-          <el-table :data="parsedSyncDetails.items.failed" stripe border size="small" max-height="300">
+          <el-table class="data-table" :data="parsedSyncDetails.items.failed" stripe border size="small" max-height="300">
             <el-table-column prop="brand" label="品牌" width="80" />
             <el-table-column prop="model" label="型号" width="120" />
             <el-table-column prop="color" label="颜色" width="80" />
             <el-table-column prop="memory" label="内存" width="80" />
-            <el-table-column prop="error" label="错误原因" min-width="150" show-overflow-tooltip />
+            <el-table-column prop="error" label="错误原因" min-width="150" class-name="complete-text-column wrapped-text-column" />
           </el-table>
         </div>
       </div>

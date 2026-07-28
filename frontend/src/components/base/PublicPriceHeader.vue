@@ -78,8 +78,6 @@ defineProps<Props>()
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
     padding: 0 20px;
   }
 }
@@ -95,7 +93,6 @@ defineProps<Props>()
   }
 
   .notice-section .action-buttons {
-    gap: 10px;
     padding: 0 16px;
   }
 }
@@ -111,7 +108,6 @@ defineProps<Props>()
   }
 
   .notice-section .action-buttons {
-    gap: 8px;
     padding: 0 12px;
   }
 }

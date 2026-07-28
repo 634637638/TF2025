@@ -766,41 +766,41 @@
                   row-class-name="inventory-row"
                   @row-dblclick="showInventoryDetail"
                 >
-                  <el-table-column v-if="canViewSaleField('supplier_name')" label="供应商" min-width="100" align="center">
+                  <el-table-column v-if="canViewSaleField('supplier_name')" label="供应商" :min-width="getSalesSummaryColumnWidth('supplier_name', '供应商', 84)" align="center">
                     <template #default="{ row }">{{ row.supplier_name || '-' }}</template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSaleField('store_name')" label="店铺" min-width="80" align="center">
+                  <el-table-column v-if="canViewSaleField('store_name')" label="店铺" :min-width="getSalesSummaryColumnWidth('store_name', '店铺', 64)" align="center">
                     <template #default="{ row }">{{ row.store_name || '-' }}</template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSaleField('brand')" label="品牌" min-width="76" align="center">
+                  <el-table-column v-if="canViewSaleField('brand')" label="品牌" :min-width="getSalesSummaryColumnWidth('brand', '品牌', 52)" align="center">
                     <template #default="{ row }">{{ row.brand || '-' }}</template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSaleField('model')" label="型号" min-width="112" align="center">
+                  <el-table-column v-if="canViewSaleField('model')" label="型号" :min-width="getSalesSummaryColumnWidth('model', '型号', 74)" align="center">
                     <template #default="{ row }">{{ row.model || '-' }}</template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSaleField('color')" label="颜色" min-width="64" align="center">
+                  <el-table-column v-if="canViewSaleField('color')" label="颜色" :min-width="getSalesSummaryColumnWidth('color', '颜色', 52)" align="center">
                     <template #default="{ row }">{{ row.color || '-' }}</template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSaleField('memory')" label="内存" min-width="72" align="center">
+                  <el-table-column v-if="canViewSaleField('memory')" label="内存" :min-width="getSalesSummaryColumnWidth('memory', '内存', 60)" align="center">
                     <template #default="{ row }">
                       <span :class="['memory-badge', getMemoryBadgeClass(row.memory)]">
                         {{ row.memory || '-' }}
                       </span>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSaleField('condition')" label="机况" min-width="68" align="center">
+                  <el-table-column v-if="canViewSaleField('condition')" label="机况" :min-width="getSalesSummaryColumnWidth('condition', '机况', 64)" align="center">
                     <template #default="{ row }">
                       <span :class="['badge', row.condition === '全新' ? 'badge-new' : 'badge-used']">
                         {{ row.condition || '-' }}
                       </span>
                     </template>
                   </el-table-column>
-                  <el-table-column label="数量" min-width="72" align="center">
+                  <el-table-column label="数量" :min-width="getSalesSummaryColumnWidth('quantity', '数量', 64)" align="center">
                     <template #default="{ row }">
                       <span class="quantity-badge">{{ row.quantity ?? 0 }}</span>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="canViewSaleField('Inventorytime')" label="在库时间" min-width="100" align="center">
+                  <el-table-column v-if="canViewSaleField('Inventorytime')" label="在库时间" :min-width="getSalesSummaryColumnWidth('inventory_days', '在库时间', 84)" align="center">
                     <template #default="{ row }">
                       <span
                         :class="['days-badge', getInventoryDaysClass(getInventoryDays(row.earliest_date))]"
@@ -851,22 +851,22 @@
                 </template>
               </el-table-column>
 
-              <el-table-column v-if="canViewSaleField('supplier_name')" label="供应商" min-width="100" align="center">
+              <el-table-column v-if="canViewSaleField('supplier_name')" label="供应商" :min-width="getSalesMainColumnWidth('supplier_name', '供应商', 84)" align="center">
                 <template #default="{ row: phone }">{{ phone.supplier_name || '-' }}</template>
               </el-table-column>
-              <el-table-column v-if="canViewSaleField('store_name')" label="店铺" min-width="80" align="center">
+              <el-table-column v-if="canViewSaleField('store_name')" label="店铺" :min-width="getSalesMainColumnWidth('store_name', '店铺', 64)" align="center">
                 <template #default="{ row: phone }">{{ phone.store_name || '-' }}</template>
               </el-table-column>
-              <el-table-column v-if="canViewSaleField('brand')" label="品牌" min-width="68" align="center">
+              <el-table-column v-if="canViewSaleField('brand')" label="品牌" :min-width="getSalesMainColumnWidth('brand', '品牌', 52)" align="center">
                 <template #default="{ row: phone }">{{ phone.brand || '-' }}</template>
               </el-table-column>
-              <el-table-column v-if="canViewSaleField('model')" label="型号" min-width="96" align="center">
+              <el-table-column v-if="canViewSaleField('model')" label="型号" :min-width="getSalesMainColumnWidth('model', '型号', 74)" align="center">
                 <template #default="{ row: phone }">{{ phone.model || '-' }}</template>
               </el-table-column>
-              <el-table-column v-if="canViewSaleField('color')" label="颜色" min-width="52" align="center">
+              <el-table-column v-if="canViewSaleField('color')" label="颜色" :min-width="getSalesMainColumnWidth('color', '颜色', 52)" align="center">
                 <template #default="{ row: phone }">{{ phone.color || '-' }}</template>
               </el-table-column>
-              <el-table-column v-if="canViewSaleField('memory')" label="内存" min-width="64" align="center">
+              <el-table-column v-if="canViewSaleField('memory')" label="内存" :min-width="getSalesMainColumnWidth('memory', '内存', 60)" align="center">
                 <template #default="{ row: phone }">{{ phone.memory || '-' }}</template>
               </el-table-column>
               <el-table-column
@@ -889,35 +889,35 @@
                     <span class="imei">{{ phone.imei || '-' }}</span>
                 </template>
               </el-table-column>
-              <el-table-column v-if="canViewPrice" label="入库价格" min-width="92" align="center" class-name="price-column">
+              <el-table-column v-if="canViewPrice" label="入库价格" :min-width="getSalesMainColumnWidth('purchase_cost', '入库价格', 84)" align="center" class-name="price-column">
                 <template #default="{ row: phone }">
                     <div class="price">{{ canViewPrice ? `¥${formatNumber(phone.purchase_cost || 0)}` : '***' }}</div>
                 </template>
               </el-table-column>
-              <el-table-column v-if="canViewSaleField('inventory_operator_name')" label="入库员" min-width="82" align="center">
+              <el-table-column v-if="canViewSaleField('inventory_operator_name')" label="入库员" :min-width="getSalesMainColumnWidth('inventory_operator_name', '入库员', 64)" align="center">
                 <template #default="{ row: phone }">{{ phone.inventory_operator_name || '-' }}</template>
               </el-table-column>
-              <el-table-column v-if="canViewSaleField('condition')" label="机况" min-width="64" align="center">
+              <el-table-column v-if="canViewSaleField('condition')" label="机况" :min-width="getSalesMainColumnWidth('condition', '机况', 64)" align="center">
                 <template #default="{ row: phone }">
                     <span :class="['condition-badge', phone.is_new ? 'new' : 'used']">
                       {{ getNewConditionLabel(phone.is_new) }}
                     </span>
                 </template>
               </el-table-column>
-              <el-table-column label="状态" min-width="68" align="center">
+              <el-table-column label="状态" :min-width="getSalesMainColumnWidth('status_label', '状态', 64)" align="center">
                 <template #default="{ row: phone }">
                     <span :class="['status-badge', getSaleStatusClass(phone)]">
                       {{ getSaleStatusLabel(phone) }}
                     </span>
                 </template>
               </el-table-column>
-              <el-table-column v-if="canViewSaleField('Inventorytime')" label="入库时间" min-width="108" align="center">
+              <el-table-column v-if="canViewSaleField('Inventorytime')" label="入库时间" :min-width="getSalesMainColumnWidth('Inventorytime', '入库时间', 88)" align="center">
                 <template #default="{ row: phone }">{{ formatDate((phone as any).Inventorytime || phone.purchase_date || phone.created_at) }}</template>
               </el-table-column>
               <el-table-column
-                v-if="!batchMode && !operationMode && canViewSaleField('actions')"
+                v-if="showSalesTableActionColumn"
                 label="操作"
-                min-width="248"
+                :width="salesActionColumnWidth"
                 align="center"
                 class-name="actions-column"
               >
@@ -1906,7 +1906,7 @@ import { storage } from '@/services/storage'
 import { isValidMobilePhone, normalizeAppleId, normalizePersonName, normalizePhoneDigits, resolveAppleAccountEmail } from '@/utils/security'
 import { loadHtml2Canvas } from '@/utils/html2canvas'
 import { extractBrandName, extractSeriesNumber, getBrandOrderWeight, getMemoryOrderWeight } from '@/utils/productSort'
-import { getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
+import { getAdaptiveActionColumnWidth, getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 
 // 导入格式化工具函数
 import { formatNumber, generateProductPlaceholder } from '@/utils/format'
@@ -2565,6 +2565,49 @@ const filters = reactive({
 const showSalesSearchKeyword = computed(() => {
   return ['brand', 'model', 'color', 'memory', 'serial_number', 'imei', 'customer_name', 'customer_phone'].some(fieldName => canViewSaleField(fieldName))
 })
+
+const getSalesSummaryColumnWidth = (
+  field: keyof InventorySummaryItem | 'inventory_days',
+  label: string,
+  minWidth: number
+) => getTextColumnMinWidth(
+  [label, ...sortedInventorySummary.value.map(row => {
+    if (field === 'inventory_days') {
+      return getInventoryDaysText(getInventoryDays(row.earliest_date))
+    }
+    return row[field] ?? '-'
+  })],
+  { minWidth, horizontalPadding: 20, asciiCharacterWidth: 7, wideCharacterWidth: 12 }
+)
+
+const getSalesMainColumnWidth = (
+  field: string,
+  label: string,
+  minWidth: number
+) => getTextColumnMinWidth(
+  [label, ...sortedAvailablePhones.value.map(phone => {
+    if (field === 'condition') return getNewConditionLabel(phone.is_new)
+    if (field === 'status_label') return getSaleStatusLabel(phone)
+    if (field === 'purchase_cost') return `¥${formatNumber(phone.purchase_cost || 0)}`
+    if (field === 'Inventorytime') {
+      return formatDate((phone as any).Inventorytime || phone.purchase_date || phone.created_at)
+    }
+    return (phone as any)[field] ?? '-'
+  })],
+  { minWidth, horizontalPadding: 20, asciiCharacterWidth: 7, wideCharacterWidth: 12 }
+)
+
+const showSalesTableActionColumn = computed(() => (
+  !batchMode.value
+  && !operationMode.value
+  && canViewSaleField('actions')
+  && (canCreate.value || canEdit.value || canDelete.value)
+))
+
+const salesActionColumnWidth = computed(() => getAdaptiveActionColumnWidth(
+  sortedAvailablePhones.value,
+  [canCreate.value, canEdit.value, canDelete.value]
+))
 
 const getSalesIdentifierColumnWidth = (field: 'serial_number' | 'imei') => {
   const compact = isMobile.value || isTablet.value
@@ -6251,7 +6294,7 @@ input.form-control:focus, textarea.form-control:focus {
 
     &.active {
       transform: translateY(-1px);
-      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+      box-shadow: var(--tf-button-shadow-hover);
     }
 
     i {
@@ -7583,8 +7626,6 @@ input.form-control:focus, textarea.form-control:focus {
 /* 操作按钮增强样式 */
 .action-buttons {
   display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
   align-items: center;
 }
 
@@ -7603,7 +7644,7 @@ input.form-control:focus, textarea.form-control:focus {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--tf-button-overlay-bg);
   border-radius: inherit;
 }
 
@@ -7611,14 +7652,11 @@ input.form-control:focus, textarea.form-control:focus {
 @media (max-width: 768px) {
   .action-buttons {
     flex-direction: row;
-    gap: 4px;
     width: 100%;
-    flex-wrap: wrap;
   }
 
   /* 图文卡片中的按钮特殊优化 */
   .device-card .action-buttons {
-    gap: 3px;
   }
 
 }
@@ -7874,7 +7912,7 @@ input.form-control:focus, textarea.form-control:focus {
   transform: translateY(-50%);
   background: none;
   border: none;
-  color: #6c757d;
+  color: var(--tf-button-tool-color);
   font-size: 14px;
   cursor: pointer;
   padding: 4px;
@@ -7884,8 +7922,8 @@ input.form-control:focus, textarea.form-control:focus {
 }
 
 .search-clear-btn:hover {
-  background: rgba(0, 0, 0, 0.1);
-  color: #495057;
+  background: var(--tf-button-tooltip-bg);
+  color: var(--tf-button-neutral-hover-color);
 }
 
 .expand-indicator {
@@ -8037,7 +8075,7 @@ input.form-control:focus, textarea.form-control:focus {
   transform: translateY(-50%);
   background: none;
   border: none;
-  color: #909399;
+  color: var(--tf-button-tool-color);
   cursor: pointer;
   padding: 4px;
   border-radius: 50%;
@@ -8046,8 +8084,8 @@ input.form-control:focus, textarea.form-control:focus {
   justify-content: center;
 
   &:hover {
-    color: #606266;
-    background: #f5f7fa;
+    color: var(--tf-button-neutral-hover-color);
+    background: var(--tf-button-neutral-hover-bg);
   }
 }
 
@@ -8056,25 +8094,25 @@ input.form-control:focus, textarea.form-control:focus {
   align-items: center;
   gap: 6px;
   padding: 16px 32px;
-  border: 1px solid #dcdfe6;
+  border: 1px solid var(--tf-button-neutral-border);
   border-radius: 8px;
-  background: #f5f7fa;
-  color: #606266;
+  background: var(--tf-button-neutral-bg);
+  color: var(--tf-button-tool-color);
   font-size: 14px;
   cursor: pointer;
   transition: all 0.3s;
   white-space: nowrap;
 
   &:hover {
-    border-color: #409eff;
-    color: #409eff;
-    background: #ecf5ff;
+    border-color: var(--tf-button-primary-soft-hover-border);
+    color: var(--tf-button-primary-soft-hover-color);
+    background: var(--tf-button-primary-soft-hover-bg);
   }
 
   &.active {
-    background: #409eff;
-    color: white;
-    border-color: #409eff;
+    background: var(--tf-button-primary-hover-bg);
+    color: var(--tf-button-on-color);
+    border-color: var(--tf-button-primary-soft-hover-border);
   }
 
   i {
@@ -8158,11 +8196,11 @@ input.form-control:focus, textarea.form-control:focus {
 
   .close-btn {
     font-size: 18px;
-    color: #6c757d;
+    color: var(--tf-button-tool-color);
     padding: 8px;
 
     &:hover {
-      color: #dc3545;
+      color: var(--tf-button-danger-soft-hover-color);
     }
   }
 }

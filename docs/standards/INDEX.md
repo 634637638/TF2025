@@ -19,6 +19,8 @@
 - **[TypeScript规范](./typescript-standards.md)** - 类型定义和使用
 
 ### 🎨 UI/UX规范 (优先级: ⭐⭐⭐)
+- **[全局按钮统一规范](../frontend/button-standards.md)** - 语义颜色、尺寸、表格/模态框按钮和强制审计
+- **[后台卡片与表格统一规范](../frontend/admin-table-standards.md)** - 字段宽度、操作列、滚动和表格审计
 - **[页面结构规范](./page-structure-standards.md)** - 页面组织模式
 - **[样式定义规范](./style-standards.md)** - SCSS和CSS规范
 - **[分页组件规范](./pagination-standards.md)** - 分页实现标准

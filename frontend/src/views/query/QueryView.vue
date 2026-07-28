@@ -331,6 +331,7 @@
               :key="column.key"
               :label="column.label"
               :min-width="getQueryColumnMinWidth(column)"
+              :width="getQueryActionColumnWidth(column)"
               align="center"
               :class-name="getQueryColumnClass(column)"
             >
@@ -644,7 +645,7 @@ import { extractResponseData } from '@/utils/api-response'
 import { formatImageUrl } from '@/utils/format'
 import { sortOptionsByOrder } from '@/utils/option-sort'
 import {
-  getActionColumnMinWidth,
+  getAdaptiveActionColumnWidth,
   getIdentifierColumnMinWidth,
   getTextColumnMinWidth
 } from '@/utils/table-layout'
@@ -2486,6 +2487,10 @@ const refreshQueryAnimations = async () => {
   refreshScrollAnimations()
 }
 
+const hasVisibleQueryActions = computed(() => (
+  canEdit.value || canDelete.value || canReturnToStock.value
+))
+
 // 根据字段权限生成动态列
 const tableColumns = computed(() => {
   const width = windowWidth.value
@@ -2561,7 +2566,10 @@ const tableColumns = computed(() => {
   }
 
   // PC端返回所有有权限的列
-  const filteredColumns = allColumns.filter(column => shouldShowField(column.key))
+  const filteredColumns = allColumns.filter(column => (
+    shouldShowField(column.key)
+    && (column.key !== 'system_info.operations' || hasVisibleQueryActions.value)
+  ))
   return filteredColumns
 })
 
@@ -2585,16 +2593,12 @@ const queryColumnWidths: Record<string, number> = {
   'operator_info.inventory_operator': 64,
   'operator_info.sale_operator': 64,
   'basic_info.is_new': 50,
-  'basic_info.status': 50,
-  'system_info.operations': 260
+  'basic_info.status': 50
 }
 
 const getQueryColumnMinWidth = (column: any) => {
   if (column.key === 'system_info.operations') {
-    const actionCount = Number(canEdit.value) + Number(canDelete.value) + Number(canReturnToStock.value)
-    return getActionColumnMinWidth(actionCount, {
-      minWidth: queryColumnWidths[column.key]
-    })
+    return undefined
   }
 
   const values = [column.label, ...queryData.value.map(item => getCellValue(item, column))]
@@ -2641,6 +2645,15 @@ const getQueryColumnMinWidth = (column: any) => {
     horizontalPadding: 20
   })
 }
+
+const queryActionColumnWidth = computed(() => getAdaptiveActionColumnWidth(
+  queryData.value,
+  [canEdit.value, canDelete.value, canReturnToStock.value]
+))
+
+const getQueryActionColumnWidth = (column: any) => (
+  column.key === 'system_info.operations' ? queryActionColumnWidth.value : undefined
+)
 
 const getQueryColumnClass = (column: any) => {
   if (column.key === 'basic_info.serial_number' || column.key === 'basic_info.imei') {
@@ -3865,7 +3878,7 @@ textarea.form-control {
       right: 4px;
       width: 28px;
       height: 28px;
-      background: rgba(255, 255, 255, 0.9);
+      background: var(--tf-button-overlay-bg);
       border-radius: 50%;
       display: flex;
       align-items: center;
@@ -3877,11 +3890,11 @@ textarea.form-control {
 
       i {
         font-size: 14px;
-        color: #f56c6c;
+        color: var(--tf-button-danger-soft-color);
       }
 
       &:hover {
-        background: rgb(255, 255, 255);
+        background: var(--tf-button-overlay-hover-bg);
         transform: scale(1.1);
       }
     }
@@ -3899,7 +3912,7 @@ textarea.form-control {
       height: 28px !important;
       min-width: 28px !important;
       padding: 0 !important;
-      background: rgba(245, 108, 108, 0.9) !important;
+      background: var(--tf-button-danger-bg) !important;
       border: none !important;
       opacity: 0;
       transition: opacity 0.2s;
@@ -3910,7 +3923,7 @@ textarea.form-control {
       }
 
       &:hover {
-        background: rgba(245, 108, 108, 1) !important;
+        background: var(--tf-button-danger-hover-bg) !important;
       }
     }
 

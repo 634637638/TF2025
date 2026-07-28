@@ -2175,16 +2175,6 @@ onUnmounted(() => {
           background: rgba(102, 126, 234, 0.05);
         }
 
-        // 操作列
-        td.actions-col {
-          background: rgba(108, 117, 125, 0.02);
-          color: #1f2937;
-        }
-
-        tbody tr:hover td.actions-col {
-          background: rgba(108, 117, 125, 0.05);
-        }
-
         // 时间徽章样式
         .time-badge {
           display: inline-flex;
@@ -3163,8 +3153,8 @@ onUnmounted(() => {
       align-items: center;
       gap: 6px;
       padding: 10px 16px;
-      background: linear-gradient(135deg, #667eea, #764ba2);
-      color: white;
+      background: var(--tf-button-primary-bg);
+      color: var(--tf-button-on-color);
       border: none;
       border-radius: 8px;
       font-size: 13px;
@@ -3175,7 +3165,7 @@ onUnmounted(() => {
 
       &:hover {
         transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        box-shadow: var(--tf-button-primary-shadow);
       }
 
       &:active {
@@ -3193,8 +3183,8 @@ onUnmounted(() => {
       align-items: center;
       gap: 6px;
       padding: 10px 16px;
-      background: linear-gradient(135deg, #dc3545, #c82333);
-      color: white;
+      background: var(--tf-button-danger-bg);
+      color: var(--tf-button-on-color);
       border: none;
       border-radius: 8px;
       font-size: 13px;
@@ -3205,7 +3195,7 @@ onUnmounted(() => {
 
       &:hover {
         transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+        box-shadow: var(--tf-button-danger-shadow);
       }
 
       &:active {
@@ -3872,14 +3862,14 @@ onUnmounted(() => {
   display: inline-flex;
 
   .photo-upload-btn {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--tf-button-primary-bg);
     border: none;
-    color: #fff;
+    color: var(--tf-button-on-color);
     transition: all 0.3s;
 
     &:hover {
       transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+      box-shadow: var(--tf-button-primary-shadow);
     }
 
     i {
@@ -4017,7 +4007,7 @@ onUnmounted(() => {
 
         &:hover {
           transform: scale(1.1);
-          box-shadow: 0 4px 12px rgba(64, 158, 255, 0.4);
+          box-shadow: var(--tf-button-primary-shadow);
         }
       }
 
@@ -4136,7 +4126,7 @@ onUnmounted(() => {
               border: none !important;
               border-radius: 50% !important;
               backdrop-filter: blur(10px);
-              box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+              box-shadow: var(--tf-button-shadow);
               transition: all 0.2s;
               display: flex !important;
               align-items: center !important;
@@ -4149,24 +4139,24 @@ onUnmounted(() => {
               }
 
               &.view-btn {
-                background: rgba(64, 158, 255, 0.95) !important;
-                color: white !important;
+                background: var(--tf-button-primary-bg) !important;
+                color: var(--tf-button-on-color) !important;
 
                 &:hover {
-                  background: #409eff !important;
+                  background: var(--tf-button-primary-hover-bg) !important;
                   transform: scale(1.1);
-                  box-shadow: 0 6px 16px rgba(64, 158, 255, 0.4);
+                  box-shadow: var(--tf-button-primary-shadow);
                 }
               }
 
               &.delete-btn {
-                background: rgba(245, 108, 108, 0.95) !important;
-                color: white !important;
+                background: var(--tf-button-danger-bg) !important;
+                color: var(--tf-button-on-color) !important;
 
                 &:hover {
-                  background: #f56c6c !important;
+                  background: var(--tf-button-danger-hover-bg) !important;
                   transform: scale(1.1);
-                  box-shadow: 0 6px 16px rgba(245, 108, 108, 0.4);
+                  box-shadow: var(--tf-button-danger-shadow);
                 }
               }
             }
@@ -4254,13 +4244,13 @@ onUnmounted(() => {
         z-index: 10;
         width: 48px;
         height: 48px;
-        background: rgba(255, 255, 255, 0.9);
+        background: var(--tf-button-overlay-bg);
         border: none;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        box-shadow: var(--tf-button-shadow);
 
         &:hover:not(:disabled) {
-          background: white;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+          background: var(--tf-button-overlay-surface-bg);
+          box-shadow: var(--tf-button-shadow-hover);
         }
 
         &.prev {
@@ -4413,10 +4403,6 @@ onUnmounted(() => {
       }
     }
 
-    .photo-preview-footer {
-      flex-wrap: wrap;
-
-    }
   }
 
   .photo-viewer-dialog {

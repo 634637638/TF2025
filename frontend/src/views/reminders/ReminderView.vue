@@ -109,7 +109,7 @@
               <el-table-column label="状态" min-width="86" align="center">
                 <template #default="{ row }"><span :class="['status-badge', row.status === 'active' ? 'status-enabled' : 'status-disabled']">{{ row.status === 'active' ? '启用' : '暂停' }}</span></template>
               </el-table-column>
-              <el-table-column label="操作" :min-width="reminderActionColumnWidth" align="center" class-name="actions-column">
+          <el-table-column label="操作" :width="reminderActionColumnWidth" align="center" class-name="actions-column">
                 <template #default="{ row }">
                   <div class="action-buttons reminder-list-actions">
                     <el-button type="primary" size="small" title="查看" @click.stop="openDetail(row)"><i class="fas fa-eye"></i><span>查看</span></el-button>
@@ -226,11 +226,11 @@
           <el-table-column label="状态" min-width="72" align="center">
             <template #default="{ row }"><el-switch :model-value="Boolean(row.is_active)" @change="toggleType(row, $event)" /></template>
           </el-table-column>
-          <el-table-column label="操作" min-width="96" align="center" class-name="actions-column">
+              <el-table-column label="操作" align="center" class-name="compact-action-column">
             <template #default="{ row }">
               <div class="action-buttons type-action-buttons">
-                <el-button type="primary" size="small" title="编辑" @click="openTypeForm(row)"><i class="fas fa-edit"></i></el-button>
-                <el-button type="danger" size="small" title="删除" @click="deleteType(row)"><i class="fas fa-trash"></i></el-button>
+                <el-button type="primary" size="small" title="编辑" @click.stop="openTypeForm(row)"><i class="fas fa-edit"></i></el-button>
+                <el-button type="danger" size="small" title="删除" @click.stop="deleteType(row)"><i class="fas fa-trash"></i></el-button>
               </div>
             </template>
           </el-table-column>
@@ -270,7 +270,7 @@ import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { unifiedApi as api } from '@/utils/unified-api'
 import { logger } from '@/utils/logger'
-import { getTextColumnMinWidth } from '@/utils/table-layout'
+import { getActionColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 
 interface ReminderType { id:number; code:string; name:string; default_remind_days:number; color:string; icon:string; sort_order:number; is_active:number|boolean }
 interface ReminderUser { id:number; username:string; name?:string; phone?:string; email?:string; status?:number|string }
@@ -298,7 +298,7 @@ const ignoredCount = computed(() => reminders.value.reduce((sum,item)=>sum+Numbe
 const intervalUnit = computed(() => ({daily:'天',weekly:'周',monthly:'月',yearly:'年'} as Record<string,string>)[form.repeat_type] || '')
 const reminderActionColumnWidth = computed(() => {
   const buttonCount = 1 + (canEdit.value ? 1 : 0) + (canDelete.value ? 1 : 0)
-  return buttonCount * 72 + Math.max(0, buttonCount - 1) * 6 + 24
+  return getActionColumnMinWidth(buttonCount)
 })
 const typeNameColumnWidth = computed(() => getTextColumnMinWidth(
   ['类型', ...types.value.map(item => item.name)],
@@ -392,7 +392,5 @@ onMounted(async()=>{await Promise.all([loadTypes(),loadUsers()]);await loadRemin
 }
 
 .reminder-type-table-wrap{--admin-data-table-min-width:100%;width:100%}.reminder-type-table{width:100%}
-.reminder-list-actions{display:flex;justify-content:center;flex-wrap:nowrap;gap:var(--admin-data-table-action-gap,6px);width:100%}
-.type-action-buttons{display:flex;align-items:center;justify-content:center;gap:var(--admin-data-table-action-gap,6px);width:100%;margin:0 auto}
 @media(max-width:768px){.reminder-form-grid{grid-template-columns:1fr}.reminder-form-grid .span-2{grid-column:auto}.detail-summary{grid-template-columns:1fr}.type-toolbar{align-items:flex-start;flex-direction:column}.reminder-form-dialog :deep(.el-dialog),.reminder-detail-dialog :deep(.el-dialog),.reminder-type-dialog :deep(.el-dialog){width:calc(100vw - 16px)!important;margin:8px auto}.weekday-options :deep(.el-checkbox-button__inner){padding:8px 10px}}
 </style>

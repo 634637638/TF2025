@@ -96,13 +96,13 @@
         <el-input
           v-if="canViewField('name')"
           v-model="searchForm.name"
-          placeholder="搜索关键词"
+          placeholder="搜索供应商名称"
           clearable
           @keyup.enter="searchSuppliers"
           @click.stop
         >
           <template #prefix>
-            <i class="fas fa-search"></i>
+            <el-icon aria-hidden="true"><Search /></el-icon>
           </template>
         </el-input>
       </template>
@@ -151,10 +151,10 @@
           <el-table-column v-if="canViewField('name')" prop="name" label="供应商名称" :min-width="isMobile ? 126 : 160" align="center"><template #default="{ row }"><strong>{{ row.name || '未命名供应商' }}</strong></template></el-table-column>
           <el-table-column v-if="showContactField" label="联系人" :min-width="isMobile ? 92 : 120" align="center"><template #default="{ row }"><span v-if="row.contact" class="contact-name"><i class="fas fa-user"></i>{{ row.contact }}</span><span v-else class="no-data">-</span></template></el-table-column>
           <el-table-column v-if="showPhoneField" label="电话" min-width="132" align="center"><template #default="{ row }"><span v-if="row.phone" class="phone-number"><i class="fas fa-phone"></i>{{ row.phone }}</span><span v-else class="no-data">-</span></template></el-table-column>
-          <el-table-column v-if="showAddressField" label="地址" min-width="220" align="center" show-overflow-tooltip><template #default="{ row }"><span v-if="row.address" class="address-text"><i class="fas fa-map-marker-alt"></i>{{ row.address }}</span><span v-else class="no-data">-</span></template></el-table-column>
+          <el-table-column v-if="showAddressField" label="地址" min-width="220" align="center" class-name="complete-text-column wrapped-text-column"><template #default="{ row }"><span v-if="row.address" class="address-text"><i class="fas fa-map-marker-alt"></i>{{ row.address }}</span><span v-else class="no-data">-</span></template></el-table-column>
           <el-table-column v-if="canViewField('status')" label="状态" :min-width="isMobile ? 72 : 84" align="center"><template #default="{ row }"><span :class="['status-badge', isSupplierActive(row.status) ? 'status-active' : 'status-inactive']"><i :class="isSupplierActive(row.status) ? 'fas fa-check' : 'fas fa-times'"></i>{{ isSupplierActive(row.status) ? '正常' : '禁用' }}</span></template></el-table-column>
           <el-table-column v-if="showCreatedAtField" label="创建时间" min-width="156" align="center"><template #default="{ row }"><div class="time-info"><i class="fas fa-clock"></i>{{ formatDate(row.created_at) }}</div></template></el-table-column>
-          <el-table-column v-if="showActionField" label="操作" min-width="238" align="center" class-name="actions-column"><template #default="{ row }"><div class="action-buttons"><el-button type="success" size="small" @click.stop="viewSupplier(row)"><i class="fas fa-eye"></i><span>查看</span></el-button><el-button v-if="canEdit" v-permission="'suppliers:edit'" type="primary" size="small" @click.stop="editSupplier(row)"><i class="fas fa-edit"></i><span>编辑</span></el-button><el-button v-if="canDelete" v-permission="'suppliers:delete'" type="danger" size="small" @click.stop="deleteSupplier(row)"><i class="fas fa-trash"></i><span>删除</span></el-button></div></template></el-table-column>
+          <el-table-column v-if="showActionField" label="操作" :width="$getActionColumnWidth(1 + Number(canEdit) + Number(canDelete))" align="center" class-name="actions-column"><template #default="{ row }"><div class="action-buttons"><el-button type="success" size="small" @click.stop="viewSupplier(row)"><i class="fas fa-eye"></i><span>查看</span></el-button><el-button v-if="canEdit" v-permission="'suppliers:edit'" type="primary" size="small" @click.stop="editSupplier(row)"><i class="fas fa-edit"></i><span>编辑</span></el-button><el-button v-if="canDelete" v-permission="'suppliers:delete'" type="danger" size="small" @click.stop="deleteSupplier(row)"><i class="fas fa-trash"></i><span>删除</span></el-button></div></template></el-table-column>
           <el-table-column v-if="isMobile" type="expand" width="1" class-name="mobile-expand-column" label-class-name="mobile-expand-header"><template #default="{ row }"><div class="mobile-row-actions"><el-button type="success" size="small" @click.stop="viewSupplier(row)"><i class="fas fa-eye"></i><span>查看</span></el-button><el-button v-if="canEdit" v-permission="'suppliers:edit'" type="primary" size="small" @click.stop="editSupplier(row)"><i class="fas fa-edit"></i><span>编辑</span></el-button><el-button v-if="canDelete" v-permission="'suppliers:delete'" type="danger" size="small" @click.stop="deleteSupplier(row)"><i class="fas fa-trash"></i><span>删除</span></el-button></div></template></el-table-column>
         </el-table>
       </div>
@@ -405,6 +405,7 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
+import { Search } from '@element-plus/icons-vue'
 import unifiedApi from '@/utils/unified-api'
 import { useNotification } from '@/composables/useNotification'
 import { useImportExport } from '@/composables/useImportExport'
@@ -1585,7 +1586,6 @@ onUnmounted(() => {
 
 .action-buttons {
   display: flex;
-  gap: 6px;
 }
 
 /* 操作按钮样式 - 参考店铺管理页面 */
@@ -1666,7 +1666,6 @@ onUnmounted(() => {
     display: flex;
     flex-direction: row;
     width: auto;
-    gap: 8px;
   }
 
   .form-actions {

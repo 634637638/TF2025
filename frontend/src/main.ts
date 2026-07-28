@@ -60,6 +60,7 @@ import { waitForIconify } from '@/utils/iconify'
 import { enhanceGlobalMessageBox } from '@/utils/message-box'
 import logger from '@/utils/logger'
 import { initAdminTableDragScroll } from '@/utils/admin-table-drag-scroll'
+import { getActionColumnMinWidth } from '@/utils/table-layout'
 
 // 导入 Token 过期检测
 import { startTokenExpiryCheck } from '@/utils/token-expiry-check'
@@ -82,6 +83,7 @@ app.use(router)
 
 // 注册全局API服务
 app.config.globalProperties.$api = unifiedApi
+app.config.globalProperties.$getActionColumnWidth = getActionColumnMinWidth
 app.provide('api', unifiedApi)
 
 // 安装全局指令系统

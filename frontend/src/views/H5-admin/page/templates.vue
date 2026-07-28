@@ -1560,7 +1560,6 @@ onUnmounted(() => {
 
 .action-buttons {
   display: flex;
-  gap: 8px;
 }
 
 .dialog-shell {
@@ -1852,8 +1851,8 @@ onUnmounted(() => {
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s ease;
-  background: #eef2ff;
-  color: #4f46e5;
+  background: var(--tf-button-primary-soft-bg);
+  color: var(--tf-button-primary-soft-color);
 }
 
 .image-action-btn:hover {
@@ -1862,15 +1861,15 @@ onUnmounted(() => {
 
 .image-action-btn.primary.active,
 .image-action-btn.primary:disabled {
-  background: #dcfce7;
-  color: #16a34a;
+  background: var(--tf-button-success-soft-hover-bg);
+  color: var(--tf-button-success-soft-hover-color);
   cursor: default;
   transform: none;
 }
 
 .image-action-btn.danger {
-  background: #fef2f2;
-  color: #dc2626;
+  background: var(--tf-button-danger-soft-bg);
+  color: var(--tf-button-danger-soft-color);
 }
 
 :deep(.memory-select .el-select__wrapper) {
@@ -2062,7 +2061,6 @@ onUnmounted(() => {
   .action-buttons {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
     width: 100%;
   }
 

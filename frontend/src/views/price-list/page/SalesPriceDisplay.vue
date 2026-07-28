@@ -79,7 +79,7 @@
 
           <!-- 表格视图 -->
           <div class="table-wrapper">
-            <el-table :data="searchResults" stripe border>
+            <el-table class="data-table" :data="searchResults" stripe border>
               <el-table-column prop="brand_name" label="品牌" min-width="80" />
               <el-table-column prop="model_number" label="型号" min-width="100" />
               <el-table-column prop="color_name" label="颜色" min-width="60" />
@@ -622,10 +622,10 @@ onBeforeUnmount(() => {
         width: 24px;
         height: 24px;
         border-radius: 50%;
-        background: #f0f0f0;
+        background: var(--tf-button-neutral-bg);
         cursor: pointer;
         transition: all 0.2s ease;
-        color: #999;
+        color: var(--tf-button-tool-color);
         font-size: 14px;
         margin-right: 8px;
 
@@ -661,8 +661,8 @@ onBeforeUnmount(() => {
         }
 
         &:hover {
-          background: #e0e0e0;
-          color: #666;
+          background: var(--tf-button-neutral-hover-bg);
+          color: var(--tf-button-neutral-hover-color);
         }
 
         &:active {
@@ -672,8 +672,8 @@ onBeforeUnmount(() => {
 
       .search-btn-inner {
         flex-shrink: 0;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
+        background: var(--tf-button-primary-bg);
+        color: var(--tf-button-on-color);
         border: none;
         border-radius: 6px;
         padding: 8px 20px;
@@ -715,13 +715,13 @@ onBeforeUnmount(() => {
         }
 
         &:hover {
-          background: linear-gradient(135deg, #7b8ef0 0%, #8559b8 100%);
+          background: var(--tf-button-primary-hover-bg);
           box-shadow: none;
         }
 
         &:active {
           transform: scale(0.98);
-          background: linear-gradient(135deg, #5a6ad8 0%, #6a4190 100%);
+          background: var(--tf-button-primary-hover-bg);
         }
       }
     }
@@ -1040,13 +1040,11 @@ onBeforeUnmount(() => {
     // 按钮容器
     .action-buttons {
       display: flex;
-      gap: 16px;
       justify-content: center;
       align-items: center;
 
       @media (max-width: 768px) {
         flex-direction: column;
-        gap: 12px;
         padding: 0 12px;
       }
     }
@@ -1060,15 +1058,15 @@ onBeforeUnmount(() => {
       flex: 1;
       max-width: 400px;
       padding: 14px 24px;
-      background: linear-gradient(135deg, #67c23a 0%, #85ce61 100%);
+      background: var(--tf-button-success-bg);
       border: none;
       border-radius: 12px;
-      color: white;
+      color: var(--tf-button-on-color);
       font-size: 16px;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.3s ease;
-      box-shadow: 0 4px 12px rgba(103, 194, 58, 0.3);
+      box-shadow: var(--tf-button-success-shadow);
 
       @media (max-width: 768px) {
         max-width: 100%;
@@ -1079,8 +1077,8 @@ onBeforeUnmount(() => {
       }
 
       &:hover:not(:disabled) {
-        background: linear-gradient(135deg, #5daf34 0%, #73c24f 100%);
-        box-shadow: 0 6px 16px rgba(103, 194, 58, 0.4);
+        background: var(--tf-button-success-hover-bg);
+        box-shadow: var(--tf-button-success-shadow);
         transform: translateY(-2px);
       }
 

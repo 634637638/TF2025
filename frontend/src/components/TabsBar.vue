@@ -239,17 +239,17 @@ const handleCommand = (command: string) => {
   justify-content: center;
   width: 28px;
   height: 28px;
-  background: white;
-  border: 1px solid #e4e7ed;
+  background: var(--tf-button-neutral-bg);
+  border: 1px solid var(--tf-button-neutral-border);
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.2s ease;
-  color: #606266;
+  color: var(--tf-button-tool-color);
 }
 
 .tabs-action-btn:hover {
-  background: #f0f2f5;
-  border-color: #c0c4cc;
+  background: var(--tf-button-neutral-hover-bg);
+  border-color: var(--tf-button-neutral-hover-border);
 }
 
 .tabs-action-btn i {

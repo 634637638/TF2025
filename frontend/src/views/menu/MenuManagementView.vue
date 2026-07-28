@@ -2437,7 +2437,7 @@ onMounted(async () => {
   height: 24px;
   border: none;
   background: transparent;
-  color: #6b7280;
+  color: var(--tf-button-tool-color);
   cursor: pointer;
   border-radius: 4px;
   transition: all 0.2s ease;
@@ -2445,8 +2445,8 @@ onMounted(async () => {
 }
 
 .expand-btn:hover {
-  background-color: rgba(59, 130, 246, 0.1);
-  color: #3b82f6;
+  background-color: var(--tf-button-primary-hover-bg);
+  color: var(--tf-button-primary-soft-hover-color);
 }
 
 .expand-btn i {
@@ -2511,8 +2511,8 @@ onMounted(async () => {
 }
 
 .type-button {
-  background: #f3e5f5;
-  color: #7b1fa2;
+  background: var(--tf-button-neutral-bg);
+  color: var(--tf-button-primary-soft-color);
 }
 
 .menu-remarks {
@@ -2626,7 +2626,6 @@ onMounted(async () => {
   display: inline-flex;
   justify-content: center;
   flex-wrap: nowrap;
-  gap: 6px;
   max-width: 100%;
 }
 
@@ -3298,7 +3297,6 @@ onMounted(async () => {
   .action-buttons {
     display: flex;
     flex-direction: column;
-    gap: 4px;
     min-width: 120px;
   }
 

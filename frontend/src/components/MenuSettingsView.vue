@@ -115,7 +115,6 @@ const sortedEnabledMenus = computed(() => {
 <style scoped>
 .action-buttons {
   display: flex;
-  gap: 10px;
   margin-bottom: 20px;
 }
 

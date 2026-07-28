@@ -688,7 +688,6 @@ const handleSearchClear = () => {
 .action-buttons {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
   width: 100%;
 }
 

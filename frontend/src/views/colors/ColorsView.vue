@@ -176,7 +176,7 @@
           <el-table-column v-if="showCreatedAtField" label="创建时间" min-width="156" align="center">
             <template #default="{ row }"><div class="time-info"><i class="fas fa-clock"></i>{{ formatDate(row.created_at) }}</div></template>
           </el-table-column>
-          <el-table-column v-if="showActionField" label="操作" min-width="170" align="center" class-name="actions-column">
+          <el-table-column v-if="showActionField" label="操作" :width="$getActionColumnWidth(Number(canEdit) + Number(canDelete))" align="center" class-name="actions-column">
             <template #default="{ row }">
               <div class="action-buttons">
                 <el-button v-if="canEdit" v-permission="'colors:edit'" type="primary" size="small" @click.stop="editColor(row)"><i class="fas fa-edit"></i><span>编辑</span></el-button>
@@ -985,7 +985,6 @@ onBeforeUnmount(() => {
 
 .action-buttons {
   display: flex;
-  gap: 12px;
 }
 
 /* 统计卡片样式 */
@@ -1323,7 +1322,6 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
 }
 .empty-row td {
   padding: 60px 12px;
@@ -1496,7 +1494,6 @@ onBeforeUnmount(() => {
     display: flex;
     flex-direction: row;
     width: auto;
-    gap: 8px;
   }
 
   .stats-cards {
@@ -1575,7 +1572,6 @@ onBeforeUnmount(() => {
   .action-buttons {
     flex-direction: column;
     width: 100%;
-    gap: 12px;
   }
 
   .stats-cards {

@@ -235,7 +235,10 @@ export interface PriceMarkupConfig {
  * 获取加价配置
  */
 export function getMarkupConfig() {
-  return unifiedApi.get<PriceMarkupConfig>('/system-settings/price-markup-config')
+  return unifiedApi.get<PriceMarkupConfig>('/system-settings/price-markup-config', {
+    params: { _t: Date.now() },
+    useCache: false
+  })
 }
 
 /**

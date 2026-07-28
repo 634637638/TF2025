@@ -12,7 +12,25 @@
 npm run check:standards
 ```
 
-该命令会依次运行前端的 TAB、按钮、加载动画和数据实时性审计。任意一项失败都会返回非零退出码，并停止后续启动或构建。
+该命令会依次运行前端的 TAB、按钮、表格、加载动画和数据实时性审计。任意一项失败都会返回非零退出码，并停止后续启动或构建。
+
+表格审计也可单独运行：
+
+```bash
+cd frontend
+npm run check:tables
+```
+
+`check:tables` 扫描全部 Vue 页面并强制要求：所有 Element 表格接入 `.data-table` / `.admin-data-table`；主列表操作列使用 `.actions-column`、公共动态宽度、公共按钮容器、文字按钮和 `@click.stop`；禁止数字固定宽度、固定右侧列和页面私有 `.actions-column` 样式。弹窗纯图标工具列只能显式使用 `compact-action-column`。
+
+按钮颜色审计也可单独运行：
+
+```bash
+cd frontend
+npm run check:buttons
+```
+
+`check:buttons` 强制所有页面按操作后果声明 `primary`、`success`、`warning`、`danger`、`view`、`manage`、`finance`、`transfer`、`export` 或 `neutral` 语义。实际色值只能由 `styles/components/_buttons.scss` 定义；业务页面和表格、模态框、Tab 等公共布局文件只能读取 `--tf-button-*`，直接颜色、行内颜色和第二套兼容色板都会使审计失败。
 
 以下入口已自动执行审计：
 
@@ -66,4 +84,3 @@ npm run build:debug
 ## 审计边界
 
 静态审计适合检查公共组件接入、禁止的 CSS 覆盖、错误 API 调用和重复实现。它不能可靠判断遮挡、文字溢出、真实触摸滑动和视觉效果；这些仍需要浏览器在手机及 PC 视口下验证。
-

@@ -262,6 +262,7 @@
             :key="column.key"
             :label="column.label"
             :min-width="getInventoryColumnMinWidth(column)"
+            :width="getInventoryColumnWidth(column)"
             align="center"
             :class-name="getInventoryColumnClass(column)"
           >
@@ -690,7 +691,7 @@ import { unifiedApi as api } from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import { normalizePermissionList } from '@/utils/permissionList'
 import { sortOptionsByOrder } from '@/utils/option-sort'
-import { getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
+import { getAdaptiveActionColumnWidth, getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 import { useAuthStore } from '@/stores/auth'
 import { logger } from '@/utils/logger'
 import { useLoadingStore } from '@/stores/loading'
@@ -877,7 +878,7 @@ const tableColumns = computed(() => {
   // 如果是移动端，只返回指定的列（不包含操作列）
   const visibleColumns = allColumns.filter(column => {
     if (column.key === 'actions') {
-      return canViewField('actions') && (canEdit.value || canDelete.value)
+      return canViewField('actions')
     }
 
     return canViewField(column.key)
@@ -907,10 +908,28 @@ const inventoryColumnWidths: Record<string, number> = {
   is_new: 64,
   is_preordered: 72,
   Inventorytime: 108,
-  actions: 310
 }
 
-const getInventoryColumnMinWidth = (column: { key: string }) => {
+const getInventoryColumnValue = (columnKey: string, item: InventoryItem) => {
+  switch (columnKey) {
+    case 'supplier_name': return item.supplier_name || '-'
+    case 'store_name': return item.store_name || '-'
+    case 'brand': return item.brand_name || item.brand || '-'
+    case 'model': return item.model_name || item.model || '-'
+    case 'color': return item.color_name || item.color || '-'
+    case 'memory': return item.memory_name || item.memory || '-'
+    case 'serial_number': return item.serial_number || '-'
+    case 'imei': return item.imei || '-'
+    case 'purchase_price': return `¥${formatNumber(item.purchase_cost || item.purchase_price || item.purchase_unit_price)}`
+    case 'inventory_operator_name': return item.inventory_operator_name || item.operator_name || '-'
+    case 'is_new': return getConditionText(item.is_new ?? 0)
+    case 'is_preordered': return getSaleStatusLabel(item)
+    case 'Inventorytime': return formatDate(item.Inventorytime || item.created_at)
+    default: return '-'
+  }
+}
+
+const getInventoryColumnMinWidth = (column: { key: string; label: string }) => {
   const useCompactMobileWidth = windowWidth.value <= 768
 
   if (useCompactMobileWidth && column.key === 'model') {
@@ -973,8 +992,30 @@ const getInventoryColumnMinWidth = (column: { key: string }) => {
     )
   }
 
-  return inventoryColumnWidths[column.key] || 96
+  return getTextColumnMinWidth(
+    [column.label, ...inventory.value.map(item => getInventoryColumnValue(column.key, item))],
+    {
+      minWidth: inventoryColumnWidths[column.key] || 72,
+      horizontalPadding: useCompactMobileWidth ? 16 : 20,
+      asciiCharacterWidth: useCompactMobileWidth ? 6.5 : 8,
+      wideCharacterWidth: useCompactMobileWidth ? 11 : 13
+    }
+  )
 }
+
+const inventoryActionColumnWidth = computed(() => getAdaptiveActionColumnWidth(
+  inventory.value,
+  [
+    true,
+    item => canCreate.value && item.status === 'in_stock',
+    item => canEdit.value && item.status === 'in_stock',
+    item => canDelete.value && item.status === 'in_stock'
+  ]
+))
+
+const getInventoryColumnWidth = (column: { key: string }) => (
+  column.key === 'actions' ? inventoryActionColumnWidth.value : undefined
+)
 
 const getInventoryColumnClass = (column: { key: string }) => {
   if (column.key === 'serial_number' || column.key === 'imei') {
@@ -3607,9 +3648,9 @@ const handleSelect = (item: InventoryItem) => {
 }
 
 .modal-close-btn {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--tf-button-overlay-bg);
   border: none;
-  color: white;
+  color: var(--tf-button-on-color);
   width: 40px;
   height: 40px;
   border-radius: 50%;
@@ -3622,7 +3663,7 @@ const handleSelect = (item: InventoryItem) => {
 }
 
 .modal-close-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--tf-button-overlay-hover-bg);
   transform: scale(1.1);
 }
 
@@ -3928,7 +3969,6 @@ const handleSelect = (item: InventoryItem) => {
 
   .footer-actions {
     flex-direction: row;
-    flex-wrap: wrap;
     gap: 8px;
   }
 
@@ -4010,7 +4050,7 @@ const handleSelect = (item: InventoryItem) => {
   transform: translateY(-50%);
   background: none;
   border: none;
-  color: #6c757d;
+  color: var(--tf-button-tool-color);
   font-size: 14px;
   cursor: pointer;
   padding: 4px;
@@ -4020,8 +4060,8 @@ const handleSelect = (item: InventoryItem) => {
 }
 
 .search-clear-btn:hover {
-  background: rgba(0, 0, 0, 0.1);
-  color: #495057;
+  background: var(--tf-button-tooltip-bg);
+  color: var(--tf-button-neutral-hover-color);
 }
 
 .expand-indicator {
@@ -4194,7 +4234,7 @@ const handleSelect = (item: InventoryItem) => {
   transform: translateY(-50%);
   background: none;
   border: none;
-  color: #909399;
+  color: var(--tf-button-tool-color);
   cursor: pointer;
   padding: 4px;
   border-radius: 50%;
@@ -4206,8 +4246,8 @@ const handleSelect = (item: InventoryItem) => {
 }
 
 .clear-btn:hover {
-  background: #f0f0f0;
-  color: #606266;
+  background: var(--tf-button-neutral-hover-bg);
+  color: var(--tf-button-neutral-hover-color);
 }
 
 .expand-btn {
@@ -4215,24 +4255,24 @@ const handleSelect = (item: InventoryItem) => {
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  border: 1px solid #dcdfe6;
+  border: 1px solid var(--tf-button-neutral-border);
   border-radius: 20px;
-  background: white;
-  color: #606266;
+  background: var(--tf-button-neutral-bg);
+  color: var(--tf-button-tool-color);
   cursor: pointer;
   font-size: 14px;
   transition: all 0.3s;
 }
 
 .expand-btn:hover {
-  border-color: #409eff;
-  color: #409eff;
+  border-color: var(--tf-button-primary-soft-hover-border);
+  color: var(--tf-button-primary-soft-hover-color);
 }
 
 .expand-btn.active {
-  background: #409eff;
-  border-color: #409eff;
-  color: white;
+  background: var(--tf-button-primary-hover-bg);
+  border-color: var(--tf-button-primary-soft-hover-border);
+  color: var(--tf-button-on-color);
 }
 
 .desktop-advanced-search {
@@ -4784,25 +4824,25 @@ const handleSelect = (item: InventoryItem) => {
 }
 
 .filter-btn-reset {
-  background: #f8f9fa;
-  color: #6c757d;
-  border: 1px solid #e9ecef;
+  background: var(--tf-button-neutral-bg);
+  color: var(--tf-button-tool-color);
+  border: 1px solid var(--tf-button-neutral-border);
 
   &:hover {
-    background: #e9ecef;
-    color: #495057;
+    background: var(--tf-button-neutral-hover-bg);
+    color: var(--tf-button-neutral-hover-color);
     transform: translateY(-1px);
   }
 }
 
 .filter-btn-apply {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
+  background: var(--tf-button-primary-bg);
+  color: var(--tf-button-on-color);
 
   &:hover {
-    background: linear-gradient(135deg, #5a6fd8, #6a4190);
+    background: var(--tf-button-primary-hover-bg);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    box-shadow: var(--tf-button-primary-shadow);
   }
 }
 
@@ -4829,7 +4869,7 @@ const handleSelect = (item: InventoryItem) => {
     transform: translateY(-50%);
     background: none;
     border: none;
-    color: #909399;
+    color: var(--tf-button-tool-color);
     cursor: pointer;
     padding: 4px;
     border-radius: 50%;
@@ -4840,8 +4880,8 @@ const handleSelect = (item: InventoryItem) => {
   }
 
   .mobile-search-bar .clear-btn:hover {
-    color: #409eff;
-    background: rgba(64, 158, 255, 0.1);
+    color: var(--tf-button-primary-soft-hover-color);
+    background: var(--tf-button-primary-hover-bg);
   }
 
   .mobile-search-bar .expand-btn {
@@ -4849,10 +4889,10 @@ const handleSelect = (item: InventoryItem) => {
     align-items: center;
     gap: 6px;
     padding: 16px 32px;
-    border: 1px solid #dcdfe6;
+    border: 1px solid var(--tf-button-neutral-border);
     border-radius: 8px;
-    background: #f5f7fa;
-    color: #606266;
+    background: var(--tf-button-neutral-bg);
+    color: var(--tf-button-tool-color);
     font-size: 14px;
     cursor: pointer;
     transition: all 0.3s;
@@ -4861,15 +4901,15 @@ const handleSelect = (item: InventoryItem) => {
   }
 
   .mobile-search-bar .expand-btn:hover {
-    border-color: #409eff;
-    color: #409eff;
-    background: #ecf5ff;
+    border-color: var(--tf-button-primary-soft-hover-border);
+    color: var(--tf-button-primary-soft-hover-color);
+    background: var(--tf-button-primary-soft-hover-bg);
   }
 
   .mobile-search-bar .expand-btn.active {
-    background: #409eff;
-    color: white;
-    border-color: #409eff;
+    background: var(--tf-button-primary-hover-bg);
+    color: var(--tf-button-on-color);
+    border-color: var(--tf-button-primary-soft-hover-border);
   }
 
   .mobile-search-bar .expand-btn i {

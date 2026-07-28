@@ -1041,9 +1041,9 @@ onMounted(() => {
   }
 
   .cart-btn {
-    background: #fff8f0;
-    color: #ff6b00;
-    border: 1px solid #ff6b00;
+    background: var(--tf-button-warning-soft-bg);
+    color: var(--tf-button-warning-soft-color);
+    border: 1px solid var(--tf-button-neutral-border);
 
     i {
       margin-right: 4px;
@@ -1051,7 +1051,7 @@ onMounted(() => {
   }
 
   .buy-btn {
-    background: linear-gradient(135deg, #ff6b00 0%, #ff8f00 100%);
+    background: var(--tf-button-warning-bg);
     border: none;
 
     &.full-width {

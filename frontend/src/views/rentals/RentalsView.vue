@@ -59,7 +59,7 @@
           </div>
         </UnifiedSearchPanel>
 
-        <el-table
+        <el-table class="data-table"
           :data="loading ? [] : displayTableData"
           stripe
           style="width: 100%"
@@ -98,18 +98,20 @@
               ￥{{ row.deposit }}
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="200">
+        <el-table-column label="操作" :width="$getActionColumnWidth(1 + (Number(canEdit) * 2))" class-name="actions-column">
             <template #default="{ row }">
-              <el-button size="small" @click="handleView(row)">查看</el-button>
-              <el-button v-if="canEdit" size="small" type="primary" @click="handleEdit(row)">编辑</el-button>
+              <div class="action-buttons">
+              <el-button size="small" @click.stop="handleView(row)">查看</el-button>
+              <el-button v-if="canEdit" size="small" type="primary" @click.stop="handleEdit(row)">编辑</el-button>
               <el-button
                 v-if="canEdit"
                 size="small"
                 :type="row.status === 'active' ? 'warning' : 'success'"
-                @click="handleStatusChange(row)"
+                @click.stop="handleStatusChange(row)"
               >
                 {{ row.status === 'active' ? '终止' : '续租' }}
               </el-button>
+              </div>
             </template>
           </el-table-column>
         </el-table>

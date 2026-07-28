@@ -187,7 +187,7 @@
               </el-space>
             </div>
           </template>
-          <el-table :data="loading ? [] : displayRecords" stripe class="w-full" max-height="400">
+          <el-table :data="loading ? [] : displayRecords" stripe class="data-table w-full" max-height="400">
             <template #empty>
               <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
               <el-empty v-else description="暂无操作记录" />

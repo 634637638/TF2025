@@ -132,7 +132,7 @@
             :data="isLoading ? [] : stores"
             border
             stripe
-            class="data-table devices-table base-data-table stores-data-table"
+            class="data-table devices-table base-data-table compact-fit-table stores-data-table"
             table-layout="fixed"
             :fit="true"
             :row-key="getStoreRowKey"
@@ -160,7 +160,7 @@
             <el-table-column v-if="canViewField('name')" prop="name" label="店铺名称" :min-width="isMobile ? 126 : 160" align="center">
               <template #default="{ row }"><strong>{{ row.name || '未命名店铺' }}</strong></template>
             </el-table-column>
-            <el-table-column v-if="showAddressField" label="地址" min-width="220" align="center" show-overflow-tooltip>
+            <el-table-column v-if="showAddressField" label="地址" min-width="220" align="center" class-name="complete-text-column wrapped-text-column">
               <template #default="{ row }"><span v-if="row.address || row.location" class="address-text"><i class="fas fa-map-marker-alt"></i>{{ row.address || row.location }}</span><span v-else class="no-data">-</span></template>
             </el-table-column>
             <el-table-column v-if="showManagerField" label="联系人" :min-width="isMobile ? 92 : 120" align="center">
@@ -175,7 +175,7 @@
             <el-table-column v-if="showCreatedAtField" label="创建时间" min-width="156" align="center">
               <template #default="{ row }"><div class="time-info"><i class="fas fa-clock"></i>{{ formatDate(row.created_at) }}</div></template>
             </el-table-column>
-            <el-table-column v-if="showActionField" label="操作" min-width="238" align="center" class-name="actions-column">
+            <el-table-column v-if="showActionField" label="操作" :width="$getActionColumnWidth(1 + Number(canEdit) + Number(canDelete))" align="center" class-name="actions-column">
               <template #default="{ row }"><div class="action-buttons"><el-button type="success" size="small" @click.stop="viewStore(row)"><i class="fas fa-eye"></i><span>查看</span></el-button><el-button v-if="canEdit" type="primary" size="small" @click.stop="editStore(row)"><i class="fas fa-edit"></i><span>编辑</span></el-button><el-button v-if="canDelete" type="danger" size="small" @click.stop="deleteStore(row)"><i class="fas fa-trash"></i><span>删除</span></el-button></div></template>
             </el-table-column>
             <el-table-column v-if="isMobile" type="expand" width="1" class-name="mobile-expand-column" label-class-name="mobile-expand-header">
@@ -1230,11 +1230,6 @@ onUnmounted(() => {
   font-weight: 500;
 }
 
-.action-buttons {
-  display: flex;
-  gap: 12px;
-}
-
 /* 区域标题样式 */
 .section-title {
   display: flex;
@@ -1330,81 +1325,6 @@ onUnmounted(() => {
   gap: 12px;
 }
 
-/* 表格样式 */
-.table-responsive {
-  overflow-x: auto;
-  border-radius: 8px;
-}
-
-.table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  margin: 0;
-  background: white;
-}
-
-.table th {
-  background: linear-gradient(135deg, #495057 0%, #343a40 100%);
-  color: white;
-  padding: 12px 10px;
-  text-align: center;
-  font-weight: 600;
-  font-size: 14px;
-  border-right: 1px solid #dee2e6;
-  border-bottom: 2px solid #dee2e6;
-  position: relative;
-  white-space: nowrap;
-}
-
-.table th:last-child {
-  border-right: none;
-}
-
-.table td {
-  padding: 6px 6px;
-  font-size: 14px;
-  border-right: 1px solid #e9ecef;
-  border-bottom: 1px solid #e9ecef;
-  vertical-align: middle;
-  text-align: center;
-  color: #2c3e50;
-  font-weight: 500;
-}
-
-.table td:last-child {
-  border-right: none;
-}
-
-.table tbody tr {
-  transition: all 0.2s ease;
-  position: relative;
-}
-
-.table tbody tr:nth-child(even) {
-  background: #f8f9fa;
-}
-
-.table tbody tr:hover {
-  background: #e3f2fd;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-.table tbody tr:hover td {
-  border-bottom-color: #dee2e6;
-}
-
-.table tbody tr.is-dragging {
-  opacity: 0.5;
-  background: #eff6ff !important;
-}
-
-.table tbody tr.is-drag-over {
-  background: #f0f9ff !important;
-  border-top: 2px solid #3b82f6;
-}
-
 /* 拖拽手柄 */
 .drag-handle-cell {
   padding: 8px 4px !important;
@@ -1473,31 +1393,6 @@ onUnmounted(() => {
   opacity: 0.5;
   cursor: not-allowed;
   background-color: #f3f4f6;
-}
-
-/* 注意：不再使用的通用按钮样式已删除，改用 el-button */
-
-/* 操作按钮样式 */
-.actions {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-}
-/* 新增的样式类 */
-.id-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #ffffff;
-  font-weight: 600;
-  font-size: 12px;
-  padding: 6px 14px;
-  border-radius: 20px;
-  min-width: 80px;
-  height: 32px;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-  text-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 
 .store-info {
@@ -1570,16 +1465,6 @@ onUnmounted(() => {
   margin-top: 4px;
   font-size: 12px;
   color: #6c757d;
-}
-
-/* Element Plus 按钮图标样式 */
-.el-button i {
-  margin-right: 4px;
-}
-
-.el-button span {
-  display: inline-flex;
-  align-items: center;
 }
 
 /* 辅助样式类 */
@@ -1744,13 +1629,6 @@ onUnmounted(() => {
 @media (max-width: 768px) {
   .stores-view {
     padding: 16px;
-  }
-
-  .action-buttons {
-    display: flex;
-    flex-direction: row;
-    width: auto;
-    gap: 8px;
   }
 
   .form-actions {

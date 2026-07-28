@@ -123,17 +123,20 @@
               </template>
             </el-table-column>
 
-            <el-table-column v-if="!isMobile" label="操作" min-width="176" align="center" class-name="actions-column">
+            <el-table-column v-if="!isMobile" label="操作" :width="$getActionColumnWidth(1 + Number(canEdit) + Number(canDelete))" align="center" class-name="actions-column">
               <template #default="{ row }">
                 <div class="action-buttons">
                   <el-button type="primary" size="small" title="详情" @click.stop="viewAccessoryDetails(row)">
                     <i class="fas fa-eye"></i>
+                    <span>详情</span>
                   </el-button>
                   <el-button v-if="canEdit" type="success" size="small" title="编辑" @click.stop="editAccessory(row)">
                     <i class="fas fa-edit"></i>
+                    <span>编辑</span>
                   </el-button>
                   <el-button v-if="canDelete" type="danger" size="small" title="删除" @click.stop="deleteAccessory(row)">
                     <i class="fas fa-trash"></i>
+                    <span>删除</span>
                   </el-button>
                 </div>
               </template>

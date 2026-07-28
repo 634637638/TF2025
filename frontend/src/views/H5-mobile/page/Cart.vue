@@ -367,13 +367,13 @@ onMounted(() => {
               width: 28px;
               height: 28px;
               border: none;
-              background: #fff;
+              background: var(--tf-button-neutral-bg);
               font-size: 16px;
-              color: #666;
+              color: var(--tf-button-tool-color);
               cursor: pointer;
 
               &:disabled {
-                color: #ccc;
+                color: var(--tf-button-tool-color);
               }
             }
 
@@ -389,18 +389,18 @@ onMounted(() => {
             width: 32px;
             height: 32px;
             border: none;
-            background: #fff;
+            background: var(--tf-button-neutral-bg);
             border-radius: 4px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #ff1744;
+            color: var(--tf-button-danger-soft-color);
             cursor: pointer;
             transition: all 0.3s;
-            border: 1px solid #ffebee;
+            border: 1px solid var(--tf-button-neutral-border);
 
             &:active {
-              background: #ffebee;
+              background: var(--tf-button-danger-soft-hover-bg);
             }
 
             i {

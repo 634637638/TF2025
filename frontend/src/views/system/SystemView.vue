@@ -196,7 +196,7 @@
                     </template>
                   </el-button>
                 </div>
-                <el-table :data="siteSettingsList" border stripe style="width: 100%">
+                <el-table class="data-table" :data="siteSettingsList" border stripe style="width: 100%">
                   <el-table-column prop="category" label="分类" width="120" align="center">
                     <template #default="{ row }">
                       <el-tag :type="row.category === 'basic' ? 'primary' : 'success'" size="small">
@@ -408,7 +408,7 @@
                     :data="loadingPasswords ? [] : inventoryPasswords"
                     border
                     stripe
-                    class="mobile-password-table"
+                    class="data-table mobile-password-table"
                     style="width: 100%; margin-top: 12px;"
                   >
                     <template #empty>
@@ -416,13 +416,13 @@
                       <el-empty v-else description="暂无密码记录" />
                     </template>
 
-                    <el-table-column prop="name" label="用户名" min-width="100" show-overflow-tooltip />
+                    <el-table-column prop="name" label="用户名" min-width="100" class-name="complete-text-column" />
                     <el-table-column prop="password" label="密码" width="100" align="center">
                       <template #default="{ row }">
                         <span class="password-mask">******</span>
                       </template>
                     </el-table-column>
-                    <el-table-column prop="remarks" label="备注" min-width="100" show-overflow-tooltip />
+                    <el-table-column prop="remarks" label="备注" min-width="100" class-name="complete-text-column wrapped-text-column" />
                     <el-table-column prop="is_active" label="状态" width="80" align="center">
                       <template #default="{ row }">
                         <el-tag :type="row.is_active ? 'success' : 'info'" size="small">
@@ -430,14 +430,14 @@
                         </el-tag>
                       </template>
                     </el-table-column>
-                    <el-table-column label="操作" width="180" align="center">
+                    <el-table-column label="操作" :width="$getActionColumnWidth(1 + Number(canDeleteInventoryPasswords))" align="center" class-name="actions-column">
                       <template #default="{ row }">
                         <div class="action-buttons">
                           <el-button
                             type="primary"
                             size="small"
                             link
-                            @click="editPassword(row)"
+                            @click.stop="editPassword(row)"
                             :icon="Edit"
                           >
                             编辑
@@ -447,7 +447,7 @@
                             type="danger"
                             size="small"
                             link
-                            @click="deletePassword(row.id)"
+                            @click.stop="deletePassword(row.id)"
                             :icon="Delete"
                           >
                             删除
@@ -1801,7 +1801,6 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
   flex-wrap: nowrap;
 }
 
@@ -1988,7 +1987,6 @@ onBeforeUnmount(() => {
 
   .screen-lock-settings-wrapper .action-buttons {
     justify-content: flex-end;
-    gap: 4px;
   }
 
   .screen-lock-settings-wrapper :deep(.mobile-password-table) {

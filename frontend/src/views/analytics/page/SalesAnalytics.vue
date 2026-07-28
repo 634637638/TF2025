@@ -147,7 +147,7 @@
               </el-space>
             </div>
           </template>
-          <el-table :data="filteredTopProducts" stripe style="width: 100%">
+          <el-table class="data-table" :data="filteredTopProducts" stripe style="width: 100%">
             <el-table-column type="index" label="排名" width="60" align="center" />
             <el-table-column prop="name" label="产品名称">
               <template #default="{ row }">

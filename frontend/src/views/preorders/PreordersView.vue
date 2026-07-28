@@ -171,14 +171,14 @@
                 {{ formatDateTime(row.created_at) }}
               </template>
             </el-table-column>
-            <el-table-column v-if="!isMobile" label="操作" width="180" fixed="right" align="center" class-name="operation-column">
+              <el-table-column v-if="!isMobile && (canEdit || canDelete)" label="操作" :width="$getActionColumnWidth(Number(canEdit) + Number(canDelete))" align="center" class-name="actions-column">
               <template #default="{ row }">
                 <div class="action-buttons">
                   <el-button
                     v-if="canEdit"
                     type="primary"
                     size="small"
-                    @click="editPreorder(row)"
+                    @click.stop="editPreorder(row)"
                   >
                     <i class="fas fa-edit"></i>
                     编辑
@@ -187,7 +187,7 @@
                     v-if="canDelete"
                     type="danger"
                     size="small"
-                    @click="cancelPreorder(row)"
+                    @click.stop="cancelPreorder(row)"
                   >
                     <i class="fas fa-times"></i>
                     取消
@@ -385,7 +385,7 @@
                 </span>
               </template>
             </el-table-column>
-            <el-table-column v-if="!isMobile" label="操作" width="300" fixed="right" align="center">
+              <el-table-column v-if="!isMobile && (canEdit || canDelete)" label="操作" :width="matchedPreorderActionColumnWidth" align="center" class-name="actions-column">
               <template #default="{ row }">
                 <div class="action-buttons">
                   <!-- 待匹配状态：编辑、取消 -->
@@ -394,7 +394,7 @@
                       v-if="canEdit"
                       type="primary"
                       size="small"
-                      @click="editMatchedPreorder(row)"
+                      @click.stop="editMatchedPreorder(row)"
                     >
                       <i class="fas fa-edit"></i>
                       编辑
@@ -403,7 +403,7 @@
                       v-if="canEdit"
                       type="danger"
                       size="small"
-                      @click="cancelMatchedPreorder(row)"
+                      @click.stop="cancelMatchedPreorder(row)"
                     >
                       <i class="fas fa-times"></i>
                       取消
@@ -415,7 +415,7 @@
                       v-if="canEdit"
                       type="success"
                       size="small"
-                      @click="deliverPreorder(row)"
+                      @click.stop="deliverPreorder(row)"
                     >
                       <i class="fas fa-check"></i>
                       交付
@@ -424,7 +424,7 @@
                       v-if="canEdit"
                       type="primary"
                       size="small"
-                      @click="editMatchedPreorder(row)"
+                      @click.stop="editMatchedPreorder(row)"
                     >
                       <i class="fas fa-edit"></i>
                       编辑
@@ -433,7 +433,7 @@
                       v-if="canEdit"
                       type="danger"
                       size="small"
-                      @click="cancelMatchedPreorder(row)"
+                      @click.stop="cancelMatchedPreorder(row)"
                     >
                       <i class="fas fa-times"></i>
                       取消
@@ -445,7 +445,7 @@
                       v-if="canEdit"
                       type="warning"
                       size="small"
-                      @click="restorePreorder(row)"
+                      @click.stop="restorePreorder(row)"
                     >
                       <i class="fas fa-undo"></i>
                       恢复
@@ -454,7 +454,7 @@
                       v-if="canDelete"
                       type="danger"
                       size="small"
-                      @click="deletePreorder(row)"
+                      @click.stop="deletePreorder(row)"
                     >
                       <i class="fas fa-trash"></i>
                       删除
@@ -573,14 +573,14 @@
               </template>
             </el-table-column>
             <el-table-column prop="operator_name" label="操作员" min-width="85" />
-            <el-table-column v-if="!isMobile" label="操作" width="100" fixed="right" align="center">
+              <el-table-column v-if="!isMobile && canDelete" label="操作" :width="$getActionColumnWidth(1)" align="center" class-name="actions-column">
               <template #default="{ row }">
                 <div class="action-buttons">
                   <el-button
                     v-if="canDelete"
                     type="danger"
                     size="small"
-                    @click="deletePreorder(row)"
+                    @click.stop="deletePreorder(row)"
                   >
                     <i class="fas fa-trash"></i>
                     删除
@@ -631,7 +631,7 @@ import { PageHeader, PermissionGate } from '@/components/base'
 import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { logger } from '@/utils/logger'
-import { getIdentifierColumnMinWidth } from '@/utils/table-layout'
+import { getAdaptiveActionColumnWidth, getIdentifierColumnMinWidth } from '@/utils/table-layout'
 
 const PreorderFormModal = defineAsyncComponent(() => import('./page/PreorderFormModal.vue'))
 
@@ -718,6 +718,16 @@ const pagination = reactive({
 const pendingPreorders = ref<Preorder[]>([])
 const matchedPreorders = ref<Preorder[]>([])
 const deliveredPreorders = ref<Preorder[]>([])
+const matchedPreorderActionColumnWidth = computed(() => getAdaptiveActionColumnWidth(
+  matchedPreorders.value,
+  [
+    row => canEdit.value && row.status === 'arrived',
+    row => canEdit.value && ['pending', 'arrived'].includes(row.status),
+    row => canEdit.value && ['pending', 'arrived'].includes(row.status),
+    row => canEdit.value && row.status === 'cancelled',
+    row => canDelete.value && row.status === 'cancelled'
+  ]
+))
 const visiblePreorders = computed(() => [
   ...pendingPreorders.value,
   ...matchedPreorders.value,
@@ -1294,7 +1304,6 @@ onMounted(async () => {
         display: flex;
         justify-content: center;
         align-items: center;
-        gap: 8px;
         padding: 0 4px;
 
     }

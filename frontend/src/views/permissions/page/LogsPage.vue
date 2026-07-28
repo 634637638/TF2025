@@ -7,11 +7,11 @@
     </div>
 
     <div class="table-responsive">
-      <el-table :data="ctx.logsLoading ? [] : ctx.paginatedLogs" border stripe class="data-table devices-table permissions-data-table" table-layout="fixed" :fit="true" row-key="id">
-        <el-table-column label="ID" width="80" align="center"><template #default="{ $index }"><span class="id-badge">{{ Number(ctx.logsPagination.total) - (Number(ctx.logsPagination.page) - 1) * Number(ctx.logsPagination.size) - Number($index) }}</span></template></el-table-column>
-        <el-table-column label="操作类型" min-width="120" align="center"><template #default="{ row }"><span :class="['action-tag', ctx.getActionTypeClass(row.action)]"><i :class="ctx.getActionIcon(row.action)"></i>{{ ctx.getActionName(row.action) }}</span></template></el-table-column>
-        <el-table-column label="操作用户" min-width="140" align="center" class-name="complete-text-column"><template #default="{ row }"><div class="user-username"><i class="fas fa-user-circle"></i>{{ row.username }}</div></template></el-table-column>
-        <el-table-column label="操作描述" min-width="400" align="center" class-name="complete-text-column">
+      <el-table :data="ctx.logsLoading ? [] : ctx.paginatedLogs" border stripe class="data-table devices-table compact-fit-table permissions-data-table" table-layout="fixed" :fit="true" row-key="id">
+        <el-table-column label="ID" width="64" align="center"><template #default="{ $index }"><span class="id-badge">{{ Number(ctx.logsPagination.total) - (Number(ctx.logsPagination.page) - 1) * Number(ctx.logsPagination.size) - Number($index) }}</span></template></el-table-column>
+        <el-table-column label="操作类型" :min-width="getLogColumnWidth('操作类型', ctx.paginatedLogs.map(row => ctx.getActionName(row.action)), 104, 152, 36)" align="center"><template #default="{ row }"><span :class="['action-tag', ctx.getActionTypeClass(row.action)]"><i :class="ctx.getActionIcon(row.action)"></i>{{ ctx.getActionName(row.action) }}</span></template></el-table-column>
+        <el-table-column label="操作用户" :min-width="getLogColumnWidth('操作用户', ctx.paginatedLogs.map(row => row.username), 104, 168, 36)" align="center" class-name="complete-text-column"><template #default="{ row }"><div class="user-username"><i class="fas fa-user-circle"></i>{{ row.username }}</div></template></el-table-column>
+        <el-table-column label="操作描述" :min-width="getLogColumnWidth('操作描述', ctx.paginatedLogs.map(row => row.description), 188, 280, 104)" align="center" class-name="complete-text-column wrapped-text-column">
           <template #default="{ row }">
             <div class="log-description-cell">
               <span class="log-description">{{ row.description }}</span>
@@ -24,9 +24,9 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="IP地址" min-width="140" align="center" class-name="complete-text-column"><template #default="{ row }"><div class="ip-address">{{ row.ip_address }}</div></template></el-table-column>
-        <el-table-column label="操作时间" min-width="156" align="center" class-name="complete-text-column"><template #default="{ row }"><div class="create-time">{{ ctx.formatDate(row.created_at) }}</div></template></el-table-column>
-        <el-table-column label="状态" min-width="90" align="center"><template #default="{ row }"><span :class="['status-badge', row.status === 'success' ? 'success' : 'error']"><i :class="row.status === 'success' ? 'fas fa-check' : 'fas fa-times'"></i>{{ row.status === 'success' ? '成功' : '失败' }}</span></template></el-table-column>
+        <el-table-column label="IP地址" :min-width="getLogColumnWidth('IP地址', ctx.paginatedLogs.map(row => row.ip_address), 104, 148)" align="center" class-name="complete-text-column"><template #default="{ row }"><div class="ip-address">{{ row.ip_address }}</div></template></el-table-column>
+        <el-table-column label="操作时间" :min-width="getLogColumnWidth('操作时间', ctx.paginatedLogs.map(row => ctx.formatDate(row.created_at)), 108, 184)" align="center" class-name="complete-text-column"><template #default="{ row }"><div class="create-time">{{ ctx.formatDate(row.created_at) }}</div></template></el-table-column>
+        <el-table-column label="状态" width="82" align="center"><template #default="{ row }"><span :class="['status-badge', row.status === 'success' ? 'success' : 'error']"><i :class="row.status === 'success' ? 'fas fa-check' : 'fas fa-times'"></i>{{ row.status === 'success' ? '成功' : '失败' }}</span></template></el-table-column>
         <template #empty><TableLoadingRow v-if="ctx.logsLoading" mode="block" text="加载权限日志..." /><div v-else class="empty-state"><i class="fas fa-inbox"></i><span>暂无日志数据</span></div></template>
       </el-table>
     </div>
@@ -168,10 +168,18 @@ import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import type { PermissionLog } from '@/types/system'
 import { usePermissionsPageContext } from './context'
+import { getTextColumnMinWidth } from '@/utils/table-layout'
 
 type DetailRecord = Record<string, any>
 
 const ctx = usePermissionsPageContext()
+const getLogColumnWidth = (
+  label: string,
+  values: Array<string | number | null | undefined>,
+  minWidth: number,
+  maxWidth: number,
+  horizontalPadding = 24
+) => getTextColumnMinWidth([label, ...values], { minWidth, maxWidth, horizontalPadding })
 const detailVisible = ref(false)
 const selectedLog = ref<PermissionLog | null>(null)
 

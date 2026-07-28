@@ -295,11 +295,11 @@ const goHome = () => {
       padding: 4px;
       border: none;
       background: transparent;
-      color: #999;
+      color: var(--tf-button-tool-color);
       cursor: pointer;
 
       &:hover {
-        color: #666;
+        color: var(--tf-button-neutral-hover-color);
       }
     }
   }

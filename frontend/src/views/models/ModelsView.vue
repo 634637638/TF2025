@@ -142,7 +142,7 @@
           <el-table-column v-if="canViewField('name')" prop="name" label="型号" min-width="130" align="center" />
           <el-table-column v-if="canViewField('status')" label="状态" min-width="84" align="center"><template #default="{ row }"><span :class="['status-badge', (row.status === 1 || row.is_active === true) ? 'status-active' : 'status-inactive']"><i :class="(row.status === 1 || row.is_active === true) ? 'fas fa-check' : 'fas fa-times'"></i>{{ (row.status === 1 || row.is_active === true) ? '启用' : '禁用' }}</span></template></el-table-column>
           <el-table-column v-if="showCreatedAtField" label="创建时间" min-width="156" align="center"><template #default="{ row }"><div class="time-info"><i class="fas fa-clock"></i>{{ formatDate(row.created_at) }}</div></template></el-table-column>
-          <el-table-column v-if="showActionField" label="操作" min-width="170" align="center" class-name="actions-column"><template #default="{ row }"><div class="action-buttons"><el-button v-if="canEdit" v-permission="'models:edit'" type="primary" size="small" @click.stop="editModel(row)"><i class="fas fa-edit"></i><span>编辑</span></el-button><el-button v-if="canDelete" v-permission="'models:delete'" type="danger" size="small" @click.stop="deleteModel(row)"><i class="fas fa-trash"></i><span>删除</span></el-button></div></template></el-table-column>
+          <el-table-column v-if="showActionField" label="操作" :width="$getActionColumnWidth(Number(canEdit) + Number(canDelete))" align="center" class-name="actions-column"><template #default="{ row }"><div class="action-buttons"><el-button v-if="canEdit" v-permission="'models:edit'" type="primary" size="small" @click.stop="editModel(row)"><i class="fas fa-edit"></i><span>编辑</span></el-button><el-button v-if="canDelete" v-permission="'models:delete'" type="danger" size="small" @click.stop="deleteModel(row)"><i class="fas fa-trash"></i><span>删除</span></el-button></div></template></el-table-column>
           <el-table-column v-if="isMobile && (canEdit || canDelete)" type="expand" width="1" class-name="mobile-expand-column" label-class-name="mobile-expand-header"><template #default="{ row }"><div class="mobile-row-actions"><el-button v-if="canEdit" v-permission="'models:edit'" type="primary" size="small" @click.stop="editModel(row)"><i class="fas fa-edit"></i><span>编辑</span></el-button><el-button v-if="canDelete" v-permission="'models:delete'" type="danger" size="small" @click.stop="deleteModel(row)"><i class="fas fa-trash"></i><span>删除</span></el-button></div></template></el-table-column>
         </el-table>
       </div>
@@ -1314,7 +1314,6 @@ onMounted(async () => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
 }
 .empty-row td {
   padding: 60px 12px;
@@ -1359,7 +1358,6 @@ onMounted(async () => {
     display: flex;
     flex-direction: row;
     width: auto;
-    gap: 8px;
   }
 
   .stats-cards {

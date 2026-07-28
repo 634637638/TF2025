@@ -127,7 +127,7 @@
           <el-table-column v-if="canViewField('name')" prop="name" label="品牌名称" min-width="130" align="center" />
           <el-table-column v-if="canViewField('status')" label="状态" min-width="84" align="center"><template #default="{ row }"><span :class="['status-badge', row.status ? 'status-active' : 'status-inactive']"><i :class="row.status ? 'fas fa-check' : 'fas fa-times'"></i>{{ row.status ? '启用' : '禁用' }}</span></template></el-table-column>
           <el-table-column v-if="showCreatedAtField" label="创建时间" min-width="156" align="center"><template #default="{ row }"><div class="time-info"><i class="fas fa-clock"></i>{{ formatDate(row.created_at) }}</div></template></el-table-column>
-          <el-table-column v-if="showActionField" label="操作" min-width="170" align="center" class-name="actions-column"><template #default="{ row }"><div class="action-buttons"><el-button v-if="canEdit" v-permission="'brands:edit'" type="primary" size="small" @click.stop="editBrand(row)"><i class="fas fa-edit"></i><span>编辑</span></el-button><el-button v-if="canDelete" v-permission="'brands:delete'" type="danger" size="small" @click.stop="deleteBrand(row)"><i class="fas fa-trash"></i><span>删除</span></el-button></div></template></el-table-column>
+          <el-table-column v-if="showActionField" label="操作" :width="$getActionColumnWidth(Number(canEdit) + Number(canDelete))" align="center" class-name="actions-column"><template #default="{ row }"><div class="action-buttons"><el-button v-if="canEdit" v-permission="'brands:edit'" type="primary" size="small" @click.stop="editBrand(row)"><i class="fas fa-edit"></i><span>编辑</span></el-button><el-button v-if="canDelete" v-permission="'brands:delete'" type="danger" size="small" @click.stop="deleteBrand(row)"><i class="fas fa-trash"></i><span>删除</span></el-button></div></template></el-table-column>
           <el-table-column v-if="isMobile && (canEdit || canDelete)" type="expand" width="1" class-name="mobile-expand-column" label-class-name="mobile-expand-header"><template #default="{ row }"><div class="mobile-row-actions"><el-button v-if="canEdit" v-permission="'brands:edit'" type="primary" size="small" @click.stop="editBrand(row)"><i class="fas fa-edit"></i><span>编辑</span></el-button><el-button v-if="canDelete" v-permission="'brands:delete'" type="danger" size="small" @click.stop="deleteBrand(row)"><i class="fas fa-trash"></i><span>删除</span></el-button></div></template></el-table-column>
         </el-table>
       </div>
@@ -889,7 +889,6 @@ onMounted(async () => {
 
 .action-buttons {
   display: flex;
-  gap: 12px;
 }
 
 /* 用户信息样式 */
@@ -941,7 +940,6 @@ onMounted(async () => {
 
 .action-buttons {
   display: flex;
-  gap: 12px;
 }
 
 /* 区域标题样式 */
@@ -1344,7 +1342,6 @@ onMounted(async () => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
 }
 .no-permission-text {
   color: #999;
@@ -1415,20 +1412,20 @@ onMounted(async () => {
 .btn-page {
   width: 32px;
   height: 32px;
-  border: 1px solid #ddd;
-  background: white;
+  border: 1px solid var(--tf-button-neutral-border);
+  background: var(--tf-button-neutral-bg);
   border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s ease;
-  color: #666;
+  color: var(--tf-button-tool-color);
 }
 
 .btn-page:hover:not(:disabled) {
-  background: #f5f5f5;
-  border-color: #ccc;
+  background: var(--tf-button-neutral-hover-bg);
+  border-color: var(--tf-button-neutral-hover-border);
 }
 
 .btn-page:disabled {
@@ -1510,7 +1507,6 @@ onMounted(async () => {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 4px;
   }
 
   .brand-info {

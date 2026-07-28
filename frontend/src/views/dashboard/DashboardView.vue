@@ -532,9 +532,9 @@ onUnmounted(() => {
 }
 
 .refresh-btn {
-  background: rgba(255, 255, 255, 0.2);
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  color: white;
+  background: var(--tf-button-overlay-bg);
+  border: 2px solid var(--tf-button-neutral-border);
+  color: var(--tf-button-on-color);
   padding: 12px 24px;
   border-radius: 8px;
   cursor: pointer;
@@ -547,7 +547,7 @@ onUnmounted(() => {
 }
 
 .refresh-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--tf-button-overlay-hover-bg);
   transform: translateY(-2px);
 }
 
@@ -696,8 +696,8 @@ onUnmounted(() => {
 }
 
 .action-btn {
-  background: #f8f9fa;
-  border: 2px solid #e9ecef;
+  background: var(--tf-button-neutral-bg);
+  border: 2px solid var(--tf-button-neutral-border);
   padding: 20px;
   border-radius: 8px;
   cursor: pointer;
@@ -707,13 +707,13 @@ onUnmounted(() => {
   align-items: center;
   gap: 10px;
   font-size: 14px;
-  color: #495057;
+  color: var(--tf-button-tool-color);
 }
 
 .action-btn:hover {
-  background: #3498db;
-  border-color: #3498db;
-  color: white;
+  background: var(--tf-button-primary-hover-bg);
+  border-color: var(--tf-button-primary-soft-hover-border);
+  color: var(--tf-button-on-color);
   transform: translateY(-2px);
 }
 
@@ -744,8 +744,8 @@ onUnmounted(() => {
 
 .view-all-btn {
   background: none;
-  border: 1px solid #3498db;
-  color: #3498db;
+  border: 1px solid var(--tf-button-neutral-border);
+  color: var(--tf-button-primary-soft-color);
   padding: 8px 16px;
   border-radius: 4px;
   cursor: pointer;
@@ -754,8 +754,8 @@ onUnmounted(() => {
 }
 
 .view-all-btn:hover {
-  background: #3498db;
-  color: white;
+  background: var(--tf-button-primary-hover-bg);
+  color: var(--tf-button-on-color);
 }
 
 .activity-list {

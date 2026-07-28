@@ -764,8 +764,8 @@ onBeforeUnmount(() => {
       width: 36px;
       height: 36px;
       border: none;
-      background: rgba(255, 255, 255, 0.2);
-      color: white;
+      background: var(--tf-button-overlay-bg);
+      color: var(--tf-button-on-color);
       border-radius: 50%;
       cursor: pointer;
       display: flex;
@@ -774,12 +774,12 @@ onBeforeUnmount(() => {
       transition: all 0.2s ease;
 
       &:hover {
-        background: rgba(255, 255, 255, 0.3);
+        background: var(--tf-button-overlay-hover-bg);
         transform: scale(1.1);
       }
 
       &.flash-btn.active {
-        background: rgba(255, 193, 7, 0.8);
+        background: var(--tf-button-warning-hover-bg);
       }
     }
   }
@@ -942,9 +942,9 @@ onBeforeUnmount(() => {
 
       .control-btn {
         padding: 8px 16px;
-        background: rgba(255, 255, 255, 0.2);
-        color: white;
-        border: 1px solid rgba(255, 255, 255, 0.3);
+        background: var(--tf-button-overlay-bg);
+        color: var(--tf-button-on-color);
+        border: 1px solid var(--tf-button-neutral-border);
         border-radius: 8px;
         cursor: pointer;
         display: flex;
@@ -954,17 +954,17 @@ onBeforeUnmount(() => {
         transition: all 0.2s ease;
 
         &:hover {
-          background: rgba(255, 255, 255, 0.3);
+          background: var(--tf-button-overlay-hover-bg);
         }
 
         &.active {
-          background: rgba(33, 150, 243, 0.8);
-          border-color: #2196f3;
+          background: var(--tf-button-primary-hover-bg);
+          border-color: var(--tf-button-primary-soft-hover-border);
         }
 
         &.manual-btn {
-          background: rgba(255, 152, 0, 0.8);
-          border-color: #ff9800;
+          background: var(--tf-button-warning-bg);
+          border-color: var(--tf-button-warning-soft-border);
         }
       }
     }

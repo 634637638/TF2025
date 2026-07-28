@@ -348,7 +348,7 @@
   right: 4px;
   width: 22px;
   height: 22px;
-  background: rgba(245, 108, 108, 0.9);
+  background: var(--tf-button-danger-bg);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -391,7 +391,7 @@
 .image-set-primary-btn {
   width: 28px;
   height: 28px;
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--tf-button-overlay-bg);
   border-radius: 50%;
   display: flex;
   align-items: center;

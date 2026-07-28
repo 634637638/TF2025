@@ -311,7 +311,7 @@ defineExpose({
   right: -10px;
   background: none;
   border: none;
-  color: #909399;
+  color: var(--tf-button-tool-color);
   cursor: pointer;
   padding: 2px;
   border-radius: 2px;
@@ -320,7 +320,7 @@ defineExpose({
 }
 
 .refresh-user-btn:hover {
-  color: #409EFF;
+  color: var(--tf-button-primary-soft-hover-color);
 }
 
 .menu-container {

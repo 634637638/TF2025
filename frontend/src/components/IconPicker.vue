@@ -1056,14 +1056,14 @@ watch([searchQuery, selectedCategory], () => {
   height: 18px;
   border: 0;
   border-radius: 999px;
-  background: #dc3545;
-  color: #fff;
+  background: var(--tf-button-danger-bg);
+  color: var(--tf-button-on-color);
   cursor: pointer;
   display: none;
   align-items: center;
   justify-content: center;
   font-size: 10px;
-  box-shadow: 0 2px 6px rgba(220, 53, 69, 0.35);
+  box-shadow: var(--tf-button-danger-shadow);
 }
 
 .icon-item:hover .icon-delete-btn {

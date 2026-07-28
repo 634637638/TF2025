@@ -432,21 +432,21 @@ onMounted(() => {
     }
 
     &.home {
-      background: #fff;
-      border: 1px solid #ddd;
-      color: #666;
+      background: var(--tf-button-neutral-bg);
+      border: 1px solid var(--tf-button-neutral-border);
+      color: var(--tf-button-tool-color);
 
       &:hover {
-        background: #f5f5f5;
-        border-color: #ccc;
+        background: var(--tf-button-neutral-hover-bg);
+        border-color: var(--tf-button-neutral-hover-border);
       }
     }
 
     &.primary {
-      background: linear-gradient(135deg, #ff6b00 0%, #ff8f00 100%);
+      background: var(--tf-button-warning-bg);
       border: none;
-      color: #fff;
-      box-shadow: 0 4px 12px rgba(255, 107, 0, 0.3);
+      color: var(--tf-button-on-color);
+      box-shadow: var(--tf-button-warning-shadow);
 
       &:hover {
         opacity: 0.9;
@@ -454,10 +454,10 @@ onMounted(() => {
     }
 
     &.success {
-      background: linear-gradient(135deg, #00c853 0%, #00e676 100%);
+      background: var(--tf-button-success-bg);
       border: none;
-      color: #fff;
-      box-shadow: 0 4px 12px rgba(0, 200, 83, 0.3);
+      color: var(--tf-button-on-color);
+      box-shadow: var(--tf-button-shadow);
 
       &:hover {
         opacity: 0.9;

@@ -792,37 +792,37 @@ onUnmounted(() => {
     &.back-btn {
       flex: 0 0 auto;
       width: 80px;
-      background: linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%);
-      color: #666;
+      background: var(--tf-button-neutral-bg);
+      color: var(--tf-button-tool-color);
 
       &:active {
         transform: scale(0.95);
-        background: linear-gradient(135deg, #e8eaf0 0%, #d0d5db 100%);
+        background: var(--tf-button-neutral-hover-bg);
       }
     }
 
     &.cancel-btn {
       flex: 1;
-      background: linear-gradient(135deg, #fff5f5 0%, #ffe8e8 100%);
-      color: #ff4757;
-      border: 1px solid #ffd6d6;
+      background: var(--tf-button-danger-soft-bg);
+      color: var(--tf-button-danger-soft-color);
+      border: 1px solid var(--tf-button-neutral-border);
 
       &:active {
         transform: scale(0.98);
-        background: linear-gradient(135deg, #ffe8e8 0%, #ffd6d6 100%);
+        background: var(--tf-button-danger-soft-hover-bg);
       }
     }
 
     &.pay-btn {
       flex: 1.5;
-      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
-      color: #fff;
+      background: var(--tf-button-danger-bg);
+      color: var(--tf-button-on-color);
       font-weight: 600;
-      box-shadow: 0 4px 15px rgba(238, 90, 111, 0.3);
+      box-shadow: var(--tf-button-danger-shadow);
 
       &:active {
         transform: scale(0.98);
-        box-shadow: 0 2px 8px rgba(238, 90, 111, 0.3);
+        box-shadow: var(--tf-button-danger-shadow);
       }
     }
   }
@@ -969,20 +969,20 @@ onUnmounted(() => {
   border-radius: 24px;
   font-size: 16px;
   font-weight: 600;
-  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+  background: var(--tf-button-danger-bg);
   border: none;
-  color: #fff;
-  box-shadow: 0 4px 15px rgba(238, 90, 111, 0.3);
+  color: var(--tf-button-on-color);
+  box-shadow: var(--tf-button-danger-shadow);
 
   &:disabled {
-    background: linear-gradient(135deg, #ddd 0%, #ccc 100%);
+    background: var(--tf-button-neutral-bg);
     box-shadow: none;
-    color: #999;
+    color: var(--tf-button-tool-color);
   }
 
   &:active:not(:disabled) {
     transform: scale(0.98);
-    box-shadow: 0 2px 8px rgba(238, 90, 111, 0.3);
+    box-shadow: var(--tf-button-danger-shadow);
   }
 }
 

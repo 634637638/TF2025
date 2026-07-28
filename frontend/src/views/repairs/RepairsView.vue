@@ -114,7 +114,7 @@
               <el-table-column prop="phone_model" label="手机型号" :min-width="modelColumnWidth" align="center">
                 <template #default="{ row }">{{ row.phone_model || '-' }}</template>
               </el-table-column>
-              <el-table-column v-if="!isMobile" prop="problem_description" label="故障描述" min-width="190" align="center" show-overflow-tooltip />
+              <el-table-column v-if="!isMobile" prop="problem_description" label="故障描述" min-width="190" align="center" class-name="complete-text-column wrapped-text-column" />
               <el-table-column v-if="!isMobile" label="预计费用" min-width="104" align="center">
                 <template #default="{ row }"><span class="amount-value">¥{{ formatAmount(row.estimated_cost) }}</span></template>
               </el-table-column>
@@ -129,12 +129,12 @@
               <el-table-column v-if="!isMobile" label="创建时间" min-width="154" align="center">
                 <template #default="{ row }"><span class="time-value">{{ formatDate(row.created_at) }}</span></template>
               </el-table-column>
-              <el-table-column v-if="showActionField" label="操作" min-width="176" align="center" class-name="actions-column">
+            <el-table-column v-if="showActionField" label="操作" :width="$getActionColumnWidth(1 + (Number(canEdit) * 2))" align="center" class-name="actions-column">
                 <template #default="{ row }">
                   <div class="action-buttons">
-                    <el-button type="primary" size="small" title="查看详情" @click.stop="viewRepair(row)"><i class="fas fa-eye"></i></el-button>
-                    <el-button v-if="canEdit" type="warning" size="small" title="编辑" @click.stop="editRepair(row)"><i class="fas fa-edit"></i></el-button>
-                    <el-button v-if="canEdit" type="success" size="small" title="更新状态" @click.stop="updateStatus(row)"><i class="fas fa-sync"></i></el-button>
+                <el-button type="primary" size="small" title="查看详情" @click.stop="viewRepair(row)"><i class="fas fa-eye"></i><span>详情</span></el-button>
+                <el-button v-if="canEdit" type="warning" size="small" title="编辑" @click.stop="editRepair(row)"><i class="fas fa-edit"></i><span>编辑</span></el-button>
+                <el-button v-if="canEdit" type="success" size="small" title="更新状态" @click.stop="updateStatus(row)"><i class="fas fa-sync"></i><span>状态</span></el-button>
                   </div>
                 </template>
               </el-table-column>

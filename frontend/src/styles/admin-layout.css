@@ -83,7 +83,8 @@
   --admin-data-table-wholesale-accent: #667eea;
   --admin-data-table-wholesale-color: #4f5fc7;
   --admin-data-table-line-height: 1.45;
-  --admin-data-table-action-gap: 6px;
+  --admin-data-table-action-gap: 8px;
+  --admin-data-table-action-edge-space: 16px;
   --admin-data-table-action-height: 28px;
   --admin-data-table-action-padding-y: 5px;
   --admin-data-table-action-padding-x: 10px;
@@ -93,75 +94,75 @@
   --admin-data-table-inline-action-padding-x: 7px;
   --admin-data-table-inline-action-icon-size: 12px;
   --admin-data-table-inline-action-icon-gap: 3px;
-  --admin-action-view-bg: #ecfeff;
-  --admin-action-view-border: #a5f3fc;
-  --admin-action-view-color: #0e7490;
-  --admin-action-view-hover-bg: #cffafe;
-  --admin-action-view-hover-border: #22d3ee;
-  --admin-action-view-hover-color: #155e75;
-  --admin-action-edit-bg: #eff6ff;
-  --admin-action-edit-border: #bfdbfe;
-  --admin-action-edit-color: #1d4ed8;
-  --admin-action-edit-hover-bg: #dbeafe;
-  --admin-action-edit-hover-border: #60a5fa;
-  --admin-action-edit-hover-color: #1e40af;
-  --admin-action-delete-bg: #fef2f2;
-  --admin-action-delete-border: #fecaca;
-  --admin-action-delete-color: #b91c1c;
-  --admin-action-delete-hover-bg: #fee2e2;
-  --admin-action-delete-hover-border: #f87171;
-  --admin-action-delete-hover-color: #991b1b;
-  --admin-action-pin-bg: #fffbeb;
-  --admin-action-pin-border: #fde68a;
-  --admin-action-pin-color: #a16207;
-  --admin-action-pin-hover-bg: #fef3c7;
-  --admin-action-pin-hover-border: #fbbf24;
-  --admin-action-pin-hover-color: #854d0e;
-  --admin-action-success-bg: #f0fdf4;
-  --admin-action-success-border: #bbf7d0;
-  --admin-action-success-color: #15803d;
-  --admin-action-success-hover-bg: #dcfce7;
-  --admin-action-success-hover-border: #4ade80;
-  --admin-action-success-hover-color: #166534;
-  --admin-action-neutral-bg: #f8fafc;
-  --admin-action-neutral-border: #cbd5e1;
-  --admin-action-neutral-color: #475569;
-  --admin-action-neutral-hover-bg: #f1f5f9;
-  --admin-action-neutral-hover-border: #94a3b8;
-  --admin-action-neutral-hover-color: #334155;
-  --admin-action-manage-bg: #eef2ff;
-  --admin-action-manage-border: #c7d2fe;
-  --admin-action-manage-color: #4338ca;
-  --admin-action-manage-hover-bg: #e0e7ff;
-  --admin-action-manage-hover-border: #818cf8;
-  --admin-action-manage-hover-color: #3730a3;
-  --admin-action-finance-bg: #f0fdfa;
-  --admin-action-finance-border: #99f6e4;
-  --admin-action-finance-color: #0f766e;
-  --admin-action-finance-hover-bg: #ccfbf1;
-  --admin-action-finance-hover-border: #2dd4bf;
-  --admin-action-finance-hover-color: #115e59;
-  --admin-action-transfer-bg: #f5f3ff;
-  --admin-action-transfer-border: #ddd6fe;
-  --admin-action-transfer-color: #6d28d9;
-  --admin-action-transfer-hover-bg: #ede9fe;
-  --admin-action-transfer-hover-border: #a78bfa;
-  --admin-action-transfer-hover-color: #5b21b6;
-  --admin-action-export-bg: #f0f9ff;
-  --admin-action-export-border: #bae6fd;
-  --admin-action-export-color: #0369a1;
-  --admin-action-export-hover-bg: #e0f2fe;
-  --admin-action-export-hover-border: #38bdf8;
-  --admin-action-export-hover-color: #075985;
-  --admin-action-warning-bg: #fff7ed;
-  --admin-action-warning-border: #fed7aa;
-  --admin-action-warning-color: #c2410c;
-  --admin-action-warning-hover-bg: #ffedd5;
-  --admin-action-warning-hover-border: #fb923c;
-  --admin-action-warning-hover-color: #9a3412;
-  --admin-action-disabled-bg: #f3f4f6;
-  --admin-action-disabled-border: #e5e7eb;
-  --admin-action-disabled-color: #9ca3af;
+  --admin-action-view-bg: var(--tf-button-view-soft-bg);
+  --admin-action-view-border: var(--tf-button-view-soft-border);
+  --admin-action-view-color: var(--tf-button-view-soft-color);
+  --admin-action-view-hover-bg: var(--tf-button-view-soft-hover-bg);
+  --admin-action-view-hover-border: var(--tf-button-view-soft-hover-border);
+  --admin-action-view-hover-color: var(--tf-button-view-soft-hover-color);
+  --admin-action-edit-bg: var(--tf-button-primary-soft-bg);
+  --admin-action-edit-border: var(--tf-button-primary-soft-border);
+  --admin-action-edit-color: var(--tf-button-primary-soft-color);
+  --admin-action-edit-hover-bg: var(--tf-button-primary-soft-hover-bg);
+  --admin-action-edit-hover-border: var(--tf-button-primary-soft-hover-border);
+  --admin-action-edit-hover-color: var(--tf-button-primary-soft-hover-color);
+  --admin-action-delete-bg: var(--tf-button-danger-soft-bg);
+  --admin-action-delete-border: var(--tf-button-danger-soft-border);
+  --admin-action-delete-color: var(--tf-button-danger-soft-color);
+  --admin-action-delete-hover-bg: var(--tf-button-danger-soft-hover-bg);
+  --admin-action-delete-hover-border: var(--tf-button-danger-soft-hover-border);
+  --admin-action-delete-hover-color: var(--tf-button-danger-soft-hover-color);
+  --admin-action-pin-bg: var(--tf-button-warning-soft-bg);
+  --admin-action-pin-border: var(--tf-button-warning-soft-border);
+  --admin-action-pin-color: var(--tf-button-warning-soft-color);
+  --admin-action-pin-hover-bg: var(--tf-button-warning-soft-hover-bg);
+  --admin-action-pin-hover-border: var(--tf-button-warning-soft-hover-border);
+  --admin-action-pin-hover-color: var(--tf-button-warning-soft-hover-color);
+  --admin-action-success-bg: var(--tf-button-success-soft-bg);
+  --admin-action-success-border: var(--tf-button-success-soft-border);
+  --admin-action-success-color: var(--tf-button-success-soft-color);
+  --admin-action-success-hover-bg: var(--tf-button-success-soft-hover-bg);
+  --admin-action-success-hover-border: var(--tf-button-success-soft-hover-border);
+  --admin-action-success-hover-color: var(--tf-button-success-soft-hover-color);
+  --admin-action-neutral-bg: var(--tf-button-neutral-bg);
+  --admin-action-neutral-border: var(--tf-button-neutral-border);
+  --admin-action-neutral-color: var(--tf-button-neutral-color);
+  --admin-action-neutral-hover-bg: var(--tf-button-neutral-hover-bg);
+  --admin-action-neutral-hover-border: var(--tf-button-neutral-hover-border);
+  --admin-action-neutral-hover-color: var(--tf-button-neutral-hover-color);
+  --admin-action-manage-bg: var(--tf-button-manage-soft-bg);
+  --admin-action-manage-border: var(--tf-button-manage-soft-border);
+  --admin-action-manage-color: var(--tf-button-manage-soft-color);
+  --admin-action-manage-hover-bg: var(--tf-button-manage-soft-hover-bg);
+  --admin-action-manage-hover-border: var(--tf-button-manage-soft-hover-border);
+  --admin-action-manage-hover-color: var(--tf-button-manage-soft-hover-color);
+  --admin-action-finance-bg: var(--tf-button-finance-soft-bg);
+  --admin-action-finance-border: var(--tf-button-finance-soft-border);
+  --admin-action-finance-color: var(--tf-button-finance-soft-color);
+  --admin-action-finance-hover-bg: var(--tf-button-finance-soft-hover-bg);
+  --admin-action-finance-hover-border: var(--tf-button-finance-soft-hover-border);
+  --admin-action-finance-hover-color: var(--tf-button-finance-soft-hover-color);
+  --admin-action-transfer-bg: var(--tf-button-transfer-soft-bg);
+  --admin-action-transfer-border: var(--tf-button-transfer-soft-border);
+  --admin-action-transfer-color: var(--tf-button-transfer-soft-color);
+  --admin-action-transfer-hover-bg: var(--tf-button-transfer-soft-hover-bg);
+  --admin-action-transfer-hover-border: var(--tf-button-transfer-soft-hover-border);
+  --admin-action-transfer-hover-color: var(--tf-button-transfer-soft-hover-color);
+  --admin-action-export-bg: var(--tf-button-export-soft-bg);
+  --admin-action-export-border: var(--tf-button-export-soft-border);
+  --admin-action-export-color: var(--tf-button-export-soft-color);
+  --admin-action-export-hover-bg: var(--tf-button-export-soft-hover-bg);
+  --admin-action-export-hover-border: var(--tf-button-export-soft-hover-border);
+  --admin-action-export-hover-color: var(--tf-button-export-soft-hover-color);
+  --admin-action-warning-bg: var(--tf-button-warning-soft-bg);
+  --admin-action-warning-border: var(--tf-button-warning-soft-border);
+  --admin-action-warning-color: var(--tf-button-warning-soft-color);
+  --admin-action-warning-hover-bg: var(--tf-button-warning-soft-hover-bg);
+  --admin-action-warning-hover-border: var(--tf-button-warning-soft-hover-border);
+  --admin-action-warning-hover-color: var(--tf-button-warning-soft-hover-color);
+  --admin-action-disabled-bg: var(--tf-button-disabled-bg);
+  --admin-action-disabled-border: var(--tf-button-disabled-border);
+  --admin-action-disabled-color: var(--tf-button-disabled-color);
   --admin-data-table-badge-padding-y: 3px;
   --admin-data-table-badge-padding-x: 8px;
   --admin-data-table-badge-radius: 999px;
@@ -204,6 +205,8 @@
     --admin-data-table-row-height: 38px;
     --admin-data-table-cell-font-size: var(--mobile-text-table);
     --admin-data-table-header-font-size: var(--mobile-text-table-header);
+    --admin-data-table-action-gap: 6px;
+    --admin-data-table-action-edge-space: 8px;
     --admin-data-table-action-height: 32px;
     --admin-data-table-action-padding-y: 6px;
     --admin-data-table-action-padding-x: 12px;
@@ -645,6 +648,15 @@
   background: var(--admin-data-table-bg) !important;
 }
 
+/* Content-fit tables fill their panel without making the outer wrapper scroll.
+ * When column minimums exceed the viewport, Element's inner scrollbar remains
+ * the only horizontal scroll layer so header and body always move together. */
+.admin-page .data-table.el-table.compact-fit-table,
+.admin-page .devices-table.el-table.compact-fit-table,
+.admin-page .admin-data-table.el-table.compact-fit-table {
+  min-width: 100% !important;
+}
+
 .admin-page .data-table.el-table .el-table__inner-wrapper::before,
 .admin-page .devices-table.el-table .el-table__inner-wrapper::before,
 .admin-page .admin-data-table.el-table .el-table__inner-wrapper::before {
@@ -789,7 +801,7 @@
 .admin-page .base-data-table .mobile-row-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
+  gap: var(--admin-data-table-action-gap, 8px);
   width: 100%;
   padding: 8px;
 }

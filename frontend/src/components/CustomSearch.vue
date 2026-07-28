@@ -657,7 +657,7 @@ watch(() => props.filterValues, (newValues) => {
     transform: translateY(-50%);
     background: none;
     border: none;
-    color: #909399;
+    color: var(--tf-button-tool-color);
     cursor: pointer;
     padding: 4px;
     border-radius: 50%;
@@ -666,8 +666,8 @@ watch(() => props.filterValues, (newValues) => {
     justify-content: center;
 
     &:hover {
-      color: #606266;
-      background: #f5f7fa;
+      color: var(--tf-button-neutral-hover-color);
+      background: var(--tf-button-neutral-hover-bg);
     }
   }
 }
@@ -757,7 +757,6 @@ watch(() => props.filterValues, (newValues) => {
 
 .action-buttons {
   display: flex;
-  gap: 8px;
   margin-left: auto;
 }
 
@@ -766,28 +765,28 @@ watch(() => props.filterValues, (newValues) => {
   .filter-btn {
     width: 100%;
     height: 40px;
-    background: #f5f7fa;
-    border: 1px solid #dcdfe6;
+    background: var(--tf-button-neutral-bg);
+    border: 1px solid var(--tf-button-neutral-border);
     border-radius: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
     font-size: 14px;
-    color: #606266;
+    color: var(--tf-button-tool-color);
     cursor: pointer;
     transition: all 0.2s;
     position: relative;
 
     &:hover {
-      background: #ecf5ff;
-      border-color: #409eff;
-      color: #409eff;
+      background: var(--tf-button-primary-soft-hover-bg);
+      border-color: var(--tf-button-primary-soft-hover-border);
+      color: var(--tf-button-primary-soft-hover-color);
     }
 
     .filter-count {
-      background: #f56c6c;
-      color: white;
+      background: var(--tf-button-danger-bg);
+      color: var(--tf-button-on-color);
       font-size: 12px;
       padding: 2px 6px;
       border-radius: 10px;
@@ -980,22 +979,22 @@ watch(() => props.filterValues, (newValues) => {
     transition: all 0.2s;
 
     &.mobile-btn-primary {
-      background: #409eff;
-      color: white;
+      background: var(--tf-button-primary-bg);
+      color: var(--tf-button-on-color);
 
       &:hover {
-        background: #66b1ff;
+        background: var(--tf-button-primary-hover-bg);
       }
     }
 
     &.mobile-btn-secondary {
-      background: #f5f7fa;
-      color: #606266;
-      border: 1px solid #dcdfe6;
+      background: var(--tf-button-neutral-bg);
+      color: var(--tf-button-tool-color);
+      border: 1px solid var(--tf-button-neutral-border);
 
       &:hover {
-        background: #ecf5ff;
-        color: #409eff;
+        background: var(--tf-button-primary-soft-hover-bg);
+        color: var(--tf-button-primary-soft-hover-color);
       }
     }
   }

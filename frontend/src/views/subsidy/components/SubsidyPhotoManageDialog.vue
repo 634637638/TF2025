@@ -845,7 +845,7 @@ const savePhotoChanges = async () => {
   align-items: center;
   justify-content: center;
   border-radius: 50% !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
+  box-shadow: var(--tf-button-shadow);
 
   :deep(span) {
     display: inline-flex;
@@ -857,13 +857,13 @@ const savePhotoChanges = async () => {
 }
 
 .view-btn {
-  background: rgba(64, 158, 255, 0.95) !important;
-  color: white !important;
+  background: var(--tf-button-primary-bg) !important;
+  color: var(--tf-button-on-color) !important;
 }
 
 .delete-btn {
-  background: rgba(245, 108, 108, 0.95) !important;
-  color: white !important;
+  background: var(--tf-button-danger-bg) !important;
+  color: var(--tf-button-on-color) !important;
 }
 
 .selected-overlay {
@@ -933,8 +933,8 @@ const savePhotoChanges = async () => {
   box-sizing: border-box;
   transform: none !important;
   transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease !important;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
+  background: var(--tf-button-overlay-bg);
+  box-shadow: var(--tf-button-shadow);
 
   :deep(span) {
     width: 100%;

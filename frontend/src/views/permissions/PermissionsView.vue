@@ -4171,7 +4171,7 @@ onActivated(() => {
   left: -100%;
   width: 100%;
   height: 100%;
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--tf-button-overlay-bg);
   transition: left 0.3s ease;
 }
 
@@ -4181,29 +4181,29 @@ onActivated(() => {
 
 .status-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--tf-button-shadow-hover);
 }
 
 .status-button.active {
-  background: #ffc107;
-  color: #856404;
-  border-color: #ffc107;
+  background: var(--tf-button-warning-hover-bg);
+  color: var(--tf-button-warning-soft-hover-color);
+  border-color: var(--tf-button-warning-soft-hover-border);
 }
 
 .status-button.active:hover {
-  background: #e0a800;
-  border-color: #e0a800;
+  background: var(--tf-button-warning-hover-bg);
+  border-color: var(--tf-button-warning-soft-hover-border);
 }
 
 .status-button.inactive {
-  background: #28a745;
-  color: #fff;
-  border-color: #28a745;
+  background: var(--tf-button-success-bg);
+  color: var(--tf-button-on-color);
+  border-color: var(--tf-button-success-soft-border);
 }
 
 .status-button.inactive:hover {
-  background: #218838;
-  border-color: #218838;
+  background: var(--tf-button-success-hover-bg);
+  border-color: var(--tf-button-success-soft-hover-border);
 }
 
 .status-button:disabled {
@@ -4214,15 +4214,15 @@ onActivated(() => {
 }
 
 .status-button:disabled:hover {
-  background: #6c757d !important;
-  border-color: #6c757d !important;
+  background: var(--tf-button-neutral-hover-bg) !important;
+  border-color: var(--tf-button-neutral-hover-border) !important;
   transform: none !important;
   box-shadow: none !important;
 }
 
 .status-button:hover:not(:disabled) {
   transform: scale(1.05);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: var(--tf-button-shadow-hover);
 }
 
 .status-button:active:not(:disabled) {
@@ -4235,13 +4235,13 @@ onActivated(() => {
 }
 
 .status-button.active:hover:not(:disabled) {
-  background: #c3e6cb;
-  color: #155724;
+  background: var(--tf-button-success-soft-hover-bg);
+  color: var(--tf-button-success-soft-hover-color);
 }
 
 .status-button.inactive:hover:not(:disabled) {
-  background: #f5c6cb;
-  color: #721c24;
+  background: var(--tf-button-danger-soft-hover-bg);
+  color: var(--tf-button-danger-soft-hover-color);
 }
 
 .user-roles {
@@ -4303,12 +4303,6 @@ onActivated(() => {
   color: #495057;
 }
 
-.action-buttons {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
 /* 分页 */
 .pagination-section {
   display: flex;
@@ -4332,9 +4326,9 @@ onActivated(() => {
 
 .btn-pagination {
   padding: 6px 12px;
-  border: 1px solid #ddd;
-  background: white;
-  color: #495057;
+  border: 1px solid var(--tf-button-neutral-border);
+  background: var(--tf-button-neutral-bg);
+  color: var(--tf-button-tool-color);
   border-radius: 4px;
   cursor: pointer;
   font-size: 14px;
@@ -4342,8 +4336,8 @@ onActivated(() => {
 }
 
 .btn-pagination:hover:not(:disabled) {
-  background: #f8f9fa;
-  border-color: #3498db;
+  background: var(--tf-button-neutral-hover-bg);
+  border-color: var(--tf-button-primary-soft-hover-border);
 }
 
 .btn-pagination:disabled {
@@ -4744,7 +4738,7 @@ onActivated(() => {
   transform: translateY(-50%);
   background: none;
   border: none;
-  color: #909399;
+  color: var(--tf-button-tool-color);
   cursor: pointer;
   padding: 4px;
   border-radius: 4px;
@@ -4753,8 +4747,8 @@ onActivated(() => {
 }
 
 .search-clear-btn:hover {
-  background-color: #f5f7fa;
-  color: #606266;
+  background-color: var(--tf-button-neutral-hover-bg);
+  color: var(--tf-button-neutral-hover-color);
 }
 
 .search-results-info {
@@ -5083,10 +5077,10 @@ onActivated(() => {
   align-items: center;
   gap: 6px;
   padding: 6px 10px;
-  border: 1px solid #dbeafe;
+  border: 1px solid var(--tf-button-neutral-border);
   border-radius: 6px;
-  background: #ffffff;
-  color: #2563eb;
+  background: var(--tf-button-neutral-bg);
+  color: var(--tf-button-primary-soft-color);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
@@ -5094,8 +5088,8 @@ onActivated(() => {
 }
 
 .group-toggle-btn:hover {
-  background: #eff6ff;
-  border-color: #93c5fd;
+  background: var(--tf-button-primary-soft-hover-bg);
+  border-color: var(--tf-button-primary-soft-hover-border);
 }
 
 .group-fields {
@@ -6349,8 +6343,7 @@ onActivated(() => {
   .user-count,
   .user-roles,
   .stores-cell,
-  .action-tag,
-  .action-buttons
+  .action-tag
 ) {
   justify-content: center;
   margin-inline: auto;

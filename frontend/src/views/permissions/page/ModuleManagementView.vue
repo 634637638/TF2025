@@ -132,15 +132,15 @@
 
       <!-- 模块列表 - 列表视图 -->
       <div v-else-if="viewMode === 'list'" class="table-responsive">
-        <el-table :data="paginatedModules" border stripe class="data-table devices-table permissions-module-table" table-layout="fixed" :fit="true" row-key="id">
-          <el-table-column label="状态" min-width="86" align="center"><template #default="{ row }"><span class="status-badge" :class="row.is_active ? 'active' : 'inactive'">{{ row.is_active ? '启用' : '禁用' }}</span></template></el-table-column>
-          <el-table-column label="模块标识" min-width="210" align="center" class-name="complete-text-column"><template #default="{ row }"><code class="module-key">{{ row.key }}</code></template></el-table-column>
-          <el-table-column label="模块名称" min-width="240" align="center"><template #default="{ row }"><div class="module-name-cell"><div class="module-name">{{ row.name }}<span v-if="row.is_custom_name === 1" class="custom-badge">自定义</span></div><div class="module-description">{{ row.description }}</div></div></template></el-table-column>
-          <el-table-column label="分类" min-width="110" align="center"><template #default="{ row }"><span class="category-badge" :class="row.category">{{ getCategoryName(row.category) }}</span></template></el-table-column>
-          <el-table-column label="权限数量" min-width="96" align="center"><template #default="{ row }"><span class="permission-count">{{ row.permission_count || 0 }}</span></template></el-table-column>
-          <el-table-column label="名称状态" min-width="110" align="center"><template #default="{ row }"><span class="name-status-badge" :class="row.is_custom_name ? 'custom' : 'auto'">{{ row.name_status }}</span></template></el-table-column>
-          <el-table-column label="创建时间" min-width="156" align="center" class-name="complete-text-column"><template #default="{ row }">{{ formatDate(row.created_at) }}</template></el-table-column>
-          <el-table-column label="操作" min-width="330" align="center" class-name="actions-column"><template #default="{ row }"><div class="action-buttons"><el-button v-if="canEdit" :type="isProtectedModule(row) ? 'info' : (row.is_active ? 'warning' : 'success')" size="small" :disabled="isProtectedModule(row) && Number(row.is_active) === 1" :title="isProtectedModule(row) ? '权限管理核心模块不能禁用' : (row.is_active ? '禁用模块' : '启用模块')" @click.stop="toggleModuleStatus(row)"><i :class="isProtectedModule(row) ? 'fas fa-shield-alt' : (row.is_active ? 'fas fa-toggle-off' : 'fas fa-toggle-on')"></i><span>{{ isProtectedModule(row) && Number(row.is_active) === 1 ? '核心模块' : (row.is_active ? '禁用' : '启用') }}</span></el-button><el-button v-if="canEdit" type="primary" size="small" :title="row.is_custom_name === 1 ? '编辑自定义名称' : '设为自定义名称'" @click.stop="editModuleName(row)"><i class="fas fa-edit"></i><span>{{ row.is_custom_name === 1 ? '编辑' : '自定义' }}</span></el-button><el-button v-if="row.is_custom_name === 1" type="warning" size="small" title="恢复原始名称" @click.stop="restoreModuleName(row)"><i class="fas fa-undo"></i><span>恢复</span></el-button><el-button type="info" size="small" title="详情" @click.stop="showModuleDetails(row)"><i class="fas fa-info-circle"></i><span>详情</span></el-button></div></template></el-table-column>
+        <el-table :data="paginatedModules" border stripe class="data-table devices-table compact-fit-table permissions-module-table" table-layout="fixed" :fit="true" row-key="id">
+          <el-table-column label="状态" width="76" align="center"><template #default="{ row }"><span class="status-badge" :class="row.is_active ? 'active' : 'inactive'">{{ row.is_active ? '启用' : '禁用' }}</span></template></el-table-column>
+          <el-table-column label="模块标识" :min-width="getModuleColumnWidth('key')" align="center" class-name="complete-text-column"><template #default="{ row }"><code class="module-key">{{ row.key }}</code></template></el-table-column>
+          <el-table-column label="模块名称" :min-width="getModuleColumnWidth('name')" align="center" class-name="complete-text-column wrapped-text-column"><template #default="{ row }"><div class="module-name-cell"><div class="module-name">{{ row.name }}<span v-if="row.is_custom_name === 1" class="custom-badge">自定义</span></div><div class="module-description">{{ row.description }}</div></div></template></el-table-column>
+          <el-table-column label="分类" :min-width="getModuleColumnWidth('category')" align="center"><template #default="{ row }"><span class="category-badge" :class="row.category">{{ getCategoryName(row.category) }}</span></template></el-table-column>
+          <el-table-column label="权限数量" :min-width="getModuleColumnWidth('permission_count')" align="center"><template #default="{ row }"><span class="permission-count">{{ row.permission_count || 0 }}</span></template></el-table-column>
+          <el-table-column label="名称状态" :min-width="getModuleColumnWidth('name_status')" align="center"><template #default="{ row }"><span class="name-status-badge" :class="row.is_custom_name ? 'custom' : 'auto'">{{ row.name_status }}</span></template></el-table-column>
+          <el-table-column label="创建时间" :min-width="getModuleColumnWidth('created_at')" align="center" class-name="complete-text-column"><template #default="{ row }">{{ formatDate(row.created_at) }}</template></el-table-column>
+          <el-table-column label="操作" :width="moduleActionColumnWidth" align="center" class-name="actions-column"><template #default="{ row }"><div class="action-buttons"><el-button v-if="canEdit" :type="isProtectedModule(row) ? 'info' : (row.is_active ? 'warning' : 'success')" size="small" :disabled="isProtectedModule(row) && Number(row.is_active) === 1" :title="isProtectedModule(row) ? '权限管理核心模块不能禁用' : (row.is_active ? '禁用模块' : '启用模块')" @click.stop="toggleModuleStatus(row)"><i :class="isProtectedModule(row) ? 'fas fa-shield-alt' : (row.is_active ? 'fas fa-toggle-off' : 'fas fa-toggle-on')"></i><span>{{ isProtectedModule(row) && Number(row.is_active) === 1 ? '核心模块' : (row.is_active ? '禁用' : '启用') }}</span></el-button><el-button v-if="canEdit" type="primary" size="small" :title="row.is_custom_name === 1 ? '编辑自定义名称' : '设为自定义名称'" @click.stop="editModuleName(row)"><i class="fas fa-edit"></i><span>{{ row.is_custom_name === 1 ? '编辑' : '自定义' }}</span></el-button><el-button v-if="row.is_custom_name === 1" type="warning" size="small" title="恢复原始名称" @click.stop="restoreModuleName(row)"><i class="fas fa-undo"></i><span>恢复</span></el-button><el-button type="info" size="small" title="详情" @click.stop="showModuleDetails(row)"><i class="fas fa-info-circle"></i><span>详情</span></el-button></div></template></el-table-column>
         </el-table>
       </div>
 
@@ -575,6 +575,7 @@ import { useNotification } from '@/composables/useNotification'
 import { usePageState } from '@/composables/usePageState'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
+import { getAdaptiveActionColumnWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 import unifiedApi from '@/utils/unified-api';
 import Pagination from '@/components/Pagination.vue';
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue';
@@ -699,6 +700,50 @@ export default {
       const end = start + pagination.pageSize;
       return filteredModules.value.slice(start, end);
     });
+
+    const moduleActionColumnWidth = computed(() => {
+      return getAdaptiveActionColumnWidth(paginatedModules.value, [
+        {
+          label: module => isProtectedModule(module) && Number(module.is_active) === 1
+            ? '核心模块'
+            : (module.is_active ? '禁用' : '启用'),
+          visible: canEdit.value
+        },
+        {
+          label: module => module.is_custom_name === 1 ? '编辑' : '自定义',
+          visible: canEdit.value
+        },
+        {
+          label: '恢复',
+          visible: module => module.is_custom_name === 1
+        },
+        { label: '详情', visible: true }
+      ])
+    });
+
+    const getModuleColumnWidth = (field) => {
+      const config = {
+        key: { label: '模块标识', minWidth: 132, maxWidth: 220, padding: 24 },
+        name: { label: '模块名称', minWidth: 132, maxWidth: 216, padding: 54 },
+        category: { label: '分类', minWidth: 82, maxWidth: 108, padding: 28 },
+        permission_count: { label: '权限数量', minWidth: 86, maxWidth: 104, padding: 24 },
+        name_status: { label: '名称状态', minWidth: 92, maxWidth: 116, padding: 28 },
+        created_at: { label: '创建时间', minWidth: 108, maxWidth: 132, padding: 24 }
+      }[field];
+      const values = paginatedModules.value.map(module => {
+        if (field === 'name') return `${module.name || '-'} ${module.description || ''}`;
+        if (field === 'category') return getCategoryName(module.category);
+        if (field === 'permission_count') return `${module.permission_count || 0} 个`;
+        if (field === 'created_at') return formatDate(module.created_at);
+        return module[field] || '-';
+      });
+
+      return getTextColumnMinWidth([config.label, ...values], {
+        minWidth: config.minWidth,
+        maxWidth: config.maxWidth,
+        horizontalPadding: config.padding
+      });
+    };
 
     // 方法
     const loadModules = async () => {
@@ -983,6 +1028,8 @@ export default {
       modules,
       filteredModules,
       paginatedModules,
+      moduleActionColumnWidth,
+      getModuleColumnWidth,
       editDialogVisible,
       editForm,
       restoreDialogVisible,
@@ -1104,7 +1151,7 @@ export default {
   right: 8px;
   background: transparent;
   border: none;
-  color: #95a5a6;
+  color: var(--tf-button-tool-color);
   cursor: pointer;
   padding: 0;
   width: 24px;
@@ -1116,7 +1163,7 @@ export default {
 }
 
 .btn-clear:hover {
-  background: #f5f5f5;
+  background: var(--tf-button-neutral-hover-bg);
 }
 
 .modules-section {
@@ -1204,7 +1251,7 @@ export default {
 .btn-link {
   background: transparent;
   border: none;
-  color: #3498db;
+  color: var(--tf-button-primary-soft-color);
   text-decoration: underline;
   cursor: pointer;
   font-size: 14px;
@@ -1212,11 +1259,7 @@ export default {
 }
 
 .btn-link:hover {
-  color: #2980b9;
-}
-
-.table-responsive {
-  overflow-x: auto;
+  color: var(--tf-button-primary-soft-hover-color);
 }
 
 .module-table {
@@ -1358,15 +1401,6 @@ export default {
   background: #e1f0fa;
   color: #607d8b;
   border: 1px #cfd8e9;
-}
-
-.action-buttons {
-  display: flex;
-  gap: 5px;
-}
-
-.action-buttons .btn {
-  white-space: nowrap;
 }
 
 .module-grid {
@@ -1763,16 +1797,6 @@ export default {
 
   .view-toggles {
     margin-top: 12px;
-  }
-
-  .action-buttons {
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .action-buttons > * {
-    flex: 1 1 calc(50% - 4px);
-    min-width: calc(50% - 4px);
   }
 
   .module-grid {

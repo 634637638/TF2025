@@ -257,13 +257,13 @@ const addChild = () => {
   opacity: 1;
 }
 .btn-add {
-  background: #28a745;
-  color: white;
+  background: var(--tf-button-success-bg);
+  color: var(--tf-button-on-color);
 }
 
 .btn-add:hover {
-  background: #218838;
-  box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
+  background: var(--tf-button-success-hover-bg);
+  box-shadow: var(--tf-button-success-shadow);
 }
 /* 保留原有的 btn-icon 样式以防其他地方使用 */
 .btn-icon {

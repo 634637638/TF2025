@@ -222,7 +222,7 @@
                   </el-table-column>
 
                   <!-- 说明 -->
-                  <el-table-column v-if="showTemplateDescriptionColumn && !isMobile" prop="description" label="说明" :min-width="templateDescriptionColumnWidth" align="center" show-overflow-tooltip />
+                  <el-table-column v-if="showTemplateDescriptionColumn && !isMobile" prop="description" label="说明" :min-width="templateDescriptionColumnWidth" align="center" class-name="complete-text-column wrapped-text-column" />
 
                   <!-- 底薪 -->
                   <el-table-column v-if="showTemplateBaseSalaryColumn" label="底薪" :min-width="templateBaseSalaryColumnWidth" align="center" class-name="salary-col">
@@ -277,7 +277,7 @@
                   </el-table-column>
 
                   <!-- 操作 -->
-                  <el-table-column v-if="showTemplateActionColumn" label="操作" :width="templateActionColumnWidth" fixed="right" align="center" class-name="actions-column">
+                  <el-table-column v-if="showTemplateActionColumn" label="操作" :width="templateActionColumnWidth" align="center" class-name="actions-column">
                     <template #default="{ row }">
                       <div class="template-action-buttons action-buttons">
                         <!-- 设为默认按钮 -->
@@ -287,7 +287,7 @@
                           size="small"
                           type="warning"
                           plain
-                          @click="handleSetDefault(row)"
+                          @click.stop="handleSetDefault(row)"
                         >
                           <i class="fas fa-star"></i>
                           <span class="btn-text">默认</span>
@@ -300,7 +300,7 @@
                           size="small"
                           :type="row.is_active ? 'warning' : 'success'"
                           plain
-                          @click="handleToggleTemplateStatus(row)"
+                          @click.stop="handleToggleTemplateStatus(row)"
                         >
                           <i :class="row.is_active ? 'fas fa-pause' : 'fas fa-play'"></i>
                           <span class="btn-text">{{ row.is_active ? '禁用' : '启用' }}</span>
@@ -313,7 +313,7 @@
                           size="small"
                           type="primary"
                           plain
-                          @click="handleEditTemplate(row)"
+                          @click.stop="handleEditTemplate(row)"
                         >
                           <i class="fas fa-edit"></i>
                           <span class="btn-text">编辑</span>
@@ -326,7 +326,7 @@
                           size="small"
                           type="danger"
                           plain
-                          @click="handleDeleteTemplate(row)"
+                          @click.stop="handleDeleteTemplate(row)"
                         >
                           <i class="fas fa-trash"></i>
                           <span class="btn-text">删除</span>
@@ -589,7 +589,7 @@
                       <span class="estimated-salary">¥{{ calculateEstimatedSalary(row.id) }}</span>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="!isMobile && canViewSalaryField('salary_salaryrecordsview', 'actions')" label="操作" width="270" fixed="right" align="center" class-name="actions-column employee-action-column">
+                  <el-table-column v-if="!isMobile && canViewSalaryField('salary_salaryrecordsview', 'actions')" label="操作" :width="employeeSalaryActionColumnWidth" align="center" class-name="actions-column">
                     <template #default="{ row }">
                       <div class="employee-action-buttons action-buttons">
                         <!-- 设置模板按钮 -->
@@ -599,7 +599,7 @@
                             size="small"
                             type="primary"
                             plain
-                            @click="handleEditEmployeeTemplate(row)"
+                            @click.stop="handleEditEmployeeTemplate(row)"
                           >
                             <i class="fas fa-file-invoice-dollar"></i>
                             <span class="btn-text">模板</span>
@@ -613,7 +613,7 @@
                             size="small"
                             type="success"
                             plain
-                            @click="handleViewAttendance(row)"
+                            @click.stop="handleViewAttendance(row)"
                           >
                             <i class="fas fa-calendar-check"></i>
                             <span class="btn-text">考勤</span>
@@ -626,7 +626,7 @@
                             size="small"
                             type="warning"
                             plain
-                            @click="handleViewEmployeeSalesDetail(row)"
+                            @click.stop="handleViewEmployeeSalesDetail(row)"
                           >
                             <i class="fas fa-chart-line"></i>
                             <span class="btn-text">销售</span>
@@ -871,7 +871,7 @@
                       <span v-else class="text-secondary">-</span>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="!isMobile && canViewSalaryField('salary_salaryrecordsview', 'actions')" label="操作" width="190" fixed="right" align="center" class-name="actions-column payout-action-column">
+                  <el-table-column v-if="!isMobile && canViewSalaryField('salary_salaryrecordsview', 'actions')" label="操作" :width="payoutActionColumnWidth" align="center" class-name="actions-column">
                     <template #default="{ row }">
                       <div class="payout-action-buttons action-buttons">
                         <!-- 结算/重新计算按钮 -->
@@ -882,7 +882,7 @@
                           size="small"
                           :type="row.payoutRecord ? 'warning' : 'primary'"
                           plain
-                          @click="!row.payoutRecord ? handlePayoutByEmployee(row) : handleRecalculatePayout(row)"
+                          @click.stop="!row.payoutRecord ? handlePayoutByEmployee(row) : handleRecalculatePayout(row)"
                         >
                           {{ row.payoutRecord ? '重算' : '结算' }}
                         </el-button>
@@ -895,7 +895,7 @@
                           size="small"
                           type="success"
                           plain
-                          @click="handleEditPayoutByEmployee(row)"
+                          @click.stop="handleEditPayoutByEmployee(row)"
                         >
                           编辑
                         </el-button>
@@ -908,7 +908,7 @@
                           size="small"
                           type="danger"
                           plain
-                          @click="handleDeletePayout(row)"
+                          @click.stop="handleDeletePayout(row)"
                         >
                           删除
                         </el-button>
@@ -1076,14 +1076,14 @@
                       <span class="net-salary">¥{{ formatAmount(row.net_salary) }}</span>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="!isMobile && canViewSalaryField('salary_mysalaryview', 'actions')" label="操作" min-width="110" align="center">
+                  <el-table-column v-if="!isMobile && canViewSalaryField('salary_mysalaryview', 'actions')" label="操作" :width="$getActionColumnWidth(1)" align="center" class-name="actions-column">
                     <template #default="{ row }">
                       <div class="my-salary-action-buttons action-buttons">
                         <el-button
                           size="small"
                           type="primary"
                           plain
-                          @click="handleViewMyRecord(row)"
+                          @click.stop="handleViewMyRecord(row)"
                         >
                           <i class="fas fa-eye"></i>
                           <span class="btn-text">详情</span>
@@ -1878,7 +1878,7 @@
               <span v-else-if="row.record_type === 'overtime'">{{ row.overtime_hours }}小时</span>
             </template>
           </el-table-column>
-          <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'attendance_reason')" prop="reason" label="原因" min-width="150" show-overflow-tooltip />
+          <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'attendance_reason')" prop="reason" label="原因" min-width="150" class-name="complete-text-column wrapped-text-column" />
           <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'attendance_status')" prop="status" label="状态" width="90" align="center">
             <template #default="{ row }">
               <el-tag v-if="row.status === 'pending'" type="info" size="small">待审批</el-tag>
@@ -1886,14 +1886,15 @@
               <el-tag v-else type="danger" size="small">已拒绝</el-tag>
             </template>
           </el-table-column>
-          <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'actions')" label="操作" width="150" align="center">
+          <el-table-column v-if="canViewSalaryField('salary_salaryrecordsview', 'actions') && (canEditSalaryRecord || canDeleteSalaryRecord)" label="操作" :width="$getActionColumnWidth(Number(canEditSalaryRecord) + Number(canDeleteSalaryRecord))" align="center" class-name="actions-column">
             <template #default="{ row }">
+              <div class="action-buttons">
               <el-button
                 v-if="canEditSalaryRecord"
                 v-permission="'salary-records:edit'"
                 size="small"
                 type="primary"
-                @click="handleEditAttendance(row)"
+                @click.stop="handleEditAttendance(row)"
               >
                 <i class="fas fa-edit"></i>
                 编辑
@@ -1903,11 +1904,12 @@
                 v-permission="'salary-records:delete'"
                 size="small"
                 type="danger"
-                @click="handleDeleteAttendance(row.id)"
+                @click.stop="handleDeleteAttendance(row.id)"
               >
                 <i class="fas fa-trash"></i>
                 删除
               </el-button>
+              </div>
             </template>
           </el-table-column>
         </el-table>
@@ -2159,7 +2161,7 @@ import { PageHeader, PermissionGate } from '@/components/base'
 import dayjs from 'dayjs'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
-import { getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
+import { getActionColumnMinWidth, getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 
 // 配置中文语言环境
 const locale = zhCn
@@ -2483,7 +2485,19 @@ const templateActionColumnWidth = computed(() => {
     buttonCount += 1
   }
 
-  return Math.max(96, buttonCount * 82 + Math.max(0, buttonCount - 1) * 6 + 16)
+  return getActionColumnMinWidth(buttonCount)
+})
+
+const employeeSalaryActionColumnWidth = computed(() => getActionColumnMinWidth(
+  Number(canEditSalaryTemplate.value) + Number(canViewSalaryRecords.value) + 1
+))
+
+const payoutActionColumnWidth = computed(() => {
+  const hasPayoutRecord = paginatedPayoutData.value.some((item: any) => Boolean(item.payoutRecord))
+  const buttonCount = Number(canCreateSalaryRecord.value) + (hasPayoutRecord
+    ? Number(canEditSalaryRecord.value) + Number(canDeleteSalaryRecord.value)
+    : 0)
+  return getActionColumnMinWidth(buttonCount)
 })
 
 const getTemplateIndex = (index: number) => (templatePage.value - 1) * templatePageSize.value + index + 1
@@ -6916,11 +6930,6 @@ input:checked + .slider:before {
 
 .employee-action-buttons .employee-action-item {
   display: contents;
-}
-
-:deep(.employee-action-column .cell) {
-  padding: 0 6px !important;
-  overflow: visible;
 }
 
 // ==================== 模态框响应式优化 ====================

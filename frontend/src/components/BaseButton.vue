@@ -97,7 +97,7 @@ const handleClick = (event: MouseEvent) => {
 
 .base-button:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.25);
+  box-shadow: var(--tf-button-primary-shadow);
 }
 
 /* 圆角 */
@@ -156,7 +156,7 @@ const handleClick = (event: MouseEvent) => {
   width: 0;
   height: 0;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--tf-button-overlay-bg);
   transform: translate(-50%, -50%);
   transition: width 0.6s, height 0.6s;
 }

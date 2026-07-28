@@ -538,7 +538,7 @@ onUnmounted(() => {
   width: 32px;
   height: 32px;
   border-radius: var(--radius-full, 50%);
-  border: 1px solid var(--border-color, #dee2e6);
+  border: 1px solid var(--tf-button-neutral-border);
   background: var(--bg-secondary, #ffffff);
   color: var(--text-secondary, #666666);
   display: flex;
@@ -551,7 +551,7 @@ onUnmounted(() => {
 
 .close-btn:hover {
   background: var(--primary-color, #dc3545);
-  color: white;
+  color: var(--tf-button-on-color);
   border-color: var(--primary-color, #dc3545);
 }
 

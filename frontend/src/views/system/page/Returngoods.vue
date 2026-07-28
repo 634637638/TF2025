@@ -87,7 +87,7 @@
       </div>
 
       <div v-if="!isMobile" class="table-wrapper">
-        <el-table :data="loading ? [] : records" border stripe style="width: 100%">
+        <el-table class="data-table" :data="loading ? [] : records" border stripe style="width: 100%">
           <template #empty>
             <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
             <el-empty v-else description="暂无退库记录" />
@@ -120,15 +120,15 @@
               {{ formatDateTime(row.reversal_date) }}
             </template>
           </el-table-column>
-          <el-table-column prop="remarks" label="备注" min-width="220" show-overflow-tooltip />
-          <el-table-column v-if="canEdit || canDelete" label="操作" width="180" align="center">
+          <el-table-column prop="remarks" label="备注" min-width="220" class-name="complete-text-column wrapped-text-column" />
+          <el-table-column v-if="canEdit || canDelete" label="操作" :width="$getActionColumnWidth(Number(canEdit) + Number(canDelete))" align="center" class-name="actions-column">
             <template #default="{ row }">
               <div class="table-actions">
                 <el-button
                   v-if="canEdit"
                   type="primary"
                   link
-                  @click="openEditDialog(row)"
+                  @click.stop="openEditDialog(row)"
                 >
                   编辑
                 </el-button>
@@ -136,7 +136,7 @@
                   v-if="canDelete"
                   type="danger"
                   link
-                  @click="handleDelete(row)"
+                  @click.stop="handleDelete(row)"
                 >
                   删除
                 </el-button>
@@ -696,7 +696,6 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
   flex-wrap: nowrap;
   min-width: 0;
   white-space: nowrap;

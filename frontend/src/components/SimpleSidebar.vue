@@ -545,8 +545,8 @@ onUnmounted(() => {
 
 
 .modern-sidebar.theme-dark .action-btn {
-  background: rgba(0, 0, 0, 0.2);
-  border-color: rgba(255, 255, 255, 0.1);
+  background: var(--tf-button-tooltip-bg);
+  border-color: var(--tf-button-neutral-border);
 }
 
 
@@ -594,12 +594,12 @@ onUnmounted(() => {
   cursor: pointer;
   transition: all 0.2s ease;
   font-size: 14px;
-  color: #666666;
+  color: var(--tf-button-tool-color);
 }
 
 .logout-btn:hover {
-  background: #f5f5f5;
-  color: #ff4d4f;
+  background: var(--tf-button-neutral-hover-bg);
+  color: var(--tf-button-danger-soft-hover-color);
 }
 
 .logout-btn i {
@@ -943,7 +943,7 @@ onUnmounted(() => {
 
 .simple-sidebar.theme-dark .logout-btn:hover {
   background: var(--theme-hover-bg, #262626);
-  color: #ff4d4f;
+  color: var(--tf-button-danger-soft-hover-color);
 }
 
 .simple-sidebar.theme-dark .sidebar-footer {

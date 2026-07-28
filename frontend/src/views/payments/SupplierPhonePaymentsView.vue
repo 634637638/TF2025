@@ -298,33 +298,33 @@
               <span :class="['imei', row.phone_status === 'peer_transfer' ? 'admin-wholesale-text' : '']">{{ row.imei || '-' }}</span>
             </template>
           </el-table-column>
-          <el-table-column v-if="shouldShowPaymentColumn('purchase_cost')" label="入库价格" min-width="110" align="center">
+          <el-table-column v-if="shouldShowPaymentColumn('purchase_cost')" label="入库价格" :min-width="paymentPurchaseCostColumnWidth" align="center" class-name="complete-text-column">
             <template #default="{ row }">
               <span class="price">¥{{ formatAmount(row.purchase_cost) }}</span>
             </template>
           </el-table-column>
-          <el-table-column v-if="shouldShowPaymentColumn('sale_price')" label="销售价格" min-width="110" align="center">
+          <el-table-column v-if="shouldShowPaymentColumn('sale_price')" label="销售价格" :min-width="paymentSalePriceColumnWidth" align="center" class-name="complete-text-column">
             <template #default="{ row }">
               <span class="price">¥{{ formatAmount(row.sale_price) }}</span>
             </template>
           </el-table-column>
-          <el-table-column v-if="shouldShowPaymentColumn('profit')" label="利润" min-width="110" align="center">
+          <el-table-column v-if="shouldShowPaymentColumn('profit')" label="利润" :min-width="paymentProfitColumnWidth" align="center" class-name="complete-text-column">
             <template #default="{ row }">
               <span :class="['price-cell', getPhoneProfit(row) >= 0 ? 'profit-positive' : 'profit-negative']">
                 ¥{{ formatAmount(getPhoneProfit(row)) }}
               </span>
             </template>
           </el-table-column>
-          <el-table-column v-if="shouldShowPaymentColumn('sale_time')" label="入库时间" min-width="120" align="center" class-name="time-cell">
+          <el-table-column v-if="shouldShowPaymentColumn('sale_time')" label="入库时间" :min-width="paymentPurchaseDateColumnWidth" align="center" class-name="time-cell complete-text-column">
             <template #default="{ row }">{{ formatDate(row.purchase_date) }}</template>
           </el-table-column>
-          <el-table-column v-if="shouldShowPaymentColumn('sale_time')" label="销售时间" min-width="120" align="center" class-name="time-cell">
+          <el-table-column v-if="shouldShowPaymentColumn('sale_time')" label="销售时间" :min-width="paymentSaleDateColumnWidth" align="center" class-name="time-cell complete-text-column">
             <template #default="{ row }">{{ formatDate(row.sale_time) }}</template>
           </el-table-column>
           <el-table-column
             v-if="shouldShowPaymentColumn('payment_status')"
             label="打款状态"
-            :min-width="isMobile ? 74 : 100"
+            :min-width="paymentStatusColumnWidth"
             align="center"
             class-name="col-status"
           >
@@ -337,7 +337,7 @@
           <el-table-column
             v-if="shouldShowPaymentColumn('payment_time')"
             label="打款时间"
-            :min-width="isMobile ? 178 : 210"
+            :min-width="paymentTimeColumnWidth"
             align="center"
             class-name="time-cell payment-time-column"
           >
@@ -358,9 +358,9 @@
           <el-table-column
             v-if="showPaymentActionField"
             label="操作"
-            :width="isMobile ? 128 : 310"
+            :width="paymentActionColumnWidth"
             align="center"
-            class-name="actions-col col-actions"
+            class-name="actions-column"
           >
             <template #default="{ row }">
               <div class="action-buttons" v-if="row.payment_status === 'unpaid'">
@@ -397,6 +397,7 @@
                   v-if="canDeletePayment && canViewPaymentField('actions')"
                   type="danger"
                   size="small"
+                  class="table-action table-action--delete"
                   @click.stop="handleCancelPayment(row)"
                   title="取消打款"
                   :disabled="removingPayment"
@@ -927,7 +928,7 @@ import { PageHeader, PermissionGate } from '@/components/base';
 import { TimeUtil, TIME_FORMATS } from '@/utils/time';
 import { loadHtml2Canvas } from '@/utils/html2canvas';
 import { sortOptionsByOrder } from '@/utils/option-sort';
-import { getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout';
+import { getAdaptiveActionColumnWidth, getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout';
 import { formatAmount } from '@/utils/format';
 
 const router = useRouter();
@@ -1363,6 +1364,15 @@ const summaryStatistics = ref<SupplierPaymentSummary>({
   total_paid_amount: 0
 });
 const phones = ref<SupplierPaymentPhone[]>([]);
+const paymentActionColumnWidth = computed(() => getAdaptiveActionColumnWidth(
+  phones.value,
+  [
+    { label: '打款', visible: phone => canCreatePayment.value && phone.payment_status === 'unpaid' },
+    { label: '查看', visible: phone => canViewPayments.value && phone.payment_status !== 'unpaid' },
+    { label: '编辑', visible: phone => canEditPayment.value && phone.payment_status !== 'unpaid' },
+    { label: '取消打款', visible: phone => canDeletePayment.value && phone.payment_status !== 'unpaid' }
+  ]
+))
 const getPaymentTextColumnWidth = (
   label: string,
   values: Array<string | number | null | undefined>,
@@ -1371,40 +1381,40 @@ const getPaymentTextColumnWidth = (
   [label, ...values],
   {
     minWidth,
-    horizontalPadding: 40,
-    asciiCharacterWidth: 9,
-    wideCharacterWidth: 15
+    horizontalPadding: 24,
+    asciiCharacterWidth: 8,
+    wideCharacterWidth: 13
   }
 );
 const paymentSupplierColumnWidth = computed(() => getPaymentTextColumnWidth(
   '供应商',
   phones.value.map((phone) => phone.supplier_name),
-  isMobile.value ? 112 : 120
+  isMobile.value ? 96 : 96
 ));
 const paymentStoreColumnWidth = computed(() => getPaymentTextColumnWidth(
   '店铺',
   phones.value.map((phone) => phone.store_name),
-  isMobile.value ? 92 : 100
+  isMobile.value ? 76 : 76
 ));
 const paymentBrandColumnWidth = computed(() => getPaymentTextColumnWidth(
   '品牌',
   phones.value.map((phone) => phone.brand_name),
-  isMobile.value ? 82 : 90
+  isMobile.value ? 72 : 72
 ));
 const paymentModelColumnWidth = computed(() => getPaymentTextColumnWidth(
   '型号',
   phones.value.map((phone) => phone.model_name),
-  isMobile.value ? 110 : 130
+  isMobile.value ? 96 : 96
 ));
 const paymentColorColumnWidth = computed(() => getPaymentTextColumnWidth(
   '颜色',
   phones.value.map((phone) => phone.color_name),
-  isMobile.value ? 82 : 90
+  isMobile.value ? 72 : 72
 ));
 const paymentMemoryColumnWidth = computed(() => getPaymentTextColumnWidth(
   '内存',
   phones.value.map((phone) => phone.memory_name),
-  isMobile.value ? 82 : 90
+  isMobile.value ? 72 : 72
 ));
 const paymentSerialColumnWidth = computed(() => getIdentifierColumnMinWidth(
   ['序列号', ...phones.value.map((phone) => phone.serial_number)],
@@ -1413,6 +1423,45 @@ const paymentSerialColumnWidth = computed(() => getIdentifierColumnMinWidth(
 const paymentImeiColumnWidth = computed(() => getIdentifierColumnMinWidth(
   ['IMEI', ...phones.value.map((phone) => phone.imei)],
   { minWidth: isMobile.value ? 150 : 156, horizontalPadding: 28 }
+));
+const paymentPurchaseCostColumnWidth = computed(() => getPaymentTextColumnWidth(
+  '入库价格',
+  phones.value.map(phone => `¥${formatAmount(phone.purchase_cost)}`),
+  88
+));
+const paymentSalePriceColumnWidth = computed(() => getPaymentTextColumnWidth(
+  '销售价格',
+  phones.value.map(phone => `¥${formatAmount(phone.sale_price)}`),
+  88
+));
+const paymentProfitColumnWidth = computed(() => getPaymentTextColumnWidth(
+  '利润',
+  phones.value.map(phone => `¥${formatAmount(getPhoneProfit(phone))}`),
+  78
+));
+const paymentPurchaseDateColumnWidth = computed(() => getPaymentTextColumnWidth(
+  '入库时间',
+  phones.value.map(phone => formatDate(phone.purchase_date)),
+  104
+));
+const paymentSaleDateColumnWidth = computed(() => getPaymentTextColumnWidth(
+  '销售时间',
+  phones.value.map(phone => formatDate(phone.sale_time)),
+  104
+));
+const paymentStatusColumnWidth = computed(() => getPaymentTextColumnWidth(
+  '打款状态',
+  phones.value.map(phone => phone.payment_status === 'paid' ? '已打款' : '未打款'),
+  isMobile.value ? 74 : 84
+));
+const paymentTimeColumnWidth = computed(() => getTextColumnMinWidth(
+  ['打款时间', ...phones.value.map(phone => phone.payment_time ? formatDateTimeBeijing(phone.payment_time) : '-')],
+  {
+    minWidth: isMobile.value ? 166 : 174,
+    horizontalPadding: 44,
+    asciiCharacterWidth: isMobile.value ? 6.5 : 8,
+    wideCharacterWidth: isMobile.value ? 11 : 13
+  }
 ));
 const currentPhone = ref<SupplierPaymentPhone | null>(null);
 const editingPhone = ref<SupplierPaymentPhone | null>(null);
@@ -2849,30 +2898,30 @@ onMounted(async () => {
       }
 
       .selected-action-btn-danger {
-        background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%);
-        border-color: #fecdd3;
-        color: #e11d48;
+        background: var(--tf-button-danger-soft-bg);
+        border-color: var(--tf-button-danger-soft-border);
+        color: var(--tf-button-danger-soft-color);
         box-shadow: none;
 
         &:hover,
         &:focus {
-          background: linear-gradient(135deg, #ffe4e6 0%, #fecdd3 100%);
-          border-color: #fda4af;
-          color: #be123c;
+          background: var(--tf-button-danger-soft-hover-bg);
+          border-color: var(--tf-button-danger-soft-hover-border);
+          color: var(--tf-button-danger-soft-hover-color);
         }
       }
 
       .selected-action-btn-primary {
-        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-        border-color: #bfdbfe;
-        color: #2563eb;
+        background: var(--tf-button-primary-soft-bg);
+        border-color: var(--tf-button-primary-soft-border);
+        color: var(--tf-button-primary-soft-color);
         box-shadow: none;
 
         &:hover,
         &:focus {
-          background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-          border-color: #93c5fd;
-          color: #1d4ed8;
+          background: var(--tf-button-primary-soft-hover-bg);
+          border-color: var(--tf-button-primary-soft-hover-border);
+          color: var(--tf-button-primary-soft-hover-color);
         }
       }
     }
@@ -3485,8 +3534,6 @@ onMounted(async () => {
 
 .data-table .mobile-row-actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
   justify-content: flex-start;
 }
 
@@ -3543,20 +3590,6 @@ onMounted(async () => {
     :deep(.supplier-payment-table .el-scrollbar__bar.is-horizontal) {
       display: none !important;
     }
-  }
-
-  .supplier-payment-table .action-buttons {
-    display: flex;
-    width: 100%;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 6px;
-  }
-
-  .supplier-payment-table :deep(.actions-col .cell) {
-    padding-right: 4px !important;
-    padding-left: 4px !important;
-    overflow: visible !important;
   }
 
   .supplier-payment-table .status-badge {
@@ -4062,7 +4095,6 @@ onMounted(async () => {
   }
 
   .data-table .mobile-row-actions {
-    gap: 6px;
   }
 
   .data-table .mobile-action-btn {
@@ -4100,14 +4132,14 @@ onMounted(async () => {
     width: 38px;
     height: 38px;
     border-radius: 12px;
-    background: rgba(255, 255, 255, 0.16);
-    color: #ffffff;
+    background: var(--tf-button-overlay-bg);
+    color: var(--tf-button-on-color);
     transition: all 0.2s ease;
   }
 
   .el-dialog__headerbtn:hover,
   .mobile-dialog-sheet-close:hover {
-    background: rgba(255, 255, 255, 0.24);
+    background: var(--tf-button-overlay-hover-bg);
     transform: translateY(-1px);
   }
 
@@ -4127,7 +4159,6 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  flex-wrap: wrap;
   gap: 10px;
   width: 100%;
 

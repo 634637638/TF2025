@@ -50,7 +50,7 @@
           <!-- 已连接的数据库列表 -->
           <div v-if="connections.length > 0" class="connections-list">
             <h4>已连接的数据库</h4>
-            <el-table :data="connections" border>
+            <el-table class="data-table" :data="connections" border>
               <el-table-column prop="host" label="主机地址" />
               <el-table-column prop="port" label="端口" width="80" />
               <el-table-column prop="user" label="用户名" />
@@ -60,22 +60,24 @@
                   {{ formatDateTime(row.connectedAt) }}
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="150">
+              <el-table-column label="操作" :width="$getActionColumnWidth(2)" class-name="actions-column">
                 <template #default="{ row }">
+                  <div class="action-buttons">
                   <el-button
                     size="small"
                     type="primary"
-                    @click="selectConnection(row.id)"
+                    @click.stop="selectConnection(row.id)"
                   >
                     选择
                   </el-button>
                   <el-button
                     size="small"
                     type="danger"
-                    @click="handleCloseConnection(row.id)"
+                    @click.stop="handleCloseConnection(row.id)"
                   >
                     断开
                   </el-button>
+                  </div>
                 </template>
               </el-table-column>
             </el-table>
@@ -174,7 +176,7 @@
                 class="mb-4"
               />
 
-              <el-table
+              <el-table class="data-table"
                 :data="filteredSourceTables"
                 border
                 height="400"
@@ -182,15 +184,17 @@
                 @current-change="handleSourceTableSelect"
               >
                 <el-table-column prop="table" label="表名" />
-                <el-table-column label="操作" width="80">
+                <el-table-column label="操作" :width="$getActionColumnWidth(1)" class-name="actions-column">
                   <template #default="{ row }">
+                    <div class="action-buttons">
                     <el-button
                       size="small"
                       type="primary"
-                      @click="handleSourceTableSelect(row)"
+                      @click.stop="handleSourceTableSelect(row)"
                     >
                       选择
                     </el-button>
+                    </div>
                   </template>
                 </el-table-column>
               </el-table>
@@ -215,7 +219,7 @@
                 class="mb-4"
               />
 
-              <el-table
+              <el-table class="data-table"
                 :data="filteredTargetTables"
                 border
                 height="400"
@@ -223,15 +227,17 @@
                 @current-change="handleTargetTableSelect"
               >
                 <el-table-column prop="table" label="表名" />
-                <el-table-column label="操作" width="80">
+                <el-table-column label="操作" :width="$getActionColumnWidth(1)" class-name="actions-column">
                   <template #default="{ row }">
+                    <div class="action-buttons">
                     <el-button
                       size="small"
                       type="primary"
-                      @click="handleTargetTableSelect(row)"
+                      @click.stop="handleTargetTableSelect(row)"
                     >
                       选择
                     </el-button>
+                    </div>
                   </template>
                 </el-table-column>
               </el-table>
@@ -272,7 +278,7 @@
             </div>
           </template>
 
-          <el-table :data="mappingList" border max-height="500">
+          <el-table class="data-table" :data="mappingList" border max-height="500">
             <el-table-column label="源字段" prop="sourceField" width="200" />
             <el-table-column label="源类型" prop="sourceType" width="120" />
             <el-table-column label="→" width="50" align="center" />
@@ -402,7 +408,7 @@
             <!-- 匹配示例 -->
             <el-divider />
             <h4>匹配示例（前10条）</h4>
-            <el-table :data="preCheckResult.sampleMatches" border max-height="300">
+            <el-table class="data-table" :data="preCheckResult.sampleMatches" border max-height="300">
               <el-table-column label="匹配键" prop="key" width="200" />
               <el-table-column label="源数据" width="300">
                 <template #default="{ row }">
@@ -1224,8 +1230,8 @@ onBeforeUnmount(() => {
         margin-top: 20px;
 
         .el-button {
-          background: white;
-          color: #667eea;
+          background: var(--tf-button-neutral-bg);
+          color: var(--tf-button-primary-soft-color);
           border: none;
           padding: 12px 30px;
           font-size: 15px;
@@ -1234,7 +1240,7 @@ onBeforeUnmount(() => {
 
           &:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            box-shadow: var(--tf-button-shadow-hover);
           }
 
           &:disabled {

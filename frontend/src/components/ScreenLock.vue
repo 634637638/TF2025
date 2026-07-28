@@ -397,8 +397,8 @@ onMounted(() => {
   .unlock-button {
     width: 100%;
     padding: 16px 32px;
-    background: linear-gradient(135deg, #10b981, #059669);
-    color: white;
+    background: var(--tf-button-success-bg);
+    color: var(--tf-button-on-color);
     border: none;
     border-radius: 12px;
     font-size: 16px;
@@ -411,9 +411,9 @@ onMounted(() => {
     gap: 8px;
 
     &:hover:not(:disabled) {
-      background: linear-gradient(135deg, #059669, #047857);
+      background: var(--tf-button-success-hover-bg);
       transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+      box-shadow: var(--tf-button-success-shadow);
     }
 
     &:active:not(:disabled) {

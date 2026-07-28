@@ -77,7 +77,7 @@
             </h3>
           </div>
 
-          <el-table
+          <el-table class="data-table"
             :data="isLoading ? [] : backupList"
             border
             stripe
@@ -111,7 +111,7 @@
                 {{ formatDateTime(row.created_at) }}
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="200" align="center">
+            <el-table-column label="操作" :width="$getActionColumnWidth(['下载中', ...(canDelete ? ['删除'] : [])])" align="center" class-name="actions-column">
               <template #default="{ row }">
                 <div class="action-buttons">
                   <el-button
@@ -120,7 +120,7 @@
                     link
                     :loading="downloadingFilename === row.filename"
                     :disabled="downloadingFilename !== null && downloadingFilename !== row.filename"
-                    @click="downloadBackup(row.filename)"
+                    @click.stop="downloadBackup(row.filename)"
                   >
                     <span v-if="downloadingFilename === row.filename">下载中</span>
                     <template v-else>
@@ -133,7 +133,7 @@
                     type="danger"
                     size="small"
                     link
-                    @click="confirmDelete(row.filename)"
+                    @click.stop="confirmDelete(row.filename)"
                   >
                     <i class="fas fa-trash"></i>
                     删除
@@ -540,7 +540,6 @@ watch(canView, async (value) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
 }
 
 /* 空状态 */

@@ -22,7 +22,7 @@ PC 端公共表头使用 `38px` 高度和 `6px` 上下内边距，由 `admin-lay
 | `frontend/src/styles/admin-layout.css` | 后台页面、卡片、标题、表格和操作按钮的视觉变量与公共 class | 否 |
 | `frontend/src/styles/components/_table.scss` | Element Plus 表格内部结构，所有视觉值读取 `--admin-data-table-*` | 否 |
 | `frontend/src/styles/responsive.scss` | 手机端布局与滚动行为，继续读取公共变量 | 否 |
-| `frontend/src/utils/table-layout.ts` | 普通文本、标识字段和操作列的内容驱动宽度计算 | 否 |
+| `frontend/src/utils/table-layout.ts` | 普通文本、标识字段，以及按权限和行状态自动伸缩的操作列宽度计算 | 否 |
 | `frontend/src/utils/admin-table-drag-scroll.ts` | 统一表格 PC 鼠标拖动横向浏览，手机端保留原生触摸滑动 | 否 |
 | `frontend/src/utils/format.ts` | 统一金额与货币格式 | 否 |
 | 业务页面 `<style scoped>` | 业务字段、状态徽章、金额、IMEI、特殊交互 | 是，但不得覆盖通用视觉 |
@@ -113,7 +113,7 @@ PC 端公共表头使用 `38px` 高度和 `6px` 上下内边距，由 `admin-lay
 
 ```ts
 import {
-  getActionColumnMinWidth,
+  getAdaptiveActionColumnWidth,
   getIdentifierColumnMinWidth,
   getTextColumnMinWidth
 } from '@/utils/table-layout'
@@ -128,18 +128,21 @@ const serialWidth = getIdentifierColumnMinWidth(
   { minWidth: 120, horizontalPadding: 24 }
 )
 
-const actionWidth = getActionColumnMinWidth(visibleActionCount.value, {
-  minWidth: 260
-})
+const actionWidth = computed(() => getAdaptiveActionColumnWidth(
+  rows.value,
+  [canView.value, canEdit.value, row => canApprove.value && row.status === 'pending']
+))
 ```
 
 所有长度不固定的普通字段使用 `getTextColumnMinWidth`；序列号、IMEI、业务单号等标识字段统一使用 `getIdentifierColumnMinWidth` 和 `identifier-column`。工具会按当前页表头及最长内容计算最小宽度；字段少时由 Element Plus 的 `fit` 自动分配剩余宽度铺满表格，空间不足时由表格内部横向滑动。这里的“自动缩放”是列宽随当前页内容调整，不是让单个单元格自行缩小字号；PC 与手机字体只读取全局断点变量。
+
+普通文字的公共测量默认预留 `24px` 水平安全空间；页面只在字段含徽章、图标或额外控件时提高 `horizontalPadding`。不得为普通纯文字列沿用 `36px`、`40px` 等大留白。说明、备注等连续长文本应设置合理 `maxWidth` 并配合 `wrapped-text-column` 完整换行，避免单个长值挤占整张表格。
 
 管理员可能显示全部字段的多列表格，应使用紧凑但安全的字段最小值，并将实际单元格内边距计入 `horizontalPadding`；优先收紧各普通列累计留白，为操作列保留完整按钮空间，不得通过缩小操作按钮、裁切文字或减小全局字体强行塞入一屏。
 
 同类短徽章字段应共用相同的最小宽度和 `horizontalPadding`。例如综合查询的“机况”和“状态”在两字内容下保持同宽；只有实际状态文字更长时才由内容测量结果扩展。
 
-操作列可以在 `getActionColumnMinWidth` 中传入页面语义最小宽度，为按钮边缘保留少量安全空间；该值只能增加列空间，不得替代按实际可见按钮数量计算。
+操作列默认使用 `getAdaptiveActionColumnWidth` 根据实际权限和行状态自动计算。按钮数量只由权限决定、且不随行状态变化的简单页面，可以在模板调用全局 `$getActionColumnWidth(count)`；该入口由 `main.ts` 统一注册，内部仍只调用 `getActionColumnMinWidth`，页面不得复制计算公式。页面语义最小宽度只能增加安全空间，不得替代实际可见按钮数量计算。
 
 操作列统一由 `.actions-column` 让单元格占满列宽并使用 Flex 居中，按钮组左右留白必须相等。页面不得使用 `margin-left`、绝对定位或固定偏移修正按钮位置；需要增加安全空间时只调整操作列语义最小宽度。
 
@@ -173,7 +176,7 @@ const actionWidth = getActionColumnMinWidth(visibleActionCount.value, {
 | Apple ID | 完整单行展示，最小 `180px`，至少容纳 `15279028053@139.com`，不设置双击查看 |
 | 型号 | 最小 `74px`，`horizontalPadding: 16`，`asciiCharacterWidth: 7` |
 | 机况、状态 | 最小 `50px`，`horizontalPadding: 44`；同长度短徽章保持同宽 |
-| 操作 | 最小 `260px`，并按当前用户实际可见按钮数量动态计算；按钮组居中且左右留白相等 |
+| 操作 | 使用 `getAdaptiveActionColumnWidth` 按当前用户实际可见按钮计算动态 `width`；一个、两个、三个、四个标准按钮当前约为 `104px`、`184px`、`264px`、`344px`，权限减少时自动缩小，按钮增加时自动扩大；按钮组居中且左右留白相等 |
 
 管理员、普通用户和不同角色看到的字段及操作数量可能不同。表格必须以当前登录用户实际可见的列、当前页数据和实际可用操作重新计算宽度；不得缓存管理员列宽给普通用户，也不得为隐藏按钮预留空白。管理员全字段需要完整且紧凑，普通用户字段较少时由 `fit` 自动铺满可用宽度，两种账号均不得遮挡、错位或产生页面级横向溢出。
 
@@ -181,14 +184,61 @@ const actionWidth = getActionColumnMinWidth(visibleActionCount.value, {
 
 - PC 端主列表的查看、编辑、删除、审核等常规操作必须使用“图标 + 中文文字”，不得只显示图标让用户猜测功能。
 - 主列表操作按钮统一使用 `.action-buttons` 和 `el-button size="small"`，事件必须使用 `@click.stop`；按钮文字必须完整显示。
+- `.action-buttons` 的排列、间距和不换行由公共样式控制。PC 主列表按钮间距统一为 `8px`，`.actions-column .cell` 通过 `--admin-data-table-action-edge-space` 明确设置左右各 `16px` 安全空间，操作列宽度函数同步预留总计 `32px`，因此左右边距稳定一致。手机端分别收紧为按钮间距 `6px`、左右各 `8px`。按钮内部图标与文字只使用公共 `4px` 间距，公共规则会清除历史 `mr-*` 以及页面图标 `margin`，避免重复间距改变按钮实际宽度。业务页面不得设置 `gap`、`flex-wrap: wrap`、按钮或图标外边距、操作单元格内边距或固定偏移，该覆盖会被统一审计直接拦截。
 - 审批、到账等位于普通业务字段列中的单个按钮使用 `.table-inline-action`。宽度固定为 `auto`，最小宽度为 `0`，使用全局紧凑变量 `--admin-data-table-inline-action-padding-x`、`--admin-data-table-inline-action-icon-size` 和 `--admin-data-table-inline-action-icon-gap`，不得设置 `width: 100%` 或业务固定宽度。
-- 操作列宽度根据当前权限下实际显示的按钮数量调用 `getActionColumnMinWidth` 计算。按钮增减后列宽需要同步变化，禁止依赖固定窄列遮挡文字。
-- 只有模态框中的紧凑工具列、单元格空间明确受限且含义熟悉的操作，才允许使用纯图标按钮；纯图标必须提供 `title` 或 tooltip。
+- 操作列宽度根据当前权限下实际显示的按钮和按钮文字调用 `getActionColumnMinWidth` 计算。两字标准按钮仍可传数量；出现“页面权限”“取消打款”“设为默认”等三字以上按钮时必须传文字数组，由公共函数分别测量文字、图标、间距、内边距和边框后求和。按钮增减后列宽需要同步变化，禁止依赖固定窄列遮挡文字。
+- 同一列的按钮会随记录状态变化时，按钮数量取当前页所有行可能出现的最大值。例如考勤待审批记录比普通记录多一个“审批”按钮，当前页出现待审批记录后操作列必须自动扩展，最后一条待审批记录处理完成后自动缩回。需要防止 Element Plus `fit` 把剩余空间持续分给操作列时，应使用计算值绑定动态 `:width`；不得写死一个始终按最大按钮数显示的固定宽度。
+- 状态型操作列统一在 Vue `computed` 中调用 `getAdaptiveActionColumnWidth(rows, actions)`。`actions` 使用 `{ label, visible }` 描述按钮，`label` 可以是文字或按行返回文字的函数，`visible` 可以是权限布尔值或 `(row) => boolean` 行状态条件。公共函数会扫描当前页，按单行实际可见按钮组合计算最大宽度；页面不得重复维护“是否存在待审批”等私有计数逻辑。旧的布尔值数组继续兼容，但只适合全部为两字标准按钮的页面。
+- 普通业务列使用内容驱动 `:min-width` 并允许 Element Plus `fit` 分配剩余空间；操作列使用公共函数结果绑定动态 `:width`，避免剩余空间让操作列看起来始终是最大尺寸。综合查询是该组合的参考实现。
+- 字段较少且桌面端剩余空间明显时使用 `compact-fit-table`，并设置 `:fit="true"`。公共样式会将该类表格的外层 `min-width` 重置为 `100%`，禁止继承后台主表默认的 `1200px` 而让 `.table-responsive` 产生第二个横向滚动层。普通业务列绑定内容驱动的 `:min-width`，让 Element Plus 将容器余量按所有普通列的最小宽度比例共同分配；不得把余量集中到单个描述字段，也不得使用 `fit=false` 在操作列后留下整块空白。说明、原因和备注通过有限 `maxWidth` 配合 `wrapped-text-column` 完整换行。操作列继续绑定公共函数计算的精确 `:width`，不参与剩余空间拉伸。只有字段最小宽度总和超过容器时才使用 Element 内部唯一的同步横向移动，表头与内容必须共用该滚动位置。
+- 当前用户没有任何可见操作时，页面应直接隐藏“操作”列；不得保留只有表头或最小宽度的空列。
+- 只有模态框中的紧凑工具列、单元格空间明确受限且含义熟悉的操作，才允许使用 `class-name="compact-action-column"` 和纯图标按钮；纯图标必须提供 `title` 或 tooltip。该 class 是审计边界，不得用于主列表逃避动态宽度规则。
 - 手机端优先按页面规则隐藏常驻操作列，通过连续两次点击行展开操作；展开后的命令按钮仍应显示文字。
+
+字段较少的桌面表格标准写法：
+
+```vue
+<el-table class="data-table compact-fit-table" table-layout="fixed" :fit="true">
+  <el-table-column label="角色名称" :min-width="roleNameWidth" class-name="complete-text-column" />
+  <el-table-column label="角色描述" :min-width="roleDescriptionWidth" class-name="complete-text-column wrapped-text-column" />
+  <el-table-column label="状态" min-width="92" />
+  <el-table-column label="操作" :width="actionColumnWidth" class-name="actions-column" />
+</el-table>
+```
+
+简单操作列标准写法：
+
+```vue
+<el-table-column
+  v-if="canEdit || canDelete"
+  label="操作"
+  :width="$getActionColumnWidth(['编辑', '删除'])"
+  class-name="actions-column"
+  align="center"
+>
+  <template #default="{ row }">
+    <div class="action-buttons">
+      <el-button v-if="canEdit" size="small" @click.stop="edit(row)">编辑</el-button>
+      <el-button v-if="canDelete" size="small" @click.stop="remove(row)">删除</el-button>
+    </div>
+  </template>
+</el-table-column>
+```
+
+文字或可见状态随记录变化时：
+
+```ts
+const actionColumnWidth = computed(() => getAdaptiveActionColumnWidth(rows.value, [
+  { label: '查看', visible: true },
+  { label: row => row.status === 'pending' ? '编辑' : '修改', visible: canEdit.value },
+  { label: '审批', visible: row => canApprove.value && row.status === 'pending' },
+  { label: '取消打款', visible: row => canDelete.value && row.status === 'paid' }
+]))
+```
 
 ### 操作按钮尺寸与语义颜色
 
-表格、列表卡片和手机展开区共用同一套操作按钮。尺寸与颜色变量全部定义在 `frontend/src/styles/admin-layout.css`，结构和状态规则定义在 `frontend/src/styles/components/_table.scss`。PC 端当前高度为 `28px`、水平内边距为 `10px`、字体为 `13px`、圆角为 `4px`；手机端高度为 `32px`、水平内边距为 `12px`，字体读取公共手机表格字号。普通业务字段中的 `.table-inline-action` 使用更紧凑的 PC `7px`、手机 `8px` 水平内边距。页面不得写死这些值。
+表格、列表卡片和手机展开区共用同一套操作按钮。尺寸与颜色变量全部定义在 `frontend/src/styles/admin-layout.css`，结构和状态规则定义在 `frontend/src/styles/components/_table.scss`。PC 端当前高度为 `28px`、水平内边距为 `10px`、按钮间距为 `8px`、字体为 `13px`、圆角为 `4px`；手机端高度为 `32px`、水平内边距为 `12px`、按钮间距为 `6px`，字体读取公共手机表格字号。普通业务字段中的 `.table-inline-action` 使用更紧凑的 PC `7px`、手机 `8px` 水平内边距。页面不得写死这些值。
 
 | 操作语义 | 推荐 class | 颜色含义 |
 | --- | --- | --- |
@@ -374,13 +424,13 @@ const clearSelection = () => {
 
 ### 权限管理页规则
 
-权限管理 `/permissions` 的角色管理、角色分配、门店绑定和权限日志四个列表统一使用 `el-table.data-table.devices-table`，并放入 `.table-responsive`。角色描述、日志描述等长文本使用明确的最小列宽并在表格内部处理，不能恢复原生 `<table>` 或页面私有表头、行高和滚动样式。操作按钮继续使用图标加中文文字，列宽按实际操作数量留足空间。
+权限管理 `/permissions` 的角色管理、角色分配、门店绑定、模块管理和权限日志列表统一使用 `el-table.data-table.devices-table`，并放入 `.table-responsive`。用户名、角色、门店、模块标识、日期等字段按当前页内容计算紧凑最小宽度；角色描述、日志描述等长文本使用有限 `maxWidth` 并完整换行，不能恢复原生 `<table>` 或页面私有表头、行高和滚动样式。操作按钮继续使用图标加中文文字，并按实际可见按钮文字与状态计算宽度。
 
 模块管理 Tab 的网格卡片读取 `--admin-panel-gap`、`--admin-panel-padding` 和 `--admin-panel-radius`。卡片头部固定为两行：第一行按“模块名称、分类、启用状态”排序，第二行展示模块 KEY 和说明；两行均保持单行，超出时在当前字段内省略并通过 `title` 查看完整内容。手机端权限数量、名称状态、创建日期和模块类型固定为两列紧凑信息网格，每个信息项的标签和值在同一行展示，不得退化为四张纵向嵌套卡片。卡片操作使用 `.card-actions.tf-actions--fit-row` 保持单行自适应；分页只使用公共 `Pagination` 和全局 `.pagination-wrapper`，页面不得覆盖分页间距、边框或手机布局。
 
 ### 考勤管理页规则
 
-考勤管理 `/attendance` 的“所有考勤”和“我的考勤”统一使用 `el-table.data-table.devices-table`。页面不得覆盖公共表头、行高、字号、斑马纹、悬停背景、单元格内边距或横向滚动；考勤类型和审批状态可以保留业务语义标签。操作列不得固定在独立右侧层，必须和普通字段处于同一滚动表格内，确保全局整行悬停外包围连续覆盖操作区域。桌面和手机展开区的查看、编辑、审批、删除、撤销按钮均使用公共语义 class，操作列宽使用 `getActionColumnMinWidth`。
+考勤管理 `/attendance` 的“所有考勤”和“我的考勤”统一使用 `el-table.data-table.devices-table`。员工、类型、详情、日期、原因、状态和审批备注按当前页内容计算紧凑宽度，长原因与备注在有限宽度内完整换行。页面不得覆盖公共表头、行高、字号、斑马纹、悬停背景、单元格内边距或横向滚动；考勤类型和审批状态可以保留业务语义标签。操作列不得固定在独立右侧层，必须和普通字段处于同一滚动表格内，确保全局整行悬停外包围连续覆盖操作区域。桌面和手机展开区的查看、编辑、审批、删除、撤销按钮均使用公共语义 class，操作列宽使用带 `{ label, visible }` 描述的 `getAdaptiveActionColumnWidth`。
 
 ### 预订管理页规则
 
@@ -409,7 +459,9 @@ const clearSelection = () => {
 - 搜索使用 `UnifiedSearchPanel`，列表卡片使用 `.admin-panel.admin-table-panel`。
 - 列表标题使用 `.section-title` 和 `.record-count`。
 - 数据列表优先使用 `el-table.data-table.devices-table`。
+- 所有 Element Plus 表格（包括页面子表格和模态框表格）至少使用 `.data-table` 或 `.admin-data-table`，不得只保留页面私有 class。
 - 普通字段、序列号、IMEI、名称、金额、状态和 Apple ID 均完整展示；只有具备完整查看入口的备注等长文本可以省略。
+- 普通字段不得使用 `show-overflow-tooltip` 截断；长说明使用 `.complete-text-column.wrapped-text-column`，明确具有完整查看入口的长文本例外才使用 `.ellipsis-text-column`。
 - 超宽表格只保留 Element Plus 内部一个滚动区域，PC 鼠标拖动和手机触摸横移均可用。
 - PC 鼠标拖动后表头、表体和汇总行保持同一 `scrollLeft`，不存在表头与内容错位。
 - PC 主列表操作按钮显示“图标 + 文字”，列宽随可见按钮数量自适应；模态框纯图标按钮具备 `title` 或 tooltip。
@@ -420,6 +472,7 @@ const clearSelection = () => {
 - 调货/同行批发行使用 `admin-row--peer-transfer`，金额使用公共格式函数且无千分位逗号。
 - 加载状态使用 `TableLoadingRow mode="block"`，无数据使用 `empty-state`。
 - 本地样式只剩业务字段样式，没有通用表格或卡片覆盖。
+- 运行 `npm run check:tables`，确保操作列没有固定宽度、`fixed`、私有 `.actions-column` 覆盖、缺失公共按钮容器、普通 `@click` 或主列表纯图标。
 - 手机端表头与内容同步，页面没有额外横向拉动条。
 - 检查 `360px`、`390px`、`430px`、`768px` 和桌面宽度。
 - 运行前端生产构建，确认 Vue、TypeScript 模板和 SCSS 均可编译。

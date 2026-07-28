@@ -345,8 +345,8 @@ const handleLogin = async () => {
 .login-button {
   width: 100%;
   padding: 12px;
-  background: #667eea;
-  color: white;
+  background: var(--tf-button-primary-bg);
+  color: var(--tf-button-on-color);
   border: none;
   border-radius: 5px;
   font-size: 16px;
@@ -355,7 +355,7 @@ const handleLogin = async () => {
 }
 
 .login-button:hover:not(:disabled) {
-  background: #5a6fd8;
+  background: var(--tf-button-primary-hover-bg);
 }
 
 .login-button:disabled {

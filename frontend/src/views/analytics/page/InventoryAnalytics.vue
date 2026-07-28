@@ -92,7 +92,7 @@
       dialog-class="inventory-low-stock-dialog"
       :show-default-footer="false"
     >
-      <el-table :data="loading ? [] : filteredLowStockItems" stripe :table-layout="'auto'">
+      <el-table class="data-table" :data="loading ? [] : filteredLowStockItems" stripe :table-layout="'auto'">
         <template #empty>
           <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
           <el-empty v-else description="暂无库存预警商品" />
@@ -149,7 +149,7 @@
               </div>
             </div>
           </template>
-          <el-table :data="loading ? [] : recentSoldModels" stripe :table-layout="'auto'">
+          <el-table class="data-table" :data="loading ? [] : recentSoldModels" stripe :table-layout="'auto'">
             <template #empty>
               <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
               <el-empty v-else description="暂无最近销售记录" />
@@ -253,7 +253,7 @@
             </div>
           </div>
 
-          <el-table
+          <el-table class="data-table"
             :data="loading ? [] : filteredLowStockItems"
             stripe
             style="width: 100%"
@@ -299,11 +299,13 @@
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="120" align="center">
+            <el-table-column label="操作" :width="$getActionColumnWidth(1)" align="center" class-name="actions-column">
               <template #default="{ row }">
-                <el-button size="small" type="primary" @click="handleReplenish(row)">
+                <div class="action-buttons">
+                <el-button size="small" type="primary" @click.stop="handleReplenish(row)">
                   补货
                 </el-button>
+                </div>
               </template>
             </el-table-column>
           </el-table>

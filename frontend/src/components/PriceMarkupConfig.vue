@@ -8,7 +8,7 @@
     :show-default-footer="false"
     @close="handleClose"
   >
-    <div class="markup-layout">
+    <div class="markup-layout" v-loading="loading">
       <section class="overview-panel">
         <div class="overview-item">
           <span class="overview-label">销售模式</span>
@@ -28,8 +28,8 @@
         <section class="config-card">
           <div class="section-heading">
             <div>
-              <h4 class="form-section-title">销售价规则</h4>
-              <p class="section-subtitle">采集价转销售价</p>
+              <h4 class="form-section-title">销售加价规则</h4>
+              <p class="section-subtitle">开启销售加价模式</p>
             </div>
             <el-switch
               v-model="form.enabled"
@@ -137,8 +137,8 @@
         <section class="config-card">
           <div class="section-heading">
             <div>
-              <h4 class="form-section-title">批发显示价</h4>
-              <p class="section-subtitle">公开报价页批发显示</p>
+              <h4 class="form-section-title">批发加价规则</h4>
+              <p class="section-subtitle">开启批发价格模式</p>
             </div>
             <el-switch
               v-model="form.wholesale.enabled"
@@ -148,7 +148,7 @@
           </div>
 
           <div class="inline-grid inline-grid--single">
-            <el-form-item label="调整金额" class="compact-form-item">
+            <el-form-item label="加价金额" class="compact-form-item">
               <div class="price-input-group">
                 <el-input-number
                   v-model="form.wholesale.adjustment"
@@ -311,7 +311,7 @@ watch(() => props.modelValue, (isOpen) => {
   if (isOpen) {
     loadConfig()
   }
-})
+}, { immediate: true })
 
 // 监听传入的配置
 watch(() => props.config, (newConfig) => {

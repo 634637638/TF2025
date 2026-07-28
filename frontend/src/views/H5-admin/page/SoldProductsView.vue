@@ -796,7 +796,7 @@ onUnmounted(() => {
       height: 32px !important;
       min-width: 32px !important;
       padding: 0 !important;
-      background: rgba(245, 108, 108, 0.9) !important;
+      background: var(--tf-button-danger-bg) !important;
       border: none !important;
       opacity: 0;
       transition: opacity 0.3s;
@@ -806,7 +806,7 @@ onUnmounted(() => {
       }
 
       &:hover {
-        background: rgba(245, 108, 108, 1) !important;
+        background: var(--tf-button-danger-hover-bg) !important;
       }
     }
 
@@ -954,13 +954,13 @@ onUnmounted(() => {
   height: 44px;
   border-radius: 50%;
   border: none;
-  background: rgba(245, 108, 108, 0.9);
-  color: #fff;
+  background: var(--tf-button-danger-bg);
+  color: var(--tf-button-on-color);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--tf-button-shadow);
   transition: background 0.2s;
 
   i {
@@ -968,7 +968,7 @@ onUnmounted(() => {
   }
 
   &:hover {
-    background: rgba(245, 108, 108, 1);
+    background: var(--tf-button-danger-hover-bg);
   }
 }
 </style>

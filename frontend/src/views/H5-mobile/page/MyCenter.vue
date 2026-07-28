@@ -655,7 +655,7 @@ onMounted(() => {
     position: absolute;
     top: 12px;
     right: 12px;
-    color: #fff;
+    color: var(--tf-button-on-color);
 
     i {
       font-size: 18px;
@@ -735,10 +735,10 @@ onMounted(() => {
     align-items: center;
     justify-content: center;
     gap: 8px;
-    color: #fff;
+    color: var(--tf-button-on-color);
     cursor: pointer;
     transition: all 0.3s;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: var(--tf-button-shadow);
 
     i {
       font-size: 20px;
@@ -751,15 +751,15 @@ onMounted(() => {
 
     &:active {
       transform: scale(0.98);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      box-shadow: var(--tf-button-shadow-hover);
     }
 
     &.login-btn {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: var(--tf-button-primary-bg);
     }
 
     &.register-btn {
-      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      background: var(--tf-button-primary-bg);
     }
   }
 }

@@ -551,9 +551,7 @@ const actionsStyle = computed<CSSProperties>(() => ({
 // 按钮组样式
 :deep(.action-buttons) {
   display: flex;
-  gap: 0.75rem;
   align-items: center;
-  flex-wrap: wrap;
   justify-content: flex-end;
   max-width: 100%;
   margin-left: auto;
@@ -561,7 +559,6 @@ const actionsStyle = computed<CSSProperties>(() => ({
 
 @media (max-width: 768px) {
   :deep(.action-buttons) {
-    gap: 0.5rem;
     justify-content: flex-end;
   }
 

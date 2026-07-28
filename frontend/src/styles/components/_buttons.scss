@@ -71,6 +71,82 @@
   --tf-button-disabled-bg: #f3f4f6;
   --tf-button-disabled-border: #e5e7eb;
   --tf-button-disabled-color: #9ca3af;
+
+  /* Semantic soft surfaces used by table rows, cards and compact tools. */
+  --tf-button-view-soft-bg: #ecfeff;
+  --tf-button-view-soft-border: #a5f3fc;
+  --tf-button-view-soft-color: #0e7490;
+  --tf-button-view-soft-hover-bg: #cffafe;
+  --tf-button-view-soft-hover-border: #22d3ee;
+  --tf-button-view-soft-hover-color: #155e75;
+  --tf-button-primary-soft-bg: #eff6ff;
+  --tf-button-primary-soft-border: #bfdbfe;
+  --tf-button-primary-soft-color: #1d4ed8;
+  --tf-button-primary-soft-hover-bg: #dbeafe;
+  --tf-button-primary-soft-hover-border: #60a5fa;
+  --tf-button-primary-soft-hover-color: #1e40af;
+  --tf-button-success-soft-bg: #f0fdf4;
+  --tf-button-success-soft-border: #bbf7d0;
+  --tf-button-success-soft-color: #15803d;
+  --tf-button-success-soft-hover-bg: #dcfce7;
+  --tf-button-success-soft-hover-border: #4ade80;
+  --tf-button-success-soft-hover-color: #166534;
+  --tf-button-warning-soft-bg: #fff7ed;
+  --tf-button-warning-soft-border: #fed7aa;
+  --tf-button-warning-soft-color: #c2410c;
+  --tf-button-warning-soft-hover-bg: #ffedd5;
+  --tf-button-warning-soft-hover-border: #fb923c;
+  --tf-button-warning-soft-hover-color: #9a3412;
+  --tf-button-danger-soft-bg: #fef2f2;
+  --tf-button-danger-soft-border: #fecaca;
+  --tf-button-danger-soft-color: #b91c1c;
+  --tf-button-danger-soft-hover-bg: #fee2e2;
+  --tf-button-danger-soft-hover-border: #f87171;
+  --tf-button-danger-soft-hover-color: #991b1b;
+  --tf-button-manage-soft-bg: #eef2ff;
+  --tf-button-manage-soft-border: #c7d2fe;
+  --tf-button-manage-soft-color: #4338ca;
+  --tf-button-manage-soft-hover-bg: #e0e7ff;
+  --tf-button-manage-soft-hover-border: #818cf8;
+  --tf-button-manage-soft-hover-color: #3730a3;
+  --tf-button-finance-soft-bg: #f0fdfa;
+  --tf-button-finance-soft-border: #99f6e4;
+  --tf-button-finance-soft-color: #0f766e;
+  --tf-button-finance-soft-hover-bg: #ccfbf1;
+  --tf-button-finance-soft-hover-border: #2dd4bf;
+  --tf-button-finance-soft-hover-color: #115e59;
+  --tf-button-transfer-soft-bg: #f5f3ff;
+  --tf-button-transfer-soft-border: #ddd6fe;
+  --tf-button-transfer-soft-color: #6d28d9;
+  --tf-button-transfer-soft-hover-bg: #ede9fe;
+  --tf-button-transfer-soft-hover-border: #a78bfa;
+  --tf-button-transfer-soft-hover-color: #5b21b6;
+  --tf-button-export-soft-bg: #f0f9ff;
+  --tf-button-export-soft-border: #bae6fd;
+  --tf-button-export-soft-color: #0369a1;
+  --tf-button-export-soft-hover-bg: #e0f2fe;
+  --tf-button-export-soft-hover-border: #38bdf8;
+  --tf-button-export-soft-hover-color: #075985;
+
+  /* Icon-only, overlay and media tool controls still use public tokens. */
+  --tf-button-on-color: #ffffff;
+  --tf-button-tool-color: #475569;
+  --tf-button-tool-muted-color: #94a3b8;
+  --tf-button-tool-bg: transparent;
+  --tf-button-tool-hover-bg: #f1f5f9;
+  --tf-button-overlay-bg: rgba(255, 255, 255, 0.2);
+  --tf-button-overlay-hover-bg: rgba(255, 255, 255, 0.3);
+  --tf-button-overlay-surface-bg: rgba(255, 255, 255, 0.94);
+  --tf-button-overlay-danger-bg: rgba(220, 38, 38, 0.9);
+  --tf-button-overlay-danger-hover-bg: rgba(220, 38, 38, 1);
+  --tf-button-tooltip-bg: rgba(15, 23, 42, 0.9);
+  --tf-button-focus-ring: 0 0 0 3px rgba(37, 99, 235, 0.25);
+  --tf-button-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+  --tf-button-shadow-hover: 0 6px 16px rgba(15, 23, 42, 0.2);
+  --tf-button-primary-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  --tf-button-success-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
+  --tf-button-warning-shadow: 0 4px 12px rgba(217, 119, 6, 0.3);
+  --tf-button-danger-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
 }
 
 @mixin tf-filled-button($bg, $border, $color, $hover-bg, $hover-border) {

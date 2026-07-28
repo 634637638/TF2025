@@ -143,7 +143,7 @@ const inferConfirmSemantic = (message: string, title = ''): ConfirmSemantic => {
       title: '退出确认',
       confirmText: '退出',
       type: 'warning',
-      customClass: ['message-box-unified', 'message-box-warning']
+      customClass: ['message-box-unified', 'message-box-danger']
     }
   }
 

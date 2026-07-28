@@ -1087,9 +1087,9 @@ watch(routeProductKey, () => {
     align-items: center;
     gap: 2px;
     padding: 8px 12px;
-    background: #f8f9fa;
+    background: var(--tf-button-neutral-bg);
     border-radius: 8px;
-    color: #666;
+    color: var(--tf-button-tool-color);
     font-size: 11px;
     text-decoration: none;
     transition: all 0.3s ease;
@@ -1133,19 +1133,19 @@ watch(routeProductKey, () => {
   }
 
   .cart-btn {
-    background: #fff !important;
-    color: #667eea !important;
-    border: 1px solid #667eea !important;
+    background: var(--tf-button-neutral-bg) !important;
+    color: var(--tf-button-primary-soft-color) !important;
+    border: 1px solid var(--tf-button-neutral-border) !important;
 
     &:hover:not(:disabled) {
-      background: #f8f9fa !important;
+      background: var(--tf-button-neutral-hover-bg) !important;
     }
   }
 
   .buy-btn {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    background: var(--tf-button-primary-bg) !important;
     border: none !important;
-    color: #fff !important;
+    color: var(--tf-button-on-color) !important;
 
     &:hover:not(:disabled) {
       opacity: 0.9;

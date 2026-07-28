@@ -353,7 +353,7 @@
           <i class="fas fa-inbox"></i>
           <p>暂无导入历史</p>
         </div>
-        <el-table v-else :data="importHistory" stripe class="history-table">
+        <el-table v-else :data="importHistory" stripe class="data-table history-table">
           <el-table-column prop="created_at" label="导入时间" width="170">
             <template #default="{ row }">
               <div class="timestamp-cell">
@@ -410,17 +410,19 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="80" fixed="right">
+          <el-table-column label="操作" :width="$getActionColumnWidth(1)" class-name="actions-column">
             <template #default="{ row }">
+              <div class="action-buttons">
               <el-button
                 type="danger"
                 size="small"
                 :icon="Delete"
-                @click="handleDeleteHistory(row)"
+                @click.stop="handleDeleteHistory(row)"
                 link
               >
                 删除
               </el-button>
+              </div>
             </template>
           </el-table-column>
         </el-table>

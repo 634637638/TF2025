@@ -248,11 +248,11 @@
         </template>
 
         <el-table-column v-if="!isMobile" type="index" label="序号" width="60" align="center" />
-        <el-table-column v-if="!isMobile" prop="brand_name" label="品牌" min-width="80" align="center" show-overflow-tooltip />
+        <el-table-column v-if="!isMobile" prop="brand_name" label="品牌" :min-width="getPriceListColumnWidth('brand_name')" align="center" class-name="complete-text-column" />
         <el-table-column prop="model_number" label="型号" :min-width="getPriceListColumnWidth('model_number')" align="center" />
         <el-table-column prop="color_name" label="颜色" :min-width="getPriceListColumnWidth('color_name')" align="center" />
         <el-table-column prop="memory" label="内存" :min-width="getPriceListColumnWidth('memory')" align="center" />
-        <el-table-column v-if="!isMobile" prop="retail_price" label="零售价" min-width="100" align="center">
+        <el-table-column v-if="!isMobile" prop="retail_price" label="零售价" :min-width="getPriceListColumnWidth('retail_price')" align="center" class-name="complete-text-column">
           <template #default="{ row }">
             <span v-if="row.retail_price !== null && row.retail_price !== undefined && row.retail_price > 0" class="retail-price-tag">
               ¥{{ Number(row.retail_price).toFixed(0) }}
@@ -260,7 +260,7 @@
             <span v-else class="text-gray">-</span>
           </template>
         </el-table-column>
-        <el-table-column label="价格趋势" :min-width="isMobile ? 82 : 100" align="center">
+        <el-table-column label="价格趋势" :min-width="getPriceListColumnWidth('price_trend')" align="center" class-name="complete-text-column">
           <template #default="{ row }">
             <span
               v-if="row.price_trend === 'up'"
@@ -295,13 +295,13 @@
             <span v-else class="text-gray">-</span>
           </template>
         </el-table-column>
-        <el-table-column v-if="!isMobile" prop="stock_quantity" label="库存数" min-width="80" align="center">
+        <el-table-column v-if="!isMobile" prop="stock_quantity" label="库存数" :min-width="getPriceListColumnWidth('stock_quantity')" align="center">
           <template #default="{ row }">
             <el-tag v-if="row.stock_quantity > 0" type="primary" size="small">{{ row.stock_quantity }}台</el-tag>
             <el-tag v-else type="danger" size="small">0台</el-tag>
           </template>
         </el-table-column>
-        <el-table-column v-if="!isMobile" prop="last_sync_time" label="同步时间" min-width="150" align="center">
+        <el-table-column v-if="!isMobile" prop="last_sync_time" label="同步时间" :min-width="getPriceListColumnWidth('last_sync_time')" align="center" class-name="complete-text-column">
           <template #default="{ row }">
             <el-tag v-if="row.last_sync_time" type="danger" effect="plain" size="small">
               {{ formatDateTime(row.last_sync_time) }}
@@ -309,13 +309,13 @@
             <span v-else class="text-gray">未同步</span>
           </template>
         </el-table-column>
-        <el-table-column v-if="!isMobile" prop="is_collect" label="采集状态" min-width="90" align="center">
+        <el-table-column v-if="!isMobile" prop="is_collect" label="采集状态" :min-width="getPriceListColumnWidth('is_collect')" align="center">
           <template #default="{ row }">
             <el-tag v-if="row.is_collect === 0" type="info" size="small">不采集</el-tag>
             <el-tag v-else type="success" size="small">采集</el-tag>
           </template>
         </el-table-column>
-        <el-table-column v-if="!isMobile" prop="show_price" label="报价" min-width="70" align="center">
+        <el-table-column v-if="!isMobile" prop="show_price" label="报价" :min-width="getPriceListColumnWidth('show_price')" align="center">
           <template #default="{ row }">
             <el-switch
               v-model="row.show_price"
@@ -326,7 +326,7 @@
             />
           </template>
         </el-table-column>
-        <el-table-column v-if="!isMobile" label="操作" min-width="260" fixed="right" align="center" class-name="actions-column">
+          <el-table-column v-if="!isMobile" label="操作" :width="$getActionColumnWidth(2 + Number(canEdit) + Number(canDelete))" align="center" class-name="actions-column">
           <template #default="{ row }">
             <div class="action-buttons">
               <el-button type="primary" size="small" @click.stop="handleViewInventory(row)">
@@ -688,10 +688,10 @@
             <h3>所有同步源</h3>
           </div>
 
-          <el-table :data="syncConfigsList" stripe border max-height="300">
+          <el-table class="data-table" :data="syncConfigsList" stripe border max-height="300">
             <el-table-column prop="config_name" label="配置名称" width="130" />
             <el-table-column prop="login_username" label="用户名" width="120" />
-            <el-table-column prop="source_url" label="数据源" width="180" show-overflow-tooltip>
+            <el-table-column prop="source_url" label="数据源" width="180" class-name="complete-text-column wrapped-text-column">
               <template #default="{ row }">
                 {{ formatSourceUrl(row.source_url) }}
               </template>
@@ -707,14 +707,14 @@
                 {{ row.last_sync_time ? formatDateTime(row.last_sync_time) : '-' }}
               </template>
             </el-table-column>
-            <el-table-column label="操作" min-width="220" fixed="right" align="center">
+              <el-table-column v-if="canEdit || canDelete" label="操作" :width="syncConfigActionColumnWidth" align="center" class-name="actions-column">
               <template #default="{ row }">
                 <div class="action-buttons">
                   <el-button
                     v-if="canEdit && !row.is_default"
                     type="success"
                     size="small"
-                    @click="handleSetDefaultConfig(row.id)"
+                    @click.stop="handleSetDefaultConfig(row.id)"
                   >
                     <i class="fas fa-check"></i>
                     设为默认
@@ -723,7 +723,7 @@
                     v-if="canEdit"
                     type="warning"
                     size="small"
-                    @click="handleEditConfig(row)"
+                    @click.stop="handleEditConfig(row)"
                   >
                     <i class="fas fa-edit"></i>
                     编辑
@@ -732,7 +732,7 @@
                     v-if="canDelete && !row.is_default"
                     type="danger"
                     size="small"
-                    @click="handleDeleteConfig(row.id)"
+                    @click.stop="handleDeleteConfig(row.id)"
                   >
                     <i class="fas fa-trash"></i>
                     删除
@@ -771,7 +771,7 @@
           </el-button>
         </div>
       </div>
-      <el-table :data="priceHistory" stripe border max-height="400" @selection-change="handleHistorySelectionChange">
+      <el-table class="data-table" :data="priceHistory" stripe border max-height="400" @selection-change="handleHistorySelectionChange">
         <el-table-column type="selection" width="55" />
         <el-table-column type="index" label="序号" width="60" />
         <el-table-column prop="recorded_at" label="记录时间" width="170">
@@ -819,10 +819,10 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" min-width="100" align="center" fixed="right">
+              <el-table-column v-if="canDelete" label="操作" :width="$getActionColumnWidth(1)" align="center" class-name="actions-column">
           <template #default="{ row }">
             <div class="action-buttons">
-              <el-button v-if="canDelete" type="danger" size="small" @click="handleDeleteHistoryItem(row)">
+              <el-button v-if="canDelete" type="danger" size="small" @click.stop="handleDeleteHistoryItem(row)">
                 <i class="fas fa-trash-alt"></i>
                 删除
               </el-button>
@@ -857,7 +857,7 @@
           <div class="inventory-header">
             <span class="record-count">共 {{ inventoryTotal }} 条记录</span>
           </div>
-          <el-table :data="inventoryData" stripe border max-height="500" class="inventory-table">
+          <el-table :data="inventoryData" stripe border max-height="500" class="data-table inventory-table">
             <el-table-column label="优先" width="60" align="center">
               <template #default="{ row, $index }">
                 <span v-if="$index === 0" class="priority-badge">
@@ -943,7 +943,7 @@ import { canAccessRoutePath } from '@/constants/routePermissions'
 import { TimeUtil } from '@/utils/time'
 import { logger } from '@/utils/logger'
 import { useLoadingState } from '@/composables'
-import { getTextColumnMinWidth } from '@/utils/table-layout'
+import { getAdaptiveActionColumnWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 
 const PriceMarkupConfig = defineAsyncComponent(() => import('@/components/PriceMarkupConfig.vue'))
 
@@ -1076,6 +1076,14 @@ const savingConfig = ref(false)
 const syncing = ref(false)
 const clearingPrices = ref(false)
 const syncConfigsList = ref<any[]>([])
+const syncConfigActionColumnWidth = computed(() => getAdaptiveActionColumnWidth(
+  syncConfigsList.value,
+  [
+    { label: '设为默认', visible: row => canEdit.value && !row.is_default },
+    { label: '编辑', visible: canEdit.value },
+    { label: '删除', visible: row => canDelete.value && !row.is_default }
+  ]
+))
 const syncConfig = reactive({
   id: null as number | null,
   is_default: false,
@@ -1104,25 +1112,59 @@ const mobileActionRowId = ref<string | null>(null)
 const lastTappedRowId = ref<string | null>(null)
 const lastTapTimestamp = ref(0)
 
-type PriceListAdaptiveField = 'model_number' | 'color_name' | 'memory' | 'wholesale_price'
+type PriceListAdaptiveField =
+  | 'brand_name'
+  | 'model_number'
+  | 'color_name'
+  | 'memory'
+  | 'retail_price'
+  | 'price_trend'
+  | 'wholesale_price'
+  | 'stock_quantity'
+  | 'last_sync_time'
+  | 'is_collect'
+  | 'show_price'
 
 const getPriceListColumnWidth = (field: PriceListAdaptiveField) => {
   const labels: Record<PriceListAdaptiveField, string> = {
+    brand_name: '品牌',
     model_number: '型号',
     color_name: '颜色',
     memory: '内存',
-    wholesale_price: '批发价格'
+    retail_price: '零售价',
+    price_trend: '价格趋势',
+    wholesale_price: '批发价格',
+    stock_quantity: '库存数',
+    last_sync_time: '同步时间',
+    is_collect: '采集状态',
+    show_price: '报价'
   }
   const minimumWidths: Record<PriceListAdaptiveField, number> = {
+    brand_name: 68,
     model_number: isMobile.value ? 104 : 120,
     color_name: isMobile.value ? 56 : 70,
     memory: isMobile.value ? 64 : 70,
-    wholesale_price: isMobile.value ? 84 : 100
+    retail_price: 84,
+    price_trend: isMobile.value ? 82 : 88,
+    wholesale_price: isMobile.value ? 84 : 92,
+    stock_quantity: 72,
+    last_sync_time: 132,
+    is_collect: 82,
+    show_price: 62
   }
   const values = priceList.value.map((row) => {
-    if (field === 'wholesale_price') {
-      return row.wholesale_price ? `¥${Number(row.wholesale_price).toFixed(0)}` : '-'
+    if (field === 'retail_price' || field === 'wholesale_price') {
+      return row[field] ? `¥${Number(row[field]).toFixed(0)}` : '-'
     }
+    if (field === 'price_trend') {
+      return row.price_change_amount && row.price_change_amount !== '='
+        ? `¥${Math.round(Number(row.price_change_amount))}`
+        : '='
+    }
+    if (field === 'stock_quantity') return `${row.stock_quantity || 0}台`
+    if (field === 'last_sync_time') return row.last_sync_time ? formatDateTime(row.last_sync_time) : '未同步'
+    if (field === 'is_collect') return row.is_collect === 0 ? '不采集' : '采集'
+    if (field === 'show_price') return '报价'
     return row[field] || '-'
   })
 
@@ -2639,7 +2681,6 @@ onUnmounted(() => {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
       width: 100%;
       flex-wrap: nowrap;
 
@@ -2858,7 +2899,6 @@ onUnmounted(() => {
 .mobile-row-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
   width: 100%;
   padding: 8px;
   background: #f8fafc;

@@ -4,6 +4,7 @@
  */
 
 import { ComponentCustomProperties } from 'vue'
+import type { ActionColumnInput, ActionColumnWidthOptions } from '@/utils/table-layout'
 import type {
   AppConfig,
   DeviceInfo,
@@ -13,6 +14,12 @@ import type {
   WebSocketState,
   TaskQueue
 } from './index'
+
+declare module 'vue' {
+  interface ComponentCustomProperties {
+    $getActionColumnWidth: (actions: ActionColumnInput, options?: ActionColumnWidthOptions) => number
+  }
+}
 
 // ===== 扩展 Window 接口 =====
 

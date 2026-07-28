@@ -272,7 +272,7 @@
               </el-space>
             </div>
           </template>
-          <el-table :data="employeePerformanceData" stripe class="w-full" max-height="400" :table-layout="'auto'">
+          <el-table :data="employeePerformanceData" stripe class="data-table w-full" max-height="400" :table-layout="'auto'">
             <el-table-column type="index" label="排名" width="60" align="center" fixed />
             <el-table-column prop="name" label="员工姓名" min-width="100" align="center" />
             <el-table-column prop="store" label="所属店铺" min-width="100" align="center" />
@@ -605,7 +605,7 @@
               </el-space>
             </div>
           </template>
-          <el-table :data="costAnalysisData" stripe class="w-full">
+          <el-table :data="costAnalysisData" stripe class="data-table w-full">
             <el-table-column type="index" label="序号" width="60" align="center" />
             <el-table-column prop="category" label="成本类别" width="150">
               <template #default="{ row }">

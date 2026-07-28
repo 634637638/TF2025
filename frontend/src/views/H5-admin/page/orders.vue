@@ -116,7 +116,7 @@
 
     <!-- 订单列表 -->
     <el-card class="table-card admin-panel admin-table-panel" shadow="never">
-      <el-table :data="loading ? [] : orders" class="w-full" :border="true">
+      <el-table :data="loading ? [] : orders" class="data-table w-full" :border="true">
         <template #empty>
           <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
           <el-empty v-else description="暂无订单" />
@@ -143,12 +143,12 @@
             {{ formatTime(row.created_at) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="280" fixed="right">
+        <el-table-column label="操作" :width="orderActionColumnWidth" class-name="actions-column">
           <template #default="{ row }">
             <div class="action-buttons">
               <!-- 待支付状态：显示"查看"和"取消" -->
               <template v-if="row.status === 'pending'">
-                <el-button size="small" type="info" @click="viewOrder(row)" link>
+                <el-button size="small" type="info" @click.stop="viewOrder(row)" link>
                   <i class="fas fa-eye"></i> 查看
                 </el-button>
                 <el-button
@@ -156,7 +156,7 @@
                   size="small"
                   type="danger"
                   link
-                  @click="cancelOrder(row)"
+                  @click.stop="cancelOrder(row)"
                 >
                   取消
                 </el-button>
@@ -164,7 +164,7 @@
 
               <!-- 待审核状态：显示"查看"、"通过"、"拒绝"、"取消" -->
               <template v-if="row.status === 'paid'">
-                <el-button size="small" type="info" @click="viewOrder(row)" link>
+                <el-button size="small" type="info" @click.stop="viewOrder(row)" link>
                   <i class="fas fa-eye"></i> 查看
                 </el-button>
                 <el-button
@@ -172,7 +172,7 @@
                   size="small"
                   type="success"
                   link
-                  @click="confirmOrder(row)"
+                  @click.stop="confirmOrder(row)"
                 >
                   通过
                 </el-button>
@@ -181,7 +181,7 @@
                   size="small"
                   type="warning"
                   link
-                  @click="rejectOrder(row)"
+                  @click.stop="rejectOrder(row)"
                 >
                   拒绝
                 </el-button>
@@ -190,7 +190,7 @@
                   size="small"
                   type="danger"
                   link
-                  @click="cancelOrder(row)"
+                  @click.stop="cancelOrder(row)"
                 >
                   取消
                 </el-button>
@@ -198,7 +198,7 @@
 
               <!-- 待发货状态：显示"查看"和"发货" -->
               <template v-if="row.status === 'confirmed'">
-                <el-button size="small" type="info" @click="viewOrder(row)" link>
+                <el-button size="small" type="info" @click.stop="viewOrder(row)" link>
                   <i class="fas fa-eye"></i> 查看
                 </el-button>
                 <el-button
@@ -206,7 +206,7 @@
                   size="small"
                   type="primary"
                   link
-                  @click="shipOrder(row)"
+                  @click.stop="shipOrder(row)"
                 >
                   发货
                 </el-button>
@@ -214,7 +214,7 @@
 
               <!-- 已发货状态：显示"查看"和"完成" -->
               <template v-if="row.status === 'shipped'">
-                <el-button size="small" type="info" @click="viewOrder(row)" link>
+                <el-button size="small" type="info" @click.stop="viewOrder(row)" link>
                   <i class="fas fa-eye"></i> 查看
                 </el-button>
                 <el-button
@@ -222,7 +222,7 @@
                   size="small"
                   type="success"
                   link
-                  @click="completeOrder(row)"
+                  @click.stop="completeOrder(row)"
                 >
                   完成
                 </el-button>
@@ -230,7 +230,7 @@
 
               <!-- 已完成/已取消状态：只显示"查看" -->
               <template v-if="['completed', 'cancelled'].includes(row.status)">
-                <el-button size="small" type="info" @click="viewOrder(row)" link>
+                <el-button size="small" type="info" @click.stop="viewOrder(row)" link>
                   <i class="fas fa-eye"></i> 查看
                 </el-button>
               </template>
@@ -573,6 +573,7 @@ import { fieldPermissions } from '@/composables/useFieldPermissions'
 import { useLoadingState } from '@/composables'
 import { api } from '@/utils/unified-api'
 import logger from '@/utils/logger'
+import { getAdaptiveActionColumnWidth } from '@/utils/table-layout'
 import type { HeaderAction } from '@/types'
 
 // 注入父组件提供的注册方法
@@ -604,6 +605,17 @@ const H5_ORDER_MODULE_KEY = 'h5_admin_ordersview'
 const { loading } = useLoadingState(true)
 const hasInitializedPageData = ref(false)
 const orders = ref<OrderRecord[]>([])
+const orderActionColumnWidth = computed(() => getAdaptiveActionColumnWidth(
+  orders.value,
+  [
+    true,
+    row => canEdit.value && ['pending', 'paid'].includes(String(row.status)),
+    row => canEdit.value && row.status === 'paid',
+    row => canEdit.value && row.status === 'paid',
+    row => canEdit.value && row.status === 'confirmed',
+    row => canEdit.value && row.status === 'shipped'
+  ]
+))
 const statistics = ref<OrderStatistics>({})
 const currentOrder = ref<OrderRecord | null>(null)
 const showDetailDialog = ref(false)
@@ -1236,7 +1248,6 @@ onUnmounted(() => {
 
   .action-buttons {
     display: flex;
-    gap: 8px;
   }
 
   .pagination-wrapper {

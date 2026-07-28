@@ -521,7 +521,7 @@ defineExpose({
   height: 56px;
   border-radius: 50%;
   border: none;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--tf-button-shadow);
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
@@ -538,32 +538,32 @@ defineExpose({
 
 .fab-button.fab-primary {
   background: var(--el-color-primary, #409eff);
-  color: white;
+  color: var(--tf-button-on-color);
 }
 
 .fab-button.fab-success {
   background: var(--el-color-success, #67c23a);
-  color: white;
+  color: var(--tf-button-on-color);
 }
 
 .fab-button.fab-warning {
   background: var(--el-color-warning, #e6a23c);
-  color: white;
+  color: var(--tf-button-on-color);
 }
 
 .fab-button.fab-danger {
   background: var(--el-color-danger, #f56c6c);
-  color: white;
+  color: var(--tf-button-on-color);
 }
 
 .fab-button.fab-info {
   background: var(--el-color-info, #909399);
-  color: white;
+  color: var(--tf-button-on-color);
 }
 
 .fab-button:hover {
   transform: scale(1.1);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--tf-button-shadow-hover);
 }
 
 .fab-button:active {

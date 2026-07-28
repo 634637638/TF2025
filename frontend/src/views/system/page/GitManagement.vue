@@ -1253,8 +1253,6 @@ watch(canView, async (value) => {
 
 .action-buttons {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
 }
 
 .recent-item {
@@ -1330,8 +1328,8 @@ watch(canView, async (value) => {
   width: 32px;
   height: 32px;
   border: none;
-  background: #f5f7fa;
-  color: #409eff;
+  background: var(--tf-button-neutral-bg);
+  color: var(--tf-button-primary-soft-color);
   border-radius: 8px;
   cursor: pointer;
 }

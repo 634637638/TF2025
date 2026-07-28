@@ -221,7 +221,7 @@
 
           <el-tabs v-model="activeMetricsTab" class="tf-page-tabs">
             <el-tab-pane label="API 性能" name="api" class="tf-tab-panel">
-              <el-table :data="metricsLoading ? [] : apiMetrics" stripe>
+              <el-table class="data-table" :data="metricsLoading ? [] : apiMetrics" stripe>
                 <template #empty>
                   <TableLoadingRow v-if="metricsLoading" mode="block" text="加载中..." />
                   <el-empty v-else description="暂无 API 性能数据" />
@@ -258,7 +258,7 @@
             </el-tab-pane>
 
             <el-tab-pane label="数据库性能" name="database" class="tf-tab-panel">
-              <el-table :data="metricsLoading ? [] : dbMetrics" stripe>
+              <el-table class="data-table" :data="metricsLoading ? [] : dbMetrics" stripe>
                 <template #empty>
                   <TableLoadingRow v-if="metricsLoading" mode="block" text="加载中..." />
                   <el-empty v-else description="暂无数据库性能数据" />

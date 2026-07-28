@@ -208,7 +208,7 @@
               <span class="summary-value">{{ performanceSummary.wholesaleCount }} / {{ performanceSummary.allocationCount }}</span>
             </div>
           </div>
-          <el-table :data="employeePerformance" stripe style="width: 100%" max-height="450" :table-layout="'auto'">
+          <el-table class="data-table" :data="employeePerformance" stripe style="width: 100%" max-height="450" :table-layout="'auto'">
             <el-table-column type="index" label="排名" width="60" align="center" />
             <el-table-column prop="name" label="姓名" min-width="96" />
             <el-table-column prop="store_name" label="绑定店铺" min-width="110">
@@ -294,7 +294,7 @@
               <div class="summary-value">{{ attendanceSummary.overtimeCount }}</div>
             </div>
           </div>
-          <el-table :data="attendanceRecords" stripe style="width: 100%" max-height="450" empty-text="暂无考勤记录" :table-layout="'auto'">
+          <el-table class="data-table" :data="attendanceRecords" stripe style="width: 100%" max-height="450" empty-text="暂无考勤记录" :table-layout="'auto'">
             <el-table-column prop="date" label="日期" min-width="110" />
             <el-table-column prop="employee_name" label="员工" width="80" />
             <el-table-column prop="store_name" label="店铺" width="80">

@@ -385,7 +385,7 @@
                 </template>
               </el-table-column>
 
-              <el-table-column v-if="showActionField" label="操作" min-width="254" align="center" class-name="actions-column">
+              <el-table-column v-if="showActionField" label="操作" :width="$getActionColumnWidth([...(canEdit ? ['编辑'] : []), '详情', ...(canDelete ? ['删除'] : [])])" align="center" class-name="actions-column">
                 <template #default="{ row: customer }">
                       <div class="action-buttons">
                         <el-button

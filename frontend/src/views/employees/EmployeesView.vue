@@ -141,12 +141,12 @@
           <el-table-column v-if="canViewField('username')" prop="username" label="工号" :min-width="isMobile ? 76 : 110" align="center" />
           <el-table-column v-if="showRoleColumn" label="角色" :min-width="isMobile ? 102 : 130" align="center"><template #default="{ row }"><span :class="['role-badge', getRoleBadgeClass(row)]"><i :class="getRoleIcon(row)"></i>{{ getRoleDisplayName(row) }}</span></template></el-table-column>
           <el-table-column v-if="showPhoneColumn" label="电话" min-width="132" align="center"><template #default="{ row }"><span v-if="row.phone" class="phone-number"><i class="fas fa-phone"></i>{{ row.phone }}</span><span v-else class="no-data">-</span></template></el-table-column>
-          <el-table-column v-if="showEmailColumn" label="邮箱" min-width="190" align="center" show-overflow-tooltip><template #default="{ row }"><span v-if="row.email" class="phone-number"><i class="fas fa-envelope"></i>{{ row.email }}</span><span v-else class="no-data">-</span></template></el-table-column>
+          <el-table-column v-if="showEmailColumn" label="邮箱" min-width="190" align="center" class-name="complete-text-column"><template #default="{ row }"><span v-if="row.email" class="phone-number"><i class="fas fa-envelope"></i>{{ row.email }}</span><span v-else class="no-data">-</span></template></el-table-column>
           <el-table-column v-if="showStatusColumn" label="状态" :min-width="isMobile ? 72 : 84" align="center"><template #default="{ row }"><span :class="['status-badge', isEmployeeActive(row.status) ? 'status-active' : 'status-inactive']"><i :class="isEmployeeActive(row.status) ? 'fas fa-circle' : 'fas fa-user-slash'"></i>{{ isEmployeeActive(row.status) ? '在职' : '离职' }}</span></template></el-table-column>
           <el-table-column v-if="showLastLoginColumn" label="最后登录" min-width="156" align="center"><template #default="{ row }"><div class="time-info"><i class="fas fa-clock"></i><span v-if="row.last_login">{{ formatDate(row.last_login) }}</span><span v-else class="no-data">从未登录</span></div></template></el-table-column>
           <el-table-column v-if="showCreatedAtColumn" label="创建时间" min-width="126" align="center"><template #default="{ row }"><div class="time-info"><i class="fas fa-clock"></i>{{ formatDate(row.created_at, false) }}</div></template></el-table-column>
           <el-table-column v-if="showHireDateColumn" label="入职时间" min-width="126" align="center"><template #default="{ row }"><div class="time-info"><i class="fas fa-user-clock"></i><span v-if="row.hire_date">{{ formatDate(row.hire_date, false) }}</span><span v-else class="no-data">未设置</span></div></template></el-table-column>
-          <el-table-column v-if="showActionField" label="操作" min-width="270" align="center" class-name="actions-column"><template #default="{ row }"><div class="action-buttons"><el-button v-if="canEdit" v-permission="'employee:edit'" type="primary" size="small" :icon="Edit" @click.stop="editEmployee(row)">编辑</el-button><el-button v-if="canEdit && isEmployeeActive(row.status)" v-permission="'employee:edit'" type="warning" size="small" :icon="UserFilled" @click.stop="toggleStatus(row)">离职</el-button><el-button v-else-if="canEdit" v-permission="'employee:edit'" type="info" size="small" :icon="CircleCheck" @click.stop="toggleStatus(row)">恢复</el-button><el-button v-if="canDelete" v-permission="'employee:delete'" type="danger" size="small" :icon="Delete" @click.stop="deleteEmployee(row)">删除</el-button></div></template></el-table-column>
+          <el-table-column v-if="showActionField" label="操作" :width="$getActionColumnWidth((Number(canEdit) * 2) + Number(canDelete))" align="center" class-name="actions-column"><template #default="{ row }"><div class="action-buttons"><el-button v-if="canEdit" v-permission="'employee:edit'" type="primary" size="small" :icon="Edit" @click.stop="editEmployee(row)">编辑</el-button><el-button v-if="canEdit && isEmployeeActive(row.status)" v-permission="'employee:edit'" type="warning" size="small" :icon="UserFilled" @click.stop="toggleStatus(row)">离职</el-button><el-button v-else-if="canEdit" v-permission="'employee:edit'" type="info" size="small" :icon="CircleCheck" @click.stop="toggleStatus(row)">恢复</el-button><el-button v-if="canDelete" v-permission="'employee:delete'" type="danger" size="small" :icon="Delete" @click.stop="deleteEmployee(row)">删除</el-button></div></template></el-table-column>
           <el-table-column v-if="isMobile && (canEdit || canDelete)" type="expand" width="1" class-name="mobile-expand-column" label-class-name="mobile-expand-header"><template #default="{ row }"><div class="mobile-row-actions"><el-button v-if="canEdit" v-permission="'employee:edit'" type="primary" size="small" @click.stop="editEmployee(row)"><i class="fas fa-edit"></i><span>编辑</span></el-button><el-button v-if="canEdit && isEmployeeActive(row.status)" v-permission="'employee:edit'" type="warning" size="small" @click.stop="toggleStatus(row)"><i class="fas fa-user-slash"></i><span>离职</span></el-button><el-button v-else-if="canEdit" v-permission="'employee:edit'" type="info" size="small" @click.stop="toggleStatus(row)"><i class="fas fa-rotate-left"></i><span>恢复</span></el-button><el-button v-if="canDelete" v-permission="'employee:delete'" type="danger" size="small" @click.stop="deleteEmployee(row)"><i class="fas fa-trash"></i><span>删除</span></el-button></div></template></el-table-column>
         </el-table>
       </div>
@@ -1618,7 +1618,6 @@ onMounted(async () => {
 
 .action-buttons {
   display: flex;
-  gap: 12px;
 }
 
 /* 区域标题样式 */
@@ -2052,15 +2051,15 @@ onMounted(async () => {
 
 /* 自定义状态按钮样式 */
 .btn[style*="#ff6b35"]:hover {
-  background: #e55a2b !important;
+  background: var(--tf-button-neutral-hover-bg) !important;
   transform: translateY(-1px);
-  box-shadow: 0 2px 5px rgba(255, 107, 53, 0.3);
+  box-shadow: var(--tf-button-shadow-hover);
 }
 
 .btn[style*="#6c757d"]:hover {
-  background: #5a6268 !important;
+  background: var(--tf-button-neutral-hover-bg) !important;
   transform: translateY(-1px);
-  box-shadow: 0 2px 5px rgba(108, 117, 125, 0.3);
+  box-shadow: var(--tf-button-shadow-hover);
 }
 
 /* 操作按钮容器样式 */
@@ -2071,8 +2070,6 @@ onMounted(async () => {
 
 .action-buttons {
   display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
 }
 
 .action-buttons .btn {
@@ -2530,7 +2527,6 @@ onMounted(async () => {
     display: flex;
     flex-direction: row;
     width: auto;
-    gap: 8px;
   }
 
   .form-actions {
@@ -2561,14 +2557,12 @@ onMounted(async () => {
 
   .action-buttons {
     flex-direction: column;
-    gap: 4px;
   }
 
 }
 
 @media (max-width: 1024px) {
   .action-buttons {
-    gap: 6px;
   }
 
 }
@@ -2642,8 +2636,8 @@ onMounted(async () => {
 .status-btn {
   flex: 1;
   padding: 10px 16px;
-  border: 2px solid #e9ecef;
-  background: white;
+  border: 2px solid var(--tf-button-neutral-border);
+  background: var(--tf-button-neutral-bg);
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -2652,24 +2646,24 @@ onMounted(async () => {
   justify-content: center;
   gap: 8px;
   font-weight: 500;
-  color: #6c757d;
+  color: var(--tf-button-tool-color);
 }
 
 .status-btn:hover {
-  border-color: #dee2e6;
-  background: #f8f9fa;
+  border-color: var(--tf-button-neutral-hover-border);
+  background: var(--tf-button-neutral-hover-bg);
 }
 
 .status-btn.active {
-  border-color: #28a745;
-  background: #28a745;
-  color: white;
+  border-color: var(--tf-button-success-soft-hover-border);
+  background: var(--tf-button-success-hover-bg);
+  color: var(--tf-button-on-color);
 }
 
 .status-btn.inactive {
-  border-color: #dc3545;
-  background: #dc3545;
-  color: white;
+  border-color: var(--tf-button-danger-soft-border);
+  background: var(--tf-button-danger-bg);
+  color: var(--tf-button-on-color);
 }
 
 .status-btn i {

@@ -226,7 +226,7 @@ onUnmounted(() => {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.16);
+  background: var(--tf-button-overlay-bg);
 }
 
 :deep(.query-detail-dialog .el-dialog__close) {

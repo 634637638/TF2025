@@ -112,7 +112,7 @@
             </div>
           </template>
 
-          <el-table
+          <el-table class="data-table"
             :data="customerLoading ? [] : filteredCustomers"
             stripe
             :max-height="400"
@@ -142,16 +142,18 @@
                 {{ formatDate(row.last_order_date) }}
               </template>
             </el-table-column>
-            <el-table-column v-if="canViewCustomerField('customer_detail')" label="操作" width="120" fixed="right">
+            <el-table-column v-if="canViewCustomerField('customer_detail')" label="操作" :width="$getActionColumnWidth(['查看详情'])" class-name="actions-column">
               <template #default="{ row }">
+                <div class="action-buttons">
                 <el-button
                   type="primary"
                   size="small"
                   link
-                  @click="viewCustomerDetail(row)"
+                  @click.stop="viewCustomerDetail(row)"
                 >
                   查看详情
                 </el-button>
+                </div>
               </template>
             </el-table-column>
           </el-table>

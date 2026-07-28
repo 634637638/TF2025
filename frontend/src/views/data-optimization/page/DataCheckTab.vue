@@ -84,7 +84,7 @@
       </div>
 
       <div class="data-table-container">
-        <el-table
+        <el-table class="data-table"
           :data="loading ? [] : paginatedAllData"
           stripe
           border

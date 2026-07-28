@@ -26,7 +26,7 @@
         stripe
         border
         row-key="groupKey"
-        class="main-table"
+        class="data-table main-table"
         :table-layout="'auto'"
         :fit="false"
         style="width: 100%"
@@ -82,7 +82,7 @@
                   :data="row.children"
                   stripe
                   border
-                  class="child-table"
+                  class="data-table child-table"
                   :table-layout="'auto'"
                   :fit="false"
                 >
@@ -137,13 +137,13 @@
 
                   <el-table-column prop="remarks" label="备注" min-width="180" />
 
-                  <el-table-column label="操作" min-width="150" align="center">
+                  <el-table-column v-if="canEditWarningConfig" label="操作" :width="$getActionColumnWidth(2)" align="center" class-name="actions-column">
                     <template #default="{ row: child }">
                       <div v-if="canEditWarningConfig" class="table-actions">
-                        <el-button type="primary" link size="small" @click="openEditDialog(child)">
+                        <el-button type="primary" link size="small" @click.stop="openEditDialog(child)">
                           编辑
                         </el-button>
-                        <el-button type="danger" link size="small" @click="handleDelete(child)">
+                        <el-button type="danger" link size="small" @click.stop="handleDelete(child)">
                           删除
                         </el-button>
                       </div>
@@ -200,15 +200,15 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="remarks" label="备注" min-width="160" show-overflow-tooltip />
+        <el-table-column prop="remarks" label="备注" min-width="160" class-name="complete-text-column wrapped-text-column" />
 
-        <el-table-column label="操作" min-width="150" align="center">
+        <el-table-column v-if="canEditWarningConfig" label="操作" :width="$getActionColumnWidth(2)" align="center" class-name="actions-column">
           <template #default="{ row }">
             <div v-if="canEditWarningConfig" class="table-actions">
-              <el-button type="primary" link size="small" @click="openEditDialog(row)">
+              <el-button type="primary" link size="small" @click.stop="openEditDialog(row)">
                 编辑
               </el-button>
-              <el-button type="danger" link size="small" @click="handleDeleteGroup(row)">
+              <el-button type="danger" link size="small" @click.stop="handleDeleteGroup(row)">
                 删除
               </el-button>
             </div>
@@ -383,7 +383,7 @@
                 :data="variantDrafts"
                 border
                 stripe
-                class="variant-table"
+                class="data-table variant-table"
                 :table-layout="'auto'"
                 :fit="false"
               >
@@ -1128,7 +1128,6 @@ defineExpose({
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
     white-space: nowrap;
   }
 

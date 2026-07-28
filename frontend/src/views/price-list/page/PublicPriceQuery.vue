@@ -198,7 +198,7 @@
 
           <!-- 表格视图 -->
           <div class="table-wrapper">
-            <el-table :data="searchResults" stripe border @row-dblclick="handleRowDoubleClick" @row-click="handleRowClick" style="cursor: pointer;">
+            <el-table class="data-table" :data="searchResults" stripe border @row-dblclick="handleRowDoubleClick" @row-click="handleRowClick" style="cursor: pointer;">
               <el-table-column prop="brand_name" label="品牌" min-width="60" />
               <el-table-column prop="model_number" label="型号" min-width="100" />
               <el-table-column prop="color_name" label="颜色" min-width="50" />
@@ -968,10 +968,10 @@ declare global {
         width: 24px;
         height: 24px;
         border-radius: 50%;
-        background: #f0f0f0;
+        background: var(--tf-button-neutral-bg);
         cursor: pointer;
         transition: all 0.2s ease;
-        color: #999;
+        color: var(--tf-button-tool-color);
         font-size: 14px;
         margin-right: 8px;
 
@@ -1007,8 +1007,8 @@ declare global {
         }
 
         &:hover {
-          background: #e0e0e0;
-          color: #666;
+          background: var(--tf-button-neutral-hover-bg);
+          color: var(--tf-button-neutral-hover-color);
         }
 
         &:active {
@@ -1018,8 +1018,8 @@ declare global {
 
       .search-btn-inner {
         flex-shrink: 0;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
+        background: var(--tf-button-primary-bg);
+        color: var(--tf-button-on-color);
         border: none;
         border-radius: 6px;
         padding: 8px 20px;
@@ -1061,13 +1061,13 @@ declare global {
         }
 
         &:hover {
-          background: linear-gradient(135deg, #7b8ef0 0%, #8559b8 100%);
+          background: var(--tf-button-primary-hover-bg);
           box-shadow: none;
         }
 
         &:active {
           transform: scale(0.98);
-          background: linear-gradient(135deg, #5a6ad8 0%, #6a4190 100%);
+          background: var(--tf-button-primary-hover-bg);
         }
       }
     }
@@ -1282,15 +1282,15 @@ declare global {
         justify-content: center;
         gap: 8px;
         padding: 12px 24px;
-        background: linear-gradient(135deg, #67c23a 0%, #85ce61 100%);
+        background: var(--tf-button-success-bg);
         border: none;
         border-radius: 10px;
-        color: white;
+        color: var(--tf-button-on-color);
         font-size: 16px;
         font-weight: 600;
         cursor: pointer;
         transition: all 0.3s ease;
-        box-shadow: 0 4px 12px rgba(103, 194, 58, 0.3);
+        box-shadow: var(--tf-button-success-shadow);
 
         @media (max-width: 768px) {
           padding: 10px 20px;
@@ -1299,8 +1299,8 @@ declare global {
         }
 
         &:hover:not(:disabled) {
-          background: linear-gradient(135deg, #5daf34 0%, #73c24f 100%);
-          box-shadow: 0 6px 16px rgba(103, 194, 58, 0.4);
+          background: var(--tf-button-success-hover-bg);
+          box-shadow: var(--tf-button-success-shadow);
           transform: translateY(-2px);
         }
 
@@ -1525,25 +1525,21 @@ declare global {
     // 按钮容器
     .action-buttons {
       display: flex;
-      gap: 16px;
       justify-content: center;
       align-items: center;
 
       @media (max-width: 768px) {
         flex-direction: row;
-        gap: 10px;
         padding: 0 12px;
       }
 
       // 小屏幕手机适配
       @media (max-width: 420px) {
-        gap: 8px;
         padding: 0 8px;
       }
 
       // 超小屏幕适配
       @media (max-width: 380px) {
-        gap: 6px;
         padding: 0 6px;
       }
     }
@@ -1629,14 +1625,14 @@ declare global {
     }
 
     .notice-trigger-btn {
-      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      background: var(--tf-button-neutral-bg);
+      box-shadow: var(--tf-button-shadow);
 
       @media (max-width: 768px) {
         &:hover {
-          background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+          background: var(--tf-button-neutral-hover-bg);
           transform: none;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+          box-shadow: var(--tf-button-shadow-hover);
         }
 
         &:active {
@@ -1645,9 +1641,9 @@ declare global {
       }
 
       &:hover {
-        background: linear-gradient(135deg, #e8ecf1 0%, #b8c5d6 100%);
+        background: var(--tf-button-neutral-hover-bg);
         transform: translateY(-2px);
-        box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
+        box-shadow: var(--tf-button-shadow-hover);
       }
 
       &:active {
@@ -1655,12 +1651,12 @@ declare global {
       }
 
       .btn-text {
-        color: #333;
+        color: var(--tf-button-tool-color);
       }
 
       .btn-hint {
         font-size: 14px;
-        color: #e6a23c;
+        color: var(--tf-button-warning-soft-color);
         font-weight: normal;
 
         @media (max-width: 768px) {
@@ -1671,14 +1667,14 @@ declare global {
 
     // 保存图片按钮
     .inventory-trigger-btn {
-      background: linear-gradient(135deg, #409eff 0%, #67c6ff 100%);
-      color: white;
-      box-shadow: 0 4px 12px rgba(64, 158, 255, 0.32);
+      background: var(--tf-button-primary-bg);
+      color: var(--tf-button-on-color);
+      box-shadow: var(--tf-button-primary-shadow);
 
       @media (max-width: 768px) {
         &:hover:not(:disabled) {
-          background: linear-gradient(135deg, #409eff 0%, #67c6ff 100%);
-          box-shadow: 0 4px 12px rgba(64, 158, 255, 0.32);
+          background: var(--tf-button-primary-hover-bg);
+          box-shadow: var(--tf-button-primary-shadow);
           transform: none;
         }
 
@@ -1688,8 +1684,8 @@ declare global {
       }
 
       &:hover:not(:disabled) {
-        background: linear-gradient(135deg, #2f8cf1 0%, #57b8fb 100%);
-        box-shadow: 0 6px 16px rgba(64, 158, 255, 0.42);
+        background: var(--tf-button-neutral-hover-bg);
+        box-shadow: var(--tf-button-primary-shadow);
         transform: translateY(-2px);
       }
 
@@ -1698,8 +1694,8 @@ declare global {
       }
 
       &.active {
-        background: linear-gradient(135deg, #1d6fe9 0%, #3aa0ff 100%);
-        box-shadow: 0 8px 18px rgba(29, 111, 233, 0.38);
+        background: var(--tf-button-neutral-hover-bg);
+        box-shadow: var(--tf-button-shadow-hover);
       }
 
       &:disabled {
@@ -1708,19 +1704,19 @@ declare global {
       }
 
       .btn-text {
-        color: white;
+        color: var(--tf-button-on-color);
       }
     }
 
     .download-trigger-btn {
-      background: linear-gradient(135deg, #67c23a 0%, #85ce61 100%);
-      color: white;
-      box-shadow: 0 4px 12px rgba(103, 194, 58, 0.3);
+      background: var(--tf-button-success-bg);
+      color: var(--tf-button-on-color);
+      box-shadow: var(--tf-button-success-shadow);
 
       @media (max-width: 768px) {
         &:hover:not(:disabled) {
-          background: linear-gradient(135deg, #67c23a 0%, #85ce61 100%);
-          box-shadow: 0 4px 12px rgba(103, 194, 58, 0.3);
+          background: var(--tf-button-success-hover-bg);
+          box-shadow: var(--tf-button-success-shadow);
           transform: none;
         }
 
@@ -1742,8 +1738,8 @@ declare global {
       }
 
       &:hover:not(:disabled) {
-        background: linear-gradient(135deg, #5daf34 0%, #73c24f 100%);
-        box-shadow: 0 6px 16px rgba(103, 194, 58, 0.4);
+        background: var(--tf-button-success-hover-bg);
+        box-shadow: var(--tf-button-success-shadow);
         transform: translateY(-2px);
       }
 
@@ -1762,7 +1758,7 @@ declare global {
         gap: 8px;
 
         .btn-text {
-          color: white;
+          color: var(--tf-button-on-color);
         }
 
         .btn-icon {

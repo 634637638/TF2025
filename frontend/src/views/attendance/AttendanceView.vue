@@ -171,7 +171,7 @@
             <!-- 数据表格 -->
             <div class="table-section admin-panel admin-table-panel">
               <div class="table-responsive">
-                <el-table ref="attendanceTableRef" :data="loading ? [] : tableData" border stripe class="data-table devices-table" row-key="id" @row-click="handleMobileRowTap($event, 'all')">
+                <el-table ref="attendanceTableRef" :data="loading ? [] : tableData" border stripe class="data-table devices-table compact-fit-table" table-layout="fixed" :fit="true" row-key="id" @row-click="handleMobileRowTap($event, 'all')">
                   <template #empty>
                     <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
                     <el-empty v-else description="暂无考勤记录" />
@@ -218,9 +218,9 @@
                       </div>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="showAttendanceIdColumn" prop="id" label="ID" width="80" align="center" />
-                  <el-table-column v-if="showAttendanceEmployeeColumn" prop="employee_name" label="员工" :width="isMobile ? 76 : 130" align="center" />
-                  <el-table-column v-if="showAttendanceTypeColumn" label="类型" :width="isMobile ? 66 : 130" align="center">
+                  <el-table-column v-if="showAttendanceIdColumn" prop="id" label="ID" width="64" align="center" />
+                  <el-table-column v-if="showAttendanceEmployeeColumn" prop="employee_name" label="员工" :min-width="attendanceEmployeeColumnWidth" align="center" class-name="complete-text-column" />
+                  <el-table-column v-if="showAttendanceTypeColumn" label="类型" :min-width="attendanceTypeColumnWidth" align="center">
                     <template #default="{ row }">
                       <el-tag v-if="row.record_type === 'monthly_leave'" type="success">
                         <i class="fas fa-umbrella-beach"></i>
@@ -243,7 +243,7 @@
                   <el-table-column
                     v-if="showAttendanceDetailColumn"
                     label="详情"
-                    :width="isMobile ? 74 : 180"
+                    :min-width="attendanceDetailColumnWidth"
                     align="center"
                   >
                     <template #default="{ row }">
@@ -265,13 +265,13 @@
                       </span>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="showAttendanceDateColumn" prop="record_date" label="日期" :width="isMobile ? 82 : 130" align="center" />
-                  <el-table-column v-if="showAttendanceReasonColumn" label="原因" min-width="150" show-overflow-tooltip>
+                  <el-table-column v-if="showAttendanceDateColumn" prop="record_date" label="日期" :min-width="attendanceDateColumnWidth" align="center" class-name="complete-text-column" />
+                  <el-table-column v-if="showAttendanceReasonColumn" label="原因" :min-width="attendanceReasonColumnWidth" class-name="complete-text-column wrapped-text-column">
                     <template #default="{ row }">
                       <span>{{ getReasonText(row) }}</span>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="showAttendanceStatusColumn" prop="status" label="状态" width="90" align="center">
+                  <el-table-column v-if="showAttendanceStatusColumn" prop="status" label="状态" :min-width="attendanceStatusColumnWidth" align="center">
                     <template #default="{ row }">
                       <el-tag v-if="row.status === 'pending'" type="info">
                         <i class="fas fa-clock"></i>
@@ -287,7 +287,7 @@
                       </el-tag>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="showAttendanceApprovalColumn" prop="approval_note" label="审批备注" min-width="120" show-overflow-tooltip />
+                  <el-table-column v-if="showAttendanceApprovalColumn" prop="approval_note" label="审批备注" :min-width="attendanceApprovalColumnWidth" class-name="complete-text-column wrapped-text-column" />
                   <el-table-column v-if="showAttendanceActionField" label="操作" :width="attendanceActionColumnWidth" align="center" header-align="center" class-name="actions-column">
                     <template #default="{ row }">
                       <div class="action-buttons">
@@ -411,7 +411,7 @@
             <!-- 数据表格 -->
             <div class="table-section admin-panel admin-table-panel">
               <div class="table-responsive">
-                <el-table ref="myAttendanceTableRef" :data="myLoading ? [] : myTableData" border stripe class="data-table devices-table" row-key="id" @row-click="handleMobileRowTap($event, 'my')">
+                <el-table ref="myAttendanceTableRef" :data="myLoading ? [] : myTableData" border stripe class="data-table devices-table compact-fit-table" table-layout="fixed" :fit="true" row-key="id" @row-click="handleMobileRowTap($event, 'my')">
                   <template #empty>
                     <TableLoadingRow v-if="myLoading" mode="block" text="加载中..." />
                     <el-empty v-else description="暂无我的考勤记录" />
@@ -436,8 +436,8 @@
                       </div>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="showMyAttendanceIdColumn" prop="id" label="ID" width="80" align="center" />
-                  <el-table-column v-if="showMyAttendanceTypeColumn" label="类型" :width="isMobile ? 70 : 130" align="center">
+                  <el-table-column v-if="showMyAttendanceIdColumn" prop="id" label="ID" width="64" align="center" />
+                  <el-table-column v-if="showMyAttendanceTypeColumn" label="类型" :min-width="myAttendanceTypeColumnWidth" align="center">
                     <template #default="{ row }">
                       <el-tag v-if="row.record_type === 'monthly_leave'" type="success">
                         <i class="fas fa-umbrella-beach"></i>
@@ -460,7 +460,7 @@
                   <el-table-column
                     v-if="showMyAttendanceDetailColumn"
                     label="详情"
-                    :width="isMobile ? 74 : 180"
+                    :min-width="myAttendanceDetailColumnWidth"
                     align="center"
                   >
                     <template #default="{ row }">
@@ -482,13 +482,13 @@
                       </span>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="showMyAttendanceDateColumn" prop="record_date" label="日期" :width="isMobile ? 82 : 130" align="center" />
-                  <el-table-column v-if="showMyAttendanceReasonColumn" label="原因" min-width="150" show-overflow-tooltip>
+                  <el-table-column v-if="showMyAttendanceDateColumn" prop="record_date" label="日期" :min-width="myAttendanceDateColumnWidth" align="center" class-name="complete-text-column" />
+                  <el-table-column v-if="showMyAttendanceReasonColumn" label="原因" :min-width="myAttendanceReasonColumnWidth" class-name="complete-text-column wrapped-text-column">
                     <template #default="{ row }">
                       <span>{{ getReasonText(row) }}</span>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="showMyAttendanceStatusColumn" prop="status" label="状态" width="90" align="center">
+                  <el-table-column v-if="showMyAttendanceStatusColumn" prop="status" label="状态" :min-width="myAttendanceStatusColumnWidth" align="center">
                     <template #default="{ row }">
                       <el-tag v-if="row.status === 'pending'" type="info">
                         <i class="fas fa-clock"></i>
@@ -504,7 +504,7 @@
                       </el-tag>
                     </template>
                   </el-table-column>
-                  <el-table-column v-if="showMyAttendanceApprovalColumn" prop="approval_note" label="审批备注" min-width="140" show-overflow-tooltip />
+                  <el-table-column v-if="showMyAttendanceApprovalColumn" prop="approval_note" label="审批备注" :min-width="myAttendanceApprovalColumnWidth" class-name="complete-text-column wrapped-text-column" />
                   <el-table-column v-if="showMyAttendanceActionField" label="操作" :width="myAttendanceActionColumnWidth" align="center" header-align="center" class-name="actions-column">
                     <template #default="{ row }">
                       <div class="action-buttons">
@@ -886,7 +886,7 @@ import { unifiedApi } from '@/utils/unified-api'
 import { formatDate } from '@/utils/format'
 import { logger } from '@/utils/logger'
 import { sortOptionsByOrder } from '@/utils/option-sort'
-import { getActionColumnMinWidth } from '@/utils/table-layout'
+import { getAdaptiveActionColumnWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 import Pagination from '@/components/Pagination.vue'
 import InlineLoading from '@/components/InlineLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
@@ -1136,10 +1136,57 @@ const showMyAttendanceReasonColumn = computed(() => canViewAttendanceField('atte
 const showMyAttendanceStatusColumn = computed(() => canViewAttendanceField('attendance_myattendanceview', 'status') && !isMobile.value)
 const showMyAttendanceApprovalColumn = computed(() => canViewAttendanceField('attendance_myattendanceview', 'approval_note') && !isMobile.value)
 const showMyAttendanceActionField = computed(() => canViewAttendanceField('attendance_myattendanceview', 'actions') && !isMobile.value)
-const attendanceActionColumnWidth = computed(() => getActionColumnMinWidth(
-  1 + Number(canEdit.value) + Number(canApprove.value) + Number(canDelete.value)
+const getAttendanceDetailText = (row: AttendanceTableRow) => {
+  if (row.record_type === 'monthly_leave') return `${row.monthly_leave_days || 0}天`
+  if (row.record_type === 'leave') return `${row.leave_type || '-'} ${row.leave_days || 0}天`
+  if (row.record_type === 'overtime') return `${row.overtime_hours || 0}小时`
+  return `${row.absent_days || 0}天`
+}
+const getAttendanceStatusText = (row: AttendanceTableRow) => (
+  row.status === 'pending' ? '待审批' : row.status === 'approved' ? '已通过' : '已拒绝'
+)
+const getAttendanceColumnWidth = (
+  label: string,
+  values: Array<string | number | null | undefined>,
+  minWidth: number,
+  maxWidth = Number.POSITIVE_INFINITY,
+  horizontalPadding = 24
+) => getTextColumnMinWidth([label, ...values], {
+  minWidth,
+  maxWidth,
+  horizontalPadding,
+  asciiCharacterWidth: isMobile.value ? 6.5 : 8,
+  wideCharacterWidth: isMobile.value ? 11 : 13
+})
+const attendanceEmployeeColumnWidth = computed(() => getAttendanceColumnWidth('员工', tableData.value.map(row => row.employee_name), isMobile.value ? 76 : 82))
+const attendanceTypeColumnWidth = computed(() => getAttendanceColumnWidth('类型', tableData.value.map(() => '休假'), isMobile.value ? 66 : 76, 88, 34))
+const attendanceDetailColumnWidth = computed(() => getAttendanceColumnWidth('详情', tableData.value.map(getAttendanceDetailText), isMobile.value ? 74 : 88, 132, 36))
+const attendanceDateColumnWidth = computed(() => getAttendanceColumnWidth('日期', tableData.value.map(row => row.record_date), isMobile.value ? 82 : 102))
+const attendanceReasonColumnWidth = computed(() => getAttendanceColumnWidth('原因', tableData.value.map(getReasonText), 96, 168))
+const attendanceStatusColumnWidth = computed(() => getAttendanceColumnWidth('状态', tableData.value.map(getAttendanceStatusText), 88, 98, 34))
+const attendanceApprovalColumnWidth = computed(() => getAttendanceColumnWidth('审批备注', tableData.value.map(row => row.approval_note), 104, 168))
+const myAttendanceTypeColumnWidth = computed(() => getAttendanceColumnWidth('类型', myTableData.value.map(() => '休假'), isMobile.value ? 70 : 76, 88, 34))
+const myAttendanceDetailColumnWidth = computed(() => getAttendanceColumnWidth('详情', myTableData.value.map(getAttendanceDetailText), isMobile.value ? 74 : 88, 132, 36))
+const myAttendanceDateColumnWidth = computed(() => getAttendanceColumnWidth('日期', myTableData.value.map(row => row.record_date), isMobile.value ? 82 : 102))
+const myAttendanceReasonColumnWidth = computed(() => getAttendanceColumnWidth('原因', myTableData.value.map(getReasonText), 96, 168))
+const myAttendanceStatusColumnWidth = computed(() => getAttendanceColumnWidth('状态', myTableData.value.map(getAttendanceStatusText), 88, 98, 34))
+const myAttendanceApprovalColumnWidth = computed(() => getAttendanceColumnWidth('审批备注', myTableData.value.map(row => row.approval_note), 104, 168))
+const attendanceActionColumnWidth = computed(() => getAdaptiveActionColumnWidth(
+  tableData.value,
+  [
+    { label: '查看', visible: true },
+    { label: row => row.status === 'pending' ? '编辑' : '修改', visible: canEdit.value },
+    { label: '审批', visible: row => canApprove.value && row.status === 'pending' },
+    { label: '删除', visible: canDelete.value }
+  ]
 ))
-const myAttendanceActionColumnWidth = computed(() => getActionColumnMinWidth(2))
+const myAttendanceActionColumnWidth = computed(() => getAdaptiveActionColumnWidth(
+  myTableData.value,
+  [
+    { label: '查看', visible: true },
+    { label: '撤销', visible: row => row.status === 'pending' }
+  ]
+))
 const attendanceVisibleColumnCount = computed(() => {
   return [
     showAttendanceIdColumn.value,

@@ -172,7 +172,7 @@ defineExpose({
   align-items: center;
   justify-content: center;
   gap: 3px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--tf-button-shadow);
   transition: all 0.3s ease;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
@@ -207,7 +207,7 @@ defineExpose({
   .menu-line {
     width: 20px;
     height: 2px;
-    background: white;
+    background: var(--tf-button-neutral-bg);
     border-radius: 1px;
     transition: all 0.3s ease;
     transform-origin: center;

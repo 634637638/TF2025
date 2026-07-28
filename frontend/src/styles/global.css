@@ -417,7 +417,7 @@ body {
   border: none;
   font-size: 1.5rem;
   cursor: pointer;
-  color: #6c757d;
+  color: var(--tf-button-tool-color);
   padding: 0;
   width: 30px;
   height: 30px;
@@ -427,7 +427,7 @@ body {
 }
 
 .btn-close:hover {
-  color: #495057;
+  color: var(--tf-button-neutral-hover-color);
 }
 
 .modal-body {

@@ -413,7 +413,6 @@ const submitEdit = async () => {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  flex-wrap: wrap;
 }
 
 .form-row {
