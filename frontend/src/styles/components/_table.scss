@@ -609,6 +609,14 @@ body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table
 
 // Unified tables keep one hidden horizontal scroller. Touch scrolls natively;
 // desktop users can hold the left mouse button and drag the table content.
+.data-table .el-table__header-wrapper,
+.data-table .el-table__footer-wrapper,
+.admin-data-table .el-table__header-wrapper,
+.admin-data-table .el-table__footer-wrapper {
+  overflow-x: hidden !important;
+  overflow-y: hidden !important;
+}
+
 .admin-page .el-table .el-scrollbar__wrap,
 .data-table .el-scrollbar__wrap,
 .admin-data-table .el-scrollbar__wrap {
@@ -644,9 +652,7 @@ body.is-admin-table-dragging * {
   user-select: none !important;
 }
 
-.admin-page .data-table.el-table td.actions-column .cell,
-.admin-page .devices-table.el-table td.actions-column .cell,
-.admin-page .admin-data-table.el-table td.actions-column .cell {
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) td.actions-column .cell {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -656,11 +662,12 @@ body.is-admin-table-dragging * {
   padding-inline: var(--admin-data-table-action-edge-space, 16px) !important;
 }
 
-.admin-page td.actions-column :where(.actions-cell, .action-buttons, .table-actions, .tf-table-actions) {
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table)
+  td.actions-column :where(.actions-cell, .action-buttons, .table-actions, .tf-table-actions) {
   margin-inline: auto !important;
 }
 
-.admin-page td.actions-column .actions-cell {
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) td.actions-column .actions-cell {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;

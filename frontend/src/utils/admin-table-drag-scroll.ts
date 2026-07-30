@@ -28,11 +28,26 @@ let initialized = false
 const findTableScroller = (target: EventTarget | null): HTMLElement | null => {
   if (!(target instanceof Element) || target.closest(INTERACTIVE_SELECTOR)) return null
 
-  const scroller = target.closest<HTMLElement>(SCROLLER_SELECTOR)
-  if (!scroller || !scroller.closest(TABLE_SELECTOR)) return null
-  if (scroller.scrollWidth <= scroller.clientWidth + 1) return null
+  const table = target.closest<HTMLElement>(TABLE_SELECTOR)
+  if (!table) return null
 
-  return scroller
+  const hasHorizontalOverflow = (scroller: HTMLElement) =>
+    scroller.scrollWidth > scroller.clientWidth + 1
+
+  // Body cells are already inside the scrollbar. Header cells are rendered in
+  // a sibling layer, so fall back to the table's actual overflowing scroller.
+  const closestScroller = target.closest<HTMLElement>(SCROLLER_SELECTOR)
+  if (
+    closestScroller &&
+    closestScroller.closest(TABLE_SELECTOR) === table &&
+    hasHorizontalOverflow(closestScroller)
+  ) {
+    return closestScroller
+  }
+
+  return Array.from(table.querySelectorAll<HTMLElement>(SCROLLER_SELECTOR)).find(scroller =>
+    scroller.closest(TABLE_SELECTOR) === table && hasHorizontalOverflow(scroller)
+  ) || null
 }
 
 const syncTableHorizontalPosition = (scroller: HTMLElement) => {

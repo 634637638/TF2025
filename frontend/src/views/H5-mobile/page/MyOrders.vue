@@ -259,59 +259,6 @@ const goHome = () => {
   padding-bottom: 20px;
 }
 
-// 搜索区域
-:deep(.unified-search-panel) {
-  background: #fff;
-  padding: 16px;
-  margin-bottom: 12px;
-
-  .search-box {
-    display: flex;
-    align-items: center;
-    background: #f5f5f5;
-    border-radius: 24px;
-    padding: 0 16px;
-    margin-bottom: 12px;
-
-    .search-icon {
-      color: #999;
-      font-size: 16px;
-    }
-
-    input {
-      flex: 1;
-      border: none;
-      background: transparent;
-      padding: 12px 8px;
-      font-size: 15px;
-      outline: none;
-
-      &::placeholder {
-        color: #999;
-      }
-    }
-
-    .clear-btn {
-      padding: 4px;
-      border: none;
-      background: transparent;
-      color: var(--tf-button-tool-color);
-      cursor: pointer;
-
-      &:hover {
-        color: var(--tf-button-neutral-hover-color);
-      }
-    }
-  }
-
-  .search-btn {
-    width: 100%;
-    height: 44px;
-    border-radius: 22px;
-    font-size: 16px;
-  }
-}
-
 // 加载状态
 .loading-state {
   padding: 20px;

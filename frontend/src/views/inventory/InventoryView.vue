@@ -650,7 +650,7 @@
     </div>
 
     <template #footer>
-      <div class="inventory-edit-footer" :class="{ 'has-config': editForm.condition === '二手' }">
+      <div class="tf-dialog-actions inventory-edit-footer" :class="{ 'has-config': editForm.condition === '二手' }">
         <el-button v-if="editForm.condition === '二手'" type="success" @click="showPublishToH5Modal = true">
           <i class="fas fa-mobile-alt"></i>
           商品配置

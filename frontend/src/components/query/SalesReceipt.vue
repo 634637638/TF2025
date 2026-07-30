@@ -112,7 +112,7 @@
     </div>
 
     <template #footer>
-      <div class="action-buttons">
+      <div class="tf-dialog-actions">
         <el-button type="primary" @click="downloadImage" :loading="isDownloading">
           <i class="fas fa-download"></i>
           保存图片

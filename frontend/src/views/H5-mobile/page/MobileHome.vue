@@ -327,9 +327,9 @@
         </div>
       </div>
       <template #footer v-if="config.map_latitude && config.map_longitude">
-        <div style="display: flex; gap: 10px; justify-content: space-between;">
-          <el-button type="primary" @click="openExternalMap" style="flex: 1;">打开导航</el-button>
-          <el-button type="default" @click="showMapDialog = false" style="flex: 1;">关闭</el-button>
+        <div class="tf-dialog-actions">
+          <el-button type="primary" @click="openExternalMap">打开导航</el-button>
+          <el-button type="default" @click="showMapDialog = false">关闭</el-button>
         </div>
       </template>
     </MobileDialog>

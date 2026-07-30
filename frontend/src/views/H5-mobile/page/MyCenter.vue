@@ -268,7 +268,7 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <div class="flex gap-2">
+        <div class="tf-dialog-actions">
           <el-button type="default" class="flex-1" @click="profileVisible = false">取消</el-button>
           <el-button type="primary" class="flex-1" @click="saveProfile" :loading="savingProfile">保存</el-button>
         </div>

@@ -6,6 +6,10 @@ const { generateInvoiceNumber } = require('../utils/invoice-number');
 const { normalizeDateTime } = require('../utils/time');
 const { hasColumn } = require('../services/schemaInspector.service');
 const { generateMemberNumber } = require('../utils/member-number');
+const {
+  getCustomerPointsConfig,
+  calculateCustomerPointsForSale
+} = require('../services/customer-points.service');
 const XLSX = require('xlsx');
 const log = require('../utils/log');
 
@@ -954,6 +958,7 @@ router.post('/phone', unifiedAuth, requirePermission('sales:create'), async (req
           p.id,
           p.status,
           p.purchase_cost,
+          p.is_new,
           p.is_preordered,
           pr.customer_id as preorder_customer_id,
           pr.customer_name as preorder_customer_name
@@ -1024,6 +1029,9 @@ router.post('/phone', unifiedAuth, requirePermission('sales:create'), async (req
           ? parseFloat(phone.purchase_cost)
           : null])
       );
+      const existingPhoneConditionMap = new Map(
+        phoneChecks.map((phone) => [phone.id, phone.is_new])
+      );
 
       const finalizedPhonesToSell = phonesToSell.map((phone) => {
         const resolvedPrice = parseFloat(phone.price);
@@ -1034,7 +1042,8 @@ router.post('/phone', unifiedAuth, requirePermission('sales:create'), async (req
         return {
           ...phone,
           price: resolvedPrice,
-          resolved_purchase_cost: resolvedPurchaseCost !== undefined ? resolvedPurchaseCost : null
+          resolved_purchase_cost: resolvedPurchaseCost !== undefined ? resolvedPurchaseCost : null,
+          is_new: existingPhoneConditionMap.get(phone.phone_id)
         };
       });
 
@@ -1249,6 +1258,23 @@ router.post('/phone', unifiedAuth, requirePermission('sales:create'), async (req
         }
       }
 
+      const pointsConfig = await getCustomerPointsConfig(conn);
+      const pointsAward = calculateCustomerPointsForSale({
+        phones: finalizedPhonesToSell,
+        saleType: isBatchSale ? 'batch' : sale_type,
+        config: pointsConfig
+      });
+
+      if (customerId && pointsAward.points > 0) {
+        await conn.execute(
+          `UPDATE customers
+           SET points = COALESCE(points, 0) + ?,
+               updated_at = NOW()
+           WHERE id = ?`,
+          [pointsAward.points, customerId]
+        );
+      }
+
       await conn.commit();
 
       res.json({
@@ -1261,6 +1287,8 @@ router.post('/phone', unifiedAuth, requirePermission('sales:create'), async (req
           customer_phone: customer_info.phone,
           phones_sold: finalizedPhonesToSell.length,
           total_amount: totalAmount,
+          points_earned: pointsAward.points,
+          points_eligible_amount: pointsAward.eligibleAmount,
           phone_details: finalizedPhonesToSell.map(p => ({
             phone_id: p.phone_id,
             price: parseFloat(p.price),

@@ -390,7 +390,7 @@
       </div>
     </div>
     <template #footer>
-      <div class="photo-viewer-footer">
+      <div class="tf-dialog-actions photo-viewer-footer">
         <el-button type="danger" plain @click="removeCurrentPreviewPhoto">
           <i class="fas fa-trash-alt"></i>
           <span>删除当前图片</span>

@@ -111,7 +111,7 @@
       </div>
 
       <template #footer>
-        <div class="photo-preview-footer">
+        <div class="tf-dialog-actions photo-preview-footer">
           <el-button @click="closeDialog">取消</el-button>
           <el-button type="primary" :loading="savingPhotos" @click="savePhotoChanges">
             <i class="fas fa-save"></i> 保存

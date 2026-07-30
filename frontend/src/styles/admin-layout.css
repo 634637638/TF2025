@@ -638,34 +638,28 @@
   background: transparent !important;
 }
 
-.admin-page .data-table.el-table,
-.admin-page .devices-table.el-table,
-.admin-page .admin-data-table.el-table {
+/* Unified Element tables style themselves by class. This is intentionally not
+ * scoped to .admin-page because Element Plus dialogs can be teleported to body. */
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) {
   width: 100% !important;
-  min-width: var(--admin-data-table-min-width) !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
   border-radius: var(--admin-data-table-radius) !important;
   overflow: hidden !important;
   background: var(--admin-data-table-bg) !important;
 }
 
-/* Content-fit tables fill their panel without making the outer wrapper scroll.
- * When column minimums exceed the viewport, Element's inner scrollbar remains
- * the only horizontal scroll layer so header and body always move together. */
-.admin-page .data-table.el-table.compact-fit-table,
-.admin-page .devices-table.el-table.compact-fit-table,
-.admin-page .admin-data-table.el-table.compact-fit-table {
+/* Element's inner scrollbar is the only horizontal scroll layer. Keeping this
+ * explicit class is useful documentation for short, content-fit tables. */
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table).compact-fit-table {
   min-width: 100% !important;
 }
 
-.admin-page .data-table.el-table .el-table__inner-wrapper::before,
-.admin-page .devices-table.el-table .el-table__inner-wrapper::before,
-.admin-page .admin-data-table.el-table .el-table__inner-wrapper::before {
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__inner-wrapper::before {
   background-color: var(--admin-data-table-cell-border) !important;
 }
 
-.admin-page .data-table.el-table .el-table__header th,
-.admin-page .devices-table.el-table .el-table__header th,
-.admin-page .admin-data-table.el-table .el-table__header th {
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__header th {
   background: var(--admin-data-table-header-bg) !important;
   color: var(--admin-data-table-header-color) !important;
   padding: var(--admin-data-table-header-padding-y) var(--admin-data-table-header-padding-x) !important;
@@ -680,9 +674,7 @@
   border-bottom: 2px solid var(--admin-data-table-header-border) !important;
 }
 
-.admin-page .data-table.el-table .el-table__header th .cell,
-.admin-page .devices-table.el-table .el-table__header th .cell,
-.admin-page .admin-data-table.el-table .el-table__header th .cell {
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__header th .cell {
   justify-content: center !important;
   text-align: center !important;
   color: inherit !important;
@@ -691,9 +683,7 @@
   white-space: nowrap !important;
 }
 
-.admin-page .data-table.el-table .el-table__body td,
-.admin-page .devices-table.el-table .el-table__body td,
-.admin-page .admin-data-table.el-table .el-table__body td {
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body td {
   padding: var(--admin-data-table-cell-padding-y) var(--admin-data-table-cell-padding-x) !important;
   height: var(--admin-data-table-row-height) !important;
   box-sizing: border-box !important;
@@ -707,9 +697,7 @@
   text-align: center !important;
 }
 
-.admin-page .data-table.el-table .el-table__body td .cell,
-.admin-page .devices-table.el-table .el-table__body td .cell,
-.admin-page .admin-data-table.el-table .el-table__body td .cell {
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body td .cell {
   justify-content: center !important;
   text-align: center !important;
   font-size: var(--admin-data-table-cell-font-size) !important;
@@ -719,59 +707,41 @@
 }
 
 /* responsive.scss 的通用 span 字号不得放大表格内容。 */
-.admin-page .data-table.el-table .el-table__body td .cell span,
-.admin-page .devices-table.el-table .el-table__body td .cell span,
-.admin-page .admin-data-table.el-table .el-table__body td .cell span {
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body td .cell span {
   font-size: inherit !important;
 }
 
-.admin-page .data-table.el-table .el-table__body tr.el-table__row--striped > td,
-.admin-page .devices-table.el-table .el-table__body tr.el-table__row--striped > td,
-.admin-page .admin-data-table.el-table .el-table__body tr.el-table__row--striped > td {
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body tr.el-table__row--striped > td {
   background: var(--admin-data-table-row-even-bg) !important;
 }
 
-.admin-page .data-table.el-table .el-table__body tr:hover > td,
-.admin-page .devices-table.el-table .el-table__body tr:hover > td,
-.admin-page .admin-data-table.el-table .el-table__body tr:hover > td {
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body tr:hover > td {
   background: var(--admin-data-table-row-hover-bg) !important;
   border-bottom-color: var(--admin-data-table-header-border) !important;
 }
 
-.admin-page .data-table.el-table .el-table__body tr.row-selected > td,
-.admin-page .devices-table.el-table .el-table__body tr.row-selected > td,
-.admin-page .admin-data-table.el-table .el-table__body tr.row-selected > td {
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body tr.row-selected > td {
   background: var(--admin-data-table-row-selected-bg) !important;
 }
 
-.admin-page .data-table.el-table .el-table__body tr.row-selected:hover > td,
-.admin-page .devices-table.el-table .el-table__body tr.row-selected:hover > td,
-.admin-page .admin-data-table.el-table .el-table__body tr.row-selected:hover > td {
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body tr.row-selected:hover > td {
   background: var(--admin-data-table-row-selected-hover-bg) !important;
 }
 
-.admin-page .data-table.el-table .el-table__body tr.row-selected > td:first-child,
-.admin-page .devices-table.el-table .el-table__body tr.row-selected > td:first-child,
-.admin-page .admin-data-table.el-table .el-table__body tr.row-selected > td:first-child {
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body tr.row-selected > td:first-child {
   box-shadow: inset 3px 0 0 var(--admin-data-table-row-selected-accent) !important;
 }
 
 /* 调货/同行批发行：选择态优先，其余状态保持统一紫蓝识别色。 */
-.admin-page .data-table.el-table .el-table__body tr.admin-row--peer-transfer:not(.row-selected) > td,
-.admin-page .devices-table.el-table .el-table__body tr.admin-row--peer-transfer:not(.row-selected) > td,
-.admin-page .admin-data-table.el-table .el-table__body tr.admin-row--peer-transfer:not(.row-selected) > td {
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body tr.admin-row--peer-transfer:not(.row-selected) > td {
   background: var(--admin-data-table-wholesale-bg) !important;
 }
 
-.admin-page .data-table.el-table .el-table__body tr.admin-row--peer-transfer:not(.row-selected):hover > td,
-.admin-page .devices-table.el-table .el-table__body tr.admin-row--peer-transfer:not(.row-selected):hover > td,
-.admin-page .admin-data-table.el-table .el-table__body tr.admin-row--peer-transfer:not(.row-selected):hover > td {
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body tr.admin-row--peer-transfer:not(.row-selected):hover > td {
   background: var(--admin-data-table-wholesale-hover-bg) !important;
 }
 
-.admin-page .data-table.el-table .el-table__body tr.admin-row--peer-transfer:not(.row-selected) > td:first-child,
-.admin-page .devices-table.el-table .el-table__body tr.admin-row--peer-transfer:not(.row-selected) > td:first-child,
-.admin-page .admin-data-table.el-table .el-table__body tr.admin-row--peer-transfer:not(.row-selected) > td:first-child {
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body tr.admin-row--peer-transfer:not(.row-selected) > td:first-child {
   box-shadow: inset 3px 0 0 var(--admin-data-table-wholesale-accent) !important;
 }
 

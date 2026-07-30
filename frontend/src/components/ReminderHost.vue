@@ -21,7 +21,7 @@
       </div>
     </div>
     <template #footer>
-      <div class="reminder-alert__actions">
+      <div class="tf-dialog-actions reminder-alert__actions">
         <el-button @click="handleIgnore"><i class="fas fa-eye-slash"></i>忽略本次</el-button>
         <el-button @click="handleSnooze"><i class="fas fa-clock"></i>稍后提醒</el-button>
         <el-button type="primary" @click="handleComplete"><i class="fas fa-check"></i>已完成</el-button>

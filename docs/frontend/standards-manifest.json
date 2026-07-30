@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "authorityRoot": "docs/frontend",
+  "referenceRoots": ["docs/standards", "docs/components", "docs/guides"],
+  "standards": [
+    { "document": "admin-table-standards.md", "checks": ["check:tables"], "publicSources": ["frontend/src/styles/admin-layout.css", "frontend/src/styles/components/_table.scss", "frontend/src/utils/admin-table-drag-scroll.ts"] },
+    { "document": "button-standards.md", "checks": ["check:buttons"], "publicSources": ["frontend/src/styles/components/_buttons.scss", "frontend/src/styles/components/_dialog-actions.scss"] },
+    { "document": "crud-standards.md", "checks": ["check:data-freshness", "check:buttons"], "publicSources": ["frontend/src/utils/unified-api.ts"] },
+    { "document": "data-freshness-standard.md", "checks": ["check:data-freshness"], "publicSources": ["frontend/src/utils/unified-api.ts", "frontend/src/composables/usePageCache.ts"] },
+    { "document": "dialog-standards.md", "checks": ["check:ui", "check:buttons", "check:tables"], "publicSources": ["frontend/src/styles/components/_dialog.scss", "frontend/src/styles/components/_dialog-actions.scss", "frontend/src/utils/message-box.ts"] },
+    { "document": "global-loading-standard.md", "checks": ["check:loading"], "publicSources": ["frontend/src/utils/loading.ts"] },
+    { "document": "latest-request-standard.md", "checks": ["check:data-freshness"], "publicSources": ["frontend/src/composables/useLatestRequest.ts"] },
+    { "document": "menu-icon-management-standard.md", "checks": ["check:ui"], "publicSources": ["frontend/src/components/IconPicker.vue", "frontend/src/components/IconRenderer.vue"] },
+    { "document": "notification-standards.md", "checks": ["check:ui", "check:loading"], "publicSources": ["frontend/src/plugins/notification.ts", "frontend/src/composables/useNotification.ts"] },
+    { "document": "page-structure-standards.md", "checks": ["check:ui", "check:tabs", "check:tables"], "publicSources": ["frontend/src/styles/admin-layout.css", "frontend/src/components/base/PageHeader.vue"] },
+    { "document": "pagination-standards.md", "checks": ["check:ui"], "publicSources": ["frontend/src/components/Pagination.vue", "frontend/src/styles/components/_pagination.scss"] },
+    { "document": "reminder-standards.md", "checks": ["check:ui", "check:buttons", "check:tables", "check:data-freshness"], "publicSources": ["frontend/src/views/reminders/ReminderView.vue"] },
+    { "document": "search-standards.md", "checks": ["check:ui"], "publicSources": ["frontend/src/components/search/UnifiedSearchPanel.vue"] },
+    { "document": "shared-standards.md", "checks": ["check:ui", "check:buttons", "check:tables", "check:data-freshness"], "publicSources": ["frontend/src/views/shared/SharedView.vue"] },
+    { "document": "tab-standards.md", "checks": ["check:tabs"], "publicSources": ["frontend/src/styles/components/_tabs.scss"] },
+    { "document": "unified-page-structure.md", "checks": ["check:ui", "check:tabs", "check:tables"], "publicSources": ["frontend/src/styles/admin-layout.css", "frontend/src/components/base/PageHeader.vue"] },
+    { "document": "standards-audit-guide.md", "checks": ["check:coverage"], "publicSources": ["frontend/scripts/check-standards-coverage.mjs"] }
+  ]
+}

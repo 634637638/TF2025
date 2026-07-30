@@ -26,9 +26,9 @@
         stripe
         border
         row-key="groupKey"
-        class="data-table main-table"
+        class="data-table compact-fit-table main-table"
         :table-layout="'auto'"
-        :fit="false"
+        :fit="true"
         style="width: 100%"
       >
         <template #empty>
@@ -82,9 +82,9 @@
                   :data="row.children"
                   stripe
                   border
-                  class="data-table child-table"
+                  class="data-table compact-fit-table child-table"
                   :table-layout="'auto'"
-                  :fit="false"
+                  :fit="true"
                 >
                   <el-table-column prop="config_name" label="子模板名称" min-width="220">
                     <template #default="{ row: child }">
@@ -383,9 +383,9 @@
                 :data="variantDrafts"
                 border
                 stripe
-                class="data-table variant-table"
+                class="data-table compact-fit-table variant-table"
                 :table-layout="'auto'"
-                :fit="false"
+                :fit="true"
               >
                 <el-table-column prop="color_name" label="颜色" min-width="140">
                   <template #default="{ row }">
@@ -1184,34 +1184,8 @@ defineExpose({
     margin-bottom: 14px;
   }
 
-  .main-table,
-  .child-table,
-  .variant-table {
-    :deep(.el-table__inner-wrapper) {
-      border-radius: 16px;
-    }
-  }
-
   .table-scroll-shell {
     width: 100%;
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding-bottom: 2px;
-  }
-
-  .child-table,
-  .variant-table {
-    min-width: 100%;
-
-    :deep(.el-table__body),
-    :deep(.el-table__header) {
-      width: max-content;
-      min-width: 100%;
-    }
-
-    :deep(.cell) {
-      white-space: nowrap;
-    }
   }
 
   .dialog-grid {
@@ -1288,22 +1262,6 @@ defineExpose({
 
   :deep(.warning-dialog .el-dialog__footer) {
     padding: 12px 24px 24px;
-  }
-
-  :deep(.el-table) {
-    --el-table-border-color: rgba(32, 87, 129, 0.08);
-    --el-table-header-bg-color: #f6f9fc;
-    --el-table-row-hover-bg-color: #f8fbfd;
-  }
-
-  :deep(.el-table th.el-table__cell) {
-    color: #4b5563;
-    font-weight: 700;
-    background: #f7fafc;
-  }
-
-  :deep(.el-table td.el-table__cell) {
-    color: #374151;
   }
 
   :deep(.el-table .el-table__expanded-cell) {

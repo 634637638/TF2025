@@ -232,16 +232,14 @@
         </template>
       </div>
 
-      <div class="pagination-wrapper">
-        <el-pagination
-          background
-          layout="total, prev, pager, next"
-          :current-page="pagination.page"
-          :page-size="pagination.limit"
-          :total="pagination.total"
-          @current-change="handlePageChange"
-        />
-      </div>
+      <Pagination
+        v-model:current="pagination.page"
+        v-model:page-size="pagination.limit"
+        :total="pagination.total"
+        :show-page-sizes="false"
+        :show-quick-jumper="false"
+        @current-change="handlePageChange"
+      />
     </div>
 
     <MobileDialog
@@ -334,6 +332,7 @@ import MobileDialog from '@/components/MobileDialog.vue'
 import InlineLoading from '@/components/InlineLoading.vue'
 import SectionLoading from '@/components/SectionLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
+import Pagination from '@/components/Pagination.vue'
 import { ElMessageBox } from 'element-plus'
 import { PHONE_STATUS_OPTIONS, getPhoneStatusLabel, normalizePhoneStatus } from '@/constants/phoneStatuses'
 
@@ -701,12 +700,6 @@ onMounted(() => {
   white-space: nowrap;
 }
 
-.pagination-wrapper {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 16px;
-}
-
 .mobile-records {
   display: flex;
   flex-direction: column;
@@ -876,8 +869,5 @@ onMounted(() => {
     margin-bottom: 10px;
   }
 
-  .pagination-wrapper {
-    justify-content: center;
-  }
 }
 </style>

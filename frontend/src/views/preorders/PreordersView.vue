@@ -1417,16 +1417,6 @@ onMounted(async () => {
       }
     }
 
-    .pagination-container {
-      :deep(.el-pagination) {
-        justify-content: center;
-
-        .el-pagination__sizes,
-        .el-pagination__jump {
-          display: none;
-        }
-      }
-    }
   }
 
   @media (max-width: 480px) {

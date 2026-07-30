@@ -3,6 +3,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const convert = require('heic-convert');
 const router = express.Router();
 const { unifiedAuth, requirePermission, requireAnyPermission } = require('../middleware/unified-auth');
 const ApiResponse = require('../utils/response');
@@ -11,8 +12,12 @@ const { getUploadSubdir, getUploadUrl } = require('../utils/upload-paths');
 
 const uploadDir = getUploadSubdir('shared');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+const imageExtensions = new Set([
+  '.jpg', '.jpeg', '.jfif', '.png', '.gif', '.webp', '.bmp', '.avif',
+  '.heic', '.heif', '.tif', '.tiff'
+]);
 const allowedExtensions = new Set([
-  '.jpg', '.jpeg', '.png', '.gif', '.webp', '.mp4', '.webm', '.mov',
+  ...imageExtensions, '.mp4', '.webm', '.mov',
   '.pdf', '.ofd', '.doc', '.docx', '.xls', '.xlsx', '.csv', '.ppt', '.pptx',
   '.wps', '.et', '.dps', '.txt', '.md', '.rtf', '.log', '.json', '.xml',
   '.zip', '.rar', '.7z', '.tar', '.gz', '.tgz', '.bz2', '.epub',
@@ -40,15 +45,79 @@ const storage = multer.diskStorage({
     cb(null, `${Number(req.user?.id) || 0}_${Date.now()}_${crypto.randomBytes(8).toString('hex')}${ext}`);
   }
 });
+const isAllowedUpload = file => {
+  const ext = path.extname(file.originalname || '').toLowerCase();
+  const mime = String(file.mimetype || '').toLowerCase();
+  if (!allowedExtensions.has(ext)) return false;
+  if (imageExtensions.has(ext)) return mime.startsWith('image/') || mime === 'application/octet-stream';
+  return allowedMimePrefixes.some(prefix => mime.startsWith(prefix)) || allowedMimes.has(mime);
+};
 const upload = multer({
   storage,
   limits: { fileSize: 100 * 1024 * 1024, files: 10 },
   fileFilter: (_req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    if (allowedExtensions.has(ext) && (allowedMimePrefixes.some(prefix => file.mimetype.startsWith(prefix)) || allowedMimes.has(file.mimetype))) return cb(null, true);
-    return cb(new Error('仅支持图片、视频和常用文档文件'));
+    if (isAllowedUpload(file)) return cb(null, true);
+    const error = new Error('不支持该文件格式，请上传常用图片、视频、音频或文档文件');
+    error.status = 400;
+    error.code = 'UNSUPPORTED_UPLOAD_TYPE';
+    return cb(error);
   }
 });
+
+const isHeicUpload = file => {
+  const ext = path.extname(file.originalname || file.filename || '').toLowerCase();
+  const mime = String(file.mimetype || '').toLowerCase();
+  return ext === '.heic' || ext === '.heif' || mime.includes('heic') || mime.includes('heif');
+};
+
+const convertSharedHeicUploads = async files => {
+  for (const file of files || []) {
+    if (!isHeicUpload(file)) continue;
+
+    const ext = path.extname(file.filename).toLowerCase();
+    const jpgFilename = file.filename.replace(new RegExp(`${ext}$`, 'i'), '.jpg');
+    const jpgPath = path.join(uploadDir, jpgFilename);
+
+    try {
+      const inputBuffer = fs.readFileSync(file.path);
+      const outputBuffer = await convert({
+        buffer: inputBuffer,
+        format: 'JPEG',
+        quality: 0.92
+      });
+
+      fs.writeFileSync(jpgPath, outputBuffer);
+      fs.unlinkSync(file.path);
+
+      file.filename = jpgFilename;
+      file.path = jpgPath;
+      file.originalname = String(file.originalname || 'image.heic').replace(/\.(heic|heif)$/i, '.jpg');
+      file.mimetype = 'image/jpeg';
+      file.size = fs.statSync(jpgPath).size;
+    } catch (error) {
+      try { if (fs.existsSync(file.path)) fs.unlinkSync(file.path); } catch (_) {}
+      try { if (fs.existsSync(jpgPath)) fs.unlinkSync(jpgPath); } catch (_) {}
+      const uploadError = new Error('HEIC图片转换失败，请换一张图片或先转成JPG后上传');
+      uploadError.cause = error;
+      throw uploadError;
+    }
+  }
+};
+
+const uploadSharedFiles = (req, res, next) => {
+  upload.array('files', 10)(req, res, error => {
+    if (!error) return next();
+    for (const file of req.files || []) {
+      try { fs.unlinkSync(file.path); } catch (_) {}
+    }
+    if (error instanceof multer.MulterError) {
+      if (error.code === 'LIMIT_FILE_SIZE') return ApiResponse.error(res, '单个文件不能超过100MB', 400);
+      if (error.code === 'LIMIT_FILE_COUNT') return ApiResponse.error(res, '一次最多上传10个文件', 400);
+      return ApiResponse.error(res, `上传失败：${error.message}`, 400);
+    }
+    return ApiResponse.error(res, error.message || '上传文件格式不受支持', 400);
+  });
+};
 
 const canManage = req => Array.isArray(req.user?.permissions) && req.user.permissions.includes('shared_sharedview:manage');
 const handleError = (res, error, fallback = '操作失败') => {
@@ -91,7 +160,7 @@ router.get('/files/:filename', requirePermission('shared:view'), async (req, res
   }
 });
 router.get('/:id', requirePermission('shared:view'), async (req, res) => { try { const result = await sharedService.getById(Number(req.params.id), req.user.id); if (!result) return ApiResponse.error(res, '分享不存在', 404); return ApiResponse.success(res, result, '获取分享详情成功'); } catch (error) { return handleError(res, error, '获取分享详情失败'); } });
-router.post('/upload', requireAnyPermission(['shared:create', 'shared:edit', 'shared:manage']), upload.array('files', 10), async (req, res) => { try { const files = (req.files || []).map(file => ({ url: getUploadUrl('shared', file.filename), name: file.originalname, type: file.mimetype, size: file.size })); return ApiResponse.success(res, files, '附件上传成功'); } catch (error) { for (const file of req.files || []) { try { fs.unlinkSync(file.path); } catch (_) {} } return handleError(res, error, '附件上传失败'); } });
+router.post('/upload', requireAnyPermission(['shared:create', 'shared:edit', 'shared:manage']), uploadSharedFiles, async (req, res) => { try { await convertSharedHeicUploads(req.files); const files = (req.files || []).map(file => ({ url: getUploadUrl('shared', file.filename), name: file.originalname, type: file.mimetype, size: file.size })); return ApiResponse.success(res, files, '附件上传成功'); } catch (error) { for (const file of req.files || []) { try { if (fs.existsSync(file.path)) fs.unlinkSync(file.path); } catch (_) {} } return handleError(res, error, '附件上传失败'); } });
 router.post('/uploads/cleanup', requireAnyPermission(['shared:create', 'shared:edit', 'shared:delete', 'shared:manage']), async (req, res) => { try { const urls = Array.isArray(req.body?.urls) ? req.body.urls : []; await sharedService.cleanupUploads(urls, req.user.id); return ApiResponse.success(res, null, '未使用附件已清理'); } catch (error) { return handleError(res, error, '附件清理失败'); } });
 router.post('/', requirePermission('shared:create'), async (req, res) => { try { return ApiResponse.created(res, '经验分享发布成功', await sharedService.create(req.user.id, canManage(req), req.body)); } catch (error) { return handleError(res, error, '经验分享发布失败'); } });
 router.put('/:id', requireAnyPermission(['shared:edit', 'shared:manage']), async (req, res) => { try { return ApiResponse.success(res, await sharedService.update(Number(req.params.id), req.user.id, canManage(req), req.body), '经验分享更新成功'); } catch (error) { return handleError(res, error, '经验分享更新失败'); } });

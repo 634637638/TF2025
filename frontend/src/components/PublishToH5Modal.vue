@@ -305,7 +305,7 @@
     </el-form>
 
     <template #footer>
-      <div class="publish-to-h5-footer">
+      <div class="tf-dialog-actions publish-to-h5-footer">
         <el-button type="default" @click="handleClose">取消</el-button>
         <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
       </div>

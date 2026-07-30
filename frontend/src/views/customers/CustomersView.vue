@@ -25,6 +25,16 @@
             <i class="fas fa-plus"></i>
             <span>新增</span>
           </el-button>
+          <el-button
+            v-if="canManagePoints"
+            type="warning"
+            plain
+            :disabled="isLoading"
+            @click="requirePermission('manage', openPointsSettings)"
+          >
+            <i class="fas fa-coins"></i>
+            <span>积分设置</span>
+          </el-button>
           <ImportExportActions
             :can-export="canExport"
             :export-loading="isExporting"
@@ -234,35 +244,43 @@
               <el-table-column
                 v-if="showCustomerInfoColumn"
                 :label="isMobile ? '姓名' : '客户信息'"
-                :min-width="isMobile ? customerMobileColumnWidths.name : 150"
+                :min-width="isMobile ? customerMobileColumnWidths.name : 220"
                 align="center"
               >
                 <template #default="{ row: customer }">
                       <div class="customer-info">
-                        <div v-if="canViewField('name')" class="customer-name">
-                          <strong v-html="highlightText(customer.name || '-', searchKeyword)"></strong>
-                          <div v-if="!isMobile && canViewField('id')" class="customer-id text-muted small">#{{ String(customer.id).padStart(6, '0') }}</div>
-                        </div>
-                        <div v-else-if="canViewField('id')" class="customer-name">
-                          <strong>客户 #{{ String(customer.id).padStart(6, '0') }}</strong>
-                        </div>
-                        <div v-if="!isMobile && canViewField('member_number') && customer.member_number" class="member-number small text-primary">
-                          <i class="fas fa-id-card"></i>
-                          <span v-html="highlightText(customer.member_number, searchKeyword)"></span>
-                        </div>
-                        <div v-if="!isMobile && (canViewField('gender') || canViewField('birthday'))" class="gender-info small">
-                          <i :class="getGenderIcon(customer.gender)"></i>
-                          <span v-if="canViewField('gender')">{{ getGenderLabel(customer.gender) }}</span>
-                          <span v-if="canViewField('birthday') && customer.birthday" class="text-muted">({{ customer.birthday }})</span>
+                        <div class="customer-primary-line">
+                          <strong v-if="canViewField('name')" class="customer-name" v-html="highlightText(customer.name || '-', searchKeyword)"></strong>
+                          <span v-if="!isMobile && canViewField('id')" class="customer-id text-muted small">#{{ String(customer.id).padStart(6, '0') }}</span>
+                          <span v-if="!isMobile && canViewField('member_number') && customer.member_number" class="member-number small text-primary">
+                            <i class="fas fa-id-card"></i>
+                            <span v-html="highlightText(customer.member_number, searchKeyword)"></span>
+                          </span>
                         </div>
                       </div>
                 </template>
               </el-table-column>
 
               <el-table-column
+                v-if="!isMobile && showAppleIdColumn"
+                label="Apple ID"
+                min-width="170"
+                align="center"
+                class-name="customers-cell-apple-id identifier-column"
+              >
+                <template #default="{ row: customer }">
+                  <span v-if="customer.apple_id" class="apple-id-value">
+                    <i class="fab fa-apple"></i>
+                    <span v-html="highlightText(customer.apple_id, searchKeyword)"></span>
+                  </span>
+                  <span v-else>-</span>
+                </template>
+              </el-table-column>
+
+              <el-table-column
                 v-if="showContactColumn"
                 :label="isMobile ? '手机号' : '联系方式'"
-                :min-width="isMobile ? customerMobileColumnWidths.phone : 168"
+                :min-width="isMobile ? customerMobileColumnWidths.phone : 220"
                 align="center"
                 class-name="customers-cell-phone"
               >
@@ -272,11 +290,7 @@
                           <i class="fas fa-phone"></i>
                           <span v-html="highlightText(customer.phone, searchKeyword)"></span>
                         </div>
-                        <div v-if="!isMobile && canViewField('email') && customer.email" class="email small text-muted">
-                          <i class="fas fa-envelope"></i>
-                          <span v-html="highlightText(customer.email, searchKeyword)"></span>
-                        </div>
-                        <div v-if="!isMobile && ((canViewField('wechat') && customer.wechat) || (canViewField('qq') && customer.qq) || (canViewField('apple_id') && customer.apple_id))" class="social-links small">
+                        <div v-if="!isMobile && ((canViewField('wechat') && customer.wechat) || (canViewField('qq') && customer.qq))" class="social-links small">
                           <span v-if="canViewField('wechat') && customer.wechat" class="social-tag" title="微信">
                             <i class="fab fa-weixin"></i>
                             <span v-html="highlightText(customer.wechat, searchKeyword)"></span>
@@ -284,10 +298,6 @@
                           <span v-if="canViewField('qq') && customer.qq" class="social-tag" title="QQ">
                             <i class="fab fa-qq"></i>
                             <span v-html="highlightText(customer.qq, searchKeyword)"></span>
-                          </span>
-                          <span v-if="canViewField('apple_id') && customer.apple_id" class="social-tag" title="Apple ID">
-                            <i class="fab fa-apple"></i>
-                            <span v-html="highlightText(customer.apple_id, searchKeyword)"></span>
                           </span>
                         </div>
                       </div>
@@ -317,12 +327,12 @@
               <el-table-column v-if="!isMobile && showAccountColumn" label="账户信息" min-width="126" align="center">
                 <template #default="{ row: customer }">
                       <div class="account-info">
-                        <div v-if="canViewField('balance')" class="balance">
-                          <span class="amount-label">余额:</span>
+                        <div v-if="canViewField('balance')" class="table-info-line">
+                          <span class="amount-label">余额</span>
                           <span class="amount-value">¥{{ formatNumber(customer.balance || 0) }}</span>
                         </div>
-                        <div v-if="canViewField('points')" class="points">
-                          <span class="points-label">积分:</span>
+                        <div v-if="canViewField('points')" class="table-info-line">
+                          <span class="points-label">积分</span>
                           <span class="points-value">{{ customer.points || 0 }}</span>
                         </div>
                       </div>
@@ -332,14 +342,11 @@
               <el-table-column v-if="!isMobile && showRegionColumn" label="地区" min-width="178" align="center">
                 <template #default="{ row: customer }">
                       <div class="location-info">
-                        <div v-if="canViewField('city') && customer.city" class="city">
+                        <div v-if="(canViewField('province') || canViewField('city')) && formatCustomerRegion(customer, { province: canViewField('province'), city: canViewField('city') }) !== '-'" class="table-info-line city">
                           <i class="fas fa-map-marker-alt"></i>
-                          <span v-html="highlightText(customer.city, searchKeyword)"></span>
+                          <span v-html="highlightText(formatCustomerRegion(customer, { province: canViewField('province'), city: canViewField('city') }), searchKeyword)"></span>
                         </div>
-                        <div v-if="canViewField('province') && customer.province" class="province small text-muted">
-                          <span v-html="highlightText(customer.province, searchKeyword)"></span>
-                        </div>
-                        <div v-if="canViewField('address') && customer.address" class="address small text-muted">
+                        <div v-if="canViewField('address') && customer.address" class="table-info-line address small text-muted">
                           <i class="fas fa-home"></i>
                           <!-- 如果有搜索关键词，显示匹配的片段 -->
                           <span v-if="searchKeyword && isMatch(customer.address, searchKeyword)">
@@ -357,21 +364,19 @@
               <el-table-column v-if="!isMobile && showStatsColumn" label="消费统计" min-width="170" align="center">
                 <template #default="{ row: customer }">
                       <div class="purchase-info">
-                        <div v-if="canViewField('total_spent')" class="total-spent">
-                          <span class="spent-label">总消费:</span>
-                          <span class="spent-value">¥{{ formatNumber(customer.total_spent || 0) }}</span>
+                        <div class="table-info-line purchase-summary">
+                          <span v-if="canViewField('purchase_count')" class="purchase-count">
+                            <span class="count-label">购买数量</span>
+                            <span class="count-value">{{ customer.purchase_count || 0 }} 台</span>
+                          </span>
+                          <span v-if="canViewField('total_spent')" class="total-spent">
+                            <span class="spent-label">总消费</span>
+                            <span class="spent-value">¥{{ formatNumber(customer.total_spent || 0) }}</span>
+                          </span>
                         </div>
-                        <div v-if="canViewField('purchase_count')" class="purchase-count">
-                          <span class="count-label">购买次数:</span>
-                          <span class="count-value">{{ customer.purchase_count || 0 }} 台</span>
-                        </div>
-                        <div v-if="canViewField('last_purchase_date') && customer.last_purchase_date" class="last-purchase small text-muted">
-                          <span class="purchase-label">最后购买:</span>
+                        <div v-if="canViewField('last_purchase_date') && customer.last_purchase_date" class="table-info-line last-purchase small text-muted">
+                          <span class="purchase-label">最后</span>
                           {{ formatDate(customer.last_purchase_date) }}
-                        </div>
-                        <div v-if="canViewField('created_at')" class="register-date small text-muted">
-                          <span class="register-label">注册:</span>
-                          {{ formatDate(customer.created_at) }}
                         </div>
                       </div>
                 </template>
@@ -385,7 +390,7 @@
                 </template>
               </el-table-column>
 
-              <el-table-column v-if="showActionField" label="操作" :width="$getActionColumnWidth([...(canEdit ? ['编辑'] : []), '详情', ...(canDelete ? ['删除'] : [])])" align="center" class-name="actions-column">
+              <el-table-column v-if="showActionField" label="操作" :width="customerActionColumnWidth" align="center" class-name="actions-column">
                 <template #default="{ row: customer }">
                       <div class="action-buttons">
                         <el-button
@@ -483,6 +488,77 @@
           </div>
         </div>
       </div>
+
+      <!-- 积分设置对话框 -->
+      <MobileDialog
+        v-model="showPointsSettingsModal"
+        title="积分设置"
+        width="560px"
+        dialog-class="customers-points-dialog"
+        :close-on-click-modal="false"
+        :show-default-footer="false"
+      >
+        <el-form
+          :model="pointsConfigForm"
+          label-width="120px"
+          class="points-settings-form"
+          :disabled="pointsConfigLoading || pointsConfigSaving"
+        >
+          <el-form-item label="自动累计">
+            <el-switch
+              v-model="pointsConfigForm.enabled"
+              active-text="启用"
+              inactive-text="停用"
+            />
+          </el-form-item>
+
+          <el-form-item label="积分比例" required>
+            <div class="points-ratio-control">
+              <span>消费</span>
+              <el-input-number
+                v-model="pointsConfigForm.amount_per_point"
+                :min="1"
+                :precision="2"
+                :step="100"
+                controls-position="right"
+                class="points-ratio-input"
+              />
+              <span>元 = 1 积分</span>
+            </div>
+          </el-form-item>
+
+          <el-form-item label="参与机况" required>
+            <el-checkbox-group v-model="pointsIncludedConditions">
+              <el-checkbox label="new">全新</el-checkbox>
+              <el-checkbox label="used">二手</el-checkbox>
+            </el-checkbox-group>
+          </el-form-item>
+
+          <div class="points-settings-preview">
+            <div class="preview-title">
+              <i class="fas fa-calculator"></i>
+              当前规则
+            </div>
+            <div class="preview-content">
+              {{ pointsConfigPreview }}
+            </div>
+          </div>
+        </el-form>
+
+        <template #footer>
+          <el-button type="default" @click="closePointsSettings" :disabled="pointsConfigSaving">
+            取消
+          </el-button>
+          <el-button
+            type="primary"
+            @click="savePointsSettings"
+            :disabled="pointsConfigSaving || !pointsConfigValid"
+            :loading="pointsConfigSaving"
+          >
+            保存设置
+          </el-button>
+        </template>
+      </MobileDialog>
 
       <!-- 新增/编辑客户对话框 -->
       <MobileDialog
@@ -845,38 +921,49 @@
                     <el-tag v-if="canViewField('status')" :type="selectedCustomer.status === 1 ? 'success' : 'info'" size="small">
                       {{ selectedCustomer.status === 1 ? '正常' : '禁用' }}
                     </el-tag>
+                    <span v-if="canViewField('gender')" class="customer-gender-meta">
+                      {{ getGenderLabel(selectedCustomer.gender) }}
+                    </span>
                   </div>
                 </div>
               </div>
 
               <div class="info-grid">
-                <div v-if="canViewField('phone')" class="info-row">
-                  <span class="label">电话</span>
-                  <span class="value phone">{{ selectedCustomer.phone }}</span>
-                </div>
-                <div v-if="canViewField('member_number')" class="info-row">
-                  <span class="label">会员号</span>
-                  <span class="value">{{ selectedCustomer.member_number || '-' }}</span>
-                </div>
-                <div v-if="canViewField('gender')" class="info-row">
-                  <span class="label">性别</span>
-                  <span class="value">
-                    <i v-if="selectedCustomer.gender === 'male'" class="fas fa-mars text-blue"></i>
-                    <i v-else-if="selectedCustomer.gender === 'female'" class="fas fa-venus text-danger"></i>
-                    <span v-else>-</span>
+                <div v-if="canViewField('phone')" class="info-row info-row-phone">
+                  <span class="label" title="电话" aria-label="电话">
+                    <i class="fas fa-mobile-alt"></i>
                   </span>
+                  <span class="value phone" :title="selectedCustomer.phone || '-'">{{ selectedCustomer.phone || '-' }}</span>
                 </div>
-                <div v-if="canViewField('email')" class="info-row">
-                  <span class="label">邮箱</span>
-                  <span class="value">{{ selectedCustomer.email || '-' }}</span>
+                <div v-if="canViewField('member_number')" class="info-row info-row-member">
+                  <span class="label" title="会员号" aria-label="会员号">
+                    <i class="fas fa-id-badge"></i>
+                  </span>
+                  <span class="value" :title="selectedCustomer.member_number || '-'">{{ selectedCustomer.member_number || '-' }}</span>
                 </div>
-                <div v-if="canViewField('address')" class="info-row">
-                  <span class="label">地址</span>
-                  <span class="value">{{ selectedCustomer.address || '-' }}</span>
+                <div v-if="canViewField('id_card')" class="info-row wide-info-row info-row-id-card">
+                  <span class="label" title="身份证号" aria-label="身份证号">
+                    <i class="fas fa-address-card"></i>
+                  </span>
+                  <span class="value" :title="selectedCustomer.id_card || '-'">{{ selectedCustomer.id_card || '-' }}</span>
                 </div>
-                <div v-if="canViewField('city') || canViewField('province')" class="info-row">
-                  <span class="label">地区</span>
-                  <span class="value">{{ selectedCustomer.city || '-' }} {{ selectedCustomer.province ? ', ' + selectedCustomer.province : '' }}</span>
+                <div v-if="canViewField('email')" class="info-row wide-info-row info-row-email">
+                  <span class="label" title="邮箱" aria-label="邮箱">
+                    <i class="fas fa-envelope"></i>
+                  </span>
+                  <span class="value" :title="selectedCustomer.email || '-'">{{ selectedCustomer.email || '-' }}</span>
+                </div>
+                <div v-if="canViewField('address')" class="info-row wide-info-row info-row-address">
+                  <span class="label" title="地址" aria-label="地址">
+                    <i class="fas fa-home"></i>
+                  </span>
+                  <span class="value" :title="selectedCustomer.address || '-'">{{ selectedCustomer.address || '-' }}</span>
+                </div>
+                <div v-if="canViewField('city') || canViewField('province')" class="info-row wide-info-row info-row-region">
+                  <span class="label" title="地区" aria-label="地区">
+                    <i class="fas fa-map-marker-alt"></i>
+                  </span>
+                  <span class="value" :title="formatCustomerRegion(selectedCustomer, { province: canViewField('province'), city: canViewField('city') })">{{ formatCustomerRegion(selectedCustomer, { province: canViewField('province'), city: canViewField('city') }) }}</span>
                 </div>
               </div>
             </div>
@@ -1066,8 +1153,9 @@ import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { PermissionGate, PageHeader } from '@/components/base'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
-import { getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
+import { getActionColumnMinWidth, getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 import { isValidAppleAccount, isValidEmail, isValidIdCard, isValidMobilePhone, normalizeAppleId, normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
+import { logger } from '@/utils/logger'
 
 interface CustomerListItem {
   id: number
@@ -1183,6 +1271,13 @@ interface CustomerPurchasesResponseData {
   pagination?: Partial<CustomerPurchasesPagination>
 }
 
+interface CustomerPointsConfig {
+  enabled: boolean
+  amount_per_point: number
+  include_new: boolean
+  include_used: boolean
+}
+
 // 权限管理
 const {
   hasPermission,
@@ -1195,6 +1290,8 @@ const {
   requirePermission,
   handleNoPermission
 } = usePagePermissions('customers')
+
+const canManagePoints = computed(() => hasPermission('manage'))
 
 // 路由和状态管理
 const router = useRouter()
@@ -1222,8 +1319,8 @@ const customersTableRef = ref<InstanceType<typeof ElTable> | null>(null)
 const searchKeyword = ref('')
 const hasSelection = computed(() => selectedRows.value.length > 0)
 const selectedCount = computed(() => selectedRows.value.length)
-const mobileActionRowId = ref<number | null>(null)
-const lastTappedRowId = ref<number | null>(null)
+const mobileActionRowId = ref<string | null>(null)
+const lastTappedRowId = ref<string | null>(null)
 const lastTapTimestamp = ref(0)
 
 const customerFieldMap: Record<string, string> = {
@@ -1282,21 +1379,22 @@ const showSearchKeyword = computed(() => {
 })
 
 const showMemberNumberColumn = computed(() => canViewField('member_number'))
-const showNameColumn = computed(() => canViewField('name') || canViewField('id'))
+const showNameColumn = computed(() => canViewField('name'))
 const showPhoneColumn = computed(() => canViewField('phone'))
+const showAppleIdColumn = computed(() => canViewField('apple_id'))
 
 const showCustomerInfoColumn = computed(() => {
   if (isMobile.value) {
     return showNameColumn.value
   }
-  return ['id', 'name', 'member_number', 'gender', 'birthday'].some(fieldName => canViewField(fieldName))
+  return ['id', 'name', 'member_number'].some(fieldName => canViewField(fieldName))
 })
 
 const showContactColumn = computed(() => {
   if (isMobile.value) {
     return showPhoneColumn.value
   }
-  return ['phone', 'email', 'wechat', 'qq', 'apple_id'].some(fieldName => canViewField(fieldName))
+  return ['phone', 'wechat', 'qq'].some(fieldName => canViewField(fieldName))
 })
 
 const showCustomerTypeColumn = computed(() => {
@@ -1306,9 +1404,14 @@ const showCustomerTypeColumn = computed(() => {
 const showVipColumn = computed(() => canViewField('vip_level'))
 const showAccountColumn = computed(() => ['balance', 'points'].some(fieldName => canViewField(fieldName)))
 const showRegionColumn = computed(() => ['city', 'province', 'address'].some(fieldName => canViewField(fieldName)))
-const showStatsColumn = computed(() => ['total_spent', 'purchase_count', 'last_purchase_date', 'created_at'].some(fieldName => canViewField(fieldName)))
+const showStatsColumn = computed(() => ['total_spent', 'purchase_count', 'last_purchase_date'].some(fieldName => canViewField(fieldName)))
 const showStatusColumn = computed(() => canViewField('status'))
 const showActionField = computed(() => canViewField('actions') && (canEdit.value || canDelete.value || canView.value) && !isMobile.value)
+const customerActionColumnWidth = computed(() => getActionColumnMinWidth([
+  ...(canEdit.value ? ['编辑'] : []),
+  '详情',
+  ...(canDelete.value ? ['删除'] : [])
+]))
 const showStatsCards = computed(() => (
   canViewField('stats_total_customers') ||
   canViewField('stats_active_customers') ||
@@ -1330,25 +1433,27 @@ const customerMobileColumnWidths = computed(() => ({
   )
 }))
 
-const getCustomerRowKey = (row: CustomerListItem) => row.id
+const getCustomerRowKey = (row: CustomerListItem) => String(row.id)
 
 const toggleMobileActions = (id: number) => {
   if (!isMobile.value) return
-  mobileActionRowId.value = mobileActionRowId.value === id ? null : id
+  const rowId = String(id)
+  mobileActionRowId.value = mobileActionRowId.value === rowId ? null : rowId
 }
 
 const handleMobileRowTap = (id: number) => {
   if (!isMobile.value) return
 
+  const rowId = String(id)
   const now = Date.now()
-  if (lastTappedRowId.value === id && now - lastTapTimestamp.value <= 320) {
+  if (lastTappedRowId.value === rowId && now - lastTapTimestamp.value <= 320) {
     toggleMobileActions(id)
     lastTappedRowId.value = null
     lastTapTimestamp.value = 0
     return
   }
 
-  lastTappedRowId.value = id
+  lastTappedRowId.value = rowId
   lastTapTimestamp.value = now
 }
 
@@ -1477,7 +1582,44 @@ const VIP_LEVELS = [
   { value: 'platinum', label: '铂金会员', color: 'danger', icon: 'fas fa-gem' }
 ] as const
 
-const ALLOWED_VIP_LEVELS = new Set(VIP_LEVELS.map(vip => vip.value))
+const ALLOWED_VIP_LEVELS = new Set<string>(VIP_LEVELS.map(vip => vip.value))
+
+const PROVINCE_NAME_BY_CODE: Record<string, string> = {
+  '11': '北京市',
+  '12': '天津市',
+  '13': '河北省',
+  '14': '山西省',
+  '15': '内蒙古自治区',
+  '21': '辽宁省',
+  '22': '吉林省',
+  '23': '黑龙江省',
+  '31': '上海市',
+  '32': '江苏省',
+  '33': '浙江省',
+  '34': '安徽省',
+  '35': '福建省',
+  '36': '江西省',
+  '37': '山东省',
+  '41': '河南省',
+  '42': '湖北省',
+  '43': '湖南省',
+  '44': '广东省',
+  '45': '广西壮族自治区',
+  '46': '海南省',
+  '50': '重庆市',
+  '51': '四川省',
+  '52': '贵州省',
+  '53': '云南省',
+  '54': '西藏自治区',
+  '61': '陕西省',
+  '62': '甘肃省',
+  '63': '青海省',
+  '64': '宁夏回族自治区',
+  '65': '新疆维吾尔自治区',
+  '71': '台湾省',
+  '81': '香港特别行政区',
+  '82': '澳门特别行政区'
+}
 
 // 筛选器配置
 const filterConfigs = [
@@ -1557,6 +1699,7 @@ const stats = reactive<CustomerStatsState>({
 // 模态框状态
 const showCustomerModal = ref(false)
 const showDetailModal = ref(false)
+const showPointsSettingsModal = ref(false)
 const modalMode = ref<'add' | 'edit'>('add')
 const customerForm = ref<CustomerFormState>({
   id: null,
@@ -1583,6 +1726,46 @@ const customerForm = ref<CustomerFormState>({
   confirmPassword: ''
 })
 const selectedCustomer = ref<CustomerListItem | null>(null)
+const pointsConfigLoading = ref(false)
+const pointsConfigSaving = ref(false)
+const pointsConfigForm = ref<CustomerPointsConfig>({
+  enabled: true,
+  amount_per_point: 100,
+  include_new: true,
+  include_used: true
+})
+
+const pointsIncludedConditions = computed<string[]>({
+  get: () => {
+    const conditions: string[] = []
+    if (pointsConfigForm.value.include_new) conditions.push('new')
+    if (pointsConfigForm.value.include_used) conditions.push('used')
+    return conditions
+  },
+  set: (conditions) => {
+    pointsConfigForm.value.include_new = conditions.includes('new')
+    pointsConfigForm.value.include_used = conditions.includes('used')
+  }
+})
+
+const pointsConfigValid = computed(() => (
+  Number(pointsConfigForm.value.amount_per_point) > 0 &&
+  (pointsConfigForm.value.include_new || pointsConfigForm.value.include_used)
+))
+
+const pointsConfigPreview = computed(() => {
+  const amount = Number(pointsConfigForm.value.amount_per_point) || 0
+  const conditions = [
+    pointsConfigForm.value.include_new ? '全新' : '',
+    pointsConfigForm.value.include_used ? '二手' : ''
+  ].filter(Boolean).join('、') || '未选择机况'
+
+  if (!pointsConfigForm.value.enabled) {
+    return `自动积分已停用；销售出库暂不累计积分。`
+  }
+
+  return `${conditions}参与积分，销售出库按消费 ${amount} 元累计 1 积分；批发、划拨不计积分。`
+})
 
 // 表单验证错误
 const errors = ref<Record<string, string>>({})
@@ -1647,6 +1830,67 @@ const handleAppleIdInput = (value: string) => {
     }
   } else {
     delete errors.value.apple_id
+  }
+}
+
+const applyPointsConfig = (config?: Partial<CustomerPointsConfig>) => {
+  pointsConfigForm.value = {
+    enabled: config?.enabled ?? true,
+    amount_per_point: Number(config?.amount_per_point) > 0 ? Number(config?.amount_per_point) : 100,
+    include_new: config?.include_new ?? true,
+    include_used: config?.include_used ?? true
+  }
+}
+
+const loadPointsSettings = async () => {
+  pointsConfigLoading.value = true
+  try {
+    const response = await unifiedApi.get('/customers/points-config')
+    if (response.success) {
+      applyPointsConfig(response.data)
+    }
+  } catch (err) {
+    handleApiError(err, '获取积分设置失败')
+  } finally {
+    pointsConfigLoading.value = false
+  }
+}
+
+const openPointsSettings = async () => {
+  showPointsSettingsModal.value = true
+  await loadPointsSettings()
+}
+
+const closePointsSettings = () => {
+  showPointsSettingsModal.value = false
+}
+
+const savePointsSettings = async () => {
+  if (!pointsConfigValid.value) {
+    warning('请设置有效的积分比例，并至少选择一种参与机况')
+    return
+  }
+
+  pointsConfigSaving.value = true
+  try {
+    const response = await unifiedApi.put('/customers/points-config', {
+      enabled: pointsConfigForm.value.enabled,
+      amount_per_point: Number(pointsConfigForm.value.amount_per_point),
+      include_new: pointsConfigForm.value.include_new,
+      include_used: pointsConfigForm.value.include_used
+    })
+
+    if (response.success) {
+      applyPointsConfig(response.data)
+      success('积分设置保存成功')
+      closePointsSettings()
+    } else {
+      error(response.message || '积分设置保存失败')
+    }
+  } catch (err) {
+    handleApiError(err, '积分设置保存失败')
+  } finally {
+    pointsConfigSaving.value = false
   }
 }
 
@@ -2289,10 +2533,21 @@ const getGenderLabel = (gender: string) => {
   return labelMap[gender] || '未知'
 }
 
-// 格式化身份证号（隐藏中间部分）
-const formatIdNumber = (idCard: string) => {
-  if (!idCard || idCard.length < 8) return idCard
-  return idCard.substring(0, 4) + '**********' + idCard.substring(idCard.length - 4)
+const getProvinceDisplayName = (province?: string) => {
+  const rawProvince = String(province || '').trim()
+  return PROVINCE_NAME_BY_CODE[rawProvince] || rawProvince
+}
+
+const formatCustomerRegion = (
+  customer: Pick<CustomerListItem, 'province' | 'city'> | null,
+  visible: { province?: boolean; city?: boolean } = { province: true, city: true }
+) => {
+  if (!customer) return '-'
+
+  const province = visible.province ? getProvinceDisplayName(customer.province) : ''
+  const city = visible.city ? String(customer.city || '').trim() : ''
+  const regionParts = [province, city].filter(Boolean)
+  return regionParts.length > 0 ? regionParts.join('，') : '-'
 }
 
 // 格式化数字
@@ -2426,37 +2681,140 @@ onUnmounted(() => {
 }
 
 .customers-data-table {
-  .customer-info,
-  .contact-info,
   .account-info,
   .location-info,
   .purchase-info {
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    align-items: stretch;
     justify-content: center;
-    gap: 6px;
+    gap: 4px;
     min-width: 0;
+    width: 100%;
+    line-height: 1.35;
     white-space: nowrap;
   }
 
-  .customer-name strong {
+  .table-info-line {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    max-width: 100%;
+    min-width: 0;
+    min-height: 18px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    > span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
+  .purchase-summary {
+    gap: 8px;
+  }
+
+  .total-spent,
+  .purchase-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  .customer-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    min-width: 0;
+    width: 100%;
+    line-height: 1.35;
+    text-align: center;
+  }
+
+  .customer-primary-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 4px 8px;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .contact-info {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 5px 10px;
+    min-width: 0;
+    width: 100%;
+    line-height: 1.35;
+    text-align: center;
+    white-space: normal;
+  }
+
+  .customer-name {
+    display: inline-block;
     color: var(--el-text-color-primary);
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .customer-id,
   .province,
   .address,
-  .last-purchase,
-  .register-date {
+  .last-purchase {
     color: var(--el-text-color-placeholder);
+  }
+
+  .member-number > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .member-number,
   .mobile-member-number {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    min-width: 0;
     color: var(--el-color-primary);
     font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
     font-variant-numeric: tabular-nums;
     font-weight: 600;
+  }
+
+  .apple-id-value {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    min-width: 0;
+    color: var(--el-text-color-secondary);
+    font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+    font-size: 12px;
+
+    i {
+      flex: 0 0 auto;
+      margin-right: 4px;
+      color: var(--el-text-color-placeholder);
+    }
+
+    span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
   }
 
   .contact-info .phone {
@@ -2469,15 +2827,31 @@ onUnmounted(() => {
     }
   }
 
-  .contact-info .email i {
-    color: var(--el-color-info);
-    margin-right: 4px;
+  .contact-info .phone,
+  .social-tag {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .contact-info .phone > span,
+  .social-tag > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .social-links {
-    display: flex;
-    align-items: center;
-    gap: 4px;
+    display: contents;
+  }
+
+  .social-tag {
+    color: var(--el-text-color-secondary);
+
+    i {
+      margin-right: 4px;
+    }
   }
 
   .amount-value {
@@ -2496,7 +2870,7 @@ onUnmounted(() => {
   }
 
   .location-info .address {
-    max-width: 120px;
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
   }
@@ -2525,6 +2899,41 @@ onUnmounted(() => {
   }
 }
 
+.points-settings-form {
+  .points-ratio-control {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    color: var(--el-text-color-regular);
+    font-size: 14px;
+  }
+
+  .points-ratio-input {
+    width: 180px;
+  }
+}
+
+.points-settings-preview {
+  margin: 8px 0 0 120px;
+  padding: 12px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 6px;
+  background: var(--el-fill-color-light);
+  color: var(--el-text-color-regular);
+  font-size: 13px;
+  line-height: 1.6;
+
+  .preview-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+    color: var(--el-text-color-primary);
+    font-weight: 600;
+  }
+}
+
 // 响应式设计
 @media (max-width: 767px) {
   .page-body {
@@ -2540,6 +2949,16 @@ onUnmounted(() => {
 
   .page-subtitle {
     font-size: 14px;
+  }
+
+  .points-settings-form {
+    .points-ratio-input {
+      width: 150px;
+    }
+  }
+
+  .points-settings-preview {
+    margin-left: 0;
   }
 
 }
@@ -2631,8 +3050,23 @@ onUnmounted(() => {
 
         .customer-meta {
           display: flex;
+          align-items: center;
           gap: 8px;
           flex-wrap: wrap;
+        }
+
+        .customer-gender-meta {
+          display: inline-flex;
+          align-items: center;
+          min-height: 24px;
+          padding: 0 9px;
+          border: 1px solid rgba(255, 255, 255, 0.45);
+          border-radius: 4px;
+          background: rgba(255, 255, 255, 0.16);
+          color: #fff;
+          font-size: 12px;
+          font-weight: 600;
+          line-height: 1;
         }
       }
     }
@@ -2641,13 +3075,16 @@ onUnmounted(() => {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       gap: 12px;
+      align-items: start;
       padding: 0 4px;
 
       .info-row {
-        display: flex;
-        justify-content: space-between;
+        display: grid;
+        grid-template-columns: 26px minmax(0, 1fr);
         align-items: center;
-        padding: 10px 16px;
+        column-gap: 8px;
+        min-width: 0;
+        padding: 9px 14px;
         background: #f8f9fa;
         border-radius: 8px;
         transition: all 0.2s ease;
@@ -2656,20 +3093,100 @@ onUnmounted(() => {
           background: #e9ecef;
         }
 
+        &.info-row-phone {
+          background: #f0f9f2;
+
+          .label i {
+            color: #2f9e44;
+          }
+        }
+
+        &.info-row-member {
+          background: #f0f7ff;
+
+          .label i {
+            color: #2f80ed;
+          }
+        }
+
+        &.info-row-id-card {
+          background: #f6f2ff;
+
+          .label i {
+            color: #7048e8;
+          }
+        }
+
+        &.info-row-email {
+          background: #effafd;
+
+          .label i {
+            color: #1098ad;
+          }
+        }
+
+        &.info-row-address {
+          background: #fff7ed;
+
+          .label i {
+            color: #f08c00;
+          }
+        }
+
+        &.info-row-region {
+          background: #fff1f2;
+
+          .label i {
+            color: #e03131;
+          }
+        }
+
+        &.info-row-phone:hover,
+        &.info-row-member:hover,
+        &.info-row-id-card:hover,
+        &.info-row-email:hover,
+        &.info-row-address:hover,
+        &.info-row-region:hover {
+          filter: saturate(1.06) brightness(0.985);
+        }
+
         .label {
           font-size: 13px;
           color: #6c757d;
           font-weight: 500;
+          line-height: 1.35;
+          white-space: nowrap;
+          text-align: center;
+
+          i {
+            color: #6c757d;
+            font-size: 14px;
+          }
         }
 
         .value {
-          font-size: 14px;
+          min-width: 0;
+          font-size: 13px;
           color: #212529;
           font-weight: 500;
+          line-height: 1.3;
+          text-align: right;
+          overflow: visible;
+          white-space: normal;
+          overflow-wrap: anywhere;
+          word-break: break-word;
 
           &.phone {
-            font-family: 'Courier New', monospace;
-            letter-spacing: 0.5px;
+            letter-spacing: 0;
+            white-space: nowrap;
+          }
+        }
+
+        &.wide-info-row {
+          grid-column: 1 / -1;
+
+          .value {
+            text-align: left;
           }
         }
       }
@@ -3036,14 +3553,18 @@ onUnmounted(() => {
 
       .info-grid .info-row {
         padding: 10px 12px;
-        gap: 10px;
+        column-gap: 8px;
 
         .label {
           font-size: 12px;
+
+          i {
+            font-size: 13px;
+          }
         }
 
         .value {
-          font-size: 13px;
+          font-size: 12px;
           text-align: right;
         }
       }

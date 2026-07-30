@@ -3110,12 +3110,6 @@ onMounted(async () => {
       }
     }
 
-    // 手机明细表格 - 使用全局样式
-    .batch-details-table {
-      .payment-dialog-table-container {
-        --admin-data-table-min-width: 0px;
-      }
-    }
   }
 }
 
@@ -3432,20 +3426,6 @@ onMounted(async () => {
   box-shadow: none !important;
 }
 
-/* 已选中行的样式 */
-.data-table tbody tr.row-selected > td.el-table__cell {
-  background: #fff9c4 !important;
-  border-left: 3px solid #ffc107;
-}
-
-.data-table tbody tr.row-selected:hover > td.el-table__cell {
-  background: #fff59d !important;
-}
-
-.data-table tbody tr.row-selected td {
-  font-weight: 500;
-}
-
 .data-table tbody tr.mobile-action-expanded {
   border-bottom-color: transparent;
 }
@@ -3549,47 +3529,11 @@ onMounted(async () => {
   accent-color: #409eff;
 }
 
-/* 主表和弹窗表格统一继承公共字号，业务颜色和字重继续保留。 */
-.supplier-payment-table,
-.payment-detail-table {
-  :deep(.el-table__header th),
-  :deep(.el-table__header th .cell),
-  :deep(.el-table__body td),
-  :deep(.el-table__body td .cell),
-  .index-badge,
-  .serial-number,
-  .imei,
-  .imei-cell,
-  .price,
-  .price-cell,
-  .time-badge,
-  .payment-time-badge,
-  .status-badge {
-    font-size: var(--admin-data-table-cell-font-size) !important;
-  }
-}
-
 /* 移动端响应式 */
 @media (max-width: 768px) {
   .payment-list-table-wrapper {
     overflow-x: hidden !important;
     overscroll-behavior-x: contain;
-
-    :deep(.supplier-payment-table .el-scrollbar__wrap) {
-      overflow-x: auto !important;
-      scrollbar-width: none;
-      -webkit-overflow-scrolling: touch;
-    }
-
-    :deep(.supplier-payment-table .el-scrollbar__wrap::-webkit-scrollbar) {
-      display: none;
-      width: 0;
-      height: 0;
-    }
-
-    :deep(.supplier-payment-table .el-scrollbar__bar.is-horizontal) {
-      display: none !important;
-    }
   }
 
   .supplier-payment-table .status-badge {

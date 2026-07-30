@@ -7,6 +7,10 @@ const { generateMemberNumber } = require('../utils/member-number');
 const log = require('../utils/log');
 const { PAGINATION } = require('../config/constants');
 const { requireMockRoutesEnabled } = require('../middleware/mock-route-guard');
+const {
+  getCustomerPointsConfig,
+  saveCustomerPointsConfig
+} = require('../services/customer-points.service');
 
 const LEGACY_PERMISSION_CANONICAL_MAP = {
   'customers_customersview:create': 'customers:create',
@@ -31,6 +35,13 @@ const CUSTOMER_CREATE_BYPASS_PERMISSIONS = new Set([
 ]);
 
 const toCanonicalPermission = (permission = '') => LEGACY_PERMISSION_CANONICAL_MAP[permission] || permission;
+const APPLE_ACCOUNT_EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+const APPLE_ACCOUNT_PHONE_REGEX = /^1[3-9]\d{9}$/;
+const isValidAppleAccount = account => (
+  typeof account === 'string' &&
+  !/[\u4e00-\u9fa5]/.test(account) &&
+  (APPLE_ACCOUNT_EMAIL_REGEX.test(account) || APPLE_ACCOUNT_PHONE_REGEX.test(account))
+);
 
 const normalizePermissionEntries = (permissions = []) => permissions.map((perm) => {
   if (typeof perm === 'string') {
@@ -446,7 +457,7 @@ router.get('/', unifiedAuth, requirePermission('customers:view'), async (req, re
   const query = `
     SELECT c.id, c.name, c.phone, c.email, c.customer_type, c.vip_level, c.gender,
            c.city, c.province, c.balance, c.points, c.status, c.remarks, c.created_at, c.updated_at,
-           c.member_number, c.apple_id, c.id_card, c.address,
+           c.member_number, c.wechat, c.qq, c.apple_id, c.id_card, c.address,
            COALESCE(sales_total.total_amount, 0) as total_spent,
            COALESCE(sales_count.purchase_count, 0) as purchase_count,
            c.last_purchase_date
@@ -609,6 +620,50 @@ router.get('/stats/overview', unifiedAuth, requirePermission('customers:view'), 
   }
 });
 
+// 获取客户积分自动累计设置
+router.get('/points-config', unifiedAuth, requirePermission('customers:view'), async (req, res) => {
+  try {
+    const config = await getCustomerPointsConfig();
+    ApiResponse.success(res, config, '获取积分设置成功');
+  } catch (error) {
+    log.error('获取客户积分设置失败:', error);
+    ApiResponse.serverError(res, '获取客户积分设置失败', error);
+  }
+});
+
+// 保存客户积分自动累计设置
+router.put('/points-config', unifiedAuth, requirePermission('customers:manage'), async (req, res) => {
+  try {
+    const {
+      enabled,
+      amount_per_point,
+      include_new,
+      include_used
+    } = req.body || {};
+
+    const amountPerPoint = Number(amount_per_point);
+    if (!Number.isFinite(amountPerPoint) || amountPerPoint <= 0) {
+      return ApiResponse.badRequest(res, '请输入有效的积分比例金额');
+    }
+
+    if (!include_new && !include_used) {
+      return ApiResponse.badRequest(res, '全新和二手至少需要选择一种参与积分统计');
+    }
+
+    const config = await saveCustomerPointsConfig({
+      enabled,
+      amount_per_point: amountPerPoint,
+      include_new,
+      include_used
+    });
+
+    ApiResponse.success(res, config, '积分设置保存成功');
+  } catch (error) {
+    log.error('保存客户积分设置失败:', error);
+    ApiResponse.serverError(res, '保存客户积分设置失败', error);
+  }
+});
+
 // 获取单个客户详情
 router.get('/:id', unifiedAuth, requirePermission('customers:view'), async (req, res) => {
   try {
@@ -647,6 +702,8 @@ router.post('/', unifiedAuth, requireCustomerCreatePermissionForBusinessFlow, as
       province,
       customer_type,
       remarks,
+      wechat,
+      qq,
       apple_id
     } = req.body;
 
@@ -677,14 +734,8 @@ router.post('/', unifiedAuth, requireCustomerCreatePermissionForBusinessFlow, as
 
     // 验证 Apple ID 格式（如果提供）
     if (apple_id) {
-      // 检查是否包含中文字符
-      if (/[\u4e00-\u9fa5]/.test(apple_id)) {
-        return ApiResponse.badRequest(res, 'Apple ID 不能包含中文字符');
-      }
-      // 验证邮箱格式（更严格）
-      const appleIdRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-      if (!appleIdRegex.test(apple_id)) {
-        return ApiResponse.badRequest(res, 'Apple ID 格式不正确，请输入有效的邮箱地址（仅支持英文和数字）');
+      if (!isValidAppleAccount(apple_id)) {
+        return ApiResponse.badRequest(res, 'Apple ID 格式不正确，请输入有效的手机号或邮箱（仅支持英文和数字）');
       }
     }
 
@@ -699,8 +750,8 @@ router.post('/', unifiedAuth, requireCustomerCreatePermissionForBusinessFlow, as
       INSERT INTO customers (
         name, gender, phone, email, birthday, id_card,
         address, city, province, customer_type,
-        remarks, apple_id, status, member_number, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, NOW(), NOW())
+        remarks, wechat, qq, apple_id, status, member_number, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, NOW(), NOW())
     `;
 
     const insertValues = [
@@ -715,6 +766,8 @@ router.post('/', unifiedAuth, requireCustomerCreatePermissionForBusinessFlow, as
       province || '',
       customer_type || 'individual',
       remarks || '',
+      wechat || null,
+      qq || null,
       apple_id || null,
       memberNumber
     ];
@@ -723,7 +776,7 @@ router.post('/', unifiedAuth, requireCustomerCreatePermissionForBusinessFlow, as
 
     // 获取新创建的客户
     const [newCustomers] = await db.execute(
-      'SELECT id, name, gender, phone, email, birthday, id_card, address, city, province, customer_type, remarks, apple_id, member_number FROM customers WHERE id = ?',
+      'SELECT id, name, gender, phone, email, birthday, id_card, address, city, province, customer_type, remarks, wechat, qq, apple_id, member_number FROM customers WHERE id = ?',
       [result.insertId]
     );
 
@@ -803,14 +856,8 @@ router.put('/:id', unifiedAuth, requirePermission('customers:edit'), async (req,
 
     // 验证 Apple ID 格式（如果提供）
     if (apple_id) {
-      // 检查是否包含中文字符
-      if (/[\u4e00-\u9fa5]/.test(apple_id)) {
-        return ApiResponse.badRequest(res, 'Apple ID 不能包含中文字符');
-      }
-      // 验证邮箱格式（更严格）
-      const appleIdRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-      if (!appleIdRegex.test(apple_id)) {
-        return ApiResponse.badRequest(res, 'Apple ID 格式不正确，请输入有效的邮箱地址（仅支持英文和数字）');
+      if (!isValidAppleAccount(apple_id)) {
+        return ApiResponse.badRequest(res, 'Apple ID 格式不正确，请输入有效的手机号或邮箱（仅支持英文和数字）');
       }
     }
 

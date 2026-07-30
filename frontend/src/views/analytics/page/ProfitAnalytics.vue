@@ -3707,31 +3707,5 @@ onBeforeUnmount(() => {
     }
   }
 
-  // 为全新/二手销售列添加颜色区分
-  :deep(.el-table) {
-    .el-table__header-wrapper {
-      .el-table__header {
-        th {
-          &[aria-label="全新销售"] {
-            background: linear-gradient(to bottom, #f0f9ff, #e0f2fe);
-            color: #0369a1;
-            font-weight: 600;
-          }
-
-          &[aria-label="二手销售"] {
-            background: linear-gradient(to bottom, #fff7ed, #ffedd5);
-            color: #c2410c;
-            font-weight: 600;
-          }
-
-          &[aria-label="合计"] {
-            background: linear-gradient(to bottom, #f5f3ff, #ede9fe);
-            color: #6b21a8;
-            font-weight: 600;
-          }
-        }
-      }
-    }
-  }
 }
 </style>

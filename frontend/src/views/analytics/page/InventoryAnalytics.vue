@@ -1465,20 +1465,6 @@ onBeforeUnmount(() => {
     padding: 20px;
   }
 
-  :deep(.el-table) {
-    --el-table-header-bg-color: #f6f9fc;
-    --el-table-row-hover-bg-color: #f8fbfd;
-    border-radius: 14px;
-  }
-
-  :deep(.el-table th.el-table__cell) {
-    color: #54606d;
-    font-weight: 700;
-  }
-
-  :deep(.el-table td.el-table__cell) {
-    color: #2c3a47;
-  }
 }
 
 @media (max-width: 1200px) {

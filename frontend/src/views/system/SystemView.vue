@@ -196,8 +196,8 @@
                     </template>
                   </el-button>
                 </div>
-                <el-table class="data-table" :data="siteSettingsList" border stripe style="width: 100%">
-                  <el-table-column prop="category" label="分类" width="120" align="center">
+                <el-table class="data-table compact-fit-table" :data="siteSettingsList" border stripe table-layout="auto" :fit="true">
+                  <el-table-column prop="category" label="分类" min-width="120" align="center">
                     <template #default="{ row }">
                       <el-tag :type="row.category === 'basic' ? 'primary' : 'success'" size="small">
                         {{ row.categoryLabel }}
@@ -205,14 +205,14 @@
                     </template>
                   </el-table-column>
 
-                  <el-table-column prop="label" label="设置项" width="150">
+                  <el-table-column prop="label" label="设置项" min-width="150">
                     <template #default="{ row }">
                       <i :class="row.icon"></i>
                       {{ row.label }}
                     </template>
                   </el-table-column>
 
-                  <el-table-column prop="value" label="当前值">
+                  <el-table-column prop="value" label="当前值" min-width="160">
                     <template #default="{ row }">
                       <el-input
                         v-if="row.type === 'input'"
@@ -1439,39 +1439,6 @@ onBeforeUnmount(() => {
   max-width: 900px;
 }
 
-.site-settings-table :deep(.el-table) {
-  border-radius: 12px;
-}
-
-.site-settings-table :deep(.el-table__header-wrapper) {
-  background: linear-gradient(135deg, #495057 0%, #343a40 100%) !important;
-}
-
-.site-settings-table :deep(.el-table__header th) {
-  background: linear-gradient(135deg, #495057 0%, #343a40 100%) !important;
-  color: #ffffff;
-  font-weight: 600;
-  font-size: 14px;
-  padding: 16px 0;
-}
-
-.site-settings-table :deep(.el-table__header tr) {
-  background: linear-gradient(135deg, #495057 0%, #343a40 100%) !important;
-}
-
-.site-settings-table :deep(.el-table__header th .cell) {
-  padding: 0 12px;
-  color: #ffffff;
-}
-
-.site-settings-table :deep(.el-table__row) {
-  transition: background-color 0.3s ease;
-}
-
-.site-settings-table :deep(.el-table__row:hover) {
-  background-color: var(--bg-tertiary, #f8f9fa) !important;
-}
-
 .site-settings-table :deep(.el-input__wrapper) {
   border-radius: 6px;
 }
@@ -1582,10 +1549,6 @@ onBeforeUnmount(() => {
   /* 站点信息表格响应式 */
   .site-settings-table {
     padding: 16px;
-  }
-
-  .site-settings-table :deep(.el-table) {
-    font-size: 13px;
   }
 
   .section-subtitle {

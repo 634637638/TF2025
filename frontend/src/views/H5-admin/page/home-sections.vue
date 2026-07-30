@@ -1174,12 +1174,6 @@ onUnmounted(() => {
 }
 
 .products-manager {
-  :deep(.unified-search-panel) {
-    display: flex;
-    align-items: center;
-    margin-bottom: 20px;
-  }
-
   .products-list-section {
     .list-header {
       display: flex;
@@ -1616,10 +1610,6 @@ onUnmounted(() => {
   }
 
   .products-manager {
-    :deep(.unified-search-panel) {
-      margin-bottom: 12px;
-    }
-
     .products-list-section,
     .available-products-section {
       margin-top: 14px;

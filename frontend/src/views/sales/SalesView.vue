@@ -5072,7 +5072,8 @@ const submitBatchSale = async () => {
     const response = await api.post('/sales/phone', saleData, { showError: false })
 
     if (response.success) {
-      showSuccess(`批量销售成功！共销售 ${selectedPhones.value.length} 台设备`)
+      const pointsEarned = Number(response.data?.points_earned) || 0
+      showSuccess(`批量销售成功！共销售 ${selectedPhones.value.length} 台设备${pointsEarned > 0 ? `，本单获得 ${pointsEarned} 积分` : ''}`)
       clearBatchSelection()
       loadAvailablePhones()
       todaySold.value += selectedPhones.value.length
@@ -5321,7 +5322,9 @@ const handleSale = async () => {
     const response = await api.post('/sales/phone', saleData, { showError: false })
 
     if (response.success) {
-      showSuccess(batchMode.value ? `批量销售成功！共销售 ${selectedPhones.value.length} 台设备` : '销售出库成功！')
+      const pointsEarned = Number(response.data?.points_earned) || 0
+      const pointsMessage = pointsEarned > 0 ? `，本单获得 ${pointsEarned} 积分` : ''
+      showSuccess(batchMode.value ? `批量销售成功！共销售 ${selectedPhones.value.length} 台设备${pointsMessage}` : `销售出库成功！${pointsMessage}`)
       // 标记销售已完成，这样关闭弹窗时不会显示未保存数据警告
       saleCompleted.value = true
       closeSaleModal()
@@ -9036,21 +9039,6 @@ input.form-control:focus, textarea.form-control:focus {
   margin: 0;
   padding: 0;
   width: 100%;
-}
-
-.inventory-detail-table-container {
-  --admin-data-table-min-width: 0px;
-  scrollbar-width: none;
-}
-
-.inventory-detail-table-container::-webkit-scrollbar {
-  display: none;
-  width: 0;
-  height: 0;
-}
-
-.inventory-detail-table-container :deep(.detail-table.el-table) {
-  min-width: 0 !important;
 }
 
 /* 库存明细模态框中的优先徽章紧凑样式 */

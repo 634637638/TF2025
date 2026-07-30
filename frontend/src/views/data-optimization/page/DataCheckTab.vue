@@ -321,10 +321,10 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <span style="flex: 1">
+        <div class="tf-dialog-actions">
           <el-button type="default" @click="showEditDialog = false">取消</el-button>
           <el-button type="primary" @click="handleSaveEdit">保存</el-button>
-        </span>
+        </div>
       </template>
     </MobileDialog>
   </div>

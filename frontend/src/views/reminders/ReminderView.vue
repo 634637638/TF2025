@@ -184,7 +184,7 @@
         <div class="detail-summary"><div><span>事项</span><strong>{{ detail.title }}</strong></div><div><span>类型</span><strong>{{ detail.type_name || '未分类' }}</strong></div><div><span>接收人</span><strong>{{ detail.target_mode === 'all' ? '全体员工' : detail.targets?.map((item:any) => item.name || item.username).join('、') }}</strong></div><div><span>规则</span><strong>{{ repeatLabel(detail) }}</strong></div></div>
         <p v-if="detail.content" class="detail-content">{{ detail.content }}</p>
         <div class="table-responsive detail-record-table">
-          <el-table :data="detailOccurrences" border stripe class="data-table devices-table" table-layout="fixed" :fit="true">
+          <el-table :data="detailOccurrences" border stripe class="data-table devices-table compact-fit-table" table-layout="fixed" :fit="true">
             <el-table-column prop="scheduled_at" label="执行日期" :min-width="detailScheduledAtColumnWidth" align="center" class-name="complete-text-column">
               <template #default="{ row }">{{ formatDate(row.scheduled_at) }}</template>
             </el-table-column>
@@ -209,7 +209,7 @@
           :data="types"
           border
           stripe
-          class="data-table devices-table reminder-type-table"
+          class="data-table devices-table compact-fit-table reminder-type-table"
           table-layout="fixed"
           :fit="true"
           row-key="id"
@@ -371,8 +371,7 @@ onMounted(async()=>{await Promise.all([loadTypes(),loadUsers()]);await loadRemin
 .type-badge { display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border:1px solid;border-radius:999px;font-weight:700;white-space:nowrap; }
 .execution-summary{font-variant-numeric:tabular-nums;color:#475569;}.user-option-meta{float:right;margin-left:16px;color:#94a3b8;}.input-suffix{margin-left:8px;color:#64748b;}
 .reminder-form-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 18px}.reminder-form-grid .span-2{grid-column:1/-1}.reminder-form-grid :deep(.el-select),.reminder-form-grid :deep(.el-date-editor){width:100%}.weekday-options{display:flex;flex-wrap:wrap}
-.detail-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.detail-summary>div{display:flex;flex-direction:column;padding:10px 12px;background:#f8fafc;border-left:3px solid #667eea}.detail-summary span{font-size:12px;color:#64748b}.detail-summary strong{margin-top:3px;color:#1e293b}.detail-content{margin:14px 0;padding:12px;background:#f8fafc;white-space:pre-wrap;color:#334155}.detail-record-table{--admin-data-table-min-width:100%;width:100%}.recipient-status{display:inline-flex;padding:3px 8px;border-radius:999px;font-weight:700}.recipient-status.is-completed{color:#047857;background:#d1fae5}.recipient-status.is-ignored{color:#c2410c;background:#ffedd5}.recipient-status.is-pending{color:#1d4ed8;background:#dbeafe}.recipient-status.is-read,.recipient-status.is-snoozed{color:#6d28d9;background:#ede9fe}
-:global(.admin-page .detail-record-table .data-table.el-table){width:100%!important;min-width:100%!important}
+.detail-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.detail-summary>div{display:flex;flex-direction:column;padding:10px 12px;background:#f8fafc;border-left:3px solid #667eea}.detail-summary span{font-size:12px;color:#64748b}.detail-summary strong{margin-top:3px;color:#1e293b}.detail-content{margin:14px 0;padding:12px;background:#f8fafc;white-space:pre-wrap;color:#334155}.detail-record-table{width:100%}.recipient-status{display:inline-flex;padding:3px 8px;border-radius:999px;font-weight:700}.recipient-status.is-completed{color:#047857;background:#d1fae5}.recipient-status.is-ignored{color:#c2410c;background:#ffedd5}.recipient-status.is-pending{color:#1d4ed8;background:#dbeafe}.recipient-status.is-read,.recipient-status.is-snoozed{color:#6d28d9;background:#ede9fe}
 .type-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;color:#64748b;font-size:13px}
 .type-color-control{display:flex;align-items:center;gap:14px;min-width:0}.type-color-preview{max-width:240px;overflow:hidden;text-overflow:ellipsis}
 /* Element Plus teleports the color picker footer outside the dialog. Keep both
@@ -391,6 +390,6 @@ onMounted(async()=>{await Promise.all([loadTypes(),loadUsers()]);await loadRemin
   box-sizing: border-box !important;
 }
 
-.reminder-type-table-wrap{--admin-data-table-min-width:100%;width:100%}.reminder-type-table{width:100%}
+.reminder-type-table-wrap,.reminder-type-table{width:100%}
 @media(max-width:768px){.reminder-form-grid{grid-template-columns:1fr}.reminder-form-grid .span-2{grid-column:auto}.detail-summary{grid-template-columns:1fr}.type-toolbar{align-items:flex-start;flex-direction:column}.reminder-form-dialog :deep(.el-dialog),.reminder-detail-dialog :deep(.el-dialog),.reminder-type-dialog :deep(.el-dialog){width:calc(100vw - 16px)!important;margin:8px auto}.weekday-options :deep(.el-checkbox-button__inner){padding:8px 10px}}
 </style>

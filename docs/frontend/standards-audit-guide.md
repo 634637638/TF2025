@@ -12,7 +12,20 @@
 npm run check:standards
 ```
 
-该命令会依次运行前端的 TAB、按钮、表格、加载动画和数据实时性审计。任意一项失败都会返回非零退出码，并停止后续启动或构建。
+该命令首先运行规范覆盖审计，再依次运行统一 UI 结构、TAB、按钮、表格、加载动画和数据实时性审计。任意一项失败都会返回非零退出码，并停止后续启动或构建。
+
+`docs/frontend/standards-manifest.json` 是强制规范清单。每份统一规范必须登记至少一个审计命令和对应公共实现入口；新增名称包含 `standard`、`standards` 或 `unified-page-structure` 的权威文档后，如果没有同步登记审计，`check:coverage` 会直接失败。清单引用的审计命令未加入 `check:standards`、公共实现文件不存在或文档被误删，也会失败。
+
+`docs/frontend` 是当前唯一权威强制规范目录。`docs/standards`、`docs/components` 和 `docs/guides` 中同名或早期规范属于历史/专题参考；内容冲突时必须以 `docs/frontend` 及清单映射为准，不允许从参考文档复制第二套公共样式或绕开审计。需要把参考规则升级为强制要求时，必须先迁入或合并到 `docs/frontend`，登记公共实现和审计命令后再生效。
+
+统一 UI 结构审计可单独运行：
+
+```bash
+cd frontend
+npm run check:ui
+```
+
+`check:ui` 检查 Dialog 公共正文与 footer 入口、统一搜索根组件、公共分页组件、后台页面根结构和页面私有公共选择器覆盖。页面直接使用 `el-pagination`、覆盖 `.unified-search-panel` / `.tf-pagination` / `.tf-dialog-actions`，或使用 `PageHeader` 却没有 `admin-page` 与 `admin-page-content`，都会失败。
 
 表格审计也可单独运行：
 
@@ -21,7 +34,7 @@ cd frontend
 npm run check:tables
 ```
 
-`check:tables` 扫描全部 Vue 页面并强制要求：所有 Element 表格接入 `.data-table` / `.admin-data-table`；主列表操作列使用 `.actions-column`、公共动态宽度、公共按钮容器、文字按钮和 `@click.stop`；禁止数字固定宽度、固定右侧列和页面私有 `.actions-column` 样式。弹窗纯图标工具列只能显式使用 `compact-action-column`。
+`check:tables` 扫描全部 Vue 页面并强制要求：所有 Element 表格接入 `.data-table` / `.admin-data-table`；主列表操作列使用 `.actions-column`、公共动态宽度、公共按钮容器、文字按钮和 `@click.stop`；禁止数字固定宽度、固定右侧列和页面私有 `.actions-column` 样式。弹窗纯图标工具列只能显式使用 `compact-action-column`。审计还会验证公共表格颜色、字体、行高、圆角、内容完整展示、Element 根节点不超过容器、内部唯一横向滚动层、表头同步，以及表头/表体 PC 鼠标拖动入口没有被删除，并禁止页面重定义公共表格变量或通用视觉。
 
 按钮颜色审计也可单独运行：
 

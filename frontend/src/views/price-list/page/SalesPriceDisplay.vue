@@ -139,10 +139,12 @@
     >
       <div class="ios-save-container">
         <div class="image-wrapper">
-          <img :src="iosImageUrl" alt="腾飞数码销售报价" />
+          <img class="ios-save-image" :src="iosImageUrl" alt="腾飞数码销售报价" draggable="false" />
         </div>
       </div>
       <template #footer>
+        <el-button @click="toggleIOSImageMode">长按保存</el-button>
+        <el-button type="primary" @click="shareIOSImage">我要分享</el-button>
         <el-button type="primary" @click="closeIOSImageModal">关闭</el-button>
       </template>
     </MobileDialog>
@@ -168,6 +170,37 @@ const hasSearched = ref(false)
 const isGenerating = ref(false)
 const showIOSImageModal = ref(false)
 const iosImageUrl = ref('')
+const iosImageFile = ref<File | null>(null)
+const iosBlobImageUrl = ref('')
+const iosDataImageUrl = ref('')
+const iosUseDataImage = ref(false)
+
+const blobToDataUrl = (blob: Blob) => new Promise<string>((resolve, reject) => {
+  const reader = new FileReader()
+  reader.onload = () => resolve(String(reader.result || ''))
+  reader.onerror = () => reject(reader.error || new Error('图片读取失败'))
+  reader.readAsDataURL(blob)
+})
+
+const getIOSMajorVersion = () => {
+  const match = navigator.userAgent.match(/(?:iPhone OS|CPU OS|CPU iPhone OS)\s(\d+)[_\d]*/i)
+  return match ? Number(match[1]) : null
+}
+
+const shouldUseDataImageForIOS = () => {
+  const major = getIOSMajorVersion()
+  return major !== null && major < 15
+}
+
+const syncIOSImageUrl = () => {
+  iosImageUrl.value = iosUseDataImage.value ? iosDataImageUrl.value : iosBlobImageUrl.value
+}
+
+const toggleIOSImageMode = () => {
+  iosUseDataImage.value = !iosUseDataImage.value
+  syncIOSImageUrl()
+  ElMessage.info(iosUseDataImage.value ? '已切换为兼容模式，请长按图片保存' : '已切换为新系统模式，请长按图片保存')
+}
 
 // 加载所有数据
 const loadAllData = async () => {
@@ -263,9 +296,33 @@ const isIOS = () => {
 
 const closeIOSImageModal = () => {
   showIOSImageModal.value = false
-  if (iosImageUrl.value) {
-    URL.revokeObjectURL(iosImageUrl.value)
-    iosImageUrl.value = ''
+  if (iosBlobImageUrl.value) {
+    URL.revokeObjectURL(iosBlobImageUrl.value)
+  }
+  iosImageUrl.value = ''
+  iosBlobImageUrl.value = ''
+  iosDataImageUrl.value = ''
+  iosImageFile.value = null
+}
+
+const shareIOSImage = async () => {
+  const file = iosImageFile.value
+  if (!file || !navigator.share) {
+    ElMessage.warning('当前浏览器不支持系统分享，请长按图片保存')
+    return
+  }
+
+  try {
+    const shareData = { files: [file], title: '腾飞数码销售报价', text: '报价单图片' }
+    if (navigator.canShare && !navigator.canShare(shareData)) {
+      ElMessage.warning('当前浏览器不支持系统分享，请长按图片保存')
+      return
+    }
+    await navigator.share(shareData)
+  } catch (error) {
+    if ((error as Error).name !== 'AbortError') {
+      ElMessage.warning('系统分享未成功，请长按图片保存')
+    }
   }
 }
 
@@ -283,39 +340,26 @@ const saveImageToGallery = async (canvas: HTMLCanvasElement) => {
       }
 
       if (isIOS()) {
-        const url = URL.createObjectURL(blob)
-        iosImageUrl.value = url
-        showIOSImageModal.value = true
-        ElMessage.success({
-          message: '请长按图片保存到相册',
-          duration: 3000
-        })
-        resolve()
+        try {
+          const file = new File([blob], fileName, { type: 'image/png' })
+          iosImageFile.value = file
+          iosBlobImageUrl.value = URL.createObjectURL(blob)
+          iosDataImageUrl.value = await blobToDataUrl(blob)
+          iosUseDataImage.value = shouldUseDataImageForIOS()
+          syncIOSImageUrl()
+          showIOSImageModal.value = true
+          ElMessage.success({
+            message: '图片已生成，请长按保存到相册',
+            duration: 3000
+          })
+          resolve()
+        } catch (error) {
+          reject(error)
+        }
         return
       }
 
-      const file = new File([blob], fileName, { type: 'image/png' })
-
-      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        try {
-          await navigator.share({
-            files: [file],
-            title: '腾飞数码销售报价',
-            text: `报价单 ${dateStr} ${timeStr}`
-          })
-          ElMessage.success({
-            message: '图片已保存',
-            duration: 2000
-          })
-          resolve()
-          return
-        } catch (shareError) {
-          if ((shareError as Error).name !== 'AbortError') {
-            // ignore and fall back to download
-          }
-        }
-      }
-
+      // Android 和 PC：直接触发浏览器下载。
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.download = fileName
@@ -1528,6 +1572,14 @@ onBeforeUnmount(() => {
   }
 }
 
+.ios-save-image {
+  -webkit-touch-callout: default !important;
+  -webkit-user-select: auto !important;
+  user-select: auto !important;
+  pointer-events: auto !important;
+  touch-action: auto !important;
+}
+
 .ios-image-dialog {
   .el-dialog__body {
     padding: 10px 20px 20px;
@@ -1545,6 +1597,14 @@ onBeforeUnmount(() => {
         height: auto;
         display: block;
         margin: 0 auto;
+      }
+
+      .ios-save-image {
+        -webkit-touch-callout: default !important;
+        -webkit-user-select: auto !important;
+        user-select: auto !important;
+        pointer-events: auto !important;
+        touch-action: auto !important;
       }
     }
   }
