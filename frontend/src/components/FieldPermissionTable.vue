@@ -1,229 +1,233 @@
 <template>
   <div class="field-permission-table">
-    <!-- 表格工具栏 -->
     <div class="table-toolbar" v-if="showToolbar">
       <slot name="toolbar">
         <div class="toolbar-left">
           <h3>{{ title }}</h3>
         </div>
         <div class="toolbar-right">
-          <a-button
+          <el-button
             v-if="showRefresh"
             type="primary"
             :loading="loading"
+            :icon="Refresh"
             @click="handleRefresh"
           >
-            <template #icon><ReloadOutlined /></template>
             刷新
-          </a-button>
-          <a-button
+          </el-button>
+          <el-button
             v-if="showExport"
-            type="default"
+            :icon="Download"
             :disabled="!canExport"
             @click="handleExport"
           >
-            <template #icon><ExportOutlined /></template>
             导出
-          </a-button>
+          </el-button>
         </div>
       </slot>
     </div>
 
-    <!-- 搜索表单 -->
     <div class="search-form" v-if="showSearch">
-      <a-form :model="searchForm" layout="inline">
-        <a-form-item
+      <el-form :model="searchForm" inline>
+        <el-form-item
           v-for="field in searchFields"
           :key="field.name"
           :label="field.label"
         >
-          <a-input
+          <el-input
             v-model="searchForm[field.name]"
             :placeholder="field.placeholder"
-            allowClear
-            @pressEnter="handleSearch"
+            clearable
+            @keyup.enter="handleSearch"
           />
-        </a-form-item>
-        <a-form-item>
-          <a-space>
-            <a-button type="primary" @click="handleSearch">
-              <template #icon><SearchOutlined /></template>
-              搜索
-            </a-button>
-            <a-button @click="handleReset">
-              <template #icon><ClearOutlined /></template>
-              重置
-            </a-button>
-          </a-space>
-        </a-form-item>
-      </a-form>
+        </el-form-item>
+        <el-form-item>
+          <div class="search-actions">
+            <el-button type="primary" :icon="Search" @click="handleSearch">搜索</el-button>
+            <el-button :icon="RefreshLeft" @click="handleReset">重置</el-button>
+          </div>
+        </el-form-item>
+      </el-form>
     </div>
 
-    <!-- 数据表格 -->
-    <a-table
-      :columns="tableColumns"
-      :data-source="filteredData"
+    <div class="table-scroll-shell">
+      <el-table
+      :data="filteredData"
       :loading="loading"
-      :pagination="pagination"
       row-key="id"
-      :row-selection="rowSelection"
-      :scroll="{ x: tableWidth }"
-      @change="handleTableChange"
+      class="tf-unified-table"
+      @sort-change="handleSortChange"
     >
-      <!-- 动态插槽：支持自定义列渲染 -->
-      <template
+      <el-table-column
         v-for="column in tableColumns"
-        :key="column.dataIndex"
-        #[column.dataIndex]="{ text, record }"
+        :key="column.key"
+        :prop="column.dataIndex"
+        :label="column.title"
+        :min-width="column.width"
+        :sortable="column.sorter ? 'custom' : false"
+        align="center"
       >
-        <slot
-          :name="`column-${column.dataIndex}`"
-          :text="text"
-          :record="record"
-          :column="column"
-        >
-          <!-- 默认渲染 -->
-          <span v-if="column.type === 'BOOLEAN'">
-            <a-tag :color="text ? 'green' : 'red'">
-              {{ text ? '是' : '否' }}
-            </a-tag>
-          </span>
-          <span v-else-if="column.type === 'DATE'">
-            {{ formatDate(text) }}
-          </span>
-          <span v-else-if="column.type === 'DATETIME'">
-            {{ formatDateTime(text) }}
-          </span>
-          <span v-else>
-            {{ column.customRender ? column.customRender(text) : text }}
-          </span>
-        </slot>
-      </template>
+        <template #default="{ row }">
+          <slot
+            :name="`column-${column.dataIndex}`"
+            :text="row[column.dataIndex]"
+            :record="row"
+            :column="column"
+          >
+            <el-tag v-if="column.type === 'BOOLEAN'" :type="row[column.dataIndex] ? 'success' : 'danger'">
+              {{ row[column.dataIndex] ? '是' : '否' }}
+            </el-tag>
+            <span v-else-if="column.type === 'DATE'">{{ formatDate(row[column.dataIndex]) }}</span>
+            <span v-else-if="column.type === 'DATETIME'">{{ formatDateTime(row[column.dataIndex]) }}</span>
+            <span v-else>{{ column.customRender(row[column.dataIndex]) }}</span>
+          </slot>
+        </template>
+      </el-table-column>
 
-      <!-- 操作列 -->
-      <template #action="{ record }">
-        <slot name="action" :record="record">
-          <a-space>
-            <a-button
+      <el-table-column
+        v-if="hasEditPermission || hasDeletePermission"
+        label="操作"
+        :width="$getActionColumnWidth(Number(hasEditPermission) + Number(hasDeletePermission))"
+        align="center"
+        class-name="actions-column"
+      >
+        <template #default="{ row }">
+          <slot name="action" :record="row">
+            <div class="action-buttons">
+              <el-button
               v-if="hasEditPermission"
-              type="link"
+              type="primary"
               size="small"
-              @click="handleEdit(record)"
+              :icon="Edit"
+              @click.stop="handleEdit(row)"
             >
-              <template #icon><EditOutlined /></template>
               编辑
-            </a-button>
-            <a-button
+            </el-button>
+              <el-button
               v-if="hasDeletePermission"
-              type="link"
+              type="danger"
               size="small"
-              danger
-              @click="handleDelete(record)"
+              :icon="Delete"
+              @click.stop="handleDelete(row)"
             >
-              <template #icon><DeleteOutlined /></template>
               删除
-            </a-button>
-          </a-space>
-        </slot>
-      </template>
-    </a-table>
+            </el-button>
+            </div>
+          </slot>
+        </template>
+      </el-table-column>
+      </el-table>
+    </div>
 
-    <!-- 编辑/新增弹窗 -->
-    <a-modal
-      v-model:visible="modalVisible"
+    <Pagination
+      v-if="pagination.total > 0"
+      class="table-pagination"
+      :current="pagination.current"
+      :page-size="pagination.pageSize"
+      :total="pagination.total"
+      :page-sizes="[10, 20, 50, 100]"
+      :show-range="true"
+      @change="handlePaginationChange"
+    />
+
+    <el-dialog
+      v-model="modalVisible"
       :title="modalTitle"
-      :width="800"
-      @ok="handleModalOk"
-      @cancel="handleModalCancel"
+      width="min(800px, 94vw)"
+      class="tf-dialog"
+      @closed="handleModalCancel"
     >
-      <a-form
+      <el-form
         ref="formRef"
         :model="formData"
         :rules="formRules"
-        :label-col="{ span: 6 }"
-        :wrapper-col="{ span: 18 }"
+        label-width="120px"
       >
-        <a-form-item
+        <el-form-item
           v-for="field in formFields"
           :key="field.name"
           :label="field.label"
-          :name="field.name"
+          :prop="field.name"
         >
-          <!-- 根据字段类型渲染不同的输入组件 -->
-          <a-input
+          <el-input
             v-if="field.type === 'TEXT' || field.type === 'EMAIL' || field.type === 'PHONE'"
-            v-model:value="formData[field.name]"
+            v-model="formData[field.name]"
             :placeholder="field.placeholder"
-            :type="field.type.toLowerCase()"
           />
-
-          <a-input-number
+          <el-input-number
             v-else-if="field.type === 'NUMBER'"
-            v-model:value="formData[field.name]"
+            v-model="formData[field.name]"
             :placeholder="field.placeholder"
             class="w-full"
           />
-
-          <a-date-picker
+          <el-date-picker
             v-else-if="field.type === 'DATE'"
-            v-model:value="formData[field.name]"
+            v-model="formData[field.name]"
+            type="date"
             :placeholder="field.placeholder"
             class="w-full"
-            format="YYYY-MM-DD"
+            value-format="YYYY-MM-DD"
           />
-
-          <a-date-picker
+          <el-date-picker
             v-else-if="field.type === 'DATETIME'"
-            v-model:value="formData[field.name]"
+            v-model="formData[field.name]"
+            type="datetime"
             :placeholder="field.placeholder"
             class="w-full"
-            format="YYYY-MM-DD HH:mm:ss"
-            showTime
+            value-format="YYYY-MM-DD HH:mm:ss"
           />
-
-          <a-select
+          <el-select
             v-else-if="field.type === 'SELECT'"
-            v-model:value="formData[field.name]"
+            v-model="formData[field.name]"
             :placeholder="field.placeholder"
-            :options="field.options"
             class="w-full"
-          />
-
-          <a-switch
+          >
+            <el-option
+              v-for="option in field.options || []"
+              :key="option.value"
+              :label="option.label"
+              :value="option.value"
+            />
+          </el-select>
+          <el-switch
             v-else-if="field.type === 'BOOLEAN'"
-            v-model:checked="formData[field.name]"
+            v-model="formData[field.name]"
           />
-
-          <a-textarea
+          <el-input
             v-else-if="field.type === 'TEXTAREA'"
-            v-model:value="formData[field.name]"
+            v-model="formData[field.name]"
+            type="textarea"
             :placeholder="field.placeholder"
             :rows="3"
           />
-
-          <!-- 其他类型默认文本输入 -->
-          <a-input
+          <el-input
             v-else
-            v-model:value="formData[field.name]"
+            v-model="formData[field.name]"
             :placeholder="field.placeholder"
           />
-        </a-form-item>
-      </a-form>
-    </a-modal>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer tf-dialog-actions">
+          <el-button @click="modalVisible = false">取消</el-button>
+          <el-button type="primary" @click="handleModalOk">保存</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, nextTick } from 'vue'
-import { message } from 'ant-design-vue'
+import { ref, computed, watch, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import {
-  ReloadOutlined,
-  ExportOutlined,
-  SearchOutlined,
-  ClearOutlined,
-  EditOutlined,
-  DeleteOutlined
-} from '@ant-design/icons-vue'
+  Delete,
+  Download,
+  Edit,
+  Refresh,
+  RefreshLeft,
+  Search
+} from '@element-plus/icons-vue'
 import { useFieldPermissions } from '@/services/fieldPermissionService'
 import type {
   FieldFormField,
@@ -231,7 +235,8 @@ import type {
   FieldTableColumn,
   ModuleFieldConfig
 } from '@/services/fieldPermissionService'
-import type { FormInstance } from 'ant-design-vue'
+import type { FormInstance } from 'element-plus'
+import Pagination from '@/components/Pagination.vue'
 import dayjs from 'dayjs'
 import { logger } from '@/utils/logger'
 
@@ -279,7 +284,7 @@ const props = withDefaults(defineProps<Props>(), {
   canExport: true,
   hasEditPermission: true,
   hasDeletePermission: true,
-  pagination: { current: 1, pageSize: 10, total: 0 }
+  pagination: () => ({ current: 1, pageSize: 10, total: 0 })
 })
 
 // Emits定义
@@ -308,8 +313,8 @@ const {
 
 // 响应式数据
 const moduleConfig = ref<ModuleFieldConfig | null>(null)
-const searchForm = ref<Record<string, unknown>>({})
-const formData = ref<Record<string, unknown>>({})
+const searchForm = ref<Record<string, any>>({})
+const formData = ref<Record<string, any>>({})
 const formRef = ref<FormInstance>()
 const modalVisible = ref(false)
 const modalTitle = ref('')
@@ -318,22 +323,7 @@ const currentRecord = ref<FieldPermissionRecord | null>(null)
 // 计算属性
 const tableColumns = computed(() => {
   if (!moduleConfig.value) return []
-
-  const columns = [...getTableColumns(props.moduleKey)]
-
-  // 添加操作列
-  if (props.hasEditPermission || props.hasDeletePermission) {
-    columns.push({
-      title: '操作',
-      dataIndex: 'action',
-      key: 'action',
-      width: 150,
-      fixed: 'right',
-      slots: { customRender: 'action' }
-    })
-  }
-
-  return columns
+  return getTableColumns(props.moduleKey)
 })
 
 const formFields = computed(() => {
@@ -356,12 +346,6 @@ const formRules = computed(() => {
   return rules
 })
 
-const tableWidth = computed(() => {
-  return tableColumns.value.reduce((width, column) => {
-    return width + (column.width || 150)
-  }, 0) + 100
-})
-
 // 过滤后的数据（应用字段权限）
 const filteredData = computed(() => {
   return props.data.map(item => filterDataByPermissions(props.moduleKey, item))
@@ -372,7 +356,7 @@ const loadModuleConfig = async () => {
   try {
     moduleConfig.value = await getModuleFieldConfig(props.moduleKey)
   } catch (error) {
-    message.error('加载字段权限失败')
+    ElMessage.error('加载字段权限失败')
   }
 }
 
@@ -412,6 +396,14 @@ const handleTableChange = (
   emit('table-change', { pagination, filters, sorter })
 }
 
+const handleSortChange = ({ prop, order }: { prop?: string; order?: string }) => {
+  handleTableChange(props.pagination, {}, { field: prop, order })
+}
+
+const handlePaginationChange = (current: number, pageSize: number) => {
+  handleTableChange({ ...props.pagination, current, pageSize }, {}, {})
+}
+
 const handleModalOk = async () => {
   try {
     await formRef.value?.validate()
@@ -432,14 +424,14 @@ const handleModalCancel = () => {
   emit('modal-cancel')
 }
 
-const formatDate = (date: string) => {
+const formatDate = (date: unknown) => {
   if (!date) return '-'
-  return dayjs(date).format('YYYY-MM-DD')
+  return dayjs(String(date)).format('YYYY-MM-DD')
 }
 
-const formatDateTime = (dateTime: string) => {
+const formatDateTime = (dateTime: unknown) => {
   if (!dateTime) return '-'
-  return dayjs(dateTime).format('YYYY-MM-DD HH:mm:ss')
+  return dayjs(String(dateTime)).format('YYYY-MM-DD HH:mm:ss')
 }
 
 // 监听角色变化
@@ -504,12 +496,22 @@ onMounted(() => {
   border-radius: 4px;
 }
 
-:deep(.ant-table-thead > tr > th) {
-  background: #fafafa;
-  font-weight: 500;
+.search-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-:deep(.ant-form-item) {
-  margin-bottom: 16px;
+.table-scroll-shell {
+  overflow-x: auto;
+}
+
+.table-pagination {
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.w-full {
+  width: 100%;
 }
 </style>

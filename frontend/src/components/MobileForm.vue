@@ -302,6 +302,7 @@ import type { CancelEmits } from '@/types/component'
 type FormModelValue = Record<string, unknown>
 type FormFieldOptionValue = string | number | boolean | null
 type FormFieldComponentValue = string | number | boolean | Date | Array<string | number | Date> | null | undefined
+type DatePickerValue = string | number | Date | string[] | number[] | Date[] | null | undefined
 type DatePickerType =
   | 'year'
   | 'years'
@@ -487,20 +488,24 @@ const getNumberValue = (field: FormField): number | undefined => {
 const getSelectValue = (field: FormField): FormFieldComponentValue => {
   const value = getFieldValue(field)
   if (Array.isArray(value)) {
-    return value.filter((item): item is string | number | Date =>
-      typeof item === 'string' || typeof item === 'number' || item instanceof Date
-    )
+    const valid = value.filter(item => typeof item === 'string' || typeof item === 'number' || item instanceof Date)
+    if (valid.every(item => typeof item === 'string')) return valid as string[]
+    if (valid.every(item => typeof item === 'number')) return valid as number[]
+    if (valid.every(item => item instanceof Date)) return valid as Date[]
+    return valid.map(String)
   }
 
   return isFormFieldComponentValue(value) ? value : undefined
 }
 
-const getDateValue = (field: FormField): FormFieldComponentValue => {
+const getDateValue = (field: FormField): DatePickerValue => {
   const value = getFieldValue(field)
   if (Array.isArray(value)) {
-    return value.filter((item): item is string | number | Date =>
-      typeof item === 'string' || typeof item === 'number' || item instanceof Date
-    )
+    const valid = value.filter(item => typeof item === 'string' || typeof item === 'number' || item instanceof Date)
+    if (valid.every(item => typeof item === 'string')) return valid as string[]
+    if (valid.every(item => typeof item === 'number')) return valid as number[]
+    if (valid.every(item => item instanceof Date)) return valid as Date[]
+    return valid.map(String)
   }
 
   return isDateCompatibleValue(value) ? value : undefined
@@ -571,7 +576,7 @@ const isFormFieldComponentValue = (value: unknown): value is FormFieldComponentV
   value === undefined
 )
 
-const isDateCompatibleValue = (value: unknown): value is FormFieldComponentValue => (
+const isDateCompatibleValue = (value: unknown): value is DatePickerValue => (
   typeof value === 'string' ||
   typeof value === 'number' ||
   value instanceof Date ||

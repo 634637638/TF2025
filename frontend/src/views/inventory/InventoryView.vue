@@ -1934,7 +1934,7 @@ const loadColors = async () => {
       // 根据实际响应结构处理数据
       const colorList = Array.isArray(response.data) ? response.data : response.data.colors || []
 
-      colors.value = sortOptionsByOrder(colorList
+      colors.value = sortOptionsByOrder<any>(colorList
         .filter(item => item && item.name)  // 过滤掉空值
       )
         .map(item => item.name)
@@ -1958,7 +1958,7 @@ const loadMemories = async () => {
       // 根据实际响应结构处理数据
       const memoryList = Array.isArray(response.data) ? response.data : response.data.memories || []
 
-      memories.value = sortOptionsByOrder(memoryList, { labelKeys: ['size', 'capacity', 'name'] })
+      memories.value = sortOptionsByOrder<any>(memoryList, { labelKeys: ['size', 'capacity', 'name'] })
         .filter(item => item && item.name)  // 过滤掉空值
         .map(item => item.name)
 

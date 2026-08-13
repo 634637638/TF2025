@@ -721,7 +721,7 @@ const searchBrandProducts = () => {
     return
   }
 
-  const query: Record<string, string | number | boolean> = {
+  const query: Record<string, string | number> = {
     brand_id: selectedBrandId.value
   }
 
@@ -735,7 +735,7 @@ const searchBrandProducts = () => {
 
   if (selectedMemoryId.value) {
     query.memory_id = Number(selectedMemoryId.value)
-    query.is_new = false
+    query.is_new = 'false'
   }
 
   router.push({
@@ -776,7 +776,7 @@ const handleCartClick = async (product: any) => {
       // 使用模板商品API获取详细信息
       const { getTemplatePhones } = await import('@/api/shop-public')
       const phonesResponse = await getTemplatePhones(product.template_id)
-      const phones: any = phonesResponse.data || phonesResponse || []
+      const phones: any = phonesResponse || []
 
       if (phones && phones.length > 0) {
         // 获取第一个有库存的商品

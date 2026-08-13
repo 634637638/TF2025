@@ -158,7 +158,7 @@ interface AccessoryDetailItem {
   color?: string
   unit?: string
   supplier?: string
-  status?: string
+  status?: string | number | boolean
   purchase_price?: string | number
   sale_price?: string | number
   stock_quantity?: string | number
@@ -210,12 +210,12 @@ const getBrandName = (brandId: number | string) => {
 }
 
 // 获取状态文本
-const getStatusText = (status: string) => {
+const getStatusText = (status: string | number | boolean | undefined) => {
   const statusMap: Record<string, string> = {
     active: '正常',
     inactive: '停用'
   }
-  return statusMap[status] || status
+  return statusMap[String(status)] || String(status ?? '-')
 }
 
 const toNumber = (value: string | number | undefined) => {

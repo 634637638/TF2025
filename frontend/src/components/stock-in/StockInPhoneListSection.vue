@@ -137,7 +137,11 @@
                   />
                 </td>
                 <td class="col-imei">
-                  <div class="cursor-pointer" @dblclick="enableNoImeiMode(phone)">
+                  <div
+                    class="cursor-pointer"
+                    @dblclick="handleImeiDoubleClick(phone)"
+                    @touchend.stop="handleImeiTouchEnd(phone, $event)"
+                  >
                     <el-input
                       v-model="phone.imei"
                       :placeholder="phone.isNoIMEIMode ? '无IMEI' : 'IMEI'"
@@ -306,7 +310,11 @@
 
             <div class="grid-row single-column">
               <el-form-item label="IMEI号" :prop="`phones.${index}.imei`">
-                <div class="long-input-field imei-field" @dblclick="enableNoImeiMode(phone)">
+                <div
+                  class="long-input-field imei-field"
+                  @dblclick="handleImeiDoubleClick(phone)"
+                  @touchend.stop="handleImeiTouchEnd(phone, $event)"
+                >
                   <el-input
                     v-model="phone.imei"
                     :placeholder="phone.isNoIMEIMode ? '已启用无IMEI模式，允许字母+数字' : '请输入15位IMEI号（双击启用无IMEI模式）'"
@@ -416,7 +424,38 @@ const emit = defineEmits<{
   (e: 'clear'): void
 }>()
 
-defineProps<Props>()
+const props = defineProps<Props>()
+
+let lastImeiTouchPhone: StockInPhoneItem | null = null
+let lastImeiTouchAt = 0
+let suppressNativeImeiDoubleClickUntil = 0
+
+// 移动端不可靠地产生 dblclick，用同一 IMEI 输入区域的两次触摸模拟双击。
+const handleImeiTouchEnd = (phone: StockInPhoneItem, event: TouchEvent) => {
+  const target = event.target as HTMLElement | null
+  if (target?.closest('button, .el-button, .el-input__clear, .el-input__suffix')) {
+    lastImeiTouchPhone = null
+    lastImeiTouchAt = 0
+    return
+  }
+
+  const now = Date.now()
+  if (lastImeiTouchPhone === phone && now - lastImeiTouchAt <= 400) {
+    lastImeiTouchPhone = null
+    lastImeiTouchAt = 0
+    suppressNativeImeiDoubleClickUntil = now + 500
+    props.enableNoImeiMode(phone)
+    return
+  }
+
+  lastImeiTouchPhone = phone
+  lastImeiTouchAt = now
+}
+
+const handleImeiDoubleClick = (phone: StockInPhoneItem) => {
+  if (Date.now() < suppressNativeImeiDoubleClickUntil) return
+  props.enableNoImeiMode(phone)
+}
 </script>
 
 <style lang="scss" scoped>

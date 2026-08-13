@@ -482,19 +482,29 @@ class SalaryCalculatorService {
    * 返回：original_base_salary (原始底薪), adjustment (调整金额)
    */
   async _calculateBaseSalary(employeeInfo, breakdown, periodEnd) {
-    let baseSalary = parseFloat(breakdown.base_salary) || 0;
+    return this.calculateDynamicBaseSalary(
+      breakdown.base_salary,
+      employeeInfo.auto_raise_rule,
+      employeeInfo.hire_date,
+      periodEnd
+    );
+  }
+
+  /** Calculate the effective base salary for a payroll period. */
+  calculateDynamicBaseSalary(baseSalaryValue, autoRaiseRule, hireDateValue, periodEnd) {
+    const baseSalary = parseFloat(baseSalaryValue) || 0;
     let adjustment = 0;
     let note = '';
 
     // 检查是否有自动涨薪规则（从模板中获取）
-    if (employeeInfo.auto_raise_rule) {
+    if (autoRaiseRule && hireDateValue) {
       try {
-        const rule = typeof employeeInfo.auto_raise_rule === 'string'
-          ? JSON.parse(employeeInfo.auto_raise_rule)
-          : employeeInfo.auto_raise_rule;
+        const rule = typeof autoRaiseRule === 'string'
+          ? JSON.parse(autoRaiseRule)
+          : autoRaiseRule;
 
         if (rule.enabled && rule.months && rule.amount) {
-          const hireDate = new Date(employeeInfo.hire_date);
+          const hireDate = new Date(hireDateValue);
           // 使用结算月份的结束日期计算工龄涨薪
           const currentDate = periodEnd ? new Date(periodEnd) : new Date();
 

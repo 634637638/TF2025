@@ -37,7 +37,7 @@
         :stripe="stripe"
         :border="border"
         :size="size"
-        :row-key="rowKey"
+        :row-key="normalizedRowKey"
         :default-sort="defaultSort"
         @sort-change="handleSortChange"
         @selection-change="handleSelectionChange"
@@ -230,6 +230,12 @@ const searchKeyword = ref('')
 const selected = ref<TableRow[]>([])
 const tableData = computed(() => props.data)
 const tableHeight = computed(() => props.height)
+const normalizedRowKey = computed(() => {
+  const rowKey = props.rowKey
+  return typeof rowKey === 'function'
+    ? (row: TableRow) => String(rowKey(row))
+    : rowKey
+})
 
 // 计算属性
 const getIndex = (index: number) => {

@@ -448,7 +448,6 @@ const handleSlideChange = (swiper: any) => {
   currentImageIndex.value = swiper.activeIndex
 
   // 暂停所有非当前slide的视频
-  // @ts-expect-error - querySelector with class selector is valid
   const swiperContainer = document.querySelector('.image-swiper') as Element | null
   if (swiperContainer) {
     const allVideos = Array.from(swiperContainer.querySelectorAll('video')) as HTMLVideoElement[]

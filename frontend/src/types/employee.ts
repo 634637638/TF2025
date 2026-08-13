@@ -211,7 +211,6 @@ export interface SalaryRecord {
   overtime_pay?: number
   total_salary: number
   status: 'pending' | 'approved' | 'paid'
-  payment_date?: string
   remarks?: string
   created_at?: string
   updated_at?: string

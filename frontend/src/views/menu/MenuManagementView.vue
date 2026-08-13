@@ -1200,7 +1200,7 @@ const searchMenus = async () => {
 
         menuTree.value = allMenus
       } else {
-        throw new Error(publicResponse?.message || '搜索菜单失败')
+        throw new Error('搜索菜单失败')
       }
     } catch (publicErr) {
       logger.error('搜索失败:', publicErr)

@@ -441,6 +441,7 @@ import { Delete } from '@element-plus/icons-vue'
 import { dataImportApi } from '@/api/data-optimization'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import InlineLoading from '@/components/InlineLoading.vue'
+import { logger } from '@/utils/logger'
 
 const { canView, canCreate, canDelete, handleNoPermission } = usePagePermissions('data-optimization')
 
@@ -871,7 +872,7 @@ const formatDateTime = (timestamp: string) => {
 
     return date.toLocaleString('zh-CN', options)
   } catch (error) {
-    logger.error('日期格式化失败:', error, timestamp)
+    logger.error('日期格式化失败', { error, timestamp })
     return '-'
   }
 }

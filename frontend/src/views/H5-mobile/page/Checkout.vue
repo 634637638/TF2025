@@ -271,7 +271,7 @@ const loadAvailableStores = async () => {
   try {
     // 首先获取商品详情以获取brand_id, model_id等
     const productResponse = await getProductDetail(firstItem.phoneId)
-    const productDetail: any = productResponse.data || productResponse
+    const productDetail: any = productResponse
 
     // 获取内存ID
     let memoryId = null
@@ -297,7 +297,7 @@ const loadAvailableStores = async () => {
       memory_id: memoryId,
       is_new: productDetail.is_new === 1 || productDetail.is_new === '1'
     })
-    const stockData: any = stockResponse.data || stockResponse
+    const stockData: any = stockResponse
 
     // 提取店铺信息
     availableStores.value = stockData.stores.map((store: any) => ({
@@ -537,7 +537,7 @@ const loadOrderItems = async (force = false) => {
         orderItems.value = await Promise.all(items.map(async (item: any) => {
           try {
             const productResponse = await getProductDetail(item.phoneId)
-            const productDetail: any = productResponse.data || productResponse
+            const productDetail: any = productResponse
             return {
               phoneId: item.phoneId,
               quantity: item.quantity || 1,

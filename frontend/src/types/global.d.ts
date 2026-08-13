@@ -531,7 +531,9 @@ declare global {
 // ===== Vue 模块扩展 =====
 
 declare module '@vue/runtime-core' {
-  interface ComponentCustomProperties extends ComponentCustomProperties {
+  interface ComponentCustomProperties {
+    $getActionColumnWidth: (actions: ActionColumnInput, options?: ActionColumnWidthOptions) => number
+
     // 应用配置
     $config: AppConfig
 

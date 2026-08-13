@@ -392,14 +392,14 @@ const getDeviceTypeName = (type: string) => {
   return typeMap[type] || type
 }
 
-const getDeviceTypeTagType = (type: string) => {
-  const typeMap: Record<string, string> = {
+const getDeviceTypeTagType = (type: string): 'primary' | 'success' | 'warning' | 'info' => {
+  const typeMap: Record<string, 'primary' | 'success' | 'warning' | 'info'> = {
     phone: 'primary',
     tablet: 'success',
     laptop: 'warning',
     accessory: 'info'
   }
-  return typeMap[type] || ''
+  return typeMap[type] || 'info'
 }
 
 const getStatusName = (status: string) => {
@@ -411,13 +411,13 @@ const getStatusName = (status: string) => {
   return statusMap[status] || status
 }
 
-const getStatusTagType = (status: string) => {
-  const typeMap: Record<string, string> = {
+const getStatusTagType = (status: string): 'success' | 'warning' | 'danger' => {
+  const typeMap: Record<string, 'success' | 'warning' | 'danger'> = {
     active: 'success',
     expired: 'warning',
     terminated: 'danger'
   }
-  return typeMap[status] || ''
+  return typeMap[status] || 'warning'
 }
 
 const handleAdd = () => {

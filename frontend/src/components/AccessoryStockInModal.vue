@@ -617,7 +617,7 @@ const loadStores = async () => {
 
     stores.value = sortOptionsByOrder(storeOptions)
       .map(s => ({
-        ...s,
+        ...(s as Record<string, unknown>),
         checked: false,
         quantity: 0
       }))

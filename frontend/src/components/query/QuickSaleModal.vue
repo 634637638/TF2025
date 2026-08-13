@@ -143,7 +143,11 @@
           </el-form-item>
 
           <el-form-item label="IMEI" prop="imei">
-            <div @dblclick="enableNoIMEIMode" style="cursor: pointer; width: 100%;">
+            <div
+              style="cursor: pointer; width: 100%;"
+              @dblclick="handleImeiDoubleClick"
+              @touchend.stop="handleImeiTouchEnd"
+            >
               <el-input
                 v-model="formData.imei"
                 :placeholder="formData.isNoIMEIMode ? '已启用无IMEI模式' : '请输入15位IMEI号'"
@@ -782,8 +786,6 @@ const enableNoIMEIMode = () => {
   formData.imei = toggleResult.nextIMEI
   if (toggleResult.messageType === 'success') {
     showSuccess(toggleResult.message)
-  } else if (toggleResult.messageType === 'warning') {
-    showWarning(toggleResult.message)
   } else if (toggleResult.messageType === 'info') {
     showInfo(toggleResult.message)
   } else {
@@ -794,6 +796,33 @@ const enableNoIMEIMode = () => {
   if (formRef.value) {
     formRef.value.clearValidate('imei')
   }
+}
+
+// 移动端不可靠地产生 dblclick，用同一输入区域的两次触摸模拟双击。
+let lastImeiTouchAt = 0
+let suppressNativeImeiDoubleClickUntil = 0
+
+const handleImeiTouchEnd = (event: TouchEvent) => {
+  const target = event.target as HTMLElement | null
+  if (target?.closest('button, .el-button, .el-input__clear, .el-input__suffix')) {
+    lastImeiTouchAt = 0
+    return
+  }
+
+  const now = Date.now()
+  if (now - lastImeiTouchAt <= 400) {
+    lastImeiTouchAt = 0
+    suppressNativeImeiDoubleClickUntil = now + 500
+    enableNoIMEIMode()
+    return
+  }
+
+  lastImeiTouchAt = now
+}
+
+const handleImeiDoubleClick = () => {
+  if (Date.now() < suppressNativeImeiDoubleClickUntil) return
+  enableNoIMEIMode()
 }
 
 // 格式化序列号 - 只允许字母和数字，转大写，最多18位

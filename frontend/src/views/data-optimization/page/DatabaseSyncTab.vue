@@ -552,6 +552,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { unifiedApi } from '@/utils/unified-api'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { ValidationRules } from '@/composables'
+import { logger } from '@/utils/logger'
 
 const { canView, canCreate, canEdit, canDelete, handleNoPermission } = usePagePermissions('data-optimization')
 

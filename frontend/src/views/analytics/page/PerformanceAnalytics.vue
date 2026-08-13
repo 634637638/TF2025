@@ -391,6 +391,8 @@ const props = withDefaults(defineProps<PerformanceAnalyticsProps>(), {
   loading: false,
   isActive: false
 })
+const { loading } = useLoadingState()
+const { loading: metricsLoading } = useLoadingState()
 const { exportTextFile, buildDateFilename } = useImportExport()
 
 // 缓存配置

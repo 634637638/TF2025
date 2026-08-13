@@ -82,8 +82,7 @@ class SalaryRecordService {
       const merged = this.mergeCalculatedSalaryState(calculated, existing, userId, {
         status: salaryData.status,
         payment_method: salaryData.payment_method,
-        paid_at: salaryData.paid_at,
-        payment_date: salaryData.payment_date
+        paid_at: salaryData.paid_at
       });
 
       return await this.repository.upsertSalaryRecord(merged);
@@ -107,11 +106,6 @@ class SalaryRecordService {
       merged.paid_at = overrides.paid_at !== undefined
         ? overrides.paid_at
         : (existing.paid_at || null);
-      merged.payment_date = overrides.payment_date !== undefined
-        ? overrides.payment_date
-        : (existing.payment_date || null);
-      merged.approved_by = existing.approved_by || null;
-      merged.approved_at = existing.approved_at || null;
       merged.created_by = existing.created_by || operatorId;
       return merged;
     }
@@ -119,7 +113,6 @@ class SalaryRecordService {
     merged.status = nextStatus || calculated.status;
     merged.payment_method = overrides.payment_method || null;
     merged.paid_at = overrides.paid_at || null;
-    merged.payment_date = overrides.payment_date || null;
     merged.created_by = operatorId;
     return merged;
   }
@@ -238,9 +231,6 @@ class SalaryRecordService {
             calculated.status = existing.status || calculated.status;
             calculated.payment_method = existing.payment_method || calculated.payment_method || null;
             calculated.paid_at = existing.paid_at || calculated.paid_at || null;
-            calculated.payment_date = existing.payment_date || calculated.payment_date || null;
-            calculated.approved_by = existing.approved_by || calculated.approved_by || null;
-            calculated.approved_at = existing.approved_at || calculated.approved_at || null;
             calculated.created_by = existing.created_by || operatorId;
           } else {
             calculated.created_by = operatorId;

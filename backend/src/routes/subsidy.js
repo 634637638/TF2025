@@ -1457,6 +1457,11 @@ router.put('/:id', unifiedAuth, requirePermission('subsidy:edit'), async (req, r
       serial_number,
       imei1,
       imei2,
+      phone_brand,
+      phone_model,
+      phone_color,
+      phone_memory,
+      sale_price,
       store_id,
       remarks,
       has_audit,
@@ -1560,6 +1565,44 @@ router.put('/:id', unifiedAuth, requirePermission('subsidy:edit'), async (req, r
     if (imei1 !== undefined) {
       updateFields.push('imei1 = ?');
       updateValues.push(imei1 || '');
+    }
+
+    if (phone_brand !== undefined) {
+      updateFields.push('phone_brand = ?');
+      updateValues.push(phone_brand ? String(phone_brand).trim().slice(0, 50) : null);
+    }
+
+    if (phone_model !== undefined) {
+      updateFields.push('phone_model = ?');
+      updateValues.push(phone_model ? String(phone_model).trim().slice(0, 100) : null);
+    }
+
+    if (phone_color !== undefined) {
+      updateFields.push('phone_color = ?');
+      updateValues.push(phone_color ? String(phone_color).trim().slice(0, 50) : null);
+    }
+
+    if (phone_memory !== undefined) {
+      updateFields.push('phone_memory = ?');
+      updateValues.push(phone_memory ? String(phone_memory).trim().slice(0, 50) : null);
+    }
+
+    if (sale_price !== undefined) {
+      if (sale_price === '' || sale_price === null) {
+        return res.status(400).json({
+          success: false,
+          message: '销售价格不能为空'
+        });
+      }
+      const normalizedSalePrice = Number(sale_price);
+      if (!Number.isFinite(normalizedSalePrice) || normalizedSalePrice < 0) {
+        return res.status(400).json({
+          success: false,
+          message: '销售价格必须是大于等于0的数字'
+        });
+      }
+      updateFields.push('sale_price = ?');
+      updateValues.push(normalizedSalePrice.toFixed(2));
     }
 
     // 处理店铺更新

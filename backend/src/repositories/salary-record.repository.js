@@ -6,9 +6,41 @@
 const BaseRepository = require('./base.repository');
 const log = require('../utils/log');
 
+const WRITABLE_FIELDS = new Set([
+  'employee_id',
+  'salary_template_id',
+  'period_start',
+  'period_end',
+  'base_salary',
+  'commission_amount',
+  'commission_detail',
+  'sales_count',
+  'overtime_hours',
+  'overtime_pay',
+  'performance_bonus',
+  'other_bonus',
+  'leave_days',
+  'leave_deduction',
+  'net_salary',
+  'status',
+  'paid_at',
+  'payment_method',
+  'created_by',
+  'base_salary_adjustment',
+  'base_salary_note',
+  'actual_work_days',
+  'other_deduction'
+]);
+
 class SalaryRecordNewRepository extends BaseRepository {
   constructor() {
     super('salary_records');
+  }
+
+  sanitizeWriteData(data = {}) {
+    return Object.fromEntries(
+      Object.entries(data).filter(([key, value]) => WRITABLE_FIELDS.has(key) && value !== undefined)
+    );
   }
 
   /**
@@ -134,7 +166,7 @@ class SalaryRecordNewRepository extends BaseRepository {
    */
   async createSalaryRecord(data) {
     try {
-      return await this.create(data);
+      return await this.create(this.sanitizeWriteData(data));
     } catch (error) {
       log.error('创建工资记录失败:', error);
       throw error;
@@ -154,10 +186,10 @@ class SalaryRecordNewRepository extends BaseRepository {
 
       if (existing) {
         // 记录存在，更新它
-        return await this.update(existing.id, data);
+        return await this.update(existing.id, this.sanitizeWriteData(data));
       } else {
         // 记录不存在，创建新记录
-        return await this.create(data);
+        return await this.create(this.sanitizeWriteData(data));
       }
     } catch (error) {
       log.error('保存工资记录失败:', error);
@@ -170,7 +202,7 @@ class SalaryRecordNewRepository extends BaseRepository {
    */
   async updateSalaryRecord(id, data) {
     try {
-      return await this.update(id, data);
+      return await this.update(id, this.sanitizeWriteData(data));
     } catch (error) {
       log.error('更新工资记录失败:', error);
       throw error;

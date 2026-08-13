@@ -58,14 +58,14 @@ export function useBrandModels() {
       const response = await unifiedApi.get(`/brands/${brandId}/models`)
 
       if (response.success) {
-        const modelsData = response.data || []
-        const formattedModels = sortOptionsByOrder(modelsData
+        const modelsData = Array.isArray(response.data) ? response.data : []
+        const formattedModels = sortOptionsByOrder<Model>(modelsData
           .map((model: any) => ({
             id: model.id,
             name: model.name,
             brand_id: model.brand_id,
             sort_order: model.sort_order || 0
-          })))
+          } as Model)))
 
         // 缓存型号数据
         brandModels[brandId] = formattedModels

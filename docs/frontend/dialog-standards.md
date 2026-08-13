@@ -10,7 +10,7 @@
 
 | 文件 | 职责 |
 |---|---|
-| `frontend/src/styles/components/_dialog.scss` | 正文内边距、表单标签宽度、图片预览层级 |
+| `frontend/src/styles/components/_dialog.scss` | 正文内边距、表单标签宽度、滚动条可见性、图片预览层级 |
 | `frontend/src/styles/components/_dialog-actions.scss` | footer 按钮排列、尺寸和 MessageBox 语义 |
 | `frontend/src/styles/components/_buttons.scss` | 按钮颜色、状态和普通尺寸 |
 
@@ -55,6 +55,8 @@
 横向表单使用 `.tf-dialog-form`。富文本、说明、长标题等需要标签在上方时使用 `.tf-dialog-form.tf-dialog-form--stacked`。复杂全屏工具确需取消正文间距时使用 `.tf-dialog-body-flush`，不得给普通编辑框设置 `padding: 0`。
 
 所有输入控件必须 `min-width: 0`，长文本允许自然换行。表格、富文本表格或媒体确实超出时，只在内容容器内提供一个横向滚动区域，不得撑宽弹窗或制造页面级双滚动条。
+
+弹窗内容超过可视高度时允许正文纵向滚动，但不显示纵向滚动条轨道。鼠标滚轮、触摸滑动和键盘滚动必须继续可用，禁止用 `overflow-y: hidden` 截断内容。该规则由 `_dialog.scss` 统一覆盖 `el-dialog`、`MobileDialog` 和历史弹窗容器，业务页面不得重新显示或自定义弹窗正文滚动条。
 
 ## Footer 按钮
 
@@ -110,6 +112,7 @@ await ElMessageBox.confirm('确定删除该记录吗？', '删除确认', {
 ## 检查清单
 
 - PC 弹窗在可视区内居中，正文可滚动，footer 始终可操作；
+- 弹窗正文不显示纵向滚动条，但滚轮、触摸和键盘仍可正常滚动；
 - 手机宽度不超过 `100vw`，左右间距对称；
 - 手机 footer 按钮保持一行；
 - 取消和保存顺序一致；

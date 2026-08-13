@@ -176,7 +176,9 @@ export class ErrorBoundary {
     window.addEventListener('error', (event) => {
       if (event.target !== window) {
         const resourceTarget = event.target as HTMLImageElement | HTMLScriptElement | HTMLLinkElement | null
-        const resourceUrl = sanitizeResourceUrl(resourceTarget?.src || resourceTarget?.href)
+        const resourceUrl = sanitizeResourceUrl(
+          resourceTarget instanceof HTMLLinkElement ? resourceTarget.href : resourceTarget?.src
+        )
         this.handleError({
           type: ErrorType.NETWORK,
           message: `Resource loading failed: ${resourceUrl}`,

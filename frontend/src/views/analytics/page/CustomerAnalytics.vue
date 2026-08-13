@@ -165,7 +165,7 @@
               :page-sizes="[10, 20, 50]"
               :total="customerTotal"
               :show-range="true"
-              @change="loadCustomers"
+              @change="handleCustomerPageChange"
             />
           </div>
         </el-card>
@@ -584,6 +584,8 @@ const loadCustomers = async (showLoadingState = true) => {
     }
   }
 };
+
+const handleCustomerPageChange = () => loadCustomers()
 
 const initGrowthChart = async () => {
   if (!growthChartRef.value) return;

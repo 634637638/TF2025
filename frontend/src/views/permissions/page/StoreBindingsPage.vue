@@ -43,7 +43,7 @@ import { computed } from 'vue'
 import { getAdaptiveActionColumnWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 
 const ctx = usePermissionsPageContext()
-const getStoreNames = (row: (typeof ctx.paginatedStoreBindings)[number]) => (
+const getStoreNames = (row: any) => (
   row.stores?.length
     ? row.stores.map(store => `${store.store_name}${store.is_primary ? ' (主)' : ''}`).join(' ')
     : '未绑定'
@@ -58,12 +58,12 @@ const getStoreColumnWidth = (
 const storeBindingActionColumnWidth = computed(() => (
   getAdaptiveActionColumnWidth(ctx.paginatedStoreBindings, [
     {
-      label: row => row.stores?.length ? '管理门店' : '绑定门店',
+      label: (row: any) => row.stores?.length ? '管理门店' : '绑定门店',
       visible: true
     },
     {
       label: '解绑',
-      visible: row => Boolean(row.stores?.length)
+      visible: (row: any) => Boolean(row.stores?.length)
     }
   ])
 ))

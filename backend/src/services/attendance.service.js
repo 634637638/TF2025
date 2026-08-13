@@ -5,6 +5,7 @@ const AttendanceRepository = require('../repositories/attendance.repository');
 const ApiResponse = require('../utils/response');
 const SystemSettingsService = require('./system-settings.service');
 const SalaryRecordService = require('./salary-record.service');
+const SalaryCalculatorService = require('./salary-calculator.service');
 const { getMonthDateRange } = require('../utils/time');
 const log = require('../utils/log');
 
@@ -401,7 +402,8 @@ class AttendanceService {
       // 本月费用统计（计算所有 pending + approved 状态的加班费和请假扣款）
       // 获取员工工资模板信息（加班费率和基本工资）
       const [employeeSalaries] = await db.execute(
-        `SELECT u.id as employee_id, st.overtime_hourly_rate, st.base_salary
+        `SELECT u.id as employee_id, u.hire_date, st.auto_raise_rule,
+                st.overtime_hourly_rate, st.base_salary
          FROM users u
          LEFT JOIN salary_templates st ON u.salary_template_id = st.id
          WHERE u.status = 1 ${isAdmin ? '' : 'AND u.id = ?'}`,
@@ -412,11 +414,19 @@ class AttendanceService {
       const rateMap = new Map();
       const salaryMap = new Map();
       const daysInMonth = new Date(currentYear, currentMonth, 0).getDate(); // 当月天数
+      const periodEnd = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
 
       for (const row of employeeSalaries) {
         // 加班费率：如果没有设置，默认按基本工资/174小时计算（每月工作时间约174小时）
         let overtimeRate = Number(row.overtime_hourly_rate || 0);
-        const baseSalary = Number(row.base_salary || 3000); // 默认基本工资3000
+        const templateBaseSalary = Number(row.base_salary || 3000); // 默认基本工资3000
+        const dynamicSalary = SalaryCalculatorService.calculateDynamicBaseSalary(
+          templateBaseSalary,
+          row.auto_raise_rule,
+          row.hire_date,
+          periodEnd
+        );
+        const baseSalary = templateBaseSalary + dynamicSalary.adjustment;
         if (overtimeRate === 0 && baseSalary > 0) {
           overtimeRate = baseSalary / 174; // 默认加班费率 = 月工资/174
         }

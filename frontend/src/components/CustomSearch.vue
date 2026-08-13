@@ -305,7 +305,7 @@ import { logger } from '@/utils/logger'
 
 interface FilterOption {
   label: string
-  value: unknown
+  value: string | number
 }
 
 interface FilterConfig {
@@ -321,7 +321,7 @@ interface FilterConfig {
 interface Props extends StringModelValueProps {
   placeholder?: string
   filters?: FilterConfig[]
-  filterValues?: Record<string, unknown>
+  filterValues?: Record<string, string | number>
   isMobile?: boolean
   autoSearch?: boolean
   debounceDelay?: number
@@ -351,7 +351,7 @@ const showFilterDrawer = ref(false)
 const filterInputValues = reactive<Record<string, string>>({})
 const dateRangeStart = reactive<Record<string, string>>({})
 const dateRangeEnd = reactive<Record<string, string>>({})
-const localFilterValues = reactive<Record<string, unknown>>({ ...props.filterValues })
+const localFilterValues = reactive<Record<string, string | number>>({ ...props.filterValues })
 
 // 用于强制更新datalist的触发器
 const updateTrigger = ref(0)
@@ -603,7 +603,7 @@ watch(() => props.filterValues, (newValues) => {
   // 同步到filterInputValues
   props.filters.forEach(filter => {
     if (filter.type === 'editable-select' && newValues[filter.key]) {
-      filterInputValues[filter.key] = newValues[filter.key]
+      filterInputValues[filter.key] = String(newValues[filter.key])
     }
   })
 }, { deep: true })

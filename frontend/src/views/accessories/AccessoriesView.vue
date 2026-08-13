@@ -214,7 +214,7 @@ import { getTextColumnMinWidth } from '@/utils/table-layout'
 import { unifiedApi as api } from '@/utils/unified-api'
 
 interface AccessoryItem {
-  id: number | string
+  id: number
   name?: string
   category?: string
   brand_name?: string

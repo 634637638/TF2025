@@ -355,7 +355,7 @@ const loadOrder = async () => {
 
   if (!orderNumber) {
     ElMessage.error('订单号不能为空')
-    logger.error('订单号获取失败，query:', route.query, 'params:', route.params)
+    logger.error('订单号获取失败', { query: route.query, params: route.params })
     router.push('/m')
     return
   }

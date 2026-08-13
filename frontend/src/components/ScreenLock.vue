@@ -192,7 +192,7 @@ const handleUnlock = async () => {
       emit('update:isLocked', false)
     } else {
       // 优先使用error字段中的message，然后是message字段，最后是默认消息
-      const errorMsg = response.error?.message || response.message || '密码错误，请重试'
+      const errorMsg = response.message || '密码错误，请重试'
       errorMessage.value = errorMsg
       // 清空密码并重新聚焦
       password.value = ''
@@ -211,7 +211,7 @@ const handleUnlock = async () => {
 watch(() => props.isLocked, (newVal) => {
   if (newVal) {
     // 进入锁定状态
-    lockTime.value = dayjs()
+    lockTime.value = new Date()
     loadLockSettings()
     // 自动聚焦到密码输入框
     nextTick(() => {

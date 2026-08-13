@@ -220,8 +220,8 @@ const emit = defineEmits<UpdateVisibleEmits>()
 
 // 使用全局Composables
 const { isMobile } = useMobile()
-const { handleError } = useErrorHandler()
-const { showSuccess } = useNotification()
+const { handleSystemError } = useErrorHandler()
+const { success: showSuccess } = useNotification()
 const { exportTextFile, buildDateFilename } = useImportExport()
 
 // 响应式数据
@@ -288,8 +288,8 @@ const loadOperationHistory = (record: StockInRecord) => {
   )
 }
 
-const getOperationTypeTag = (type: OperationType) => {
-  const tagMap = {
+const getOperationTypeTag = (type: OperationType): 'success' | 'danger' | 'warning' | 'info' => {
+  const tagMap: Record<string, 'success' | 'danger' | 'warning' | 'info'> = {
     'in': 'success',
     'out': 'danger',
     'adjust': 'warning',
@@ -331,7 +331,7 @@ const handlePrint = () => {
       showSuccess('打印窗口已打开')
     }
   } catch (error) {
-    handleError(error, 'handlePrint')
+    handleSystemError(error instanceof Error ? error : new Error(String(error)), { operation: 'handlePrint' })
   }
 }
 
@@ -352,7 +352,7 @@ const handleExport = async () => {
       errorMessage: '导出失败'
     })
   } catch (error) {
-    handleError(error, 'handleExport')
+    handleSystemError(error instanceof Error ? error : new Error(String(error)), { operation: 'handleExport' })
   }
 }
 

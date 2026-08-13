@@ -33,7 +33,6 @@ export interface SalaryRecord {
   // 实发工资（最终结果）
   net_salary: number
   status?: 'draft' | 'pending' | 'approved' | 'paid' | 'cancelled'
-  payment_date?: string
   paid_at?: string
   payment_method?: string
   created_by?: number

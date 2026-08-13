@@ -101,12 +101,13 @@ import { ref, computed, watch, nextTick } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ValidationRules } from '@/composables'
 import { useNotification } from '@/composables/useNotification'
-import { useMobileDetection } from '@/composables/mobile'
+import { useMobile } from '@/composables/mobile'
 import { unifiedApi } from '@/utils/unified-api'
 import { isValidMobilePhone, normalizePersonName } from '@/utils/security'
 import { logger } from '@/utils/logger'
 import { useAuthStore } from '@/stores/auth'
-import type { Supplier, Store, User } from '@/types'
+import type { User } from '@/types'
+import type { Supplier, Store } from '@/types/system'
 import type { VisibleProps } from '@/types/component'
 import WholesalePartySection from './wholesale/WholesalePartySection.vue'
 import WholesalePhoneSummarySection from './wholesale/WholesalePhoneSummarySection.vue'
@@ -152,7 +153,7 @@ const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 const authStore = useAuthStore()
-const mobileDetection = useMobileDetection()
+const mobileDetection = useMobile()
 const { success: showSuccess, error: showError, warning: showWarning } = useNotification()
 
 const formRef = ref<FormInstance>()

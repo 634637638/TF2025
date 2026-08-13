@@ -19,6 +19,27 @@
   padding: var(--tf-dialog-body-padding-block) var(--tf-dialog-body-padding-inline) !important;
 }
 
+/*
+ * Dialog content remains scrollable, but the vertical scrollbar must not take
+ * up visual space. This covers Element Plus, MobileDialog and legacy shells.
+ */
+.el-dialog__body,
+.mobile-dialog-sheet-body,
+.modal-body,
+.modern-modal-body {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.el-dialog__body::-webkit-scrollbar,
+.mobile-dialog-sheet-body::-webkit-scrollbar,
+.modal-body::-webkit-scrollbar,
+.modern-modal-body::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
 /* Explicit workspace variant for complex full-bleed dialog tools. */
 .tf-dialog-body-flush .el-dialog__body,
 .el-dialog.tf-dialog-body-flush .el-dialog__body {

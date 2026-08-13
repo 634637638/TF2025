@@ -521,7 +521,7 @@ const handleSave = async () => {
       try {
         await deleteSavedImage(oldUrl)
       } catch (error) {
-        logger.warn('删除旧图片失败:', oldUrl, error)
+        logger.warn('删除旧图片失败', { oldUrl, error })
       }
     }
 

@@ -346,6 +346,7 @@ import { buildCsvContent } from '@/utils/csv-export'
 import { sortOptionsByOrder } from '@/utils/option-sort'
 import dayjs from 'dayjs'
 import { logger } from '@/utils/logger'
+import { TimeUtil } from '@/utils/time'
 
 const props = withDefaults(defineProps<SalesAnalyticsProps>(), {
   loading: false,
@@ -626,7 +627,9 @@ const loadStoreComparisonData = async () => {
       unifiedApi.get('/stores', { params: { all: true } }), DEFAULT_CACHE_TTL.STATIC)
     if (!storesResponse.success || !storesResponse.data) return
 
-    const stores = sortOptionsByOrder(Array.isArray(storesResponse.data) ? storesResponse.data : (storesResponse.data.stores || []))
+    const stores = sortOptionsByOrder<any>(Array.isArray(storesResponse.data)
+      ? storesResponse.data
+      : ((storesResponse.data as { stores?: unknown[] }).stores || [])) as Array<{ id: number; name: string }>
     const comparisonData = []
 
     // 获取每个店铺的全新和二手销售数据（使用缓存）

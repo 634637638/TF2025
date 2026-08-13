@@ -249,19 +249,19 @@
                     <template #default="{ row }">
                       <span v-if="row.record_type === 'monthly_leave'" class="detail-item">
                         <i class="fas fa-calendar-alt detail-icon"></i>
-                        {{ row.monthly_leave_days }}天
+                        {{ formatAttendanceQuantity(row.monthly_leave_days) }}天
                       </span>
                       <span v-else-if="row.record_type === 'leave'" class="detail-item">
                         <i class="fas fa-info-circle detail-icon"></i>
-                        {{ row.leave_type || '-' }} {{ row.leave_days }}天
+                        {{ row.leave_type || '-' }} {{ formatAttendanceQuantity(row.leave_days) }}天
                       </span>
                       <span v-else-if="row.record_type === 'overtime'" class="detail-item">
                         <i class="fas fa-hourglass-half detail-icon"></i>
-                        {{ row.overtime_hours }}小时
+                        {{ formatAttendanceQuantity(row.overtime_hours) }}小时
                       </span>
                       <span v-else class="detail-item">
                         <i class="fas fa-exclamation-triangle detail-icon"></i>
-                        {{ row.absent_days }}天
+                        {{ formatAttendanceQuantity(row.absent_days) }}天
                       </span>
                     </template>
                   </el-table-column>
@@ -466,19 +466,19 @@
                     <template #default="{ row }">
                       <span v-if="row.record_type === 'monthly_leave'" class="detail-item">
                         <i class="fas fa-calendar-alt detail-icon"></i>
-                        {{ row.monthly_leave_days }}天
+                        {{ formatAttendanceQuantity(row.monthly_leave_days) }}天
                       </span>
                       <span v-else-if="row.record_type === 'leave'" class="detail-item">
                         <i class="fas fa-info-circle detail-icon"></i>
-                        {{ row.leave_type || '-' }} {{ row.leave_days }}天
+                        {{ row.leave_type || '-' }} {{ formatAttendanceQuantity(row.leave_days) }}天
                       </span>
                       <span v-else-if="row.record_type === 'overtime'" class="detail-item">
                         <i class="fas fa-hourglass-half detail-icon"></i>
-                        {{ row.overtime_hours }}小时
+                        {{ formatAttendanceQuantity(row.overtime_hours) }}小时
                       </span>
                       <span v-else class="detail-item">
                         <i class="fas fa-exclamation-triangle detail-icon"></i>
-                        {{ row.absent_days }}天
+                        {{ formatAttendanceQuantity(row.absent_days) }}天
                       </span>
                     </template>
                   </el-table-column>
@@ -790,13 +790,13 @@
             {{ currentRecord.leave_type }}
           </el-descriptions-item>
           <el-descriptions-item v-if="canViewAttendanceField('attendance_attendanceview', 'leave_days') && currentRecord.leave_days" label="请假天数">
-            {{ currentRecord.leave_days }} 天
+            {{ formatAttendanceQuantity(currentRecord.leave_days) }} 天
           </el-descriptions-item>
           <el-descriptions-item v-if="canViewAttendanceField('attendance_attendanceview', 'overtime_hours') && currentRecord.overtime_hours" label="加班时长">
-            {{ currentRecord.overtime_hours }} 小时
+            {{ formatAttendanceQuantity(currentRecord.overtime_hours) }} 小时
           </el-descriptions-item>
           <el-descriptions-item v-if="canViewAttendanceField('attendance_attendanceview', 'absent_days') && currentRecord.absent_days" label="旷工天数">
-            {{ currentRecord.absent_days }} 天
+            {{ formatAttendanceQuantity(currentRecord.absent_days) }} 天
           </el-descriptions-item>
           <el-descriptions-item v-if="canViewAttendanceField('attendance_attendanceview', 'reason')" label="原因" :span="2">
             {{ getReasonText(currentRecord) }}
@@ -831,14 +831,8 @@
         <el-form :model="approveForm" label-width="100px">
           <el-form-item v-if="canViewAttendanceField('attendance_attendanceview', 'status')" label="审批结果">
             <el-radio-group v-model="approveForm.status" :disabled="!canEditAttendanceField('attendance_attendanceview', 'status')">
-              <el-radio value="approved">
-                <i class="fas fa-check-circle text-success mr-1"></i>
-                通过
-              </el-radio>
-              <el-radio value="rejected">
-                <i class="fas fa-times-circle text-danger mr-1"></i>
-                拒绝
-              </el-radio>
+              <el-radio value="approved">通过</el-radio>
+              <el-radio value="rejected">拒绝</el-radio>
             </el-radio-group>
           </el-form-item>
           <el-form-item v-if="canViewAttendanceField('attendance_attendanceview', 'approval_note')" label="审批备注">
@@ -1137,10 +1131,10 @@ const showMyAttendanceStatusColumn = computed(() => canViewAttendanceField('atte
 const showMyAttendanceApprovalColumn = computed(() => canViewAttendanceField('attendance_myattendanceview', 'approval_note') && !isMobile.value)
 const showMyAttendanceActionField = computed(() => canViewAttendanceField('attendance_myattendanceview', 'actions') && !isMobile.value)
 const getAttendanceDetailText = (row: AttendanceTableRow) => {
-  if (row.record_type === 'monthly_leave') return `${row.monthly_leave_days || 0}天`
-  if (row.record_type === 'leave') return `${row.leave_type || '-'} ${row.leave_days || 0}天`
-  if (row.record_type === 'overtime') return `${row.overtime_hours || 0}小时`
-  return `${row.absent_days || 0}天`
+  if (row.record_type === 'monthly_leave') return `${formatAttendanceQuantity(row.monthly_leave_days)}天`
+  if (row.record_type === 'leave') return `${row.leave_type || '-'} ${formatAttendanceQuantity(row.leave_days)}天`
+  if (row.record_type === 'overtime') return `${formatAttendanceQuantity(row.overtime_hours)}小时`
+  return `${formatAttendanceQuantity(row.absent_days)}天`
 }
 const getAttendanceStatusText = (row: AttendanceTableRow) => (
   row.status === 'pending' ? '待审批' : row.status === 'approved' ? '已通过' : '已拒绝'
@@ -1638,10 +1632,10 @@ const loadPendingStats = async () => {
             // 尝试从 salary_template 对象获取 base_salary（如果后端返回了完整的模板信息）
             if (currentUser.salary_template && typeof currentUser.salary_template === 'object') {
               if (currentUser.salary_template.base_salary) {
-                baseSalary = parseFloat(currentUser.salary_template.base_salary)
+                baseSalary = parseFloat(String(currentUser.salary_template.base_salary))
               }
               if (currentUser.salary_template.overtime_hourly_rate) {
-                overtimeHourlyRate = parseFloat(currentUser.salary_template.overtime_hourly_rate)
+                overtimeHourlyRate = parseFloat(String(currentUser.salary_template.overtime_hourly_rate))
               }
             }
             // 或者如果有 salary_template_id，尝试获取模板详情
@@ -1750,6 +1744,11 @@ const loadLeaveBalance = async (employeeId?: number | string) => {
 const toAttendanceNumber = (value: unknown, fallback: number) => {
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : fallback
+}
+
+const formatAttendanceQuantity = (value: unknown) => {
+  const parsed = toAttendanceNumber(value, 0)
+  return Number.isInteger(parsed) ? String(parsed) : String(Number(parsed.toFixed(2)))
 }
 
 const loadLeaveConfig = async () => {
@@ -2230,7 +2229,7 @@ const handleCancel = async (row: AttendanceTableRow) => {
 // 获取原因文本 - 根据记录类型返回对应的 reason 字段
 const getReasonText = (row: AttendanceTableRow) => {
   if (row.record_type === 'monthly_leave') {
-    return `月度带薪休假 ${row.monthly_leave_days || 0} 天`
+    return `月度带薪休假 ${formatAttendanceQuantity(row.monthly_leave_days)} 天`
   } else if (row.record_type === 'leave') {
     return row.leave_reason || '-'
   } else if (row.record_type === 'overtime') {

@@ -341,6 +341,7 @@ import { useLoadingStore } from '@/stores/loading'
 import Pagination from '@/components/Pagination.vue'
 import InlineLoading from '@/components/InlineLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
+import { logger } from '@/utils/logger'
 
 const { canView, canEdit, canDelete, handleNoPermission } = usePagePermissions('data-optimization')
 const globalLoading = useLoadingStore()

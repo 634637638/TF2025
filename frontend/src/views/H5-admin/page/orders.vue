@@ -263,7 +263,7 @@
             </div>
             <div class="mobile-order-card__item">
               <span>金额</span>
-              <strong class="amount">¥{{ parseFloat(row.total_amount).toFixed(2) }}</strong>
+              <strong class="amount">¥{{ Number(row.total_amount).toFixed(2) }}</strong>
             </div>
             <div class="mobile-order-card__item">
               <span>下单</span>
@@ -372,8 +372,8 @@
                 </div>
               </div>
               <div class="item-quantity">x{{ item.quantity }}</div>
-              <div class="item-price">¥{{ parseFloat(item.sale_price).toFixed(2) }}</div>
-              <div class="item-subtotal">¥{{ parseFloat(item.subtotal).toFixed(2) }}</div>
+              <div class="item-price">¥{{ Number(item.sale_price).toFixed(2) }}</div>
+              <div class="item-subtotal">¥{{ Number(item.subtotal).toFixed(2) }}</div>
             </div>
           </div>
         </div>
@@ -384,11 +384,11 @@
           <div class="price-summary">
             <div class="price-row">
               <span>商品总额</span>
-              <span>¥{{ parseFloat(currentOrder.total_amount).toFixed(2) }}</span>
+              <span>¥{{ Number(currentOrder.total_amount).toFixed(2) }}</span>
             </div>
             <div class="price-row total">
               <span>应付金额</span>
-              <span class="total-amount">¥{{ parseFloat(currentOrder.total_amount).toFixed(2) }}</span>
+              <span class="total-amount">¥{{ Number(currentOrder.total_amount).toFixed(2) }}</span>
             </div>
           </div>
         </div>
@@ -580,8 +580,39 @@ import type { HeaderAction } from '@/types'
 const registerHeaderActions = inject<(actions: HeaderAction[]) => void>('registerHeaderActions')
 const clearHeaderActions = inject<() => void>('clearHeaderActions')
 
-type OrderRecord = Record<string, unknown>
-type OrderStatistics = Record<string, unknown>
+interface OrderItem {
+  id: string | number
+  quantity: number
+  sale_price: string | number
+  subtotal: string | number
+  phone_info?: { brand?: string; model?: string; color?: string; memory?: string }
+}
+
+interface OrderRecord {
+  id: string | number
+  order_number: string
+  status: string
+  customer_name?: string
+  customer_phone?: string
+  customer_address?: string
+  total_amount: string | number
+  created_at: string
+  paid_at?: string
+  confirmed_at?: string
+  shipped_at?: string
+  completed_at?: string
+  payment_method?: string
+  payment_proof?: string
+  shipping_info?: { company?: string; tracking_number?: string; remarks?: string }
+  operation_history?: Array<{ action: string; detail: string; created_at: string }>
+  remarks?: string
+  items: OrderItem[]
+}
+
+interface OrderStatistics {
+  total?: { total_orders?: number }
+  by_status?: Array<{ status: string; count: number }>
+}
 type OrderDateRange = [string, string] | []
 
 const router = useRouter()
@@ -718,7 +749,7 @@ const loadOrders = async () => {
     }
 
     const response = await api.get('/sales-management/h5-orders', { params })
-    orders.value = response.data
+    orders.value = Array.isArray(response.data) ? response.data as OrderRecord[] : []
 
     // 分页信息在 response.pagination 中
     if (response.pagination) {
