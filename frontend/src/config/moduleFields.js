@@ -1,3 +1,5 @@
+import { PHONE_STATUS_OPTIONS } from '@/constants/phoneStatuses'
+
 // 字段类型定义
 export const FIELD_TYPES = {
   TEXT: 'text',
@@ -181,17 +183,9 @@ export const MODULE_FIELDS = {
         group: '基本信息',
         type: FIELD_TYPES.SELECT,
         sensitivity: SENSITIVITY_LEVELS.PUBLIC,
-        description: '手机状态（在库/已售/批发/划拨等）',
+        description: '手机状态（可售/预定/租赁/维修/已售等）',
         filterable: true,
-        options: [
-          { label: '在库', value: 'in_stock' },
-          { label: '已售', value: 'sold' },
-          { label: '批发', value: 'peer_transfer' },
-          { label: '划拨', value: 'supplier_proxy' },
-          { label: '预定', value: 'reserved' },
-          { label: '维修', value: 'repair' },
-          { label: '丢失', value: 'lost' }
-        ]
+        options: PHONE_STATUS_OPTIONS
       },
 
       // 基本信息字段（价格字段放在设备信息内）
@@ -401,14 +395,7 @@ export const MODULE_FIELDS = {
         sensitivity: SENSITIVITY_LEVELS.INTERNAL,
         description: '商品当前库存状态',
         filterable: true,
-        options: [
-          { label: '在库', value: 'in_stock' },
-          { label: '已售', value: 'sold' },
-          { label: '预留', value: 'reserved' },
-          { label: '维修', value: 'repair' },
-          { label: '调货', value: 'peer_transfer' },
-          { label: '划拨', value: 'supplier_proxy' }
-        ]
+        options: PHONE_STATUS_OPTIONS
       },
       {
         id: 'supplier_info.supplier_name',

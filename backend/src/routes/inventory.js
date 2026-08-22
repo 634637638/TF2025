@@ -9,6 +9,9 @@ const { generateMemberNumber } = require('../utils/member-number');
 const log = require('../utils/log');
 const { requireMockRoutesEnabled } = require('../middleware/mock-route-guard');
 
+const ADMIN_ROLE_CODES = new Set(['super_admin', 'webadmin', 'admin']);
+const isAdministrator = req => (req.user?.role_codes || []).some(code => ADMIN_ROLE_CODES.has(String(code).toLowerCase()));
+
 const mockInventory = [
   {
     id: 1,
@@ -183,7 +186,7 @@ router.get('/list', unifiedAuth, requirePermission('inventory:view'), async (req
     const offset = (validPage - 1) * validLimit;
 
     // 构建WHERE条件
-    let whereConditions = ['p.status = "in_stock"'];
+    let whereConditions = ["p.status IN ('in_stock','repair','rented')"];
     let queryParams = [];
 
     // 店铺筛选
@@ -305,17 +308,19 @@ router.get('/list', unifiedAuth, requirePermission('inventory:view'), async (req
         queryParams.push(`%${searchStr.toUpperCase()}%`);
       }
       // 状态匹配 (英文状态)
-      else if (['available', 'sold', 'reserved', 'repair', 'lost'].includes(searchStr.toLowerCase())) {
+      else if (['available', 'sold', 'reserved', 'repair', 'rented', 'lost'].includes(searchStr.toLowerCase())) {
         whereConditions.push('p.status = ?');
         queryParams.push(searchStr.toLowerCase());
       }
       // 状态匹配 (中文状态)
-      else if (['可用', '已售', '预定', '维修', '丢失', '在库'].includes(searchStr)) {
+      else if (['可用', '可售', '已售', '预定', '维修', '租赁', '丢失', '在库'].includes(searchStr)) {
         const statusMap = {
           '可用': 'available',
+          '可售': 'in_stock',
           '已售': 'sold',
           '预定': 'reserved',
           '维修': 'repair',
+          '租赁': 'rented',
           '丢失': 'lost',
           '在库': 'available'
         };
@@ -1290,6 +1295,11 @@ router.put('/:id', unifiedAuth, requirePermission('inventory:edit'), async (req,
 
     const item = existingItems[0];
     log.debug(`找到商品: ${item.brand || ''} ${item.model || ''} (${item.imei || '无IMEI'})`);
+
+    if (['repair', 'rented'].includes(item.status) && !isAdministrator(req)) {
+      await connection.rollback();
+      return ApiResponse.forbidden(res, item.status === 'rented' ? '租赁中的设备仅管理员可编辑' : '维修中的设备仅管理员可编辑');
+    }
 
     // 检查IMEI冲突（如果要更新的IMEI与现有其他商品冲突）
     if (updateData.imei && updateData.imei !== item.imei) {

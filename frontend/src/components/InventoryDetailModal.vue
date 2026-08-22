@@ -141,6 +141,7 @@
 import { computed } from 'vue'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
 import MobileDialog from '@/components/MobileDialog.vue'
+import { getPhoneStatusLabel } from '@/constants/phoneStatuses'
 import type { InventoryItem } from '@/types'
 import type { ModelValueProps, UpdateModelValueEmits, CloseEmits } from '@/types/component'
 
@@ -202,15 +203,7 @@ const conditionText = computed(() => normalizeCondition(props.item?.is_new) ? '�
 const conditionClass = computed(() => normalizeCondition(props.item?.is_new) ? 'is-new' : 'is-used')
 
 const statusText = computed(() => {
-  const statusMap: Record<string, string> = {
-    in_stock: '在库',
-    sold: '已售',
-    reserved: '预留',
-    repair: '维修',
-    peer_transfer: '调货',
-    supplier_proxy: '划拨'
-  }
-  return props.item?.status ? (statusMap[props.item.status] || props.item.status) : '-'
+  return getPhoneStatusLabel(props.item?.status)
 })
 
 const productTitle = computed(() => {

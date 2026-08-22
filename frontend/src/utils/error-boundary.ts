@@ -176,9 +176,16 @@ export class ErrorBoundary {
     window.addEventListener('error', (event) => {
       if (event.target !== window) {
         const resourceTarget = event.target as HTMLImageElement | HTMLScriptElement | HTMLLinkElement | null
+        // 捕获阶段也会收到非资源节点的 error 事件（例如文档导航或自定义事件）。
+        // 只有明确的资源元素才记录资源加载错误，避免把当前页面地址误报为失败资源。
+        const isResourceElement = resourceTarget instanceof HTMLImageElement ||
+          resourceTarget instanceof HTMLScriptElement ||
+          resourceTarget instanceof HTMLLinkElement
+        if (!isResourceElement) return
         const resourceUrl = sanitizeResourceUrl(
           resourceTarget instanceof HTMLLinkElement ? resourceTarget.href : resourceTarget?.src
         )
+        if (resourceUrl === 'unknown resource') return
         this.handleError({
           type: ErrorType.NETWORK,
           message: `Resource loading failed: ${resourceUrl}`,

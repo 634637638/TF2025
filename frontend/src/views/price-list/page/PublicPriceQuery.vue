@@ -179,20 +179,20 @@
           <div class="results-header">
             <h2>最新报价</h2>
             <el-tag class="hot-badge" type="danger" effect="dark">HOT</el-tag>
-            <h2>1320-0790-3333</h2>
+            <h2>{{ primaryPriceContact?.phone || '' }}</h2>
             <span class="count">共 {{ searchResults.length }} 条</span>
           </div>
 
           <!-- 水印（仅生成图片时显示） -->
-          <div class="image-watermark" v-show="false">
+          <div v-if="watermarkEnabled" class="image-watermark" v-show="false">
             <div class="watermark-item watermark-1">
-              <span class="watermark-text">腾飞数码 132-0790-3333 {{ getCurrentDateTime() }}</span>
+              <span class="watermark-text" :style="{ color: watermarkColor }">{{ watermarkText }}</span>
             </div>
             <div class="watermark-item watermark-2">
-              <span class="watermark-text">腾飞数码 132-0790-3333 {{ getCurrentDateTime() }}</span>
+              <span class="watermark-text" :style="{ color: watermarkColor }">{{ watermarkText }}</span>
             </div>
             <div class="watermark-item watermark-3">
-              <span class="watermark-text">腾飞数码 132-0790-3333 {{ getCurrentDateTime() }}</span>
+              <span class="watermark-text" :style="{ color: watermarkColor }">{{ watermarkText }}</span>
             </div>
           </div>
 
@@ -228,21 +228,9 @@
               <span class="contact-title">联系电话</span>
             </div>
             <div class="contact-grid">
-              <a href="tel:13207903333" class="contact-link">
-                <span class="contact-name">饶先生</span>
-                <span class="contact-number">132-0790-3333</span>
-              </a>
-              <a href="tel:13207903335" class="contact-link">
-                <span class="contact-name">刘女士</span>
-                <span class="contact-number">132-0790-3335</span>
-              </a>
-              <a href="tel:15679079373" class="contact-link">
-                <span class="contact-name">三小店</span>
-                <span class="contact-number">156-7907-9373</span>
-              </a>
-              <a href="tel:15607909320" class="contact-link">
-                <span class="contact-name">广场店</span>
-                <span class="contact-number">156-0790-9320</span>
+              <a v-for="contact in priceContacts" :key="`${contact.name}-${contact.phone}`" :href="`tel:${phoneHref(contact.phone)}`" class="contact-link">
+                <span class="contact-name">{{ contact.name }}</span>
+                <span class="contact-number">{{ contact.phone }}</span>
               </a>
             </div>
           </div>
@@ -290,7 +278,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue'
 import { Search, Close } from '@element-plus/icons-vue'
 import { getAllPrices, searchPrices } from '@/api/price-list'
 import { PublicPriceHeader } from '@/components/base'
@@ -301,10 +289,27 @@ import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { useLoadingState } from '@/composables'
 import { logger } from '@/utils/logger'
 import { loadHtml2Canvas } from '@/utils/html2canvas'
+import { useSiteSettingsStore } from '@/stores/siteSettings'
+import { parsePublicPriceContacts, formatPublicPriceWatermark } from '@/utils/publicPriceSettings'
 
 const InventoryResultDialog = defineAsyncComponent(() => import('@/components/InventoryResultDialog.vue'))
 // 状态
 const { loading } = useLoadingState()
+const siteSettingsStore = useSiteSettingsStore()
+const priceContacts = computed(() => {
+  const configured = parsePublicPriceContacts(siteSettingsStore.settings.publicPriceContacts)
+  if (configured.length) return configured
+
+  const fallbackPhone = String(siteSettingsStore.settings.contactPhone || '').trim()
+  return fallbackPhone
+    ? [{ name: siteSettingsStore.settings.companyName || '联系电话', phone: fallbackPhone }]
+    : [{ name: '腾飞数码', phone: '132-0790-3333' }]
+})
+const primaryPriceContact = computed(() => priceContacts.value[0])
+const watermarkEnabled = computed(() => siteSettingsStore.settings.publicPriceWatermarkEnabled !== '0')
+const watermarkText = computed(() => formatPublicPriceWatermark(siteSettingsStore.settings.publicPriceWatermark, primaryPriceContact.value, siteSettingsStore.settings.publicPriceWatermarkTimeEnabled !== '0'))
+const watermarkColor = computed(() => siteSettingsStore.settings.publicPriceWatermarkColor || '#6b7280')
+const phoneHref = (phone: string) => String(phone || '').replace(/[^\d+]/g, '')
 const searchKeyword = ref('')
 const allResults = ref<any[]>([])
 const searchResults = ref<any[]>([])
@@ -473,7 +478,7 @@ const getCurrentDateTime = () => {
   return TimeUtil.nowFormatted(TIME_FORMATS.DATETIME)
 }
 
-// 生成随机水印位置
+// 固定安全区域并轻微倾斜，避免随机位置靠近边缘导致水印被裁剪。
 interface WatermarkPosition {
   top: number
   left: number
@@ -482,16 +487,13 @@ interface WatermarkPosition {
 }
 
 const generateRandomWatermarkPositions = (): WatermarkPosition[] => {
-  const positions: WatermarkPosition[] = []
-  for (let i = 0; i < 3; i++) {
-    positions.push({
-      top: Math.floor(Math.random() * 60) + 15, // 15% - 75%
-      left: Math.floor(Math.random() * 60) + 10, // 10% - 70%
-      right: Math.floor(Math.random() * 60) + 10, // 10% - 70%
-      rotation: Math.floor(Math.random() * 30) - 40 // -40deg 到 -10deg
-    })
-  }
-  return positions
+  return Array.from({ length: 3 }, () => ({
+    // 12%-72% 的安全区间保留随机性，同时避开上下边缘。
+    top: Math.floor(Math.random() * 61) + 12,
+    left: 8,
+    right: 8,
+    rotation: -8
+  }))
 }
 
 // 检测是否为 iOS 设备
@@ -502,6 +504,7 @@ const isIOS = () => {
 
 // iOS 图片保存弹窗状态
 const showIOSImageModal = ref(false)
+const EMPTY_IMAGE_SRC = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='
 const iosImageUrl = ref('')
 const iosImageFile = ref<File | null>(null)
 const iosBlobImageUrl = ref('')
@@ -541,7 +544,7 @@ const closeIOSImageModal = () => {
   if (iosBlobImageUrl.value) {
     URL.revokeObjectURL(iosBlobImageUrl.value)
   }
-  iosImageUrl.value = ''
+  iosImageUrl.value = EMPTY_IMAGE_SRC
   iosBlobImageUrl.value = ''
   iosDataImageUrl.value = ''
   iosImageFile.value = null
@@ -622,6 +625,35 @@ const saveImageToGallery = async (canvas: HTMLCanvasElement) => {
   })
 }
 
+const applyContactImageStyles = (clonedDocument: Document) => {
+  const card = clonedDocument.querySelector<HTMLElement>('.contact-card')
+  if (!card) return
+
+  card.style.setProperty('background', 'linear-gradient(135deg, #e6f0f4 0%, #dce9ee 100%)', 'important')
+  card.style.setProperty('border', '1px solid #c7d8e0', 'important')
+  card.style.setProperty('border-radius', '10px', 'important')
+  card.style.setProperty('box-shadow', 'none', 'important')
+  card.style.setProperty('display', 'block', 'important')
+  card.style.setProperty('height', 'auto', 'important')
+  card.style.setProperty('min-height', '0', 'important')
+  card.style.setProperty('overflow', 'visible', 'important')
+  const grid = card.querySelector<HTMLElement>('.contact-grid')
+  grid?.style.setProperty('display', 'grid', 'important')
+  grid?.style.setProperty('grid-template-columns', 'repeat(2, minmax(0, 1fr))', 'important')
+  grid?.style.setProperty('visibility', 'visible', 'important')
+  card.querySelectorAll<HTMLElement>('.contact-title').forEach((el) => {
+    el.style.setProperty('color', '#334155', 'important')
+  })
+  card.querySelectorAll<HTMLElement>('.contact-link').forEach((el) => {
+    el.style.setProperty('display', 'flex', 'important')
+    el.style.setProperty('justify-content', 'space-between', 'important')
+    el.style.setProperty('height', 'auto', 'important')
+    el.style.setProperty('min-height', '48px', 'important')
+    el.style.setProperty('visibility', 'visible', 'important')
+    el.style.setProperty('opacity', '1', 'important')
+  })
+}
+
 // 下载为图片
 const downloadAsImage = async () => {
   if (isGenerating.value) return
@@ -654,6 +686,10 @@ const downloadAsImage = async () => {
             el.style.right = `${pos.right}%`
             el.style.left = 'auto'
           }
+          el.style.width = '92%'
+          el.style.maxWidth = '92%'
+          el.style.boxSizing = 'border-box'
+          el.style.textAlign = 'center'
           el.style.transform = `rotate(${pos.rotation}deg)`
         }
       })
@@ -673,7 +709,8 @@ const downloadAsImage = async () => {
       useCORS: true, // 支持跨域图片
       backgroundColor: '#ffffff',
       logging: false,
-      allowTaint: true
+      allowTaint: true,
+      onclone: applyContactImageStyles
     })
 
     // 裁剪画布移除底部空白
@@ -794,9 +831,28 @@ const showInventoryResultDialog = (row: any) => {
   showInventoryResult.value = true
 }
 
-onMounted(() => {
+const refreshPublicPriceSettings = () => {
+  // 公开页面可能在后台设置页保存后才打开，不能依赖应用启动时的设置快照。
+  return siteSettingsStore.loadSiteSettings(true)
+}
+
+const handlePublicPriceVisibility = () => {
+  if (document.visibilityState === 'visible') {
+    void refreshPublicPriceSettings()
+  }
+}
+
+const handlePublicPriceSettingsStorage = (event: StorageEvent) => {
+  if (event.key === 'tf2025:site-settings-version' && event.newValue) {
+    void refreshPublicPriceSettings()
+  }
+}
+
+onMounted(async () => {
+  // 进入公开报价页时强制读取数据库，确保联系人、站点名称和水印使用最新值。
+  await refreshPublicPriceSettings()
   // 默认加载所有数据
-  loadAllData()
+  await loadAllData()
 
   // 防止 Safari 橡皮筋效果导致页面左右移动
   const preventRubberBand = (e: TouchEvent) => {
@@ -809,7 +865,7 @@ onMounted(() => {
       // 但表格容器内允许水平滑动
       const target = e.target as HTMLElement
       const tableWrapper = target.closest('.table-wrapper')
-      if (!tableWrapper) {
+      if (!tableWrapper && e.cancelable) {
         e.preventDefault()
       }
     }
@@ -818,15 +874,21 @@ onMounted(() => {
   // 监听触摸事件
   document.addEventListener('touchstart', preventRubberBand, { passive: false })
   document.addEventListener('touchmove', preventRubberBand, { passive: false })
+  document.addEventListener('visibilitychange', handlePublicPriceVisibility)
+  window.addEventListener('storage', handlePublicPriceSettingsStorage)
 
   // 保存清理函数
   window.__priceQueryCleanup = () => {
     document.removeEventListener('touchstart', preventRubberBand)
     document.removeEventListener('touchmove', preventRubberBand)
+    document.removeEventListener('visibilitychange', handlePublicPriceVisibility)
+    window.removeEventListener('storage', handlePublicPriceSettingsStorage)
   }
 })
 
 onBeforeUnmount(() => {
+  document.removeEventListener('visibilitychange', handlePublicPriceVisibility)
+  window.removeEventListener('storage', handlePublicPriceSettingsStorage)
   // 清理事件监听器
   if (window.__priceQueryCleanup) {
     window.__priceQueryCleanup()
@@ -1355,7 +1417,7 @@ declare global {
         .btn-content {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 6px;
 
           &.loading {
             .loading-spinner {
@@ -2147,22 +2209,25 @@ declare global {
 .results-list {
   .contact-card {
     margin-top: 24px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 12px;
-    padding: 20px;
+    background: linear-gradient(135deg, #e6f0f4 0%, #dce9ee 100%);
+    border: 1px solid #c7d8e0;
+    border-radius: 10px;
+    padding: 14px 16px 16px;
+    box-shadow: none;
+    backdrop-filter: none;
 
     @media (max-width: 768px) {
       margin-top: 0;
-      padding: 16px;
+      padding: 12px 6px;
       border-radius: 0;
     }
 
     @media (max-width: 480px) {
-      padding: 12px;
+      padding: 10px 4px;
     }
 
     @media (max-width: 380px) {
-      padding: 10px;
+      padding: 8px 3px;
     }
 
     .contact-header {
@@ -2200,7 +2265,7 @@ declare global {
       .contact-title {
         font-size: 16px;
         font-weight: bold;
-        color: white;
+        color: #334155;
 
         @media (max-width: 768px) {
           font-size: 14px;
@@ -2223,35 +2288,40 @@ declare global {
 
       @media (max-width: 768px) {
         grid-template-columns: repeat(2, 1fr);
-        gap: 8px;
-      }
-
-      @media (max-width: 480px) {
         gap: 6px;
       }
 
+      @media (max-width: 480px) {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 3px;
+      }
+
       @media (max-width: 380px) {
-        gap: 4px;
+        gap: 2px;
       }
 
       .contact-link {
         display: flex;
-        flex-direction: column;
         align-items: center;
-        justify-content: center;
-        padding: 14px 16px;
-        background: rgba(255, 255, 255, 0.15);
-        border-radius: 10px;
+        justify-content: space-between;
+        gap: 8px;
+        min-width: 0;
+        min-height: 78px;
+        padding: 12px 16px;
+        background: #f1f8f3;
+        border: 1px solid #dfede1;
+        border-radius: 16px;
         text-decoration: none;
         transition: all 0.3s ease;
         text-align: center;
 
         @media (max-width: 768px) {
-          padding: 12px 8px;
+          min-height: 56px;
+          padding: 7px 6px;
           border-radius: 8px;
 
           &:hover {
-            background: rgba(255, 255, 255, 0.15);
+          background: transparent;
             transform: none;
           }
 
@@ -2261,17 +2331,19 @@ declare global {
         }
 
         @media (max-width: 480px) {
-          padding: 10px 6px;
-          border-radius: 6px;
+          min-height: 50px;
+          padding: 5px 5px;
+          border-radius: 8px;
         }
 
         @media (max-width: 380px) {
-          padding: 8px 4px;
-          border-radius: 4px;
+          min-height: 46px;
+          padding: 4px 4px;
+          border-radius: 8px;
         }
 
         &:hover {
-          background: rgba(255, 255, 255, 0.25);
+          background: rgba(59, 130, 246, 0.08);
           transform: translateY(-2px);
         }
 
@@ -2280,43 +2352,70 @@ declare global {
         }
 
         .contact-name {
-          font-size: 14px;
-          color: rgba(255, 255, 255, 0.9);
-          margin-bottom: 6px;
-          font-weight: 500;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          flex: 0 1 auto;
+          min-width: 0;
+          font-size: clamp(10px, 2.6vw, 13px);
+          line-height: 1.2;
+          color: #334155;
+          margin-bottom: 0;
+          font-weight: 650;
+          max-width: 44%;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          padding: 3px 7px;
+          border-radius: 7px;
+          background: #f1ecfb;
+          border: 1px solid #ddd4f0;
 
           @media (max-width: 768px) {
-            font-size: 13px;
-            margin-bottom: 4px;
+            max-width: 42%;
           }
 
           @media (max-width: 480px) {
-            font-size: 12px;
-            margin-bottom: 3px;
+            padding: 2px 5px;
           }
 
           @media (max-width: 380px) {
-            font-size: 11px;
-            margin-bottom: 2px;
+            max-width: 40%;
           }
         }
 
         .contact-number {
-          font-size: 16px;
-          font-weight: bold;
-          color: white;
-          letter-spacing: 0.5px;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          flex: 1 1 auto;
+          min-width: 0;
+          justify-content: flex-end;
+          font-size: clamp(10px, 2.8vw, 13px);
+          line-height: 1.2;
+          font-weight: 700;
+          color: #1f2937;
+          letter-spacing: 0.2px;
+          font-variant-numeric: tabular-nums;
+          max-width: 100%;
+          overflow: visible;
+          text-overflow: clip;
+          white-space: nowrap;
+          padding: 3px 7px;
+          border-radius: 7px;
+          background: #e8f6f2;
+          border: 1px solid #d2ebe3;
 
           @media (max-width: 768px) {
-            font-size: 14px;
+            padding: 2px 5px;
           }
 
           @media (max-width: 480px) {
-            font-size: 13px;
+            gap: 2px;
           }
 
           @media (max-width: 380px) {
-            font-size: 12px;
+            padding: 2px 4px;
           }
         }
       }
@@ -2330,19 +2429,30 @@ declare global {
 // 图片水印样式 - 表格内斜向随机位置
 .image-watermark {
   pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  mix-blend-mode: multiply;
 
   .watermark-item {
     position: absolute;
     opacity: 0;
-    z-index: 5;
+    z-index: 2;
     transform-origin: center;
 
     .watermark-text {
       display: inline-block;
-      font-size: 14px;
+      opacity: 0.16;
+      font-size: clamp(10px, 3vw, 14px);
       font-weight: 700;
       color: rgba(220, 38, 38, 0.15);
+      max-width: 100%;
       white-space: nowrap;
+      overflow: hidden;
+      text-overflow: clip;
+      overflow-wrap: normal;
+      word-break: keep-all;
+      line-height: 1.2;
       text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.05);
     }
   }
@@ -2358,6 +2468,11 @@ declare global {
   box-shadow: none !important;
   background: white !important;
   position: relative !important;
+
+  > :not(.image-watermark) {
+    position: relative;
+    z-index: 1;
+  }
 
   .results-header {
     padding: 12px !important;
@@ -2501,40 +2616,13 @@ declare global {
 
   .contact-card {
     margin-top: 0 !important;
-    padding: 10px 12px !important;
+    padding: 4px 2px !important;
     padding-bottom: 8px !important;
     border-radius: 0 !important;
-
-    .contact-header {
-      margin-bottom: 6px !important;
-      gap: 6px !important;
-
-      .contact-icon {
-        font-size: 14px !important;
-      }
-
-      .contact-title {
-        font-size: 12px !important;
-      }
-    }
-
-    .contact-grid {
-      grid-template-columns: repeat(2, 1fr) !important;
-      gap: 5px !important;
-
-      .contact-link {
-        padding: 8px 5px !important;
-        border-radius: 4px !important;
-
-        .contact-name {
-          font-size: 11px !important;
-        }
-
-        .contact-number {
-          font-size: 12px !important;
-        }
-      }
-    }
+    background: linear-gradient(135deg, #e6f0f4 0%, #dce9ee 100%) !important;
+    border: 1px solid #c7d8e0 !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
   }
 }
 

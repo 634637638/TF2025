@@ -20,6 +20,11 @@ interface SiteSettings {
   contactPhone: string
   contactEmail: string
   companyAddress: string
+  publicPriceContacts: string
+  publicPriceWatermark: string
+  publicPriceWatermarkEnabled: string
+  publicPriceWatermarkTimeEnabled: string
+  publicPriceWatermarkColor: string
 }
 
 interface UpdateSiteSettingsResult {
@@ -122,6 +127,11 @@ export const useSiteSettingsStore = defineStore('siteSettings', () => {
     contactPhone: '400-123-4567',
     contactEmail: 'service@tf2025.com',
     companyAddress: '北京市朝阳区建国路88号SOHO现代城A座2808室'
+    ,publicPriceContacts: '饶先生|132-0790-3333\n刘女士|132-0790-3335\n三小店|156-7907-9373\n广场店|156-0790-9320'
+    ,publicPriceWatermark: '腾飞数码 132-0790-3333'
+    ,publicPriceWatermarkEnabled: '1'
+    ,publicPriceWatermarkTimeEnabled: '1'
+    ,publicPriceWatermarkColor: '#6b7280'
   })
 
   const isLoading = ref(false)
@@ -159,7 +169,10 @@ export const useSiteSettingsStore = defineStore('siteSettings', () => {
 
       const response = await unifiedApi.get('/system/site-settings', {
         showLoading: false,
-        showError: false
+        showError: false,
+        // 强制刷新用于公开报价页和设置页保存后的回读，不能命中旧的3秒GET缓存。
+        useCache: !forceReload,
+        ...(forceReload ? { params: { _t: Date.now() } } : {})
       })
 
       if (response.success && response.data) {
@@ -201,6 +214,13 @@ export const useSiteSettingsStore = defineStore('siteSettings', () => {
       if (response.success) {
         lastUpdated.value = new Date()
 
+        // 让同时打开的公开报价页也能感知后台设置已更新。
+        try {
+          window.localStorage.setItem('tf2025:site-settings-version', String(Date.now()))
+        } catch {
+          // 隐私模式或禁用存储时，当前窗口事件仍可正常更新。
+        }
+
         syncDocumentBranding(settings.value.siteName, settings.value.logoUrl)
 
         // 触发设置更新事件
@@ -240,6 +260,11 @@ export const useSiteSettingsStore = defineStore('siteSettings', () => {
       contactPhone: '400-123-4567',
       contactEmail: 'service@tf2025.com',
       companyAddress: '北京市朝阳区建国路88号SOHO现代城A座2808室'
+      ,publicPriceContacts: '饶先生|132-0790-3333\n刘女士|132-0790-3335\n三小店|156-7907-9373\n广场店|156-0790-9320'
+      ,publicPriceWatermark: '腾飞数码 132-0790-3333'
+      ,publicPriceWatermarkEnabled: '1'
+      ,publicPriceWatermarkTimeEnabled: '1'
+      ,publicPriceWatermarkColor: '#6b7280'
     }
 
     Object.assign(settings.value, defaultSettings)

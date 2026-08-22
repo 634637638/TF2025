@@ -14,9 +14,14 @@ class QueryRepository extends BaseRepository {
 
     const statusMapping = {
       '在库': 'in_stock',
+      '可售': 'in_stock',
       '已售': 'sold',
       '预订': 'reserved',
+      '预定': 'reserved',
       '维修中': 'repair',
+      '维修': 'repair',
+      '租赁': 'rented',
+      '租赁中': 'rented',
       '丢失': 'lost',
       '调货': 'peer_transfer',
       '划拨': 'supplier_proxy',

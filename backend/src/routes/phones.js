@@ -10,6 +10,9 @@ const { PAGINATION } = require('../config/constants');
 const { requireMockRoutesEnabled } = require('../middleware/mock-route-guard');
 const { requireInventoryQueryToken } = require('../utils/inventory-query-token');
 
+const ADMIN_ROLE_CODES = new Set(['super_admin', 'webadmin', 'admin']);
+const isAdministrator = req => (req.user?.role_codes || []).some(code => ADMIN_ROLE_CODES.has(String(code).toLowerCase()));
+
 // 模拟手机数据
 const mockPhones = [
   {
@@ -1487,12 +1490,16 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
 
     // 检查手机是否存在
     const [existingPhones] = await connection.execute(
-      'SELECT id FROM phones WHERE id = ?',
+      'SELECT id,status FROM phones WHERE id = ?',
       [id]
     );
 
     if (existingPhones.length === 0) {
       return ApiResponse.notFound(res, '手机不存在');
+    }
+
+    if (['repair', 'rented'].includes(existingPhones[0].status) && !isAdministrator(req)) {
+      return ApiResponse.forbidden(res, existingPhones[0].status === 'rented' ? '租赁中的设备仅管理员可编辑' : '维修中的设备仅管理员可编辑');
     }
 
     // 检查IMEI是否重复（排除当前手机）
@@ -1786,11 +1793,8 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
           log.debug(`✅ 创建新客户: ID=${finalCustomerId}, 姓名=${customer_name}, 手机=${customer_phone}`);
         }
 
-        // 更新phones表的customer_id
-        await connection.execute(
-          'UPDATE phones SET customer_id = ? WHERE id = ?',
-          [finalCustomerId, id]
-        );
+        // 客户归属统一维护在 sales.customer_id 中；当前 phones 表不包含 customer_id 字段。
+        log.debug(`✅ 客户关联将在sales表同步: phone_id=${id}, customer_id=${finalCustomerId}`);
       } else {
         // 🔥 手机号未变化：只更新姓名或Apple ID
         if (finalCustomerId && finalCustomerId !== '') {
@@ -1857,11 +1861,8 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
             log.debug(`✅ 创建临时客户: ID=${finalCustomerId}, 姓名=${customer_name}`);
           }
 
-          // 更新phones表的customer_id
-          await connection.execute(
-            'UPDATE phones SET customer_id = ? WHERE id = ?',
-            [finalCustomerId, id]
-          );
+          // 客户归属统一维护在 sales.customer_id 中；当前 phones 表不包含 customer_id 字段。
+          log.debug(`✅ 客户关联将在sales表同步: phone_id=${id}, customer_id=${finalCustomerId}`);
         }
       }
 

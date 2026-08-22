@@ -4,12 +4,13 @@ export interface PhoneStatusOption {
 }
 
 export const PHONE_STATUS_OPTIONS: PhoneStatusOption[] = [
-  { value: 'in_stock', label: '在库' },
+  { value: 'in_stock', label: '可售' },
   { value: 'sold', label: '已售' },
   { value: 'peer_transfer', label: '调货' },
   { value: 'supplier_proxy', label: '划拨' },
-  { value: 'reserved', label: '预留' },
-  { value: 'repair', label: '维修中' },
+  { value: 'reserved', label: '预定' },
+  { value: 'repair', label: '维修' },
+  { value: 'rented', label: '租赁' },
   { value: 'lost', label: '丢失' },
   { value: 'returned', label: '已退货' },
   { value: 'damaged', label: '损坏' },
@@ -28,6 +29,7 @@ export const PHONE_STATUS_CLASS_MAP: Record<string, string> = {
   supplier_proxy: 'supplier-proxy',
   reserved: 'reserved',
   repair: 'repair',
+  rented: 'rented',
   lost: 'lost',
   returned: 'returned',
   damaged: 'damaged',
@@ -49,6 +51,8 @@ export const normalizePhoneStatus = (value?: string | null) => {
     wholesale: 'peer_transfer',
     预定: 'reserved',
     维修: 'repair',
+    租赁: 'rented',
+    租赁中: 'rented',
     在库: 'in_stock',
     已售: 'sold',
     调货: 'peer_transfer',

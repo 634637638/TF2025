@@ -443,6 +443,7 @@ export const MODULE_PERMISSIONS: Record<string, ModulePermissionConfig> = {
       'view': '查看',
       'create': '创建',
       'edit': '编辑',
+      'manage': '管理',
       'admin:view': '管理查看',
       'admin:edit': '管理编辑'
     }

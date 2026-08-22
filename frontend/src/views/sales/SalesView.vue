@@ -2930,6 +2930,7 @@ const getNewConditionLabel = (isNew: boolean) => {
 const getSaleStatusClass = (phone: any) => {
   if (phone.is_preordered) return 'reserved'
   if (phone.status === 'repair') return 'repair'
+  if (phone.status === 'rented') return 'rented'
   if (phone.status === 'sold') return 'sold'
   if (phone.status === 'reserved') return 'reserved'
   if (phone.status === 'lost') return 'lost'
@@ -2938,9 +2939,10 @@ const getSaleStatusClass = (phone: any) => {
 
 const getSaleStatusLabel = (phone: any) => {
   if (phone.is_preordered) return '已预订'
-  if (phone.status === 'repair') return '维修中'
+  if (phone.status === 'repair') return '维修'
+  if (phone.status === 'rented') return '租赁'
   if (phone.status === 'sold') return '已售'
-  if (phone.status === 'reserved') return '预留'
+  if (phone.status === 'reserved') return '预定'
   if (phone.status === 'lost') return '丢失'
   return '可售'
 }
@@ -5359,6 +5361,11 @@ const editPhone = async (phone: any) => {
     return;
   }
 
+  if (['repair', 'rented'].includes(phone.status) && !authStore.isAdmin) {
+    showError(phone.status === 'rented' ? '租赁中的设备仅管理员可编辑' : '维修中的设备仅管理员可编辑')
+    return
+  }
+
   // 所有设备统一使用弹窗编辑
   selectedPhoneForEdit.value = phone
   showEditModal.value = true
@@ -6868,6 +6875,12 @@ input.form-control:focus, textarea.form-control:focus {
 .status-badge.repair {
   background: #f59e0b !important;
   color: #ffffff !important;
+}
+
+.status-badge.rented {
+  color: #0f766e;
+  background: #ccfbf1;
+  border-color: #5eead4;
 }
 
 .status-badge.lost {

@@ -6,6 +6,11 @@
 import { unifiedApi } from './unified-api'
 import { logger } from '@/utils/logger'
 
+type TempFileCleanupResponse = {
+  success: boolean
+  message?: string
+}
+
 /**
  * 删除临时文件
  * @param files 文件URL数组
@@ -17,14 +22,45 @@ export async function deleteTempFiles(files: string[]): Promise<boolean> {
   }
 
   try {
-    const response = await unifiedApi.post('/upload/delete-temp-files', {
-      files
+    const subsidyFiles: string[] = []
+    const sharedFiles: string[] = []
+    const otherFiles: string[] = []
+
+    files.forEach(file => {
+      const normalizedFile = String(file || '')
+      if (
+        normalizedFile.includes('/api/subsidy/files/') ||
+        normalizedFile.includes('/uploads/subsidy/') ||
+        normalizedFile.startsWith('subsidy/')
+      ) {
+        subsidyFiles.push(normalizedFile)
+      } else if (
+        normalizedFile.includes('/api/shared/files/') ||
+        normalizedFile.includes('/uploads/shared/') ||
+        normalizedFile.startsWith('shared/')
+      ) {
+        sharedFiles.push(normalizedFile)
+      } else {
+        otherFiles.push(normalizedFile)
+      }
     })
 
-    if (response.success) {
+    const responses = await Promise.all<TempFileCleanupResponse>([
+      subsidyFiles.length > 0
+        ? unifiedApi.post('/subsidy/delete-temp-photos', { photos: subsidyFiles })
+        : Promise.resolve({ success: true }),
+      sharedFiles.length > 0
+        ? unifiedApi.post('/shared/uploads/cleanup', { urls: sharedFiles })
+        : Promise.resolve({ success: true }),
+      otherFiles.length > 0
+        ? unifiedApi.post('/upload/delete-temp-files', { files: otherFiles })
+        : Promise.resolve({ success: true })
+    ])
+
+    if (responses.every(response => response.success)) {
       return true
     } else {
-      logger.error('清理临时文件失败:', response.message)
+      logger.error('清理临时文件失败:', responses.find(response => !response.success)?.message)
       return false
     }
   } catch (error) {

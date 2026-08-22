@@ -94,8 +94,9 @@ const moduleFieldMappings = {
 
   // 租赁管理页面 - rentals_rentalsview
   'rentals_rentalsview': {
-    'rentals': ['id', 'phone_id', 'customer_id', 'rental_start_date',
-                'rental_end_date', 'rental_price', 'status', 'created_at'],
+    'rentals': ['id', 'phone_id', 'customer_id', 'billing_mode', 'unit_price',
+                'term_months', 'monitoring_lock', 'start_date', 'end_date', 'returned_at', 'deposit',
+                'total_cost', 'status', 'remarks', 'created_at'],
     'phones': ['id', 'imei', 'serial_number', 'brand_id', 'model_id'],
     'customers': ['id', 'name', 'phone'],
     'brands': ['id', 'name'],

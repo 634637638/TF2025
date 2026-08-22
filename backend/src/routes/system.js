@@ -126,6 +126,11 @@ const DEFAULT_SITE_SETTINGS = {
   contactPhone: '400-123-4567',
   contactEmail: 'service@tf2025.com',
   companyAddress: '北京市朝阳区建国路88号SOHO现代城A座2808室'
+  ,publicPriceContacts: '饶先生|132-0790-3333\n刘女士|132-0790-3335\n三小店|156-7907-9373\n广场店|156-0790-9320'
+  ,publicPriceWatermark: '腾飞数码 132-0790-3333'
+  ,publicPriceWatermarkEnabled: '1'
+  ,publicPriceWatermarkTimeEnabled: '1'
+  ,publicPriceWatermarkColor: '#6b7280'
 };
 
 const SITE_SETTINGS_COLUMN_ALIASES = {
@@ -138,6 +143,11 @@ const SITE_SETTINGS_COLUMN_ALIASES = {
   contactPhone: ['company_phone', 'contact_phone', 'phone'],
   contactEmail: ['company_email', 'contact_email', 'email'],
   companyAddress: ['company_address', 'address']
+  ,publicPriceContacts: ['public_price_contacts']
+  ,publicPriceWatermark: ['public_price_watermark']
+  ,publicPriceWatermarkEnabled: ['public_price_watermark_enabled']
+  ,publicPriceWatermarkTimeEnabled: ['public_price_watermark_time_enabled']
+  ,publicPriceWatermarkColor: ['public_price_watermark_color']
 };
 
 const SITE_SETTINGS_KEY_MAP = {
@@ -150,6 +160,11 @@ const SITE_SETTINGS_KEY_MAP = {
   contactPhone: 'company_phone',
   contactEmail: 'company_email',
   companyAddress: 'company_address'
+  ,publicPriceContacts: 'public_price_contacts'
+  ,publicPriceWatermark: 'public_price_watermark'
+  ,publicPriceWatermarkEnabled: 'public_price_watermark_enabled'
+  ,publicPriceWatermarkTimeEnabled: 'public_price_watermark_time_enabled'
+  ,publicPriceWatermarkColor: 'public_price_watermark_color'
 };
 
 const SITE_SETTINGS_KEY_DESCRIPTIONS = {
@@ -162,6 +177,11 @@ const SITE_SETTINGS_KEY_DESCRIPTIONS = {
   contactPhone: '联系电话',
   contactEmail: '联系邮箱',
   companyAddress: '公司地址'
+  ,publicPriceContacts: '公开报价联系方式'
+  ,publicPriceWatermark: '公开报价图片水印'
+  ,publicPriceWatermarkEnabled: '公开报价图片水印开关'
+  ,publicPriceWatermarkTimeEnabled: '公开报价水印时间开关'
+  ,publicPriceWatermarkColor: '公开报价水印颜色'
 };
 
 const SETTINGS_KEY_VALUE_COLUMNS = ['key_name', 'value'];
@@ -176,6 +196,26 @@ const getSettingsTableMeta = async (db) => {
     availableColumns,
     isKeyValueTable
   };
+};
+
+// 兼容旧版 settings 单行表：为报价联系人和水印配置补齐字段。
+// key_name/value 结构的 settings 表无需迁移，保存逻辑会直接使用键值记录。
+const ensurePublicPriceSettingColumns = async (db) => {
+  const { columns, isKeyValueTable } = await getSettingsTableMeta(db);
+  if (isKeyValueTable) return;
+  const existing = new Set(columns.map(column => column.Field));
+  const definitions = {
+    public_price_contacts: 'TEXT NULL COMMENT \'公开报价联系人配置\'',
+    public_price_watermark: 'VARCHAR(255) NULL COMMENT \'公开报价水印文字\'',
+    public_price_watermark_enabled: 'TINYINT(1) NOT NULL DEFAULT 1 COMMENT \'公开报价水印开关\'',
+    public_price_watermark_time_enabled: 'TINYINT(1) NOT NULL DEFAULT 1 COMMENT \'公开报价水印时间开关\''
+    ,public_price_watermark_color: 'VARCHAR(20) NOT NULL DEFAULT \'#6b7280\' COMMENT \'公开报价水印颜色\''
+  };
+  for (const [column, definition] of Object.entries(definitions)) {
+    if (!existing.has(column)) {
+      await db.execute(`ALTER TABLE settings ADD COLUMN ${column} ${definition}`);
+    }
+  }
 };
 
 const getSettingsColumnMap = async (db) => {
@@ -849,6 +889,7 @@ router.get('/site-settings', async (req, res) => {
     const db = getDatabase();
 
     try {
+      await ensurePublicPriceSettingColumns(db);
       const tableMeta = await getSettingsTableMeta(db);
 
       if (tableMeta.isKeyValueTable) {
@@ -885,6 +926,7 @@ router.post('/site-settings', unifiedAuth, requirePermission('system:edit'), asy
     }
 
     try {
+      await ensurePublicPriceSettingColumns(db);
       const tableMeta = await getSettingsTableMeta(db);
 
       if (tableMeta.isKeyValueTable) {

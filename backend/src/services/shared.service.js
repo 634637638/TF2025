@@ -3,7 +3,7 @@ const path = require('path');
 const cheerio = require('cheerio');
 const { getDatabase } = require('../config/database');
 const { ensureSharedSchema } = require('../utils/shared-schema');
-const { getUploadPathFromUrl } = require('../utils/upload-paths');
+const { getRelativeUploadPathFromUrl, getUploadPathFromUrl } = require('../utils/upload-paths');
 
 const parseAttachments = value => {
   if (Array.isArray(value)) return value;
@@ -319,8 +319,17 @@ class SharedService {
 
   async cleanupUploads(urls, userId) {
     await this.ensure();
-    const ownedPrefix = `/uploads/shared/${Number(userId)}_`;
-    const ownedUrls = urls.filter(url => typeof url === 'string' && url.startsWith(ownedPrefix));
+    const ownedPrefix = `shared/${Number(userId)}_`;
+    const ownedUrls = urls
+      .map(url => {
+        const relativePath = getRelativeUploadPathFromUrl(
+          typeof url === 'string' && url.startsWith('shared/') ? `/uploads/${url}` : url
+        );
+        return relativePath && relativePath.startsWith(ownedPrefix)
+          ? `/uploads/${relativePath}`
+          : '';
+      })
+      .filter(Boolean);
     await deleteUnreferencedAttachmentFiles(getDatabase(), ownedUrls.map(url => ({ url })));
   }
 }

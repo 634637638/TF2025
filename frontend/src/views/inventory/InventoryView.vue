@@ -2042,8 +2042,8 @@ const editItem = (item: InventoryItem) => {
     return
   }
 
-  // 检查商品状态，只有在库商品才能编辑
-  if (item.status !== 'in_stock') {
+  // 维修中和租赁中的设备由对应业务模块维护；全局管理员可应急修正。
+  if (item.status !== 'in_stock' && !authStore.isAdmin) {
     error('只有在库状态的商品才能编辑')
     return
   }
@@ -2425,6 +2425,7 @@ const getStatusText = (status: string) => {
 const getSaleStatusClass = (item: InventoryItem) => {
   if (item.is_preordered) return 'reserved'
   if (item.status === 'repair') return 'repair'
+  if (item.status === 'rented') return 'rented'
   if (item.status === 'sold') return 'sold'
   if (item.status === 'reserved') return 'reserved'
   if (item.status === 'lost') return 'lost'
@@ -2433,9 +2434,10 @@ const getSaleStatusClass = (item: InventoryItem) => {
 
 const getSaleStatusLabel = (item: InventoryItem) => {
   if (item.is_preordered) return '已预订'
-  if (item.status === 'repair') return '维修中'
+  if (item.status === 'repair') return '维修'
+  if (item.status === 'rented') return '租赁'
   if (item.status === 'sold') return '已售'
-  if (item.status === 'reserved') return '预留'
+  if (item.status === 'reserved') return '预定'
   if (item.status === 'lost') return '丢失'
   return '可售'
 }
@@ -4467,6 +4469,12 @@ const handleSelect = (item: InventoryItem) => {
 .status-badge.repair {
   background: #f59e0b !important;
   color: #ffffff !important;
+}
+
+.status-badge.rented {
+  color: #0f766e;
+  background: #ccfbf1;
+  border-color: #5eead4;
 }
 
 .status-badge.lost {

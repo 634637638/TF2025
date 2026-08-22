@@ -912,6 +912,7 @@ import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import unifiedApi from '@/utils/unified-api';
 import logger from '@/utils/logger';
+import { getPhoneStatusLabel } from '@/constants/phoneStatuses';
 import { useNotification } from '@/composables/useNotification';
 import { useImportExport } from '@/composables/useImportExport';
 import { usePagePermissions } from '@/composables/usePagePermissions';
@@ -2611,13 +2612,8 @@ const getPaymentDialogColumnWidth = (
 
 // 获取手机状态文本
 const getPhoneStatusText = (status: string | null) => {
-  const statusMap: Record<string, string> = {
-    'in_stock': '在库',
-    'sold': '已售',
-    'reserved': '预留',
-    'pending': '待处理'
-  };
-  return statusMap[status || ''] || status || '-';
+  if (status === 'pending') return '待处理';
+  return getPhoneStatusLabel(status);
 };
 
 // 获取打款时间的内联样式（精确到分钟区分，小巧精致版）

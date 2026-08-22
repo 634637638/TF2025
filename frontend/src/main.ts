@@ -129,7 +129,16 @@ app.use(NotificationPlugin, {
 // 简化的应用初始化 - 专注于动态路由
 const initializeApp = async () => {
   try {
-    // 立即挂载应用，减少首屏等待时间
+    // 站点名称和副标题是登录页首屏品牌信息，必须在挂载前完成初始化，
+    // 避免先渲染前端默认值、接口返回后再切换成数据库配置。
+    try {
+      await initializeSiteSettings()
+    } catch (error) {
+      // 站点设置接口暂时不可用时使用 store 内的公共默认配置，仍可正常登录。
+      logger.warn('站点设置初始化失败，使用公共默认配置', error)
+    }
+
+    // 站点设置已就绪后再挂载应用，登录页从第一次渲染起就使用同一来源。
     app.mount('#app')
     initAdminTableDragScroll()
 
@@ -214,11 +223,6 @@ const initializeApp = async () => {
         // 滚动动画初始化失败，静默处理
       }
     }, 400)
-
-    // 站点设置作为全局公共信息，只初始化一次，避免登录页/路由标题重复触发请求
-    initializeSiteSettings().catch(() => {
-      // 站点设置初始化失败，静默处理
-    })
 
     // 添加到全局状态
     if (window.__TF2025__) {

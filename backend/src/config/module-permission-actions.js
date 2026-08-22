@@ -50,7 +50,7 @@ const MODULE_PERMISSION_TYPES = {
   salary_salaryrecordsview: ['view', 'create', 'edit', 'delete', 'approve', 'manage'],
   salary_salarytemplatesview: ['view', 'create', 'edit', 'delete', 'manage'],
   subsidy_subsidyview: ['view', 'create', 'edit', 'delete', 'approve', 'export'],
-  rentals_rentalsview: ['view', 'create', 'edit'],
+  rentals_rentalsview: ['view', 'create', 'edit', 'manage'],
   repairs_repairsview: ['view', 'create', 'edit'],
   price_list_pricelistview: ['view', 'create', 'edit', 'delete', 'export', 'import', 'sync'],
   price_list_synclogview: ['view', 'delete'],

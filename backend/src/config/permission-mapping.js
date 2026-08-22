@@ -20,6 +20,12 @@ module.exports = Object.freeze({
   'inventory:edit': ['inventory_inventoryview:edit'],
   'inventory:delete': ['inventory_inventoryview:delete'],
 
+  // 租赁权限映射
+  'rentals:view': ['rentals_rentalsview:view'],
+  'rentals:create': ['rentals_rentalsview:create'],
+  'rentals:edit': ['rentals_rentalsview:edit'],
+  'rentals:manage': ['rentals_rentalsview:manage'],
+
   // 销售权限映射
   'sales:view': ['sales_salesview:view', 'sales_phonesaleview:view'],
   'sales:create': ['sales_salesview:create', 'sales_phonesaleview:create'],

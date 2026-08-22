@@ -4,6 +4,9 @@ const { ensureReminderSchema } = require('../utils/reminder-schema');
 const MAX_GENERATION_DAYS = 120;
 const PRIORITIES = new Set(['low', 'normal', 'high', 'urgent']);
 const REPEAT_TYPES = new Set(['once', 'daily', 'weekly', 'monthly', 'yearly']);
+const PENDING_MATERIALIZE_INTERVAL_MS = 5 * 60 * 1000;
+let pendingMaterializedAt = 0;
+let pendingMaterializePromise = null;
 
 const asInt = (value, fallback = 0) => {
   const parsed = Number.parseInt(value, 10);
@@ -172,6 +175,18 @@ class ReminderService {
     }
   }
 
+  async refreshPendingOccurrences(db) {
+    if (Date.now() - pendingMaterializedAt < PENDING_MATERIALIZE_INTERVAL_MS) return;
+    if (!pendingMaterializePromise) {
+      pendingMaterializePromise = (async () => {
+        const [active] = await db.query("SELECT id FROM reminders WHERE status='active'");
+        for (const item of active) await this.materialize(db, item.id);
+        pendingMaterializedAt = Date.now();
+      })().finally(() => { pendingMaterializePromise = null; });
+    }
+    await pendingMaterializePromise;
+  }
+
   async create(userId, payload) {
     await this.ensure();
     const db = getDatabase(); const connection = await db.getConnection();
@@ -274,7 +289,7 @@ class ReminderService {
   }
 
   async pending(userId) {
-    await this.ensure(); const db=getDatabase(); const [active]=await db.query("SELECT id FROM reminders WHERE status='active'"); for(const item of active) await this.materialize(db,item.id); const [rows]=await db.query(`SELECT rr.id occurrence_id,rr.scheduled_at,rr.remind_at,r.id reminder_id,r.title,r.content,r.priority,r.repeat_rule,rt.name type_name,rt.color type_color,rr.status recipient_status,rr.action_at,rr.snoozed_until FROM reminder_records rr JOIN reminders r ON r.id=rr.reminder_id LEFT JOIN reminder_types rt ON rt.id=r.type_id WHERE rr.user_id=? AND r.status='active' AND rr.remind_at<=NOW() AND rr.status!='completed' ORDER BY r.priority='urgent' DESC,r.priority='high' DESC,rr.remind_at LIMIT 100`,[userId]); return rows.map(row=>({...row,...parseJson(row.repeat_rule,{})}));
+    await this.ensure(); const db=getDatabase(); await this.refreshPendingOccurrences(db); const [rows]=await db.query(`SELECT rr.id occurrence_id,rr.scheduled_at,rr.remind_at,r.id reminder_id,r.title,r.content,r.priority,r.repeat_rule,rt.name type_name,rt.color type_color,rr.status recipient_status,rr.action_at,rr.snoozed_until FROM reminder_records rr JOIN reminders r ON r.id=rr.reminder_id LEFT JOIN reminder_types rt ON rt.id=r.type_id WHERE rr.user_id=? AND r.status='active' AND rr.remind_at<=NOW() AND rr.status!='completed' ORDER BY r.priority='urgent' DESC,r.priority='high' DESC,rr.remind_at LIMIT 100`,[userId]); return rows.map(row=>({...row,...parseJson(row.repeat_rule,{})}));
   }
 
   async updateRecipient(userId,recordId,action,snoozedUntil) { await this.ensure(); const db=getDatabase(); const [rows]=await db.query('SELECT id,status FROM reminder_records WHERE id=? AND user_id=?',[recordId,userId]); if(!rows[0])throw new Error('该待办未分配给当前员工');if(rows[0].status==='completed'){if(action==='complete')return;throw new Error('该周期已完成，不能再修改状态')} if(action==='snooze'){const until=asDate(snoozedUntil)||addDays(new Date(),1);await db.query("UPDATE reminder_records SET status='snoozed',snoozed_until=?,action_at=NOW(),updated_at=NOW() WHERE id=? AND user_id=?",[sqlDate(until),recordId,userId]);return} const map={read:'read',ignore:'ignored',complete:'completed'};if(!map[action])throw new Error('状态操作无效');await db.query('UPDATE reminder_records SET status=?,action_at=NOW(),snoozed_until=NULL,updated_at=NOW() WHERE id=? AND user_id=?',[map[action],recordId,userId]); }

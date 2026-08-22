@@ -2,6 +2,10 @@ const path = require('path');
 
 const DEFAULT_UPLOADS_DIR = path.resolve(__dirname, '../../uploads');
 const UPLOADS_URL_PREFIX = '/uploads';
+const PROTECTED_UPLOAD_URL_PREFIXES = [
+  { urlPrefix: '/api/subsidy/files', uploadPrefix: '' },
+  { urlPrefix: '/api/shared/files', uploadPrefix: 'shared' }
+];
 
 function getUploadsRoot() {
   const configuredPath = typeof process.env.UPLOAD_PATH === 'string'
@@ -46,12 +50,26 @@ function getRelativeUploadPathFromUrl(fileUrl) {
     return '';
   }
 
-  const urlObj = new URL(fileUrl, 'http://localhost');
-  const urlPath = urlObj.pathname.replace(/\\/g, '/');
+  let urlPath = '';
+  try {
+    const urlObj = new URL(fileUrl, 'http://localhost');
+    urlPath = urlObj.pathname.replace(/\\/g, '/');
+  } catch {
+    urlPath = fileUrl.split('?')[0].split('#')[0].replace(/\\/g, '/');
+  }
 
-  return urlPath.startsWith(`${UPLOADS_URL_PREFIX}/`)
-    ? urlPath.slice(`${UPLOADS_URL_PREFIX}/`.length)
-    : '';
+  if (urlPath.startsWith(`${UPLOADS_URL_PREFIX}/`)) {
+    return decodeURIComponent(urlPath.slice(`${UPLOADS_URL_PREFIX}/`.length));
+  }
+
+  for (const { urlPrefix, uploadPrefix } of PROTECTED_UPLOAD_URL_PREFIXES) {
+    if (urlPath.startsWith(`${urlPrefix}/`)) {
+      const protectedRelativePath = decodeURIComponent(urlPath.slice(`${urlPrefix}/`.length));
+      return uploadPrefix ? path.posix.join(uploadPrefix, protectedRelativePath) : protectedRelativePath;
+    }
+  }
+
+  return '';
 }
 
 function getUploadPathFromUrl(fileUrl) {

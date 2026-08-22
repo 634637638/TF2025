@@ -203,13 +203,14 @@ class QueryController {
         colors: optionsData.colors || [],    // 从phones表获取distinct颜色
         memories: optionsData.memories || [],  // 从phones表获取distinct内存
         statuses: [
-          { value: 'in_stock', label: '在库' },
+          { value: 'in_stock', label: '可售' },
           { value: 'sold', label: '已售' },
-          { value: 'reserved', label: '预订' },
-          { value: 'repair', label: '维修中' },
-          { value: 'lost', label: '丢失' },
           { value: 'peer_transfer', label: '调货' },
           { value: 'supplier_proxy', label: '划拨' },
+          { value: 'reserved', label: '预定' },
+          { value: 'repair', label: '维修' },
+          { value: 'rented', label: '租赁' },
+          { value: 'lost', label: '丢失' },
           { value: 'returned', label: '已退货' },
           { value: 'damaged', label: '损坏' },
           { value: 'available', label: '可用' }

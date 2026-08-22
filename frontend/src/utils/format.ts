@@ -448,7 +448,8 @@ export const formatColor = (color: string): string => {
  * 2. 生产环境：优先使用相对路径，通过前端 Nginx 代理到后端
  * 3. 如果前端 Nginx 未配置代理，则直接使用后端 URL（仅 HTTP 页面）
  */
-const KNOWN_IMAGE_PREFIXES = ['/uploads/', '/upload/', '/images/', '/static/', '/assets/']
+const KNOWN_IMAGE_PREFIXES = ['/uploads/', '/upload/', '/images/', '/static/', '/assets/', '/api/subsidy/files/', '/api/shared/files/']
+const PROTECTED_FILE_PREFIXES = ['/api/subsidy/files/', '/api/shared/files/']
 
 const getAbsoluteEnvUrl = (value: string | undefined): string => {
   if (typeof value !== 'string') {
@@ -507,7 +508,7 @@ export const formatImageUrl = (path: string | null | undefined): string => {
   const protectedSubsidyPath = normalizedPath.startsWith('/uploads/subsidy/')
     ? normalizedPath.replace('/uploads/subsidy/', '/api/subsidy/files/subsidy/')
     : normalizedPath
-  if (protectedSubsidyPath.startsWith('/api/subsidy/files/')) {
+  if (PROTECTED_FILE_PREFIXES.some(prefix => protectedSubsidyPath.startsWith(prefix))) {
     const token = storage.getToken()
     if (!token) {
       return protectedSubsidyPath

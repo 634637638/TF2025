@@ -338,10 +338,11 @@ const formatAvailablePhones = (phones = []) => phones.map(phone => ({
 
 const getSalesStatusLabel = (status) => {
   const mapping = {
-    in_stock: '在库',
+    in_stock: '可售',
     sold: '已售',
-    reserved: '预订',
-    repair: '维修中',
+    reserved: '预定',
+    repair: '维修',
+    rented: '租赁',
     lost: '丢失',
     peer_transfer: '调货',
     supplier_proxy: '划拨',

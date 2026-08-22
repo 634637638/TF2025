@@ -2165,7 +2165,7 @@ router.post('/upload/photo', unifiedAuth, requireAnyPermission(['subsidy:create'
   }
 });
 
-router.get('/files/*', authenticateSubsidyFileAccess, requirePermission('subsidy:view'), (req, res) => {
+router.get('/files/*', authenticateSubsidyFileAccess, requireAnyPermission(['subsidy:view', 'subsidy:create', 'subsidy:edit']), (req, res) => {
   try {
     const requestedPath = typeof req.params[0] === 'string' ? req.params[0] : '';
     const normalizedRelativePath = normalizeSubsidyPhotoPath(`/uploads/${requestedPath}`);
@@ -2208,7 +2208,7 @@ router.get('/files/*', authenticateSubsidyFileAccess, requirePermission('subsidy
  * POST /api/subsidy/delete-temp-photos
  * 权限：需要登录
  */
-router.post('/delete-temp-photos', unifiedAuth, async (req, res) => {
+router.post('/delete-temp-photos', unifiedAuth, requireAnyPermission(['subsidy:create', 'subsidy:edit']), async (req, res) => {
   try {
     const { photos } = req.body;
 

@@ -14,6 +14,21 @@ const path = require('path');
 const DailyRotateFile = require('winston-daily-rotate-file');
 const { ensureLogDir } = require('./log-paths');
 
+const ignoreBrokenPipe = (stream) => {
+  if (!stream || typeof stream.on !== 'function') {
+    return;
+  }
+
+  stream.on('error', (error) => {
+    if (error && error.code === 'EPIPE') {
+      return;
+    }
+  });
+};
+
+ignoreBrokenPipe(process.stdout);
+ignoreBrokenPipe(process.stderr);
+
 // 日志目录
 const logDir = ensureLogDir();
 
@@ -97,6 +112,12 @@ const logger = winston.createLogger({
 if (process.env.NODE_ENV !== 'production') {
   logger.add(transports.console);
 }
+
+transports.console.on('error', (error) => {
+  if (error && error.code === 'EPIPE') {
+    return;
+  }
+});
 
 // 便捷方法
 logger.api = (req, res, next) => {

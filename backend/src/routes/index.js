@@ -44,6 +44,7 @@ const iconsRoutes = require('./icons');
 const sampleDataRoutes = require('./sample-data');
 const stockInRoutes = require('./stock-in');
 const queryRoutes = require('./query');
+const rentalRoutes = require('./rentals');
 
 // 新的权限管理路由
 const moduleManagementRoutes = require('./module-management');
@@ -151,6 +152,7 @@ router.use('/icons', iconsRoutes);
 router.use('/sample-data', sampleDataRoutes);
 router.use('/stock-in', stockInRoutes);
 router.use('/query', queryRoutes);
+router.use('/rentals', rentalRoutes);
 // router.use('/sales-orders', salesOrdersRoutes);
 // router.use('/operator-assignments', operatorAssignmentsRoutes);
 

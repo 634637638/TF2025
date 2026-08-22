@@ -41,7 +41,14 @@
           @click="activeTab = 'settings'"
           :icon="Setting"
         >
-          站点信息设置
+          站点信息
+        </el-button>
+        <el-button
+          :type="activeTab === 'price' ? 'primary' : 'default'"
+          @click="activeTab = 'price'"
+        >
+          <i class="fas fa-tags"></i>
+          报价信息
         </el-button>
         <el-button
           :type="activeTab === 'screenlock' ? 'primary' : 'default'"
@@ -69,7 +76,7 @@
 
       <!-- TAB内容区域 -->
       <div class="tab-content tf-tab-content">
-        <!-- 站点信息设置TAB -->
+        <!-- 站点信息TAB -->
         <div v-if="activeTab === 'settings'" class="tab-panel tf-tab-panel">
           <div class="system-settings-section">
 
@@ -230,11 +237,99 @@
                         :disabled="!canUpdateSettings"
                         clearable
                       />
+                      <el-switch
+                        v-else-if="row.type === 'switch'"
+                        v-model="siteSettings[row.key]"
+                        active-value="1"
+                        inactive-value="0"
+                        :disabled="!canUpdateSettings"
+                      />
                       <span v-else>{{ siteSettings[row.key] || row.defaultValue }}</span>
                     </template>
                   </el-table-column>
                 </el-table>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 报价信息TAB -->
+        <div v-if="activeTab === 'price'" class="tab-panel tf-tab-panel">
+          <div class="table-section site-settings-table admin-panel admin-table-panel">
+            <div class="price-config-grid">
+            <div class="setting-card price-contact-card">
+            <div class="card-header-with-action">
+              <h3 class="section-subtitle"><i class="fas fa-tags"></i>报价联系人</h3>
+              <el-button type="primary" size="small" :disabled="!canUpdateSettings" @click="openPriceContactDialog()">
+                <i class="fas fa-plus"></i><span>新增联系人</span>
+              </el-button>
+            </div>
+            <el-table :data="priceContactsEditor" border stripe class="data-table compact-fit-table" table-layout="auto" :fit="true">
+              <el-table-column type="index" label="排序" width="72" align="center" />
+              <el-table-column prop="name" label="姓名" min-width="140" align="center" />
+              <el-table-column prop="phone" label="手机号码" min-width="160" align="center" />
+              <el-table-column label="操作" :width="$getActionColumnWidth(4)" align="center" class-name="actions-column">
+                <template #default="{ $index, row }">
+                  <div class="action-buttons">
+                    <el-button size="small" plain type="primary" :disabled="!canUpdateSettings" @click.stop="openPriceContactDialog(row, $index)">编辑</el-button>
+                    <el-button size="small" plain type="danger" :disabled="!canUpdateSettings" @click.stop="removePriceContact($index)">删除</el-button>
+                    <el-button size="small" plain type="info" :disabled="!canUpdateSettings || $index === 0" @click.stop="movePriceContact($index, -1)">上移</el-button>
+                    <el-button size="small" plain type="info" :disabled="!canUpdateSettings || $index === priceContactsEditor.length - 1" @click.stop="movePriceContact($index, 1)">下移</el-button>
+                  </div>
+                </template>
+              </el-table-column>
+            </el-table>
+            <el-empty v-if="!priceContactsEditor.length" description="暂无报价联系人" />
+            </div>
+            <div class="price-watermark-settings">
+              <div class="card-header-with-action">
+                <h3 class="section-subtitle"><i class="fas fa-stamp"></i>报价图片水印</h3>
+                <el-button type="primary" size="small" :loading="isLoading" :disabled="!canUpdateSettings" @click="saveSiteSettings">
+                  <i class="fas fa-save"></i><span>保存报价设置</span>
+                </el-button>
+              </div>
+              <el-form label-position="top" class="price-watermark-form">
+                <el-form-item label="水印文字">
+                  <el-input v-model="siteSettings.publicPriceWatermark" :disabled="!canUpdateSettings" placeholder="请输入完整水印文字，例如：腾飞数码 132-0790-3333" />
+                </el-form-item>
+                <el-form-item label="显示水印">
+                  <el-switch v-model="siteSettings.publicPriceWatermarkEnabled" active-value="1" inactive-value="0" :disabled="!canUpdateSettings" />
+                </el-form-item>
+                <el-form-item label="显示时间">
+                  <el-switch v-model="siteSettings.publicPriceWatermarkTimeEnabled" active-value="1" inactive-value="0" :disabled="!canUpdateSettings" />
+                </el-form-item>
+                <el-form-item label="水印颜色">
+                  <el-color-picker v-model="siteSettings.publicPriceWatermarkColor" :disabled="!canUpdateSettings" show-alpha />
+                </el-form-item>
+              </el-form>
+              <p class="form-help">水印文字直接按最终显示内容填写；开启“显示时间”后会在文字末尾自动追加当前时间，颜色可单独设置。</p>
+            </div>
+
+            <div class="price-watermark-settings setting-card price-query-card">
+              <div class="card-header-custom">
+                <div class="card-title"><i class="fas fa-search-dollar"></i><span>报价管理查询</span></div>
+              </div>
+              <div v-if="canManageInventoryPasswords" class="password-list-section">
+                <div class="password-list-header">
+                  <h4>查询密码</h4>
+                  <el-button type="primary" size="small" @click="showAddPasswordDialog" :icon="Plus">添加密码</el-button>
+                </div>
+                <el-table :data="loadingPasswords ? [] : inventoryPasswords" border stripe class="data-table mobile-password-table" style="width: 100%; margin-top: 12px;">
+                  <template #empty>
+                    <TableLoadingRow v-if="loadingPasswords" mode="block" text="加载中..." />
+                    <el-empty v-else description="暂无密码记录" />
+                  </template>
+                  <el-table-column prop="name" label="用户名" min-width="100" class-name="complete-text-column" />
+                  <el-table-column prop="password" label="密码" width="100" align="center"><template #default><span class="password-mask">******</span></template></el-table-column>
+                  <el-table-column prop="remarks" label="备注" min-width="100" class-name="complete-text-column wrapped-text-column" />
+                  <el-table-column prop="is_active" label="状态" width="80" align="center"><template #default="{ row }"><el-tag :type="row.is_active ? 'success' : 'info'" size="small">{{ row.is_active ? '启用' : '禁用' }}</el-tag></template></el-table-column>
+                  <el-table-column label="操作" :width="$getActionColumnWidth(1 + Number(canDeleteInventoryPasswords))" align="center" class-name="actions-column">
+                    <template #default="{ row }"><div class="action-buttons"><el-button type="primary" size="small" link @click.stop="editPassword(row)" :icon="Edit">编辑</el-button><el-button v-if="canDeleteInventoryPasswords" type="danger" size="small" link @click.stop="deletePassword(row.id)" :icon="Delete">删除</el-button></div></template>
+                  </el-table-column>
+                </el-table>
+              </div>
+              <el-alert v-else title="需要系统设置编辑权限才能管理报价查询密码" type="warning" :closable="false" show-icon />
+            </div>
             </div>
           </div>
         </div>
@@ -381,90 +476,6 @@
                 </el-form>
               </div>
 
-              <!-- 批发报价查询设置卡片 -->
-              <div class="setting-card">
-                <div class="card-header-custom">
-                  <div class="card-title">
-                    <i class="fas fa-search-dollar"></i>
-                    <span>批发报价查询</span>
-                  </div>
-                </div>
-
-                <!-- 密码列表 -->
-                <div v-if="canManageInventoryPasswords" class="password-list-section">
-                  <div class="password-list-header">
-                    <h4>密码列表</h4>
-                    <el-button
-                      type="primary"
-                      size="small"
-                      @click="showAddPasswordDialog"
-                      :icon="Plus"
-                    >
-                      添加密码
-                    </el-button>
-                  </div>
-
-                  <el-table
-                    :data="loadingPasswords ? [] : inventoryPasswords"
-                    border
-                    stripe
-                    class="data-table mobile-password-table"
-                    style="width: 100%; margin-top: 12px;"
-                  >
-                    <template #empty>
-                      <TableLoadingRow v-if="loadingPasswords" mode="block" text="加载中..." />
-                      <el-empty v-else description="暂无密码记录" />
-                    </template>
-
-                    <el-table-column prop="name" label="用户名" min-width="100" class-name="complete-text-column" />
-                    <el-table-column prop="password" label="密码" width="100" align="center">
-                      <template #default="{ row }">
-                        <span class="password-mask">******</span>
-                      </template>
-                    </el-table-column>
-                    <el-table-column prop="remarks" label="备注" min-width="100" class-name="complete-text-column wrapped-text-column" />
-                    <el-table-column prop="is_active" label="状态" width="80" align="center">
-                      <template #default="{ row }">
-                        <el-tag :type="row.is_active ? 'success' : 'info'" size="small">
-                          {{ row.is_active ? '启用' : '禁用' }}
-                        </el-tag>
-                      </template>
-                    </el-table-column>
-                    <el-table-column label="操作" :width="$getActionColumnWidth(1 + Number(canDeleteInventoryPasswords))" align="center" class-name="actions-column">
-                      <template #default="{ row }">
-                        <div class="action-buttons">
-                          <el-button
-                            type="primary"
-                            size="small"
-                            link
-                            @click.stop="editPassword(row)"
-                            :icon="Edit"
-                          >
-                            编辑
-                          </el-button>
-                          <el-button
-                            v-if="canDeleteInventoryPasswords"
-                            type="danger"
-                            size="small"
-                            link
-                            @click.stop="deletePassword(row.id)"
-                            :icon="Delete"
-                          >
-                            删除
-                          </el-button>
-                        </div>
-                      </template>
-                    </el-table-column>
-                    </el-table>
-                </div>
-                <el-alert
-                  v-else
-                  title="需要系统设置编辑权限才能管理批发报价查询密码"
-                  type="warning"
-                  :closable="false"
-                  show-icon
-                />
-              </div>
             </div>
           </div>
         </div>
@@ -481,6 +492,26 @@
         </div>
       </div>
     </div>
+
+    <MobileDialog
+      v-model="priceContactDialogVisible"
+      :title="priceContactEditIndex === null ? '新增报价联系人' : '编辑报价联系人'"
+      width="460px"
+      :show-default-footer="false"
+    >
+      <el-form label-position="top">
+        <el-form-item label="联系人姓名">
+          <el-input v-model="priceContactForm.name" maxlength="50" clearable placeholder="请输入姓名或店铺名称" />
+        </el-form-item>
+        <el-form-item label="手机号码">
+          <el-input v-model="priceContactForm.phone" maxlength="30" clearable placeholder="请输入手机号码" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="priceContactDialogVisible = false">取消</el-button>
+        <el-button type="primary" :disabled="!canUpdateSettings" @click="savePriceContact">保存</el-button>
+      </template>
+    </MobileDialog>
 
     <!-- 添加/编辑密码对话框 -->
     <MobileDialog
@@ -562,6 +593,7 @@ import PhoneWarningConfigView from '@/views/system/phone-warning-config/PhoneWar
 import Returngoods from '@/views/system/page/Returngoods.vue'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
+import { parsePublicPriceContacts } from '@/utils/publicPriceSettings'
 
 const SITE_LOGO_ALLOWED_MIME_TYPES = {
   '.jpg': ['image/jpeg'],
@@ -761,8 +793,106 @@ const siteSettingsList = [
     type: 'textarea',
     icon: 'fas fa-map-marker-alt',
     placeholder: '北京市朝阳区建国路88号SOHO现代城A座2808室'
+  },
+]
+
+const priceSettingsList = [
+  {
+    key: 'publicPriceContacts',
+    label: '公开报价联系方式',
+    type: 'textarea',
+    icon: 'fas fa-address-book',
+    placeholder: '每行一条，格式：姓名|手机号'
+  },
+  {
+    key: 'publicPriceWatermark',
+    label: '报价图片水印文字',
+    type: 'input',
+    icon: 'fas fa-stamp',
+    placeholder: '请输入完整水印文字，例如：腾飞数码 132-0790-3333'
+  },
+  {
+    key: 'publicPriceWatermarkEnabled',
+    label: '显示报价图片水印',
+    type: 'switch',
+    icon: 'fas fa-eye'
+  },
+  {
+    key: 'publicPriceWatermarkTimeEnabled',
+    label: '水印显示时间',
+    type: 'switch',
+    icon: 'fas fa-clock'
   }
 ]
+
+const priceContactsEditor = ref<Array<{ name: string; phone: string }>>([])
+const priceContactDialogVisible = ref(false)
+const priceContactEditIndex = ref<number | null>(null)
+const priceContactForm = reactive({ name: '', phone: '' })
+
+const syncPriceContactsEditor = () => {
+  priceContactsEditor.value = parsePublicPriceContacts(siteSettings.value.publicPriceContacts)
+}
+
+const openPriceContactDialog = (row?: { name: string; phone: string }, index?: number) => {
+  if (!canUpdateSettings.value) return
+  priceContactEditIndex.value = typeof index === 'number' ? index : null
+  priceContactForm.name = row?.name || ''
+  priceContactForm.phone = row?.phone || ''
+  priceContactDialogVisible.value = true
+}
+
+const persistPriceContacts = async (previousValue?: string) => {
+  const result = await siteSettingsStore.updateSiteSettings({
+    publicPriceContacts: priceContactsEditor.value
+      .map(contact => `${contact.name}|${contact.phone}`)
+      .join('\n')
+  })
+
+  if (!result && previousValue !== undefined) {
+    siteSettings.value.publicPriceContacts = previousValue
+    syncPriceContactsEditor()
+    return false
+  }
+
+  return Boolean(result)
+}
+
+const savePriceContact = async () => {
+  const name = priceContactForm.name.trim()
+  const phone = priceContactForm.phone.trim()
+  if (!name || !phone) {
+    error('请填写联系人姓名和手机号码')
+    return
+  }
+  const previousValue = siteSettings.value.publicPriceContacts
+  const item = { name, phone }
+  if (priceContactEditIndex.value === null) priceContactsEditor.value.push(item)
+  else priceContactsEditor.value.splice(priceContactEditIndex.value, 1, item)
+  siteSettings.value.publicPriceContacts = priceContactsEditor.value.map(contact => `${contact.name}|${contact.phone}`).join('\n')
+  if (!(await persistPriceContacts(previousValue))) return
+  priceContactDialogVisible.value = false
+}
+
+const removePriceContact = async (index: number) => {
+  if (!canUpdateSettings.value) return
+  const confirmed = await ElMessageBox.confirm('确定删除这位报价联系人吗？', '删除确认', { type: 'warning' }).catch(() => false)
+  if (!confirmed) return
+  const previousValue = siteSettings.value.publicPriceContacts
+  priceContactsEditor.value.splice(index, 1)
+  siteSettings.value.publicPriceContacts = priceContactsEditor.value.map(contact => `${contact.name}|${contact.phone}`).join('\n')
+  await persistPriceContacts(previousValue)
+}
+
+const movePriceContact = async (index: number, offset: number) => {
+  const target = index + offset
+  if (target < 0 || target >= priceContactsEditor.value.length) return
+  const previousValue = siteSettings.value.publicPriceContacts
+  const list = priceContactsEditor.value
+  ;[list[index], list[target]] = [list[target], list[index]]
+  siteSettings.value.publicPriceContacts = list.map(contact => `${contact.name}|${contact.phone}`).join('\n')
+  await persistPriceContacts(previousValue)
+}
 
 // 锁屏设置
 const screenLockSettings = reactive({
@@ -810,6 +940,10 @@ const saveSiteSettings = async () => {
   const closeLoading = loading('正在保存设置...')
 
   try {
+    // 联系人由独立列表维护，保存前序列化为站点设置中的统一文本格式。
+    siteSettings.value.publicPriceContacts = priceContactsEditor.value
+      .map(contact => `${contact.name}|${contact.phone}`)
+      .join('\n')
     // 保存站点设置
     const result = await siteSettingsStore.updateSiteSettings(siteSettings.value)
 
@@ -818,6 +952,7 @@ const saveSiteSettings = async () => {
 
       // 保存成功后立即重新加载站点设置以确保最新数据
       await siteSettingsStore.loadSiteSettings(true)
+      syncPriceContactsEditor()
 
       if (result.unsupportedFields?.length) {
         warning(`以下字段当前未写入数据库：${result.unsupportedFields.join('、')}`)
@@ -1134,6 +1269,7 @@ onMounted(async () => {
         loadScreenLockSettings(), // 加载锁屏设置
         ...(canManageInventoryPasswords.value ? [loadInventoryPasswords()] : [])
       ])
+      syncPriceContactsEditor()
     } catch (err) {
       logger.error('系统管理页面初始化失败:', err)
     }
@@ -1553,6 +1689,54 @@ onBeforeUnmount(() => {
 
   .section-subtitle {
     font-size: 14px;
+  }
+}
+
+/* 报价配置：PC端联系人与报价查询并排，水印设置占满下一行；移动端自动单列。 */
+.price-config-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.price-contact-card,
+.price-query-card,
+.price-config-grid > .price-watermark-settings {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  background: var(--el-bg-color);
+}
+
+.price-watermark-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 16px;
+}
+
+.price-watermark-form .el-form-item:first-child {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 480px) {
+  .price-watermark-form {
+    grid-template-columns: 1fr;
+  }
+
+  .price-watermark-form .el-form-item:first-child {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 900px) {
+  .price-config-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .price-config-grid > .price-watermark-settings {
+    grid-column: auto;
   }
 }
 
