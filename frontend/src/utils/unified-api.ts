@@ -957,8 +957,8 @@ class UnifiedApiManager {
                         window.location.pathname.includes('/login')
     const isH5Page = window.location.pathname.startsWith('/m')
     // 公开路由列表（无需认证）
-    const publicRoutes = ['/price-query', '/sales-price-display']
-    const isPublicRoute = publicRoutes.includes(window.location.pathname)
+    const publicRoutes = ['/price-query', '/sales-price-display', '/Marketing_Copy']
+    const isPublicRoute = publicRoutes.some(route => window.location.pathname.startsWith(route))
 
     // 网络错误或后端无法连接：保留本地登录态，只标记后端不可用
     if (!error.response || error.code === 'ERR_NETWORK' || error.code === 'ECONNREFUSED') {

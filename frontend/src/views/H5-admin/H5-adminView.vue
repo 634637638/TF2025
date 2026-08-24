@@ -4,6 +4,13 @@
 -->
 <template>
   <div class="h5-admin-layout admin-page">
+    <PermissionGate
+      :can-view="canView"
+      mode="denied"
+      module-key="h5-admin"
+      module-name="H5商城管理"
+      permission-code="h5-admin:view"
+    >
     <!-- 顶部导航栏 -->
     <PageHeader
       icon="fas fa-mobile-alt"
@@ -28,6 +35,8 @@
     <!-- 标签页导航 -->
     <div class="tab-navigation tf-page-tabs">
       <el-button
+        v-if="canAccessTab('/H5-admin/page/templates')"
+        data-view-permission="h5-templates:view"
         :type="isActiveTab('/H5-admin/page/templates') ? 'primary' : 'default'"
         @click="navigateTo('/H5-admin/page/templates')"
         :icon="Box"
@@ -35,6 +44,8 @@
         模板
       </el-button>
       <el-button
+        v-if="canAccessTab('/H5-admin/page/sold-products')"
+        data-view-permission="h5-sold-products:view"
         :type="isActiveTab('/H5-admin/page/sold-products') ? 'primary' : 'default'"
         @click="navigateTo('/H5-admin/page/sold-products')"
         :icon="CircleCheck"
@@ -42,6 +53,8 @@
         已售
       </el-button>
       <el-button
+        v-if="canAccessTab('/H5-admin/page/config')"
+        data-view-permission="h5-config:view"
         :type="isActiveTab('/H5-admin/page/config') ? 'primary' : 'default'"
         @click="navigateTo('/H5-admin/page/config')"
         :icon="Setting"
@@ -49,6 +62,8 @@
         配置
       </el-button>
       <el-button
+        v-if="canAccessTab('/H5-admin/page/banners')"
+        data-view-permission="h5-banners:view"
         :type="isActiveTab('/H5-admin/page/banners') ? 'primary' : 'default'"
         @click="navigateTo('/H5-admin/page/banners')"
         :icon="Picture"
@@ -56,6 +71,8 @@
         轮播图
       </el-button>
       <el-button
+        v-if="canAccessTab('/H5-admin/page/home-sections')"
+        data-view-permission="home-sections:view"
         :type="isActiveTab('/H5-admin/page/home-sections') ? 'primary' : 'default'"
         @click="navigateTo('/H5-admin/page/home-sections')"
         :icon="HomeFilled"
@@ -63,6 +80,8 @@
         首页推荐
       </el-button>
       <el-button
+        v-if="canAccessTab('/H5-admin/page/orders')"
+        data-view-permission="h5-orders:view"
         :type="isActiveTab('/H5-admin/page/orders') ? 'primary' : 'default'"
         @click="navigateTo('/H5-admin/page/orders')"
         :icon="List"
@@ -79,6 +98,7 @@
         </KeepAlive>
       </router-view>
     </div>
+    </PermissionGate>
   </div>
 </template>
 
@@ -87,7 +107,8 @@ import { computed, onMounted, watch, shallowRef, provide, markRaw } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSiteSettingsStore } from '@/stores/siteSettings'
 import { useAuthStore } from '@/stores/auth'
-import { PageHeader } from '@/components/base'
+import { usePagePermissions } from '@/composables/usePagePermissions'
+import { PageHeader, PermissionGate } from '@/components/base'
 import { canAccessRoutePath } from '@/constants/routePermissions'
 import { logger } from '@/utils/logger'
 import { ElMessage } from 'element-plus'
@@ -105,6 +126,7 @@ const route = useRoute()
 const router = useRouter()
 const siteSettingsStore = useSiteSettingsStore()
 const authStore = useAuthStore()
+const { canView } = usePagePermissions('h5-admin')
 
 // 头部操作按钮（由子页面注册）
 const headerActions = shallowRef<HeaderAction[]>([])
@@ -141,9 +163,11 @@ const isActiveTab = (path: string) => {
   return route.path.startsWith(path)
 }
 
+const canAccessTab = (path: string) => canAccessRoutePath(path, authStore)
+
 // 导航到指定路径
 const navigateTo = (path: string) => {
-  if (!canAccessRoutePath(path, authStore)) {
+  if (!canAccessTab(path)) {
     ElMessage.warning('您没有访问此页面的权限')
     return
   }

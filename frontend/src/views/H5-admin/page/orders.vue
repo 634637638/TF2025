@@ -617,19 +617,9 @@ type OrderDateRange = [string, string] | []
 
 const router = useRouter()
 const orderPermissions = usePagePermissions('h5-admin-orders')
-const h5AdminPermissions = usePagePermissions('h5-admin')
-const salesPermissions = usePagePermissions('sales')
 const { handleNoPermission } = orderPermissions
-const canView = computed(() => (
-  orderPermissions.canView.value ||
-  h5AdminPermissions.canView.value ||
-  salesPermissions.canView.value
-))
-const canEdit = computed(() => (
-  orderPermissions.canEdit.value ||
-  h5AdminPermissions.canEdit.value ||
-  salesPermissions.canEdit.value
-))
+const canView = computed(() => orderPermissions.canView.value)
+const canEdit = computed(() => orderPermissions.canEdit.value)
 const H5_ORDER_MODULE_KEY = 'h5_admin_ordersview'
 
 // 数据

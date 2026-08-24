@@ -262,30 +262,33 @@ class ReminderService {
 
   async list({page=1,limit=20,keyword='',status='',typeId='',userId=null,canManage=false}={}) {
     await this.ensure(); const db=getDatabase(); const pageInt=Math.max(1,asInt(page,1)); const limitInt=Math.min(100,Math.max(1,asInt(limit,20))); const conditions=["r.status!='archived'"]; const params=[];
-    if(!canManage){conditions.push('EXISTS (SELECT 1 FROM reminder_records own_rr WHERE own_rr.reminder_id=r.id AND own_rr.user_id=? AND own_rr.remind_at<=NOW())');params.push(asInt(userId))} if(keyword){conditions.push('(r.title LIKE ? OR r.content LIKE ?)');params.push(`%${keyword}%`,`%${keyword}%`)} if(status){conditions.push('r.status=?');params.push(status)} if(typeId){conditions.push('r.type_id=?');params.push(asInt(typeId))}
+    if(!canManage){const currentUserId=asInt(userId);conditions.push('(r.created_by=? OR EXISTS (SELECT 1 FROM reminder_records own_rr WHERE own_rr.reminder_id=r.id AND own_rr.user_id=?))');params.push(currentUserId,currentUserId)} if(keyword){conditions.push('(r.title LIKE ? OR r.content LIKE ?)');params.push(`%${keyword}%`,`%${keyword}%`)} if(status){conditions.push('r.status=?');params.push(status)} if(typeId){conditions.push('r.type_id=?');params.push(asInt(typeId))}
     const where=conditions.join(' AND '); const recordJoin=canManage?'LEFT JOIN reminder_records rr ON rr.reminder_id=r.id':'LEFT JOIN reminder_records rr ON rr.reminder_id=r.id AND rr.user_id=?'; const rowParams=canManage?params:[asInt(userId),...params]; const [count]=await db.query(`SELECT COUNT(*) total FROM reminders r WHERE ${where}`,params); const [rows]=await db.query(`SELECT r.*,rt.name type_name,rt.color type_color,creator.name creator_name,COUNT(CASE WHEN rr.status='completed' THEN 1 END) completed_count,COUNT(CASE WHEN rr.status='ignored' THEN 1 END) ignored_count,MIN(CASE WHEN rr.scheduled_at>=NOW() THEN rr.scheduled_at END) next_occurrence_at FROM reminders r LEFT JOIN reminder_types rt ON rt.id=r.type_id LEFT JOIN users creator ON creator.id=r.created_by ${recordJoin} WHERE ${where} GROUP BY r.id ORDER BY r.status='active' DESC,r.created_at DESC LIMIT ${limitInt} OFFSET ${(pageInt-1)*limitInt}`,rowParams);
-    return {rows:rows.map(row=>{const serialized=this.serialize(row);return canManage?serialized:{...serialized,target_mode:'specific',target_count:1}}),pagination:{page:pageInt,limit:limitInt,total:Number(count[0]?.total||0),totalPages:Math.ceil(Number(count[0]?.total||0)/limitInt)}};
+    const currentUserId=asInt(userId);
+    return {rows:rows.map(row=>{const serialized=this.serialize(row);const isCreator=asInt(row.created_by)===currentUserId;return canManage||isCreator?serialized:{...serialized,target_mode:'specific',target_count:1}}),pagination:{page:pageInt,limit:limitInt,total:Number(count[0]?.total||0),totalPages:Math.ceil(Number(count[0]?.total||0)/limitInt)}};
   }
 
   async getById(id, { userId = null, canManage = true } = {}) {
     await this.ensure();
     const db = getDatabase();
-    const accessCondition = canManage ? '' : 'AND EXISTS (SELECT 1 FROM reminder_records own_rr WHERE own_rr.reminder_id=r.id AND own_rr.user_id=? AND own_rr.remind_at<=NOW())';
-    const accessParams = canManage ? [id] : [id, asInt(userId)];
+    const accessCondition = canManage ? '' : 'AND (r.created_by=? OR EXISTS (SELECT 1 FROM reminder_records own_rr WHERE own_rr.reminder_id=r.id AND own_rr.user_id=?))';
+    const accessParams = canManage ? [id] : [id, asInt(userId), asInt(userId)];
     const [rows] = await db.query(`SELECT r.*,rt.name type_name,rt.color type_color,creator.name creator_name FROM reminders r LEFT JOIN reminder_types rt ON rt.id=r.type_id LEFT JOIN users creator ON creator.id=r.created_by WHERE r.id=? AND r.status!='archived' ${accessCondition}`, accessParams);
     if (!rows[0]) return null;
     const row = this.serialize(rows[0]);
-    const ids = canManage ? normalizeIds(parseJson(rows[0].target_user_ids, [])) : [asInt(userId)];
+    const isCreator = !canManage && asInt(rows[0].created_by) === asInt(userId);
+    const canViewRecipients = canManage || isCreator;
+    const ids = canViewRecipients ? normalizeIds(parseJson(rows[0].target_user_ids, [])) : [asInt(userId)];
     let targets = [];
     if (ids.length) {
       const placeholders = ids.map(() => '?').join(',');
       const [targetRows] = await db.query(`SELECT id,username,name,phone,email FROM users WHERE id IN (${placeholders}) ORDER BY name,username`, ids);
       targets = targetRows;
     }
-    const recordCondition = canManage ? '' : 'AND rr.user_id=?';
-    const recordParams = canManage ? [id] : [id, asInt(userId)];
+    const recordCondition = canViewRecipients ? '' : 'AND rr.user_id=?';
+    const recordParams = canViewRecipients ? [id] : [id, asInt(userId)];
     const [records] = await db.query(`SELECT rr.id occurrence_id,rr.scheduled_at,rr.remind_at,rr.user_id,rr.status recipient_status,rr.action_at,rr.snoozed_until,u.name user_name,u.username FROM reminder_records rr LEFT JOIN users u ON u.id=rr.user_id WHERE rr.reminder_id=? ${recordCondition} AND rr.remind_at<=NOW() ORDER BY rr.scheduled_at DESC,rr.user_id LIMIT 500`, recordParams);
-    return {...row,target_mode:canManage?row.target_mode:'specific',target_count:canManage?row.target_count:1,record_scope:canManage?'all':'self',targets,occurrences:records.map(item=>({...item,completed_at:item.recipient_status==='completed'?item.action_at:null,ignored_at:item.recipient_status==='ignored'?item.action_at:null,read_at:item.recipient_status==='read'?item.action_at:null}))};
+    return {...row,target_mode:canViewRecipients?row.target_mode:'specific',target_count:canViewRecipients?row.target_count:1,record_scope:canViewRecipients?'all':'self',targets,occurrences:records.map(item=>({...item,completed_at:item.recipient_status==='completed'?item.action_at:null,ignored_at:item.recipient_status==='ignored'?item.action_at:null,read_at:item.recipient_status==='read'?item.action_at:null}))};
   }
 
   async pending(userId) {

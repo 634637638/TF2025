@@ -11,6 +11,19 @@ export interface SystemSetting {
   category?: string
 }
 
+export interface MarketingGenerationConfig {
+  enabled: boolean
+  provider: 'ollama' | 'localai' | 'openai_compatible' | 'custom'
+  endpoint: string
+  model: string
+  apiKey?: string
+  hasApiKey?: boolean
+  timeoutMs: number
+  temperature: number
+  maxTokens: number
+  systemPrompt: string
+}
+
 export const systemSettingsApi = {
   /**
    * 获取所有配置
@@ -59,5 +72,64 @@ export const systemSettingsApi = {
    */
   getAttendanceSettings: () => {
     return unifiedApi.get('/system-settings/attendance/config')
+  },
+
+  /**
+   * 获取营销词库配置（后台）
+   */
+  getMarketingLexicon: () => {
+    return unifiedApi.get('/system-settings/marketing_lexicon')
+  },
+
+  /**
+   * 保存营销词库配置（后台）
+   */
+  saveMarketingLexicon: (value: {
+    subsidyEnabled?: boolean
+    colorEnabled?: boolean
+    weatherEnabled?: boolean
+    solarTermEnabled?: boolean
+    modeLexicon?: Record<string, {
+      lines: string[]
+      nightLines?: string[]
+      salesTalks?: string[]
+    }>
+    typeLexicon?: Record<string, { lines: string[] }>
+    contextLexicon?: {
+      holiday?: string[] | Record<string, string[]>
+      solarTerm?: string[] | Record<string, string[]>
+      weather?: string[] | Record<string, string[]>
+      timeSegment?: Record<string, string[]>
+      color?: string[] | Record<string, string[]>
+      subsidy?: string[] | Record<string, string[]>
+    }
+    eventLexicon?: {
+      solarTerms?: Record<string, string[]>
+      traditionalHolidays?: Record<string, string[]>
+      historicalDays?: Record<string, string[]>
+    }
+    updatedAt?: string
+  }) => {
+    return unifiedApi.put('/system-settings/marketing_lexicon', {
+      value,
+      type: 'json'
+    })
+  },
+
+  /**
+   * 获取在线生成接口配置（后台）
+   */
+  getMarketingGenerationConfig: () => {
+    return unifiedApi.get('/system-settings/marketing_generation_config')
+  },
+
+  /**
+   * 保存在线生成接口配置（后台）
+   */
+  saveMarketingGenerationConfig: (value: MarketingGenerationConfig) => {
+    return unifiedApi.put('/system-settings/marketing_generation_config', {
+      value,
+      type: 'json'
+    })
   }
 }

@@ -3,6 +3,7 @@ const path = require('path');
 const { getDatabase } = require('../config/database');
 const MenuModuleLinker = require('./menuModuleLinker');
 const { getModulePermissionMetadata, getModulePermissionTypes } = require('../config/module-permission-actions');
+const permissionCapabilityRegistry = require('../../../config/module-permission-capabilities.json');
 const { hasColumn } = require('./schemaInspector.service');
 const log = require('../utils/log');
 
@@ -13,6 +14,9 @@ class ModuleScanner {
     // shared 是经验分享业务页面，必须参与权限模块扫描。
     this.excludeDirs = ['components', 'layouts', 'common', 'admin', 'auth'];
     this.excludeFiles = ['index.vue', 'Home.vue', 'Login.vue'];
+    this.publicPages = new Set(permissionCapabilityRegistry.publicPages || []);
+    this.scanExcludedPages = new Set(permissionCapabilityRegistry.scanExcludedPages || []);
+    this.scanAliases = permissionCapabilityRegistry.scanAliases || {};
     this.standardPermissions = ['view', 'create', 'edit', 'delete', 'export', 'import', 'sell'];
     this.menuLinker = new MenuModuleLinker();
   }
@@ -41,6 +45,37 @@ class ModuleScanner {
   }
 
   /**
+   * 将共享能力清单中的嵌入式业务模块合并到扫描结果。
+   * 这些模块可能由主页面 Tab 承载，没有独立路由文件，但仍必须可单独授权。
+   */
+  mergeCapabilityModules(scannedModules = []) {
+    const modulesByKey = new Map(scannedModules.map(module => [module.key, module]));
+
+    for (const moduleKey of Object.keys(permissionCapabilityRegistry.modules || {})) {
+      if (modulesByKey.has(moduleKey)) {
+        continue;
+      }
+
+      const metadata = getModulePermissionMetadata(moduleKey) || {};
+      modulesByKey.set(moduleKey, {
+        key: moduleKey,
+        name: metadata.name || moduleKey,
+        description: metadata.description || `${metadata.name || moduleKey}权限模块`,
+        category: metadata.category || 'custom',
+        icon: metadata.icon || 'fas fa-cube',
+        path: null,
+        route_path: null,
+        filename: '',
+        folder: metadata.category || 'custom',
+        permissions: getModulePermissionTypes(moduleKey),
+        lastModified: new Date().toISOString()
+      });
+    }
+
+    return Array.from(modulesByKey.values());
+  }
+
+  /**
    * 分析Vue文件，提取模块信息
    */
   analyzeVueFile(relativePath) {
@@ -48,7 +83,8 @@ class ModuleScanner {
       const normalizedPath = this.normalizePath(relativePath);
       const category = this.extractCategory(normalizedPath);
       const moduleName = this.getModuleNameFromPath(category, normalizedPath);
-      const moduleKey = this.generateModuleKey(category, moduleName);
+      const generatedModuleKey = this.generateModuleKey(category, moduleName);
+      const moduleKey = this.scanAliases[generatedModuleKey] || generatedModuleKey;
 
       const moduleInfo = {
         key: moduleKey,
@@ -150,6 +186,10 @@ class ModuleScanner {
       return false;
     }
 
+    if (this.publicPages.has(normalizedPath) || this.scanExcludedPages.has(normalizedPath)) {
+      return false;
+    }
+
     if (routeComponentPaths.has(normalizedPath) && this.isNestedRouteModule(category, parts, fileName)) {
       return true;
     }
@@ -158,7 +198,7 @@ class ModuleScanner {
       return true;
     }
 
-    return parts.length === 2;
+    return parts.length === 2 && routeComponentPaths.has(normalizedPath);
   }
 
   isNestedRouteModule(category, parts, fileName) {
@@ -348,18 +388,19 @@ class ModuleScanner {
     try {
       log.debug('🔍 开始扫描views目录...');
       const scannedModules = await this.scanViewsDirectory();
-      log.debug(`📋 发现 ${scannedModules.length} 个模块`);
+      const modulesToSync = this.mergeCapabilityModules(scannedModules);
+      log.debug(`📋 发现 ${scannedModules.length} 个页面模块，共享清单合并后 ${modulesToSync.length} 个模块`);
 
-      // 获取扫描到的模块key列表
-      const scannedModuleKeys = new Set(scannedModules.map(m => m.key));
+      // 共享清单是模块存在性的最终依据，嵌入式业务 Tab 不得被误停用。
+      const registeredModuleKeys = new Set(modulesToSync.map(module => module.key));
 
       const results = [];
       let successCount = 0;
       let errorCount = 0;
       let deletedCount = 0;
 
-      // 先注册或更新扫描到的模块
-      for (const module of scannedModules) {
+      // 注册或更新页面模块及共享清单中的嵌入式业务模块
+      for (const module of modulesToSync) {
         try {
           const result = await this.registerModule(module);
           results.push(result);
@@ -385,7 +426,7 @@ class ModuleScanner {
       // 删除数据库中不存在于文件系统的模块
       try {
         log.debug('🗑️ 开始清理不存在的模块...');
-        const deletedModules = await this.deleteNonExistentModules(scannedModuleKeys);
+        const deletedModules = await this.deleteNonExistentModules(registeredModuleKeys);
         deletedCount = deletedModules.length;
 
         if (deletedCount > 0) {
@@ -405,7 +446,7 @@ class ModuleScanner {
       }
 
       log.debug('📊 同步完成:', {
-        总数: scannedModules.length,
+        总数: modulesToSync.length,
         注册成功: successCount,
         注册失败: errorCount,
         删除模块: deletedCount
@@ -417,7 +458,7 @@ class ModuleScanner {
       log.debug('✅ 菜单关联修复完成');
 
       return {
-        total: scannedModules.length,
+        total: modulesToSync.length,
         success: successCount,
         errors: errorCount,
         deleted: deletedCount,
@@ -432,7 +473,7 @@ class ModuleScanner {
   /**
    * 删除数据库中不存在于文件系统的模块
    */
-  async deleteNonExistentModules(scannedModuleKeys) {
+  async deleteNonExistentModules(registeredModuleKeys) {
     const pool = getDatabase();
     const connection = await pool.getConnection();
 
@@ -446,7 +487,7 @@ class ModuleScanner {
 
       // 找出需要删除的模块（在数据库中但不在扫描结果中）
       for (const module of existingModules) {
-        if (!scannedModuleKeys.has(module.key)) {
+        if (!registeredModuleKeys.has(module.key)) {
           modulesToDelete.push(module.key);
         }
       }
@@ -474,8 +515,9 @@ class ModuleScanner {
    */
   async getUnregisteredModules() {
     try {
-      // 先扫描获取所有发现的模块
+      // 页面扫描结果与共享清单共同构成所有可注册模块。
       const scannedModules = await this.scanViewsDirectory();
+      const availableModules = this.mergeCapabilityModules(scannedModules);
 
       // 获取已注册的模块
       const pool = getDatabase();
@@ -486,7 +528,7 @@ class ModuleScanner {
       const registeredKeys = registeredModules.map(m => m.key);
 
       // 筛选出未注册的模块
-      const unregisteredModules = scannedModules.filter(module =>
+      const unregisteredModules = availableModules.filter(module =>
         !registeredKeys.includes(module.key)
       );
 
@@ -519,6 +561,8 @@ class ModuleScanner {
       const pool = getDatabase();
       const supportsRoutePath = await hasColumn('modules', 'route_path', pool);
       const supportsIsActive = await hasColumn('modules', 'is_active', pool);
+      const supportsCustomName = await hasColumn('modules', 'is_custom_name', pool);
+      const supportsMenuId = await hasColumn('modules', 'menu_id', pool);
 
       // 检查模块是否已存在
       const [existingModule] = await pool.execute(
@@ -528,23 +572,43 @@ class ModuleScanner {
 
       if (existingModule.length > 0) {
         const module = existingModule[0];
+        const boundMenu = await this.findBoundMenu(module, pool);
+        const boundMenuName = String(boundMenu?.name || '').trim();
+        const menuOverridesScannedName = Boolean(boundMenuName && boundMenuName !== moduleInfo.name);
 
         // 如果是自定义名称，保护不被覆盖
-        if (module.is_custom_name === 1) {
-          log.debug(`🔒 模块 ${moduleInfo.key} 名称受保护: "${module.name}" (自定义名称)`);
+        if (Number(module.is_custom_name) === 1 || menuOverridesScannedName) {
+          const protectedName = boundMenuName || module.name;
+          log.debug(`🔒 模块 ${moduleInfo.key} 名称受保护: "${protectedName}" (${boundMenuName ? '菜单绑定' : '自定义名称'})`);
 
           // 只更新非名称字段
-          if (supportsRoutePath) {
-            await pool.execute(
-              `UPDATE modules SET description = ?, category = ?, icon = ?, route_path = ?${supportsIsActive ? ', is_active = 1' : ''}, updated_at = NOW() WHERE \`key\` = ?`,
-              [moduleInfo.description, moduleInfo.category, moduleInfo.icon, moduleInfo.route_path || moduleInfo.path || null, moduleInfo.key]
-            );
-          } else {
-            await pool.execute(
-              `UPDATE modules SET description = ?, category = ?, icon = ?${supportsIsActive ? ', is_active = 1' : ''}, updated_at = NOW() WHERE \`key\` = ?`,
-              [moduleInfo.description, moduleInfo.category, moduleInfo.icon, moduleInfo.key]
-            );
+          const protectedUpdateFields = [];
+          const protectedUpdateValues = [];
+          if (protectedName && protectedName !== module.name) {
+            protectedUpdateFields.push('name = ?');
+            protectedUpdateValues.push(protectedName);
           }
+          if (supportsCustomName && menuOverridesScannedName) {
+            protectedUpdateFields.push('is_custom_name = 1');
+          }
+          if (supportsMenuId && boundMenu?.id && !module.menu_id) {
+            protectedUpdateFields.push('menu_id = ?');
+            protectedUpdateValues.push(boundMenu.id);
+          }
+          protectedUpdateFields.push('description = ?', 'category = ?', 'icon = ?');
+          protectedUpdateValues.push(moduleInfo.description, moduleInfo.category, moduleInfo.icon);
+          if (supportsRoutePath) {
+            protectedUpdateFields.push('route_path = ?');
+            protectedUpdateValues.push(moduleInfo.route_path || moduleInfo.path || null);
+          }
+
+          if (supportsIsActive) protectedUpdateFields.push('is_active = 1');
+          protectedUpdateFields.push('updated_at = NOW()');
+          protectedUpdateValues.push(moduleInfo.key);
+          await pool.execute(
+            `UPDATE modules SET ${protectedUpdateFields.join(', ')} WHERE \`key\` = ?`,
+            protectedUpdateValues
+          );
 
           await this.createModulePermissions(moduleInfo.key);
           return {
@@ -553,7 +617,7 @@ class ModuleScanner {
             moduleKey: moduleInfo.key,
             isNewModule: false,
             isCustomName: true,
-            protectedName: module.name
+            protectedName
           };
         } else {
           // 自动生成的名称，可以更新
@@ -615,6 +679,35 @@ class ModuleScanner {
         error: error
       };
     }
+  }
+
+  /**
+   * 找到模块绑定的主菜单。菜单名称属于用户可见配置，优先于扫描出的默认名称。
+   */
+  async findBoundMenu(module, pool) {
+    if (module?.menu_id) {
+      const [menusById] = await pool.execute(
+        'SELECT id, name FROM menus WHERE id = ? LIMIT 1',
+        [module.menu_id]
+      );
+      if (menusById.length > 0) return menusById[0];
+    }
+
+    const [menusByModule] = await pool.execute(
+      'SELECT id, name FROM menus WHERE module_id = ? ORDER BY id ASC LIMIT 1',
+      [module.id]
+    );
+    if (menusByModule.length > 0) return menusByModule[0];
+
+    if (module?.key) {
+      const [menusByKey] = await pool.execute(
+        'SELECT id, name FROM menus WHERE module_key = ? ORDER BY id ASC LIMIT 1',
+        [module.key]
+      );
+      if (menusByKey.length > 0) return menusByKey[0];
+    }
+
+    return null;
   }
 
   /**
@@ -688,60 +781,40 @@ class ModuleScanner {
 
       // 获取所有角色
       const [roles] = await pool.execute(
-        'SELECT id, name FROM roles WHERE is_active = 1'
+        'SELECT id, name, code, role_type FROM roles WHERE is_active = 1'
       );
 
       // 获取该模块现有的权限
       const [existingPermissions] = await pool.execute(
-        'SELECT DISTINCT permission_type FROM role_permissions WHERE module_key = ?',
+        'SELECT role_id, permission_type FROM role_permissions WHERE module_key = ?',
         [moduleKey]
       );
-      const existingPermissionTypes = existingPermissions.map(p => p.permission_type);
+      const existingPermissionKeys = new Set(
+        existingPermissions.map(permission => `${permission.role_id}:${permission.permission_type}`)
+      );
 
       const basePermissions = [
         'menu_view',
         ...getModulePermissionTypes(moduleKey)
       ].map(type => ({ type }));
 
-      // 检查哪些权限缺失
-      const missingPermissions = basePermissions.filter(p =>
-        !existingPermissionTypes.includes(p.type)
-      );
-
-      if (missingPermissions.length === 0) {
-        log.debug(`✅ 模块 ${moduleKey} 权限已完整，跳过创建`);
-        return;
-      }
-
-      log.debug(`📝 模块 ${moduleKey} 缺失权限: ${missingPermissions.map(p => p.type).join(', ')}`);
-
-      // 智能权限分配策略
-      const rolePermissionMap = {
-        '超级管理员': basePermissions.map(p => p.type),
-        'webadmin': basePermissions.map(p => p.type),
-        '管理员': basePermissions.filter(p => ['menu_view', 'view', 'create', 'edit', 'delete', 'approve', 'manage', 'export', 'import'].includes(p.type)).map(p => p.type),
-        '经理': basePermissions.filter(p => ['menu_view', 'view', 'create', 'edit', 'approve', 'manage', 'export'].includes(p.type)).map(p => p.type),
-        '采购员': basePermissions.filter(p => ['menu_view', 'view', 'create', 'edit', 'export', 'import'].includes(p.type)).map(p => p.type),
-        '销售员': basePermissions.filter(p => ['menu_view', 'view', 'create', 'edit', 'export'].includes(p.type)).map(p => p.type),
-        '库管员': basePermissions.filter(p => ['menu_view', 'view', 'create', 'edit', 'export', 'import'].includes(p.type)).map(p => p.type),
-        '维修师': basePermissions.filter(p => ['menu_view', 'view', 'edit'].includes(p.type)).map(p => p.type),
-        '员工': basePermissions.filter(p => ['menu_view', 'view'].includes(p.type)).map(p => p.type),
-        '普通用户': basePermissions.filter(p => ['menu_view', 'view'].includes(p.type)).map(p => p.type)
-      };
-
       let totalCreated = 0;
 
-      // 为每个角色分配相应的权限（只创建缺失的权限）
+      // 管理员自动获得真实能力；普通角色必须在权限管理中明确授权。
       for (const role of roles) {
-        const rolePermissions = rolePermissionMap[role.name] || ['view'];
+        const isAdministrator = role.role_type === 'admin' || ['super_admin', 'webadmin', 'admin'].includes(role.code);
+        const rolePermissions = isAdministrator
+          ? basePermissions.map(permission => permission.type)
+          : [];
 
         for (const permissionType of rolePermissions) {
-          // 只创建缺失的权限
-          if (missingPermissions.some(p => p.type === permissionType)) {
+          const permissionKey = `${role.id}:${permissionType}`;
+          if (!existingPermissionKeys.has(permissionKey)) {
             await pool.execute(
               'INSERT IGNORE INTO role_permissions (role_id, module_key, permission_type, created_at) VALUES (?, ?, ?, NOW())',
               [role.id, moduleKey, permissionType]
             );
+            existingPermissionKeys.add(permissionKey);
             totalCreated++;
           }
         }

@@ -33,92 +33,77 @@
     destroy-on-close
     @close="handleDialogClose"
   >
-    <template v-if="isMobile" #header>
-      <div class="stock-in-dialog__header">
-        <span class="stock-in-dialog__title">{{ dialogTitle }}</span>
-      </div>
-    </template>
+    <div class="stock-in-workspace">
+      <el-form
+        ref="formRef"
+        :model="stockInForm"
+        :rules="formRules"
+        label-position="top"
+        class="modern-form tf-dialog-form tf-dialog-form--stacked"
+      >
+        <StockInBasicInfoSection
+          :is-mobile="isMobile"
+          :form-data="stockInForm"
+          :suppliers="getFilteredSuppliers()"
+          :stores="getFilteredStores()"
+          :handle-supplier-filter="handleSupplierFilter"
+          :handle-store-filter="handleStoreFilter"
+        />
 
-    <div class="dialog-body">
-            <el-form
-              ref="formRef"
-              :model="stockInForm"
-              :rules="formRules"
-              label-position="top"
-              class="modern-form"
-            >
-              <StockInBasicInfoSection
-                :is-mobile="isMobile"
-                :form-data="stockInForm"
-                :suppliers="getFilteredSuppliers()"
-                :stores="getFilteredStores()"
-                :handle-supplier-filter="handleSupplierFilter"
-                :handle-store-filter="handleStoreFilter"
+        <StockInPhoneListSection
+          :is-mobile="isMobile"
+          :cache-version="cacheVersion"
+          :form-data="stockInForm"
+          :has-row-error="hasRowError"
+          :get-filtered-brands-for-phone="getFilteredBrandsForPhone"
+          :get-filtered-models-for-phone="getFilteredModelsForPhone"
+          :get-filtered-colors-for-phone="getFilteredColorsForPhone"
+          :get-filtered-memories-for-phone="getFilteredMemoriesForPhone"
+          :handle-brand-filter="handleBrandFilter"
+          :handle-model-filter="handleModelFilter"
+          :handle-color-filter="handleColorFilter"
+          :handle-memory-filter="handleMemoryFilter"
+          :handle-brand-change="handleBrandChange"
+          :format-serial-number="formatSerialNumber"
+          :format-imei="formatIMEI"
+          :format-price-value="formatPriceValue"
+          :update-purchase-price="updatePurchasePrice"
+          :remove-phone="removePhone"
+          :validate-serial-on-blur="validateSerialOnBlur"
+          :validate-imei-on-blur="validateIMEIOnBlur"
+          :scan-serial-number="scanSerialNumber"
+          :scan-imei="scanIMEI"
+          :enable-no-imei-mode="enableNoIMEIMode"
+          @add="addPhone"
+          @batch="showBatchCountDialog = true"
+          @clear="clearAllPhones"
+        />
+
+        <section class="stock-in-section stock-in-remarks">
+          <header class="stock-in-section__header">
+            <h3 class="stock-in-section__title">备注信息</h3>
+          </header>
+          <div class="stock-in-section__body">
+            <el-form-item label="备注" prop="remarks">
+              <el-input
+                v-model="stockInForm.remarks"
+                type="textarea"
+                :rows="2"
+                placeholder="请输入备注信息"
+                resize="none"
               />
-
-              <StockInPhoneListSection
-                :is-mobile="isMobile"
-                :cache-version="cacheVersion"
-                :form-data="stockInForm"
-                :has-row-error="hasRowError"
-                :get-filtered-brands-for-phone="getFilteredBrandsForPhone"
-                :get-filtered-models-for-phone="getFilteredModelsForPhone"
-                :get-filtered-colors-for-phone="getFilteredColorsForPhone"
-                :get-filtered-memories-for-phone="getFilteredMemoriesForPhone"
-                :handle-brand-filter="handleBrandFilter"
-                :handle-model-filter="handleModelFilter"
-                :handle-color-filter="handleColorFilter"
-                :handle-memory-filter="handleMemoryFilter"
-                :handle-brand-change="handleBrandChange"
-                :format-serial-number="formatSerialNumber"
-                :format-imei="formatIMEI"
-                :format-price-value="formatPriceValue"
-                :update-purchase-price="updatePurchasePrice"
-                :remove-phone="removePhone"
-                :validate-serial-on-blur="validateSerialOnBlur"
-                :validate-imei-on-blur="validateIMEIOnBlur"
-                :scan-serial-number="scanSerialNumber"
-                :scan-imei="scanIMEI"
-                :enable-no-imei-mode="enableNoIMEIMode"
-                @add="addPhone"
-                @batch="showBatchCountDialog = true"
-                @clear="clearAllPhones"
-              />
-
-              <!-- 备注信息卡片 -->
-              <div class="info-card">
-                <div class="card-header">
-                  <div class="card-icon">
-                    <i class="fas fa-comment"></i>
-                  </div>
-                  <h3 class="card-title">备注信息</h3>
-                </div>
-                <div class="card-content">
-                  <el-form-item label="备注" prop="remarks">
-                    <el-input
-                      v-model="stockInForm.remarks"
-                      type="textarea"
-                      :rows="2"
-                      placeholder="请输入备注信息"
-                      resize="none"
-                    />
-                  </el-form-item>
-                </div>
-              </div>
-            </el-form>
+            </el-form-item>
           </div>
+        </section>
+      </el-form>
+    </div>
 
     <template #footer>
-      <div class="dialog-footer">
-        <div class="operator-info">
-          <span>入库员：<strong>{{ stockInForm.operator_name }}</strong></span>
-        </div>
-        <div class="footer-actions">
-          <el-button type="default" @click="handleDialogClose">取消</el-button>
-          <el-button type="primary" :loading="submitting" @click="handleSubmit">
-            {{ mode === 'create' ? '提交入库' : '更新入库' }}
-          </el-button>
-        </div>
+      <div class="tf-dialog-actions">
+        <el-button @click="handleDialogClose">取消</el-button>
+        <el-button type="primary" :loading="submitting" @click="handleSubmit">
+          {{ mode === 'create' ? '提交入库' : '更新入库' }}
+        </el-button>
       </div>
     </template>
   </MobileDialog>
@@ -131,7 +116,6 @@
       :phone="scannerPhone"
       :showROIDisplay="true"
       :enableAndroidOptimization="true"
-      :showPerformance="isDevMode"
       @success="handleScanSuccess"
       @manual="handleScanManual"
       @cancel="handleScanCancel"
@@ -156,14 +140,16 @@
           placeholder="请输入要添加的商品数量"
           style="width: 100%"
         />
-        <div style="margin-top: 8px; color: #909399; font-size: 12px;">
+        <div class="batch-count-hint">
           最多可一次添加 100 条商品
         </div>
       </el-form-item>
     </el-form>
     <template #footer>
-      <el-button type="default" @click="showBatchCountDialog = false">取消</el-button>
-      <el-button type="primary" @click="confirmBatchAdd">确定添加</el-button>
+      <div class="tf-dialog-actions">
+        <el-button @click="showBatchCountDialog = false">取消</el-button>
+        <el-button type="primary" @click="confirmBatchAdd">确定添加</el-button>
+      </div>
     </template>
   </MobileDialog>
 </template>
@@ -286,19 +272,15 @@ const scannerPhone = computed(() => {
     return undefined
   }
 
+  const brand = findStockInBrand(brands.value, currentScanningPhone.value.brand)
   return {
-    brand: currentScanningPhone.value.brand === undefined
-      ? undefined
-      : String(currentScanningPhone.value.brand)
+    brand: brand?.name
   }
 })
 
 // 批量添加对话框
 const showBatchCountDialog = ref(false)
 const batchCount = ref(5)
-
-// 开发模式
-const isDevMode = import.meta.env.DEV
 
 // ==================== 表单验证规则 ====================
 
@@ -573,7 +555,6 @@ const handleScanSuccess = (result: string) => {
     applyStockInScanResult(currentScanningPhone.value, currentScanType.value, result)
   }
   currentScanningPhone.value = null
-  optimizedScannerVisible.value = false
 }
 
 // 扫码手动输入
@@ -686,311 +667,97 @@ watch(
 </script>
 
 <style lang="scss" scoped>
-/* ===== Element Plus Dialog 样式说明 ===== */
-/* el-dialog 相关的全局样式覆盖已移至组件底部的非 scoped style 块 */
-/* 这是因为 Vue 3 的 scoped 样式无法覆盖 Element Plus 的全局 !important 声明 */
-
-/* 自定义头部 */
-.stock-in-dialog__header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-height: 56px;
-  padding: 10px 52px 10px 14px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  box-sizing: border-box;
-}
-
-.stock-in-dialog__title {
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1.25;
-  letter-spacing: 0.02em;
-}
-
-/* Dialog 内容 - 由于全局样式已添加 padding，这里设为 0 */
-.dialog-body {
-  padding: 28px;
-  background: #ffffff;
-}
-
-/* Dialog 底部 */
-.dialog-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 20px;
-
-  .operator-info {
-    font-size: 14px;
-    color: #6b7280;
-  }
-
-  .footer-actions {
-    display: flex;
-    gap: 12px;
-  }
-}
-
-/* ===== 信息卡片样式 ===== */
-.info-card {
-  background: #f8fafc;
-  border-radius: 18px;
-  overflow: hidden;
-  margin-bottom: 24px;
-  border: none;
-  box-shadow: inset 0 0 0 1px rgba(203, 213, 225, 0.72);
-  transition: all 0.24s ease;
-}
-
-.info-card:first-child {
-  border-top: none;
-}
-
-.info-card:hover {
-  box-shadow:
-    inset 0 0 0 1px rgba(191, 219, 254, 0.9),
-    0 10px 24px rgba(99, 102, 241, 0.08);
-}
-
-.card-header {
-  background: linear-gradient(135deg, rgba(248, 250, 252, 0.96) 0%, rgba(241, 245, 249, 0.96) 100%);
-  padding: 18px 22px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  border-bottom: 1px solid rgba(203, 213, 225, 0.72);
-}
-
-.card-icon {
-  width: 46px;
-  height: 46px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  flex: 0 0 auto;
-}
-
-.card-title {
-  font-size: 17px;
-  font-weight: 700;
-  color: #334155;
-  margin: 0;
-}
-
-.card-content {
-  padding: 22px;
-}
-
-/* 表单布局 */
 .modern-form {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 .modern-form :deep(.el-form-item) {
   margin-bottom: 0;
 }
 
-/* 移动端优化 */
+.batch-count-hint {
+  margin-top: 8px;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 @media (max-width: 767px) {
-  .stock-in-dialog .el-dialog__header {
-    min-height: calc(58px + env(safe-area-inset-top)) !important;
-    padding: calc(8px + env(safe-area-inset-top)) 56px 8px 14px !important;
-  }
-
-  .stock-in-dialog .el-dialog__header .el-dialog__title {
-    font-size: 15px !important;
-    line-height: 1.2 !important;
-  }
-
-  .stock-in-dialog .el-dialog__headerbtn {
-    top: calc(9px + env(safe-area-inset-top)) !important;
-    right: 12px !important;
-  }
-
-  .stock-in-dialog__header {
-    min-height: calc(58px + env(safe-area-inset-top));
-    padding: calc(8px + env(safe-area-inset-top)) 56px 8px 14px;
-  }
-
-  .stock-in-dialog__title {
-    font-size: 15px;
-    line-height: 1.2;
-  }
-
-  .dialog-body {
-    padding: 10px 8px 8px;
-  }
-
-  .dialog-footer {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
-
-    .operator-info {
-      font-size: 13px;
-      text-align: center;
-    }
-
-    .footer-actions {
-      width: 100%;
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
-    }
-
-  }
-
-  .info-card {
-    margin-bottom: 12px;
-    border-radius: 14px;
-  }
-
-  .card-header {
-    padding: 14px 14px 12px;
-    gap: 10px;
-    align-items: flex-start;
-    flex-wrap: wrap;
-  }
-
-  .card-icon {
-    width: 38px;
-    height: 38px;
-    border-radius: 12px;
-    font-size: 15px;
-  }
-
-  .card-title {
-    font-size: 15px;
-  }
-
-  .card-content {
-    padding: 12px 10px 10px;
-  }
-
   .modern-form {
     gap: 12px;
-  }
-
-  .modern-form :deep(.el-form-item__label) {
-    font-size: 13px;
-    line-height: 1.4;
-    padding-bottom: 4px;
-  }
-
-  .modern-form :deep(.el-input__wrapper),
-  .modern-form :deep(.el-select__wrapper),
-  .modern-form :deep(.el-date-editor .el-input__wrapper),
-  .modern-form :deep(.el-input-number .el-input__wrapper),
-  .modern-form :deep(.el-textarea__inner) {
-    min-height: 40px;
-    border-radius: 12px;
   }
 }
 </style>
 
-<!-- 非 scoped 样式：StockInModal 特定样式 -->
-<!--
-  注意：el-dialog 的基础样式已在全局 styles.css 中统一修复
-  这里只保留 StockInModal 组件特有的样式覆盖
--->
 <style lang="scss">
 .stock-in-dialog {
-  --dialog-max-width: 1360px;
-  --dialog-side-gap: 20px;
+  --dialog-max-width: 1240px;
 }
 
-/* StockInModal 使用自定义 header，需要隐藏默认的头部样式 */
-.stock-in-dialog .el-dialog__header {
-  display: flex !important;
-  align-items: center !important;
-  width: 100% !important;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-  min-height: 56px !important;
-  padding: 10px 52px 10px 14px !important;
-  margin: 0 !important;
-  border-bottom: none !important;
-  box-sizing: border-box !important;
+.stock-in-dialog .stock-in-section {
+  overflow: hidden;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  background: var(--el-bg-color);
 }
 
-.stock-in-dialog .el-dialog__header .el-dialog__title {
-  display: block !important;
-  color: #ffffff !important;
-  font-size: 15px !important;
-  font-weight: 700 !important;
-  line-height: 1.25 !important;
+.stock-in-dialog .stock-in-section__header {
+  min-height: 46px;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  background: var(--el-fill-color-light);
+  box-sizing: border-box;
 }
 
-.stock-in-dialog .el-dialog__body {
-  padding: 0 0 24px !important;
-  background: #ffffff !important;
+.stock-in-dialog .stock-in-section__title {
+  position: relative;
+  margin: 0;
+  padding-left: 10px;
+  color: var(--el-text-color-primary);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 24px;
 }
 
-.stock-in-dialog .el-dialog__footer {
-  padding: 18px 24px 24px !important;
-  background: #ffffff !important;
-  border-top: 1px solid rgba(15, 23, 42, 0.06) !important;
+.stock-in-dialog .stock-in-section__title::before {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--el-color-primary);
+  content: '';
 }
 
-/* 调整关闭按钮位置，使其在自定义 header 上可见 */
-.stock-in-dialog .el-dialog__headerbtn {
-  z-index: 1000 !important;
-  top: 11px !important;
-  right: 12px !important;
-  transform: none !important;
+.stock-in-dialog .stock-in-section__body {
+  padding: 16px;
 }
 
-/* 移动端样式 */
-@media (max-width: 767px) {
-  .stock-in-dialog {
-    --dialog-side-gap: 6px;
-    --dialog-vertical-gap: 12px;
-    --dialog-max-width: calc(100vw - 12px);
-    --mobile-dialog-body-padding: 0;
-    --mobile-dialog-footer-padding: 0;
-  }
-
-  .mobile-dialog-sheet-overlay.stock-in-dialog {
-    padding: 12px 6px !important;
-  }
-
-  .mobile-dialog-sheet-panel.stock-in-dialog .mobile-dialog-sheet-body,
-  .mobile-dialog-sheet-panel.stock-in-dialog .mobile-dialog-sheet-footer {
-    padding: 0 !important;
-  }
-
-  .stock-in-dialog .el-dialog__footer {
-    padding: 12px 10px 10px !important;
-  }
-
-}
-
-@media (max-width: 480px) {
-  .stock-in-dialog {
-    --dialog-side-gap: 4px;
-    --dialog-vertical-gap: 12px;
-    --dialog-max-width: calc(100vw - 8px);
-  }
-
-  .mobile-dialog-sheet-overlay.stock-in-dialog {
-    padding: 12px 4px !important;
-  }
-
-}
-
-/* 提示文字样式 */
-.field-hint {
+.stock-in-dialog .field-hint {
+  margin-top: 4px;
+  color: var(--el-text-color-secondary);
   font-size: 11px;
-  color: #6b7280;
-  margin-top: 2px;
   line-height: 1.4;
+}
+
+@media (max-width: 767px) {
+  .stock-in-dialog .stock-in-section__header {
+    min-height: 42px;
+    padding: 8px 10px;
+  }
+
+  .stock-in-dialog .stock-in-section__body {
+    padding: 10px;
+  }
+
+  .stock-in-dialog .stock-in-section__title {
+    font-size: 14px;
+  }
 }
 </style>

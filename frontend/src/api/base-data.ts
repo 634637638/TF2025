@@ -38,8 +38,10 @@ const pickArray = <T>(payload: any, keys: string[] = []): T[] => {
 /**
  * 获取品牌列表（公开）
  */
-export async function getPublicBrands() {
-  const response = await unifiedApi.get('/public/brands')
+export async function getPublicBrands(includeEmpty = false) {
+  const response = await unifiedApi.get('/public/brands', {
+    params: includeEmpty ? { include_empty: 'true' } : undefined
+  })
   return pickArray<Brand>(response, ['brands'])
 }
 
@@ -71,7 +73,46 @@ export async function getPublicColors(includeEmpty?: boolean) {
  */
 export async function getPublicMemories() {
   const response = await unifiedApi.get('/public/memories')
-  return pickArray<Memory>(response, ['memories'])
+  return pickArray<any>(response, ['memories']).map((item) => ({
+    id: Number(item?.id),
+    size: String(item?.size || item?.name || item?.memory || '').trim(),
+    sort_order: item?.sort_order
+  })) as Memory[]
+}
+
+/**
+ * 获取营销文案词库（公开）
+ */
+export async function getPublicMarketingLexicon() {
+  const response = await unifiedApi.get('/public/marketing/lexicon')
+  // unifiedApi 返回的是 { success, message, data: { ...词库 } }，
+  // 这里必须读取内层 data，否则公开页会误用内置的少量默认词句。
+  const envelope = response as any
+  const payload = envelope?.data?.data && typeof envelope.data.data === 'object'
+    ? envelope.data.data
+    : envelope?.data && typeof envelope.data === 'object' && !Array.isArray(envelope.data)
+      ? envelope.data
+      : envelope
+
+  return {
+    subsidyEnabled: payload?.subsidyEnabled === true,
+    colorEnabled: payload?.colorEnabled === true,
+    weatherEnabled: payload?.weatherEnabled === true,
+    solarTermEnabled: payload?.solarTermEnabled === true,
+    modeLexicon: payload?.modeLexicon && typeof payload.modeLexicon === 'object'
+      ? payload.modeLexicon
+      : undefined,
+    typeLexicon: payload?.typeLexicon && typeof payload.typeLexicon === 'object'
+      ? payload.typeLexicon
+      : undefined,
+    contextLexicon: payload?.contextLexicon && typeof payload.contextLexicon === 'object'
+      ? payload.contextLexicon
+      : undefined,
+    eventLexicon: payload?.eventLexicon && typeof payload.eventLexicon === 'object'
+      ? payload.eventLexicon
+      : undefined,
+    updatedAt: payload?.updatedAt ? String(payload.updatedAt) : undefined
+  }
 }
 
 // ============================================================================
@@ -257,6 +298,7 @@ export const baseDataApi = {
   getPublicModels,
   getPublicColors,
   getPublicMemories,
+  getPublicMarketingLexicon,
   // 管理端接口
   getAdminBrands,
   getAdminModels,

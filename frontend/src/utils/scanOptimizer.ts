@@ -77,49 +77,26 @@ export class ScanOptimizer {
    * 生成优化的摄像头配置 - 精准识别优化
    */
   generateCameraConfig(deviceInfo: DeviceInfo): MediaStreamConstraints {
-    // 超高分辨率配置，确保条形码最清晰
-    const baseConfig: MediaStreamConstraints = {
+    const isMobile = deviceInfo.isAndroid || deviceInfo.isIOS
+    const idealWidth = deviceInfo.isLowEnd ? 1280 : (isMobile ? 1920 : 1280)
+    const idealHeight = deviceInfo.isLowEnd ? 720 : (isMobile ? 1080 : 720)
+
+    // Do not set minimum resolution or non-standard focus constraints here.
+    // Several mobile browsers reject the complete request when one hard
+    // constraint is unsupported. Optional focus/torch/zoom are applied only
+    // after the stream starts and its capabilities are known.
+    return {
       audio: false,
       video: {
-        width: { ideal: 2560, min: 1920 },
-        height: { ideal: 1440, min: 1080 },
-        facingMode: 'environment'
-      }
-    }
-
-    // 移动设备精准优化配置
-    if (deviceInfo.isAndroid || deviceInfo.isIOS) {
-      const videoConstraints: any = {
-        width: { ideal: 2560, min: 1920 },
-        height: { ideal: 1440, min: 1080 },
-        facingMode: 'environment'
-      }
-
-      // 安卓设备精准优化
-      if (deviceInfo.isAndroid) {
-        videoConstraints.frameRate = { ideal: 24, max: 30 } // 稳定帧率，减少模糊
-        videoConstraints.zoom = { ideal: 1.0, max: 2.0 } // 允许适度放大
-        // 强制连续自动对焦
-        videoConstraints.focusMode = 'continuous'
-        // 优化曝光和白平衡
-        videoConstraints.exposureMode = 'continuous'
-        videoConstraints.whiteBalanceMode = 'continuous'
-
-        // 制造商特殊优化
-        if (['xiaomi', 'huawei'].includes(deviceInfo.manufacturer)) {
-          videoConstraints.frameRate = { ideal: 20, max: 25 } // 小米华为设备降低帧率提高清晰度
+        facingMode: { ideal: 'environment' },
+        width: { ideal: idealWidth },
+        height: { ideal: idealHeight },
+        frameRate: {
+          ideal: deviceInfo.isLowEnd ? 20 : 30,
+          max: 30
         }
-      } else if (deviceInfo.isIOS) {
-        // iOS设备精准优化
-        videoConstraints.frameRate = { ideal: 30, max: 60 }
-        videoConstraints.focusMode = 'continuous-auto'
-        videoConstraints.exposureMode = 'continuous-auto'
       }
-
-      baseConfig.video = videoConstraints
     }
-
-    return baseConfig
   }
 
   /**

@@ -71,6 +71,7 @@ export interface Preorder {
   remarks?: string
   operator_id?: number
   operator_name?: string
+  matched_phone_id?: number
   cancelled_at?: string
   matched_time?: string
   delivered_time?: string
@@ -106,6 +107,20 @@ export interface MatchPreorderParams {
   actual_model?: string
   arrival_date?: string
   actual_price?: number
+}
+
+export interface MatchablePhone {
+  id: number
+  imei: string
+  serial_number?: string
+  brand_name?: string
+  model_name?: string
+  color_name?: string
+  memory_size?: string
+  store_name?: string
+  sale_price?: number
+  purchase_cost?: number
+  is_new: number
 }
 
 // 交付预定单参数
@@ -180,6 +195,14 @@ export async function getMatchablePreorders(params: {
 }
 
 /**
+ * 获取某待匹配预定单可选的在库设备
+ */
+export async function getMatchablePhones(id: number): Promise<MatchablePhone[]> {
+  const response = await unifiedApi.get<MatchablePhone[]>(`/preorders/${id}/matchable-phones`)
+  return response.data as MatchablePhone[]
+}
+
+/**
  * 获取预定单详情
  */
 export async function getPreorderDetail(id: number): Promise<Preorder> {
@@ -247,6 +270,7 @@ export const preorderApi = {
   getPreorders,
   getPreorderStats,
   getMatchablePreorders,
+  getMatchablePhones,
   getPreorderDetail,
   createPreorder,
   matchPreorder,

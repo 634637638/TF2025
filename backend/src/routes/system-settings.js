@@ -3,6 +3,11 @@ const router = express.Router();
 const SystemSettingsController = require('../controllers/system-settings.controller');
 const { unifiedAuth, requirePermission, requireAnyPermission } = require('../middleware/unified-auth');
 
+const useMarketingLexiconKey = (req, _res, next) => {
+  req.params.key = 'marketing_lexicon';
+  next();
+};
+
 // 系统配置相关路由（需要认证）
 router.use(unifiedAuth);
 
@@ -35,6 +40,19 @@ router.get('/price-markup-config', requirePermission('price-list:view'),
 // 保存加价配置（价目表编辑权限）
 router.post('/price-markup-config', requirePermission('price-list:edit'),
   SystemSettingsController.saveMarkupConfig.bind(SystemSettingsController)
+);
+
+// 营销词库使用营销管理模块权限，避免复用系统设置权限。
+router.get('/marketing_lexicon', requirePermission('marketing:view'), useMarketingLexiconKey,
+  SystemSettingsController.getSettingByKey.bind(SystemSettingsController)
+);
+
+router.put('/marketing_lexicon', requireAnyPermission([
+  'marketing:create',
+  'marketing:edit',
+  'marketing:delete'
+]), useMarketingLexiconKey,
+  SystemSettingsController.updateSetting.bind(SystemSettingsController)
 );
 
 // 获取单个配置（管理员）

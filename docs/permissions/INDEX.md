@@ -2,14 +2,15 @@
 
 > **文档说明**：本目录包含 TF2025 项目的权限管理、字段权限、权限缓存与权限组件相关文档。
 >
-> **最后更新**：2026-04-06
-> **版本**：v1.1.1
+> **最后更新**：2026-08-24
+> **版本**：v1.2.0
 > **维护者**：TF2025 开发团队
 
 ## 核心文档
 
 - [权限系统完整指南](permission-system-guide.md) - 数据库驱动 RBAC、权限汇总与接入规范
 - [页面扫描与模块注册规范](page-module-scan-guide.md) - 新增页面、`page/` 目录与模块扫描规则
+- [页面权限能力统一规范](../frontend/permission-capability-standards.md) - 模块真实能力清单、前后端接入和强制审计
 - [字段权限完整指南](field-permissions-complete-guide.md) - 字段级别权限控制
 - [权限操作日志规范](permission-operation-log.md) - 日志写入、详情、分页和长期保留规则
 
@@ -28,6 +29,7 @@
 - 权限是数据库数据，不靠前端角色名推断。
 - 用户最终权限由后端统一汇总，不由前端拼规则。
 - 菜单显示与页面动作权限分离存储。
+- 模块可配置的动作由 `config/module-permission-capabilities.json` 唯一声明，数据库历史数据不能新增动作。
 
 ## 权限命名规范
 
@@ -65,6 +67,12 @@ if (checkUserPermission('sales_salesview:create')) {
 - [业务文档](../business/)
 
 ## 最近更新
+
+### 2026-08-24
+
+- 新增页面权限能力统一规范和强制审计。
+- 未登记模块只允许 `view`，取消通用 CRUD 自动生成。
+- `manage`、`sync` 和业务状态动作必须对应真实页面功能及后端接口。
 
 ### 2026-07-26
 

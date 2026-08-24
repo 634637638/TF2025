@@ -20,8 +20,9 @@ export const ROUTE_PERMISSION_MAP: Record<string, string[]> = {
   '/accessories': ['accessories:view'],
   '/inventory': ['inventory:view'],
   '/preorders': ['preorders:view'],
-  '/reminders': ['reminders:view', 'reminders:manage'],
+  '/reminders': ['reminders:view'],
   '/shared': ['shared:view'],
+  '/marketing': ['marketing:view'],
   '/error-management': ['system:view'],
   '/query': ['query:view'],
   '/permissions': ['permissions:view'],
@@ -32,24 +33,16 @@ export const ROUTE_PERMISSION_MAP: Record<string, string[]> = {
   '/rentals': ['rentals:view'],
   '/repairs': ['repairs:view'],
   '/price-list': ['price-list:view'],
-  '/price-list/sync-logs': ['price-list:view'],
-  '/sales/phone': ['sales:view'],
-  '/sales/edit': ['sales-editphoneview:view'],
-  '/users': ['users:view'],
-  '/stock-in': ['stock-in:view'],
-  '/procurement': ['stock-in:view'],
-  '/supplier-payments': ['supplier-payments:view'],
-  '/reports': ['reports:view'],
-  '/roles': ['permissions:view']
+  '/price-list/sync-logs': ['price-list-sync-logs:view'],
 }
 
 export const H5_ROUTE_PERMISSION_MAP: Record<string, string[]> = {
-  '/H5-admin/page/templates': ['h5-templates:view', 'h5-admin:view'],
-  '/H5-admin/page/sold-products': ['h5-sold-products:view', 'h5-admin:view'],
-  '/H5-admin/page/config': ['h5-config:view', 'h5-admin:view'],
-  '/H5-admin/page/home-sections': ['home-sections:view', 'h5-admin:view'],
-  '/H5-admin/page/banners': ['h5-banners:view', 'h5-admin:view'],
-  '/H5-admin/page/orders': ['h5-orders:view', 'h5-admin:view', 'sales:view']
+  '/H5-admin/page/templates': ['h5-templates:view'],
+  '/H5-admin/page/sold-products': ['h5-sold-products:view'],
+  '/H5-admin/page/config': ['h5-config:view'],
+  '/H5-admin/page/home-sections': ['home-sections:view'],
+  '/H5-admin/page/banners': ['h5-banners:view'],
+  '/H5-admin/page/orders': ['h5-orders:view']
 }
 
 export function normalizeRoutePath(path: string): string {

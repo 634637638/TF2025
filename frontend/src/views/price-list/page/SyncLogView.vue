@@ -375,7 +375,7 @@ import SectionLoading from '@/components/SectionLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { logger } from '@/utils/logger'
 const router = useRouter()
-const { canView, canDelete, handleNoPermission } = usePagePermissions('price-list')
+const { canView, canDelete, handleNoPermission } = usePagePermissions('price-list-sync-logs')
 
 const syncLogFieldMap: Record<string, string> = {
   stats_success_count: 'stats.success_count',

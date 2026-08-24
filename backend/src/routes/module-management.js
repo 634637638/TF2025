@@ -626,9 +626,9 @@ router.put('/:moduleKey/name', requirePermission('permissions:admin'), async (re
 
     const pool = getDatabase();
 
-    // 获取当前模块信息
+    // 名称管理与启用状态相互独立，禁用模块也允许添加备注或恢复名称。
     const [currentModule] = await pool.execute(
-      'SELECT * FROM modules WHERE `key` = ? AND is_active = 1',
+      'SELECT * FROM modules WHERE `key` = ?',
       [moduleKey]
     );
 
@@ -698,9 +698,9 @@ router.put('/:moduleKey/restore-name', requirePermission('permissions:admin'), a
     const { moduleKey } = req.params;
     const pool = getDatabase();
 
-    // 获取当前模块信息
+    // 禁用模块仍可能需要恢复名称，不能按启用状态过滤。
     const [currentModule] = await pool.execute(
-      'SELECT * FROM modules WHERE `key` = ? AND is_active = 1',
+      'SELECT * FROM modules WHERE `key` = ?',
       [moduleKey]
     );
 
@@ -771,7 +771,7 @@ router.get('/:moduleKey/name-status', requirePermission('permissions:admin'), as
     const pool = getDatabase();
 
     const [module] = await pool.execute(
-      'SELECT `key`, name, is_custom_name, original_name, created_at, updated_at FROM modules WHERE `key` = ? AND is_active = 1',
+      'SELECT `key`, name, is_active, is_custom_name, original_name, created_at, updated_at FROM modules WHERE `key` = ?',
       [moduleKey]
     );
 
@@ -786,6 +786,7 @@ router.get('/:moduleKey/name-status', requirePermission('permissions:admin'), as
     const status = {
       moduleKey: moduleInfo.key,
       currentName: moduleInfo.name,
+      isActive: Number(moduleInfo.is_active) === 1,
       isCustomName: moduleInfo.is_custom_name === 1,
       originalName: moduleInfo.original_name,
       canRestore: moduleInfo.is_custom_name === 1 && moduleInfo.original_name !== null,

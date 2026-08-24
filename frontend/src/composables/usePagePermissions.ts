@@ -85,7 +85,11 @@ export const usePagePermissions = (module: string) => {
       export: '导出',
       import: '导入',
       approve: '审批',
-      manage: '管理'
+      manage: '管理',
+      sync: '同步',
+      match: '匹配',
+      deliver: '交付',
+      cancel: '取消预定'
     }
 
     const actionName = actionNames[action] || action
@@ -101,12 +105,16 @@ export const usePagePermissions = (module: string) => {
   const canView = computed(() => hasPermission('view'))
   const canCreate = computed(() => hasPermission('create'))
   const canEdit = computed(() => hasPermission('edit'))
-  const canUpdate = computed(() => hasPermission('update')) // edit的别名
+  const canUpdate = computed(() => hasPermission('edit')) // edit 的语义别名，不创建 update 权限
   const canDelete = computed(() => hasPermission('delete'))
   const canExport = computed(() => hasPermission('export'))
   const canImport = computed(() => hasPermission('import'))
   const canApprove = computed(() => hasPermission('approve'))
   const canManage = computed(() => hasPermission('manage'))
+  const canSync = computed(() => hasPermission('sync'))
+  const canMatch = computed(() => hasPermission('match'))
+  const canDeliver = computed(() => hasPermission('deliver'))
+  const canCancel = computed(() => hasPermission('cancel'))
 
   // 检查多个权限中是否有任意一个
   const hasAnyPermission = (actions: string[]): boolean => {
@@ -188,7 +196,11 @@ export const usePagePermissions = (module: string) => {
     canExport,
     canImport,
     canApprove,
-    canManage
+    canManage,
+    canSync,
+    canMatch,
+    canDeliver,
+    canCancel
   }
 }
 

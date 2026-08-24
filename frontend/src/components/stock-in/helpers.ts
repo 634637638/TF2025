@@ -238,7 +238,7 @@ export const normalizeSerialNumberInput = (serialNumber: string | undefined): st
   if (!serialNumber) return ''
 
   return serialNumber
-    .replace(/[^a-zA-Z0-9]/g, '')
+    .replace(/[^a-zA-Z0-9/-]/g, '')
     .toUpperCase()
     .slice(0, 30)
 }
@@ -250,7 +250,7 @@ export const validateSerialNumber = (
     return undefined
   }
 
-  return /^[A-Za-z0-9]{4,30}$/.test(serialNumber)
+  return /^[A-Za-z0-9](?:[A-Za-z0-9]|[/-](?=[A-Za-z0-9])){3,29}$/.test(serialNumber)
 }
 
 export const toggleNoIMEIModeState = (
@@ -310,11 +310,11 @@ export const buildStockInScanPromptConfig = (
     : '请输入序列号',
   title: scanType === 'imei' ? 'IMEI手动输入' : '序列号手动输入',
   inputPattern: scanType === 'imei'
-    ? (isNoIMEIMode ? /^[A-Za-z0-9]{4,30}$/ : /^\d{15}$/)
-    : /^[A-Za-z0-9]{4,30}$/,
+    ? (isNoIMEIMode ? /^[A-Za-z0-9](?:[A-Za-z0-9]|[/-](?=[A-Za-z0-9])){3,29}$/ : /^\d{15}$/)
+    : /^[A-Za-z0-9](?:[A-Za-z0-9]|[/-](?=[A-Za-z0-9])){3,29}$/,
   inputErrorMessage: scanType === 'imei'
     ? (isNoIMEIMode ? '请输入4-30位字母或数字' : '请输入15位数字的IMEI号')
-    : '请输入有效的序列号',
+    : '请输入4-30位字母、数字、斜杠或连字符组成的序列号',
   inputPlaceholder: scanType === 'imei'
     ? (isNoIMEIMode ? '请输入字母或数字IMEI' : '例如：356738110412345')
     : '请输入设备序列号'

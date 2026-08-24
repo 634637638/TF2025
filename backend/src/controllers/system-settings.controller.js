@@ -42,7 +42,23 @@ class SystemSettingsController {
       const result = await SystemSettingsService.getSettingByKey(key);
 
       if (!result) {
+        // 营销词库是可选配置：首次打开后台时尚未保存也应返回空配置，
+        // 让前端继续使用内置默认词库，而不是把“尚未初始化”当成接口错误。
+        if (key === 'marketing_lexicon') {
+          return ApiResponse.success(res, '营销词库尚未初始化，使用默认词库', {
+            key,
+            type: 'json'
+          }, 200);
+        }
         return ApiResponse.error(res, '配置不存在', 404);
+      }
+
+      if (key === 'marketing_generation_config' && result?.value && typeof result.value === 'object') {
+        result.value = {
+          ...result.value,
+          apiKey: '',
+          hasApiKey: Boolean(result.value.apiKey)
+        };
       }
 
       ApiResponse.success(res, '获取配置成功', result, 200);
@@ -60,7 +76,24 @@ class SystemSettingsController {
       const { key } = req.params;
       const { value, type } = req.body;
 
-      const result = await SystemSettingsService.updateSetting(key, value, type);
+      let nextValue = value;
+      if (key === 'marketing_generation_config' && value && typeof value === 'object') {
+        const existing = await SystemSettingsService.getSettingByKey(key);
+        if (
+          existing?.value &&
+          typeof existing.value === 'object' &&
+          !String(value.apiKey || '').trim() &&
+          existing.value.apiKey
+        ) {
+          nextValue = {
+            ...existing.value,
+            ...value,
+            apiKey: existing.value.apiKey
+          };
+        }
+      }
+
+      const result = await SystemSettingsService.updateSetting(key, nextValue, type);
       ApiResponse.success(res, '更新配置成功', result, 200);
     } catch (error) {
       log.error('更新配置失败:', error);

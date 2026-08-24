@@ -135,7 +135,7 @@ router.delete('/sync/config/:configId', unifiedAuth, requirePermission('price-li
  * @desc    手动触发同步
  * @access  Private
  */
-router.post('/sync/trigger', unifiedAuth, requirePermission('price-list:edit'), priceListController.triggerSync);
+router.post('/sync/trigger', unifiedAuth, requirePermission('price-list:sync'), priceListController.triggerSync);
 
 /**
  * @route   GET /api/price-list/check-iphone16
@@ -289,21 +289,21 @@ router.post('/test-no-inventory', unifiedAuth, requirePermission('price-list:edi
  * @desc    获取同步日志
  * @access  Private
  */
-router.get('/sync/logs', unifiedAuth, requirePermission('price-list:view'), priceListController.getSyncLogs);
+router.get('/sync/logs', unifiedAuth, requirePermission('price-list-sync-logs:view'), priceListController.getSyncLogs);
 
 /**
  * @route   DELETE /api/price-list/sync/logs/:id
  * @desc    删除同步日志
  * @access  Private
  */
-router.delete('/sync/logs/:id', unifiedAuth, requirePermission('price-list:delete'), priceListController.deleteSyncLog);
+router.delete('/sync/logs/:id', unifiedAuth, requirePermission('price-list-sync-logs:delete'), priceListController.deleteSyncLog);
 
 /**
  * @route   DELETE /api/price-list/sync/logs
  * @desc    清空同步日志
  * @access  Private
  */
-router.delete('/sync/logs', unifiedAuth, requirePermission('price-list:delete'), priceListController.clearSyncLogs);
+router.delete('/sync/logs', unifiedAuth, requirePermission('price-list-sync-logs:delete'), priceListController.clearSyncLogs);
 
 /**
  * @route   POST /api/price-list/fix-is-collect

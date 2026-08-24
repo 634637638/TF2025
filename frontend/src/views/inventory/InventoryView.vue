@@ -676,7 +676,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed, watch, onUnmounted, defineAsyncComponent } from 'vue'
+import { ref, reactive, onMounted, computed, watch, onUnmounted, onActivated, defineAsyncComponent } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox, ElSelect, ElOption, ElInputNumber, ElDatePicker } from 'element-plus'
 import { useMobileDetection } from '@/composables/mobile'
@@ -2366,6 +2366,18 @@ const clearStockInRouteFlag = () => {
   void router.replace({ path: route.path, query })
 }
 
+// 综合查询可通过 URL 参数打开入库弹窗。库存页使用 KeepAlive 缓存时，
+// 组件不会重新挂载，因此同时在路由变化和重新激活时处理该参数。
+const openStockInFromRoute = () => {
+  if (String(route.query.openStockIn || '') !== 'true' || !canCreate.value) return
+  showStockInModal.value = true
+}
+
+watch(
+  () => route.query.openStockIn,
+  () => openStockInFromRoute()
+)
+
 // 入库成功回调
 const handleStockInSuccess = () => {
   showStockInModal.value = false
@@ -3223,12 +3235,14 @@ onMounted(async () => {
   })
 
   // 检查 URL 参数，如果有 openStockIn=true 则自动打开入库模态框
-  if (route.query.openStockIn === 'true') {
-    showStockInModal.value = true
-  }
+  openStockInFromRoute()
 
   // 添加窗口大小监听
   window.addEventListener('resize', updateWindowWidth)
+})
+
+onActivated(() => {
+  openStockInFromRoute()
 })
 
 // 清理监听器

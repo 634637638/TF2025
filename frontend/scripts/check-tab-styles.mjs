@@ -3,6 +3,7 @@ import { extname, join, relative, resolve } from 'node:path'
 
 const root = resolve(import.meta.dirname, '..')
 const sourceRoot = join(root, 'src')
+const globalTabStylePath = join(sourceRoot, 'styles/components/_tabs.scss')
 
 function walk(directory, files = []) {
   for (const entry of readdirSync(directory)) {
@@ -19,6 +20,34 @@ function lineNumber(source, index) {
 }
 
 const findings = []
+const globalTabStyle = readFileSync(globalTabStylePath, 'utf8')
+const requiredGlobalTokens = [
+  '--tf-tab-bg:',
+  '--tf-tab-border:',
+  '--tf-tab-hover-border:',
+  '--tf-tab-active-border:',
+  '--tf-tab-scroll-control-size:',
+  '--tf-tab-scroll-control-bg:',
+  '--tf-tab-scroll-control-border:'
+]
+
+for (const token of requiredGlobalTokens) {
+  if (!globalTabStyle.includes(token)) {
+    findings.push(`src/styles/components/_tabs.scss:1 全局 TAB 缺少状态令牌 ${token}`)
+  }
+}
+
+if (!/\.tf-page-tabs\.tab-navigation\s+\.el-button\s*\{[\s\S]*?border:\s*1px\s+solid\s+var\(--tf-tab-border\)\s*!important/.test(globalTabStyle)) {
+  findings.push('src/styles/components/_tabs.scss:1 按钮型 TAB 未使用全局独立边框')
+}
+
+if (!/\.tf-page-tabs\.el-tabs[\s\S]*?\.el-tabs__item\s*\{[\s\S]*?border:\s*1px\s+solid\s+var\(--tf-tab-border\)\s*!important/.test(globalTabStyle)) {
+  findings.push('src/styles/components/_tabs.scss:1 Element Plus TAB 未使用全局独立边框')
+}
+
+if (!/\.el-tabs__nav-prev,[\s\S]*?\.el-tabs__nav-next\s*\{[\s\S]*?border:\s*1px\s+solid\s+var\(--tf-tab-scroll-control-border\)/.test(globalTabStyle)) {
+  findings.push('src/styles/components/_tabs.scss:1 TAB 溢出导航按钮未使用全局独立边框')
+}
 
 for (const file of walk(sourceRoot)) {
   const source = readFileSync(file, 'utf8')

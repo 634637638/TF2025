@@ -550,12 +550,11 @@ interface TemplateGroup {
 
 const router = useRouter()
 const templatePermissions = usePagePermissions('h5-admin-templates')
-const h5AdminPermissions = usePagePermissions('h5-admin')
 const { handleNoPermission } = templatePermissions
-const canView = computed(() => templatePermissions.canView.value || h5AdminPermissions.canView.value)
-const canCreate = computed(() => templatePermissions.canCreate.value || h5AdminPermissions.canCreate.value)
-const canEdit = computed(() => templatePermissions.canEdit.value || h5AdminPermissions.canEdit.value)
-const canDelete = computed(() => templatePermissions.canDelete.value || h5AdminPermissions.canDelete.value)
+const canView = computed(() => templatePermissions.canView.value)
+const canCreate = computed(() => templatePermissions.canCreate.value)
+const canEdit = computed(() => templatePermissions.canEdit.value)
+const canDelete = computed(() => templatePermissions.canDelete.value)
 
 // 注入父组件提供的注册方法
 const registerHeaderActions = inject<(actions: HeaderAction[]) => void>('registerHeaderActions')

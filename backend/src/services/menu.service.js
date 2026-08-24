@@ -14,10 +14,87 @@ const {
   iconJoinSelect,
   iconLeftJoin
 } = require('../utils/iconStore');
+const { hasColumn } = require('./schemaInspector.service');
 
 class MenuService {
   constructor() {
     this.db = getDatabase();
+  }
+
+  async syncBoundModuleName(menuId, moduleId, moduleKey, menuName) {
+    const normalizedName = String(menuName || '').trim();
+    if (!normalizedName || (!moduleId && !moduleKey)) {
+      return;
+    }
+
+    const [supportsCustomName, supportsOriginalName, supportsMenuId] = await Promise.all([
+      hasColumn('modules', 'is_custom_name', this.db),
+      hasColumn('modules', 'original_name', this.db),
+      hasColumn('modules', 'menu_id', this.db)
+    ]);
+    const optionalFields = [
+      supportsCustomName ? 'is_custom_name' : null,
+      supportsOriginalName ? 'original_name' : null,
+      supportsMenuId ? 'menu_id' : null
+    ].filter(Boolean);
+    const selectFields = ['id', '`key`', 'name', ...optionalFields].join(', ');
+
+    let modules = [];
+    if (moduleId) {
+      [modules] = await this.db.execute(
+        `SELECT ${selectFields} FROM modules WHERE id = ? LIMIT 1`,
+        [moduleId]
+      );
+    }
+
+    if (modules.length === 0 && moduleKey) {
+      [modules] = await this.db.execute(
+        `SELECT ${selectFields} FROM modules WHERE \`key\` = ? LIMIT 1`,
+        [moduleKey]
+      );
+    }
+
+    if (modules.length === 0) {
+      return;
+    }
+
+    const module = modules[0];
+    const updateFields = [];
+    const updateValues = [];
+
+    if (module.name !== normalizedName) {
+      updateFields.push('name = ?');
+      updateValues.push(normalizedName);
+    }
+
+    // 名称即使暂时相同也必须标记保护，否则后续模块扫描仍可能恢复默认名称。
+    if (supportsCustomName && Number(module.is_custom_name) !== 1) {
+      updateFields.push('is_custom_name = 1');
+    }
+
+    if (supportsOriginalName && module.name !== normalizedName) {
+      updateFields.push('original_name = COALESCE(original_name, ?)');
+      updateValues.push(module.original_name || module.name || normalizedName);
+    }
+
+    if (supportsMenuId && menuId && !module.menu_id) {
+      updateFields.push('menu_id = ?');
+      updateValues.push(menuId);
+    }
+
+    if (updateFields.length === 0) {
+      return;
+    }
+
+    updateFields.push('updated_at = NOW()');
+    updateValues.push(module.id);
+
+    await this.db.execute(
+      `UPDATE modules SET ${updateFields.join(', ')} WHERE id = ?`,
+      updateValues
+    );
+
+    log.debug(`✅ 已同步并保护菜单绑定模块名称: ${module.key} "${module.name}" -> "${normalizedName}"`);
   }
 
   /**
@@ -174,6 +251,8 @@ class MenuService {
         moduleKey
       ]);
 
+      await this.syncBoundModuleName(result.insertId, moduleId, moduleKey, menuData.name);
+
       return {
         success: true,
         message: '创建菜单成功',
@@ -272,9 +351,10 @@ class MenuService {
       `;
 
       // 确保所有参数都不是 undefined，使用 ?? 运算符提供 null 默认值
+      const nextMenuName = menuData.name ?? existingMenu[0].name;
       await this.db.execute(updateQuery, [
         menuData.parent_id !== undefined ? menuData.parent_id : existingMenu[0].parent_id,
-        menuData.name ?? existingMenu[0].name,
+        nextMenuName,
         menuData.url ?? existingMenu[0].url ?? null,
         menuData.icon ?? existingMenu[0].icon ?? '',
         menuData.sort_order ?? existingMenu[0].sort_order ?? 0,
@@ -286,6 +366,8 @@ class MenuService {
         moduleKey,
         id
       ]);
+
+      await this.syncBoundModuleName(id, moduleId, moduleKey, nextMenuName);
 
       return {
         success: true,

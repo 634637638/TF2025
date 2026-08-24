@@ -366,12 +366,11 @@ import { logger } from '@/utils/logger'
 import type { HeaderAction } from '@/types'
 const router = useRouter()
 const homeSectionPermissions = usePagePermissions('h5-admin-home-sections')
-const h5AdminPermissions = usePagePermissions('h5-admin')
 const { handleNoPermission } = homeSectionPermissions
-const canView = computed(() => homeSectionPermissions.canView.value || h5AdminPermissions.canView.value)
-const canCreate = computed(() => homeSectionPermissions.canCreate.value || h5AdminPermissions.canCreate.value)
-const canEdit = computed(() => homeSectionPermissions.canEdit.value || h5AdminPermissions.canEdit.value)
-const canDelete = computed(() => homeSectionPermissions.canDelete.value || h5AdminPermissions.canDelete.value)
+const canView = computed(() => homeSectionPermissions.canView.value)
+const canCreate = computed(() => homeSectionPermissions.canCreate.value)
+const canEdit = computed(() => homeSectionPermissions.canEdit.value)
+const canDelete = computed(() => homeSectionPermissions.canDelete.value)
 
 // 注入父组件提供的注册方法
 const registerHeaderActions = inject<(actions: HeaderAction[]) => void>('registerHeaderActions')

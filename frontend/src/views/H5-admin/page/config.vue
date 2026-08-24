@@ -263,10 +263,9 @@ import type { HeaderAction } from '@/types'
 const router = useRouter()
 const authStore = useAuthStore()
 const configPermissions = usePagePermissions('h5-admin-config')
-const h5AdminPermissions = usePagePermissions('h5-admin')
 const { handleNoPermission } = configPermissions
-const canView = computed(() => configPermissions.canView.value || h5AdminPermissions.canView.value)
-const canEdit = computed(() => configPermissions.canEdit.value || h5AdminPermissions.canEdit.value)
+const canView = computed(() => configPermissions.canView.value)
+const canEdit = computed(() => configPermissions.canEdit.value)
 
 // 注入父组件提供的注册方法
 const registerHeaderActions = inject<(actions: HeaderAction[]) => void>('registerHeaderActions')

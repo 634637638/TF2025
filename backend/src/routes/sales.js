@@ -842,8 +842,16 @@ router.get('/phones/available/export', unifiedAuth, requirePermission('sales:exp
   }
 });
 
+const requirePreorderDeliveryWhenLinked = (req, res, next) => {
+  if (!req.body?.preorder_id) {
+    return next();
+  }
+
+  return requirePermission('preorders:deliver')(req, res, next);
+};
+
 // 手机销售出库（支持单个和批量销售）
-router.post('/phone', unifiedAuth, requirePermission('sales:create'), async (req, res) => {
+router.post('/phone', unifiedAuth, requirePermission('sales:create'), requirePreorderDeliveryWhenLinked, async (req, res) => {
   try {
     const {
       phone_id,  // 单个设备ID（兼容性）
@@ -1219,44 +1227,55 @@ router.post('/phone', unifiedAuth, requirePermission('sales:create'), async (req
       if (preorder_id) {
         // 获取预订单信息
         const [preorderInfo] = await conn.execute(
-          `SELECT id, customer_id, advance_payment, matched_phone_id, status FROM preorders WHERE id = ?`,
+          `SELECT id, customer_id, deposit_amount AS advance_payment, matched_phone_id, status
+           FROM preorders
+           WHERE id = ?
+           FOR UPDATE`,
           [parseInt(preorder_id)]
         );
 
-        if (preorderInfo.length > 0) {
-          const preorder = preorderInfo[0];
-
-          // 检查预订单状态是否为已匹配（arrived）
-          if (preorder.status !== 'arrived') {
-            log.warn('⚠️ 预订单状态不是已匹配，当前状态:', preorder.status);
-          }
-
-          // 计算尾款（销售价格 - 定金）
-          const actualPrice = finalizedPhonesToSell[0].price;
-          const depositAmount = parseFloat(advance_payment) || parseFloat(preorder.advance_payment) || 0;
-          const remainingAmount = actualPrice - depositAmount;
-
-          // 更新预订单状态为已交付
-          await conn.execute(
-            `UPDATE preorders SET
-              status = 'completed',
-              actual_price = ?,
-              delivered_time = ?,
-              operator_id = ?,
-              remaining_amount = ?
-            WHERE id = ?`,
-            [
-              actualPrice,
-              saleTimeStr,
-              operator_id || req.user.id,
-              remainingAmount,
-              parseInt(preorder_id)
-            ]
-          );
-
-        } else {
-          log.warn('⚠️ 未找到预订单，ID:', preorder_id);
+        if (preorderInfo.length === 0) {
+          await conn.rollback();
+          return res.status(404).json({ success: false, message: '预定单不存在' });
         }
+
+        const preorder = preorderInfo[0];
+        if (preorder.status !== 'arrived') {
+          await conn.rollback();
+          return res.status(400).json({ success: false, message: '只有已匹配的预定单可以交付' });
+        }
+
+        const deliveredPhone = finalizedPhonesToSell[0];
+        if (
+          finalizedPhonesToSell.length !== 1 ||
+          Number(preorder.matched_phone_id) !== Number(deliveredPhone.phone_id)
+        ) {
+          await conn.rollback();
+          return res.status(400).json({ success: false, message: '交付设备与预定单已匹配设备不一致' });
+        }
+
+        // 计算尾款（销售价格 - 定金）
+        const actualPrice = deliveredPhone.price;
+        const depositAmount = parseFloat(advance_payment) || parseFloat(preorder.advance_payment) || 0;
+        const remainingAmount = Math.max(0, actualPrice - depositAmount);
+
+        await conn.execute(
+          `UPDATE preorders SET
+             status = 'completed',
+             actual_price = ?,
+             delivered_time = ?,
+             operator_id = ?,
+             remaining_amount = ?,
+             updated_at = NOW()
+           WHERE id = ?`,
+          [
+            actualPrice,
+            saleTimeStr,
+            operator_id || req.user.id,
+            remainingAmount,
+            parseInt(preorder_id)
+          ]
+        );
       }
 
       const pointsConfig = await getCustomerPointsConfig(conn);

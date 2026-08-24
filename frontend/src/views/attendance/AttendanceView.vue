@@ -104,7 +104,7 @@
         <!-- TAB 切换 -->
         <el-tabs v-model="activeTab" class="attendance-tabs tf-page-tabs" @tab-change="handleTabChange">
           <!-- 所有考勤 -->
-          <el-tab-pane label="所有考勤" name="all" class="tf-tab-panel" v-if="canViewAllAttendance">
+          <el-tab-pane v-if="canViewAllAttendance" data-view-permission="attendance:view" label="所有考勤" name="all" class="tf-tab-panel">
             <UnifiedSearchPanel
               v-model:expanded="searchExpanded"
               :loading="loading"
@@ -356,7 +356,7 @@
           </el-tab-pane>
 
           <!-- 我的考勤（所有用户） -->
-          <el-tab-pane label="我的考勤" name="my" class="tf-tab-panel" v-if="canViewOwnAttendance">
+          <el-tab-pane v-if="canViewOwnAttendance" data-view-permission="my-attendance:view" label="我的考勤" name="my" class="tf-tab-panel">
             <UnifiedSearchPanel
               v-model:expanded="mySearchExpanded"
               :loading="myLoading"
@@ -958,7 +958,6 @@ const {
   canEdit,
   canDelete,
   canApprove: canApprovePermission,
-  canManage: canManagePermission,
   handleNoPermission: handleAttendanceNoPermission
 } = usePagePermissions('attendance')
 const myAttendancePermissions = usePagePermissions('my-attendance')
@@ -1049,7 +1048,7 @@ const approveForm = reactive({
 const canManageAttendanceRecords = computed(() => canViewAllAttendance.value)
 
 const canViewTeamAttendance = computed(() => canViewAllAttendance.value)
-const canApprove = computed(() => canApprovePermission.value || canManagePermission.value)
+const canApprove = computed(() => canApprovePermission.value)
 
 const attendanceFieldMap: Record<string, string> = {
   stats_last_month_leave: 'stats.last_month_leave',

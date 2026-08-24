@@ -235,12 +235,11 @@ import type { HeaderAction } from '@/types'
 const router = useRouter()
 const authStore = useAuthStore()
 const bannerPermissions = usePagePermissions('h5-admin-banners')
-const h5AdminPermissions = usePagePermissions('h5-admin')
 const { handleNoPermission } = bannerPermissions
-const canView = computed(() => bannerPermissions.canView.value || h5AdminPermissions.canView.value)
-const canCreate = computed(() => bannerPermissions.canCreate.value || h5AdminPermissions.canCreate.value)
-const canEdit = computed(() => bannerPermissions.canEdit.value || h5AdminPermissions.canEdit.value)
-const canDelete = computed(() => bannerPermissions.canDelete.value || h5AdminPermissions.canDelete.value)
+const canView = computed(() => bannerPermissions.canView.value)
+const canCreate = computed(() => bannerPermissions.canCreate.value)
+const canEdit = computed(() => bannerPermissions.canEdit.value)
+const canDelete = computed(() => bannerPermissions.canDelete.value)
 
 // 注入父组件提供的注册方法
 const registerHeaderActions = inject<(actions: HeaderAction[]) => void>('registerHeaderActions')

@@ -82,6 +82,11 @@ class SystemSettingsRepository extends BaseRepository {
    */
   async upsertSetting(settingKey, settingValue, settingType = 'string') {
     try {
+      // JSON 配置必须先序列化再写入 MySQL；直接把对象交给 mysql2
+      // 会在部分驱动版本中触发参数类型错误并返回 500。
+      const persistedValue = settingType === 'json' && settingValue !== null && typeof settingValue === 'object'
+        ? JSON.stringify(settingValue)
+        : settingValue;
       const query = `
         INSERT INTO ${this.tableName} (key_name, value, type)
         VALUES (?, ?, ?)
@@ -90,7 +95,7 @@ class SystemSettingsRepository extends BaseRepository {
         type = VALUES(type),
         updated_at = CURRENT_TIMESTAMP
       `;
-      await this.executeQuery(query, [settingKey, settingValue, settingType]);
+      await this.executeQuery(query, [settingKey, persistedValue, settingType]);
       return await this.getSettingByKey(settingKey);
     } catch (error) {
       log.error('更新系统配置失败:', error);

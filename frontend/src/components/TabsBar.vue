@@ -110,7 +110,7 @@ const handleCommand = (command: string) => {
       break
     case 'refresh':
       // 只刷新当前路由组件，避免整页重载导致菜单、权限、缓存全部重新初始化。
-      tabsStore.refreshCurrentTab()
+      tabsStore.refreshCurrentTab(route.path)
       break
   }
 }

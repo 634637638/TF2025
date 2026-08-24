@@ -604,7 +604,7 @@
                   </el-form-item>
                 </el-col>
                 <el-col :xs="24" :sm="15">
-                  <el-form-item label="模块 Key">
+                  <el-form-item label="绑定模块（名称 / Key）">
                     <el-select
                       v-model="formData.module_key"
                       placeholder="请选择或搜索模块"
@@ -1626,7 +1626,7 @@ const handleSubmit = async () => {
     if (response && response.success) {
       closeModal()
       await new Promise(resolve => setTimeout(resolve, 100))
-      await loadMenus()
+      await Promise.all([loadMenus(), loadModules()])
       success('保存成功', {
         title: isEdit.value ? `菜单"${formData.value.name}"更新成功` : `菜单"${formData.value.name}"创建成功`,
         duration: 3000

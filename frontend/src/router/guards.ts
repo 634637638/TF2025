@@ -324,11 +324,6 @@ export class RouteGuards {
 
         // 2. 检查用户认证状态
         if (!authStore.isAuthenticated) {
-          // 检查跳转冷却，防止重复跳转
-          if (!canRedirect()) {
-            return next(false)
-          }
-
           // 判断是 H5 路由还是主站路由，决定重定向目标
           const isH5Route = to.path.startsWith('/m')
           const loginPath = isH5Route ? '/m/login' : '/login'
@@ -336,16 +331,20 @@ export class RouteGuards {
           // 重定向前保存目标路径
           const redirect = to.fullPath !== '/' && to.fullPath !== loginPath ? to.fullPath : undefined
 
-          // 标记已跳转
-          markRedirected()
-
-          showElementNotification({
-            title: '需要登录',
-            message: '请先登录后再访问此页面',
-            type: 'warning',
-            duration: 3000,
-            position: 'top-right'
-          })
+          // 冷启动时应用尚未挂载，直接进入登录页即可。此时异步通知可能早于
+          // Element Plus 样式加载，造成未样式化提示短暂出现在页面底部。
+          // 跳转本身不能受通知冷却影响，否则并发认证处理会把首次导航卡住。
+          const isInitialNavigation = from.matched.length === 0
+          if (!isInitialNavigation && canRedirect()) {
+            markRedirected()
+            void showElementNotification({
+              title: '需要登录',
+              message: '请先登录后再访问此页面',
+              type: 'warning',
+              duration: 3000,
+              position: 'top-right'
+            })
+          }
 
           return next({
             path: loginPath,
@@ -362,8 +361,10 @@ export class RouteGuards {
           // ⚠️ 容错：检查 token 是否有效
           const token = authStore.token || storage.getToken()
           if (!token || token.length < 10) {
-            // Token 无效时，允许通过但不获取权限（避免 401 错误）
-            return next()
+            return next({
+              path: '/login',
+              query: { redirect: to.fullPath }
+            })
           }
 
           // 进入受限路由前先恢复权限，避免页面先进入再由组件层提示
@@ -389,9 +390,13 @@ export class RouteGuards {
         // 5. 权限检查
         if (requiredPermissions && requiredPermissions.length > 0) {
           if (!Array.isArray(authStore.userPermissions) || authStore.userPermissions.length === 0) {
-            // 权限数据可能仍在恢复过程中，此时先允许进入，
-            // 避免移动端刷新或弱网下出现“页面先打开又立刻被跳走”的误判。
-            return next()
+            showElementWarning('权限数据加载失败，无法访问此页面')
+
+            if (to.path === '/dashboard') {
+              return next()
+            }
+
+            return next('/dashboard')
           }
 
           if (!canAccessRoutePath(to.path, authStore)) {
@@ -439,8 +444,11 @@ export class RouteGuards {
           position: 'top-right'
         })
 
-        // 发生错误时，允许跳转但不保证数据完整性
-        return next()
+        // 受保护路由发生异常时必须拒绝访问，禁止权限系统异常后绕过检查。
+        if (to.path === '/dashboard') {
+          return next(false)
+        }
+        return next('/dashboard')
       }
     })
   }

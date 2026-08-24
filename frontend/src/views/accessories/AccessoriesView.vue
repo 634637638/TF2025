@@ -1,5 +1,12 @@
 <template>
   <div class="accessories-view admin-page admin-unified-base-data-page">
+    <PermissionGate
+      :can-view="canView"
+      mode="denied"
+      module-key="accessories"
+      module-name="配件管理"
+      permission-code="accessories:view"
+    >
     <PageHeader icon="fas fa-box" title="配件管理">
       <template #actions>
         <el-button v-if="canCreate" type="primary" @click="openStockInModal">
@@ -194,6 +201,7 @@
       :accessory="selectedAccessory"
       @success="loadAccessories"
     />
+    </PermissionGate>
   </div>
 </template>
 
@@ -204,7 +212,7 @@ import { useLoadingState } from '@/composables'
 import { useMobile } from '@/composables/mobile'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useRefreshData } from '@/composables/useRefreshData'
-import { PageHeader } from '@/components/base'
+import { PageHeader, PermissionGate } from '@/components/base'
 import InlineLoading from '@/components/InlineLoading.vue'
 import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'

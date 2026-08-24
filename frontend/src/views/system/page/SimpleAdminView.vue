@@ -78,8 +78,16 @@
 
         <!-- 内容区域 -->
         <div class="content-area" ref="contentAreaRef">
-          <!-- 标签页刷新时只重挂当前页面，不整页 reload -->
-          <router-view :key="routeRefreshKey" />
+          <!-- 已打开标签页保持组件实例，切换页面不重载；只有手动刷新当前标签时才重建当前页面 -->
+          <router-view v-slot="{ Component, route: viewRoute }">
+            <KeepAlive :max="12">
+              <component
+                v-if="!isRefreshingCurrentRoute(viewRoute.path)"
+                :is="Component"
+                :key="getRouteCacheKey(viewRoute.path)"
+              />
+            </KeepAlive>
+          </router-view>
         </div>
       </div>
     </div>
@@ -87,7 +95,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import ResponsiveMenu from '@/components/ResponsiveMenu.vue'
 import SimpleSidebar from '@/components/SimpleSidebar.vue'
 import NotificationContainer from '@/components/NotificationContainer.vue'
@@ -123,7 +131,9 @@ const menuStore = useMenuStore()
 const tabsStore = useTabsStore()
 const { user: authUser, isAuthenticated } = storeToRefs(authStore)
 const { menuItems } = storeToRefs(menuStore)
-const routeRefreshKey = computed(() => `${route.fullPath}:${tabsStore.refreshKey}`)
+const scrollPositions = new Map<string, number>()
+const getRouteCacheKey = (path: string) => `${path}:${tabsStore.tabRefreshVersions[path] || 0}`
+const isRefreshingCurrentRoute = (path: string) => tabsStore.refreshingPath === path
 
 // 移动端检测
 const { isMobile } = useMobile()
@@ -316,6 +326,20 @@ const handleScroll = () => {
   }
 }
 
+const saveRouteScrollPosition = (path: string) => {
+  if (!path || !contentAreaRef.value) return
+  scrollPositions.set(path, contentAreaRef.value.scrollTop || 0)
+}
+
+const restoreRouteScrollPosition = async (path: string) => {
+  await nextTick()
+  requestAnimationFrame(() => {
+    if (!contentAreaRef.value) return
+    contentAreaRef.value.scrollTop = scrollPositions.get(path) || 0
+    isScrolled.value = contentAreaRef.value.scrollTop > 10
+  })
+}
+
 // 根据路由信息获取页面标题和图标
 const getPageInfo = (routePath: string) => {
   // 从菜单中查找匹配的菜单项
@@ -344,7 +368,11 @@ const canAddRouteTab = (routePath: string) => {
 // 监听路由变化，自动添加标签页
 watch(
   () => route.path,
-  (newPath) => {
+  (newPath, oldPath) => {
+    if (oldPath) {
+      saveRouteScrollPosition(oldPath)
+    }
+
     if (newPath && !isMobile.value) {
       if (!canAddRouteTab(newPath)) {
         tabsStore.closeTab(newPath)
@@ -358,6 +386,8 @@ watch(
         icon: pageInfo.icon as string
       })
     }
+
+    void restoreRouteScrollPosition(newPath)
   },
   { immediate: true }
 )

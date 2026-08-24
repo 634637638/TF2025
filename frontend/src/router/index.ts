@@ -221,6 +221,15 @@ const routes: RouteRecordRaw[] = [
         }
       },
       {
+        path: 'marketing',
+        name: 'MarketingManagement',
+        component: () => import('@/views/marketing/MarketingManagementView.vue'),
+        meta: {
+          title: '营销管理',
+          icon: 'fas fa-bullhorn'
+        }
+      },
+      {
         path: 'error-management',
         name: 'ErrorManagement',
         component: () => import('@/components/ErrorManagement/ErrorDashboardSimple.vue'),
@@ -395,6 +404,12 @@ const routes: RouteRecordRaw[] = [
     path: '/sales-price-display',
     name: 'SalesPriceDisplay',
     component: () => import('@/views/price-list/page/SalesPriceDisplay.vue'),
+    meta: { requiresAuth: false }
+  },
+  {
+    path: '/Marketing_Copy',
+    name: 'MarketingCopy',
+    component: () => import('@/views/marketing/MarketingView.vue'),
     meta: { requiresAuth: false }
   },
   // H5移动端路由（无需登录）

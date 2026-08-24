@@ -238,10 +238,9 @@ import type { HeaderAction } from '@/types'
 const registerHeaderActions = inject<(actions: HeaderAction[]) => void>('registerHeaderActions')
 const clearHeaderActions = inject<() => void>('clearHeaderActions')
 const soldProductsPermissions = usePagePermissions('h5-sold-products')
-const h5AdminPermissions = usePagePermissions('h5-admin')
 const { handleNoPermission } = soldProductsPermissions
-const canView = computed(() => soldProductsPermissions.canView.value || h5AdminPermissions.canView.value)
-const canDelete = computed(() => soldProductsPermissions.canDelete.value || h5AdminPermissions.canDelete.value)
+const canView = computed(() => soldProductsPermissions.canView.value)
+const canDelete = computed(() => soldProductsPermissions.canDelete.value)
 
 interface SoldProduct {
   id: number

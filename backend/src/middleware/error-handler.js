@@ -1,5 +1,6 @@
 // 统一错误处理中间件
 const log = require('../utils/log');
+const { isDatabaseAvailabilityError } = require('../utils/database-errors');
 
 const errorHandler = (err, req, res, next) => {
   log.error('Error:', err);
@@ -7,10 +8,10 @@ const errorHandler = (err, req, res, next) => {
   log.error('Request Method:', req.method);
 
   // 数据库连接错误
-  if (err.code === 'ECONNRESET' || err.code === 'PROTOCOL_CONNECTION_LOST') {
+  if (isDatabaseAvailabilityError(err)) {
     return res.status(503).json({
       success: false,
-      message: '数据库连接失败，请稍后重试',
+      message: '数据库连接暂时不可用，请稍后重试',
       code: 'DB_CONNECTION_ERROR'
     });
   }
@@ -86,15 +87,6 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // 连接池为空错误
-  if (err.message && err.message.includes('连接池为空')) {
-    return res.status(503).json({
-      success: false,
-      message: '数据库连接池暂不可用，请稍后重试',
-      code: 'POOL_EMPTY'
-    });
-  }
-
   // 自定义应用错误
   if (err.isApplicationError) {
     return res.status(err.statusCode || 500).json({
@@ -136,4 +128,3 @@ class ApplicationError extends Error {
 
 module.exports = errorHandler;
 module.exports.ApplicationError = ApplicationError;
-

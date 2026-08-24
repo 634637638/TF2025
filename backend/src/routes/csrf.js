@@ -75,6 +75,8 @@ function isCSRFExemptRequest(req) {
     /^\/public\/orders\/create$/,
     /^\/public\/orders\/[^/]+\/confirm-payment$/,
     /^\/public\/orders\/[^/]+\/cancel$/,
+    // 公开营销文案生成：只接收生成上下文，不写入业务数据，也不要求登录/CSRF
+    /^\/public\/marketing\/generate$/,
     /^\/public\/auth\/(?:register|login|profile|logout)$/
   ];
 

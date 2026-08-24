@@ -372,6 +372,80 @@ router.get('/matchable', unifiedAuth, requirePermission('preorders:match'), asyn
 });
 
 /**
+ * 获取某待匹配预定单可选的在库设备
+ * GET /api/preorders/:id/matchable-phones
+ */
+router.get('/:id/matchable-phones', unifiedAuth, requirePermission('preorders:match'), async (req, res) => {
+  let connection;
+  try {
+    const pool = require('../config/database').getDatabase();
+    connection = await pool.getConnection();
+
+    const [preorders] = await connection.execute(
+      `SELECT id, status, brand_id, model_id, color_id, memory_id, is_new
+       FROM preorders
+       WHERE id = ?`,
+      [req.params.id]
+    );
+
+    if (preorders.length === 0) {
+      return ApiResponse.notFound(res, '预定单不存在');
+    }
+
+    const preorder = preorders[0];
+    if (preorder.status !== PREORDER_STATUS.PENDING) {
+      return ApiResponse.badRequest(res, '只有待匹配的预定单可以选择设备');
+    }
+
+    const [phones] = await connection.execute(
+      `SELECT
+         p.id,
+         p.imei,
+         p.serial_number,
+         p.sale_price,
+         p.purchase_cost,
+         p.is_new,
+         b.name AS brand_name,
+         m.name AS model_name,
+         c.name AS color_name,
+         mem.size AS memory_size,
+         st.name AS store_name
+       FROM phones p
+       LEFT JOIN brands b ON p.brand_id = b.id
+       LEFT JOIN models m ON p.model_id = m.id
+       LEFT JOIN colors c ON p.color_id = c.id
+       LEFT JOIN memories mem ON p.memory_id = mem.id
+       LEFT JOIN stores st ON p.store_id = st.id
+       WHERE p.status = 'in_stock'
+         AND COALESCE(p.is_preordered, 0) = 0
+         AND p.brand_id = ?
+         AND p.model_id = ?
+         AND p.color_id = ?
+         AND p.memory_id = ?
+         AND p.is_new = ?
+       ORDER BY p.Inventorytime ASC, p.id ASC
+       LIMIT 100`,
+      [
+        preorder.brand_id,
+        preorder.model_id,
+        preorder.color_id,
+        preorder.memory_id,
+        Number(preorder.is_new) === 0 ? 0 : 1
+      ]
+    );
+
+    return ApiResponse.success(res, phones);
+  } catch (error) {
+    log.error('获取可匹配库存失败:', error);
+    return ApiResponse.serverError(res, '获取可匹配库存失败', error);
+  } finally {
+    if (connection) {
+      connection.release();
+    }
+  }
+});
+
+/**
  * 获取单个预定单详情
  * GET /api/preorders/:id
  */
@@ -657,106 +731,110 @@ router.put('/:id/match', unifiedAuth, requirePermission('preorders:match'), asyn
 
     await connection.beginTransaction();
 
-    try {
-      // 检查预定单是否存在且状态为pending
-      const [preorderResult] = await connection.execute(
-        'SELECT * FROM preorders WHERE id = ? AND status = ?',
-        [id, PREORDER_STATUS.PENDING]
-      );
+    const [preorderResult] = await connection.execute(
+      'SELECT * FROM preorders WHERE id = ? FOR UPDATE',
+      [id]
+    );
 
-      if (preorderResult.length === 0) {
-        await connection.rollback();
-        return ApiResponse.badRequest(res, '预定单不存在或状态不正确');
-      }
-
-      const preorder = preorderResult[0];
-
-      let phoneImei = imei;
-      let phoneActualModel = actual_model;
-      let phoneActualPrice = actual_price;
-
-      // 如果提供了 phone_id，获取手机信息
-      if (phone_id) {
-        const [phoneResult] = await connection.execute(
-          'SELECT imei, brand_id, model_id, color_id, memory_id, purchase_cost FROM phones WHERE id = ? AND status = ?',
-          [phone_id, 'in_stock']
-        );
-
-        if (phoneResult.length === 0) {
-          await connection.rollback();
-          return ApiResponse.badRequest(res, '手机不存在或已售出');
-        }
-
-        const phone = phoneResult[0];
-        phoneImei = phoneImei || phone.imei;
-
-        // 获取手机详细信息
-        const [detailsResult] = await connection.execute(`
-          SELECT
-            b.name as brand_name,
-            m.name as model_name
-          FROM phones p
-          LEFT JOIN brands b ON p.brand_id = b.id
-          LEFT JOIN models m ON p.model_id = m.id
-          WHERE p.id = ?
-        `, [phone_id]);
-
-        if (detailsResult.length > 0) {
-          phoneActualModel = phoneActualModel || `${detailsResult[0].brand_name} ${detailsResult[0].model_name}`;
-        }
-
-        phoneActualPrice = phoneActualPrice || preorder.expected_price || phone.purchase_price;
-      }
-
-      // 计算尾款
-      const finalPrice = phoneActualPrice || preorder.expected_price;
-      const remainingAmount = finalPrice - (preorder.advance_payment || preorder.deposit || 0);
-
-      // 更新预定单状态
-      await connection.execute(
-        `UPDATE preorders SET
-          status = '${PREORDER_STATUS.MATCHED}',
-          imei = ?,
-          actual_model = ?,
-          arrival_date = ?,
-          actual_price = ?,
-          matched_time = COALESCE(matched_time, NOW()),
-          updated_at = NOW()
-        WHERE id = ?`,
-        [
-          phoneImei || null,
-          phoneActualModel || preorder.phone_model,
-          arrival_date || new Date().toISOString().split('T')[0],
-          finalPrice,
-          id
-        ]
-      );
-
-      // 如果提供了 phone_id，更新手机状态
-      if (phone_id) {
-        await connection.execute(
-          `UPDATE phones SET
-            is_preordered = 1,
-            updated_at = NOW()
-          WHERE id = ?`,
-          [phone_id]
-        );
-      }
-
-      await connection.commit();
-
-      ApiResponse.success(res, {
-        id: parseInt(id),
-        imei: phoneImei,
-        actual_model: phoneActualModel,
-        actual_price: finalPrice,
-        remaining_amount: remainingAmount
-      }, '预定单匹配成功');
-
-    } catch (dbError) {
+    if (preorderResult.length === 0) {
       await connection.rollback();
-      throw dbError;
+      return ApiResponse.notFound(res, '预定单不存在');
     }
+
+    const preorder = preorderResult[0];
+    if (preorder.status !== PREORDER_STATUS.PENDING) {
+      await connection.rollback();
+      return ApiResponse.badRequest(res, '只有待匹配的预定单可以匹配设备');
+    }
+
+    const phoneWhere = phone_id ? 'p.id = ?' : 'p.imei = ?';
+    const phoneValue = phone_id || String(imei).trim();
+    const [phoneResult] = await connection.execute(
+      `SELECT
+         p.id, p.imei, p.brand_id, p.model_id, p.color_id, p.memory_id,
+         p.is_new, p.status, p.is_preordered, p.sale_price, p.purchase_cost,
+         b.name AS brand_name, m.name AS model_name
+       FROM phones p
+       LEFT JOIN brands b ON p.brand_id = b.id
+       LEFT JOIN models m ON p.model_id = m.id
+       WHERE ${phoneWhere}
+       FOR UPDATE`,
+      [phoneValue]
+    );
+
+    if (phoneResult.length === 0) {
+      await connection.rollback();
+      return ApiResponse.notFound(res, '设备不存在');
+    }
+
+    const phone = phoneResult[0];
+    if (phone.status !== 'in_stock' || Number(phone.is_preordered) === 1) {
+      await connection.rollback();
+      return ApiResponse.badRequest(res, '设备已售出或已被其他预定单占用');
+    }
+
+    const exactMatch =
+      Number(phone.brand_id) === Number(preorder.brand_id) &&
+      Number(phone.model_id) === Number(preorder.model_id) &&
+      Number(phone.color_id) === Number(preorder.color_id) &&
+      Number(phone.memory_id) === Number(preorder.memory_id) &&
+      Number(phone.is_new) === Number(preorder.is_new);
+
+    if (!exactMatch) {
+      await connection.rollback();
+      return ApiResponse.badRequest(res, '设备的品牌、型号、颜色、内存或机况与预定单不一致');
+    }
+
+    const requestedPrice = actual_price === undefined || actual_price === null || actual_price === ''
+      ? null
+      : Number(actual_price);
+    if (requestedPrice !== null && (!Number.isFinite(requestedPrice) || requestedPrice < 0)) {
+      await connection.rollback();
+      return ApiResponse.badRequest(res, '销售价格格式不正确');
+    }
+
+    const fallbackPrice = Number(preorder.total_price || phone.sale_price || 0);
+    const finalPrice = requestedPrice !== null ? requestedPrice : fallbackPrice;
+    const depositAmount = Number(preorder.deposit_amount || preorder.deposit_paid || 0);
+    const remainingAmount = Math.max(0, finalPrice - depositAmount);
+    const resolvedModel = actual_model || [phone.brand_name, phone.model_name].filter(Boolean).join(' ');
+
+    await connection.execute(
+      `UPDATE preorders SET
+         status = '${PREORDER_STATUS.MATCHED}',
+         matched_phone_id = ?,
+         imei = ?,
+         actual_model = ?,
+         arrival_date = COALESCE(?, CURDATE()),
+         actual_price = ?,
+         matched_time = NOW(),
+         updated_at = NOW()
+       WHERE id = ?`,
+      [phone.id, phone.imei, resolvedModel || null, arrival_date || null, finalPrice, id]
+    );
+
+    const [phoneUpdate] = await connection.execute(
+      `UPDATE phones
+       SET is_preordered = 1, updated_at = NOW()
+       WHERE id = ? AND status = 'in_stock' AND COALESCE(is_preordered, 0) = 0`,
+      [phone.id]
+    );
+
+    if (phoneUpdate.affectedRows !== 1) {
+      await connection.rollback();
+      return ApiResponse.badRequest(res, '设备已被其他预定单占用，请重新选择');
+    }
+
+    await connection.commit();
+
+    return ApiResponse.success(res, {
+      id: parseInt(id),
+      matched_phone_id: phone.id,
+      imei: phone.imei,
+      actual_model: resolvedModel,
+      actual_price: finalPrice,
+      remaining_amount: remainingAmount
+    }, '预定单匹配成功');
 
   } catch (error) {
     if (connection) {
@@ -775,7 +853,7 @@ router.put('/:id/match', unifiedAuth, requirePermission('preorders:match'), asyn
  * 完成交付（标记为已交付）
  * PUT /api/preorders/:id/deliver
  */
-router.put('/:id/deliver', unifiedAuth, requirePermission('preorders:complete'), async (req, res) => {
+router.put('/:id/deliver', unifiedAuth, requirePermission('preorders:deliver'), async (req, res) => {
   let connection;
   try {
     const { id } = req.params;
@@ -800,14 +878,9 @@ router.put('/:id/deliver', unifiedAuth, requirePermission('preorders:complete'),
 
       const preorder = preorderResult[0];
 
-      if (preorder.status === PREORDER_STATUS.CANCELLED) {
+      if (preorder.status !== PREORDER_STATUS.MATCHED) {
         await connection.rollback();
-        return ApiResponse.badRequest(res, '已取消的预定单不能交付');
-      }
-
-      if (preorder.status === PREORDER_STATUS.DELIVERED) {
-        await connection.rollback();
-        return ApiResponse.badRequest(res, '预定单已交付');
+        return ApiResponse.badRequest(res, '只有已匹配的预定单可以交付');
       }
 
       // 如果有IMEI，更新对应的手机状态为已售出

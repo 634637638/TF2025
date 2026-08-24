@@ -1,5 +1,12 @@
 <template>
   <div class="shared-view admin-page safe-area-top safe-area-bottom">
+    <PermissionGate
+      :can-view="canView"
+      mode="denied"
+      module-key="shared"
+      module-name="经验分享"
+      permission-code="shared:view"
+    >
     <PageHeader icon="fas fa-lightbulb" title="经验分享">
       <template #actions>
         <el-button v-if="canCreate" type="primary" @click="openCreate"><i class="fas fa-plus"></i>发布经验</el-button>
@@ -192,6 +199,7 @@
       </template>
     </el-dialog>
     <el-image-viewer v-if="imagePreviewVisible" :url-list="imagePreviewUrls" :initial-index="imagePreviewIndex" :hide-on-click-modal="true" teleported :z-index="12000" @close="imagePreviewVisible=false" />
+    </PermissionGate>
   </div>
 </template>
 
@@ -202,7 +210,7 @@ import DOMPurify from 'dompurify'
 import { Editor as WangEditor, Toolbar as WangToolbar } from '@wangeditor/editor-for-vue'
 import 'element-plus/theme-chalk/el-image-viewer.css'
 import '@wangeditor/editor/dist/css/style.css'
-import { PageHeader } from '@/components/base'
+import { PageHeader, PermissionGate } from '@/components/base'
 import Pagination from '@/components/Pagination.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { unifiedApi as api } from '@/utils/unified-api'
@@ -216,7 +224,7 @@ interface SharedPost { id:number; title:string; content:string; category:string;
 interface SharedCategory { id:number; name:string; sort_order:number; total:number }
 
 const authStore = useAuthStore()
-const { canCreate, canEdit, canDelete, canManage } = usePagePermissions('shared')
+const { canView, canCreate, canEdit, canDelete, canManage } = usePagePermissions('shared')
 const loading = ref(false), saving = ref(false), editorVisible = ref(false), detailVisible = ref(false)
 const searchExpanded = ref(false)
 const posts = ref<SharedPost[]>([]), detail = ref<SharedPost|null>(null), editingId = ref<number|null>(null), keyword = ref('')
@@ -465,7 +473,10 @@ const savePost = async () => { if(!formRef.value)return;await formRef.value.vali
 const togglePin = async (post:SharedPost) => { const response:any=await api.patch(`/shared/${post.id}/pin`,{pinned:!post.is_pinned});if(response.success){ElMessage.success(post.is_pinned?'已取消置顶':'已置顶');loadPosts()} }
 const removePost = async (post:SharedPost) => { try{await ElMessageBox.confirm(`确定删除“${post.title}”吗？附件也会一并删除。`,'删除确认',{type:'warning'});const response:any=await api.delete(`/shared/${post.id}`);if(response.success){ElMessage.success('经验分享已删除');if(detail.value?.id===post.id)detailVisible.value=false;loadPosts()}}catch(error){if(error!=='cancel'&&error!=='close')ElMessage.error('删除失败')} }
 
-onMounted(() => { void Promise.all([loadPosts(), loadCategories()]) })
+onMounted(() => {
+  if (!canView.value) return
+  void Promise.all([loadPosts(), loadCategories()])
+})
 onBeforeUnmount(() => { editorInstance.value?.destroy() })
 </script>
 

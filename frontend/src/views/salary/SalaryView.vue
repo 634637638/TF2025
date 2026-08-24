@@ -100,7 +100,7 @@
         <!-- TAB 切换 -->
         <el-tabs v-model="activeTab" class="salary-tabs tf-page-tabs" @tab-change="handleTabChange">
           <!-- 工资模板 -->
-          <el-tab-pane label="工资模板" name="templates" class="tf-tab-panel" v-if="canViewSalaryTemplates">
+          <el-tab-pane v-if="canViewSalaryTemplates" data-view-permission="salary-templates:view" label="工资模板" name="templates" class="tf-tab-panel">
             <UnifiedSearchPanel
               v-model:expanded="templateSearchExpanded"
               :loading="templatesLoading"
@@ -342,7 +342,7 @@
           </el-tab-pane>
 
           <!-- 员工工资 -->
-          <el-tab-pane label="员工工资" name="employees" class="tf-tab-panel" v-if="canViewSalaryRecords">
+          <el-tab-pane v-if="canViewSalaryRecords" data-view-permission="salary-records:view" label="员工工资" name="employees" class="tf-tab-panel">
             <UnifiedSearchPanel
               v-model:expanded="employeeSearchExpanded"
               :loading="employeesLoading"
@@ -643,7 +643,7 @@
           </el-tab-pane>
 
           <!-- 工资计算 -->
-          <el-tab-pane label="工资计算" name="payout" class="tf-tab-panel" v-if="canViewSalaryRecords">
+          <el-tab-pane v-if="canViewSalaryRecords" data-view-permission="salary-records:view" label="工资计算" name="payout" class="tf-tab-panel">
             <UnifiedSearchPanel
               v-model:expanded="payoutSearchExpanded"
               :loading="payoutLoading"
@@ -923,7 +923,7 @@
           </el-tab-pane>
 
           <!-- 工资发放 -->
-          <el-tab-pane label="工资发放" name="my" class="tf-tab-panel" v-if="canViewPayoutRecords">
+          <el-tab-pane v-if="canViewPayoutRecords" data-view-permission="my-salary:view" label="工资发放" name="my" class="tf-tab-panel">
             <UnifiedSearchPanel
               v-model:expanded="recordsSearchExpanded"
               :loading="myLoading"
@@ -2183,7 +2183,6 @@ const canCreateSalaryRecord = computed(() => salaryRecordPermissions.canCreate.v
 const canEditSalaryRecord = computed(() => salaryRecordPermissions.canEdit.value)
 const canDeleteSalaryRecord = computed(() => salaryRecordPermissions.canDelete.value)
 const canApproveSalaryRecord = computed(() => salaryRecordPermissions.canApprove.value)
-const canManageSalaryRecord = computed(() => salaryRecordPermissions.canManage.value)
 const canViewOwnSalary = computed(() => mySalaryPermissions.canView.value)
 const canViewPayoutRecords = computed(() => canViewSalaryRecords.value || canViewOwnSalary.value)
 const canAccessSalaryPage = computed(() => canViewSalaryPage.value)
@@ -2196,8 +2195,7 @@ const hasSalaryManagePermission = computed(() => (
   canCreateSalaryRecord.value ||
   canEditSalaryRecord.value ||
   canDeleteSalaryRecord.value ||
-  canApproveSalaryRecord.value ||
-  canManageSalaryRecord.value
+  canApproveSalaryRecord.value
 ))
 const canViewTeamSalaryRecords = computed(() => canViewSalaryRecords.value)
 
@@ -2219,14 +2217,14 @@ const requireSalaryTemplatePermission = (action: 'view' | 'create' | 'edit' | 'd
 
 const requireSalaryRecordPermission = (action: 'view' | 'create' | 'edit' | 'delete' | 'approve') => {
   const allowed = action === 'view'
-    ? canViewSalaryRecords.value || canManageSalaryRecord.value
+    ? canViewSalaryRecords.value
     : action === 'create'
-      ? canCreateSalaryRecord.value || canManageSalaryRecord.value
+      ? canCreateSalaryRecord.value
       : action === 'edit'
-        ? canEditSalaryRecord.value || canManageSalaryRecord.value
+        ? canEditSalaryRecord.value
         : action === 'delete'
-          ? canDeleteSalaryRecord.value || canManageSalaryRecord.value
-          : canApproveSalaryRecord.value || canManageSalaryRecord.value
+          ? canDeleteSalaryRecord.value
+          : canApproveSalaryRecord.value
 
   if (!allowed) {
     salaryRecordPermissions.handleNoPermission(action)
@@ -2304,8 +2302,7 @@ const canEditSalaryField = (moduleKey: string, fieldName: string) => {
     canCreateSalaryTemplate.value ||
     canEditSalaryTemplate.value ||
     canCreateSalaryRecord.value ||
-    canEditSalaryRecord.value ||
-    canManageSalaryRecord.value
+    canEditSalaryRecord.value
   ) {
     return true
   }

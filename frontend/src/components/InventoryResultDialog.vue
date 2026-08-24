@@ -4,6 +4,7 @@
       <div
         v-if="visible && isMobile"
         class="inventory-mobile-overlay"
+        :style="mobileViewportStyle"
         @click.self="handleClose"
       >
         <div class="inventory-mobile-sheet">
@@ -71,9 +72,6 @@
             </div>
           </div>
 
-          <div class="inventory-mobile-footer">
-            <el-button type="primary" @click="handleClose">关闭</el-button>
-          </div>
         </div>
       </div>
     </transition>
@@ -139,17 +137,12 @@
         <el-empty description="暂无在库明细" />
       </div>
     </div>
-
-    <template #footer>
-      <div class="dialog-footer">
-        <el-button type="primary" @click="handleClose">关闭</el-button>
-      </div>
-    </template>
   </MobileDialog>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import type { CSSProperties } from 'vue'
 import { ElMessage } from 'element-plus'
 import { unifiedApi } from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
@@ -204,10 +197,22 @@ const emit = defineEmits<UpdateModelValueEmits>()
 const visible = ref(props.modelValue)
 const loading = ref(false)
 const inventoryData = ref<InventoryItem[]>([])
+const mobileViewportHeight = ref(0)
 const { isMobile } = useMobile()
 
 // 计算属性
 const totalCount = computed(() => inventoryData.value.length)
+const mobileViewportStyle = computed<CSSProperties>(() => {
+  if (!mobileViewportHeight.value) return {}
+
+  return {
+    '--inventory-viewport-height': `${mobileViewportHeight.value}px`
+  }
+})
+
+const syncMobileViewportHeight = () => {
+  mobileViewportHeight.value = Math.round(window.visualViewport?.height || window.innerHeight)
+}
 
 watch(() => props.modelValue, (newVal) => {
   visible.value = newVal
@@ -301,7 +306,17 @@ const getDaysClass = (days: number) => {
   return 'days-normal'
 }
 
+onMounted(() => {
+  syncMobileViewportHeight()
+  window.addEventListener('resize', syncMobileViewportHeight)
+  window.addEventListener('orientationchange', syncMobileViewportHeight)
+  window.visualViewport?.addEventListener('resize', syncMobileViewportHeight)
+})
+
 onUnmounted(() => {
+  window.removeEventListener('resize', syncMobileViewportHeight)
+  window.removeEventListener('orientationchange', syncMobileViewportHeight)
+  window.visualViewport?.removeEventListener('resize', syncMobileViewportHeight)
   document.body.style.overflow = ''
 })
 </script>
@@ -309,12 +324,15 @@ onUnmounted(() => {
 <style lang="scss" scoped>
 .inventory-mobile-overlay {
   position: fixed;
-  inset: 0;
+  inset: 0 0 auto;
+  box-sizing: border-box;
+  height: var(--inventory-viewport-height, 100vh);
+  height: var(--inventory-viewport-height, 100dvh);
   z-index: 10000;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 8px 4px;
+  padding: max(24px, env(safe-area-inset-top)) 4px max(24px, env(safe-area-inset-bottom));
   background: rgba(15, 23, 42, 0.42);
   backdrop-filter: blur(6px);
   overflow-y: auto;
@@ -323,7 +341,7 @@ onUnmounted(() => {
 .inventory-mobile-sheet {
   width: 100%;
   max-width: 100%;
-  max-height: calc(100vh - 16px);
+  max-height: calc(var(--inventory-viewport-height, 100vh) - 48px);
   display: flex;
   flex-direction: column;
   background: #ffffff;
@@ -376,16 +394,9 @@ onUnmounted(() => {
 .inventory-mobile-body {
   flex: 1 1 auto;
   min-height: 0;
-  padding: 10px 8px 0;
+  padding: 10px 8px max(12px, env(safe-area-inset-bottom));
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-}
-
-.inventory-mobile-footer {
-  flex-shrink: 0;
-  display: flex;
-  justify-content: flex-end;
-  padding: 6px 8px 10px;
 }
 
 .inventory-mobile-fade-enter-active,
@@ -414,13 +425,26 @@ onUnmounted(() => {
     background: #ffffff !important;
   }
 
-  .el-dialog__footer {
-    display: block !important;
-    padding: 0 !important;
-    border-top: none !important;
-    background: #ffffff !important;
-    min-height: 0 !important;
-  }
+}
+
+:deep(.el-dialog.inventory-result-dialog) {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 64px);
+  max-height: calc(100dvh - 64px);
+  overflow: hidden;
+}
+
+:deep(.el-dialog.inventory-result-dialog .el-dialog__header) {
+  flex: 0 0 auto;
+}
+
+:deep(.el-dialog.inventory-result-dialog .el-dialog__body) {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-bottom: 14px !important;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .product-header {
@@ -700,26 +724,15 @@ onUnmounted(() => {
   }
 }
 
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  margin: 0;
-  padding: 8px 12px 12px;
-}
-
 // 手机端重写：移除旧的缩放/多断点叠加逻辑，按内容自然撑开
 @media (max-width: 768px) {
   .inventory-mobile-sheet {
     border-radius: 18px;
-    max-height: calc(100vh - 16px);
+    max-height: calc(var(--inventory-viewport-height, 100vh) - 48px);
   }
 
   .inventory-mobile-body {
-    padding: 10px 8px 0;
-  }
-
-  .inventory-mobile-footer {
-    padding: 6px 8px 10px;
+    padding: 10px 8px max(12px, env(safe-area-inset-bottom));
   }
 
   .inventory-mobile-sheet .product-header {
@@ -860,15 +873,15 @@ onUnmounted(() => {
     }
   }
 
-  .inventory-mobile-sheet .dialog-footer,
-  .inventory-mobile-footer {
-    padding: 4px 8px 10px;
-  }
 }
 
 @media (max-width: 390px) {
   .inventory-mobile-overlay {
-    padding: 4px 2px;
+    padding: max(20px, env(safe-area-inset-top)) 2px max(20px, env(safe-area-inset-bottom));
+  }
+
+  .inventory-mobile-sheet {
+    max-height: calc(var(--inventory-viewport-height, 100vh) - 40px);
   }
 
   .inventory-mobile-header {
@@ -887,11 +900,7 @@ onUnmounted(() => {
   }
 
   .inventory-mobile-body {
-    padding: 8px 4px 0;
-  }
-
-  .inventory-mobile-footer {
-    padding: 4px 4px 8px;
+    padding: 8px 4px max(10px, env(safe-area-inset-bottom));
   }
 
   .inventory-mobile-sheet .product-header {

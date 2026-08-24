@@ -2,8 +2,8 @@
 
 > **文档说明**：说明 TF2025 在 `src/views` 目录下新增页面后，模块扫描器如何识别“独立页面”和“子组件”，以及推荐的命名和目录规范。
 >
-> **最后更新**：2026-03-21
-> **版本**：v1.0.0
+> **最后更新**：2026-08-24
+> **版本**：v1.1.0
 > **维护者**：TF2025 开发团队
 
 ## 适用范围
@@ -19,8 +19,10 @@
 
 - 扫描器只识别“真正的页面模块”，不应把弹窗和局部组件误扫成模块。
 - 页面是否能被扫描，不只看目录，还看它是不是一个真实路由页面。
+- 顶层 `src/views/<module>/*.vue` 文件也必须被路由直接引用，不再仅凭文件存在自动注册。
 - `modules.key` 必须稳定，不能因为目录整理而频繁变化。
 - `page/` 是页面子目录，不等于里面所有文件都是模块页面。
+- 扫描到模块不代表自动拥有 CRUD；动作必须在共享能力清单明确登记。
 
 ## 当前扫描规则
 
@@ -131,13 +133,14 @@ src/views/<module>/page/<ComponentName>Card.vue
 1. 在 `src/views/<module>/` 或 `src/views/<module>/page/` 新建页面文件。
 2. 文件名使用 `*View.vue` 或 `*Page.vue`。
 3. 在 [frontend/src/router/index.ts](/Users/imac/Desktop/webtset/TF2025/frontend/src/router/index.ts) 中注册路由。
-4. 页面内部接入 `usePagePermissions(...)`。
-5. 执行模块扫描或模块同步。
-6. 在权限管理中为角色分配：
+4. 在 `config/module-permission-capabilities.json` 登记稳定模块键和真实动作。
+5. 页面内部接入 `usePagePermissions(...)`，后端接口接入相同动作的 `requirePermission(...)`。
+6. 执行 `cd frontend && npm run check:permissions`，再执行模块扫描或模块同步。
+7. 在权限管理中为角色分配：
    - 菜单显示
    - `view`
    - 其他动作权限
-7. 验证菜单显示、页面访问、按钮权限是否一致。
+8. 验证菜单显示、页面访问、按钮和接口权限是否一致。
 
 ### 新增一个局部弹窗或子块
 
@@ -183,6 +186,8 @@ src/views/<module>/page/<ComponentName>Card.vue
 
 - 把所有 `page/` 下的 `.vue` 文件一律当成模块扫描
 - 只因为文件存在，就默认它是独立权限页面
+- 为所有新模块自动附加 `create`、`edit`、`delete`、`manage` 或 `sync`
+- 页面按钮使用一个动作、后端接口却校验另一个动作
 - 独立页面命名成 `Temp.vue`、`Test.vue`、`Index2.vue` 这类无语义名称
 - 弹窗组件注册成单独路由页面
 - 目录迁移后不验证模块扫描、菜单绑定和页面权限
@@ -201,5 +206,6 @@ src/views/<module>/page/<ComponentName>Card.vue
 ## 相关文档
 
 - [权限系统完整指南](./permission-system-guide.md)
+- [页面权限能力统一规范](../frontend/permission-capability-standards.md)
 - [前端页面结构标准](../frontend/page-structure-standards.md)
 - [前端统一页面结构](../frontend/unified-page-structure.md)

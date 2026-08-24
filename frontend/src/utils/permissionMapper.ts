@@ -9,6 +9,8 @@
  * - 模块权限自动解析
  */
 
+import permissionCapabilities from '../../../config/module-permission-capabilities.json'
+
 /**
  * 模块权限配置接口
  */
@@ -27,15 +29,15 @@ export const MODULE_KEY_MAP: Record<string, string> = {
 
   // 库存管理映射
   'inventory': 'inventory_inventoryview',
-  'stock-in': 'inventory_stockinpage',
+  'stock-in': 'inventory_inventoryview',
 
   // 销售管理映射
   'sales': 'sales_salesview',
   'sale': 'sales_salesview',
-  'phone-sale': 'sales_phonesaleview',
-  'phone-edit': 'sales_editphoneview',
-  'sales-edit': 'sales_editphoneview',
-  'sales-editphoneview': 'sales_editphoneview',
+  'phone-sale': 'sales_salesview',
+  'phone-edit': 'sales_salesview',
+  'sales-edit': 'sales_salesview',
+  'sales-editphoneview': 'sales_salesview',
 
   // 供应商管理映射
   'suppliers': 'suppliers_suppliersview',
@@ -128,6 +130,7 @@ export const MODULE_KEY_MAP: Record<string, string> = {
   'reminders': 'reminders_reminderview',
   'reminder': 'reminders_reminderview',
   'shared': 'shared_sharedview',
+  'marketing': 'marketing_marketingmanagementview',
 
   // 价目表映射
   'price-list': 'price_list_pricelistview',
@@ -161,12 +164,12 @@ export const BACKEND_MODULE_MAP: Record<string, string> = {
   // 反向映射 - 前端完整模块名 -> 后端简单模块名
   'dashboard_dashboardview': 'dashboard',
   'inventory_inventoryview': 'inventory',
-  'inventory_stockinpage': 'stock-in',
-  'inventory_stock-in': 'stock-in',
-  'stockin_stockinview': 'stock-in',
+  'inventory_stockinpage': 'inventory',
+  'inventory_stock-in': 'inventory',
+  'stockin_stockinview': 'inventory',
   'sales_salesview': 'sales',
   'sales_phonesaleview': 'sales',
-  'sales_editphoneview': 'sales-editphoneview',
+  'sales_editphoneview': 'sales',
   'suppliers_suppliersview': 'suppliers',
   'suppliers_suppliermanagementview': 'suppliers',
   'users_usersview': 'users',
@@ -204,6 +207,7 @@ export const BACKEND_MODULE_MAP: Record<string, string> = {
   'preorders_preordersview': 'preorders',
   'reminders_reminderview': 'reminders',
   'shared_sharedview': 'shared',
+  'marketing_marketingmanagementview': 'marketing',
   'payments_supplierphonepaymentsview': 'supplier-payments',
   'price_list_pricelistview': 'price-list',
   'price_list_synclogview': 'price-list-sync-logs',
@@ -227,436 +231,57 @@ const EXACT_PERMISSION_ALIAS_MAP: Record<string, string> = {
  * 标准模块权限定义
  * 定义系统中所有模块的权限结构
  */
-export const MODULE_PERMISSIONS: Record<string, ModulePermissionConfig> = {
-  // 系统管理模块
-  system: {
-    name: '系统管理',
-    permissions: {
-      'view': '查看',
-      'create': '创建',
-      'edit': '编辑',
-      'delete': '删除',
-      'admin:view': '管理查看',
-      'admin:edit': '管理编辑'
-    }
-  },
-
-  // 用户管理模块
-  users: {
-    name: '用户管理',
-    permissions: {
-      'view': '查看',
-      'create': '创建',
-      'edit': '编辑',
-      'delete': '删除',
-      'admin:view': '管理查看',
-      'admin:edit': '管理编辑'
-    }
-  },
-
-  // 角色管理模块
-  roles: {
-    name: '角色管理',
-    permissions: {
-      'view': '查看',
-      'create': '创建',
-      'edit': '编辑',
-      'delete': '删除',
-      'admin:view': '管理查看',
-      'admin:edit': '管理编辑'
-    }
-  },
-
-  // 权限管理模块
-  permissions: {
-    name: '权限管理',
-    permissions: {
-      'view': '查看',
-      'create': '创建',
-      'edit': '编辑',
-      'delete': '删除',
-      'admin:view': '管理查看',
-      'admin:edit': '管理编辑'
-    }
-  },
-
-  // 模块管理模块
-  'module-management': {
-    name: '模块管理',
-    permissions: {
-      'view': '查看',
-      'create': '创建',
-      'edit': '编辑',
-      'delete': '删除',
-      'admin:view': '管理查看',
-      'admin:edit': '管理编辑'
-    }
-  },
-
-  // 库存管理模块
-  inventory: {
-    name: '库存管理',
-    permissions: {
-      'view': '查看',
-      'create': '创建',
-      'edit': '编辑',
-      'delete': '删除',
-      'admin:view': '管理查看',
-      'admin:edit': '管理编辑'
-    }
-  },
-
-  // 采购入库模块
-  'stock-in': {
-    name: '采购入库',
-    permissions: {
-      'view': '查看',
-      'create': '创建',
-      'edit': '编辑',
-      'delete': '删除',
-      'admin:view': '管理查看',
-      'admin:edit': '管理编辑'
-    }
-  },
-
-  // 销售管理模块
-  sales: {
-    name: '销售管理',
-    permissions: {
-      'view': '查看',
-      'create': '创建',
-      'edit': '编辑',
-      'delete': '删除',
-      'sell': '销售',
-      'admin:view': '管理查看',
-      'admin:edit': '管理编辑'
-    }
-  },
-
-  // 设备管理模块
-  phones: {
-    name: '设备管理',
-    permissions: {
-      'view': '查看',
-      'create': '创建',
-      'edit': '编辑',
-      'delete': '删除',
-      'admin:view': '管理查看',
-      'admin:edit': '管理编辑'
-    }
-  },
-
-  // 品牌管理模块
-  brands: {
-    name: '品牌管理',
-    permissions: {
-      'view': '查看',
-      'create': '创建',
-      'edit': '编辑',
-      'delete': '删除',
-      'admin:view': '管理查看',
-      'admin:edit': '管理编辑'
-    }
-  },
-
-  // 供应商管理模块
-  suppliers: {
-    name: '供应商管理',
-    permissions: {
-      'view': '查看',
-      'create': '创建',
-      'edit': '编辑',
-      'delete': '删除',
-      'admin:view': '管理查看',
-      'admin:edit': '管理编辑'
-    }
-  },
-
-  // 门店管理模块
-  stores: {
-    name: '门店管理',
-    permissions: {
-      'view': '查看',
-      'create': '创建',
-      'edit': '编辑',
-      'delete': '删除',
-      'admin:view': '管理查看',
-      'admin:edit': '管理编辑'
-    }
-  },
-
-  // 员工管理模块
-  employees: {
-    name: '员工管理',
-    permissions: {
-      'view': '查看',
-      'create': '创建',
-      'edit': '编辑',
-      'delete': '删除',
-      'admin:view': '管理查看',
-      'admin:edit': '管理编辑'
-    }
-  },
-
-  // 菜单管理模块
-  menus: {
-    name: '菜单管理',
-    permissions: {
-      'view': '查看',
-      'create': '创建',
-      'edit': '编辑',
-      'delete': '删除',
-      'admin:view': '管理查看',
-      'admin:edit': '管理编辑'
-    }
-  },
-
-  // 数据统计模块
-  analytics: {
-    name: '数据统计',
-    permissions: {
-      'view': '查看',
-      'export': '导出',
-      'admin:view': '管理查看',
-      'admin:edit': '管理编辑'
-    }
-  },
-
-  // 国补管理模块
-  subsidy: {
-    name: '国补管理',
-    permissions: {
-      'view': '查看',
-      'create': '创建',
-      'edit': '编辑',
-      'delete': '删除',
-      'approve': '审批',
-      'admin:view': '管理查看',
-      'admin:edit': '管理编辑'
-    }
-  },
-
-  // 租赁管理模块
-  rentals: {
-    name: '租赁管理',
-    permissions: {
-      'view': '查看',
-      'create': '创建',
-      'edit': '编辑',
-      'manage': '管理',
-      'admin:view': '管理查看',
-      'admin:edit': '管理编辑'
-    }
-  },
-
-  // 考勤管理模块
-  attendance: {
-    name: '考勤管理',
-    permissions: {
-      'view': '查看',
-      'create': '创建',
-      'edit': '编辑',
-      'delete': '删除',
-      'approve': '审批',
-      'manage': '管理',
-      'admin:view': '管理查看',
-      'admin:edit': '管理编辑'
-    }
-  },
-
-  // 工资管理模块
-  salary: {
-    name: '工资管理',
-    permissions: {
-      'view': '查看',
-      'create': '创建',
-      'edit': '编辑',
-      'delete': '删除',
-      'approve': '审批',
-      'manage': '管理',
-      'admin:view': '管理查看',
-      'admin:edit': '管理编辑'
-    }
-  },
-
-  // 工资模板模块
-  'salary-templates': {
-    name: '工资模板',
-    permissions: {
-      'view': '查看',
-      'create': '创建',
-      'edit': '编辑',
-      'delete': '删除',
-      'manage': '管理',
-      'admin:view': '管理查看',
-      'admin:edit': '管理编辑'
-    }
-  },
-
-  // 工资记录模块
-  'salary-records': {
-    name: '工资记录',
-    permissions: {
-      'view': '查看',
-      'create': '创建',
-      'edit': '编辑',
-      'delete': '删除',
-      'approve': '审批',
-      'manage': '管理',
-      'admin:view': '管理查看',
-      'admin:edit': '管理编辑'
-    }
-  },
-
-  // 数据优化模块
-  'data-optimization': {
-    name: '数据优化',
-    permissions: {
-      'view': '查看',
-      'create': '创建',
-      'edit': '编辑',
-      'delete': '删除',
-      'import': '导入',
-      'sync': '同步',
-      'admin:view': '管理查看',
-      'admin:edit': '管理编辑'
-    }
-  },
-
-  // Git 管理模块
-  'git-management': {
-    name: 'Git管理',
-    permissions: {
-      'view': '查看',
-      'create': '创建',
-      'edit': '编辑',
-      'delete': '删除',
-      'admin:view': '管理查看',
-      'admin:edit': '管理编辑'
-    }
-  },
-
-  // 备份管理模块
-  'backup': {
-    name: '备份管理',
-    permissions: {
-      'view': '查看',
-      'create': '创建',
-      'delete': '删除',
-      'admin:view': '管理查看',
-      'admin:edit': '管理编辑'
-    }
-  },
-
-  // 价目表模块
-  'price-list': {
-    name: '价目表',
-    permissions: {
-      'view': '查看',
-      'create': '新增',
-      'edit': '编辑',
-      'delete': '删除',
-      'import': '导入',
-      'export': '导出',
-      'sync': '同步',
-      'admin:view': '管理查看',
-      'admin:edit': '管理编辑'
-    }
-  },
-
-  // 同步日志模块
-  'price-list-sync-logs': {
-    name: '同步日志',
-    permissions: {
-      'view': '查看',
-      'delete': '删除',
-      'admin:view': '管理查看',
-      'admin:edit': '管理编辑'
-    }
-  },
-
-  // 供应商打款模块
-  'supplier-payments': {
-    name: '供应商打款',
-    permissions: {
-      'view': '查看',
-      'create': '创建',
-      'edit': '编辑',
-      'delete': '删除',
-      'approve': '审批',
-      'export': '导出',
-      'admin:view': '管理查看',
-      'admin:edit': '管理编辑'
-    }
-  },
-
-  // H5 商城后台模块
-  'h5-admin': {
-    name: 'H5商城管理',
-    permissions: {
-      'view': '查看',
-      'create': '创建',
-      'edit': '编辑',
-      'delete': '删除',
-      'admin:view': '管理查看',
-      'admin:edit': '管理编辑'
-    }
-  },
-
-  'h5-admin-templates': {
-    name: '商城模板',
-    permissions: {
-      'view': '查看',
-      'create': '创建',
-      'edit': '编辑',
-      'delete': '删除'
-    }
-  },
-
-  'h5-admin-sold-products': {
-    name: '已售商品',
-    permissions: {
-      'view': '查看',
-      'delete': '删除'
-    }
-  },
-
-  'h5-admin-config': {
-    name: '商城配置',
-    permissions: {
-      'view': '查看',
-      'edit': '编辑'
-    }
-  },
-
-  'h5-admin-home-sections': {
-    name: '首页推荐',
-    permissions: {
-      'view': '查看',
-      'create': '创建',
-      'edit': '编辑',
-      'delete': '删除'
-    }
-  },
-
-  'h5-admin-banners': {
-    name: '轮播图管理',
-    permissions: {
-      'view': '查看',
-      'create': '创建',
-      'edit': '编辑',
-      'delete': '删除'
-    }
-  },
-
-  'h5-admin-orders': {
-    name: '商城订单',
-    permissions: {
-      'view': '查看',
-      'edit': '编辑'
-    }
-  }
+const ACTION_DISPLAY_NAMES: Record<string, string> = {
+  view: '查看',
+  create: '新增',
+  edit: '编辑',
+  delete: '删除',
+  approve: '审批',
+  manage: '管理',
+  export: '导出',
+  import: '导入',
+  sell: '销售',
+  sync: '同步',
+  'return-to-stock': '退库',
+  wholesale: '同行调货',
+  'proxy-transfer': '供应商代划拨',
+  match: '匹配',
+  deliver: '交付',
+  cancel: '取消',
+  menu_view: '菜单显示'
 }
+
+const MODULE_DISPLAY_NAMES: Record<string, string> = {
+  dashboard: '仪表盘', inventory: '库存管理', sales: '销售管理', customers: '客户管理',
+  brands: '品牌管理', models: '型号管理', colors: '颜色管理', memories: '内存管理',
+  employee: '员工管理', stores: '门店管理', suppliers: '供应商管理',
+  'supplier-payments': '供应商打款', accessories: '配件管理', permissions: '权限管理',
+  'module-management': '模块管理', menus: '菜单管理', query: '综合查询', system: '系统管理',
+  analytics: '数据分析', attendance: '考勤管理', 'my-attendance': '我的考勤',
+  salary: '工资管理', 'my-salary': '我的工资', 'salary-records': '工资记录',
+  'salary-templates': '工资模板', 'data-check': '数据优化', preorders: '新品预定',
+  reminders: '待办提醒', shared: '经验分享', marketing: '营销管理', 'price-list': '价目表',
+  'price-list-sync-logs': '同步日志', subsidy: '国补管理', rentals: '租赁管理', repairs: '维修管理',
+  'git-management': 'Git管理', backup: '备份管理', 'return-goods': '退库管理',
+  'h5-admin': 'H5商城管理', 'h5-templates': '商城模板', 'h5-sold-products': '已售商品',
+  'h5-config': '商城配置', 'home-sections': '首页推荐', 'h5-banners': '轮播图管理',
+  'h5-orders': '商城订单'
+}
+
+export const MODULE_PERMISSIONS: Record<string, ModulePermissionConfig> = Object.fromEntries(
+  Object.entries(BACKEND_MODULE_MAP)
+    .filter(([moduleKey]) => moduleKey in permissionCapabilities.modules)
+    .map(([moduleKey, simpleKey]) => [
+      simpleKey,
+      {
+        name: MODULE_DISPLAY_NAMES[simpleKey] || simpleKey,
+        permissions: Object.fromEntries(
+          permissionCapabilities.modules[moduleKey as keyof typeof permissionCapabilities.modules]
+            .map(action => [action, ACTION_DISPLAY_NAMES[action] || action])
+        )
+      }
+    ])
+)
 
 /**
  * 权限映射工具类
@@ -807,6 +432,9 @@ export class PermissionMapper {
       'export': '导出',
       'import': '导入',
       'sell': '销售',
+      'match': '匹配',
+      'deliver': '交付',
+      'cancel': '取消预定',
       'admin:view': '管理查看',
       'admin:edit': '管理编辑',
       'all': '所有权限'

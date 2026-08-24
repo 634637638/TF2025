@@ -203,6 +203,40 @@ button[class*='btn-']:not(.btn-close) {
   min-height: var(--tf-button-height-large) !important;
 }
 
+/* Icon-only circle buttons keep a stable square footprint at every size. */
+.el-button.is-circle:not(.is-text):not(.is-link) {
+  flex: 0 0 var(--tf-button-height) !important;
+  width: var(--tf-button-height) !important;
+  min-width: var(--tf-button-height) !important;
+  max-width: var(--tf-button-height) !important;
+  height: var(--tf-button-height) !important;
+  min-height: var(--tf-button-height) !important;
+  max-height: var(--tf-button-height) !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  box-sizing: border-box;
+}
+
+.el-button.el-button--small.is-circle:not(.is-text):not(.is-link) {
+  flex-basis: var(--tf-button-height-small) !important;
+  width: var(--tf-button-height-small) !important;
+  min-width: var(--tf-button-height-small) !important;
+  max-width: var(--tf-button-height-small) !important;
+  height: var(--tf-button-height-small) !important;
+  min-height: var(--tf-button-height-small) !important;
+  max-height: var(--tf-button-height-small) !important;
+}
+
+.el-button.el-button--large.is-circle:not(.is-text):not(.is-link) {
+  flex-basis: var(--tf-button-height-large) !important;
+  width: var(--tf-button-height-large) !important;
+  min-width: var(--tf-button-height-large) !important;
+  max-width: var(--tf-button-height-large) !important;
+  height: var(--tf-button-height-large) !important;
+  min-height: var(--tf-button-height-large) !important;
+  max-height: var(--tf-button-height-large) !important;
+}
+
 .btn.btn-lg {
   height: var(--tf-button-height-large) !important;
   min-height: var(--tf-button-height-large) !important;

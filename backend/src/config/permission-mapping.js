@@ -24,7 +24,6 @@ module.exports = Object.freeze({
   'rentals:view': ['rentals_rentalsview:view'],
   'rentals:create': ['rentals_rentalsview:create'],
   'rentals:edit': ['rentals_rentalsview:edit'],
-  'rentals:manage': ['rentals_rentalsview:manage'],
 
   // 销售权限映射
   'sales:view': ['sales_salesview:view', 'sales_phonesaleview:view'],
@@ -123,9 +122,6 @@ module.exports = Object.freeze({
 
   // H5 商城后台权限映射
   'h5-admin:view': ['h5_admin_h5_adminview:view'],
-  'h5-admin:create': ['h5_admin_h5_adminview:create'],
-  'h5-admin:edit': ['h5_admin_h5_adminview:edit'],
-  'h5-admin:delete': ['h5_admin_h5_adminview:delete'],
   'h5-config:view': ['h5_admin_configview:view'],
   'h5-config:edit': ['h5_admin_configview:edit'],
   'h5-banners:view': ['h5_admin_bannersview:view'],
@@ -167,7 +163,6 @@ module.exports = Object.freeze({
   'attendance:edit': ['attendance_attendanceview:edit'],
   'attendance:delete': ['attendance_attendanceview:delete'],
   'attendance:approve': ['attendance_attendanceview:approve'],
-  'attendance:manage': ['attendance_attendanceview:manage'],
 
   // 员工管理权限映射
   'employee:view': ['employees_employeesview:view'],
@@ -202,6 +197,10 @@ module.exports = Object.freeze({
 
   // 权限管理权限映射
   'permissions:view': ['permissions_permissionsview:view'],
+  'module-management:view': ['permissions_modulemanagementview:view'],
+  'module-management:create': ['permissions_modulemanagementview:create'],
+  'module-management:edit': ['permissions_modulemanagementview:edit'],
+  'module-management:delete': ['permissions_modulemanagementview:delete'],
   'permissions:admin': ['permissions_permissionsview:view', 'permissions_permissionsview:create', 'permissions_permissionsview:edit', 'permissions_permissionsview:delete', 'permissions_modulemanagementview:view'],
   'permissions:edit': ['permissions_permissionsview:edit'],
   'permissions:delete': ['permissions_permissionsview:delete'],
@@ -213,7 +212,6 @@ module.exports = Object.freeze({
   'salary:edit': ['salary_salaryview:edit'],
   'salary:delete': ['salary_salaryview:delete'],
   'salary:approve': ['salary_salaryview:approve'],
-  'salary:manage': ['salary_salaryview:manage'],
 
   // 工资模板权限映射
   'salary-templates:view': ['salary_salarytemplatesview:view'],
@@ -229,6 +227,15 @@ module.exports = Object.freeze({
   'salary-records:edit': ['salary_salaryrecordsview:edit'],
   'salary-records:delete': ['salary_salaryrecordsview:delete'],
   'salary-records:approve': ['salary_salaryrecordsview:approve'],
+
+  // 数据分析权限映射
+  'analytics:view': ['analytics_analyticsview:view'],
+  'analytics:export': ['analytics_analyticsview:export'],
+
+  // 维修管理权限映射
+  'repairs:view': ['repairs_repairsview:view'],
+  'repairs:create': ['repairs_repairsview:create'],
+  'repairs:edit': ['repairs_repairsview:edit'],
 
   // 国补管理权限映射
   'subsidy:view': ['subsidy_subsidyview:view', 'subsidy:view'],
@@ -278,6 +285,16 @@ module.exports = Object.freeze({
   'price-list:import': ['price_list_pricelistview:import'],
   'price-list:export': ['price_list_pricelistview:export'],
   'price-list:sync': ['price_list_pricelistview:sync'],
+
+  // 同步日志是独立页面，不复用价目表删除权限
+  'price-list-sync-logs:view': ['price_list_synclogview:view', 'price_list_synclogview:menu_view'],
+  'price-list-sync-logs:delete': ['price_list_synclogview:delete'],
+
+  // 营销词库后台使用独立页面权限
+  'marketing:view': ['marketing_marketingmanagementview:view', 'marketing_marketingmanagementview:menu_view'],
+  'marketing:create': ['marketing_marketingmanagementview:create'],
+  'marketing:edit': ['marketing_marketingmanagementview:edit'],
+  'marketing:delete': ['marketing_marketingmanagementview:delete'],
 
   // Git 管理权限映射
   'git-management:view': ['system_gitmanagement:view', 'system_gitmanagement:menu_view'],

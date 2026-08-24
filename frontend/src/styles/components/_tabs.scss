@@ -11,11 +11,22 @@
   --tf-tabs-border: #cbd6e5;
   --tf-tabs-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
   --tf-tab-color: #334155;
+  --tf-tab-bg: rgba(255, 255, 255, 0.58);
+  --tf-tab-border: #c4cfde;
+  --tf-tab-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
   --tf-tab-hover-bg: #ffffff;
+  --tf-tab-hover-border: #8fa4bf;
+  --tf-tab-hover-shadow: 0 2px 6px rgba(15, 23, 42, 0.1);
   --tf-tab-hover-color: #1d4ed8;
   --tf-tab-active-bg: var(--tf-button-primary-bg, #2563eb);
+  --tf-tab-active-border: var(--tf-button-primary-border, #2563eb);
   --tf-tab-active-color: #ffffff;
   --tf-tab-active-shadow: 0 3px 9px rgba(37, 99, 235, 0.24);
+  --tf-tab-scroll-control-size: 30px;
+  --tf-tab-scroll-control-bg: rgba(255, 255, 255, 0.92);
+  --tf-tab-scroll-control-border: #b8c5d6;
+  --tf-tab-scroll-control-color: #475569;
+  --tf-tab-scroll-control-shadow: 0 2px 6px rgba(15, 23, 42, 0.1);
 }
 
 /* Top-level page tabs. Business-specific segmented controls must not use this class. */
@@ -48,12 +59,13 @@
   min-width: 0 !important;
   height: var(--tf-tabs-height) !important;
   min-height: var(--tf-tabs-height) !important;
+  box-sizing: border-box;
   margin: 0 !important;
   padding-inline: var(--tf-tab-padding-x) !important;
-  border: 0 !important;
+  border: 1px solid var(--tf-tab-border) !important;
   border-radius: var(--tf-tab-radius) !important;
-  background: transparent !important;
-  box-shadow: none !important;
+  background: var(--tf-tab-bg) !important;
+  box-shadow: var(--tf-tab-shadow) !important;
   color: var(--tf-tab-color) !important;
   font-size: var(--tf-tab-font-size) !important;
   font-weight: var(--tf-tab-font-weight) !important;
@@ -62,11 +74,14 @@
 
 .tf-page-tabs.tab-navigation .el-button:hover,
 .tf-page-tabs.tab-navigation .el-button:focus-visible {
+  border-color: var(--tf-tab-hover-border) !important;
   background: var(--tf-tab-hover-bg) !important;
+  box-shadow: var(--tf-tab-hover-shadow) !important;
   color: var(--tf-tab-hover-color) !important;
 }
 
 .tf-page-tabs.tab-navigation .el-button.el-button--primary {
+  border-color: var(--tf-tab-active-border) !important;
   background: var(--tf-tab-active-bg) !important;
   box-shadow: var(--tf-tab-active-shadow) !important;
   color: var(--tf-tab-active-color) !important;
@@ -105,18 +120,33 @@
 }
 
 .tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__nav-scroll {
+  width: 100%;
+  max-width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+  overscroll-behavior-x: contain;
+  cursor: grab;
+}
+
+.tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__nav-scroll:active {
+  cursor: grabbing;
 }
 
 .tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__nav-scroll::-webkit-scrollbar {
   display: none;
 }
 
+.tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__nav-wrap.is-scrollable {
+  padding-inline: calc(var(--tf-tab-scroll-control-size) + var(--tf-tabs-gap));
+}
+
 .tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__nav {
   display: flex;
+  width: max-content;
+  min-width: 100%;
   gap: var(--tf-tabs-gap);
   border: 0;
 }
@@ -124,9 +154,12 @@
 .tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__item {
   flex: 0 0 auto;
   height: var(--tf-tabs-height);
+  box-sizing: border-box;
   padding: 0 var(--tf-tab-padding-x) !important;
-  border: 0 !important;
+  border: 1px solid var(--tf-tab-border) !important;
   border-radius: var(--tf-tab-radius);
+  background: var(--tf-tab-bg);
+  box-shadow: var(--tf-tab-shadow);
   color: var(--tf-tab-color);
   font-size: var(--tf-tab-font-size);
   font-weight: var(--tf-tab-font-weight);
@@ -136,11 +169,14 @@
 
 .tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__item:hover,
 .tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__item:focus-visible {
+  border-color: var(--tf-tab-hover-border) !important;
   background: var(--tf-tab-hover-bg);
+  box-shadow: var(--tf-tab-hover-shadow);
   color: var(--tf-tab-hover-color);
 }
 
 .tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__item.is-active {
+  border-color: var(--tf-tab-active-border) !important;
   background: var(--tf-tab-active-bg);
   box-shadow: var(--tf-tab-active-shadow);
   color: var(--tf-tab-active-color);
@@ -151,8 +187,35 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  color: var(--tf-tab-color);
+  z-index: 2;
+  top: 0;
+  width: var(--tf-tab-scroll-control-size);
+  height: var(--tf-tabs-height);
+  box-sizing: border-box;
+  border: 1px solid var(--tf-tab-scroll-control-border);
+  border-radius: var(--tf-tab-radius);
+  background: var(--tf-tab-scroll-control-bg);
+  box-shadow: var(--tf-tab-scroll-control-shadow);
+  color: var(--tf-tab-scroll-control-color);
+  font-size: 14px;
+  line-height: var(--tf-tabs-height);
+  transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__nav-prev:hover,
+.tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__nav-next:hover {
+  border-color: var(--tf-tab-hover-border);
+  background: var(--tf-tab-hover-bg);
+  box-shadow: var(--tf-tab-hover-shadow);
+  color: var(--tf-tab-hover-color);
+}
+
+.tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__nav-prev {
+  left: 0;
+}
+
+.tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__nav-next {
+  right: 0;
 }
 
 .tf-page-tabs.el-tabs > .el-tabs__content {
@@ -214,6 +277,7 @@
     --tf-tab-radius: 6px;
     --tf-tab-padding-x: 11px;
     --tf-tab-font-size: 12px;
+    --tf-tab-scroll-control-size: 28px;
   }
 
   .tf-page-tabs.tab-navigation,

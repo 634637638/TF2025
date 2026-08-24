@@ -66,6 +66,7 @@
         </el-button>
         <el-button
           v-if="canViewReturngoods"
+          data-view-permission="return-goods:view"
           :type="activeTab === 'returngoods' ? 'primary' : 'default'"
           @click="activeTab = 'returngoods'"
         >

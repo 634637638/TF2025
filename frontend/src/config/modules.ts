@@ -4,6 +4,15 @@
  */
 
 import { logger } from '@/utils/logger'
+import permissionCapabilities from '../../../config/module-permission-capabilities.json'
+
+const getCapabilityPermissions = (moduleKey: string): string[] => {
+  const actions = permissionCapabilities.modules[moduleKey as keyof typeof permissionCapabilities.modules]
+  if (!actions) {
+    throw new Error(`模块 ${moduleKey} 未在共享权限能力清单中登记`)
+  }
+  return [...actions, 'menu_view']
+}
 
 // 模块类型定义
 export interface ModuleConfig {
@@ -20,7 +29,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     id: 'dashboard',
     key: 'dashboard_dashboardview', // 使用数据库中的实际module_key
     name: '仪表板',
-    permissions: ['view', 'menu_view']
+    permissions: getCapabilityPermissions('dashboard_dashboardview')
   },
 
   // 库存管理模块
@@ -28,7 +37,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     id: 'inventory',
     key: 'inventory_inventoryview', // 使用数据库中的实际module_key
     name: '库存管理',
-    permissions: ['view', 'create', 'edit', 'delete', 'export', 'menu_view']
+    permissions: getCapabilityPermissions('inventory_inventoryview')
   },
 
   // 销售管理模块
@@ -36,7 +45,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     id: 'sales',
     key: 'sales_salesview', // 使用数据库中的实际module_key
     name: '销售管理',
-    permissions: ['view', 'create', 'edit', 'delete', 'export', 'menu_view']
+    permissions: getCapabilityPermissions('sales_salesview')
   },
 
   // 客户管理模块
@@ -44,15 +53,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     id: 'customers',
     key: 'customers_customersview', // 使用数据库中的实际module_key
     name: '客户管理',
-    permissions: ['view', 'create', 'edit', 'delete', 'export', 'menu_view']
-  },
-
-  // 采购入库模块
-  STOCK_IN: {
-    id: 'stock_in',
-    key: 'inventory_stockinpage', // 使用数据库中的实际module_key
-    name: '采购入库',
-    permissions: ['view', 'create', 'edit', 'delete', 'menu_view']
+    permissions: getCapabilityPermissions('customers_customersview')
   },
 
   // 品牌管理模块
@@ -60,28 +61,28 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     id: 'brands',
     key: 'brands_brandsview', // 使用数据库中的实际module_key
     name: '品牌管理',
-    permissions: ['view', 'create', 'edit', 'delete', 'menu_view']
+    permissions: getCapabilityPermissions('brands_brandsview')
   },
 
   MODELS: {
     id: 'models',
     key: 'models_modelsview', // 使用数据库中的实际module_key
     name: '型号管理',
-    permissions: ['view', 'create', 'edit', 'delete', 'menu_view']
+    permissions: getCapabilityPermissions('models_modelsview')
   },
 
   COLORS: {
     id: 'colors',
     key: 'colors_colorsview', // 使用数据库中的实际module_key
     name: '颜色管理',
-    permissions: ['view', 'create', 'edit', 'delete', 'menu_view']
+    permissions: getCapabilityPermissions('colors_colorsview')
   },
 
   MEMORIES: {
     id: 'memories',
     key: 'memories_memoriesview', // 使用数据库中的实际module_key
     name: '内存管理',
-    permissions: ['view', 'create', 'edit', 'delete', 'menu_view']
+    permissions: getCapabilityPermissions('memories_memoriesview')
   },
 
   // 员工管理模块
@@ -89,7 +90,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     id: 'employees',
     key: 'employees_employeesview', // 使用数据库中的实际module_key
     name: '员工管理',
-    permissions: ['view', 'create', 'edit', 'delete', 'export', 'menu_view']
+    permissions: getCapabilityPermissions('employees_employeesview')
   },
 
   // 店铺管理模块
@@ -97,7 +98,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     id: 'stores',
     key: 'stores_storesview', // 使用数据库中的实际module_key
     name: '店铺管理',
-    permissions: ['view', 'create', 'edit', 'delete', 'export', 'menu_view']
+    permissions: getCapabilityPermissions('stores_storesview')
   },
 
   // 供应商管理模块
@@ -105,7 +106,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     id: 'suppliers',
     key: 'suppliers_suppliersview', // 使用数据库中的实际module_key
     name: '供应商管理',
-    permissions: ['view', 'create', 'edit', 'delete', 'export', 'menu_view']
+    permissions: getCapabilityPermissions('suppliers_suppliersview')
   },
 
   // 供应商付款模块
@@ -113,7 +114,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     id: 'supplier_payments',
     key: 'payments_supplierphonepaymentsview', // 使用数据库中的实际module_key
     name: '供应商付款',
-    permissions: ['view', 'create', 'edit', 'delete', 'approve', 'export', 'menu_view']
+    permissions: getCapabilityPermissions('payments_supplierphonepaymentsview')
   },
 
   // 配件管理模块
@@ -121,7 +122,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     id: 'accessories',
     key: 'accessories_accessoriesview', // 使用数据库中的实际module_key
     name: '配件管理',
-    permissions: ['view', 'create', 'edit', 'delete', 'menu_view']
+    permissions: getCapabilityPermissions('accessories_accessoriesview')
   },
 
   // 权限管理模块
@@ -129,7 +130,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     id: 'permissions',
     key: 'permissions_permissionsview', // 使用数据库中的实际module_key
     name: '权限管理',
-    permissions: ['view', 'create', 'edit', 'delete', 'menu_view']
+    permissions: getCapabilityPermissions('permissions_permissionsview')
   },
 
   // 模块管理模块
@@ -137,7 +138,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     id: 'module_management',
     key: 'permissions_modulemanagementview', // 使用数据库中的实际module_key
     name: '模块管理',
-    permissions: ['view', 'create', 'edit', 'delete', 'menu_view']
+    permissions: getCapabilityPermissions('permissions_modulemanagementview')
   },
 
   // 菜单管理模块
@@ -145,7 +146,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     id: 'menu',
     key: 'menu_menumanagementview', // 使用数据库中的实际module_key
     name: '菜单管理',
-    permissions: ['view', 'create', 'edit', 'delete', 'import', 'export', 'menu_view']
+    permissions: getCapabilityPermissions('menu_menumanagementview')
   },
 
   // 综合查询模块
@@ -153,7 +154,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     id: 'query',
     key: 'query_queryview', // 使用数据库中的实际module_key
     name: '综合查询',
-    permissions: ['view', 'edit', 'delete', 'export', 'menu_view']
+    permissions: getCapabilityPermissions('query_queryview')
   },
 
   // 系统设置模块
@@ -161,7 +162,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     id: 'system',
     key: 'system_systemview', // 使用数据库中的实际module_key
     name: '系统设置',
-    permissions: ['view', 'edit', 'menu_view']
+    permissions: getCapabilityPermissions('system_systemview')
   },
 
   // 数据分析模块
@@ -169,7 +170,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     id: 'analytics',
     key: 'analytics_analyticsview', // 使用数据库中的实际module_key
     name: '数据分析',
-    permissions: ['view', 'create', 'edit', 'delete', 'menu_view']
+    permissions: getCapabilityPermissions('analytics_analyticsview')
   },
 
   // 考勤管理模块
@@ -177,14 +178,14 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     id: 'attendance',
     key: 'attendance_attendanceview',
     name: '考勤管理',
-    permissions: ['view', 'create', 'edit', 'delete', 'approve', 'manage', 'menu_view']
+    permissions: getCapabilityPermissions('attendance_attendanceview')
   },
 
   MY_ATTENDANCE: {
     id: 'my_attendance',
     key: 'attendance_myattendanceview',
     name: '我的考勤',
-    permissions: ['view', 'create', 'menu_view']
+    permissions: getCapabilityPermissions('attendance_myattendanceview')
   },
 
   // 工资管理模块
@@ -192,44 +193,28 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     id: 'salary',
     key: 'salary_salaryview',
     name: '工资管理',
-    permissions: ['view', 'create', 'edit', 'delete', 'approve', 'manage', 'menu_view']
+    permissions: getCapabilityPermissions('salary_salaryview')
   },
 
   MY_SALARY: {
     id: 'my_salary',
     key: 'salary_mysalaryview',
     name: '我的工资',
-    permissions: ['view', 'menu_view']
+    permissions: getCapabilityPermissions('salary_mysalaryview')
   },
 
   SALARY_RECORDS: {
     id: 'salary_records',
     key: 'salary_salaryrecordsview',
     name: '工资记录',
-    permissions: ['view', 'create', 'edit', 'delete', 'approve', 'manage', 'menu_view']
+    permissions: getCapabilityPermissions('salary_salaryrecordsview')
   },
 
   SALARY_TEMPLATES: {
     id: 'salary_templates',
     key: 'salary_salarytemplatesview',
     name: '工资模板',
-    permissions: ['view', 'create', 'edit', 'delete', 'manage', 'menu_view']
-  },
-
-  // 手机销售模块
-  PHONE_SALE: {
-    id: 'phone_sale',
-    key: 'sales_phonesaleview', // 使用数据库中的实际module_key
-    name: '手机销售',
-    permissions: ['view', 'create', 'edit', 'delete', 'menu_view']
-  },
-
-  // 手机编辑模块
-  PHONE_EDIT: {
-    id: 'phone_edit',
-    key: 'sales_editphoneview', // 使用数据库中的实际module_key
-    name: '手机编辑',
-    permissions: ['view', 'create', 'edit', 'delete', 'menu_view']
+    permissions: getCapabilityPermissions('salary_salarytemplatesview')
   },
 
   // 数据优化模块
@@ -237,15 +222,15 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     id: 'data_optimization',
     key: 'data_optimization_dataoptimizationview', // 使用数据库中的实际module_key
     name: '数据优化',
-    permissions: ['view', 'check', 'import', 'sync', 'menu_view']
+    permissions: getCapabilityPermissions('data_optimization_dataoptimizationview')
   },
 
   // 预定管理模块
   PREORDERS: {
     id: 'preorders',
     key: 'preorders_preordersview',
-    name: '预定管理',
-    permissions: ['view', 'create', 'edit', 'delete', 'match', 'complete', 'cancel', 'export', 'menu_view']
+    name: '新品预定',
+    permissions: getCapabilityPermissions('preorders_preordersview')
   },
 
   // 价目表管理模块
@@ -253,7 +238,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     id: 'price_list',
     key: 'price_list_pricelistview',
     name: '价目表管理',
-    permissions: ['view', 'create', 'edit', 'delete', 'import', 'export', 'sync', 'menu_view']
+    permissions: getCapabilityPermissions('price_list_pricelistview')
   },
 
   // 国补管理模块
@@ -261,7 +246,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     id: 'subsidy',
     key: 'subsidy_subsidyview',
     name: '国补管理',
-    permissions: ['view', 'create', 'edit', 'delete', 'approve', 'export', 'menu_view']
+    permissions: getCapabilityPermissions('subsidy_subsidyview')
   },
 
   // 租赁管理模块
@@ -269,7 +254,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     id: 'rentals',
     key: 'rentals_rentalsview',
     name: '租赁管理',
-    permissions: ['view', 'create', 'edit', 'menu_view']
+    permissions: getCapabilityPermissions('rentals_rentalsview')
   }
 }
 

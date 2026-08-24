@@ -13,6 +13,7 @@ const db = require('../config/database');
 const { generateMemberNumber } = require('../utils/member-number');
 const { unifiedAuth, requirePermission } = require('../middleware/unified-auth');
 const log = require('../utils/log');
+const SystemSettingsService = require('../services/system-settings.service');
 
 const shopPublicService = new ShopPublicService();
 
@@ -381,6 +382,221 @@ router.get('/memories', async (req, res) => {
   } catch (error) {
     log.error('获取内存列表失败:', error);
     ApiResponse.error(res, error.message || '获取内存列表失败', 500);
+  }
+});
+
+/**
+ * 获取营销文案词库
+ * GET /api/public/marketing/lexicon
+ * 只返回数据库中保存的词库；未配置时返回空词库，不注入内置文案。
+ */
+router.get('/marketing/lexicon', async (req, res) => {
+  const fallback = {
+    modeLexicon: {},
+    subsidyEnabled: false,
+    colorEnabled: false,
+    weatherEnabled: false,
+    solarTermEnabled: false,
+    typeLexicon: {},
+    contextLexicon: { holiday: [], solarTerm: [], weather: [], timeSegment: {}, color: {}, subsidy: {} },
+    eventLexicon: { solarTerms: {}, traditionalHolidays: {}, historicalDays: {} },
+    updatedAt: new Date().toISOString(),
+    source: 'empty'
+  };
+
+  try {
+    const databaseSetting = await SystemSettingsService.getSettingByKey('marketing_lexicon');
+    const databaseLexicon = databaseSetting?.value;
+    if (databaseLexicon && typeof databaseLexicon === 'object') {
+      const typeLexicon = databaseLexicon.typeLexicon && typeof databaseLexicon.typeLexicon === 'object'
+        ? Object.fromEntries(Object.entries(databaseLexicon.typeLexicon).map(([key, value]) => [
+          key,
+          {
+            lines: Array.isArray(value?.lines) ? value.lines.map(item => String(item).trim()).filter(Boolean).slice(0, 200) : [],
+          }
+        ]))
+        : undefined;
+      const normalizeContextCategory = (value) => Array.isArray(value)
+        ? { all: value.map(item => String(item).trim()).filter(Boolean).slice(0, 100) }
+        : value && typeof value === 'object'
+          ? Object.fromEntries(Object.entries(value).map(([key, values]) => [
+            key,
+            Array.isArray(values) ? values.map(item => String(item).trim()).filter(Boolean).slice(0, 100) : []
+          ]))
+          : {};
+      const contextLexicon = databaseLexicon.contextLexicon && typeof databaseLexicon.contextLexicon === 'object'
+        ? {
+          holiday: normalizeContextCategory(databaseLexicon.contextLexicon.holiday),
+          solarTerm: normalizeContextCategory(databaseLexicon.contextLexicon.solarTerm),
+          weather: normalizeContextCategory(databaseLexicon.contextLexicon.weather),
+          timeSegment: databaseLexicon.contextLexicon.timeSegment && typeof databaseLexicon.contextLexicon.timeSegment === 'object'
+            ? Object.fromEntries(Object.entries(databaseLexicon.contextLexicon.timeSegment).map(([key, values]) => [
+              key,
+              Array.isArray(values) ? values.map(item => String(item).trim()).filter(Boolean).slice(0, 100) : []
+            ]))
+            : {},
+          color: normalizeContextCategory(databaseLexicon.contextLexicon.color),
+          subsidy: normalizeContextCategory(databaseLexicon.contextLexicon.subsidy)
+        }
+        : undefined;
+      const eventLexicon = databaseLexicon.eventLexicon && typeof databaseLexicon.eventLexicon === 'object'
+        ? Object.fromEntries(['solarTerms', 'traditionalHolidays', 'historicalDays'].map(category => [
+          category,
+          databaseLexicon.eventLexicon[category] && typeof databaseLexicon.eventLexicon[category] === 'object'
+            ? Object.fromEntries(Object.entries(databaseLexicon.eventLexicon[category]).map(([key, values]) => [
+              key,
+              Array.isArray(values) ? values.map(item => String(item).trim()).filter(Boolean).slice(0, 100) : []
+            ]))
+            : {}
+        ]))
+        : undefined;
+      return ApiResponse.success(res, {
+        subsidyEnabled: databaseLexicon.subsidyEnabled === true,
+        colorEnabled: databaseLexicon.colorEnabled === true,
+        weatherEnabled: databaseLexicon.weatherEnabled === true,
+        solarTermEnabled: databaseLexicon.solarTermEnabled === true,
+        modeLexicon: databaseLexicon.modeLexicon && typeof databaseLexicon.modeLexicon === 'object'
+          ? Object.fromEntries(Object.entries(databaseLexicon.modeLexicon).map(([mode, value]) => [
+            mode,
+            {
+              lines: Array.isArray(value?.lines) ? value.lines.map(item => String(item).trim()).filter(Boolean).slice(0, 200) : [],
+              nightLines: Array.isArray(value?.nightLines) ? value.nightLines.map(item => String(item).trim()).filter(Boolean).slice(0, 100) : [],
+              salesTalks: Array.isArray(value?.salesTalks) ? value.salesTalks.map(item => String(item).trim()).filter(Boolean).slice(0, 200) : []
+            }
+          ]))
+          : {},
+        ...(typeLexicon ? { typeLexicon } : {}),
+        ...(contextLexicon ? { contextLexicon } : {}),
+        ...(eventLexicon ? { eventLexicon } : {}),
+        updatedAt: databaseLexicon.updatedAt || new Date().toISOString(),
+        source: 'database'
+      }, '获取营销词库成功');
+    }
+
+    return ApiResponse.success(res, fallback, '营销词库为空，请先在后台配置');
+  } catch (error) {
+    log.warn('营销词库读取失败，返回空词库:', error.message);
+    return ApiResponse.success(res, fallback, '获取营销词库成功');
+  }
+});
+
+/**
+ * 在线营销文案生成（可选）
+ * POST /api/public/marketing/generate
+ *
+ * 在线接口由后台配置保存，前端只提交生成上下文，不接触密钥。
+ * 未启用或接口不可用时返回空结果，由前端继续使用本地生成。
+ */
+router.post('/marketing/generate', async (req, res) => {
+  const fallback = { suggestions: [], source: 'local-fallback' };
+
+  try {
+    const setting = await SystemSettingsService.getSettingByKey('marketing_generation_config');
+    const config = setting?.value || {};
+    const localProvider = ['ollama', 'localai'].includes(String(config.provider || '').toLowerCase());
+    if (!config.enabled || !config.endpoint || (!localProvider && !config.apiKey)) {
+      return ApiResponse.success(res, fallback, '在线生成未启用');
+    }
+
+    const mode = String(req.body?.mode || 'opening');
+    const count = Math.max(1, Math.min(8, Number(req.body?.count) || 4));
+    const controller = new AbortController();
+    const timeoutMs = Math.max(3000, Math.min(20000, Number(config.timeoutMs) || 10000));
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+    const systemPrompt = String(config.systemPrompt || [
+      '你是手机门店朋友圈文案编辑。',
+      '必须严格围绕当前模式和文案类型写作。',
+      '文案简洁、大气、自然，不堆地点、节气名称、标签或无关参数。',
+      '不要把“可爱、高冷、抒情”等类型词生硬贴到商品上，要通过句式和语气体现。',
+      '只返回 JSON 数组，每项包含 title、text、tone；不要 Markdown，不要解释。'
+    ].join('\n'));
+    const userPrompt = JSON.stringify({
+      mode,
+      condition: req.body?.condition,
+      product: req.body?.product || {},
+      context: req.body?.context || {},
+      types: req.body?.types || [],
+      count
+    }, null, 2);
+
+    try {
+      const response = await fetch(String(config.endpoint), {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(config.apiKey ? { Authorization: `Bearer ${config.apiKey}` } : {}),
+          ...(config.headers && typeof config.headers === 'object' ? config.headers : {})
+        },
+        body: JSON.stringify({
+          model: String(config.model || ''),
+          temperature: Number(config.temperature) || 0.8,
+          max_tokens: Number(config.maxTokens) || 1200,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ]
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`在线生成接口响应异常: ${response.status}`);
+      }
+
+      const payload = await response.json();
+      const content = payload?.choices?.[0]?.message?.content
+        || payload?.choices?.[0]?.text
+        || payload?.output_text
+        || payload?.data?.content
+        || '';
+      let parsed = content;
+      if (typeof content === 'string') {
+        const normalized = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+        try {
+          parsed = JSON.parse(normalized);
+        } catch {
+          parsed = normalized.split(/\n+/).map(text => text.replace(/^\s*\d+[.、)]\s*/, '').trim()).filter(Boolean);
+        }
+      }
+
+      const items = Array.isArray(parsed)
+        ? parsed
+        : Array.isArray(parsed?.suggestions)
+          ? parsed.suggestions
+          : [];
+      const suggestions = items
+        .map((item, index) => {
+          if (typeof item === 'string') {
+            return {
+              id: `online-${index}`,
+              title: '🌐在线灵感',
+              tone: '在线生成',
+              text: item.trim(),
+              tags: ['在线生成']
+            };
+          }
+          return {
+            id: `online-${index}`,
+            title: String(item?.title || '🌐在线灵感').trim(),
+            tone: String(item?.tone || '在线生成').trim(),
+            text: String(item?.text || item?.content || '').trim(),
+            tags: Array.isArray(item?.tags) ? item.tags.map(tag => String(tag)) : ['在线生成']
+          };
+        })
+        .filter(item => item.text)
+        .slice(0, count);
+
+      return ApiResponse.success(res, {
+        suggestions,
+        source: 'online'
+      }, '在线文案生成成功');
+    } finally {
+      clearTimeout(timer);
+    }
+  } catch (error) {
+    log.warn('在线营销文案生成失败，回退本地生成:', error.message);
+    return ApiResponse.success(res, fallback, '在线生成不可用，已使用本地文案');
   }
 });
 

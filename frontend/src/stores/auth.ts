@@ -1162,7 +1162,7 @@ export const useAuthStore = defineStore('auth', () => {
 
         // 如果当前在需要认证的页面，跳转到登录页
         const currentPath = window.location.pathname
-        const isPublicRoute = ['/login', '/404', '/forgot-password', '/register', '/price-query', '/sales-price-display', '/m'].some(path => currentPath.startsWith(path))
+        const isPublicRoute = ['/login', '/404', '/forgot-password', '/register', '/price-query', '/sales-price-display', '/Marketing_Copy', '/m'].some(path => currentPath.startsWith(path))
 
         if (!isPublicRoute) {
           window.location.href = '/login'
@@ -1225,11 +1225,11 @@ export const useAuthStore = defineStore('auth', () => {
   isAuthenticating.value = false
 
   // 检查当前路由是否为公开路由（不需要认证）
-  // 公开路由列表：price-query, sales-price-display, login, 404, H5商城(m) 等
+  // 公开路由列表：price-query, sales-price-display, Marketing_Copy, login, 404, H5商城(m) 等
   const isPublicRoute = () => {
     if (typeof window === 'undefined') return false
     const path = window.location.pathname
-    const publicRoutes = ['/price-query', '/sales-price-display', '/login', '/404', '/forgot-password', '/register', '/m']
+    const publicRoutes = ['/price-query', '/sales-price-display', '/Marketing_Copy', '/login', '/404', '/forgot-password', '/register', '/m']
     return publicRoutes.some(route => path.startsWith(route))
   }
 

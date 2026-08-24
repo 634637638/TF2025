@@ -226,7 +226,21 @@ export class DynamicPermissionService {
     try {
       const permissionsData = await this.getUserPermissions(forceRefresh)
       const summary = permissionsData?.summary || {}
-      const knownActions = ['view', 'create', 'edit', 'delete', 'export', 'import', 'approve', 'manage', 'sell', 'menu_view']
+      const knownActions = [
+        'view',
+        'create',
+        'edit',
+        'delete',
+        'export',
+        'import',
+        'approve',
+        'manage',
+        'sell',
+        'match',
+        'deliver',
+        'cancel',
+        'menu_view'
+      ]
       const permissions = Array.isArray(summary[module])
         ? summary[module]
         : knownActions.filter(action => authStore.hasPermission(`${module}:${action}`))

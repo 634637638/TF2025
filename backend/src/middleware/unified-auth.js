@@ -16,6 +16,7 @@ const { verifyToken } = require('./jwt-blacklist');
 const { getRoleHierarchyFromDB } = require('../services/accessControl.service');
 const { normalizePermissionType } = require('../config/module-permission-actions');
 const { CACHE_TTL } = require('../config/constants');
+const { isDatabaseAvailabilityError } = require('../utils/database-errors');
 const log = require('../utils/log');
 
 // 开发环境检测
@@ -333,6 +334,17 @@ const unifiedAuth = async (req, res, next) => {
 
     next();
   } catch (error) {
+    // 数据库暂时不可用不代表令牌失效。返回 503 让前端保留登录态，
+    // 避免远程数据库抖动时把所有受保护请求误判为 401。
+    if (isDatabaseAvailabilityError(error)) {
+      log.error('Authentication database unavailable', error);
+      return res.status(503).json({
+        success: false,
+        message: '数据库连接暂时不可用，请稍后重试',
+        code: 'DB_CONNECTION_ERROR'
+      });
+    }
+
     let message = '认证失败';
     let code = 'AUTH_ERROR';
     const isExpectedAuthError =
@@ -706,6 +718,9 @@ const PERMISSION_ACTIONS = new Set([
   'import',
   'sell',
   'sync',
+  'match',
+  'deliver',
+  'cancel',
   'menu_view'
 ]);
 

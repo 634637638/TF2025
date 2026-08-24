@@ -1,67 +1,15 @@
-const DEFAULT_PERMISSION_TYPES = ['view', 'create', 'edit', 'delete'];
+const capabilityRegistry = require('../../../config/module-permission-capabilities.json');
 
-const ACTION_ORDER = [
-  'view',
-  'create',
-  'return-to-stock',
-  'wholesale',
-  'proxy-transfer',
-  'edit',
-  'delete',
-  'approve',
-  'manage',
-  'export',
-  'import',
-  'sell',
-  'sync'
-];
-
-const MODULE_PERMISSION_TYPES = {
-  dashboard_dashboardview: ['view'],
-  preorders_preordersview: ['view', 'create', 'edit', 'delete', 'match', 'deliver', 'cancel'],
-  reminders_reminderview: ['view', 'create', 'edit', 'delete', 'manage'],
-  shared_sharedview: ['view', 'create', 'edit', 'delete', 'manage'],
-  suppliers_suppliersview: ['view', 'create', 'edit', 'delete', 'export'],
-  payments_supplierphonepaymentsview: ['view', 'create', 'edit', 'delete', 'approve', 'export'],
-  system_systemview: ['view', 'edit', 'delete'],
-  system_returngoods: ['view', 'edit', 'delete'],
-  system_gitmanagement: ['view', 'create', 'edit', 'delete'],
-  backup_backupview: ['view', 'create', 'delete'],
-  data_optimization_dataoptimizationview: ['view', 'create', 'edit', 'delete'],
-  menu_menumanagementview: ['view', 'create', 'edit', 'delete', 'export', 'import'],
-  sales_salesview: ['view', 'create', 'wholesale', 'proxy-transfer', 'edit', 'delete', 'export'],
-  models_modelsview: ['view', 'create', 'edit', 'delete'],
-  colors_colorsview: ['view', 'create', 'edit', 'delete'],
-  memories_memoriesview: ['view', 'create', 'edit', 'delete'],
-  brands_brandsview: ['view', 'create', 'edit', 'delete'],
-  stores_storesview: ['view', 'create', 'edit', 'delete', 'export'],
-  employees_employeesview: ['view', 'create', 'edit', 'delete', 'export'],
-  customers_customersview: ['view', 'create', 'edit', 'delete', 'export', 'manage'],
-  accessories_accessoriesview: ['view', 'create', 'edit', 'delete'],
-  inventory_inventoryview: ['view', 'create', 'edit', 'delete', 'export'],
-  query_queryview: ['view', 'create', 'return-to-stock', 'edit', 'delete', 'export'],
-  permissions_permissionsview: ['view', 'create', 'edit', 'delete'],
-  permissions_modulemanagementview: ['view', 'create', 'edit', 'delete'],
-  analytics_analyticsview: ['view', 'export'],
-  attendance_attendanceview: ['view', 'create', 'edit', 'delete', 'approve', 'manage'],
-  attendance_myattendanceview: ['view', 'create'],
-  salary_salaryview: ['view', 'create', 'edit', 'delete', 'approve', 'manage'],
-  salary_mysalaryview: ['view'],
-  salary_salaryrecordsview: ['view', 'create', 'edit', 'delete', 'approve', 'manage'],
-  salary_salarytemplatesview: ['view', 'create', 'edit', 'delete', 'manage'],
-  subsidy_subsidyview: ['view', 'create', 'edit', 'delete', 'approve', 'export'],
-  rentals_rentalsview: ['view', 'create', 'edit', 'manage'],
-  repairs_repairsview: ['view', 'create', 'edit'],
-  price_list_pricelistview: ['view', 'create', 'edit', 'delete', 'export', 'import', 'sync'],
-  price_list_synclogview: ['view', 'delete'],
-  h5_admin_h5_adminview: ['view', 'create', 'edit', 'delete'],
-  h5_admin_templatesview: ['view', 'create', 'edit', 'delete'],
-  h5_admin_soldproductsview: ['view', 'delete'],
-  h5_admin_configview: ['view', 'edit'],
-  h5_admin_homesectionsview: ['view', 'create', 'edit', 'delete'],
-  h5_admin_bannersview: ['view', 'create', 'edit', 'delete'],
-  h5_admin_ordersview: ['view', 'edit']
-};
+const DEFAULT_PERMISSION_TYPES = Object.freeze([...capabilityRegistry.defaultActions]);
+const ACTION_ORDER = Object.freeze([...capabilityRegistry.actionOrder]);
+const MODULE_PERMISSION_TYPES = Object.freeze(
+  Object.fromEntries(
+    Object.entries(capabilityRegistry.modules).map(([moduleKey, actions]) => [
+      moduleKey,
+      Object.freeze([...actions])
+    ])
+  )
+);
 
 const MODULE_PERMISSION_METADATA = {
   dashboard_dashboardview: {
@@ -286,6 +234,12 @@ const MODULE_PERMISSION_METADATA = {
     category: 'business',
     icon: 'fas fa-clock-rotate-left'
   },
+  marketing_marketingmanagementview: {
+    name: '营销管理',
+    description: '维护营销文案词库和自动应景配置',
+    category: 'business',
+    icon: 'fas fa-bullhorn'
+  },
   h5_admin_h5_adminview: {
     name: 'H5商城管理',
     description: '维护 H5 商城模板、配置和运营内容',
@@ -371,18 +325,15 @@ function sortPermissionTypes(permissionTypes = []) {
   });
 }
 
-function getModulePermissionTypes(moduleKey, extraTypes = []) {
+function getModulePermissionTypes(moduleKey) {
   const configuredTypes = MODULE_PERMISSION_TYPES[moduleKey];
   if (configuredTypes) {
     return sortPermissionTypes(configuredTypes);
   }
 
-  return sortPermissionTypes([
-    ...DEFAULT_PERMISSION_TYPES,
-    ...extraTypes
-      .map(normalizePermissionType)
-      .filter(type => type && type !== 'menu_view')
-  ]);
+  // 未登记模块采用最小权限，禁止自动生成虚假的增删改按钮。
+  // 新页面必须先在共享能力清单中明确声明所需权限。
+  return sortPermissionTypes(DEFAULT_PERMISSION_TYPES);
 }
 
 function getModulePermissionMetadata(moduleKey) {

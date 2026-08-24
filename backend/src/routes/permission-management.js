@@ -91,6 +91,44 @@ function normalizeManagedModuleKey(moduleKey) {
   return normalizeModuleKey(moduleKey);
 }
 
+function visibilityMapToMenuPermissionRows(visibility = {}) {
+  if (!visibility) {
+    return [];
+  }
+
+  if (visibility instanceof Map) {
+    return Array.from(visibility.entries())
+      .filter(([, visible]) => Boolean(visible))
+      .map(([moduleKey]) => ({
+        module_key: normalizeManagedModuleKey(moduleKey),
+        permission_type: 'menu_view'
+      }))
+      .filter((permission) => permission.module_key);
+  }
+
+  if (Array.isArray(visibility)) {
+    return visibility
+      .filter((item) => item && (item.menu_visible === true || item.menu_visible === 1 || item.visible === true || item.visible === 1))
+      .map((item) => ({
+        module_key: normalizeManagedModuleKey(item.module_key || item.key),
+        permission_type: 'menu_view'
+      }))
+      .filter((permission) => permission.module_key);
+  }
+
+  if (typeof visibility === 'object') {
+    return Object.entries(visibility)
+      .filter(([, visible]) => Boolean(visible))
+      .map(([moduleKey]) => ({
+        module_key: normalizeManagedModuleKey(moduleKey),
+        permission_type: 'menu_view'
+      }))
+      .filter((permission) => permission.module_key);
+  }
+
+  return [];
+}
+
 function buildManagedModuleRow(moduleKey) {
   const normalizedModuleKey = normalizeManagedModuleKey(moduleKey);
   const metadata = getModulePermissionMetadata(normalizedModuleKey) || {};
@@ -1016,12 +1054,7 @@ router.put('/menu/:roleId', requirePermission('permissions:admin'), async (req, 
       );
       const moduleIdMap = new Map(moduleRows.map((row) => [row.key, row.id]));
       const previousVisibility = await getRoleMenuVisibility(roleId, connection);
-      const previousMenuPermissions = Array.from(previousVisibility.entries())
-        .filter(([, visible]) => visible)
-        .map(([moduleKey]) => ({
-          module_key: moduleKey,
-          permission_type: 'menu_view'
-        }));
+      const previousMenuPermissions = visibilityMapToMenuPermissionRows(previousVisibility);
 
       await connection.execute(
         'DELETE FROM role_permissions WHERE role_id = ? AND permission_type = ?',
@@ -1982,27 +2015,6 @@ router.get('/roles/:id/permissions', requirePermission('permissions:admin'), asy
       }
     }
 
-    // 获取系统中已存在的权限类型
-    const [allModulePermissionTypes] = await pool.execute(`
-      SELECT DISTINCT
-        module_key,
-        permission_type
-      FROM role_permissions
-      WHERE permission_type != 'menu_view'
-    `);
-
-    const modulePermissionTypeMap = new Map();
-    allModulePermissionTypes.forEach(perm => {
-      const normalizedModuleKey = normalizeManagedModuleKey(perm.module_key);
-      const normalizedPermissionType = normalizePermissionType(perm.permission_type);
-      if (!modulePermissionTypeMap.has(normalizedModuleKey)) {
-        modulePermissionTypeMap.set(normalizedModuleKey, new Set());
-      }
-      modulePermissionTypeMap.get(normalizedModuleKey).add(normalizedPermissionType);
-    });
-
-    const actionUniverse = await listPermissionActions(pool);
-
     // 获取角色当前拥有的权限
     const [rolePermissions] = await pool.execute(`
       SELECT
@@ -2034,10 +2046,7 @@ router.get('/roles/:id/permissions', requirePermission('permissions:admin'), asy
       }
 
       // 为每个模块添加统一定义的权限类型
-      const permissionTypes = getModulePermissionTypes(
-        key,
-        [...actionUniverse, ...Array.from(modulePermissionTypeMap.get(key) || [])]
-      );
+      const permissionTypes = getModulePermissionTypes(key);
 
       permissionTypes.forEach(type => {
         const permissionKey = `${key}:${type}`;

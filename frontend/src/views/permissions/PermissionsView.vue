@@ -172,6 +172,8 @@
         门店绑定
       </el-button>
       <el-button
+        v-if="canViewModuleManagement"
+        data-view-permission="module-management:view"
         :type="activeTab === 'modules' ? 'primary' : 'default'"
         @click="handleTabClick('modules')"
         :icon="Grid"
@@ -202,7 +204,7 @@
       <RolesPage v-if="activeTab === 'roles'" class="tf-tab-panel" />
       <UserRolesPage v-else-if="activeTab === 'userRoles'" class="tf-tab-panel" />
       <StoreBindingsPage v-else-if="activeTab === 'storeBindings'" class="tf-tab-panel" />
-      <ModulesPage v-else-if="activeTab === 'modules'" ref="modulesPageRef" class="tf-tab-panel" />
+      <ModulesPage v-else-if="activeTab === 'modules' && canViewModuleManagement" ref="modulesPageRef" class="tf-tab-panel" />
       <LogsPage v-else-if="activeTab === 'logs'" class="tf-tab-panel" />
       <RolePermissionsPage v-else-if="activeTab === 'pagePermissions'" class="tf-tab-panel" />
     </div>
@@ -901,6 +903,7 @@ interface Module {
 
 // 权限检查
 const { canView, canCreate, canEdit, canDelete } = usePagePermissions('permissions')
+const { canView: canViewModuleManagement } = usePagePermissions('module-management')
 
 // 状态变量
 const { loading } = useLoadingState()
@@ -1337,6 +1340,10 @@ const paginatedLogs = computed(() => {
 
 // 模块管理相关方法
 const goToModuleManagement = () => {
+  if (!canViewModuleManagement.value) {
+    warning('您没有查看模块管理的权限')
+    return
+  }
   activeTab.value = 'modules'
 }
 
@@ -1800,6 +1807,11 @@ const handleRefresh = async () => {
 
 // 🚀 优化：标签页点击处理（移除重复的数据加载）
 const handleTabClick = async (tabName: string) => {
+  if (tabName === 'modules' && !canViewModuleManagement.value) {
+    warning('您没有查看模块管理的权限')
+    return
+  }
+
   if (activeTab.value === tabName) {
     return
   }
@@ -3659,6 +3671,11 @@ Object.assign(permissionsPageContext, {
 
 // 优化：监听标签页切换，按需加载数据
 watch(activeTab, async (newTab) => {
+  if (newTab === 'modules' && !canViewModuleManagement.value) {
+    activeTab.value = 'roles'
+    return
+  }
+
   // 只在数据为空时加载（首次访问）
   if (newTab === 'roles' && rolesData.value.length === 0) {
     await loadRoles(false, false)

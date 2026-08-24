@@ -11,6 +11,10 @@
     <!-- 页面标题 -->
     <PageHeader title="预定管理">
       <template #actions>
+        <el-button v-if="canCreate" type="primary" @click="openCreateModal">
+          <i class="fas fa-plus"></i>
+          新增预定
+        </el-button>
         <el-button @click="handleRefresh" :loading="refreshing" :disabled="refreshing">
           <i class="fas fa-sync-alt"></i>
           刷新
@@ -71,13 +75,6 @@
       <!-- TAB 1: 新增预定 -->
       <el-tab-pane label="新增预定" name="new" class="tf-tab-panel">
         <div class="tab-content tf-tab-content table-section admin-panel admin-table-panel">
-          <div class="actions-bar">
-            <el-button v-if="canCreate" type="primary" @click="openCreateModal">
-              <i class="fas fa-plus"></i>
-              新建预定单
-            </el-button>
-          </div>
-
           <!-- 待匹配预定单列表 -->
           <div class="table-responsive">
           <el-table
@@ -98,6 +95,15 @@
               <template #default="{ row }">
                 <div class="mobile-row-actions">
                   <el-button
+                    v-if="canMatch"
+                    type="success"
+                    size="small"
+                    @click.stop="openMatchModal(row)"
+                  >
+                    <i class="fas fa-link"></i>
+                    <span>匹配</span>
+                  </el-button>
+                  <el-button
                     v-if="canEdit"
                     type="primary"
                     size="small"
@@ -107,7 +113,7 @@
                     <span>编辑</span>
                   </el-button>
                   <el-button
-                    v-if="canDelete"
+                    v-if="canCancel"
                     type="danger"
                     size="small"
                     @click.stop="cancelPreorder(row)"
@@ -171,9 +177,18 @@
                 {{ formatDateTime(row.created_at) }}
               </template>
             </el-table-column>
-              <el-table-column v-if="!isMobile && (canEdit || canDelete)" label="操作" :width="$getActionColumnWidth(Number(canEdit) + Number(canDelete))" align="center" class-name="actions-column">
+              <el-table-column v-if="!isMobile && (canMatch || canEdit || canCancel)" label="操作" :width="pendingPreorderActionColumnWidth" align="center" class-name="actions-column">
               <template #default="{ row }">
                 <div class="action-buttons">
+                  <el-button
+                    v-if="canMatch"
+                    type="success"
+                    size="small"
+                    @click.stop="openMatchModal(row)"
+                  >
+                    <i class="fas fa-link"></i>
+                    匹配
+                  </el-button>
                   <el-button
                     v-if="canEdit"
                     type="primary"
@@ -184,7 +199,7 @@
                     编辑
                   </el-button>
                   <el-button
-                    v-if="canDelete"
+                    v-if="canCancel"
                     type="danger"
                     size="small"
                     @click.stop="cancelPreorder(row)"
@@ -241,8 +256,17 @@
             <el-table-column v-if="isMobile" type="expand" width="1" class-name="mobile-expand-column" label-class-name="mobile-expand-header">
               <template #default="{ row }">
                 <div class="mobile-row-actions">
-                  <!-- 待匹配状态：编辑、取消 -->
+                  <!-- 待匹配状态：匹配、编辑、取消 -->
                   <template v-if="row.status === 'pending'">
+                    <el-button
+                      v-if="canMatch"
+                      type="success"
+                      size="small"
+                      @click.stop="openMatchModal(row)"
+                    >
+                      <i class="fas fa-link"></i>
+                      <span>匹配</span>
+                    </el-button>
                     <el-button
                       v-if="canEdit"
                       type="primary"
@@ -253,7 +277,7 @@
                       <span>编辑</span>
                     </el-button>
                     <el-button
-                      v-if="canEdit"
+                      v-if="canCancel"
                       type="danger"
                       size="small"
                       @click.stop="cancelMatchedPreorder(row)"
@@ -262,10 +286,10 @@
                       <span>取消</span>
                     </el-button>
                   </template>
-                  <!-- 已匹配状态：交付、编辑、取消 -->
+                  <!-- 已匹配状态：交付、取消 -->
                   <template v-if="row.status === 'arrived'">
                     <el-button
-                      v-if="canEdit"
+                      v-if="canDeliver"
                       type="success"
                       size="small"
                       @click.stop="deliverPreorder(row)"
@@ -274,16 +298,7 @@
                       <span>交付</span>
                     </el-button>
                     <el-button
-                      v-if="canEdit"
-                      type="primary"
-                      size="small"
-                      @click.stop="editMatchedPreorder(row)"
-                    >
-                      <i class="fas fa-edit"></i>
-                      <span>编辑</span>
-                    </el-button>
-                    <el-button
-                      v-if="canEdit"
+                      v-if="canCancel"
                       type="danger"
                       size="small"
                       @click.stop="cancelMatchedPreorder(row)"
@@ -385,11 +400,20 @@
                 </span>
               </template>
             </el-table-column>
-              <el-table-column v-if="!isMobile && (canEdit || canDelete)" label="操作" :width="matchedPreorderActionColumnWidth" align="center" class-name="actions-column">
+              <el-table-column v-if="!isMobile && (canMatch || canEdit || canDeliver || canCancel || canDelete)" label="操作" :width="matchedPreorderActionColumnWidth" align="center" class-name="actions-column">
               <template #default="{ row }">
                 <div class="action-buttons">
-                  <!-- 待匹配状态：编辑、取消 -->
+                  <!-- 待匹配状态：匹配、编辑、取消 -->
                   <template v-if="row.status === 'pending'">
+                    <el-button
+                      v-if="canMatch"
+                      type="success"
+                      size="small"
+                      @click.stop="openMatchModal(row)"
+                    >
+                      <i class="fas fa-link"></i>
+                      匹配
+                    </el-button>
                     <el-button
                       v-if="canEdit"
                       type="primary"
@@ -400,7 +424,7 @@
                       编辑
                     </el-button>
                     <el-button
-                      v-if="canEdit"
+                      v-if="canCancel"
                       type="danger"
                       size="small"
                       @click.stop="cancelMatchedPreorder(row)"
@@ -409,10 +433,10 @@
                       取消
                     </el-button>
                   </template>
-                  <!-- 已匹配状态：交付、编辑、取消 -->
+                  <!-- 已匹配状态：交付、取消 -->
                   <template v-if="row.status === 'arrived'">
                     <el-button
-                      v-if="canEdit"
+                      v-if="canDeliver"
                       type="success"
                       size="small"
                       @click.stop="deliverPreorder(row)"
@@ -421,16 +445,7 @@
                       交付
                     </el-button>
                     <el-button
-                      v-if="canEdit"
-                      type="primary"
-                      size="small"
-                      @click.stop="editMatchedPreorder(row)"
-                    >
-                      <i class="fas fa-edit"></i>
-                      编辑
-                    </el-button>
-                    <el-button
-                      v-if="canEdit"
+                      v-if="canCancel"
                       type="danger"
                       size="small"
                       @click.stop="cancelMatchedPreorder(row)"
@@ -614,6 +629,12 @@
       :preorder="selectedPreorder"
       @success="handlePreorderFormSuccess"
     />
+    <MatchPreorderModal
+      v-if="showMatchModal && matchTarget"
+      v-model:visible="showMatchModal"
+      :preorder="matchTarget"
+      @success="handleMatchSuccess"
+    />
   </div>
   </PermissionGate>
 </template>
@@ -621,7 +642,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessageBox } from 'element-plus'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
@@ -634,6 +655,7 @@ import { logger } from '@/utils/logger'
 import { getAdaptiveActionColumnWidth, getIdentifierColumnMinWidth } from '@/utils/table-layout'
 
 const PreorderFormModal = defineAsyncComponent(() => import('./page/PreorderFormModal.vue'))
+const MatchPreorderModal = defineAsyncComponent(() => import('./page/MatchPreorderModal.vue'))
 
 const { success, error, warning } = useNotification()
 const {
@@ -641,6 +663,9 @@ const {
   canCreate,
   canEdit,
   canDelete,
+  canMatch,
+  canDeliver,
+  canCancel,
   handleNoPermission
 } = usePagePermissions('preorders')
 const router = useRouter()
@@ -718,14 +743,23 @@ const pagination = reactive({
 const pendingPreorders = ref<Preorder[]>([])
 const matchedPreorders = ref<Preorder[]>([])
 const deliveredPreorders = ref<Preorder[]>([])
+const pendingPreorderActionColumnWidth = computed(() => getAdaptiveActionColumnWidth(
+  pendingPreorders.value,
+  [
+    { label: '匹配', visible: canMatch.value },
+    { label: '编辑', visible: canEdit.value },
+    { label: '取消', visible: canCancel.value }
+  ]
+))
 const matchedPreorderActionColumnWidth = computed(() => getAdaptiveActionColumnWidth(
   matchedPreorders.value,
   [
-    row => canEdit.value && row.status === 'arrived',
-    row => canEdit.value && ['pending', 'arrived'].includes(row.status),
-    row => canEdit.value && ['pending', 'arrived'].includes(row.status),
-    row => canEdit.value && row.status === 'cancelled',
-    row => canDelete.value && row.status === 'cancelled'
+    { label: '匹配', visible: row => canMatch.value && row.status === 'pending' },
+    { label: '编辑', visible: row => canEdit.value && row.status === 'pending' },
+    { label: '交付', visible: row => canDeliver.value && row.status === 'arrived' },
+    { label: '取消', visible: row => canCancel.value && ['pending', 'arrived'].includes(row.status) },
+    { label: '恢复', visible: row => canEdit.value && row.status === 'cancelled' },
+    { label: '删除', visible: row => canDelete.value && row.status === 'cancelled' }
   ]
 ))
 const visiblePreorders = computed(() => [
@@ -746,6 +780,8 @@ const imeiColumnWidth = computed(() => getIdentifierColumnMinWidth(
 const showFormModal = ref(false)
 const formModalMode = ref<'create' | 'edit'>('create')
 const selectedPreorder = ref<Preorder | null>(null)
+const showMatchModal = ref(false)
+const matchTarget = ref<Preorder | null>(null)
 
 // 加载统计数据
 const loadStats = async () => {
@@ -876,6 +912,25 @@ const openCreateModal = () => {
   showFormModal.value = true
 }
 
+const openMatchModal = (preorder: Preorder) => {
+  if (!canMatch.value) {
+    handleNoPermission('match')
+    return
+  }
+
+  matchTarget.value = preorder
+  showMatchModal.value = true
+}
+
+const handleMatchSuccess = async () => {
+  showMatchModal.value = false
+  matchTarget.value = null
+  await Promise.all([loadPendingPreorders(false), loadStats()])
+  if (activeTab.value === 'matched') {
+    await loadMatchedPreorders(false)
+  }
+}
+
 // 刷新数据
 const handleRefresh = async () => {
   if (refreshing.value) {
@@ -930,8 +985,8 @@ const editPreorder = (preorder: Preorder) => {
 
 // 取消预定单
 const cancelPreorder = async (preorder: Preorder) => {
-  if (!canEdit.value) {
-    handleNoPermission('edit')
+  if (!canCancel.value) {
+    handleNoPermission('cancel')
     return
   }
 
@@ -956,8 +1011,8 @@ const cancelPreorder = async (preorder: Preorder) => {
 
 // 交付预定单 - 跳转到销售页面
 const deliverPreorder = (preorder: Preorder) => {
-  if (!canEdit.value) {
-    handleNoPermission('edit')
+  if (!canDeliver.value) {
+    handleNoPermission('deliver')
     return
   }
 
@@ -995,8 +1050,8 @@ const editMatchedPreorder = (preorder: Preorder) => {
 
 // 取消已匹配的预定单
 const cancelMatchedPreorder = async (preorder: Preorder) => {
-  if (!canEdit.value) {
-    handleNoPermission('edit')
+  if (!canCancel.value) {
+    handleNoPermission('cancel')
     return
   }
 

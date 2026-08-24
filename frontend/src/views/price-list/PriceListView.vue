@@ -58,7 +58,7 @@
             </el-dropdown-menu>
           </template>
         </el-dropdown>
-        <el-button v-if="canEdit" type="warning" @click="handleSync" :loading="syncing">
+        <el-button v-if="canSync" type="warning" @click="handleSync" :loading="syncing">
           <i class="fas fa-sync"></i>
           同步
         </el-button>
@@ -948,7 +948,7 @@ import { getAdaptiveActionColumnWidth, getTextColumnMinWidth } from '@/utils/tab
 const PriceMarkupConfig = defineAsyncComponent(() => import('@/components/PriceMarkupConfig.vue'))
 
 // 权限检查
-const { canView, canCreate, canEdit, canDelete, canExport, canImport, handleNoPermission } = usePagePermissions('price-list')
+const { canView, canCreate, canEdit, canDelete, canExport, canImport, canSync, handleNoPermission } = usePagePermissions('price-list')
 
 // 数据状态
 const router = useRouter()
@@ -1532,8 +1532,8 @@ watch([() => editForm.brand_id, () => editForm.model_id, () => editForm.color_id
 
 // 编辑
 const handleEdit = async (row: any) => {
-  if (!canEdit.value) {
-    handleNoPermission('edit')
+  if (!canSync.value) {
+    handleNoPermission('sync')
     return
   }
 

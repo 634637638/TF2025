@@ -7,6 +7,7 @@ const adminLayoutSource = readFileSync(join(sourceRoot, 'styles/admin-layout.css
 const tableStyleSource = readFileSync(join(sourceRoot, 'styles/components/_table.scss'), 'utf8')
 const tableLayoutSource = readFileSync(join(sourceRoot, 'utils/table-layout.ts'), 'utf8')
 const messageBoxSource = readFileSync(join(sourceRoot, 'utils/message-box.ts'), 'utf8')
+const buttonStyleSource = readFileSync(join(sourceRoot, 'styles/components/_buttons.scss'), 'utf8')
 const checkedExtensions = new Set(['.vue', '.scss', '.css'])
 const publicLayoutFiles = new Set([
   'src/styles/admin-layout.css',
@@ -189,8 +190,14 @@ if (!/\.el-button\.table-action i\s*\{[\s\S]*?margin-inline:\s*0\s*!important/i.
 if (!/buttonGap\s*=\s*8[\s\S]*?horizontalPadding\s*=\s*32/i.test(tableLayoutSource)) {
   findings.push('src/utils/table-layout.ts 操作列宽度计算必须与 8px 按钮间距、左右各 16px 安全间距同步')
 }
-if (!/--tf-button-primary-soft-bg:\s*#eff6ff/i.test(readFileSync(join(sourceRoot, 'styles/components/_buttons.scss'), 'utf8'))) {
+if (!/--tf-button-primary-soft-bg:\s*#eff6ff/i.test(buttonStyleSource)) {
   findings.push('src/styles/components/_buttons.scss 必须集中定义实心、浅色和工具按钮语义颜色')
+}
+if (!/\.el-button\.is-circle:not\(\.is-text\):not\(\.is-link\)\s*\{[\s\S]*?width:\s*var\(--tf-button-height\)\s*!important[\s\S]*?height:\s*var\(--tf-button-height\)\s*!important[\s\S]*?border-radius:\s*50%\s*!important/i.test(buttonStyleSource)) {
+  findings.push('src/styles/components/_buttons.scss 圆形图标按钮必须使用全局按钮高度作为等宽直径')
+}
+if (!/\.el-button\.el-button--small\.is-circle:not\(\.is-text\):not\(\.is-link\)\s*\{[\s\S]*?width:\s*var\(--tf-button-height-small\)\s*!important[\s\S]*?height:\s*var\(--tf-button-height-small\)\s*!important/i.test(buttonStyleSource)) {
+  findings.push('src/styles/components/_buttons.scss 小号圆形图标按钮必须跟随全局小按钮尺寸')
 }
 if (/--admin-action-[\w-]+:\s*(?:#[0-9a-f]{3,8}\b|rgba?\(|hsla?\()/i.test(adminLayoutSource)) {
   findings.push('src/styles/admin-layout.css 表格操作颜色不得维护第二套色值，必须引用 --tf-button-* 公共变量')

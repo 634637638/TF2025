@@ -123,6 +123,32 @@ class SystemSettingsService {
         try {
           return JSON.parse(value);
         } catch (e) {
+          // 旧版 settings.value 使用 TEXT 保存大体量中文词库时可能被截断。
+          // 尽量闭合未完成的字符串/数组/对象，让已有前缀词库仍可读取；
+          // 字段升级为 LONGTEXT 后，新保存的数据会走正常 JSON.parse。
+          if (typeof value === 'string') {
+            try {
+              let inString = false;
+              let escaped = false;
+              const stack = [];
+              for (const char of value) {
+                if (inString) {
+                  if (escaped) escaped = false;
+                  else if (char === '\\') escaped = true;
+                  else if (char === '"') inString = false;
+                  continue;
+                }
+                if (char === '"') inString = true;
+                else if (char === '{' || char === '[') stack.push(char);
+                else if (char === '}' && stack.at(-1) === '{') stack.pop();
+                else if (char === ']' && stack.at(-1) === '[') stack.pop();
+              }
+              const repaired = `${value}${inString ? '"' : ''}${stack.reverse().map(char => char === '{' ? '}' : ']').join('')}`;
+              return JSON.parse(repaired);
+            } catch {
+              return value;
+            }
+          }
           return value;
         }
       default:

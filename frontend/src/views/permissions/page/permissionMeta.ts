@@ -79,6 +79,21 @@ const ACTION_META_MAP: Record<string, ActionMeta> = {
     icon: 'fas fa-trash',
     name: '删除'
   },
+  match: {
+    className: 'action-match',
+    icon: 'fas fa-link',
+    name: '匹配'
+  },
+  deliver: {
+    className: 'action-deliver',
+    icon: 'fas fa-check-circle',
+    name: '交付'
+  },
+  cancel: {
+    className: 'action-cancel',
+    icon: 'fas fa-ban',
+    name: '取消预定'
+  },
   assign: {
     className: 'action-assign',
     icon: 'fas fa-user-tag',
@@ -192,6 +207,21 @@ const PERMISSION_META_MAP: Record<string, PermissionMeta> = {
     icon: 'fas fa-rotate',
     name: '同步',
     description: '执行同步类操作'
+  },
+  match: {
+    icon: 'fas fa-link',
+    name: '匹配',
+    description: '为预定单匹配可售库存设备'
+  },
+  deliver: {
+    icon: 'fas fa-check-circle',
+    name: '交付',
+    description: '将已匹配预定单转为销售交付'
+  },
+  cancel: {
+    icon: 'fas fa-ban',
+    name: '取消预定',
+    description: '取消预定单并释放已匹配设备'
   }
 }
 

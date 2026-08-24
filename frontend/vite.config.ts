@@ -1,10 +1,20 @@
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
+import { existsSync, readFileSync } from 'node:fs';
 import AutoImport from 'unplugin-auto-import/vite';
 import Components from 'unplugin-vue-components/vite';
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers';
 import Compression from 'vite-plugin-compression';
+
+const localHttpsKey = resolve(__dirname, 'ssl/local-dev-key.pem');
+const localHttpsCert = resolve(__dirname, 'ssl/local-dev-cert.pem');
+const localHttps = existsSync(localHttpsKey) && existsSync(localHttpsCert)
+  ? {
+      key: readFileSync(localHttpsKey),
+      cert: readFileSync(localHttpsCert),
+    }
+  : undefined;
 
 export default defineConfig({
   plugins: [
@@ -157,6 +167,7 @@ export default defineConfig({
     port: 5176,
     host: true,
     strictPort: false,
+    https: localHttps,
     headers: {
       'Cache-Control': 'no-cache, no-store, must-revalidate',
       'Pragma': 'no-cache',
