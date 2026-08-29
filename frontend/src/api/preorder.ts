@@ -18,25 +18,6 @@ export enum PreorderStatus {
   CANCELLED = 'cancelled'
 }
 
-export type LegacyPreorderStatus = 'matched' | 'delivered'
-export type PreorderStatusFilter = PreorderStatus | LegacyPreorderStatus
-
-export const normalizePreorderStatus = (status?: PreorderStatusFilter | null): PreorderStatus | undefined => {
-  if (!status) {
-    return undefined
-  }
-
-  if (status === 'matched') {
-    return PreorderStatus.MATCHED
-  }
-
-  if (status === 'delivered') {
-    return PreorderStatus.DELIVERED
-  }
-
-  return status
-}
-
 // 预定单接口定义
 export interface Preorder {
   id: number
@@ -55,13 +36,9 @@ export interface Preorder {
   memory_id?: number
   memory_size?: string
   is_new?: number // 机况: 1=全新, 0=二手
-  phone_model: string
-  color?: string
-  storage?: string
   expected_arrival?: string
-  expected_price?: number
-  advance_payment: number
-  deposit: number
+  total_price?: number
+  deposit_amount: number
   actual_model?: string
   imei?: string
   arrival_date?: string
@@ -94,10 +71,10 @@ export interface CreatePreorderParams {
   color_id: number
   memory_id: number
   is_new?: number // 机况: 1=全新, 0=二手
-  expected_price?: number
-  advance_payment: number
-  notes?: string
-  expiry_date?: string
+  total_price?: number
+  deposit_amount: number
+  remarks?: string
+  expected_arrival?: string
 }
 
 // 匹配预定单参数
@@ -119,14 +96,13 @@ export interface MatchablePhone {
   memory_size?: string
   store_name?: string
   sale_price?: number
-  purchase_cost?: number
   is_new: number
 }
 
 // 交付预定单参数
 export interface DeliverPreorderParams {
   actual_price?: number
-  notes?: string
+  remarks?: string
 }
 
 // 预定单列表响应
@@ -134,21 +110,20 @@ export interface PreordersResponse {
   records: Preorder[]
   pagination: {
     page: number
-    limit: number
+    page_size: number
     total: number
-    pages: number
+    total_pages: number
+    has_next: boolean
+    has_prev: boolean
   }
 }
 
 // 预定单统计
 export interface PreorderStats {
-  total: number
   pending_count: number
   matched_count: number
   delivered_count: number
   cancelled_count: number
-  total_deposits: number
-  total_sales_value: number
 }
 
 /**
@@ -156,21 +131,14 @@ export interface PreorderStats {
  */
 export async function getPreorders(params?: {
   page?: number
-  limit?: number
-  status?: PreorderStatusFilter
+  page_size?: number
+  status?: PreorderStatus
   customer_id?: number
   search?: string
-  startDate?: string
-  endDate?: string
+  start_date?: string
+  end_date?: string
 }): Promise<PreordersResponse> {
-  const normalizedParams = params
-    ? {
-        ...params,
-        status: normalizePreorderStatus(params.status)
-      }
-    : undefined
-
-  const response = await unifiedApi.get<PreordersResponse>('/preorders', { params: normalizedParams })
+  const response = await unifiedApi.get<PreordersResponse>('/preorders', { params })
   return response.data as PreordersResponse
 }
 
@@ -186,9 +154,10 @@ export async function getPreorderStats(): Promise<PreorderStats> {
  * 查找可匹配的预定单
  */
 export async function getMatchablePreorders(params: {
-  phone_model: string
-  color?: string
-  storage?: string
+  brand_id: number
+  model_id: number
+  color_id: number
+  memory_id: number
 }): Promise<Preorder[]> {
   const response = await unifiedApi.get<Preorder[]>('/preorders/matchable', { params })
   return response.data as Preorder[]

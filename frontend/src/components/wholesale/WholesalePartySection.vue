@@ -2,25 +2,30 @@
   <section class="form-section wholesale-party-section">
     <template v-if="mode === 'wholesale'">
       <h4 class="section-title">
-        <i class="fas fa-user"></i>
+        <i class="fas fa-user" />
         客户信息
       </h4>
 
       <el-row :gutter="12">
         <el-col :span="12">
-          <el-form-item label="手机号码" prop="customer_phone" required class="customer-search-form-item">
+          <el-form-item
+            label="手机号码"
+            prop="customer_phone"
+            required
+            class="customer-search-form-item"
+          >
             <el-input
               v-model="formData.customer_phone"
               placeholder="请输入用户手机号"
               clearable
               maxlength="11"
+              :readonly="selectedCustomer !== null"
               @input="handlePhoneInput"
               @focus="handlePhoneFocus"
               @blur="handlePhoneBlur"
-              :readonly="selectedCustomer !== null"
             >
               <template #prefix>
-                <i class="fas fa-mobile-alt"></i>
+                <i class="fas fa-mobile-alt" />
               </template>
             </el-input>
 
@@ -28,10 +33,19 @@
               v-if="showCustomerSearch && (customerSearchResults.length > 0 || customerSearching || (formData.customer_phone.length >= 11 && !selectedCustomer && !customerSearching))"
               class="customer-search-results"
             >
-              <div v-if="customerSearching" class="searching">
-                <InlineLoading text="搜索中..." size="small" />
+              <div
+                v-if="customerSearching"
+                class="searching"
+              >
+                <InlineLoading
+                  text="搜索中..."
+                  size="small"
+                />
               </div>
-              <div v-else-if="customerSearchResults.length > 0" class="results-list">
+              <div
+                v-else-if="customerSearchResults.length > 0"
+                class="results-list"
+              >
                 <div
                   v-for="customer in customerSearchResults"
                   :key="customer.id"
@@ -40,8 +54,13 @@
                 >
                   <div class="customer-info">
                     <div class="customer-headline">
-                      <div class="customer-name">{{ customer.name }}</div>
-                      <span v-if="customer.member_number" class="member-number">{{ customer.member_number }}</span>
+                      <div class="customer-name">
+                        {{ customer.name }}
+                      </div>
+                      <span
+                        v-if="customer.member_number"
+                        class="member-number"
+                      >{{ customer.member_number }}</span>
                     </div>
                     <div class="customer-subline">
                       <span class="customer-phone">{{ customer.phone }}</span>
@@ -55,14 +74,18 @@
                 class="create-new-customer"
                 @click="autoCreateCustomer"
               >
-                <i class="fas fa-user-plus"></i>
+                <i class="fas fa-user-plus" />
                 点击创建该用户
               </div>
             </div>
           </el-form-item>
         </el-col>
         <el-col :span="12">
-          <el-form-item label="客户姓名" prop="customer_name" required>
+          <el-form-item
+            label="客户姓名"
+            prop="customer_name"
+            required
+          >
             <div class="customer-name-group">
               <el-input
                 :ref="customerNameInputRef"
@@ -76,7 +99,7 @@
                 @blur="handleCustomerNameBlur"
               >
                 <template #prefix>
-                  <i class="fas fa-user"></i>
+                  <i class="fas fa-user" />
                 </template>
               </el-input>
               <el-button
@@ -84,20 +107,20 @@
                 class="customer-lock-button"
                 type="success"
                 plain
-                @click="saveCustomerNameEdit"
                 title="当前已解锁，点击保存并锁定"
+                @click="saveCustomerNameEdit"
               >
-                <i class="fas fa-lock-open"></i>
+                <i class="fas fa-lock-open" />
               </el-button>
               <el-button
                 v-if="selectedCustomer !== null && !customerNameEditing"
                 class="customer-lock-button"
                 type="info"
                 plain
-                @click="clearSelectedCustomer"
                 title="当前已锁定，点击清除客户选择"
+                @click="clearSelectedCustomer"
               >
-                <i class="fas fa-lock"></i>
+                <i class="fas fa-lock" />
               </el-button>
             </div>
           </el-form-item>
@@ -106,9 +129,13 @@
 
       <el-row :gutter="12">
         <el-col :span="12">
-          <el-form-item label="销售时间" prop="sale_date" required>
+          <el-form-item
+            label="销售时间"
+            prop="sale_time"
+            required
+          >
             <el-date-picker
-              v-model="formData.sale_date"
+              v-model="formData.sale_time"
               type="date"
               placeholder="选择销售时间"
               format="YYYY-MM-DD"
@@ -140,7 +167,10 @@
 
       <el-row :gutter="12">
         <el-col :span="12">
-          <el-form-item label="销售门店" prop="store_id">
+          <el-form-item
+            label="销售门店"
+            prop="store_id"
+          >
             <el-select
               v-model="formData.store_id"
               placeholder="请选择销售门店"
@@ -160,7 +190,10 @@
 
       <el-row :gutter="12">
         <el-col :span="8">
-          <el-form-item label="支付方式" prop="payment_method">
+          <el-form-item
+            label="支付方式"
+            prop="payment_method"
+          >
             <el-select
               v-model="formData.payment_method"
               placeholder="请选择"
@@ -168,10 +201,22 @@
               class="w-full"
               @change="handlePaymentMethodChange"
             >
-              <el-option label="现金支付" value="cash" />
-              <el-option label="移动支付" value="mobile" />
-              <el-option label="银行卡" value="bank_card" />
-              <el-option label="国补刷卡" value="subsidy_card" />
+              <el-option
+                label="现金支付"
+                value="cash"
+              />
+              <el-option
+                label="移动支付"
+                value="mobile"
+              />
+              <el-option
+                label="银行卡"
+                value="bank_card"
+              />
+              <el-option
+                label="国补刷卡"
+                value="subsidy_card"
+              />
             </el-select>
           </el-form-item>
         </el-col>
@@ -189,21 +234,39 @@
               @change="handlePaymentChannelChange"
             >
               <template v-if="formData.payment_method === 'mobile'">
-                <el-option label="微信" value="wechat" />
-                <el-option label="支付宝" value="alipay" />
+                <el-option
+                  label="微信"
+                  value="wechat"
+                />
+                <el-option
+                  label="支付宝"
+                  value="alipay"
+                />
               </template>
               <template v-if="formData.payment_method === 'bank_card'">
-                <el-option label="刷卡消费" value="card_consumption" />
-                <el-option label="银行转账" value="bank_transfer" />
+                <el-option
+                  label="刷卡消费"
+                  value="card_consumption"
+                />
+                <el-option
+                  label="银行转账"
+                  value="bank_transfer"
+                />
               </template>
               <template v-if="formData.payment_method === 'subsidy_card'">
-                <el-option label="国补刷卡" value="subsidy_card" />
+                <el-option
+                  label="国补刷卡"
+                  value="subsidy_card"
+                />
               </template>
             </el-select>
           </el-form-item>
         </el-col>
         <el-col :span="8">
-          <el-form-item label="发票号" prop="invoice_number">
+          <el-form-item
+            label="发票号"
+            prop="invoice_number"
+          >
             <el-input
               v-model="formData.invoice_number"
               placeholder="请输入发票号（可选）"
@@ -216,13 +279,17 @@
 
     <template v-else>
       <h4 class="section-title">
-        <i class="fas fa-truck"></i>
+        <i class="fas fa-truck" />
         供应商信息
       </h4>
 
       <el-row :gutter="12">
         <el-col :span="12">
-          <el-form-item label="供应商" prop="supplier_id" required>
+          <el-form-item
+            label="供应商"
+            prop="supplier_id"
+            required
+          >
             <el-input
               :value="selectedSupplierName"
               placeholder="供应商"
@@ -230,13 +297,16 @@
               class="w-full"
             >
               <template #prefix>
-                <i class="fas fa-truck"></i>
+                <i class="fas fa-truck" />
               </template>
             </el-input>
           </el-form-item>
         </el-col>
         <el-col :span="12">
-          <el-form-item label="销售门店" prop="store_id">
+          <el-form-item
+            label="销售门店"
+            prop="store_id"
+          >
             <el-select
               v-model="formData.store_id"
               placeholder="选择销售门店"
@@ -256,9 +326,13 @@
 
       <el-row :gutter="12">
         <el-col :span="12">
-          <el-form-item label="划拨时间" prop="sale_date" required>
+          <el-form-item
+            label="划拨时间"
+            prop="sale_time"
+            required
+          >
             <el-date-picker
-              v-model="formData.sale_date"
+              v-model="formData.sale_time"
               type="date"
               placeholder="选择划拨时间"
               format="YYYY-MM-DD"
@@ -290,19 +364,23 @@
 
       <el-row :gutter="12">
         <el-col :span="12">
-          <el-form-item label="客户手机" prop="customer_phone" class="customer-search-form-item">
+          <el-form-item
+            label="客户手机"
+            prop="customer_phone"
+            class="customer-search-form-item"
+          >
             <el-input
               v-model="formData.customer_phone"
               placeholder="请输入用户手机号"
               clearable
               maxlength="11"
+              :readonly="selectedCustomer !== null"
               @input="handlePhoneInput"
               @focus="handlePhoneFocus"
               @blur="handlePhoneBlur"
-              :readonly="selectedCustomer !== null"
             >
               <template #prefix>
-                <i class="fas fa-mobile-alt"></i>
+                <i class="fas fa-mobile-alt" />
               </template>
             </el-input>
 
@@ -310,10 +388,19 @@
               v-if="showCustomerSearch && (customerSearchResults.length > 0 || customerSearching || (formData.customer_phone.length >= 11 && !selectedCustomer && !customerSearching))"
               class="customer-search-results"
             >
-              <div v-if="customerSearching" class="searching">
-                <InlineLoading text="搜索中..." size="small" />
+              <div
+                v-if="customerSearching"
+                class="searching"
+              >
+                <InlineLoading
+                  text="搜索中..."
+                  size="small"
+                />
               </div>
-              <div v-else-if="customerSearchResults.length > 0" class="results-list">
+              <div
+                v-else-if="customerSearchResults.length > 0"
+                class="results-list"
+              >
                 <div
                   v-for="customer in customerSearchResults"
                   :key="customer.id"
@@ -322,8 +409,13 @@
                 >
                   <div class="customer-info">
                     <div class="customer-headline">
-                      <div class="customer-name">{{ customer.name }}</div>
-                      <span v-if="customer.member_number" class="member-number">{{ customer.member_number }}</span>
+                      <div class="customer-name">
+                        {{ customer.name }}
+                      </div>
+                      <span
+                        v-if="customer.member_number"
+                        class="member-number"
+                      >{{ customer.member_number }}</span>
                     </div>
                     <div class="customer-subline">
                       <span class="customer-phone">{{ customer.phone }}</span>
@@ -337,14 +429,17 @@
                 class="create-new-customer"
                 @click="autoCreateCustomer"
               >
-                <i class="fas fa-user-plus"></i>
+                <i class="fas fa-user-plus" />
                 点击创建该用户
               </div>
             </div>
           </el-form-item>
         </el-col>
         <el-col :span="12">
-          <el-form-item label="客户姓名" prop="customer_name">
+          <el-form-item
+            label="客户姓名"
+            prop="customer_name"
+          >
             <div class="customer-name-group">
               <el-input
                 :ref="customerNameInputRef"
@@ -358,7 +453,7 @@
                 @blur="handleCustomerNameBlur"
               >
                 <template #prefix>
-                  <i class="fas fa-user"></i>
+                  <i class="fas fa-user" />
                 </template>
               </el-input>
               <el-button
@@ -366,20 +461,20 @@
                 class="customer-lock-button"
                 type="success"
                 plain
-                @click="saveCustomerNameEdit"
                 title="当前已解锁，点击保存并锁定"
+                @click="saveCustomerNameEdit"
               >
-                <i class="fas fa-lock-open"></i>
+                <i class="fas fa-lock-open" />
               </el-button>
               <el-button
                 v-if="selectedCustomer !== null && !customerNameEditing"
                 class="customer-lock-button"
                 type="info"
                 plain
-                @click="clearSelectedCustomer"
                 title="当前已锁定，点击清除客户选择"
+                @click="clearSelectedCustomer"
               >
-                <i class="fas fa-lock"></i>
+                <i class="fas fa-lock" />
               </el-button>
             </div>
           </el-form-item>
@@ -406,17 +501,17 @@ interface Props {
   selectedCustomer: WholesaleCustomerSearchItem | null
   customerNameEditing: boolean
   customerCreating: boolean
-  handlePhoneInput: (value: string) => void
+  handlePhoneInput: (_value: string) => void
   handlePhoneFocus: () => void
   handlePhoneBlur: () => void
-  handleCustomerNameInput: (value: string) => void
-  enableCustomerNameEdit: (event?: MouseEvent) => void
+  handleCustomerNameInput: (_value: string) => void
+  enableCustomerNameEdit: (_event?: MouseEvent) => void
   handleCustomerNameTouchEnd: () => void
   handleCustomerNameBlur: () => void
   saveCustomerNameEdit: () => void
   clearSelectedCustomer: () => void
   customerNameInputRef?: any
-  selectCustomer: (customer: WholesaleCustomerSearchItem) => void
+  selectCustomer: (_customer: WholesaleCustomerSearchItem) => void
   autoCreateCustomer: () => void | Promise<void>
   handlePaymentMethodChange: () => void
   handlePaymentChannelChange: () => void
@@ -440,7 +535,7 @@ const getVipLabel = (vipLevel?: string) => {
 .form-section {
   margin-bottom: 24px;
   padding-bottom: 24px;
-  border-bottom: 1px solid #f0f2f5;
+  border-bottom: 1px solid var(--tf-color-surface-ant);
 }
 
 .section-title {
@@ -450,7 +545,7 @@ const getVipLabel = (vipLevel?: string) => {
   margin: 0 0 16px;
   font-size: 14px;
   font-weight: 600;
-  color: #667eea;
+  color: var(--tf-color-indigo-brand);
 }
 
 .section-title i {
@@ -463,7 +558,7 @@ const getVipLabel = (vipLevel?: string) => {
   left: 0;
   right: 0;
   background: white;
-  border: 1px solid #ddd;
+  border: 1px solid var(--tf-color-gray-300-alt);
   border-radius: 6px;
   margin-top: 4px;
   max-height: 300px;
@@ -475,7 +570,7 @@ const getVipLabel = (vipLevel?: string) => {
 .searching {
   padding: 16px 20px;
   text-align: center;
-  color: #666;
+  color: var(--text-secondary);
   font-size: 14px;
   display: flex;
   align-items: center;
@@ -485,13 +580,13 @@ const getVipLabel = (vipLevel?: string) => {
 
 .customer-item {
   padding: 16px 20px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--tf-color-gray-200-alt);
   cursor: pointer;
   transition: background-color 0.2s;
 }
 
 .customer-item:hover {
-  background: #f8f9fa;
+  background: var(--tf-color-surface-muted);
 }
 
 .customer-item:last-child {
@@ -521,20 +616,20 @@ const getVipLabel = (vipLevel?: string) => {
 .customer-name {
   font-size: 14px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--tf-color-neutral-800);
   line-height: 1.2;
   min-width: 0;
 }
 
 .customer-phone {
   font-size: 12px;
-  color: #475569;
+  color: var(--tf-color-slate-600);
   line-height: 1.2;
 }
 
 .member-number {
-  background: linear-gradient(135deg, #eef6ff 0%, #dbeafe 100%);
-  color: #1d4ed8;
+  background: linear-gradient(135deg, var(--tf-color-surface-blue-soft) 0%, var(--tf-color-blue-tailwind-100) 100%);
+  color: var(--tf-color-blue-700);
   padding: 2px 8px;
   border-radius: 999px;
   font-size: 11px;
@@ -544,7 +639,7 @@ const getVipLabel = (vipLevel?: string) => {
 }
 
 .vip-badge {
-  background: linear-gradient(135deg, #fb7185 0%, #f59e0b 100%);
+  background: linear-gradient(135deg, var(--tf-color-rose-400) 0%, var(--tf-color-amber-500) 100%);
   color: white;
   padding: 2px 8px;
   border-radius: 999px;
@@ -558,10 +653,10 @@ const getVipLabel = (vipLevel?: string) => {
 
 .create-new-customer {
   padding: 16px 20px;
-  background: #f8f9fa;
+  background: var(--tf-color-surface-muted);
   cursor: pointer;
   transition: background-color 0.2s;
-  color: #28a745;
+  color: var(--success-color);
   font-size: 14px;
   font-weight: 500;
   display: flex;
@@ -570,7 +665,7 @@ const getVipLabel = (vipLevel?: string) => {
 }
 
 .create-new-customer:hover {
-  background: #e9ecef;
+  background: var(--tf-color-border-muted);
 }
 
 .customer-name-group {

@@ -12,7 +12,16 @@
 npm run check:standards
 ```
 
-该命令首先运行规范覆盖审计，再依次运行统一 UI 结构、TAB、按钮、表格、加载动画和数据实时性审计。任意一项失败都会返回非零退出码，并停止后续启动或构建。
+该命令首先运行规范覆盖审计，再依次运行统一 UI 结构、TAB、按钮、表格、加载动画、空状态和数据实时性审计。任意一项失败都会返回非零退出码，并停止后续启动或构建。
+
+空状态审计可单独运行：
+
+```bash
+cd frontend
+npm run check:empty-states
+```
+
+业务页面和业务组件禁止直接使用 `el-empty`，统一通过 `DataEmptyState` 展示；`PaginatedTable` 和 `MobileTable` 也必须保持接入公共空状态。具体状态边界见 [全局空状态统一规范](./empty-state-standard.md)。
 
 `docs/frontend/standards-manifest.json` 是强制规范清单。每份统一规范必须登记至少一个审计命令和对应公共实现入口；新增名称包含 `standard`、`standards` 或 `unified-page-structure` 的权威文档后，如果没有同步登记审计，`check:coverage` 会直接失败。清单引用的审计命令未加入 `check:standards`、公共实现文件不存在或文档被误删，也会失败。
 

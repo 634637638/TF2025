@@ -14,13 +14,16 @@
     <!-- 拖拽手柄列 -->
     <td class="drag-handle-cell">
       <div class="drag-handle">
-        <i class="fas fa-grip-vertical"></i>
+        <i class="fas fa-grip-vertical" />
       </div>
     </td>
     <!-- 其他列 -->
-    <slot></slot>
+    <slot />
     <!-- 排序值显示/编辑 -->
-    <td v-if="showSortOrder" class="sort-order-cell">
+    <td
+      v-if="showSortOrder"
+      class="sort-order-cell"
+    >
       <div class="sort-order-wrapper">
         <input
           v-if="isEditing"
@@ -31,17 +34,29 @@
           max="9999"
           @blur="handleSortOrderChange"
           @keyup.enter="handleSortOrderChange"
-        />
-        <span v-else class="sort-order-display" @click="startEdit">
+        >
+        <span
+          v-else
+          class="sort-order-display"
+          @click="startEdit"
+        >
           {{ item.sort_order !== undefined ? item.sort_order : index }}
         </span>
       </div>
     </td>
   </tr>
-  <tr v-else class="draggable-header">
-    <th class="drag-handle-cell"></th>
-    <slot></slot>
-    <th v-if="showSortOrder" class="sort-order-cell">排序</th>
+  <tr
+    v-else
+    class="draggable-header"
+  >
+    <th class="drag-handle-cell" />
+    <slot />
+    <th
+      v-if="showSortOrder"
+      class="sort-order-cell"
+    >
+      排序
+    </th>
   </tr>
 </template>
 
@@ -63,6 +78,8 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  item: () => ({}),
+  index: -1,
   isHeader: false,
   isDragging: false,
   isDragOver: false,
@@ -127,16 +144,16 @@ const handleSortOrderChange = () => {
 
   &.is-dragging {
     opacity: 0.5;
-    background: #eff6ff !important;
+    background: var(--tf-color-blue-tailwind-50) !important;
   }
 
   &.is-drag-over {
-    background: #f0f9ff !important;
-    border-top: 2px solid #3b82f6;
+    background: var(--tf-color-blue-50) !important;
+    border-top: 2px solid var(--tf-color-blue-500);
   }
 
   &:hover {
-    background: #f8f9fa;
+    background: var(--tf-color-surface-muted);
   }
 }
 
@@ -149,7 +166,7 @@ const handleSortOrderChange = () => {
 }
 
 .drag-handle {
-  color: #9ca3af;
+  color: var(--tf-color-neutral-400);
   font-size: 16px;
   cursor: grab;
   display: inline-flex;
@@ -161,8 +178,8 @@ const handleSortOrderChange = () => {
   transition: all 0.2s;
 
   &:hover {
-    color: #3b82f6;
-    background: #eff6ff;
+    color: var(--tf-color-blue-500);
+    background: var(--tf-color-blue-tailwind-50);
   }
 
   &:active {
@@ -194,8 +211,8 @@ const handleSortOrderChange = () => {
   min-width: 32px;
   height: 28px;
   padding: 0 8px;
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--tf-color-neutral-100);
+  color: var(--tf-color-neutral-500);
   border-radius: 6px;
   font-size: 13px;
   font-weight: 600;
@@ -204,8 +221,8 @@ const handleSortOrderChange = () => {
   line-height: 28px;
 
   &:hover {
-    background: #e5e7eb;
-    color: #374151;
+    background: var(--tf-color-neutral-200);
+    color: var(--tf-color-neutral-700);
   }
 }
 
@@ -213,7 +230,7 @@ const handleSortOrderChange = () => {
   width: 50px;
   height: 28px;
   padding: 0 6px;
-  border: 1px solid #3b82f6;
+  border: 1px solid var(--tf-color-blue-500);
   border-radius: 6px;
   font-size: 13px;
   font-weight: 600;

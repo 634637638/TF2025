@@ -1,35 +1,70 @@
 <template>
   <div class="public-price-query">
-    <PublicPriceHeader title="最新销售报价">
+    <PublicPriceHeader :title="`${siteSettingsStore.settings.siteName || '销售报价'} · 最新销售报价`">
       <template #search>
         <div class="custom-search-input">
-          <el-icon class="search-icon"><Search /></el-icon>
+          <el-icon class="search-icon">
+            <Search />
+          </el-icon>
           <input
             v-model="searchKeyword"
             type="text"
             placeholder="搜索品牌或型号..."
             class="search-input-field"
             @keyup.enter="handleSearch"
-          />
-          <div v-if="searchKeyword" class="clear-btn" @click="handleClear">
+          >
+          <div
+            v-if="searchKeyword"
+            class="clear-btn"
+            @click="handleClear"
+          >
             <el-icon><Close /></el-icon>
           </div>
-          <button class="search-btn-inner" @click="handleSearch">搜索</button>
+          <button
+            class="search-btn-inner"
+            @click="handleSearch"
+          >
+            搜索
+          </button>
         </div>
       </template>
 
       <template #actions>
-        <button class="download-trigger-btn" @click="downloadAsImage" :disabled="isGenerating || searchResults.length === 0">
-          <span v-if="!isGenerating" class="btn-content">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="7 10 12 15 17 10"></polyline>
-              <line x1="12" y1="15" x2="12" y2="3"></line>
+        <button
+          class="download-trigger-btn"
+          :disabled="isGenerating || searchResults.length === 0"
+          @click="downloadAsImage"
+        >
+          <span
+            v-if="!isGenerating"
+            class="btn-content"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              class="btn-icon"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line
+                x1="12"
+                y1="15"
+                x2="12"
+                y2="3"
+              />
             </svg>
             <span class="btn-text">保存为图片</span>
           </span>
-          <span v-else class="btn-content loading">
-            <InlineLoading text="生成中..." size="small" />
+          <span
+            v-else
+            class="btn-content loading"
+          >
+            <InlineLoading
+              text="生成中..."
+              size="small"
+            />
           </span>
         </button>
       </template>
@@ -39,67 +74,132 @@
     <div class="results-section">
       <div class="container">
         <!-- 加载状态 -->
-        <div v-if="loading" class="loading-container">
+        <div
+          v-if="loading"
+          class="loading-container"
+        >
           <InlineLoading text="正在查询价格..." />
         </div>
 
         <!-- 空状态 -->
-        <div v-else-if="!hasSearched" class="empty-state">
-          <span class="empty-icon">🔍</span>
-          <p>请输入关键词搜索价格</p>
-        </div>
+        <DataEmptyState
+          v-else-if="!hasSearched"
+          state="initial"
+          description="请输入关键词搜索价格"
+        />
 
         <!-- 无结果 -->
-        <div v-else-if="searchResults.length === 0" class="no-results">
-          <span class="empty-icon">😔</span>
-          <p>未找到相关价格信息</p>
-        </div>
+        <DataEmptyState
+          v-else-if="searchResults.length === 0"
+          state="filtered"
+          description="未找到相关价格信息"
+        />
 
         <!-- 结果列表 -->
-        <div v-else class="results-list" id="price-results">
+        <div
+          v-else
+          id="price-results"
+          class="results-list"
+        >
           <div class="results-header">
             <h2>销售报价</h2>
-            <el-tag class="hot-badge" type="danger" effect="dark">HOT</el-tag>
+            <el-tag
+              class="hot-badge"
+              type="danger"
+              effect="dark"
+            >
+              HOT
+            </el-tag>
             <h2>{{ primaryPriceContact?.phone || '' }}</h2>
             <span class="count">共 {{ searchResults.length }} 条</span>
           </div>
 
           <!-- 水印（仅生成图片时显示） -->
-          <div v-if="watermarkEnabled" class="image-watermark" v-show="false">
+          <div
+            v-if="watermarkEnabled"
+            v-show="false"
+            class="image-watermark"
+          >
             <div class="watermark-item watermark-1">
-              <span class="watermark-text" :style="{ color: watermarkColor }">{{ watermarkText }}</span>
+              <span
+                class="watermark-text"
+                :style="{ color: watermarkColor }"
+              >{{ watermarkText }}</span>
             </div>
             <div class="watermark-item watermark-2">
-              <span class="watermark-text" :style="{ color: watermarkColor }">{{ watermarkText }}</span>
+              <span
+                class="watermark-text"
+                :style="{ color: watermarkColor }"
+              >{{ watermarkText }}</span>
             </div>
             <div class="watermark-item watermark-3">
-              <span class="watermark-text" :style="{ color: watermarkColor }">{{ watermarkText }}</span>
+              <span
+                class="watermark-text"
+                :style="{ color: watermarkColor }"
+              >{{ watermarkText }}</span>
             </div>
           </div>
 
           <!-- 表格视图 -->
           <div class="table-wrapper">
-            <el-table class="data-table" :data="searchResults" stripe border>
-              <el-table-column prop="brand_name" label="品牌" min-width="80" />
-              <el-table-column prop="model_number" label="型号" min-width="100" />
-              <el-table-column prop="color_name" label="颜色" min-width="60" />
-              <el-table-column prop="memory" label="内存" min-width="70" />
-              <el-table-column prop="display_retail_price" label="销售价格" min-width="80" align="right">
+            <el-table
+              class="data-table"
+              :data="searchResults"
+              stripe
+              border
+            >
+              <el-table-column
+                prop="brand_name"
+                label="品牌"
+                min-width="80"
+              />
+              <el-table-column
+                prop="model_number"
+                label="型号"
+                min-width="100"
+              />
+              <el-table-column
+                prop="color_name"
+                label="颜色"
+                min-width="60"
+              />
+              <el-table-column
+                prop="memory"
+                label="内存"
+                min-width="70"
+              />
+              <el-table-column
+                prop="display_retail_price"
+                label="销售价格"
+                min-width="80"
+                align="right"
+              >
                 <template #default="{ row }">
-                  <span v-if="hasDisplayRetailPrice(row)" class="price wholesale">{{ formatDisplayRetailPrice(row) }}</span>
+                  <span
+                    v-if="hasDisplayRetailPrice(row)"
+                    class="price wholesale"
+                  >{{ formatDisplayRetailPrice(row) }}</span>
                 </template>
               </el-table-column>
             </el-table>
           </div>
 
           <!-- 联系方式 -->
-          <div class="contact-card">
+          <div
+            v-if="priceContacts.length"
+            class="contact-card"
+          >
             <div class="contact-header">
               <span class="contact-icon">📞</span>
               <span class="contact-title">联系电话</span>
             </div>
             <div class="contact-grid">
-              <a v-for="contact in priceContacts" :key="`${contact.name}-${contact.phone}`" :href="`tel:${phoneHref(contact.phone)}`" class="contact-link">
+              <a
+                v-for="contact in priceContacts"
+                :key="`${contact.name}-${contact.phone}`"
+                :href="`tel:${phoneHref(contact.phone)}`"
+                class="contact-link"
+              >
                 <span class="contact-name">{{ contact.name }}</span>
                 <span class="contact-number">{{ contact.phone }}</span>
               </a>
@@ -112,8 +212,10 @@
     <!-- 页脚 -->
     <div class="footer">
       <div class="container">
-        <p>腾飞数码报价系统</p>
-        <p class="copyright">&copy; {{ TimeUtil.now().year() }} 版权所有</p>
+        <p>{{ siteSettingsStore.settings.siteName || '销售报价系统' }}</p>
+        <p class="copyright">
+          &copy; {{ TimeUtil.now().year() }} 版权所有
+        </p>
       </div>
     </div>
 
@@ -127,13 +229,30 @@
     >
       <div class="ios-save-container">
         <div class="image-wrapper">
-          <img class="ios-save-image" :src="iosImageUrl" alt="腾飞数码销售报价" draggable="false" />
+          <img
+            class="ios-save-image"
+            :src="iosImageUrl"
+            :alt="`${siteSettingsStore.settings.siteName || '销售'}报价`"
+            draggable="false"
+          >
         </div>
       </div>
       <template #footer>
-        <el-button @click="toggleIOSImageMode">长按保存</el-button>
-        <el-button type="primary" @click="shareIOSImage">我要分享</el-button>
-        <el-button type="primary" @click="closeIOSImageModal">关闭</el-button>
+        <el-button @click="toggleIOSImageMode">
+          长按保存
+        </el-button>
+        <el-button
+          type="primary"
+          @click="shareIOSImage"
+        >
+          我要分享
+        </el-button>
+        <el-button
+          type="primary"
+          @click="closeIOSImageModal"
+        >
+          关闭
+        </el-button>
       </template>
     </MobileDialog>
   </div>
@@ -157,12 +276,7 @@ const { loading } = useLoadingState()
 const siteSettingsStore = useSiteSettingsStore()
 const priceContacts = computed(() => {
   const configured = parsePublicPriceContacts(siteSettingsStore.settings.publicPriceContacts)
-  if (configured.length) return configured
-
-  const fallbackPhone = String(siteSettingsStore.settings.contactPhone || '').trim()
-  return fallbackPhone
-    ? [{ name: siteSettingsStore.settings.companyName || '联系电话', phone: fallbackPhone }]
-    : [{ name: '腾飞数码', phone: '132-0790-3333' }]
+  return configured
 })
 const primaryPriceContact = computed(() => priceContacts.value[0])
 const watermarkEnabled = computed(() => siteSettingsStore.settings.publicPriceWatermarkEnabled !== '0')
@@ -270,7 +384,7 @@ const formatDisplayRetailPrice = (row: any) => {
 }
 
 // 获取当前时间字符串（用于水印）
-const getCurrentTimeString = () => {
+const _getCurrentTimeString = () => {
   return TimeUtil.nowFormatted(TIME_FORMATS.DATETIME)
 }
 
@@ -316,7 +430,8 @@ const shareIOSImage = async () => {
   }
 
   try {
-    const shareData = { files: [file], title: '腾飞数码销售报价', text: '报价单图片' }
+    const siteName = siteSettingsStore.settings.siteName || '销售报价'
+    const shareData = { files: [file], title: `${siteName}销售报价`, text: '报价单图片' }
     if (navigator.canShare && !navigator.canShare(shareData)) {
       ElMessage.warning('当前浏览器不支持系统分享，请长按图片保存')
       return
@@ -333,7 +448,8 @@ const saveImageToGallery = async (canvas: HTMLCanvasElement) => {
   const now = TimeUtil.now()
   const dateStr = now.format('YYYYMMDD')
   const timeStr = now.format('HHmm')
-  const fileName = `腾飞数码销售报价_${dateStr}_${timeStr}.png`
+  const siteName = siteSettingsStore.settings.siteName || '销售报价'
+  const fileName = `${siteName}销售报价_${dateStr}_${timeStr}.png`
 
   return new Promise<void>((resolve, reject) => {
     canvas.toBlob(async (blob) => {
@@ -572,7 +688,7 @@ onBeforeUnmount(() => {
 <style scoped lang="scss">
 .public-price-query {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
 }
 
 .header-section {
@@ -663,7 +779,7 @@ onBeforeUnmount(() => {
       }
 
       .search-icon {
-        color: #667eea;
+        color: var(--tf-color-indigo-brand);
         font-size: 18px;
         flex-shrink: 0;
         margin-right: 8px;
@@ -686,13 +802,13 @@ onBeforeUnmount(() => {
         outline: none;
         background: transparent;
         font-size: 16px;
-        color: #333;
+        color: var(--text-primary);
         padding: 0 8px;
         // 预留清除按钮 + 间距的空间，防止输入文字后移位
         min-width: 60px;
 
         &::placeholder {
-          color: #999;
+          color: var(--text-muted);
         }
 
         // 移动端字体大小
@@ -926,15 +1042,15 @@ onBeforeUnmount(() => {
     gap: 16px;
     margin-bottom: 20px;
     padding-bottom: 15px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--tf-color-gray-200-alt);
     flex-wrap: wrap;
 
     // 移动端头部样式
     @media (max-width: 768px) {
       margin: 0;
       padding: 12px;
-      background: #f5f7fa;
-      border-bottom: 1px solid #ddd;
+      background: var(--tf-color-surface);
+      border-bottom: 1px solid var(--tf-color-gray-300-alt);
       gap: 8px;
     }
 
@@ -952,7 +1068,7 @@ onBeforeUnmount(() => {
     h2 {
       margin: 0;
       font-size: 20px;
-      color: #333;
+      color: var(--text-primary);
 
       @media (max-width: 768px) {
         font-size: 16px;
@@ -999,7 +1115,7 @@ onBeforeUnmount(() => {
     }
 
     .count {
-      color: #909399;
+      color: var(--color-info);
       font-size: 14px;
 
       @media (max-width: 768px) {
@@ -1107,7 +1223,7 @@ onBeforeUnmount(() => {
     font-weight: bold;
 
     &.wholesale {
-      color: #67c23a;
+      color: var(--color-success);
     }
   }
 }
@@ -1248,8 +1364,8 @@ onBeforeUnmount(() => {
 .results-list {
   .contact-card {
     margin-top: 24px;
-    background: linear-gradient(135deg, #e6f0f4 0%, #dce9ee 100%);
-    border: 1px solid #c7d8e0;
+    background: linear-gradient(135deg, var(--tf-color-border-cool-soft) 0%, var(--tf-color-border-cool-muted) 100%);
+    border: 1px solid var(--tf-color-border-cool-strong);
     border-radius: 10px;
     padding: 14px 16px 16px;
     box-shadow: none;
@@ -1304,7 +1420,7 @@ onBeforeUnmount(() => {
       .contact-title {
         font-size: 16px;
         font-weight: bold;
-        color: #334155;
+        color: var(--tf-color-slate-700);
 
         @media (max-width: 768px) {
           font-size: 14px;
@@ -1346,8 +1462,8 @@ onBeforeUnmount(() => {
         min-width: 0;
         min-height: 78px;
         padding: 12px 16px;
-        background: #f1f8f3;
-        border: 1px solid #dfede1;
+        background: var(--tf-color-success-surface-soft);
+        border: 1px solid var(--tf-color-success-border-soft);
         border-radius: 16px;
         text-decoration: none;
         transition: all 0.3s ease;
@@ -1388,7 +1504,7 @@ onBeforeUnmount(() => {
           min-width: 0;
           font-size: clamp(10px, 2.6vw, 13px);
           line-height: 1.2;
-          color: #334155;
+          color: var(--tf-color-slate-700);
           margin-bottom: 0;
           font-weight: 650;
           max-width: 44%;
@@ -1397,8 +1513,8 @@ onBeforeUnmount(() => {
           white-space: nowrap;
           padding: 3px 7px;
           border-radius: 7px;
-          background: #f1ecfb;
-          border: 1px solid #ddd4f0;
+          background: var(--tf-color-violet-surface-soft);
+          border: 1px solid var(--tf-color-violet-border-soft);
 
           @media (max-width: 768px) {
             max-width: 42%;
@@ -1423,7 +1539,7 @@ onBeforeUnmount(() => {
           font-size: clamp(10px, 2.8vw, 13px);
           line-height: 1.2;
           font-weight: 700;
-          color: #1f2937;
+          color: var(--tf-color-neutral-800);
           letter-spacing: 0.2px;
           font-variant-numeric: tabular-nums;
           max-width: 100%;
@@ -1432,8 +1548,8 @@ onBeforeUnmount(() => {
           white-space: nowrap;
           padding: 3px 7px;
           border-radius: 7px;
-          background: #e8f6f2;
-          border: 1px solid #d2ebe3;
+          background: var(--tf-color-teal-surface-soft);
+          border: 1px solid var(--tf-color-teal-border-soft);
 
           @media (max-width: 768px) {
             padding: 2px 5px;
@@ -1505,9 +1621,9 @@ onBeforeUnmount(() => {
 
   .results-header {
     padding: 12px !important;
-    background: #f5f7fa !important;
+    background: var(--tf-color-surface) !important;
     flex-wrap: wrap !important;
-    border-bottom: 1px solid #ddd !important;
+    border-bottom: 1px solid var(--tf-color-gray-300-alt) !important;
     border-radius: 0 !important;
     margin-bottom: 0 !important;
     justify-content: space-between !important;
@@ -1649,8 +1765,8 @@ onBeforeUnmount(() => {
     padding: 4px 2px !important;
     padding-bottom: 8px !important;
     border-radius: 0 !important;
-    background: linear-gradient(135deg, #e6f0f4 0%, #dce9ee 100%) !important;
-    border: 1px solid #c7d8e0 !important;
+    background: linear-gradient(135deg, var(--tf-color-border-cool-soft) 0%, var(--tf-color-border-cool-muted) 100%) !important;
+    border: 1px solid var(--tf-color-border-cool-strong) !important;
     box-shadow: none !important;
     backdrop-filter: none !important;
   }

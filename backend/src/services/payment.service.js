@@ -2,15 +2,15 @@
  * 供应商付款服务层
  * 处理付款业务逻辑
  */
-const paymentRepository = require('../repositories/payment.repository');
-const supplierRepository = require('../repositories/supplier.repository');
-const { getDatabase } = require('../config/database');
+const paymentRepository = require('../repositories/payment.repository')
+const supplierRepository = require('../repositories/supplier.repository')
+const { getDatabase } = require('../config/database')
 
 // 辅助函数：执行查询
 async function executeQuery(sql, params) {
-  const db = getDatabase();
-  const [rows] = await db.execute(sql, params);
-  return rows;
+  const db = getDatabase()
+  const [rows] = await db.execute(sql, params)
+  return rows
 }
 
 class PaymentService {
@@ -25,12 +25,12 @@ class PaymentService {
       payment_method = 'bank_transfer',
       notes,
       operator_id
-    } = paymentData;
+    } = paymentData
 
     // 验证供应商是否存在
-    const supplier = await supplierRepository.getSupplierById(supplier_id);
+    const supplier = await supplierRepository.getSupplierById(supplier_id)
     if (!supplier) {
-      throw new Error('供应商不存在');
+      throw new Error('供应商不存在')
     }
 
     // 如果关联对账单,验证对账单状态
@@ -38,22 +38,22 @@ class PaymentService {
       const [settlements] = await executeQuery(
         'SELECT * FROM supplier_settlements WHERE id = ? AND status = "confirmed"',
         [settlement_id]
-      );
+      )
 
       if (settlements.length === 0) {
-        throw new Error('对账单不存在或未确认,无法创建付款');
+        throw new Error('对账单不存在或未确认,无法创建付款')
       }
 
-      const settlement = settlements[0];
+      const settlement = settlements[0]
 
       // 检查付款金额是否超出来结算金额
       if (parseFloat(payment_amount) > parseFloat(settlement.remaining_amount)) {
-        throw new Error(`付款金额不能超过未结算金额 ¥${settlement.remaining_amount}`);
+        throw new Error(`付款金额不能超过未结算金额 ¥${settlement.remaining_amount}`)
       }
     }
 
     // 生成付款编号
-    const payment_no = await this.generatePaymentNo();
+    const payment_no = await this.generatePaymentNo()
 
     // 创建付款记录
     const paymentId = await paymentRepository.create({
@@ -66,12 +66,12 @@ class PaymentService {
       status: 'pending',
       notes,
       operator_id
-    });
+    })
 
     // 获取完整的付款记录
-    const payment = await paymentRepository.findById(paymentId);
+    const payment = await paymentRepository.findById(paymentId)
 
-    return payment;
+    return payment
   }
 
   /**
@@ -79,14 +79,14 @@ class PaymentService {
    */
   async approvePayment(paymentId, { status, approver_id, approval_notes }) {
     // 获取付款记录
-    const payment = await paymentRepository.findById(paymentId);
+    const payment = await paymentRepository.findById(paymentId)
     if (!payment) {
-      throw new Error('付款记录不存在');
+      throw new Error('付款记录不存在')
     }
 
     // 检查状态是否可以审批
     if (payment.status !== 'pending') {
-      throw new Error('只能审批待处理的付款申请');
+      throw new Error('只能审批待处理的付款申请')
     }
 
     // 更新付款状态
@@ -95,19 +95,19 @@ class PaymentService {
       approver_id,
       approval_time: new Date(),
       approval_notes
-    };
+    }
 
-    await paymentRepository.update(paymentId, updateData);
+    await paymentRepository.update(paymentId, updateData)
 
     // 如果拒绝,更新对账单状态
     if (status === 'rejected' && payment.settlement_id) {
       await executeQuery(
         'UPDATE supplier_settlements SET status = "confirmed" WHERE id = ?',
         [payment.settlement_id]
-      );
+      )
     }
 
-    return await paymentRepository.findById(paymentId);
+    return await paymentRepository.findById(paymentId)
   }
 
   /**
@@ -115,18 +115,18 @@ class PaymentService {
    */
   async confirmPayment(paymentId, { transaction_id, payment_account, actual_payment_date, operator_id }) {
     // 获取付款记录
-    const payment = await paymentRepository.findById(paymentId);
+    const payment = await paymentRepository.findById(paymentId)
     if (!payment) {
-      throw new Error('付款记录不存在');
+      throw new Error('付款记录不存在')
     }
 
     // 检查状态
     if (payment.status !== 'approved') {
-      throw new Error('只能确认已审批的付款');
+      throw new Error('只能确认已审批的付款')
     }
 
     // 开始事务
-    const connection = await executeQuery('START TRANSACTION');
+    const _connection = await executeQuery('START TRANSACTION')
 
     try {
       // 更新付款状态为已完成
@@ -136,7 +136,7 @@ class PaymentService {
         payment_account,
         payment_date: actual_payment_date || payment.payment_date,
         operator_id
-      });
+      })
 
       // 如果关联对账单,更新对账单的已结算金额
       if (payment.settlement_id) {
@@ -150,7 +150,7 @@ class PaymentService {
                END
            WHERE id = ?`,
           [payment.payment_amount, payment.payment_amount, payment.settlement_id]
-        );
+        )
       }
 
       // 更新供应商账户余额
@@ -159,7 +159,7 @@ class PaymentService {
          SET current_balance = current_balance + ?
          WHERE id = ?`,
         [payment.payment_amount, payment.supplier_id]
-      );
+      )
 
       // 记录账户流水
       await executeQuery(
@@ -180,64 +180,64 @@ class PaymentService {
           operator_id,
           payment.supplier_id
         ]
-      );
+      )
 
-      await executeQuery('COMMIT');
+      await executeQuery('COMMIT')
 
-      return await paymentRepository.findById(paymentId);
+      return await paymentRepository.findById(paymentId)
     } catch (error) {
-      await executeQuery('ROLLBACK');
-      throw error;
+      await executeQuery('ROLLBACK')
+      throw error
     }
   }
 
   /**
    * 取消付款
    */
-  async cancelPayment(paymentId, { cancel_reason, operator_id }) {
+  async cancelPayment(paymentId, { cancel_reason, _operator_id }) {
     // 获取付款记录
-    const payment = await paymentRepository.findById(paymentId);
+    const payment = await paymentRepository.findById(paymentId)
     if (!payment) {
-      throw new Error('付款记录不存在');
+      throw new Error('付款记录不存在')
     }
 
     // 检查状态
     if (!['pending', 'approved'].includes(payment.status)) {
-      throw new Error('只能取消待处理或已审批的付款');
+      throw new Error('只能取消待处理或已审批的付款')
     }
 
     // 更新状态
     await paymentRepository.update(paymentId, {
       status: 'cancelled',
       notes: `${payment.notes || ''}\n取消原因: ${cancel_reason}`.trim()
-    });
+    })
 
     // 如果关联对账单,更新对账单状态
     if (payment.settlement_id) {
       await executeQuery(
         'UPDATE supplier_settlements SET status = "confirmed" WHERE id = ?',
         [payment.settlement_id]
-      );
+      )
     }
 
-    return await paymentRepository.findById(paymentId);
+    return await paymentRepository.findById(paymentId)
   }
 
   /**
    * 获取付款记录列表
    */
   async getPayments(filters) {
-    return await paymentRepository.getPaymentsWithPagination(filters);
+    return await paymentRepository.getPaymentsWithPagination(filters)
   }
 
   /**
    * 获取付款详情
    */
   async getPaymentById(paymentId) {
-    const payment = await paymentRepository.findById(paymentId);
+    const payment = await paymentRepository.findById(paymentId)
 
     if (!payment) {
-      return null;
+      return null
     }
 
     // 获取关联的对账单信息
@@ -245,15 +245,15 @@ class PaymentService {
       const [settlements] = await executeQuery(
         'SELECT * FROM supplier_settlements WHERE id = ?',
         [payment.settlement_id]
-      );
+      )
 
       if (settlements.length > 0) {
-        payment.settlement = settlements[0];
+        payment.settlement = settlements[0]
       }
     }
 
     // 获取供应商信息
-    const supplier = await supplierRepository.getSupplierById(payment.supplier_id);
+    const supplier = await supplierRepository.getSupplierById(payment.supplier_id)
     if (supplier) {
       payment.supplier = {
         id: supplier.id,
@@ -261,48 +261,48 @@ class PaymentService {
         contact: supplier.contact,
         phone: supplier.phone,
         bank_info: supplier.bank_info
-      };
+      }
     }
 
-    return payment;
+    return payment
   }
 
   /**
    * 获取供应商付款历史
    */
   async getSupplierPaymentHistory(supplierId, options = {}) {
-    const { page = 1, limit = 20 } = options;
+    const { page = 1, limit = 20 } = options
 
     return await paymentRepository.getPaymentsWithPagination({
       supplier_id: supplierId,
       page,
       limit,
       orderBy: 'sp.created_at DESC'
-    });
+    })
   }
 
   /**
    * 获取付款统计数据
    */
   async getPaymentStatistics(filters = {}) {
-    const { supplier_id, start_date, end_date } = filters;
+    const { supplier_id, start_date, end_date } = filters
 
-    let whereClause = 'WHERE sp.status = "completed"';
-    const params = [];
+    let whereClause = 'WHERE sp.status = "completed"'
+    const params = []
 
     if (supplier_id) {
-      whereClause += ' AND sp.supplier_id = ?';
-      params.push(supplier_id);
+      whereClause += ' AND sp.supplier_id = ?'
+      params.push(supplier_id)
     }
 
     if (start_date) {
-      whereClause += ' AND sp.payment_date >= ?';
-      params.push(start_date);
+      whereClause += ' AND sp.payment_date >= ?'
+      params.push(start_date)
     }
 
     if (end_date) {
-      whereClause += ' AND sp.payment_date <= ?';
-      params.push(end_date);
+      whereClause += ' AND sp.payment_date <= ?'
+      params.push(end_date)
     }
 
     // 总付款金额和次数
@@ -313,7 +313,7 @@ class PaymentService {
        FROM supplier_payments sp
        ${whereClause}`,
       params
-    );
+    )
 
     // 按付款方式统计
     const methodStats = await executeQuery(
@@ -325,7 +325,7 @@ class PaymentService {
        ${whereClause}
        GROUP BY payment_method`,
       params
-    );
+    )
 
     // 按供应商统计
     const supplierStats = await executeQuery(
@@ -340,7 +340,7 @@ class PaymentService {
        GROUP BY sp.supplier_id, s.name
        ORDER BY amount DESC`,
       params
-    );
+    )
 
     // 按日期统计(最近30天)
     const dateStats = await executeQuery(
@@ -354,7 +354,7 @@ class PaymentService {
        ORDER BY payment_date DESC
        LIMIT 30`,
       params
-    );
+    )
 
     return {
       total: {
@@ -378,14 +378,14 @@ class PaymentService {
         count: parseInt(stat.count) || 0,
         amount: parseFloat(stat.amount) || 0
       }))
-    };
+    }
   }
 
   /**
    * 导出付款记录
    */
   async exportPayments(filters) {
-    const payments = await paymentRepository.exportPayments(filters);
+    const payments = await paymentRepository.exportPayments(filters)
 
     return payments.map(payment => ({
       '付款编号': payment.payment_no,
@@ -399,26 +399,26 @@ class PaymentService {
       '状态': this.getPaymentStatusName(payment.status),
       '备注': payment.notes || '-',
       '创建时间': payment.created_at
-    }));
+    }))
   }
 
   /**
    * 生成付款编号
    */
   async generatePaymentNo() {
-    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const prefix = `PAY${today}`;
+    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+    const prefix = `PAY${today}`
 
     // 查询今天已有的付款数量
     const [result] = await executeQuery(
-      `SELECT COUNT(*) as count FROM supplier_payments WHERE payment_no LIKE ?`,
+      'SELECT COUNT(*) as count FROM supplier_payments WHERE payment_no LIKE ?',
       [`${prefix}%`]
-    );
+    )
 
-    const count = parseInt(result[0].count) + 1;
-    const sequence = String(count).padStart(4, '0');
+    const count = parseInt(result[0].count) + 1
+    const sequence = String(count).padStart(4, '0')
 
-    return `${prefix}${sequence}`;
+    return `${prefix}${sequence}`
   }
 
   /**
@@ -431,8 +431,8 @@ class PaymentService {
       'alipay': '支付宝',
       'wechat': '微信',
       'other': '其他'
-    };
-    return methodMap[method] || method;
+    }
+    return methodMap[method] || method
   }
 
   /**
@@ -445,9 +445,9 @@ class PaymentService {
       'completed': '已完成',
       'failed': '失败',
       'cancelled': '已取消'
-    };
-    return statusMap[status] || status;
+    }
+    return statusMap[status] || status
   }
 }
 
-module.exports = new PaymentService();
+module.exports = new PaymentService()

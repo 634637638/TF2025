@@ -1,12 +1,21 @@
 <template>
   <div class="tf-paginated-table">
     <!-- 工具栏 -->
-    <div v-if="showToolbar" class="tf-paginated-table__toolbar">
+    <div
+      v-if="showToolbar"
+      class="tf-paginated-table__toolbar"
+    >
       <div class="tf-paginated-table__toolbar-left">
         <slot name="toolbar-left" />
-        <div v-if="selected.length > 0" class="tf-paginated-table__selection">
+        <div
+          v-if="selected.length > 0"
+          class="tf-paginated-table__selection"
+        >
           已选择 {{ selected.length }} 项
-          <el-button size="small" @click="clearSelection">
+          <el-button
+            size="small"
+            @click="clearSelection"
+          >
             清空
           </el-button>
         </div>
@@ -37,6 +46,8 @@
         :stripe="stripe"
         :border="border"
         :size="size"
+        class="data-table compact-fit-table"
+        :fit="true"
         :row-key="normalizedRowKey"
         :default-sort="defaultSort"
         @sort-change="handleSortChange"
@@ -60,7 +71,10 @@
         />
 
         <!-- 列定义 -->
-        <template v-for="column in columns" :key="column.key">
+        <template
+          v-for="column in columns"
+          :key="column.key"
+        >
           <el-table-column
             :prop="column.prop"
             :label="column.label"
@@ -69,7 +83,6 @@
             :fixed="column.fixed"
             :sortable="column.sortable"
             :align="column.align"
-            :show-overflow-tooltip="column.showOverflowTooltip"
           >
             <template #default="scope">
               <slot
@@ -88,28 +101,34 @@
         <el-table-column
           v-if="$slots.actions"
           label="操作"
-          :width="actionsWidth"
-          :fixed="actionsFixed"
+          :width="actionsWidth || $getActionColumnWidth(2)"
+          class-name="actions-column"
         >
           <template #default="scope">
-            <slot name="actions" :row="scope.row" :index="scope.$index" />
+            <div class="action-buttons table-actions">
+              <slot
+                name="actions"
+                :row="scope.row"
+                :index="scope.$index"
+              />
+            </div>
           </template>
         </el-table-column>
 
         <!-- 空状态 -->
         <template #empty>
-          <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
-          <el-empty
+          <TableLoadingRow
+            v-if="loading"
+            mode="block"
+            text="加载中..."
+          />
+          <DataEmptyState
             v-else
             :description="emptyDescription"
             :image="emptyImage"
           >
-            <slot name="empty">
-              <el-button type="primary" @click="handleRefresh">
-                刷新数据
-              </el-button>
-            </slot>
-          </el-empty>
+            <slot name="empty" />
+          </DataEmptyState>
         </template>
       </el-table>
     </div>
@@ -133,7 +152,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { Search } from '@element-plus/icons-vue'
 import Pagination from './Pagination.vue'
 import TableLoadingRow from './TableLoadingRow.vue'
@@ -144,7 +163,7 @@ type SortOrder = 'ascending' | 'descending' | null
 
 interface PaginatedTableColumn extends Omit<TableColumn, 'key' | 'formatter'> {
   key: string
-  formatter?: (value: unknown, row: TableRow) => string
+  formatter?: (_value: unknown, _row: TableRow) => string
 }
 
 interface Props {
@@ -171,7 +190,7 @@ interface Props {
   stripe?: boolean
   border?: boolean
   size?: 'large' | 'default' | 'small'
-  rowKey?: string | ((row: TableRow) => string | number)
+  rowKey?: string | ((_row: TableRow) => string | number)
   defaultSort?: { prop: string; order: SortOrder }
 
   // 功能开关
@@ -179,7 +198,7 @@ interface Props {
   selectable?: boolean
   showIndex?: boolean
   showToolbar?: boolean
-  selectableFunction?: (row: TableRow, index: number) => boolean
+  selectableFunction?: (_row: TableRow, _index: number) => boolean
 
   // 操作列
   actionsWidth?: number | string
@@ -202,14 +221,22 @@ const props = withDefaults(defineProps<Props>(), {
   showRange: false,
   showPageSizes: true,
   showQuickJumper: true,
+  height: undefined,
+  maxHeight: undefined,
   stripe: true,
   border: false,
   size: 'default',
+  rowKey: undefined,
+  defaultSort: undefined,
   searchable: false,
   selectable: false,
   showIndex: false,
   showToolbar: true,
-  emptyDescription: '暂无数据'
+  selectableFunction: undefined,
+  actionsWidth: undefined,
+  actionsFixed: false,
+  emptyDescription: '暂无数据',
+  emptyImage: ''
 })
 
 interface Emits {

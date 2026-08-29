@@ -6,636 +6,947 @@
     module-name="预定管理"
     permission-code="preorders:view"
   >
-
-  <div class="preorders-view admin-page admin-page-content admin-unified-preorders-page safe-area-top safe-area-bottom">
-    <!-- 页面标题 -->
-    <PageHeader title="预定管理">
-      <template #actions>
-        <el-button v-if="canCreate" type="primary" @click="openCreateModal">
-          <i class="fas fa-plus"></i>
-          新增预定
-        </el-button>
-        <el-button @click="handleRefresh" :loading="refreshing" :disabled="refreshing">
-          <i class="fas fa-sync-alt"></i>
-          刷新
-        </el-button>
-      </template>
-    </PageHeader>
-
-    <!-- 统计卡片 -->
-    <div v-if="showStatsCards" class="stats-cards">
-      <el-card v-if="canViewPreorderField('stats_pending_count')" class="stat-card">
-        <div class="stat-content">
-          <div class="stat-icon pending">
-            <i class="fas fa-clock"></i>
-          </div>
-          <div class="stat-info">
-            <div class="stat-value">{{ stats.pending_count }}</div>
-            <div class="stat-label">待匹配</div>
-          </div>
-        </div>
-      </el-card>
-      <el-card v-if="canViewPreorderField('stats_matched_count')" class="stat-card">
-        <div class="stat-content">
-          <div class="stat-icon matched">
-            <i class="fas fa-link"></i>
-          </div>
-          <div class="stat-info">
-            <div class="stat-value">{{ stats.matched_count }}</div>
-            <div class="stat-label">已匹配</div>
-          </div>
-        </div>
-      </el-card>
-      <el-card v-if="canViewPreorderField('stats_delivered_count')" class="stat-card">
-        <div class="stat-content">
-          <div class="stat-icon delivered">
-            <i class="fas fa-check-circle"></i>
-          </div>
-          <div class="stat-info">
-            <div class="stat-value">{{ stats.delivered_count }}</div>
-            <div class="stat-label">已交付</div>
-          </div>
-        </div>
-      </el-card>
-      <el-card v-if="canViewPreorderField('stats_cancelled_count')" class="stat-card">
-        <div class="stat-content">
-          <div class="stat-icon cancelled">
-            <i class="fas fa-times-circle"></i>
-          </div>
-          <div class="stat-info">
-            <div class="stat-value">{{ stats.cancelled_count }}</div>
-            <div class="stat-label">已取消</div>
-          </div>
-        </div>
-      </el-card>
-    </div>
-
-    <!-- TAB切换 -->
-    <el-tabs v-model="activeTab" class="preorders-tabs tf-page-tabs" @tab-change="handleTabChange">
-      <!-- TAB 1: 新增预定 -->
-      <el-tab-pane label="新增预定" name="new" class="tf-tab-panel">
-        <div class="tab-content tf-tab-content table-section admin-panel admin-table-panel">
-          <!-- 待匹配预定单列表 -->
-          <div class="table-responsive">
-          <el-table
-            ref="pendingTableRef"
-            :data="pendingPreorders"
-            border
-            stripe
-            class="data-table devices-table base-data-table preorders-table"
-            @row-click="handleRowTap"
-            :row-key="(row: Preorder) => String(row.id)"
-            :expand-row-keys="expandedRows"
+    <div class="preorders-view admin-page admin-page-content admin-unified-preorders-page safe-area-top safe-area-bottom">
+      <!-- 页面标题 -->
+      <PageHeader title="预定管理">
+        <template #actions>
+          <el-button
+            v-if="canCreate"
+            type="primary"
+            @click="openCreateModal"
           >
-            <template #empty>
-              <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
-              <el-empty v-else description="暂无预定单" />
-            </template>
-            <el-table-column v-if="isMobile" type="expand" width="1" class-name="mobile-expand-column" label-class-name="mobile-expand-header">
-              <template #default="{ row }">
-                <div class="mobile-row-actions">
-                  <el-button
-                    v-if="canMatch"
-                    type="success"
-                    size="small"
-                    @click.stop="openMatchModal(row)"
-                  >
-                    <i class="fas fa-link"></i>
-                    <span>匹配</span>
-                  </el-button>
-                  <el-button
-                    v-if="canEdit"
-                    type="primary"
-                    size="small"
-                    @click.stop="editPreorder(row)"
-                  >
-                    <i class="fas fa-edit"></i>
-                    <span>编辑</span>
-                  </el-button>
-                  <el-button
-                    v-if="canCancel"
-                    type="danger"
-                    size="small"
-                    @click.stop="cancelPreorder(row)"
-                  >
-                    <i class="fas fa-times"></i>
-                    <span>取消</span>
-                  </el-button>
-                </div>
-              </template>
-            </el-table-column>
-            <el-table-column prop="preorder_number" label="预定单号" :min-width="preorderNumberColumnWidth" class-name="identifier-column" />
-            <el-table-column label="供应商" min-width="100">
-              <template #default="{ row }">
-                <span :class="getStatusClass(row.status)">
-                  {{ getStatusText(row.status, row.supplier_name) }}
-                </span>
-              </template>
-            </el-table-column>
-            <el-table-column prop="store_name" label="店铺" min-width="80" />
-            <el-table-column prop="customer_name" label="客户姓名" min-width="90" />
-            <el-table-column prop="customer_phone" label="客户电话" min-width="110" />
-            <el-table-column label="品牌" min-width="90">
-              <template #default="{ row }">
-                {{ row.brand_name || '-' }}
-              </template>
-            </el-table-column>
-            <el-table-column label="型号" min-width="110">
-              <template #default="{ row }">
-                {{ row.model_name || '-' }}
-              </template>
-            </el-table-column>
-            <el-table-column label="颜色" min-width="70">
-              <template #default="{ row }">
-                {{ row.color_name || '-' }}
-              </template>
-            </el-table-column>
-            <el-table-column label="内存" min-width="70">
-              <template #default="{ row }">
-                {{ row.memory_size || '-' }}
-              </template>
-            </el-table-column>
-            <el-table-column label="机况" min-width="70">
-              <template #default="{ row }">
-                <el-tag :type="Number(row.is_new) === 1 ? 'success' : 'info'" size="small">
-                  {{ Number(row.is_new) === 1 ? '全新' : '二手' }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="advance_payment" label="定金" min-width="80" align="center">
-              <template #default="{ row }">
-                ¥{{ formatNumber(row.advance_payment) }}
-              </template>
-            </el-table-column>
-            <el-table-column label="销售价格" min-width="90" align="center">
-              <template #default="{ row }">
-                {{ row.expected_price ? '¥' + formatNumber(row.expected_price) : '-' }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="created_at" label="预定时间" min-width="140">
-              <template #default="{ row }">
-                {{ formatDateTime(row.created_at) }}
-              </template>
-            </el-table-column>
-              <el-table-column v-if="!isMobile && (canMatch || canEdit || canCancel)" label="操作" :width="pendingPreorderActionColumnWidth" align="center" class-name="actions-column">
-              <template #default="{ row }">
-                <div class="action-buttons">
-                  <el-button
-                    v-if="canMatch"
-                    type="success"
-                    size="small"
-                    @click.stop="openMatchModal(row)"
-                  >
-                    <i class="fas fa-link"></i>
-                    匹配
-                  </el-button>
-                  <el-button
-                    v-if="canEdit"
-                    type="primary"
-                    size="small"
-                    @click.stop="editPreorder(row)"
-                  >
-                    <i class="fas fa-edit"></i>
-                    编辑
-                  </el-button>
-                  <el-button
-                    v-if="canCancel"
-                    type="danger"
-                    size="small"
-                    @click.stop="cancelPreorder(row)"
-                  >
-                    <i class="fas fa-times"></i>
-                    取消
-                  </el-button>
-                </div>
-              </template>
-            </el-table-column>
-          </el-table>
-          </div>
-
-          <!-- 分页 -->
-          <div class="pagination-container">
-            <Pagination
-              v-model:current="pagination.page"
-              v-model:page-size="pagination.limit"
-              :total="pagination.total"
-              :page-sizes="[10, 20, 50, 100]"
-              :show-range="true"
-              @change="handlePendingPaginationChange"
-            />
-          </div>
-        </div>
-      </el-tab-pane>
-
-      <!-- TAB 2: 已预定（包含已取消） -->
-      <el-tab-pane label="已预定" name="matched" class="tf-tab-panel">
-        <div class="tab-content tf-tab-content table-section admin-panel admin-table-panel">
-          <div class="filter-bar">
-            <el-radio-group v-model="matchedStatus" @change="loadMatchedPreorders">
-              <el-radio-button value="all">全部</el-radio-button>
-              <el-radio-button value="matched">已匹配</el-radio-button>
-              <el-radio-button value="cancelled">已取消</el-radio-button>
-            </el-radio-group>
-          </div>
-
-          <div class="table-responsive">
-          <el-table
-            ref="matchedTableRef"
-            :data="matchedPreorders"
-            border
-            stripe
-            class="data-table devices-table base-data-table preorders-table"
-            @row-click="handleRowTap"
-            :row-key="(row: Preorder) => String(row.id)"
-            :expand-row-keys="expandedRows"
+            <i class="fas fa-plus" />
+            新增预定
+          </el-button>
+          <el-button
+            :loading="refreshing"
+            :disabled="refreshing"
+            @click="handleRefresh"
           >
-            <template #empty>
-              <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
-              <el-empty v-else description="暂无预定单" />
-            </template>
-            <el-table-column v-if="isMobile" type="expand" width="1" class-name="mobile-expand-column" label-class-name="mobile-expand-header">
-              <template #default="{ row }">
-                <div class="mobile-row-actions">
-                  <!-- 待匹配状态：匹配、编辑、取消 -->
-                  <template v-if="row.status === 'pending'">
+            <i class="fas fa-sync-alt" />
+            刷新
+          </el-button>
+        </template>
+      </PageHeader>
+
+      <!-- 统计卡片 -->
+      <div
+        v-if="showStatsCards"
+        class="stats-cards"
+      >
+        <el-card
+          v-if="canViewPreorderField('stats_pending_count')"
+          class="stat-card"
+        >
+          <div class="stat-content">
+            <div class="stat-icon pending">
+              <i class="fas fa-clock" />
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">
+                {{ stats.pending_count }}
+              </div>
+              <div class="stat-label">
+                待匹配
+              </div>
+            </div>
+          </div>
+        </el-card>
+        <el-card
+          v-if="canViewPreorderField('stats_matched_count')"
+          class="stat-card"
+        >
+          <div class="stat-content">
+            <div class="stat-icon matched">
+              <i class="fas fa-link" />
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">
+                {{ stats.matched_count }}
+              </div>
+              <div class="stat-label">
+                已匹配
+              </div>
+            </div>
+          </div>
+        </el-card>
+        <el-card
+          v-if="canViewPreorderField('stats_delivered_count')"
+          class="stat-card"
+        >
+          <div class="stat-content">
+            <div class="stat-icon delivered">
+              <i class="fas fa-check-circle" />
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">
+                {{ stats.delivered_count }}
+              </div>
+              <div class="stat-label">
+                已交付
+              </div>
+            </div>
+          </div>
+        </el-card>
+        <el-card
+          v-if="canViewPreorderField('stats_cancelled_count')"
+          class="stat-card"
+        >
+          <div class="stat-content">
+            <div class="stat-icon cancelled">
+              <i class="fas fa-times-circle" />
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">
+                {{ stats.cancelled_count }}
+              </div>
+              <div class="stat-label">
+                已取消
+              </div>
+            </div>
+          </div>
+        </el-card>
+      </div>
+
+      <!-- TAB切换 -->
+      <el-tabs
+        v-model="activeTab"
+        class="preorders-tabs tf-page-tabs"
+        @tab-change="handleTabChange"
+      >
+        <!-- TAB 1: 新增预定 -->
+        <el-tab-pane
+          label="新增预定"
+          name="new"
+          class="tf-tab-panel"
+        >
+          <div class="tab-content tf-tab-content table-section admin-panel admin-table-panel">
+            <!-- 待匹配预定单列表 -->
+            <div class="table-responsive">
+              <el-table
+                ref="pendingTableRef"
+                :data="pendingPreorders"
+                border
+                stripe
+                class="data-table devices-table base-data-table preorders-table"
+                :row-key="(row: Preorder) => String(row.id)"
+                :expand-row-keys="expandedRows"
+                @row-click="handleRowTap"
+              >
+                <template #empty>
+                  <TableLoadingRow
+                    v-if="loading"
+                    mode="block"
+                    text="加载中..."
+                  />
+                  <DataEmptyState
+                    v-else
+                    description="暂无预定单"
+                  />
+                </template>
+                <el-table-column
+                  v-if="showMobilePendingActionField"
+                  type="expand"
+                  width="1"
+                  class-name="mobile-expand-column"
+                  label-class-name="mobile-expand-header"
+                >
+                  <template #default="{ row }">
+                    <div class="mobile-row-actions">
+                      <el-button
+                        v-if="canEdit"
+                        type="primary"
+                        size="small"
+                        @click.stop="editPreorder(row)"
+                      >
+                        <i class="fas fa-edit" />
+                        <span>编辑</span>
+                      </el-button>
+                    </div>
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="canViewPreorderField('preorder_number')"
+                  prop="preorder_number"
+                  label="预定单号"
+                  :min-width="preorderNumberColumnWidth"
+                  class-name="identifier-column"
+                />
+                <el-table-column
+                  v-if="canViewPreorderField('supplier_name')"
+                  label="供应商"
+                  min-width="100"
+                >
+                  <template #default="{ row }">
+                    <span :class="getStatusClass(row.status)">
+                      {{ getStatusText(row.status, row.supplier_name) }}
+                    </span>
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="canViewPreorderField('store_name')"
+                  prop="store_name"
+                  label="店铺"
+                  min-width="80"
+                />
+                <el-table-column
+                  v-if="canViewPreorderField('customer_name')"
+                  prop="customer_name"
+                  label="客户姓名"
+                  min-width="90"
+                />
+                <el-table-column
+                  v-if="canViewPreorderField('customer_phone')"
+                  prop="customer_phone"
+                  label="客户电话"
+                  min-width="110"
+                />
+                <el-table-column
+                  v-if="canViewPreorderField('brand_name')"
+                  label="品牌"
+                  min-width="90"
+                >
+                  <template #default="{ row }">
+                    {{ row.brand_name || '-' }}
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="canViewPreorderField('model_name')"
+                  label="型号"
+                  min-width="110"
+                >
+                  <template #default="{ row }">
+                    {{ row.model_name || '-' }}
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="canViewPreorderField('color_name')"
+                  label="颜色"
+                  min-width="70"
+                >
+                  <template #default="{ row }">
+                    {{ row.color_name || '-' }}
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="canViewPreorderField('memory_size')"
+                  label="内存"
+                  min-width="70"
+                >
+                  <template #default="{ row }">
+                    {{ row.memory_size || '-' }}
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="canViewPreorderField('is_new')"
+                  label="机况"
+                  min-width="70"
+                >
+                  <template #default="{ row }">
+                    <el-tag
+                      :type="Number(row.is_new) === 1 ? 'success' : 'info'"
+                      size="small"
+                    >
+                      {{ Number(row.is_new) === 1 ? '全新' : '二手' }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="canViewPreorderField('deposit_amount')"
+                  prop="deposit_amount"
+                  label="定金"
+                  min-width="80"
+                  align="center"
+                >
+                  <template #default="{ row }">
+                    ¥{{ formatNumber(row.deposit_amount) }}
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="canViewPreorderField('total_price')"
+                  label="销售价格"
+                  min-width="90"
+                  align="center"
+                >
+                  <template #default="{ row }">
+                    {{ row.total_price ? '¥' + formatNumber(row.total_price) : '-' }}
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="showPendingStatusField"
+                  label="状态"
+                  min-width="150"
+                >
+                  <template #default="{ row }">
+                    <div class="action-buttons">
+                      <el-tag
+                        v-if="canViewPreorderField('status')"
+                        :type="getStatusTagType(row.status)"
+                      >
+                        {{ row.status_text }}
+                      </el-tag>
+                      <el-button
+                        v-if="canCancel"
+                        type="danger"
+                        size="small"
+                        @click.stop="cancelPreorder(row)"
+                      >
+                        <i class="fas fa-times" />
+                        取消
+                      </el-button>
+                    </div>
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="showPendingMatchedTimeField"
+                  label="匹配时间"
+                  min-width="150"
+                >
+                  <template #default="{ row }">
+                    <div class="action-buttons">
+                      <span v-if="canViewPreorderField('matched_time')">
+                        {{ getMatchedTimeText(row) }}
+                      </span>
+                      <el-button
+                        v-if="canMatch"
+                        type="success"
+                        size="small"
+                        @click.stop="openMatchModal(row)"
+                      >
+                        <i class="fas fa-link" />
+                        匹配
+                      </el-button>
+                    </div>
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="canViewPreorderField('created_at')"
+                  prop="created_at"
+                  label="预定时间"
+                  min-width="140"
+                >
+                  <template #default="{ row }">
+                    {{ formatDateTime(row.created_at) }}
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="showPendingActionField"
+                  label="操作"
+                  :width="pendingPreorderActionColumnWidth"
+                  align="center"
+                  class-name="actions-column"
+                >
+                  <template #default="{ row }">
+                    <div class="action-buttons">
+                      <el-button
+                        v-if="canEdit"
+                        type="primary"
+                        size="small"
+                        @click.stop="editPreorder(row)"
+                      >
+                        <i class="fas fa-edit" />
+                        编辑
+                      </el-button>
+                    </div>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+
+            <!-- 分页 -->
+            <div class="pagination-container">
+              <Pagination
+                v-model:current="pagination.page"
+                v-model:page-size="pagination.page_size"
+                :total="pagination.total"
+                :page-sizes="[10, 20, 50, 100]"
+                :show-range="true"
+                @change="handlePendingPaginationChange"
+              />
+            </div>
+          </div>
+        </el-tab-pane>
+
+        <!-- TAB 2: 已预定（包含已取消） -->
+        <el-tab-pane
+          label="已预定"
+          name="matched"
+          class="tf-tab-panel"
+        >
+          <div class="tab-content tf-tab-content table-section admin-panel admin-table-panel">
+            <div class="filter-bar">
+              <el-radio-group
+                v-model="matchedStatus"
+                @change="loadMatchedPreorders"
+              >
+                <el-radio-button value="all">
+                  全部
+                </el-radio-button>
+                <el-radio-button value="matched">
+                  已匹配
+                </el-radio-button>
+                <el-radio-button value="cancelled">
+                  已取消
+                </el-radio-button>
+              </el-radio-group>
+            </div>
+
+            <div class="table-responsive">
+              <el-table
+                ref="matchedTableRef"
+                :data="matchedPreorders"
+                border
+                stripe
+                class="data-table devices-table base-data-table preorders-table"
+                :row-key="(row: Preorder) => String(row.id)"
+                :expand-row-keys="expandedRows"
+                @row-click="handleRowTap"
+              >
+                <template #empty>
+                  <TableLoadingRow
+                    v-if="loading"
+                    mode="block"
+                    text="加载中..."
+                  />
+                  <DataEmptyState
+                    v-else
+                    description="暂无预定单"
+                  />
+                </template>
+                <el-table-column
+                  v-if="showMobileMatchedActionField"
+                  type="expand"
+                  width="1"
+                  class-name="mobile-expand-column"
+                  label-class-name="mobile-expand-header"
+                >
+                  <template #default="{ row }">
+                    <div class="mobile-row-actions">
+                      <!-- 通用操作列仅保留编辑、删除。 -->
+                      <template v-if="row.status === 'pending'">
+                        <el-button
+                          v-if="canEdit"
+                          type="primary"
+                          size="small"
+                          @click.stop="editMatchedPreorder(row)"
+                        >
+                          <i class="fas fa-edit" />
+                          <span>编辑</span>
+                        </el-button>
+                      </template>
+                      <!-- 已取消状态可执行删除。 -->
+                      <template v-if="row.status === 'cancelled'">
+                        <el-button
+                          v-if="canDelete"
+                          type="danger"
+                          size="small"
+                          @click.stop="deletePreorder(row)"
+                        >
+                          <i class="fas fa-trash" />
+                          <span>删除</span>
+                        </el-button>
+                      </template>
+                    </div>
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="canViewPreorderField('preorder_number')"
+                  prop="preorder_number"
+                  label="预定单号"
+                  :min-width="preorderNumberColumnWidth"
+                  class-name="identifier-column"
+                />
+                <el-table-column
+                  v-if="canViewPreorderField('supplier_name')"
+                  label="供应商"
+                  min-width="100"
+                >
+                  <template #default="{ row }">
+                    <span :class="getStatusClass(row.status)">
+                      {{ getStatusText(row.status, row.supplier_name) }}
+                    </span>
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="canViewPreorderField('store_name')"
+                  prop="store_name"
+                  label="店铺"
+                  min-width="80"
+                />
+                <el-table-column
+                  v-if="canViewPreorderField('customer_name')"
+                  prop="customer_name"
+                  label="客户姓名"
+                  min-width="90"
+                />
+                <el-table-column
+                  v-if="canViewPreorderField('customer_phone')"
+                  prop="customer_phone"
+                  label="客户电话"
+                  min-width="110"
+                />
+                <el-table-column
+                  v-if="canViewPreorderField('brand_name')"
+                  label="品牌"
+                  min-width="90"
+                >
+                  <template #default="{ row }">
+                    {{ row.brand_name || '-' }}
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="canViewPreorderField('model_name')"
+                  label="型号"
+                  min-width="110"
+                >
+                  <template #default="{ row }">
+                    {{ row.model_name || '-' }}
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="canViewPreorderField('color_name')"
+                  label="颜色"
+                  min-width="70"
+                >
+                  <template #default="{ row }">
+                    {{ row.color_name || '-' }}
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="canViewPreorderField('memory_size')"
+                  label="内存"
+                  min-width="70"
+                >
+                  <template #default="{ row }">
+                    {{ row.memory_size || '-' }}
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="canViewPreorderField('is_new')"
+                  label="机况"
+                  min-width="70"
+                >
+                  <template #default="{ row }">
+                    <el-tag
+                      :type="Number(row.is_new) === 1 ? 'success' : 'info'"
+                      size="small"
+                    >
+                      {{ Number(row.is_new) === 1 ? '全新' : '二手' }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="canViewPreorderField('imei')"
+                  prop="imei"
+                  label="IMEI"
+                  :min-width="imeiColumnWidth"
+                  class-name="identifier-column"
+                >
+                  <template #default="{ row }">
+                    <span :class="getStatusClass(row.status)">
+                      {{ getStatusText(row.status, row.imei) }}
+                    </span>
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="canViewPreorderField('deposit_amount')"
+                  prop="deposit_amount"
+                  label="定金"
+                  min-width="80"
+                  align="center"
+                >
+                  <template #default="{ row }">
+                    ¥{{ formatNumber(row.deposit_amount) }}
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="canViewPreorderField('total_price')"
+                  label="销售价格"
+                  min-width="90"
+                  align="center"
+                >
+                  <template #default="{ row }">
+                    {{ row.total_price ? '¥' + formatNumber(row.total_price) : '-' }}
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="showMatchedStatusField"
+                  prop="status_text"
+                  label="状态"
+                  min-width="190"
+                >
+                  <template #default="{ row }">
+                    <div class="action-buttons">
+                      <el-tag
+                        v-if="canViewPreorderField('status')"
+                        :type="getStatusTagType(row.status)"
+                      >
+                        {{ row.status_text }}
+                      </el-tag>
+                      <el-button
+                        v-if="canCancel && ['pending', 'arrived'].includes(row.status)"
+                        type="danger"
+                        size="small"
+                        @click.stop="cancelMatchedPreorder(row)"
+                      >
+                        <i class="fas fa-times" />
+                        取消
+                      </el-button>
+                      <el-button
+                        v-if="canEdit && row.status === 'cancelled'"
+                        type="warning"
+                        size="small"
+                        @click.stop="restorePreorder(row)"
+                      >
+                        <i class="fas fa-undo" />
+                        恢复
+                      </el-button>
+                    </div>
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="showMatchedTimeField"
+                  prop="matched_time"
+                  label="匹配时间"
+                  min-width="170"
+                >
+                  <template #default="{ row }">
+                    <span
+                      v-if="canViewPreorderField('matched_time')"
+                      :class="getStatusClass(row.status)"
+                    >
+                      {{ getMatchedTimeText(row) }}
+                    </span>
                     <el-button
-                      v-if="canMatch"
+                      v-if="canMatch && row.status === 'pending'"
                       type="success"
                       size="small"
                       @click.stop="openMatchModal(row)"
                     >
-                      <i class="fas fa-link"></i>
-                      <span>匹配</span>
-                    </el-button>
-                    <el-button
-                      v-if="canEdit"
-                      type="primary"
-                      size="small"
-                      @click.stop="editMatchedPreorder(row)"
-                    >
-                      <i class="fas fa-edit"></i>
-                      <span>编辑</span>
-                    </el-button>
-                    <el-button
-                      v-if="canCancel"
-                      type="danger"
-                      size="small"
-                      @click.stop="cancelMatchedPreorder(row)"
-                    >
-                      <i class="fas fa-times"></i>
-                      <span>取消</span>
-                    </el-button>
-                  </template>
-                  <!-- 已匹配状态：交付、取消 -->
-                  <template v-if="row.status === 'arrived'">
-                    <el-button
-                      v-if="canDeliver"
-                      type="success"
-                      size="small"
-                      @click.stop="deliverPreorder(row)"
-                    >
-                      <i class="fas fa-check"></i>
-                      <span>交付</span>
-                    </el-button>
-                    <el-button
-                      v-if="canCancel"
-                      type="danger"
-                      size="small"
-                      @click.stop="cancelMatchedPreorder(row)"
-                    >
-                      <i class="fas fa-times"></i>
-                      <span>取消</span>
-                    </el-button>
-                  </template>
-                  <!-- 已取消状态：删除、恢复 -->
-                  <template v-if="row.status === 'cancelled'">
-                    <el-button
-                      v-if="canEdit"
-                      type="warning"
-                      size="small"
-                      @click.stop="restorePreorder(row)"
-                    >
-                      <i class="fas fa-undo"></i>
-                      <span>恢复</span>
-                    </el-button>
-                    <el-button
-                      v-if="canDelete"
-                      type="danger"
-                      size="small"
-                      @click.stop="deletePreorder(row)"
-                    >
-                      <i class="fas fa-trash"></i>
-                      <span>删除</span>
-                    </el-button>
-                  </template>
-                </div>
-              </template>
-            </el-table-column>
-            <el-table-column prop="preorder_number" label="预定单号" :min-width="preorderNumberColumnWidth" class-name="identifier-column" />
-            <el-table-column label="供应商" min-width="100">
-              <template #default="{ row }">
-                <span :class="getStatusClass(row.status)">
-                  {{ getStatusText(row.status, row.supplier_name) }}
-                </span>
-              </template>
-            </el-table-column>
-            <el-table-column prop="store_name" label="店铺" min-width="80" />
-            <el-table-column prop="customer_name" label="客户姓名" min-width="90" />
-            <el-table-column prop="customer_phone" label="客户电话" min-width="110" />
-            <el-table-column label="品牌" min-width="90">
-              <template #default="{ row }">
-                {{ row.brand_name || '-' }}
-              </template>
-            </el-table-column>
-            <el-table-column label="型号" min-width="110">
-              <template #default="{ row }">
-                {{ row.model_name || '-' }}
-              </template>
-            </el-table-column>
-            <el-table-column label="颜色" min-width="70">
-              <template #default="{ row }">
-                {{ row.color_name || '-' }}
-              </template>
-            </el-table-column>
-            <el-table-column label="内存" min-width="70">
-              <template #default="{ row }">
-                {{ row.memory_size || '-' }}
-              </template>
-            </el-table-column>
-            <el-table-column label="机况" min-width="70">
-              <template #default="{ row }">
-                <el-tag :type="Number(row.is_new) === 1 ? 'success' : 'info'" size="small">
-                  {{ Number(row.is_new) === 1 ? '全新' : '二手' }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="imei" label="IMEI" :min-width="imeiColumnWidth" class-name="identifier-column">
-              <template #default="{ row }">
-                <span :class="getStatusClass(row.status)">
-                  {{ getStatusText(row.status, row.imei) }}
-                </span>
-              </template>
-            </el-table-column>
-            <el-table-column prop="advance_payment" label="定金" min-width="80" align="center">
-              <template #default="{ row }">
-                ¥{{ formatNumber(row.advance_payment) }}
-              </template>
-            </el-table-column>
-            <el-table-column label="销售价格" min-width="90" align="center">
-              <template #default="{ row }">
-                {{ row.expected_price ? '¥' + formatNumber(row.expected_price) : '-' }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="status_text" label="状态" min-width="80">
-              <template #default="{ row }">
-                <el-tag :type="getStatusTagType(row.status)">
-                  {{ row.status_text }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="matched_time" label="匹配时间" min-width="140">
-              <template #default="{ row }">
-                <span :class="getStatusClass(row.status)">
-                  {{ getMatchedTimeText(row) }}
-                </span>
-              </template>
-            </el-table-column>
-              <el-table-column v-if="!isMobile && (canMatch || canEdit || canDeliver || canCancel || canDelete)" label="操作" :width="matchedPreorderActionColumnWidth" align="center" class-name="actions-column">
-              <template #default="{ row }">
-                <div class="action-buttons">
-                  <!-- 待匹配状态：匹配、编辑、取消 -->
-                  <template v-if="row.status === 'pending'">
-                    <el-button
-                      v-if="canMatch"
-                      type="success"
-                      size="small"
-                      @click.stop="openMatchModal(row)"
-                    >
-                      <i class="fas fa-link"></i>
+                      <i class="fas fa-link" />
                       匹配
                     </el-button>
-                    <el-button
-                      v-if="canEdit"
-                      type="primary"
-                      size="small"
-                      @click.stop="editMatchedPreorder(row)"
-                    >
-                      <i class="fas fa-edit"></i>
-                      编辑
-                    </el-button>
-                    <el-button
-                      v-if="canCancel"
-                      type="danger"
-                      size="small"
-                      @click.stop="cancelMatchedPreorder(row)"
-                    >
-                      <i class="fas fa-times"></i>
-                      取消
-                    </el-button>
                   </template>
-                  <!-- 已匹配状态：交付、取消 -->
-                  <template v-if="row.status === 'arrived'">
+                </el-table-column>
+                <el-table-column
+                  v-if="showMatchedDeliveryField"
+                  label="交付时间"
+                  min-width="170"
+                >
+                  <template #default="{ row }">
+                    <span v-if="canViewPreorderField('delivered_time')">
+                      {{ row.delivered_time ? formatDateTime(row.delivered_time) : '-' }}
+                    </span>
                     <el-button
-                      v-if="canDeliver"
+                      v-if="canDeliver && row.status === 'arrived'"
                       type="success"
                       size="small"
                       @click.stop="deliverPreorder(row)"
                     >
-                      <i class="fas fa-check"></i>
+                      <i class="fas fa-check" />
                       交付
                     </el-button>
-                    <el-button
-                      v-if="canCancel"
-                      type="danger"
-                      size="small"
-                      @click.stop="cancelMatchedPreorder(row)"
-                    >
-                      <i class="fas fa-times"></i>
-                      取消
-                    </el-button>
                   </template>
-                  <!-- 已取消状态：删除、恢复 -->
-                  <template v-if="row.status === 'cancelled'">
-                    <el-button
-                      v-if="canEdit"
-                      type="warning"
-                      size="small"
-                      @click.stop="restorePreorder(row)"
-                    >
-                      <i class="fas fa-undo"></i>
-                      恢复
-                    </el-button>
-                    <el-button
-                      v-if="canDelete"
-                      type="danger"
-                      size="small"
-                      @click.stop="deletePreorder(row)"
-                    >
-                      <i class="fas fa-trash"></i>
-                      删除
-                    </el-button>
+                </el-table-column>
+                <el-table-column
+                  v-if="showMatchedActionField"
+                  label="操作"
+                  :width="matchedPreorderActionColumnWidth"
+                  align="center"
+                  class-name="actions-column"
+                >
+                  <template #default="{ row }">
+                    <div class="action-buttons">
+                      <!-- 通用操作列仅保留编辑、删除。 -->
+                      <template v-if="row.status === 'pending'">
+                        <el-button
+                          v-if="canEdit"
+                          type="primary"
+                          size="small"
+                          @click.stop="editMatchedPreorder(row)"
+                        >
+                          <i class="fas fa-edit" />
+                          编辑
+                        </el-button>
+                      </template>
+                      <!-- 已取消状态可执行删除。 -->
+                      <template v-if="row.status === 'cancelled'">
+                        <el-button
+                          v-if="canDelete"
+                          type="danger"
+                          size="small"
+                          @click.stop="deletePreorder(row)"
+                        >
+                          <i class="fas fa-trash" />
+                          删除
+                        </el-button>
+                      </template>
+                    </div>
                   </template>
-                </div>
-              </template>
-            </el-table-column>
-          </el-table>
-          </div>
+                </el-table-column>
+              </el-table>
+            </div>
 
-          <!-- 分页 -->
-          <div class="pagination-container">
-            <Pagination
-              v-model:current="pagination.page"
-              v-model:page-size="pagination.limit"
-              :total="pagination.total"
-              :page-sizes="[10, 20, 50, 100]"
-              :show-range="true"
-              @change="handleMatchedPaginationChange"
-            />
+            <!-- 分页 -->
+            <div class="pagination-container">
+              <Pagination
+                v-model:current="pagination.page"
+                v-model:page-size="pagination.page_size"
+                :total="pagination.total"
+                :page-sizes="[10, 20, 50, 100]"
+                :show-range="true"
+                @change="handleMatchedPaginationChange"
+              />
+            </div>
           </div>
-        </div>
-      </el-tab-pane>
+        </el-tab-pane>
 
-      <!-- TAB 3: 已交付 -->
-      <el-tab-pane label="已交付" name="delivered" class="tf-tab-panel">
-        <div class="tab-content tf-tab-content table-section admin-panel admin-table-panel">
-          <div class="table-responsive">
-          <el-table
-            ref="deliveredTableRef"
-            :data="deliveredPreorders"
-            border
-            stripe
-            class="data-table devices-table base-data-table preorders-table"
-            @row-click="handleRowTap"
-            :row-key="(row: Preorder) => String(row.id)"
-            :expand-row-keys="expandedRows"
-          >
-            <template #empty>
-              <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
-              <el-empty v-else description="暂无预定单" />
-            </template>
-            <el-table-column v-if="isMobile" type="expand" width="1" class-name="mobile-expand-column" label-class-name="mobile-expand-header">
-              <template #default="{ row }">
-                <div class="mobile-row-actions">
-                  <el-button
-                    v-if="canDelete"
-                    type="danger"
-                    size="small"
-                    @click.stop="deletePreorder(row)"
-                  >
-                    <i class="fas fa-trash"></i>
-                    <span>删除</span>
-                  </el-button>
-                </div>
-              </template>
-            </el-table-column>
-            <el-table-column prop="preorder_number" label="预定单号" :min-width="preorderNumberColumnWidth" class-name="identifier-column" />
-            <el-table-column label="供应商" min-width="100">
-              <template #default="{ row }">
-                <span :class="getStatusClass(row.status)">
-                  {{ getStatusText(row.status, row.supplier_name) }}
-                </span>
-              </template>
-            </el-table-column>
-            <el-table-column prop="store_name" label="店铺" min-width="80" />
-            <el-table-column prop="customer_name" label="客户姓名" min-width="85" />
-            <el-table-column prop="customer_phone" label="客户电话" min-width="105" />
-            <el-table-column label="品牌" min-width="85">
-              <template #default="{ row }">
-                {{ row.brand_name || '-' }}
-              </template>
-            </el-table-column>
-            <el-table-column label="型号" min-width="100">
-              <template #default="{ row }">
-                {{ row.model_name || '-' }}
-              </template>
-            </el-table-column>
-            <el-table-column label="颜色" min-width="65">
-              <template #default="{ row }">
-                {{ row.color_name || '-' }}
-              </template>
-            </el-table-column>
-            <el-table-column label="内存" min-width="65">
-              <template #default="{ row }">
-                {{ row.memory_size || '-' }}
-              </template>
-            </el-table-column>
-            <el-table-column label="机况" min-width="70">
-              <template #default="{ row }">
-                <el-tag :type="Number(row.is_new) === 1 ? 'success' : 'info'" size="small">
-                  {{ Number(row.is_new) === 1 ? '全新' : '二手' }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="imei" label="IMEI" :min-width="imeiColumnWidth" class-name="identifier-column" />
-            <el-table-column prop="advance_payment" label="定金" min-width="75" align="center">
-              <template #default="{ row }">
-                ¥{{ formatNumber(row.advance_payment) }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="actual_price" label="销售价格" min-width="85" align="center">
-              <template #default="{ row }">
-                ¥{{ formatNumber(row.actual_price) }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="remaining_amount" label="尾款" min-width="75" align="center">
-              <template #default="{ row }">
-                ¥{{ formatNumber(row.remaining_amount || 0) }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="delivered_time" label="交付时间" min-width="140">
-              <template #default="{ row }">
-                {{ row.delivered_time ? formatDateTime(row.delivered_time) : '-' }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="operator_name" label="操作员" min-width="85" />
-              <el-table-column v-if="!isMobile && canDelete" label="操作" :width="$getActionColumnWidth(1)" align="center" class-name="actions-column">
-              <template #default="{ row }">
-                <div class="action-buttons">
-                  <el-button
-                    v-if="canDelete"
-                    type="danger"
-                    size="small"
-                    @click.stop="deletePreorder(row)"
-                  >
-                    <i class="fas fa-trash"></i>
-                    删除
-                  </el-button>
-                </div>
-              </template>
-            </el-table-column>
-          </el-table>
+        <!-- TAB 3: 已交付 -->
+        <el-tab-pane
+          label="已交付"
+          name="delivered"
+          class="tf-tab-panel"
+        >
+          <div class="tab-content tf-tab-content table-section admin-panel admin-table-panel">
+            <div class="table-responsive">
+              <el-table
+                ref="deliveredTableRef"
+                :data="deliveredPreorders"
+                border
+                stripe
+                class="data-table devices-table base-data-table preorders-table"
+                :row-key="(row: Preorder) => String(row.id)"
+                :expand-row-keys="expandedRows"
+                @row-click="handleRowTap"
+              >
+                <template #empty>
+                  <TableLoadingRow
+                    v-if="loading"
+                    mode="block"
+                    text="加载中..."
+                  />
+                  <DataEmptyState
+                    v-else
+                    description="暂无预定单"
+                  />
+                </template>
+                <el-table-column
+                  v-if="showMobileDeliveredActionField"
+                  type="expand"
+                  width="1"
+                  class-name="mobile-expand-column"
+                  label-class-name="mobile-expand-header"
+                >
+                  <template #default="{ row }">
+                    <div class="mobile-row-actions">
+                      <el-button
+                        v-if="canDelete"
+                        type="danger"
+                        size="small"
+                        @click.stop="deletePreorder(row)"
+                      >
+                        <i class="fas fa-trash" />
+                        <span>删除</span>
+                      </el-button>
+                    </div>
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="canViewPreorderField('preorder_number')"
+                  prop="preorder_number"
+                  label="预定单号"
+                  :min-width="preorderNumberColumnWidth"
+                  class-name="identifier-column"
+                />
+                <el-table-column
+                  v-if="canViewPreorderField('supplier_name')"
+                  label="供应商"
+                  min-width="100"
+                >
+                  <template #default="{ row }">
+                    <span :class="getStatusClass(row.status)">
+                      {{ getStatusText(row.status, row.supplier_name) }}
+                    </span>
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="canViewPreorderField('store_name')"
+                  prop="store_name"
+                  label="店铺"
+                  min-width="80"
+                />
+                <el-table-column
+                  v-if="canViewPreorderField('customer_name')"
+                  prop="customer_name"
+                  label="客户姓名"
+                  min-width="85"
+                />
+                <el-table-column
+                  v-if="canViewPreorderField('customer_phone')"
+                  prop="customer_phone"
+                  label="客户电话"
+                  min-width="105"
+                />
+                <el-table-column
+                  v-if="canViewPreorderField('brand_name')"
+                  label="品牌"
+                  min-width="85"
+                >
+                  <template #default="{ row }">
+                    {{ row.brand_name || '-' }}
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="canViewPreorderField('model_name')"
+                  label="型号"
+                  min-width="100"
+                >
+                  <template #default="{ row }">
+                    {{ row.model_name || '-' }}
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="canViewPreorderField('color_name')"
+                  label="颜色"
+                  min-width="65"
+                >
+                  <template #default="{ row }">
+                    {{ row.color_name || '-' }}
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="canViewPreorderField('memory_size')"
+                  label="内存"
+                  min-width="65"
+                >
+                  <template #default="{ row }">
+                    {{ row.memory_size || '-' }}
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="canViewPreorderField('is_new')"
+                  label="机况"
+                  min-width="70"
+                >
+                  <template #default="{ row }">
+                    <el-tag
+                      :type="Number(row.is_new) === 1 ? 'success' : 'info'"
+                      size="small"
+                    >
+                      {{ Number(row.is_new) === 1 ? '全新' : '二手' }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="canViewPreorderField('imei')"
+                  prop="imei"
+                  label="IMEI"
+                  :min-width="imeiColumnWidth"
+                  class-name="identifier-column"
+                />
+                <el-table-column
+                  v-if="canViewPreorderField('deposit_amount')"
+                  prop="deposit_amount"
+                  label="定金"
+                  min-width="75"
+                  align="center"
+                >
+                  <template #default="{ row }">
+                    ¥{{ formatNumber(row.deposit_amount) }}
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="canViewPreorderField('actual_price')"
+                  prop="actual_price"
+                  label="销售价格"
+                  min-width="85"
+                  align="center"
+                >
+                  <template #default="{ row }">
+                    ¥{{ formatNumber(row.actual_price) }}
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="canViewPreorderField('remaining_amount')"
+                  prop="remaining_amount"
+                  label="尾款"
+                  min-width="75"
+                  align="center"
+                >
+                  <template #default="{ row }">
+                    ¥{{ formatNumber(row.remaining_amount || 0) }}
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="canViewPreorderField('delivered_time')"
+                  prop="delivered_time"
+                  label="交付时间"
+                  min-width="140"
+                >
+                  <template #default="{ row }">
+                    {{ row.delivered_time ? formatDateTime(row.delivered_time) : '-' }}
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="canViewPreorderField('operator_name')"
+                  prop="operator_name"
+                  label="操作员"
+                  min-width="85"
+                />
+                <el-table-column
+                  v-if="showDeliveredActionField"
+                  label="操作"
+                  :width="$getActionColumnWidth(1)"
+                  align="center"
+                  class-name="actions-column"
+                >
+                  <template #default="{ row }">
+                    <div class="action-buttons">
+                      <el-button
+                        v-if="canDelete"
+                        type="danger"
+                        size="small"
+                        @click.stop="deletePreorder(row)"
+                      >
+                        <i class="fas fa-trash" />
+                        删除
+                      </el-button>
+                    </div>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+
+            <!-- 分页 -->
+            <div class="pagination-container">
+              <Pagination
+                v-model:current="pagination.page"
+                v-model:page-size="pagination.page_size"
+                :total="pagination.total"
+                :page-sizes="[10, 20, 50, 100]"
+                :show-range="true"
+                @change="handleDeliveredPaginationChange"
+              />
+            </div>
           </div>
+        </el-tab-pane>
+      </el-tabs>
 
-          <!-- 分页 -->
-          <div class="pagination-container">
-            <Pagination
-              v-model:current="pagination.page"
-              v-model:page-size="pagination.limit"
-              :total="pagination.total"
-              :page-sizes="[10, 20, 50, 100]"
-              :show-range="true"
-              @change="handleDeliveredPaginationChange"
-            />
-          </div>
-        </div>
-      </el-tab-pane>
-    </el-tabs>
-
-    <!-- 预定单表单模态框（创建/编辑） -->
-    <PreorderFormModal
-      v-if="showFormModal"
-      v-model:visible="showFormModal"
-      :mode="formModalMode"
-      :preorder="selectedPreorder"
-      @success="handlePreorderFormSuccess"
-    />
-    <MatchPreorderModal
-      v-if="showMatchModal && matchTarget"
-      v-model:visible="showMatchModal"
-      :preorder="matchTarget"
-      @success="handleMatchSuccess"
-    />
-  </div>
+      <!-- 预定单表单模态框（创建/编辑） -->
+      <PreorderFormModal
+        v-if="showFormModal"
+        v-model:visible="showFormModal"
+        :mode="formModalMode"
+        :preorder="selectedPreorder"
+        @success="handlePreorderFormSuccess"
+      />
+      <MatchPreorderModal
+        v-if="showMatchModal && matchTarget"
+        v-model:visible="showMatchModal"
+        :preorder="matchTarget"
+        @success="handleMatchSuccess"
+      />
+    </div>
   </PermissionGate>
 </template>
 
@@ -645,7 +956,8 @@ import { useRouter } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
-import { fieldPermissions } from '@/composables/useFieldPermissions'
+import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
+import { canViewPreorderField } from './preorder-field-permissions'
 import { useLoadingState } from '@/composables'
 import { preorderApi, Preorder, PreorderStatus } from '@/api/preorder'
 import { PageHeader, PermissionGate } from '@/components/base'
@@ -680,19 +992,6 @@ const expandedRows = ref<string[]>([])
 const lastTappedRowId = ref<string | null>(null)
 const lastTapTimestamp = ref(0)
 
-const preorderFieldMap: Record<string, string> = {
-  stats_pending_count: 'stats.pending_count',
-  stats_matched_count: 'stats.matched_count',
-  stats_delivered_count: 'stats.delivered_count',
-  stats_cancelled_count: 'stats.cancelled_count',
-  actions: 'system_info.operations'
-}
-
-const getPreorderFieldKey = (fieldName: string) => preorderFieldMap[fieldName] || fieldName
-const canViewPreorderField = (fieldName: string) => {
-  return fieldPermissions.isFieldVisible('preorders_preordersview', getPreorderFieldKey(fieldName))
-}
-
 const showStatsCards = computed(() => (
   canViewPreorderField('stats_pending_count') ||
   canViewPreorderField('stats_matched_count') ||
@@ -707,6 +1006,53 @@ loading.value = true
 const refreshing = ref(false)
 const matchedStatus = ref('all')
 const isMobile = ref(window.innerWidth <= 768)
+const showPendingStatusField = computed(() => shouldShowActionColumn(
+  canViewPreorderField('status'),
+  [canCancel.value]
+))
+const showPendingMatchedTimeField = computed(() => shouldShowActionColumn(
+  canViewPreorderField('matched_time'),
+  [canMatch.value]
+))
+const showMatchedStatusField = computed(() => shouldShowActionColumn(
+  canViewPreorderField('status'),
+  [canCancel.value, canEdit.value]
+))
+const showMatchedTimeField = computed(() => shouldShowActionColumn(
+  canViewPreorderField('matched_time'),
+  [canMatch.value]
+))
+const showMatchedDeliveryField = computed(() => shouldShowActionColumn(
+  canViewPreorderField('delivered_time'),
+  [canDeliver.value]
+))
+const showPendingActionField = computed(() => (
+  !isMobile.value && shouldShowActionColumn(
+    canViewPreorderField('operations'),
+    [canEdit.value]
+  )
+))
+const showMatchedActionField = computed(() => (
+  !isMobile.value && shouldShowActionColumn(
+    canViewPreorderField('operations'),
+    [canEdit.value, canDelete.value]
+  )
+))
+const showDeliveredActionField = computed(() => (
+  !isMobile.value && shouldShowActionColumn(canViewPreorderField('operations'), [canDelete.value])
+))
+const showMobilePendingActionField = computed(() => isMobile.value && shouldShowActionColumn(
+  canViewPreorderField('operations'),
+  [canEdit.value]
+))
+const showMobileMatchedActionField = computed(() => isMobile.value && shouldShowActionColumn(
+  canViewPreorderField('operations'),
+  [canEdit.value, canDelete.value]
+))
+const showMobileDeliveredActionField = computed(() => isMobile.value && shouldShowActionColumn(
+  canViewPreorderField('operations'),
+  [canDelete.value]
+))
 
 // 监听窗口大小变化
 const handleResize = () => {
@@ -723,19 +1069,16 @@ onBeforeUnmount(() => {
 
 // 统计数据
 const stats = reactive({
-  total: 0,
   pending_count: 0,
   matched_count: 0,
   delivered_count: 0,
-  cancelled_count: 0,
-  total_deposits: 0,
-  total_sales_value: 0
+  cancelled_count: 0
 })
 
 // 分页
 const pagination = reactive({
   page: 1,
-  limit: 20,
+  page_size: 20,
   total: 0
 })
 
@@ -746,19 +1089,13 @@ const deliveredPreorders = ref<Preorder[]>([])
 const pendingPreorderActionColumnWidth = computed(() => getAdaptiveActionColumnWidth(
   pendingPreorders.value,
   [
-    { label: '匹配', visible: canMatch.value },
-    { label: '编辑', visible: canEdit.value },
-    { label: '取消', visible: canCancel.value }
+    { label: '编辑', visible: canEdit.value }
   ]
 ))
 const matchedPreorderActionColumnWidth = computed(() => getAdaptiveActionColumnWidth(
   matchedPreorders.value,
   [
-    { label: '匹配', visible: row => canMatch.value && row.status === 'pending' },
     { label: '编辑', visible: row => canEdit.value && row.status === 'pending' },
-    { label: '交付', visible: row => canDeliver.value && row.status === 'arrived' },
-    { label: '取消', visible: row => canCancel.value && ['pending', 'arrived'].includes(row.status) },
-    { label: '恢复', visible: row => canEdit.value && row.status === 'cancelled' },
     { label: '删除', visible: row => canDelete.value && row.status === 'cancelled' }
   ]
 ))
@@ -801,7 +1138,7 @@ const loadPendingPreorders = async (showLoadingState = true) => {
   try {
     const data = await preorderApi.getPreorders({
       page: pagination.page,
-      limit: pagination.limit,
+      page_size: pagination.page_size,
       status: PreorderStatus.PENDING
     })
     pendingPreorders.value = data.records
@@ -835,7 +1172,7 @@ const loadMatchedPreorders = async (showLoadingState = true) => {
 
     const data = await preorderApi.getPreorders({
       page: pagination.page,
-      limit: pagination.limit,
+      page_size: pagination.page_size,
       status
     })
     matchedPreorders.value = data.records
@@ -857,7 +1194,7 @@ const loadDeliveredPreorders = async (showLoadingState = true) => {
   try {
     const data = await preorderApi.getPreorders({
       page: pagination.page,
-      limit: pagination.limit,
+      page_size: pagination.page_size,
       status: PreorderStatus.DELIVERED
     })
     deliveredPreorders.value = data.records
@@ -873,19 +1210,19 @@ const loadDeliveredPreorders = async (showLoadingState = true) => {
 
 const handlePendingPaginationChange = (page: number, pageSize: number) => {
   pagination.page = page
-  pagination.limit = pageSize
+  pagination.page_size = pageSize
   void loadPendingPreorders()
 }
 
 const handleMatchedPaginationChange = (page: number, pageSize: number) => {
   pagination.page = page
-  pagination.limit = pageSize
+  pagination.page_size = pageSize
   void loadMatchedPreorders()
 }
 
 const handleDeliveredPaginationChange = (page: number, pageSize: number) => {
   pagination.page = page
-  pagination.limit = pageSize
+  pagination.page_size = pageSize
   void loadDeliveredPreorders()
 }
 
@@ -1031,8 +1368,8 @@ const deliverPreorder = (preorder: Preorder) => {
       customer_id: preorder.customer_id,
       customer_name: preorder.customer_name,
       customer_phone: preorder.customer_phone,
-      expected_price: preorder.expected_price || preorder.advance_payment || '',
-      advance_payment: preorder.advance_payment
+      total_price: preorder.total_price || preorder.deposit_amount || '',
+      deposit_amount: preorder.deposit_amount
     }
   })
 }
@@ -1241,7 +1578,7 @@ onMounted(async () => {
     margin-bottom: 24px;
 
     .stat-card {
-      background: #fff;
+      background: var(--color-bg-white);
       border-radius: 8px;
       padding: 20px;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
@@ -1259,19 +1596,19 @@ onMounted(async () => {
       }
 
       &:nth-child(1)::before {
-        background: linear-gradient(90deg, #fa8c16, #ffa940);
+        background: linear-gradient(90deg, var(--tf-color-orange-ant), var(--color-warning));
       }
 
       &:nth-child(2)::before {
-        background: linear-gradient(90deg, #1890ff, #40a9ff);
+        background: linear-gradient(90deg, var(--tf-color-blue-ant), var(--tf-color-blue-ant-light));
       }
 
       &:nth-child(3)::before {
-        background: linear-gradient(90deg, #52c41a, #73d13d);
+        background: linear-gradient(90deg, var(--tf-color-green-ant), var(--color-success));
       }
 
       &:nth-child(4)::before {
-        background: linear-gradient(90deg, #f5222d, #ff4d4f);
+        background: linear-gradient(90deg, var(--tf-color-red-ant-600), var(--tf-color-red-ant));
       }
 
       &:hover {
@@ -1295,23 +1632,23 @@ onMounted(async () => {
           flex-shrink: 0;
 
           &.pending {
-            background: linear-gradient(135deg, #fff7e6 0%, #ffe7ba 100%);
-            color: #fa8c16;
+            background: linear-gradient(135deg, var(--tf-color-orange-ant-surface) 0%, var(--tf-color-orange-material-100) 100%);
+            color: var(--tf-color-orange-ant);
           }
 
           &.matched {
-            background: linear-gradient(135deg, #e6f7ff 0%, #bae7ff 100%);
-            color: #1890ff;
+            background: linear-gradient(135deg, var(--tf-color-cyan-ant-50) 0%, var(--tf-color-blue-ant-100) 100%);
+            color: var(--tf-color-blue-ant);
           }
 
           &.delivered {
-            background: linear-gradient(135deg, #f6ffed 0%, #d9f7be 100%);
-            color: #52c41a;
+            background: linear-gradient(135deg, var(--tf-color-green-ant-50) 0%, var(--tf-color-green-material-100) 100%);
+            color: var(--tf-color-green-ant);
           }
 
           &.cancelled {
-            background: linear-gradient(135deg, #fff1f0 0%, #ffccc7 100%);
-            color: #f5222d;
+            background: linear-gradient(135deg, var(--tf-color-red-ant-surface) 0%, var(--tf-color-red-200) 100%);
+            color: var(--tf-color-red-ant-600);
           }
         }
 
@@ -1321,14 +1658,14 @@ onMounted(async () => {
           .stat-value {
             font-size: 28px;
             font-weight: 700;
-            color: #303133;
+            color: var(--color-text-primary);
             line-height: 1.2;
             margin-bottom: 4px;
           }
 
           .stat-label {
             font-size: 14px;
-            color: #909399;
+            color: var(--color-info);
             font-weight: 500;
           }
         }
@@ -1344,14 +1681,14 @@ onMounted(async () => {
         justify-content: space-between;
         align-items: center;
         padding-bottom: 12px;
-        border-bottom: 1px solid #ebeef5;
+        border-bottom: 1px solid var(--color-border-light);
       }
 
     .pagination-container {
         display: flex;
         justify-content: flex-end;
         padding-top: 16px;
-        border-top: 1px solid #ebeef5;
+        border-top: 1px solid var(--color-border-light);
     }
 
       // 操作按钮容器样式
@@ -1386,7 +1723,7 @@ onMounted(async () => {
           left: -1px;
           bottom: 0;
           width: 1px;
-          background: #ebeef5;
+          background: var(--color-border-light);
         }
 
     }
@@ -1402,22 +1739,30 @@ onMounted(async () => {
 
   // 状态颜色样式
   .status-pending {
-    color: #e6a23c;
+    color: var(--tf-status-warning-color);
+    background: var(--tf-status-warning-bg);
+    border: 1px solid var(--tf-status-warning-border);
     font-weight: 500;
   }
 
   .status-matched {
-    color: #409eff;
+    color: var(--tf-status-info-color);
+    background: var(--tf-status-info-bg);
+    border: 1px solid var(--tf-status-info-border);
     font-weight: 500;
   }
 
   .status-delivered {
-    color: #67c23a;
+    color: var(--tf-status-success-color);
+    background: var(--tf-status-success-bg);
+    border: 1px solid var(--tf-status-success-border);
     font-weight: 500;
   }
 
   .status-cancelled {
-    color: #f56c6c;
+    color: var(--tf-status-danger-color);
+    background: var(--tf-status-danger-bg);
+    border: 1px solid var(--tf-status-danger-border);
     font-weight: 500;
   }
 

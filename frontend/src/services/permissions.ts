@@ -6,15 +6,57 @@
 import { ref, computed, watch } from 'vue'
 import { unifiedApi as api } from '@/utils/unified-api'
 import { useAuthStore } from '@/stores/auth'
-import { PermissionMapper, PermissionUtils } from '@/utils/permissionMapper'
+import { PermissionUtils } from '@/utils/permissionMapper'
 import permissionEventBus from '@/events/permissionEvents'
 import { storage } from '@/services/storage'
 import { AUTH_STORAGE_KEYS, CACHE_STORAGE_KEYS } from '@/constants/storage'
 import { logger } from '@/utils/logger'
 
+type PermissionSummary = Record<string, string[]>
+
+interface PermissionRole {
+  roleId?: number
+  roleName?: string
+  roleCode?: string | null
+  roleType?: string | null
+  [key: string]: unknown
+}
+
+interface RolePermissionProfile {
+  roleId?: number
+  roleName?: string
+  roleCode?: string | null
+  summary?: PermissionSummary
+  [key: string]: unknown
+}
+
+interface UserPermissionData {
+  summary: PermissionSummary
+  userPermissions: string[]
+  rolePermissions: Record<string, RolePermissionProfile>
+  roles: PermissionRole[]
+  menuVisibility?: Record<string, boolean>
+  [key: string]: unknown
+}
+
+interface PermissionCacheSnapshot {
+  data: UserPermissionData | null
+  lastUpdated: number
+  ttl: number
+  forceRefresh: boolean
+  lastPermissionChange: number
+  isLoading: boolean
+}
+
+interface ModulePermissionData {
+  module: string
+  permissions: string[]
+  permissionStrings: string[]
+}
+
 // 权限数据缓存 - 登录时获取，权限变更时强制更新
-const permissionCache = ref({
-  data: null as any,
+const permissionCache = ref<PermissionCacheSnapshot>({
+  data: null,
   lastUpdated: 0,
   ttl: 2 * 60 * 1000, // 2分钟缓存，更频繁检查权限变更
   forceRefresh: false, // 强制刷新标记
@@ -71,7 +113,7 @@ export class DynamicPermissionService {
    * 获取用户完整权限数据
    * 登录时获取一次，页面刷新时更新
    */
-  async getUserPermissions(forceRefresh = false): Promise<any> {
+  async getUserPermissions(forceRefresh = false): Promise<UserPermissionData | null> {
     // 防止无限循环调用
     if (permissionCache.value.isLoading) {
       return permissionCache.value.data || null
@@ -95,7 +137,7 @@ export class DynamicPermissionService {
 
     // 检查是否有权限变更标记
     const hasPermissionChange = permissionCache.value.forceRefresh ||
-      (permissionCache.value.lastPermissionChange > cached?.lastUpdated)
+      (permissionCache.value.lastPermissionChange > (cached?.lastUpdated ?? 0))
 
     // 如果有权限变更标记，强制刷新
     if (hasPermissionChange) {
@@ -111,23 +153,21 @@ export class DynamicPermissionService {
     try {
       permissionCache.value.isLoading = true
 
-      const response = await api.get('/permissions/user-permissions', {
+      const response = await api.get<Partial<UserPermissionData>>('/permissions/user-permissions', {
         showLoading: false,
         showError: false
       })
 
       if (response?.success) {
         const rawData = response.data || {}
-        const summary = rawData.summary && typeof rawData.summary === 'object'
-          ? rawData.summary
-          : rawData
+        const summary = rawData.summary || {}
         const userPermissions = Array.isArray(rawData.userPermissions)
           ? rawData.userPermissions
           : Object.entries(summary).flatMap(([moduleKey, actions]) =>
-              Array.isArray(actions)
-                ? actions.map(action => `${moduleKey}:${action}`)
-                : []
-            )
+            Array.isArray(actions)
+              ? actions.map(action => `${moduleKey}:${action}`)
+              : []
+          )
         const data = {
           ...rawData,
           summary,
@@ -153,7 +193,7 @@ export class DynamicPermissionService {
         throw new Error(response?.message || '获取权限数据失败')
       }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       // 如果网络请求失败，尝试返回过期的缓存数据
       if (cached) {
         return cached.data
@@ -176,12 +216,12 @@ export class DynamicPermissionService {
         await this.getUserPermissions(true)
       }
       return authStore.hasPermission(permission)
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error(`检查权限 ${permission} 失败:`, error)
 
       // 降级到缓存数据检查
       const permissions = await this.getUserPermissions(forceRefresh)
-      return permissions.userPermissions?.includes(permission) || false
+      return permissions?.userPermissions.includes(permission) || false
     }
   }
 
@@ -199,12 +239,12 @@ export class DynamicPermissionService {
         results[permission] = authStore.hasPermission(permission)
         return results
       }, {})
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('批量检查权限失败:', error)
 
       // 降级到缓存数据检查
       const permissionsData = await this.getUserPermissions(forceRefresh)
-      const userPerms = permissionsData.userPermissions || []
+      const userPerms = permissionsData?.userPermissions || []
       const results: Record<string, boolean> = {}
 
       permissions.forEach(permission => {
@@ -220,7 +260,7 @@ export class DynamicPermissionService {
   /**
    * 获取模块权限
    */
-  async getModulePermissions(module: string, forceRefresh = false): Promise<any> {
+  async getModulePermissions(module: string, forceRefresh = false): Promise<ModulePermissionData> {
     const authStore = useAuthStore()
 
     try {
@@ -249,15 +289,15 @@ export class DynamicPermissionService {
         permissions,
         permissionStrings: permissions.map((action: string) => `${module}:${action}`)
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error(`获取模块 ${module} 权限失败:`, error)
 
       // 降级到缓存数据检查
       const permissions = await this.getUserPermissions(forceRefresh)
       return {
         module,
-        permissions: permissions.summary?.[module] || [],
-        permissionStrings: permissions.userPermissions?.filter((p: string) => p.startsWith(`${module}:`)) || []
+        permissions: permissions?.summary[module] || [],
+        permissionStrings: permissions?.userPermissions.filter((permission) => permission.startsWith(`${module}:`)) || []
       }
     }
   }
@@ -324,7 +364,7 @@ export class DynamicPermissionService {
   /**
    * 获取缓存数据
    */
-  private getCachedData(): any {
+  private getCachedData(): PermissionCacheSnapshot | null {
     // 内存缓存优先
     if (permissionCache.value.data && (Date.now() - permissionCache.value.lastUpdated < permissionCache.value.ttl)) {
       return permissionCache.value
@@ -332,7 +372,7 @@ export class DynamicPermissionService {
 
     // 尝试从localStorage读取
     try {
-      const cached = storage.get<{ data: any; lastUpdated: number }>(this.cacheKey, 'local')
+      const cached = storage.get<{ data: UserPermissionData; lastUpdated: number }>(this.cacheKey, 'local')
       if (cached && cached.data) {
         permissionCache.value = {
           ...permissionCache.value,
@@ -351,7 +391,7 @@ export class DynamicPermissionService {
   /**
    * 设置缓存数据
    */
-  private setCacheData(data: any): void {
+  private setCacheData(data: UserPermissionData): void {
     permissionCache.value = {
       data,
       lastUpdated: Date.now(),

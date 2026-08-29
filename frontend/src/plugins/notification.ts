@@ -7,6 +7,9 @@ import type { App } from 'vue'
 import { simpleNotification } from '@/services/notification-simple'
 import type { NotificationOptions, NotificationConfig } from '@/services/notification-simple'
 
+type ConfirmationOptions = Parameters<typeof simpleNotification.confirm>[2]
+type AlertType = Parameters<typeof simpleNotification.alert>[2]
+
 // 扩展 Vue 组件实例类型
 declare module '@vue/runtime-core' {
   interface ComponentCustomProperties {
@@ -14,7 +17,7 @@ declare module '@vue/runtime-core' {
     $error: (message: string, options?: NotificationOptions) => void
     $warning: (message: string, options?: NotificationOptions) => void
     $info: (message: string, options?: NotificationOptions) => void
-    $confirm: (message: string, title?: string, options?: any) => Promise<boolean>
+    $confirm: (message: string, title?: string, options?: ConfirmationOptions) => Promise<boolean>
     $alert: (message: string, title?: string, type?: string) => Promise<void>
   }
 }
@@ -41,12 +44,12 @@ export const NotificationPlugin = {
       simpleNotification.info(message, opts)
     }
 
-    app.config.globalProperties.$confirm = (message: string, title?: string, opts?: any) => {
+    app.config.globalProperties.$confirm = (message: string, title?: string, opts?: ConfirmationOptions) => {
       return simpleNotification.confirm(message, title, opts)
     }
 
     app.config.globalProperties.$alert = (message: string, title?: string, type?: string) => {
-      return simpleNotification.alert(message, title, type as any)
+      return simpleNotification.alert(message, title, type as AlertType)
     }
 
     // 提供服务

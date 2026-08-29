@@ -3,7 +3,7 @@
  * 提供统一的缓存管理，避免重复请求
  */
 
-import { globalApiCache, globalDeduplicator } from '@/composables/api-cache'
+import { globalApiCache } from '@/composables/api-cache'
 import { logger } from '@/utils/logger'
 
 // 默认 TTL 配置（毫秒）
@@ -15,7 +15,7 @@ export const DEFAULT_CACHE_TTL = {
 }
 
 // 请求去重 Map
-const pendingRequests = new Map<string, Promise<any>>()
+const pendingRequests = new Map<string, Promise<unknown>>()
 let cacheGeneration = 0
 
 /**
@@ -37,9 +37,9 @@ export async function useCachedRequest<T>(
   const { useStale = true, deduplicate = true } = options
 
   // 1. 检查缓存
-  const cached = globalApiCache.get(key)
+  const cached = globalApiCache.get<T>(key)
   if (cached !== null) {
-    return cached as T
+    return cached
   }
 
   // 2. 检查去重
@@ -53,7 +53,7 @@ export async function useCachedRequest<T>(
     const requestPromise = fetcher()
 
     if (deduplicate) {
-      pendingRequests.set(key, requestPromise as any)
+      pendingRequests.set(key, requestPromise)
     }
 
     const data = await requestPromise
@@ -87,9 +87,9 @@ export async function useCachedRequest<T>(
 /**
  * 获取过期缓存（用于后备）
  */
-function getStaleCache(key: string): any {
+function getStaleCache(key: string): unknown {
   // 直接从缓存管理器内部获取（绕过 TTL 检查）
-  const cache = (globalApiCache as any).cache
+  const cache = (globalApiCache as unknown as { cache?: Map<string, { data: unknown }> }).cache
   return cache?.get(key)?.data || null
 }
 
@@ -120,7 +120,7 @@ export function hasPendingRequest(key: string): boolean {
 export async function preloadCache(
   items: Array<{
     key: string
-    fetcher: () => Promise<any>
+    fetcher: () => Promise<unknown>
     ttl?: number
   }>
 ): Promise<void> {

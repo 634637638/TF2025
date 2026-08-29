@@ -3,8 +3,8 @@
  * 提供统一的会员号生成功能，避免代码重复
  */
 
-const { getDatabase } = require('../config/database');
-const log = require('./log');
+const { getDatabase } = require('../config/database')
+const log = require('./log')
 
 /**
  * 获取数据库连接
@@ -15,17 +15,17 @@ const log = require('./log');
  */
 function getDbConnection(dbInstance) {
   if (!dbInstance) {
-    return getDatabase();
+    return getDatabase()
   }
   // 如果传入的是 connection，直接使用
   if (typeof dbInstance.query === 'function' && typeof dbInstance.execute !== 'function') {
-    return dbInstance;
+    return dbInstance
   }
   // 如果传入的是 db 对象，尝试获取连接池
   if (typeof dbInstance.getDatabase === 'function') {
-    return dbInstance.getDatabase();
+    return dbInstance.getDatabase()
   }
-  return dbInstance;
+  return dbInstance
 }
 
 /**
@@ -39,73 +39,73 @@ function getDbConnection(dbInstance) {
  * @returns {Promise<string>} 生成的会员号
  */
 async function generateMemberNumber(options = {}) {
-  const { connection, db: dbInstance } = options;
-  const db = connection ? null : (dbInstance ? getDbConnection(dbInstance) : getDatabase());
-  const maxAttempts = 10;
-  let attempts = 0;
+  const { connection, db: dbInstance } = options
+  const db = connection ? null : (dbInstance ? getDbConnection(dbInstance) : getDatabase())
+  const maxAttempts = 10
+  let attempts = 0
 
   // 获取当前最大的会员编号
   const getMaxMemberNumber = async () => {
-    const query = 'SELECT member_number FROM customers WHERE member_number IS NOT NULL AND member_number != "" ORDER BY member_number DESC LIMIT 1';
+    const query = 'SELECT member_number FROM customers WHERE member_number IS NOT NULL AND member_number != "" ORDER BY member_number DESC LIMIT 1'
     if (connection) {
-      const [result] = await connection.query(query);
-      return result;
+      const [result] = await connection.query(query)
+      return result
     }
-    const [result] = await db.query(query);
-    return result;
-  };
+    const [result] = await db.query(query)
+    return result
+  }
 
   // 检查会员号是否已存在
   const checkExists = async (memberNumber) => {
-    const query = 'SELECT id FROM customers WHERE member_number = ?';
+    const query = 'SELECT id FROM customers WHERE member_number = ?'
     if (connection) {
-      const [result] = await connection.query(query, [memberNumber]);
-      return result.length > 0;
+      const [result] = await connection.query(query, [memberNumber])
+      return result.length > 0
     }
-    const [result] = await db.query(query, [memberNumber]);
-    return result.length > 0;
-  };
+    const [result] = await db.query(query, [memberNumber])
+    return result.length > 0
+  }
 
   while (attempts < maxAttempts) {
-    attempts++;
+    attempts++
     try {
-      const result = await getMaxMemberNumber();
+      const result = await getMaxMemberNumber()
 
-      let maxNumber = 0;
+      let maxNumber = 0
       if (result.length > 0 && result[0].member_number) {
-        const lastMemberNumber = result[0].member_number;
+        const lastMemberNumber = result[0].member_number
         // 处理不同格式的会员号
         if (lastMemberNumber.startsWith('TF')) {
-          maxNumber = parseInt(lastMemberNumber.substring(2), 10) || 0;
+          maxNumber = parseInt(lastMemberNumber.substring(2), 10) || 0
         } else if (lastMemberNumber.startsWith('C')) {
-          maxNumber = parseInt(lastMemberNumber.substring(1), 10) || 0;
+          maxNumber = parseInt(lastMemberNumber.substring(1), 10) || 0
         }
       }
 
       // 生成新的会员编号
-      const newNumber = maxNumber + attempts;
-      const paddedNumber = newNumber.toString().padStart(6, '0');
-      const memberNumber = `TF${paddedNumber}`;
+      const newNumber = maxNumber + attempts
+      const paddedNumber = newNumber.toString().padStart(6, '0')
+      const memberNumber = `TF${paddedNumber}`
 
       // 检查是否已存在
-      const exists = await checkExists(memberNumber);
+      const exists = await checkExists(memberNumber)
       if (!exists) {
-        return memberNumber;
+        return memberNumber
       }
 
-      log.debug(`会员号 ${memberNumber} 已存在，进行第 ${attempts + 1} 次尝试`);
+      log.debug(`会员号 ${memberNumber} 已存在，进行第 ${attempts + 1} 次尝试`)
     } catch (error) {
-      log.error(`生成会员号失败 (尝试 ${attempts}):`, error);
+      log.error(`生成会员号失败 (尝试 ${attempts}):`, error)
       if (attempts >= maxAttempts) {
-        const timestamp = Date.now().toString().slice(-6);
-        return `TF${timestamp}`;
+        const timestamp = Date.now().toString().slice(-6)
+        return `TF${timestamp}`
       }
     }
   }
 
   // 如果所有尝试都失败，使用时间戳
-  const timestamp = Date.now().toString().slice(-6);
-  return `TF${timestamp}`;
+  const timestamp = Date.now().toString().slice(-6)
+  return `TF${timestamp}`
 }
 
 /**
@@ -115,13 +115,13 @@ async function generateMemberNumber(options = {}) {
  */
 function validateMemberNumber(memberNumber) {
   if (!memberNumber || typeof memberNumber !== 'string') {
-    return false;
+    return false
   }
   // 支持 TF 开头的6位数字，或 C 开头的数字
-  return /^TF\d{6}$/.test(memberNumber) || /^C\d+$/.test(memberNumber);
+  return /^TF\d{6}$/.test(memberNumber) || /^C\d+$/.test(memberNumber)
 }
 
 module.exports = {
   generateMemberNumber,
   validateMemberNumber
-};
+}

@@ -1,13 +1,13 @@
 /**
  * 系统配置数据访问层
  */
-const BaseRepository = require('./base.repository');
-const db = require('../config/database');
-const log = require('../utils/log');
+const BaseRepository = require('./base.repository')
+const db = require('../config/database')
+const log = require('../utils/log')
 
 class SystemSettingsRepository extends BaseRepository {
   constructor() {
-    super('settings');
+    super('settings')
   }
 
   /**
@@ -15,11 +15,11 @@ class SystemSettingsRepository extends BaseRepository {
    */
   async executeQuery(query, params = []) {
     try {
-      const [results] = await db.getDatabase().query(query, params);
-      return results;
+      const [results] = await db.getDatabase().query(query, params)
+      return results
     } catch (error) {
-      log.error('数据库查询失败:', error);
-      throw error;
+      log.error('数据库查询失败:', error)
+      throw error
     }
   }
 
@@ -28,12 +28,12 @@ class SystemSettingsRepository extends BaseRepository {
    */
   async getSettingByKey(settingKey) {
     try {
-      const query = `SELECT * FROM ${this.tableName} WHERE key_name = ?`;
-      const results = await this.executeQuery(query, [settingKey]);
-      return results.length > 0 ? results[0] : null;
+      const query = `SELECT * FROM ${this.tableName} WHERE key_name = ?`
+      const results = await this.executeQuery(query, [settingKey])
+      return results.length > 0 ? results[0] : null
     } catch (error) {
-      log.error('获取系统配置失败:', error);
-      throw error;
+      log.error('获取系统配置失败:', error)
+      throw error
     }
   }
 
@@ -42,12 +42,12 @@ class SystemSettingsRepository extends BaseRepository {
    */
   async getSettingsByKeys(settingKeys) {
     try {
-      const placeholders = settingKeys.map(() => '?').join(', ');
-      const query = `SELECT * FROM ${this.tableName} WHERE key_name IN (${placeholders})`;
-      return await this.executeQuery(query, settingKeys);
+      const placeholders = settingKeys.map(() => '?').join(', ')
+      const query = `SELECT * FROM ${this.tableName} WHERE key_name IN (${placeholders})`
+      return await this.executeQuery(query, settingKeys)
     } catch (error) {
-      log.error('获取系统配置列表失败:', error);
-      throw error;
+      log.error('获取系统配置列表失败:', error)
+      throw error
     }
   }
 
@@ -56,11 +56,11 @@ class SystemSettingsRepository extends BaseRepository {
    */
   async getSettingsByCategory(category) {
     try {
-      const query = `SELECT * FROM ${this.tableName} WHERE category = ? ORDER BY id`;
-      return await this.executeQuery(query, [category]);
+      const query = `SELECT * FROM ${this.tableName} WHERE category = ? ORDER BY id`
+      return await this.executeQuery(query, [category])
     } catch (error) {
-      log.error('获取系统配置失败:', error);
-      throw error;
+      log.error('获取系统配置失败:', error)
+      throw error
     }
   }
 
@@ -69,11 +69,11 @@ class SystemSettingsRepository extends BaseRepository {
    */
   async getAllSettings() {
     try {
-      const query = `SELECT * FROM ${this.tableName} ORDER BY id`;
-      return await this.executeQuery(query);
+      const query = `SELECT * FROM ${this.tableName} ORDER BY id`
+      return await this.executeQuery(query)
     } catch (error) {
-      log.error('获取所有配置失败:', error);
-      throw error;
+      log.error('获取所有配置失败:', error)
+      throw error
     }
   }
 
@@ -86,7 +86,7 @@ class SystemSettingsRepository extends BaseRepository {
       // 会在部分驱动版本中触发参数类型错误并返回 500。
       const persistedValue = settingType === 'json' && settingValue !== null && typeof settingValue === 'object'
         ? JSON.stringify(settingValue)
-        : settingValue;
+        : settingValue
       const query = `
         INSERT INTO ${this.tableName} (key_name, value, type)
         VALUES (?, ?, ?)
@@ -94,12 +94,12 @@ class SystemSettingsRepository extends BaseRepository {
         value = VALUES(value),
         type = VALUES(type),
         updated_at = CURRENT_TIMESTAMP
-      `;
-      await this.executeQuery(query, [settingKey, persistedValue, settingType]);
-      return await this.getSettingByKey(settingKey);
+      `
+      await this.executeQuery(query, [settingKey, persistedValue, settingType])
+      return await this.getSettingByKey(settingKey)
     } catch (error) {
-      log.error('更新系统配置失败:', error);
-      throw error;
+      log.error('更新系统配置失败:', error)
+      throw error
     }
   }
 
@@ -108,13 +108,13 @@ class SystemSettingsRepository extends BaseRepository {
    */
   async deleteSetting(settingKey) {
     try {
-      const query = `DELETE FROM ${this.tableName} WHERE key_name = ?`;
-      return await this.executeQuery(query, [settingKey]);
+      const query = `DELETE FROM ${this.tableName} WHERE key_name = ?`
+      return await this.executeQuery(query, [settingKey])
     } catch (error) {
-      log.error('删除系统配置失败:', error);
-      throw error;
+      log.error('删除系统配置失败:', error)
+      throw error
     }
   }
 }
 
-module.exports = SystemSettingsRepository;
+module.exports = SystemSettingsRepository

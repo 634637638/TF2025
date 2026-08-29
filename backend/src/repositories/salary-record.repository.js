@@ -3,8 +3,8 @@
  * 处理所有工资记录相关的数据库操作
  * 适配新的 salary_records 表结构（period_start, period_end）
  */
-const BaseRepository = require('./base.repository');
-const log = require('../utils/log');
+const BaseRepository = require('./base.repository')
+const log = require('../utils/log')
 
 const WRITABLE_FIELDS = new Set([
   'employee_id',
@@ -30,17 +30,50 @@ const WRITABLE_FIELDS = new Set([
   'base_salary_note',
   'actual_work_days',
   'other_deduction'
-]);
+])
+
+// 响应字段显式冻结，避免通配列将历史字段或内部字段透传给前端。
+const RESPONSE_FIELDS = [
+  'id',
+  'employee_id',
+  'salary_template_id',
+  'period_start',
+  'period_end',
+  'actual_work_days',
+  'base_salary',
+  'base_salary_adjustment',
+  'base_salary_note',
+  'commission_amount',
+  'commission_detail',
+  'sales_count',
+  'overtime_hours',
+  'overtime_pay',
+  'performance_bonus',
+  'other_bonus',
+  'leave_days',
+  'leave_deduction',
+  'other_deduction',
+  'net_salary',
+  'status',
+  'paid_at',
+  'payment_method',
+  'created_by',
+  'created_at',
+  'updated_at'
+]
+
+const RESPONSE_SELECT = RESPONSE_FIELDS.map(field => `sr.${field}`).join(',\n          ')
+const RESPONSE_FIELDS_SELECT = RESPONSE_FIELDS.join(',\n          ')
 
 class SalaryRecordNewRepository extends BaseRepository {
   constructor() {
-    super('salary_records');
+    super('salary_records')
   }
 
   sanitizeWriteData(data = {}) {
     return Object.fromEntries(
       Object.entries(data).filter(([key, value]) => WRITABLE_FIELDS.has(key) && value !== undefined)
-    );
+    )
   }
 
   /**
@@ -49,46 +82,48 @@ class SalaryRecordNewRepository extends BaseRepository {
   async getSalaryRecordsWithPagination(filters = {}, options = {}) {
     try {
       const {
-        page = 1,
-        limit = 20,
+        page = options.page ?? filters.page ?? 1,
+        page_size = options.page_size ?? filters.page_size ?? 20,
         employee_id,
         status,
         period_start,
         period_end
-      } = filters;
+      } = filters
 
-      const offset = (page - 1) * limit;
+      const safePage = Math.max(1, Number.isSafeInteger(Number(page)) ? Number(page) : 1)
+      const safePageSize = Math.min(100, Math.max(1, Number.isSafeInteger(Number(page_size)) ? Number(page_size) : 20))
+      const offset = (safePage - 1) * safePageSize
 
       // 构建查询条件
-      const conditions = [];
-      const params = [];
+      const conditions = []
+      const params = []
 
       if (employee_id) {
-        conditions.push('sr.employee_id = ?');
-        params.push(employee_id);
+        conditions.push('sr.employee_id = ?')
+        params.push(employee_id)
       }
 
       if (status) {
-        conditions.push('sr.status = ?');
-        params.push(status);
+        conditions.push('sr.status = ?')
+        params.push(status)
       }
 
       if (period_start) {
-        conditions.push('sr.period_start >= ?');
-        params.push(period_start);
+        conditions.push('sr.period_start >= ?')
+        params.push(period_start)
       }
 
       if (period_end) {
-        conditions.push('sr.period_end <= ?');
-        params.push(period_end);
+        conditions.push('sr.period_end <= ?')
+        params.push(period_end)
       }
 
-      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
 
       // 查询数据（LIMIT 和 OFFSET 直接内联，因为它们是安全的整数值）
       const dataQuery = `
         SELECT
-          sr.*,
+          ${RESPONSE_SELECT},
           u.username,
           u.name as employee_name,
           u.phone as employee_phone,
@@ -100,34 +135,34 @@ class SalaryRecordNewRepository extends BaseRepository {
         LEFT JOIN users creator ON sr.created_by = creator.id
         ${whereClause}
         ORDER BY sr.period_start DESC, sr.created_at DESC
-        LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}
-      `;
+        LIMIT ${safePageSize} OFFSET ${offset}
+      `
 
-      const records = await this.executeQuery(dataQuery, params);
+      const records = await this.executeQuery(dataQuery, params)
 
       // 查询总数
       const countQuery = `
         SELECT COUNT(*) as total
         FROM ${this.tableName} sr
         ${whereClause}
-      `;
-      const countResult = await this.executeQuery(countQuery, params);
-      const total = countResult[0].total;
+      `
+      const countResult = await this.executeQuery(countQuery, params)
+      const total = countResult[0].total
 
       return {
         records,
         pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
+          page: safePage,
+          page_size: safePageSize,
           total,
-          totalPages: Math.ceil(total / limit),
-          hasNext: page * limit < total,
-          hasPrev: page > 1
+          total_pages: Math.ceil(total / safePageSize),
+          has_next: safePage * safePageSize < total,
+          has_prev: safePage > 1
         }
-      };
+      }
     } catch (error) {
-      log.error('获取工资记录列表失败:', error);
-      throw error;
+      log.error('获取工资记录列表失败:', error)
+      throw error
     }
   }
 
@@ -138,7 +173,7 @@ class SalaryRecordNewRepository extends BaseRepository {
     try {
       const query = `
         SELECT
-          sr.*,
+          ${RESPONSE_SELECT},
           u.username,
           u.name as employee_name,
           u.phone as employee_phone,
@@ -152,12 +187,12 @@ class SalaryRecordNewRepository extends BaseRepository {
         LEFT JOIN salary_templates st ON sr.salary_template_id = st.id
         LEFT JOIN users creator ON sr.created_by = creator.id
         WHERE sr.id = ?
-      `;
-      const records = await this.executeQuery(query, [id]);
-      return records[0] || null;
+      `
+      const records = await this.executeQuery(query, [id])
+      return records[0] || null
     } catch (error) {
-      log.error('获取工资记录详情失败:', error);
-      throw error;
+      log.error('获取工资记录详情失败:', error)
+      throw error
     }
   }
 
@@ -166,10 +201,10 @@ class SalaryRecordNewRepository extends BaseRepository {
    */
   async createSalaryRecord(data) {
     try {
-      return await this.create(this.sanitizeWriteData(data));
+      return await this.create(this.sanitizeWriteData(data))
     } catch (error) {
-      log.error('创建工资记录失败:', error);
-      throw error;
+      log.error('创建工资记录失败:', error)
+      throw error
     }
   }
 
@@ -179,21 +214,21 @@ class SalaryRecordNewRepository extends BaseRepository {
    */
   async upsertSalaryRecord(data) {
     try {
-      const { employee_id, period_start, period_end } = data;
+      const { employee_id, period_start, period_end } = data
 
       // 检查是否已存在记录
-      const existing = await this.checkExistingRecord(employee_id, period_start, period_end);
+      const existing = await this.checkExistingRecord(employee_id, period_start, period_end)
 
       if (existing) {
         // 记录存在，更新它
-        return await this.update(existing.id, this.sanitizeWriteData(data));
+        return await this.update(existing.id, this.sanitizeWriteData(data))
       } else {
         // 记录不存在，创建新记录
-        return await this.create(this.sanitizeWriteData(data));
+        return await this.create(this.sanitizeWriteData(data))
       }
     } catch (error) {
-      log.error('保存工资记录失败:', error);
-      throw error;
+      log.error('保存工资记录失败:', error)
+      throw error
     }
   }
 
@@ -202,10 +237,10 @@ class SalaryRecordNewRepository extends BaseRepository {
    */
   async updateSalaryRecord(id, data) {
     try {
-      return await this.update(id, this.sanitizeWriteData(data));
+      return await this.update(id, this.sanitizeWriteData(data))
     } catch (error) {
-      log.error('更新工资记录失败:', error);
-      throw error;
+      log.error('更新工资记录失败:', error)
+      throw error
     }
   }
 
@@ -214,10 +249,10 @@ class SalaryRecordNewRepository extends BaseRepository {
    */
   async deleteSalaryRecord(id) {
     try {
-      return await this.delete(id);
+      return await this.delete(id)
     } catch (error) {
-      log.error('删除工资记录失败:', error);
-      throw error;
+      log.error('删除工资记录失败:', error)
+      throw error
     }
   }
 
@@ -227,38 +262,38 @@ class SalaryRecordNewRepository extends BaseRepository {
   async batchUpdateStatus(ids, status) {
     try {
       if (!Array.isArray(ids) || ids.length === 0) {
-        return 0;
+        return 0
       }
 
-      const placeholders = ids.map(() => '?').join(',');
-      const query = `UPDATE ${this.tableName} SET status = ? WHERE id IN (${placeholders})`;
-      const params = [status, ...ids];
+      const placeholders = ids.map(() => '?').join(',')
+      const query = `UPDATE ${this.tableName} SET status = ? WHERE id IN (${placeholders})`
+      const params = [status, ...ids]
 
-      const db = this.getConnection();
-      const [result] = await db.execute(query, params);
-      return result.affectedRows;
+      const db = this.getConnection()
+      const [result] = await db.execute(query, params)
+      return result.affectedRows
     } catch (error) {
-      log.error('批量更新工资记录状态失败:', error);
-      throw error;
+      log.error('批量更新工资记录状态失败:', error)
+      throw error
     }
   }
 
   /**
    * 审批工资记录
    */
-  async approveSalaryRecord(id, approver_id) {
+  async approveSalaryRecord(id, _approver_id) {
     try {
       const query = `
         UPDATE ${this.tableName}
         SET status = 'approved'
         WHERE id = ? AND status IN ('draft', 'pending')
-      `;
-      const db = this.getConnection();
-      const [result] = await db.execute(query, [id]);
-      return result.affectedRows > 0;
+      `
+      const db = this.getConnection()
+      const [result] = await db.execute(query, [id])
+      return result.affectedRows > 0
     } catch (error) {
-      log.error('审批工资记录失败:', error);
-      throw error;
+      log.error('审批工资记录失败:', error)
+      throw error
     }
   }
 
@@ -274,22 +309,22 @@ class SalaryRecordNewRepository extends BaseRepository {
    */
   async markAsPaid(id, options = {}) {
     try {
-      const { payment_method } = options;
-      const db = this.getConnection();
+      const { payment_method } = options
+      const db = this.getConnection()
 
       // 先检查记录是否存在以及当前状态
-      const checkQuery = `SELECT id, status FROM ${this.tableName} WHERE id = ?`;
-      const [records] = await db.execute(checkQuery, [id]);
+      const checkQuery = `SELECT id, status FROM ${this.tableName} WHERE id = ?`
+      const [records] = await db.execute(checkQuery, [id])
 
       if (records.length === 0) {
-        throw new Error('工资记录不存在');
+        throw new Error('工资记录不存在')
       }
 
-      const currentStatus = records[0].status;
+      const currentStatus = records[0].status
 
       // 只允许审批或已支付的记录进行结算
       if (currentStatus !== 'approved' && currentStatus !== 'paid') {
-        throw new Error(`只能结算已审批或已支付的工资记录，当前状态：${currentStatus}`);
+        throw new Error(`只能结算已审批或已支付的工资记录，当前状态：${currentStatus}`)
       }
 
       // 更新状态和支付信息（无论当前状态是 approved 还是 paid，都更新时间和支付方式）
@@ -299,20 +334,20 @@ class SalaryRecordNewRepository extends BaseRepository {
             paid_at = NOW(),
             payment_method = ?
         WHERE id = ?
-      `;
-      const [result] = await db.execute(updateQuery, [payment_method || null, id]);
+      `
+      const [result] = await db.execute(updateQuery, [payment_method || null, id])
 
       if (result.affectedRows === 0) {
-        throw new Error('工资发放失败，记录可能已被修改');
+        throw new Error('工资发放失败，记录可能已被修改')
       }
 
       // 返回更新后的记录
-      const selectQuery = `SELECT * FROM ${this.tableName} WHERE id = ?`;
-      const [updatedRecords] = await db.execute(selectQuery, [id]);
-      return updatedRecords[0];
+      const selectQuery = `SELECT ${RESPONSE_FIELDS_SELECT} FROM ${this.tableName} WHERE id = ?`
+      const [updatedRecords] = await db.execute(selectQuery, [id])
+      return updatedRecords[0]
     } catch (error) {
-      log.error('标记工资发放失败:', error);
-      throw error;
+      log.error('标记工资发放失败:', error)
+      throw error
     }
   }
 
@@ -321,28 +356,28 @@ class SalaryRecordNewRepository extends BaseRepository {
    */
   async getSalaryStats(filters = {}) {
     try {
-      const { period_start, period_end, status } = filters;
+      const { period_start, period_end, status } = filters
 
       // 构建查询条件
-      const conditions = [];
-      const params = [];
+      const conditions = []
+      const params = []
 
       if (period_start) {
-        conditions.push('period_start >= ?');
-        params.push(period_start);
+        conditions.push('period_start >= ?')
+        params.push(period_start)
       }
 
       if (period_end) {
-        conditions.push('period_end <= ?');
-        params.push(period_end);
+        conditions.push('period_end <= ?')
+        params.push(period_end)
       }
 
       if (status) {
-        conditions.push('status = ?');
-        params.push(status);
+        conditions.push('status = ?')
+        params.push(status)
       }
 
-      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
 
       // 基本统计（只使用 net_salary，因为 gross_salary 已删除）
       const basicStatsQuery = `
@@ -354,9 +389,9 @@ class SalaryRecordNewRepository extends BaseRepository {
           MIN(net_salary) as min_salary
         FROM ${this.tableName}
         ${whereClause}
-      `;
+      `
 
-      const basicStats = await this.executeQuery(basicStatsQuery, params);
+      const basicStats = await this.executeQuery(basicStatsQuery, params)
 
       // 按员工统计
       const employeeStatsQuery = `
@@ -372,9 +407,9 @@ class SalaryRecordNewRepository extends BaseRepository {
         GROUP BY sr.employee_id, u.name
         ORDER BY total_salary DESC
         LIMIT 20
-      `;
+      `
 
-      const employeeStats = await this.executeQuery(employeeStatsQuery, params);
+      const employeeStats = await this.executeQuery(employeeStatsQuery, params)
 
       // 按状态统计
       const statusStatsQuery = `
@@ -385,18 +420,18 @@ class SalaryRecordNewRepository extends BaseRepository {
         FROM ${this.tableName}
         ${whereClause}
         GROUP BY status
-      `;
+      `
 
-      const statusStats = await this.executeQuery(statusStatsQuery, params);
+      const statusStats = await this.executeQuery(statusStatsQuery, params)
 
       return {
         basic_stats: basicStats[0],
         employee_stats: employeeStats,
         status_stats: statusStats
-      };
+      }
     } catch (error) {
-      log.error('获取工资统计信息失败:', error);
-      throw error;
+      log.error('获取工资统计信息失败:', error)
+      throw error
     }
   }
 
@@ -409,12 +444,12 @@ class SalaryRecordNewRepository extends BaseRepository {
         SELECT id FROM ${this.tableName}
         WHERE employee_id = ? AND period_start = ? AND period_end = ?
         LIMIT 1
-      `;
-      const records = await this.executeQuery(query, [employee_id, period_start, period_end]);
-      return records[0] || null;
+      `
+      const records = await this.executeQuery(query, [employee_id, period_start, period_end])
+      return records[0] || null
     } catch (error) {
-      log.error('检查工资记录是否存在失败:', error);
-      throw error;
+      log.error('检查工资记录是否存在失败:', error)
+      throw error
     }
   }
 
@@ -424,16 +459,16 @@ class SalaryRecordNewRepository extends BaseRepository {
   async getRecordByEmployeePeriod(employee_id, period_start, period_end) {
     try {
       const query = `
-        SELECT *
+        SELECT ${RESPONSE_FIELDS_SELECT}
         FROM ${this.tableName}
         WHERE employee_id = ? AND period_start = ? AND period_end = ?
         LIMIT 1
-      `;
-      const records = await this.executeQuery(query, [employee_id, period_start, period_end]);
-      return records[0] || null;
+      `
+      const records = await this.executeQuery(query, [employee_id, period_start, period_end])
+      return records[0] || null
     } catch (error) {
-      log.error('获取员工周期工资记录失败:', error);
-      throw error;
+      log.error('获取员工周期工资记录失败:', error)
+      throw error
     }
   }
 
@@ -456,13 +491,13 @@ class SalaryRecordNewRepository extends BaseRepository {
         WHERE sr.employee_id = ?
         ORDER BY sr.period_start DESC
         LIMIT ${parseInt(limit)}
-      `;
-      return await this.executeQuery(query, [employee_id]);
+      `
+      return await this.executeQuery(query, [employee_id])
     } catch (error) {
-      log.error('获取员工工资记录失败:', error);
-      throw error;
+      log.error('获取员工工资记录失败:', error)
+      throw error
     }
   }
 }
 
-module.exports = SalaryRecordNewRepository;
+module.exports = SalaryRecordNewRepository

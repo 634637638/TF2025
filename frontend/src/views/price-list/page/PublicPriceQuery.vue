@@ -2,24 +2,41 @@
   <div class="public-price-query">
     <PublicPriceHeader title="最新同城报价">
       <template #search>
-        <div class="custom-search-input" :class="{ 'verified': passwordVerified }">
-          <el-icon class="search-icon"><Search /></el-icon>
+        <div
+          class="custom-search-input"
+          :class="{ 'verified': passwordVerified }"
+        >
+          <el-icon class="search-icon">
+            <Search />
+          </el-icon>
           <input
             v-model="searchKeyword"
             type="text"
-            :placeholder="passwordVerified ? `欢迎${verifiedUserName}使用腾飞数码报价系统` : '搜索品牌或型号'"
+            :placeholder="passwordVerified ? `欢迎${verifiedUserName}使用${siteSettingsStore.settings.siteName || '报价系统'}` : '搜索品牌或型号'"
             class="search-input-field"
             @keyup.enter="handleSearchInput"
-          />
-          <div v-if="searchKeyword" class="clear-btn" @click="handleClear">
+          >
+          <div
+            v-if="searchKeyword"
+            class="clear-btn"
+            @click="handleClear"
+          >
             <el-icon><Close /></el-icon>
           </div>
-          <button class="search-btn-inner" @click="handleSearchInput">搜索</button>
+          <button
+            class="search-btn-inner"
+            @click="handleSearchInput"
+          >
+            搜索
+          </button>
         </div>
       </template>
 
       <template #actions>
-        <button class="notice-trigger-btn" @click="showNoticeDialog = true">
+        <button
+          class="notice-trigger-btn"
+          @click="showNoticeDialog = true"
+        >
           <span class="btn-icon">⚠️</span>
           <span class="btn-text">调货须知</span>
         </button>
@@ -27,23 +44,47 @@
           v-if="passwordVerified"
           class="inventory-trigger-btn"
           :class="{ active: showInStockOnly }"
-          @click="toggleInStockFilter"
           :disabled="isGenerating || allResults.length === 0"
+          @click="toggleInStockFilter"
         >
           <span class="btn-icon">{{ showInStockOnly ? '📦' : '🏪' }}</span>
           <span class="btn-text">{{ showInStockOnly ? '全部' : '在库' }}</span>
         </button>
-        <button class="download-trigger-btn" @click="downloadAsImage" :disabled="isGenerating || searchResults.length === 0">
-          <span v-if="!isGenerating" class="btn-content">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="7 10 12 15 17 10"></polyline>
-              <line x1="12" y1="15" x2="12" y2="3"></line>
+        <button
+          class="download-trigger-btn"
+          :disabled="isGenerating || searchResults.length === 0"
+          @click="downloadAsImage"
+        >
+          <span
+            v-if="!isGenerating"
+            class="btn-content"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              class="btn-icon"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line
+                x1="12"
+                y1="15"
+                x2="12"
+                y2="3"
+              />
             </svg>
             <span class="btn-text">保存为图片</span>
           </span>
-          <span v-else class="btn-content loading">
-            <InlineLoading text="生成中..." size="small" />
+          <span
+            v-else
+            class="btn-content loading"
+          >
+            <InlineLoading
+              text="生成中..."
+              size="small"
+            />
           </span>
         </button>
       </template>
@@ -61,7 +102,9 @@
       <div class="notice-content">
         <!-- 重要警告横幅 -->
         <div class="warning-banner">
-          <div class="banner-icon">⚠️</div>
+          <div class="banner-icon">
+            ⚠️
+          </div>
           <div class="banner-text">
             <strong>重要提示：</strong>调货前请务必确认并遵守以下规则，避免产生纠纷！
           </div>
@@ -72,76 +115,142 @@
           <!-- 开箱检查 -->
           <div class="rule-card check">
             <div class="card-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                <circle cx="12" cy="12" r="3"></circle>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="3"
+                />
               </svg>
             </div>
             <div class="card-content">
-              <h4 class="card-title">开箱检查</h4>
-              <div class="card-badge">必须</div>
+              <h4 class="card-title">
+                开箱检查
+              </h4>
+              <div class="card-badge">
+                必须
+              </div>
             </div>
             <ul class="card-list">
               <li>全程录像或监控视频</li>
               <li>检查外观完整性</li>
-              <li class="alert">无视频证据恕不受理</li>
+              <li class="alert">
+                无视频证据恕不受理
+              </li>
             </ul>
           </div>
 
           <!-- 激活限制 -->
           <div class="rule-card activate">
             <div class="card-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
               </svg>
             </div>
             <div class="card-content">
-              <h4 class="card-title">激活限制</h4>
-              <div class="card-badge danger">严禁</div>
+              <h4 class="card-title">
+                激活限制
+              </h4>
+              <div class="card-badge danger">
+                严禁
+              </div>
             </div>
             <ul class="card-list">
               <li>仅限分宜本地激活</li>
               <li>禁止跨市区激活</li>
-              <li class="highlight">水印相机拍照：串码同框</li>
-              <li class="highlight">使用 WI-FI 网络</li>
-              <li class="highlight">激活后拨打电话测试</li>
+              <li class="highlight">
+                水印相机拍照：串码同框
+              </li>
+              <li class="highlight">
+                使用 WI-FI 网络
+              </li>
+              <li class="highlight">
+                激活后拨打电话测试
+              </li>
             </ul>
           </div>
 
           <!-- 结算要求 -->
           <div class="rule-card payment">
             <div class="card-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
-                <line x1="1" y1="10" x2="23" y2="10"></line>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <rect
+                  x="1"
+                  y="4"
+                  width="22"
+                  height="16"
+                  rx="2"
+                  ry="2"
+                />
+                <line
+                  x1="1"
+                  y1="10"
+                  x2="23"
+                  y2="10"
+                />
               </svg>
             </div>
             <div class="card-content">
-              <h4 class="card-title">结算要求</h4>
-              <div class="card-badge warning">当天</div>
+              <h4 class="card-title">
+                结算要求
+              </h4>
+              <div class="card-badge warning">
+                当天
+              </div>
             </div>
             <ul class="card-list">
               <li>货款必须当天结清</li>
-              <li class="alert">逾期将终止合作</li>
+              <li class="alert">
+                逾期将终止合作
+              </li>
             </ul>
           </div>
 
           <!-- 保修说明 -->
           <div class="rule-card warranty">
             <div class="card-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
               </svg>
             </div>
             <div class="card-content">
-              <h4 class="card-title">保修说明</h4>
-              <div class="card-badge success">1年</div>
+              <h4 class="card-title">
+                保修说明
+              </h4>
+              <div class="card-badge success">
+                1年
+              </div>
             </div>
             <ul class="card-list">
               <li>激活后质量问题保修</li>
               <li>以官方售后结论为准</li>
-              <li class="note">人为损坏不予保修</li>
-              <li class="note">不含发票无保修服务</li>
+              <li class="note">
+                人为损坏不予保修
+              </li>
+              <li class="note">
+                不含发票无保修服务
+              </li>
             </ul>
           </div>
         </div>
@@ -158,56 +267,113 @@
     <div class="results-section">
       <div class="container">
         <!-- 加载状态 -->
-        <div v-if="loading" class="loading-container">
+        <div
+          v-if="loading"
+          class="loading-container"
+        >
           <InlineLoading text="正在查询价格..." />
         </div>
 
         <!-- 空状态 -->
-        <div v-else-if="!hasSearched" class="empty-state">
-          <span class="empty-icon">🔍</span>
-          <p>请输入关键词搜索价格</p>
-        </div>
+        <DataEmptyState
+          v-else-if="!hasSearched"
+          state="initial"
+          description="请输入关键词搜索价格"
+        />
 
         <!-- 无结果 -->
-        <div v-else-if="searchResults.length === 0" class="no-results">
-          <span class="empty-icon">😔</span>
-          <p>未找到相关价格信息</p>
-        </div>
+        <DataEmptyState
+          v-else-if="searchResults.length === 0"
+          state="filtered"
+          description="未找到相关价格信息"
+        />
 
         <!-- 结果列表 -->
-        <div v-else class="results-list" id="price-results">
+        <div
+          v-else
+          id="price-results"
+          class="results-list"
+        >
           <div class="results-header">
             <h2>最新报价</h2>
-            <el-tag class="hot-badge" type="danger" effect="dark">HOT</el-tag>
+            <el-tag
+              class="hot-badge"
+              type="danger"
+              effect="dark"
+            >
+              HOT
+            </el-tag>
             <h2>{{ primaryPriceContact?.phone || '' }}</h2>
             <span class="count">共 {{ searchResults.length }} 条</span>
           </div>
 
           <!-- 水印（仅生成图片时显示） -->
-          <div v-if="watermarkEnabled" class="image-watermark" v-show="false">
+          <div
+            v-if="watermarkEnabled"
+            v-show="false"
+            class="image-watermark"
+          >
             <div class="watermark-item watermark-1">
-              <span class="watermark-text" :style="{ color: watermarkColor }">{{ watermarkText }}</span>
+              <span
+                class="watermark-text"
+                :style="{ color: watermarkColor }"
+              >{{ watermarkText }}</span>
             </div>
             <div class="watermark-item watermark-2">
-              <span class="watermark-text" :style="{ color: watermarkColor }">{{ watermarkText }}</span>
+              <span
+                class="watermark-text"
+                :style="{ color: watermarkColor }"
+              >{{ watermarkText }}</span>
             </div>
             <div class="watermark-item watermark-3">
-              <span class="watermark-text" :style="{ color: watermarkColor }">{{ watermarkText }}</span>
+              <span
+                class="watermark-text"
+                :style="{ color: watermarkColor }"
+              >{{ watermarkText }}</span>
             </div>
           </div>
 
           <!-- 表格视图 -->
           <div class="table-wrapper">
-            <el-table class="data-table" :data="searchResults" stripe border @row-dblclick="handleRowDoubleClick" @row-click="handleRowClick" style="cursor: pointer;">
-              <el-table-column prop="brand_name" label="品牌" min-width="60" />
-              <el-table-column prop="model_number" label="型号" min-width="100" />
-              <el-table-column prop="color_name" label="颜色" min-width="50" />
-              <el-table-column prop="memory" label="内存" min-width="60">
+            <el-table
+              class="data-table"
+              :data="searchResults"
+              stripe
+              border
+              style="cursor: pointer;"
+              @row-dblclick="handleRowDoubleClick"
+              @row-click="handleRowClick"
+            >
+              <el-table-column
+                prop="brand_name"
+                label="品牌"
+                min-width="60"
+              />
+              <el-table-column
+                prop="model_number"
+                label="型号"
+                min-width="100"
+              />
+              <el-table-column
+                prop="color_name"
+                label="颜色"
+                min-width="50"
+              />
+              <el-table-column
+                prop="memory"
+                label="内存"
+                min-width="60"
+              >
                 <template #default="{ row }">
                   <span>{{ row.memory }}</span>
                 </template>
               </el-table-column>
-              <el-table-column prop="wholesale_price" label="调货价格" min-width="70" align="right">
+              <el-table-column
+                prop="wholesale_price"
+                label="调货价格"
+                min-width="70"
+                align="right"
+              >
                 <template #default="{ row }">
                   <span
                     v-if="hasWholesalePrice(row)"
@@ -222,13 +388,21 @@
           </div>
 
           <!-- 联系方式 -->
-          <div class="contact-card">
+          <div
+            v-if="priceContacts.length"
+            class="contact-card"
+          >
             <div class="contact-header">
               <span class="contact-icon">📞</span>
               <span class="contact-title">联系电话</span>
             </div>
             <div class="contact-grid">
-              <a v-for="contact in priceContacts" :key="`${contact.name}-${contact.phone}`" :href="`tel:${phoneHref(contact.phone)}`" class="contact-link">
+              <a
+                v-for="contact in priceContacts"
+                :key="`${contact.name}-${contact.phone}`"
+                :href="`tel:${phoneHref(contact.phone)}`"
+                class="contact-link"
+              >
                 <span class="contact-name">{{ contact.name }}</span>
                 <span class="contact-number">{{ contact.phone }}</span>
               </a>
@@ -241,8 +415,10 @@
     <!-- 页脚 -->
     <div class="footer">
       <div class="container">
-        <p>腾飞数码报价系统</p>
-        <p class="copyright">&copy; {{ TimeUtil.now().year() }} 版权所有</p>
+        <p>{{ siteSettingsStore.settings.siteName || '报价系统' }}</p>
+        <p class="copyright">
+          &copy; {{ TimeUtil.now().year() }} 版权所有
+        </p>
       </div>
     </div>
 
@@ -265,13 +441,30 @@
     >
       <div class="ios-save-container">
         <div class="image-wrapper">
-          <img class="ios-save-image" :src="iosImageUrl" alt="腾飞数码报价" draggable="false" />
+          <img
+            class="ios-save-image"
+            :src="iosImageUrl"
+            :alt="`${siteSettingsStore.settings.siteName || '报价'}报价`"
+            draggable="false"
+          >
         </div>
       </div>
       <template #footer>
-        <el-button @click="toggleIOSImageMode">长按保存</el-button>
-        <el-button type="primary" @click="shareIOSImage">我要分享</el-button>
-        <el-button type="primary" @click="closeIOSImageModal">关闭</el-button>
+        <el-button @click="toggleIOSImageMode">
+          长按保存
+        </el-button>
+        <el-button
+          type="primary"
+          @click="shareIOSImage"
+        >
+          我要分享
+        </el-button>
+        <el-button
+          type="primary"
+          @click="closeIOSImageModal"
+        >
+          关闭
+        </el-button>
       </template>
     </MobileDialog>
   </div>
@@ -298,12 +491,7 @@ const { loading } = useLoadingState()
 const siteSettingsStore = useSiteSettingsStore()
 const priceContacts = computed(() => {
   const configured = parsePublicPriceContacts(siteSettingsStore.settings.publicPriceContacts)
-  if (configured.length) return configured
-
-  const fallbackPhone = String(siteSettingsStore.settings.contactPhone || '').trim()
-  return fallbackPhone
-    ? [{ name: siteSettingsStore.settings.companyName || '联系电话', phone: fallbackPhone }]
-    : [{ name: '腾飞数码', phone: '132-0790-3333' }]
+  return configured
 })
 const primaryPriceContact = computed(() => priceContacts.value[0])
 const watermarkEnabled = computed(() => siteSettingsStore.settings.publicPriceWatermarkEnabled !== '0')
@@ -474,7 +662,7 @@ const formatWholesalePrice = (row: any) => {
 }
 
 // 获取当前日期时间字符串
-const getCurrentDateTime = () => {
+const _getCurrentDateTime = () => {
   return TimeUtil.nowFormatted(TIME_FORMATS.DATETIME)
 }
 
@@ -558,7 +746,8 @@ const shareIOSImage = async () => {
   }
 
   try {
-    const shareData = { files: [file], title: '腾飞数码报价', text: '报价单图片' }
+    const siteName = siteSettingsStore.settings.siteName || '报价系统'
+    const shareData = { files: [file], title: `${siteName}报价`, text: '报价单图片' }
     if (navigator.canShare && !navigator.canShare(shareData)) {
       ElMessage.warning('当前浏览器不支持系统分享，请长按图片保存')
       return
@@ -576,7 +765,8 @@ const saveImageToGallery = async (canvas: HTMLCanvasElement) => {
   const now = TimeUtil.now()
   const dateStr = now.format('YYYYMMDD')
   const timeStr = now.format('HHmm')
-  const fileName = `腾飞数码报价_${dateStr}_${timeStr}.png`
+  const siteName = siteSettingsStore.settings.siteName || '报价系统'
+  const fileName = `${siteName}报价_${dateStr}_${timeStr}.png`
 
   return new Promise<void>((resolve, reject) => {
     canvas.toBlob(async (blob) => {
@@ -907,7 +1097,7 @@ declare global {
 <style scoped lang="scss">
 .public-price-query {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
   // 防止页面左右移动
   width: 100%;
   max-width: 100vw;
@@ -1006,7 +1196,7 @@ declare global {
       }
 
       .search-icon {
-        color: #667eea;
+        color: var(--tf-color-indigo-brand);
         font-size: 18px;
         flex-shrink: 0;
         margin-right: 8px;
@@ -1030,13 +1220,13 @@ declare global {
         outline: none;
         background: transparent;
         font-size: 16px;
-        color: #333;
+        color: var(--text-primary);
         padding: 0 8px;
         // 预留清除按钮 + 间距的空间，防止输入文字后移位
         min-width: 60px;
 
         &::placeholder {
-          color: #999;
+          color: var(--text-muted);
         }
 
         // 移动端字体大小
@@ -1275,7 +1465,7 @@ declare global {
       gap: 16px;
       margin-bottom: 20px;
       padding-bottom: 15px;
-      border-bottom: 1px solid #eee;
+      border-bottom: 1px solid var(--tf-color-gray-200-alt);
       flex-wrap: nowrap;
       // 防止内容溢出
       min-width: 0;
@@ -1284,8 +1474,8 @@ declare global {
       @media (max-width: 768px) {
         margin: 0;
         padding: 12px;
-        background: #f5f7fa;
-        border-bottom: 1px solid #ddd;
+        background: var(--tf-color-surface);
+        border-bottom: 1px solid var(--tf-color-gray-300-alt);
         gap: 8px;
       }
 
@@ -1303,7 +1493,7 @@ declare global {
       h2 {
         margin: 0;
         font-size: 20px;
-        color: #333;
+        color: var(--text-primary);
         white-space: nowrap;
         flex-shrink: 0;
 
@@ -1352,7 +1542,7 @@ declare global {
       }
 
       .count {
-        color: #909399;
+        color: var(--color-info);
         font-size: 14px;
         white-space: nowrap;
         flex-shrink: 0;
@@ -1582,11 +1772,11 @@ declare global {
     font-weight: bold;
 
     &.wholesale {
-      color: #67c23a;
+      color: var(--color-success);
 
       // 有库存且已验证密码时显示红色
       &.has-stock {
-        color: #f56c6c; // 红色
+        color: var(--color-danger); // 红色
         font-weight: 800;
       }
     }
@@ -1937,7 +2127,7 @@ declare global {
 
 // 弹窗内容样式
 .notice-content {
-  background: #f8f9fa;
+  background: var(--tf-color-surface-muted);
   padding: 0;
 
   // 警告横幅
@@ -1946,8 +2136,8 @@ declare global {
     align-items: center;
     gap: 12px;
     padding: 14px 20px;
-    background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%);
-    border-left: 4px solid #ffc107;
+    background: linear-gradient(135deg, var(--tf-color-warning-legacy) 0%, var(--tf-color-yellow-bootstrap-light) 100%);
+    border-left: 4px solid var(--warning-color);
 
     .banner-icon {
       font-size: 18px;
@@ -1957,7 +2147,7 @@ declare global {
 
     .banner-text {
       font-size: 14px;
-      color: #856404;
+      color: var(--tf-color-warning-text-legacy);
       line-height: 1.4;
 
       strong {
@@ -2017,55 +2207,55 @@ declare global {
     }
 
     &.check {
-      border-color: #409eff;
+      border-color: var(--color-primary);
 
       .card-icon {
-        background: linear-gradient(135deg, #409eff 0%, #66b1ff 100%);
+        background: linear-gradient(135deg, var(--color-primary) 0%, var(--tf-color-blue-element-light) 100%);
       }
 
       .card-badge {
-        background: #409eff;
+        background: var(--color-primary);
       }
     }
 
     &.activate {
-      border-color: #f56c6c;
+      border-color: var(--color-danger);
 
       .card-icon {
-        background: linear-gradient(135deg, #f56c6c 0%, #f89898 100%);
+        background: linear-gradient(135deg, var(--color-danger) 0%, var(--tf-color-red-300) 100%);
       }
 
       .card-badge {
         &.danger {
-          background: #f56c6c;
+          background: var(--color-danger);
         }
       }
     }
 
     &.payment {
-      border-color: #e6a23c;
+      border-color: var(--color-warning);
 
       .card-icon {
-        background: linear-gradient(135deg, #e6a23c 0%, #ebb563 100%);
+        background: linear-gradient(135deg, var(--color-warning) 0%, var(--tf-color-amber-muted) 100%);
       }
 
       .card-badge {
         &.warning {
-          background: #e6a23c;
+          background: var(--color-warning);
         }
       }
     }
 
     &.warranty {
-      border-color: #67c23a;
+      border-color: var(--color-success);
 
       .card-icon {
-        background: linear-gradient(135deg, #67c23a 0%, #85ce61 100%);
+        background: linear-gradient(135deg, var(--color-success) 0%, var(--tf-color-green-element-light) 100%);
       }
 
       .card-badge {
         &.success {
-          background: #67c23a;
+          background: var(--color-success);
         }
       }
     }
@@ -2096,7 +2286,7 @@ declare global {
         margin: 0;
         font-size: 16px;
         font-weight: 600;
-        color: #303133;
+        color: var(--color-text-primary);
       }
 
       .card-badge {
@@ -2118,19 +2308,19 @@ declare global {
         position: relative;
         padding: 4px 0 4px 18px;
         font-size: 13px;
-        color: #606266;
+        color: var(--color-text-regular);
         line-height: 1.5;
 
         &:before {
           content: '•';
           position: absolute;
           left: 0;
-          color: #909399;
+          color: var(--color-info);
           font-weight: bold;
         }
 
         &.alert {
-          color: #f56c6c;
+          color: var(--color-danger);
           font-weight: 500;
 
           &:before {
@@ -2140,7 +2330,7 @@ declare global {
         }
 
         &.highlight {
-          color: #409eff;
+          color: var(--color-primary);
           background: rgba(64, 158, 255, 0.08);
           padding: 4px 8px;
           border-radius: 4px;
@@ -2148,12 +2338,12 @@ declare global {
 
           &:before {
             content: '✓';
-            color: #409eff;
+            color: var(--color-primary);
           }
         }
 
         &.note {
-          color: #909399;
+          color: var(--color-info);
           font-size: 12px;
         }
       }
@@ -2164,18 +2354,18 @@ declare global {
   .notice-footer {
     text-align: center;
     padding: 16px 20px;
-    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    background: linear-gradient(135deg, var(--tf-color-surface) 0%, var(--tf-color-border-gradient) 100%);
     border-radius: 0 0 12px 12px;
 
     p {
       margin: 4px 0;
       font-size: 14px;
-      color: #606266;
+      color: var(--color-text-regular);
 
       &:first-child {
         font-size: 15px;
         font-weight: 500;
-        color: #409eff;
+        color: var(--color-primary);
       }
     }
 
@@ -2209,8 +2399,8 @@ declare global {
 .results-list {
   .contact-card {
     margin-top: 24px;
-    background: linear-gradient(135deg, #e6f0f4 0%, #dce9ee 100%);
-    border: 1px solid #c7d8e0;
+    background: linear-gradient(135deg, var(--tf-color-border-cool-soft) 0%, var(--tf-color-border-cool-muted) 100%);
+    border: 1px solid var(--tf-color-border-cool-strong);
     border-radius: 10px;
     padding: 14px 16px 16px;
     box-shadow: none;
@@ -2265,7 +2455,7 @@ declare global {
       .contact-title {
         font-size: 16px;
         font-weight: bold;
-        color: #334155;
+        color: var(--tf-color-slate-700);
 
         @media (max-width: 768px) {
           font-size: 14px;
@@ -2308,8 +2498,8 @@ declare global {
         min-width: 0;
         min-height: 78px;
         padding: 12px 16px;
-        background: #f1f8f3;
-        border: 1px solid #dfede1;
+        background: var(--tf-color-success-surface-soft);
+        border: 1px solid var(--tf-color-success-border-soft);
         border-radius: 16px;
         text-decoration: none;
         transition: all 0.3s ease;
@@ -2359,7 +2549,7 @@ declare global {
           min-width: 0;
           font-size: clamp(10px, 2.6vw, 13px);
           line-height: 1.2;
-          color: #334155;
+          color: var(--tf-color-slate-700);
           margin-bottom: 0;
           font-weight: 650;
           max-width: 44%;
@@ -2368,8 +2558,8 @@ declare global {
           white-space: nowrap;
           padding: 3px 7px;
           border-radius: 7px;
-          background: #f1ecfb;
-          border: 1px solid #ddd4f0;
+          background: var(--tf-color-violet-surface-soft);
+          border: 1px solid var(--tf-color-violet-border-soft);
 
           @media (max-width: 768px) {
             max-width: 42%;
@@ -2394,7 +2584,7 @@ declare global {
           font-size: clamp(10px, 2.8vw, 13px);
           line-height: 1.2;
           font-weight: 700;
-          color: #1f2937;
+          color: var(--tf-color-neutral-800);
           letter-spacing: 0.2px;
           font-variant-numeric: tabular-nums;
           max-width: 100%;
@@ -2403,8 +2593,8 @@ declare global {
           white-space: nowrap;
           padding: 3px 7px;
           border-radius: 7px;
-          background: #e8f6f2;
-          border: 1px solid #d2ebe3;
+          background: var(--tf-color-teal-surface-soft);
+          border: 1px solid var(--tf-color-teal-border-soft);
 
           @media (max-width: 768px) {
             padding: 2px 5px;
@@ -2476,9 +2666,9 @@ declare global {
 
   .results-header {
     padding: 12px !important;
-    background: #f5f7fa !important;
+    background: var(--tf-color-surface) !important;
     flex-wrap: wrap !important;
-    border-bottom: 1px solid #ddd !important;
+    border-bottom: 1px solid var(--tf-color-gray-300-alt) !important;
     border-radius: 0 !important;
     margin-bottom: 0 !important;
     justify-content: space-between !important;
@@ -2619,8 +2809,8 @@ declare global {
     padding: 4px 2px !important;
     padding-bottom: 8px !important;
     border-radius: 0 !important;
-    background: linear-gradient(135deg, #e6f0f4 0%, #dce9ee 100%) !important;
-    border: 1px solid #c7d8e0 !important;
+    background: linear-gradient(135deg, var(--tf-color-border-cool-soft) 0%, var(--tf-color-border-cool-muted) 100%) !important;
+    border: 1px solid var(--tf-color-border-cool-strong) !important;
     box-shadow: none !important;
     backdrop-filter: none !important;
   }
@@ -2649,7 +2839,7 @@ declare global {
     .success-message {
       text-align: center;
       padding: 12px 20px;
-      background: #34c759;
+      background: var(--tf-color-green-ios);
       color: white;
       border-radius: 25px;
       font-size: 14px;
@@ -2660,24 +2850,24 @@ declare global {
     .instructions {
       text-align: center;
       padding: 20px;
-      background: #f8f9fa;
+      background: var(--tf-color-surface-muted);
       border-radius: 12px;
       margin-bottom: 20px;
 
       h3 {
         font-size: 16px;
-        color: #333;
+        color: var(--text-primary);
         margin: 0 0 15px 0;
       }
 
       p {
         font-size: 13px;
-        color: #666;
+        color: var(--text-secondary);
         line-height: 1.8;
         margin: 5px 0;
 
         .highlight {
-          color: #007aff;
+          color: var(--tf-color-blue-bootstrap);
           font-weight: 600;
         }
       }

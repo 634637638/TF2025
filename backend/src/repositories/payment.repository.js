@@ -2,11 +2,11 @@
  * 供应商付款数据访问层
  * 封装所有数据库操作
  */
-const BaseRepository = require('./base.repository');
+const BaseRepository = require('./base.repository')
 
 class PaymentRepository extends BaseRepository {
   constructor() {
-    super('supplier_payments');
+    super('supplier_payments')
   }
 
   /**
@@ -23,14 +23,14 @@ class PaymentRepository extends BaseRepository {
       status,
       notes,
       operator_id
-    } = paymentData;
+    } = paymentData
 
     const query = `
       INSERT INTO ${this.tableName} (
         payment_no, settlement_id, supplier_id, payment_amount,
         payment_method, payment_date, status, notes, operator_id
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
+    `
 
     const params = [
       payment_no,
@@ -42,42 +42,42 @@ class PaymentRepository extends BaseRepository {
       status || 'pending',
       notes || null,
       operator_id || null
-    ];
+    ]
 
-    const db = this.getConnection();
-    const [result] = await db.execute(query, params);
-    return result.insertId;
+    const db = this.getConnection()
+    const [result] = await db.execute(query, params)
+    return result.insertId
   }
 
   /**
    * 更新付款记录
    */
   async update(id, updateData) {
-    const setClauses = [];
-    const params = [];
+    const setClauses = []
+    const params = []
 
     Object.keys(updateData).forEach(key => {
       if (updateData[key] !== undefined) {
-        setClauses.push(`${key} = ?`);
-        params.push(updateData[key]);
+        setClauses.push(`${key} = ?`)
+        params.push(updateData[key])
       }
-    });
+    })
 
     if (setClauses.length === 0) {
-      return false;
+      return false
     }
 
-    params.push(id);
+    params.push(id)
 
     const query = `
       UPDATE ${this.tableName}
       SET ${setClauses.join(', ')}, updated_at = NOW()
       WHERE id = ?
-    `;
+    `
 
-    const db = this.getConnection();
-    const [result] = await db.execute(query, params);
-    return result.affectedRows > 0;
+    const db = this.getConnection()
+    const [result] = await db.execute(query, params)
+    return result.affectedRows > 0
   }
 
   /**
@@ -93,15 +93,15 @@ class PaymentRepository extends BaseRepository {
       LEFT JOIN users operator ON sp.operator_id = operator.id
       LEFT JOIN users approver ON sp.approver_id = approver.id
       WHERE sp.id = ?
-    `;
+    `
 
-    const payments = await this.executeQuery(query, [id]);
+    const payments = await this.executeQuery(query, [id])
 
     if (payments.length === 0) {
-      return null;
+      return null
     }
 
-    const payment = payments[0];
+    const payment = payments[0]
 
     // 格式化返回数据
     return {
@@ -124,7 +124,7 @@ class PaymentRepository extends BaseRepository {
       approval_notes: payment.approval_notes,
       created_at: payment.created_at,
       updated_at: payment.updated_at
-    };
+    }
   }
 
   /**
@@ -141,47 +141,47 @@ class PaymentRepository extends BaseRepository {
       start_date,
       end_date,
       orderBy = 'sp.created_at DESC'
-    } = filters;
+    } = filters
 
-    const validLimit = Math.min(Math.max(parseInt(limit) || 10, 1), 100);
-    const validPage = Math.max(parseInt(page) || 1, 1);
-    const offset = (validPage - 1) * validLimit;
+    const validLimit = Math.min(Math.max(parseInt(limit) || 10, 1), 100)
+    const validPage = Math.max(parseInt(page) || 1, 1)
+    const offset = (validPage - 1) * validLimit
 
     // 构建查询条件
-    const whereConditions = [];
-    const params = [];
+    const whereConditions = []
+    const params = []
 
     if (supplier_id) {
-      whereConditions.push('sp.supplier_id = ?');
-      params.push(parseInt(supplier_id));
+      whereConditions.push('sp.supplier_id = ?')
+      params.push(parseInt(supplier_id))
     }
 
     if (settlement_id) {
-      whereConditions.push('sp.settlement_id = ?');
-      params.push(parseInt(settlement_id));
+      whereConditions.push('sp.settlement_id = ?')
+      params.push(parseInt(settlement_id))
     }
 
     if (status) {
-      whereConditions.push('sp.status = ?');
-      params.push(status);
+      whereConditions.push('sp.status = ?')
+      params.push(status)
     }
 
     if (payment_method) {
-      whereConditions.push('sp.payment_method = ?');
-      params.push(payment_method);
+      whereConditions.push('sp.payment_method = ?')
+      params.push(payment_method)
     }
 
     if (start_date) {
-      whereConditions.push('sp.payment_date >= ?');
-      params.push(start_date);
+      whereConditions.push('sp.payment_date >= ?')
+      params.push(start_date)
     }
 
     if (end_date) {
-      whereConditions.push('sp.payment_date <= ?');
-      params.push(end_date);
+      whereConditions.push('sp.payment_date <= ?')
+      params.push(end_date)
     }
 
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : ''
 
     // 查询数据
     const dataQuery = `
@@ -218,9 +218,9 @@ class PaymentRepository extends BaseRepository {
       ${whereClause}
       ORDER BY ${orderBy}
       LIMIT ${validLimit} OFFSET ${offset}
-    `;
+    `
 
-    const payments = await this.executeQuery(dataQuery, params);
+    const payments = await this.executeQuery(dataQuery, params)
 
     // 格式化数据
     const formattedPayments = payments.map(row => ({
@@ -248,16 +248,16 @@ class PaymentRepository extends BaseRepository {
       approval_notes: row.approval_notes,
       created_at: row.created_at ? new Date(row.created_at).toISOString() : null,
       updated_at: row.updated_at ? new Date(row.updated_at).toISOString() : null
-    }));
+    }))
 
     // 查询总数
     const countQuery = `
       SELECT COUNT(*) as total
       FROM ${this.tableName} sp
       ${whereClause}
-    `;
-    const countResult = await this.executeQuery(countQuery, params);
-    const total = countResult[0].total;
+    `
+    const countResult = await this.executeQuery(countQuery, params)
+    const total = countResult[0].total
 
     return {
       payments: formattedPayments,
@@ -269,44 +269,44 @@ class PaymentRepository extends BaseRepository {
         hasNextPage: validPage < Math.ceil(total / validLimit),
         hasPrevPage: validPage > 1
       }
-    };
+    }
   }
 
   /**
    * 导出付款记录
    */
   async exportPayments(filters = {}) {
-    const { supplier_id, status, payment_method, start_date, end_date } = filters;
+    const { supplier_id, status, payment_method, start_date, end_date } = filters
 
-    const whereConditions = [];
-    const params = [];
+    const whereConditions = []
+    const params = []
 
     if (supplier_id) {
-      whereConditions.push('sp.supplier_id = ?');
-      params.push(parseInt(supplier_id));
+      whereConditions.push('sp.supplier_id = ?')
+      params.push(parseInt(supplier_id))
     }
 
     if (status) {
-      whereConditions.push('sp.status = ?');
-      params.push(status);
+      whereConditions.push('sp.status = ?')
+      params.push(status)
     }
 
     if (payment_method) {
-      whereConditions.push('sp.payment_method = ?');
-      params.push(payment_method);
+      whereConditions.push('sp.payment_method = ?')
+      params.push(payment_method)
     }
 
     if (start_date) {
-      whereConditions.push('sp.payment_date >= ?');
-      params.push(start_date);
+      whereConditions.push('sp.payment_date >= ?')
+      params.push(start_date)
     }
 
     if (end_date) {
-      whereConditions.push('sp.payment_date <= ?');
-      params.push(end_date);
+      whereConditions.push('sp.payment_date <= ?')
+      params.push(end_date)
     }
 
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : ''
 
     const query = `
       SELECT
@@ -328,11 +328,11 @@ class PaymentRepository extends BaseRepository {
       LEFT JOIN supplier_settlements ss ON sp.settlement_id = ss.id
       ${whereClause}
       ORDER BY sp.created_at DESC
-    `;
+    `
 
-    const payments = await this.executeQuery(query, params);
+    const payments = await this.executeQuery(query, params)
 
-    return payments;
+    return payments
   }
 
   /**
@@ -348,11 +348,11 @@ class PaymentRepository extends BaseRepository {
         COALESCE(SUM(CASE WHEN status = 'completed' THEN payment_amount ELSE 0 END), 0) as total_paid_amount
       FROM ${this.tableName}
       WHERE supplier_id = ?
-    `;
+    `
 
-    const result = await this.executeQuery(query, [parseInt(supplierId)]);
-    return result[0];
+    const result = await this.executeQuery(query, [parseInt(supplierId)])
+    return result[0]
   }
 }
 
-module.exports = new PaymentRepository();
+module.exports = new PaymentRepository()

@@ -4,18 +4,26 @@
 -->
 <template>
   <div class="city-selector">
-    <div class="form-group" v-if="!hideProvince">
+    <div
+      v-if="!hideProvince"
+      class="form-group"
+    >
       <label>
-        省份 <span class="required" v-if="required">*</span>
+        省份 <span
+          v-if="required"
+          class="required"
+        >*</span>
       </label>
       <select
         v-model="selectedProvince"
         class="form-control"
         :class="{ 'is-invalid': error && !selectedProvince }"
-        @change="handleProvinceChange"
         :disabled="disabled"
+        @change="handleProvinceChange"
       >
-        <option value="">请选择省份</option>
+        <option value="">
+          请选择省份
+        </option>
         <option
           v-for="province in provinces"
           :key="province.code"
@@ -24,23 +32,31 @@
           {{ province.name }}
         </option>
       </select>
-      <div v-if="error && !selectedProvince" class="invalid-feedback">
+      <div
+        v-if="error && !selectedProvince"
+        class="invalid-feedback"
+      >
         请选择省份
       </div>
     </div>
 
     <div class="form-group">
       <label>
-        城市 <span class="required" v-if="required">*</span>
+        城市 <span
+          v-if="required"
+          class="required"
+        >*</span>
       </label>
       <select
         v-model="selectedCity"
         class="form-control"
         :class="{ 'is-invalid': error && !selectedCity }"
-        @change="handleCityChange"
         :disabled="disabled || (!selectedProvince && !hideProvince)"
+        @change="handleCityChange"
       >
-        <option value="">请选择城市</option>
+        <option value="">
+          请选择城市
+        </option>
         <option
           v-for="city in cities"
           :key="city.code"
@@ -49,7 +65,10 @@
           {{ city.name }}
         </option>
       </select>
-      <div v-if="error && !selectedCity" class="invalid-feedback">
+      <div
+        v-if="error && !selectedCity"
+        class="invalid-feedback"
+      >
         请选择城市
       </div>
     </div>
@@ -57,7 +76,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 
 interface Province {
   code: string
@@ -87,6 +106,7 @@ interface Emits {
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  modelValue: () => ({ province: '', city: '' }),
   required: false,
   disabled: false,
   hideProvince: false,
@@ -792,18 +812,18 @@ defineExpose({
       display: block;
       margin-bottom: 8px;
       font-weight: 500;
-      color: #374151;
+      color: var(--tf-color-neutral-700);
       font-size: 14px;
 
       .required {
-        color: #ef4444;
+        color: var(--tf-color-red-500);
       }
     }
 
     .form-control {
       width: 100%;
       padding: 12px 16px;
-      border: 2px solid #e5e7eb;
+      border: 2px solid var(--tf-color-neutral-200);
       border-radius: 8px;
       font-size: 14px;
       transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -813,22 +833,22 @@ defineExpose({
 
       &:focus {
         outline: none;
-        border-color: #3b82f6;
+        border-color: var(--tf-color-blue-500);
         box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
       }
 
       &:disabled {
-        background: #f9fafb;
-        color: #6b7280;
+        background: var(--tf-color-neutral-50);
+        color: var(--tf-color-neutral-500);
         cursor: not-allowed;
       }
 
       &.is-invalid {
-        border-color: #ef4444;
+        border-color: var(--tf-color-red-500);
       }
 
       &::placeholder {
-        color: #9ca3af;
+        color: var(--tf-color-neutral-400);
       }
     }
 
@@ -844,7 +864,7 @@ defineExpose({
     }
 
     .invalid-feedback {
-      color: #ef4444;
+      color: var(--tf-color-red-500);
       font-size: 12px;
       margin-top: 4px;
     }

@@ -15,6 +15,7 @@ import { ref, computed, watch, type Ref, type ComputedRef } from 'vue'
 
 export interface PaginationOptions {
   page?: number
+  page_size?: number
   limit?: number
   total?: number
   onChange?: (page: number, limit: number) => void
@@ -23,6 +24,7 @@ export interface PaginationOptions {
 export interface PaginationReturn {
   // 响应式状态
   page: Ref<number>
+  page_size: Ref<number>
   limit: Ref<number>
   total: Ref<number>
 
@@ -41,6 +43,7 @@ export interface PaginationReturn {
   firstPage: () => void
   lastPage: () => void
   setLimit: (limit: number) => void
+  setPageSize: (pageSize: number) => void
   setTotal: (total: number) => void
   reset: (options?: Partial<PaginationOptions>) => void
 
@@ -53,7 +56,8 @@ export interface PaginationReturn {
 export function usePagination(initialOptions: PaginationOptions = {}): PaginationReturn {
   const {
     page = 1,
-    limit = 100,
+    page_size,
+    limit = page_size ?? 100,
     total = 0,
     onChange
   } = initialOptions
@@ -133,7 +137,7 @@ export function usePagination(initialOptions: PaginationOptions = {}): Paginatio
 
   const reset = (options: Partial<PaginationOptions> = {}) => {
     currentPage.value = options.page ?? 1
-    currentLimit.value = options.limit ?? 100
+    currentLimit.value = options.page_size ?? options.limit ?? 100
     currentTotal.value = options.total ?? 0
     onChange?.(currentPage.value, currentLimit.value)
   }
@@ -148,6 +152,7 @@ export function usePagination(initialOptions: PaginationOptions = {}): Paginatio
   return {
     // 响应式状态
     page: currentPage,
+    page_size: currentLimit,
     limit: currentLimit,
     total: currentTotal,
 
@@ -166,6 +171,7 @@ export function usePagination(initialOptions: PaginationOptions = {}): Paginatio
     firstPage,
     lastPage,
     setLimit,
+    setPageSize: setLimit,
     setTotal,
     reset,
 

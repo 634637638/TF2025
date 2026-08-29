@@ -6,28 +6,48 @@
   <div class="product-list-page">
     <!-- 筛选栏 -->
     <div class="filter-bar">
-      <div class="filter-item" @click="showFilterPopup = true">
+      <div
+        class="filter-item"
+        @click="showFilterPopup = true"
+      >
         <span>{{ filterText }}</span>
-        <i class="fas fa-chevron-down"></i>
+        <i class="fas fa-chevron-down" />
       </div>
-      <div class="filter-item" @click="toggleSort">
+      <div
+        class="filter-item"
+        @click="toggleSort"
+      >
         <span>{{ sortText }}</span>
-        <i class="fas fa-sort"></i>
+        <i class="fas fa-sort" />
       </div>
     </div>
 
     <!-- 商品列表 -->
     <div class="product-list">
-      <div v-if="loading && products.length === 0" class="loading-state">
-        <SectionLoading text="加载商品中..." size="large" />
+      <div
+        v-if="loading && products.length === 0"
+        class="loading-state"
+      >
+        <SectionLoading
+          text="加载商品中..."
+          size="large"
+        />
       </div>
 
-      <div v-else-if="products.length === 0" class="empty-state">
-        <el-empty description="暂无商品" />
-      </div>
+      <DataEmptyState
+        v-else-if="products.length === 0"
+        size="page"
+        description="暂无商品"
+      />
 
-      <div v-else class="products">
-        <template v-for="product in products" :key="getProductKey(product)">
+      <div
+        v-else
+        class="products"
+      >
+        <template
+          v-for="product in products"
+          :key="getProductKey(product)"
+        >
           <div
             v-if="product"
             class="product-card"
@@ -38,11 +58,17 @@
                 :src="getProductImage(product)"
                 :alt="product.brand_name + ' ' + product.model_name"
                 loading="lazy"
-                @error="handleImageError"
                 :_product="product"
-              />
-              <span v-if="isProductUsed(product)" class="tag-used">二手</span>
-              <span v-else class="tag-new">全新</span>
+                @error="handleImageError"
+              >
+              <span
+                v-if="isProductUsed(product)"
+                class="tag-used"
+              >二手</span>
+              <span
+                v-else
+                class="tag-new"
+              >全新</span>
             </div>
             <div class="product-info">
               <h4 class="product-title">
@@ -57,7 +83,10 @@
               <div class="product-footer">
                 <span class="product-price">
                   <span class="price-label">销售价</span>
-                  <span class="price-value" :class="{ 'price-inquire': !getDisplayPrice(product) }">
+                  <span
+                    class="price-value"
+                    :class="{ 'price-inquire': !getDisplayPrice(product) }"
+                  >
                     <template v-if="getDisplayPrice(product)">
                       ¥{{ getDisplayPrice(product) }}
                     </template>
@@ -72,7 +101,7 @@
                   class="fas fa-shopping-cart cart-icon"
                   :class="{ 'adding': addingToCart === getProductKey(product) }"
                   @click.stop="handleCartClick(product)"
-                ></i>
+                />
               </div>
             </div>
           </div>
@@ -80,27 +109,45 @@
       </div>
 
       <!-- 加载更多提示 -->
-      <div v-if="loading && products.length > 0" class="loading-more">
-        <InlineLoading text="加载中..." size="small" />
+      <div
+        v-if="loading && products.length > 0"
+        class="loading-more"
+      >
+        <InlineLoading
+          text="加载中..."
+          size="small"
+        />
       </div>
-      <div v-else-if="!hasMore && products.length > 0" class="no-more-data">
+      <div
+        v-else-if="!hasMore && products.length > 0"
+        class="no-more-data"
+      >
         <div class="no-more-line">
-          <span class="line"></span>
+          <span class="line" />
           <span class="text">
-            <i class="fas fa-check-circle"></i>
+            <i class="fas fa-check-circle" />
             没有更多了
           </span>
-          <span class="line"></span>
+          <span class="line" />
         </div>
       </div>
     </div>
 
     <!-- 筛选弹窗 -->
-    <el-drawer v-model="showFilterPopup" direction="rtl" size="80%">
+    <el-drawer
+      v-model="showFilterPopup"
+      direction="rtl"
+      size="80%"
+    >
       <div class="filter-popup">
         <div class="filter-header">
           <h3>筛选条件</h3>
-          <el-button text @click="resetFilters">重置</el-button>
+          <el-button
+            text
+            @click="resetFilters"
+          >
+            重置
+          </el-button>
         </div>
 
         <div class="filter-content">
@@ -133,7 +180,10 @@
           </div>
 
           <!-- 品牌筛选 -->
-          <div class="filter-group" v-if="brands.length > 0">
+          <div
+            v-if="brands.length > 0"
+            class="filter-group"
+          >
             <h4>品牌</h4>
             <div class="filter-options">
               <div
@@ -156,7 +206,10 @@
           </div>
 
           <!-- 内存筛选（仅二手机显示） -->
-          <div class="filter-group" v-if="memories.length > 0 && draftFilters.is_new === false">
+          <div
+            v-if="memories.length > 0 && draftFilters.is_new === false"
+            class="filter-group"
+          >
             <h4>内存</h4>
             <div class="filter-options">
               <div
@@ -180,7 +233,13 @@
         </div>
 
         <div class="filter-footer">
-          <el-button type="primary" style="width: 100%" @click="applyFilters">确定</el-button>
+          <el-button
+            type="primary"
+            style="width: 100%"
+            @click="applyFilters"
+          >
+            确定
+          </el-button>
         </div>
       </div>
     </el-drawer>
@@ -220,7 +279,7 @@ const { loading } = useLoadingState()
 const showFilterPopup = ref(false)
 const hasMore = ref(true)
 const currentPage = ref(1)
-const pageSize = 20
+const page_size = 20
 const responseTotal = ref(0) // 存储API返回的总数据量
 const requestId = ref(0) // 添加请求 ID，用于取消旧请求
 const reloadSequence = ref(0) // 用于终止旧的分批加载流程
@@ -230,7 +289,7 @@ const suppressNextRouteReload = ref(false) // 本地更新 query 后，跳过下
 const config = ref<any>({}) // 商城配置
 
 // 购物车功能
-const { cartCount, getCartId, addCartItem, refreshCart } = useCart()
+const { cartCount: _cartCount, getCartId: _getCartId, addCartItem, refreshCart } = useCart()
 const addingToCart = ref<string | null>(null)
 
 // 缓存管理
@@ -287,7 +346,7 @@ const loadNextPage = async () => {
 }
 
 // 计算属性：判断当前是否显示全新机（聚合商品）
-const isShowingNewProducts = computed(() => {
+const _isShowingNewProducts = computed(() => {
   // 始终使用聚合API，让后端根据 is_new 参数决定返回什么
   return true
 })
@@ -397,7 +456,7 @@ const syncFiltersFromRouteQuery = (query: Record<string, any>) => {
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
 // 应用防抖的筛选条件更新
-const debouncedLoadProducts = () => {
+const _debouncedLoadProducts = () => {
   if (debounceTimer) {
     clearTimeout(debounceTimer)
   }
@@ -519,7 +578,7 @@ const loadProducts = async (page = 1, append = false, force = false) => {
     if (filters.value.is_new === false) {
       const requestParams: any = {
         page,
-        limit: pageSize,
+        page_size,
         is_new: false
       }
 
@@ -553,7 +612,7 @@ const loadProducts = async (page = 1, append = false, force = false) => {
     else {
       const requestParams: any = {
         page,
-        limit: pageSize,
+        page_size,
         sort: currentSort.value
       }
 
@@ -591,7 +650,7 @@ const loadProducts = async (page = 1, append = false, force = false) => {
       return
     }
 
-    // 响应拦截器已处理，直接返回 { data, page, limit, total } 格式
+    // 响应拦截器已处理，直接返回 { data, page, page_size, total } 格式
     if (append) {
       products.value.push(...(response.data || []))
     } else {
@@ -599,7 +658,7 @@ const loadProducts = async (page = 1, append = false, force = false) => {
     }
 
     // 计算是否还有更多数据
-    const loadedCount = response.page * response.limit
+    const loadedCount = response.page * response.page_size
     hasMore.value = loadedCount < response.total
     currentPage.value = response.page
     responseTotal.value = response.total
@@ -1003,7 +1062,7 @@ watch(
 <style scoped lang="scss">
 .product-list-page {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: var(--tf-color-surface-soft);
 }
 
 // 筛选栏
@@ -1011,7 +1070,7 @@ watch(
   position: sticky;
   top: 0;
   z-index: 10;
-  background: #fff;
+  background: var(--color-bg-white);
   display: flex;
   gap: 1px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
@@ -1024,13 +1083,13 @@ watch(
     gap: 4px;
     padding: 12px;
     font-size: 14px;
-    color: #333;
-    background: #fff;
+    color: var(--text-primary);
+    background: var(--color-bg-white);
     cursor: pointer;
 
     i {
       font-size: 12px;
-      color: #999;
+      color: var(--text-muted);
     }
   }
 }
@@ -1046,7 +1105,7 @@ watch(
   }
 
   .product-card {
-    background: #fff;
+    background: var(--color-bg-white);
     border-radius: 8px;
     overflow: hidden;
     cursor: pointer;
@@ -1055,7 +1114,7 @@ watch(
         position: relative;
         width: 100%;
         padding-top: 100%;
-        background: #f5f5f5;
+        background: var(--tf-color-surface-soft);
 
       img {
         position: absolute;
@@ -1071,7 +1130,7 @@ watch(
         top: 8px;
         left: 8px;
         background: rgba(255, 107, 0, 0.9);
-        color: #fff;
+        color: var(--color-bg-white);
         font-size: 10px;
         padding: 2px 6px;
         border-radius: 4px;
@@ -1081,8 +1140,8 @@ watch(
         position: absolute;
         top: 8px;
         left: 8px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: #fff;
+        background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
+        color: var(--color-bg-white);
         font-size: 10px;
         padding: 2px 6px;
         border-radius: 4px;
@@ -1095,7 +1154,7 @@ watch(
 .product-title {
         font-size: 14px;
         font-weight: 500;
-        color: #333;
+        color: var(--text-primary);
         margin: 0 0 8px;
         line-height: 1.4;
         min-height: 20px;
@@ -1117,19 +1176,19 @@ watch(
 
           .price-label {
             font-size: 11px;
-            color: #999;
+            color: var(--text-muted);
             font-weight: normal;
           }
 
           .price-value {
             font-size: 17px;
             font-weight: 600;
-            color: #ff1744;
+            color: var(--tf-color-accent-pink);
             letter-spacing: -0.3px;
 
             &.price-inquire {
               font-size: 15px;
-              color: #ff6b00;
+              color: var(--tf-color-accent-orange);
               font-weight: 500;
             }
           }
@@ -1137,13 +1196,13 @@ watch(
 
         .cart-icon {
           font-size: 18px;
-          color: #ff6b00;
+          color: var(--tf-color-accent-orange);
           cursor: pointer;
           padding: 4px;
           transition: all 0.2s;
 
           &:hover {
-            color: #ff8c00;
+            color: var(--tf-color-orange-dark);
             transform: scale(1.1);
           }
 
@@ -1153,13 +1212,13 @@ watch(
 
           &.adding {
             animation: rotate 1s linear infinite;
-            color: #999;
+            color: var(--text-muted);
           }
         }
 
         .product-grade {
           font-size: 11px;
-          color: #00c853;
+          color: var(--tf-color-accent-green);
           background: rgba(0, 200, 83, 0.1);
           padding: 2px 6px;
           border-radius: 4px;
@@ -1175,7 +1234,7 @@ watch(
     justify-content: center;
     gap: 8px;
     padding: 16px;
-    color: #999;
+    color: var(--text-muted);
     font-size: 14px;
 
     .el-icon {
@@ -1195,19 +1254,19 @@ watch(
       .line {
         flex: 1;
         height: 1px;
-        background: linear-gradient(to right, transparent, #e0e0e0, transparent);
+        background: linear-gradient(to right, transparent, var(--tf-color-gray-material-300), transparent);
       }
 
       .text {
         display: flex;
         align-items: center;
         gap: 6px;
-        color: #999;
+        color: var(--text-muted);
         font-size: 13px;
         white-space: nowrap;
 
         i {
-          color: #4caf50;
+          color: var(--tf-color-green-material);
           font-size: 14px;
         }
       }
@@ -1235,7 +1294,7 @@ watch(
     align-items: center;
     justify-content: space-between;
     padding: 16px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--tf-color-gray-200-alt);
 
     h3 {
       font-size: 16px;
@@ -1255,7 +1314,7 @@ watch(
       h4 {
         font-size: 14px;
         font-weight: 500;
-        color: #333;
+        color: var(--text-primary);
         margin: 0 0 12px;
       }
 
@@ -1266,16 +1325,16 @@ watch(
 
         .filter-option {
           padding: 8px 16px;
-          background: #f5f5f5;
+          background: var(--tf-color-surface-soft);
           border-radius: 4px;
           font-size: 13px;
-          color: #666;
+          color: var(--text-secondary);
           cursor: pointer;
           transition: all 0.2s;
 
           &.active {
-            background: #ff6b00;
-            color: #fff;
+            background: var(--tf-color-accent-orange);
+            color: var(--color-bg-white);
           }
         }
       }
@@ -1284,7 +1343,7 @@ watch(
 
   .filter-footer {
     padding: 16px;
-    border-top: 1px solid #eee;
+    border-top: 1px solid var(--tf-color-gray-200-alt);
   }
 }
 

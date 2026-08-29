@@ -3,7 +3,7 @@
  * 提供响应式的窗口尺寸和滚动信息
  */
 
-import { ref, onMounted, onUnmounted, computed, type Ref } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 
 /**
  * 窗口尺寸信息

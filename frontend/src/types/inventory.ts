@@ -12,49 +12,52 @@ export type SettledStatus = 0 | 1
 // 入库记录接口
 export interface StockInRecord {
   id: number
+  phone_id: number
   product_type: ProductType
-  product_id: number
-  product_name: string
-  brand_id?: number
-  brand_name?: string
-  model_id?: number
-  model_name?: string
-  color_id?: number
-  color_name?: string
-  memory_id?: number
-  memory_name?: string
-  imei?: string
-  serial_number?: string
+  product_name: string | null
+  brand_name: string | null
+  model_name: string | null
+  color_name: string | null
+  memory_name: string | null
+  imei: string | null
+  serial_number: string | null
   quantity: number
-  unit_cost: number
-  total_cost: number
+  purchase_cost: number | null
   store_id: number
-  store_name: string
-  supplier_id?: number
-  supplier_name?: string
+  store_name: string | null
+  supplier_id: number
+  supplier_name: string | null
   operation_type: OperationType
-  operator_id: number
-  operator_name: string
-  reason?: string
-  note?: string
+  inventory_operator_id: number
+  operator_name: string | null
+  operator_username: string | null
+  reason: string
+  remarks: string | null
   is_settled: SettledStatus
-  reference_type?: string
-  reference_id?: string
-  created_at: string
-  updated_at?: string
+  payment_status: 'paid' | 'unpaid' | null
+  payment_time: string | null
+  reference_type: 'purchase'
+  reference_id: string | null
+  inventory_time: string
+  sale_time: string | null
+  purchase_number: string | null
+  status: string
+  is_new: number
+  condition: 'new' | 'used'
 }
 
 // 入库表单数据接口
 export interface StockInFormData {
   product_type: ProductType
-  product_id: number
+  phone_id: number
   quantity: number
-  unit_cost: number
+  purchase_cost: number
   store_id: number
   supplier_id?: number
   operation_type: OperationType
+  inventory_time: string
   reason?: string
-  note?: string
+  remarks?: string
   reference_type?: string
   reference_id?: string
   imei?: string
@@ -135,10 +138,19 @@ export interface Pagination {
   pages: number
 }
 
+export interface StockInPagination {
+  page: number
+  page_size: number
+  total: number
+  total_pages: number
+  has_next: boolean
+  has_prev: boolean
+}
+
 // API响应接口
 export interface StockInListResponse {
   records: StockInRecord[]
-  pagination: Pagination
+  pagination: StockInPagination
 }
 
 export interface InventoryListResponse {
@@ -153,15 +165,18 @@ export interface StockMovementListResponse {
 
 // 统计数据接口
 export interface StatsData {
-  todayStockIn: number
-  totalItems: number
-  totalValue: number
-  lowStockItems: number
-  outOfStockItems: number
-  normalItems: number
-  overstockItems: number
-  byStore: Record<string, number>
-  byBrand: Record<string, number>
+  today_stock_in: number
+  total_items: number
+  total_value: number | null
+  new_items: number
+  used_items: number
+  in_stock_items: number
+  sold_items: number
+  settled_count: number
+  unsettled_count: number
+  unknown_payment_count: number
+  by_store: Record<string, number>
+  by_brand: Record<string, number>
 }
 
 // 商品信息接口
@@ -294,7 +309,7 @@ export interface SearchSuggestion {
   id: number
   text: string
   type: 'product' | 'imei' | 'brand' | 'model'
-  data?: any
+  data?: unknown
 }
 
 // 导出配置接口
@@ -309,7 +324,7 @@ export interface ExportConfig {
 export interface BatchOperation {
   type: 'settle' | 'delete' | 'export' | 'adjust'
   ids: number[]
-  data?: any
+  data?: unknown
 }
 
 // 库存调整接口
@@ -434,7 +449,7 @@ export interface PerformanceMetrics {
 export interface ErrorInfo {
   code?: string
   message: string
-  details?: any
+  details?: unknown
   stack?: string
   timestamp: string
   url: string

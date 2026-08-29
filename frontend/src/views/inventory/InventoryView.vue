@@ -15,7 +15,7 @@
             type="primary"
             @click="handleStartStockIn"
           >
-            <i class="fas fa-plus"></i>
+            <i class="fas fa-plus" />
             <span>入库</span>
           </el-button>
           <ImportExportActions
@@ -25,10 +25,19 @@
             export-icon-class="fas fa-download"
             @export="exportInventory"
           />
-          <el-button type="info" @click="handleRefresh" :disabled="refreshing">
-            <InlineLoading v-if="refreshing" text="刷新中..." size="small" variant="inherit" />
+          <el-button
+            type="info"
+            :disabled="refreshing"
+            @click="handleRefresh"
+          >
+            <InlineLoading
+              v-if="refreshing"
+              text="刷新中..."
+              size="small"
+              variant="inherit"
+            />
             <template v-else>
-              <i class="fas fa-sync-alt"></i>
+              <i class="fas fa-sync-alt" />
               <span>刷新</span>
             </template>
           </el-button>
@@ -36,396 +45,70 @@
       </PageHeader>
 
       <div class="content admin-page-content">
+        <InventoryStatsCards
+          :loading="loadingStore.isLoading"
+          :stats="statCards"
+          :visible="showStatsCards"
+        />
+        <InventorySearchFilters
+          v-model:expanded="searchExpanded"
+          :brand-models="brandModels"
+          :brands="brands"
+          :can-view-field="canViewField"
+          :colors="colors"
+          :filters="filters"
+          :loading="isLoading"
+          :memories="memories"
+          :model-count="models.length"
+          :operators="operators"
+          :stores="stores"
+          :suppliers="suppliers"
+          @brand-change="handleBrandChange"
+          @filter-change="loadInventory"
+          @reset="resetFilters"
+          @search="loadInventory"
+          @search-input="debounceLoadInventory"
+        />
 
-    <!-- 统计卡片 -->
-    <div v-if="showStatsCards" class="stats-cards" :class="{ 'loading': loadingStore.isLoading }">
-      <div class="stat-card" v-for="(stat, index) in statCards" :key="stat.key" :style="{ 'animation-delay': `${index * 100}ms` }">
-        <div class="stat-icon" :class="stat.iconClass">
-          <i :class="stat.icon"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ stat.value }}</div>
-          <div class="stat-label">{{ stat.label }}</div>
-        </div>
-      </div>
-      </div>
-    <UnifiedSearchPanel
-      v-model:expanded="searchExpanded"
-      :loading="isLoading"
-      @search="loadInventory"
-      @reset="resetFilters"
-    >
-      <template #primary>
-        <el-input
-          v-model="filters.search"
-          placeholder="搜索关键词"
-          clearable
-          @input="debounceLoadInventory"
-          @keyup.enter="loadInventory"
-          @click.stop
-        >
-          <template #prefix>
-            <i class="fas fa-search"></i>
-          </template>
-        </el-input>
-      </template>
+        <InventoryTable
+          :can-create="canCreate"
+          :can-delete="canDelete"
+          :can-edit="canEdit"
+          :columns="tableColumns"
+          :format-date="formatDate"
+          :format-number="formatNumber"
+          :get-column-class="getInventoryColumnClass"
+          :get-column-min-width="getInventoryColumnMinWidth"
+          :get-column-width="getInventoryColumnWidth"
+          :get-condition-class="getConditionClass"
+          :get-condition-text="getConditionText"
+          :get-sale-status-class="getSaleStatusClass"
+          :get-sale-status-label="getSaleStatusLabel"
+          :inventory="inventory"
+          :loading="isLoading"
+          :pagination="pagination"
+          @delete="deleteItem"
+          @edit="editItem"
+          @pagination-change="handlePaginationChange"
+          @quick-sale="quickSaleItem"
+          @row-tap="handleInventoryRowTap"
+          @view="viewDetails"
+        />
 
-      <!-- 供应商 -->
-      <div v-if="canViewField('supplier_name')" class="form-group filter-item" data-field="supplier">
-          <el-select
-            v-model="filters.supplier_id"
-            placeholder="供应商"
-            filterable
-            clearable
-            @change="loadInventory"
-          >
-            <el-option
-              v-for="supplier in suppliers"
-              :key="supplier.id"
-              :label="supplier.name"
-              :value="supplier.id"
-            />
-          </el-select>
-      </div>
-
-      <!-- 店铺 -->
-      <div v-if="canViewField('store_name')" class="form-group filter-item" data-field="store">
-          <el-select
-            v-model="filters.store_id"
-            placeholder="店铺"
-            filterable
-            clearable
-            @change="loadInventory"
-          >
-            <el-option
-              v-for="store in stores"
-              :key="store.id"
-              :label="store.name"
-              :value="store.id"
-            />
-          </el-select>
-      </div>
-
-      <!-- 品牌 -->
-      <div v-if="canViewField('brand')" class="form-group filter-item" data-field="brand">
-          <el-select
-            v-model="filters.brand"
-            placeholder="品牌"
-            filterable
-            clearable
-            @change="handleBrandChange"
-          >
-            <el-option
-              v-for="brand in brands"
-              :key="brand.id"
-              :label="brand.name"
-              :value="brand.name"
-            />
-          </el-select>
-      </div>
-
-      <!-- 型号 -->
-      <div v-if="canViewField('model')" class="form-group filter-item" data-field="model">
-          <el-select
-            v-model="filters.model"
-            placeholder="型号"
-            filterable
-            clearable
-            @change="loadInventory"
-            :disabled="!filters.brand && brandModels.length === models.length"
-          >
-            <el-option
-              v-for="model in brandModels"
-              :key="model.id"
-              :label="model.name"
-              :value="model.name"
-            />
-          </el-select>
-      </div>
-
-      <!-- 颜色 -->
-      <div v-if="canViewField('color')" class="form-group filter-item" data-field="color">
-          <el-select
-            v-model="filters.color"
-            placeholder="颜色"
-            filterable
-            clearable
-            @change="loadInventory"
-            allow-create
-          >
-            <el-option
-              v-for="color in colors"
-              :key="color"
-              :label="color"
-              :value="color"
-            />
-          </el-select>
-      </div>
-
-      <!-- 内存 -->
-      <div v-if="canViewField('memory')" class="form-group filter-item" data-field="memory">
-          <el-select
-            v-model="filters.memory"
-            placeholder="内存"
-            filterable
-            clearable
-            @change="loadInventory"
-          >
-            <el-option
-              v-for="memory in memories"
-              :key="memory"
-              :label="memory"
-              :value="memory"
-            />
-          </el-select>
-      </div>
-
-      <!-- 机况 -->
-      <div v-if="canViewField('is_new')" class="form-group filter-item" data-field="condition">
-          <el-select
-            v-model="filters.is_new"
-            placeholder="机况"
-            clearable
-            @change="loadInventory"
-          >
-            <el-option label="全新" :value="true" />
-            <el-option label="二手" :value="false" />
-          </el-select>
-      </div>
-
-      <!-- 入库员 -->
-      <div v-if="canViewField('inventory_operator_name')" class="form-group filter-item" data-field="operator">
-          <el-select
-            v-model="filters.operator_id"
-            placeholder="入库员"
-            filterable
-            clearable
-            @change="loadInventory"
-          >
-            <el-option
-              v-for="operator in operators"
-              :key="operator.id"
-              :label="operator.name || operator.username"
-              :value="operator.id"
-            />
-          </el-select>
-      </div>
-
-      <!-- 入库日期开始 -->
-      <div v-if="canViewField('Inventorytime')" class="form-group filter-item">
-          <el-date-picker
-            v-model="filters.date_start"
-            type="date"
-            placeholder="开始日期"
-            format="YYYY-MM-DD"
-            value-format="YYYY-MM-DD"
-            @change="loadInventory"
-            :clearable="true"
-          />
-      </div>
-
-      <!-- 入库日期结束 -->
-      <div v-if="canViewField('Inventorytime')" class="form-group filter-item">
-          <el-date-picker
-            v-model="filters.date_end"
-            type="date"
-            placeholder="结束日期"
-            format="YYYY-MM-DD"
-            value-format="YYYY-MM-DD"
-            @change="loadInventory"
-            :clearable="true"
-          />
-      </div>
-    </UnifiedSearchPanel>
-
-    <!-- 数据表格 -->
-    <div class="table-section admin-panel admin-table-panel">
-      <div class="section-title">
-        <i class="fas fa-list"></i>
-        库存列表
-        <span class="record-count">共 {{ pagination.total }} 条记录</span>
-      </div>
-
-      <div class="table-responsive">
-        <el-table
-          :data="isLoading ? [] : inventory"
-          border
-          stripe
-          class="data-table devices-table inventory-table"
-          table-layout="fixed"
-          :fit="true"
-          row-key="id"
-          @row-click="handleInventoryRowTap"
-        >
-          <el-table-column
-            v-for="column in tableColumns"
-            :key="column.key"
-            :label="column.label"
-            :min-width="getInventoryColumnMinWidth(column)"
-            :width="getInventoryColumnWidth(column)"
-            align="center"
-            :class-name="getInventoryColumnClass(column)"
-          >
-            <template #default="{ row: item }">
-                <!-- 供应商列 -->
-                <span v-if="column.key === 'supplier_name'">
-                  {{ item.supplier_name || '-' }}
-                </span>
-
-                <!-- 店铺列 -->
-                <span v-else-if="column.key === 'store_name'">
-                  {{ item.store_name || '-' }}
-                </span>
-
-                <!-- 品牌列 -->
-                <span v-else-if="column.key === 'brand'">
-                  {{ item.brand_name || item.brand || '-' }}
-                </span>
-
-                <!-- 型号列 -->
-                <span v-else-if="column.key === 'model'">
-                  {{ item.model_name || item.model || '-' }}
-                </span>
-
-                <!-- 颜色列 -->
-                <span v-else-if="column.key === 'color'">
-                  {{ item.color_name || item.color || '-' }}
-                </span>
-
-                <!-- 内存列 -->
-                <span v-else-if="column.key === 'memory'">
-                  {{ item.memory_name || item.memory || '-' }}
-                </span>
-
-                <!-- 序列号列 -->
-                <span v-else-if="column.key === 'serial_number'" class="serial-number">
-                  {{ item.serial_number || '-' }}
-                </span>
-
-                <!-- IMEI列 -->
-                <span v-else-if="column.key === 'imei'">
-                  <span class="imei">{{ item.imei || '-' }}</span>
-                </span>
-
-                <!-- 入库价格列 -->
-                <span v-else-if="column.key === 'purchase_price'" class="price">
-                  ¥{{ formatNumber(item.purchase_cost || item.purchase_price || item.purchase_unit_price) }}
-                </span>
-
-                <!-- 入库员列 -->
-                <span v-else-if="column.key === 'inventory_operator_name'">
-                  {{ item.inventory_operator_name || item.operator_name || '-' }}
-                </span>
-
-                <!-- 机况列 -->
-                <span v-else-if="column.key === 'is_new'">
-                  <span class="condition-badge" :class="getConditionClass(item.is_new ?? 0)">
-                    {{ getConditionText(item.is_new ?? 0) }}
-                  </span>
-                </span>
-
-                <!-- 状态列 -->
-                <span v-else-if="column.key === 'is_preordered'">
-                  <span :class="['status-badge', getSaleStatusClass(item)]">
-                    {{ getSaleStatusLabel(item) }}
-                  </span>
-                </span>
-
-                <!-- 入库时间列 -->
-                <span v-else-if="column.key === 'Inventorytime'">
-                  {{ formatDate(item.Inventorytime || item.created_at) }}
-                </span>
-
-                <!-- 操作列 -->
-                <div v-else-if="column.key === 'actions'" class="action-buttons">
-                    <el-button
-                      @click.stop="viewDetails(item)"
-                      type="primary"
-                      size="small"
-                      title="查看详情"
-                    >
-                      <i class="fas fa-eye"></i>
-                      查看
-                    </el-button>
-                    <el-button
-                      v-if="canCreate && item.status === 'in_stock'"
-                      @click.stop="quickSaleItem(item)"
-                      type="warning"
-                      size="small"
-                      title="商品出库"
-                    >
-                      <i class="fas fa-shopping-cart"></i>
-                      出库
-                    </el-button>
-                    <el-button
-                      v-if="canEdit && item.status === 'in_stock'"
-                      @click.stop="editItem(item)"
-                      type="success"
-                      size="small"
-                      title="编辑"
-                    >
-                      <i class="fas fa-edit"></i>
-                      编辑
-                    </el-button>
-                    <el-button
-                      v-if="canDelete && item.status === 'in_stock'"
-                      @click.stop="deleteItem(item)"
-                      type="danger"
-                      size="small"
-                      title="删除"
-                    >
-                      <i class="fas fa-trash"></i>
-                      删除
-                    </el-button>
-                </div>
-            </template>
-          </el-table-column>
-
-          <template #empty>
-            <TableLoadingRow
-              v-if="isLoading"
-              mode="block"
-              text="加载库存列表..."
-            />
-            <div v-else class="empty-state">
-              <i class="fas fa-box-open"></i>
-              <p>暂无库存数据</p>
-            </div>
-          </template>
-        </el-table>
-      </div>
-
-  
-      <div class="pagination-wrapper">
-        <Pagination
-          v-model:current="pagination.page"
-          v-model:page-size="pagination.size"
-          :total="Number(pagination.total)"
-          :page-sizes="[20, 50, 100, 200]"
-          :show-total="true"
-          :show-range="true"
-          :show-page-sizes="true"
-          :show-quick-jumper="true"
-          :disabled="loadingStore.isLoading"
-          @change="(page: number, pageSize: number) => handlePaginationChange({ page, pageSize })"
+        <InventoryDetailModal
+          v-if="showDetailsModal"
+          v-model="showDetailsModal"
+          :item="selectedItem"
+          :can-create="canCreate"
+          :can-edit="canEdit"
+          :can-delete="canDelete"
+          @close="handleCloseDetails"
+          @edit="handleEditFromModal"
+          @delete="handleDeleteFromModal"
+          @quick-sale="handleQuickSaleFromModal"
         />
       </div>
-    </div>
-
-    <InventoryDetailModal
-      v-if="showDetailsModal"
-      v-model="showDetailsModal"
-      :item="selectedItem"
-      :can-edit="canEdit"
-      :can-delete="canDelete"
-      @close="handleCloseDetails"
-      @edit="handleEditFromModal"
-      @delete="handleDeleteFromModal"
-    />
-      </div>
-
     </PermissionGate>
-
   </div>
 
   
@@ -441,228 +124,30 @@
   <!-- Toast 通知组件 -->
   <Toast />
 
-  <!-- 编辑设备对话框 -->
-  <MobileDialog
+  <InventoryEditDialog
     v-model="showEditModal"
-    title="编辑设备信息"
-    width="900px"
-    dialog-class="inventory-edit-dialog"
-    :close-on-click-modal="false"
-    :show-default-footer="false"
-  >
-    <div class="inventory-edit-content">
-      <!-- 基本信息 -->
-      <div class="inventory-edit-summary-grid">
-        <div v-if="canViewField('brand')" class="bg-gradient-brand">
-          <div class="text-xs opacity-80 mb-1">品牌</div>
-          <div class="text-base font-semibold">{{ editForm.brand || '未设置' }}</div>
-        </div>
-        <div v-if="canViewField('model')" class="bg-gradient-model">
-          <div class="text-xs opacity-80 mb-1">型号</div>
-          <div class="text-base font-semibold">{{ editForm.model || '未设置' }}</div>
-        </div>
-        <div v-if="canViewField('color')" class="bg-gradient-color">
-          <div class="text-xs opacity-80 mb-1">颜色</div>
-          <div class="text-base font-semibold">{{ editForm.color || '未设置' }}</div>
-        </div>
-        <div v-if="canViewField('memory')" class="bg-gradient-memory">
-          <div class="text-xs opacity-80 mb-1">内存</div>
-          <div class="text-base font-semibold">{{ editForm.memory || '未设置' }}</div>
-        </div>
-        <div v-if="canViewField('serial_number')" class="bg-gradient-serial">
-          <div class="text-xs opacity-80 mb-1">序列号</div>
-          <div class="text-sm font-semibold">{{ editForm.serial_number || '未设置' }}</div>
-        </div>
-        <div v-if="canViewField('purchase_price')" class="bg-gradient-purchase">
-          <div class="text-xs opacity-80 mb-1">入库价格</div>
-          <div class="text-base font-semibold">{{ editForm.purchase_cost ? `¥${Math.round(editForm.purchase_cost)}` : '未定价' }}</div>
-        </div>
-      </div>
-
-      <!-- 编辑表单 -->
-      <div class="inventory-edit-form-shell">
-        <div class="inventory-edit-form-grid">
-          <!-- 供应商 -->
-          <div v-if="canViewField('supplier_name')">
-            <label class="form-label">供应商</label>
-            <el-select v-model="editForm.supplier_id" placeholder="选择供应商" filterable clearable reserve-keyword default-first-option teleported fit-input-width popper-class="tf2025-form-popper" class="w-full" :disabled="!canEditField('supplier_name')">
-              <el-option v-for="supplier in suppliers" :key="supplier.id" :label="supplier.name" :value="supplier.id" />
-            </el-select>
-          </div>
-
-          <!-- 入库店铺 -->
-          <div v-if="canViewField('store_name')">
-            <label class="form-label">入库店铺</label>
-            <el-select v-model="editForm.store_id" placeholder="选择店铺" filterable clearable reserve-keyword default-first-option teleported fit-input-width popper-class="tf2025-form-popper" class="w-full" :disabled="!canEditField('store_name')">
-              <el-option v-for="store in stores" :key="store.id" :label="store.name" :value="store.id" />
-            </el-select>
-          </div>
-
-          <!-- 入库时间 -->
-          <div v-if="canViewField('Inventorytime')">
-            <label class="form-label">入库时间</label>
-            <el-date-picker v-model="editForm.Inventorytime" type="date" placeholder="选择日期" format="YYYY-MM-DD" value-format="YYYY-MM-DD" teleported popper-class="tf2025-form-popper" class="w-full" :disabled="!canEditField('Inventorytime')" :prefix-icon="null" :clearable="false" />
-          </div>
-
-          <!-- 机况 -->
-          <div v-if="canViewField('is_new')">
-            <label class="form-label">机况</label>
-            <el-select v-model="editForm.condition" placeholder="选择机况" filterable reserve-keyword default-first-option teleported fit-input-width popper-class="tf2025-form-popper" class="w-full" :disabled="!canEditField('is_new')">
-              <el-option label="全新" value="全新" />
-              <el-option label="二手" value="二手" />
-            </el-select>
-          </div>
-
-          <div>
-            <label class="form-label">状态</label>
-            <el-select
-              v-model="editForm.status"
-              placeholder="选择状态"
-              teleported
-              fit-input-width
-              popper-class="tf2025-form-popper"
-              class="w-full"
-            >
-              <el-option
-                v-for="option in PHONE_STATUS_OPTIONS"
-                :key="option.value"
-                :label="option.label"
-                :value="option.value"
-              />
-            </el-select>
-          </div>
-
-          <!-- 品牌 -->
-          <div v-if="canViewField('brand')">
-            <label class="form-label">品牌</label>
-            <el-select v-model="editForm.brand" placeholder="选择品牌" filterable clearable reserve-keyword default-first-option teleported fit-input-width popper-class="tf2025-form-popper" @change="onEditBrandChange" class="w-full" :disabled="!canEditField('brand')">
-              <el-option v-for="brand in brands" :key="brand.id" :label="brand.name" :value="brand.name" />
-            </el-select>
-          </div>
-
-          <!-- 型号 -->
-          <div v-if="canViewField('model')">
-            <label class="form-label">型号</label>
-            <el-select
-              v-if="editForm.brand && editBrandModels.length > 0"
-              v-model="editForm.model"
-              placeholder="选择型号或输入搜索"
-              filterable
-              clearable
-              allow-create
-              remote
-              reserve-keyword
-              default-first-option
-              remote-show-suffix
-              teleported
-              fit-input-width
-              popper-class="tf2025-form-popper"
-              :remote-method="remoteSearchModel"
-              :loading="modelSearchLoading"
-              :disabled="!canEditField('model')"
-              class="w-full">
-              <el-option v-for="model in editBrandModels" :key="model" :label="model" :value="model" />
-            </el-select>
-            <el-input
-              v-else
-              v-model="editForm.model"
-              placeholder="请输入型号（或先选择品牌）"
-              clearable
-              :disabled="!canEditField('model')"
-              class="w-full" />
-          </div>
-
-          <!-- 颜色 -->
-          <div v-if="canViewField('color')">
-            <label class="form-label">颜色</label>
-            <el-select v-model="editForm.color" placeholder="选择颜色" filterable clearable reserve-keyword default-first-option teleported fit-input-width popper-class="tf2025-form-popper" class="w-full" :disabled="!canEditField('color')">
-              <el-option v-for="color in colors" :key="color" :label="color" :value="color" />
-            </el-select>
-          </div>
-
-          <!-- 内存 -->
-          <div v-if="canViewField('memory')">
-            <label class="form-label">内存</label>
-            <el-select v-model="editForm.memory" placeholder="选择内存" filterable clearable reserve-keyword default-first-option teleported fit-input-width popper-class="tf2025-form-popper" class="w-full" :disabled="!canEditField('memory')">
-              <el-option v-for="memory in memories" :key="memory" :label="memory" :value="memory" />
-            </el-select>
-          </div>
-
-          <!-- 序列号和IMEI（手机端一行展示） -->
-          <div v-if="canViewField('serial_number') || canViewField('imei')" class="inventory-edit-serial-imei-row">
-            <!-- 序列号 -->
-            <div v-if="canViewField('serial_number')" class="inventory-edit-serial-field">
-              <label class="form-label">序列号</label>
-              <el-input v-model="editForm.serial_number" placeholder="请输入序列号" maxlength="18" :disabled="!canEditField('serial_number')" />
-            </div>
-
-            <!-- IMEI -->
-            <div v-if="canViewField('imei')" class="inventory-edit-imei-field">
-              <label class="form-label">
-                IMEI
-                <span v-if="editIsNoIMEIMode" class="text-success text-xs ml-2">
-                  <i class="fas fa-check-circle"></i> 无IMEI模式
-                </span>
-              </label>
-              <div @dblclick="toggleEditNoIMEIMode" class="cursor-pointer" :title="editIsNoIMEIMode ? '双击切换回标准模式' : '双击启用无IMEI模式（支持字母+数字）'">
-                <el-input
-                  v-model="editForm.imei"
-                  :placeholder="editIsNoIMEIMode ? '无IMEI模式' : '请输入15位IMEI'"
-                  :maxlength="editIsNoIMEIMode ? 30 : 15"
-                  :disabled="!canEditField('imei')"
-                  @input="formatEditIMEI"
-                />
-              </div>
-              <div v-if="editIsNoIMEIMode" class="text-xs text-gray-500 mt-1">
-                双击输入框可切换回标准模式
-              </div>
-            </div>
-          </div>
-
-          <!-- 入库价格 -->
-          <div v-if="canViewField('purchase_price')" class="inventory-edit-price-field">
-            <label class="form-label">入库价格</label>
-            <div class="inventory-edit-price-row">
-              <el-input-number v-model="editForm.purchase_cost" placeholder="请输入入库价格" :min="0" :step="1" :precision="0" :controls="false" class="inventory-edit-price-input" :value-on-clear="null" :disabled="!canEditField('purchase_price')" />
-
-              <!-- H5上架开关（全新机和二手商品通用） -->
-              <div class="inventory-edit-publish-actions">
-                <el-switch
-                  v-model="editForm.is_published"
-                  :active-value="1"
-                  :inactive-value="0"
-                  active-text="H5上架"
-                  inactive-text="已下架"
-                  inline-prompt
-                  @change="handleQuickPublishChange"
-                />
-              </div>
-            </div>
-          </div>
-
-          <!-- 备注 -->
-          <div v-if="canViewField('remarks')" class="inventory-edit-remarks-field">
-            <label class="form-label">备注</label>
-            <el-input v-model="editForm.remarks" type="textarea" :rows="2" placeholder="请输入备注信息" maxlength="500" show-word-limit :disabled="!canEditField('remarks')" />
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <template #footer>
-      <div class="tf-dialog-actions inventory-edit-footer" :class="{ 'has-config': editForm.condition === '二手' }">
-        <el-button v-if="editForm.condition === '二手'" type="success" @click="showPublishToH5Modal = true">
-          <i class="fas fa-mobile-alt"></i>
-          商品配置
-        </el-button>
-        <el-button type="default" @click="closeEditModal">取消</el-button>
-        <el-button type="primary" @click="submitEdit" :loading="submitting">
-          <i v-if="!submitting" class="fas fa-save"></i>
-          保存修改
-        </el-button>
-      </div>
-    </template>
-  </MobileDialog>
+    :brand-models="editBrandModels"
+    :brands="brands"
+    :can-edit-field="canEditField"
+    :can-view-field="canViewField"
+    :colors="colors"
+    :edit-form="editForm"
+    :memories="memories"
+    :model-search-loading="modelSearchLoading"
+    :no-imei-mode="editIsNoIMEIMode"
+    :phone-status-options="PHONE_STATUS_OPTIONS"
+    :remote-search-model="remoteSearchModel"
+    :stores="stores"
+    :submitting="submitting"
+    :suppliers="suppliers"
+    @brand-change="onEditBrandChange"
+    @close="closeEditModal"
+    @format-imei="formatEditIMEI"
+    @open-config="showPublishToH5Modal = true"
+    @publish-change="handleQuickPublishChange"
+    @submit="submitEdit"
+    @toggle-no-imei="toggleEditNoIMEIMode"
+  />
 
   <!-- 上架商品到H5商城模态框 -->
   <PublishToH5Modal
@@ -672,39 +157,37 @@
     :is-new="selectedPhoneForEdit ? isNewInventoryValue(selectedPhoneForEdit.is_new) : undefined"
     @success="handlePublishSuccess"
   />
-
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed, watch, onUnmounted, onActivated, defineAsyncComponent } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ElMessage, ElMessageBox, ElSelect, ElOption, ElInputNumber, ElDatePicker } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useMobileDetection } from '@/composables/mobile'
-import { useMobile } from '@/composables/mobile'
 import { useNotification } from '@/composables/useNotification'
 import { useImportExport } from '@/composables/useImportExport'
 import { usePagePermissions } from '@/composables/usePagePermissions'
-import { fieldPermissions } from '@/composables/useFieldPermissions'
+import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useRefreshData } from '@/composables/useRefreshData'
-import { useCachedRequest, DEFAULT_CACHE_TTL } from '@/composables/usePageCache'
 import { unifiedApi as api } from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import { normalizePermissionList } from '@/utils/permissionList'
-import { sortOptionsByOrder } from '@/utils/option-sort'
 import { getAdaptiveActionColumnWidth, getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
+import { toCanonicalPhoneUpdatePayload } from '@/utils/phone-update-payload'
 import { useAuthStore } from '@/stores/auth'
 import { logger } from '@/utils/logger'
 import { useLoadingStore } from '@/stores/loading'
 import Toast from '../../components/Toast.vue'
-import CustomSearch from '@/components/CustomSearch.vue'
-import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
-import Pagination from '@/components/Pagination.vue'
 import InlineLoading from '@/components/InlineLoading.vue'
-import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import { PageHeader, PermissionGate } from '@/components/base'
+import InventoryStatsCards from './page/InventoryStatsCards.vue'
+import InventoryTable from './page/InventoryTable.vue'
+import InventorySearchFilters from './page/InventorySearchFilters.vue'
+import InventoryEditDialog from './page/InventoryEditDialog.vue'
+import { useInventoryBaseOptions } from './useInventoryBaseOptions'
+import { useInventoryData } from './useInventoryData'
 import { PHONE_STATUS_OPTIONS, getPhoneStatusClass, getPhoneStatusLabel, normalizePhoneStatus } from '@/constants/phoneStatuses'
-import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import type { InventoryItem } from '@/types'
 
 const InventoryDetailModal = defineAsyncComponent(() => import('@/components/InventoryDetailModal.vue'))
@@ -721,8 +204,7 @@ interface Stats {
 const router = useRouter()
 const route = useRoute()
 const mobileDetection = useMobileDetection()
-const { isMobile } = useMobile()
-const { success, error, warning, info, handleApiError, confirm } = useNotification()
+const { success, error, warning } = useNotification()
 const {
   canView,
   canCreate,
@@ -738,8 +220,6 @@ const { init: initFieldPermissions } = fieldPermissions
 const { exportFile, buildDateFilename } = useImportExport()
 const exporting = ref(false)
 const initialTableLoading = ref(true)
-
-const { success: showSuccess, error: showError } = useNotification()
 
 // 搜索相关状态
 const searchExpanded = ref(false) // 搜索区域展开状态（移动端默认折叠）
@@ -809,11 +289,11 @@ const inventoryFieldMap: Record<string, string> = {
   memory: 'basic.memory',
   serial_number: 'basic.serial_number',
   imei: 'basic.imei',
-  purchase_price: 'price_info.purchase_price',
+  purchase_cost: 'price_info.purchase_cost',
   inventory_operator_name: 'operator_info.inventory_operator_name',
   is_new: 'basic.is_new',
   status: 'basic.status',
-  Inventorytime: 'time_info.Inventorytime',
+  inventory_time: 'time_info.inventory_time',
   purchase_number: 'purchase_info.purchase_number',
   remarks: 'other_info.remarks',
   actions: 'system_info.operations'
@@ -853,11 +333,11 @@ const tableColumns = computed(() => {
     { key: 'memory', label: '内存' },
     { key: 'serial_number', label: '序列号' },
     { key: 'imei', label: 'IMEI' },
-    { key: 'purchase_price', label: '入库价格' },
+    { key: 'purchase_cost', label: '入库价格' },
     { key: 'inventory_operator_name', label: '入库员' },
     { key: 'is_new', label: '机况' },
     { key: 'is_preordered', label: '状态' },
-    { key: 'Inventorytime', label: '入库时间' },
+    { key: 'inventory_time', label: '入库时间' },
     { key: 'actions', label: '操作' }
   ]
 
@@ -865,20 +345,20 @@ const tableColumns = computed(() => {
   let mobileColumns: string[] = []
 
   if (width <= 480) {
-    // 小屏手机：只显示 型号、颜色、内存、序列号（无操作列）
+    // 小屏手机保留核心字段；操作统一放到双击详情弹窗底部。
     mobileColumns = ['model', 'color', 'memory', 'serial_number']
   } else if (width <= 768) {
-    // 大屏手机：显示 品牌、型号、颜色、内存、序列号、IMEI、机况（无操作列）
     mobileColumns = ['brand', 'model', 'color', 'memory', 'serial_number', 'imei', 'is_new']
   } else if (width <= 1024) {
-    // 平板：显示更多字段（无操作列）
-    mobileColumns = ['brand', 'model', 'color', 'memory', 'serial_number', 'imei', 'purchase_price', 'is_new', 'Inventorytime']
+    mobileColumns = ['brand', 'model', 'color', 'memory', 'serial_number', 'imei', 'purchase_cost', 'is_new', 'inventory_time']
   }
 
-  // 如果是移动端，只返回指定的列（不包含操作列）
   const visibleColumns = allColumns.filter(column => {
     if (column.key === 'actions') {
-      return canViewField('actions')
+      return shouldShowActionColumn(
+        canViewField('actions'),
+        [canCreate.value, canEdit.value, canDelete.value]
+      )
     }
 
     return canViewField(column.key)
@@ -903,29 +383,29 @@ const inventoryColumnWidths: Record<string, number> = {
   memory: 52,
   serial_number: 156,
   imei: 168,
-  purchase_price: 92,
+  purchase_cost: 92,
   inventory_operator_name: 82,
   is_new: 64,
   is_preordered: 72,
-  Inventorytime: 108,
+  inventory_time: 108
 }
 
 const getInventoryColumnValue = (columnKey: string, item: InventoryItem) => {
   switch (columnKey) {
-    case 'supplier_name': return item.supplier_name || '-'
-    case 'store_name': return item.store_name || '-'
-    case 'brand': return item.brand_name || item.brand || '-'
-    case 'model': return item.model_name || item.model || '-'
-    case 'color': return item.color_name || item.color || '-'
-    case 'memory': return item.memory_name || item.memory || '-'
-    case 'serial_number': return item.serial_number || '-'
-    case 'imei': return item.imei || '-'
-    case 'purchase_price': return `¥${formatNumber(item.purchase_cost || item.purchase_price || item.purchase_unit_price)}`
-    case 'inventory_operator_name': return item.inventory_operator_name || item.operator_name || '-'
-    case 'is_new': return getConditionText(item.is_new ?? 0)
-    case 'is_preordered': return getSaleStatusLabel(item)
-    case 'Inventorytime': return formatDate(item.Inventorytime || item.created_at)
-    default: return '-'
+  case 'supplier_name': return item.supplier_name || '-'
+  case 'store_name': return item.store_name || '-'
+  case 'brand': return item.brand_name || item.brand || '-'
+  case 'model': return item.model_name || item.model || '-'
+  case 'color': return item.color_name || item.color || '-'
+  case 'memory': return item.memory_name || item.memory || '-'
+  case 'serial_number': return item.serial_number || '-'
+  case 'imei': return item.imei || '-'
+  case 'purchase_cost': return `¥${formatNumber(item.purchase_cost || 0)}`
+  case 'inventory_operator_name': return item.inventory_operator_name || item.operator_name || '-'
+  case 'is_new': return getConditionText(item.is_new ?? 0)
+  case 'is_preordered': return getSaleStatusLabel(item)
+  case 'inventory_time': return formatDate(item.inventory_time || item.created_at)
+  default: return '-'
   }
 }
 
@@ -1021,7 +501,7 @@ const getInventoryColumnClass = (column: { key: string }) => {
   if (column.key === 'serial_number' || column.key === 'imei') {
     return 'identifier-column serial-imei-column'
   }
-  if (column.key === 'purchase_price') return 'price-column'
+  if (column.key === 'purchase_cost') return 'price-column'
   if (column.key === 'actions') return 'actions-column'
   return ''
 }
@@ -1039,6 +519,10 @@ const showEditModal = ref(false)
 const selectedPhoneForEdit = ref<any>(null)
 const submitting = ref(false)
 const editForm = reactive({
+  brand_id: null as number | null,
+  model_id: null as number | null,
+  color_id: null as number | null,
+  memory_id: null as number | null,
   brand: '',
   model: '',
   color: '',
@@ -1050,7 +534,7 @@ const editForm = reactive({
   store_id: null,
   condition: '',
   status: 'in_stock',
-  Inventorytime: null,
+  inventory_time: null,
   remarks: '',
   is_published: 1,  // H5上架状态，1=上架，0=下架
   // 图片上传相关
@@ -1089,9 +573,9 @@ const remoteSearchModel = async (query: string) => {
 
     // 构建搜索参数
     const params = new URLSearchParams()
-    params.append('search', query.trim())
+    params.append('name', query.trim())
     params.append('status', '1')
-    params.append('limit', '50')
+    params.append('page_size', '50')
 
     // 如果选择了品牌，添加品牌过滤
     if (editForm.brand) {
@@ -1144,6 +628,7 @@ const stats = reactive<Stats>({
   sold: 0,
   totalValue: 0
 })
+const statsAvailable = ref(false)
 
 const showStatsCards = computed(() => (
   canViewField('stats_total_phones') ||
@@ -1158,7 +643,7 @@ const statCards = computed(() => ([
     key: 'total',
     permission: 'stats_total_phones',
     label: '手机总数',
-    value: stats.total || 0,
+    value: statsAvailable.value ? stats.total : '暂无数据',
     icon: 'fas fa-mobile-alt',
     iconClass: ''
   },
@@ -1166,7 +651,7 @@ const statCards = computed(() => ([
     key: 'inStock',
     permission: 'stats_new_phones',
     label: '全新机数量',
-    value: stats.inStock || 0,
+    value: statsAvailable.value ? stats.inStock : '暂无数据',
     icon: 'fas fa-box',
     iconClass: 'in-stock'
   },
@@ -1174,7 +659,7 @@ const statCards = computed(() => ([
     key: 'sold',
     permission: 'stats_used_phones',
     label: '二手机数量',
-    value: stats.sold || 0,
+    value: statsAvailable.value ? stats.sold : '暂无数据',
     icon: 'fas fa-check-circle',
     iconClass: 'sold'
   },
@@ -1182,7 +667,7 @@ const statCards = computed(() => ([
     key: 'totalValue',
     permission: 'stats_inventory_value',
     label: '库存总值',
-    value: `¥${formatNumber(stats.totalValue || 0)}`,
+    value: statsAvailable.value ? `¥${formatNumber(stats.totalValue)}` : '暂无数据',
     icon: 'fas fa-dollar-sign',
     iconClass: ''
   }
@@ -1208,18 +693,7 @@ const filters = reactive({
 
 // CustomSearch 组件的筛选条件配置 - 与销售页面保持一致的顺序
 const searchFilters = computed(() => {
-  // 返回可用筛选器的统计信息
-  const stats = {
-    brands: brands.value.length,
-    models: models.value.length,
-    colors: colors.value.length,
-    memories: memories.value.length,
-    stores: stores.value.length,
-    suppliers: suppliers.value.length,
-    operators: operators.value.length
-  }
-
-  // 按照要求的顺序配置筛选条件：品牌、型号、颜色、内存、供应商、店铺、入库员、成色、入库日期
+  // 按照要求的顺序配置筛选条件：品牌、型号、颜色、内存、供应商、店铺、入库员、 成色、入库日期
   return [
     {
       key: 'brand',
@@ -1351,7 +825,7 @@ const getMemoryOrderWeight = (memory: string): number => {
 }
 
 // 对库存数据进行排序
-const sortInventoryData = (data: InventoryItem[]): InventoryItem[] => {
+const _sortInventoryData = (data: InventoryItem[]): InventoryItem[] => {
   if (!data || data.length === 0) return []
 
   const sorted = [...data]
@@ -1416,228 +890,6 @@ const pagination = reactive({
 })
 let basicDataWarmupTimer: ReturnType<typeof setTimeout> | null = null
 
-// 获取库存列表 - 优化权限集成
-const loadInventoryData = async (
-  additionalParams: any = {},
-  options: { showLoadingState?: boolean; useCache?: boolean } = {}
-) => {
-  const { showLoadingState = true, useCache = true } = options
-
-  if (showLoadingState) {
-    loadingStore.setLoading(true)
-  }
-  try {
-    const params: any = {
-      page: pagination.page,
-      limit: pagination.size,
-      ...additionalParams // 合并传入的额外参数
-    }
-
-    // 添加筛选条件（如果additionalParams中没有覆盖的话）
-    if (!params.supplier_id && filters.supplier_id) params.supplier_id = filters.supplier_id
-    if (!params.store_id && filters.store_id) params.store_id = filters.store_id
-    if (!params.operator_id && filters.operator_id) params.operator_id = filters.operator_id
-
-    // 品牌：filters.brand 直接存储名称
-    if (!params.brand && filters.brand) params.brand = filters.brand
-
-    // 型号：filters.model 直接存储名称
-    if (!params.model && filters.model) params.model = filters.model
-
-    // 颜色、内存直接使用值（已经是字符串）
-    if (!params.color && filters.color) params.color = filters.color
-    if (!params.memory && filters.memory) params.memory = filters.memory
-
-    // 处理 is_new 参数：确保传递布尔值或字符串
-    if (filters.is_new !== '' && filters.is_new !== null && filters.is_new !== undefined) {
-      params.is_new = filters.is_new
-    }
-
-    if (filters.date_start) params.date_start = filters.date_start
-    if (filters.date_end) params.date_end = filters.date_end
-    if (filters.search) {
-      params.search = filters.search
-    }
-
-    // 清理空值
-    Object.keys(params).forEach(key => {
-      if (params[key] === '' || params[key] === null || params[key] === undefined) {
-        delete params[key]
-      }
-    })
-
-
-
-    // 调用后端API - 使用inventory端点获取库存数据
-    const response = await api.get('/inventory/list', { params, useCache })
-
-    if (response.success) {
-      let records = []
-
-      // 根据实际的API响应结构解析数据
-      // 支持多种响应格式：
-      // 1. { data: [...] } - 单层结构
-      // 2. { data: { data: [...] } } - 双层嵌套结构
-      // 3. { data: { phones: [...] } } 或 { data: { records: [...] } }
-      const responseData = extractResponseData<any>(response)
-
-      if (Array.isArray(responseData)) {
-        // 直接是数组
-        records = responseData
-      } else if (responseData?.data && Array.isArray(responseData.data)) {
-        // 双层嵌套结构: { success, data: [...] }
-        records = responseData.data
-      } else if (responseData?.phones && Array.isArray(responseData.phones)) {
-        records = responseData.phones
-      } else if (responseData?.records && Array.isArray(responseData.records)) {
-        records = responseData.records
-      } else {
-        records = []
-      }
-
-
-      // 处理数据字段映射，确保入库价格字段正确
-      const mappedData = records.map(record => ({
-        ...record,
-        // 使用新的后端字段结构
-        purchase_price: record.purchase_price || record.purchase_cost || record.purchase_unit_price || 0,
-        price: record.price || record.sale_price || 0
-      }))
-
-      // 直接使用后端返回的顺序（按入库时间降序）
-      inventory.value = mappedData
-
-      // 根据实际数据结构获取分页信息
-      // 支持多层嵌套结构的分页信息提取
-      let totalCount = 0
-      const paginationInfo = responseData?.pagination || responseData?.data?.pagination || response.pagination
-      if (paginationInfo?.total) {
-        totalCount = parseInt(String(paginationInfo.total))
-      } else {
-        totalCount = records.length
-      }
-      pagination.total = totalCount
-
-      // 检查是否有数据
-      if (records.length === 0) {
-        // 检查是否有筛选条件（排除搜索框和分页参数）
-        const hasFilters = Object.keys(filters).some(key =>
-          filters[key] && filters[key] !== '' &&
-          key !== 'page' && key !== 'limit' && key !== 'search'
-        )
-
-        // 如果有筛选条件但没有数据，显示暂无数据提示
-        if (hasFilters) {
-          ElMessage.warning('当前筛选条件下没有找到数据，请调整筛选条件')
-        }
-        // 如果有搜索词但没有数据，不显示提示（让用户自己看到搜索结果为空）
-        else if (filters.search && filters.search.trim()) {
-          // 搜索不显示额外提示，让表格显示"暂无数据"即可
-        }
-        // 如果没有任何筛选条件且没有数据，显示库存为空提示
-        else {
-          ElMessage.info('暂无库存数据')
-        }
-      }
-
-      updateStats()
-    } else {
-      error(response.message || '获取库存数据失败')
-      inventory.value = []
-      pagination.total = 0
-    }
-  } catch (caughtError: any) {
-    logger.error('❌ 获取库存数据失败:', caughtError)
-
-    // 权限相关错误处理
-    if (caughtError.response?.status === 403) {
-      error('权限不足，无法访问库存数据')
-    } else if (caughtError.response?.status === 401) {
-      error('登录已过期，请重新登录')
-    } else {
-      error(caughtError.response?.data?.message || '获取库存数据失败')
-    }
-
-    inventory.value = []
-    pagination.total = 0
-  } finally {
-    if (showLoadingState) {
-      loadingStore.setLoading(false)
-    }
-  }
-}
-
-// 防抖函数
-let debounceTimer: NodeJS.Timeout
-const debounceLoadInventory = () => {
-  clearTimeout(debounceTimer)
-  debounceTimer = setTimeout(async () => {
-    await loadInventoryData({}, { showLoadingState: false })
-  }, 500)
-}
-
-// 立即搜索（点击搜索按钮或按回车）
-const loadInventory = async () => {
-  pagination.page = 1
-  await loadInventoryData()
-}
-
-// 检查是否有复杂筛选条件（除店铺外的筛选）
-const hasComplexFilters = computed(() => {
-  return filters.supplier_id ||
-    filters.brand ||
-    filters.model ||
-    filters.color ||
-    filters.memory ||
-    filters.status ||
-    filters.is_new ||
-    filters.search ||
-    filters.date_start ||
-    filters.date_end
-})
-
-// 更新统计数据 - 根据筛选条件选择合适的统计方式
-const updateStats = async () => {
-  try {
-    // 如果有复杂筛选条件（除店铺外），使用前端分页数据计算
-    if (hasComplexFilters.value) {
-      fallbackStatsCalculation()
-      return
-    }
-
-    // 无筛选或仅有店铺筛选时，调用后端统计接口获取准确数据
-    const params: any = {}
-    if (filters.store_id) params.store_id = filters.store_id
-
-    const response = await api.get('/inventory/stats/overview', { params })
-
-    if (response.success) {
-      const data = extractResponseData<any>(response)
-      stats.total = data.total || 0
-      stats.inStock = data.new_count || 0  // 全新机数量
-      stats.sold = data.used_count || 0    // 二手机数量
-      stats.totalValue = data.total_value || 0
-    } else {
-      // 接口失败时使用当前页数据作为备用方案
-      fallbackStatsCalculation()
-    }
-  } catch (error) {
-    logger.error('获取统计数据失败:', error)
-    // 使用当前页面数据作为备用方案
-    fallbackStatsCalculation()
-  }
-}
-
-// 备用统计计算 - 基于分页数据
-const fallbackStatsCalculation = () => {
-  stats.total = pagination.total || inventory.value.length
-  stats.inStock = inventory.value.filter(item => item.is_new === 1).length
-  stats.sold = inventory.value.filter(item => item.is_new === 0).length
-  stats.totalValue = inventory.value
-    .filter(item => item.status === 'in_stock')
-    .reduce((total, item) => total + (item.purchase_price || item.purchase_cost || 0), 0)
-}
-
 // 重置筛选
 const resetFilters = () => {
 
@@ -1689,306 +941,36 @@ const handleRefresh = async () => {
   success('数据刷新成功')
 }
 
-// 缓存键
-const CACHE_KEYS = {
-  stores: '/stores:all',
-  suppliers: '/suppliers:all',
-  brands: '/brands:all',
-  models: '/models:all',
-  colors: '/colors:all',
-  memories: '/memories:all',
-  operators: '/operators:all'
-}
+const { fetchBasicData, fetchBrandModels, handleBrandChange } = useInventoryBaseOptions({
+  refs: {
+    suppliers,
+    stores,
+    operators,
+    brands,
+    models,
+    colors,
+    memories,
+    brandModels
+  },
+  filters,
+  inventory,
+  onLoadInventory: () => loadInventoryData(),
+  onStoreLoadError: message => error(message)
+})
 
-// 加载门店数据
-const loadStores = async () => {
-  try {
-    const response = await useCachedRequest(CACHE_KEYS.stores, () =>
-      api.get('/stores?all=true'), DEFAULT_CACHE_TTL.STATIC)
-    if (response.success) {
-      let storesArray = Array.isArray(response.data) ? response.data : (response.data?.stores || response.data?.data || [])
-      stores.value = sortOptionsByOrder(storesArray)
-    }
-  } catch (error) {
-    logger.error('加载门店列表失败:', error)
-    stores.value = [{ id: 1, name: '总店', code: 'MAIN', status: 1, sort_order: 0 }]
-  }
-}
-
-// 加载供应商数据
-const loadSuppliers = async () => {
-  try {
-    const response = await useCachedRequest(CACHE_KEYS.suppliers, () =>
-      api.get('/suppliers?page=1&limit=1000'), DEFAULT_CACHE_TTL.STATIC)
-    if (response.success) {
-      let suppliersArray = response.data || []
-      if (suppliersArray.data) {
-        suppliersArray = suppliersArray.data
-      }
-      suppliers.value = sortOptionsByOrder(suppliersArray)
-    }
-  } catch (error) {
-    logger.error('加载供应商列表失败:', error)
-    suppliers.value = []
-  }
-}
-
-// 从库存数据中动态提取品牌、型号、颜色、内存选项
-const extractOptionsFromInventory = () => {
-  if (inventory.value.length > 0) {
-
-    const uniqueBrands = [...new Set(inventory.value.map(item => item.brand).filter(Boolean))]
-    const uniqueModels = [...new Set(inventory.value.map(item => item.model).filter(Boolean))]
-    const uniqueColors = [...new Set(inventory.value.map(item => item.color).filter(Boolean))]
-    const uniqueMemories = [...new Set(inventory.value.map(item => item.memory).filter(Boolean))]
-
-    // 合并库存数据和现有数据，避免覆盖API数据
-    // 将字符串转换为对象格式
-    const uniqueBrandObjects = uniqueBrands.map(name => ({ id: 0, name }))
-    const uniqueModelObjects = uniqueModels.map(name => ({ id: 0, name }))
-
-    const mergedBrands = [...brands.value, ...uniqueBrandObjects]
-    const mergedModels = [...models.value, ...uniqueModelObjects]
-    const mergedColors = [...new Set([...colors.value, ...uniqueColors])]
-    const mergedMemories = [...new Set([...memories.value, ...uniqueMemories])]
-
-    brands.value = sortOptionsByOrder(mergedBrands)
-    models.value = sortOptionsByOrder(mergedModels)
-    colors.value = sortOptionsByOrder(mergedColors)
-    memories.value = sortOptionsByOrder(mergedMemories, { labelKeys: ['size', 'capacity', 'name'] })
-
-
-    return {
-      brands: brands.value.length,
-      models: models.value.length,
-      colors: colors.value.length,
-      memories: memories.value.length
-    }
-  } else {
-    return {
-      brands: brands.value.length,
-      models: models.value.length,
-      colors: colors.value.length,
-      memories: memories.value.length
-    }
-  }
-}
-
-// 加载品牌数据（从数据库 brands 表获取所有品牌）
-const loadBrands = async () => {
-  try {
-    const response = await useCachedRequest(CACHE_KEYS.brands, () =>
-      api.get('/brands'), DEFAULT_CACHE_TTL.STATIC)
-
-    if (response.success && response.data) {
-      // 根据实际响应结构处理数据
-      let brandList = Array.isArray(response.data) ? response.data : response.data?.data || response.data?.brands || []
-
-      brands.value = sortOptionsByOrder(brandList
-        .filter(item => item && item.name)  // 过滤掉空值
-        .map(item => ({
-          id: item.id,
-          name: item.name,
-          sort_order: item.sort_order || 0
-        })))
-
-    } else {
-      brands.value = []
-    }
-  } catch (error) {
-    logger.error('❌ 加载品牌数据失败:', error)
-    brands.value = []
-  }
-}
-
-// 加载型号数据（从数据库 models 表获取所有型号）
-const loadModels = async () => {
-  try {
-    const response = await useCachedRequest(CACHE_KEYS.models, () =>
-      api.get('/models'), DEFAULT_CACHE_TTL.STATIC)
-
-    if (response.success && response.data) {
-      // 根据实际响应结构处理数据
-      let modelList = Array.isArray(response.data) ? response.data : response.data?.data || response.data?.models || []
-
-      models.value = sortOptionsByOrder(modelList
-        .filter(item => item && item.name)  // 过滤掉空值
-        .map(item => ({
-          id: item.id,
-          name: item.name,
-          sort_order: item.sort_order || 0
-        })))
-
-    } else {
-      models.value = []
-    }
-  } catch (error) {
-    logger.error('❌ 加载型号数据失败:', error)
-    models.value = []
-  }
-}
-
-// 处理品牌变化 - 当用户选择品牌时，更新对应的型号列表
-const handleBrandChange = async () => {
-  const selectedBrandName = filters.brand
-
-  if (!selectedBrandName) {
-    // 如果清空品牌，显示所有型号
-    brandModels.value = models.value
-  } else {
-    // 先通过品牌名称找到品牌ID
-    const selectedBrand = brands.value.find(b => b.name === selectedBrandName)
-    if (!selectedBrand) {
-      brandModels.value = []
-      filters.model = ''
-      loadInventory()
-      return
-    }
-
-    const brandId = selectedBrand.id
-
-    // 调用后端 API 获取该品牌下的型号
-    try {
-      const response = await api.get(`/brands/${brandId}/models`)
-
-      if (response.success && response.data) {
-        const modelList = Array.isArray(response.data) ? response.data : []
-        brandModels.value = sortOptionsByOrder(modelList
-          .filter(item => item && item.name)
-          .map(item => ({
-            id: item.id,
-            name: item.name,
-            sort_order: item.sort_order
-          })))
-
-      } else {
-        brandModels.value = []
-      }
-    } catch (error) {
-      logger.error(`❌ 获取品牌 "${selectedBrandName}" 的型号失败:`, error)
-      // 如果 API 调用失败，清空型号列表
-      brandModels.value = []
-    }
-  }
-
-  // 清空当前选择的型号（因为品牌变了，之前选择的型号可能不再有效）
-  filters.model = ''
-
-  // 重新加载库存数据
-  loadInventory()
-}
-
-// 获取品牌对应的型号列表（从库存数据中筛选）
-const fetchBrandModels = async (brandName: string) => {
-  // 这个函数已经不再使用，保留以防万一
-  if (!brandName) {
-    brandModels.value = []
-    return
-  }
-
-  try {
-
-    // 从库存数据中筛选该品牌的型号
-    if (inventory.value && inventory.value.length > 0) {
-      const brandModelSet = new Set(
-        inventory.value
-          .filter(item => item.brand === brandName)
-          .map(item => item.model)
-          .filter(Boolean)
-      )
-
-      // 将字符串数组转换为对象数组
-      brandModels.value = Array.from(brandModelSet)
-        .map(name => ({ id: 0, name }))
-      brandModels.value = sortOptionsByOrder(brandModels.value)
-    } else {
-      brandModels.value = []
-    }
-  } catch (error) {
-    logger.error('❌ 获取品牌型号失败:', error)
-    brandModels.value = []
-  }
-}
-
-// 加载操作员数据
-const loadOperators = async () => {
-  try {
-    const response = await useCachedRequest(CACHE_KEYS.operators, () =>
-      api.get('/operators'), DEFAULT_CACHE_TTL.STATIC)
-    if (response.success && response.data) {
-      operators.value = sortOptionsByOrder(response.data)
-    }
-  } catch (error) {
-    logger.error('加载操作员列表失败:', error)
-    operators.value = []
-  }
-}
-
-// 加载颜色数据（从数据库 colors 表获取所有颜色）
-const loadColors = async () => {
-  try {
-    const response = await useCachedRequest(CACHE_KEYS.colors, () =>
-      api.get('/colors'), DEFAULT_CACHE_TTL.STATIC)
-
-    if (response.success && response.data) {
-      // 根据实际响应结构处理数据
-      const colorList = Array.isArray(response.data) ? response.data : response.data.colors || []
-
-      colors.value = sortOptionsByOrder<any>(colorList
-        .filter(item => item && item.name)  // 过滤掉空值
-      )
-        .map(item => item.name)
-
-    } else {
-      colors.value = []
-    }
-  } catch (error) {
-    logger.error('❌ 加载颜色数据失败:', error)
-    colors.value = []
-  }
-}
-
-// 加载内存数据（从数据库 memories 表获取所有内存）
-const loadMemories = async () => {
-  try {
-    const response = await useCachedRequest(CACHE_KEYS.memories, () =>
-      api.get('/memories', { params: { limit: 10000 } }), DEFAULT_CACHE_TTL.STATIC)
-
-    if (response.success && response.data) {
-      // 根据实际响应结构处理数据
-      const memoryList = Array.isArray(response.data) ? response.data : response.data.memories || []
-
-      memories.value = sortOptionsByOrder<any>(memoryList, { labelKeys: ['size', 'capacity', 'name'] })
-        .filter(item => item && item.name)  // 过滤掉空值
-        .map(item => item.name)
-
-    } else {
-      memories.value = []
-    }
-  } catch (error) {
-    logger.error('❌ 加载内存数据失败:', error)
-    memories.value = []
-  }
-}
-
-// 获取基础数据 - 统一调用所有数据加载函数
-const fetchBasicData = async () => {
-  try {
-    // 加载所有筛选数据：店铺、供应商、操作员、品牌、型号、颜色、内存
-    await Promise.all([
-      loadStores(),
-      loadSuppliers(),
-      loadOperators(),
-      loadBrands(),    // 从数据库加载所有品牌
-      loadModels(),    // 从数据库加载所有型号
-      loadColors(),    // 从数据库加载所有颜色
-      loadMemories()   // 从数据库加载所有内存
-    ])
-
-  } catch (error) {
-    logger.error('❌ 获取基础数据失败:', error)
-  }
-}
+const {
+  debounceLoadInventory,
+  loadInventory,
+  loadInventoryData
+} = useInventoryData({
+  inventory,
+  filters,
+  pagination,
+  stats,
+  statsAvailable,
+  loadingStore,
+  onError: message => error(message)
+})
 
 // 分页处理
 const handlePaginationChange = (pag: { page: number; pageSize: number }) => {
@@ -2082,6 +1064,16 @@ const handleDeleteFromModal = () => {
   }
 }
 
+// 移动端详情弹窗底部的出库操作。
+const handleQuickSaleFromModal = () => {
+  if (selectedItem.value) {
+    showDetailsModal.value = false
+    setTimeout(() => {
+      quickSaleItem(selectedItem.value!)
+    }, 100)
+  }
+}
+
 // 监听编辑弹窗打开，填充表单数据（与销售页面保持一致）
 watch(showEditModal, async (newVal) => {
   if (newVal && selectedPhoneForEdit.value) {
@@ -2090,7 +1082,7 @@ watch(showEditModal, async (newVal) => {
     // 打印原始数据用于调试
 
     // 获取入库员姓名
-    const operatorName = phone.inventory_operator_name ||
+    const _operatorName = phone.inventory_operator_name ||
                          phone.purchase_operator_name ||
                          phone.operator_name ||
                          phone.created_by_name ||
@@ -2099,18 +1091,24 @@ watch(showEditModal, async (newVal) => {
 
     // 填充表单数据
     Object.assign(editForm, {
+      brand_id: phone.brand_id ?? null,
+      model_id: phone.model_id ?? null,
+      color_id: phone.color_id ?? null,
+      memory_id: phone.memory_id ?? null,
       brand: phone.brand || '',
       model: phone.model || '',
       color: phone.color || '',
       memory: phone.memory || '',
       serial_number: phone.serial_number || '',
       imei: phone.imei || '',
-      purchase_cost: (phone.purchase_cost || phone.cost || phone.purchase_price) ? Math.round(Number(phone.purchase_cost || phone.cost || phone.purchase_price || 0)) : null,
+      purchase_cost: phone.purchase_cost === null || phone.purchase_cost === undefined
+        ? null
+        : Math.round(Number(phone.purchase_cost)),
       supplier_id: phone.supplier_id || null,
       store_id: phone.store_id || null,
       condition: isNewInventoryValue(phone.is_new) ? '全新' : '二手',
       status: normalizePhoneStatus(phone.status) || 'in_stock',
-      Inventorytime: toDateInputValue(phone.Inventorytime || phone.created_at),
+      inventory_time: toDateInputValue(phone.inventory_time),
       remarks: phone.remarks || '',
       is_published: phone.is_published ?? 1  // H5上架状态，默认1（上架）
     })
@@ -2256,20 +1254,25 @@ const submitEdit = async () => {
 
     // 构建更新数据
     const updateData = {
-      brand: editForm.brand || '',
-      model: editForm.model || '',
-      color: editForm.color || '',
-      memory: editForm.memory || '',
-      serial_number: editForm.serial_number || '',
-      imei: editForm.imei || '',
-      purchase_cost: editForm.purchase_cost !== null && editForm.purchase_cost !== undefined && editForm.purchase_cost !== '' ?
-        Math.round(Number(editForm.purchase_cost)) : null,
-      supplier_id: editForm.supplier_id || null,
-      store_id: editForm.store_id || null,
-      condition: editForm.condition === '全新' ? 'new' : 'used',
-      status: editForm.status || 'in_stock',
-      Inventorytime: editForm.Inventorytime ? `${editForm.Inventorytime} 12:00:00` : null,
-      remarks: editForm.remarks || ''
+      ...toCanonicalPhoneUpdatePayload({
+        brand_id: editForm.brand_id,
+        model_id: editForm.model_id,
+        color_id: editForm.color_id,
+        memory_id: editForm.memory_id,
+        brand: editForm.brand,
+        model: editForm.model,
+        color: editForm.color,
+        memory: editForm.memory,
+        serial_number: editForm.serial_number,
+        imei: editForm.imei,
+        purchase_cost: editForm.purchase_cost,
+        supplier_id: editForm.supplier_id,
+        store_id: editForm.store_id,
+        condition: editForm.condition,
+        status: editForm.status || 'in_stock',
+        inventory_time: editForm.inventory_time,
+        remarks: editForm.remarks
+      })
     }
 
 
@@ -2298,6 +1301,10 @@ const closeEditModal = () => {
   editBrandModels.value = []
   // 重置表单数据
   Object.assign(editForm, {
+    brand_id: null,
+    model_id: null,
+    color_id: null,
+    memory_id: null,
     brand: '',
     model: '',
     color: '',
@@ -2309,7 +1316,7 @@ const closeEditModal = () => {
     store_id: null,
     condition: '',
     status: 'in_stock',
-    Inventorytime: null,
+    inventory_time: null,
     remarks: '',
     is_published: 1
   })
@@ -2425,11 +1432,11 @@ const quickSaleItem = (item: InventoryItem) => {
 }
 
 // 工具方法
-const getStatusClass = (status: string) => {
+const _getStatusClass = (status: string) => {
   return getPhoneStatusClass(status)
 }
 
-const getStatusText = (status: string) => {
+const _getStatusText = (status: string) => {
   return getPhoneStatusLabel(status)
 }
 
@@ -2580,7 +1587,7 @@ const exportInventory = async () => {
 
 
 // GlobalSearch 事件处理方法（增强版 - 智能识别搜索内容）
-const handleGlobalSearch = async (query: string, filterValues: Record<string, any>) => {
+const _handleGlobalSearch = async (query: string, filterValues: Record<string, any>) => {
 
   // 清空当前页码，从第1页开始显示结果
   pagination.page = 1
@@ -2595,7 +1602,7 @@ const handleGlobalSearch = async (query: string, filterValues: Record<string, an
   // 构建API参数 - 包含所有筛选条件
   const apiParams: any = {
     page: pagination.page,
-    limit: pagination.size
+    page_size: pagination.size
   }
 
   // 添加品牌筛选
@@ -2975,7 +1982,7 @@ const getRemainingSearchQuery = (query: string, filters: Record<string, any>) =>
 }
 
 // 切换高级搜索显示状态
-const toggleAdvancedSearch = () => {
+const _toggleAdvancedSearch = () => {
   // 如果在桌面端，切换桌面端搜索状态
   if (!mobileDetection.isMobile) {
     showDesktopSearch.value = !showDesktopSearch.value
@@ -3000,7 +2007,7 @@ const handleGlobalReset = () => {
 }
 
 // 实时搜索输入处理方法（带防抖）
-const handleSimpleSearchInput = () => {
+const _handleSimpleSearchInput = () => {
   // 清除之前的防抖定时器
   if (searchDebounceTimer) {
     clearTimeout(searchDebounceTimer)
@@ -3038,7 +2045,7 @@ const handleSimpleSearch = async () => {
     // 构建API参数
     const apiParams: any = {
       page: pagination.page,
-      limit: pagination.size
+      page_size: pagination.size
     }
 
     // 添加识别的筛选条件
@@ -3060,7 +2067,7 @@ const handleSimpleSearch = async () => {
     // 通用搜索
     const apiParams = {
       page: pagination.page,
-      limit: pagination.size,
+      page_size: pagination.size,
       search: simpleSearchQuery.value.trim()
     }
 
@@ -3076,7 +2083,7 @@ const clearSimpleSearch = () => {
   handleGlobalReset()
 }
 
-const handleFilterChange = (key: string, value: any) => {
+const _handleFilterChange = (key: string, value: any) => {
 
   // 更新对应的筛选值
   if (key === 'batch') {
@@ -3110,7 +2117,7 @@ const handleFilterChange = (key: string, value: any) => {
 }
 
 // 移动端筛选方法
-const resetMobileFilters = () => {
+const _resetMobileFilters = () => {
 
   // 重置所有筛选条件
   Object.assign(filters, {
@@ -3139,7 +2146,7 @@ const resetMobileFilters = () => {
   showAdvancedSearch.value = false
 }
 
-const applyMobileFilters = () => {
+const _applyMobileFilters = () => {
 
   // 重置分页并重新加载数据
   pagination.page = 1
@@ -3149,13 +2156,13 @@ const applyMobileFilters = () => {
   showAdvancedSearch.value = false
 }
 
-const handleDateRangeChange = () => {
+const _handleDateRangeChange = () => {
   // 日期变化后自动触发搜索
   pagination.page = 1
   loadInventoryData()
 }
 
-const handleQuickSearch = () => {
+const _handleQuickSearch = () => {
 
   if (!filters.search || !filters.search.trim()) {
     // 如果搜索框为空，重置搜索
@@ -3172,7 +2179,7 @@ const handleQuickSearch = () => {
   // 构建API参数
   const apiParams = {
     page: pagination.page,
-    limit: pagination.size,
+    page_size: pagination.size,
     search: searchQuery
   }
 
@@ -3260,11 +2267,11 @@ onUnmounted(() => {
 })
 
 // 添加缺失的方法
-const getConditionTagType = (isNew: number | undefined) => {
+const _getConditionTagType = (isNew: number | undefined) => {
   return isNew === 1 ? 'success' : 'warning'
 }
 
-const handleSelect = (item: InventoryItem) => {
+const _handleSelect = (item: InventoryItem) => {
   // 安全检查：确保不是误调用
   if (!item || !item.id) {
     return
@@ -3287,7 +2294,7 @@ const handleSelect = (item: InventoryItem) => {
 }
 
 .inventory-edit-form-shell {
-  background: #f8f9fa;
+  background: var(--tf-color-surface-muted);
   border-radius: 12px;
   padding: 20px;
 }
@@ -3377,13 +2384,13 @@ const handleSelect = (item: InventoryItem) => {
 .inventory-edit-dialog .el-input-number .el-input__wrapper {
   min-height: 42px;
   border-radius: 12px;
-  box-shadow: 0 0 0 1px #dcdfe6 inset;
+  box-shadow: 0 0 0 1px var(--color-border) inset;
 }
 
 .inventory-edit-dialog .el-select__wrapper.is-focused,
 .inventory-edit-dialog .el-input__wrapper.is-focus,
 .inventory-edit-dialog .el-input-number .el-input__wrapper.is-focus {
-  box-shadow: 0 0 0 1px #7c3aed inset;
+  box-shadow: 0 0 0 1px var(--tf-color-violet-600) inset;
 }
 
 /* 隐藏入库时间日期选择器的图标 */
@@ -3426,19 +2433,19 @@ const handleSelect = (item: InventoryItem) => {
 
 .inventory-edit-dialog .el-dialog__body {
   padding: 28px !important;
-  background: #ffffff !important;
+  background: var(--color-bg-white) !important;
 }
 
 .inventory-edit-dialog .el-dialog__footer {
   padding: 18px 28px 28px !important;
-  background: #ffffff !important;
+  background: var(--color-bg-white) !important;
   border-top: 1px solid rgba(15, 23, 42, 0.06) !important;
 }
 
 .inventory-detail-dialog .el-dialog__body,
 .inventory-detail-dialog .el-dialog__footer {
   padding: 0 !important;
-  background: #ffffff !important;
+  background: var(--color-bg-white) !important;
 }
 
 @media (max-width: 768px) {
@@ -3614,14 +2621,14 @@ const handleSelect = (item: InventoryItem) => {
 <style scoped>
 .inventory-view {
   padding: 24px;
-  background: #f5f7fa;
+  background: var(--admin-page-bg);
   min-height: 100vh;
 }
 
 /* 模态框头部 */
 .inventory-modal-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: var(--tf-button-primary-bg);
+  color: var(--tf-button-primary-color);
   padding: 0;
 }
 
@@ -3699,9 +2706,9 @@ const handleSelect = (item: InventoryItem) => {
 
 /* 详情卡片 */
 .detail-card {
-  background: #f8fafc;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
+  background: var(--admin-table-panel-bg);
+  border-radius: var(--admin-panel-radius);
+  border: 1px solid var(--admin-table-panel-border);
   overflow: hidden;
   transition: all 0.2s ease;
 }
@@ -3712,9 +2719,9 @@ const handleSelect = (item: InventoryItem) => {
 }
 
 .card-header {
-  background: white;
+  background: var(--admin-stat-card-bg);
   padding: 16px 20px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--admin-table-panel-border);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -3723,24 +2730,24 @@ const handleSelect = (item: InventoryItem) => {
 .card-icon {
   width: 36px;
   height: 36px;
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  background: var(--tf-button-primary-bg);
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: var(--tf-button-primary-color);
   font-size: 14px;
 }
 
 .card-icon.price-icon {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: var(--tf-button-success-bg);
 }
 
 .card-title {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--admin-section-title-color);
 }
 
 .card-content {
@@ -3754,13 +2761,13 @@ const handleSelect = (item: InventoryItem) => {
   border-spacing: 0;
   border-radius: 8px;
   overflow: hidden;
-  background: white;
-  border: 1px solid #e2e8f0;
+  background: var(--admin-data-table-bg);
+  border: 1px solid var(--admin-data-table-container-border);
 }
 
 .table-row {
   display: flex;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--admin-data-table-cell-border);
 }
 
 .table-row:last-child {
@@ -3768,7 +2775,7 @@ const handleSelect = (item: InventoryItem) => {
 }
 
 .table-row.full-width-row {
-  background: #f8fafc;
+  background: var(--admin-table-panel-bg);
 }
 
 .table-cell {
@@ -3782,9 +2789,9 @@ const handleSelect = (item: InventoryItem) => {
 
 .label-cell {
   font-weight: 600;
-  color: #374151;
-  background: #f9fafb;
-  border-right: 1px solid #e2e8f0;
+  color: var(--admin-data-table-cell-color);
+  background: var(--admin-table-panel-bg);
+  border-right: 1px solid var(--admin-data-table-cell-border);
   min-width: 120px;
   max-width: 120px;
   text-transform: uppercase;
@@ -3793,24 +2800,24 @@ const handleSelect = (item: InventoryItem) => {
 }
 
 .value-cell {
-  color: #1f2937;
+  color: var(--admin-data-table-cell-color);
   font-weight: 500;
-  background: white;
+  background: var(--admin-data-table-bg);
   word-break: break-word;
 }
 
 .value-cell.price-cell {
-  color: #10b981;
+  color: var(--tf-button-success-soft-color);
   font-weight: 700;
   font-size: 16px;
 }
 
 .full-width-row .label-cell {
-  background: #f1f5f9;
+  background: var(--tf-button-neutral-hover-bg);
 }
 
 .full-width-row .value-cell {
-  background: #f8fafc;
+  background: var(--admin-table-panel-bg);
 }
 
 /* 保留原来的网格样式作为备用 */
@@ -3833,14 +2840,14 @@ const handleSelect = (item: InventoryItem) => {
 .info-label {
   font-size: 12px;
   font-weight: 500;
-  color: #6b7280;
+  color: var(--admin-record-count-color);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .info-value {
   font-size: 14px;
-  color: #1f2937;
+  color: var(--admin-data-table-cell-color);
   font-weight: 500;
 }
 
@@ -3850,21 +2857,21 @@ const handleSelect = (item: InventoryItem) => {
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  background: white;
+  background: var(--admin-data-table-bg);
   border-radius: 8px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--admin-data-table-container-border);
 }
 
 .price-label {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--admin-record-count-color);
   font-weight: 500;
 }
 
 .price-value {
   font-size: 20px;
   font-weight: 700;
-  color: #10b981;
+  color: var(--tf-button-success-soft-color);
 }
 
 /* 备注卡片 */
@@ -3873,20 +2880,20 @@ const handleSelect = (item: InventoryItem) => {
 }
 
 .remarks-text {
-  background: white;
+  background: var(--admin-data-table-bg);
   padding: 16px;
   border-radius: 8px;
-  border-left: 4px solid #3b82f6;
+  border-left: 4px solid var(--tf-button-primary-border);
   font-size: 14px;
   line-height: 1.6;
-  color: #374151;
+  color: var(--admin-data-table-cell-color);
   font-style: italic;
 }
 
 /* 模态框底部 */
 .inventory-modal-footer {
-  background: #f8fafc;
-  border-top: 1px solid #e2e8f0;
+  background: var(--admin-table-panel-bg);
+  border-top: 1px solid var(--admin-table-panel-border);
   padding: 20px 32px;
 }
 
@@ -3930,10 +2937,10 @@ const handleSelect = (item: InventoryItem) => {
   .table-row {
     flex-direction: column;
     border-bottom: none;
-    background: white;
+    background: var(--admin-data-table-bg);
     margin-bottom: 8px;
     border-radius: 6px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--admin-data-table-container-border);
   }
 
   .table-row:last-child {
@@ -3941,13 +2948,13 @@ const handleSelect = (item: InventoryItem) => {
   }
 
   .table-row.full-width-row {
-    background: white;
+    background: var(--admin-data-table-bg);
   }
 
   .table-cell {
     padding: 10px 12px;
     min-height: auto;
-    border-bottom: 1px solid #f3f4f6;
+    border-bottom: 1px solid var(--admin-data-table-cell-border);
   }
 
   .table-cell:last-child {
@@ -3955,7 +2962,7 @@ const handleSelect = (item: InventoryItem) => {
   }
 
   .label-cell {
-    background: #f8fafc;
+    background: var(--admin-table-panel-bg);
     border-right: none;
     min-width: auto;
     max-width: none;
@@ -3963,12 +2970,12 @@ const handleSelect = (item: InventoryItem) => {
   }
 
   .value-cell {
-    background: white;
+    background: var(--admin-data-table-bg);
   }
 
   .full-width-row .label-cell,
   .full-width-row .value-cell {
-    background: white;
+    background: var(--admin-data-table-bg);
   }
 
   .card-header {
@@ -3990,356 +2997,49 @@ const handleSelect = (item: InventoryItem) => {
 
 }
 
-/* ===== 桌面端搜索样式 ===== */
-.desktop-search-container {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  margin-bottom: 20px;
-  overflow: hidden;
-}
-
-/* 简化搜索栏样式 */
-.simple-search-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 8px 8px 0 0;
-  cursor: pointer;
-  user-select: none;
-  transition: all 0.3s ease;
-}
-
-.simple-search-bar:hover {
-  background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
-}
-
-.simple-search-bar .search-input-wrapper {
-  position: relative;
-  flex: 1;
-  max-width: 500px;
-  cursor: text;
-}
-
-.simple-search-bar .search-icon {
-  position: absolute;
-  left: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #6c757d;
-  font-size: 16px;
-  z-index: 2;
-  pointer-events: none;
-}
-
-.simple-search-input {
-  width: 100%;
-  height: 44px;
-  padding: 0 48px 0 44px;
-  border: none;
-  border-radius: 22px;
-  font-size: 15px;
-  background: rgba(255, 255, 255, 0.95);
-  color: #2c3e50;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.simple-search-input:focus {
-  outline: none;
-  background: white;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  transform: translateY(-1px);
-}
-
-.simple-search-input::placeholder {
-  color: #6c757d;
-  font-style: italic;
-}
-
-.search-clear-btn {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  color: var(--tf-button-tool-color);
-  font-size: 14px;
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 50%;
-  transition: all 0.2s ease;
-  z-index: 2;
-}
-
-.search-clear-btn:hover {
-  background: var(--tf-button-tooltip-bg);
-  color: var(--tf-button-neutral-hover-color);
-}
-
-.expand-indicator {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: white;
-  border-radius: 20px;
-  font-size: 13px;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  white-space: nowrap;
-}
-
-.expand-indicator:hover {
-  background: rgba(255, 255, 255, 0.3);
-  border-color: rgba(255, 255, 255, 0.4);
-}
-
-.expand-indicator i {
-  font-size: 12px;
-  transition: transform 0.3s ease;
-}
-
-/* 高级筛选内容样式 */
-.advanced-search-content {
-  background: white;
-  border-radius: 0 0 8px 8px;
-  border-top: 1px solid #e8ecef;
-  overflow: hidden;
-  animation: slideDown 0.3s ease-out;
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    max-height: 0;
-  }
-  to {
-    opacity: 1;
-    max-height: 600px;
-  }
-}
-
-.advanced-search-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 20px 12px;
-  background: #f8f9fa;
-  border-bottom: 1px solid #e8ecef;
-}
-
-.advanced-search-header h3 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #2c3e50;
-}
-
-.close-advanced {
-  background: none;
-  border: none;
-  color: #6c757d;
-  font-size: 16px;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: all 0.2s ease;
-}
-
-.close-advanced:hover {
-  background: rgba(0, 0, 0, 0.1);
-  color: #495057;
-}
-
-.advanced-search-body {
-  padding: 20px;
-}
-
-/* 响应式调整 */
-@media (max-width: 768px) {
-  .simple-search-bar {
-    flex-direction: column;
-    gap: 12px;
-    padding: 12px 16px;
-  }
-
-  .simple-search-bar .search-input-wrapper {
-    max-width: 100%;
-  }
-
-  .expand-indicator {
-    width: 100%;
-    justify-content: center;
-    font-size: 12px;
-    padding: 8px 12px;
-  }
-
-  .advanced-search-body {
-    padding: 16px;
-  }
-}
-@media (max-width: 480px) {
-  .simple-search-input {
-    height: 40px;
-    font-size: 14px;
-    padding: 0 40px 0 38px;
-  }
-
-  .expand-indicator {
-    font-size: 11px;
-    padding: 6px 10px;
-  }
-
-  .advanced-search-header {
-    padding: 12px 16px 8px;
-  }
-
-  .advanced-search-body {
-    padding: 12px;
-  }
-}
-
-.desktop-search-bar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.search-input-wrapper {
-  position: relative;
-  flex: 1;
-  max-width: 400px;
-}
-
-.search-icon {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #909399;
-  z-index: 1;
-}
-
-.desktop-search-input {
-  width: 100%;
-  height: 40px;
-  padding: 0 40px 0 36px;
-  border: 1px solid #dcdfe6;
-  border-radius: 20px;
-  font-size: 14px;
-  background: #f5f7fa;
-  transition: all 0.3s;
-}
-
-.desktop-search-input:focus {
-  outline: none;
-  border-color: #409eff;
-  background: white;
-}
-
-.clear-btn {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  color: var(--tf-button-tool-color);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-}
-
-.clear-btn:hover {
-  background: var(--tf-button-neutral-hover-bg);
-  color: var(--tf-button-neutral-hover-color);
-}
-
-.expand-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border: 1px solid var(--tf-button-neutral-border);
-  border-radius: 20px;
-  background: var(--tf-button-neutral-bg);
-  color: var(--tf-button-tool-color);
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s;
-}
-
-.expand-btn:hover {
-  border-color: var(--tf-button-primary-soft-hover-border);
-  color: var(--tf-button-primary-soft-hover-color);
-}
-
-.expand-btn.active {
-  background: var(--tf-button-primary-hover-bg);
-  border-color: var(--tf-button-primary-soft-hover-border);
-  color: var(--tf-button-on-color);
-}
-
-.desktop-advanced-search {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid #e8ecef;
-}
-
 .user-info-section {
   margin-right: 16px;
 }
 
 .stat-icon.in-stock {
-  background: linear-gradient(135deg, #28a745, #20c997);
+  background: var(--tf-button-success-bg);
 }
 
 .stat-icon.sold {
-  background: linear-gradient(135deg, #dc3545, #fd7e14);
+  background: var(--tf-button-danger-bg);
 }
 
 /* 为每个统计卡片设置不同的图标颜色和顶部边框 */
 .stat-card:nth-child(1) {
-  --card-accent: linear-gradient(90deg, #667eea, #764ba2);
+  --card-accent: var(--tf-button-primary-bg);
 }
 
 .stat-card:nth-child(1) .stat-icon {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: var(--tf-button-primary-bg);
 }
 
 .stat-card:nth-child(2) {
-  --card-accent: linear-gradient(90deg, #28a745, #20c997);
+  --card-accent: var(--tf-button-success-bg);
 }
 
 .stat-card:nth-child(2) .stat-icon {
-  background: linear-gradient(135deg, #28a745, #20c997);
+  background: var(--tf-button-success-bg);
 }
 
 .stat-card:nth-child(3) {
-  --card-accent: linear-gradient(90deg, #ffc107, #ff9800);
+  --card-accent: var(--tf-button-warning-bg);
 }
 
 .stat-card:nth-child(3) .stat-icon {
-  background: linear-gradient(135deg, #ffc107, #ff9800);
+  background: var(--tf-button-warning-bg);
 }
 
 .stat-card:nth-child(4) {
-  --card-accent: linear-gradient(90deg, #17a2b8, #6f42c1);
+  --card-accent: var(--tf-button-transfer-bg);
 }
 
 .stat-card:nth-child(4) .stat-icon {
-  background: linear-gradient(135deg, #17a2b8, #6f42c1);
+  background: var(--tf-button-transfer-bg);
 }
 
 /* 基础表单组样式 */
@@ -4358,7 +3058,7 @@ const handleSelect = (item: InventoryItem) => {
   left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  color: #6c757d;
+  color: var(--admin-record-count-color);
   font-size: 14px;
   z-index: 1;
 }
@@ -4366,18 +3066,18 @@ const handleSelect = (item: InventoryItem) => {
 .form-control {
   width: 100%;
   padding: 10px 12px;
-  border: 2px solid #e8ecef;
+  border: 2px solid var(--tf-button-neutral-border);
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.3s ease;
-  background: #f8f9fa;
+  background: var(--tf-button-neutral-hover-bg);
 }
 
 .form-control:focus {
   outline: none;
-  border-color: #667eea;
-  background: white;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: var(--tf-button-primary-border);
+  background: var(--tf-button-neutral-bg);
+  box-shadow: 0 0 0 3px var(--tf-button-primary-soft-bg);
 }
 
 .form-actions {
@@ -4390,7 +3090,7 @@ const handleSelect = (item: InventoryItem) => {
   font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
   font-size: inherit;
   font-weight: 600;
-  color: #495057;
+  color: var(--admin-data-table-cell-color);
   letter-spacing: 0;
   background: transparent;
   padding: 0;
@@ -4398,38 +3098,12 @@ const handleSelect = (item: InventoryItem) => {
   border-radius: 0;
   display: inline;
   min-width: 0;
-  text-align: center !important;
+  text-align: center;
 }
 
 .imei:hover {
   background: transparent;
   transform: none;
-}
-
-/* 状态徽章样式 - 参考品牌页面 */
-.status-badge {
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.status-badge.in-stock {
-  background: #d4edda;
-  color: #155724;
-}
-
-.status-badge.sold {
-  background: #fff2e8;
-  color: #fa8c16;
-}
-
-.status-badge.reserved {
-  background: #d1ecf1;
-  color: #0c5460;
 }
 
 /* 成色状态样式 */
@@ -4442,72 +3116,76 @@ const handleSelect = (item: InventoryItem) => {
 }
 
 .condition-new {
-  background-color: #f0f9ff;
-  color: #1e40af;
-  border: 1px solid #bfdbfe;
+  background-color: var(--tf-button-success-soft-bg);
+  color: var(--tf-button-success-soft-color);
+  border: 1px solid var(--tf-button-success-soft-border);
 }
 
 .condition-used {
-  background-color: #fefce8;
-  color: #a16207;
-  border: 1px solid #fde047;
+  background-color: var(--tf-button-warning-soft-bg);
+  color: var(--tf-button-warning-soft-color);
+  border: 1px solid var(--tf-button-warning-soft-border);
 }
 
 /* 状态样式 - 参考综合查询页面 */
 .status-badge {
   display: inline-flex;
   align-items: center;
-  padding: 5px 12px !important;
-  border-radius: 12px !important;
-  font-size: 12px !important;
-  font-weight: 700 !important;
+  padding: 5px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
   letter-spacing: 0.3px;
-  color: #ffffff !important;
 }
 
 .status-badge.in-stock {
-  background: #28a745 !important;
-  color: #ffffff !important;
+  background: var(--tf-status-sale-available-bg);
+  color: var(--tf-status-sale-available-color);
+  border-color: var(--tf-status-sale-available-border);
 }
 
 .status-badge.sold {
-  background: #6c757d !important;
-  color: #ffffff !important;
+  background: var(--tf-status-sold-bg);
+  color: var(--tf-status-sold-color);
+  border-color: var(--tf-status-sold-border);
 }
 
 .status-badge.reserved {
-  background: #17a2b8 !important;
-  color: #ffffff !important;
+  background: var(--tf-status-reserved-bg);
+  color: var(--tf-status-reserved-color);
+  border-color: var(--tf-status-reserved-border);
 }
 
 .status-badge.repair {
-  background: #f59e0b !important;
-  color: #ffffff !important;
+  background: var(--tf-status-repair-bg);
+  color: var(--tf-status-repair-color);
+  border-color: var(--tf-status-repair-border);
 }
 
 .status-badge.rented {
-  color: #0f766e;
-  background: #ccfbf1;
-  border-color: #5eead4;
+  background: var(--tf-status-rented-bg);
+  color: var(--tf-status-rented-color);
+  border-color: var(--tf-status-rented-border);
 }
 
 .status-badge.lost {
-  background: #dc3545 !important;
-  color: #ffffff !important;
+  background: var(--tf-status-lost-bg);
+  color: var(--tf-status-lost-color);
+  border-color: var(--tf-status-lost-border);
 }
 
 /* 价格样式 */
 .price {
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--admin-data-table-cell-color);
 }
 
 .price.positive {
-  color: #28a745;
+  color: var(--tf-button-success-soft-color);
 }
 
 .price.negative {
-  color: #dc3545;
+  color: var(--tf-button-danger-soft-color);
 }
 
 /* ===== 权限加载中样式 ===== */
@@ -4517,16 +3195,16 @@ const handleSelect = (item: InventoryItem) => {
   align-items: center;
   justify-content: center;
   min-height: 60vh;
-  background: #f8f9fa;
-  border-radius: 12px;
+  background: var(--admin-table-panel-bg);
+  border-radius: var(--admin-panel-radius);
   margin: 20px 0;
 }
 
 .loading-spinner {
   width: 40px;
   height: 40px;
-  border: 4px solid #e9ecef;
-  border-top: 4px solid #667eea;
+  border: 4px solid var(--tf-button-disabled-bg);
+  border-top: 4px solid var(--tf-button-primary-bg);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 20px;
@@ -4544,28 +3222,23 @@ const handleSelect = (item: InventoryItem) => {
   justify-content: center;
   width: 32px;
   height: 32px;
-  background: #f3f4f6;
-  border: 1px solid #d1d5db;
+  background: var(--tf-button-disabled-bg);
+  border: 1px solid var(--tf-button-disabled-border);
   border-radius: 6px;
-  color: #9ca3af;
+  color: var(--tf-button-disabled-color);
   cursor: not-allowed;
   font-size: 14px;
 }
 
 .permission-disabled:hover {
-  background: #e5e7eb;
-  border-color: #9ca3af;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  background: var(--tf-button-neutral-hover-bg);
+  border-color: var(--tf-button-neutral-border);
 }
 
 /* 空状态样式 */
 .empty-state {
   text-align: center;
-  color: #6c757d;
+  color: var(--admin-record-count-color);
   padding: 60px 20px;
 }
 
@@ -4589,26 +3262,6 @@ const handleSelect = (item: InventoryItem) => {
   width: 100%;
   padding: 6px 0;
 }
-
-/* 条件样式 */
-.condition-badge {
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
-  display: inline-block;
-}
-
-.condition-new {
-  background: #d4edda;
-  color: #155724;
-}
-
-.condition-used {
-  background: #f8d7da;
-  color: #721c24;
-}
-
 
 .text-center {
   text-align: center;
@@ -4639,14 +3292,14 @@ const handleSelect = (item: InventoryItem) => {
   right: 36px;
   top: 50%;
   transform: translateY(-50%);
-  color: #6c757d;
+  color: var(--tf-color-muted);
   cursor: pointer;
   font-size: 12px;
   z-index: 2;
 }
 
 .clear-icon:hover {
-  color: #dc3545;
+  color: var(--danger-color);
 }
 
 .dropdown-icon {
@@ -4654,14 +3307,14 @@ const handleSelect = (item: InventoryItem) => {
   right: 12px;
   top: 50%;
   transform: translateY(-50%);
-  color: #6c757d;
+  color: var(--tf-color-muted);
   cursor: pointer;
   font-size: 12px;
   z-index: 2;
 }
 
 .dropdown-icon:hover {
-  color: #495057;
+  color: var(--tf-color-gray-bootstrap-700);
 }
 
 .dropdown-list {
@@ -4670,7 +3323,7 @@ const handleSelect = (item: InventoryItem) => {
   left: 0;
   right: 0;
   background: white;
-  border: 1px solid #dee2e6;
+  border: 1px solid var(--tf-color-border-subtle);
   border-top: none;
   border-radius: 0 0 8px 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -4685,9 +3338,9 @@ const handleSelect = (item: InventoryItem) => {
 .dropdown-item {
   padding: 10px 12px;
   cursor: pointer;
-  border-bottom: 1px solid #f8f9fa;
+  border-bottom: 1px solid var(--tf-color-surface-muted);
   font-size: 14px;
-  color: #495057;
+  color: var(--tf-color-gray-bootstrap-700);
   transition: all 0.2s ease;
 }
 
@@ -4697,18 +3350,18 @@ const handleSelect = (item: InventoryItem) => {
 
 .dropdown-item:hover,
 .dropdown-item.highlighted {
-  background: #667eea;
+  background: var(--tf-color-indigo-brand);
   color: white;
 }
 
 .dropdown-item.new-item {
-  background: #f8f9fa;
-  color: #667eea;
+  background: var(--tf-color-surface-muted);
+  color: var(--tf-color-indigo-brand);
   font-weight: 500;
 }
 
 .dropdown-item.new-item:hover {
-  background: #e7f3ff;
+  background: var(--tf-color-blue-pale);
 }
 
 .dropdown-item i {
@@ -4753,192 +3406,6 @@ const handleSelect = (item: InventoryItem) => {
   }
 }
 
-/* ===== 移动端搜索样式 ===== */
-.mobile-search-container {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  margin-bottom: 16px;
-  padding: 16px;
-}
-
-.mobile-search-bar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.mobile-search-input {
-  flex: 1;
-  height: 40px;
-  border: 1px solid #dcdfe6;
-  border-radius: 20px;
-  padding: 0 16px 0 40px;
-  font-size: 14px;
-  outline: none;
-  transition: all 0.3s ease;
-}
-
-.mobile-search-input:focus {
-  border-color: #409eff;
-  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2);
-}
-
-.mobile-advanced-search {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid #ebeef5;
-}
-
-.simple-filters {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.filter-row {
-  display: flex;
-  gap: 12px;
-}
-
-.filter-select {
-  flex: 1;
-  height: 36px;
-  border: 1px solid #dcdfe6;
-  border-radius: 6px;
-  padding: 0 12px;
-  font-size: 14px;
-  background: white;
-  outline: none;
-  transition: all 0.3s ease;
-}
-
-.filter-select:focus {
-  border-color: #409eff;
-  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2);
-}
-
-/* 移动端筛选操作按钮 */
-.filter-actions {
-  display: flex;
-  gap: 12px;
-  margin-top: 16px;
-  padding: 0 4px;
-}
-
-.filter-btn {
-  flex: 1;
-  height: 40px;
-  border: none;
-  border-radius: 20px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-
-  i {
-    font-size: 12px;
-  }
-}
-
-.filter-btn-reset {
-  background: var(--tf-button-neutral-bg);
-  color: var(--tf-button-tool-color);
-  border: 1px solid var(--tf-button-neutral-border);
-
-  &:hover {
-    background: var(--tf-button-neutral-hover-bg);
-    color: var(--tf-button-neutral-hover-color);
-    transform: translateY(-1px);
-  }
-}
-
-.filter-btn-apply {
-  background: var(--tf-button-primary-bg);
-  color: var(--tf-button-on-color);
-
-  &:hover {
-    background: var(--tf-button-primary-hover-bg);
-    transform: translateY(-1px);
-    box-shadow: var(--tf-button-primary-shadow);
-  }
-}
-
-@media (max-width: 768px) {
-  /* 移动端搜索框样式 */
-  .mobile-search-bar .search-input-wrapper {
-    position: relative;
-    flex: 1;
-  }
-
-  .mobile-search-bar .search-icon {
-    position: absolute;
-    left: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #909399;
-    z-index: 1;
-  }
-
-  .mobile-search-bar .clear-btn {
-    position: absolute;
-    right: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    color: var(--tf-button-tool-color);
-    cursor: pointer;
-    padding: 4px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1;
-  }
-
-  .mobile-search-bar .clear-btn:hover {
-    color: var(--tf-button-primary-soft-hover-color);
-    background: var(--tf-button-primary-hover-bg);
-  }
-
-  .mobile-search-bar .expand-btn {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 16px 32px;
-    border: 1px solid var(--tf-button-neutral-border);
-    border-radius: 8px;
-    background: var(--tf-button-neutral-bg);
-    color: var(--tf-button-tool-color);
-    font-size: 14px;
-    cursor: pointer;
-    transition: all 0.3s;
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-
-  .mobile-search-bar .expand-btn:hover {
-    border-color: var(--tf-button-primary-soft-hover-border);
-    color: var(--tf-button-primary-soft-hover-color);
-    background: var(--tf-button-primary-soft-hover-bg);
-  }
-
-  .mobile-search-bar .expand-btn.active {
-    background: var(--tf-button-primary-hover-bg);
-    color: var(--tf-button-on-color);
-    border-color: var(--tf-button-primary-soft-hover-border);
-  }
-
-  .mobile-search-bar .expand-btn i {
-    font-size: 12px;
-  }
-}
-
 /* ===== 移动端卡片样式 ===== */
 .mobile-cards-container {
   padding: 0;
@@ -4947,7 +3414,7 @@ const handleSelect = (item: InventoryItem) => {
 .mobile-empty-state {
   text-align: center;
   padding: 60px 20px;
-  color: #6c757d;
+  color: var(--admin-record-count-color);
 
   .empty-icon {
     font-size: 48px;
@@ -4969,25 +3436,25 @@ const handleSelect = (item: InventoryItem) => {
 }
 
 .inventory-card {
-  background: white;
+  background: var(--admin-data-table-bg);
   border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  border: 1px solid #e8ecef;
+  box-shadow: var(--admin-stat-card-shadow);
+  border: 1px solid var(--admin-table-panel-border);
   overflow: hidden;
   transition: all 0.3s ease;
 
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+    box-shadow: var(--admin-stat-card-hover-shadow);
   }
 
   .card-header {
-    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    background: var(--admin-table-panel-bg);
     padding: 16px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid #e8ecef;
+    border-bottom: 1px solid var(--admin-table-panel-border);
 
     .phone-info {
       flex: 1;
@@ -5001,17 +3468,13 @@ const handleSelect = (item: InventoryItem) => {
         .brand {
           font-weight: 700;
           font-size: 16px;
-          color: #2c3e50;
-          background: linear-gradient(135deg, #667eea, #764ba2);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
+          color: var(--tf-button-primary-soft-color);
         }
 
         .model {
           font-weight: 600;
           font-size: 14px;
-          color: #495057;
+          color: var(--admin-data-table-cell-color);
         }
       }
     }
@@ -5048,7 +3511,7 @@ const handleSelect = (item: InventoryItem) => {
         .info-label {
           font-size: 12px;
           font-weight: 500;
-          color: #6c757d;
+          color: var(--admin-record-count-color);
           text-transform: uppercase;
           letter-spacing: 0.5px;
         }
@@ -5056,11 +3519,11 @@ const handleSelect = (item: InventoryItem) => {
         .info-value {
           font-size: 14px;
           font-weight: 500;
-          color: #2c3e50;
+          color: var(--admin-data-table-cell-color);
           word-break: break-all;
 
           &.price {
-            color: #28a745;
+            color: var(--tf-button-success-soft-color);
             font-weight: 600;
             font-size: 16px;
           }
@@ -5069,10 +3532,10 @@ const handleSelect = (item: InventoryItem) => {
           &.imei {
             font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
             font-size: 12px;
-            background: #f8f9fa;
+            background: var(--admin-table-panel-bg);
             padding: 4px 8px;
             border-radius: 4px;
-            border: 1px solid #e9ecef;
+            border: 1px solid var(--admin-table-panel-border);
           }
         }
       }
@@ -5110,53 +3573,6 @@ const handleSelect = (item: InventoryItem) => {
 
   &:nth-child(5) {
     animation-delay: 0.4s;
-  }
-}
-
-/* 移动端筛选器响应式优化 */
-@media (max-width: 480px) {
-  .filter-row {
-    gap: 8px;
-  }
-
-  .filter-select {
-    height: 36px;
-    font-size: 13px;
-    padding: 0 10px;
-  }
-
-  .filter-actions {
-    gap: 8px;
-    margin-top: 12px;
-  }
-
-  .filter-btn {
-    height: 36px;
-    font-size: 13px;
-  }
-}
-
-/* 超小屏幕优化 */
-@media (max-width: 360px) {
-  .filter-row {
-    gap: 6px;
-  }
-
-  .filter-select {
-    height: 32px;
-    font-size: 12px;
-    padding: 0 8px;
-  }
-
-  .filter-actions {
-    gap: 6px;
-    margin-top: 10px;
-  }
-
-  .filter-btn {
-    height: 32px;
-    font-size: 12px;
-    padding: 0 12px;
   }
 }
 
@@ -5397,7 +3813,7 @@ const handleSelect = (item: InventoryItem) => {
 @media (max-width: 390px) and (min-height: 800px) {
   .modal-header-content {
     padding: 12px 16px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--tf-button-primary-bg);
     position: sticky;
     top: 0;
     z-index: 10;
@@ -5656,7 +4072,7 @@ const handleSelect = (item: InventoryItem) => {
     padding: 14px 16px;
     position: sticky;
     top: 0;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--tf-button-primary-bg);
     z-index: 10;
     border-radius: 16px 16px 0 0;
   }

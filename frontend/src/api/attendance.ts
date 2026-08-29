@@ -7,31 +7,92 @@ export interface AttendanceRecord {
   id?: number
   employee_id?: number
   record_date: string
-  record_type: 'leave' | 'overtime' | 'absent' | 'monthly_leave'
+  record_type: 'leave' | 'overtime' | 'monthly_leave'
   leave_type?: string
   leave_days?: number
   leave_reason?: string
   overtime_hours?: number
   overtime_reason?: string
-  absent_days?: number
-  absent_reason?: string
   monthly_leave_days?: number // 休假天数
-  reason?: string // 通用备注字段（前端表单使用）
   status?: 'pending' | 'approved' | 'rejected'
   approved_by?: number
   approved_at?: string
   approval_note?: string
   created_by?: number
+  created_at?: string
+  updated_at?: string
+  employee_name?: string
+  employee_phone?: string
+  approver_name?: string
+  creator_name?: string
 }
 
 export interface AttendanceFilters {
   page?: number
-  limit?: number
+  page_size?: number
   employee_id?: number
-  record_type?: 'leave' | 'overtime' | 'absent'
+  record_type?: 'leave' | 'overtime' | 'monthly_leave'
   status?: string
   start_date?: string
   end_date?: string
+}
+
+export interface AttendancePagination {
+  page: number
+  page_size: number
+  total: number
+  total_pages: number
+  has_next: boolean
+  has_prev: boolean
+}
+
+export interface AttendanceListResult {
+  records: AttendanceRecord[]
+  pagination: AttendancePagination
+}
+
+export interface AttendanceLeaveHistory {
+  year: number
+  month: number
+  used: number
+  regular_leave_days: number
+  monthly_limit: number
+  is_full: boolean
+  remaining: number
+  has_regular_leave: boolean
+}
+
+export interface AttendanceLeaveBalance {
+  monthly_limit: number
+  used: number
+  available: number
+  total_quota: number
+  is_leave_disabled: boolean
+  consecutive_full_months: number
+  monthly_history: AttendanceLeaveHistory[]
+  last_month_remaining: number
+  message: string | null
+}
+
+export interface AttendanceDashboardStats {
+  last_month: {
+    leave_days: number
+    overtime_hours: number
+  }
+  current_month: {
+    leave_days: number
+    unpaid_leave_days: number
+    overtime_hours: number
+  }
+  pending: {
+    overtime_pay: number
+    leave_deduction: number
+    count: number
+  }
+}
+
+export interface AttendanceLeaveConfig {
+  monthly_leave_days: number
 }
 
 export const attendanceApi = {
@@ -39,14 +100,14 @@ export const attendanceApi = {
    * 获取考勤记录列表
    */
   getAttendanceRecords: (filters: AttendanceFilters = {}) => {
-    return unifiedApi.get('/attendance', { params: filters })
+    return unifiedApi.get<AttendanceListResult>('/attendance', { params: filters })
   },
 
   /**
    * 获取个人考勤记录
    */
   getMyAttendanceRecords: (filters: AttendanceFilters = {}) => {
-    return unifiedApi.get('/attendance/my', { params: filters })
+    return unifiedApi.get<AttendanceListResult>('/attendance/my', { params: filters })
   },
 
   /**
@@ -87,25 +148,25 @@ export const attendanceApi = {
   /**
    * 审批考勤记录
    */
-  approveAttendanceRecord: (id: number, status: string, note?: string) => {
-    return unifiedApi.post(`/attendance/${id}/approve`, { status, note })
+  approveAttendanceRecord: (id: number, status: string, approval_note?: string) => {
+    return unifiedApi.post(`/attendance/${id}/approve`, { status, approval_note })
   },
 
   /**
    * 获取考勤统计
    */
-  getAttendanceStats: (employeeId: number, startDate: string, endDate: string) => {
+  getAttendanceStats: (employee_id: number, start_date: string, end_date: string) => {
     return unifiedApi.get('/attendance/stats/summary', {
-      params: { employee_id: employeeId, start_date: startDate, end_date: endDate }
+      params: { employee_id, start_date, end_date }
     })
   },
 
   /**
    * 获取用户休假余额
    */
-  getLeaveBalance: (employeeId?: number) => {
-    return unifiedApi.get('/attendance/leave-balance', {
-      params: employeeId ? { employee_id: employeeId } : {}
+  getLeaveBalance: (employee_id?: number) => {
+    return unifiedApi.get<AttendanceLeaveBalance>('/attendance/leave-balance', {
+      params: employee_id ? { employee_id } : {}
     })
   },
 
@@ -113,13 +174,13 @@ export const attendanceApi = {
    * 获取休假配置（每月休假天数等）
    */
   getLeaveConfig: () => {
-    return unifiedApi.get('/attendance/leave-config')
+    return unifiedApi.get<AttendanceLeaveConfig>('/attendance/leave-config')
   },
 
   /**
    * 获取考勤仪表盘汇总统计
    */
   getDashboardStats: () => {
-    return unifiedApi.get('/attendance/stats/dashboard')
+    return unifiedApi.get<AttendanceDashboardStats>('/attendance/stats/dashboard')
   }
 }

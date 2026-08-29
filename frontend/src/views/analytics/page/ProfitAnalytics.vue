@@ -1,58 +1,102 @@
 <template>
   <div class="profit-analytics">
     <!-- 盈利概览卡片 -->
-    <el-row v-if="showProfitOverviewCards" :gutter="16" class="overview-cards">
-      <el-col v-if="canViewProfitField('total_revenue')" :xs="12" :sm="12" :md="6" :lg="6">
+    <el-row
+      v-if="showProfitOverviewCards"
+      :gutter="16"
+      class="overview-cards"
+    >
+      <el-col
+        v-if="canViewProfitField('total_revenue')"
+        :xs="12"
+        :sm="12"
+        :md="6"
+        :lg="6"
+      >
         <el-card class="overview-card">
           <div class="card-content">
             <div class="card-icon revenue">
-              <i class="fas fa-chart-line"></i>
+              <i class="fas fa-chart-line" />
             </div>
             <div class="card-info">
-              <div class="card-title">总销售额</div>
-              <div class="card-value">¥{{ formatNumber(profitData.totalRevenue || 0) }}</div>
+              <div class="card-title">
+                总销售额
+              </div>
+              <div class="card-value">
+                ¥{{ formatNumber(profitData.totalRevenue || 0) }}
+              </div>
             </div>
           </div>
         </el-card>
       </el-col>
 
-      <el-col v-if="canViewProfitField('total_cost')" :xs="12" :sm="12" :md="6" :lg="6">
+      <el-col
+        v-if="canViewProfitField('total_cost')"
+        :xs="12"
+        :sm="12"
+        :md="6"
+        :lg="6"
+      >
         <el-card class="overview-card">
           <div class="card-content">
             <div class="card-icon cost">
-              <i class="fas fa-coins"></i>
+              <i class="fas fa-coins" />
             </div>
             <div class="card-info">
-              <div class="card-title">总成本</div>
-              <div class="card-value">¥{{ formatNumber(profitData.totalCost || 0) }}</div>
+              <div class="card-title">
+                总成本
+              </div>
+              <div class="card-value">
+                ¥{{ formatNumber(profitData.totalCost || 0) }}
+              </div>
             </div>
           </div>
         </el-card>
       </el-col>
 
-      <el-col v-if="canViewProfitField('gross_profit')" :xs="12" :sm="12" :md="6" :lg="6">
+      <el-col
+        v-if="canViewProfitField('gross_profit')"
+        :xs="12"
+        :sm="12"
+        :md="6"
+        :lg="6"
+      >
         <el-card class="overview-card">
           <div class="card-content">
             <div class="card-icon gross">
-              <i class="fas fa-balance-scale"></i>
+              <i class="fas fa-balance-scale" />
             </div>
             <div class="card-info">
-              <div class="card-title">销售利润</div>
-              <div class="card-value">¥{{ formatNumber(profitData.grossProfit || 0) }}</div>
+              <div class="card-title">
+                销售利润
+              </div>
+              <div class="card-value">
+                ¥{{ formatNumber(profitData.grossProfit || 0) }}
+              </div>
             </div>
           </div>
         </el-card>
       </el-col>
 
-      <el-col v-if="canViewProfitField('total_sales_count')" :xs="12" :sm="12" :md="6" :lg="6">
+      <el-col
+        v-if="canViewProfitField('total_sales_count')"
+        :xs="12"
+        :sm="12"
+        :md="6"
+        :lg="6"
+      >
         <el-card class="overview-card">
           <div class="card-content">
             <div class="card-icon margin">
-              <i class="fas fa-shopping-cart"></i>
+              <i class="fas fa-shopping-cart" />
             </div>
             <div class="card-info">
-              <div class="card-title">总销售量</div>
-              <div class="card-value">{{ formatNumber(profitData.totalSalesCount || 0) }}台</div>
+              <div class="card-title">
+                总销售量
+              </div>
+              <div class="card-value">
+                {{ formatNumber(profitData.totalSalesCount || 0) }}台
+              </div>
             </div>
           </div>
         </el-card>
@@ -60,112 +104,244 @@
     </el-row>
 
     <!-- 业务统计维度 - 全新/二手/调货-划拨 -->
-    <el-row v-if="showProfitSalesStatsRow" :gutter="16" class="business-stats">
-      <el-col v-if="canViewProfitField('new_sales_stats')" :xs="24" :sm="24" :md="8" :lg="8">
+    <el-row
+      v-if="showProfitSalesStatsRow"
+      :gutter="16"
+      class="business-stats"
+    >
+      <el-col
+        v-if="canViewProfitField('new_sales_stats')"
+        :xs="24"
+        :sm="24"
+        :md="8"
+        :lg="8"
+      >
         <el-card class="stats-card">
           <template #header>
             <div class="card-header">
-              <h3><i class="fas fa-mobile-alt"></i> 全新销售</h3>
-              <el-tag type="success" size="large">全新</el-tag>
+              <h3><i class="fas fa-mobile-alt" /> 全新销售</h3>
+              <el-tag
+                type="success"
+                size="large"
+              >
+                全新
+              </el-tag>
             </div>
           </template>
           <el-row :gutter="12">
-            <el-col :xs="12" :sm="12" :md="12">
+            <el-col
+              :xs="12"
+              :sm="12"
+              :md="12"
+            >
               <div class="stat-item">
-                <div class="stat-label">销售数量</div>
-                <div class="stat-value">{{ formatNumber(newData.salesCount) }}台</div>
+                <div class="stat-label">
+                  销售数量
+                </div>
+                <div class="stat-value">
+                  {{ formatNumber(newData.salesCount) }}台
+                </div>
               </div>
             </el-col>
-            <el-col :xs="12" :sm="12" :md="12">
+            <el-col
+              :xs="12"
+              :sm="12"
+              :md="12"
+            >
               <div class="stat-item">
-                <div class="stat-label">利润</div>
-                <div class="stat-value">¥{{ formatNumber(newData.profit) }}</div>
+                <div class="stat-label">
+                  利润
+                </div>
+                <div class="stat-value">
+                  ¥{{ formatNumber(newData.profit) }}
+                </div>
               </div>
             </el-col>
-            <el-col :xs="12" :sm="12" :md="12">
+            <el-col
+              :xs="12"
+              :sm="12"
+              :md="12"
+            >
               <div class="stat-item">
-                <div class="stat-label">销售金额</div>
-                <div class="stat-value">¥{{ formatNumber(newData.salesAmount) }}</div>
+                <div class="stat-label">
+                  销售金额
+                </div>
+                <div class="stat-value">
+                  ¥{{ formatNumber(newData.salesAmount) }}
+                </div>
               </div>
             </el-col>
-            <el-col :xs="12" :sm="12" :md="12">
+            <el-col
+              :xs="12"
+              :sm="12"
+              :md="12"
+            >
               <div class="stat-item">
-                <div class="stat-label">平均利润</div>
-                <div class="stat-value">{{ newData.marginRate }}%</div>
+                <div class="stat-label">
+                  平均利润
+                </div>
+                <div class="stat-value">
+                  {{ newData.marginRate }}%
+                </div>
               </div>
             </el-col>
           </el-row>
         </el-card>
       </el-col>
 
-      <el-col v-if="canViewProfitField('used_sales_stats')" :xs="24" :sm="24" :md="8" :lg="8">
+      <el-col
+        v-if="canViewProfitField('used_sales_stats')"
+        :xs="24"
+        :sm="24"
+        :md="8"
+        :lg="8"
+      >
         <el-card class="stats-card">
           <template #header>
             <div class="card-header">
-              <h3><i class="fas fa-recycle"></i> 二手销售</h3>
-              <el-tag type="warning" size="large">二手</el-tag>
+              <h3><i class="fas fa-recycle" /> 二手销售</h3>
+              <el-tag
+                type="warning"
+                size="large"
+              >
+                二手
+              </el-tag>
             </div>
           </template>
           <el-row :gutter="12">
-            <el-col :xs="12" :sm="12" :md="12">
+            <el-col
+              :xs="12"
+              :sm="12"
+              :md="12"
+            >
               <div class="stat-item">
-                <div class="stat-label">销售数量</div>
-                <div class="stat-value">{{ formatNumber(usedData.salesCount) }}台</div>
+                <div class="stat-label">
+                  销售数量
+                </div>
+                <div class="stat-value">
+                  {{ formatNumber(usedData.salesCount) }}台
+                </div>
               </div>
             </el-col>
-            <el-col :xs="12" :sm="12" :md="12">
+            <el-col
+              :xs="12"
+              :sm="12"
+              :md="12"
+            >
               <div class="stat-item">
-                <div class="stat-label">利润</div>
-                <div class="stat-value">¥{{ formatNumber(usedData.profit) }}</div>
+                <div class="stat-label">
+                  利润
+                </div>
+                <div class="stat-value">
+                  ¥{{ formatNumber(usedData.profit) }}
+                </div>
               </div>
             </el-col>
-            <el-col :xs="12" :sm="12" :md="12">
+            <el-col
+              :xs="12"
+              :sm="12"
+              :md="12"
+            >
               <div class="stat-item">
-                <div class="stat-label">销售金额</div>
-                <div class="stat-value">¥{{ formatNumber(usedData.salesAmount) }}</div>
+                <div class="stat-label">
+                  销售金额
+                </div>
+                <div class="stat-value">
+                  ¥{{ formatNumber(usedData.salesAmount) }}
+                </div>
               </div>
             </el-col>
-            <el-col :xs="12" :sm="12" :md="12">
+            <el-col
+              :xs="12"
+              :sm="12"
+              :md="12"
+            >
               <div class="stat-item">
-                <div class="stat-label">平均利润</div>
-                <div class="stat-value">{{ usedData.marginRate }}%</div>
+                <div class="stat-label">
+                  平均利润
+                </div>
+                <div class="stat-value">
+                  {{ usedData.marginRate }}%
+                </div>
               </div>
             </el-col>
           </el-row>
         </el-card>
       </el-col>
 
-      <el-col :xs="24" :sm="24" :md="8" :lg="8">
+      <el-col
+        :xs="24"
+        :sm="24"
+        :md="8"
+        :lg="8"
+      >
         <el-card class="stats-card transfer-card">
           <template #header>
             <div class="card-header">
-              <h3><i class="fas fa-exchange-alt"></i> 调货-划拨</h3>
-              <el-tag type="info" size="large">批发</el-tag>
+              <h3><i class="fas fa-exchange-alt" /> 调货-划拨</h3>
+              <el-tag
+                type="info"
+                size="large"
+              >
+                批发
+              </el-tag>
             </div>
           </template>
           <el-row :gutter="12">
-            <el-col :xs="12" :sm="12" :md="12">
+            <el-col
+              :xs="12"
+              :sm="12"
+              :md="12"
+            >
               <div class="stat-item">
-                <div class="stat-label">调货数量</div>
-                <div class="stat-value">{{ formatNumber(transferData.wholesaleCount) }}台</div>
+                <div class="stat-label">
+                  调货数量
+                </div>
+                <div class="stat-value">
+                  {{ formatNumber(transferData.wholesaleCount) }}台
+                </div>
               </div>
             </el-col>
-            <el-col :xs="12" :sm="12" :md="12">
+            <el-col
+              :xs="12"
+              :sm="12"
+              :md="12"
+            >
               <div class="stat-item">
-                <div class="stat-label">划拨数量</div>
-                <div class="stat-value">{{ formatNumber(transferData.allocationCount) }}台</div>
+                <div class="stat-label">
+                  划拨数量
+                </div>
+                <div class="stat-value">
+                  {{ formatNumber(transferData.allocationCount) }}台
+                </div>
               </div>
             </el-col>
-            <el-col :xs="12" :sm="12" :md="12">
+            <el-col
+              :xs="12"
+              :sm="12"
+              :md="12"
+            >
               <div class="stat-item">
-                <div class="stat-label">调货利润</div>
-                <div class="stat-value">¥{{ formatNumber(transferData.wholesaleProfit) }}</div>
+                <div class="stat-label">
+                  调货利润
+                </div>
+                <div class="stat-value">
+                  ¥{{ formatNumber(transferData.wholesaleProfit) }}
+                </div>
               </div>
             </el-col>
-            <el-col :xs="12" :sm="12" :md="12">
+            <el-col
+              :xs="12"
+              :sm="12"
+              :md="12"
+            >
               <div class="stat-item">
-                <div class="stat-label">划拨利润</div>
-                <div class="stat-value">¥{{ formatNumber(transferData.allocationProfit) }}</div>
+                <div class="stat-label">
+                  划拨利润
+                </div>
+                <div class="stat-value">
+                  ¥{{ formatNumber(transferData.allocationProfit) }}
+                </div>
               </div>
             </el-col>
           </el-row>
@@ -174,27 +350,56 @@
     </el-row>
 
     <!-- 品牌/型号销量排行 -->
-    <el-row v-if="showProfitRankingSection" :gutter="16" class="ranking-section">
-      <el-col v-if="canViewProfitField('brand_ranking')" :xs="24" :sm="24" :md="12" :lg="12">
+    <el-row
+      v-if="showProfitRankingSection"
+      :gutter="16"
+      class="ranking-section"
+    >
+      <el-col
+        v-if="canViewProfitField('brand_ranking')"
+        :xs="24"
+        :sm="24"
+        :md="12"
+        :lg="12"
+      >
         <el-card class="ranking-card">
           <template #header>
             <div class="card-header">
-              <h3><i class="fas fa-brand"></i> 品牌销量排行 TOP10</h3>
-              <el-radio-group v-model="brandRankType" size="small">
-                <el-radio-button value="count">按销量</el-radio-button>
-                <el-radio-button value="amount">按销售额</el-radio-button>
+              <h3><i class="fas fa-brand" /> 品牌销量排行 TOP10</h3>
+              <el-radio-group
+                v-model="brandRankType"
+                size="small"
+              >
+                <el-radio-button value="count">
+                  按销量
+                </el-radio-button>
+                <el-radio-button value="amount">
+                  按销售额
+                </el-radio-button>
               </el-radio-group>
             </div>
           </template>
           <div class="ranking-list">
-            <div v-for="(brand, index) in brandRankings" :key="brand.name" class="ranking-item">
-              <div class="ranking-index" :class="getRankingClass(index)">
+            <div
+              v-for="(brand, index) in brandRankings"
+              :key="brand.name"
+              class="ranking-item"
+            >
+              <div
+                class="ranking-index"
+                :class="getRankingClass(index)"
+              >
                 {{ index + 1 }}
               </div>
               <div class="ranking-info">
-                <div class="ranking-name">{{ brand.name }}</div>
+                <div class="ranking-name">
+                  {{ brand.name }}
+                </div>
                 <div class="ranking-bar">
-                  <div class="bar-fill" :style="{ width: brand.percent + '%' }"></div>
+                  <div
+                    class="bar-fill"
+                    :style="{ width: brand.percent + '%' }"
+                  />
                 </div>
               </div>
               <div class="ranking-values">
@@ -212,26 +417,51 @@
         </el-card>
       </el-col>
 
-      <el-col v-if="canViewProfitField('model_ranking')" :xs="24" :sm="24" :md="12" :lg="12">
+      <el-col
+        v-if="canViewProfitField('model_ranking')"
+        :xs="24"
+        :sm="24"
+        :md="12"
+        :lg="12"
+      >
         <el-card class="ranking-card">
           <template #header>
             <div class="card-header">
-              <h3><i class="fas fa-tags"></i> 型号销量排行 TOP10</h3>
-              <el-radio-group v-model="modelRankType" size="small">
-                <el-radio-button value="count">按销量</el-radio-button>
-                <el-radio-button value="amount">按销售额</el-radio-button>
+              <h3><i class="fas fa-tags" /> 型号销量排行 TOP10</h3>
+              <el-radio-group
+                v-model="modelRankType"
+                size="small"
+              >
+                <el-radio-button value="count">
+                  按销量
+                </el-radio-button>
+                <el-radio-button value="amount">
+                  按销售额
+                </el-radio-button>
               </el-radio-group>
             </div>
           </template>
           <div class="ranking-list">
-            <div v-for="(model, index) in modelRankings" :key="model.name" class="ranking-item">
-              <div class="ranking-index" :class="getRankingClass(index)">
+            <div
+              v-for="(model, index) in modelRankings"
+              :key="model.name"
+              class="ranking-item"
+            >
+              <div
+                class="ranking-index"
+                :class="getRankingClass(index)"
+              >
                 {{ index + 1 }}
               </div>
               <div class="ranking-info">
-                <div class="ranking-name">{{ model.name }}</div>
+                <div class="ranking-name">
+                  {{ model.name }}
+                </div>
                 <div class="ranking-bar">
-                  <div class="bar-fill" :style="{ width: model.percent + '%' }"></div>
+                  <div
+                    class="bar-fill"
+                    :style="{ width: model.percent + '%' }"
+                  />
                 </div>
               </div>
               <div class="ranking-values">
@@ -251,58 +481,152 @@
     </el-row>
 
     <!-- 员工/店铺业绩统计 -->
-    <el-row v-if="canViewProfitField('employee_performance_table')" :gutter="16" class="performance-section">
+    <el-row
+      v-if="canViewProfitField('employee_performance_table')"
+      :gutter="16"
+      class="performance-section"
+    >
       <el-col :span="24">
         <el-card class="performance-card">
           <template #header>
             <div class="card-header">
-              <h3><i class="fas fa-users"></i> 员工业绩统计</h3>
+              <h3><i class="fas fa-users" /> 员工业绩统计</h3>
               <el-space>
-                <el-select v-model="performanceTimeType" size="small" style="width: 100px">
-                  <el-option label="按日" value="day" />
-                  <el-option label="按月" value="month" />
-                  <el-option label="按年" value="year" />
+                <el-select
+                  v-model="performanceTimeType"
+                  size="small"
+                  style="width: 100px"
+                >
+                  <el-option
+                    label="按日"
+                    value="day"
+                  />
+                  <el-option
+                    label="按月"
+                    value="month"
+                  />
+                  <el-option
+                    label="按年"
+                    value="year"
+                  />
                 </el-select>
-                <el-radio-group v-model="performanceViewType" size="small">
-                  <el-radio-button value="sales">销售额</el-radio-button>
-                  <el-radio-button value="count">销量</el-radio-button>
-                  <el-radio-button value="profit">利润</el-radio-button>
+                <el-radio-group
+                  v-model="performanceViewType"
+                  size="small"
+                >
+                  <el-radio-button value="sales">
+                    销售额
+                  </el-radio-button>
+                  <el-radio-button value="count">
+                    销量
+                  </el-radio-button>
+                  <el-radio-button value="profit">
+                    利润
+                  </el-radio-button>
                 </el-radio-group>
-                <el-button type="success" size="small" @click="exportPerformance">导出</el-button>
+                <el-button
+                  type="success"
+                  size="small"
+                  @click="exportPerformance"
+                >
+                  导出
+                </el-button>
               </el-space>
             </div>
           </template>
-          <el-table :data="employeePerformanceData" stripe class="data-table w-full" max-height="400" :table-layout="'auto'">
-            <el-table-column type="index" label="排名" width="60" align="center" fixed />
-            <el-table-column prop="name" label="员工姓名" min-width="100" align="center" />
-            <el-table-column prop="store" label="所属店铺" min-width="100" align="center" />
-            <el-table-column label="全新销售" align="center">
-              <el-table-column prop="newCount" label="销量" min-width="80" align="right" />
-              <el-table-column prop="newAmount" label="销售额" min-width="100" align="right">
+          <el-table
+            :data="employeePerformanceData"
+            stripe
+            class="data-table w-full"
+            max-height="400"
+            :table-layout="'auto'"
+          >
+            <el-table-column
+              type="index"
+              label="排名"
+              width="60"
+              align="center"
+              fixed
+            />
+            <el-table-column
+              prop="name"
+              label="员工姓名"
+              min-width="100"
+              align="center"
+            />
+            <el-table-column
+              prop="store"
+              label="所属店铺"
+              min-width="100"
+              align="center"
+            />
+            <el-table-column
+              label="全新销售"
+              align="center"
+            >
+              <el-table-column
+                prop="newCount"
+                label="销量"
+                min-width="80"
+                align="right"
+              />
+              <el-table-column
+                prop="newAmount"
+                label="销售额"
+                min-width="100"
+                align="right"
+              >
                 <template #default="{ row }">
                   ¥{{ formatNumber(row.newAmount) }}
                 </template>
               </el-table-column>
-              <el-table-column prop="newProfit" label="利润" min-width="100" align="right">
+              <el-table-column
+                prop="newProfit"
+                label="利润"
+                min-width="100"
+                align="right"
+              >
                 <template #default="{ row }">
                   ¥{{ formatNumber(row.newProfit) }}
                 </template>
               </el-table-column>
             </el-table-column>
-            <el-table-column label="二手销售" align="center">
-              <el-table-column prop="usedCount" label="销量" min-width="80" align="right" />
-              <el-table-column prop="usedAmount" label="销售额" min-width="100" align="right">
+            <el-table-column
+              label="二手销售"
+              align="center"
+            >
+              <el-table-column
+                prop="usedCount"
+                label="销量"
+                min-width="80"
+                align="right"
+              />
+              <el-table-column
+                prop="usedAmount"
+                label="销售额"
+                min-width="100"
+                align="right"
+              >
                 <template #default="{ row }">
                   ¥{{ formatNumber(row.usedAmount) }}
                 </template>
               </el-table-column>
-              <el-table-column prop="usedProfit" label="利润" min-width="100" align="right">
+              <el-table-column
+                prop="usedProfit"
+                label="利润"
+                min-width="100"
+                align="right"
+              >
                 <template #default="{ row }">
                   ¥{{ formatNumber(row.usedProfit) }}
                 </template>
               </el-table-column>
             </el-table-column>
-            <el-table-column label="合计" align="center" min-width="280">
+            <el-table-column
+              label="合计"
+              align="center"
+              min-width="280"
+            >
               <template #default="{ row }">
                 <div class="total-summary-inline">
                   <span class="summary-item-inline">
@@ -328,35 +652,60 @@
     </el-row>
 
     <!-- 利润指标卡片 -->
-    <el-row v-if="showProfitMetricsSection" :gutter="16" class="metrics-section">
-      <el-col v-if="canViewProfitField('metrics_cards')" :xs="24" :sm="24" :md="8" :lg="8">
+    <el-row
+      v-if="showProfitMetricsSection"
+      :gutter="16"
+      class="metrics-section"
+    >
+      <el-col
+        v-if="canViewProfitField('metrics_cards')"
+        :xs="24"
+        :sm="24"
+        :md="8"
+        :lg="8"
+      >
         <el-card class="metric-card metric-card--margin">
           <div class="metric-header">
             <span class="metric-title">净利润率</span>
-            <el-tag :type="profitData.netMarginRate > 15 ? 'success' : 'warning'" size="large">
+            <el-tag
+              :type="profitData.netMarginRate > 15 ? 'success' : 'warning'"
+              size="large"
+            >
               {{ profitData.netMarginRate || 0 }}%
             </el-tag>
           </div>
           <div class="metric-body">
             <div class="metric-compare-row">
               <div class="metric-compare-item">
-                <div class="metric-compare-label">本月</div>
-                <div class="metric-compare-value">¥{{ formatNumber(profitData.netProfit || 0) }}</div>
-                <div class="metric-compare-rate">{{ profitData.netMarginRate || 0 }}%</div>
+                <div class="metric-compare-label">
+                  本月
+                </div>
+                <div class="metric-compare-value">
+                  ¥{{ formatNumber(profitData.netProfit || 0) }}
+                </div>
+                <div class="metric-compare-rate">
+                  {{ profitData.netMarginRate || 0 }}%
+                </div>
               </div>
               <div class="metric-compare-divider">
-                <i class="fas fa-arrow-right"></i>
+                <i class="fas fa-arrow-right" />
               </div>
               <div class="metric-compare-item">
-                <div class="metric-compare-label">上月</div>
-                <div class="metric-compare-value">¥{{ formatNumber(profitData.lastMonth?.netProfit || 0) }}</div>
-                <div class="metric-compare-rate">{{ profitData.lastMonth?.netMarginRate || 0 }}%</div>
+                <div class="metric-compare-label">
+                  上月
+                </div>
+                <div class="metric-compare-value">
+                  ¥{{ formatNumber(profitData.lastMonth?.netProfit || 0) }}
+                </div>
+                <div class="metric-compare-rate">
+                  {{ profitData.lastMonth?.netMarginRate || 0 }}%
+                </div>
               </div>
             </div>
             <div class="metric-trend-row">
               <span>环比</span>
               <span :class="profitData.netMarginRateTrend === 'up' ? 'text-success' : 'text-danger'">
-                <i :class="profitData.netMarginRateTrend === 'up' ? 'fas fa-arrow-up' : 'fas fa-arrow-down'"></i>
+                <i :class="profitData.netMarginRateTrend === 'up' ? 'fas fa-arrow-up' : 'fas fa-arrow-down'" />
                 {{ profitData.netMarginRateChange || 0 }}%
               </span>
             </div>
@@ -364,36 +713,63 @@
         </el-card>
       </el-col>
 
-      <el-col v-if="canViewProfitField('store_profit_ranking')" :xs="24" :sm="24" :md="8" :lg="8">
+      <el-col
+        v-if="canViewProfitField('store_profit_ranking')"
+        :xs="24"
+        :sm="24"
+        :md="8"
+        :lg="8"
+      >
         <el-card class="metric-card metric-card--store store-profit-card">
           <div class="metric-header">
             <span class="metric-title">门店利润</span>
-            <el-tag type="primary" size="large">
+            <el-tag
+              type="primary"
+              size="large"
+            >
               {{ rankedStoreProfits.length }}家门店
             </el-tag>
           </div>
           <div class="metric-body">
-            <div class="store-profit-list" v-if="rankedStoreProfits.length > 0">
+            <div
+              v-if="rankedStoreProfits.length > 0"
+              class="store-profit-list"
+            >
               <div
                 v-for="(store, index) in rankedStoreProfits.slice(0, 4)"
                 :key="store.id"
                 class="store-profit-item"
               >
-                <div class="store-profit-rank">{{ index + 1 }}</div>
-                <div class="store-profit-info">
-                  <div class="store-profit-name">{{ store.name }}</div>
-                  <div class="store-profit-value">¥{{ formatNumber(store.profit) }}</div>
+                <div class="store-profit-rank">
+                  {{ index + 1 }}
                 </div>
-                <div class="store-profit-rate" :class="store.profit >= 0 ? 'text-success' : 'text-danger'">
+                <div class="store-profit-info">
+                  <div class="store-profit-name">
+                    {{ store.name }}
+                  </div>
+                  <div class="store-profit-value">
+                    ¥{{ formatNumber(store.profit) }}
+                  </div>
+                </div>
+                <div
+                  class="store-profit-rate"
+                  :class="store.profit >= 0 ? 'text-success' : 'text-danger'"
+                >
                   {{ store.marginRate >= 0 ? '+' : '' }}{{ store.marginRate }}%
                 </div>
               </div>
             </div>
-            <div class="store-profit-empty" v-else>
-              <i class="fas fa-store-slash"></i>
+            <div
+              v-else
+              class="store-profit-empty"
+            >
+              <i class="fas fa-store-slash" />
               <span>暂无门店数据</span>
             </div>
-            <div class="metric-trend-row" v-if="rankedStoreProfits.length > 0">
+            <div
+              v-if="rankedStoreProfits.length > 0"
+              class="metric-trend-row"
+            >
               <span>盈利门店 {{ profitableStoreCount }}/{{ rankedStoreProfits.length }}</span>
               <span :class="averageStoreProfit >= 0 ? 'text-success' : 'text-danger'">
                 店均 ¥{{ formatNumber(averageStoreProfit) }}
@@ -403,34 +779,55 @@
         </el-card>
       </el-col>
 
-      <el-col v-if="canViewProfitField('metrics_cards')" :xs="24" :sm="24" :md="8" :lg="8">
+      <el-col
+        v-if="canViewProfitField('metrics_cards')"
+        :xs="24"
+        :sm="24"
+        :md="8"
+        :lg="8"
+      >
         <el-card class="metric-card metric-card--per-capita">
           <div class="metric-header">
             <span class="metric-title">人均产值</span>
-            <el-tag type="success" size="large">
+            <el-tag
+              type="success"
+              size="large"
+            >
               ¥{{ formatNumber(profitData.perCapitaOutput || 0) }}
             </el-tag>
           </div>
           <div class="metric-body">
-            <div class="metric-value">¥{{ formatNumber(profitData.perCapitaOutput || 0) }}</div>
-            <div class="metric-desc">人均月度产值</div>
+            <div class="metric-value">
+              ¥{{ formatNumber(profitData.perCapitaOutput || 0) }}
+            </div>
+            <div class="metric-desc">
+              人均月度产值
+            </div>
             <div class="metric-compare-row compact">
               <div class="metric-compare-item">
-                <div class="metric-compare-label">统计员工</div>
-                <div class="metric-compare-value">{{ employeeCount }}</div>
+                <div class="metric-compare-label">
+                  统计员工
+                </div>
+                <div class="metric-compare-value">
+                  {{ employeeCount }}
+                </div>
               </div>
               <div class="metric-compare-divider">
-                <i class="fas fa-users"></i>
+                <i class="fas fa-users" />
               </div>
               <div class="metric-compare-item">
-                <div class="metric-compare-label">人均净利润</div>
-                <div class="metric-compare-value">¥{{ formatNumber(perCapitaNetProfit) }}</div>
+                <div class="metric-compare-label">
+                  人均净利润
+                </div>
+                <div class="metric-compare-value">
+                  ¥{{ formatNumber(perCapitaNetProfit) }}
+                </div>
               </div>
             </div>
             <div class="metric-trend-row">
               <span>ROI</span>
               <span :class="profitData.roiTrend === 'up' ? 'text-success' : 'text-danger'">
-                <i :class="profitData.roiTrend === 'up' ? 'fas fa-arrow-up' : 'fas fa-arrow-down'"></i>
+                <i :class="profitData.roiTrend === 'up' ? 'fas fa-arrow-up' : 'fas fa-arrow-down'" />
                 {{ profitData.roi || 0 }}%
                 <template v-if="profitData.roiChange"> ({{ profitData.roiChange > 0 ? '+' : '' }}{{ profitData.roiChange }}%)</template>
               </span>
@@ -441,9 +838,17 @@
     </el-row>
 
     <!-- 图表区域 -->
-    <el-row v-if="showProfitTrendSection" :gutter="16" class="charts-section">
+    <el-row
+      v-if="showProfitTrendSection"
+      :gutter="16"
+      class="charts-section"
+    >
       <!-- 收入成本利润趋势 -->
-      <el-col v-if="canViewProfitField('profit_trend_chart')" :xs="24" :lg="16">
+      <el-col
+        v-if="canViewProfitField('profit_trend_chart')"
+        :xs="24"
+        :lg="16"
+      >
         <el-card class="chart-card">
           <template #header>
             <div class="card-header">
@@ -454,55 +859,115 @@
                     {{ profitTrendMeta.rangeLabel }} · 当前周期 {{ profitTrendSummaryLabel }}
                   </span>
                 </div>
-                <el-radio-group v-model="profitTrendPeriod" size="small">
-                  <el-radio-button value="month">月度</el-radio-button>
-                  <el-radio-button value="quarter">季度</el-radio-button>
-                  <el-radio-button value="year">年度</el-radio-button>
+                <el-radio-group
+                  v-model="profitTrendPeriod"
+                  size="small"
+                >
+                  <el-radio-button value="month">
+                    月度
+                  </el-radio-button>
+                  <el-radio-button value="quarter">
+                    季度
+                  </el-radio-button>
+                  <el-radio-button value="year">
+                    年度
+                  </el-radio-button>
                 </el-radio-group>
               </div>
             </div>
           </template>
           <div class="trend-summary">
             <div class="trend-summary-card revenue">
-              <div class="trend-summary-label">{{ profitTrendSummaryLabel }}收入</div>
-              <div class="trend-summary-value">¥{{ formatNumber(profitTrendCurrentSummary.revenue) }}</div>
+              <div class="trend-summary-label">
+                {{ profitTrendSummaryLabel }}收入
+              </div>
+              <div class="trend-summary-value">
+                ¥{{ formatNumber(profitTrendCurrentSummary.revenue) }}
+              </div>
             </div>
             <div class="trend-summary-card cost">
-              <div class="trend-summary-label">{{ profitTrendSummaryLabel }}成本</div>
-              <div class="trend-summary-value">¥{{ formatNumber(profitTrendCurrentSummary.cost) }}</div>
+              <div class="trend-summary-label">
+                {{ profitTrendSummaryLabel }}成本
+              </div>
+              <div class="trend-summary-value">
+                ¥{{ formatNumber(profitTrendCurrentSummary.cost) }}
+              </div>
             </div>
             <div class="trend-summary-card profit">
-              <div class="trend-summary-label">{{ profitTrendSummaryLabel }}利润</div>
-              <div class="trend-summary-value">¥{{ formatNumber(profitTrendCurrentSummary.profit) }}</div>
+              <div class="trend-summary-label">
+                {{ profitTrendSummaryLabel }}利润
+              </div>
+              <div class="trend-summary-value">
+                ¥{{ formatNumber(profitTrendCurrentSummary.profit) }}
+              </div>
             </div>
           </div>
           <div class="chart-container large">
-            <div ref="profitTrendRef" class="chart"></div>
+            <div
+              ref="profitTrendRef"
+              class="chart"
+            />
           </div>
         </el-card>
       </el-col>
 
       <!-- 盈利预测 -->
-      <el-col v-if="canViewProfitField('forecast_chart')" :xs="24" :lg="8">
+      <el-col
+        v-if="canViewProfitField('forecast_chart')"
+        :xs="24"
+        :lg="8"
+      >
         <el-card class="chart-card forecast-inline-card">
           <template #header>
             <div class="card-header">
               <h3>盈利预测分析</h3>
               <el-space>
-                <el-select v-model="forecastPeriod" size="small">
-                  <el-option label="未来1个月" value="month" />
-                  <el-option label="未来3个月" value="quarter" />
-                  <el-option label="未来6个月" value="half" />
+                <el-select
+                  v-model="forecastPeriod"
+                  size="small"
+                >
+                  <el-option
+                    label="未来1个月"
+                    value="month"
+                  />
+                  <el-option
+                    label="未来3个月"
+                    value="quarter"
+                  />
+                  <el-option
+                    label="未来6个月"
+                    value="half"
+                  />
                 </el-select>
-                <el-select v-model="forecastScenario" size="small">
-                  <el-option label="乐观预测" value="optimistic" />
-                  <el-option label="中性预测" value="neutral" />
-                  <el-option label="保守预测" value="conservative" />
+                <el-select
+                  v-model="forecastScenario"
+                  size="small"
+                >
+                  <el-option
+                    label="乐观预测"
+                    value="optimistic"
+                  />
+                  <el-option
+                    label="中性预测"
+                    value="neutral"
+                  />
+                  <el-option
+                    label="保守预测"
+                    value="conservative"
+                  />
                 </el-select>
-                <el-button type="primary" size="small" @click="generateForecast">
+                <el-button
+                  type="primary"
+                  size="small"
+                  @click="generateForecast"
+                >
                   生成预测
                 </el-button>
-                <el-button type="success" size="small" @click="exportForecast">
+                <el-button
+                  type="success"
+                  size="small"
+                  @click="exportForecast"
+                >
                   导出报告
                 </el-button>
               </el-space>
@@ -513,113 +978,226 @@
             <span class="forecast-summary-value">{{ forecastReferenceLabel }}</span>
           </div>
           <div class="chart-container large forecast-inline-container">
-            <div ref="forecastRef" class="chart"></div>
+            <div
+              ref="forecastRef"
+              class="chart"
+            />
           </div>
         </el-card>
       </el-col>
     </el-row>
 
-    <el-row v-if="showProfitContributionSection" :gutter="16" class="charts-section">
+    <el-row
+      v-if="showProfitContributionSection"
+      :gutter="16"
+      class="charts-section"
+    >
       <!-- 产品利润贡献 -->
-      <el-col v-if="canViewProfitField('product_profit_chart')" :xs="24" :sm="24" :md="12" :lg="12">
+      <el-col
+        v-if="canViewProfitField('product_profit_chart')"
+        :xs="24"
+        :sm="24"
+        :md="12"
+        :lg="12"
+      >
         <el-card class="chart-card product-profit-card">
           <template #header>
             <div class="card-header">
               <h3>产品利润贡献 TOP10</h3>
             </div>
           </template>
-          <div v-if="productProfitData.length > 0" class="product-profit-summary">
+          <div
+            v-if="productProfitData.length > 0"
+            class="product-profit-summary"
+          >
             <div class="product-profit-summary-item">
-              <div class="summary-label">利润最高型号</div>
-              <div class="summary-name">{{ topProductProfit?.name || '-' }}</div>
-              <div class="summary-value">¥{{ formatNumber(topProductProfit?.profit || 0) }}</div>
+              <div class="summary-label">
+                利润最高型号
+              </div>
+              <div class="summary-name">
+                {{ topProductProfit?.name || '-' }}
+              </div>
+              <div class="summary-value">
+                ¥{{ formatNumber(topProductProfit?.profit || 0) }}
+              </div>
             </div>
             <div class="product-profit-summary-item">
-              <div class="summary-label">销量最高型号</div>
-              <div class="summary-name">{{ topProductSales?.name || '-' }}</div>
-              <div class="summary-value">{{ formatNumber(topProductSales?.count || 0) }} 台</div>
+              <div class="summary-label">
+                销量最高型号
+              </div>
+              <div class="summary-name">
+                {{ topProductSales?.name || '-' }}
+              </div>
+              <div class="summary-value">
+                {{ formatNumber(topProductSales?.count || 0) }} 台
+              </div>
             </div>
             <div class="product-profit-summary-item">
-              <div class="summary-label">平均单台利润</div>
-              <div class="summary-name">TOP10 型号均值</div>
-              <div class="summary-value">¥{{ formatNumber(averageProductUnitProfit) }}</div>
+              <div class="summary-label">
+                平均单台利润
+              </div>
+              <div class="summary-name">
+                TOP10 型号均值
+              </div>
+              <div class="summary-value">
+                ¥{{ formatNumber(averageProductUnitProfit) }}
+              </div>
             </div>
           </div>
           <div class="chart-container">
-            <div ref="productProfitRef" class="chart"></div>
+            <div
+              ref="productProfitRef"
+              class="chart"
+            />
           </div>
         </el-card>
       </el-col>
 
       <!-- 店铺利润对比 -->
-      <el-col v-if="canViewProfitField('store_comparison_chart')" :xs="24" :sm="24" :md="12" :lg="12">
+      <el-col
+        v-if="canViewProfitField('store_comparison_chart')"
+        :xs="24"
+        :sm="24"
+        :md="12"
+        :lg="12"
+      >
         <el-card class="chart-card store-comparison-card">
           <template #header>
             <div class="card-header">
               <h3>店铺利润对比</h3>
-              <el-button size="small" @click="toggleStoreComparisonType">
+              <el-button
+                size="small"
+                @click="toggleStoreComparisonType"
+              >
                 {{ storeComparisonType === 'bar' ? '雷达图' : '柱状图' }}
               </el-button>
             </div>
           </template>
-          <div v-if="storeComparisonData.length > 0" class="store-comparison-summary">
+          <div
+            v-if="storeComparisonData.length > 0"
+            class="store-comparison-summary"
+          >
             <div class="store-comparison-summary-item">
-              <div class="summary-label">利润最高</div>
-              <div class="summary-name">{{ topProfitStore?.name || '-' }}</div>
-              <div class="summary-value">¥{{ formatNumber(topProfitStore?.profit || 0) }}</div>
+              <div class="summary-label">
+                利润最高
+              </div>
+              <div class="summary-name">
+                {{ topProfitStore?.name || '-' }}
+              </div>
+              <div class="summary-value">
+                ¥{{ formatNumber(topProfitStore?.profit || 0) }}
+              </div>
             </div>
             <div class="store-comparison-summary-item">
-              <div class="summary-label">营收最高</div>
-              <div class="summary-name">{{ topRevenueStore?.name || '-' }}</div>
-              <div class="summary-value">¥{{ formatNumber(topRevenueStore?.revenue || 0) }}</div>
+              <div class="summary-label">
+                营收最高
+              </div>
+              <div class="summary-name">
+                {{ topRevenueStore?.name || '-' }}
+              </div>
+              <div class="summary-value">
+                ¥{{ formatNumber(topRevenueStore?.revenue || 0) }}
+              </div>
             </div>
             <div class="store-comparison-summary-item">
-              <div class="summary-label">整体利润率</div>
-              <div class="summary-name">{{ profitableStoreCount }}/{{ storeComparisonData.length }} 家盈利</div>
-              <div class="summary-value">{{ overallStoreMarginRate }}%</div>
+              <div class="summary-label">
+                整体利润率
+              </div>
+              <div class="summary-name">
+                {{ profitableStoreCount }}/{{ storeComparisonData.length }} 家盈利
+              </div>
+              <div class="summary-value">
+                {{ overallStoreMarginRate }}%
+              </div>
             </div>
           </div>
           <div class="chart-container">
-            <div ref="storeComparisonRef" class="chart"></div>
+            <div
+              ref="storeComparisonRef"
+              class="chart"
+            />
           </div>
         </el-card>
       </el-col>
     </el-row>
 
     <!-- 成本分析表格 -->
-    <el-row v-if="canViewProfitField('cost_analysis_table')" :gutter="16" class="table-section admin-panel admin-table-panel">
+    <el-row
+      v-if="canViewProfitField('cost_analysis_table')"
+      :gutter="16"
+      class="table-section admin-panel admin-table-panel"
+    >
       <el-col :span="24">
         <el-card class="table-card admin-panel admin-table-panel">
           <template #header>
             <div class="card-header">
               <h3>成本构成分析</h3>
               <el-space>
-                <el-radio-group v-model="costViewType" size="small">
-                  <el-radio-button value="category">按类别</el-radio-button>
-                  <el-radio-button value="store">按店铺</el-radio-button>
-                  <el-radio-button value="product">按产品</el-radio-button>
+                <el-radio-group
+                  v-model="costViewType"
+                  size="small"
+                >
+                  <el-radio-button value="category">
+                    按类别
+                  </el-radio-button>
+                  <el-radio-button value="store">
+                    按店铺
+                  </el-radio-button>
+                  <el-radio-button value="product">
+                    按产品
+                  </el-radio-button>
                 </el-radio-group>
-                <el-button type="success" size="small" @click="exportCostAnalysis">
+                <el-button
+                  type="success"
+                  size="small"
+                  @click="exportCostAnalysis"
+                >
                   导出
                 </el-button>
               </el-space>
             </div>
           </template>
-          <el-table :data="costAnalysisData" stripe class="data-table w-full">
-            <el-table-column type="index" label="序号" width="60" align="center" />
-            <el-table-column prop="category" label="成本类别" width="150">
+          <el-table
+            :data="costAnalysisData"
+            stripe
+            class="data-table w-full"
+          >
+            <el-table-column
+              type="index"
+              label="序号"
+              width="60"
+              align="center"
+            />
+            <el-table-column
+              prop="category"
+              label="成本类别"
+              width="150"
+            >
               <template #default="{ row }">
-                <el-tag :type="getCostTagType(row.category)" size="small">
+                <el-tag
+                  :type="getCostTagType(row.category)"
+                  size="small"
+                >
                   {{ getCostLabel(row.category) }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="amount" label="金额" width="150" align="right">
+            <el-table-column
+              prop="amount"
+              label="金额"
+              width="150"
+              align="right"
+            >
               <template #default="{ row }">
                 ¥{{ formatNumber(row.amount) }}
               </template>
             </el-table-column>
-            <el-table-column prop="percentage" label="占比" width="100" align="center">
+            <el-table-column
+              prop="percentage"
+              label="占比"
+              width="100"
+              align="center"
+            >
               <template #default="{ row }">
                 <el-progress
                   :percentage="row.percentage"
@@ -628,25 +1206,43 @@
                 />
               </template>
             </el-table-column>
-            <el-table-column prop="yoy" label="同比" width="100" align="center">
+            <el-table-column
+              prop="yoy"
+              label="同比"
+              width="100"
+              align="center"
+            >
               <template #default="{ row }">
                 <span :class="row.yoy > 0 ? 'text-success' : 'text-danger'">
-                  <i :class="row.yoy > 0 ? 'fas fa-arrow-up' : 'fas fa-arrow-down'"></i>
+                  <i :class="row.yoy > 0 ? 'fas fa-arrow-up' : 'fas fa-arrow-down'" />
                   {{ Math.abs(row.yoy) }}%
                 </span>
               </template>
             </el-table-column>
-            <el-table-column prop="mom" label="环比" width="100" align="center">
+            <el-table-column
+              prop="mom"
+              label="环比"
+              width="100"
+              align="center"
+            >
               <template #default="{ row }">
                 <span :class="row.mom > 0 ? 'text-success' : 'text-danger'">
-                  <i :class="row.mom > 0 ? 'fas fa-arrow-up' : 'fas fa-arrow-down'"></i>
+                  <i :class="row.mom > 0 ? 'fas fa-arrow-up' : 'fas fa-arrow-down'" />
                   {{ Math.abs(row.mom) }}%
                 </span>
               </template>
             </el-table-column>
-            <el-table-column prop="trend" label="趋势" width="100" align="center">
+            <el-table-column
+              prop="trend"
+              label="趋势"
+              width="100"
+              align="center"
+            >
               <template #default="{ row }">
-                <el-tag :type="row.trend === 'up' ? 'success' : row.trend === 'down' ? 'danger' : 'info'" size="small">
+                <el-tag
+                  :type="row.trend === 'up' ? 'success' : row.trend === 'down' ? 'danger' : 'info'"
+                  size="small"
+                >
                   {{ row.trend === 'up' ? '上升' : row.trend === 'down' ? '下降' : '稳定' }}
                 </el-tag>
               </template>
@@ -659,7 +1255,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useNotification } from '@/composables/useNotification'
 import { useLoadingState } from '@/composables'
 import { useImportExport } from '@/composables/useImportExport'
@@ -858,7 +1454,7 @@ const currentFilterPeriodLabel = computed(() => {
 })
 
 const profitTrendMeta = computed(() => {
-  const anchor = getTrendAnchorDate()
+  const _anchor = getTrendAnchorDate()
 
   if (profitTrendPeriod.value === 'quarter') {
     return {
@@ -911,13 +1507,13 @@ const loadProfitTrendData = async () => {
     }
 
     if (startDate.value) {
-      params.startDate = startDate.value
+      params.start_date = startDate.value
     }
     if (endDate.value) {
-      params.endDate = endDate.value
+      params.end_date = endDate.value
     }
     if (selectedStore.value) {
-      params.storeId = selectedStore.value
+      params.store_id = selectedStore.value
     }
 
     const response = await unifiedApi.get('/analytics/profit-trend', { params })
@@ -939,10 +1535,10 @@ const loadForecastHistoryData = async () => {
     }
 
     if (endDate.value) {
-      params.endDate = endDate.value
+      params.end_date = endDate.value
     }
     if (selectedStore.value) {
-      params.storeId = selectedStore.value
+      params.store_id = selectedStore.value
     }
 
     const response = await unifiedApi.get('/analytics/profit-trend', { params })
@@ -966,11 +1562,11 @@ const loadDataWithDates = async (start: string, end: string, showLoadingState = 
     }
 
     const params: any = {
-      startDate: start,
-      endDate: end
+      start_date: start,
+      end_date: end
     }
-    if (selectedStore.value) params.storeId = selectedStore.value
-    if (selectedSupplier.value) params.supplierId = selectedSupplier.value
+    if (selectedStore.value) params.store_id = selectedStore.value
+    if (selectedSupplier.value) params.supplier_id = selectedSupplier.value
 
     // 查询参数已设置，开始加载数据
 
@@ -1027,19 +1623,19 @@ const loadSalesByConditionWithDates = async (params: any) => {
       const usedResp = response.data.used || {}
 
       newData.value = {
-        salesCount: parseInt(String(newResp.salesCount || 0)) || 0,
-        salesAmount: parseFloat(String(newResp.salesAmount || 0)) || 0,
+        salesCount: parseInt(String(newResp.sales_count || 0)) || 0,
+        salesAmount: parseFloat(String(newResp.sales_amount || 0)) || 0,
         profit: parseFloat(String(newResp.profit || 0)) || 0,
-        marginRate: parseFloat(String(newResp.marginRate || 0)) || 0,
-        avgPrice: parseFloat(String(newResp.avgPrice || 0)) || 0
+        marginRate: parseFloat(String(newResp.margin_rate || 0)) || 0,
+        avgPrice: parseFloat(String(newResp.avg_price || 0)) || 0
       }
 
       usedData.value = {
-        salesCount: parseInt(String(usedResp.salesCount || 0)) || 0,
-        salesAmount: parseFloat(String(usedResp.salesAmount || 0)) || 0,
+        salesCount: parseInt(String(usedResp.sales_count || 0)) || 0,
+        salesAmount: parseFloat(String(usedResp.sales_amount || 0)) || 0,
         profit: parseFloat(String(usedResp.profit || 0)) || 0,
-        marginRate: parseFloat(String(usedResp.marginRate || 0)) || 0,
-        avgPrice: parseFloat(String(usedResp.avgPrice || 0)) || 0
+        marginRate: parseFloat(String(usedResp.margin_rate || 0)) || 0,
+        avgPrice: parseFloat(String(usedResp.avg_price || 0)) || 0
       }
     }
   } catch (err: any) {
@@ -1052,10 +1648,10 @@ const loadTransferDataWithDates = async (params: any) => {
   try {
     // 转换参数名称：startDate -> start_date, endDate -> end_date
     const transferParams = {
-      start_date: params.startDate,
-      end_date: params.endDate,
-      store_id: params.storeId,
-      supplier_id: params.supplierId
+      start_date: params.start_date,
+      end_date: params.end_date,
+      store_id: params.store_id,
+      supplier_id: params.supplier_id
     }
     const response = await unifiedApi.get('/transfers/statistics', { params: transferParams })
     if (response.success && response.data) {
@@ -1124,16 +1720,16 @@ const loadProductProfitRankingsWithDates = async (params: any) => {
 }
 
 // 加载全新/二手销售数据
-const loadSalesByCondition = async () => {
+const _loadSalesByCondition = async () => {
   try {
     const params: any = {}
     // 处理日期格式 - 确保是 YYYY-MM-DD 格式
     if (startDate.value) {
       // 如果是 YYYY-MM 格式（月份），转换为月初和月末
       if (startDate.value.match(/^\d{4}-\d{2}$/)) {
-        params.startDate = startDate.value + '-01'  // 月初
+        params.start_date = startDate.value + '-01'  // 月初
       } else {
-        params.startDate = startDate.value
+        params.start_date = startDate.value
       }
     }
     if (endDate.value) {
@@ -1141,13 +1737,13 @@ const loadSalesByCondition = async () => {
       if (endDate.value.match(/^\d{4}-\d{2}$/)) {
         const [year, month] = endDate.value.split('-')
         const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate()
-        params.endDate = endDate.value + '-' + String(lastDay).padStart(2, '0')  // 月末
+        params.end_date = endDate.value + '-' + String(lastDay).padStart(2, '0')  // 月末
       } else {
-        params.endDate = endDate.value
+        params.end_date = endDate.value
       }
     }
-    if (selectedStore.value) params.storeId = selectedStore.value
-    if (selectedSupplier.value) params.supplierId = selectedSupplier.value
+    if (selectedStore.value) params.store_id = selectedStore.value
+    if (selectedSupplier.value) params.supplier_id = selectedSupplier.value
 
     const response = await unifiedApi.get('/analytics/sales-by-condition', { params })
 
@@ -1157,19 +1753,19 @@ const loadSalesByCondition = async () => {
       const usedResp = response.data.used || {}
 
       newData.value = {
-        salesCount: parseInt(String(newResp.salesCount || 0)) || 0,
-        salesAmount: parseFloat(String(newResp.salesAmount || 0)) || 0,
+        salesCount: parseInt(String(newResp.sales_count || 0)) || 0,
+        salesAmount: parseFloat(String(newResp.sales_amount || 0)) || 0,
         profit: parseFloat(String(newResp.profit || 0)) || 0,
-        marginRate: parseFloat(String(newResp.marginRate || 0)) || 0,
-        avgPrice: parseFloat(String(newResp.avgPrice || 0)) || 0
+        marginRate: parseFloat(String(newResp.margin_rate || 0)) || 0,
+        avgPrice: parseFloat(String(newResp.avg_price || 0)) || 0
       }
 
       usedData.value = {
-        salesCount: parseInt(String(usedResp.salesCount || 0)) || 0,
-        salesAmount: parseFloat(String(usedResp.salesAmount || 0)) || 0,
+        salesCount: parseInt(String(usedResp.sales_count || 0)) || 0,
+        salesAmount: parseFloat(String(usedResp.sales_amount || 0)) || 0,
         profit: parseFloat(String(usedResp.profit || 0)) || 0,
-        marginRate: parseFloat(String(usedResp.marginRate || 0)) || 0,
-        avgPrice: parseFloat(String(usedResp.avgPrice || 0)) || 0
+        marginRate: parseFloat(String(usedResp.margin_rate || 0)) || 0,
+        avgPrice: parseFloat(String(usedResp.avg_price || 0)) || 0
       }
 
       // 根据全新机和二手机数据计算总盈利数据
@@ -1222,27 +1818,27 @@ const brandRankType = ref('count')
 const brandRankings = ref<Array<{name: string, count: number, amount: number, percent: number}>>([])
 
 // 加载品牌销量排行
-const loadBrandRankings = async () => {
+const _loadBrandRankings = async () => {
   try {
-    const params: any = { limit: 10 }
+    const params: any = { page_size: 10 }
     // 处理日期格式
     if (startDate.value) {
       if (startDate.value.match(/^\d{4}-\d{2}$/)) {
-        params.startDate = startDate.value + '-01'
+        params.start_date = startDate.value + '-01'
       } else {
-        params.startDate = startDate.value
+        params.start_date = startDate.value
       }
     }
     if (endDate.value) {
       if (endDate.value.match(/^\d{4}-\d{2}$/)) {
         const [year, month] = endDate.value.split('-')
         const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate()
-        params.endDate = endDate.value + '-' + String(lastDay).padStart(2, '0')
+        params.end_date = endDate.value + '-' + String(lastDay).padStart(2, '0')
       } else {
-        params.endDate = endDate.value
+        params.end_date = endDate.value
       }
     }
-    if (selectedStore.value) params.storeId = selectedStore.value
+    if (selectedStore.value) params.store_id = selectedStore.value
 
     const response = await unifiedApi.get('/analytics/ranking/brands', { params })
     if (response.success && response.data) {
@@ -1261,31 +1857,31 @@ const modelRankings = ref<Array<{name: string, count: number, amount: number, co
 const productProfitRankings = ref<Array<{name: string, count: number, amount: number, cost?: number, profit?: number, percent: number}>>([])
 
 const buildRankingParams = () => {
-  const params: any = { limit: 10 }
+  const params: any = { page_size: 10 }
 
   if (startDate.value) {
     if (startDate.value.match(/^\d{4}-\d{2}$/)) {
-      params.startDate = startDate.value + '-01'
+      params.start_date = startDate.value + '-01'
     } else {
-      params.startDate = startDate.value
+      params.start_date = startDate.value
     }
   }
   if (endDate.value) {
     if (endDate.value.match(/^\d{4}-\d{2}$/)) {
       const [year, month] = endDate.value.split('-')
       const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate()
-      params.endDate = endDate.value + '-' + String(lastDay).padStart(2, '0')
+      params.end_date = endDate.value + '-' + String(lastDay).padStart(2, '0')
     } else {
-      params.endDate = endDate.value
+      params.end_date = endDate.value
     }
   }
-  if (selectedStore.value) params.storeId = selectedStore.value
+  if (selectedStore.value) params.store_id = selectedStore.value
 
   return params
 }
 
 // 加载型号销量排行
-const loadModelRankings = async () => {
+const _loadModelRankings = async () => {
   try {
     const params = buildRankingParams()
     params.sortBy = modelRankType.value
@@ -1301,7 +1897,7 @@ const loadModelRankings = async () => {
   }
 }
 
-const loadProductProfitRankings = async () => {
+const _loadProductProfitRankings = async () => {
   try {
     const params = buildRankingParams()
     params.sortBy = 'profit'
@@ -1452,9 +2048,9 @@ const loadProfitData = async (showLoadingState = true) => {
     if (startDate.value) {
       // 如果是 YYYY-MM 格式（月份），转换为 YYYY-MM-DD
       if (startDate.value.match(/^\d{4}-\d{2}$/)) {
-        params.startDate = startDate.value + '-01'
+        params.start_date = startDate.value + '-01'
       } else {
-        params.startDate = startDate.value
+        params.start_date = startDate.value
       }
     }
     if (endDate.value) {
@@ -1462,12 +2058,12 @@ const loadProfitData = async (showLoadingState = true) => {
       if (endDate.value.match(/^\d{4}-\d{2}$/)) {
         const [year, month] = endDate.value.split('-')
         const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate()
-        params.endDate = endDate.value + '-' + String(lastDay).padStart(2, '0')
+        params.end_date = endDate.value + '-' + String(lastDay).padStart(2, '0')
       } else {
-        params.endDate = endDate.value
+        params.end_date = endDate.value
       }
     }
-    if (selectedStore.value) params.storeId = selectedStore.value
+    if (selectedStore.value) params.store_id = selectedStore.value
 
     const response = await unifiedApi.get('/analytics/profit', { params })
 
@@ -1482,53 +2078,13 @@ const loadProfitData = async (showLoadingState = true) => {
 
       if (totalCost > 0) {
         // 成本构成基于实际数据：主要是采购成本（销售手机的入库成本）
-        // 其他成本（人工、租金、营销等）作为占比较小的固定成本
-        const purchaseCost = totalCost * 0.95 // 采购成本占 95%
-        const otherCosts = totalCost * 0.05    // 其他成本占 5%
-
-        // 将其他成本分配到各个类别
-        const salaryCost = otherCosts * 0.5    // 人工成本
-        const rentCost = otherCosts * 0.2      // 租金成本
-        const marketingCost = otherCosts * 0.15 // 营销成本
-        const otherFixedCost = otherCosts * 0.15 // 其他固定成本
-
+        // 只有采购成本有明确数据来源，不能把总成本臆造分摊到人工、租金和营销。
+        const purchaseCost = totalCost
         costAnalysisData.value = [
           {
             category: 'purchase',
             amount: Math.round(purchaseCost),
             percentage: parseFloat(((purchaseCost / totalRevenue) * 100).toFixed(1)),
-            yoy: 0,
-            mom: 0,
-            trend: 'stable'
-          },
-          {
-            category: 'salary',
-            amount: Math.round(salaryCost),
-            percentage: parseFloat(((salaryCost / totalRevenue) * 100).toFixed(1)),
-            yoy: 0,
-            mom: 0,
-            trend: 'stable'
-          },
-          {
-            category: 'rent',
-            amount: Math.round(rentCost),
-            percentage: parseFloat(((rentCost / totalRevenue) * 100).toFixed(1)),
-            yoy: 0,
-            mom: 0,
-            trend: 'stable'
-          },
-          {
-            category: 'marketing',
-            amount: Math.round(marketingCost),
-            percentage: parseFloat(((marketingCost / totalRevenue) * 100).toFixed(1)),
-            yoy: 0,
-            mom: 0,
-            trend: 'stable'
-          },
-          {
-            category: 'other',
-            amount: Math.round(otherFixedCost),
-            percentage: parseFloat(((otherFixedCost / totalRevenue) * 100).toFixed(1)),
             yoy: 0,
             mom: 0,
             trend: 'stable'
@@ -1565,14 +2121,7 @@ const loadProfitData = async (showLoadingState = true) => {
       }
 
     } else {
-      // 使用模拟的成本分析数据
-      costAnalysisData.value = [
-        { category: 'purchase', amount: 520000, percentage: 54.6, yoy: 3.2, mom: -1.5, trend: 'up' },
-        { category: 'salary', amount: 185000, percentage: 19.4, yoy: 8.5, mom: 2.1, trend: 'up' },
-        { category: 'rent', amount: 85000, percentage: 8.9, yoy: 0, mom: 0, trend: 'stable' },
-        { category: 'marketing', amount: 65000, percentage: 6.8, yoy: -5.8, mom: -2.3, trend: 'down' },
-        { category: 'other', amount: 96600, percentage: 10.2, yoy: 1.2, mom: 0.5, trend: 'up' }
-      ]
+      costAnalysisData.value = []
     }
 
     updateCharts()
@@ -1673,9 +2222,9 @@ const updateProfitTrendChart = () => {
   }
 
   // 使用真实数据：从 profitData 获取当前数据
-  const currentRevenue = profitData.value.totalRevenue || 0
-  const currentCost = profitData.value.totalCost || 0
-  const currentProfit = profitData.value.netProfit || 0
+  const _currentRevenue = profitData.value.totalRevenue || 0
+  const _currentCost = profitData.value.totalCost || 0
+  const _currentProfit = profitData.value.netProfit || 0
 
   const seriesData = profitTrendSeries.value || []
   const hasTrendData = seriesData.some(item => (item.totalRevenue || 0) !== 0 || (item.totalCost || 0) !== 0 || (item.totalProfit || 0) !== 0)
@@ -2038,15 +2587,15 @@ const updateForecastChart = () => {
 
   const fallbackSeries = profitData.value.totalRevenue > 0
     ? [{
-        key: 'current',
-        label: profitTrendSummaryLabel.value,
-        startDate: startDate.value,
-        endDate: endDate.value,
-        totalSales: profitData.value.totalSalesCount || 0,
-        totalRevenue: profitData.value.totalRevenue || 0,
-        totalCost: profitData.value.totalCost || 0,
-        totalProfit: profitData.value.netProfit || 0
-      }]
+      key: 'current',
+      label: profitTrendSummaryLabel.value,
+      startDate: startDate.value,
+      endDate: endDate.value,
+      totalSales: profitData.value.totalSalesCount || 0,
+      totalRevenue: profitData.value.totalRevenue || 0,
+      totalCost: profitData.value.totalCost || 0,
+      totalProfit: profitData.value.netProfit || 0
+    }]
     : []
 
   const historySeries = (historySource.length > 0 ? historySource : fallbackSeries).slice(-6)
@@ -2318,7 +2867,7 @@ const exportCostAnalysis = () => {
 
 // 筛选处理函数已移至父组件
 
-const handleExport = () => {
+const _handleExport = () => {
   success('盈利分析报告导出成功')
 }
 
@@ -2362,22 +2911,22 @@ const loadStoreProfit = async () => {
     const params: any = {}
     if (startDate.value) {
       if (startDate.value.match(/^\d{4}-\d{2}$/)) {
-        params.startDate = startDate.value + '-01'
+        params.start_date = startDate.value + '-01'
       } else {
-        params.startDate = startDate.value
+        params.start_date = startDate.value
       }
     }
     if (endDate.value) {
       if (endDate.value.match(/^\d{4}-\d{2}$/)) {
         const [year, month] = endDate.value.split('-')
         const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate()
-        params.endDate = endDate.value + '-' + String(lastDay).padStart(2, '0')
+        params.end_date = endDate.value + '-' + String(lastDay).padStart(2, '0')
       } else {
-        params.endDate = endDate.value
+        params.end_date = endDate.value
       }
     }
-    if (selectedStore.value) params.storeId = selectedStore.value
-    if (selectedSupplier.value) params.supplierId = selectedSupplier.value
+    if (selectedStore.value) params.store_id = selectedStore.value
+    if (selectedSupplier.value) params.supplier_id = selectedSupplier.value
 
     const response = await unifiedApi.get('/analytics/store-profit', { params })
 
@@ -2408,21 +2957,21 @@ const loadEmployeePerformance = async () => {
     // 处理日期格式
     if (startDate.value) {
       if (startDate.value.match(/^\d{4}-\d{2}$/)) {
-        params.startDate = startDate.value + '-01'
+        params.start_date = startDate.value + '-01'
       } else {
-        params.startDate = startDate.value
+        params.start_date = startDate.value
       }
     }
     if (endDate.value) {
       if (endDate.value.match(/^\d{4}-\d{2}$/)) {
         const [year, month] = endDate.value.split('-')
         const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate()
-        params.endDate = endDate.value + '-' + String(lastDay).padStart(2, '0')
+        params.end_date = endDate.value + '-' + String(lastDay).padStart(2, '0')
       } else {
-        params.endDate = endDate.value
+        params.end_date = endDate.value
       }
     }
-    if (selectedStore.value) params.storeId = selectedStore.value
+    if (selectedStore.value) params.store_id = selectedStore.value
 
     const response = await unifiedApi.get('/analytics/employee-performance', { params })
     if (response.success && response.data) {
@@ -2514,70 +3063,9 @@ watch(forecastScenario, () => {
   updateForecastChart()
 })
 
-// 监听 profitData 变化，自动计算成本构成并更新图表
+// 利润数据变化时只重绘。成本分类必须来自真实查询，不能按固定比例推算。
 watch(() => profitData.value, (newVal) => {
   if (newVal) {
-    const totalCost = newVal.totalCost || 0
-    const totalRevenue = newVal.totalRevenue || 1
-
-    // 只有当有成本数据时才计算成本构成
-    if (totalCost > 0) {
-      // 计算成本构成分析数据
-      const purchaseCost = totalCost * 0.95 // 采购成本占 95%
-      const otherCosts = totalCost * 0.05    // 其他成本占 5%
-
-      const salaryCost = otherCosts * 0.5
-      const rentCost = otherCosts * 0.2
-      const marketingCost = otherCosts * 0.15
-      const otherFixedCost = otherCosts * 0.15
-
-      costAnalysisData.value = [
-        {
-          category: 'purchase',
-          amount: Math.round(purchaseCost),
-          percentage: parseFloat(((purchaseCost / totalRevenue) * 100).toFixed(1)),
-          yoy: 0,
-          mom: 0,
-          trend: 'stable'
-        },
-        {
-          category: 'salary',
-          amount: Math.round(salaryCost),
-          percentage: parseFloat(((salaryCost / totalRevenue) * 100).toFixed(1)),
-          yoy: 0,
-          mom: 0,
-          trend: 'stable'
-        },
-        {
-          category: 'rent',
-          amount: Math.round(rentCost),
-          percentage: parseFloat(((rentCost / totalRevenue) * 100).toFixed(1)),
-          yoy: 0,
-          mom: 0,
-          trend: 'stable'
-        },
-        {
-          category: 'marketing',
-          amount: Math.round(marketingCost),
-          percentage: parseFloat(((marketingCost / totalRevenue) * 100).toFixed(1)),
-          yoy: 0,
-          mom: 0,
-          trend: 'stable'
-        },
-        {
-          category: 'other',
-          amount: Math.round(otherFixedCost),
-          percentage: parseFloat(((otherFixedCost / totalRevenue) * 100).toFixed(1)),
-          yoy: 0,
-          mom: 0,
-          trend: 'stable'
-        }
-      ]
-    } else {
-      costAnalysisData.value = []
-    }
-
-    // 无论是否有数据，都更新图表（无数据时显示空状态）
     nextTick(() => {
       updateCharts()
     })
@@ -2642,7 +3130,7 @@ onBeforeUnmount(() => {
       min-height: 152px;
       height: auto;
       position: relative;
-      background: #fff;
+      background: var(--color-bg-white);
       border-radius: 18px;
       border: 1px solid rgba(15, 23, 42, 0.06);
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -2653,7 +3141,7 @@ onBeforeUnmount(() => {
         position: absolute;
         inset: 0 0 auto 0;
         height: 3px;
-        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(90deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
       }
 
       :deep(.el-card__body) {
@@ -2689,7 +3177,7 @@ onBeforeUnmount(() => {
           font-weight: 700;
           letter-spacing: 0.45px;
           text-transform: uppercase;
-          color: #8e8e93;
+          color: var(--tf-color-gray-ios);
           white-space: normal;
         }
 
@@ -2697,7 +3185,7 @@ onBeforeUnmount(() => {
           margin-bottom: 0;
           font-size: 21px;
           line-height: 1.18;
-          color: #1c1c1e;
+          color: var(--tf-color-neutral-ios);
           white-space: normal;
           overflow-wrap: anywhere;
         }
@@ -2913,18 +3401,18 @@ onBeforeUnmount(() => {
           flex-shrink: 0;
 
           &.rank-first {
-            background: linear-gradient(135deg, #ffd700, #ffed4e);
-            color: #8B4513;
+            background: linear-gradient(135deg, var(--tf-color-gold), var(--tf-color-yellow-bright));
+            color: var(--tf-color-brown);
           }
 
           &.rank-second {
-            background: linear-gradient(135deg, #c0c0c0, #e8e8e8);
-            color: #666;
+            background: linear-gradient(135deg, var(--tf-color-silver), var(--tf-color-gray-ant-300));
+            color: var(--text-secondary);
           }
 
           &.rank-third {
-            background: linear-gradient(135deg, #cd7f32, #daa520);
-            color: #fff;
+            background: linear-gradient(135deg, var(--tf-color-bronze), var(--tf-color-goldenrod));
+            color: var(--color-bg-white);
           }
 
           &.rank-normal {
@@ -2953,7 +3441,7 @@ onBeforeUnmount(() => {
 
             .bar-fill {
               height: 100%;
-              background: linear-gradient(90deg, #667eea, #764ba2);
+              background: linear-gradient(90deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand));
               border-radius: 4px;
               transition: width 0.3s ease;
             }
@@ -3043,19 +3531,19 @@ onBeforeUnmount(() => {
       color: white;
 
       &.revenue {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
       }
 
       &.cost {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        background: linear-gradient(135deg, var(--tf-color-pink-gradient) 0%, var(--tf-color-coral-gradient) 100%);
       }
 
       &.gross {
-        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        background: linear-gradient(135deg, var(--tf-color-sky-gradient) 0%, var(--tf-color-cyan-gradient) 100%);
       }
 
       &.margin {
-        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        background: linear-gradient(135deg, var(--tf-color-green-gradient) 0%, var(--tf-color-teal-gradient) 100%);
       }
     }
 
@@ -3124,7 +3612,7 @@ onBeforeUnmount(() => {
 
       .metric-title {
         font-size: 15px;
-        color: #334155;
+        color: var(--tf-color-slate-700);
         font-weight: 600;
         letter-spacing: 0.02em;
       }
@@ -3142,14 +3630,14 @@ onBeforeUnmount(() => {
       .metric-value {
         font-size: 30px;
         font-weight: 700;
-        color: #0f172a;
+        color: var(--tf-color-slate-900);
         margin-bottom: 4px;
         line-height: 1.15;
       }
 
       .metric-desc {
         font-size: 12px;
-        color: #64748b;
+        color: var(--tf-color-slate-500);
         margin-bottom: 12px;
       }
 
@@ -3197,27 +3685,27 @@ onBeforeUnmount(() => {
 
           .metric-compare-label {
             font-size: 12px;
-            color: #64748b;
+            color: var(--tf-color-slate-500);
             margin-bottom: 6px;
           }
 
           .metric-compare-value {
             font-size: 19px;
             font-weight: 700;
-            color: #0f172a;
+            color: var(--tf-color-slate-900);
             margin-bottom: 4px;
             line-height: 1.2;
           }
 
           .metric-compare-rate {
             font-size: 12px;
-            color: #059669;
+            color: var(--tf-color-emerald-600);
             font-weight: 600;
           }
         }
 
         .metric-compare-divider {
-          color: #94a3b8;
+          color: var(--tf-color-slate-400);
           font-size: 16px;
           padding: 0 8px;
         }
@@ -3234,7 +3722,7 @@ onBeforeUnmount(() => {
         border-radius: 12px;
         border-top: none;
         background: rgba(15, 23, 42, 0.04);
-        color: #64748b;
+        color: var(--tf-color-slate-500);
 
         .text-success {
           color: var(--el-color-success);
@@ -3314,8 +3802,8 @@ onBeforeUnmount(() => {
             flex-shrink: 0;
 
             &:nth-child(1) {
-              background: linear-gradient(135deg, #ffd700, #ffed4e);
-              color: #8B4513;
+              background: linear-gradient(135deg, var(--tf-color-gold), var(--tf-color-yellow-bright));
+              color: var(--tf-color-brown);
             }
           }
 
@@ -3326,7 +3814,7 @@ onBeforeUnmount(() => {
             .store-profit-name {
               font-size: 13px;
               font-weight: 600;
-              color: #0f172a;
+              color: var(--tf-color-slate-900);
               margin-bottom: 4px;
               white-space: nowrap;
               overflow: hidden;
@@ -3335,7 +3823,7 @@ onBeforeUnmount(() => {
 
             .store-profit-value {
               font-size: 12px;
-              color: #64748b;
+              color: var(--tf-color-slate-500);
             }
           }
 
@@ -3647,45 +4135,45 @@ onBeforeUnmount(() => {
 
       // 销量 - 绿色背景
       &:nth-child(1) {
-        background: linear-gradient(135deg, #d1fae5, #a7f3d0);
-        color: #065f46;
+        background: linear-gradient(135deg, var(--tf-color-emerald-100), var(--tf-color-emerald-200));
+        color: var(--tf-color-emerald-800);
 
         .summary-label {
-          color: #047857;
+          color: var(--tf-color-emerald-700);
         }
 
         .summary-value {
-          color: #064e3b;
+          color: var(--tf-color-emerald-800);
           font-weight: 700;
         }
       }
 
       // 销售额 - 蓝色背景
       &:nth-child(3) {
-        background: linear-gradient(135deg, #dbeafe, #bfdbfe);
-        color: #1e40af;
+        background: linear-gradient(135deg, var(--tf-color-blue-tailwind-100), var(--tf-color-blue-tailwind-200));
+        color: var(--tf-color-blue-tailwind-800);
 
         .summary-label {
-          color: #2563eb;
+          color: var(--tf-color-blue-600);
         }
 
         .summary-value {
-          color: #1e3a8a;
+          color: var(--tf-color-blue-tailwind-900);
           font-weight: 700;
         }
       }
 
       // 利润 - 紫色背景
       &:nth-child(5) {
-        background: linear-gradient(135deg, #f3e8ff, #e9d5ff);
-        color: #6b21a8;
+        background: linear-gradient(135deg, var(--tf-color-purple-100), var(--tf-color-purple-200));
+        color: var(--tf-color-purple-800);
 
         .summary-label {
-          color: #7c3aed;
+          color: var(--tf-color-violet-600);
         }
 
         .summary-value {
-          color: #5b21b6;
+          color: var(--tf-color-violet-800);
           font-weight: 700;
         }
       }

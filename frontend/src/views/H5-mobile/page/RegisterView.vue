@@ -8,14 +8,23 @@
       <!-- Logo和标题 -->
       <div class="register-header">
         <div class="logo">
-          <i class="fas fa-user-plus"></i>
+          <i class="fas fa-user-plus" />
         </div>
-        <h1 class="title">用户注册</h1>
-        <p class="subtitle">加入{{ shopConfig.shop_name || 'H5商城' }}</p>
+        <h1 class="title">
+          用户注册
+        </h1>
+        <p class="subtitle">
+          加入{{ shopConfig.shop_name || 'H5商城' }}
+        </p>
       </div>
 
       <!-- 注册表单 -->
-      <el-form :model="form.values" :rules="registerRules" ref="registerFormRef" class="register-form">
+      <el-form
+        ref="registerFormRef"
+        :model="form.values"
+        :rules="registerRules"
+        class="register-form"
+      >
         <el-form-item prop="name">
           <el-input
             :model-value="form.values.name"
@@ -26,7 +35,7 @@
             @blur="validate()"
           >
             <template #prefix>
-              <i class="fas fa-user"></i>
+              <i class="fas fa-user" />
             </template>
           </el-input>
         </el-form-item>
@@ -43,7 +52,7 @@
             @blur="validate()"
           >
             <template #prefix>
-              <i class="fas fa-phone"></i>
+              <i class="fas fa-phone" />
             </template>
           </el-input>
         </el-form-item>
@@ -60,7 +69,7 @@
             @blur="validate()"
           >
             <template #prefix>
-              <i class="fas fa-lock"></i>
+              <i class="fas fa-lock" />
             </template>
           </el-input>
         </el-form-item>
@@ -78,7 +87,7 @@
             @keyup.enter="handleRegister"
           >
             <template #prefix>
-              <i class="fas fa-lock"></i>
+              <i class="fas fa-lock" />
             </template>
           </el-input>
         </el-form-item>
@@ -88,7 +97,7 @@
           <el-checkbox
             :model-value="form.values.agreed"
             label="我已阅读并同意用户协议和隐私政策"
-            @update:model-value="setFieldValue('agreed', $event)"
+            @update:model-value="setAgreedField($event)"
           />
         </el-form-item>
 
@@ -97,8 +106,8 @@
             type="primary"
             size="large"
             :loading="loading"
-            @click="handleRegister"
             class="w-full"
+            @click="handleRegister"
           >
             立即注册
           </el-button>
@@ -107,13 +116,18 @@
         <!-- 底部链接 -->
         <div class="register-footer">
           <span class="footer-text">已有账号？</span>
-          <router-link to="/m/login" class="footer-link">立即登录</router-link>
+          <router-link
+            to="/m/login"
+            class="footer-link"
+          >
+            立即登录
+          </router-link>
         </div>
 
         <!-- 返回首页 -->
         <div class="back-home">
           <router-link to="/m">
-            <i class="fas fa-arrow-left"></i> 返回首页
+            <i class="fas fa-arrow-left" /> 返回首页
           </router-link>
         </div>
       </el-form>
@@ -136,6 +150,7 @@ const registerFormRef = ref<FormInstance>()
 const { loading } = useLoadingState()
 const shopConfig = ref<any>({})
 const setPhoneFieldValue = (value: string) => setFieldValue('phone', normalizePhoneDigits(value))
+const setAgreedField = (value: string | boolean | number) => setFieldValue('agreed', value === true)
 
 // 使用 useForm 管理表单
 const { form, validate, setFieldValue } = useForm({
@@ -240,7 +255,7 @@ onMounted(() => {
 <style scoped lang="scss">
 .register-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -250,7 +265,7 @@ onMounted(() => {
 .register-container {
   width: 100%;
   max-width: 400px;
-  background: #fff;
+  background: var(--color-bg-white);
   border-radius: 16px;
   padding: 40px 24px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
@@ -264,7 +279,7 @@ onMounted(() => {
   .logo {
     width: 64px;
     height: 64px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -273,20 +288,20 @@ onMounted(() => {
 
     i {
       font-size: 28px;
-      color: #fff;
+      color: var(--color-bg-white);
     }
   }
 
   .title {
     font-size: 24px;
     font-weight: 600;
-    color: #333;
+    color: var(--text-primary);
     margin: 0 0 8px;
   }
 
   .subtitle {
     font-size: 14px;
-    color: #999;
+    color: var(--text-muted);
     margin: 0;
   }
 }
@@ -303,14 +318,14 @@ onMounted(() => {
 
   :deep(.el-input__prefix) {
     i {
-      color: #999;
+      color: var(--text-muted);
     }
   }
 
   .el-checkbox {
     :deep(.el-checkbox__label) {
       font-size: 13px;
-      color: #666;
+      color: var(--text-secondary);
     }
   }
 
@@ -326,12 +341,12 @@ onMounted(() => {
 
   .footer-text {
     font-size: 14px;
-    color: #666;
+    color: var(--text-secondary);
   }
 
   .footer-link {
     font-size: 14px;
-    color: #667eea;
+    color: var(--tf-color-indigo-brand);
     text-decoration: none;
     font-weight: 500;
 
@@ -348,7 +363,7 @@ onMounted(() => {
 
   a {
     font-size: 13px;
-    color: #999;
+    color: var(--text-muted);
     text-decoration: none;
     display: inline-flex;
     align-items: center;

@@ -105,7 +105,7 @@ export const MARKETING_WEATHER_TYPE_LABELS: Record<MarketingWeatherType, string>
   thunderstorm: '雷雨/强对流',
   snow: '下雪',
   fog: '雾天',
-  normal: '天气正常'
+  normal: '未分类'
 }
 
 export const MARKETING_COPY_TYPE_LABELS: Record<MarketingCopyType, string> = {
@@ -160,12 +160,6 @@ export const DEFAULT_MARKETING_LEXICON: MarketingLexicon = {
   updatedAt: new Date().toISOString()
 }
 
-export const DEFAULT_MARKETING_LOCATION = {
-  name: '江西省新余市分宜县',
-  latitude: 27.8147,
-  longitude: 114.6757
-}
-
 const TIME_SEGMENTS = [
   { start: 5, end: 10, label: '开门' },
   { start: 10, end: 17, label: '销售' },
@@ -206,7 +200,7 @@ const TRADITIONAL_HOLIDAY_NAMES = new Set([
   '春节', '元宵节', '端午节', '七夕', '中秋节', '重阳节', '除夕', '清明节'
 ])
 
-const HISTORICAL_DAY_NAMES = new Set([
+const _HISTORICAL_DAY_NAMES = new Set([
   '建党节', '建军节', '九一八', '抗战胜利日', '国家公祭日', '青年节', '教师节', '植树节',
   '妇女节', '劳动节', '儿童节', '国庆节'
 ])
@@ -399,7 +393,7 @@ const detectSolarTerm = (date: Date): string => {
   return `${matched.label}将近`
 }
 
-const detectWeatherCue = (weatherText?: string, temperature?: number | null, apparentTemperature?: number | null) => {
+const _detectWeatherCue = (weatherText?: string, temperature?: number | null, apparentTemperature?: number | null) => {
   const normalized = normalizeText(weatherText)
   const temp = Number.isFinite(Number(apparentTemperature)) ? Number(apparentTemperature) : Number(temperature)
 
@@ -430,7 +424,7 @@ const detectWeatherCue = (weatherText?: string, temperature?: number | null, app
   if (normalized.includes('云')) {
     return '多云'
   }
-  return normalized || '天气不错'
+  return normalized
 }
 
 const detectWeatherType = (
@@ -467,7 +461,7 @@ const safeParseNumber = (value?: string) => {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
-const formatMoney = (value?: string) => {
+const _formatMoney = (value?: string) => {
   const parsed = safeParseNumber(value)
   if (!parsed) return ''
   return parsed % 1 === 0 ? `¥${parsed.toFixed(0)}` : `¥${parsed.toFixed(2)}`
@@ -616,7 +610,7 @@ const getWeatherPhrases = (
     thunderstorm: ['thunderstorm', '雷雨', '雷暴', '强对流'],
     snow: ['snow', '下雪', '小雪', '大雪'],
     fog: ['fog', '雾天', '有雾'],
-    normal: ['normal', '天气正常']
+    normal: ['normal']
   }
   const matchedKey = Object.keys(weatherLexicon).find(key => aliases[weatherType].includes(key))
   return (matchedKey ? weatherLexicon[matchedKey] : undefined) || weatherLexicon[weatherType] || weatherLexicon.all || []
@@ -695,10 +689,10 @@ export const buildMarketingAutoContext = (options?: {
   const season = detectSeason(now)
   const holiday = detectHoliday(now)
   const solarTermCue = detectSolarTerm(now)
-  const weatherText = normalizeText(options?.weatherText) || '天气正常'
+  const weatherText = normalizeText(options?.weatherText)
 
   return {
-    locationName: normalizeText(options?.locationName) || DEFAULT_MARKETING_LOCATION.name,
+    locationName: normalizeText(options?.locationName),
     weatherText,
     weatherCode: options?.weatherCode ?? null,
     temperature: options?.temperature ?? null,
@@ -794,10 +788,10 @@ export const generateMarketingCopySuggestions = (params: {
       ...eventPhrases,
       ...(context.holidayCue
         ? getCategorizedContextPhrases(contextLexicon.holiday, [
-            context.holidayName || '',
-            context.holidayCue || '',
-            context.holidayType || ''
-          ])
+          context.holidayName || '',
+          context.holidayCue || '',
+          context.holidayType || ''
+        ])
         : []),
       ...(lexicon.solarTermEnabled && context.solarTermCue
         ? getCategorizedContextPhrases(contextLexicon.solarTerm, [context.solarTermCue])
@@ -878,10 +872,10 @@ export const generateMarketingCopySuggestions = (params: {
 
 export const getWeatherTextByCode = (code?: number | null) => {
   if (code === undefined || code === null || Number.isNaN(Number(code))) {
-    return '天气正常'
+    return ''
   }
 
-  return WEATHER_CODE_MAP[Number(code)] || '天气正常'
+  return WEATHER_CODE_MAP[Number(code)] || ''
 }
 
 export const formatMarketingPrice = (value?: string) => {

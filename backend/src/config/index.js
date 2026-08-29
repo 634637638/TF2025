@@ -1,50 +1,51 @@
-const path = require('path');
-const fs = require('fs');
-const log = require('../utils/log');
+const path = require('path')
+const fs = require('fs')
+const log = require('../utils/log')
 
-const env = process.env.NODE_ENV || 'development';
-const explicitEnvFile = process.env.ENV_FILE;
+const env = process.env.NODE_ENV || 'development'
+const explicitEnvFile = process.env.ENV_FILE
 const candidateEnvFiles = explicitEnvFile
   ? [explicitEnvFile]
   : env === 'production'
     ? ['.env.production', '.env']
-    : ['.env', '.env.production'];
+    : ['.env', '.env.production']
 
 const envPath = candidateEnvFiles
   .map((file) => path.resolve(process.cwd(), file))
-  .find((filePath) => fs.existsSync(filePath));
+  .find((filePath) => fs.existsSync(filePath))
 
 if (envPath) {
-  require('dotenv').config({ path: envPath });
-  log.info(`环境配置加载: NODE_ENV=${env}, envFile=${envPath}`);
+  require('dotenv').config({ path: envPath, quiet: true })
+  const effectiveEnv = process.env.NODE_ENV || env
+  log.info(`环境配置加载: NODE_ENV=${effectiveEnv}, envFile=${envPath}`)
 } else {
-  log.warn(`未找到可用的环境配置文件: ${candidateEnvFiles.join(', ')}`);
+  log.warn(`未找到可用的环境配置文件: ${candidateEnvFiles.join(', ')}`)
 }
 
 // 验证必需的环境变量
-const requiredEnvVars = ['DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_NAME', 'JWT_SECRET'];
-const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+const requiredEnvVars = ['DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_NAME', 'JWT_SECRET']
+const missingVars = requiredEnvVars.filter(varName => !process.env[varName])
 
 if (missingVars.length > 0) {
   if (process.env.NODE_ENV === 'production') {
-    throw new Error(`缺少必需的环境变量: ${missingVars.join(', ')}`);
+    throw new Error(`缺少必需的环境变量: ${missingVars.join(', ')}`)
   } else {
-    log.warn(`缺少环境变量 ${missingVars.join(', ')}，请创建 .env 文件`);
+    log.warn(`缺少环境变量 ${missingVars.join(', ')}，请创建 .env 文件`)
   }
 }
 
 // 验证JWT密钥长度
 if (process.env.JWT_SECRET && process.env.JWT_SECRET.length < 32) {
-  log.warn('JWT_SECRET 长度应至少为32个字符');
+  log.warn('JWT_SECRET 长度应至少为32个字符')
 }
 
 function parseEnvInt(value, fallback) {
-  const parsed = parseInt(value, 10);
-  return Number.isFinite(parsed) ? parsed : fallback;
+  const parsed = parseInt(value, 10)
+  return Number.isFinite(parsed) ? parsed : fallback
 }
 
-const dbConnectionLimit = parseEnvInt(process.env.DB_CONNECTION_LIMIT || '20', 20);
-const dbMaxIdle = parseEnvInt(process.env.DB_MAX_IDLE || String(Math.min(dbConnectionLimit, 10)), Math.min(dbConnectionLimit, 10));
+const dbConnectionLimit = parseEnvInt(process.env.DB_CONNECTION_LIMIT || '20', 20)
+const dbMaxIdle = parseEnvInt(process.env.DB_MAX_IDLE || String(Math.min(dbConnectionLimit, 10)), Math.min(dbConnectionLimit, 10))
 
 const config = {
   db: {
@@ -69,9 +70,9 @@ const config = {
     flags: '+FOUND_ROWS',
     typeCast: function (field, next) {
       if (field.type === 'VAR_STRING' || field.type === 'STRING') {
-        return field.string();
+        return field.string()
       }
-      return next();
+      return next()
     }
   },
   jwt: {
@@ -90,13 +91,13 @@ const config = {
     initAdminPassword: process.env.INIT_ADMIN_PASSWORD || ''
   },
   api: {
-    rateLimit: parseEnvInt(process.env.API_RATE_LIMIT || '100', 100),
+    rateLimit: parseEnvInt(process.env.API_RATE_LIMIT || '3000', 3000),
     rateWindowMs: parseEnvInt(process.env.API_RATE_WINDOW_MS || '900000', 900000)
   },
   cache: {
     ttl: parseEnvInt(process.env.CACHE_TTL || '600', 600),
     maxKeys: parseEnvInt(process.env.CACHE_MAX_KEYS || '1000', 1000)
   }
-};
+}
 
-module.exports = config;
+module.exports = config

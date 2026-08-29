@@ -3,7 +3,7 @@ type MessageConfig = {
   type?: 'success' | 'warning' | 'info' | 'error'
   duration?: number
   showClose?: boolean
-  [key: string]: any
+  [key: string]: unknown
 }
 
 type MessageOptions = string | MessageConfig
@@ -15,7 +15,7 @@ type NotificationOptions = {
   duration?: number
   showClose?: boolean
   position?: string
-  [key: string]: any
+  [key: string]: unknown
 }
 
 type LoadingOptions = {
@@ -44,7 +44,7 @@ export const loadElementPlus = () => {
 
 export const showElementMessage = async (options: MessageOptions) => {
   const { ElMessage } = await loadElementPlus()
-  return ElMessage(options as any)
+  return ElMessage(options as Parameters<typeof ElMessage>[0])
 }
 
 export const showElementSuccess = (options: string | Omit<MessageConfig, 'type'>) => {
@@ -91,7 +91,7 @@ export const showElementError = (options: string | Omit<MessageConfig, 'type'>) 
 
 export const showElementNotification = async (options: NotificationOptions) => {
   const { ElNotification } = await loadElementPlus()
-  return ElNotification(options as any)
+  return ElNotification(options as Parameters<typeof ElNotification>[0])
 }
 
 export const showElementLoading = async (options: LoadingOptions): Promise<LoadingInstance> => {

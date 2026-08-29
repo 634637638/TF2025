@@ -5,6 +5,7 @@
 
 import { computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import type { LoginCredentials } from '@/types'
 
 export function useAuth() {
   const authStore = useAuthStore()
@@ -28,7 +29,7 @@ export function useAuth() {
   const permissions = computed(() => authStore.userPermissions)
 
   // 登录方法
-  const login = async (credentials: any) => {
+  const login = async (credentials: LoginCredentials) => {
     return await authStore.login(credentials)
   }
 

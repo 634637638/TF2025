@@ -5,224 +5,306 @@
     module-name="已售商品"
     permission-code="h5-sold-products:view"
   >
-  <div class="sold-products-view">
-    <!-- 搜索栏 -->
-    <div class="search-bar">
-      <el-input
-        v-model="searchKeyword"
-        placeholder="搜索 IMEI、品牌、型号"
-        clearable
-        @input="handleSearch"
-      >
-        <template #prefix>
-          <i class="fas fa-search"></i>
-        </template>
-      </el-input>
-      <el-button @click="loadSoldProducts" type="primary" :loading="loading" class="btn-sm">
-        <i class="fas fa-sync-alt mr-1"></i>刷新
-      </el-button>
-    </div>
-
-    <!-- 加载状态 -->
-    <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
-
-    <!-- 空状态 -->
-    <div v-else-if="filteredProducts.length === 0" class="empty-state">
-      <i class="fas fa-inbox"></i>
-      <p>暂无已售商品</p>
-    </div>
-
-    <!-- 商品列表 -->
-    <div v-else class="products-list">
-      <div
-        v-for="product in paginatedProducts"
-        :key="product.id"
-        class="product-card"
-      >
-        <!-- 商品信息 -->
-        <div class="product-info">
-          <div class="product-main">
-            <h3>{{ product.brand }} {{ product.model }}</h3>
-            <div class="product-details">
-              <span class="detail-item">
-                <i class="fas fa-palette"></i>
-                {{ product.color }}
-              </span>
-              <span class="detail-item">
-                <i class="fas fa-memory"></i>
-                {{ product.memory }}
-              </span>
-            </div>
-            <div class="product-meta">
-              <span class="meta-item">
-                <i class="fas fa-barcode"></i>
-                IMEI: {{ product.imei }}
-              </span>
-              <span class="meta-item">
-                <i class="fas fa-calendar"></i>
-                售出: {{ formatDate(product.sale_date) }}
-              </span>
-            </div>
-          </div>
-
-          <!-- 图片数量 -->
-          <div class="image-count">
-            <i class="fas fa-images"></i>
-            <span>{{ product.image_count }} 张</span>
-          </div>
-        </div>
-
-        <!-- 操作按钮 -->
-        <div class="product-actions">
-          <el-button
-            plain
-            type="primary"
-            size="small"
-            @click="viewImages(product)"
-            class="btn-sm"
-          >
-            <i class="fas fa-eye mr-1"></i>查看图片
-          </el-button>
-          <el-button
-            v-if="canDelete"
-            plain
-            type="danger"
-            size="small"
-            @click="deleteProductImages(product)"
-            class="btn-sm"
-          >
-            <i class="fas fa-trash mr-1"></i>删除图片
-          </el-button>
-        </div>
+    <div class="sold-products-view">
+      <!-- 搜索栏 -->
+      <div class="search-bar">
+        <el-input
+          v-model="searchKeyword"
+          placeholder="搜索 IMEI、品牌、型号"
+          clearable
+          @input="handleSearch"
+        >
+          <template #prefix>
+            <i class="fas fa-search" />
+          </template>
+        </el-input>
+        <el-button
+          type="primary"
+          :loading="loading"
+          class="btn-sm"
+          @click="loadSoldProducts"
+        >
+          <i class="fas fa-sync-alt mr-1" />刷新
+        </el-button>
       </div>
-    </div>
 
-    <!-- 分页 -->
-    <div v-if="filteredProducts.length > pageSize" class="pagination">
-      <el-button
-        @click="currentPage--"
-        :disabled="currentPage === 1"
-        size="small"
+      <!-- 加载状态 -->
+      <TableLoadingRow
+        v-if="loading"
+        mode="block"
+        text="加载中..."
+      />
+
+      <!-- 空状态 -->
+      <DataEmptyState
+        v-else-if="filteredProducts.length === 0"
+        description="暂无已售商品"
+      />
+
+      <!-- 商品列表 -->
+      <div
+        v-else
+        class="products-list"
       >
-        上一页
-      </el-button>
-      <span class="page-info">
-        第 {{ currentPage }} / {{ totalPages }} 页
-      </span>
-      <el-button
-        @click="currentPage++"
-        :disabled="currentPage === totalPages"
-        size="small"
-      >
-        下一页
-      </el-button>
-    </div>
-
-    <!-- 图片管理模态框 -->
-    <el-dialog
-      v-model="showImageModal"
-      title="图片管理"
-      width="90%"
-      :close-on-click-modal="true"
-      class="image-manage-dialog"
-    >
-      <div class="image-preview-modal">
-        <div class="modal-header">
-          <h3>{{ selectedProduct?.brand }} {{ selectedProduct?.model }}</h3>
-          <p>{{ selectedProduct?.color }} | {{ selectedProduct?.memory }} | IMEI: {{ selectedProduct?.imei }}</p>
-        </div>
-
-        <div v-if="loadingImages" class="loading-images">
-          <InlineLoading text="加载图片中..." />
-        </div>
-
-        <div v-else-if="productImages.length === 0" class="no-images">
-          <i class="fas fa-image"></i>
-          <p>暂无图片</p>
-        </div>
-
-        <div v-else class="images-grid">
-          <div
-            v-for="(image, index) in productImages"
-            :key="image.id"
-            class="image-item"
-          >
-            <Image
-              :src="image.image_url"
-              :alt="`图片 ${index + 1}`"
-              mode="eager"
-              :product-info="{
-                brand: selectedProduct?.brand || '',
-                model: selectedProduct?.model || '',
-                color: selectedProduct?.color || '',
-                memory: selectedProduct?.memory || ''
-              }"
-              @click="previewImage(image)"
-            />
-            <div v-if="image.is_primary" class="primary-badge">
-              <i class="fas fa-star"></i>
-              主图
+        <div
+          v-for="product in paginatedProducts"
+          :key="product.id"
+          class="product-card"
+        >
+          <!-- 商品信息 -->
+          <div class="product-info">
+            <div class="product-main">
+              <h3 v-if="canViewField('product.brand_model')">
+                {{ product.brand }} {{ product.model }}
+              </h3>
+              <div
+                v-if="canViewField('product.color') || canViewField('product.memory')"
+                class="product-details"
+              >
+                <span
+                  v-if="canViewField('product.color')"
+                  class="detail-item"
+                >
+                  <i class="fas fa-palette" />
+                  {{ product.color }}
+                </span>
+                <span
+                  v-if="canViewField('product.memory')"
+                  class="detail-item"
+                >
+                  <i class="fas fa-memory" />
+                  {{ product.memory }}
+                </span>
+              </div>
+              <div
+                v-if="canViewField('product.imei') || canViewField('product.sale_time')"
+                class="product-meta"
+              >
+                <span
+                  v-if="canViewField('product.imei')"
+                  class="meta-item"
+                >
+                  <i class="fas fa-barcode" />
+                  IMEI: {{ product.imei }}
+                </span>
+                <span
+                  v-if="canViewField('product.sale_time')"
+                  class="meta-item"
+                >
+                  <i class="fas fa-calendar" />
+                  售出: {{ formatDate(product.sale_time) }}
+                </span>
+              </div>
             </div>
-            <!-- 右上角删除按钮 -->
+
+            <!-- 图片数量 -->
+            <div
+              v-if="canViewField('product.image_count')"
+              class="image-count"
+            >
+              <i class="fas fa-images" />
+              <span>{{ product.image_count }} 张</span>
+            </div>
+          </div>
+
+          <!-- 操作按钮 -->
+          <div
+            v-if="showActionColumn"
+            class="product-actions"
+          >
+            <el-button
+              v-if="canViewField('images.image_url') || canDelete"
+              plain
+              type="primary"
+              size="small"
+              class="btn-sm"
+              @click="viewImages(product)"
+            >
+              <i class="fas fa-eye mr-1" />查看图片
+            </el-button>
             <el-button
               v-if="canDelete"
               plain
               type="danger"
               size="small"
-              circle
-              class="image-delete-btn btn-sm"
-              @click.stop="deleteSingleImage(image)"
+              class="btn-sm"
+              @click="deleteProductImages(product)"
             >
-              <i class="fas fa-trash"></i>
+              <i class="fas fa-trash mr-1" />删除图片
             </el-button>
           </div>
         </div>
       </div>
 
-      <template #footer>
-        <div class="image-modal-footer">
-          <el-button @click="showImageModal = false">关闭</el-button>
-          <el-button
-            v-if="canDelete"
-            plain
-            type="danger"
-            @click="deleteAllImages"
-            :disabled="loadingImages"
-            class="btn-sm"
-          >
-            <i class="fas fa-trash mr-1"></i>删除全部
-          </el-button>
-        </div>
-      </template>
-    </el-dialog>
-
-    <!-- 大图预览 -->
-    <teleport to="body">
-      <div v-if="showImageViewer" class="image-viewer-mask" @click.self="showImageViewer = false">
-        <div class="preview-wrapper" @click.self="showImageViewer = false">
-          <el-image-viewer
-            :url-list="[currentPreviewImage]"
-            :hide-on-click-modal="true"
-            @close="showImageViewer = false"
-          />
-          <!-- 右上角删除按钮 -->
-          <button
-            v-if="canDelete"
-            class="preview-delete-btn"
-            @click.stop="deleteCurrentImage"
-            title="删除此图片"
-          >
-            <i class="fas fa-trash"></i>
-          </button>
-        </div>
+      <!-- 分页 -->
+      <div
+        v-if="filteredProducts.length > pagination.page_size"
+        class="pagination"
+      >
+        <el-button
+          :disabled="pagination.page === 1"
+          size="small"
+          @click="pagination.page--"
+        >
+          上一页
+        </el-button>
+        <span class="page-info">
+          第 {{ pagination.page }} / {{ total_pages }} 页
+        </span>
+        <el-button
+          :disabled="pagination.page === total_pages"
+          size="small"
+          @click="pagination.page++"
+        >
+          下一页
+        </el-button>
       </div>
-    </teleport>
-  </div>
+
+      <!-- 图片管理模态框 -->
+      <el-dialog
+        v-model="showImageModal"
+        title="图片管理"
+        width="90%"
+        :close-on-click-modal="true"
+        class="image-manage-dialog"
+      >
+        <div class="image-preview-modal">
+          <div class="modal-header">
+            <h3 v-if="canViewField('product.brand_model')">
+              {{ selectedProduct?.brand }} {{ selectedProduct?.model }}
+            </h3>
+            <p>
+              <template v-if="canViewField('product.color')">
+                {{ selectedProduct?.color }}
+              </template>
+              <template v-if="canViewField('product.color') && canViewField('product.memory')">
+                |
+              </template>
+              <template v-if="canViewField('product.memory')">
+                {{ selectedProduct?.memory }}
+              </template>
+              <template v-if="(canViewField('product.color') || canViewField('product.memory')) && canViewField('product.imei')">
+                |
+              </template>
+              <template v-if="canViewField('product.imei')">
+                IMEI: {{ selectedProduct?.imei }}
+              </template>
+            </p>
+          </div>
+
+          <div
+            v-if="loadingImages"
+            class="loading-images"
+          >
+            <InlineLoading text="加载图片中..." />
+          </div>
+
+          <div
+            v-else-if="productImages.length === 0"
+            class="no-images"
+          >
+            <i class="fas fa-image" />
+            <p>暂无图片</p>
+          </div>
+
+          <div
+            v-else
+            class="images-grid"
+          >
+            <div
+              v-for="(image, index) in productImages"
+              :key="image.id"
+              class="image-item"
+            >
+              <Image
+                v-if="canViewField('images.image_url') || canDelete"
+                :src="image.image_url"
+                :alt="`图片 ${index + 1}`"
+                mode="eager"
+                :product-info="{
+                  brand: selectedProduct?.brand || '',
+                  model: selectedProduct?.model || '',
+                  color: selectedProduct?.color || '',
+                  memory: selectedProduct?.memory || ''
+                }"
+                @click="previewImage(image)"
+              />
+              <div
+                v-if="image.is_primary && canViewField('images.is_primary')"
+                class="primary-badge"
+              >
+                <i class="fas fa-star" />
+                主图
+              </div>
+              <!-- 右上角删除按钮 -->
+              <el-button
+                v-if="canDelete"
+                plain
+                type="danger"
+                size="small"
+                circle
+                class="image-delete-btn btn-sm"
+                @click.stop="deleteSingleImage(image)"
+              >
+                <i class="fas fa-trash" />
+              </el-button>
+            </div>
+          </div>
+        </div>
+
+        <template #footer>
+          <div class="image-modal-footer">
+            <el-button @click="showImageModal = false">
+              关闭
+            </el-button>
+            <el-button
+              v-if="canDelete"
+              plain
+              type="danger"
+              :disabled="loadingImages"
+              class="btn-sm"
+              @click="deleteAllImages"
+            >
+              <i class="fas fa-trash mr-1" />删除全部
+            </el-button>
+          </div>
+        </template>
+      </el-dialog>
+
+      <!-- 大图预览 -->
+      <teleport to="body">
+        <div
+          v-if="showImageViewer"
+          class="image-viewer-mask"
+          @click.self="showImageViewer = false"
+        >
+          <div
+            class="preview-wrapper"
+            @click.self="showImageViewer = false"
+          >
+            <el-image-viewer
+              :url-list="[currentPreviewImage]"
+              :hide-on-click-modal="true"
+              @close="showImageViewer = false"
+            />
+            <!-- 右上角删除按钮 -->
+            <button
+              v-if="canDelete"
+              class="preview-delete-btn"
+              title="删除此图片"
+              @click.stop="deleteCurrentImage"
+            >
+              <i class="fas fa-trash" />
+            </button>
+          </div>
+        </div>
+      </teleport>
+    </div>
   </PermissionGate>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, inject, watch } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, inject, watch } from 'vue'
 import { ElMessage, ElMessageBox, ElImageViewer } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
 import { unifiedApi as api } from '@/utils/unified-api'
@@ -232,47 +314,37 @@ import InlineLoading from '@/components/InlineLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { PermissionGate } from '@/components/base'
 import { usePagePermissions } from '@/composables/usePagePermissions'
+import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { logger } from '@/utils/logger'
 import type { HeaderAction } from '@/types'
+import type { SoldProduct, SoldProductImage } from '@/types/h5'
 // 注入父组件提供的注册方法
-const registerHeaderActions = inject<(actions: HeaderAction[]) => void>('registerHeaderActions')
+const registerHeaderActions = inject<(_actions: HeaderAction[]) => void>('registerHeaderActions')
 const clearHeaderActions = inject<() => void>('clearHeaderActions')
 const soldProductsPermissions = usePagePermissions('h5-sold-products')
 const { handleNoPermission } = soldProductsPermissions
 const canView = computed(() => soldProductsPermissions.canView.value)
 const canDelete = computed(() => soldProductsPermissions.canDelete.value)
-
-interface SoldProduct {
-  id: number
-  imei: string
-  brand: string
-  model: string
-  color: string
-  memory: string
-  sale_date: string
-  image_count: number
-}
-
-interface ProductImage {
-  id: number
-  phone_id: number
-  image_url: string
-  image_type: string
-  is_primary: boolean
-  sort_order: number
-}
+const SOLD_PRODUCTS_MODULE_KEY = 'h5_admin_soldproductsview'
+const canViewField = (fieldKey: string) => fieldPermissions.isFieldVisible(SOLD_PRODUCTS_MODULE_KEY, fieldKey)
+const showActionColumn = computed(() => shouldShowActionColumn(
+  canViewField('system_info.operations'),
+  [canDelete.value]
+))
 
 const { loading } = useLoadingState(true)
 const hasInitializedPageData = ref(false)
 const loadingImages = ref(false)
 const products = ref<SoldProduct[]>([])
 const searchKeyword = ref('')
-const currentPage = ref(1)
-const pageSize = ref(10)
+const pagination = reactive({
+  page: 1,
+  page_size: 10
+})
 
 const showImageModal = ref(false)
 const selectedProduct = ref<SoldProduct | null>(null)
-const productImages = ref<ProductImage[]>([])
+const productImages = ref<SoldProductImage[]>([])
 
 const showImageViewer = ref(false)
 const currentPreviewImage = ref('')
@@ -308,14 +380,14 @@ const filteredProducts = computed(() => {
 
 // 分页后的商品列表
 const paginatedProducts = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  const end = start + pageSize.value
+  const start = (pagination.page - 1) * pagination.page_size
+  const end = start + pagination.page_size
   return filteredProducts.value.slice(start, end)
 })
 
 // 总页数
-const totalPages = computed(() => {
-  return Math.ceil(filteredProducts.value.length / pageSize.value)
+const total_pages = computed(() => {
+  return Math.max(1, Math.ceil(filteredProducts.value.length / pagination.page_size))
 })
 
 // 加载已售商品列表
@@ -328,9 +400,11 @@ const loadSoldProducts = async () => {
 
   try {
     loading.value = true
-    const response = await api.get('/shop/sold-products')
-    // unifiedApi 已经在拦截器中返回 response.data
-    products.value = Array.isArray(response) ? response : (response?.data || [])
+    const response = await api.get<SoldProduct[]>('/shop/sold-products')
+    if (!Array.isArray(response.data)) {
+      throw new Error('已售商品响应格式错误')
+    }
+    products.value = response.data
   } catch (error) {
     logger.error('加载已售商品失败:', error)
     ElMessage.error('加载已售商品失败')
@@ -350,7 +424,7 @@ const ensureDeletePermission = () => {
 
 // 搜索处理
 const handleSearch = () => {
-  currentPage.value = 1
+  pagination.page = 1
 }
 
 // 查看图片
@@ -365,8 +439,11 @@ const viewImages = async (product: SoldProduct) => {
   loadingImages.value = true
 
   try {
-    const response = await api.get(`/shop/products/${product.id}/images`)
-    productImages.value = response.data || []
+    const response = await api.get<SoldProductImage[]>(`/shop/products/${product.id}/images`)
+    if (!Array.isArray(response.data)) {
+      throw new Error('商品图片响应格式错误')
+    }
+    productImages.value = response.data
   } catch (error) {
     logger.error('加载图片失败:', error)
     ElMessage.error('加载图片失败')
@@ -404,7 +481,7 @@ const deleteProductImages = async (product: SoldProduct) => {
 }
 
 // 删除单张图片
-const deleteSingleImage = async (image: ProductImage) => {
+const deleteSingleImage = async (image: SoldProductImage) => {
   if (!ensureDeletePermission()) {
     return
   }
@@ -437,7 +514,7 @@ const deleteSingleImage = async (image: ProductImage) => {
 }
 
 // 预览大图
-const previewImage = (image: ProductImage) => {
+const previewImage = (image: SoldProductImage) => {
   currentPreviewImage.value = getImageUrl(image.image_url)
   currentPreviewImageId.value = image.id
   showImageViewer.value = true
@@ -521,7 +598,7 @@ const getImageUrl = (url: string) => {
 }
 
 // 格式化日期
-const formatDate = (date: string) => {
+const formatDate = (date: string | null) => {
   if (!date) return '-'
   return new Date(date).toLocaleDateString('zh-CN')
 }
@@ -562,6 +639,7 @@ watch(canView, (allowed) => {
 })
 
 onMounted(() => {
+  void fieldPermissions.init()
   void initializePageData()
   registerPageHeaderActions()
 })
@@ -595,7 +673,7 @@ onUnmounted(() => {
 .empty-state {
   text-align: center;
   padding: 60px 20px;
-  color: #999;
+  color: var(--text-muted);
 
   i {
     font-size: 48px;
@@ -615,7 +693,7 @@ onUnmounted(() => {
 }
 
 .product-card {
-  background: #fff;
+  background: var(--color-bg-white);
   border-radius: 12px;
   padding: 16px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -639,7 +717,7 @@ onUnmounted(() => {
 
   h3 {
     font-size: 18px;
-    color: #333;
+    color: var(--text-primary);
     margin-bottom: 8px;
   }
 
@@ -650,11 +728,11 @@ onUnmounted(() => {
 
     .detail-item {
       font-size: 14px;
-      color: #666;
+      color: var(--text-secondary);
 
       i {
         margin-right: 4px;
-        color: #ff6b00;
+        color: var(--tf-color-accent-orange);
       }
     }
   }
@@ -666,7 +744,7 @@ onUnmounted(() => {
 
     .meta-item {
       font-size: 12px;
-      color: #999;
+      color: var(--text-muted);
 
       i {
         margin-right: 4px;
@@ -680,8 +758,8 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   padding: 8px 16px;
-  background: linear-gradient(135deg, #ff6b00 0%, #ff8c00 100%);
-  color: #fff;
+  background: linear-gradient(135deg, var(--tf-color-accent-orange) 0%, var(--tf-color-orange-dark) 100%);
+  color: var(--color-bg-white);
   border-radius: 8px;
   flex-shrink: 0;
 
@@ -717,7 +795,7 @@ onUnmounted(() => {
 
   .page-info {
     font-size: 14px;
-    color: #666;
+    color: var(--text-secondary);
   }
 }
 
@@ -728,13 +806,13 @@ onUnmounted(() => {
 
     h3 {
       font-size: 18px;
-      color: #333;
+      color: var(--text-primary);
       margin-bottom: 4px;
     }
 
     p {
       font-size: 14px;
-      color: #999;
+      color: var(--text-muted);
     }
   }
 
@@ -742,7 +820,7 @@ onUnmounted(() => {
   .no-images {
     text-align: center;
     padding: 40px;
-    color: #999;
+    color: var(--text-muted);
 
     i {
       font-size: 36px;
@@ -762,7 +840,7 @@ onUnmounted(() => {
     aspect-ratio: 1;
     border-radius: 8px;
     overflow: hidden;
-    background: #f5f5f5;
+    background: var(--tf-color-surface-soft);
     cursor: pointer;
 
     img {
@@ -775,8 +853,8 @@ onUnmounted(() => {
       position: absolute;
       top: 8px;
       left: 8px;
-      background: #ff6b00;
-      color: #fff;
+      background: var(--tf-color-accent-orange);
+      color: var(--color-bg-white);
       padding: 4px 8px;
       border-radius: 4px;
       font-size: 12px;

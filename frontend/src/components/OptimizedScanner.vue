@@ -5,21 +5,21 @@
     width="760px"
     dialog-class="optimized-scanner-dialog"
     :show-default-footer="false"
-    @update:modelValue="handleDialogVisibilityChange"
+    @update:model-value="handleDialogVisibilityChange"
     @close="handleCancel"
   >
     <div class="scanner-body">
       <div class="video-container">
         <video
-          ref="videoRef"
           id="scan-video"
+          ref="videoRef"
           class="scan-video"
           :style="videoStyle"
-          @click="focusAtCenter"
           autoplay
           muted
           playsinline
-        ></video>
+          @click="focusAtCenter"
+        />
 
         <div
           v-if="showROIDisplay && !lastScannedText"
@@ -27,22 +27,31 @@
           class="scanner-guide"
           :class="`scanner-guide--${scanType}`"
         >
-          <span class="scanner-guide__corner scanner-guide__corner--top-left"></span>
-          <span class="scanner-guide__corner scanner-guide__corner--top-right"></span>
-          <span class="scanner-guide__corner scanner-guide__corner--bottom-left"></span>
-          <span class="scanner-guide__corner scanner-guide__corner--bottom-right"></span>
-          <span ref="scannerLineRef" class="scanner-guide__line"></span>
+          <span class="scanner-guide__corner scanner-guide__corner--top-left" />
+          <span class="scanner-guide__corner scanner-guide__corner--top-right" />
+          <span class="scanner-guide__corner scanner-guide__corner--bottom-left" />
+          <span class="scanner-guide__corner scanner-guide__corner--bottom-right" />
+          <span
+            ref="scannerLineRef"
+            class="scanner-guide__line"
+          />
           <span class="scanner-guide__label">{{ scanInstruction }}</span>
         </div>
 
-        <div v-if="candidateText && !lastScannedText" class="scan-candidate-display">
-          <i class="fas fa-crosshairs"></i>
+        <div
+          v-if="candidateText && !lastScannedText"
+          class="scan-candidate-display"
+        >
+          <i class="fas fa-crosshairs" />
           <span>{{ candidateText }}</span>
           <small>{{ scanFeedback }}</small>
         </div>
 
-        <div v-else-if="scanIssue && !lastScannedText" class="scan-issue-display">
-          <i :class="lastDecodedRaw ? 'fas fa-barcode' : 'fas fa-exclamation-circle'"></i>
+        <div
+          v-else-if="scanIssue && !lastScannedText"
+          class="scan-issue-display"
+        >
+          <i :class="lastDecodedRaw ? 'fas fa-barcode' : 'fas fa-exclamation-circle'" />
           <span>
             <strong v-if="lastDecodedRaw">已读取：{{ lastDecodedRaw }}</strong>
             <strong v-else>暂未识别到有效内容</strong>
@@ -50,14 +59,20 @@
           </span>
         </div>
 
-        <div v-else-if="decoderReady && !lastScannedText" class="scan-engine-status">
-          <span class="scan-engine-status__dot"></span>
+        <div
+          v-else-if="decoderReady && !lastScannedText"
+          class="scan-engine-status"
+        >
+          <span class="scan-engine-status__dot" />
           <span>识别器运行中 {{ videoResolution }}</span>
         </div>
 
-        <div v-if="lastScannedText" class="scan-result-display">
+        <div
+          v-if="lastScannedText"
+          class="scan-result-display"
+        >
           <div class="result-label">
-            <i class="fas fa-check-circle"></i>
+            <i class="fas fa-check-circle" />
             {{ title }}已识别：
           </div>
           <div class="result-value">
@@ -70,15 +85,23 @@
     <template #footer>
       <div class="tf-dialog-actions">
         <el-button @click="openManualInput">
-          <i class="fas fa-keyboard"></i>
+          <i class="fas fa-keyboard" />
           <span>输入</span>
         </el-button>
-        <el-button v-if="hasFlash" type="info" @click="toggleFlash" :class="{ active: flashOn }">
-          <i :class="flashOn ? 'fas fa-lightbulb' : 'far fa-lightbulb'"></i>
+        <el-button
+          v-if="hasFlash"
+          type="info"
+          :class="{ active: flashOn }"
+          @click="toggleFlash"
+        >
+          <i :class="flashOn ? 'fas fa-lightbulb' : 'far fa-lightbulb'" />
           <span>{{ flashOn ? '关灯' : '闪光灯' }}</span>
         </el-button>
-        <el-button type="danger" @click="handleCancel">
-          <i class="fas fa-times"></i>
+        <el-button
+          type="danger"
+          @click="handleCancel"
+        >
+          <i class="fas fa-times" />
           <span>取消</span>
         </el-button>
       </div>
@@ -109,17 +132,17 @@ interface NativeBarcodeResult {
 }
 
 interface NativeBarcodeDetector {
-  detect(source: ImageBitmapSource): Promise<NativeBarcodeResult[]>
+  detect(_source: ImageBitmapSource): Promise<NativeBarcodeResult[]>
 }
 
 interface NativeBarcodeDetectorConstructor {
-  new (options?: { formats?: string[] }): NativeBarcodeDetector
+  new (_options?: { formats?: string[] }): NativeBarcodeDetector
   getSupportedFormats?: () => Promise<string[]>
 }
 
 interface CropBarcodeReader {
-  setHints(hints: Map<unknown, unknown>): void
-  decodeWithState(bitmap: unknown): { getText?: () => string }
+  setHints(_hints: Map<unknown, unknown>): void
+  decodeWithState(_bitmap: unknown): { getText?: () => string }
   reset(): void
 }
 
@@ -149,7 +172,7 @@ type TorchMediaTrackConstraintSet = MediaTrackConstraintSet & {
 
 type TorchMediaTrack = MediaStreamTrack & {
   getCapabilities: () => TorchMediaTrackCapabilities
-  applyConstraints: (constraints?: MediaTrackConstraints & { advanced?: TorchMediaTrackConstraintSet[] }) => Promise<void>
+  applyConstraints: (_constraints?: MediaTrackConstraints & { advanced?: TorchMediaTrackConstraintSet[] }) => Promise<void>
 }
 
 const getTorchCapabilities = (track: MediaStreamTrack): TorchMediaTrackCapabilities => (
@@ -171,6 +194,7 @@ interface Emits extends UpdateVisibleEmits, CancelEmits {
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  phone: undefined,
   showROIDisplay: true,
   enableAndroidOptimization: true
 })
@@ -396,12 +420,12 @@ const startScanning = async () => {
       props.scanType === 'imei'
         ? [BarcodeFormat.CODE_128]
         : [
-            ...serialOneDimensionalFormats,
-            BarcodeFormat.QR_CODE,
-            BarcodeFormat.DATA_MATRIX,
-            BarcodeFormat.PDF_417,
-            BarcodeFormat.AZTEC
-          ]
+          ...serialOneDimensionalFormats,
+          BarcodeFormat.QR_CODE,
+          BarcodeFormat.DATA_MATRIX,
+          BarcodeFormat.PDF_417,
+          BarcodeFormat.AZTEC
+        ]
     )
 
     await startDecoding(scanOptimizer.generateCameraConfig(deviceInfo.value))
@@ -583,9 +607,9 @@ const startCropDecoding = (
   session: number,
   hints: Map<unknown, unknown>,
   MultiFormatReader: new () => CropBarcodeReader,
-  CanvasLuminanceSource: new (canvas: HTMLCanvasElement, doAutoInvert?: boolean) => unknown,
-  HybridBinarizer: new (source: unknown) => unknown,
-  BinaryBitmap: new (binarizer: unknown) => unknown
+  CanvasLuminanceSource: new (_canvas: HTMLCanvasElement, _doAutoInvert?: boolean) => unknown,
+  HybridBinarizer: new (_source: unknown) => unknown,
+  BinaryBitmap: new (_binarizer: unknown) => unknown
 ) => {
   if (!videoRef.value || !props.visible) return
 
@@ -614,7 +638,7 @@ const startCropDecoding = (
     dh: number
   ) => {
     // 某些项目依赖的 DOM 类型只暴露了简化的 drawImage 重载，运行时仍使用浏览器标准 9 参数签名。
-    ;(context as unknown as { drawImage: (...args: [CanvasImageSource, number, number, number, number, number, number, number, number]) => void })
+    ;(context as unknown as { drawImage: (..._args: [CanvasImageSource, number, number, number, number, number, number, number, number]) => void })
       .drawImage(source, sx, sy, sw, sh, dx, dy, dw, dh)
   }
 
@@ -880,7 +904,7 @@ onBeforeUnmount(() => {
 
 .video-container {
   position: relative;
-  background: #000;
+  background: var(--tf-color-black);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -894,8 +918,8 @@ onBeforeUnmount(() => {
   width: 100%;
   max-width: none;
   height: 100%;
-  background: #000;
-  transform: none !important;
+  background: var(--tf-color-black);
+  transform: none;
   object-fit: cover;
 }
 
@@ -919,7 +943,7 @@ onBeforeUnmount(() => {
   position: absolute;
   width: 30px;
   height: 30px;
-  border-color: #60a5fa;
+  border-color: var(--tf-color-blue-400);
   border-style: solid;
   filter: drop-shadow(0 0 4px rgba(37, 99, 235, 0.7));
 }
@@ -954,7 +978,7 @@ onBeforeUnmount(() => {
   left: 10px;
   top: 50%;
   height: 2px;
-  background: #60a5fa;
+  background: var(--tf-color-blue-400);
   box-shadow: 0 0 10px rgba(96, 165, 250, 0.9);
   transform: translateY(-50%);
 }
@@ -966,7 +990,7 @@ onBeforeUnmount(() => {
   padding: 6px 10px;
   border-radius: 6px;
   background: rgba(15, 23, 42, 0.78);
-  color: #fff;
+  color: var(--color-bg-white);
   font-size: 13px;
   line-height: 20px;
   white-space: nowrap;
@@ -987,13 +1011,13 @@ onBeforeUnmount(() => {
   border: 1px solid rgba(147, 197, 253, 0.65);
   border-radius: 8px;
   background: rgba(15, 23, 42, 0.88);
-  color: #fff;
+  color: var(--color-bg-white);
   backdrop-filter: blur(8px);
 }
 
 .scan-candidate-display i {
   grid-row: 1 / span 2;
-  color: #93c5fd;
+  color: var(--tf-color-blue-tailwind-300);
 }
 
 .scan-candidate-display span {
@@ -1006,7 +1030,7 @@ onBeforeUnmount(() => {
 }
 
 .scan-candidate-display small {
-  color: #bfdbfe;
+  color: var(--tf-color-blue-tailwind-200);
   font-size: 11px;
 }
 
@@ -1023,7 +1047,7 @@ onBeforeUnmount(() => {
   border: 1px solid rgba(96, 165, 250, 0.72);
   border-radius: 8px;
   background: rgba(15, 23, 42, 0.9);
-  color: #dbeafe;
+  color: var(--tf-color-blue-tailwind-100);
   font-size: 12px;
   line-height: 18px;
   text-align: center;
@@ -1038,7 +1062,7 @@ onBeforeUnmount(() => {
   display: block;
   max-width: 100%;
   overflow: hidden;
-  color: #ffffff;
+  color: var(--color-bg-white);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 13px;
   text-overflow: ellipsis;
@@ -1050,7 +1074,7 @@ onBeforeUnmount(() => {
   max-width: 100%;
   margin-top: 2px;
   overflow: hidden;
-  color: #fcd34d;
+  color: var(--tf-color-amber-300);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1075,7 +1099,7 @@ onBeforeUnmount(() => {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #34d399;
+  background: var(--tf-color-emerald-400);
   box-shadow: 0 0 6px rgba(52, 211, 153, 0.8);
 }
 
@@ -1107,7 +1131,7 @@ onBeforeUnmount(() => {
 }
 
 .result-label i {
-  color: #ffffff;
+  color: var(--color-bg-white);
   font-size: 16px;
 }
 

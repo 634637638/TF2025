@@ -2,7 +2,7 @@ import { nextTick, onBeforeUnmount, watch, type Ref } from 'vue'
 import Sortable from 'sortablejs'
 
 interface ElementTableSortableOptions {
-  tableRef: Ref<any>
+  tableRef: Ref<HTMLElement | { $el?: HTMLElement } | null>
   enabled: Ref<boolean>
   orderKey: () => string
   onMove: (oldIndex: number, newIndex: number) => boolean | void | Promise<boolean | void>
@@ -27,7 +27,8 @@ export const useElementTableSortable = ({
 
     if (!enabled.value) return
 
-    const root = tableRef.value?.$el || tableRef.value
+    const table = tableRef.value
+    const root = table instanceof HTMLElement ? table : table?.$el
     const body = root?.querySelector?.('.el-table__body-wrapper tbody') as HTMLElement | null
     if (!body) return
 

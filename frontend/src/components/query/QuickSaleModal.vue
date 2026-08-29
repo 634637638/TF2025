@@ -27,13 +27,21 @@
     <template #footer>
       <div class="quick-sale-footer">
         <div class="footer-actions">
-          <el-button type="default" @click="handleCancel" :disabled="submitting">
+          <el-button
+            type="default"
+            :disabled="submitting"
+            @click="handleCancel"
+          >
             取消
           </el-button>
-          <el-button type="primary" :loading="submitting" @click="handleSubmit">
+          <el-button
+            type="primary"
+            :loading="submitting"
+            @click="handleSubmit"
+          >
             <span v-if="submitting">处理中...</span>
             <template v-else>
-              <i class="fas fa-bolt"></i>
+              <i class="fas fa-bolt" />
               确认出库
             </template>
           </el-button>
@@ -52,12 +60,15 @@
       <!-- 设备信息 -->
       <div class="form-section">
         <div class="section-title">
-          <i class="fas fa-mobile-alt"></i>
+          <i class="fas fa-mobile-alt" />
           设备信息
         </div>
 
         <div class="form-row form-row-5">
-          <el-form-item label="品牌" prop="brand_id">
+          <el-form-item
+            label="品牌"
+            prop="brand_id"
+          >
             <el-select
               v-model="formData.brand_id"
               placeholder="请选择"
@@ -66,14 +77,17 @@
             >
               <el-option
                 v-for="brand in options.brands"
-                :key="brand"
-                :label="brand"
-                :value="brand"
+                :key="brand.id"
+                :label="brand.name"
+                :value="brand.id"
               />
             </el-select>
           </el-form-item>
 
-          <el-form-item label="型号" prop="model_id">
+          <el-form-item
+            label="型号"
+            prop="model_id"
+          >
             <el-select
               v-model="formData.model_id"
               placeholder="请选择"
@@ -82,14 +96,17 @@
             >
               <el-option
                 v-for="model in filteredModels"
-                :key="model"
-                :label="model"
-                :value="model"
+                :key="model.id"
+                :label="model.name"
+                :value="model.id"
               />
             </el-select>
           </el-form-item>
 
-          <el-form-item label="颜色" prop="color_id">
+          <el-form-item
+            label="颜色"
+            prop="color_id"
+          >
             <el-select
               v-model="formData.color_id"
               placeholder="请选择"
@@ -97,14 +114,17 @@
             >
               <el-option
                 v-for="color in options.colors"
-                :key="color"
-                :label="color"
-                :value="color"
+                :key="color.id"
+                :label="color.name"
+                :value="color.id"
               />
             </el-select>
           </el-form-item>
 
-          <el-form-item label="内存" prop="memory_id">
+          <el-form-item
+            label="内存"
+            prop="memory_id"
+          >
             <el-select
               v-model="formData.memory_id"
               placeholder="请选择"
@@ -112,37 +132,55 @@
             >
               <el-option
                 v-for="memory in options.memories"
-                :key="memory"
-                :label="memory"
-                :value="memory"
+                :key="memory.id"
+                :label="memory.size || memory.name || memory.capacity || memory.storage"
+                :value="memory.id"
               />
             </el-select>
           </el-form-item>
 
-          <el-form-item label="成色" prop="is_new">
-            <el-select v-model="formData.is_new" placeholder="请选择">
-              <el-option label="全新" value="1" />
-              <el-option label="二手" value="0" />
+          <el-form-item
+            label="成色"
+            prop="is_new"
+          >
+            <el-select
+              v-model="formData.is_new"
+              placeholder="请选择"
+            >
+              <el-option
+                label="全新"
+                value="1"
+              />
+              <el-option
+                label="二手"
+                value="0"
+              />
             </el-select>
           </el-form-item>
         </div>
 
         <div class="form-row">
-          <el-form-item label="序列号" prop="serial_number">
+          <el-form-item
+            label="序列号"
+            prop="serial_number"
+          >
             <el-input
               v-model="formData.serial_number"
               placeholder="请输入序列号"
               maxlength="18"
-              @input="formatSerialNumber"
               clearable
+              @input="formatSerialNumber"
             >
               <template #suffix>
-                <i class="fas fa-hashtag serial-icon"></i>
+                <i class="fas fa-hashtag serial-icon" />
               </template>
             </el-input>
           </el-form-item>
 
-          <el-form-item label="IMEI" prop="imei">
+          <el-form-item
+            label="IMEI"
+            prop="imei"
+          >
             <div
               style="cursor: pointer; width: 100%;"
               @dblclick="handleImeiDoubleClick"
@@ -152,11 +190,11 @@
                 v-model="formData.imei"
                 :placeholder="formData.isNoIMEIMode ? '已启用无IMEI模式' : '请输入15位IMEI号'"
                 :maxlength="formData.isNoIMEIMode ? 30 : 15"
-                @input="formatIMEI"
                 clearable
+                @input="formatIMEI"
               >
                 <template #suffix>
-                  <i class="fas fa-barcode imei-icon"></i>
+                  <i class="fas fa-barcode imei-icon" />
                 </template>
               </el-input>
             </div>
@@ -164,7 +202,10 @@
         </div>
 
         <div class="form-row form-row-4">
-          <el-form-item label="供应商" prop="supplier_id">
+          <el-form-item
+            label="供应商"
+            prop="supplier_id"
+          >
             <el-select
               v-model="formData.supplier_id"
               placeholder="请选择供应商"
@@ -179,7 +220,10 @@
             </el-select>
           </el-form-item>
 
-          <el-form-item label="店铺" prop="store_id">
+          <el-form-item
+            label="店铺"
+            prop="store_id"
+          >
             <el-select
               v-model="formData.store_id"
               placeholder="请选择店铺"
@@ -194,19 +238,27 @@
             </el-select>
           </el-form-item>
 
-          <el-form-item label="入库价格" prop="purchase_price">
+          <el-form-item
+            label="入库价格"
+            prop="purchase_cost"
+          >
             <el-input
-              :model-value="formatPriceInputValue(formData.purchase_price)"
+              :model-value="formatPriceInputValue(formData.purchase_cost)"
               placeholder="请输入入库价格"
               inputmode="numeric"
               clearable
-              @input="handlePriceInput('purchase_price', $event)"
+              @input="handlePriceInput('purchase_cost', $event)"
             >
-              <template #prefix>¥</template>
+              <template #prefix>
+                ¥
+              </template>
             </el-input>
           </el-form-item>
 
-          <el-form-item label="销售价格" prop="sale_price">
+          <el-form-item
+            label="销售价格"
+            prop="sale_price"
+          >
             <el-input
               :model-value="formatPriceInputValue(formData.sale_price)"
               placeholder="请输入销售价格"
@@ -214,9 +266,14 @@
               clearable
               @input="handlePriceInput('sale_price', $event)"
             >
-              <template #prefix>¥</template>
+              <template #prefix>
+                ¥
+              </template>
             </el-input>
-            <div v-if="showProfit" class="profit-hint">
+            <div
+              v-if="showProfit"
+              class="profit-hint"
+            >
               利润: <span class="profit-value">¥{{ profit }}</span>
             </div>
           </el-form-item>
@@ -226,23 +283,30 @@
       <!-- 客户信息 -->
       <div class="form-section">
         <div class="section-title">
-          <i class="fas fa-user"></i>
+          <i class="fas fa-user" />
           客户信息
         </div>
 
         <div class="form-row form-row-3 customer-form-row">
-          <el-form-item label="客户手机" prop="customer_phone" class="customer-phone-item">
-            <div ref="customerSearchContainerRef" class="customer-search-container">
+          <el-form-item
+            label="客户手机"
+            prop="customer_phone"
+            class="customer-phone-item"
+          >
+            <div
+              ref="customerSearchContainerRef"
+              class="customer-search-container"
+            >
               <el-input
                 v-model="formData.customer_phone"
                 placeholder="请输入用户手机号"
+                clearable
+                maxlength="11"
+                :readonly="foundCustomer !== null"
                 @input="handleCustomerPhoneInput"
                 @focus="handleCustomerPhoneFocus"
                 @blur="formatCustomerPhone"
-                clearable
                 @clear="handleCustomerClear"
-                maxlength="11"
-                :readonly="foundCustomer !== null"
               />
 
               <!-- 客户搜索结果面板 -->
@@ -252,8 +316,14 @@
                   class="customer-search-results customer-search-results--floating"
                   :style="customerSearchResultsStyle"
                 >
-                  <div v-if="customerLookupLoading" class="search-loading">
-                    <InlineLoading text="搜索中..." size="small" />
+                  <div
+                    v-if="customerLookupLoading"
+                    class="search-loading"
+                  >
+                    <InlineLoading
+                      text="搜索中..."
+                      size="small"
+                    />
                   </div>
                   <template v-else>
                     <div
@@ -264,8 +334,13 @@
                     >
                       <div class="customer-info">
                         <div class="customer-headline">
-                          <div class="customer-name">{{ customer.name }}</div>
-                          <span v-if="customer.member_number" class="member-number">{{ customer.member_number }}</span>
+                          <div class="customer-name">
+                            {{ customer.name }}
+                          </div>
+                          <span
+                            v-if="customer.member_number"
+                            class="member-number"
+                          >{{ customer.member_number }}</span>
                         </div>
                         <div class="customer-subline">
                           <span class="customer-phone">{{ customer.phone }}</span>
@@ -279,7 +354,7 @@
                       class="create-new-customer"
                       @mousedown.prevent="createNewCustomer"
                     >
-                      <i class="fas fa-user-plus"></i>
+                      <i class="fas fa-user-plus" />
                       点击创建该用户
                     </div>
                   </template>
@@ -288,7 +363,11 @@
             </div>
           </el-form-item>
 
-          <el-form-item label="客户姓名" prop="customer_name" class="customer-name-item">
+          <el-form-item
+            label="客户姓名"
+            prop="customer_name"
+            class="customer-name-item"
+          >
             <div class="customer-name-group">
               <el-input
                 ref="customerNameInputRef"
@@ -296,52 +375,60 @@
                 name="quick-sale-customer-name"
                 placeholder=""
                 :readonly="!foundCustomer && !customerCreating ? true : !customerNameEditing"
+                :class="{ 'editable': foundCustomer || customerCreating }"
+                clearable
+                data-field="customer_name"
                 @dblclick="enableCustomerNameEdit"
                 @touchend="handleCustomerNameTouchEnd"
                 @input="formatCustomerName"
                 @blur="handleCustomerNameBlur"
                 @keyup.enter="saveCustomerNameEdit"
-                :class="{ 'editable': foundCustomer || customerCreating }"
-                clearable
-                data-field="customer_name"
               />
               <el-button
                 v-if="customerNameEditing"
                 class="customer-lock-button"
                 type="success"
                 plain
-                @click="saveCustomerNameEdit"
                 title="当前已解锁，点击保存并锁定"
+                @click="saveCustomerNameEdit"
               >
-                <i class="fas fa-lock-open"></i>
+                <i class="fas fa-lock-open" />
               </el-button>
               <el-button
                 v-if="foundCustomer !== null && !customerNameEditing"
                 class="customer-lock-button"
                 type="info"
                 plain
-                @click="clearSelectedCustomer"
                 title="当前已锁定，点击清除客户选择"
+                @click="clearSelectedCustomer"
               >
-                <i class="fas fa-lock"></i>
+                <i class="fas fa-lock" />
               </el-button>
             </div>
-            <div class="input-hint">只允许中文和英文</div>
+            <div class="input-hint">
+              只允许中文和英文
+            </div>
           </el-form-item>
 
-          <el-form-item label="Apple ID" prop="apple_id" class="customer-apple-item">
+          <el-form-item
+            label="Apple ID"
+            prop="apple_id"
+            class="customer-apple-item"
+          >
             <el-input
               v-model="formData.apple_id"
               placeholder="请输入Apple ID"
-              @input="formatAppleId"
               clearable
               data-field="apple_id"
+              @input="formatAppleId"
             >
               <template #suffix>
-                <i class="fab fa-apple apple-icon"></i>
+                <i class="fab fa-apple apple-icon" />
               </template>
             </el-input>
-            <div class="input-hint">支持手机号或邮箱</div>
+            <div class="input-hint">
+              支持手机号或邮箱
+            </div>
           </el-form-item>
         </div>
       </div>
@@ -349,14 +436,17 @@
       <!-- 销售信息 -->
       <div class="form-section">
         <div class="section-title">
-          <i class="fas fa-shopping-cart"></i>
+          <i class="fas fa-shopping-cart" />
           销售信息
         </div>
 
         <div class="form-row form-row-3">
-          <el-form-item label="入库日期" prop="stock_in_date">
+          <el-form-item
+            label="入库日期"
+            prop="inventory_time"
+          >
             <el-date-picker
-              v-model="formData.stock_in_date"
+              v-model="formData.inventory_time"
               type="date"
               placeholder="请选择入库日期"
               format="YYYY-MM-DD"
@@ -365,9 +455,12 @@
             />
           </el-form-item>
 
-          <el-form-item label="销售日期" prop="sale_date">
+          <el-form-item
+            label="销售日期"
+            prop="sale_time"
+          >
             <el-date-picker
-              v-model="formData.sale_date"
+              v-model="formData.sale_time"
               type="date"
               placeholder="请选择销售日期"
               format="YYYY-MM-DD"
@@ -376,21 +469,27 @@
             />
           </el-form-item>
 
-          <el-form-item label="入库员" prop="stock_in_operator_id">
+          <el-form-item
+            label="入库员"
+            prop="purchase_operator_id"
+          >
             <el-input
               :value="currentUserName"
               disabled
               placeholder="当前用户"
             >
               <template #suffix>
-                <i class="fas fa-user user-icon"></i>
+                <i class="fas fa-user user-icon" />
               </template>
             </el-input>
           </el-form-item>
         </div>
 
         <div class="form-row form-row-3">
-          <el-form-item label="销售员" prop="sale_operator_id">
+          <el-form-item
+            label="销售员"
+            prop="sale_operator_id"
+          >
             <el-select
               v-model="formData.sale_operator_id"
               placeholder="请选择销售员"
@@ -405,16 +504,31 @@
             </el-select>
           </el-form-item>
 
-          <el-form-item label="支付方式" prop="payment_method">
+          <el-form-item
+            label="支付方式"
+            prop="payment_method"
+          >
             <el-select
               v-model="formData.payment_method"
               placeholder="请选择"
               @change="handlePaymentMethodChange"
             >
-              <el-option label="现金支付" value="cash" />
-              <el-option label="移动支付" value="mobile" />
-              <el-option label="银行卡" value="bank_card" />
-              <el-option label="国补刷卡" value="subsidy_card" />
+              <el-option
+                label="现金支付"
+                value="cash"
+              />
+              <el-option
+                label="移动支付"
+                value="mobile"
+              />
+              <el-option
+                label="银行卡"
+                value="bank_card"
+              />
+              <el-option
+                label="国补刷卡"
+                value="subsidy_card"
+              />
             </el-select>
           </el-form-item>
 
@@ -429,21 +543,39 @@
               @change="handlePaymentChannelChange"
             >
               <template v-if="formData.payment_method === 'mobile'">
-                <el-option label="微信" value="wechat" />
-                <el-option label="支付宝" value="alipay" />
+                <el-option
+                  label="微信"
+                  value="wechat"
+                />
+                <el-option
+                  label="支付宝"
+                  value="alipay"
+                />
               </template>
               <template v-if="formData.payment_method === 'bank_card'">
-                <el-option label="刷卡消费" value="card_consumption" />
-                <el-option label="银行转账" value="bank_transfer" />
+                <el-option
+                  label="刷卡消费"
+                  value="card_consumption"
+                />
+                <el-option
+                  label="银行转账"
+                  value="bank_transfer"
+                />
               </template>
               <template v-if="formData.payment_method === 'subsidy_card'">
-                <el-option label="国补刷卡" value="subsidy_card" />
+                <el-option
+                  label="国补刷卡"
+                  value="subsidy_card"
+                />
               </template>
             </el-select>
           </el-form-item>
         </div>
 
-        <el-form-item label="备注" prop="remarks">
+        <el-form-item
+          label="备注"
+          prop="remarks"
+        >
           <el-input
             v-model="formData.remarks"
             type="textarea"
@@ -453,7 +585,9 @@
             show-word-limit
             @input="formatRemarks"
           />
-          <div class="input-hint">不允许特殊字符和HTML标签</div>
+          <div class="input-hint">
+            不允许特殊字符和HTML标签
+          </div>
         </el-form-item>
       </div>
     </el-form>
@@ -526,7 +660,7 @@ const submitting = ref(false)
 const formData = reactive(createDefaultQuickSaleForm(authStore.user?.id || null))
 
 // 可用型号列表
-const filteredModels = ref<string[]>([])
+const filteredModels = ref<BrandModelOption[]>([])
 
 // 客户检索相关
 const customerLookupLoading = ref(false)
@@ -589,21 +723,21 @@ const updateCustomerSearchResultsLayout = () => {
 
   customerSearchResultsStyle.value = shouldOpenUpward
     ? {
-        position: 'fixed',
-        left: `${Math.round(left)}px`,
-        width: `${Math.round(width)}px`,
-        top: 'auto',
-        bottom: `${Math.max(safeGap, Math.round(window.innerHeight - rect.top + 4))}px`,
-        maxHeight: `${Math.round(maxHeight)}px`
-      }
+      position: 'fixed',
+      left: `${Math.round(left)}px`,
+      width: `${Math.round(width)}px`,
+      top: 'auto',
+      bottom: `${Math.max(safeGap, Math.round(window.innerHeight - rect.top + 4))}px`,
+      maxHeight: `${Math.round(maxHeight)}px`
+    }
     : {
-        position: 'fixed',
-        left: `${Math.round(left)}px`,
-        width: `${Math.round(width)}px`,
-        top: `${Math.round(rect.bottom + 4)}px`,
-        bottom: 'auto',
-        maxHeight: `${Math.round(maxHeight)}px`
-      }
+      position: 'fixed',
+      left: `${Math.round(left)}px`,
+      width: `${Math.round(width)}px`,
+      top: `${Math.round(rect.bottom + 4)}px`,
+      bottom: 'auto',
+      maxHeight: `${Math.round(maxHeight)}px`
+    }
 }
 
 const scheduleCustomerSearchResultsLayout = () => {
@@ -638,12 +772,12 @@ const resetSubsidyPaymentSelection = (message?: string) => {
 // ==================== 计算属性 ====================
 
 const profit = computed(() => {
-  if (!formData.purchase_price || !formData.sale_price) return 0
-  return formData.sale_price - formData.purchase_price
+  if (!formData.purchase_cost || !formData.sale_price) return 0
+  return formData.sale_price - formData.purchase_cost
 })
 
 const showProfit = computed(() => {
-  return (formData.purchase_price || 0) > 0 && (formData.sale_price || 0) > 0
+  return (formData.purchase_cost || 0) > 0 && (formData.sale_price || 0) > 0
 })
 
 // 当前用户名（用于显示入库员）
@@ -672,7 +806,7 @@ const imeiRules = computed(() => {
     return [
       ValidationRules.required('请输入IMEI'),
       {
-        validator: (_rule: unknown, value: string, callback: (error?: Error) => void) => {
+        validator: (_rule: unknown, value: string, callback: (_error?: Error) => void) => {
           if (!value || /^\d{15}$/.test(value)) {
             callback()
           } else {
@@ -711,7 +845,7 @@ const formRules = computed<FormRules>(() => ({
   store_id: [
     ValidationRules.required('请选择店铺')
   ],
-  purchase_price: [
+  purchase_cost: [
     ValidationRules.positiveNumber('入库价格不能为负数')
   ],
   sale_price: [
@@ -720,11 +854,29 @@ const formRules = computed<FormRules>(() => ({
   customer_phone: [
     ValidationRules.phone()
   ],
-  sale_date: [
+  inventory_time: [
+    ValidationRules.required('请选择入库日期')
+  ],
+  sale_time: [
     ValidationRules.required('请选择销售日期')
   ],
   sale_operator_id: [
     ValidationRules.required('请选择销售员')
+  ],
+  payment_method: [
+    ValidationRules.required('请选择支付方式')
+  ],
+  payment_channel: [
+    {
+      validator: (_rule: unknown, value: string, callback: (_error?: Error) => void) => {
+        if (formData.payment_method !== 'cash' && !value) {
+          callback(new Error('请选择支付渠道'))
+          return
+        }
+        callback()
+      },
+      trigger: 'change'
+    }
   ]
 }))
 
@@ -732,7 +884,7 @@ const formRules = computed<FormRules>(() => ({
 
 // 品牌变化处理
 const handleBrandChange = async () => {
-  formData.model_id = ''
+  formData.model_id = null
   filteredModels.value = []
 
   if (!formData.brand_id) return
@@ -917,7 +1069,7 @@ const focusCustomerNameInput = (input: HTMLInputElement | null) => {
   }
 }
 
-const promptCustomerNameForIOS = async (currentName: string) => {
+const _promptCustomerNameForIOS = async (currentName: string) => {
   const promptedName = window.prompt('请输入客户姓名', currentName)
   if (promptedName === null) return null
 
@@ -930,7 +1082,7 @@ const promptCustomerNameForIOS = async (currentName: string) => {
   return normalizedName
 }
 
-const unlockCustomerNameFromTouch = (source: EventTarget | null | undefined) => {
+const _unlockCustomerNameFromTouch = (source: EventTarget | null | undefined) => {
   const touchedInput = resolveNativeCustomerInput(source)
   const fallbackInput = resolveNativeCustomerInput(
     document.querySelector('input[name="quick-sale-customer-name"]')
@@ -970,7 +1122,7 @@ const enableCustomerNameEdit = (event?: MouseEvent) => {
   })
 }
 
-const handleCustomerNameTouchEnd = (event: TouchEvent) => {
+const handleCustomerNameTouchEnd = (_event: TouchEvent) => {
   if (!isIOS.value) return
 
   const now = Date.now()
@@ -1383,7 +1535,7 @@ watch(
   .serial-icon,
   .phone-icon,
   .idcard-icon {
-    color: #909399;
+    color: var(--color-info);
     font-size: 14px;
   }
 
@@ -1414,7 +1566,7 @@ watch(
 .form-section {
   margin-bottom: 24px;
   padding-bottom: 20px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--tf-color-gray-200);
 
   &:last-of-type {
     border-bottom: none;
@@ -1429,13 +1581,13 @@ watch(
   gap: 8px;
   font-size: 15px;
   font-weight: 600;
-  color: #303133;
+  color: var(--color-text-primary);
   margin-bottom: 16px;
   padding-bottom: 8px;
-  border-bottom: 2px solid #409eff;
+  border-bottom: 2px solid var(--color-primary);
 
   i {
-    color: #409eff;
+    color: var(--color-primary);
     font-size: 16px;
   }
 }
@@ -1476,10 +1628,10 @@ watch(
 .profit-hint {
   margin-top: 4px;
   font-size: 12px;
-  color: #909399;
+  color: var(--color-info);
 
   .profit-value {
-    color: #67c23a;
+    color: var(--color-success);
     font-weight: 600;
   }
 }
@@ -1497,7 +1649,7 @@ watch(
   max-height: 300px;
   overflow-y: auto;
   background: white;
-  border: 1px solid #ddd;
+  border: 1px solid var(--tf-color-gray-300-alt);
   border-radius: 6px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   z-index: 1001;
@@ -1506,7 +1658,7 @@ watch(
   .search-loading {
     padding: 16px 20px;
     text-align: center;
-    color: #666;
+    color: var(--text-secondary);
     font-size: 14px;
     display: flex;
     align-items: center;
@@ -1521,11 +1673,11 @@ watch(
   .customer-item {
     padding: 16px 20px;
     cursor: pointer;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--tf-color-gray-200-alt);
     transition: background-color 0.2s;
 
     &:hover {
-      background-color: #f8f9fa;
+      background-color: var(--tf-color-surface-muted);
     }
 
     &:last-child {
@@ -1555,7 +1707,7 @@ watch(
       .customer-name {
         font-size: 14px;
         font-weight: 600;
-        color: #1f2937;
+        color: var(--tf-color-neutral-800);
         line-height: 1.2;
         min-width: 0;
         flex: 0 1 auto;
@@ -1564,7 +1716,7 @@ watch(
 
       .customer-phone {
         font-size: 12px;
-        color: #475569;
+        color: var(--tf-color-slate-600);
         line-height: 1.2;
         min-width: 0;
         white-space: nowrap;
@@ -1572,8 +1724,8 @@ watch(
 
       .member-number {
         padding: 2px 8px;
-        background: linear-gradient(135deg, #eef6ff 0%, #dbeafe 100%);
-        color: #1d4ed8;
+        background: linear-gradient(135deg, var(--tf-color-surface-blue-soft) 0%, var(--tf-color-blue-tailwind-100) 100%);
+        color: var(--tf-color-blue-700);
         border-radius: 999px;
         font-size: 11px;
         font-weight: 600;
@@ -1582,7 +1734,7 @@ watch(
       }
 
       .vip-badge {
-        background: linear-gradient(135deg, #fb7185 0%, #f59e0b 100%);
+        background: linear-gradient(135deg, var(--tf-color-rose-400) 0%, var(--tf-color-amber-500) 100%);
         color: white;
         padding: 2px 8px;
         border-radius: 999px;
@@ -1598,10 +1750,10 @@ watch(
 
   .create-new-customer {
     padding: 16px 20px;
-    background: #f8f9fa;
+    background: var(--tf-color-surface-muted);
     cursor: pointer;
     transition: background-color 0.2s;
-    color: #28a745;
+    color: var(--success-color);
     display: flex;
     align-items: center;
     gap: 8px;
@@ -1609,7 +1761,7 @@ watch(
     font-weight: 500;
 
     &:hover {
-      background: #e9ecef;
+      background: var(--tf-color-border-muted);
     }
 
     i {
@@ -1889,7 +2041,7 @@ watch(
   gap: 6px;
   margin-top: 4px;
   font-size: 12px;
-  color: #409eff;
+  color: var(--color-primary);
 
   i {
     font-size: 12px;
@@ -1902,8 +2054,8 @@ watch(
   gap: 6px;
   margin-top: 4px;
   font-size: 12px;
-  color: #67c23a;
-  background: #f0f9ff;
+  color: var(--color-success);
+  background: var(--tf-color-blue-50);
   padding: 4px 8px;
   border-radius: 4px;
 
@@ -1916,7 +2068,7 @@ watch(
   display: block;
   margin-top: 2px;
   font-size: 11px;
-  color: #909399;
+  color: var(--color-info);
 }
 
 // 输入提示
@@ -1924,7 +2076,7 @@ watch(
   display: block;
   margin-top: 4px;
   font-size: 11px;
-  color: #909399;
+  color: var(--color-info);
   line-height: 1.4;
 }
 
@@ -1953,9 +2105,9 @@ watch(
   .form-section {
     margin-bottom: 12px;
     padding: 10px 8px 8px;
-    border: 1px solid #eef2f7;
+    border: 1px solid var(--tf-color-surface-cool);
     border-radius: 14px;
-    background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+    background: linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-surface-cool-alt) 100%);
 
     &:last-of-type {
       margin-bottom: 0;

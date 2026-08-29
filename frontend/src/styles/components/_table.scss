@@ -9,12 +9,12 @@
   // 表格外层容器圆角
   border-radius: var(--admin-data-table-radius, 8px) !important;
   overflow: hidden !important;
-  border: 1px solid var(--admin-data-table-container-border, #dee2e6) !important;
-  background: var(--admin-data-table-bg, #ffffff) !important;
+  border: 1px solid var(--admin-data-table-container-border, var(--tf-color-border-subtle)) !important;
+  background: var(--admin-data-table-bg, var(--color-bg-white)) !important;
 
   // 移除默认边框
   &.el-table--border {
-    border: 1px solid var(--admin-data-table-container-border, #dee2e6) !important;
+    border: 1px solid var(--admin-data-table-container-border, var(--tf-color-border-subtle)) !important;
 
     &::after,
     .el-table__inner-wrapper::before {
@@ -44,16 +44,16 @@
 
 .el-table__header-wrapper th {
   // 深色渐变背景 - 与销售管理完全一致
-  background: var(--admin-data-table-header-bg, linear-gradient(135deg, #495057 0%, #343a40 100%)) !important;
-  color: var(--admin-data-table-header-color, #ffffff) !important;
+  background: var(--admin-data-table-header-bg, linear-gradient(135deg, var(--tf-color-gray-bootstrap-700) 0%, var(--tf-color-gray-bootstrap-800) 100%)) !important;
+  color: var(--admin-data-table-header-color, var(--color-bg-white)) !important;
   font-weight: var(--admin-data-table-header-font-weight, 600) !important;
   font-size: var(--admin-data-table-header-font-size, 13px) !important;
   padding: var(--admin-data-table-header-padding-y, 6px) var(--admin-data-table-header-padding-x, 10px) !important;
   height: var(--admin-data-table-header-height, 38px) !important;
   box-sizing: border-box !important;
   text-align: center !important;
-  border-right: 1px solid var(--admin-data-table-header-border, #dee2e6) !important;
-  border-bottom: 2px solid var(--admin-data-table-header-border, #dee2e6) !important;
+  border-right: 1px solid var(--admin-data-table-header-border, var(--tf-color-border-subtle)) !important;
+  border-bottom: 2px solid var(--admin-data-table-header-border, var(--tf-color-border-subtle)) !important;
   position: relative !important;
   white-space: nowrap !important;
   user-select: none;
@@ -64,7 +64,7 @@
     padding: 0 !important;
     min-height: 0 !important;
     font-weight: 600 !important;
-    color: var(--admin-data-table-header-color, #ffffff) !important;
+    color: var(--admin-data-table-header-color, var(--color-bg-white)) !important;
     line-height: var(--admin-data-table-line-height, 1.45) !important;
   }
 
@@ -76,11 +76,11 @@
     left: 0;
     right: 0;
     height: 2px;
-    background: var(--admin-data-table-header-accent, linear-gradient(90deg, #667eea, #764ba2));
+    background: var(--admin-data-table-header-accent, linear-gradient(90deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand)));
   }
 
   &:hover {
-    background: var(--admin-data-table-header-bg, linear-gradient(135deg, #495057 0%, #343a40 100%)) !important;
+    background: var(--admin-data-table-header-bg, linear-gradient(135deg, var(--tf-color-gray-bootstrap-700) 0%, var(--tf-color-gray-bootstrap-800) 100%)) !important;
   }
 }
 
@@ -90,11 +90,11 @@
   padding: var(--admin-data-table-cell-padding-y, 10px) var(--admin-data-table-cell-padding-x, 8px) !important;
   height: var(--admin-data-table-row-height, 40px) !important;
   box-sizing: border-box !important;
-  border-right: 1px solid var(--admin-data-table-cell-border, #e9ecef) !important;
-  border-bottom: 1px solid var(--admin-data-table-cell-border, #e9ecef) !important;
+  border-right: 1px solid var(--admin-data-table-cell-border, var(--tf-color-border-muted)) !important;
+  border-bottom: 1px solid var(--admin-data-table-cell-border, var(--tf-color-border-muted)) !important;
   vertical-align: middle !important;
   font-size: var(--admin-data-table-cell-font-size, 13px) !important;
-  color: var(--admin-data-table-cell-color, #2c3e50) !important;
+  color: var(--admin-data-table-cell-color, var(--tf-color-heading)) !important;
   font-weight: var(--admin-data-table-cell-font-weight, 500) !important;
   text-align: center !important;
   position: relative !important;
@@ -157,16 +157,16 @@
 }
 
 .el-table__body tr {
-  background: var(--admin-data-table-bg, #ffffff);
+  background: var(--admin-data-table-bg, var(--color-bg-white));
   // 移除 transition 以防止 v-show 切换时斑马效果闪烁
   // transition: all 0.2s ease;
 
   // 偶数行斑马纹 - 与库存管理完全一致
   &:nth-child(even) {
-    background: var(--admin-data-table-row-even-bg, #f8f9fa);
+    background: var(--admin-data-table-row-even-bg, var(--tf-color-surface-muted));
 
     > td {
-      background: var(--admin-data-table-row-even-bg, #f8f9fa);
+      background: var(--admin-data-table-row-even-bg, var(--tf-color-surface-muted));
     }
   }
 
@@ -175,72 +175,72 @@
   &.hover-row {
     position: relative;
     z-index: 2;
-    outline: 1px solid var(--admin-data-table-row-hover-border, #94a3b8);
+    outline: 1px solid var(--admin-data-table-row-hover-border, var(--tf-color-slate-400));
     outline-offset: -1px;
     box-shadow: var(--admin-data-table-row-hover-shadow, 0 5px 16px rgba(15, 23, 42, 0.08));
   }
 
   &:hover > td,
   &.hover-row > td {
-    background: var(--admin-data-table-row-hover-bg, #ede9fe) !important;
+    background: var(--admin-data-table-row-hover-bg, var(--tf-color-violet-100)) !important;
   }
 
   &.current-row > td {
-    background: var(--admin-data-table-row-selected-bg, #bfdbfe) !important;
+    background: var(--admin-data-table-row-selected-bg, var(--tf-color-blue-tailwind-200)) !important;
   }
 
   &.row-selected > td {
-    background: var(--admin-data-table-row-selected-bg, #bfdbfe) !important;
+    background: var(--admin-data-table-row-selected-bg, var(--tf-color-blue-tailwind-200)) !important;
   }
 
   &.row-selected:hover > td {
-    background: var(--admin-data-table-row-selected-hover-bg, #93c5fd) !important;
+    background: var(--admin-data-table-row-selected-hover-bg, var(--tf-color-blue-tailwind-300)) !important;
   }
 
   &.row-selected > td:first-child {
-    box-shadow: inset 3px 0 0 var(--admin-data-table-row-selected-accent, #1d4ed8) !important;
+    box-shadow: inset 3px 0 0 var(--admin-data-table-row-selected-accent, var(--tf-color-blue-700)) !important;
   }
 
   // 条纹行悬停效果
   &.el-table__row--striped > td {
-    background: var(--admin-data-table-row-even-bg, #f8f9fa);
+    background: var(--admin-data-table-row-even-bg, var(--tf-color-surface-muted));
   }
 
   &.el-table__row--striped:hover > td,
   &.el-table__row--striped.hover-row > td {
-    background: var(--admin-data-table-row-hover-bg, #ede9fe) !important;
+    background: var(--admin-data-table-row-hover-bg, var(--tf-color-violet-100)) !important;
   }
 }
 
 // 调货/同行批发数据统一识别色。业务页面只需返回 admin-row--peer-transfer。
 .el-table__body tr.admin-row--peer-transfer:not(.row-selected) > td.el-table__cell,
 .el-table__body tr.admin-row--peer-transfer.el-table__row--striped:not(.row-selected) > td.el-table__cell {
-  background: var(--admin-data-table-wholesale-bg, #eef1ff) !important;
+  background: var(--admin-data-table-wholesale-bg, var(--tf-color-indigo-50)) !important;
 }
 
 .el-table__body tr.admin-row--peer-transfer:not(.row-selected):hover > td.el-table__cell,
 .el-table__body tr.admin-row--peer-transfer.hover-row:not(.row-selected) > td.el-table__cell {
-  background: var(--admin-data-table-wholesale-hover-bg, #e2e7ff) !important;
+  background: var(--admin-data-table-wholesale-hover-bg, var(--tf-color-indigo-100)) !important;
 }
 
 .el-table__body tr.admin-row--peer-transfer:not(.row-selected) > td.el-table__cell:first-child {
-  box-shadow: inset 3px 0 0 var(--admin-data-table-wholesale-accent, #667eea);
+  box-shadow: inset 3px 0 0 var(--admin-data-table-wholesale-accent, var(--tf-color-indigo-brand));
 }
 
 .admin-wholesale-text {
-  color: var(--admin-data-table-wholesale-color, #4f5fc7) !important;
+  color: var(--admin-data-table-wholesale-color, var(--tf-color-indigo-legacy)) !important;
   font-weight: 700 !important;
 }
 
 // ==================== 空状态样式 ====================
 
 .el-table__empty-block {
-  background: var(--admin-data-table-bg, #ffffff) !important;
+  background: var(--admin-data-table-bg, var(--color-bg-white)) !important;
   padding: 40px 0 !important;
   min-height: auto !important;
 
   .el-table__empty-text {
-    color: #909399 !important;
+    color: var(--color-info) !important;
     font-size: 14px !important;
     line-height: 1.5;
   }
@@ -704,7 +704,7 @@ body.is-admin-table-dragging * {
 
 .el-table td.is-right .cell {
   font-weight: 600;
-  color: #303133;
+  color: var(--color-text-primary);
 }
 
 @media (max-width: 768px) {
@@ -732,7 +732,7 @@ body.is-admin-table-dragging * {
   .mobile-row-actions {
     padding: 2px !important;
     background: rgba(255, 255, 255, 0.96) !important;
-    border: 1px solid #dbe7f5 !important;
+    border: 1px solid var(--tf-color-border-blue-muted) !important;
     border-radius: 8px !important;
   }
 

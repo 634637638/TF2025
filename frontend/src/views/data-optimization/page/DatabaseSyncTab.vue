@@ -1,11 +1,14 @@
 <template>
   <div class="database-sync-tab">
     <!-- 一键本地到云端智能同步入口 -->
-    <div v-if="!selectedConnectionId && connections.length > 0" class="smart-sync-banner">
+    <div
+      v-if="!selectedConnectionId && connections.length > 0"
+      class="smart-sync-banner"
+    >
       <el-card class="banner-card">
         <div class="banner-content">
           <div class="banner-info">
-            <i class="fas fa-cloud-upload-alt"></i>
+            <i class="fas fa-cloud-upload-alt" />
             <div>
               <h3>一键本地到云端智能同步</h3>
               <p>将本地最新数据智能导入到云端，自动创建关联数据</p>
@@ -17,7 +20,7 @@
             :loading="smartSyncLoading"
             @click="handleSmartSync"
           >
-            <i class="fas fa-cloud-upload-alt"></i>
+            <i class="fas fa-cloud-upload-alt" />
             开始导入到云端
           </el-button>
         </div>
@@ -26,57 +29,109 @@
 
     <!-- 步骤导航 -->
     <div class="step-navigation">
-      <el-steps :active="currentStep" finish-status="success" align-center>
-        <el-step title="连接云端数据库" description="配置远程数据库连接" />
-        <el-step title="选择数据表" description="选择源表与目标表" />
-        <el-step title="字段映射" description="配置字段匹配关系" />
-        <el-step title="预检查" description="检查数据差异" />
-        <el-step title="同步数据" description="执行同步到云端" />
+      <el-steps
+        :active="currentStep"
+        finish-status="success"
+        align-center
+      >
+        <el-step
+          title="连接云端数据库"
+          description="配置远程数据库连接"
+        />
+        <el-step
+          title="选择数据表"
+          description="选择源表与目标表"
+        />
+        <el-step
+          title="字段映射"
+          description="配置字段匹配关系"
+        />
+        <el-step
+          title="预检查"
+          description="检查数据差异"
+        />
+        <el-step
+          title="同步数据"
+          description="执行同步到云端"
+        />
       </el-steps>
     </div>
 
     <!-- 步骤内容 -->
     <div class="step-content">
       <!-- 步骤1: 连接外部数据库 -->
-      <div v-if="currentStep === 0" class="step-panel">
+      <div
+        v-if="currentStep === 0"
+        class="step-panel"
+      >
         <el-card class="config-card">
           <template #header>
             <div class="card-header">
-              <i class="fas fa-database"></i>
+              <i class="fas fa-database" />
               <span>连接外部数据库</span>
             </div>
           </template>
 
           <!-- 已连接的数据库列表 -->
-          <div v-if="connections.length > 0" class="connections-list">
+          <div
+            v-if="connections.length > 0"
+            class="connections-list"
+          >
             <h4>已连接的数据库</h4>
-            <el-table class="data-table" :data="connections" border>
-              <el-table-column prop="host" label="主机地址" />
-              <el-table-column prop="port" label="端口" width="80" />
-              <el-table-column prop="user" label="用户名" />
-              <el-table-column prop="database" label="数据库" />
-              <el-table-column prop="connectedAt" label="连接时间" width="180">
+            <el-table
+              class="data-table"
+              :data="connections"
+              border
+            >
+              <el-table-column
+                prop="host"
+                label="主机地址"
+              />
+              <el-table-column
+                prop="port"
+                label="端口"
+                width="80"
+              />
+              <el-table-column
+                prop="user"
+                label="用户名"
+              />
+              <el-table-column
+                prop="database"
+                label="数据库"
+              />
+              <el-table-column
+                prop="connectedAt"
+                label="连接时间"
+                width="180"
+              >
                 <template #default="{ row }">
                   {{ formatDateTime(row.connectedAt) }}
                 </template>
               </el-table-column>
-              <el-table-column label="操作" :width="$getActionColumnWidth(2)" class-name="actions-column">
+              <el-table-column
+                v-if="showActionColumn"
+                label="操作"
+                :width="$getActionColumnWidth(2)"
+                class-name="actions-column"
+              >
                 <template #default="{ row }">
                   <div class="action-buttons">
-                  <el-button
-                    size="small"
-                    type="primary"
-                    @click.stop="selectConnection(row.id)"
-                  >
-                    选择
-                  </el-button>
-                  <el-button
-                    size="small"
-                    type="danger"
-                    @click.stop="handleCloseConnection(row.id)"
-                  >
-                    断开
-                  </el-button>
+                    <el-button
+                      size="small"
+                      type="primary"
+                      @click.stop="selectConnection(row.id)"
+                    >
+                      选择
+                    </el-button>
+                    <el-button
+                      v-if="canDelete"
+                      size="small"
+                      type="danger"
+                      @click.stop="handleCloseConnection(row.id)"
+                    >
+                      断开
+                    </el-button>
                   </div>
                 </template>
               </el-table-column>
@@ -94,7 +149,10 @@
           >
             <el-row :gutter="20">
               <el-col :span="12">
-                <el-form-item label="主机地址" prop="host">
+                <el-form-item
+                  label="主机地址"
+                  prop="host"
+                >
                   <el-input
                     v-model="connectionForm.host"
                     placeholder="例如: 192.168.1.100"
@@ -102,7 +160,10 @@
                 </el-form-item>
               </el-col>
               <el-col :span="12">
-                <el-form-item label="端口" prop="port">
+                <el-form-item
+                  label="端口"
+                  prop="port"
+                >
                   <el-input-number
                     v-model="connectionForm.port"
                     :min="1"
@@ -115,7 +176,10 @@
 
             <el-row :gutter="20">
               <el-col :span="12">
-                <el-form-item label="用户名" prop="user">
+                <el-form-item
+                  label="用户名"
+                  prop="user"
+                >
                   <el-input
                     v-model="connectionForm.user"
                     placeholder="数据库用户名"
@@ -123,7 +187,10 @@
                 </el-form-item>
               </el-col>
               <el-col :span="12">
-                <el-form-item label="密码" prop="password">
+                <el-form-item
+                  label="密码"
+                  prop="password"
+                >
                   <el-input
                     v-model="connectionForm.password"
                     type="password"
@@ -134,7 +201,10 @@
               </el-col>
             </el-row>
 
-            <el-form-item label="数据库名" prop="database">
+            <el-form-item
+              label="数据库名"
+              prop="database"
+            >
               <el-input
                 v-model="connectionForm.database"
                 placeholder="要连接的数据库名称"
@@ -147,7 +217,7 @@
                 :loading="connecting"
                 @click="handleCreateConnection"
               >
-                <i class="fas fa-plug"></i>
+                <i class="fas fa-plug" />
                 连接数据库
               </el-button>
             </el-form-item>
@@ -156,14 +226,17 @@
       </div>
 
       <!-- 步骤2: 选择表 -->
-      <div v-if="currentStep === 1" class="step-panel">
+      <div
+        v-if="currentStep === 1"
+        class="step-panel"
+      >
         <el-row :gutter="20">
           <!-- 外部数据库表 -->
           <el-col :span="12">
             <el-card class="config-card">
               <template #header>
                 <div class="card-header">
-                  <i class="fas fa-table"></i>
+                  <i class="fas fa-table" />
                   <span>外部数据库表</span>
                 </div>
               </template>
@@ -176,24 +249,33 @@
                 class="mb-4"
               />
 
-              <el-table class="data-table"
+              <el-table
+                class="data-table"
                 :data="filteredSourceTables"
                 border
                 height="400"
                 highlight-current-row
                 @current-change="handleSourceTableSelect"
               >
-                <el-table-column prop="table" label="表名" />
-                <el-table-column label="操作" :width="$getActionColumnWidth(1)" class-name="actions-column">
+                <el-table-column
+                  prop="table"
+                  label="表名"
+                />
+                <el-table-column
+                  v-if="showActionColumn"
+                  label="操作"
+                  :width="$getActionColumnWidth(1)"
+                  class-name="actions-column"
+                >
                   <template #default="{ row }">
                     <div class="action-buttons">
-                    <el-button
-                      size="small"
-                      type="primary"
-                      @click.stop="handleSourceTableSelect(row)"
-                    >
-                      选择
-                    </el-button>
+                      <el-button
+                        size="small"
+                        type="primary"
+                        @click.stop="handleSourceTableSelect(row)"
+                      >
+                        选择
+                      </el-button>
                     </div>
                   </template>
                 </el-table-column>
@@ -206,7 +288,7 @@
             <el-card class="config-card">
               <template #header>
                 <div class="card-header">
-                  <i class="fas fa-database"></i>
+                  <i class="fas fa-database" />
                   <span>本地数据库表</span>
                 </div>
               </template>
@@ -219,24 +301,33 @@
                 class="mb-4"
               />
 
-              <el-table class="data-table"
+              <el-table
+                class="data-table"
                 :data="filteredTargetTables"
                 border
                 height="400"
                 highlight-current-row
                 @current-change="handleTargetTableSelect"
               >
-                <el-table-column prop="table" label="表名" />
-                <el-table-column label="操作" :width="$getActionColumnWidth(1)" class-name="actions-column">
+                <el-table-column
+                  prop="table"
+                  label="表名"
+                />
+                <el-table-column
+                  v-if="showActionColumn"
+                  label="操作"
+                  :width="$getActionColumnWidth(1)"
+                  class-name="actions-column"
+                >
                   <template #default="{ row }">
                     <div class="action-buttons">
-                    <el-button
-                      size="small"
-                      type="primary"
-                      @click.stop="handleTargetTableSelect(row)"
-                    >
-                      选择
-                    </el-button>
+                      <el-button
+                        size="small"
+                        type="primary"
+                        @click.stop="handleTargetTableSelect(row)"
+                      >
+                        选择
+                      </el-button>
                     </div>
                   </template>
                 </el-table-column>
@@ -246,7 +337,10 @@
         </el-row>
 
         <!-- 已选择的表 -->
-        <el-card v-if="selectedSourceTable || selectedTargetTable" class="selected-tables-card">
+        <el-card
+          v-if="selectedSourceTable || selectedTargetTable"
+          class="selected-tables-card"
+        >
           <div class="selected-info">
             <div v-if="selectedSourceTable">
               <strong>源表:</strong> {{ selectedSourceTable }}
@@ -259,37 +353,63 @@
       </div>
 
       <!-- 步骤3: 字段映射 -->
-      <div v-if="currentStep === 2" class="step-panel">
+      <div
+        v-if="currentStep === 2"
+        class="step-panel"
+      >
         <el-card class="config-card">
           <template #header>
             <div class="card-header">
-              <i class="fas fa-exchange-alt"></i>
+              <i class="fas fa-exchange-alt" />
               <span>字段映射配置</span>
               <el-button
                 size="small"
                 type="primary"
                 :loading="suggesting"
-                @click="handleSuggestMapping"
                 class="ml-auto"
+                @click="handleSuggestMapping"
               >
-                <i class="fas fa-magic"></i>
+                <i class="fas fa-magic" />
                 智能匹配
               </el-button>
             </div>
           </template>
 
-          <el-table class="data-table" :data="mappingList" border max-height="500">
-            <el-table-column label="源字段" prop="sourceField" width="200" />
-            <el-table-column label="源类型" prop="sourceType" width="120" />
-            <el-table-column label="→" width="50" align="center" />
-            <el-table-column label="目标字段" width="200">
+          <el-table
+            class="data-table"
+            :data="mappingList"
+            border
+            max-height="500"
+          >
+            <el-table-column
+              label="源字段"
+              prop="sourceField"
+              width="200"
+            />
+            <el-table-column
+              label="源类型"
+              prop="sourceType"
+              width="120"
+            />
+            <el-table-column
+              label="→"
+              width="50"
+              align="center"
+            />
+            <el-table-column
+              label="目标字段"
+              width="200"
+            >
               <template #default="{ row }">
                 <el-select
                   v-model="row.targetField"
                   placeholder="选择目标字段"
                   filterable
                 >
-                  <el-option label="（忽略）" value="" />
+                  <el-option
+                    label="（忽略）"
+                    value=""
+                  />
                   <el-option
                     v-for="field in targetFields"
                     :key="field.field"
@@ -304,7 +424,11 @@
                 </el-select>
               </template>
             </el-table-column>
-            <el-table-column label="目标类型" prop="targetType" width="120">
+            <el-table-column
+              label="目标类型"
+              prop="targetType"
+              width="120"
+            >
               <template #default="{ row }">
                 {{ getTargetFieldType(row.targetField) }}
               </template>
@@ -315,13 +439,24 @@
 
           <!-- 同步选项 -->
           <h4>同步选项</h4>
-          <el-form :model="syncOptions" label-width="120px">
+          <el-form
+            :model="syncOptions"
+            label-width="120px"
+          >
             <el-form-item label="同步模式">
               <el-radio-group v-model="syncOptions.mode">
-                <el-radio label="insert">只插入新数据</el-radio>
-                <el-radio label="update">只更新已存在数据</el-radio>
-                <el-radio label="upsert">存在则更新，不存在则插入（推荐）</el-radio>
-                <el-radio label="replace">清空后重新导入</el-radio>
+                <el-radio label="insert">
+                  只插入新数据
+                </el-radio>
+                <el-radio label="update">
+                  只更新已存在数据
+                </el-radio>
+                <el-radio label="upsert">
+                  存在则更新，不存在则插入（推荐）
+                </el-radio>
+                <el-radio label="replace">
+                  清空后重新导入
+                </el-radio>
               </el-radio-group>
             </el-form-item>
 
@@ -360,44 +495,65 @@
       </div>
 
       <!-- 步骤4: 预检查 -->
-      <div v-if="currentStep === 3" class="step-panel">
+      <div
+        v-if="currentStep === 3"
+        class="step-panel"
+      >
         <el-card class="config-card">
           <template #header>
             <div class="card-header">
-              <i class="fas fa-search"></i>
+              <i class="fas fa-search" />
               <span>数据预检查</span>
               <el-button
                 size="small"
                 type="primary"
                 :loading="preChecking"
-                @click="handlePreCheck"
                 class="ml-auto"
+                @click="handlePreCheck"
               >
-                <i class="fas fa-play"></i>
+                <i class="fas fa-play" />
                 开始检查
               </el-button>
             </div>
           </template>
 
-          <div v-if="!preCheckResult" class="precheck-placeholder">
-            <el-empty description="点击开始检查进行数据匹配分析" />
+          <div
+            v-if="!preCheckResult"
+            class="precheck-placeholder"
+          >
+            <DataEmptyState description="点击开始检查进行数据匹配分析" />
           </div>
 
-          <div v-else class="precheck-result">
+          <div
+            v-else
+            class="precheck-result"
+          >
             <!-- 统计信息 -->
-            <el-row :gutter="20" class="stats-row">
+            <el-row
+              :gutter="20"
+              class="stats-row"
+            >
               <el-col :span="8">
-                <el-statistic title="总数据量" :value="preCheckResult.total" />
+                <el-statistic
+                  title="总数据量"
+                  :value="preCheckResult.total"
+                />
               </el-col>
               <el-col :span="8">
-                <el-statistic title="新数据" :value="preCheckResult.newRecords">
+                <el-statistic
+                  title="新数据"
+                  :value="preCheckResult.newRecords"
+                >
                   <template #suffix>
                     <span class="text-success">条</span>
                   </template>
                 </el-statistic>
               </el-col>
               <el-col :span="8">
-                <el-statistic title="需要更新" :value="preCheckResult.updateRecords">
+                <el-statistic
+                  title="需要更新"
+                  :value="preCheckResult.updateRecords"
+                >
                   <template #suffix>
                     <span class="text-warning">条</span>
                   </template>
@@ -408,14 +564,29 @@
             <!-- 匹配示例 -->
             <el-divider />
             <h4>匹配示例（前10条）</h4>
-            <el-table class="data-table" :data="preCheckResult.sampleMatches" border max-height="300">
-              <el-table-column label="匹配键" prop="key" width="200" />
-              <el-table-column label="源数据" width="300">
+            <el-table
+              class="data-table"
+              :data="preCheckResult.sampleMatches"
+              border
+              max-height="300"
+            >
+              <el-table-column
+                label="匹配键"
+                prop="key"
+                width="200"
+              />
+              <el-table-column
+                label="源数据"
+                width="300"
+              >
                 <template #default="{ row }">
                   <pre>{{ JSON.stringify(row.source, null, 2) }}</pre>
                 </template>
               </el-table-column>
-              <el-table-column label="目标数据" width="300">
+              <el-table-column
+                label="目标数据"
+                width="300"
+              >
                 <template #default="{ row }">
                   <pre>{{ JSON.stringify(row.target, null, 2) }}</pre>
                 </template>
@@ -426,17 +597,23 @@
       </div>
 
       <!-- 步骤5: 同步数据 -->
-      <div v-if="currentStep === 4" class="step-panel">
+      <div
+        v-if="currentStep === 4"
+        class="step-panel"
+      >
         <el-card class="config-card">
           <template #header>
             <div class="card-header">
-              <i class="fas fa-sync"></i>
+              <i class="fas fa-sync" />
               <span>数据同步</span>
             </div>
           </template>
 
           <!-- 同步配置摘要 -->
-          <el-descriptions :column="2" border>
+          <el-descriptions
+            :column="2"
+            border
+          >
             <el-descriptions-item label="源表">
               {{ selectedSourceTable }}
             </el-descriptions-item>
@@ -462,7 +639,7 @@
               :disabled="synced"
               @click="handleExecuteSync"
             >
-              <i class="fas fa-play"></i>
+              <i class="fas fa-play" />
               {{ synced ? '同步已完成' : '开始同步' }}
             </el-button>
 
@@ -471,13 +648,16 @@
               size="large"
               @click="handleReset"
             >
-              <i class="fas fa-redo"></i>
+              <i class="fas fa-redo" />
               重新同步
             </el-button>
           </div>
 
           <!-- 同步进度 -->
-          <div v-if="syncing || synced" class="sync-progress">
+          <div
+            v-if="syncing || synced"
+            class="sync-progress"
+          >
             <el-progress
               :percentage="syncProgress"
               :status="syncStatus"
@@ -486,31 +666,46 @@
             </el-progress>
 
             <!-- 同步统计 -->
-            <div v-if="syncStats" class="sync-stats">
+            <div
+              v-if="syncStats"
+              class="sync-stats"
+            >
               <el-row :gutter="20">
                 <el-col :span="6">
-                  <el-statistic title="已插入" :value="syncStats.inserted">
+                  <el-statistic
+                    title="已插入"
+                    :value="syncStats.inserted"
+                  >
                     <template #suffix>
                       <span class="text-success">条</span>
                     </template>
                   </el-statistic>
                 </el-col>
                 <el-col :span="6">
-                  <el-statistic title="已更新" :value="syncStats.updated">
+                  <el-statistic
+                    title="已更新"
+                    :value="syncStats.updated"
+                  >
                     <template #suffix>
                       <span class="text-warning">条</span>
                     </template>
                   </el-statistic>
                 </el-col>
                 <el-col :span="6">
-                  <el-statistic title="已跳过" :value="syncStats.skipped">
+                  <el-statistic
+                    title="已跳过"
+                    :value="syncStats.skipped"
+                  >
                     <template #suffix>
                       <span class="text-secondary">条</span>
                     </template>
                   </el-statistic>
                 </el-col>
                 <el-col :span="6">
-                  <el-statistic title="失败" :value="syncStats.failed">
+                  <el-statistic
+                    title="失败"
+                    :value="syncStats.failed"
+                  >
                     <template #suffix>
                       <span class="text-danger">条</span>
                     </template>
@@ -529,7 +724,7 @@
         v-if="currentStep > 0"
         @click="handlePrevStep"
       >
-        <i class="fas fa-arrow-left"></i>
+        <i class="fas fa-arrow-left" />
         上一步
       </el-button>
 
@@ -540,7 +735,7 @@
         @click="handleNextStep"
       >
         下一步
-        <i class="fas fa-arrow-right"></i>
+        <i class="fas fa-arrow-right" />
       </el-button>
     </div>
   </div>
@@ -551,10 +746,15 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { unifiedApi } from '@/utils/unified-api'
 import { usePagePermissions } from '@/composables/usePagePermissions'
+import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { ValidationRules } from '@/composables'
 import { logger } from '@/utils/logger'
 
 const { canView, canCreate, canEdit, canDelete, handleNoPermission } = usePagePermissions('data-optimization')
+const showActionColumn = computed(() => shouldShowActionColumn(
+  fieldPermissions.isFieldVisible('data_optimization_databasesynctab', 'system_info.operations'),
+  [canDelete.value]
+))
 
 const ensureViewPermission = () => {
   if (canView.value) {
@@ -673,16 +873,16 @@ const targetFields = computed(() => targetStructure.value?.columns || [])
 
 const canGoNext = computed(() => {
   switch (currentStep.value) {
-    case 0:
-      return !!selectedConnectionId.value
-    case 1:
-      return !!selectedSourceTable.value && !!selectedTargetTable.value
-    case 2:
-      return mappingList.value.some(m => m.targetField)
-    case 3:
-      return !!preCheckResult.value
-    default:
-      return true
+  case 0:
+    return !!selectedConnectionId.value
+  case 1:
+    return !!selectedSourceTable.value && !!selectedTargetTable.value
+  case 2:
+    return mappingList.value.some(m => m.targetField)
+  case 3:
+    return !!preCheckResult.value
+  default:
+    return true
   }
 })
 
@@ -1110,8 +1310,8 @@ const handleSmartSync = async () => {
 
       // 显示详细结果
       const summary = res.data.summary
-      const resultText = `✅ 同步完成！\n\n` +
-        `📊 同步统计：\n` +
+      const resultText = '✅ 同步完成！\n\n' +
+        '📊 同步统计：\n' +
         `总处理: ${summary.total} 条\n` +
         `已更新: ${summary.updated} 条（云端已更新为本地状态）\n` +
         `新插入: ${summary.inserted} 条（云端新增）\n` +
@@ -1154,7 +1354,7 @@ onBeforeUnmount(() => {
   .smart-sync-banner {
     margin-bottom: 30px;
     padding: 30px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
     border-radius: 16px;
     box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
     color: white;
@@ -1278,7 +1478,7 @@ onBeforeUnmount(() => {
           font-weight: 600;
 
           i {
-            color: #409eff;
+            color: var(--color-primary);
           }
         }
       }
@@ -1288,7 +1488,7 @@ onBeforeUnmount(() => {
 
         h4 {
           margin: 0 0 15px 0;
-          color: #303133;
+          color: var(--color-text-primary);
         }
       }
 
@@ -1331,7 +1531,7 @@ onBeforeUnmount(() => {
         .sync-stats {
           margin-top: 30px;
           padding: 20px;
-          background: #f5f7fa;
+          background: var(--tf-color-surface);
           border-radius: 8px;
         }
       }
@@ -1354,7 +1554,7 @@ onBeforeUnmount(() => {
 
 /* 导出模式的横幅样式 */
 .smart-sync-banner.export {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  background: linear-gradient(135deg, var(--tf-color-pink-gradient) 0%, var(--tf-color-coral-gradient) 100%);
   border: none;
 
   .banner-card {

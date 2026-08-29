@@ -7,36 +7,43 @@
       module-name="数据优化"
       permission-code="data-check:view"
     >
-    <!-- 页面头部 - 使用全局组件 -->
-    <PageHeader
-      class="data-optimization-header"
-      icon="fas fa-tools"
-      title="优化数据"
-    />
+      <!-- 页面头部 - 使用全局组件 -->
+      <PageHeader
+        class="data-optimization-header"
+        icon="fas fa-tools"
+        title="优化数据"
+      />
 
-    <!-- TAB 标签页 -->
-    <div class="optimization-tabs-wrapper admin-page-content">
-      <el-tabs v-if="visibleOptimizationTabs.length" v-model="activeTab" class="optimization-tabs tf-page-tabs">
-        <el-tab-pane
-          v-for="tab in visibleOptimizationTabs"
-          :key="tab.key"
-          :label="tab.label"
-          :name="tab.key"
-          class="tf-tab-panel"
+      <!-- TAB 标签页 -->
+      <div class="optimization-tabs-wrapper admin-page-content">
+        <el-tabs
+          v-if="visibleOptimizationTabs.length"
+          v-model="activeTab"
+          class="optimization-tabs tf-page-tabs"
         >
-          <template #label>
-            <span class="tab-label">
-              <i :class="tab.icon"></i>
-              <span>{{ tab.label }}</span>
-            </span>
-          </template>
-          <component :is="tab.component" />
-        </el-tab-pane>
-      </el-tabs>
-      <div v-else class="optimization-empty-state">
-        当前角色未开启任何数据优化子页面字段，请在字段权限中开启对应页签。
+          <el-tab-pane
+            v-for="tab in visibleOptimizationTabs"
+            :key="tab.key"
+            :label="tab.label"
+            :name="tab.key"
+            class="tf-tab-panel"
+          >
+            <template #label>
+              <span class="tab-label">
+                <i :class="tab.icon" />
+                <span>{{ tab.label }}</span>
+              </span>
+            </template>
+            <component :is="tab.component" />
+          </el-tab-pane>
+        </el-tabs>
+        <DataEmptyState
+          v-else
+          state="permission"
+          size="page"
+          description="当前角色未开启任何数据优化子页面字段，请在字段权限中开启对应页签"
+        />
       </div>
-    </div>
     </PermissionGate>
   </div>
 </template>
@@ -139,16 +146,16 @@ onMounted(async () => {
 <style lang="scss" scoped>
 .data-optimization-view {
   padding: 20px;
-  background: #f5f7fa;
+  background: var(--tf-color-surface);
   min-height: calc(100vh - 60px);
 }
 
 /* 数据优化页面专用 - 深色渐变页头 */
 .data-optimization-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-  border-radius: 16px !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1) !important;
-  padding: 32px 2rem !important;
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  padding: 32px 2rem;
 }
 
 .optimization-empty-state {
@@ -159,7 +166,7 @@ onMounted(async () => {
   padding: 24px;
   background: white;
   border-radius: 12px;
-  color: #606266;
+  color: var(--color-text-regular);
   text-align: center;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }

@@ -5,7 +5,7 @@ import { unifiedApi } from '@/utils/unified-api'
 
 export interface SystemSetting {
   key: string
-  value: any
+  value: unknown
   type?: 'string' | 'number' | 'boolean' | 'json'
   description?: string
   category?: string
@@ -49,7 +49,7 @@ export const systemSettingsApi = {
   /**
    * 更新配置
    */
-  updateSetting: (key: string, value: any, type?: string) => {
+  updateSetting: (key: string, value: unknown, type?: string) => {
     return unifiedApi.put(`/system-settings/${key}`, { value, type })
   },
 

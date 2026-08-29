@@ -1,6 +1,9 @@
 <template>
   <teleport to="body">
-    <div class="toast-container">
+    <div
+      v-bind="$attrs"
+      class="toast-container"
+    >
       <div
         v-for="toast in toasts"
         :key="toast.id"
@@ -8,11 +11,16 @@
         @click="removeToast(toast.id)"
       >
         <div class="toast-icon">
-          <i :class="getIconClass(toast.type)"></i>
+          <i :class="getIconClass(toast.type)" />
         </div>
-        <div class="toast-message">{{ toast.message }}</div>
-        <button class="toast-close" @click.stop="removeToast(toast.id)">
-          <i class="fas fa-times"></i>
+        <div class="toast-message">
+          {{ toast.message }}
+        </div>
+        <button
+          class="toast-close"
+          @click.stop="removeToast(toast.id)"
+        >
+          <i class="fas fa-times" />
         </button>
       </div>
     </div>
@@ -21,6 +29,10 @@
 
 <script setup lang="ts">
 import { useToast } from '../composables/useToast'
+
+defineOptions({
+  inheritAttrs: false
+})
 
 const { toasts, removeToast } = useToast()
 
@@ -80,14 +92,14 @@ const getIconClass = (type: string) => {
   flex: 1;
   font-size: 14px;
   line-height: 1.4;
-  color: #1f2937;
+  color: var(--tf-color-neutral-800);
 }
 
 .toast-close {
   flex-shrink: 0;
   background: none;
   border: none;
-  color: #6b7280;
+  color: var(--tf-color-neutral-500);
   cursor: pointer;
   padding: 4px;
   border-radius: 4px;
@@ -101,40 +113,40 @@ const getIconClass = (type: string) => {
 
 .toast-close:hover {
   background: rgba(0, 0, 0, 0.1);
-  color: #374151;
+  color: var(--tf-color-neutral-700);
 }
 
 /* Toast 类型样式 */
 .toast-success {
-  border-left: 4px solid #10b981;
+  border-left: 4px solid var(--tf-color-emerald-500);
 }
 
 .toast-success .toast-icon {
-  color: #10b981;
+  color: var(--tf-color-emerald-500);
 }
 
 .toast-error {
-  border-left: 4px solid #ef4444;
+  border-left: 4px solid var(--tf-color-red-500);
 }
 
 .toast-error .toast-icon {
-  color: #ef4444;
+  color: var(--tf-color-red-500);
 }
 
 .toast-warning {
-  border-left: 4px solid #f59e0b;
+  border-left: 4px solid var(--tf-color-amber-500);
 }
 
 .toast-warning .toast-icon {
-  color: #f59e0b;
+  color: var(--tf-color-amber-500);
 }
 
 .toast-info {
-  border-left: 4px solid #3b82f6;
+  border-left: 4px solid var(--tf-color-blue-500);
 }
 
 .toast-info .toast-icon {
-  color: #3b82f6;
+  color: var(--tf-color-blue-500);
 }
 
 @keyframes slideInRight {

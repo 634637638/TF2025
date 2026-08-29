@@ -13,6 +13,6 @@ const ERROR_CODES = Object.freeze({
   DATABASE_ERROR: 'DATABASE_ERROR',
   INTERNAL_SERVER_ERROR: 'INTERNAL_SERVER_ERROR',
   RATE_LIMITED: 'RATE_LIMITED'
-});
+})
 
-module.exports = ERROR_CODES;
+module.exports = ERROR_CODES

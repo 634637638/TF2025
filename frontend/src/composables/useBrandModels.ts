@@ -24,7 +24,7 @@ export function useBrandModels() {
   // 加载品牌列表
   const loadBrands = async () => {
     try {
-      const response = await unifiedApi.get('/brands?status=1&limit=100&sortBy=sort_order&sortOrder=asc')
+      const response = await unifiedApi.get('/brands?status=1&page_size=100')
 
       if (response.success) {
         let brandsData = response.data
@@ -47,7 +47,7 @@ export function useBrandModels() {
   }
 
   // 加载指定品牌的型号
-  const loadModelsForBrand = async (brandId: number, brandName?: string) => {
+  const loadModelsForBrand = async (brandId: number, _brandName?: string) => {
     if (!brandId || brandModelsLoading[brandId]) {
       return brandModels[brandId] || []
     }
@@ -60,7 +60,7 @@ export function useBrandModels() {
       if (response.success) {
         const modelsData = Array.isArray(response.data) ? response.data : []
         const formattedModels = sortOptionsByOrder<Model>(modelsData
-          .map((model: any) => ({
+          .map((model: Partial<Model>) => ({
             id: model.id,
             name: model.name,
             brand_id: model.brand_id,
@@ -86,7 +86,7 @@ export function useBrandModels() {
   // 加载颜色列表
   const loadColors = async () => {
     try {
-      const response = await unifiedApi.get('/colors?limit=100&sortBy=sort_order&sortOrder=asc')
+      const response = await unifiedApi.get('/colors?page_size=100&sort_by=sort_order&sort_order=asc')
 
       if (response.success) {
         let colorsData = response.data
@@ -104,18 +104,10 @@ export function useBrandModels() {
         colors.value = sortOptionsByOrder(colors.value)
         return colors.value
       }
+      colors.value = []
     } catch (error) {
-      // 如果API调用失败，使用模拟数据
-      colors.value = [
-        { id: 1, name: '深空黑色', value: '#1C1C1E' },
-        { id: 2, name: '钛金属', value: '#8E8E93' },
-        { id: 3, name: '粉红色', value: '#FF3B30' },
-        { id: 4, name: '银色', value: '#F2F2F7' },
-        { id: 5, name: '金色', value: '#FFD700' },
-        { id: 6, name: '蓝色', value: '#007AFF' },
-        { id: 7, name: '绿色', value: '#34C759' },
-        { id: 8, name: '紫色', value: '#AF52DE' }
-      ]
+      colors.value = []
+      showElementError('颜色列表加载失败')
     }
     return colors.value
   }
@@ -123,7 +115,7 @@ export function useBrandModels() {
   // 加载内存列表
   const loadMemories = async () => {
     try {
-      const response = await unifiedApi.get('/memories?limit=100&sortBy=sort_order&sortOrder=asc')
+      const response = await unifiedApi.get('/memories?page_size=100&sort_by=sort_order&sort_order=asc')
 
       if (response.success) {
         let memoriesData = response.data
@@ -141,16 +133,10 @@ export function useBrandModels() {
         memories.value = sortOptionsByOrder(memories.value, { labelKeys: ['size', 'capacity', 'name'] })
         return memories.value
       }
+      memories.value = []
     } catch (error) {
-      // 如果API调用失败，使用模拟数据
-      memories.value = [
-        { id: 1, name: '64GB', capacity: '64GB' },
-        { id: 2, name: '128GB', capacity: '128GB' },
-        { id: 3, name: '256GB', capacity: '256GB' },
-        { id: 4, name: '512GB', capacity: '512GB' },
-        { id: 5, name: '1TB', capacity: '1TB' },
-        { id: 6, name: '2TB', capacity: '2TB' }
-      ]
+      memories.value = []
+      showElementError('容量列表加载失败')
     }
     return memories.value
   }

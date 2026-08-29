@@ -3,17 +3,26 @@
     <div class="settings-card">
       <div class="card-header">
         <h3>
-          <i class="fas fa-lock"></i>
+          <i class="fas fa-lock" />
           系统设置
         </h3>
-        <p class="card-description">配置屏幕锁定和在库查询功能的相关设置</p>
+        <p class="card-description">
+          配置屏幕锁定和在库查询功能的相关设置
+        </p>
       </div>
 
       <div class="card-content">
         <!-- TAB 切换 -->
-        <el-tabs v-model="activeTab" class="settings-tabs tf-page-tabs">
+        <el-tabs
+          v-model="activeTab"
+          class="settings-tabs tf-page-tabs"
+        >
           <!-- 屏幕保护设置 TAB -->
-          <el-tab-pane label="屏幕保护" name="screen-lock" class="tf-tab-panel">
+          <el-tab-pane
+            label="屏幕保护"
+            name="screen-lock"
+            class="tf-tab-panel"
+          >
             <el-form
               ref="screenLockFormRef"
               :model="screenLockForm"
@@ -37,9 +46,15 @@
               <!-- 背景类型 -->
               <el-form-item label="背景类型">
                 <el-radio-group v-model="screenLockForm.backgroundType">
-                  <el-radio value="default">默认背景</el-radio>
-                  <el-radio value="image">图片背景</el-radio>
-                  <el-radio value="video">视频背景</el-radio>
+                  <el-radio value="default">
+                    默认背景
+                  </el-radio>
+                  <el-radio value="image">
+                    图片背景
+                  </el-radio>
+                  <el-radio value="video">
+                    视频背景
+                  </el-radio>
                 </el-radio-group>
               </el-form-item>
 
@@ -60,15 +75,25 @@
                     accept="image/*"
                     name="file"
                   >
-                    <div v-if="screenLockForm.imageUrl" class="image-preview">
-                      <Image :src="screenLockForm.imageUrl" alt="背景图片" mode="eager" />
+                    <div
+                      v-if="screenLockForm.imageUrl"
+                      class="image-preview"
+                    >
+                      <Image
+                        :src="screenLockForm.imageUrl"
+                        alt="背景图片"
+                        mode="eager"
+                      />
                       <div class="image-overlay">
-                        <i class="fas fa-camera"></i>
+                        <i class="fas fa-camera" />
                         <span>更换图片</span>
                       </div>
                     </div>
-                    <div v-else class="upload-placeholder">
-                      <i class="fas fa-cloud-upload-alt"></i>
+                    <div
+                      v-else
+                      class="upload-placeholder"
+                    >
+                      <i class="fas fa-cloud-upload-alt" />
                       <span>点击上传图片</span>
                     </div>
                   </el-upload>
@@ -102,15 +127,25 @@
                     accept="video/*"
                     name="file"
                   >
-                    <div v-if="screenLockForm.videoUrl" class="video-preview">
-                      <video :src="formatImageUrl(screenLockForm.videoUrl)" muted loop></video>
+                    <div
+                      v-if="screenLockForm.videoUrl"
+                      class="video-preview"
+                    >
+                      <video
+                        :src="formatImageUrl(screenLockForm.videoUrl)"
+                        muted
+                        loop
+                      />
                       <div class="video-overlay">
-                        <i class="fas fa-video"></i>
+                        <i class="fas fa-video" />
                         <span>更换视频</span>
                       </div>
                     </div>
-                    <div v-else class="upload-placeholder">
-                      <i class="fas fa-cloud-upload-alt"></i>
+                    <div
+                      v-else
+                      class="upload-placeholder"
+                    >
+                      <i class="fas fa-cloud-upload-alt" />
                       <span>点击上传视频</span>
                     </div>
                   </el-upload>
@@ -149,90 +184,32 @@
               </el-form-item>
             </el-form>
           </el-tab-pane>
-
-          <!-- 在库查询设置 TAB -->
-          <el-tab-pane label="在库查询" name="inventory-query" class="tf-tab-panel">
-            <el-form
-              ref="inventoryQueryFormRef"
-              :model="inventoryQueryForm"
-              label-width="140px"
-              label-position="left"
-            >
-              <!-- 说明信息 -->
-              <el-alert
-                title="在库查询功能说明"
-                type="info"
-                show-icon
-                :closable="false"
-                style="margin-bottom: 20px;"
-              >
-                <p>• 在价格查询页面输入密码后，双击型号可查看在库最久信息</p>
-                <p>• 同行咨询时可以快速知道某个型号在哪个店铺在库最久</p>
-                <p>• 可以设置独立密码，不设置则使用登录密码验证</p>
-              </el-alert>
-
-              <!-- 密码设置 -->
-              <el-form-item label="查询验证密码">
-                <el-input
-                  v-model="inventoryQueryForm.password"
-                  type="text"
-                  placeholder="留空则使用登录密码验证"
-                  clearable
-                  style="width: 300px;"
-                />
-                <div class="form-help">
-                  设置独立密码后，在价格查询页面输入此密码后双击型号可查看在库最久信息
-                  <br>留空则使用当前用户的登录密码进行验证
-                  <br><strong>注意：此密码将以明文存储，请使用简单易记的密码</strong>
-                </div>
-              </el-form-item>
-
-                  <!-- 功能预览 -->
-                  <el-form-item label="功能预览">
-                    <div class="preview-box">
-                      <div class="preview-header">
-                        <i class="fas fa-search"></i>
-                        <span>在库查询</span>
-                      </div>
-                      <div class="preview-content">
-                        <div class="preview-row">
-                          <span class="label">操作：</span>
-                          <span class="value">输入密码 → 双击型号</span>
-                        </div>
-                        <div class="preview-row">
-                          <span class="label">显示：</span>
-                          <span class="value">店铺、IMEI、在库天数</span>
-                        </div>
-                        <div class="preview-row highlight">
-                          <span class="label">优先：</span>
-                          <span class="value">在库最久的商品</span>
-                        </div>
-                      </div>
-                    </div>
-                  </el-form-item>
-            </el-form>
-          </el-tab-pane>
         </el-tabs>
       </div>
 
       <div class="card-footer">
         <div class="footer-actions">
-          <el-button @click="resetForm">重置</el-button>
+          <el-button @click="resetForm">
+            重置
+          </el-button>
           <el-button
             type="primary"
-            @click="saveSettings"
             :loading="saving"
             :disabled="!hasChanges"
+            @click="saveSettings"
           >
             <span v-if="saving">保存中...</span>
             <template v-else>
-              <i class="fas fa-save"></i>
+              <i class="fas fa-save" />
               保存设置
             </template>
           </el-button>
         </div>
-        <div v-if="lastSavedTime" class="last-saved">
-          <i class="fas fa-check-circle"></i>
+        <div
+          v-if="lastSavedTime"
+          class="last-saved"
+        >
+          <i class="fas fa-check-circle" />
           最后保存：{{ lastSavedTime }}
         </div>
       </div>
@@ -250,7 +227,6 @@ import { formatImageUrl } from '@/utils/format'
 import Image from './Image.vue'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { storage } from '@/services/storage'
-import { SECURITY_STORAGE_KEYS } from '@/constants/storage'
 import { logger } from '@/utils/logger'
 
 // 接口定义
@@ -260,7 +236,6 @@ interface ScreenLockSettings {
   videoUrl?: string
   title?: string
   message?: string
-  inventoryQueryPassword?: string | null
 }
 
 interface UploadResponse {
@@ -286,7 +261,7 @@ interface Props {
   modelValue?: boolean
 }
 
-const props = withDefaults(defineProps<Props>(), {
+const _props = withDefaults(defineProps<Props>(), {
   modelValue: false
 })
 
@@ -312,13 +287,8 @@ const screenLockForm = reactive({
   message: '请输入密码解锁'
 })
 
-// 在库查询表单数据
-const inventoryQueryForm = reactive({
-  password: '' as string
-})
-
 // 原始数据备份
-const originalData = ref<ScreenLockSettings>({ ...screenLockForm, inventoryQueryPassword: null })
+const originalData = ref<ScreenLockSettings>({ ...screenLockForm })
 
 // 认证信息
 const authStore = useAuthStore()
@@ -330,11 +300,7 @@ const uploadHeaders = computed(() => ({
 }))
 
 const hasChanges = computed(() => {
-  const currentData = {
-    ...screenLockForm,
-    inventoryQueryPassword: inventoryQueryForm.password || null
-  }
-  return JSON.stringify(currentData) !== JSON.stringify(originalData.value)
+  return JSON.stringify(screenLockForm) !== JSON.stringify(originalData.value)
 })
 
 // 表单验证规则
@@ -359,11 +325,7 @@ const loadSettings = async () => {
         title: response.data.title || '屏幕已锁定',
         message: response.data.message || '请输入密码解锁'
       })
-      inventoryQueryForm.password = response.data.inventoryQueryPassword || ''
-      originalData.value = {
-        ...screenLockForm,
-        inventoryQueryPassword: response.data.inventoryQueryPassword || null
-      }
+      originalData.value = { ...screenLockForm }
     }
   } catch (error: unknown) {
     logger.error('加载屏幕锁定设置失败:', error)
@@ -380,11 +342,7 @@ const loadSettings = async () => {
             title: localSettings.title || '屏幕已锁定',
             message: localSettings.message || '请输入密码解锁'
           })
-          inventoryQueryForm.password = localSettings.inventoryQueryPassword || ''
-          originalData.value = {
-            ...screenLockForm,
-            inventoryQueryPassword: localSettings.inventoryQueryPassword || null
-          }
+          originalData.value = { ...screenLockForm }
         }
       } catch (localError) {
         logger.error('从 localStorage 加载失败:', localError)
@@ -399,10 +357,7 @@ const saveSettings = async () => {
   saving.value = true
 
   try {
-    const data = {
-      ...screenLockForm,
-      inventoryQueryPassword: inventoryQueryForm.password || null
-    }
+    const data = { ...screenLockForm }
 
     // 先保存到 localStorage（作为本地缓存，解决后端404问题）
     storage.setScreenLockSettings(data)
@@ -410,10 +365,7 @@ const saveSettings = async () => {
     const response = await unifiedApi.post('/screen-lock', data)
 
     if (response.success) {
-      originalData.value = {
-        ...screenLockForm,
-        inventoryQueryPassword: inventoryQueryForm.password || null
-      }
+      originalData.value = { ...screenLockForm }
       lastSavedTime.value = TimeUtil.nowFormatted(TIME_FORMATS.DATETIME)
       ElMessage.success('设置保存成功')
       emit('change', data)
@@ -425,16 +377,10 @@ const saveSettings = async () => {
 
     // 如果后端失败（404），但 localStorage 已保存，也视为成功
     if ((isApiLikeError(error) && error.message?.includes('404')) || (isApiLikeError(error) && error.response?.status === 404)) {
-      originalData.value = {
-        ...screenLockForm,
-        inventoryQueryPassword: inventoryQueryForm.password || null
-      }
+      originalData.value = { ...screenLockForm }
       lastSavedTime.value = TimeUtil.nowFormatted(TIME_FORMATS.DATETIME)
       ElMessage.warning('设置已保存到本地（后端未连接）')
-      emit('change', {
-        ...screenLockForm,
-        inventoryQueryPassword: inventoryQueryForm.password || null
-      })
+      emit('change', { ...screenLockForm })
     } else {
       ElMessage.error(`保存失败：${(isApiLikeError(error) && error.message) || '未知错误'}`)
     }
@@ -456,7 +402,6 @@ const resetForm = async () => {
       title: originalData.value.title || '屏幕已锁定',
       message: originalData.value.message || '请输入密码解锁'
     })
-    inventoryQueryForm.password = originalData.value.inventoryQueryPassword || ''
     screenLockFormRef.value?.clearValidate()
     ElMessage.success('已重置为上次保存的设置')
   } catch {
@@ -519,7 +464,7 @@ const handleUploadError = (error: unknown) => {
 }
 
 // 监听变化
-watch([screenLockForm, inventoryQueryForm], () => {
+watch([screenLockForm], () => {
   emit('update:modelValue', hasChanges.value)
 }, { deep: true })
 
@@ -540,25 +485,25 @@ onMounted(() => {
 
   .card-header {
     padding: 24px;
-    border-bottom: 1px solid #ebeef5;
-    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    border-bottom: 1px solid var(--color-border-light);
+    background: linear-gradient(135deg, var(--tf-color-surface) 0%, var(--tf-color-border-gradient) 100%);
 
     h3 {
       margin: 0 0 8px 0;
-      color: #2c3e50;
+      color: var(--tf-color-heading);
       font-size: 20px;
       display: flex;
       align-items: center;
       gap: 12px;
 
       i {
-        color: #667eea;
+        color: var(--tf-color-indigo-brand);
       }
     }
 
     .card-description {
       margin: 0;
-      color: #7f8c8d;
+      color: var(--tf-color-gray-cool-500);
       font-size: 14px;
     }
   }
@@ -570,7 +515,7 @@ onMounted(() => {
   .form-help {
     margin-top: 8px;
     font-size: 12px;
-    color: #909399;
+    color: var(--color-info);
     line-height: 1.6;
   }
 
@@ -584,7 +529,7 @@ onMounted(() => {
   .image-uploader,
   .video-uploader {
     :deep(.el-upload) {
-      border: 2px dashed #d9d9d9;
+      border: 2px dashed var(--tf-color-gray-ant-400);
       border-radius: 8px;
       cursor: pointer;
       position: relative;
@@ -592,7 +537,7 @@ onMounted(() => {
       transition: all 0.3s;
 
       &:hover {
-        border-color: #667eea;
+        border-color: var(--tf-color-indigo-brand);
       }
     }
   }
@@ -651,8 +596,8 @@ onMounted(() => {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    color: #8c939d;
-    background: #fafafa;
+    color: var(--tf-color-gray-element);
+    background: var(--tf-color-neutral-25);
 
     i {
       font-size: 32px;
@@ -666,13 +611,13 @@ onMounted(() => {
 
   .unit {
     margin-left: 8px;
-    color: #606266;
+    color: var(--color-text-regular);
   }
 
   .card-footer {
     padding: 16px 24px;
-    border-top: 1px solid #ebeef5;
-    background: #f8f9fa;
+    border-top: 1px solid var(--color-border-light);
+    background: var(--tf-color-surface-muted);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -687,7 +632,7 @@ onMounted(() => {
     display: flex;
     align-items: center;
     gap: 6px;
-    color: #67c23a;
+    color: var(--color-success);
     font-size: 14px;
 
     i {
@@ -697,14 +642,14 @@ onMounted(() => {
 
   // 预览框样式
   .preview-box {
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--tf-color-gray-material-300);
     border-radius: 8px;
     overflow: hidden;
-    background: #fafafa;
+    background: var(--tf-color-neutral-25);
     max-width: 300px;
 
     .preview-header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
       color: white;
       padding: 12px 16px;
       display: flex;
@@ -725,31 +670,31 @@ onMounted(() => {
         display: flex;
         justify-content: space-between;
         padding: 8px 0;
-        border-bottom: 1px solid #f0f0f0;
+        border-bottom: 1px solid var(--tf-color-gray-200);
 
         &:last-child {
           border-bottom: none;
         }
 
         &.highlight {
-          background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+          background: linear-gradient(135deg, var(--tf-color-amber-pastel) 0%, var(--tf-color-amber-pastel-dark) 100%);
           margin: 0 -16px;
           padding: 12px 16px;
           border-radius: 4px;
           font-weight: 600;
 
           .value {
-            color: #d35400;
+            color: var(--tf-color-orange-flat-dark);
           }
         }
 
         .label {
-          color: #7f8c8d;
+          color: var(--tf-color-gray-cool-500);
           font-size: 14px;
         }
 
         .value {
-          color: #2c3e50;
+          color: var(--tf-color-heading);
           font-size: 14px;
           font-weight: 500;
         }

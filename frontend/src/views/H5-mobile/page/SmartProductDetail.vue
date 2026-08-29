@@ -3,8 +3,14 @@
   根据 ID 类型自动判断是模板商品还是普通商品，然后加载对应的详情页
 -->
 <template>
-  <SectionLoading v-if="loading" text="加载中..." />
-  <ProductDetail v-else-if="isUsedProduct" :product-id="productId" />
+  <SectionLoading
+    v-if="loading"
+    text="加载中..."
+  />
+  <ProductDetail
+    v-else-if="isUsedProduct"
+    :product-id="productId"
+  />
   <AggregatedProductDetail v-else />
 </template>
 
@@ -80,11 +86,11 @@ watch(productId, (id) => {
   justify-content: center;
   min-height: 100vh;
   gap: 12px;
-  color: #999;
+  color: var(--text-muted);
 
   .el-icon {
     font-size: 32px;
-    color: #667eea;
+    color: var(--tf-color-indigo-brand);
   }
 }
 </style>

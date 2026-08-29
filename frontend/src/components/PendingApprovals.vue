@@ -1,107 +1,189 @@
 <template>
-  <div v-if="canViewPendingApprovals" class="pending-approvals">
+  <div
+    v-if="canViewPendingApprovals"
+    class="pending-approvals"
+  >
     <!-- 预警概览卡片 -->
     <div class="approvals-overview">
-      <div class="overview-card" @click="goToAttendance('pending')" :class="{ 'has-pending': attendanceCount > 0 }">
+      <div
+        class="overview-card"
+        :class="{ 'has-pending': attendanceCount > 0 }"
+        @click="goToAttendance('pending')"
+      >
         <div class="card-icon attendance">
-          <i class="fas fa-calendar-check"></i>
+          <i class="fas fa-calendar-check" />
         </div>
         <div class="card-content">
-          <div class="card-value">{{ attendanceCount }}</div>
-          <div class="card-label">待审批考勤</div>
+          <div class="card-value">
+            {{ attendanceCount }}
+          </div>
+          <div class="card-label">
+            待审批考勤
+          </div>
         </div>
-        <div v-if="attendanceCount > 0" class="card-badge">
-          <i class="fas fa-bell"></i>
+        <div
+          v-if="attendanceCount > 0"
+          class="card-badge"
+        >
+          <i class="fas fa-bell" />
         </div>
       </div>
 
-      <div class="overview-card" @click="goToAttendance('leave')" :class="{ 'has-pending': leaveCount > 0 }">
+      <div
+        class="overview-card"
+        :class="{ 'has-pending': leaveCount > 0 }"
+        @click="goToAttendance('leave')"
+      >
         <div class="card-icon leave">
-          <i class="fas fa-umbrella-beach"></i>
+          <i class="fas fa-umbrella-beach" />
         </div>
         <div class="card-content">
-          <div class="card-value">{{ leaveCount }}</div>
-          <div class="card-label">待审批休假</div>
+          <div class="card-value">
+            {{ leaveCount }}
+          </div>
+          <div class="card-label">
+            待审批休假
+          </div>
         </div>
-        <div v-if="leaveCount > 0" class="card-badge">
-          <i class="fas fa-bell"></i>
+        <div
+          v-if="leaveCount > 0"
+          class="card-badge"
+        >
+          <i class="fas fa-bell" />
         </div>
       </div>
 
-      <div class="overview-card" @click="goToAttendance('overtime')" :class="{ 'has-pending': overtimeCount > 0 }">
+      <div
+        class="overview-card"
+        :class="{ 'has-pending': overtimeCount > 0 }"
+        @click="goToAttendance('overtime')"
+      >
         <div class="card-icon overtime">
-          <i class="fas fa-business-time"></i>
+          <i class="fas fa-business-time" />
         </div>
         <div class="card-content">
-          <div class="card-value">{{ overtimeCount }}</div>
-          <div class="card-label">待审批加班</div>
+          <div class="card-value">
+            {{ overtimeCount }}
+          </div>
+          <div class="card-label">
+            待审批加班
+          </div>
         </div>
-        <div v-if="overtimeCount > 0" class="card-badge">
-          <i class="fas fa-bell"></i>
+        <div
+          v-if="overtimeCount > 0"
+          class="card-badge"
+        >
+          <i class="fas fa-bell" />
         </div>
       </div>
     </div>
 
     <!-- 详细列表 -->
-    <div v-if="totalPending > 0" class="approvals-detail">
+    <div
+      v-if="totalPending > 0"
+      class="approvals-detail"
+    >
       <div class="detail-header">
         <h4>
-          <i class="fas fa-clock"></i>
+          <i class="fas fa-clock" />
           待审批详情
         </h4>
-        <el-tag type="warning" size="small">
+        <el-tag
+          type="warning"
+          size="small"
+        >
           共 {{ totalPending }} 条待处理
         </el-tag>
       </div>
 
       <div class="approval-list">
         <!-- 考勤申请 -->
-        <div v-for="item in attendanceList" :key="`attendance-${item.id}`" class="approval-item" @click="viewDetail(item)">
+        <div
+          v-for="item in attendanceList"
+          :key="`attendance-${item.id}`"
+          class="approval-item"
+          @click="viewDetail(item)"
+        >
           <div class="item-icon">
-            <i :class="getTypeIcon(item.record_type)"></i>
+            <i :class="getTypeIcon(item.record_type)" />
           </div>
           <div class="item-content">
-            <div class="item-title">{{ getRecordTypeName(item.record_type) }}</div>
+            <div class="item-title">
+              {{ getRecordTypeName(item.record_type) }}
+            </div>
             <div class="item-info">
               <span class="employee-name">{{ item.employee_name || item.employee_username }}</span>
-              <span class="record-date" :class="{ 'invalid-date': isInvalidDate(item.record_date) }">
+              <span
+                class="record-date"
+                :class="{ 'invalid-date': isInvalidDate(item.record_date) }"
+              >
                 {{ formatDate(item.record_date) }}
               </span>
-              <span v-if="item.record_type === 'monthly_leave'" class="record-days">
+              <span
+                v-if="item.record_type === 'monthly_leave'"
+                class="record-days"
+              >
                 休假 {{ item.monthly_leave_days || item.leave_days || 0 }} 天
               </span>
-              <span v-else-if="item.record_type === 'overtime'" class="record-hours">
+              <span
+                v-else-if="item.record_type === 'overtime'"
+                class="record-hours"
+              >
                 加班 {{ item.overtime_hours || 0 }} 小时
               </span>
-              <span v-else class="record-days">
+              <span
+                v-else
+                class="record-days"
+              >
                 请假 {{ item.leave_days || 0 }} 天
               </span>
             </div>
           </div>
           <div class="item-time">
-            <el-tag type="warning" size="small">待审批</el-tag>
+            <el-tag
+              type="warning"
+              size="small"
+            >
+              待审批
+            </el-tag>
             <span class="time-text">{{ formatTime(item.created_at) }}</span>
           </div>
         </div>
 
-        <el-empty v-if="attendanceList.length === 0" description="暂无待审批记录" :image-size="60" />
+        <DataEmptyState
+          v-if="attendanceList.length === 0"
+          description="暂无待审批记录"
+          :image-size="60"
+        />
       </div>
 
       <div class="detail-actions">
-        <el-button type="primary" size="small" @click="goToAttendance()">
+        <el-button
+          type="primary"
+          size="small"
+          @click="goToAttendance()"
+        >
           查看全部
-          <i class="fas fa-arrow-right"></i>
+          <i class="fas fa-arrow-right" />
         </el-button>
       </div>
     </div>
 
     <!-- 无待审批状态 -->
-    <div v-else class="no-approvals">
-      <el-empty description="暂无待审批申请" :image-size="80">
+    <div
+      v-else
+      class="no-approvals"
+    >
+      <DataEmptyState
+        description="暂无待审批申请"
+        :image-size="80"
+      >
         <template #description>
-          <p class="no-approvals-text">所有考勤申请已处理完成</p>
+          <p class="no-approvals-text">
+            所有考勤申请已处理完成
+          </p>
         </template>
-      </el-empty>
+      </DataEmptyState>
     </div>
   </div>
 </template>
@@ -421,7 +503,7 @@ defineExpose({
     grid-template-columns: repeat(3, 1fr);
     gap: 15px;
     padding: 20px;
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    background: linear-gradient(135deg, var(--tf-color-pink-gradient) 0%, var(--tf-color-coral-gradient) 100%);
 
     .overview-card {
       background: rgba(255, 255, 255, 0.15);
@@ -465,15 +547,15 @@ defineExpose({
         color: white;
 
         &.attendance {
-          background: linear-gradient(135deg, #667eea, #764ba2);
+          background: linear-gradient(135deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand));
         }
 
         &.leave {
-          background: linear-gradient(135deg, #f093fb, #f5576c);
+          background: linear-gradient(135deg, var(--tf-color-pink-gradient), var(--tf-color-coral-gradient));
         }
 
         &.overtime {
-          background: linear-gradient(135deg, #4facfe, #00f2fe);
+          background: linear-gradient(135deg, var(--tf-color-sky-gradient), var(--tf-color-cyan-gradient));
         }
       }
 
@@ -499,7 +581,7 @@ defineExpose({
         right: -5px;
         width: 24px;
         height: 24px;
-        background: #ff6b6b;
+        background: var(--tf-color-coral);
         border-radius: 50%;
         display: flex;
         align-items: center;
@@ -532,18 +614,18 @@ defineExpose({
       align-items: center;
       margin-bottom: 15px;
       padding-bottom: 12px;
-      border-bottom: 2px solid #f0f0f0;
+      border-bottom: 2px solid var(--tf-color-gray-200);
 
       h4 {
         margin: 0;
         font-size: 16px;
-        color: #2c3e50;
+        color: var(--tf-color-heading);
         display: flex;
         align-items: center;
         gap: 8px;
 
         i {
-          color: #f39c12;
+          color: var(--tf-color-amber-legacy);
         }
       }
     }
@@ -561,14 +643,14 @@ defineExpose({
         align-items: center;
         gap: 12px;
         padding: 12px;
-        background: #fff;
-        border: 1px solid #e9ecef;
+        background: var(--color-bg-white);
+        border: 1px solid var(--tf-color-border-muted);
         border-radius: 8px;
         cursor: pointer;
         transition: all 0.2s ease;
 
         &:hover {
-          border-color: #f39c12;
+          border-color: var(--tf-color-amber-legacy);
           box-shadow: 0 2px 8px rgba(243, 156, 18, 0.2);
           transform: translateX(2px);
         }
@@ -577,7 +659,7 @@ defineExpose({
           width: 40px;
           height: 40px;
           border-radius: 8px;
-          background: linear-gradient(135deg, #667eea, #764ba2);
+          background: linear-gradient(135deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand));
           color: white;
           display: flex;
           align-items: center;
@@ -593,7 +675,7 @@ defineExpose({
           .item-title {
             font-size: 14px;
             font-weight: 500;
-            color: #2c3e50;
+            color: var(--tf-color-heading);
             margin-bottom: 4px;
           }
 
@@ -605,21 +687,21 @@ defineExpose({
 
             .employee-name {
               font-weight: 500;
-              color: #34495e;
+              color: var(--tf-color-slate-legacy);
             }
 
             .record-date {
-              color: #7f8c8d;
+              color: var(--tf-color-gray-cool-500);
 
               &.invalid-date {
-                color: #e74c3c;
+                color: var(--tf-color-red-legacy);
                 font-style: italic;
               }
             }
 
             .record-days,
             .record-hours {
-              color: #e67e22;
+              color: var(--tf-color-orange-legacy);
               font-weight: 500;
             }
           }
@@ -633,7 +715,7 @@ defineExpose({
 
           .time-text {
             font-size: 11px;
-            color: #95a5a6;
+            color: var(--tf-color-gray-legacy-500);
           }
         }
       }
@@ -643,7 +725,7 @@ defineExpose({
       display: flex;
       justify-content: center;
       padding-top: 10px;
-      border-top: 1px solid #f0f0f0;
+      border-top: 1px solid var(--tf-color-gray-200);
 
       .el-button {
         i {
@@ -657,7 +739,7 @@ defineExpose({
     padding: 40px 20px;
 
     .no-approvals-text {
-      color: #27ae60;
+      color: var(--tf-color-green-legacy);
       font-size: 14px;
       margin-top: 10px;
     }
@@ -727,21 +809,21 @@ defineExpose({
 
               .employee-name {
                 font-weight: 500;
-                color: #2c3e50;
+                color: var(--tf-color-heading);
               }
 
               .record-date {
-                color: #7f8c8d;
+                color: var(--tf-color-gray-cool-500);
 
                 &.invalid-date {
-                  color: #e74c3c;
+                  color: var(--tf-color-red-legacy);
                   font-style: italic;
                 }
               }
 
               .record-days,
               .record-hours {
-                color: #e67e22;
+                color: var(--tf-color-orange-legacy);
                 font-weight: 500;
               }
             }

@@ -13,23 +13,23 @@ import type {
 } from './types'
 
 export const createDefaultQuickSaleForm = (operatorId: number | null): QuickSaleFormState => ({
-  brand_id: '',
-  model_id: '',
-  color_id: '',
-  memory_id: '',
+  brand_id: null,
+  model_id: null,
+  color_id: null,
+  memory_id: null,
   is_new: '1',
   imei: '',
   serial_number: '',
   supplier_id: null,
   store_id: null,
-  purchase_price: null,
+  purchase_cost: null,
   sale_price: null,
   customer_name: '',
   customer_phone: '',
   apple_id: '',
-  stock_in_date: TimeUtil.nowFormatted(TIME_FORMATS.DATE),
-  stock_in_operator_id: operatorId,
-  sale_date: TimeUtil.nowFormatted(TIME_FORMATS.DATE),
+  inventory_time: TimeUtil.nowFormatted(TIME_FORMATS.DATE),
+  purchase_operator_id: operatorId,
+  sale_time: TimeUtil.nowFormatted(TIME_FORMATS.DATE),
   sale_operator_id: operatorId,
   payment_method: '',
   payment_channel: '',
@@ -111,40 +111,41 @@ export const buildQuickSaleSubmitPayload = (formData: QuickSaleFormState) => {
     : formatQuickSaleIMEI(String(formData.imei || ''), false)
 
   return {
-    brand: formData.brand_id,
-    model: formData.model_id,
-    color: formData.color_id,
-    memory: formData.memory_id,
+    brand_id: Number(formData.brand_id),
+    model_id: Number(formData.model_id),
+    color_id: Number(formData.color_id),
+    memory_id: Number(formData.memory_id),
     is_new: parseInt(formData.is_new, 10),
     imei: resolvedImei,
     serial_number: normalizedSerialNumber,
     supplier_id: formData.supplier_id,
     store_id: formData.store_id,
-    purchase_price: formData.purchase_price ?? null,
+    purchase_cost: formData.purchase_cost ?? null,
     sale_price: formData.sale_price ?? null,
     customer_name: normalizedCustomerName || '',
     customer_phone: normalizedCustomerPhone,
     apple_id: normalizedAppleId || '',
-    stock_in_date: formData.stock_in_date,
-    sale_date: formData.sale_date,
-    operator_id: formData.sale_operator_id,
-    payment_method: formData.payment_method || '现金',
+    inventory_time: formData.inventory_time,
+    sale_time: formData.sale_time,
+    sale_operator_id: formData.sale_operator_id,
+    payment_method: formData.payment_method,
+    payment_channel: formData.payment_channel || null,
     remarks: formData.remarks || ''
   }
 }
 
 export const createQuickSaleInitialPatch = (
   initialData: {
-    brand_id?: string
-    model_id?: string
-    color_id?: string
-    memory_id?: string
+    brand_id?: number
+    model_id?: number
+    color_id?: number
+    memory_id?: number
     is_new?: string | number | boolean
     imei?: string
     serial_number?: string
     supplier_id?: number | null
     store_id?: number | null
-    purchase_price?: number | null
+    purchase_cost?: number | null
     sale_price?: number | null
   } | null | undefined
 ) => {
@@ -153,25 +154,24 @@ export const createQuickSaleInitialPatch = (
   }
 
   return {
-    brand_id: initialData.brand_id || '',
-    color_id: initialData.color_id || '',
-    memory_id: initialData.memory_id || '',
+    brand_id: initialData.brand_id ?? null,
+    color_id: initialData.color_id ?? null,
+    memory_id: initialData.memory_id ?? null,
     is_new: initialData.is_new === true || initialData.is_new === 1 || initialData.is_new === '1' ? '1' : '0',
     imei: initialData.imei || '',
     serial_number: initialData.serial_number || '',
     supplier_id: initialData.supplier_id ?? null,
     store_id: initialData.store_id ?? null,
-    purchase_price: initialData.purchase_price ?? null,
+    purchase_cost: initialData.purchase_cost ?? null,
     sale_price: initialData.sale_price ?? null,
-    model_id: initialData.model_id || ''
+    model_id: initialData.model_id ?? null
   }
 }
 
-export const normalizeQuickSaleModelOptions = (models: BrandModelOption[]): string[] =>
+export const normalizeQuickSaleModelOptions = (models: BrandModelOption[]): BrandModelOption[] =>
   sortOptionsByOrder(models
-    .filter((model) => model.status === 1)
+    .filter((model) => model.status === 1 || model.status === undefined)
   )
-    .map((model) => model.name)
 
 export const calculateQuickSaleSubsidyRemarks = (salePriceInput: number | string | null | undefined) => {
   const salePrice = parseFloat(String(salePriceInput)) || 0

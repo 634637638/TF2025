@@ -1,10 +1,25 @@
-const SaleService = require('../services/sale.service');
-const ApiResponse = require('../utils/response');
-const log = require('../utils/log');
+const SaleService = require('../services/sale.service')
+const ApiResponse = require('../utils/response')
+const log = require('../utils/log')
+
+const sendCanonicalPaginated = (res, result) => res.status(200).json({
+  success: true,
+  message: result.message,
+  data: result.data,
+  pagination: {
+    page: result.pagination.page,
+    page_size: result.pagination.page_size,
+    total: result.pagination.total,
+    total_pages: result.pagination.total_pages,
+    has_next: result.pagination.has_next,
+    has_prev: result.pagination.has_prev
+  },
+  timestamp: new Date().toISOString()
+})
 
 class SaleController {
   constructor() {
-    this.saleService = new SaleService();
+    this.saleService = new SaleService()
   }
 
   /**
@@ -18,18 +33,18 @@ class SaleController {
         // 如果前端没有发送operator_id，则使用当前登录用户ID
         operator_id: req.body.operator_id || req.user.id,
         store_id: req.body.store_id || req.user.store_id
-      };
+      }
 
       // 验证销售数据
-      this.saleService.validateSaleData(saleData);
+      this.saleService.validateSaleData(saleData)
 
       // 执行销售
-      const result = await this.saleService.sellPhone(saleData);
+      const result = await this.saleService.sellPhone(saleData)
 
-      return ApiResponse.success(res, result.message, result.data, 201);
+      return ApiResponse.success(res, result.message, result.data, 201)
     } catch (error) {
-      log.error('手机销售失败:', error);
-      return ApiResponse.error(res, error.message || '手机销售失败', 400);
+      log.error('手机销售失败:', error)
+      return ApiResponse.error(res, error.message || '手机销售失败', 400)
     }
   };
 
@@ -38,32 +53,34 @@ class SaleController {
    */
   async sellPhonesBatch(req, res) {
     try {
-      const { phones } = req.body;
+      const { phones } = req.body
 
       if (!phones || !Array.isArray(phones) || phones.length === 0) {
-        return ApiResponse.error(res, '请提供有效的销售数据', 400);
+        return ApiResponse.error(res, '请提供有效的销售数据', 400)
       }
 
       // 添加销售数据，保留前端发送的操作员ID
-      const salesData = phones.map(phone => ({
-        ...phone,
-        // 如果前端没有发送operator_id，则使用当前登录用户ID
-        operator_id: phone.operator_id || req.user.id,
-        store_id: phone.store_id || req.user.store_id
-      }));
+      const salesData = phones.map(phone => {
+        return {
+          ...phone,
+          // 如果前端没有发送operator_id，则使用当前登录用户ID
+          operator_id: phone.operator_id || req.user.id,
+          store_id: phone.store_id || req.user.store_id
+        }
+      })
 
       // 验证每个销售记录
       for (const saleData of salesData) {
-        this.saleService.validateSaleData(saleData);
+        this.saleService.validateSaleData(saleData)
       }
 
       // 执行批量销售
-      const result = await this.saleService.sellPhonesBatch(salesData);
+      const result = await this.saleService.sellPhonesBatch(salesData)
 
-      return ApiResponse.success(res, result.message, result.data, 201);
+      return ApiResponse.success(res, result.message, result.data, 201)
     } catch (error) {
-      log.error('批量手机销售失败:', error);
-      return ApiResponse.error(res, error.message || '批量手机销售失败', 400);
+      log.error('批量手机销售失败:', error)
+      return ApiResponse.error(res, error.message || '批量手机销售失败', 400)
     }
   };
 
@@ -72,17 +89,17 @@ class SaleController {
    */
   async findPhoneByImei(req, res) {
     try {
-      const { imei } = req.params;
+      const { imei } = req.params
       if (!imei) {
-        return ApiResponse.error(res, 'IMEI号不能为空', 400);
+        return ApiResponse.error(res, 'IMEI号不能为空', 400)
       }
 
-      const phone = await this.saleService.findPhoneByImei(imei.trim());
+      const phone = await this.saleService.findPhoneByImei(imei.trim())
 
-      return ApiResponse.success(res, '查找手机成功', phone);
+      return ApiResponse.success(res, '查找手机成功', phone)
     } catch (error) {
-      log.error('查找手机失败:', error);
-      return ApiResponse.error(res, error.message || '查找手机失败', 404);
+      log.error('查找手机失败:', error)
+      return ApiResponse.error(res, error.message || '查找手机失败', 404)
     }
   };
 
@@ -91,17 +108,17 @@ class SaleController {
    */
   async findPhoneBySerialNumber(req, res) {
     try {
-      const { serialNumber } = req.params;
+      const { serialNumber } = req.params
       if (!serialNumber) {
-        return ApiResponse.error(res, '序列号不能为空', 400);
+        return ApiResponse.error(res, '序列号不能为空', 400)
       }
 
-      const phone = await this.saleService.findPhoneBySerialNumber(serialNumber.trim());
+      const phone = await this.saleService.findPhoneBySerialNumber(serialNumber.trim())
 
-      return ApiResponse.success(res, '查找手机成功', phone);
+      return ApiResponse.success(res, '查找手机成功', phone)
     } catch (error) {
-      log.error('查找手机失败:', error);
-      return ApiResponse.error(res, error.message || '查找手机失败', 404);
+      log.error('查找手机失败:', error)
+      return ApiResponse.error(res, error.message || '查找手机失败', 404)
     }
   };
 
@@ -110,17 +127,17 @@ class SaleController {
    */
   async findCustomerByPhone(req, res) {
     try {
-      const { phone } = req.params;
+      const { phone } = req.params
       if (!phone) {
-        return ApiResponse.error(res, '手机号码不能为空', 400);
+        return ApiResponse.error(res, '手机号码不能为空', 400)
       }
 
-      const customer = await this.saleService.findCustomerByPhone(phone.trim());
+      const customer = await this.saleService.findCustomerByPhone(phone.trim())
 
-      return ApiResponse.success(res, '查找客户成功', customer);
+      return ApiResponse.success(res, '查找客户成功', customer)
     } catch (error) {
-      log.error('查找客户失败:', error);
-      return ApiResponse.error(res, error.message || '查找客户失败', 404);
+      log.error('查找客户失败:', error)
+      return ApiResponse.error(res, error.message || '查找客户失败', 404)
     }
   };
 
@@ -139,20 +156,15 @@ class SaleController {
         operator_id: req.query.operator_id,
         is_new: req.query.is_new,
         page: parseInt(req.query.page) || 1,
-        limit: parseInt(req.query.limit) || 20
-      };
+        page_size: parseInt(req.query.page_size) || 20
+      }
 
-      const result = await this.saleService.getAvailablePhones(filters);
+      const result = await this.saleService.getAvailablePhones(filters)
 
-      return ApiResponse.paginated(
-        res,
-        result.message,
-        result.data,
-        result.pagination
-      );
+      return sendCanonicalPaginated(res, result)
     } catch (error) {
-      log.error('获取可销售手机列表失败:', error);
-      return ApiResponse.error(res, error.message || '获取可销售手机列表失败', 500);
+      log.error('获取可销售手机列表失败:', error)
+      return ApiResponse.error(res, error.message || '获取可销售手机列表失败', 500)
     }
   };
 
@@ -169,20 +181,15 @@ class SaleController {
         start_date: req.query.start_date,
         end_date: req.query.end_date,
         page: parseInt(req.query.page) || 1,
-        limit: parseInt(req.query.limit) || 20
-      };
+        page_size: parseInt(req.query.page_size) || 20
+      }
 
-      const result = await this.saleService.getSaleRecords(filters);
+      const result = await this.saleService.getSaleRecords(filters)
 
-      return ApiResponse.paginated(
-        res,
-        result.message,
-        result.data,
-        result.pagination
-      );
+      return sendCanonicalPaginated(res, result)
     } catch (error) {
-      log.error('获取销售记录失败:', error);
-      return ApiResponse.error(res, error.message || '获取销售记录失败', 500);
+      log.error('获取销售记录失败:', error)
+      return ApiResponse.error(res, error.message || '获取销售记录失败', 500)
     }
   };
 
@@ -191,17 +198,17 @@ class SaleController {
    */
   async getSaleRecordById(req, res) {
     try {
-      const { id } = req.params;
+      const { id } = req.params
       if (!id || isNaN(id)) {
-        return ApiResponse.error(res, '无效的销售记录ID', 400);
+        return ApiResponse.error(res, '无效的销售记录ID', 400)
       }
 
-      const result = await this.saleService.getSaleRecordById(parseInt(id));
+      const result = await this.saleService.getSaleRecordById(parseInt(id))
 
-      return ApiResponse.success(res, result.message, result.data);
+      return ApiResponse.success(res, result.message, result.data)
     } catch (error) {
-      log.error('获取销售记录详情失败:', error);
-      return ApiResponse.error(res, error.message || '获取销售记录详情失败', 404);
+      log.error('获取销售记录详情失败:', error)
+      return ApiResponse.error(res, error.message || '获取销售记录详情失败', 404)
     }
   };
 
@@ -215,14 +222,14 @@ class SaleController {
         operator_id: req.query.operator_id,
         start_date: req.query.start_date,
         end_date: req.query.end_date
-      };
+      }
 
-      const result = await this.saleService.getSaleStats(filters);
+      const result = await this.saleService.getSaleStats(filters)
 
-      return ApiResponse.success(res, result.message, result.data);
+      return ApiResponse.success(res, result.message, result.data)
     } catch (error) {
-      log.error('获取销售统计失败:', error);
-      return ApiResponse.error(res, error.message || '获取销售统计失败', 500);
+      log.error('获取销售统计失败:', error)
+      return ApiResponse.error(res, error.message || '获取销售统计失败', 500)
     }
   };
 
@@ -234,15 +241,15 @@ class SaleController {
       const filters = {
         store_id: req.query.store_id,
         operator_id: req.query.operator_id
-      };
+      }
 
       // 直接调用仓库方法获取统计信息
-      const stats = await this.saleService.saleRepository.getPhoneStats(filters);
+      const stats = await this.saleService.saleRepository.getPhoneStats(filters)
 
-      return ApiResponse.success(res, '获取手机统计成功', stats);
+      return ApiResponse.success(res, '获取手机统计成功', stats)
     } catch (error) {
-      log.error('获取手机统计失败:', error);
-      return ApiResponse.error(res, error.message || '获取手机统计失败', 500);
+      log.error('获取手机统计失败:', error)
+      return ApiResponse.error(res, error.message || '获取手机统计失败', 500)
     }
   };
 
@@ -251,14 +258,14 @@ class SaleController {
    */
   async generateInvoiceNumber(req, res) {
     try {
-      const invoiceNumber = this.saleService.generateInvoiceNumber();
+      const invoiceNumber = this.saleService.generateInvoiceNumber()
 
-      return ApiResponse.success(res, '生成发票号成功', { invoice_number: invoiceNumber });
+      return ApiResponse.success(res, '生成发票号成功', { invoice_number: invoiceNumber })
     } catch (error) {
-      log.error('生成发票号失败:', error);
-      return ApiResponse.error(res, error.message || '生成发票号失败', 500);
+      log.error('生成发票号失败:', error)
+      return ApiResponse.error(res, error.message || '生成发票号失败', 500)
     }
   };
 }
 
-module.exports = SaleController;
+module.exports = SaleController

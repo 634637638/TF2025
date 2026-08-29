@@ -3,10 +3,15 @@
     <div class="header-section">
       <div class="container">
         <h1 class="title">
-          <slot name="title">{{ title }}</slot>
+          <slot name="title">
+            {{ title }}
+          </slot>
         </h1>
 
-        <div v-if="$slots.search" class="search-box-wrapper">
+        <div
+          v-if="$slots.search"
+          class="search-box-wrapper"
+        >
           <div class="search-box">
             <slot name="search" />
           </div>
@@ -14,7 +19,10 @@
       </div>
     </div>
 
-    <div v-if="$slots.actions" class="notice-section">
+    <div
+      v-if="$slots.actions"
+      class="notice-section"
+    >
       <div class="container">
         <div class="action-buttons">
           <slot name="actions" />

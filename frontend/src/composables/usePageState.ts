@@ -8,9 +8,9 @@
  * pageState.goToPage(2)
  */
 
-import { ref, reactive, computed, nextTick } from 'vue'
+import { ref, shallowRef, reactive, computed, nextTick } from 'vue'
 import { useNotification } from './useNotification'
-import { usePagination, type PaginationReturn } from './usePagination'
+import { usePagination } from './usePagination'
 import { logger } from '@/utils/logger'
 
 export interface LoadingState {
@@ -23,7 +23,7 @@ export interface LoadingState {
 export interface ErrorState {
   message: string
   code?: string
-  details?: any
+  details?: unknown
 }
 
 export interface UsePageStateOptions {
@@ -32,7 +32,7 @@ export interface UsePageStateOptions {
 }
 
 export const usePageState = (options: UsePageStateOptions = {}) => {
-  const { initialPageSize = 20, enableHistory = false } = options
+  const { initialPageSize = 20 } = options
   const { error: showError } = useNotification()
 
   // 加载状态
@@ -45,7 +45,7 @@ export const usePageState = (options: UsePageStateOptions = {}) => {
 
   // 错误状态
   const errorMessage = ref('')
-  const errorDetails = ref<any>(null)
+  const errorDetails = ref<unknown>(null)
 
   // 分页状态 - 使用统一的 usePagination
   const pagination = usePagination({ limit: initialPageSize, total: 0 })
@@ -78,7 +78,7 @@ export const usePageState = (options: UsePageStateOptions = {}) => {
     loading.export = value
   }
 
-  const setError = (message: string, details?: any) => {
+  const setError = (message: string, details?: unknown) => {
     errorMessage.value = message
     errorDetails.value = details
   }
@@ -109,10 +109,14 @@ export const usePageState = (options: UsePageStateOptions = {}) => {
   }
 
   // 错误处理
-  const handleApiError = (err: any, customMessage?: string) => {
+  const handleApiError = (err: unknown, customMessage?: string) => {
     logger.error('页面操作错误:', err)
-    const message = customMessage || err?.message || '操作失败'
-    const details = err?.response?.data || err?.details
+    const errorRecord = err && typeof err === 'object' ? err as Record<string, unknown> : null
+    const response = errorRecord?.response && typeof errorRecord.response === 'object'
+      ? errorRecord.response as Record<string, unknown>
+      : null
+    const message = customMessage || (typeof errorRecord?.message === 'string' ? errorRecord.message : '操作失败')
+    const details = response?.data || errorRecord?.details
     setError(message, details)
     showError(message)
   }
@@ -187,16 +191,16 @@ export const usePageState = (options: UsePageStateOptions = {}) => {
 }
 
 // 扩展：表格状态管理
-export const useTableState = (initialPageSize: number = 20) => {
+export const useTableState = <T extends { id?: unknown } = { id?: unknown }>(initialPageSize: number = 20) => {
   const pageState = usePageState({ initialPageSize })
 
   // 表格特定状态
-  const selectedRows = ref<any[]>([])
+  const selectedRows = shallowRef<T[]>([])
   const sortField = ref('')
   const sortOrder = ref<'asc' | 'desc'>('asc')
 
   // 选择操作
-  const toggleRowSelection = (row: any) => {
+  const toggleRowSelection = (row: T) => {
     const index = selectedRows.value.findIndex(item => item.id === row.id)
     if (index > -1) {
       selectedRows.value.splice(index, 1)
@@ -205,7 +209,7 @@ export const useTableState = (initialPageSize: number = 20) => {
     }
   }
 
-  const selectAllRows = (rows: any[]) => {
+  const selectAllRows = (rows: T[]) => {
     selectedRows.value = [...rows]
   }
 
@@ -213,7 +217,7 @@ export const useTableState = (initialPageSize: number = 20) => {
     selectedRows.value = []
   }
 
-  const toggleAllSelection = (rows: any[]) => {
+  const toggleAllSelection = (rows: T[]) => {
     if (selectedRows.value.length === rows.length) {
       clearSelection()
     } else {

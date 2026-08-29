@@ -4,7 +4,7 @@
     v-if="isMobile && !collapsed"
     class="sidebar-overlay"
     @click="handleOverlayClick"
-  ></div>
+  />
 
   <div
     class="modern-sidebar"
@@ -18,10 +18,12 @@
     @touchstart="handleTouchStart"
     @touchend="handleTouchEnd"
   >
-  
     <!-- 菜单列表 -->
     <div class="menu-section">
-      <template v-for="menu in menuList" :key="menu.id">
+      <template
+        v-for="menu in menuList"
+        :key="menu.id"
+      >
         <!-- 菜单项 -->
         <div
           class="menu-item"
@@ -30,18 +32,27 @@
             'has-children': menu.children && menu.children.length > 0,
             'mobile-item': isMobile
           }"
-          @click="handleMenuClick(menu)"
           :title="isMobile ? menu.name : ''"
-          >
+          @click="handleMenuClick(menu)"
+        >
           <div class="menu-content">
             <div class="menu-icon">
-              <IconRenderer :icon="menu.icon" :svg="menu.icon_svg" />
+              <IconRenderer
+                :icon="menu.icon"
+                :svg="menu.icon_svg"
+              />
             </div>
-            <div class="menu-text" v-show="!props.collapsed && !isMobile">
+            <div
+              v-show="!props.collapsed && !isMobile"
+              class="menu-text"
+            >
               {{ menu.name }}
             </div>
             <!-- 徽章 -->
-            <div class="menu-badge" v-if="menu.badge && !props.collapsed && !isMobile">
+            <div
+              v-if="menu.badge && !props.collapsed && !isMobile"
+              class="menu-badge"
+            >
               <span class="badge-count">{{ menu.badge }}</span>
             </div>
           </div>
@@ -52,7 +63,7 @@
             :class="{ expanded: expandedMenus.has(menu.id) }"
             aria-hidden="true"
           >
-            <i class="fas fa-chevron-down"></i>
+            <i class="fas fa-chevron-down" />
           </div>
         </div>
 
@@ -63,7 +74,10 @@
             class="sub-menu"
             :class="{ 'mobile-sub-menu': isMobile }"
           >
-            <template v-for="child in menu.children" :key="child.id">
+            <template
+              v-for="child in menu.children"
+              :key="child.id"
+            >
               <div
                 class="menu-item sub-item"
                 :class="{
@@ -71,12 +85,18 @@
                   'mobile-item': isMobile
                 }"
                 @click="navigateToMenu(child)"
-                >
+              >
                 <div class="menu-content">
                   <div class="menu-icon">
-                    <IconRenderer :icon="child.icon" :svg="child.icon_svg" />
+                    <IconRenderer
+                      :icon="child.icon"
+                      :svg="child.icon_svg"
+                    />
                   </div>
-                  <div class="menu-text" v-show="!props.collapsed && !isMobile">
+                  <div
+                    v-show="!props.collapsed && !isMobile"
+                    class="menu-text"
+                  >
                     {{ child.name }}
                   </div>
                 </div>
@@ -93,9 +113,9 @@
     <div
       v-if="!isMobile"
       class="resize-handle"
-      @mousedown="handleResizeStart"
       title="拖动调整宽度"
-    ></div>
+      @mousedown="handleResizeStart"
+    />
   </div>
 </template>
 
@@ -308,7 +328,7 @@ const handleOverlayClick = () => {
 const { on } = useEventBus()
 
 // 监听 props.menuItems 变化
-watch(() => props.menuItems, async (newItems, oldItems) => {
+watch(() => props.menuItems, async (newItems, _oldItems) => {
   // 只有当有数据时才更新，避免空数组覆盖
   if (newItems && newItems.length > 0) {
     menuList.value = newItems
@@ -332,7 +352,7 @@ onMounted(async () => {
   await loadUserMenus()
 
   // 监听菜单更新事件 - 也不重新加载，由父组件更新 props
-  on('menu:updated', async (data) => {
+  on('menu:updated', async (_data) => {
   })
 
   permissionsUpdateHandler = async () => {
@@ -354,7 +374,7 @@ onUnmounted(() => {
 .modern-sidebar {
   width: var(--sidebar-width, 150px);
   height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
   border-right: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   flex-direction: column;
@@ -447,7 +467,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #ffffff;
+  color: var(--color-bg-white);
   font-size: 18px;
   margin-right: 12px;
   flex-shrink: 0;
@@ -461,12 +481,12 @@ onUnmounted(() => {
   height: 18px;
   display: inline-block;
   vertical-align: middle;
-  color: #ffffff;
+  color: var(--color-bg-white);
 }
 
 .menu-text {
   flex: 1;
-  color: #ffffff;
+  color: var(--color-bg-white);
   font-size: 14px;
   font-weight: 500;
   white-space: nowrap;
@@ -481,8 +501,8 @@ onUnmounted(() => {
 }
 
 .badge-count {
-  background: #ff4757;
-  color: #ffffff;
+  background: var(--tf-color-red-coral);
+  color: var(--color-bg-white);
   font-size: 11px;
   font-weight: 600;
   padding: 2px 6px;
@@ -540,7 +560,7 @@ onUnmounted(() => {
 
 /* 主题切换 */
 .modern-sidebar.theme-dark {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
 }
 
 
@@ -582,7 +602,7 @@ onUnmounted(() => {
 /* 底部样式 */
 .sidebar-footer {
   padding: 16px;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid var(--tf-color-gray-200);
 }
 
 .logout-btn {
@@ -654,8 +674,8 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px; /* 更紧凑的padding */
-  border-bottom: 1px solid var(--theme-border-color, #e8e8e8);
-  background: var(--theme-header-bg, #ffffff);
+  border-bottom: 1px solid var(--theme-border-color, var(--tf-color-gray-ant-300));
+  background: var(--theme-header-bg, var(--color-bg-white));
   min-height: 52px; /* 稍小的高度 */
 }
 
@@ -670,17 +690,17 @@ onUnmounted(() => {
   border-radius: 50%;
   cursor: pointer;
   transition: background-color 0.2s ease;
-  color: var(--theme-text-color, #333333);
+  color: var(--theme-text-color, var(--text-primary));
 }
 
 .mobile-close-btn:hover {
-  background: var(--theme-hover-bg, #f5f5f5);
+  background: var(--theme-hover-bg, var(--tf-color-surface-soft));
 }
 
 .mobile-title {
   font-size: 16px;
   font-weight: 600;
-  color: var(--theme-text-color, #333333);
+  color: var(--theme-text-color, var(--text-primary));
 }
 
 .mobile-actions {
@@ -699,11 +719,11 @@ onUnmounted(() => {
   border-radius: 50%;
   cursor: pointer;
   transition: background-color 0.2s ease;
-  color: var(--theme-text-color, #333333);
+  color: var(--theme-text-color, var(--text-primary));
 }
 
 .theme-toggle-btn:hover {
-  background: var(--theme-hover-bg, #f5f5f5);
+  background: var(--theme-hover-bg, var(--tf-color-surface-soft));
 }
 
 /* 移动端菜单列表 */
@@ -725,14 +745,14 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: repeat(4, 1fr); /* 4列网格 */
   gap: 1px;
-  background: var(--theme-border-color, #f0f0f0);
+  background: var(--theme-border-color, var(--tf-color-gray-200));
   padding: 1px;
 }
 
 .mobile-grid .mobile-item {
   border-bottom: none;
-  border-right: 1px solid var(--theme-border-color, #f0f0f0);
-  background: var(--theme-bg, #ffffff);
+  border-right: 1px solid var(--theme-border-color, var(--tf-color-gray-200));
+  background: var(--theme-bg, var(--color-bg-white));
   padding: 20px 8px; /* 网格项padding */
   min-height: 80px; /* 网格项高度 */
   min-width: 0; /* 允许网格项收缩 */
@@ -765,7 +785,7 @@ onUnmounted(() => {
 .mobile-item:not(.mobile-grid .mobile-item) {
   padding: 16px; /* 手机端纯图标模式：更大的padding保持触摸区域 */
   margin: 0;
-  border-bottom: 1px solid var(--theme-border-color, #f0f0f0);
+  border-bottom: 1px solid var(--theme-border-color, var(--tf-color-gray-200));
   touch-action: manipulation;
   min-height: 64px; /* 手机端纯图标模式：更大的触摸区域 */
   display: flex;
@@ -775,18 +795,18 @@ onUnmounted(() => {
 }
 
 .mobile-item:active {
-  background: var(--theme-hover-bg, #f5f5f5);
+  background: var(--theme-hover-bg, var(--tf-color-surface-soft));
   transform: scale(0.98);
   transition: all 0.1s ease;
 }
 
 .mobile-item:hover {
-  background: var(--theme-hover-bg, #fafafa);
+  background: var(--theme-hover-bg, var(--tf-color-neutral-25));
 }
 
 /* 移动端菜单项间的分隔线优化 */
 .mobile-item:not(:last-child) {
-  border-bottom-color: var(--theme-border-color, #f0f0f0);
+  border-bottom-color: var(--theme-border-color, var(--tf-color-gray-200));
 }
 
 /* 优化移动端菜单图标和文字的对齐 */
@@ -816,19 +836,19 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--theme-text-color, #333);
+  color: var(--theme-text-color, var(--text-primary));
 }
 
 /* 移动端子菜单 */
 .mobile-sub-menu {
-  background: var(--theme-hover-bg, #f8f8f8);
+  background: var(--theme-hover-bg, var(--tf-color-surface-neutral-alt));
   padding-left: 16px; /* 减少缩进 */
 }
 
 .mobile-sub-menu .sub-item {
   padding: 10px 16px 10px 20px; /* 更紧凑的padding */
   min-height: 44px; /* 稍小的高度 */
-  border-bottom: 1px solid var(--theme-border-color, #e8e8e8);
+  border-bottom: 1px solid var(--theme-border-color, var(--tf-color-gray-ant-300));
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -850,12 +870,12 @@ onUnmounted(() => {
 
 /* 移动端菜单项激活状态 */
 .mobile-item.active {
-  background: var(--theme-primary-bg, #e6f7ff);
-  color: var(--theme-primary-color, #1890ff);
+  background: var(--theme-primary-bg, var(--tf-color-cyan-ant-50));
+  color: var(--theme-primary-color, var(--tf-color-blue-ant));
 }
 
 .mobile-item.active .menu-icon {
-  color: var(--theme-primary-color, #1890ff);
+  color: var(--theme-primary-color, var(--tf-color-blue-ant));
   font-size: 26px; /* 激活状态图标稍大 */
 }
 
@@ -866,7 +886,7 @@ onUnmounted(() => {
   bottom: -32px;
   left: 50%;
   transform: translateX(-50%);
-  background: var(--theme-tooltip-bg, #333);
+  background: var(--theme-tooltip-bg, var(--text-primary));
   color: white;
   padding: 4px 8px;
   border-radius: 4px;
@@ -912,42 +932,42 @@ onUnmounted(() => {
 
 /* 暗夜模式适配 */
 .simple-sidebar.theme-dark {
-  background: var(--theme-sidebar-bg, #1f1f1f);
-  border-right-color: var(--theme-border-color, #434343);
+  background: var(--theme-sidebar-bg, var(--tf-color-gray-ant-950));
+  border-right-color: var(--theme-border-color, var(--tf-color-gray-ant-700));
 }
 
 .simple-sidebar.theme-dark .sidebar-header {
-  border-bottom-color: var(--theme-border-color, #434343);
+  border-bottom-color: var(--theme-border-color, var(--tf-color-gray-ant-700));
 }
 
 .simple-sidebar.theme-dark .menu-item:hover {
-  background: var(--theme-hover-bg, #262626);
+  background: var(--theme-hover-bg, var(--tf-color-neutral-ant));
 }
 
 .simple-sidebar.theme-dark .menu-item.active {
   background: rgba(23, 121, 220, 0.15);
-  color: var(--theme-primary-color, #177ddc);
+  color: var(--theme-primary-color, var(--tf-color-blue-ant-dark));
 }
 
 .simple-sidebar.theme-dark .menu-item.active::before {
-  background: var(--theme-primary-color, #177ddc);
+  background: var(--theme-primary-color, var(--tf-color-blue-ant-dark));
 }
 
 .simple-sidebar.theme-dark .menu-icon {
-  color: var(--theme-sidebar-text, #ffffff);
+  color: var(--theme-sidebar-text, var(--color-bg-white));
 }
 
 .simple-sidebar.theme-dark .menu-text {
-  color: var(--theme-sidebar-text, #ffffff);
+  color: var(--theme-sidebar-text, var(--color-bg-white));
 }
 
 .simple-sidebar.theme-dark .logout-btn:hover {
-  background: var(--theme-hover-bg, #262626);
+  background: var(--theme-hover-bg, var(--tf-color-neutral-ant));
   color: var(--tf-button-danger-soft-hover-color);
 }
 
 .simple-sidebar.theme-dark .sidebar-footer {
-  border-top-color: var(--theme-border-color, #434343);
+  border-top-color: var(--theme-border-color, var(--tf-color-gray-ant-700));
 }
 
 /* 桌面端响应式优化 */
@@ -1060,19 +1080,19 @@ onUnmounted(() => {
 }
 
 .resize-handle:hover {
-  background: var(--theme-primary-color, #1890ff);
+  background: var(--theme-primary-color, var(--tf-color-blue-ant));
 }
 
 .resize-handle:active {
-  background: var(--theme-primary-color-dark, #1366c4);
+  background: var(--theme-primary-color-dark, var(--tf-color-blue-corporate));
 }
 
 .theme-dark .resize-handle:hover {
-  background: var(--theme-primary-color, #177ddc);
+  background: var(--theme-primary-color, var(--tf-color-blue-ant-dark));
 }
 
 .theme-dark .resize-handle:active {
-  background: var(--theme-primary-color-dark, #1355a0);
+  background: var(--theme-primary-color-dark, var(--tf-color-sky-700));
 }
 
 /* 高对比度模式支持 */
@@ -1087,8 +1107,8 @@ onUnmounted(() => {
 
   .menu-item:hover,
   .menu-item:focus {
-    border-color: var(--theme-primary-color, #1890ff);
-    outline: 2px solid var(--theme-primary-color, #1890ff);
+    border-color: var(--theme-primary-color, var(--tf-color-blue-ant));
+    outline: 2px solid var(--theme-primary-color, var(--tf-color-blue-ant));
     outline-offset: -2px;
   }
 

@@ -3,7 +3,6 @@
  * 扩展 Vue、Window 和其他全局类型
  */
 
-import { ComponentCustomProperties } from 'vue'
 import type { ActionColumnInput, ActionColumnWidthOptions } from '@/utils/table-layout'
 import type {
   AppConfig,
@@ -139,8 +138,8 @@ declare global {
       connect: () => void
       disconnect: () => void
       send: (data: any) => void
-      on: (event: string, callback: Function) => void
-      off: (event: string, callback: Function) => void
+      on: (event: string, callback: (...args: unknown[]) => void) => void
+      off: (event: string, callback: (...args: unknown[]) => void) => void
     }
 
     // 任务队列
@@ -240,8 +239,8 @@ declare global {
         [key: string]: any
       }) => {
         destroy: () => void
-        on: (event: string, callback: Function) => void
-        off: (event: string, callback: Function) => void
+        on: (event: string, callback: (...args: unknown[]) => void) => void
+        off: (event: string, callback: (...args: unknown[]) => void) => void
         [key: string]: any
       }
       MultiMarker: new (options: {
@@ -590,8 +589,8 @@ declare module '@vue/runtime-core' {
       connect: () => void
       disconnect: () => void
       send: (data: any) => void
-      on: (event: string, callback: Function) => void
-      off: (event: string, callback: Function) => void
+      on: (event: string, callback: (...args: unknown[]) => void) => void
+      off: (event: string, callback: (...args: unknown[]) => void) => void
       state: WebSocketState
     }
   }

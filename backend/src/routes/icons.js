@@ -3,48 +3,48 @@
  * 从数据库的 icons 表中读取 Font Awesome 图标数据
  * 同时支持从 Iconify API 进行在线搜索
  */
-const express = require('express');
-const router = express.Router();
-const { getDatabase } = require('../config/database');
-const { unifiedAuth, requirePermission } = require('../middleware/unified-auth');
-const { PAGINATION, TIMEOUTS } = require('../config/constants');
-const log = require('../utils/log');
+const express = require('express')
+const router = express.Router()
+const { getDatabase } = require('../config/database')
+const { unifiedAuth, requirePermission } = require('../middleware/unified-auth')
+const { PAGINATION, TIMEOUTS } = require('../config/constants')
+const log = require('../utils/log')
 const {
   ensureIconSchema,
   extractIconifyName,
   fetchIconifySvg,
   sanitizeSvg
-} = require('../utils/iconStore');
+} = require('../utils/iconStore')
 
 // ==================== 本地数据库功能 ====================
 
 // 获取所有图标（从数据库）
 router.get('/', async (req, res) => {
   try {
-    const { limit = 500, category, search, includeInvalid = '0' } = req.query;
+    const { limit = 500, category, search, includeInvalid = '0' } = req.query
 
-    const pool = getDatabase();
-    await ensureIconSchema(pool);
+    const pool = getDatabase()
+    await ensureIconSchema(pool)
 
     // 构建查询条件
-    let whereClause = 'WHERE 1=1';
-    const params = [];
+    let whereClause = 'WHERE 1=1'
+    const params = []
 
     // 按分类筛选
     if (category) {
-      whereClause += ' AND category = ?';
-      params.push(category);
+      whereClause += ' AND category = ?'
+      params.push(category)
     }
 
     // 按搜索关键词筛选
     if (search) {
-      whereClause += ' AND (name LIKE ? OR class LIKE ? OR category LIKE ? OR description LIKE ? OR tags LIKE ?)';
-      const searchPattern = `%${search}%`;
-      params.push(searchPattern, searchPattern, searchPattern, searchPattern, searchPattern);
+      whereClause += ' AND (name LIKE ? OR class LIKE ? OR category LIKE ? OR description LIKE ? OR tags LIKE ?)'
+      const searchPattern = `%${search}%`
+      params.push(searchPattern, searchPattern, searchPattern, searchPattern, searchPattern)
     }
 
     if (String(includeInvalid) !== '1') {
-      whereClause += ' AND (is_valid IS NULL OR is_valid = 1)';
+      whereClause += ' AND (is_valid IS NULL OR is_valid = 1)'
     }
 
     // 查询图标数据
@@ -66,63 +66,63 @@ router.get('/', async (req, res) => {
       ${whereClause}
       ORDER BY category, name
       LIMIT ?
-    `;
+    `
 
-    params.push(parseInt(limit));
+    params.push(parseInt(limit))
 
     // 使用 pool.format 来处理参数，避免参数问题
-    const formattedQuery = pool.format(query, params);
-    const [icons] = await pool.execute(formattedQuery);
+    const formattedQuery = pool.format(query, params)
+    const [icons] = await pool.execute(formattedQuery)
 
     res.json({
       success: true,
       message: '图标数据获取成功',
       data: icons,
       total: icons.length
-    });
+    })
   } catch (error) {
-    log.error('获取图标数据失败:', error);
+    log.error('获取图标数据失败:', error)
     res.status(500).json({
       success: false,
       message: '获取图标数据失败',
       error: error.message
-    });
+    })
   }
-});
+})
 
 // 获取所有分类（从数据库）
 router.get('/categories', async (req, res) => {
   try {
-    const pool = getDatabase();
-    await ensureIconSchema(pool);
+    const pool = getDatabase()
+    await ensureIconSchema(pool)
 
     const query = `
       SELECT DISTINCT category
       FROM icons
       WHERE category IS NOT NULL AND category != '' AND (is_valid IS NULL OR is_valid = 1)
       ORDER BY category
-    `;
+    `
 
-    const [categories] = await pool.execute(query, []);
+    const [categories] = await pool.execute(query, [])
 
     // 提取分类名称数组
-    const categoryList = categories.map(c => c.category);
+    const categoryList = categories.map(c => c.category)
 
     res.json({
       success: true,
       message: '分类数据获取成功',
       data: categoryList,
       total: categoryList.length
-    });
+    })
   } catch (error) {
-    log.error('获取分类数据失败:', error);
+    log.error('获取分类数据失败:', error)
     res.status(500).json({
       success: false,
       message: '获取分类数据失败',
       error: error.message
-    });
+    })
   }
-});
+})
 
 // ==================== 在线搜索功能 ====================
 // 注意：这些特殊路由必须在 /:id 之前定义，否则会被 /:id 匹配
@@ -291,43 +291,43 @@ const iconKeywordMap = {
   '圆形': 'circle',
   '三角形': 'triangle',
   '菱形': 'diamond'
-};
+}
 
 /**
  * 将中文关键词转换为英文搜索词
  */
 function translateKeywords(query) {
-  const rawQuery = String(query || '').trim();
-  const candidates = new Set();
+  const rawQuery = String(query || '').trim()
+  const candidates = new Set()
   const addCandidates = (value) => {
-    const values = Array.isArray(value) ? value : [value];
+    const values = Array.isArray(value) ? value : [value]
     values
       .map(item => String(item || '').trim())
       .filter(Boolean)
-      .forEach(item => candidates.add(item));
-  };
+      .forEach(item => candidates.add(item))
+  }
 
   if (!rawQuery) {
-    return [];
+    return []
   }
 
   if (iconKeywordMap[rawQuery]) {
-    addCandidates(iconKeywordMap[rawQuery]);
+    addCandidates(iconKeywordMap[rawQuery])
   }
 
   for (const [chinese, english] of Object.entries(iconKeywordMap)) {
     if (rawQuery.includes(chinese)) {
-      const englishWords = Array.isArray(english) ? english : [english];
+      const englishWords = Array.isArray(english) ? english : [english]
       englishWords.forEach(word => {
-        const translated = rawQuery.replace(chinese, word);
-        addCandidates(translated);
-      });
+        const translated = rawQuery.replace(chinese, word)
+        addCandidates(translated)
+      })
     }
   }
 
-  addCandidates(rawQuery);
+  addCandidates(rawQuery)
 
-  return [...candidates].slice(0, 8);
+  return [...candidates].slice(0, 8)
 }
 
 /**
@@ -336,7 +336,7 @@ function translateKeywords(query) {
  */
 router.get('/search/online', async (req, res) => {
   try {
-    const { query, limit = PAGINATION.DEFAULT_LIMIT, prefix = '' } = req.query;
+    const { query, limit = PAGINATION.DEFAULT_LIMIT, prefix = '' } = req.query
 
     if (!query || query.trim() === '') {
       return res.json({
@@ -345,19 +345,19 @@ router.get('/search/online', async (req, res) => {
         total: 0,
         message: '请提供搜索关键词',
         source: 'online'
-      });
+      })
     }
 
-    const queryLimit = Math.max(1, Math.min(parseInt(limit, 10) || 100, 1000));
-    const translatedQueries = translateKeywords(query.trim());
-    const iconMap = new Map();
-    let mergedCollections = {};
+    const queryLimit = Math.max(1, Math.min(parseInt(limit, 10) || 100, 1000))
+    const translatedQueries = translateKeywords(query.trim())
+    const iconMap = new Map()
+    let mergedCollections = {}
 
     for (const translatedQuery of translatedQueries) {
-      let apiUrl = `https://api.iconify.design/search?query=${encodeURIComponent(translatedQuery)}&limit=${queryLimit}`;
+      let apiUrl = `https://api.iconify.design/search?query=${encodeURIComponent(translatedQuery)}&limit=${queryLimit}`
 
       if (prefix) {
-        apiUrl += `&prefix=${prefix}`;
+        apiUrl += `&prefix=${prefix}`
       }
 
       const response = await fetch(apiUrl, {
@@ -366,13 +366,13 @@ router.get('/search/online', async (req, res) => {
           'Accept': 'application/json'
         },
         timeout: TIMEOUTS.ICON_FETCH
-      });
+      })
 
       if (!response.ok) {
-        throw new Error(`Iconify API 请求失败: ${response.status}`);
+        throw new Error(`Iconify API 请求失败: ${response.status}`)
       }
 
-      const iconifyData = await response.json();
+      const iconifyData = await response.json()
       mergedCollections = {
         ...mergedCollections,
         ...(iconifyData.collections || {})
@@ -380,16 +380,16 @@ router.get('/search/online', async (req, res) => {
 
       (iconifyData.icons || []).forEach(iconName => {
         if (!iconMap.has(iconName)) {
-          iconMap.set(iconName, iconName);
+          iconMap.set(iconName, iconName)
         }
-      });
+      })
 
       if (iconMap.size >= queryLimit) {
-        break;
+        break
       }
     }
 
-    const iconNames = [...iconMap.values()].slice(0, queryLimit);
+    const iconNames = [...iconMap.values()].slice(0, queryLimit)
 
     if (iconNames.length === 0) {
       return res.json({
@@ -398,14 +398,14 @@ router.get('/search/online', async (req, res) => {
         total: 0,
         message: '未找到匹配的图标',
         source: 'online'
-      });
+      })
     }
 
     // 转换为前端需要的格式
     const icons = iconNames.map((iconName, index) => {
-      const parts = iconName.split(':');
-      const iconPrefix = parts[0];
-      const iconSimpleName = parts[1] || iconName;
+      const parts = iconName.split(':')
+      const iconPrefix = parts[0]
+      const iconSimpleName = parts[1] || iconName
 
       return {
         id: `online-${index}`,
@@ -416,15 +416,15 @@ router.get('/search/online', async (req, res) => {
         tags: iconPrefix,
         source: 'online',
         iconifyName: iconName
-      };
-    });
+      }
+    })
 
     // 添加集合信息（如果有）
     const collectionList = Object.keys(mergedCollections).map(key => ({
       prefix: key,
       name: mergedCollections[key].name,
       total: mergedCollections[key].total || 0
-    }));
+    }))
 
     res.json({
       success: true,
@@ -433,18 +433,18 @@ router.get('/search/online', async (req, res) => {
       message: `从在线 API 搜索到 ${icons.length} 个图标`,
       source: 'online',
       collections: collectionList.length > 0 ? collectionList : undefined
-    });
+    })
 
   } catch (error) {
-    log.error('❌ 在线搜索失败:', error);
+    log.error('❌ 在线搜索失败:', error)
     res.status(500).json({
       success: false,
       message: '在线搜索失败',
       error: error.message,
       source: 'online'
-    });
+    })
   }
-});
+})
 
 /**
  * 获取 Iconify 图标集合列表
@@ -459,13 +459,13 @@ router.get('/collections', async (req, res) => {
         'Accept': 'application/json'
       },
       timeout: 15000 // 15秒超时
-    });
+    })
 
     if (!response.ok) {
-      throw new Error(`Iconify API 请求失败: ${response.status}`);
+      throw new Error(`Iconify API 请求失败: ${response.status}`)
     }
 
-    const collections = await response.json();
+    const collections = await response.json()
 
     // 转换格式
     const collectionList = Object.entries(collections).map(([id, info]) => ({
@@ -475,27 +475,27 @@ router.get('/collections', async (req, res) => {
       author: info.author || 'Unknown',
       samples: info.samples || [],
       license: info.license || 'unknown'
-    }));
+    }))
 
     // 按图标数量排序
-    collectionList.sort((a, b) => b.total - a.total);
+    collectionList.sort((a, b) => b.total - a.total)
 
     res.json({
       success: true,
       data: collectionList,
       total: collectionList.length,
       message: `获取到 ${collectionList.length} 个图标集合`
-    });
+    })
 
   } catch (error) {
-    log.error('❌ 获取集合列表失败:', error);
+    log.error('❌ 获取集合列表失败:', error)
     res.status(500).json({
       success: false,
       message: '获取集合列表失败',
       error: error.message
-    });
+    })
   }
-});
+})
 
 /**
  * 获取特定集合的图标
@@ -503,8 +503,8 @@ router.get('/collections', async (req, res) => {
  */
 router.get('/collection/:prefix', async (req, res) => {
   try {
-    const { prefix } = req.params;
-    const { limit = 500 } = req.query;
+    const { prefix } = req.params
+    const { limit = 500 } = req.query
 
     // 调用 Iconify API
     const response = await fetch(`https://api.iconify.design/collection?prefix=${prefix}`, {
@@ -513,13 +513,13 @@ router.get('/collection/:prefix', async (req, res) => {
         'Accept': 'application/json'
       },
       timeout: 15000
-    });
+    })
 
     if (!response.ok) {
-      throw new Error(`Iconify API 请求失败: ${response.status}`);
+      throw new Error(`Iconify API 请求失败: ${response.status}`)
     }
 
-    const collectionData = await response.json();
+    const collectionData = await response.json()
 
     // 转换为前端格式
     const icons = (collectionData.icons || []).slice(0, parseInt(limit)).map((iconName, index) => ({
@@ -531,7 +531,7 @@ router.get('/collection/:prefix', async (req, res) => {
       tags: prefix,
       source: 'online',
       iconifyName: `${prefix}:${iconName}`
-    }));
+    }))
 
     res.json({
       success: true,
@@ -543,17 +543,17 @@ router.get('/collection/:prefix', async (req, res) => {
         total: collectionData.total || icons.length
       },
       message: `获取到 ${icons.length} 个图标`
-    });
+    })
 
   } catch (error) {
-    log.error('❌ 获取集合图标失败:', error);
+    log.error('❌ 获取集合图标失败:', error)
     res.status(500).json({
       success: false,
       message: '获取集合图标失败',
       error: error.message
-    });
+    })
   }
-});
+})
 
 /**
  * 缓存在线选择的图标到本地图标库
@@ -561,8 +561,8 @@ router.get('/collection/:prefix', async (req, res) => {
  */
 router.post('/cache', unifiedAuth, requirePermission('menus:view'), async (req, res) => {
   try {
-    const pool = getDatabase();
-    await ensureIconSchema(pool);
+    const pool = getDatabase()
+    await ensureIconSchema(pool)
     const {
       class: iconClass,
       name,
@@ -571,75 +571,75 @@ router.post('/cache', unifiedAuth, requirePermission('menus:view'), async (req, 
       tags,
       iconifyName,
       svg
-    } = req.body || {};
+    } = req.body || {}
 
-    const normalizedClass = String(iconClass || '').trim();
-    const normalizedName = String(name || '').trim();
-    const normalizedCategory = String(category || '').trim();
-    const normalizedDescription = description ? String(description).trim() : null;
-    const normalizedTags = tags ? String(tags).trim() : null;
-    const normalizedIconifyName = String(iconifyName || extractIconifyName(normalizedClass) || '').trim() || null;
-    const normalizedSource = normalizedIconifyName ? 'iconify' : 'local';
-    let normalizedSvg = sanitizeSvg(svg);
+    const normalizedClass = String(iconClass || '').trim()
+    const normalizedName = String(name || '').trim()
+    const normalizedCategory = String(category || '').trim()
+    const normalizedDescription = description ? String(description).trim() : null
+    const normalizedTags = tags ? String(tags).trim() : null
+    const normalizedIconifyName = String(iconifyName || extractIconifyName(normalizedClass) || '').trim() || null
+    const normalizedSource = normalizedIconifyName ? 'iconify' : 'local'
+    let normalizedSvg = sanitizeSvg(svg)
 
     if (!normalizedClass) {
       return res.status(400).json({
         success: false,
         message: '图标 class 不能为空'
-      });
+      })
     }
 
     if (!normalizedName) {
       return res.status(400).json({
         success: false,
         message: '图标名称不能为空'
-      });
+      })
     }
 
     if (!normalizedCategory) {
       return res.status(400).json({
         success: false,
         message: '图标分类不能为空'
-      });
+      })
     }
 
     if (normalizedClass.length > 100) {
       return res.status(400).json({
         success: false,
         message: '图标 class 长度不能超过 100'
-      });
+      })
     }
 
     if (normalizedName.length > 100) {
       return res.status(400).json({
         success: false,
         message: '图标名称长度不能超过 100'
-      });
+      })
     }
 
     if (normalizedCategory.length > 50) {
       return res.status(400).json({
         success: false,
         message: '图标分类长度不能超过 50'
-      });
+      })
     }
 
     if (normalizedTags && normalizedTags.length > 500) {
       return res.status(400).json({
         success: false,
         message: '图标标签长度不能超过 500'
-      });
+      })
     }
 
     if (normalizedIconifyName && !normalizedSvg) {
       try {
-        normalizedSvg = await fetchIconifySvg(normalizedIconifyName);
+        normalizedSvg = await fetchIconifySvg(normalizedIconifyName)
       } catch (svgError) {
-        log.warn(`获取 Iconify SVG 失败: ${normalizedIconifyName}`, svgError);
+        log.warn(`获取 Iconify SVG 失败: ${normalizedIconifyName}`, svgError)
       }
     }
 
-    const isValid = normalizedIconifyName ? (normalizedSvg ? 1 : 0) : 1;
+    const isValid = normalizedIconifyName ? (normalizedSvg ? 1 : 0) : 1
 
     const upsertQuery = `
       INSERT INTO icons (
@@ -665,7 +665,7 @@ router.post('/cache', unifiedAuth, requirePermission('menus:view'), async (req, 
         is_valid = VALUES(is_valid),
         last_checked_at = NOW(),
         updated_at = CURRENT_TIMESTAMP
-    `;
+    `
 
     await pool.execute(upsertQuery, [
       normalizedClass,
@@ -677,7 +677,7 @@ router.post('/cache', unifiedAuth, requirePermission('menus:view'), async (req, 
       normalizedIconifyName,
       normalizedSource,
       isValid
-    ]);
+    ])
 
     const [rows] = await pool.execute(
       `SELECT id, class, name, category, description, tags, svg, iconify_name, source, is_valid, last_checked_at, created_at
@@ -685,7 +685,7 @@ router.post('/cache', unifiedAuth, requirePermission('menus:view'), async (req, 
        WHERE class = ?
        LIMIT 1`,
       [normalizedClass]
-    );
+    )
 
     res.json({
       success: true,
@@ -701,16 +701,16 @@ router.post('/cache', unifiedAuth, requirePermission('menus:view'), async (req, 
         source: normalizedSource,
         is_valid: isValid
       }
-    });
+    })
   } catch (error) {
-    log.error('缓存图标到本地数据库失败:', error);
+    log.error('缓存图标到本地数据库失败:', error)
     res.status(500).json({
       success: false,
       message: '缓存图标失败',
       error: error.message
-    });
+    })
   }
-});
+})
 
 /**
  * 清理无效图标。
@@ -719,8 +719,8 @@ router.post('/cache', unifiedAuth, requirePermission('menus:view'), async (req, 
  */
 router.post('/cleanup', unifiedAuth, requirePermission('menus:edit'), async (req, res) => {
   try {
-    const pool = getDatabase();
-    await ensureIconSchema(pool);
+    const pool = getDatabase()
+    await ensureIconSchema(pool)
 
     const [result] = await pool.execute(`
       DELETE i FROM icons i
@@ -730,7 +730,7 @@ router.post('/cleanup', unifiedAuth, requirePermission('menus:edit'), async (req
           i.is_valid = 0
           OR (i.source = 'iconify' AND (i.svg IS NULL OR i.svg = ''))
         )
-    `);
+    `)
 
     res.json({
       success: true,
@@ -738,16 +738,16 @@ router.post('/cleanup', unifiedAuth, requirePermission('menus:edit'), async (req
       data: {
         deletedCount: result.affectedRows || 0
       }
-    });
+    })
   } catch (error) {
-    log.error('清理无效图标失败:', error);
+    log.error('清理无效图标失败:', error)
     res.status(500).json({
       success: false,
       message: '清理无效图标失败',
       error: error.message
-    });
+    })
   }
-});
+})
 
 /**
  * 删除本地图标。
@@ -755,68 +755,68 @@ router.post('/cleanup', unifiedAuth, requirePermission('menus:edit'), async (req
  */
 router.delete('/:id', unifiedAuth, requirePermission('menus:edit'), async (req, res) => {
   try {
-    const pool = getDatabase();
-    await ensureIconSchema(pool);
-    const iconId = Number(req.params.id);
+    const pool = getDatabase()
+    await ensureIconSchema(pool)
+    const iconId = Number(req.params.id)
 
     if (!Number.isInteger(iconId) || iconId <= 0) {
       return res.status(400).json({
         success: false,
         message: '图标 ID 不正确'
-      });
+      })
     }
 
     const [rows] = await pool.execute(
       'SELECT id, class, name FROM icons WHERE id = ? LIMIT 1',
       [iconId]
-    );
+    )
 
     if (rows.length === 0) {
       return res.status(404).json({
         success: false,
         message: '图标不存在'
-      });
+      })
     }
 
-    const icon = rows[0];
+    const icon = rows[0]
     const [usedRows] = await pool.execute(
       'SELECT COUNT(*) as total FROM menus WHERE icon COLLATE utf8mb4_unicode_ci = ? COLLATE utf8mb4_unicode_ci',
       [icon.class]
-    );
-    const usedCount = Number(usedRows[0]?.total || 0);
+    )
+    const usedCount = Number(usedRows[0]?.total || 0)
 
     if (usedCount > 0) {
       return res.status(409).json({
         success: false,
         message: `该图标正在被 ${usedCount} 个菜单使用，请先更换菜单图标后再删除`
-      });
+      })
     }
 
-    await pool.execute('DELETE FROM icons WHERE id = ?', [iconId]);
+    await pool.execute('DELETE FROM icons WHERE id = ?', [iconId])
 
     res.json({
       success: true,
       message: '图标已删除',
       data: icon
-    });
+    })
   } catch (error) {
-    log.error('删除图标失败:', error);
+    log.error('删除图标失败:', error)
     res.status(500).json({
       success: false,
       message: '删除图标失败',
       error: error.message
-    });
+    })
   }
-});
+})
 
 // ==================== 根据ID获取单个图标（必须在最后） ====================
 
 // 根据ID获取单个图标
 router.get('/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-    const pool = getDatabase();
-    await ensureIconSchema(pool);
+    const { id } = req.params
+    const pool = getDatabase()
+    await ensureIconSchema(pool)
 
     const query = `
       SELECT
@@ -834,30 +834,30 @@ router.get('/:id', async (req, res) => {
         created_at
       FROM icons
       WHERE id = ?
-    `;
+    `
 
-    const [icons] = await pool.execute(query, [id]);
+    const [icons] = await pool.execute(query, [id])
 
     if (icons.length === 0) {
       return res.status(404).json({
         success: false,
         message: '图标不存在'
-      });
+      })
     }
 
     res.json({
       success: true,
       message: '图标获取成功',
       data: icons[0]
-    });
+    })
   } catch (error) {
-    log.error('获取图标失败:', error);
+    log.error('获取图标失败:', error)
     res.status(500).json({
       success: false,
       message: '获取图标失败',
       error: error.message
-    });
+    })
   }
-});
+})
 
-module.exports = router;
+module.exports = router

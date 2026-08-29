@@ -7,7 +7,7 @@ import { ref } from 'vue'
 import { useNotification } from './useNotification'
 import logger from '@/utils/logger'
 
-interface RefreshDataOptions {
+export interface RefreshDataOptions {
   /** 成功提示消息 */
   successMessage?: string
   /** 错误提示消息 */
@@ -117,7 +117,7 @@ export function useRefreshData(): UseRefreshDataReturn {
       await onAfterRefresh?.()
 
       return result
-    } catch (err: any) {
+    } catch (err: unknown) {
       // 显示错误提示
       if (showError) {
         error(errorMessage)
@@ -193,4 +193,4 @@ export function useRefreshWithPagination() {
   }
 }
 
-export type { UseRefreshDataReturn, RefreshDataOptions }
+export type { UseRefreshDataReturn }

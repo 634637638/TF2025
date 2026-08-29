@@ -3,32 +3,63 @@
   功能：轮播图、快速分类、首页推荐区域（动态配置）
 -->
 <template>
-  <div class="mobile-home" style="min-height: 100vh; background: #f5f5f5;">
+  <div
+    class="mobile-home"
+    style="min-height: 100vh; background: #f5f5f5;"
+  >
     <!-- 顶部商家信息栏 -->
-    <div v-if="config.shop_name || getImageUrl(config.shop_logo)" class="merchant-header">
-      <div class="merchant-info" @click="showMerchantDetail">
-        <div v-if="getImageUrl(config.shop_logo)" class="merchant-logo">
-          <Image :src="getImageUrl(config.shop_logo)" :alt="config.shop_name || '商家Logo'" mode="eager" />
+    <div
+      v-if="config.shop_name || getImageUrl(config.shop_logo)"
+      class="merchant-header"
+    >
+      <div
+        class="merchant-info"
+        @click="showMerchantDetail"
+      >
+        <div
+          v-if="getImageUrl(config.shop_logo)"
+          class="merchant-logo"
+        >
+          <Image
+            :src="getImageUrl(config.shop_logo)"
+            :alt="config.shop_name || '商家Logo'"
+            mode="eager"
+          />
         </div>
         <div class="merchant-text">
-          <div class="merchant-name">{{ config.shop_name || '' }}</div>
+          <div class="merchant-name">
+            {{ config.shop_name || '' }}
+          </div>
         </div>
       </div>
       <div class="merchant-actions">
-        <div class="action-btn" @click="showMerchantDetail">
-          <i class="fas fa-map-marker-alt"></i>
+        <div
+          class="action-btn"
+          @click="showMerchantDetail"
+        >
+          <i class="fas fa-map-marker-alt" />
         </div>
-        <div v-if="config.shop_phone" class="action-btn" @click="handlePhoneCall">
-          <i class="fas fa-phone"></i>
+        <div
+          v-if="config.shop_phone"
+          class="action-btn"
+          @click="handlePhoneCall"
+        >
+          <i class="fas fa-phone" />
         </div>
-        <div class="action-btn" @click="handleShare">
-          <i class="fas fa-share-alt"></i>
+        <div
+          class="action-btn"
+          @click="handleShare"
+        >
+          <i class="fas fa-share-alt" />
         </div>
       </div>
     </div>
 
     <!-- 轮播图 -->
-    <div v-if="config.banner_enabled && allBannerImages.length > 0" class="banner-section">
+    <div
+      v-if="config.banner_enabled && allBannerImages.length > 0"
+      class="banner-section"
+    >
       <Swiper
         :modules="[SwiperAutoplay, SwiperPagination]"
         :autoplay="{ delay: currentBannerInterval, disableOnInteraction: false } as any"
@@ -37,9 +68,16 @@
         class="banner-swiper"
         @slide-change="handleSlideChange"
       >
-        <SwiperSlide v-for="(img, index) in allBannerImages" :key="`banner-${index}`">
+        <SwiperSlide
+          v-for="(img, index) in allBannerImages"
+          :key="`banner-${index}`"
+        >
           <div class="banner-slide">
-            <Image :src="img.url" :alt="img.title" mode="eager" />
+            <Image
+              :src="img.url"
+              :alt="img.title"
+              mode="eager"
+            />
           </div>
         </SwiperSlide>
       </Swiper>
@@ -47,31 +85,43 @@
 
     <!-- 快速分类 -->
     <div class="category-section">
-      <div class="category-item" @click="goProducts({ is_new: true })">
+      <div
+        class="category-item"
+        @click="goProducts({ is_new: true })"
+      >
         <div class="category-icon new">
-          <i class="fas fa-star"></i>
+          <i class="fas fa-star" />
         </div>
         <span>全新机</span>
       </div>
-      <div class="category-item" @click="goProducts({ is_new: false })">
+      <div
+        class="category-item"
+        @click="goProducts({ is_new: false })"
+      >
         <div class="category-icon used">
-          <i class="fas fa-recycle"></i>
+          <i class="fas fa-recycle" />
         </div>
         <span>二手机</span>
       </div>
-      <div class="category-item" @click="goProducts({})">
+      <div
+        class="category-item"
+        @click="goProducts({})"
+      >
         <div class="category-icon all">
-          <i class="fas fa-th"></i>
+          <i class="fas fa-th" />
         </div>
         <span>全部商品</span>
       </div>
     </div>
 
     <!-- 品牌分类 -->
-    <div v-if="brands.length > 0" class="brands-section">
+    <div
+      v-if="brands.length > 0"
+      class="brands-section"
+    >
       <div class="section-title">
         <h3>热门品牌</h3>
-        <span @click="goProducts({})">更多 <i class="fas fa-chevron-right"></i></span>
+        <span @click="goProducts({})">更多 <i class="fas fa-chevron-right" /></span>
       </div>
       <div class="brands-scroll">
         <div class="brands-list">
@@ -86,13 +136,22 @@
           </div>
         </div>
       </div>
-      <div v-if="selectedBrandId" class="brand-search-panel">
+      <div
+        v-if="selectedBrandId"
+        class="brand-search-panel"
+      >
         <div class="brand-search-header">
           <div class="brand-search-title">
             <strong>{{ selectedBrandName }}</strong>
             <span>精准筛选</span>
           </div>
-          <button type="button" class="brand-reset-btn" @click="resetBrandSearch">重置</button>
+          <button
+            type="button"
+            class="brand-reset-btn"
+            @click="resetBrandSearch"
+          >
+            重置
+          </button>
         </div>
         <div class="brand-search-grid">
           <label class="brand-field">
@@ -105,16 +164,22 @@
                 @focus="openSearchField('model')"
                 @click.stop="openSearchField('model')"
                 @input="openSearchField('model')"
-              />
+              >
               <button
                 type="button"
                 class="brand-field-toggle"
                 @click.stop="toggleSearchField('model')"
               >
-                <i class="fas" :class="activeSearchField === 'model' ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                <i
+                  class="fas"
+                  :class="activeSearchField === 'model' ? 'fa-chevron-up' : 'fa-chevron-down'"
+                />
               </button>
             </div>
-            <div v-if="activeSearchField === 'model'" class="brand-option-dropdown">
+            <div
+              v-if="activeSearchField === 'model'"
+              class="brand-option-dropdown"
+            >
               <div class="brand-option-list">
                 <button
                   type="button"
@@ -147,16 +212,22 @@
                 @focus="openSearchField('color')"
                 @click.stop="openSearchField('color')"
                 @input="openSearchField('color')"
-              />
+              >
               <button
                 type="button"
                 class="brand-field-toggle"
                 @click.stop="toggleSearchField('color')"
               >
-                <i class="fas" :class="activeSearchField === 'color' ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                <i
+                  class="fas"
+                  :class="activeSearchField === 'color' ? 'fa-chevron-up' : 'fa-chevron-down'"
+                />
               </button>
             </div>
-            <div v-if="activeSearchField === 'color'" class="brand-option-dropdown">
+            <div
+              v-if="activeSearchField === 'color'"
+              class="brand-option-dropdown"
+            >
               <div class="brand-option-list">
                 <button
                   type="button"
@@ -189,16 +260,22 @@
                 @focus="openSearchField('memory')"
                 @click.stop="openSearchField('memory')"
                 @input="openSearchField('memory')"
-              />
+              >
               <button
                 type="button"
                 class="brand-field-toggle"
                 @click.stop="toggleSearchField('memory')"
               >
-                <i class="fas" :class="activeSearchField === 'memory' ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                <i
+                  class="fas"
+                  :class="activeSearchField === 'memory' ? 'fa-chevron-up' : 'fa-chevron-down'"
+                />
               </button>
             </div>
-            <div v-if="activeSearchField === 'memory'" class="brand-option-dropdown">
+            <div
+              v-if="activeSearchField === 'memory'"
+              class="brand-option-dropdown"
+            >
               <div class="brand-option-list">
                 <button
                   type="button"
@@ -222,10 +299,24 @@
             </div>
           </label>
         </div>
-        <p class="brand-search-hint">选择内存时将自动按二手机检索</p>
+        <p class="brand-search-hint">
+          选择内存时将自动按二手机检索
+        </p>
         <div class="brand-search-actions">
-          <button type="button" class="ghost-btn" @click="collapseBrandSearch">收起</button>
-          <button type="button" class="search-btn" @click="searchBrandProducts">检索商品</button>
+          <button
+            type="button"
+            class="ghost-btn"
+            @click="collapseBrandSearch"
+          >
+            收起
+          </button>
+          <button
+            type="button"
+            class="search-btn"
+            @click="searchBrandProducts"
+          >
+            检索商品
+          </button>
         </div>
       </div>
     </div>
@@ -238,12 +329,19 @@
     >
       <div class="section-title">
         <h3>
-          <i v-if="section.icon" :class="section.icon" style="margin-right: 8px; color: #ff6b00;"></i>
+          <i
+            v-if="section.icon"
+            :class="section.icon"
+            style="margin-right: 8px; color: #ff6b00;"
+          />
           {{ section.section_name }}
         </h3>
-        <span @click="goProductsFromSection(section)">更多 <i class="fas fa-chevron-right"></i></span>
+        <span @click="goProductsFromSection(section)">更多 <i class="fas fa-chevron-right" /></span>
       </div>
-      <div v-if="section.products && section.products.length > 0" class="products-grid">
+      <div
+        v-if="section.products && section.products.length > 0"
+        class="products-grid"
+      >
         <div
           v-for="product in section.products"
           :key="product.template_id || product.phone_id"
@@ -259,8 +357,14 @@
                 mode="lazy"
               />
             </div>
-            <span v-if="product.product_type === 'used'" class="tag-used">二手</span>
-            <span v-else class="tag-new">全新</span>
+            <span
+              v-if="product.product_type === 'used'"
+              class="tag-used"
+            >二手</span>
+            <span
+              v-else
+              class="tag-new"
+            >全新</span>
           </div>
           <div class="product-info">
             <h4 class="product-title">
@@ -269,7 +373,10 @@
             <div class="product-footer">
               <span class="product-price">
                 <span class="price-label">销售价</span>
-                <span class="price-value" :class="{ 'price-inquire': !getDisplayPrice(product) }">
+                <span
+                  class="price-value"
+                  :class="{ 'price-inquire': !getDisplayPrice(product) }"
+                >
                   <template v-if="getDisplayPrice(product)">
                     ¥{{ getDisplayPrice(product) }}
                   </template>
@@ -284,26 +391,34 @@
                 class="fas fa-shopping-cart cart-icon"
                 :class="{ 'adding': addingToCart === (product.template_id || product.phone_id) }"
                 @click.stop="handleCartClick(product)"
-              ></i>
+              />
             </div>
           </div>
         </div>
       </div>
-      <div v-else class="empty-section">
-        <el-empty :description="`暂无${section.section_name}`" :image-size="60" />
+      <div
+        v-else
+        class="empty-section"
+      >
+        <DataEmptyState
+          :description="`暂无${section.section_name}`"
+          :image-size="60"
+        />
       </div>
     </div>
 
     <!-- 空状态 -->
-    <div v-if="!loading && homeSections.length === 0" class="empty-state">
-      <el-empty description="暂无推荐商品">
-        <template #image>
-          <div class="empty-icon">
-            <i class="fas fa-box-open"></i>
-          </div>
-        </template>
-      </el-empty>
-    </div>
+    <DataEmptyState
+      v-if="!loading && homeSections.length === 0"
+      size="page"
+      description="暂无推荐商品"
+    >
+      <template #image>
+        <div class="empty-icon">
+          <i class="fas fa-box-open" />
+        </div>
+      </template>
+    </DataEmptyState>
 
     <!-- 地图弹窗 -->
     <MobileDialog
@@ -317,19 +432,43 @@
       @opened="initMap"
     >
       <div class="map-dialog-content">
-        <div v-if="config.map_latitude && config.map_longitude" class="map-container">
-          <div id="mobile-map-container" class="mobile-map"></div>
+        <div
+          v-if="config.map_latitude && config.map_longitude"
+          class="map-container"
+        >
+          <div
+            id="mobile-map-container"
+            class="mobile-map"
+          />
         </div>
-        <div v-else class="map-placeholder">
-          <i class="fas fa-map-marker-alt"></i>
+        <div
+          v-else
+          class="map-placeholder"
+        >
+          <i class="fas fa-map-marker-alt" />
           <p>暂未设置地图位置</p>
-          <p class="hint">请在后台配置中设置店铺位置</p>
+          <p class="hint">
+            请在后台配置中设置店铺位置
+          </p>
         </div>
       </div>
-      <template #footer v-if="config.map_latitude && config.map_longitude">
+      <template
+        v-if="config.map_latitude && config.map_longitude"
+        #footer
+      >
         <div class="tf-dialog-actions">
-          <el-button type="primary" @click="openExternalMap">打开导航</el-button>
-          <el-button type="default" @click="showMapDialog = false">关闭</el-button>
+          <el-button
+            type="primary"
+            @click="openExternalMap"
+          >
+            打开导航
+          </el-button>
+          <el-button
+            type="default"
+            @click="showMapDialog = false"
+          >
+            关闭
+          </el-button>
         </div>
       </template>
     </MobileDialog>
@@ -351,22 +490,12 @@ import { useCart, useLoadingState } from '@/composables'
 import Image from '@/components/Image.vue'
 import type { Banner } from '@/api/shop-public'
 import type { HomeSection } from '@/api/home-sections'
-import { formatImageUrl, generateProductPlaceholder } from '@/utils/format'
+import { formatSafeImageUrl, generateProductPlaceholder } from '@/utils/format'
 import { storage } from '@/services/storage'
 import { logger } from '@/utils/logger'
 import { buildTencentMapScriptUrl, ensureTencentMapKey } from '@/utils/tencent-map'
 // 滚动位置存储键前缀
 const SCROLL_POSITION_PREFIX = 'scroll-pos_'
-const IMAGE_FILE_PATTERN = /\.(png|jpe?g|gif|webp|bmp|svg|avif)(?:[?#].*)?$/i
-const KNOWN_IMAGE_PREFIXES = ['/uploads/', '/upload/', '/images/', '/static/', '/assets/']
-const FRONTEND_ROUTE_PATTERNS = [
-  /^\/m(?:[/?#]|$)/,
-  /^\/login(?:[/?#]|$)/,
-  /^\/register(?:[/?#]|$)/,
-  /^\/forgot-password(?:[/?#]|$)/,
-  /^\/price-query(?:[/?#]|$)/,
-  /^\/sales-price-display(?:[/?#]|$)/
-]
 
 // 定义组件名称，供 keep-alive 使用
 defineOptions({
@@ -383,35 +512,11 @@ const router = useRouter()
 let scrollHandler: (() => void) | null = null
 
 // 购物车功能
-const { cartCount, getCartId, addCartItem, refreshCart } = useCart()
+const { cartCount: _cartCount, getCartId: _getCartId, addCartItem, refreshCart } = useCart()
 const addingToCart = ref<number | null>(null)
 
 // 获取图片 URL
-const getImageUrl = (imageUrl: string): string => {
-  if (!imageUrl) return ''
-
-  const normalizedValue = imageUrl.trim()
-  if (!normalizedValue) return ''
-
-  if (
-    normalizedValue.startsWith('data:') ||
-    normalizedValue.startsWith('blob:') ||
-    normalizedValue.startsWith('http://') ||
-    normalizedValue.startsWith('https://')
-  ) {
-    return formatImageUrl(normalizedValue)
-  }
-
-  const normalizedPath = normalizedValue.startsWith('/') ? normalizedValue : `/${normalizedValue}`
-  const isFrontendRoute = FRONTEND_ROUTE_PATTERNS.some((pattern) => pattern.test(normalizedPath))
-  const isKnownImagePath = KNOWN_IMAGE_PREFIXES.some((prefix) => normalizedPath.startsWith(prefix))
-
-  if (!isKnownImagePath && (isFrontendRoute || !IMAGE_FILE_PATTERN.test(normalizedPath))) {
-    return ''
-  }
-
-  return formatImageUrl(normalizedValue)
-}
+const getImageUrl = (imageUrl: string): string => formatSafeImageUrl(imageUrl)
 
 const getConditionText = (product: any): string => {
   const conditionGrade = typeof product?.condition_grade === 'string' ? product.condition_grade.trim() : ''
@@ -861,7 +966,7 @@ const goDetail = (product: any) => {
 }
 
 // 点击轮播图
-const handleBannerClick = (banner: Banner) => {
+const _handleBannerClick = (banner: Banner) => {
   if (banner.link_type === 'category' && banner.link_url) {
     try {
       const url = new URL(banner.link_url, window.location.origin)
@@ -900,7 +1005,7 @@ const handleShare = () => {
   // 分享功能
   if (navigator.share) {
     navigator.share({
-      title: config.value.shop_name || '腾飞数码',
+      title: config.value.shop_name || '未配置店铺名称',
       text: config.value.shop_subtitle || '欢迎光临',
       url: pageUrl
     }).catch(() => {
@@ -1010,7 +1115,7 @@ const initMap = async () => {
     })
 
     // 添加信息窗口
-    const info = new (window as any).TMap.InfoWindow({
+    const _info = new (window as any).TMap.InfoWindow({
       map: mobileMap,
       position: center,
       content: `<div style="padding:10px;font-size:14px;"><strong>${config.value.shop_name || '店铺'}</strong><br>${config.value.shop_address || ''}</div>`
@@ -1100,7 +1205,7 @@ onActivated(async () => {
 <style scoped lang="scss">
 .mobile-home {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: var(--tf-color-surface-soft);
 }
 
 // 商家信息栏
@@ -1108,7 +1213,7 @@ onActivated(async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
   padding: 8px 16px;
   z-index: 100;
 
@@ -1123,7 +1228,7 @@ onActivated(async () => {
       height: 40px;
       border-radius: 8px;
       overflow: hidden;
-      background: #fff;
+      background: var(--color-bg-white);
       margin-right: 10px;
       flex-shrink: 0;
 
@@ -1141,7 +1246,7 @@ onActivated(async () => {
       .merchant-name {
         font-size: 15px;
         font-weight: 600;
-        color: #fff;
+        color: var(--color-bg-white);
         margin-bottom: 2px;
         white-space: nowrap;
         overflow: hidden;
@@ -1196,7 +1301,7 @@ onActivated(async () => {
 
 // 轮播图
 .banner-section {
-  background: #fff;
+  background: var(--color-bg-white);
   margin-bottom: 8px;
 
   .banner-swiper {
@@ -1214,7 +1319,7 @@ onActivated(async () => {
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background: #fff;
+      background: var(--color-bg-white);
 
       :deep(.tf-image) {
         width: 100%;
@@ -1242,14 +1347,14 @@ onActivated(async () => {
     opacity: 1;
 
     &.swiper-pagination-bullet-active {
-      background: #ff6b00;
+      background: var(--tf-color-accent-orange);
     }
   }
 }
 
 // 快速分类
 .category-section {
-  background: #fff;
+  background: var(--color-bg-white);
   padding: 16px;
   display: flex;
   justify-content: space-around;
@@ -1270,31 +1375,31 @@ onActivated(async () => {
       align-items: center;
       justify-content: center;
       font-size: 20px;
-      color: #fff;
+      color: var(--color-bg-white);
 
       &.new {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
       }
 
       &.used {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        background: linear-gradient(135deg, var(--tf-color-pink-gradient) 0%, var(--tf-color-coral-gradient) 100%);
       }
 
       &.all {
-        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        background: linear-gradient(135deg, var(--tf-color-sky-gradient) 0%, var(--tf-color-cyan-gradient) 100%);
       }
     }
 
     span {
       font-size: 13px;
-      color: #333;
+      color: var(--text-primary);
     }
   }
 }
 
 // 品牌分类
 .brands-section {
-  background: #fff;
+  background: var(--color-bg-white);
   padding: 16px;
   margin-bottom: 8px;
 
@@ -1325,7 +1430,7 @@ onActivated(async () => {
     justify-content: center;
     cursor: pointer;
     border-radius: 999px;
-    background: #f4f4f4;
+    background: var(--tf-color-zinc-100);
     border: 1px solid transparent;
     transition: all 0.2s ease;
 
@@ -1333,7 +1438,7 @@ onActivated(async () => {
       max-width: 84px;
       font-size: 12px;
       line-height: 1;
-      color: #555;
+      color: var(--tf-color-gray-500-solid);
       text-align: center;
       white-space: nowrap;
       overflow: hidden;
@@ -1341,11 +1446,11 @@ onActivated(async () => {
     }
 
     &.active {
-      background: #fff1e6;
-      border-color: #ffd0ab;
+      background: var(--tf-color-orange-pale);
+      border-color: var(--tf-color-orange-tailwind-200);
 
       span {
-        color: #d95f00;
+        color: var(--tf-color-orange-deep);
         font-weight: 600;
       }
     }
@@ -1359,8 +1464,8 @@ onActivated(async () => {
     margin-top: 14px;
     padding: 14px;
     border-radius: 16px;
-    background: linear-gradient(180deg, #fffaf6 0%, #fff 100%);
-    border: 1px solid #ffe2cb;
+    background: linear-gradient(180deg, var(--tf-color-amber-surface) 0%, var(--color-bg-white) 100%);
+    border: 1px solid var(--tf-color-warning-legacy);
   }
 
   .brand-search-header {
@@ -1378,13 +1483,13 @@ onActivated(async () => {
 
     strong {
       font-size: 14px;
-      color: #333;
+      color: var(--text-primary);
       line-height: 1.2;
     }
 
     span {
       font-size: 11px;
-      color: #999;
+      color: var(--text-muted);
       line-height: 1;
     }
   }
@@ -1421,7 +1526,7 @@ onActivated(async () => {
 
     span {
       font-size: 11px;
-      color: #888;
+      color: var(--tf-color-gray-short);
       line-height: 1;
     }
 
@@ -1439,14 +1544,14 @@ onActivated(async () => {
       height: 36px;
       padding: 0 38px 0 10px;
       border-radius: 10px;
-      border: 1px solid #ead9ca;
-      background: #fff;
-      color: #333;
+      border: 1px solid var(--tf-color-danger-legacy);
+      background: var(--color-bg-white);
+      color: var(--text-primary);
       font-size: 12px;
       outline: none;
 
       &::placeholder {
-        color: #b2b2b2;
+        color: var(--tf-color-gray-element-placeholder);
       }
     }
   }
@@ -1458,7 +1563,7 @@ onActivated(async () => {
     transform: translateY(-50%);
     border: none;
     background: transparent;
-    color: #999;
+    color: var(--text-muted);
     font-size: 12px;
     padding: 0;
     cursor: pointer;
@@ -1472,8 +1577,8 @@ onActivated(async () => {
     z-index: 5;
     padding: 10px;
     border-radius: 12px;
-    background: #fff;
-    border: 1px solid #f0ded0;
+    background: var(--color-bg-white);
+    border: 1px solid var(--tf-color-danger-legacy);
     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
   }
 
@@ -1489,17 +1594,17 @@ onActivated(async () => {
   .brand-option {
     padding: 7px 10px;
     border-radius: 999px;
-    border: 1px solid #eadfd5;
-    background: #fff;
-    color: #666;
+    border: 1px solid var(--tf-color-gray-material-300);
+    background: var(--color-bg-white);
+    color: var(--text-secondary);
     font-size: 11px;
     line-height: 1;
     cursor: pointer;
 
     &.active {
-      background: #fff1e6;
-      border-color: #ffc48f;
-      color: #d95f00;
+      background: var(--tf-color-orange-pale);
+      border-color: var(--tf-color-amber-light);
+      color: var(--tf-color-orange-deep);
       font-weight: 600;
     }
   }
@@ -1507,7 +1612,7 @@ onActivated(async () => {
   .brand-search-hint {
     margin: 10px 0 0;
     font-size: 11px;
-    color: #999;
+    color: var(--text-muted);
     line-height: 1.4;
   }
 
@@ -1537,7 +1642,7 @@ onActivated(async () => {
 
 // 商品区域
 .products-section {
-  background: #fff;
+  background: var(--color-bg-white);
   padding: 16px;
   margin-bottom: 8px;
 
@@ -1548,7 +1653,7 @@ onActivated(async () => {
   }
 
   .product-card {
-    border: 1px solid #eee;
+    border: 1px solid var(--tf-color-gray-200-alt);
     border-radius: 8px;
     overflow: hidden;
     cursor: pointer;
@@ -1557,7 +1662,7 @@ onActivated(async () => {
       position: relative;
       width: 100%;
       padding-top: 100%;
-      background: #f5f5f5;
+      background: var(--tf-color-surface-soft);
       cursor: pointer;
 
       .product-image-inner {
@@ -1592,7 +1697,7 @@ onActivated(async () => {
         top: 8px;
         left: 8px;
         background: rgba(255, 107, 0, 0.9);
-        color: #fff;
+        color: var(--color-bg-white);
         font-size: 10px;
         padding: 2px 6px;
         border-radius: 4px;
@@ -1602,8 +1707,8 @@ onActivated(async () => {
         position: absolute;
         top: 8px;
         left: 8px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: #fff;
+        background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
+        color: var(--color-bg-white);
         font-size: 10px;
         padding: 2px 6px;
         border-radius: 4px;
@@ -1616,7 +1721,7 @@ onActivated(async () => {
       .product-title {
         font-size: 14px;
         font-weight: 600;
-        color: #333;
+        color: var(--text-primary);
         margin: 0 0 6px;
       }
 
@@ -1632,19 +1737,19 @@ onActivated(async () => {
 
           .price-label {
             font-size: 11px;
-            color: #999;
+            color: var(--text-muted);
             font-weight: normal;
           }
 
           .price-value {
             font-size: 17px;
             font-weight: 600;
-            color: #ff1744;
+            color: var(--tf-color-accent-pink);
             letter-spacing: -0.3px;
 
             &.price-inquire {
               font-size: 15px;
-              color: #ff6b00;
+              color: var(--tf-color-accent-orange);
               font-weight: 500;
             }
           }
@@ -1652,13 +1757,13 @@ onActivated(async () => {
 
         .cart-icon {
           font-size: 18px;
-          color: #ff6b00;
+          color: var(--tf-color-accent-orange);
           cursor: pointer;
           padding: 4px;
           transition: all 0.2s;
 
           &:hover {
-            color: #ff8c00;
+            color: var(--tf-color-orange-dark);
             transform: scale(1.1);
           }
 
@@ -1668,7 +1773,7 @@ onActivated(async () => {
 
           &.adding {
             animation: rotate 1s linear infinite;
-            color: #999;
+            color: var(--text-muted);
           }
         }
       }
@@ -1700,13 +1805,13 @@ onActivated(async () => {
   h3 {
     font-size: 16px;
     font-weight: 500;
-    color: #333;
+    color: var(--text-primary);
     margin: 0;
   }
 
   span {
     font-size: 13px;
-    color: #999;
+    color: var(--text-muted);
     cursor: pointer;
   }
 }
@@ -1714,7 +1819,7 @@ onActivated(async () => {
 // 空状态
 .empty-state {
   padding: 60px 16px;
-  background: #fff;
+  background: var(--color-bg-white);
   min-height: 400px;
   display: flex;
   align-items: center;
@@ -1723,7 +1828,7 @@ onActivated(async () => {
   .empty-icon {
     width: 120px;
     height: 120px;
-    background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+    background: linear-gradient(135deg, var(--tf-color-surface) 0%, var(--tf-color-border-cool-alt) 100%);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -1731,7 +1836,7 @@ onActivated(async () => {
 
     i {
       font-size: 48px;
-      color: #ccc;
+      color: var(--tf-color-gray-300-solid);
     }
   }
 }
@@ -1752,12 +1857,12 @@ onActivated(async () => {
   .map-placeholder {
     text-align: center;
     padding: 60px 20px;
-    color: #999;
+    color: var(--text-muted);
 
     i {
       font-size: 48px;
       margin-bottom: 16px;
-      color: #ddd;
+      color: var(--tf-color-gray-300-alt);
     }
 
     p {
@@ -1766,7 +1871,7 @@ onActivated(async () => {
 
       &.hint {
         font-size: 12px;
-        color: #bbb;
+        color: var(--tf-color-silver);
       }
     }
   }

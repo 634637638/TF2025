@@ -1,17 +1,38 @@
-const log = require('../utils/log');
-const AttendanceService = require('../services/attendance.service');
-const ApiResponse = require('../utils/response');
+const log = require('../utils/log')
+const AttendanceService = require('../services/attendance.service')
+const ApiResponse = require('../utils/response')
 const {
   getAttendanceAccessScope,
   canAccessScopedTarget
-} = require('../services/accessControl.service');
+} = require('../services/accessControl.service')
+
+const ATTENDANCE_WRITE_FIELDS = new Set([
+  'employee_id',
+  'record_date',
+  'record_type',
+  'leave_type',
+  'leave_days',
+  'leave_reason',
+  'overtime_hours',
+  'overtime_reason',
+  'monthly_leave_days',
+  'status'
+])
+
+function selectAttendanceWriteFields(body = {}) {
+  return Object.fromEntries(
+    Object.entries(body).filter(([field, value]) => (
+      ATTENDANCE_WRITE_FIELDS.has(field) && value !== undefined
+    ))
+  )
+}
 
 /**
  * 考勤控制器
  */
 class AttendanceController {
   async getAttendanceScope(userId) {
-    return getAttendanceAccessScope(userId);
+    return getAttendanceAccessScope(userId)
   }
 
   /**
@@ -21,39 +42,44 @@ class AttendanceController {
    */
   async getAttendanceRecords(req, res) {
     try {
-      const { page, limit, employee_id, record_type, status, start_date, end_date } = req.query;
-      const userId = req.user.id;
-      const scopeInfo = await this.getAttendanceScope(userId);
+      const { page, employee_id, record_type, status, start_date, end_date, page_size } = req.query
+      const userId = req.user.id
+      const scopeInfo = await this.getAttendanceScope(userId)
 
       // 权限检查：无权限直接返回
       if (!scopeInfo.canView) {
-        return ApiResponse.forbidden(res, '无权限查看考勤记录');
+        return ApiResponse.forbidden(res, '无权限查看考勤记录')
       }
 
       // 只传递允许的字段到 filters
-      const filters = {};
+      const filters = {}
 
       // 对于非管理员，强制使用当前用户ID
       const scopedEmployeeId = scopeInfo.isAdmin
         ? (employee_id ? parseInt(employee_id, 10) : null)
-        : userId;
+        : userId
 
       if (scopedEmployeeId !== null) {
-        filters.employee_id = scopedEmployeeId;
+        filters.employee_id = scopedEmployeeId
       }
 
-      if (record_type) filters.record_type = record_type;
-      if (status) filters.status = status;
-      if (start_date) filters.start_date = start_date;
-      if (end_date) filters.end_date = end_date;
+      if (record_type) filters.record_type = record_type
+      if (status) filters.status = status
+      if (start_date) filters.start_date = start_date
+      if (end_date) filters.end_date = end_date
 
-      const options = { page: parseInt(page) || 1, limit: parseInt(limit) || 20 };
+      const pageValue = Number.parseInt(String(page || 1), 10)
+      const pageSizeValue = Number.parseInt(String(page_size || 20), 10)
+      const options = {
+        page: Number.isSafeInteger(pageValue) ? Math.max(1, pageValue) : 1,
+        page_size: Number.isSafeInteger(pageSizeValue) ? Math.min(100, Math.max(1, pageSizeValue)) : 20
+      }
 
-      const result = await AttendanceService.getAttendanceRecords(filters, options);
-      ApiResponse.success(res, '获取考勤记录成功', result, 200);
+      const result = await AttendanceService.getAttendanceRecords(filters, options)
+      ApiResponse.success(res, '获取考勤记录成功', result, 200)
     } catch (error) {
-      log.error('获取考勤记录失败:', error);
-      ApiResponse.error(res, error.message, 500);
+      log.error('获取考勤记录失败:', error)
+      ApiResponse.error(res, error.message, 500)
     }
   }
 
@@ -65,8 +91,8 @@ class AttendanceController {
     req.query = {
       ...req.query,
       employee_id: req.user.id
-    };
-    return this.getAttendanceRecords(req, res);
+    }
+    return this.getAttendanceRecords(req, res)
   }
 
   /**
@@ -75,25 +101,25 @@ class AttendanceController {
    */
   async getAttendanceRecordById(req, res) {
     try {
-      const { id } = req.params;
-      const userId = req.user.id;
-      const scopeInfo = await this.getAttendanceScope(userId);
+      const { id } = req.params
+      const userId = req.user.id
+      const scopeInfo = await this.getAttendanceScope(userId)
 
-      const result = await AttendanceService.getAttendanceRecordById(id);
+      const result = await AttendanceService.getAttendanceRecordById(id)
 
       if (!result) {
-        return ApiResponse.error(res, '考勤记录不存在', 404);
+        return ApiResponse.error(res, '考勤记录不存在', 404)
       }
 
       // 无全量查看权限时，只能查看自己的记录
       if (!canAccessScopedTarget(scopeInfo, userId, result.employee_id)) {
-        return ApiResponse.forbidden(res, '无权限查看其他员工的考勤记录');
+        return ApiResponse.forbidden(res, '无权限查看其他员工的考勤记录')
       }
 
-      ApiResponse.success(res, '获取考勤记录详情成功', result, 200);
+      ApiResponse.success(res, '获取考勤记录详情成功', result, 200)
     } catch (error) {
-      log.error('获取考勤记录详情失败:', error);
-      ApiResponse.error(res, error.message, 500);
+      log.error('获取考勤记录详情失败:', error)
+      ApiResponse.error(res, error.message, 500)
     }
   }
 
@@ -102,29 +128,29 @@ class AttendanceController {
    */
   async createAttendanceRecord(req, res) {
     try {
-      const userId = req.user.id;
-      const scopeInfo = await this.getAttendanceScope(userId);
+      const userId = req.user.id
+      const scopeInfo = await this.getAttendanceScope(userId)
 
       // 权限检查：无权限直接返回
       if (!scopeInfo.canView) {
-        return ApiResponse.forbidden(res, '无权限创建考勤记录');
+        return ApiResponse.forbidden(res, '无权限创建考勤记录')
       }
 
       // 对于非管理员，强制使用当前用户ID
       const targetEmployeeId = scopeInfo.isAdmin
         ? (req.body.employee_id ? parseInt(req.body.employee_id, 10) : userId)
-        : userId;
+        : userId
 
       const payload = {
-        ...req.body,
+        ...selectAttendanceWriteFields(req.body),
         employee_id: targetEmployeeId
-      };
+      }
 
-      const result = await AttendanceService.createAttendanceRecord(payload, userId);
-      ApiResponse.success(res, '创建考勤记录成功', result, 201);
+      const result = await AttendanceService.createAttendanceRecord(payload, userId)
+      ApiResponse.success(res, '创建考勤记录成功', result, 201)
     } catch (error) {
-      log.error('创建考勤记录失败:', error);
-      ApiResponse.error(res, error.message, 500);
+      log.error('创建考勤记录失败:', error)
+      ApiResponse.error(res, error.message, 500)
     }
   }
 
@@ -133,12 +159,13 @@ class AttendanceController {
    */
   async updateAttendanceRecord(req, res) {
     try {
-      const { id } = req.params;
-      const result = await AttendanceService.updateAttendanceRecord(id, req.body, req.user.id);
-      ApiResponse.success(res, '更新考勤记录成功', result, 200);
+      const { id } = req.params
+      const payload = selectAttendanceWriteFields(req.body)
+      const result = await AttendanceService.updateAttendanceRecord(id, payload, req.user.id)
+      ApiResponse.success(res, '更新考勤记录成功', result, 200)
     } catch (error) {
-      log.error('更新考勤记录失败:', error);
-      ApiResponse.error(res, error.message, 500);
+      log.error('更新考勤记录失败:', error)
+      ApiResponse.error(res, error.message, 500)
     }
   }
 
@@ -147,12 +174,12 @@ class AttendanceController {
    */
   async deleteAttendanceRecord(req, res) {
     try {
-      const { id } = req.params;
-      await AttendanceService.deleteAttendanceRecord(id, req.user.id);
-      ApiResponse.success(res, '删除考勤记录成功', null, 200);
+      const { id } = req.params
+      await AttendanceService.deleteAttendanceRecord(id, req.user.id)
+      ApiResponse.success(res, '删除考勤记录成功', null, 200)
     } catch (error) {
-      log.error('删除考勤记录失败:', error);
-      ApiResponse.error(res, error.message, 500);
+      log.error('删除考勤记录失败:', error)
+      ApiResponse.error(res, error.message, 500)
     }
   }
 
@@ -161,13 +188,13 @@ class AttendanceController {
    */
   async cancelAttendanceRequest(req, res) {
     try {
-      const { id } = req.params;
-      const userId = req.user.id;
-      await AttendanceService.cancelAttendanceRequest(id, userId);
-      ApiResponse.success(res, '取消申请成功', null, 200);
+      const { id } = req.params
+      const userId = req.user.id
+      await AttendanceService.cancelAttendanceRequest(id, userId)
+      ApiResponse.success(res, '取消申请成功', null, 200)
     } catch (error) {
-      log.error('取消考勤申请失败:', error);
-      ApiResponse.error(res, error.message, 500);
+      log.error('取消考勤申请失败:', error)
+      ApiResponse.error(res, error.message, 500)
     }
   }
 
@@ -176,15 +203,15 @@ class AttendanceController {
    */
   async approveAttendanceRecord(req, res) {
     try {
-      const { id } = req.params;
-      const { status, note } = req.body;
-      const approverId = req.user.id;
+      const { id } = req.params
+      const { status, approval_note } = req.body
+      const approverId = req.user.id
 
-      const result = await AttendanceService.approveAttendanceRecord(id, approverId, status, note);
-      ApiResponse.success(res, '审批考勤记录成功', result, 200);
+      const result = await AttendanceService.approveAttendanceRecord(id, approverId, status, approval_note)
+      ApiResponse.success(res, '审批考勤记录成功', result, 200)
     } catch (error) {
-      log.error('审批考勤记录失败:', error);
-      ApiResponse.error(res, error.message, 500);
+      log.error('审批考勤记录失败:', error)
+      ApiResponse.error(res, error.message, 500)
     }
   }
 
@@ -194,29 +221,30 @@ class AttendanceController {
    */
   async getAttendanceStats(req, res) {
     try {
-      const userId = req.user.id;
-      const scopeInfo = await this.getAttendanceScope(userId);
+      const userId = req.user.id
+      const scopeInfo = await this.getAttendanceScope(userId)
 
       // 权限检查：无权限直接返回
       if (!scopeInfo.canView) {
-        return ApiResponse.forbidden(res, '无权限查看考勤统计');
+        return ApiResponse.forbidden(res, '无权限查看考勤统计')
       }
 
-      let { employee_id, start_date, end_date } = req.query;
+      let { employee_id } = req.query
+      const { start_date, end_date } = req.query
       // 对于非管理员，强制使用当前用户ID
       employee_id = scopeInfo.isAdmin
         ? (employee_id ? parseInt(employee_id, 10) : userId)
-        : userId;
+        : userId
 
       const result = await AttendanceService.getEmployeeAttendanceStats(
         employee_id,
         start_date,
         end_date
-      );
-      ApiResponse.success(res, '获取考勤统计成功', result, 200);
+      )
+      ApiResponse.success(res, '获取考勤统计成功', result, 200)
     } catch (error) {
-      log.error('获取考勤统计失败:', error);
-      ApiResponse.error(res, error.message, 500);
+      log.error('获取考勤统计失败:', error)
+      ApiResponse.error(res, error.message, 500)
     }
   }
 
@@ -226,24 +254,24 @@ class AttendanceController {
    */
   async getUserLeaveBalance(req, res) {
     try {
-      const userId = req.user.id;
-      const scopeInfo = await this.getAttendanceScope(userId);
+      const userId = req.user.id
+      const scopeInfo = await this.getAttendanceScope(userId)
 
       // 权限检查：无权限直接返回
       if (!scopeInfo.canView) {
-        return ApiResponse.forbidden(res, '无权限查看休假余额');
+        return ApiResponse.forbidden(res, '无权限查看休假余额')
       }
 
       // 对于非管理员，强制使用当前用户ID
       const employeeId = scopeInfo.isAdmin
         ? (req.query.employee_id ? parseInt(req.query.employee_id, 10) : userId)
-        : userId;
+        : userId
 
-      const result = await AttendanceService.getUserLeaveBalance(employeeId);
-      ApiResponse.success(res, '获取休假余额成功', result, 200);
+      const result = await AttendanceService.getUserLeaveBalance(employeeId)
+      ApiResponse.success(res, '获取休假余额成功', result, 200)
     } catch (error) {
-      log.error('获取休假余额失败:', error);
-      ApiResponse.error(res, error.message, 500);
+      log.error('获取休假余额失败:', error)
+      ApiResponse.error(res, error.message, 500)
     }
   }
 
@@ -252,15 +280,15 @@ class AttendanceController {
    */
   async getLeaveConfig(req, res) {
     try {
-      const SystemSettingsService = require('../services/system-settings.service');
-      const monthlyLeaveDays = await SystemSettingsService.getMonthlyLeaveDays();
+      const SystemSettingsService = require('../services/system-settings.service')
+      const monthlyLeaveDays = await SystemSettingsService.getMonthlyLeaveDays()
 
       ApiResponse.success(res, '获取休假配置成功', {
-        monthlyLeaveDays: monthlyLeaveDays
-      }, 200);
+        monthly_leave_days: monthlyLeaveDays
+      }, 200)
     } catch (error) {
-      log.error('获取休假配置失败:', error);
-      ApiResponse.error(res, error.message, 500);
+      log.error('获取休假配置失败:', error)
+      ApiResponse.error(res, error.message, 500)
     }
   }
 
@@ -269,18 +297,18 @@ class AttendanceController {
    */
   async getPendingStats(req, res) {
     try {
-      const userId = req.user.id;
-      const { isAdmin } = await this.getAttendanceScope(userId);
+      const userId = req.user.id
+      const { isAdmin } = await this.getAttendanceScope(userId)
 
-      log.info('获取待审批统计 - userId:', userId, 'isAdmin:', isAdmin);
+      log.info('获取待审批统计 - userId:', userId, 'isAdmin:', isAdmin)
 
-      const stats = await AttendanceService.getPendingStats(userId, isAdmin);
-      log.debug('待审批统计结果:', stats);
+      const stats = await AttendanceService.getPendingStats(userId, isAdmin)
+      log.debug('待审批统计结果:', stats)
 
-      ApiResponse.success(res, '获取待审批统计成功', stats, 200);
+      ApiResponse.success(res, '获取待审批统计成功', stats, 200)
     } catch (error) {
-      log.error('获取待审批统计失败:', error);
-      ApiResponse.error(res, error.message, 500);
+      log.error('获取待审批统计失败:', error)
+      ApiResponse.error(res, error.message, 500)
     }
   }
 
@@ -289,23 +317,23 @@ class AttendanceController {
    */
   async getDashboardStats(req, res) {
     try {
-      const userId = req.user.id;
-      const scopeInfo = await this.getAttendanceScope(userId);
+      const userId = req.user.id
+      const scopeInfo = await this.getAttendanceScope(userId)
 
       // 权限检查
       if (!scopeInfo.canView) {
-        return ApiResponse.forbidden(res, '无权限查看考勤统计');
+        return ApiResponse.forbidden(res, '无权限查看考勤统计')
       }
 
-      const isAdmin = scopeInfo.isAdmin;
-      const stats = await AttendanceService.getDashboardStats(userId, isAdmin);
+      const isAdmin = scopeInfo.isAdmin
+      const stats = await AttendanceService.getDashboardStats(userId, isAdmin)
 
-      ApiResponse.success(res, '获取仪表盘统计成功', stats, 200);
+      ApiResponse.success(res, '获取仪表盘统计成功', stats, 200)
     } catch (error) {
-      log.error('获取仪表盘统计失败:', error);
-      ApiResponse.error(res, error.message, 500);
+      log.error('获取仪表盘统计失败:', error)
+      ApiResponse.error(res, error.message, 500)
     }
   }
 }
 
-module.exports = new AttendanceController();
+module.exports = new AttendanceController()

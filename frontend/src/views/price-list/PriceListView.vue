@@ -7,898 +7,1393 @@
       module-name="报价管理"
       permission-code="price-list:view"
     >
-
-    <div class="admin-page-content">
-    <PageHeader title="报价管理">
-      <template #actions>
-        <el-button v-if="canCreate" type="primary" @click="handleCreate">
-          <i class="fas fa-plus"></i>
-          新增
-        </el-button>
-        <ImportExportActions
-          :can-import="canImport"
-          :can-export="canExport"
-          :import-loading="importingPriceList"
-          :export-loading="exportingPriceList"
-          import-label="导入"
-          export-label="导出"
-          import-loading-label="导入中..."
-          export-loading-label="导出中..."
-          import-icon-class="fas fa-file-import"
-          export-icon-class="fas fa-file-excel"
-          import-type="warning"
-          export-type="success"
-          @import="triggerPriceListImport"
-          @export="handleExportPriceList"
-        />
-        <el-dropdown trigger="click" @command="handleQuoteCommand">
-          <el-button type="primary">
-            <i class="fas fa-search-dollar"></i>
-            报价
-            <i class="fas fa-chevron-down ml-2"></i>
-          </el-button>
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item command="wholesale">批发报价</el-dropdown-item>
-              <el-dropdown-item command="sales">销售报价</el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
-        <el-dropdown trigger="click" @command="handleSyncSettingsCommand">
-          <el-button type="info">
-            <i class="fas fa-cog"></i>
-            设置
-            <i class="fas fa-chevron-down ml-2"></i>
-          </el-button>
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item command="sync_logs">同步日志</el-dropdown-item>
-              <el-dropdown-item v-if="canEdit" command="sync_config">同步设置</el-dropdown-item>
-              <el-dropdown-item v-if="canEdit" command="markup_config">加价配置</el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
-        <el-button v-if="canSync" type="warning" @click="handleSync" :loading="syncing">
-          <i class="fas fa-sync"></i>
-          同步
-        </el-button>
-        <el-dropdown
-          v-if="canEdit || canDelete"
-          trigger="click"
-          @command="handleDataCleanupCommand"
-        >
-          <el-button type="danger" plain>
-            <i class="fas fa-trash-alt"></i>
-            清理
-            <i class="fas fa-chevron-down ml-2"></i>
-          </el-button>
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item
-                v-if="canEdit"
-                command="clear_prices"
-                :disabled="clearingPrices"
+      <div class="admin-page-content">
+        <PageHeader title="报价管理">
+          <template #actions>
+            <el-button
+              v-if="canCreate"
+              type="primary"
+              @click="handleCreate"
+            >
+              <i class="fas fa-plus" />
+              新增
+            </el-button>
+            <ImportExportActions
+              :can-import="canImport"
+              :can-export="canExport"
+              :import-loading="importingPriceList"
+              :export-loading="exportingPriceList"
+              import-label="导入"
+              export-label="导出"
+              import-loading-label="导入中..."
+              export-loading-label="导出中..."
+              import-icon-class="fas fa-file-import"
+              export-icon-class="fas fa-file-excel"
+              import-type="warning"
+              export-type="success"
+              @import="triggerPriceListImport"
+              @export="handleExportPriceList"
+            />
+            <el-dropdown
+              trigger="click"
+              @command="handleQuoteCommand"
+            >
+              <el-button type="primary">
+                <i class="fas fa-search-dollar" />
+                报价
+                <i class="fas fa-chevron-down ml-2" />
+              </el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="wholesale">
+                    批发报价
+                  </el-dropdown-item>
+                  <el-dropdown-item command="sales">
+                    销售报价
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+            <el-dropdown
+              trigger="click"
+              @command="handleSyncSettingsCommand"
+            >
+              <el-button type="info">
+                <i class="fas fa-cog" />
+                设置
+                <i class="fas fa-chevron-down ml-2" />
+              </el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="sync_logs">
+                    同步日志
+                  </el-dropdown-item>
+                  <el-dropdown-item
+                    v-if="canEdit"
+                    command="sync_config"
+                  >
+                    同步设置
+                  </el-dropdown-item>
+                  <el-dropdown-item
+                    v-if="canEdit"
+                    command="markup_config"
+                  >
+                    加价配置
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+            <el-button
+              v-if="canSync"
+              type="warning"
+              :loading="syncing"
+              @click="handleSync"
+            >
+              <i class="fas fa-sync" />
+              同步
+            </el-button>
+            <el-dropdown
+              v-if="canEdit || canDelete"
+              trigger="click"
+              @command="handleDataCleanupCommand"
+            >
+              <el-button
+                type="danger"
+                plain
               >
-                一键清零价格
-              </el-dropdown-item>
-              <el-dropdown-item
-                v-if="canDelete"
-                command="clear_history"
-                :disabled="clearingAllHistory"
-              >
-                清理历史价格
-              </el-dropdown-item>
-            </el-dropdown-menu>
+                <i class="fas fa-trash-alt" />
+                清理
+                <i class="fas fa-chevron-down ml-2" />
+              </el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item
+                    v-if="canEdit"
+                    command="clear_prices"
+                    :disabled="clearingPrices"
+                  >
+                    一键清零价格
+                  </el-dropdown-item>
+                  <el-dropdown-item
+                    v-if="canDelete"
+                    command="clear_history"
+                    :disabled="clearingAllHistory"
+                  >
+                    清理历史价格
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
-        </el-dropdown>
-      </template>
-    </PageHeader>
-    <input
-      ref="priceListImportInputRef"
-      type="file"
-      accept=".xlsx,.xls"
-      style="display: none"
-      @change="handlePriceListImportChange"
-    />
-
-    <UnifiedSearchPanel
-      v-model:expanded="searchExpanded"
-      :loading="loading"
-      @search="handleSearch"
-      @reset="handleReset"
-    >
-      <template #primary>
-        <el-input
-          v-model="searchForm.search"
-          placeholder="搜索关键词"
-          clearable
-          @input="debounceSearch"
-          @keyup.enter="handleSearch"
-          @click.stop
-        />
-      </template>
-
-      <div class="form-group filter-item" data-field="brand">
-          <el-select
-            v-model="searchForm.brand_name"
-            placeholder="品牌"
-            filterable
-            clearable
-            @change="handleBrandChange"
-            :loading="loadingOptions"
-          >
-            <el-option
-              v-for="brand in options.brands"
-              :key="brand"
-              :label="brand"
-              :value="brand"
-            />
-          </el-select>
-      </div>
-
-      <div class="form-group filter-item" data-field="model">
-          <el-select
-            v-model="searchForm.model_number"
-            placeholder="型号"
-            filterable
-            clearable
-            @change="handleSearch"
-            :loading="loadingModels"
-            :disabled="!searchForm.brand_name"
-          >
-            <el-option
-              v-for="model in options.models"
-              :key="model"
-              :label="model"
-              :value="model"
-            />
-          </el-select>
-      </div>
-
-      <div class="form-group filter-item" data-field="color">
-          <el-select
-            v-model="searchForm.color_name"
-            placeholder="颜色"
-            filterable
-            clearable
-            @change="handleSearch"
-            :loading="loadingOptions"
-          >
-            <el-option
-              v-for="color in options.colors"
-              :key="color"
-              :label="color"
-              :value="color"
-            />
-          </el-select>
-      </div>
-
-      <div class="form-group filter-item" data-field="memory">
-          <el-select
-            v-model="searchForm.memory"
-            placeholder="内存"
-            filterable
-            clearable
-            @change="handleSearch"
-            :loading="loadingOptions"
-          >
-            <el-option
-              v-for="memory in options.memories"
-              :key="memory"
-              :label="memory"
-              :value="memory"
-            />
-          </el-select>
-      </div>
-
-      <div class="form-group filter-item" data-field="is_collect">
-          <el-select
-            v-model="searchForm.is_collect"
-            placeholder="采集状态"
-            clearable
-            @change="handleSearch"
-            class="min-w-24"
-          >
-            <el-option label="采集" :value="1" />
-            <el-option label="不采集" :value="0" />
-          </el-select>
-      </div>
-
-      <div class="form-group filter-item" data-field="status">
-          <el-select
-            v-model="searchForm.status"
-            placeholder="状态"
-            clearable
-            @change="handleSearch"
-            class="min-w-24"
-          >
-            <el-option label="正常" :value="1" />
-            <el-option label="停用" :value="0" />
-          </el-select>
-      </div>
-    </UnifiedSearchPanel>
-
-    <!-- 价格列表 -->
-    <div class="table-card admin-panel admin-table-panel">
-      <div class="section-title">
-        <i class="fas fa-tags"></i>
-        <span>报价列表</span>
-        <span class="record-count">共 {{ pagination.total }} 条记录</span>
-      </div>
-
-      <div class="table-responsive price-list-table-wrapper">
-        <el-table
-          :data="loading ? [] : priceList"
-          stripe
-          border
-          class="data-table devices-table price-list-data-table"
-          table-layout="fixed"
-          :fit="true"
-          :row-key="getPriceListRowKey"
-          :expand-row-keys="isMobile && mobileActionRowId ? [mobileActionRowId] : []"
-          @expand-change="handleMobileExpandChange"
-          @row-click="(row) => handleMobileRowTap(row.price_list_id || row.id)"
+        </PageHeader>
+        <input
+          ref="priceListImportInputRef"
+          type="file"
+          accept=".xlsx,.xls"
+          style="display: none"
+          @change="handlePriceListImportChange"
         >
-        <template #empty>
-          <TableLoadingRow v-if="loading" mode="block" text="加载报价列表..." />
-          <div v-else class="empty-state">
-            <i class="fas fa-tags"></i>
-            <p>暂无价目表数据</p>
+
+        <UnifiedSearchPanel
+          v-model:expanded="searchExpanded"
+          :loading="loading"
+          @search="handleSearch"
+          @reset="handleReset"
+        >
+          <template #primary>
+            <el-input
+              v-model="searchForm.search"
+              placeholder="搜索关键词"
+              clearable
+              @input="debounceSearch"
+              @keyup.enter="handleSearch"
+              @click.stop
+            />
+          </template>
+
+          <div
+            class="form-group filter-item"
+            data-field="brand"
+          >
+            <el-select
+              v-model="searchForm.brand_name"
+              placeholder="品牌"
+              filterable
+              clearable
+              :loading="loadingOptions"
+              @change="handleBrandChange"
+            >
+              <el-option
+                v-for="brand in options.brands"
+                :key="brand"
+                :label="brand"
+                :value="brand"
+              />
+            </el-select>
           </div>
+
+          <div
+            class="form-group filter-item"
+            data-field="model"
+          >
+            <el-select
+              v-model="searchForm.model_number"
+              placeholder="型号"
+              filterable
+              clearable
+              :loading="loadingModels"
+              :disabled="!searchForm.brand_name"
+              @change="handleSearch"
+            >
+              <el-option
+                v-for="model in options.models"
+                :key="model"
+                :label="model"
+                :value="model"
+              />
+            </el-select>
+          </div>
+
+          <div
+            class="form-group filter-item"
+            data-field="color"
+          >
+            <el-select
+              v-model="searchForm.color_name"
+              placeholder="颜色"
+              filterable
+              clearable
+              :loading="loadingOptions"
+              @change="handleSearch"
+            >
+              <el-option
+                v-for="color in options.colors"
+                :key="color"
+                :label="color"
+                :value="color"
+              />
+            </el-select>
+          </div>
+
+          <div
+            class="form-group filter-item"
+            data-field="memory"
+          >
+            <el-select
+              v-model="searchForm.memory"
+              placeholder="内存"
+              filterable
+              clearable
+              :loading="loadingOptions"
+              @change="handleSearch"
+            >
+              <el-option
+                v-for="memory in options.memories"
+                :key="memory"
+                :label="memory"
+                :value="memory"
+              />
+            </el-select>
+          </div>
+
+          <div
+            class="form-group filter-item"
+            data-field="is_collect"
+          >
+            <el-select
+              v-model="searchForm.is_collect"
+              placeholder="采集状态"
+              clearable
+              class="min-w-24"
+              @change="handleSearch"
+            >
+              <el-option
+                label="采集"
+                :value="1"
+              />
+              <el-option
+                label="不采集"
+                :value="0"
+              />
+            </el-select>
+          </div>
+
+          <div
+            class="form-group filter-item"
+            data-field="status"
+          >
+            <el-select
+              v-model="searchForm.status"
+              placeholder="状态"
+              clearable
+              class="min-w-24"
+              @change="handleSearch"
+            >
+              <el-option
+                label="正常"
+                :value="1"
+              />
+              <el-option
+                label="停用"
+                :value="0"
+              />
+            </el-select>
+          </div>
+        </UnifiedSearchPanel>
+
+        <!-- 价格列表 -->
+        <div class="table-card admin-panel admin-table-panel">
+          <div class="section-title">
+            <i class="fas fa-tags" />
+            <span>报价列表</span>
+            <span class="record-count">共 {{ pagination.total }} 条记录</span>
+          </div>
+
+          <div class="table-responsive price-list-table-wrapper">
+            <el-table
+              :data="loading ? [] : priceList"
+              stripe
+              border
+              class="data-table devices-table price-list-data-table"
+              table-layout="fixed"
+              :fit="true"
+              :row-key="getPriceListRowKey"
+              :expand-row-keys="isMobile && mobileActionRowId ? [mobileActionRowId] : []"
+              @expand-change="handleMobileExpandChange"
+              @row-click="(row) => handleMobileRowTap(row.price_list_id || row.id)"
+            >
+              <template #empty>
+                <TableLoadingRow
+                  v-if="loading"
+                  mode="block"
+                  text="加载报价列表..."
+                />
+                <DataEmptyState
+                  v-else
+                  description="暂无价目表数据"
+                />
+              </template>
+
+              <el-table-column
+                v-if="!isMobile"
+                type="index"
+                label="序号"
+                width="60"
+                align="center"
+              />
+              <el-table-column
+                v-if="!isMobile"
+                prop="brand_name"
+                label="品牌"
+                :min-width="getPriceListColumnWidth('brand_name')"
+                align="center"
+                class-name="complete-text-column"
+              />
+              <el-table-column
+                prop="model_number"
+                label="型号"
+                :min-width="getPriceListColumnWidth('model_number')"
+                align="center"
+              />
+              <el-table-column
+                prop="color_name"
+                label="颜色"
+                :min-width="getPriceListColumnWidth('color_name')"
+                align="center"
+              />
+              <el-table-column
+                prop="memory"
+                label="内存"
+                :min-width="getPriceListColumnWidth('memory')"
+                align="center"
+              />
+              <el-table-column
+                v-if="!isMobile"
+                prop="retail_price"
+                label="零售价"
+                :min-width="getPriceListColumnWidth('retail_price')"
+                align="center"
+                class-name="complete-text-column"
+              >
+                <template #default="{ row }">
+                  <span
+                    v-if="row.retail_price !== null && row.retail_price !== undefined && row.retail_price > 0"
+                    class="retail-price-tag"
+                  >
+                    ¥{{ Number(row.retail_price).toFixed(0) }}
+                  </span>
+                  <span
+                    v-else
+                    class="text-gray"
+                  >-</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                label="价格趋势"
+                :min-width="getPriceListColumnWidth('price_trend')"
+                align="center"
+                class-name="complete-text-column"
+              >
+                <template #default="{ row }">
+                  <span
+                    v-if="row.price_trend === 'up'"
+                    class="price-trend-up"
+                    @click.stop="handleViewHistory(row)"
+                  >
+                    <i class="fas fa-arrow-up" />
+                    <span v-if="row.price_change_amount && row.price_change_amount !== '='">¥{{ Math.round(Number(row.price_change_amount)) }}</span>
+                  </span>
+                  <span
+                    v-else-if="row.price_trend === 'down'"
+                    class="price-trend-down"
+                    @click.stop="handleViewHistory(row)"
+                  >
+                    <i class="fas fa-arrow-down" />
+                    <span v-if="row.price_change_amount && row.price_change_amount !== '='">¥{{ Math.round(Number(row.price_change_amount)) }}</span>
+                  </span>
+                  <span
+                    v-else
+                    class="price-trend-neutral"
+                    @click.stop="handleViewHistory(row)"
+                  >
+                    =
+                  </span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                prop="wholesale_price"
+                label="批发价格"
+                :min-width="getPriceListColumnWidth('wholesale_price')"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <span
+                    v-if="row.wholesale_price"
+                    class="wholesale-price-tag"
+                  >
+                    ¥{{ Number(row.wholesale_price).toFixed(0) }}
+                  </span>
+                  <span
+                    v-else
+                    class="text-gray"
+                  >-</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="!isMobile"
+                prop="stock_quantity"
+                label="库存数"
+                :min-width="getPriceListColumnWidth('stock_quantity')"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <el-tag
+                    v-if="row.stock_quantity > 0"
+                    type="primary"
+                    size="small"
+                  >
+                    {{ row.stock_quantity }}台
+                  </el-tag>
+                  <el-tag
+                    v-else
+                    type="danger"
+                    size="small"
+                  >
+                    0台
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="!isMobile"
+                prop="last_sync_time"
+                label="同步时间"
+                :min-width="getPriceListColumnWidth('last_sync_time')"
+                align="center"
+                class-name="complete-text-column"
+              >
+                <template #default="{ row }">
+                  <el-tag
+                    v-if="row.last_sync_time"
+                    type="danger"
+                    effect="plain"
+                    size="small"
+                  >
+                    {{ formatDateTime(row.last_sync_time) }}
+                  </el-tag>
+                  <span
+                    v-else
+                    class="text-gray"
+                  >未同步</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="!isMobile"
+                prop="is_collect"
+                label="采集状态"
+                :min-width="getPriceListColumnWidth('is_collect')"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <el-tag
+                    v-if="row.is_collect === 0"
+                    type="info"
+                    size="small"
+                  >
+                    不采集
+                  </el-tag>
+                  <el-tag
+                    v-else
+                    type="success"
+                    size="small"
+                  >
+                    采集
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="!isMobile"
+                prop="show_price"
+                label="报价"
+                :min-width="getPriceListColumnWidth('show_price')"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <el-switch
+                    v-model="row.show_price"
+                    :active-value="1"
+                    :inactive-value="0"
+                    :disabled="!canEdit"
+                    @change="handleToggleShowPrice(row)"
+                  />
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="!isMobile && showPriceListActionColumn"
+                label="操作"
+                :width="$getActionColumnWidth(2 + Number(canEdit) + Number(canDelete))"
+                align="center"
+                class-name="actions-column"
+              >
+                <template #default="{ row }">
+                  <div class="action-buttons">
+                    <el-button
+                      type="primary"
+                      size="small"
+                      @click.stop="handleViewInventory(row)"
+                    >
+                      <i class="fas fa-eye" />
+                      查看
+                    </el-button>
+                    <el-button
+                      type="success"
+                      size="small"
+                      @click.stop="handleViewHistory(row)"
+                    >
+                      <i class="fas fa-history" />
+                      历史
+                    </el-button>
+                    <el-button
+                      v-if="canEdit"
+                      type="warning"
+                      size="small"
+                      @click.stop="handleEdit(row)"
+                    >
+                      <i class="fas fa-edit" />
+                      编辑
+                    </el-button>
+                    <el-button
+                      v-if="canDelete"
+                      type="danger"
+                      size="small"
+                      @click.stop="handleDelete(row)"
+                    >
+                      <i class="fas fa-trash" />
+                      删除
+                    </el-button>
+                  </div>
+                </template>
+              </el-table-column>
+
+              <el-table-column
+                v-if="isMobile && showPriceListActionColumn"
+                type="expand"
+                width="1"
+                class-name="mobile-expand-column"
+                label-class-name="mobile-expand-header"
+              >
+                <template #default="{ row }">
+                  <div class="mobile-row-actions">
+                    <el-button
+                      type="primary"
+                      size="small"
+                      title="查看库存"
+                      @click.stop="handleViewInventory(row)"
+                    >
+                      <i class="fas fa-eye" />
+                      查看
+                    </el-button>
+                    <el-button
+                      type="success"
+                      size="small"
+                      title="价格历史"
+                      @click.stop="handleViewHistory(row)"
+                    >
+                      <i class="fas fa-history" />
+                      历史
+                    </el-button>
+                    <el-button
+                      v-if="canEdit"
+                      type="warning"
+                      size="small"
+                      title="编辑报价"
+                      @click.stop="handleEdit(row)"
+                    >
+                      <i class="fas fa-edit" />
+                      编辑
+                    </el-button>
+                    <el-button
+                      v-if="canDelete"
+                      type="danger"
+                      size="small"
+                      title="删除报价"
+                      @click.stop="handleDelete(row)"
+                    >
+                      <i class="fas fa-trash" />
+                      删除
+                    </el-button>
+                  </div>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+
+          <div class="pagination-container">
+            <Pagination
+              v-model:current="pagination.page"
+              v-model:page-size="pagination.limit"
+              :total="pagination.total"
+              :page-sizes="[10, 20, 50, 100]"
+              :show-range="true"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- 编辑对话框 -->
+      <MobileDialog
+        v-model="showEditDialog"
+        :title="editForm.id ? '编辑采集' : '新增采集'"
+        width="650px"
+        dialog-class="price-list-edit-dialog"
+        :show-default-footer="false"
+      >
+        <el-form
+          :model="editForm"
+          label-width="110px"
+        >
+          <!-- 品牌、型号、颜色、内存选择 - 确保与 phones 表数据一致 -->
+          <el-row :gutter="16">
+            <el-col :span="12">
+              <el-form-item
+                label="品牌"
+                required
+              >
+                <el-select
+                  v-model="editForm.brand_id"
+                  placeholder="请选择品牌"
+                  filterable
+                  class="w-full"
+                  @change="handleBrandChangeInEdit"
+                >
+                  <el-option
+                    v-for="brand in editOptions.brands"
+                    :key="brand.id"
+                    :label="brand.name"
+                    :value="brand.id"
+                  />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item
+                label="型号"
+                required
+              >
+                <el-select
+                  v-model="editForm.model_id"
+                  placeholder="请选择型号"
+                  filterable
+                  :disabled="!editForm.brand_id"
+                  class="w-full"
+                  @change="handleModelChangeInEdit"
+                >
+                  <el-option
+                    v-for="model in editOptions.models"
+                    :key="model.id"
+                    :label="model.name"
+                    :value="model.id"
+                  />
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+
+          <el-row :gutter="16">
+            <el-col :span="12">
+              <el-form-item
+                label="颜色"
+                required
+              >
+                <el-select
+                  v-model="editForm.color_id"
+                  placeholder="请选择颜色"
+                  filterable
+                  :disabled="!editForm.model_id"
+                  class="w-full"
+                >
+                  <el-option
+                    v-for="color in editOptions.colors"
+                    :key="color.id"
+                    :label="color.name"
+                    :value="color.id"
+                  />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item
+                label="内存"
+                required
+              >
+                <el-select
+                  v-model="editForm.memory_id"
+                  placeholder="请选择内存"
+                  filterable
+                  :disabled="!editForm.model_id"
+                  class="w-full"
+                >
+                  <el-option
+                    v-for="memory in editOptions.memories"
+                    :key="memory.id"
+                    :label="memory.name || memory.size"
+                    :value="memory.id"
+                  />
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+
+          <!-- 显示当前选择的组合，方便确认 -->
+          <el-form-item v-if="editForm.brand_id && editForm.model_id">
+            <el-alert
+              type="info"
+              :closable="false"
+              class="text-sm"
+            >
+              <template #title>
+                当前选择：
+                <strong>{{ getSelectedDisplayName() }}</strong>
+                <div
+                  v-if="getStockCount() > 0"
+                  class="mt-1 text-success"
+                >
+                  <i class="fas fa-check-circle" /> 库存{{ getStockCount() }}台
+                </div>
+                <div
+                  v-else
+                  class="mt-1 text-warning"
+                >
+                  <i class="fas fa-exclamation-triangle" /> 库存0台
+                </div>
+              </template>
+            </el-alert>
+          </el-form-item>
+
+          <!-- 外部型号（用于价格采集匹配） -->
+          <el-form-item label="外部型号">
+            <el-input
+              v-model="editForm.external_model"
+              placeholder="外部系统型号（如A3521）用于价格匹配"
+            />
+            <div class="mt-1 text-secondary text-xs">
+              <i class="fas fa-info-circle" />
+              外部型号用于匹配采集系统的价格数据，不影响本地数据
+            </div>
+          </el-form-item>
+          <el-row :gutter="16">
+            <el-col :span="12">
+              <el-form-item label="采集价">
+                <el-input
+                  v-model="editForm.wholesale_price"
+                  type="number"
+                  placeholder="输入价格或留空删除"
+                  clearable
+                >
+                  <template #prepend>
+                    ¥
+                  </template>
+                </el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="销售价">
+                <el-input
+                  :model-value="editForm.retail_price !== null && editForm.retail_price !== undefined ? `¥${Number(editForm.retail_price).toFixed(2)}` : '未设置（保存后自动计算）'"
+                  type="text"
+                  readonly
+                  disabled
+                />
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-form-item label="实时库存">
+            <el-input
+              :model-value="`${getStockCount()}台`"
+              type="text"
+              style="width: 200px"
+              readonly
+              disabled
+            />
+          </el-form-item>
+          <el-form-item label="同步时间">
+            <el-date-picker
+              v-model="editForm.last_sync_time"
+              type="datetime"
+              placeholder="选择同步时间"
+              format="YYYY-MM-DD HH:mm:ss"
+              value-format="YYYY-MM-DD HH:mm:ss"
+              :clearable="true"
+              class="w-full"
+              @clear="() => editForm.last_sync_time = null"
+            />
+          </el-form-item>
+          <el-row :gutter="16">
+            <el-col
+              :xs="24"
+              :sm="8"
+            >
+              <el-form-item label="采集状态">
+                <el-switch
+                  v-model="editForm.is_collect"
+                  :active-value="1"
+                  :inactive-value="0"
+                  active-text="采集"
+                  inactive-text="不采集"
+                  inline-prompt
+                />
+              </el-form-item>
+            </el-col>
+            <el-col
+              :xs="24"
+              :sm="8"
+            >
+              <el-form-item label="启用状态">
+                <el-switch
+                  v-model="editForm.status"
+                  :active-value="1"
+                  :inactive-value="0"
+                  active-text="启用"
+                  inactive-text="停用"
+                  inline-prompt
+                />
+              </el-form-item>
+            </el-col>
+            <el-col
+              :xs="24"
+              :sm="8"
+            >
+              <el-form-item label="报价显示">
+                <el-switch
+                  v-model="editForm.show_price"
+                  :active-value="1"
+                  :inactive-value="0"
+                  active-text="显示"
+                  inactive-text="隐藏"
+                  inline-prompt
+                />
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-form-item label="备注">
+            <el-input
+              v-model="editForm.remark"
+              type="textarea"
+              :rows="3"
+              placeholder="请输入备注"
+            />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button
+            type="default"
+            @click="showEditDialog = false"
+          >
+            取消
+          </el-button>
+          <el-button
+            type="primary"
+            :loading="saving"
+            @click="handleSave"
+          >
+            保存
+          </el-button>
         </template>
+      </MobileDialog>
 
-        <el-table-column v-if="!isMobile" type="index" label="序号" width="60" align="center" />
-        <el-table-column v-if="!isMobile" prop="brand_name" label="品牌" :min-width="getPriceListColumnWidth('brand_name')" align="center" class-name="complete-text-column" />
-        <el-table-column prop="model_number" label="型号" :min-width="getPriceListColumnWidth('model_number')" align="center" />
-        <el-table-column prop="color_name" label="颜色" :min-width="getPriceListColumnWidth('color_name')" align="center" />
-        <el-table-column prop="memory" label="内存" :min-width="getPriceListColumnWidth('memory')" align="center" />
-        <el-table-column v-if="!isMobile" prop="retail_price" label="零售价" :min-width="getPriceListColumnWidth('retail_price')" align="center" class-name="complete-text-column">
-          <template #default="{ row }">
-            <span v-if="row.retail_price !== null && row.retail_price !== undefined && row.retail_price > 0" class="retail-price-tag">
-              ¥{{ Number(row.retail_price).toFixed(0) }}
-            </span>
-            <span v-else class="text-gray">-</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="价格趋势" :min-width="getPriceListColumnWidth('price_trend')" align="center" class-name="complete-text-column">
-          <template #default="{ row }">
-            <span
-              v-if="row.price_trend === 'up'"
-              class="price-trend-up"
-              @click.stop="handleViewHistory(row)"
+      <!-- 同步设置对话框 -->
+      <MobileDialog
+        v-model="showConfigDialog"
+        title="同步设置"
+        width="900px"
+        dialog-class="price-list-config-dialog"
+        :show-default-footer="false"
+        @open="fetchSyncConfigsList"
+      >
+        <div class="sync-settings-container">
+          <!-- 顶部：编辑区域 -->
+          <div class="edit-section">
+            <div class="section-header">
+              <h3>{{ syncConfig.id ? '编辑同步源' : '添加同步源' }}</h3>
+              <el-tag
+                v-if="syncConfig.is_default"
+                type="success"
+                size="small"
+              >
+                默认采集源
+              </el-tag>
+            </div>
+
+            <el-form
+              :model="syncConfig"
+              label-width="100px"
+              class="config-form"
             >
-              <i class="fas fa-arrow-up"></i>
-              <span v-if="row.price_change_amount && row.price_change_amount !== '='">¥{{ Math.round(Number(row.price_change_amount)) }}</span>
-            </span>
-            <span
-              v-else-if="row.price_trend === 'down'"
-              class="price-trend-down"
-              @click.stop="handleViewHistory(row)"
-            >
-              <i class="fas fa-arrow-down"></i>
-              <span v-if="row.price_change_amount && row.price_change_amount !== '='">¥{{ Math.round(Number(row.price_change_amount)) }}</span>
-            </span>
-            <span
-              v-else
-              class="price-trend-neutral"
-              @click.stop="handleViewHistory(row)"
-            >
-              =
-            </span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="wholesale_price" label="批发价格" :min-width="getPriceListColumnWidth('wholesale_price')" align="center">
-          <template #default="{ row }">
-            <span v-if="row.wholesale_price" class="wholesale-price-tag">
-              ¥{{ Number(row.wholesale_price).toFixed(0) }}
-            </span>
-            <span v-else class="text-gray">-</span>
-          </template>
-        </el-table-column>
-        <el-table-column v-if="!isMobile" prop="stock_quantity" label="库存数" :min-width="getPriceListColumnWidth('stock_quantity')" align="center">
-          <template #default="{ row }">
-            <el-tag v-if="row.stock_quantity > 0" type="primary" size="small">{{ row.stock_quantity }}台</el-tag>
-            <el-tag v-else type="danger" size="small">0台</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column v-if="!isMobile" prop="last_sync_time" label="同步时间" :min-width="getPriceListColumnWidth('last_sync_time')" align="center" class-name="complete-text-column">
-          <template #default="{ row }">
-            <el-tag v-if="row.last_sync_time" type="danger" effect="plain" size="small">
-              {{ formatDateTime(row.last_sync_time) }}
-            </el-tag>
-            <span v-else class="text-gray">未同步</span>
-          </template>
-        </el-table-column>
-        <el-table-column v-if="!isMobile" prop="is_collect" label="采集状态" :min-width="getPriceListColumnWidth('is_collect')" align="center">
-          <template #default="{ row }">
-            <el-tag v-if="row.is_collect === 0" type="info" size="small">不采集</el-tag>
-            <el-tag v-else type="success" size="small">采集</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column v-if="!isMobile" prop="show_price" label="报价" :min-width="getPriceListColumnWidth('show_price')" align="center">
-          <template #default="{ row }">
-            <el-switch
-              v-model="row.show_price"
-              :active-value="1"
-              :inactive-value="0"
-              @change="handleToggleShowPrice(row)"
-              :disabled="!canEdit"
-            />
-          </template>
-        </el-table-column>
-          <el-table-column v-if="!isMobile" label="操作" :width="$getActionColumnWidth(2 + Number(canEdit) + Number(canDelete))" align="center" class-name="actions-column">
-          <template #default="{ row }">
-            <div class="action-buttons">
-              <el-button type="primary" size="small" @click.stop="handleViewInventory(row)">
-                <i class="fas fa-eye"></i>
-                查看
+              <el-row :gutter="16">
+                <el-col :span="12">
+                  <el-form-item label="配置名称">
+                    <el-input
+                      v-model="syncConfig.config_name"
+                      placeholder="请输入配置名称"
+                    />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="间隔分钟">
+                    <el-input-number
+                      v-model="syncConfig.sync_interval"
+                      :min="10"
+                      :max="1440"
+                      controls-position="right"
+                      style="width: 150px"
+                    />
+                    <span class="ml-2 text-gray-500 text-sm">分钟</span>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+
+              <el-form-item label="数据源URL">
+                <el-input
+                  v-model="syncConfig.source_url"
+                  placeholder="请输入数据源URL"
+                />
+              </el-form-item>
+
+              <el-form-item label="登录URL">
+                <el-input
+                  v-model="syncConfig.login_url"
+                  placeholder="请输入登录URL（可选）"
+                />
+              </el-form-item>
+
+              <el-row :gutter="16">
+                <el-col :span="12">
+                  <el-form-item label="用户名">
+                    <el-input
+                      v-model="syncConfig.login_username"
+                      placeholder="请输入登录用户名"
+                    />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="密码">
+                    <el-input
+                      v-model="syncConfig.login_password"
+                      type="password"
+                      placeholder="请输入登录密码"
+                      show-password
+                    />
+                  </el-form-item>
+                </el-col>
+              </el-row>
+            </el-form>
+
+            <div class="form-actions">
+              <el-button @click="resetConfigForm">
+                清空
               </el-button>
-              <el-button type="success" size="small" @click.stop="handleViewHistory(row)">
-                <i class="fas fa-history"></i>
-                历史
-              </el-button>
-              <el-button v-if="canEdit" type="warning" size="small" @click.stop="handleEdit(row)">
-                <i class="fas fa-edit"></i>
-                编辑
-              </el-button>
-              <el-button v-if="canDelete" type="danger" size="small" @click.stop="handleDelete(row)">
-                <i class="fas fa-trash"></i>
-                删除
+              <el-button
+                type="primary"
+                :loading="savingConfig"
+                @click="handleSaveConfig"
+              >
+                {{ syncConfig.id ? '更新' : '添加' }}
               </el-button>
             </div>
-          </template>
-        </el-table-column>
+          </div>
 
-        <el-table-column
-          v-if="isMobile"
-          type="expand"
-          width="1"
-          class-name="mobile-expand-column"
-          label-class-name="mobile-expand-header"
-        >
-          <template #default="{ row }">
-            <div class="mobile-row-actions">
-              <el-button type="primary" size="small" title="查看库存" @click.stop="handleViewInventory(row)">
-                <i class="fas fa-eye"></i>
-                查看
-              </el-button>
-              <el-button type="success" size="small" title="价格历史" @click.stop="handleViewHistory(row)">
-                <i class="fas fa-history"></i>
-                历史
-              </el-button>
-              <el-button v-if="canEdit" type="warning" size="small" title="编辑报价" @click.stop="handleEdit(row)">
-                <i class="fas fa-edit"></i>
-                编辑
-              </el-button>
-              <el-button v-if="canDelete" type="danger" size="small" title="删除报价" @click.stop="handleDelete(row)">
-                <i class="fas fa-trash"></i>
-                删除
-              </el-button>
+          <!-- 分隔线 -->
+          <el-divider />
+
+          <!-- 底部：数据列表 -->
+          <div class="list-section">
+            <div class="section-header">
+              <h3>所有同步源</h3>
             </div>
-          </template>
-        </el-table-column>
-        </el-table>
-      </div>
 
-      <div class="pagination-container">
-        <Pagination
-          v-model:current="pagination.page"
-          v-model:page-size="pagination.limit"
-          :total="pagination.total"
-          :page-sizes="[10, 20, 50, 100]"
-          :show-range="true"
-        />
-      </div>
-    </div>
-    </div>
-
-    <!-- 编辑对话框 -->
-    <MobileDialog
-      v-model="showEditDialog"
-      :title="editForm.id ? '编辑采集' : '新增采集'"
-      width="650px"
-      dialog-class="price-list-edit-dialog"
-      :show-default-footer="false"
-    >
-      <el-form :model="editForm" label-width="110px">
-        <!-- 品牌、型号、颜色、内存选择 - 确保与 phones 表数据一致 -->
-        <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="品牌" required>
-              <el-select
-                v-model="editForm.brand_id"
-                placeholder="请选择品牌"
-                filterable
-                @change="handleBrandChangeInEdit"
-                class="w-full"
+            <el-table
+              class="data-table"
+              :data="syncConfigsList"
+              stripe
+              border
+              max-height="300"
+            >
+              <el-table-column
+                prop="config_name"
+                label="配置名称"
+                width="130"
+              />
+              <el-table-column
+                prop="login_username"
+                label="用户名"
+                width="120"
+              />
+              <el-table-column
+                prop="source_url"
+                label="数据源"
+                width="180"
+                class-name="complete-text-column wrapped-text-column"
               >
-                <el-option
-                  v-for="brand in editOptions.brands"
-                  :key="brand.id"
-                  :label="brand.name"
-                  :value="brand.id"
-                />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="型号" required>
-              <el-select
-                v-model="editForm.model_id"
-                placeholder="请选择型号"
-                filterable
-                :disabled="!editForm.brand_id"
-                @change="handleModelChangeInEdit"
-                class="w-full"
+                <template #default="{ row }">
+                  {{ formatSourceUrl(row.source_url) }}
+                </template>
+              </el-table-column>
+              <el-table-column
+                label="状态"
+                width="80"
               >
-                <el-option
-                  v-for="model in editOptions.models"
-                  :key="model.id"
-                  :label="model.name"
-                  :value="model.id"
-                />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="颜色" required>
-              <el-select
-                v-model="editForm.color_id"
-                placeholder="请选择颜色"
-                filterable
-                :disabled="!editForm.model_id"
-                class="w-full"
+                <template #default="{ row }">
+                  <el-tag
+                    v-if="row.is_default"
+                    type="success"
+                    size="small"
+                  >
+                    默认
+                  </el-tag>
+                  <el-tag
+                    v-else
+                    type="info"
+                    size="small"
+                  >
+                    普通
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column
+                prop="last_sync_time"
+                label="最后同步"
+                width="150"
               >
-                <el-option
-                  v-for="color in editOptions.colors"
-                  :key="color.id"
-                  :label="color.name"
-                  :value="color.id"
-                />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="内存" required>
-              <el-select
-                v-model="editForm.memory_id"
-                placeholder="请选择内存"
-                filterable
-                :disabled="!editForm.model_id"
-                class="w-full"
+                <template #default="{ row }">
+                  {{ row.last_sync_time ? formatDateTime(row.last_sync_time) : '-' }}
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="showPriceListWriteActionColumn"
+                label="操作"
+                :width="syncConfigActionColumnWidth"
+                align="center"
+                class-name="actions-column"
               >
-                <el-option
-                  v-for="memory in editOptions.memories"
-                  :key="memory.id"
-                  :label="memory.name || memory.size"
-                  :value="memory.id"
-                />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <!-- 显示当前选择的组合，方便确认 -->
-        <el-form-item v-if="editForm.brand_id && editForm.model_id">
-          <el-alert type="info" :closable="false" class="text-sm">
-            <template #title>
-              当前选择：
-              <strong>{{ getSelectedDisplayName() }}</strong>
-              <div v-if="getStockCount() > 0" class="mt-1 text-success">
-                <i class="fas fa-check-circle"></i> 库存{{ getStockCount() }}台
-              </div>
-              <div v-else class="mt-1 text-warning">
-                <i class="fas fa-exclamation-triangle"></i> 库存0台
-              </div>
-            </template>
-          </el-alert>
-        </el-form-item>
-
-        <!-- 外部型号（用于价格采集匹配） -->
-        <el-form-item label="外部型号">
-          <el-input
-            v-model="editForm.external_model"
-            placeholder="外部系统型号（如A3521）用于价格匹配"
-          />
-          <div class="mt-1 text-secondary text-xs">
-            <i class="fas fa-info-circle"></i>
-            外部型号用于匹配采集系统的价格数据，不影响本地数据
+                <template #default="{ row }">
+                  <div class="action-buttons">
+                    <el-button
+                      v-if="canEdit && !row.is_default"
+                      type="success"
+                      size="small"
+                      @click.stop="handleSetDefaultConfig(row.id)"
+                    >
+                      <i class="fas fa-check" />
+                      设为默认
+                    </el-button>
+                    <el-button
+                      v-if="canEdit"
+                      type="warning"
+                      size="small"
+                      @click.stop="handleEditConfig(row)"
+                    >
+                      <i class="fas fa-edit" />
+                      编辑
+                    </el-button>
+                    <el-button
+                      v-if="canDelete && !row.is_default"
+                      type="danger"
+                      size="small"
+                      @click.stop="handleDeleteConfig(row.id)"
+                    >
+                      <i class="fas fa-trash" />
+                      删除
+                    </el-button>
+                  </div>
+                </template>
+              </el-table-column>
+            </el-table>
           </div>
-        </el-form-item>
-        <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="采集价">
-              <el-input
-                v-model="editForm.wholesale_price"
-                type="number"
-                placeholder="输入价格或留空删除"
-                clearable
-              >
-                <template #prepend>¥</template>
-              </el-input>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="销售价">
-              <el-input
-                :model-value="editForm.retail_price !== null && editForm.retail_price !== undefined ? `¥${Number(editForm.retail_price).toFixed(2)}` : '未设置（保存后自动计算）'"
-                type="text"
-                readonly
-                disabled
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-form-item label="实时库存">
-          <el-input
-            :model-value="`${getStockCount()}台`"
-            type="text"
-            style="width: 200px"
-            readonly
-            disabled
-          />
-        </el-form-item>
-        <el-form-item label="同步时间">
-          <el-date-picker
-            v-model="editForm.last_sync_time"
-            type="datetime"
-            placeholder="选择同步时间"
-            format="YYYY-MM-DD HH:mm:ss"
-            value-format="YYYY-MM-DD HH:mm:ss"
-            :clearable="true"
-            @clear="() => editForm.last_sync_time = null"
-            class="w-full"
-          />
-        </el-form-item>
-        <el-row :gutter="16">
-          <el-col :xs="24" :sm="8">
-            <el-form-item label="采集状态">
-              <el-switch
-                v-model="editForm.is_collect"
-                :active-value="1"
-                :inactive-value="0"
-                active-text="采集"
-                inactive-text="不采集"
-                inline-prompt
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :xs="24" :sm="8">
-            <el-form-item label="启用状态">
-              <el-switch
-                v-model="editForm.status"
-                :active-value="1"
-                :inactive-value="0"
-                active-text="启用"
-                inactive-text="停用"
-                inline-prompt
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :xs="24" :sm="8">
-            <el-form-item label="报价显示">
-              <el-switch
-                v-model="editForm.show_price"
-                :active-value="1"
-                :inactive-value="0"
-                active-text="显示"
-                inactive-text="隐藏"
-                inline-prompt
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-form-item label="备注">
-          <el-input
-            v-model="editForm.remark"
-            type="textarea"
-            :rows="3"
-            placeholder="请输入备注"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button type="default" @click="showEditDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleSave" :loading="saving">保存</el-button>
-      </template>
-    </MobileDialog>
+        </div>
 
-    <!-- 同步设置对话框 -->
-    <MobileDialog
-      v-model="showConfigDialog"
-      title="同步设置"
-      width="900px"
-      dialog-class="price-list-config-dialog"
-      :show-default-footer="false"
-      @open="fetchSyncConfigsList"
-    >
-      <div class="sync-settings-container">
-        <!-- 顶部：编辑区域 -->
-        <div class="edit-section">
-          <div class="section-header">
-            <h3>{{ syncConfig.id ? '编辑同步源' : '添加同步源' }}</h3>
-            <el-tag v-if="syncConfig.is_default" type="success" size="small">默认采集源</el-tag>
+        <template #footer>
+          <el-button
+            type="default"
+            @click="showConfigDialog = false"
+          >
+            关闭
+          </el-button>
+        </template>
+      </MobileDialog>
+
+      <!-- 价格历史对话框 -->
+      <MobileDialog
+        v-model="showHistoryDialog"
+        title="价格历史记录"
+        width="900px"
+        dialog-class="price-list-history-dialog"
+        :show-default-footer="false"
+      >
+        <div class="history-header">
+          <div class="product-info">
+            <span class="label">产品：</span>
+            <span class="value">{{ currentProduct?.brand_name }} {{ currentProduct?.model_number }}</span>
+            <span
+              v-if="currentProduct?.color_name"
+              class="color"
+            >{{ currentProduct.color_name }}</span>
+            <span
+              v-if="currentProduct?.memory"
+              class="memory"
+            >{{ currentProduct.memory }}</span>
           </div>
-
-          <el-form :model="syncConfig" label-width="100px" class="config-form">
-            <el-row :gutter="16">
-              <el-col :span="12">
-                <el-form-item label="配置名称">
-                  <el-input v-model="syncConfig.config_name" placeholder="请输入配置名称" />
-                </el-form-item>
-              </el-col>
-              <el-col :span="12">
-                <el-form-item label="间隔分钟">
-                  <el-input-number
-                    v-model="syncConfig.sync_interval"
-                    :min="10"
-                    :max="1440"
-                    controls-position="right"
-                    style="width: 150px"
-                  />
-                  <span class="ml-2 text-gray-500 text-sm">分钟</span>
-                </el-form-item>
-              </el-col>
-            </el-row>
-
-            <el-form-item label="数据源URL">
-              <el-input v-model="syncConfig.source_url" placeholder="请输入数据源URL" />
-            </el-form-item>
-
-            <el-form-item label="登录URL">
-              <el-input v-model="syncConfig.login_url" placeholder="请输入登录URL（可选）" />
-            </el-form-item>
-
-            <el-row :gutter="16">
-              <el-col :span="12">
-                <el-form-item label="用户名">
-                  <el-input v-model="syncConfig.login_username" placeholder="请输入登录用户名" />
-                </el-form-item>
-              </el-col>
-              <el-col :span="12">
-                <el-form-item label="密码">
-                  <el-input
-                    v-model="syncConfig.login_password"
-                    type="password"
-                    placeholder="请输入登录密码"
-                    show-password
-                  />
-                </el-form-item>
-              </el-col>
-            </el-row>
-          </el-form>
-
-          <div class="form-actions">
-            <el-button @click="resetConfigForm">清空</el-button>
-            <el-button type="primary" @click="handleSaveConfig" :loading="savingConfig">
-              {{ syncConfig.id ? '更新' : '添加' }}
+          <div class="history-actions">
+            <el-button
+              type="danger"
+              size="small"
+              :disabled="priceHistory.length === 0"
+              @click="handleClearHistory"
+            >
+              <i class="fas fa-trash-alt" />
+              清空历史
             </el-button>
           </div>
         </div>
-
-        <!-- 分隔线 -->
-        <el-divider />
-
-        <!-- 底部：数据列表 -->
-        <div class="list-section">
-          <div class="section-header">
-            <h3>所有同步源</h3>
-          </div>
-
-          <el-table class="data-table" :data="syncConfigsList" stripe border max-height="300">
-            <el-table-column prop="config_name" label="配置名称" width="130" />
-            <el-table-column prop="login_username" label="用户名" width="120" />
-            <el-table-column prop="source_url" label="数据源" width="180" class-name="complete-text-column wrapped-text-column">
-              <template #default="{ row }">
-                {{ formatSourceUrl(row.source_url) }}
-              </template>
-            </el-table-column>
-            <el-table-column label="状态" width="80">
-              <template #default="{ row }">
-                <el-tag v-if="row.is_default" type="success" size="small">默认</el-tag>
-                <el-tag v-else type="info" size="small">普通</el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="last_sync_time" label="最后同步" width="150">
-              <template #default="{ row }">
-                {{ row.last_sync_time ? formatDateTime(row.last_sync_time) : '-' }}
-              </template>
-            </el-table-column>
-              <el-table-column v-if="canEdit || canDelete" label="操作" :width="syncConfigActionColumnWidth" align="center" class-name="actions-column">
-              <template #default="{ row }">
-                <div class="action-buttons">
-                  <el-button
-                    v-if="canEdit && !row.is_default"
-                    type="success"
-                    size="small"
-                    @click.stop="handleSetDefaultConfig(row.id)"
+        <el-table
+          class="data-table"
+          :data="priceHistory"
+          stripe
+          border
+          max-height="400"
+          @selection-change="handleHistorySelectionChange"
+        >
+          <el-table-column
+            type="selection"
+            width="55"
+          />
+          <el-table-column
+            type="index"
+            label="序号"
+            width="60"
+          />
+          <el-table-column
+            prop="recorded_at"
+            label="记录时间"
+            width="170"
+          >
+            <template #default="{ row }">
+              {{ formatDateTime(row.recorded_at) }}
+            </template>
+          </el-table-column>
+          <el-table-column
+            prop="retail_price"
+            label="零售价"
+            width="100"
+            align="right"
+          >
+            <template #default="{ row, $index }">
+              <span
+                v-if="hasPriceValue(row.retail_price)"
+                :class="getPriceChangeClass('retail', $index)"
+              >
+                ¥{{ row.retail_price }}
+              </span>
+              <span
+                v-else
+                class="text-gray"
+              >-</span>
+            </template>
+          </el-table-column>
+          <el-table-column
+            prop="wholesale_price"
+            label="批发价"
+            width="100"
+            align="right"
+          >
+            <template #default="{ row, $index }">
+              <span
+                v-if="hasPriceValue(row.wholesale_price)"
+                :class="getPriceChangeClass('wholesale', $index)"
+              >
+                ¥{{ row.wholesale_price }}
+              </span>
+              <span
+                v-else
+                class="text-gray"
+              >-</span>
+            </template>
+          </el-table-column>
+          <el-table-column
+            prop="change_type"
+            label="价格变动"
+            min-width="160"
+            align="center"
+          >
+            <template #default="{ row, $index }">
+              <div class="history-change-cell">
+                <template v-if="getHistoryChangeItems(row, $index).length > 0">
+                  <span
+                    v-for="item in getHistoryChangeItems(row, $index)"
+                    :key="item.text"
+                    class="history-change-item"
+                    :class="item.className"
                   >
-                    <i class="fas fa-check"></i>
-                    设为默认
-                  </el-button>
-                  <el-button
-                    v-if="canEdit"
-                    type="warning"
-                    size="small"
-                    @click.stop="handleEditConfig(row)"
-                  >
-                    <i class="fas fa-edit"></i>
-                    编辑
-                  </el-button>
-                  <el-button
-                    v-if="canDelete && !row.is_default"
-                    type="danger"
-                    size="small"
-                    @click.stop="handleDeleteConfig(row.id)"
-                  >
-                    <i class="fas fa-trash"></i>
-                    删除
-                  </el-button>
-                </div>
-              </template>
-            </el-table-column>
-          </el-table>
+                    <span class="history-change-value">{{ item.text }}</span>
+                  </span>
+                </template>
+                <span
+                  v-else
+                  class="text-gray"
+                >-</span>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column
+            prop="change_reason"
+            label="更新方式"
+            min-width="100"
+            align="center"
+          >
+            <template #default="{ row }">
+              <el-tag
+                :type="getChangeReasonTagType(row.change_reason)"
+                size="small"
+                effect="plain"
+              >
+                {{ getChangeReasonLabel(row.change_reason) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column
+            v-if="showPriceListDeleteActionColumn"
+            label="操作"
+            :width="$getActionColumnWidth(1)"
+            align="center"
+            class-name="actions-column"
+          >
+            <template #default="{ row }">
+              <div class="action-buttons">
+                <el-button
+                  v-if="canDelete"
+                  type="danger"
+                  size="small"
+                  @click.stop="handleDeleteHistoryItem(row)"
+                >
+                  <i class="fas fa-trash-alt" />
+                  删除
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+        <div
+          v-if="priceHistory.length === 0"
+          class="empty-history"
+        >
+          <DataEmptyState description="暂无历史记录" />
         </div>
-      </div>
-
-      <template #footer>
-        <el-button type="default" @click="showConfigDialog = false">关闭</el-button>
-      </template>
-    </MobileDialog>
-
-    <!-- 价格历史对话框 -->
-    <MobileDialog
-      v-model="showHistoryDialog"
-      title="价格历史记录"
-      width="900px"
-      dialog-class="price-list-history-dialog"
-      :show-default-footer="false"
-    >
-      <div class="history-header">
-        <div class="product-info">
-          <span class="label">产品：</span>
-          <span class="value">{{ currentProduct?.brand_name }} {{ currentProduct?.model_number }}</span>
-          <span v-if="currentProduct?.color_name" class="color">{{ currentProduct.color_name }}</span>
-          <span v-if="currentProduct?.memory" class="memory">{{ currentProduct.memory }}</span>
-        </div>
-        <div class="history-actions">
-          <el-button type="danger" size="small" @click="handleClearHistory" :disabled="priceHistory.length === 0">
-            <i class="fas fa-trash-alt"></i>
-            清空历史
+        <div
+          v-if="selectedHistoryItems.length > 0"
+          class="history-batch-actions"
+        >
+          <span class="selected-count">已选择 {{ selectedHistoryItems.length }} 条记录</span>
+          <el-button
+            v-if="canDelete"
+            type="danger"
+            size="small"
+            @click="handleBatchDeleteHistory"
+          >
+            <i class="fas fa-trash-alt" />
+            批量删除
           </el-button>
         </div>
-      </div>
-      <el-table class="data-table" :data="priceHistory" stripe border max-height="400" @selection-change="handleHistorySelectionChange">
-        <el-table-column type="selection" width="55" />
-        <el-table-column type="index" label="序号" width="60" />
-        <el-table-column prop="recorded_at" label="记录时间" width="170">
-          <template #default="{ row }">
-            {{ formatDateTime(row.recorded_at) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="retail_price" label="零售价" width="100" align="right">
-          <template #default="{ row, $index }">
-            <span v-if="hasPriceValue(row.retail_price)" :class="getPriceChangeClass('retail', $index)">
-              ¥{{ row.retail_price }}
-            </span>
-            <span v-else class="text-gray">-</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="wholesale_price" label="批发价" width="100" align="right">
-          <template #default="{ row, $index }">
-            <span v-if="hasPriceValue(row.wholesale_price)" :class="getPriceChangeClass('wholesale', $index)">
-              ¥{{ row.wholesale_price }}
-            </span>
-            <span v-else class="text-gray">-</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="change_type" label="价格变动" min-width="160" align="center">
-          <template #default="{ row, $index }">
-            <div class="history-change-cell">
-              <template v-if="getHistoryChangeItems(row, $index).length > 0">
-                <span
-                  v-for="item in getHistoryChangeItems(row, $index)"
-                  :key="item.text"
-                  class="history-change-item"
-                  :class="item.className"
-                >
-                  <span class="history-change-value">{{ item.text }}</span>
-                </span>
-              </template>
-              <span v-else class="text-gray">-</span>
+      </MobileDialog>
+
+      <!-- 库存详情对话框 -->
+      <MobileDialog
+        v-model="showInventoryDialog"
+        :title="`${currentInventoryItem?.brand_name || ''} ${currentInventoryItem?.model_number || ''} ${currentInventoryItem?.color_name || ''} ${currentInventoryItem?.memory || ''} - 在库详情`"
+        width="950px"
+        dialog-class="price-list-inventory-dialog"
+        :show-default-footer="false"
+      >
+        <div class="inventory-dialog-content">
+          <SectionLoading
+            v-if="inventoryLoading"
+            text="加载中..."
+          />
+
+          <template v-else>
+            <div class="inventory-header">
+              <span class="record-count">共 {{ inventoryTotal }} 条记录</span>
+            </div>
+            <el-table
+              :data="inventoryData"
+              stripe
+              border
+              max-height="500"
+              class="data-table inventory-table"
+            >
+              <el-table-column
+                label="优先"
+                width="60"
+                align="center"
+              >
+                <template #default="{ $index }">
+                  <span
+                    v-if="$index === 0"
+                    class="priority-badge"
+                  >
+                    <i class="fas fa-star" />
+                  </span>
+                  <span
+                    v-else
+                    class="priority-rank"
+                  >{{ $index + 1 }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                prop="store_name"
+                label="店铺"
+                width="100"
+              />
+              <el-table-column
+                prop="model"
+                label="型号"
+                min-width="120"
+              />
+              <el-table-column
+                prop="color"
+                label="颜色"
+                width="80"
+              />
+              <el-table-column
+                prop="memory"
+                label="内存"
+                width="80"
+              />
+              <el-table-column
+                prop="serial_number"
+                label="序列号"
+                width="120"
+              />
+              <el-table-column
+                prop="imei"
+                label="IMEI"
+                width="150"
+              />
+              <el-table-column
+                prop="inventory_time"
+                label="入库时间"
+                width="110"
+              >
+                <template #default="{ row }">
+                  {{ formatInventoryDate(row.inventory_time) }}
+                </template>
+              </el-table-column>
+              <el-table-column
+                label="在库天数"
+                width="90"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <span :class="['days-badge', getInventoryDaysClass(row.inventory_days)]">
+                    {{ row.inventory_days }}天
+                  </span>
+                </template>
+              </el-table-column>
+            </el-table>
+            <div
+              v-if="inventoryData.length === 0"
+              class="empty-inventory"
+            >
+              <DataEmptyState description="暂无库存数据" />
             </div>
           </template>
-        </el-table-column>
-        <el-table-column prop="change_reason" label="更新方式" min-width="100" align="center">
-          <template #default="{ row }">
-            <el-tag :type="getChangeReasonTagType(row.change_reason)" size="small" effect="plain">
-              {{ getChangeReasonLabel(row.change_reason) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-              <el-table-column v-if="canDelete" label="操作" :width="$getActionColumnWidth(1)" align="center" class-name="actions-column">
-          <template #default="{ row }">
-            <div class="action-buttons">
-              <el-button v-if="canDelete" type="danger" size="small" @click.stop="handleDeleteHistoryItem(row)">
-                <i class="fas fa-trash-alt"></i>
-                删除
-              </el-button>
-            </div>
-          </template>
-        </el-table-column>
-      </el-table>
-      <div v-if="priceHistory.length === 0" class="empty-history">
-        <el-empty description="暂无历史记录" />
-      </div>
-      <div v-if="selectedHistoryItems.length > 0" class="history-batch-actions">
-        <span class="selected-count">已选择 {{ selectedHistoryItems.length }} 条记录</span>
-        <el-button v-if="canDelete" type="danger" size="small" @click="handleBatchDeleteHistory">
-          <i class="fas fa-trash-alt"></i>
-          批量删除
-        </el-button>
-      </div>
-    </MobileDialog>
+        </div>
+      </MobileDialog>
 
-    <!-- 库存详情对话框 -->
-    <MobileDialog
-      v-model="showInventoryDialog"
-      :title="`${currentInventoryItem?.brand_name || ''} ${currentInventoryItem?.model_number || ''} ${currentInventoryItem?.color_name || ''} ${currentInventoryItem?.memory || ''} - 在库详情`"
-      width="950px"
-      dialog-class="price-list-inventory-dialog"
-      :show-default-footer="false"
-    >
-      <div class="inventory-dialog-content">
-        <SectionLoading v-if="inventoryLoading" text="加载中..." />
-
-        <template v-else>
-          <div class="inventory-header">
-            <span class="record-count">共 {{ inventoryTotal }} 条记录</span>
-          </div>
-          <el-table :data="inventoryData" stripe border max-height="500" class="data-table inventory-table">
-            <el-table-column label="优先" width="60" align="center">
-              <template #default="{ row, $index }">
-                <span v-if="$index === 0" class="priority-badge">
-                  <i class="fas fa-star"></i>
-                </span>
-                <span v-else class="priority-rank">{{ $index + 1 }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column prop="store_name" label="店铺" width="100" />
-            <el-table-column prop="model" label="型号" min-width="120" />
-            <el-table-column prop="color" label="颜色" width="80" />
-            <el-table-column prop="memory" label="内存" width="80" />
-            <el-table-column prop="serial_number" label="序列号" width="120" />
-            <el-table-column prop="imei" label="IMEI" width="150" />
-            <el-table-column prop="Inventorytime" label="入库时间" width="110">
-              <template #default="{ row }">
-                {{ formatInventoryDate(row.Inventorytime) }}
-              </template>
-            </el-table-column>
-            <el-table-column label="在库天数" width="90" align="center">
-              <template #default="{ row }">
-                <span :class="['days-badge', getInventoryDaysClass(row.inventory_days)]">
-                  {{ row.inventory_days }}天
-                </span>
-              </template>
-            </el-table-column>
-          </el-table>
-          <div v-if="inventoryData.length === 0" class="empty-inventory">
-            <el-empty description="暂无库存数据" />
-          </div>
-        </template>
-      </div>
-    </MobileDialog>
-
-    <!-- 价格加价配置对话框 -->
-    <PriceMarkupConfig
-      v-if="showMarkupConfigDialog"
-      v-model="showMarkupConfigDialog"
-      :config="markupConfig"
-      @save="handleMarkupConfigSave"
-    />
+      <!-- 价格加价配置对话框 -->
+      <PriceMarkupConfig
+        v-if="showMarkupConfigDialog"
+        v-model="showMarkupConfigDialog"
+        :config="markupConfig"
+        @save="handleMarkupConfigSave"
+      />
     </PermissionGate>
   </div>
 </template>
@@ -912,16 +1407,15 @@ import {
   getPriceList,
   upsertPriceItem,
   deletePriceItem,
-  getSyncConfig,
   getSyncConfigById,
   getAllSyncConfigs,
   createSyncConfig,
   setDefaultSyncConfig,
   deleteSyncConfig,
-  updateSyncConfig,
   updateSyncConfigById,
   triggerSync,
   getPriceHistory,
+  getPriceHistoryTrends,
   deletePriceHistory,
   batchDeletePriceHistory,
   clearPriceHistory,
@@ -933,6 +1427,7 @@ import api from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import { useImportExport } from '@/composables/useImportExport'
 import { usePagePermissions } from '@/composables/usePagePermissions'
+import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { PageHeader, PermissionGate } from '@/components/base'
 import Pagination from '@/components/Pagination.vue'
 import SectionLoading from '@/components/SectionLoading.vue'
@@ -949,6 +1444,22 @@ const PriceMarkupConfig = defineAsyncComponent(() => import('@/components/PriceM
 
 // 权限检查
 const { canView, canCreate, canEdit, canDelete, canExport, canImport, canSync, handleNoPermission } = usePagePermissions('price-list')
+const priceListOperationFieldVisible = () => fieldPermissions.isFieldVisible(
+  'price_list_pricelistview',
+  'system_info.operations'
+)
+const showPriceListActionColumn = computed(() => shouldShowActionColumn(
+  priceListOperationFieldVisible(),
+  [canEdit.value, canDelete.value]
+))
+const showPriceListWriteActionColumn = computed(() => shouldShowActionColumn(
+  priceListOperationFieldVisible(),
+  [canEdit.value, canDelete.value]
+))
+const showPriceListDeleteActionColumn = computed(() => shouldShowActionColumn(
+  priceListOperationFieldVisible(),
+  [canDelete.value]
+))
 
 // 数据状态
 const router = useRouter()
@@ -1105,6 +1616,12 @@ const selectedHistoryItems = ref<any[]>([])
 const showInventoryDialog = ref(false)
 const inventoryLoading = ref(false)
 const inventoryData = ref<any[]>([])
+
+// 价目表库存详情只向页面内部暴露规范入库时间。
+const normalizePriceListInventory = (item: any) => ({
+  ...item,
+  inventory_time: item.inventory_time ?? null
+})
 const inventoryTotal = ref(0)
 const currentInventoryItem = ref<any>(null)
 const isMobile = ref(false)
@@ -1248,8 +1765,8 @@ const fetchPriceList = async () => {
         color_name: item.color_name || '',
         memory: item.memory || '',
         // 修复：0 也应该被保留，不应该被转换为 null
-        wholesale_price: item.wholesale_price != null ? Number(item.wholesale_price) : null,
-        retail_price: item.retail_price != null && item.retail_price !== undefined ? Number(item.retail_price) : null,
+        wholesale_price: item.wholesale_price !== null && item.wholesale_price !== undefined ? Number(item.wholesale_price) : null,
+        retail_price: item.retail_price !== null && item.retail_price !== undefined ? Number(item.retail_price) : null,
         stock_quantity: Number(item.stock_quantity) || 0,
         last_sync_time: item.last_sync_time || null,
         is_collect: item.is_collect !== undefined ? Number(item.is_collect) : 1,
@@ -1480,7 +1997,7 @@ const handleBrandChangeInEdit = async (brandId: number) => {
 }
 
 // 编辑对话框中的型号变化
-const handleModelChangeInEdit = async (modelId: number) => {
+const handleModelChangeInEdit = async (_modelId: number) => {
   // 清空当前选择
   editForm.color_id = null
   editForm.memory_id = null
@@ -2204,8 +2721,8 @@ const handleViewInventory = async (row: any) => {
       // 计算在库天数并按在库天数排序
       inventoryData.value = (res.data.list as any[])
         .map(item => ({
-          ...item,
-          inventory_days: calculateInventoryDays(item.Inventorytime)
+          ...normalizePriceListInventory(item),
+          inventory_days: calculateInventoryDays(item.inventory_time)
         }))
         .sort((a, b) => b.inventory_days - a.inventory_days) // 按在库天数降序排序
       inventoryTotal.value = Number(res.pagination?.total) || inventoryData.value.length
@@ -2213,8 +2730,8 @@ const handleViewInventory = async (row: any) => {
       // 处理直接返回数组的情况
       inventoryData.value = (res.data as any[])
         .map(item => ({
-          ...item,
-          inventory_days: calculateInventoryDays(item.Inventorytime)
+          ...normalizePriceListInventory(item),
+          inventory_days: calculateInventoryDays(item.inventory_time)
         }))
         .sort((a, b) => b.inventory_days - a.inventory_days)
       inventoryTotal.value = Number(res.pagination?.total) || inventoryData.value.length
@@ -2239,84 +2756,36 @@ const calculateInventoryDays = (inventoryTime: string) => {
 // 加载价格趋势数据
 const loadPriceTrends = async (list: any[], seq: number) => {
   if (seq !== trendLoadSeq) return
-  // 过滤出有 price_list_id 的项目
   const itemsWithId = list.filter(item => item.price_list_id)
 
   if (itemsWithId.length === 0) {
     return
   }
 
-  const runWithConcurrency = async (items: any[], limit: number, worker: (item: any) => Promise<void>) => {
-    const executing = new Set<Promise<void>>()
-    for (const item of items) {
-      const p = (async () => {
-        await worker(item)
-      })()
-      executing.add(p)
-      const clean = () => executing.delete(p)
-      p.then(clean).catch(clean)
-      if (executing.size >= limit) {
-        await Promise.race(executing)
-      }
-    }
-    await Promise.allSettled(executing)
-  }
+  try {
+    const res = await getPriceHistoryTrends(
+      itemsWithId.map(item => item.price_list_id),
+      { useCache: false }
+    )
+    if (seq !== trendLoadSeq) return
 
-  const applyTrendFromHistory = (item: any, history: any[]) => {
-    if (history.length >= 2) {
-      const current = history[0]
-      const previous = history[1]
+    const trendByPriceListId = new Map(
+      (res.success && Array.isArray(res.data) ? res.data : [])
+        .map((item: any) => [Number(item.price_list_id), item])
+    )
 
-      const currentWholesale = Number(current.wholesale_price) || 0
-      const previousWholesale = Number(previous.wholesale_price) || 0
-
-      // 只有当两个价格都存在且不为null时才比较
-      const hasCurrentPrice = current.wholesale_price !== null && current.wholesale_price !== undefined && current.wholesale_price !== ''
-      const hasPreviousPrice = previous.wholesale_price !== null && previous.wholesale_price !== undefined && previous.wholesale_price !== ''
-
-      if (hasCurrentPrice && hasPreviousPrice) {
-        if (currentWholesale > previousWholesale) {
-          item.price_trend = 'up'
-          item.price_change_amount = (currentWholesale - previousWholesale).toFixed(2)
-        } else if (currentWholesale < previousWholesale) {
-          item.price_trend = 'down'
-          item.price_change_amount = (previousWholesale - currentWholesale).toFixed(2)
-        } else {
-          item.price_trend = 'neutral'
-          item.price_change_amount = '='
-        }
-      } else {
-        // 只有一个价格有值，无法比较
-        item.price_trend = 'neutral'
-        item.price_change_amount = '='
-      }
-    } else {
+    itemsWithId.forEach(item => {
+      const trend = trendByPriceListId.get(Number(item.price_list_id))
+      item.price_trend = trend?.price_trend || 'neutral'
+      item.price_change_amount = trend?.price_change_amount || '='
+    })
+  } catch (error) {
+    logger.error('批量获取价格趋势失败:', error)
+    itemsWithId.forEach(item => {
       item.price_trend = 'neutral'
       item.price_change_amount = '='
-    }
+    })
   }
-
-  const loadOne = async (item: any) => {
-    if (seq !== trendLoadSeq) return
-    try {
-      const res = await getPriceHistory(item.price_list_id, { limit: 2 }, { useCache: false })
-      if (seq !== trendLoadSeq) return
-      if (res.success && res.data && Array.isArray(res.data)) {
-        priceHistoryMap.value.set(item.price_list_id, res.data)
-        applyTrendFromHistory(item, res.data)
-      } else {
-        item.price_trend = 'neutral'
-        item.price_change_amount = '='
-      }
-    } catch (error) {
-      logger.error('获取价格历史失败:', { priceListId: item.price_list_id, error })
-      item.price_trend = 'neutral'
-      item.price_change_percent = 0
-    }
-  }
-
-  // 并发+限流，避免大量串行请求导致页面变慢
-  await runWithConcurrency(itemsWithId, 6, loadOne)
 
   // 强制触发响应式更新
   priceList.value = [...priceList.value]
@@ -2408,7 +2877,7 @@ const getHistoryChangeItems = (row: any, index: number) => {
 }
 
 // 获取价格变动标签
-const getChangeTypeLabel = (type: string) => {
+const _getChangeTypeLabel = (type: string) => {
   const labels: Record<string, string> = {
     create: '新建',
     new_price: '首次定价',
@@ -2420,7 +2889,7 @@ const getChangeTypeLabel = (type: string) => {
   return labels[type] || type || '-'
 }
 
-const getChangeTypeTagType = (type: string) => {
+const _getChangeTypeTagType = (type: string) => {
   const tagTypes: Record<string, string> = {
     create: 'success',
     new_price: 'success',
@@ -2513,10 +2982,10 @@ const loadFilterOptions = async () => {
   try {
     // 并行加载所有选项数据
     const [brandsRes, modelsRes, colorsRes, memoriesRes] = await Promise.all([
-      api.get('/brands?status=1&limit=10000'),
-      api.get('/models?limit=10000'),
-      api.get('/colors?limit=10000'),
-      api.get('/memories?limit=10000')
+      api.get('/brands?status=1&page_size=10000'),
+      api.get('/models?page_size=10000'),
+      api.get('/colors?page_size=10000'),
+      api.get('/memories?page_size=10000')
     ])
 
     // 处理品牌数据
@@ -2542,16 +3011,17 @@ const loadFilterOptions = async () => {
     if (memoriesRes.success) {
       options.memories = extractResponseData<any[]>(memoriesRes)
         .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
-        .map((memory: any) => memory.size || memory.name)
+        .map((memory: any) => memory.size)
         .filter(Boolean)
     }
 
   } catch (error) {
     logger.error('加载筛选选项失败:', error)
-    // 设置默认值
-    options.brands = ['苹果', '华为', '小米', 'OPPO', 'vivo', '三星']
-    options.colors = ['黑色', '白色', '红色', '蓝色', '金色', '银色', '绿色', '紫色']
-    options.memories = ['64GB', '128GB', '256GB', '512GB', '1TB']
+    options.brands = []
+    options.models = []
+    options.allModels = []
+    options.colors = []
+    options.memories = []
   } finally {
     loadingOptions.value = false
   }
@@ -2628,7 +3098,7 @@ onUnmounted(() => {
 .sync-settings-container {
   .edit-section {
     padding: 16px;
-    background: #f8f9fa;
+    background: var(--tf-color-surface-muted);
     border-radius: 8px;
     margin-bottom: 16px;
 
@@ -2642,12 +3112,12 @@ onUnmounted(() => {
         margin: 0;
         font-size: 16px;
         font-weight: 600;
-        color: #303133;
+        color: var(--color-text-primary);
       }
     }
 
     .config-form {
-      background: #fff;
+      background: var(--color-bg-white);
       padding: 16px;
       border-radius: 6px;
     }
@@ -2672,7 +3142,7 @@ onUnmounted(() => {
         margin: 0;
         font-size: 14px;
         font-weight: 600;
-        color: #606266;
+        color: var(--color-text-regular);
       }
     }
 
@@ -2697,7 +3167,7 @@ onUnmounted(() => {
 }
 
 .text-gray {
-  color: #909399;
+  color: var(--color-info);
 }
 
 .ml-2 {
@@ -2705,14 +3175,14 @@ onUnmounted(() => {
 }
 
 .text-gray-500 {
-  color: #909399;
+  color: var(--color-info);
 }
 
 // 价格历史对话框样式
 .history-header {
   margin-bottom: 16px;
   padding: 12px 16px;
-  background: #f5f7fa;
+  background: var(--tf-color-surface);
   border-radius: 8px;
   display: flex;
   justify-content: space-between;
@@ -2726,26 +3196,26 @@ onUnmounted(() => {
 
     .label {
       font-weight: 600;
-      color: #303133;
+      color: var(--color-text-primary);
     }
 
     .value {
       font-weight: 500;
-      color: #409eff;
+      color: var(--color-primary);
     }
 
     .color {
       padding: 2px 8px;
-      background: #ecf5ff;
-      color: #409eff;
+      background: var(--tf-color-primary-surface-element);
+      color: var(--color-primary);
       border-radius: 4px;
       font-size: 12px;
     }
 
     .memory {
       padding: 2px 8px;
-      background: #f0f9ff;
-      color: #67c23a;
+      background: var(--tf-color-blue-50);
+      color: var(--color-success);
       border-radius: 4px;
       font-size: 12px;
     }
@@ -2760,8 +3230,8 @@ onUnmounted(() => {
 .history-batch-actions {
   margin-top: 12px;
   padding: 10px 16px;
-  background: #fff4f4;
-  border: 1px solid #ffcccc;
+  background: var(--tf-color-red-surface);
+  border: 1px solid var(--tf-color-red-pastel);
   border-radius: 6px;
   display: flex;
   justify-content: space-between;
@@ -2769,7 +3239,7 @@ onUnmounted(() => {
 
   .selected-count {
     font-size: 14px;
-    color: #f56c6c;
+    color: var(--color-danger);
     font-weight: 500;
   }
 }
@@ -2782,8 +3252,8 @@ onUnmounted(() => {
 .wholesale-price-tag {
   display: inline-block;
   padding: 2px 8px;
-  background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);
-  color: #ffffff;
+  background: linear-gradient(135deg, var(--tf-color-violet-500) 0%, var(--tf-color-violet-500) 100%);
+  color: var(--color-bg-white);
   border-radius: 4px;
   font-size: 13px;
   font-weight: 600;
@@ -2793,8 +3263,8 @@ onUnmounted(() => {
 .retail-price-tag {
   display: inline-block;
   padding: 2px 8px;
-  background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
-  color: #ffffff;
+  background: linear-gradient(135deg, var(--tf-color-blue-500) 0%, var(--tf-color-blue-400) 100%);
+  color: var(--color-bg-white);
   border-radius: 4px;
   font-size: 13px;
   font-weight: 600;
@@ -2802,7 +3272,7 @@ onUnmounted(() => {
 
 // 价格变化样式
 .price-up {
-  color: #f56c6c;
+  color: var(--color-danger);
   font-weight: 600;
   &::after {
     content: ' ↑';
@@ -2810,7 +3280,7 @@ onUnmounted(() => {
 }
 
 .price-down {
-  color: #67c23a;
+  color: var(--color-success);
   font-weight: 600;
   &::after {
     content: ' ↓';
@@ -2836,12 +3306,12 @@ onUnmounted(() => {
 }
 
 .history-change-item.is-up {
-  color: #f56c6c;
+  color: var(--color-danger);
   background: rgba(245, 108, 108, 0.12);
 }
 
 .history-change-item.is-down {
-  color: #67c23a;
+  color: var(--color-success);
   background: rgba(103, 194, 58, 0.12);
 }
 
@@ -2870,7 +3340,7 @@ onUnmounted(() => {
 }
 
 .price-trend-up {
-  color: #f56c6c;
+  color: var(--color-danger);
   background: rgba(245, 108, 108, 0.1);
 
   i {
@@ -2879,7 +3349,7 @@ onUnmounted(() => {
 }
 
 .price-trend-down {
-  color: #67c23a;
+  color: var(--color-success);
   background: rgba(103, 194, 58, 0.1);
 
   i {
@@ -2888,7 +3358,7 @@ onUnmounted(() => {
 }
 
 .price-trend-neutral {
-  color: #909399;
+  color: var(--color-info);
   background: rgba(144, 147, 153, 0.1);
 
   i {
@@ -2901,13 +3371,13 @@ onUnmounted(() => {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   width: 100%;
   padding: 8px;
-  background: #f8fafc;
+  background: var(--tf-color-slate-50);
 
 }
 
 :deep(.price-list-data-table .el-table__expanded-cell) {
   padding: 0 !important;
-  background: #f8fafc !important;
+  background: var(--tf-color-slate-50) !important;
 }
 
 :deep(.price-list-data-table th.mobile-expand-header),
@@ -2944,10 +3414,10 @@ onUnmounted(() => {
     align-items: center;
     margin-bottom: 16px;
     padding-bottom: 12px;
-    border-bottom: 1px solid #ebeef5;
+    border-bottom: 1px solid var(--color-border-light);
 
     .record-count {
-      color: #606266;
+      color: var(--color-text-regular);
       font-size: 14px;
     }
   }
@@ -2955,7 +3425,7 @@ onUnmounted(() => {
   .inventory-table {
     :deep(.el-table__row) {
       &:nth-child(1) {
-        background: #fff7e6 !important;
+        background: var(--tf-color-orange-ant-surface) !important;
 
         .priority-badge {
           display: inline-flex;
@@ -2964,7 +3434,7 @@ onUnmounted(() => {
           gap: 3px;
           width: 24px;
           height: 24px;
-          background: linear-gradient(135deg, #ffa500 0%, #ff6b6b 100%);
+          background: linear-gradient(135deg, var(--tf-color-orange) 0%, var(--tf-color-coral) 100%);
           color: white;
           border-radius: 50%;
           font-size: 11px;
@@ -2983,11 +3453,11 @@ onUnmounted(() => {
       height: 24px;
       line-height: 24px;
       text-align: center;
-      background: #f5f5f5;
+      background: var(--tf-color-surface-soft);
       border-radius: 50%;
       font-size: 12px;
       font-weight: 500;
-      color: #999;
+      color: var(--text-muted);
     }
   }
 
@@ -2999,23 +3469,23 @@ onUnmounted(() => {
     font-size: 13px;
 
     &.days-normal {
-      background: #e8f5e9;
-      color: #2e7d32;
+      background: var(--tf-color-surface-green);
+      color: var(--tf-color-green-material-800);
     }
 
     &.days-caution {
-      background: #fff3e0;
-      color: #e65100;
+      background: var(--tf-color-orange-material-50);
+      color: var(--tf-color-orange-material-900);
     }
 
     &.days-warning {
-      background: #fff8e1;
-      color: #f57f17;
+      background: var(--tf-color-amber-material-50);
+      color: var(--tf-color-amber-material-900);
     }
 
     &.days-critical {
-      background: #ffebee;
-      color: #c62828;
+      background: var(--tf-color-red-50);
+      color: var(--tf-color-red-material-800);
     }
   }
 

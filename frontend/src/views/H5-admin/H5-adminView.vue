@@ -11,93 +11,100 @@
       module-name="H5商城管理"
       permission-code="h5-admin:view"
     >
-    <!-- 顶部导航栏 -->
-    <PageHeader
-      icon="fas fa-mobile-alt"
-      title="H5商城管理"
-    >
-      <template #actions>
-        <!-- 动态操作按钮 -->
-        <template v-for="(action, index) in headerActions" :key="index">
-          <el-button
-            :type="action.type || 'default'"
-            :icon="action.icon"
-            :loading="getButtonLoading(action)"
-            :disabled="getButtonDisabled(action)"
-            @click="action.handler"
+      <!-- 顶部导航栏 -->
+      <PageHeader
+        icon="fas fa-mobile-alt"
+        title="H5商城管理"
+      >
+        <template #actions>
+          <!-- 动态操作按钮 -->
+          <template
+            v-for="(action, index) in headerActions"
+            :key="index"
           >
-            {{ action.label }}
-          </el-button>
+            <el-button
+              :type="action.type || 'default'"
+              :icon="action.icon"
+              :loading="getButtonLoading(action)"
+              :disabled="getButtonDisabled(action)"
+              @click="action.handler"
+            >
+              {{ action.label }}
+            </el-button>
+          </template>
         </template>
-      </template>
-    </PageHeader>
+      </PageHeader>
 
-    <!-- 标签页导航 -->
-    <div class="tab-navigation tf-page-tabs">
-      <el-button
-        v-if="canAccessTab('/H5-admin/page/templates')"
-        data-view-permission="h5-templates:view"
-        :type="isActiveTab('/H5-admin/page/templates') ? 'primary' : 'default'"
-        @click="navigateTo('/H5-admin/page/templates')"
-        :icon="Box"
-      >
-        模板
-      </el-button>
-      <el-button
-        v-if="canAccessTab('/H5-admin/page/sold-products')"
-        data-view-permission="h5-sold-products:view"
-        :type="isActiveTab('/H5-admin/page/sold-products') ? 'primary' : 'default'"
-        @click="navigateTo('/H5-admin/page/sold-products')"
-        :icon="CircleCheck"
-      >
-        已售
-      </el-button>
-      <el-button
-        v-if="canAccessTab('/H5-admin/page/config')"
-        data-view-permission="h5-config:view"
-        :type="isActiveTab('/H5-admin/page/config') ? 'primary' : 'default'"
-        @click="navigateTo('/H5-admin/page/config')"
-        :icon="Setting"
-      >
-        配置
-      </el-button>
-      <el-button
-        v-if="canAccessTab('/H5-admin/page/banners')"
-        data-view-permission="h5-banners:view"
-        :type="isActiveTab('/H5-admin/page/banners') ? 'primary' : 'default'"
-        @click="navigateTo('/H5-admin/page/banners')"
-        :icon="Picture"
-      >
-        轮播图
-      </el-button>
-      <el-button
-        v-if="canAccessTab('/H5-admin/page/home-sections')"
-        data-view-permission="home-sections:view"
-        :type="isActiveTab('/H5-admin/page/home-sections') ? 'primary' : 'default'"
-        @click="navigateTo('/H5-admin/page/home-sections')"
-        :icon="HomeFilled"
-      >
-        首页推荐
-      </el-button>
-      <el-button
-        v-if="canAccessTab('/H5-admin/page/orders')"
-        data-view-permission="h5-orders:view"
-        :type="isActiveTab('/H5-admin/page/orders') ? 'primary' : 'default'"
-        @click="navigateTo('/H5-admin/page/orders')"
-        :icon="List"
-      >
-        订单
-      </el-button>
-    </div>
+      <!-- 标签页导航 -->
+      <div class="tab-navigation tf-page-tabs">
+        <el-button
+          v-if="canAccessTab('/H5-admin/page/templates')"
+          data-view-permission="h5-templates:view"
+          :type="isActiveTab('/H5-admin/page/templates') ? 'primary' : 'default'"
+          :icon="Box"
+          @click="navigateTo('/H5-admin/page/templates')"
+        >
+          模板
+        </el-button>
+        <el-button
+          v-if="canAccessTab('/H5-admin/page/sold-products')"
+          data-view-permission="h5-sold-products:view"
+          :type="isActiveTab('/H5-admin/page/sold-products') ? 'primary' : 'default'"
+          :icon="CircleCheck"
+          @click="navigateTo('/H5-admin/page/sold-products')"
+        >
+          已售
+        </el-button>
+        <el-button
+          v-if="canAccessTab('/H5-admin/page/config')"
+          data-view-permission="h5-config:view"
+          :type="isActiveTab('/H5-admin/page/config') ? 'primary' : 'default'"
+          :icon="Setting"
+          @click="navigateTo('/H5-admin/page/config')"
+        >
+          配置
+        </el-button>
+        <el-button
+          v-if="canAccessTab('/H5-admin/page/banners')"
+          data-view-permission="h5-banners:view"
+          :type="isActiveTab('/H5-admin/page/banners') ? 'primary' : 'default'"
+          :icon="Picture"
+          @click="navigateTo('/H5-admin/page/banners')"
+        >
+          轮播图
+        </el-button>
+        <el-button
+          v-if="canAccessTab('/H5-admin/page/home-sections')"
+          data-view-permission="home-sections:view"
+          :type="isActiveTab('/H5-admin/page/home-sections') ? 'primary' : 'default'"
+          :icon="HomeFilled"
+          @click="navigateTo('/H5-admin/page/home-sections')"
+        >
+          首页推荐
+        </el-button>
+        <el-button
+          v-if="canAccessTab('/H5-admin/page/orders')"
+          data-view-permission="h5-orders:view"
+          :type="isActiveTab('/H5-admin/page/orders') ? 'primary' : 'default'"
+          :icon="List"
+          @click="navigateTo('/H5-admin/page/orders')"
+        >
+          订单
+        </el-button>
+      </div>
 
-    <!-- 页面内容 -->
-    <div class="admin-content tf-tab-content">
-      <router-view v-slot="{ Component, route: viewRoute }">
-        <KeepAlive :max="6">
-          <component :is="Component" :key="viewRoute.name || viewRoute.fullPath" class="tf-tab-panel" />
-        </KeepAlive>
-      </router-view>
-    </div>
+      <!-- 页面内容 -->
+      <div class="admin-content tf-tab-content">
+        <router-view v-slot="{ Component, route: viewRoute }">
+          <KeepAlive :max="6">
+            <component
+              :is="Component"
+              :key="viewRoute.name || viewRoute.fullPath"
+              class="tf-tab-panel"
+            />
+          </KeepAlive>
+        </router-view>
+      </div>
     </PermissionGate>
   </div>
 </template>
@@ -110,7 +117,6 @@ import { useAuthStore } from '@/stores/auth'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { PageHeader, PermissionGate } from '@/components/base'
 import { canAccessRoutePath } from '@/constants/routePermissions'
-import { logger } from '@/utils/logger'
 import { ElMessage } from 'element-plus'
 import type { HeaderAction } from '@/types'
 import {
@@ -186,7 +192,7 @@ const titleMap: Record<string, string> = {
   '/H5-admin/page/config': '商城配置',
   '/H5-admin/page/banners': '轮播图管理',
   '/H5-admin/page/home-sections': '首页推荐',
-  '/H5-admin/page/orders': '订单管理',
+  '/H5-admin/page/orders': '订单管理'
 }
 
 const currentDocumentTitle = computed(() => {
@@ -213,7 +219,7 @@ onMounted(() => {
 <style scoped lang="scss">
 .h5-admin-layout {
   min-height: 100vh;
-  background: #f5f7fa;
+  background: var(--tf-color-surface);
   padding: 24px;
 }
 

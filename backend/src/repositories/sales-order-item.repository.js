@@ -1,5 +1,5 @@
-const BaseRepository = require('./base.repository');
-const log = require('../utils/log');
+const BaseRepository = require('./base.repository')
+const log = require('../utils/log')
 
 /**
  * 销售订单项仓库类
@@ -7,7 +7,7 @@ const log = require('../utils/log');
  */
 class SalesOrderItemRepository extends BaseRepository {
   constructor() {
-    super('sales_order_items');
+    super('sales_order_items')
   }
 
   /**
@@ -20,11 +20,11 @@ class SalesOrderItemRepository extends BaseRepository {
       const records = await this.executeQuery(
         `SELECT * FROM ${this.tableName} WHERE order_id = ? ORDER BY id`,
         [orderId]
-      );
-      return records;
+      )
+      return records
     } catch (error) {
-      log.error('根据订单ID查找订单项失败:', error);
-      throw error;
+      log.error('根据订单ID查找订单项失败:', error)
+      throw error
     }
   }
 
@@ -38,11 +38,11 @@ class SalesOrderItemRepository extends BaseRepository {
       const records = await this.executeQuery(
         `SELECT * FROM ${this.tableName} WHERE phone_id = ? ORDER BY id`,
         [phoneId]
-      );
-      return records;
+      )
+      return records
     } catch (error) {
-      log.error('根据手机ID查找订单项失败:', error);
-      throw error;
+      log.error('根据手机ID查找订单项失败:', error)
+      throw error
     }
   }
 
@@ -59,13 +59,13 @@ class SalesOrderItemRepository extends BaseRepository {
         item_status: status,
         updated_at: new Date(),
         ...extraData
-      };
+      }
 
-      const result = await this.update(id, updateData);
-      return result.affectedRows > 0;
+      const result = await this.update(id, updateData)
+      return result.affectedRows > 0
     } catch (error) {
-      log.error('更新订单项状态失败:', error);
-      throw error;
+      log.error('更新订单项状态失败:', error)
+      throw error
     }
   }
 
@@ -82,27 +82,27 @@ class SalesOrderItemRepository extends BaseRepository {
         item_status: status,
         updated_at: new Date(),
         ...extraData
-      };
+      }
 
-      const conditions = ['order_id = ?'];
-      const params = [orderId];
+      const conditions = ['order_id = ?']
+      const params = [orderId]
 
       // 构建SET子句
-      const setClause = Object.keys(updateData).map(key => `${key} = ?`).join(', ');
-      const updateParams = Object.values(updateData);
+      const setClause = Object.keys(updateData).map(key => `${key} = ?`).join(', ')
+      const updateParams = Object.values(updateData)
 
       const query = `
         UPDATE ${this.tableName}
         SET ${setClause}
         WHERE ${conditions.join(' AND ')}
-      `;
+      `
 
-      const allParams = [...updateParams, ...params];
-      const result = await this.executeQuery(query, allParams);
-      return result.affectedRows > 0;
+      const allParams = [...updateParams, ...params]
+      const result = await this.executeQuery(query, allParams)
+      return result.affectedRows > 0
     } catch (error) {
-      log.error('批量更新订单项状态失败:', error);
-      throw error;
+      log.error('批量更新订单项状态失败:', error)
+      throw error
     }
   }
 
@@ -113,11 +113,11 @@ class SalesOrderItemRepository extends BaseRepository {
    */
   async deleteItem(id) {
     try {
-      const result = await this.delete(id);
-      return result.affectedRows > 0;
+      const result = await this.delete(id)
+      return result.affectedRows > 0
     } catch (error) {
-      log.error('删除订单项失败:', error);
-      throw error;
+      log.error('删除订单项失败:', error)
+      throw error
     }
   }
 
@@ -139,15 +139,15 @@ class SalesOrderItemRepository extends BaseRepository {
           COUNT(CASE WHEN item_status = 'returned' THEN 1 END) as returned_items
         FROM ${this.tableName}
         WHERE order_id = ?
-      `;
+      `
 
-      const [statsResult] = await this.executeQuery(statsQuery, [orderId]);
-      return statsResult;
+      const [statsResult] = await this.executeQuery(statsQuery, [orderId])
+      return statsResult
     } catch (error) {
-      log.error('获取订单项统计失败:', error);
-      throw error;
+      log.error('获取订单项统计失败:', error)
+      throw error
     }
   }
 }
 
-module.exports = SalesOrderItemRepository;
+module.exports = SalesOrderItemRepository

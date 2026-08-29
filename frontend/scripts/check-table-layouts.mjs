@@ -3,6 +3,7 @@ import { extname, join, relative, resolve } from 'node:path'
 
 const root = resolve(import.meta.dirname, '..')
 const viewsRoot = join(root, 'src/views')
+const componentsRoot = join(root, 'src/components')
 const adminLayoutSource = readFileSync(join(root, 'src/styles/admin-layout.css'), 'utf8')
 const tableStyleSource = readFileSync(join(root, 'src/styles/components/_table.scss'), 'utf8')
 const mainSource = readFileSync(join(root, 'src/main.ts'), 'utf8')
@@ -119,9 +120,16 @@ if (!/:is\(\.data-table\.el-table, \.devices-table\.el-table, \.admin-data-table
   findings.push('src/styles/components/_table.scss 弹窗操作列必须直接由统一表格 class 命中，不得依赖 .admin-page 祖先')
 }
 
-for (const file of walk(viewsRoot)) {
+for (const file of [...walk(viewsRoot), ...walk(componentsRoot)]) {
   const source = readFileSync(file, 'utf8')
   const relativeFile = relative(root, file)
+  const templateSource = source.split(/<script\b/i, 1)[0]
+
+  if (/<table\b/i.test(templateSource)) {
+    const line = lineNumber(source, source.search(/<table\b/i))
+    findings.push(`${relativeFile}:${line} 页面和公共组件不得使用原生 table，必须接入统一 el-table 或移动端列表结构`)
+  }
+
   const usesCompactFitTable = /<el-table(?=\s|>)[^>]*\bclass=["'][^"']*\bcompact-fit-table\b/i.test(source)
   const isPublicDisplayView = /class=["'][^"']*\bpublic-price-query\b/i.test(source)
 

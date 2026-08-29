@@ -7,719 +7,786 @@
       module-name="菜单管理"
       permission-code="menus:view"
     >
-
-    <!-- 主要内容 - 只有有权限时才显示 -->
-    <div class="content admin-page-content">
-      <PageHeader
-        class="menu-page-header"
-        icon="fas fa-bars"
-        title="菜单管理"
-      >
-        <template #actions>
-          <div class="menu-header-actions">
-          <ImportExportActions
-            :can-import="canImport"
-            :can-export="canExport"
-            :import-loading="importingMenus"
-            :export-loading="exportingMenus"
-            import-label="导入"
-            export-label="导出"
-            import-type="warning"
-            export-type="success"
-            import-plain
-            export-plain
-            @import="triggerMenuImport"
-            @export="handleMenuExport"
-          />
-          <el-button type="primary" @click="showAddModal(0)" v-if="canCreate">
-            <i class="fas fa-plus"></i>
-            <span>新增</span>
-          </el-button>
-          <el-button type="info" plain @click="refreshData" :disabled="refreshing">
-            <InlineLoading v-if="refreshing" text="刷新中..." size="small" variant="inherit" />
-            <template v-else>
-              <i class="fas fa-sync-alt"></i>
-              <span>刷新</span>
-            </template>
-          </el-button>
-        </div>
-        </template>
-      </PageHeader>
-      <input
-        ref="menuImportInputRef"
-        type="file"
-        accept=".xlsx,.xls"
-        style="display: none"
-        @change="handleMenuImportChange"
-      />
-
-    <!-- 统计卡片 -->
-    <div v-if="showStatsCards" class="stats-cards">
-      <div v-if="canViewMenuField('stats_total_menus')" class="stat-card">
-        <div class="stat-icon">
-          <i class="fas fa-sitemap"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ getMenuCount() }}</div>
-          <div class="stat-label">菜单总数</div>
-        </div>
-      </div>
-      <div v-if="canViewMenuField('stats_active_menus')" class="stat-card">
-        <div class="stat-icon active">
-          <i class="fas fa-check-circle"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ getActiveMenuCount() }}</div>
-          <div class="stat-label">启用菜单</div>
-        </div>
-      </div>
-      <div v-if="canViewMenuField('stats_inactive_menus')" class="stat-card">
-        <div class="stat-icon inactive">
-          <i class="fas fa-pause-circle"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ getInactiveMenuCount() }}</div>
-          <div class="stat-label">禁用菜单</div>
-        </div>
-      </div>
-      <div v-if="canViewMenuField('stats_root_menus')" class="stat-card">
-        <div class="stat-icon">
-          <i class="fas fa-layer-group"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ getRootMenuCount() }}</div>
-          <div class="stat-label">根菜单数</div>
-        </div>
-      </div>
-    </div>
-
-    <UnifiedSearchPanel
-      v-model:expanded="menuSearchExpanded"
-      :loading="loading"
-      @search="searchMenus"
-      @reset="resetSearch"
-    >
-      <template #primary>
-        <el-input
-          v-model="searchForm.name"
-          placeholder="搜索菜单名称"
-          clearable
-          @keyup.enter="searchMenus"
-          @click.stop
+      <!-- 主要内容 - 只有有权限时才显示 -->
+      <div class="content admin-page-content">
+        <PageHeader
+          class="menu-page-header"
+          icon="fas fa-bars"
+          title="菜单管理"
         >
-          <template #prefix>
-            <i class="fas fa-search"></i>
-          </template>
-        </el-input>
-      </template>
-
-      <div class="form-group filter-item" data-field="menuType">
-          <el-select
-            v-model="searchForm.menu_type"
-            placeholder="菜单类型"
-            clearable
-            @change="searchMenus"
-          >
-            <el-option label="菜单项" value="menu" />
-            <el-option label="目录" value="directory" />
-          </el-select>
-      </div>
-
-      <div class="form-group filter-item" data-field="status">
-          <el-select
-            v-model="searchForm.status"
-            placeholder="状态"
-            clearable
-            @change="searchMenus"
-          >
-            <el-option label="启用" value="1" />
-            <el-option label="禁用" value="0" />
-          </el-select>
-      </div>
-    </UnifiedSearchPanel>
-
-    <!-- 操作工具栏 -->
-    <div class="toolbar-section admin-panel">
-      <div class="toolbar-left">
-        <div class="btn-group">
-          <el-button type="primary" plain @click="expandAll">
-            <i class="fas fa-expand-alt"></i>
-            展开全部
-          </el-button>
-          <el-button type="primary" plain @click="collapseAll">
-            <i class="fas fa-compress-alt"></i>
-            折叠全部
-          </el-button>
-        </div>
-      </div>
-      <div class="toolbar-right">
-        <!-- PC和手机端菜单宽度设置 -->
-        <div class="menu-widths-setting">
-          <div class="setting-header">
-            <div class="setting-title">
-              <i class="fas fa-sliders-h"></i>
-              <span>菜单宽度设置</span>
+          <template #actions>
+            <div class="menu-header-actions">
+              <ImportExportActions
+                :can-import="canImport"
+                :can-export="canExport"
+                :import-loading="importingMenus"
+                :export-loading="exportingMenus"
+                import-label="导入"
+                export-label="导出"
+                import-type="warning"
+                export-type="success"
+                import-plain
+                export-plain
+                @import="triggerMenuImport"
+                @export="handleMenuExport"
+              />
+              <el-button
+                v-if="canCreate"
+                type="primary"
+                @click="showAddModal(0)"
+              >
+                <i class="fas fa-plus" />
+                <span>新增</span>
+              </el-button>
+              <el-button
+                type="info"
+                plain
+                :disabled="refreshing"
+                @click="refreshData"
+              >
+                <InlineLoading
+                  v-if="refreshing"
+                  text="刷新中..."
+                  size="small"
+                  variant="inherit"
+                />
+                <template v-else>
+                  <i class="fas fa-sync-alt" />
+                  <span>刷新</span>
+                </template>
+              </el-button>
             </div>
-            <el-button type="success" size="small" @click="applyBothMenuWidths" :disabled="isWidthLoading">
-              <InlineLoading v-if="isWidthLoading" text="保存中..." size="small" variant="inherit" />
-              <template v-else>
-                <i class="fas fa-check"></i>
-                保存设置
+          </template>
+        </PageHeader>
+        <input
+          ref="menuImportInputRef"
+          type="file"
+          accept=".xlsx,.xls"
+          style="display: none"
+          @change="handleMenuImportChange"
+        >
+
+        <!-- 统计卡片 -->
+        <div
+          v-if="showStatsCards"
+          class="stats-cards"
+        >
+          <div
+            v-if="canViewMenuField('stats_total_menus')"
+            class="stat-card"
+          >
+            <div class="stat-icon">
+              <i class="fas fa-sitemap" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">
+                {{ getMenuCount() }}
+              </div>
+              <div class="stat-label">
+                菜单总数
+              </div>
+            </div>
+          </div>
+          <div
+            v-if="canViewMenuField('stats_active_menus')"
+            class="stat-card"
+          >
+            <div class="stat-icon active">
+              <i class="fas fa-check-circle" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">
+                {{ getActiveMenuCount() }}
+              </div>
+              <div class="stat-label">
+                启用菜单
+              </div>
+            </div>
+          </div>
+          <div
+            v-if="canViewMenuField('stats_inactive_menus')"
+            class="stat-card"
+          >
+            <div class="stat-icon inactive">
+              <i class="fas fa-pause-circle" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">
+                {{ getInactiveMenuCount() }}
+              </div>
+              <div class="stat-label">
+                禁用菜单
+              </div>
+            </div>
+          </div>
+          <div
+            v-if="canViewMenuField('stats_root_menus')"
+            class="stat-card"
+          >
+            <div class="stat-icon">
+              <i class="fas fa-layer-group" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">
+                {{ getRootMenuCount() }}
+              </div>
+              <div class="stat-label">
+                根菜单数
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <UnifiedSearchPanel
+          v-model:expanded="menuSearchExpanded"
+          :loading="loading"
+          @search="searchMenus"
+          @reset="resetSearch"
+        >
+          <template #primary>
+            <el-input
+              v-model="searchForm.name"
+              placeholder="搜索菜单名称"
+              clearable
+              @keyup.enter="searchMenus"
+              @click.stop
+            >
+              <template #prefix>
+                <i class="fas fa-search" />
               </template>
+            </el-input>
+          </template>
+
+          <div
+            class="form-group filter-item"
+            data-field="menuType"
+          >
+            <el-select
+              v-model="searchForm.menu_type"
+              placeholder="菜单类型"
+              clearable
+              @change="searchMenus"
+            >
+              <el-option
+                label="菜单项"
+                value="menu"
+              />
+              <el-option
+                label="目录"
+                value="directory"
+              />
+            </el-select>
+          </div>
+
+          <div
+            class="form-group filter-item"
+            data-field="status"
+          >
+            <el-select
+              v-model="searchForm.status"
+              placeholder="状态"
+              clearable
+              @change="searchMenus"
+            >
+              <el-option
+                label="启用"
+                value="1"
+              />
+              <el-option
+                label="禁用"
+                value="0"
+              />
+            </el-select>
+          </div>
+        </UnifiedSearchPanel>
+
+        <!-- 操作工具栏 -->
+        <div class="toolbar-section admin-panel">
+          <div class="toolbar-left">
+            <div class="btn-group">
+              <el-button
+                type="primary"
+                plain
+                @click="expandAll"
+              >
+                <i class="fas fa-expand-alt" />
+                展开全部
+              </el-button>
+              <el-button
+                type="primary"
+                plain
+                @click="collapseAll"
+              >
+                <i class="fas fa-compress-alt" />
+                折叠全部
+              </el-button>
+            </div>
+          </div>
+          <div class="toolbar-right">
+            <!-- PC和手机端菜单宽度设置 -->
+            <div class="menu-widths-setting">
+              <div class="setting-header">
+                <div class="setting-title">
+                  <i class="fas fa-sliders-h" />
+                  <span>菜单宽度设置</span>
+                </div>
+                <el-button
+                  type="success"
+                  size="small"
+                  :disabled="isWidthLoading"
+                  @click="applyBothMenuWidths"
+                >
+                  <InlineLoading
+                    v-if="isWidthLoading"
+                    text="保存中..."
+                    size="small"
+                    variant="inherit"
+                  />
+                  <template v-else>
+                    <i class="fas fa-check" />
+                    保存设置
+                  </template>
+                </el-button>
+              </div>
+              <div class="width-controls">
+                <!-- PC端宽度设置 -->
+                <div class="width-control pc-width">
+                  <label class="inline-width-label">
+                    <i class="fas fa-desktop" />
+                    <span>PC端</span>
+                  </label>
+                  <div class="range-input">
+                    <input
+                      v-model.number="pcMenuWidth"
+                      type="number"
+                      min="100"
+                      max="500"
+                      class="form-range"
+                      placeholder="请输入宽度"
+                    >
+                  </div>
+                </div>
+
+                <!-- 手机端宽度设置 -->
+                <div class="width-control mobile-width">
+                  <label class="inline-width-label">
+                    <i class="fas fa-mobile-alt" />
+                    <span>手机端</span>
+                  </label>
+                  <div class="range-input">
+                    <input
+                      v-model.number="mobileMenuWidth"
+                      type="number"
+                      min="100"
+                      max="500"
+                      class="form-range"
+                      placeholder="请输入宽度"
+                    >
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 菜单数据加载状态 -->
+        <TableLoadingRow
+          v-if="loading"
+          mode="block"
+          text="加载中..."
+        />
+
+        <!-- 错误信息 -->
+        <div
+          v-if="errorMessage"
+          class="error-container"
+        >
+          <div class="error-content">
+            <i class="fas fa-exclamation-triangle error-icon" />
+            <p class="error-text">
+              {{ errorMessage }}
+            </p>
+            <el-button
+              type="danger"
+              plain
+              size="small"
+              @click="errorMessage = ''"
+            >
+              <i class="fas fa-times" />
+              关闭
             </el-button>
           </div>
-          <div class="width-controls">
-            <!-- PC端宽度设置 -->
-            <div class="width-control pc-width">
-              <label class="inline-width-label">
-                <i class="fas fa-desktop"></i>
-                <span>PC端</span>
-              </label>
-              <div class="range-input">
-                <input
-                  v-model.number="pcMenuWidth"
-                  type="number"
-                  min="100"
-                  max="500"
-                  class="form-range"
-                  placeholder="请输入宽度"
-                />
-              </div>
-            </div>
-
-            <!-- 手机端宽度设置 -->
-            <div class="width-control mobile-width">
-              <label class="inline-width-label">
-                <i class="fas fa-mobile-alt"></i>
-                <span>手机端</span>
-              </label>
-              <div class="range-input">
-                <input
-                  v-model.number="mobileMenuWidth"
-                  type="number"
-                  min="100"
-                  max="500"
-                  class="form-range"
-                  placeholder="请输入宽度"
-                />
-              </div>
-            </div>
-          </div>
-
         </div>
-      </div>
-    </div>
 
-    <!-- 菜单数据加载状态 -->
-    <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
-
-    <!-- 错误信息 -->
-    <div v-if="errorMessage" class="error-container">
-      <div class="error-content">
-        <i class="fas fa-exclamation-triangle error-icon"></i>
-        <p class="error-text">{{ errorMessage }}</p>
-        <el-button type="danger" plain size="small" @click="errorMessage = ''">
-          <i class="fas fa-times"></i>
-          关闭
-        </el-button>
-      </div>
-    </div>
-
-    <!-- 菜单列表 -->
-    <div v-if="!loading && !errorMessage" class="menu-table-section admin-panel admin-table-panel">
-      <div class="table-responsive">
-        <table class="menu-table">
-          <thead>
-            <tr>
-              <th class="column-name">菜单名称</th>
-              <th class="column-url">路径</th>
-              <th class="column-icon">图标</th>
-              <th class="column-sort">排序</th>
-              <th class="column-status">状态</th>
-              <th class="column-actions">操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <template v-for="menu in menuTree" :key="menu.id">
-              <tr
-                class="menu-row"
-                :class="{ 'parent-row': menu.children && menu.children.length > 0 }"
-                @click="handleMenuRowTap(menu)"
-              >
-                <td class="menu-name-cell">
-                  <div class="menu-info">
-                    <div class="menu-text">
-                      <!-- 展开/折叠按钮 -->
-                      <button
-                        v-if="menu.children && menu.children.length > 0"
-                        class="expand-btn"
-                        @click.stop="toggleMenuExpansion(menu.id)"
-                        :title="isMenuExpanded(menu.id) ? '折叠子菜单' : '展开子菜单'"
-                      >
-                        <i :class="isMenuExpanded(menu.id) ? 'fas fa-chevron-down' : 'fas fa-chevron-right'"></i>
-                      </button>
-                      <span v-else class="expand-placeholder"></span>
-
-                      <span class="menu-title">{{ menu.title || menu.name }}</span>
-                      <span class="menu-type" :class="`type-${menu.menu_type || 'menu'}`">
-                        {{ getMenuTypeLabel(menu.menu_type) }}
-                      </span>
-                    </div>
-                    <div class="menu-remarks" v-if="menu.remarks">{{ menu.remarks }}</div>
-                  </div>
-                </td>
-                <td class="menu-url-cell">
-                  <code class="url-text">{{ menu.path || menu.url }}</code>
-                </td>
-                <td class="menu-icon-cell">
-                  <div class="icon-display">
-                    <IconRenderer :icon="menu.icon" :svg="menu.icon_svg" class-name="menu-icon" />
-                    <span class="icon-text">{{ menu.icon }}</span>
-                  </div>
-                </td>
-                <td class="menu-sort-cell">
-                  <span class="sort-badge">{{ menu.sort_order }}</span>
-                </td>
-                <td class="menu-status-cell">
-                  <span class="status-badge" :class="menu.status ? 'status-active' : 'status-inactive'">
-                    <i :class="menu.status ? 'fas fa-check-circle' : 'fas fa-times-circle'"></i>
-                    {{ menu.status ? '启用' : '禁用' }}
-                  </span>
-                </td>
-                <td class="menu-actions-cell">
-                  <div class="action-buttons">
-                    <el-button
-                      type="primary"
-                      size="small"
-                      @click.stop="showEditModal(menu)"
-                      title="编辑"
-                      v-if="canEdit"
-                    >
-                      <i class="fas fa-edit"></i>
-                      <span>编辑</span>
-                    </el-button>
-                    <el-button
-                      type="success"
-                      size="small"
-                      @click.stop="showAddModal(menu.id)"
-                      title="添加子菜单"
-                      v-if="canCreate"
-                    >
-                      <i class="fas fa-plus"></i>
-                      <span>子菜单</span>
-                    </el-button>
-                    <el-button
-                      type="danger"
-                      size="small"
-                      @click.stop="handleDelete(menu)"
-                      title="删除"
-                      v-if="canDelete"
-                    >
-                      <i class="fas fa-trash"></i>
-                      <span>删除</span>
-                    </el-button>
-                  </div>
-                </td>
-              </tr>
-              <tr v-if="isMobile && activeMobileMenuId === menu.id" class="mobile-action-row">
-                <td colspan="6">
-                  <div class="mobile-row-actions">
-                    <el-button
-                      v-if="canEdit"
-                      type="primary"
-                      size="small"
-                      class="mobile-action-btn mobile-action-btn-edit"
-                      @click.stop="showEditModal(menu)"
-                    >
-                      <i class="fas fa-edit"></i>
-                      <span>编辑</span>
-                    </el-button>
-                    <el-button
-                      v-if="canCreate"
-                      type="success"
-                      size="small"
-                      class="mobile-action-btn mobile-action-btn-status"
-                      @click.stop="showAddModal(menu.id)"
-                    >
-                      <i class="fas fa-plus"></i>
-                      <span>子菜单</span>
-                    </el-button>
-                    <el-button
-                      v-if="canDelete"
-                      type="danger"
-                      size="small"
-                      class="mobile-action-btn mobile-action-btn-delete"
-                      @click.stop="handleDelete(menu)"
-                    >
-                      <i class="fas fa-trash"></i>
-                      <span>删除</span>
-                    </el-button>
-                  </div>
-                </td>
-              </tr>
-              <!-- 递归显示子菜单 -->
-              <template v-for="child in displayChildren(menu.children, menu.id)" :key="child.id">
-                <tr class="menu-row child-row" @click="handleMenuRowTap(child)">
-                  <td class="menu-name-cell">
-                    <div class="menu-info">
-                      <div class="menu-text">
-                        <span class="child-prefix">├─</span>
-                        <span class="menu-title">{{ child.title || child.name }}</span>
-                        <span class="menu-type" :class="`type-${child.menu_type || 'menu'}`">
-                          {{ getMenuTypeLabel(child.menu_type) }}
-                        </span>
-                      </div>
-                      <div class="menu-remarks" v-if="child.remarks">{{ child.remarks }}</div>
-                    </div>
-                  </td>
-                  <td class="menu-url-cell">
-                    <code class="url-text">{{ child.path || child.url }}</code>
-                  </td>
-                  <td class="menu-icon-cell">
-                    <div class="icon-display">
-                      <IconRenderer :icon="child.icon" :svg="child.icon_svg" class-name="menu-icon" />
-                      <span class="icon-text">{{ child.icon }}</span>
-                    </div>
-                  </td>
-                  <td class="menu-sort-cell">
-                    <span class="sort-badge">{{ child.sort_order }}</span>
-                  </td>
-                  <td class="menu-status-cell">
-                    <span class="status-badge" :class="child.status ? 'status-active' : 'status-inactive'">
-                      <i :class="child.status ? 'fas fa-check-circle' : 'fas fa-times-circle'"></i>
-                      {{ child.status ? '启用' : '禁用' }}
-                    </span>
-                  </td>
-                  <td class="menu-actions-cell">
-                    <div class="action-buttons">
-                      <el-button
-                        type="primary"
-                        size="small"
-                        @click.stop="showEditModal(child)"
-                        title="编辑"
-                        v-if="canEdit"
-                      >
-                        <i class="fas fa-edit"></i>
-                        <span>编辑</span>
-                      </el-button>
-                      <el-button
-                        type="success"
-                        size="small"
-                        @click.stop="showAddModal(child.id)"
-                        title="添加子菜单"
-                        v-if="canCreate"
-                      >
-                        <i class="fas fa-plus"></i>
-                        <span>子菜单</span>
-                      </el-button>
-                      <el-button
-                        type="danger"
-                        size="small"
-                        @click.stop="handleDelete(child)"
-                        title="删除"
-                        v-if="canDelete"
-                      >
-                        <i class="fas fa-trash"></i>
-                        <span>删除</span>
-                      </el-button>
-                    </div>
-                  </td>
-                </tr>
-                <tr v-if="isMobile && activeMobileMenuId === child.id" class="mobile-action-row">
-                  <td colspan="6">
-                    <div class="mobile-row-actions">
-                      <el-button
-                        v-if="canEdit"
-                        type="primary"
-                        size="small"
-                        class="mobile-action-btn mobile-action-btn-edit"
-                        @click.stop="showEditModal(child)"
-                      >
-                        <i class="fas fa-edit"></i>
-                        <span>编辑</span>
-                      </el-button>
-                      <el-button
-                        v-if="canCreate"
-                        type="success"
-                        size="small"
-                        class="mobile-action-btn mobile-action-btn-status"
-                        @click.stop="showAddModal(child.id)"
-                      >
-                        <i class="fas fa-plus"></i>
-                        <span>子菜单</span>
-                      </el-button>
-                      <el-button
-                        v-if="canDelete"
-                        type="danger"
-                        size="small"
-                        class="mobile-action-btn mobile-action-btn-delete"
-                        @click.stop="handleDelete(child)"
-                      >
-                        <i class="fas fa-trash"></i>
-                        <span>删除</span>
-                      </el-button>
-                    </div>
-                  </td>
-                </tr>
-              </template>
-            </template>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- 空状态 -->
-      <div v-if="menuTree.length === 0 && !loading" class="empty-state">
-        <div class="empty-content">
-          <template v-if="errorMessage">
-            <i class="fas fa-shield-alt empty-icon" style="color: #dc3545;"></i>
-            <h3 class="empty-title">权限不足</h3>
-            <p class="empty-description">{{ errorMessage }}</p>
-          </template>
-          <template v-else>
-            <i class="fas fa-sitemap empty-icon"></i>
-            <h3 class="empty-title">暂无菜单数据</h3>
-            <p class="empty-description">系统中还没有菜单配置，点击上方按钮开始添加</p>
-          </template>
-        </div>
-      </div>
-    </div>
-
-    <!-- 菜单编辑模态框 -->
-    <MobileDialog
-      v-model="showModal"
-      :title="isEdit ? '编辑菜单' : '新增菜单'"
-      width="800px"
-      :close-on-click-modal="false"
-      :dialog-class="['menu-management-dialog', 'crud-dialog-lg']"
-      :show-default-footer="false"
-      destroy-on-close
-      @close="handleDialogClose"
-      @cancel="handleDialogClose"
-    >
-      <div class="modal-body menu-editor-body">
-        <el-form
-          :model="formData"
-          label-position="top"
-          class="menu-editor-form"
-          @submit.prevent="handleSubmit"
+        <!-- 菜单列表 -->
+        <div
+          v-if="!loading && !errorMessage"
+          class="menu-table-section admin-panel admin-table-panel"
         >
-          <section class="menu-editor-hero">
-              <div class="menu-editor-preview">
-              <div class="preview-icon">
-                <IconRenderer :icon="formData.icon || 'fas fa-bars'" :svg="formData.icon_svg" fallback="fas fa-bars" />
-              </div>
-              <div class="preview-copy">
-                <span class="preview-eyebrow">{{ isEdit ? '正在编辑' : '创建菜单' }}</span>
-                <strong>{{ formData.name || '未命名菜单' }}</strong>
-                <small>{{ formData.url || '设置一个访问路径' }}</small>
-              </div>
-            </div>
-            <div class="status-switch">
-              <span class="status-switch-label">启用菜单</span>
-              <el-switch
-                v-model="formData.is_active"
-                inline-prompt
-                active-text="启"
-                inactive-text="禁"
-              />
-            </div>
-          </section>
-
-          <div class="menu-editor-grid">
-            <section class="editor-card editor-card--main">
-              <div class="editor-card-head">
-                <span class="editor-card-icon"><i class="fas fa-compass"></i></span>
-                <div>
-                  <h6>基础信息</h6>
-                  <p>定义菜单名称、路径和层级关系。</p>
+          <el-table
+            :data="visibleMenuRows"
+            row-key="id"
+            class="data-table compact-fit-table menu-data-table"
+            stripe
+            border
+            :fit="true"
+            @row-click="handleMenuRowTap"
+          >
+            <template #empty>
+              <DataEmptyState description="暂无菜单数据" />
+            </template>
+            <el-table-column
+              label="菜单名称"
+              min-width="220"
+              class-name="complete-text-column"
+            >
+              <template #default="{ row }">
+                <div
+                  class="menu-info"
+                  :style="{ paddingLeft: `${row.depth * 22}px` }"
+                >
+                  <div class="menu-text">
+                    <button
+                      v-if="row.children?.length"
+                      class="expand-btn"
+                      type="button"
+                      :title="isMenuExpanded(row.id) ? '折叠子菜单' : '展开子菜单'"
+                      @click.stop="toggleMenuExpansion(row.id)"
+                    >
+                      <i :class="isMenuExpanded(row.id) ? 'fas fa-chevron-down' : 'fas fa-chevron-right'" />
+                    </button>
+                    <span
+                      v-else
+                      class="expand-placeholder"
+                    />
+                    <span class="menu-title">{{ row.title || row.name }}</span>
+                    <span
+                      class="menu-type"
+                      :class="`type-${row.menu_type || 'menu'}`"
+                    >{{ getMenuTypeLabel(row.menu_type) }}</span>
+                  </div>
+                  <div
+                    v-if="row.remarks"
+                    class="menu-remarks"
+                  >
+                    {{ row.remarks }}
+                  </div>
                 </div>
-              </div>
+              </template>
+            </el-table-column>
+            <el-table-column
+              label="路径"
+              min-width="180"
+              class-name="complete-text-column"
+            >
+              <template #default="{ row }">
+                <code class="url-text">{{ row.path || row.url || '-' }}</code>
+              </template>
+            </el-table-column>
+            <el-table-column
+              label="图标"
+              min-width="120"
+            >
+              <template #default="{ row }">
+                <div class="icon-display">
+                  <IconRenderer
+                    :icon="row.icon"
+                    :svg="row.icon_svg"
+                    class-name="menu-icon"
+                  /><span class="icon-text">{{ row.icon || '-' }}</span>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column
+              label="排序"
+              min-width="80"
+              align="center"
+            >
+              <template #default="{ row }">
+                <span class="sort-badge">{{ row.sort_order }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column
+              label="状态"
+              min-width="100"
+              align="center"
+            >
+              <template #default="{ row }">
+                <el-tag
+                  :type="row.status ? 'success' : 'info'"
+                  size="small"
+                >
+                  {{ row.status ? '启用' : '禁用' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column
+              v-if="showMenuActionField"
+              label="操作"
+              :width="$getActionColumnWidth(['编辑', '子菜单', '删除'])"
+              align="center"
+              class-name="actions-column"
+            >
+              <template #default="{ row }">
+                <div class="action-buttons table-actions">
+                  <el-button
+                    v-if="canEdit"
+                    type="primary"
+                    size="small"
+                    @click.stop="showEditModal(row)"
+                  >
+                    <i class="fas fa-edit" /><span>编辑</span>
+                  </el-button>
+                  <el-button
+                    v-if="canCreate"
+                    type="success"
+                    size="small"
+                    @click.stop="showAddModal(row.id)"
+                  >
+                    <i class="fas fa-plus" /><span>子菜单</span>
+                  </el-button>
+                  <el-button
+                    v-if="canDelete"
+                    type="danger"
+                    size="small"
+                    @click.stop="handleDelete(row)"
+                  >
+                    <i class="fas fa-trash" /><span>删除</span>
+                  </el-button>
+                </div>
+              </template>
+            </el-table-column>
+          </el-table>
 
-              <el-row :gutter="16" class="menu-form-row">
-                <el-col :xs="24" :sm="12">
-                  <el-form-item label="菜单名称" required>
+          <!-- 空状态 -->
+          <DataEmptyState
+            v-if="menuTree.length === 0 && !loading"
+            :state="errorMessage ? 'permission' : 'empty'"
+            :title="errorMessage ? '权限不足' : '暂无菜单数据'"
+            :description="errorMessage || '系统中还没有菜单配置，点击上方按钮开始添加'"
+          />
+        </div>
+
+        <!-- 菜单编辑模态框 -->
+        <MobileDialog
+          v-model="showModal"
+          :title="isEdit ? '编辑菜单' : '新增菜单'"
+          width="800px"
+          :close-on-click-modal="false"
+          :dialog-class="['menu-management-dialog', 'crud-dialog-lg']"
+          :show-default-footer="false"
+          destroy-on-close
+          @close="handleDialogClose"
+          @cancel="handleDialogClose"
+        >
+          <div class="modal-body menu-editor-body">
+            <el-form
+              :model="formData"
+              label-position="top"
+              class="menu-editor-form"
+              @submit.prevent="handleSubmit"
+            >
+              <section class="menu-editor-hero">
+                <div class="menu-editor-preview">
+                  <div class="preview-icon">
+                    <IconRenderer
+                      :icon="formData.icon || 'fas fa-bars'"
+                      :svg="formData.icon_svg"
+                      fallback="fas fa-bars"
+                    />
+                  </div>
+                  <div class="preview-copy">
+                    <span class="preview-eyebrow">{{ isEdit ? '正在编辑' : '创建菜单' }}</span>
+                    <strong>{{ formData.name || '未命名菜单' }}</strong>
+                    <small>{{ formData.url || '设置一个访问路径' }}</small>
+                  </div>
+                </div>
+                <div class="status-switch">
+                  <span class="status-switch-label">启用菜单</span>
+                  <el-switch
+                    v-model="formData.is_active"
+                    inline-prompt
+                    active-text="启"
+                    inactive-text="禁"
+                  />
+                </div>
+              </section>
+
+              <div class="menu-editor-grid">
+                <section class="editor-card editor-card--main">
+                  <div class="editor-card-head">
+                    <span class="editor-card-icon"><i class="fas fa-compass" /></span>
+                    <div>
+                      <h6>基础信息</h6>
+                      <p>定义菜单名称、路径和层级关系。</p>
+                    </div>
+                  </div>
+
+                  <el-row
+                    :gutter="16"
+                    class="menu-form-row"
+                  >
+                    <el-col
+                      :xs="24"
+                      :sm="12"
+                    >
+                      <el-form-item
+                        label="菜单名称"
+                        required
+                      >
+                        <el-input
+                          v-model="formData.name"
+                          placeholder="例如：销售管理"
+                          clearable
+                          maxlength="50"
+                          show-word-limit
+                        >
+                          <template #prefix>
+                            <i class="fas fa-tag" />
+                          </template>
+                        </el-input>
+                      </el-form-item>
+                    </el-col>
+                    <el-col
+                      :xs="24"
+                      :sm="12"
+                    >
+                      <el-form-item
+                        label="菜单路径"
+                        required
+                      >
+                        <el-input
+                          v-model="formData.url"
+                          placeholder="例如：/sales 或 #"
+                          clearable
+                        >
+                          <template #prefix>
+                            <i class="fas fa-link" />
+                          </template>
+                        </el-input>
+                      </el-form-item>
+                    </el-col>
+                  </el-row>
+
+                  <el-row
+                    :gutter="16"
+                    class="menu-form-row"
+                  >
+                    <el-col
+                      :xs="24"
+                      :sm="12"
+                    >
+                      <el-form-item label="父级菜单">
+                        <el-select
+                          v-model="formData.parent_id"
+                          placeholder="请选择父级菜单"
+                          class="w-full"
+                          filterable
+                        >
+                          <el-option
+                            :value="0"
+                            label="根菜单"
+                          />
+                          <el-option
+                            v-for="menu in parentMenuOptions"
+                            :key="menu.id"
+                            :label="menu.name"
+                            :value="menu.id"
+                          />
+                        </el-select>
+                      </el-form-item>
+                    </el-col>
+                    <el-col
+                      :xs="24"
+                      :sm="12"
+                    >
+                      <el-form-item label="打开方式">
+                        <el-select
+                          v-model="formData.target"
+                          placeholder="请选择打开方式"
+                          class="w-full"
+                        >
+                          <el-option
+                            value="_self"
+                            label="当前窗口"
+                          />
+                          <el-option
+                            value="_blank"
+                            label="新窗口"
+                          />
+                        </el-select>
+                      </el-form-item>
+                    </el-col>
+                  </el-row>
+
+                  <el-row
+                    :gutter="16"
+                    class="menu-form-row menu-form-row--compact"
+                  >
+                    <el-col
+                      :xs="24"
+                      :sm="9"
+                    >
+                      <el-form-item label="排序">
+                        <el-input-number
+                          v-model="formData.sort_order"
+                          :min="0"
+                          :max="9999"
+                          controls-position="right"
+                          placeholder="越小越靠前"
+                          class="w-full"
+                        />
+                      </el-form-item>
+                    </el-col>
+                    <el-col
+                      :xs="24"
+                      :sm="15"
+                    >
+                      <el-form-item label="绑定模块（名称 / Key）">
+                        <el-select
+                          v-model="formData.module_key"
+                          placeholder="请选择或搜索模块"
+                          filterable
+                          clearable
+                          class="w-full"
+                        >
+                          <el-option
+                            v-for="module in modules"
+                            :key="module.key"
+                            :label="`${module.name} (${module.key})`"
+                            :value="module.key"
+                          />
+                        </el-select>
+                      </el-form-item>
+                    </el-col>
+                  </el-row>
+
+                  <el-form-item label="备注">
                     <el-input
-                      v-model="formData.name"
-                      placeholder="例如：销售管理"
-                      clearable
-                      maxlength="50"
+                      v-model="formData.remarks"
+                      type="textarea"
+                      placeholder="给自己或同事留一点上下文，例如这个菜单的用途。"
+                      :rows="3"
+                      maxlength="500"
                       show-word-limit
-                    >
-                      <template #prefix>
-                        <i class="fas fa-tag"></i>
-                      </template>
-                    </el-input>
-                  </el-form-item>
-                </el-col>
-                <el-col :xs="24" :sm="12">
-                  <el-form-item label="菜单路径" required>
-                    <el-input
-                      v-model="formData.url"
-                      placeholder="例如：/sales 或 #"
-                      clearable
-                    >
-                      <template #prefix>
-                        <i class="fas fa-link"></i>
-                      </template>
-                    </el-input>
-                  </el-form-item>
-                </el-col>
-              </el-row>
-
-              <el-row :gutter="16" class="menu-form-row">
-                <el-col :xs="24" :sm="12">
-                  <el-form-item label="父级菜单">
-                    <el-select v-model="formData.parent_id" placeholder="请选择父级菜单" class="w-full" filterable>
-                      <el-option :value="0" label="根菜单" />
-                      <el-option
-                        v-for="menu in parentMenuOptions"
-                        :key="menu.id"
-                        :label="menu.name"
-                        :value="menu.id"
-                      />
-                    </el-select>
-                  </el-form-item>
-                </el-col>
-                <el-col :xs="24" :sm="12">
-                  <el-form-item label="打开方式">
-                    <el-select v-model="formData.target" placeholder="请选择打开方式" class="w-full">
-                      <el-option value="_self" label="当前窗口" />
-                      <el-option value="_blank" label="新窗口" />
-                    </el-select>
-                  </el-form-item>
-                </el-col>
-              </el-row>
-
-              <el-row :gutter="16" class="menu-form-row menu-form-row--compact">
-                <el-col :xs="24" :sm="9">
-                  <el-form-item label="排序">
-                    <el-input-number
-                      v-model="formData.sort_order"
-                      :min="0"
-                      :max="9999"
-                      controls-position="right"
-                      placeholder="越小越靠前"
-                      class="w-full"
                     />
                   </el-form-item>
-                </el-col>
-                <el-col :xs="24" :sm="15">
-                  <el-form-item label="绑定模块（名称 / Key）">
-                    <el-select
-                      v-model="formData.module_key"
-                      placeholder="请选择或搜索模块"
-                      filterable
-                      clearable
-                      class="w-full"
-                    >
-                      <el-option
-                        v-for="module in modules"
-                        :key="module.key"
-                        :label="`${module.name} (${module.key})`"
-                        :value="module.key"
-                      />
-                    </el-select>
-                  </el-form-item>
-                </el-col>
-              </el-row>
+                </section>
 
-              <el-form-item label="备注">
-                <el-input
-                  v-model="formData.remarks"
-                  type="textarea"
-                  placeholder="给自己或同事留一点上下文，例如这个菜单的用途。"
-                  :rows="3"
-                  maxlength="500"
-                  show-word-limit
-                />
-              </el-form-item>
-            </section>
+                <aside class="editor-card editor-card--side">
+                  <div class="editor-card-head">
+                    <span class="editor-card-icon"><i class="fas fa-icons" /></span>
+                    <div>
+                      <h6>图标与模块</h6>
+                      <p>选择本地/在线图标，并关联权限模块。</p>
+                    </div>
+                  </div>
 
-            <aside class="editor-card editor-card--side">
-              <div class="editor-card-head">
-                <span class="editor-card-icon"><i class="fas fa-icons"></i></span>
-                <div>
-                  <h6>图标与模块</h6>
-                  <p>选择本地/在线图标，并关联权限模块。</p>
-                </div>
-              </div>
-
-              <el-form-item label="菜单图标" class="full-width">
-                <IconPicker
-                  v-if="showModal"
-                  v-model="formData.icon"
-                  :default-collapsed="false"
-                  @select="handleIconSelect"
-                />
-              </el-form-item>
-
-              <el-form-item label="关联模块">
-                <div class="module-selector-section">
-                  <el-select
-                    v-model="formData.module_id"
-                    placeholder="请选择关联模块（可选）"
-                    filterable
-                    clearable
-                    class="module-select-input"
-                    popper-class="tf2025-form-popper module-select-dropdown"
-                    :teleported="false"
-                    :fit-input-width="true"
-                    @change="handleModuleChange"
+                  <el-form-item
+                    label="菜单图标"
+                    class="full-width"
                   >
-                    <el-option :value="0" label="不关联模块" />
-                    <el-option-group
-                      v-for="group in groupedModuleOptions"
-                      :key="group.key"
-                      :label="group.label"
-                    >
-                      <el-option
-                        v-for="module in group.modules"
-                        :key="module.id"
-                        :label="`${module.name} (${module.key})`"
-                        :value="module.id"
-                      >
-                        <div class="module-option" :class="[`is-${module.relation}`]">
-                          <div class="module-info">
-                            <div class="module-title-row">
-                              <span class="module-name">{{ module.name }}</span>
-                              <span class="module-relation-badge" :class="`is-${module.relation}`">
-                                {{ getModuleRelationLabel(module.relation) }}
-                              </span>
-                            </div>
-                            <span class="module-key">{{ module.key }}</span>
-                          </div>
-                        </div>
-                      </el-option>
-                    </el-option-group>
-                  </el-select>
-                  <small v-if="formData.module_id" class="text-muted">
-                    <i class="fas fa-info-circle"></i>
-                    已选择模块，系统会自动关联 module_key
-                  </small>
-                </div>
-              </el-form-item>
-            </aside>
-          </div>
-        </el-form>
-      </div>
+                    <IconPicker
+                      v-if="showModal"
+                      v-model="formData.icon"
+                      :default-collapsed="false"
+                      @select="handleIconSelect"
+                    />
+                  </el-form-item>
 
-      <template #footer>
-        <div class="modal-footer mobile-dialog-footer">
-          <el-button type="info" native-type="button" @click="closeModal">
-            <i class="fas fa-times"></i>
-            取消
-          </el-button>
-          <el-button type="primary" native-type="button" @click="handleSubmit" :disabled="submitting">
-            <InlineLoading v-if="submitting" text="保存中..." size="small" variant="inherit" />
-            <template v-else>
-              <i class="fas fa-save"></i>
-              保存
-            </template>
-          </el-button>
-        </div>
-      </template>
-    </MobileDialog>
-    </div>  <!-- END: .content -->
+                  <el-form-item label="关联模块">
+                    <div class="module-selector-section">
+                      <el-select
+                        v-model="formData.module_id"
+                        placeholder="请选择关联模块（可选）"
+                        filterable
+                        clearable
+                        class="module-select-input"
+                        popper-class="tf2025-form-popper module-select-dropdown"
+                        :teleported="false"
+                        :fit-input-width="true"
+                        @change="handleModuleChange"
+                      >
+                        <el-option
+                          :value="0"
+                          label="不关联模块"
+                        />
+                        <el-option-group
+                          v-for="group in groupedModuleOptions"
+                          :key="group.key"
+                          :label="group.label"
+                        >
+                          <el-option
+                            v-for="module in group.modules"
+                            :key="module.id"
+                            :label="`${module.name} (${module.key})`"
+                            :value="module.id"
+                          >
+                            <div
+                              class="module-option"
+                              :class="[`is-${module.relation}`]"
+                            >
+                              <div class="module-info">
+                                <div class="module-title-row">
+                                  <span class="module-name">{{ module.name }}</span>
+                                  <span
+                                    class="module-relation-badge"
+                                    :class="`is-${module.relation}`"
+                                  >
+                                    {{ getModuleRelationLabel(module.relation) }}
+                                  </span>
+                                </div>
+                                <span class="module-key">{{ module.key }}</span>
+                              </div>
+                            </div>
+                          </el-option>
+                        </el-option-group>
+                      </el-select>
+                      <small
+                        v-if="formData.module_id"
+                        class="text-muted"
+                      >
+                        <i class="fas fa-info-circle" />
+                        已选择模块，系统会自动关联 module_key
+                      </small>
+                    </div>
+                  </el-form-item>
+                </aside>
+              </div>
+            </el-form>
+          </div>
+
+          <template #footer>
+            <div class="modal-footer mobile-dialog-footer">
+              <el-button
+                type="info"
+                native-type="button"
+                @click="closeModal"
+              >
+                <i class="fas fa-times" />
+                取消
+              </el-button>
+              <el-button
+                type="primary"
+                native-type="button"
+                :disabled="submitting"
+                @click="handleSubmit"
+              >
+                <InlineLoading
+                  v-if="submitting"
+                  text="保存中..."
+                  size="small"
+                  variant="inherit"
+                />
+                <template v-else>
+                  <i class="fas fa-save" />
+                  保存
+                </template>
+              </el-button>
+            </div>
+          </template>
+        </MobileDialog>
+      </div>  <!-- END: .content -->
     </PermissionGate>
   </div>    <!-- END: .menu-management -->
 </template>
@@ -728,14 +795,12 @@
 import { ref, onMounted, computed, watch, defineAsyncComponent } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import { unifiedApi } from '@/utils/unified-api'
-import { useRouter } from 'vue-router'
 import { useNotification } from '@/composables/useNotification'
 import { useRefreshData } from '@/composables/useRefreshData'
 import { useImportExport } from '@/composables/useImportExport'
 import { useLoadingState } from '@/composables'
 import { usePagePermissions } from '@/composables/usePagePermissions'
-import { fieldPermissions } from '@/composables/useFieldPermissions'
-import { useAuthStore } from '@/stores/auth'
+import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useMenuStore } from '@/stores/menu'
 import { useMenuWidth } from '@/composables/useMenuWidth'
 import { useMobile } from '@/composables/mobile'
@@ -772,12 +837,14 @@ const showStatsCards = computed(() => (
   canViewMenuField('stats_inactive_menus') ||
   canViewMenuField('stats_root_menus')
 ))
+const showMenuActionField = computed(() => shouldShowActionColumn(
+  canViewMenuField('actions'),
+  [canEdit.value, canCreate.value, canDelete.value]
+))
 
 // 权限和通知
-const router = useRouter()
-const authStore = useAuthStore()
 const menuStore = useMenuStore()
-const { success, error, warning, info, handleApiError, confirm } = useNotification()
+const { success, error, warning: _warning, info: _info, handleApiError, confirm: _confirm } = useNotification()
 const { refreshing, refresh } = useRefreshData()
 const { exportFile, importFile, buildDateFilename } = useImportExport()
 const { isMobile } = useMobile()
@@ -1041,11 +1108,11 @@ const isWidthLoading = ref(false)
 
 // 使用菜单宽度组合式函数
 const {
-  menuWidth: globalMenuWidth,
+  menuWidth: _globalMenuWidth,
   setMenuWidth,
   loadAllMenuWidths,
   setBothMenuWidths,
-  isLoading: menuWidthLoading
+  isLoading: _menuWidthLoading
 } = useMenuWidth()
 
 // 父级菜单选项
@@ -1089,7 +1156,7 @@ const loadPublicMenuTree = async () => {
   return sharedPublicMenuPromise
 }
 
-const loadMenus = async (bustCache: boolean = false, silentError: boolean = false, showLoadingState: boolean = true) => {
+const loadMenus = async (_bustCache: boolean = false, silentError: boolean = false, showLoadingState: boolean = true) => {
   if (!canView.value) {
     menuTree.value = []
     return
@@ -1380,12 +1447,27 @@ const isMenuExpanded = (menuId) => {
 }
 
 // 递归显示子菜单
-const displayChildren = (children, parentId) => {
+const _displayChildren = (children, parentId) => {
   if (!children || children.length === 0 || !isMenuExpanded(parentId)) {
     return []
   }
   return children
 }
+
+// Element Plus 表格使用扁平可见行，保留原有的展开状态并避免页面自绘原生 table。
+const visibleMenuRows = computed(() => {
+  const rows: any[] = []
+  const append = (menus: any[], depth = 0) => {
+    menus.forEach(menu => {
+      rows.push({ ...menu, depth })
+      if (menu.children?.length && isMenuExpanded(menu.id)) {
+        append(menu.children, depth + 1)
+      }
+    })
+  }
+  append(menuTree.value)
+  return rows
+})
 
 // 展开所有菜单
 const expandAll = () => {
@@ -1442,7 +1524,7 @@ const applyBothMenuWidths = async () => {
     await setBothMenuWidths(pcMenuWidth.value, mobileMenuWidth.value)
     setMenuWidth(isMobile.value ? mobileMenuWidth.value : pcMenuWidth.value)
 
-    success(`菜单宽度设置成功`, {
+    success('菜单宽度设置成功', {
       title: `PC端: ${pcMenuWidth.value}px, 手机端: ${mobileMenuWidth.value}px`,
       duration: 3000
     })
@@ -1865,8 +1947,8 @@ onMounted(async () => {
 <style scoped>
 /* ===== 模块信息显示样式 ===== */
 .module-info {
-  background: #f8f9fa;
-  border: 1px solid #dee2e6;
+  background: var(--tf-color-surface-muted);
+  border: 1px solid var(--tf-color-border-subtle);
   border-radius: 8px;
   padding: 12px 16px;
 }
@@ -1876,7 +1958,7 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: center;
   padding: 8px 0;
-  border-bottom: 1px solid #e9ecef;
+  border-bottom: 1px solid var(--tf-color-border-muted);
 }
 
 .module-field:last-child {
@@ -1885,23 +1967,23 @@ onMounted(async () => {
 
 .field-label {
   font-weight: 600;
-  color: #495057;
+  color: var(--tf-color-gray-bootstrap-700);
   margin-right: 12px;
 }
 
 .field-value {
-  color: #212529;
+  color: var(--tf-color-gray-bootstrap-900);
   font-family: 'Courier New', monospace;
-  background: #fff;
+  background: var(--color-bg-white);
   padding: 4px 8px;
   border-radius: 4px;
-  border: 1px solid #ced4da;
+  border: 1px solid var(--tf-color-gray-bootstrap-300);
 }
 
 .text-muted {
   display: block;
   margin-top: 8px;
-  color: #6c757d !important;
+  color: var(--tf-color-muted) !important;
   font-size: 13px;
 }
 
@@ -1953,7 +2035,7 @@ onMounted(async () => {
   flex: 1 1 auto;
   min-width: 0;
   font-weight: 500;
-  color: #303133;
+  color: var(--color-text-primary);
   line-height: 1.45;
   white-space: normal;
   overflow: visible;
@@ -1974,26 +2056,26 @@ onMounted(async () => {
 }
 
 .module-relation-badge.is-parent {
-  background: #ede9fe;
-  color: #6d28d9;
-  border-color: #d8b4fe;
+  background: var(--tf-color-violet-100);
+  color: var(--tf-color-violet-700);
+  border-color: var(--tf-color-purple-300);
 }
 
 .module-relation-badge.is-child {
-  background: #ecfeff;
-  color: #0f766e;
-  border-color: #a5f3fc;
+  background: var(--tf-color-cyan-50);
+  color: var(--tf-color-teal-700);
+  border-color: var(--tf-color-cyan-200);
 }
 
 .module-relation-badge.is-standalone {
-  background: #eff6ff;
-  color: #1d4ed8;
-  border-color: #bfdbfe;
+  background: var(--tf-color-blue-tailwind-50);
+  color: var(--tf-color-blue-700);
+  border-color: var(--tf-color-blue-tailwind-200);
 }
 
 .module-key {
   font-size: 12px;
-  color: #909399;
+  color: var(--color-info);
   font-family: 'Courier New', monospace;
   white-space: normal;
   overflow-wrap: anywhere;
@@ -2015,7 +2097,7 @@ onMounted(async () => {
 .menu-management {
   padding: 20px;
   min-height: 100vh;
-  background: #f8f9fa;
+  background: var(--tf-color-surface-muted);
 }
 
 .menu-header-actions {
@@ -2044,7 +2126,7 @@ onMounted(async () => {
   gap: 16px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   transition: all 0.3s ease;
-  border: 1px solid #e9ecef;
+  border: 1px solid var(--tf-color-border-muted);
 }
 
 .stat-card:hover {
@@ -2060,18 +2142,18 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   font-size: 24px;
-  background: linear-gradient(135deg, #e3f2fd, #bbdefb);
-  color: #1976d2;
+  background: linear-gradient(135deg, var(--tf-color-blue-100), var(--tf-color-blue-material-100));
+  color: var(--tf-color-blue-material-700);
 }
 
 .stat-icon.active {
-  background: linear-gradient(135deg, #e8f5e8, #c8e6c8);
-  color: #388e3c;
+  background: linear-gradient(135deg, var(--tf-color-surface-green-alt), var(--tf-color-green-material-100));
+  color: var(--tf-color-green-material-700);
 }
 
 .stat-icon.inactive {
-  background: linear-gradient(135deg, #fff3e0, #ffe0b2);
-  color: #f57c00;
+  background: linear-gradient(135deg, var(--tf-color-orange-material-50), var(--tf-color-orange-material-100));
+  color: var(--tf-color-orange-material-700);
 }
 
 .stat-content {
@@ -2081,14 +2163,14 @@ onMounted(async () => {
 .stat-value {
   font-size: 32px;
   font-weight: 700;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
   line-height: 1;
   margin-bottom: 4px;
 }
 
 .stat-label {
   font-size: 14px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
   font-weight: 500;
 }
 
@@ -2108,12 +2190,12 @@ onMounted(async () => {
   display: block;
   font-size: 14px;
   font-weight: 500;
-  color: #495057;
+  color: var(--tf-color-gray-bootstrap-700);
   margin-bottom: 8px;
 }
 
 .required {
-  color: #dc3545;
+  color: var(--danger-color);
 }
 
 .input-group {
@@ -2125,7 +2207,7 @@ onMounted(async () => {
 .input-icon {
   position: absolute;
   left: 12px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
   font-size: 14px;
   z-index: 2;
 }
@@ -2133,7 +2215,7 @@ onMounted(async () => {
 .form-control {
   width: 100%;
   padding: 10px 12px 10px 40px;
-  border: 2px solid #e9ecef;
+  border: 2px solid var(--tf-color-border-muted);
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.3s ease;
@@ -2142,7 +2224,7 @@ onMounted(async () => {
 
 .form-control:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: var(--tf-color-indigo-brand);
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
@@ -2159,7 +2241,7 @@ onMounted(async () => {
   padding: 16px 18px;
   margin-bottom: 18px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  border: 1px solid #e9ecef;
+  border: 1px solid var(--tf-color-border-muted);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -2183,9 +2265,9 @@ onMounted(async () => {
   flex-wrap: wrap;
   gap: 14px;
   padding: 12px 14px;
-  border: 1px solid #e8eef7;
+  border: 1px solid var(--tf-color-border-form);
   border-radius: 14px;
-  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  background: linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-surface-blue) 100%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
@@ -2203,11 +2285,11 @@ onMounted(async () => {
   gap: 6px;
   font-size: 13px;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--tf-color-neutral-800);
 }
 
 .setting-title i {
-  color: #2563eb;
+  color: var(--tf-color-blue-600);
 }
 
 .width-controls {
@@ -2241,12 +2323,12 @@ onMounted(async () => {
   min-width: 56px;
   font-size: 12px;
   font-weight: 600;
-  color: #334155;
+  color: var(--tf-color-slate-700);
   white-space: nowrap;
 }
 
 .inline-width-label i {
-  color: #2563eb;
+  color: var(--tf-color-blue-600);
 }
 
 .range-input {
@@ -2257,12 +2339,12 @@ onMounted(async () => {
   width: 100%;
   min-height: 36px;
   padding: 8px 10px;
-  border: 1px solid #dbe3f0;
+  border: 1px solid var(--tf-color-border-blue);
   border-radius: 10px;
-  background: #fff;
+  background: var(--color-bg-white);
   font-size: 13px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--tf-color-neutral-800);
   outline: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
@@ -2276,7 +2358,7 @@ onMounted(async () => {
 }
 
 .form-range:focus {
-  border-color: #597ef7;
+  border-color: var(--tf-color-indigo-brand);
   box-shadow: 0 0 0 3px rgba(89, 126, 247, 0.12);
 }
 
@@ -2293,7 +2375,7 @@ onMounted(async () => {
   padding: 40px;
   text-align: center;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  border: 1px solid #e9ecef;
+  border: 1px solid var(--tf-color-border-muted);
   margin-bottom: 24px;
 }
 
@@ -2307,19 +2389,19 @@ onMounted(async () => {
 
 .loading-icon {
   font-size: 32px;
-  color: #667eea;
+  color: var(--tf-color-indigo-brand);
 }
 
 .loading-text,
 .error-text {
   font-size: 16px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
   margin: 0;
 }
 
 .error-icon {
   font-size: 32px;
-  color: #dc3545;
+  color: var(--danger-color);
 }
 
 /* ===== 表格样式 ===== */
@@ -2328,11 +2410,7 @@ onMounted(async () => {
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  border: 1px solid #e9ecef;
-}
-
-.table-responsive {
-  overflow-x: hidden;
+  border: 1px solid var(--tf-color-border-muted);
 }
 
 .menu-table {
@@ -2368,16 +2446,16 @@ onMounted(async () => {
 }
 
 .menu-table thead {
-  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  background: linear-gradient(135deg, var(--tf-color-surface-muted), var(--tf-color-border-muted));
 }
 
 .menu-table th {
   padding: 12px 10px; /* 使用与全局样式一致的padding */
   text-align: left;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
   font-size: 14px;
-  border-bottom: 2px solid #dee2e6;
+  border-bottom: 2px solid var(--tf-color-border-subtle);
   white-space: nowrap;
   min-height: 48px; /* 确保一致的点击区域 */
   height: auto;
@@ -2396,7 +2474,7 @@ onMounted(async () => {
 
 .menu-table td {
   padding: 12px 10px; /* 使用与全局样式一致的padding */
-  border-bottom: 1px solid #e9ecef;
+  border-bottom: 1px solid var(--tf-color-border-muted);
   vertical-align: middle;
   min-height: 48px; /* 确保一致的点击区域 */
   height: auto;
@@ -2410,11 +2488,11 @@ onMounted(async () => {
 }
 
 .parent-row {
-  background: #f8f9ff;
+  background: var(--tf-color-surface-indigo-pale);
 }
 
 .child-row {
-  background: #fafbff;
+  background: var(--tf-color-surface-indigo-soft);
 }
 
 .menu-name-cell {
@@ -2468,9 +2546,9 @@ onMounted(async () => {
 
 .menu-title {
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
   font-size: 16px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -2487,7 +2565,7 @@ onMounted(async () => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  background: linear-gradient(135deg, var(--tf-color-pink-gradient) 0%, var(--tf-color-coral-gradient) 100%);
   opacity: 0.1;
   border-radius: 6px;
   z-index: -1;
@@ -2501,13 +2579,13 @@ onMounted(async () => {
 }
 
 .type-menu {
-  background: #e3f2fd;
-  color: #1976d2;
+  background: var(--tf-color-blue-100);
+  color: var(--tf-color-blue-material-700);
 }
 
 .type-directory {
-  background: #fff3e0;
-  color: #f57c00;
+  background: var(--tf-color-orange-material-50);
+  color: var(--tf-color-orange-material-700);
 }
 
 .type-button {
@@ -2517,12 +2595,12 @@ onMounted(async () => {
 
 .menu-remarks {
   font-size: 12px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
   font-style: italic;
 }
 
 .child-prefix {
-  color: #6c757d;
+  color: var(--tf-color-muted);
   font-weight: 500;
 }
 
@@ -2532,11 +2610,11 @@ onMounted(async () => {
 }
 
 .url-text {
-  background: #f8f9fa;
+  background: var(--tf-color-surface-muted);
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 12px;
-  color: #495057;
+  color: var(--tf-color-gray-bootstrap-700);
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   display: inline-block;
   max-width: 100%;
@@ -2563,14 +2641,14 @@ onMounted(async () => {
 
 .menu-icon {
   font-size: 16px;
-  color: #667eea;
+  color: var(--tf-color-indigo-brand);
   width: 24px;
   text-align: center;
 }
 
 .icon-text {
   font-size: 12px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   min-width: 0;
   overflow: hidden;
@@ -2584,8 +2662,8 @@ onMounted(async () => {
 }
 
 .sort-badge {
-  background: linear-gradient(135deg, #e3f2fd, #bbdefb);
-  color: #1976d2;
+  background: linear-gradient(135deg, var(--tf-color-blue-100), var(--tf-color-blue-material-100));
+  color: var(--tf-color-blue-material-700);
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 12px;
@@ -2608,13 +2686,15 @@ onMounted(async () => {
 }
 
 .status-active {
-  background: #d4edda;
-  color: #155724;
+  background: var(--tf-status-success-bg);
+  color: var(--tf-status-success-color);
+  border: 1px solid var(--tf-status-success-border);
 }
 
 .status-inactive {
-  background: #f8d7da;
-  color: #721c24;
+  background: var(--tf-status-danger-bg);
+  color: var(--tf-status-danger-color);
+  border: 1px solid var(--tf-status-danger-border);
 }
 
 .menu-actions-cell {
@@ -2644,19 +2724,19 @@ onMounted(async () => {
 
 .empty-icon {
   font-size: 64px;
-  color: #cbd5e0;
+  color: var(--tf-color-slate-300);
 }
 
 .empty-title {
   font-size: 20px;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
   margin: 0;
 }
 
 .empty-description {
   font-size: 16px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
   margin: 0;
   max-width: 400px;
 }
@@ -2664,7 +2744,7 @@ onMounted(async () => {
 /* ==================== 现代化菜单编辑弹窗 ==================== */
 .menu-editor-body {
   padding: 0;
-  color: #26313f;
+  color: var(--tf-color-slate-sidebar);
 }
 
 .menu-editor-form {
@@ -2682,8 +2762,8 @@ onMounted(async () => {
   border-radius: 20px;
   background:
     radial-gradient(circle at 12% 20%, rgba(45, 212, 191, 0.28), transparent 30%),
-    linear-gradient(135deg, #102a43 0%, #1f4f5f 52%, #2f6f63 100%);
-  color: #fff;
+    linear-gradient(135deg, var(--tf-color-slate-ink) 0%, var(--tf-color-cyan-legacy-text) 52%, var(--tf-color-menu-gradient-teal) 100%);
+  color: var(--color-bg-white);
   box-shadow: 0 18px 42px rgba(16, 42, 67, 0.2);
 }
 
@@ -2702,7 +2782,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   font-size: 24px;
-  color: #102a43;
+  color: var(--tf-color-slate-ink);
   background: rgba(255, 255, 255, 0.9);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 12px 26px rgba(0, 0, 0, 0.18);
 }
@@ -2757,8 +2837,8 @@ onMounted(async () => {
 }
 
 .status-switch :deep(.el-switch.is-checked .el-switch__core) {
-  border-color: #5eead4;
-  background: #5eead4;
+  border-color: var(--tf-color-teal-300);
+  background: var(--tf-color-teal-300);
 }
 
 .menu-editor-grid {
@@ -2795,26 +2875,26 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   border-radius: 14px;
-  color: #0f766e;
-  background: linear-gradient(135deg, #ccfbf1, #e0f2fe);
+  color: var(--tf-color-teal-700);
+  background: linear-gradient(135deg, var(--tf-color-emerald-100), var(--tf-color-sky-100));
 }
 
 .editor-card-head h6 {
   margin: 0;
   font-size: 16px;
-  color: #172033;
+  color: var(--tf-color-slate-custom);
 }
 
 .editor-card-head p {
   margin: 3px 0 0;
-  color: #7a8797;
+  color: var(--tf-color-gray-ui-550);
   font-size: 12px;
 }
 
 /* 模态框底部 */
 .modal-footer {
   padding: 14px 0 0;
-  border-top: 1px solid #e9ecef;
+  border-top: 1px solid var(--tf-color-border-muted);
   background: transparent;
 }
 
@@ -2830,7 +2910,7 @@ onMounted(async () => {
 .menu-editor-form :deep(.el-form-item__label) {
   min-height: 22px;
   margin-bottom: 7px;
-  color: #344256;
+  color: var(--tf-color-slate-700);
   font-size: 14px;
   font-weight: 700;
   line-height: 1.35;
@@ -2840,26 +2920,26 @@ onMounted(async () => {
 .menu-editor-form :deep(.el-select__wrapper),
 .menu-editor-form :deep(.el-textarea__inner) {
   border-radius: 12px;
-  background: #f8fafc;
-  box-shadow: 0 0 0 1px #d8e0ea inset;
+  background: var(--tf-color-slate-50);
+  box-shadow: 0 0 0 1px var(--tf-color-border-blue-light) inset;
   transition: box-shadow 0.2s ease, background 0.2s ease;
 }
 
 .menu-editor-form :deep(.el-input__wrapper:hover),
 .menu-editor-form :deep(.el-select__wrapper:hover),
 .menu-editor-form :deep(.el-textarea__inner:hover) {
-  box-shadow: 0 0 0 1px #b8c7d9 inset;
+  box-shadow: 0 0 0 1px var(--color-text-placeholder) inset;
 }
 
 .menu-editor-form :deep(.el-input__wrapper.is-focus),
 .menu-editor-form :deep(.el-select__wrapper.is-focused),
 .menu-editor-form :deep(.el-textarea__inner:focus) {
-  background: #fff;
-  box-shadow: 0 0 0 1px #0f766e inset, 0 0 0 3px rgba(15, 118, 110, 0.12);
+  background: var(--color-bg-white);
+  box-shadow: 0 0 0 1px var(--tf-color-teal-700) inset, 0 0 0 3px rgba(15, 118, 110, 0.12);
 }
 
 .menu-editor-form :deep(.el-input__prefix) {
-  color: #7a8797;
+  color: var(--tf-color-gray-ui-550);
 }
 
 .menu-editor-form :deep(.el-input-number .el-input__wrapper) {
@@ -2901,7 +2981,7 @@ onMounted(async () => {
   min-width: 0;
   font-size: 14px;
   font-weight: 500;
-  color: #303133;
+  color: var(--color-text-primary);
   line-height: 1.45;
   white-space: normal;
   overflow-wrap: anywhere;
@@ -2910,7 +2990,7 @@ onMounted(async () => {
 
 .module-key {
   font-size: 12px;
-  color: #909399;
+  color: var(--color-info);
   white-space: normal;
   overflow-wrap: anywhere;
   word-break: break-word;
@@ -2922,22 +3002,22 @@ onMounted(async () => {
   align-items: center;
   gap: 10px;
   padding: 12px;
-  background: linear-gradient(135deg, #f8f9fa 0%, #f0f2f5 100%);
+  background: linear-gradient(135deg, var(--tf-color-surface-muted) 0%, var(--tf-color-surface-ant) 100%);
   border-radius: 8px;
   margin-top: 12px;
-  border: 1px solid #e9ecef;
+  border: 1px solid var(--tf-color-border-muted);
 }
 
 .preview-icon {
   font-size: 24px;
-  color: #667eea;
+  color: var(--tf-color-indigo-brand);
 }
 
 .preview-text {
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   font-size: 13px;
-  color: #909399;
-  background: #ffffff;
+  color: var(--color-info);
+  background: var(--color-bg-white);
   padding: 4px 8px;
   border-radius: 4px;
 }
@@ -2945,7 +3025,7 @@ onMounted(async () => {
 /* 辅助文本 */
 .text-muted {
   font-size: 12px;
-  color: #909399;
+  color: var(--color-info);
   display: flex;
   align-items: center;
   gap: 4px;
@@ -3081,10 +3161,6 @@ onMounted(async () => {
     font-size: 11px;
   }
 
-  .table-responsive {
-    overflow-x: hidden;
-  }
-
   .menu-table {
     min-width: 100%;
     width: 100%;
@@ -3201,10 +3277,6 @@ onMounted(async () => {
     font-size: 14px;
   }
 
-  .table-responsive {
-    -webkit-overflow-scrolling: touch;
-  }
-
   /* 确保触摸滚动顺畅 */
   * {
     -webkit-tap-highlight-color: transparent;
@@ -3269,11 +3341,6 @@ onMounted(async () => {
   }
 
   /* 移动端表格优化 */
-  .table-responsive {
-    margin: 0 -16px;
-    padding: 0 16px;
-  }
-
   .menu-table th,
   .menu-table td {
     padding: 8px;
@@ -3334,7 +3401,7 @@ onMounted(async () => {
 
 .module-select-dropdown .el-select-group__title {
   padding: 8px 16px 6px !important;
-  color: #6d28d9 !important;
+  color: var(--tf-color-violet-700) !important;
   font-size: 12px !important;
   font-weight: 700 !important;
   line-height: 1.4 !important;
@@ -3350,11 +3417,11 @@ onMounted(async () => {
 }
 
 .module-select-dropdown .el-select-dropdown__item.hover {
-  background-color: #f5f7fa !important;
+  background-color: var(--tf-color-surface) !important;
 }
 
 .module-select-dropdown .el-select-dropdown__item.selected {
-  background-color: #ecf5ff !important;
-  color: #409EFF !important;
+  background-color: var(--tf-color-primary-surface-element) !important;
+  color: var(--color-primary) !important;
 }
 </style>

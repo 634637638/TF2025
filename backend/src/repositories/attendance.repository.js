@@ -2,12 +2,12 @@
  * 考勤记录数据访问层
  * 处理所有考勤相关的数据库操作
  */
-const BaseRepository = require('./base.repository');
-const log = require('../utils/log');
+const BaseRepository = require('./base.repository')
+const log = require('../utils/log')
 
 class AttendanceRepository extends BaseRepository {
   constructor() {
-    super('attendance_records');
+    super('attendance_records')
   }
 
   /**
@@ -16,50 +16,50 @@ class AttendanceRepository extends BaseRepository {
   async getAttendanceRecordsWithPagination(filters = {}, options = {}) {
     try {
       const {
-        page = 1,
-        limit = 20,
         employee_id,
         record_type,
         status,
         start_date,
         end_date
-      } = filters;
+      } = filters
+      const page = options.page || 1
+      const pageSize = options.page_size ?? 20
 
       // 安全转换分页参数为整数
-      const pageInt = parseInt(page) || 1;
-      const limitInt = parseInt(limit) || 20;
-      const offsetInt = (pageInt - 1) * limitInt;
+      const pageInt = parseInt(page) || 1
+      const limitInt = Math.min(100, Math.max(1, parseInt(pageSize) || 20))
+      const offsetInt = (pageInt - 1) * limitInt
 
       // 构建查询条件
-      const conditions = [];
-      const params = [];
+      const conditions = []
+      const params = []
 
       if (employee_id) {
-        conditions.push('ar.employee_id = ?');
-        params.push(employee_id);
+        conditions.push('ar.employee_id = ?')
+        params.push(employee_id)
       }
 
       if (record_type) {
-        conditions.push('ar.record_type = ?');
-        params.push(record_type);
+        conditions.push('ar.record_type = ?')
+        params.push(record_type)
       }
 
       if (status) {
-        conditions.push('ar.status = ?');
-        params.push(status);
+        conditions.push('ar.status = ?')
+        params.push(status)
       }
 
       if (start_date) {
-        conditions.push('ar.record_date >= ?');
-        params.push(start_date);
+        conditions.push('ar.record_date >= ?')
+        params.push(start_date)
       }
 
       if (end_date) {
-        conditions.push('ar.record_date <= ?');
-        params.push(end_date);
+        conditions.push('ar.record_date <= ?')
+        params.push(end_date)
       }
 
-      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
 
       // 查询数据 - LIMIT 和 OFFSET 使用字符串拼接（已验证为整数）
       const dataQuery = `
@@ -93,33 +93,33 @@ class AttendanceRepository extends BaseRepository {
         ${whereClause}
         ORDER BY ar.record_date DESC, ar.created_at DESC
         LIMIT ${limitInt} OFFSET ${offsetInt}
-      `;
+      `
 
-      const records = await this.executeQuery(dataQuery, params);
+      const records = await this.executeQuery(dataQuery, params)
 
       // 查询总数
       const countQuery = `
         SELECT COUNT(*) as total
         FROM ${this.tableName} ar
         ${whereClause}
-      `;
-      const countResult = await this.executeQuery(countQuery, params);
-      const total = countResult[0].total;
+      `
+      const countResult = await this.executeQuery(countQuery, params)
+      const total = countResult[0].total
 
       return {
         records,
         pagination: {
           page: pageInt,
-          limit: limitInt,
+          page_size: limitInt,
           total,
-          totalPages: Math.ceil(total / limitInt),
-          hasNext: pageInt * limitInt < total,
-          hasPrev: pageInt > 1
+          total_pages: Math.ceil(total / limitInt),
+          has_next: pageInt * limitInt < total,
+          has_prev: pageInt > 1
         }
-      };
+      }
     } catch (error) {
-      log.error('获取考勤记录失败:', error);
-      throw error;
+      log.error('获取考勤记录失败:', error)
+      throw error
     }
   }
 
@@ -157,12 +157,12 @@ class AttendanceRepository extends BaseRepository {
         LEFT JOIN users approver ON ar.approved_by = approver.id
         LEFT JOIN users creator ON ar.created_by = creator.id
         WHERE ar.id = ?
-      `;
-      const records = await this.executeQuery(query, [id]);
-      return records[0] || null;
+      `
+      const records = await this.executeQuery(query, [id])
+      return records[0] || null
     } catch (error) {
-      log.error('获取考勤记录详情失败:', error);
-      throw error;
+      log.error('获取考勤记录详情失败:', error)
+      throw error
     }
   }
 
@@ -171,10 +171,10 @@ class AttendanceRepository extends BaseRepository {
    */
   async createAttendanceRecord(data) {
     try {
-      return await this.create(data);
+      return await this.create(data)
     } catch (error) {
-      log.error('创建考勤记录失败:', error);
-      throw error;
+      log.error('创建考勤记录失败:', error)
+      throw error
     }
   }
 
@@ -183,10 +183,10 @@ class AttendanceRepository extends BaseRepository {
    */
   async updateAttendanceRecord(id, data) {
     try {
-      return await this.update(id, data);
+      return await this.update(id, data)
     } catch (error) {
-      log.error('更新考勤记录失败:', error);
-      throw error;
+      log.error('更新考勤记录失败:', error)
+      throw error
     }
   }
 
@@ -195,28 +195,28 @@ class AttendanceRepository extends BaseRepository {
    */
   async deleteAttendanceRecord(id) {
     try {
-      return await this.delete(id);
+      return await this.delete(id)
     } catch (error) {
-      log.error('删除考勤记录失败:', error);
-      throw error;
+      log.error('删除考勤记录失败:', error)
+      throw error
     }
   }
 
   /**
    * 审批考勤记录
    */
-  async approveAttendanceRecord(id, approver_id, status, note = null) {
+  async approveAttendanceRecord(id, approver_id, status, approval_note = null) {
     try {
       const query = `
         UPDATE ${this.tableName}
         SET status = ?, approved_by = ?, approved_at = NOW(), approval_note = ?
         WHERE id = ?
-      `;
-      await this.executeQuery(query, [status, approver_id, note, id]);
-      return true;
+      `
+      await this.executeQuery(query, [status, approver_id, approval_note, id])
+      return true
     } catch (error) {
-      log.error('审批考勤记录失败:', error);
-      throw error;
+      log.error('审批考勤记录失败:', error)
+      throw error
     }
   }
 
@@ -238,11 +238,11 @@ class AttendanceRepository extends BaseRepository {
           AND record_date BETWEEN ? AND ?
           AND status = 'approved'
         GROUP BY record_type
-      `;
-      return await this.executeQuery(query, [employee_id, start_date, end_date]);
+      `
+      return await this.executeQuery(query, [employee_id, start_date, end_date])
     } catch (error) {
-      log.error('获取员工考勤统计失败:', error);
-      throw error;
+      log.error('获取员工考勤统计失败:', error)
+      throw error
     }
   }
 
@@ -252,32 +252,32 @@ class AttendanceRepository extends BaseRepository {
   async batchCreateAttendanceRecords(records) {
     try {
       if (!records || records.length === 0) {
-        return { insertedCount: 0 };
+        return { insertedCount: 0 }
       }
 
-      const keys = Object.keys(records[0]);
-      const placeholders = keys.map(() => '?').join(', ');
-      const sql = `INSERT INTO ${this.tableName} (${keys.join(', ')}) VALUES (${placeholders})`;
+      const keys = Object.keys(records[0])
+      const placeholders = keys.map(() => '?').join(', ')
+      const sql = `INSERT INTO ${this.tableName} (${keys.join(', ')}) VALUES (${placeholders})`
 
-      const db = this.getConnection();
-      let insertedCount = 0;
+      const db = this.getConnection()
+      let insertedCount = 0
 
       for (const record of records) {
-        const values = Object.values(record);
+        const values = Object.values(record)
         try {
-          await db.execute(sql, values);
-          insertedCount++;
+          await db.execute(sql, values)
+          insertedCount++
         } catch (error) {
           if (error.code !== 'ER_DUP_ENTRY') {
-            throw error;
+            throw error
           }
         }
       }
 
-      return { insertedCount };
+      return { insertedCount }
     } catch (error) {
-      log.error('批量创建考勤记录失败:', error);
-      throw error;
+      log.error('批量创建考勤记录失败:', error)
+      throw error
     }
   }
 
@@ -296,12 +296,12 @@ class AttendanceRepository extends BaseRepository {
           AND status IN ('pending', 'approved')
           AND YEAR(record_date) = ?
           AND MONTH(record_date) = ?
-      `;
-      const result = await this.executeQuery(query, [employeeId, year, month]);
-      return result[0]?.used_days || 0;
+      `
+      const result = await this.executeQuery(query, [employeeId, year, month])
+      return result[0]?.used_days || 0
     } catch (error) {
-      log.error('获取用户已使用休假天数失败:', error);
-      throw error;
+      log.error('获取用户已使用休假天数失败:', error)
+      throw error
     }
   }
 
@@ -319,12 +319,12 @@ class AttendanceRepository extends BaseRepository {
           AND status IN ('pending', 'approved')
           AND YEAR(record_date) = ?
           AND MONTH(record_date) = ?
-      `;
-      const result = await this.executeQuery(query, [employeeId, year, month]);
-      return (result[0]?.count || 0) > 0;
+      `
+      const result = await this.executeQuery(query, [employeeId, year, month])
+      return (result[0]?.count || 0) > 0
     } catch (error) {
-      log.error('检查用户普通请假记录失败:', error);
-      throw error;
+      log.error('检查用户普通请假记录失败:', error)
+      throw error
     }
   }
 
@@ -341,14 +341,14 @@ class AttendanceRepository extends BaseRepository {
           AND status IN ('pending', 'approved')
           AND YEAR(record_date) = ?
           AND MONTH(record_date) = ?
-      `;
-      const result = await this.executeQuery(query, [employeeId, year, month]);
-      return result[0]?.leave_days || 0;
+      `
+      const result = await this.executeQuery(query, [employeeId, year, month])
+      return result[0]?.leave_days || 0
     } catch (error) {
-      log.error('获取用户普通请假天数失败:', error);
-      throw error;
+      log.error('获取用户普通请假天数失败:', error)
+      throw error
     }
   }
 }
 
-module.exports = AttendanceRepository;
+module.exports = AttendanceRepository

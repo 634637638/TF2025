@@ -1,6 +1,12 @@
 <template>
-  <div class="section-loading" :class="`section-loading--${size}`">
-    <InlineLoading :text="text" :size="loadingSize" />
+  <div
+    class="section-loading"
+    :class="`section-loading--${size}`"
+  >
+    <InlineLoading
+      :text="text"
+      :size="loadingSize"
+    />
   </div>
 </template>
 
@@ -33,7 +39,7 @@ const loadingSize = computed(() => {
   justify-content: center;
   min-height: 132px;
   padding: 24px;
-  color: var(--tf-loading-surface-text, #334155);
+  color: var(--tf-loading-surface-text, var(--tf-color-slate-700));
   background:
     radial-gradient(circle at 50% 36%, var(--tf-loading-surface-glow, rgba(14, 165, 233, 0.14)), transparent 36%),
     var(--tf-loading-surface-bg, linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(248, 250, 252, 0.9) 52%, rgba(236, 253, 245, 0.72)));

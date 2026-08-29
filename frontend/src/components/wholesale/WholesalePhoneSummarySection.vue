@@ -5,7 +5,11 @@
         <span>手机列表（{{ phoneCount }}台）</span>
       </div>
       <div class="phones-list">
-        <div v-for="(phone, index) in phones" :key="phone.id" class="phone-item">
+        <div
+          v-for="(phone, index) in phones"
+          :key="phone.id"
+          class="phone-item"
+        >
           <div class="phone-main">
             <div class="phone-left">
               <span class="phone-index">{{ index + 1 }}</span>
@@ -18,7 +22,7 @@
               <div class="price-item">
                 <span class="price-label">{{ mode === 'wholesale' ? '入库价:' : '入库:' }}</span>
                 <el-input-number
-                  v-model="phone.editCost"
+                  v-model="phone.purchase_cost"
                   :min="0"
                   :precision="0"
                   :step="100"
@@ -33,7 +37,7 @@
               <div class="price-item">
                 <span class="price-label">{{ mode === 'proxy' ? '划拨价:' : '批发:' }}</span>
                 <el-input-number
-                  v-model="phone.wholesalePrice"
+                  v-model="phone.wholesale_price"
                   :min="mode === 'wholesale' ? 1 : 0"
                   :precision="0"
                   :step="100"
@@ -44,13 +48,16 @@
                   :disabled="mode === 'proxy'"
                 />
               </div>
-              <div v-if="mode === 'wholesale'" class="price-item profit-display">
+              <div
+                v-if="mode === 'wholesale'"
+                class="price-item profit-display"
+              >
                 <span class="price-label">利润:</span>
                 <span
                   class="price-value"
-                  :class="(phone.wholesalePrice || 0) - (phone.editCost || 0) >= 0 ? 'profit' : 'loss'"
+                  :class="(phone.wholesale_price || 0) - (phone.purchase_cost || 0) >= 0 ? 'profit' : 'loss'"
                 >
-                  ¥{{ formatPrice((phone.wholesalePrice || 0) - (phone.editCost || 0)) }}
+                  ¥{{ formatPrice((phone.wholesale_price || 0) - (phone.purchase_cost || 0)) }}
                 </span>
               </div>
             </div>
@@ -58,7 +65,7 @@
           <div class="phone-extra">
             <span class="phone-supplier">供应商: {{ phone.supplier_name || '-' }}</span>
             <span class="phone-store">店铺: {{ phone.store_name || '-' }}</span>
-            <span class="phone-inventory-date">入库时间: {{ formatDate(phone.Inventorytime || phone.purchase_date || phone.created_at) }}</span>
+            <span class="phone-inventory-date">入库时间: {{ formatDate(phone.inventory_time) }}</span>
           </div>
         </div>
       </div>
@@ -73,11 +80,17 @@
         <span>{{ mode === 'wholesale' ? '批发总价:' : '销售总价:' }}</span>
         <span class="price-value">¥{{ formatPrice(totalWholesalePrice) }}</span>
       </div>
-      <div v-if="mode === 'wholesale'" class="summary-item profit">
+      <div
+        v-if="mode === 'wholesale'"
+        class="summary-item profit"
+      >
         <span>预估利润:</span>
         <span class="price-value">¥{{ formatPrice(totalWholesalePrice - totalCost) }}</span>
       </div>
-      <div v-else class="summary-item">
+      <div
+        v-else
+        class="summary-item"
+      >
         <span>划拨数量:</span>
         <span class="price-value">{{ phoneCount }} 台</span>
       </div>
@@ -106,8 +119,8 @@ interface Props {
   phones: EditableWholesalePhone[]
   totalCost: number
   totalWholesalePrice: number
-  formatPrice: (price: number) => string
-  formatDate: (date: string | null | undefined) => string
+  formatPrice: (_price: number) => string
+  formatDate: (_date: string | null | undefined) => string
   handleCostChange: () => void
 }
 
@@ -118,23 +131,23 @@ defineProps<Props>()
 .form-section {
   margin-bottom: 24px;
   padding-bottom: 24px;
-  border-bottom: 1px solid #f0f2f5;
+  border-bottom: 1px solid var(--tf-color-surface-ant);
 }
 
 .phones-display {
   margin: 16px 0;
-  border: 1px solid #e4e7ed;
+  border: 1px solid var(--tf-color-border-element);
   border-radius: 8px;
   overflow: hidden;
 }
 
 .display-header {
-  background: #f5f7fa;
+  background: var(--tf-color-surface);
   padding: 10px 16px;
   font-size: 13px;
   font-weight: 600;
-  color: #606266;
-  border-bottom: 1px solid #e4e7ed;
+  color: var(--color-text-regular);
+  border-bottom: 1px solid var(--tf-color-border-element);
 }
 
 .phones-list {
@@ -144,7 +157,7 @@ defineProps<Props>()
 
 .phone-item {
   padding: 12px 16px;
-  border-bottom: 1px solid #f0f2f5;
+  border-bottom: 1px solid var(--tf-color-surface-ant);
 }
 
 .phone-item:last-child {
@@ -171,7 +184,7 @@ defineProps<Props>()
   justify-content: center;
   width: 24px;
   height: 24px;
-  background: #667eea;
+  background: var(--tf-color-indigo-brand);
   color: white;
   border-radius: 50%;
   font-size: 12px;
@@ -181,7 +194,7 @@ defineProps<Props>()
 
 .phone-detail {
   font-size: 13px;
-  color: #303133;
+  color: var(--color-text-primary);
   font-weight: 500;
 }
 
@@ -199,7 +212,7 @@ defineProps<Props>()
 
 .price-label {
   font-size: 12px;
-  color: #909399;
+  color: var(--color-info);
   white-space: nowrap;
 }
 
@@ -210,11 +223,11 @@ defineProps<Props>()
 }
 
 .price-value.profit {
-  color: #67c23a;
+  color: var(--color-success);
 }
 
 .price-value.loss {
-  color: #f56c6c;
+  color: var(--color-danger);
 }
 
 .price-input {
@@ -230,18 +243,18 @@ defineProps<Props>()
   gap: 16px;
   padding-left: 34px;
   font-size: 12px;
-  color: #909399;
+  color: var(--color-info);
   flex-wrap: wrap;
 }
 
 .phone-inventory-date {
-  color: #67c23a;
+  color: var(--color-success);
 }
 
 .price-summary {
   margin-top: 16px;
   padding: 16px;
-  background: #f5f7fa;
+  background: var(--tf-color-surface);
   border-radius: 8px;
   display: flex;
   justify-content: space-between;
@@ -260,14 +273,14 @@ defineProps<Props>()
 .summary-item.profit {
   margin-top: 8px;
   padding-top: 8px;
-  border-top: 1px dashed #dcdfe6;
+  border-top: 1px dashed var(--color-border);
   font-weight: 600;
-  color: #67c23a;
+  color: var(--color-success);
 }
 
 .summary-item .price-value {
   font-weight: 600;
-  color: #303133;
+  color: var(--color-text-primary);
 }
 
 @media (max-width: 767px) {
@@ -296,7 +309,7 @@ defineProps<Props>()
   }
 
   .price-input {
-    width: 120px !important;
+    width: 120px;
   }
 
   .profit-display .price-value {
@@ -305,9 +318,9 @@ defineProps<Props>()
   }
 
   .phone-prices-two-col {
-    display: grid !important;
+    display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px !important;
+    gap: 8px;
   }
 
   .phone-prices-two-col .price-item {
@@ -325,12 +338,12 @@ defineProps<Props>()
   }
 
   .phone-prices-two-col .price-input {
-    width: 100% !important;
+    width: 100%;
   }
 
   .phone-extra {
-    flex-direction: column !important;
-    gap: 6px !important;
+    flex-direction: column;
+    gap: 6px;
     padding-left: 0;
     font-size: 11px;
   }

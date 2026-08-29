@@ -7,114 +7,153 @@
       module-name="客户管理"
       permission-code="customers:view"
     >
-
-    <!-- 主要内容 -->
-    <div class="page-content admin-page-content">
-      <!-- 页面头部 - 使用公共组件 -->
-      <PageHeader
-        icon="fas fa-user"
-        title="客户管理"
-      >
-        <template #actions>
-          <el-button
-            v-if="canCreate"
-            type="primary"
-            @click="requirePermission('create', openAddModal)"
-            :disabled="isLoading"
-          >
-            <i class="fas fa-plus"></i>
-            <span>新增</span>
-          </el-button>
-          <el-button
-            v-if="canManagePoints"
-            type="warning"
-            plain
-            :disabled="isLoading"
-            @click="requirePermission('manage', openPointsSettings)"
-          >
-            <i class="fas fa-coins"></i>
-            <span>积分设置</span>
-          </el-button>
-          <ImportExportActions
-            :can-export="canExport"
-            :export-loading="isExporting"
-            :export-disabled="isLoading || isExporting"
-            @export="handleExport"
-          />
-          <el-button type="info" @click="handleRefresh" :disabled="isLoading || refreshing" :loading="refreshing">
-            <i class="fas fa-sync-alt"></i>
-            <span>{{ refreshing ? '刷新中...' : '刷新' }}</span>
-          </el-button>
-        </template>
-      </PageHeader>
-
-      <!-- 页面主体 -->
-      <div class="page-body admin-page-content">
-        <!-- 统计卡片 -->
-        <div v-if="showStatsCards" class="stats-cards">
-          <div v-if="canViewField('stats_total_customers')" class="stat-card">
-            <div class="stat-icon">
-              <i class="fas fa-users"></i>
-            </div>
-            <div class="stat-content">
-              <div class="stat-value">{{ stats.totalCustomers || 0 }}</div>
-              <div class="stat-label">总客户数</div>
-            </div>
-          </div>
-          <div v-if="canViewField('stats_active_customers')" class="stat-card">
-            <div class="stat-icon active">
-              <i class="fas fa-user-check"></i>
-            </div>
-            <div class="stat-content">
-              <div class="stat-value">{{ stats.activeCustomers || 0 }}</div>
-              <div class="stat-label">活跃客户</div>
-            </div>
-          </div>
-          <div v-if="canViewField('stats_new_customers')" class="stat-card">
-            <div class="stat-icon recent">
-              <i class="fas fa-clock"></i>
-            </div>
-            <div class="stat-content">
-              <div class="stat-value">{{ stats.newCustomers || 0 }}</div>
-              <div class="stat-label">本月新增</div>
-            </div>
-          </div>
-          <div v-if="canViewField('stats_premium_customers')" class="stat-card">
-            <div class="stat-icon premium">
-              <i class="fas fa-crown"></i>
-            </div>
-            <div class="stat-content">
-              <div class="stat-value">{{ stats.premiumCustomers || 0 }}</div>
-              <div class="stat-label">VIP客户</div>
-            </div>
-          </div>
-        </div>
-
-        <UnifiedSearchPanel
-          v-model:expanded="searchExpanded"
-          :loading="isLoading"
-          @search="handleSearch"
-          @reset="handleReset"
+      <!-- 主要内容 -->
+      <div class="page-content admin-page-content">
+        <!-- 页面头部 - 使用公共组件 -->
+        <PageHeader
+          icon="fas fa-user"
+          title="客户管理"
         >
-          <template #primary>
-            <el-input
-              v-if="showSearchKeyword"
-              v-model="searchKeyword"
-              placeholder="搜索姓名、手机号、邮箱、会员号、公司、地址..."
-              clearable
-              @input="debounceSearch"
-              @keyup.enter="handleSearch"
-              @click.stop
+          <template #actions>
+            <el-button
+              v-if="canCreate"
+              type="primary"
+              :disabled="isLoading"
+              @click="requirePermission('create', openAddModal)"
             >
-              <template #prefix>
-                <i class="fas fa-search"></i>
-              </template>
-            </el-input>
+              <i class="fas fa-plus" />
+              <span>新增</span>
+            </el-button>
+            <el-button
+              v-if="canManagePoints"
+              type="warning"
+              plain
+              :disabled="isLoading"
+              @click="requirePermission('manage', openPointsSettings)"
+            >
+              <i class="fas fa-coins" />
+              <span>积分设置</span>
+            </el-button>
+            <ImportExportActions
+              :can-export="canExport"
+              :export-loading="isExporting"
+              :export-disabled="isLoading || isExporting"
+              @export="handleExport"
+            />
+            <el-button
+              type="info"
+              :disabled="isLoading || refreshing"
+              :loading="refreshing"
+              @click="handleRefresh"
+            >
+              <i class="fas fa-sync-alt" />
+              <span>{{ refreshing ? '刷新中...' : '刷新' }}</span>
+            </el-button>
           </template>
+        </PageHeader>
 
-          <div v-if="canViewField('customer_type')" class="form-group filter-item" data-field="customerType">
+        <!-- 页面主体 -->
+        <div class="page-body admin-page-content">
+          <!-- 统计卡片 -->
+          <div
+            v-if="showStatsCards"
+            class="stats-cards"
+          >
+            <div
+              v-if="canViewField('stats_total_customers')"
+              class="stat-card"
+            >
+              <div class="stat-icon">
+                <i class="fas fa-users" />
+              </div>
+              <div class="stat-content">
+                <div class="stat-value">
+                  {{ stats.total_customers || 0 }}
+                </div>
+                <div class="stat-label">
+                  总客户数
+                </div>
+              </div>
+            </div>
+            <div
+              v-if="canViewField('stats_active_customers')"
+              class="stat-card"
+            >
+              <div class="stat-icon active">
+                <i class="fas fa-user-check" />
+              </div>
+              <div class="stat-content">
+                <div class="stat-value">
+                  {{ stats.active_customers || 0 }}
+                </div>
+                <div class="stat-label">
+                  活跃客户
+                </div>
+              </div>
+            </div>
+            <div
+              v-if="canViewField('stats_new_customers')"
+              class="stat-card"
+            >
+              <div class="stat-icon recent">
+                <i class="fas fa-clock" />
+              </div>
+              <div class="stat-content">
+                <div class="stat-value">
+                  {{ stats.new_customers || 0 }}
+                </div>
+                <div class="stat-label">
+                  本月新增
+                </div>
+              </div>
+            </div>
+            <div
+              v-if="canViewField('stats_premium_customers')"
+              class="stat-card"
+            >
+              <div class="stat-icon premium">
+                <i class="fas fa-crown" />
+              </div>
+              <div class="stat-content">
+                <div class="stat-value">
+                  {{ stats.premium_customers || 0 }}
+                </div>
+                <div class="stat-label">
+                  VIP客户
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <UnifiedSearchPanel
+            v-model:expanded="searchExpanded"
+            :loading="isLoading"
+            @search="handleSearch"
+            @reset="handleReset"
+          >
+            <template #primary>
+              <el-input
+                v-if="showSearchKeyword"
+                v-model="searchKeyword"
+                placeholder="搜索姓名、手机号、邮箱、会员号、公司、地址..."
+                clearable
+                @input="debounceSearch"
+                @keyup.enter="handleSearch"
+                @click.stop
+              >
+                <template #prefix>
+                  <i class="fas fa-search" />
+                </template>
+              </el-input>
+            </template>
+
+            <div
+              v-if="canViewField('customer_type')"
+              class="form-group filter-item"
+              data-field="customer_type"
+            >
               <el-select
-                v-model="filterValues.customerType"
+                v-model="filterValues.customer_type"
                 placeholder="客户类型"
                 clearable
                 @change="handleSearch"
@@ -126,43 +165,73 @@
                   :value="type.value"
                 >
                   <span class="float-left">
-                    <i :class="type.icon"></i>
+                    <i :class="type.icon" />
                     {{ type.label }}
                   </span>
                 </el-option>
               </el-select>
-          </div>
+            </div>
 
-          <div v-if="canViewField('status')" class="form-group filter-item" data-field="status">
+            <div
+              v-if="canViewField('status')"
+              class="form-group filter-item"
+              data-field="status"
+            >
               <el-select
                 v-model="filterValues.status"
                 placeholder="客户状态"
                 clearable
                 @change="handleSearch"
               >
-                <el-option label="活跃" value="1" />
-                <el-option label="非活跃" value="0" />
+                <el-option
+                  label="活跃"
+                  value="1"
+                />
+                <el-option
+                  label="非活跃"
+                  value="0"
+                />
               </el-select>
-          </div>
+            </div>
 
-          <div v-if="canViewField('vip_level')" class="form-group filter-item" data-field="vipLevel">
+            <div
+              v-if="canViewField('vip_level')"
+              class="form-group filter-item"
+              data-field="vip_level"
+            >
               <el-select
-                v-model="filterValues.vipLevel"
+                v-model="filterValues.vip_level"
                 placeholder="VIP等级"
                 clearable
                 @change="handleSearch"
               >
-                <el-option label="普通会员" value="normal" />
-                <el-option label="银卡会员" value="silver" />
-                <el-option label="金卡会员" value="gold" />
-                <el-option label="白金会员" value="platinum" />
+                <el-option
+                  label="普通会员"
+                  value="normal"
+                />
+                <el-option
+                  label="银卡会员"
+                  value="silver"
+                />
+                <el-option
+                  label="金卡会员"
+                  value="gold"
+                />
+                <el-option
+                  label="白金会员"
+                  value="platinum"
+                />
               </el-select>
-          </div>
+            </div>
 
-          <!-- 注册日期范围筛选 -->
-          <div v-if="canViewField('created_at')" class="form-group filter-item" data-field="registerDate">
+            <!-- 注册日期范围筛选 -->
+            <div
+              v-if="canViewField('created_at')"
+              class="form-group filter-item"
+              data-field="register_date"
+            >
               <el-date-picker
-                v-model="registerDateRange"
+                v-model="register_date_range"
                 type="daterange"
                 range-separator="至"
                 start-placeholder="注册开始日期"
@@ -172,961 +241,1427 @@
                 clearable
                 @change="handleDateRangeChange"
               />
-          </div>
-        </UnifiedSearchPanel>
-
-        <!-- 数据表格区域 -->
-        <div class="table-section admin-panel admin-table-panel">
-          <div class="section-header">
-            <div class="section-title">
-              <i class="fas fa-list"></i>
-              客户列表
-              <span class="record-count">共 {{ pagination.total }} 条记录</span>
             </div>
-            <div class="table-actions">
-              <div v-if="hasSelection" class="selection-info">
-                已选择 {{ selectedCount }} 项
-                <el-button size="small" @click="clearSelection">
-                  清空选择
-                </el-button>
+          </UnifiedSearchPanel>
+
+          <!-- 数据表格区域 -->
+          <div class="table-section admin-panel admin-table-panel">
+            <div class="section-header">
+              <div class="section-title">
+                <i class="fas fa-list" />
+                客户列表
+                <span class="record-count">共 {{ pagination.total }} 条记录</span>
               </div>
-            </div>
-          </div>
-
-          <div class="table-responsive">
-            <!-- 错误状态 -->
-            <div v-if="hasError" class="table-error">
-              <el-empty description="加载失败" :image-size="200">
-                <el-button type="primary" @click="refresh(() => loadCustomers())">
-                  重试
-                </el-button>
-              </el-empty>
-            </div>
-
-            <!-- 正常内容 -->
-            <el-table
-              v-else
-              ref="customersTableRef"
-              :data="isLoading ? [] : customers"
-              border
-              stripe
-              class="data-table devices-table base-data-table customers-data-table"
-              table-layout="fixed"
-              :fit="true"
-              :row-key="getCustomerRowKey"
-              :expand-row-keys="isMobile && mobileActionRowId ? [mobileActionRowId] : []"
-              @selection-change="handleSelectionChange"
-              @row-click="handleCustomerRowClick"
-            >
-              <template #empty>
-                <TableLoadingRow v-if="isLoading" mode="block" text="加载客户列表..." />
-                <div v-else class="empty-state">
-                  <i class="fas fa-users"></i>
-                  <p>暂无客户数据</p>
-                </div>
-              </template>
-
-              <el-table-column v-if="!isMobile" type="selection" width="48" align="center" />
-
-              <el-table-column
-                v-if="isMobile && showMemberNumberColumn"
-                label="会员号"
-                :min-width="customerMobileColumnWidths.memberNumber"
-                align="center"
-                class-name="identifier-column customers-cell-member"
-              >
-                <template #default="{ row: customer }">
-                  <span v-if="customer.member_number" class="mobile-member-number" v-html="highlightText(customer.member_number, searchKeyword)"></span>
-                  <span v-else>-</span>
-                </template>
-              </el-table-column>
-
-              <el-table-column
-                v-if="showCustomerInfoColumn"
-                :label="isMobile ? '姓名' : '客户信息'"
-                :min-width="isMobile ? customerMobileColumnWidths.name : 220"
-                align="center"
-              >
-                <template #default="{ row: customer }">
-                      <div class="customer-info">
-                        <div class="customer-primary-line">
-                          <strong v-if="canViewField('name')" class="customer-name" v-html="highlightText(customer.name || '-', searchKeyword)"></strong>
-                          <span v-if="!isMobile && canViewField('id')" class="customer-id text-muted small">#{{ String(customer.id).padStart(6, '0') }}</span>
-                          <span v-if="!isMobile && canViewField('member_number') && customer.member_number" class="member-number small text-primary">
-                            <i class="fas fa-id-card"></i>
-                            <span v-html="highlightText(customer.member_number, searchKeyword)"></span>
-                          </span>
-                        </div>
-                      </div>
-                </template>
-              </el-table-column>
-
-              <el-table-column
-                v-if="!isMobile && showAppleIdColumn"
-                label="Apple ID"
-                min-width="170"
-                align="center"
-                class-name="customers-cell-apple-id identifier-column"
-              >
-                <template #default="{ row: customer }">
-                  <span v-if="customer.apple_id" class="apple-id-value">
-                    <i class="fab fa-apple"></i>
-                    <span v-html="highlightText(customer.apple_id, searchKeyword)"></span>
-                  </span>
-                  <span v-else>-</span>
-                </template>
-              </el-table-column>
-
-              <el-table-column
-                v-if="showContactColumn"
-                :label="isMobile ? '手机号' : '联系方式'"
-                :min-width="isMobile ? customerMobileColumnWidths.phone : 220"
-                align="center"
-                class-name="customers-cell-phone"
-              >
-                <template #default="{ row: customer }">
-                      <div class="contact-info">
-                        <div v-if="canViewField('phone') && customer.phone" class="phone primary">
-                          <i class="fas fa-phone"></i>
-                          <span v-html="highlightText(customer.phone, searchKeyword)"></span>
-                        </div>
-                        <div v-if="!isMobile && ((canViewField('wechat') && customer.wechat) || (canViewField('qq') && customer.qq))" class="social-links small">
-                          <span v-if="canViewField('wechat') && customer.wechat" class="social-tag" title="微信">
-                            <i class="fab fa-weixin"></i>
-                            <span v-html="highlightText(customer.wechat, searchKeyword)"></span>
-                          </span>
-                          <span v-if="canViewField('qq') && customer.qq" class="social-tag" title="QQ">
-                            <i class="fab fa-qq"></i>
-                            <span v-html="highlightText(customer.qq, searchKeyword)"></span>
-                          </span>
-                        </div>
-                      </div>
-                </template>
-              </el-table-column>
-
-              <el-table-column v-if="!isMobile && showCustomerTypeColumn" label="客户类型" min-width="104" align="center">
-                <template #default="{ row: customer }">
-                      <el-tag v-if="canViewField('customer_type')" :type="getCustomerTypeTagType(customer.customer_type)" size="small">
-                        {{ getCustomerTypeLabel(customer.customer_type) }}
-                      </el-tag>
-                      <div v-if="canViewField('blacklist') && customer.blacklist" class="small text-danger mt-1">
-                        <i class="fas fa-exclamation-triangle"></i> 黑名单
-                      </div>
-                </template>
-              </el-table-column>
-
-              <el-table-column v-if="!isMobile && showVipColumn" label="VIP等级" min-width="112" align="center">
-                <template #default="{ row: customer }">
-                      <el-tag :type="getVipLevelType(customer.vip_level)" size="small">
-                        <i :class="getVipLevelIcon(customer.vip_level)" class="mr-1"></i>
-                        {{ getVipLevelLabel(customer.vip_level) }}
-                      </el-tag>
-                </template>
-              </el-table-column>
-
-              <el-table-column v-if="!isMobile && showAccountColumn" label="账户信息" min-width="126" align="center">
-                <template #default="{ row: customer }">
-                      <div class="account-info">
-                        <div v-if="canViewField('balance')" class="table-info-line">
-                          <span class="amount-label">余额</span>
-                          <span class="amount-value">¥{{ formatNumber(customer.balance || 0) }}</span>
-                        </div>
-                        <div v-if="canViewField('points')" class="table-info-line">
-                          <span class="points-label">积分</span>
-                          <span class="points-value">{{ customer.points || 0 }}</span>
-                        </div>
-                      </div>
-                </template>
-              </el-table-column>
-
-              <el-table-column v-if="!isMobile && showRegionColumn" label="地区" min-width="178" align="center">
-                <template #default="{ row: customer }">
-                      <div class="location-info">
-                        <div v-if="(canViewField('province') || canViewField('city')) && formatCustomerRegion(customer, { province: canViewField('province'), city: canViewField('city') }) !== '-'" class="table-info-line city">
-                          <i class="fas fa-map-marker-alt"></i>
-                          <span v-html="highlightText(formatCustomerRegion(customer, { province: canViewField('province'), city: canViewField('city') }), searchKeyword)"></span>
-                        </div>
-                        <div v-if="canViewField('address') && customer.address" class="table-info-line address small text-muted">
-                          <i class="fas fa-home"></i>
-                          <!-- 如果有搜索关键词，显示匹配的片段 -->
-                          <span v-if="searchKeyword && isMatch(customer.address, searchKeyword)">
-                            <span v-html="getMatchSnippet(customer.address, searchKeyword, 50, 20)"></span>
-                          </span>
-                          <!-- 否则显示截断的地址 -->
-                          <span v-else>
-                            {{ customer.address.length > 25 ? customer.address.substring(0, 25) + '...' : customer.address }}
-                          </span>
-                        </div>
-                      </div>
-                </template>
-              </el-table-column>
-
-              <el-table-column v-if="!isMobile && showStatsColumn" label="消费统计" min-width="170" align="center">
-                <template #default="{ row: customer }">
-                      <div class="purchase-info">
-                        <div class="table-info-line purchase-summary">
-                          <span v-if="canViewField('purchase_count')" class="purchase-count">
-                            <span class="count-label">购买数量</span>
-                            <span class="count-value">{{ customer.purchase_count || 0 }} 台</span>
-                          </span>
-                          <span v-if="canViewField('total_spent')" class="total-spent">
-                            <span class="spent-label">总消费</span>
-                            <span class="spent-value">¥{{ formatNumber(customer.total_spent || 0) }}</span>
-                          </span>
-                        </div>
-                        <div v-if="canViewField('last_purchase_date') && customer.last_purchase_date" class="table-info-line last-purchase small text-muted">
-                          <span class="purchase-label">最后</span>
-                          {{ formatDate(customer.last_purchase_date) }}
-                        </div>
-                      </div>
-                </template>
-              </el-table-column>
-
-              <el-table-column v-if="!isMobile && showStatusColumn" label="状态" min-width="82" align="center">
-                <template #default="{ row: customer }">
-                      <el-tag :type="getStatusTagType(customer.status)" size="small">
-                        {{ getStatusLabel(customer.status) }}
-                      </el-tag>
-                </template>
-              </el-table-column>
-
-              <el-table-column v-if="showActionField" label="操作" :width="customerActionColumnWidth" align="center" class-name="actions-column">
-                <template #default="{ row: customer }">
-                      <div class="action-buttons">
-                        <el-button
-                          v-if="canEdit"
-                          type="primary"
-                          size="small"
-                          @click.stop="requirePermission('edit', () => editCustomer(customer))"
-                          title="编辑客户"
-                        >
-                          <i class="fas fa-edit"></i>
-                          编辑
-                        </el-button>
-                        <el-button
-                          type="info"
-                          size="small"
-                          @click.stop="viewCustomerDetail(customer)"
-                          title="查看详情"
-                        >
-                          <i class="fas fa-eye"></i>
-                          详情
-                        </el-button>
-                        <el-button
-                          v-if="canDelete"
-                          type="danger"
-                          size="small"
-                          @click.stop="requirePermission('delete', () => deleteCustomer(customer))"
-                          title="删除客户"
-                        >
-                          <i class="fas fa-trash"></i>
-                          删除
-                        </el-button>
-                      </div>
-                </template>
-              </el-table-column>
-
-              <el-table-column
-                v-if="isMobile && canViewField('actions') && (canEdit || canDelete || canView)"
-                type="expand"
-                width="1"
-                class-name="mobile-expand-column"
-                label-class-name="mobile-expand-header"
-              >
-                <template #default="{ row: customer }">
-                  <div class="mobile-row-actions">
-                        <el-button
-                          v-if="canEdit"
-                          type="primary"
-                          size="small"
-                          class="mobile-action-btn mobile-action-btn-edit"
-                          @click.stop="requirePermission('edit', () => editCustomer(customer))"
-                        >
-                          <i class="fas fa-edit"></i>
-                          <span>编辑</span>
-                        </el-button>
-                        <el-button
-                          type="info"
-                          size="small"
-                          class="mobile-action-btn mobile-action-btn-view"
-                          @click.stop="viewCustomerDetail(customer)"
-                        >
-                          <i class="fas fa-eye"></i>
-                          <span>详情</span>
-                        </el-button>
-                        <el-button
-                          v-if="canDelete"
-                          type="danger"
-                          size="small"
-                          class="mobile-action-btn mobile-action-btn-delete"
-                          @click.stop="requirePermission('delete', () => deleteCustomer(customer))"
-                        >
-                          <i class="fas fa-trash"></i>
-                          <span>删除</span>
-                        </el-button>
-                  </div>
-                </template>
-              </el-table-column>
-            </el-table>
-          </div>
-
-          <!-- 统一分页组件 -->
-          <div class="table-pagination">
-            <Pagination
-              v-if="pagination.total > 0"
-              v-model:current="pagination.page"
-              v-model:page-size="pagination.pageSize"
-              :total="pagination.total"
-              :page-sizes="[20, 50, 100]"
-              :show-total="true"
-              :show-range="true"
-              :show-page-sizes="true"
-              :show-quick-jumper="true"
-              :disabled="isLoading"
-              @change="handlePaginationChange"
-            />
-          </div>
-        </div>
-      </div>
-
-      <!-- 积分设置对话框 -->
-      <MobileDialog
-        v-model="showPointsSettingsModal"
-        title="积分设置"
-        width="560px"
-        dialog-class="customers-points-dialog"
-        :close-on-click-modal="false"
-        :show-default-footer="false"
-      >
-        <el-form
-          :model="pointsConfigForm"
-          label-width="120px"
-          class="points-settings-form"
-          :disabled="pointsConfigLoading || pointsConfigSaving"
-        >
-          <el-form-item label="自动累计">
-            <el-switch
-              v-model="pointsConfigForm.enabled"
-              active-text="启用"
-              inactive-text="停用"
-            />
-          </el-form-item>
-
-          <el-form-item label="积分比例" required>
-            <div class="points-ratio-control">
-              <span>消费</span>
-              <el-input-number
-                v-model="pointsConfigForm.amount_per_point"
-                :min="1"
-                :precision="2"
-                :step="100"
-                controls-position="right"
-                class="points-ratio-input"
-              />
-              <span>元 = 1 积分</span>
-            </div>
-          </el-form-item>
-
-          <el-form-item label="参与机况" required>
-            <el-checkbox-group v-model="pointsIncludedConditions">
-              <el-checkbox label="new">全新</el-checkbox>
-              <el-checkbox label="used">二手</el-checkbox>
-            </el-checkbox-group>
-          </el-form-item>
-
-          <div class="points-settings-preview">
-            <div class="preview-title">
-              <i class="fas fa-calculator"></i>
-              当前规则
-            </div>
-            <div class="preview-content">
-              {{ pointsConfigPreview }}
-            </div>
-          </div>
-        </el-form>
-
-        <template #footer>
-          <el-button type="default" @click="closePointsSettings" :disabled="pointsConfigSaving">
-            取消
-          </el-button>
-          <el-button
-            type="primary"
-            @click="savePointsSettings"
-            :disabled="pointsConfigSaving || !pointsConfigValid"
-            :loading="pointsConfigSaving"
-          >
-            保存设置
-          </el-button>
-        </template>
-      </MobileDialog>
-
-      <!-- 新增/编辑客户对话框 -->
-      <MobileDialog
-        v-model="showCustomerModal"
-        :title="modalMode === 'add' ? '新增客户' : '编辑客户'"
-        width="800px"
-        dialog-class="customers-form-dialog"
-        :close-on-click-modal="false"
-        @close="closeCustomerModal"
-        :show-default-footer="false"
-      >
-        <el-form :model="customerForm" label-width="100px" :disabled="isSubmitting" class="customers-dialog-form">
-          <!-- 基本信息 -->
-          <el-divider content-position="left">
-            <i class="fas fa-user"></i> 基本信息
-          </el-divider>
-
-          <el-row :gutter="20">
-            <el-col v-if="canViewField('name')" :span="12">
-              <el-form-item label="客户姓名" required>
-                <el-input
-                  v-model="customerForm.name"
-                  @input="handleCustomerNameInput"
-                  placeholder="请输入客户姓名"
-                  clearable
-                  maxlength="50"
-                  show-word-limit
-                  :disabled="!canEditField('name')"
-                />
-              </el-form-item>
-            </el-col>
-            <el-col v-if="canViewField('phone')" :span="12">
-              <el-form-item label="联系电话" required>
-                <el-input
-                  v-model="customerForm.phone"
-                  @input="handleCustomerPhoneInput"
-                  placeholder="请输入联系电话"
-                  clearable
-                  maxlength="11"
-                  :disabled="!canEditField('phone')"
-                />
-              </el-form-item>
-            </el-col>
-          </el-row>
-
-          <el-row :gutter="20">
-            <el-col v-if="canViewField('email')" :span="12">
-              <el-form-item label="邮箱地址">
-                <el-input
-                  v-model="customerForm.email"
-                  placeholder="请输入邮箱地址"
-                  clearable
-                  :disabled="!canEditField('email')"
-                />
-              </el-form-item>
-            </el-col>
-            <el-col v-if="canViewField('id_card')" :span="12">
-              <el-form-item label="身份证号">
-                <el-input
-                  v-model="customerForm.id_card"
-                  @input="handleIdCardInput"
-                  placeholder="请输入身份证号"
-                  clearable
-                  maxlength="18"
-                  :disabled="!canEditField('id_card')"
-                />
-              </el-form-item>
-            </el-col>
-          </el-row>
-
-          <el-form-item v-if="canViewField('address')" label="地址">
-            <el-input
-              v-model="customerForm.address"
-              placeholder="请输入详细地址"
-              clearable
-              maxlength="200"
-              show-word-limit
-              :disabled="!canEditField('address')"
-            />
-          </el-form-item>
-
-          <!-- 客户属性 -->
-          <el-divider content-position="left">
-            <i class="fas fa-tag"></i> 客户属性
-          </el-divider>
-
-          <el-row :gutter="20">
-            <el-col v-if="canViewField('customer_type')" :span="12">
-              <el-form-item label="客户类型">
-                <el-select
-                  v-model="customerForm.customer_type"
-                  placeholder="请选择客户类型"
-                  class="w-full"
-                  :disabled="!canEditField('customer_type')"
+              <div class="table-actions">
+                <div
+                  v-if="hasSelection"
+                  class="selection-info"
                 >
-                  <el-option
-                    v-for="type in CUSTOMER_TYPES"
-                    :key="type.value"
-                    :label="type.label"
-                    :value="type.value"
+                  已选择 {{ selectedCount }} 项
+                  <el-button
+                    size="small"
+                    @click="clearSelection"
                   >
-                    <span class="float-left">
-                      <i :class="type.icon"></i>
-                      {{ type.label }}
-                    </span>
-                  </el-option>
-                </el-select>
-              </el-form-item>
-            </el-col>
-            <el-col v-if="canViewField('vip_level')" :span="12">
-              <el-form-item label="VIP等级">
-                <el-select
-                  v-model="customerForm.vip_level"
-                  placeholder="请选择VIP等级"
-                  class="w-full"
-                  :disabled="!canEditField('vip_level')"
-                >
-                  <el-option
-                    v-for="vip in VIP_LEVELS"
-                    :key="vip.value"
-                    :label="vip.label"
-                    :value="vip.value"
-                  >
-                    <span class="float-left">
-                      <i :class="vip.icon" :style="{ color: getVipColor(vip.value) }"></i>
-                      {{ vip.label }}
-                    </span>
-                  </el-option>
-                </el-select>
-              </el-form-item>
-            </el-col>
-          </el-row>
-
-          <el-row :gutter="20">
-            <el-col v-if="canViewField('gender')" :span="12">
-              <el-form-item label="性别">
-                <el-radio-group v-model="customerForm.gender" :disabled="!canEditField('gender')">
-                  <el-radio value="male">男</el-radio>
-                  <el-radio value="female">女</el-radio>
-                </el-radio-group>
-              </el-form-item>
-            </el-col>
-            <el-col v-if="canViewField('birthday')" :span="12">
-              <el-form-item label="生日">
-                <el-date-picker
-                  v-model="customerForm.birthday"
-                  type="date"
-                  placeholder="请选择生日"
-                  class="w-full"
-                  format="YYYY-MM-DD"
-                  value-format="YYYY-MM-DD"
-                  :disabled="!canEditField('birthday')"
-                />
-              </el-form-item>
-            </el-col>
-          </el-row>
-
-          <el-form-item v-if="canViewField('city') || canViewField('province')" label="城市省份">
-            <CitySelector
-              v-model="cityLocation"
-              @change="handleLocationChange"
-            />
-          </el-form-item>
-
-          <!-- 联系方式 -->
-          <el-divider content-position="left">
-            <i class="fas fa-address-book"></i> 联系方式
-          </el-divider>
-
-          <el-row :gutter="20">
-            <el-col v-if="canViewField('wechat')" :span="12">
-              <el-form-item label="微信号">
-                <el-input
-                  v-model="customerForm.wechat"
-                  placeholder="请输入微信号"
-                  clearable
-                  :disabled="!canEditField('wechat')"
-                />
-              </el-form-item>
-            </el-col>
-            <el-col v-if="canViewField('qq')" :span="12">
-              <el-form-item label="QQ号">
-                <el-input
-                  v-model="customerForm.qq"
-                  placeholder="请输入QQ号"
-                  clearable
-                  maxlength="15"
-                  :disabled="!canEditField('qq')"
-                />
-              </el-form-item>
-            </el-col>
-          </el-row>
-
-          <el-form-item v-if="canViewField('apple_id')" label="Apple ID">
-            <el-input
-              v-model="customerForm.apple_id"
-              placeholder="请输入Apple ID手机号或邮箱"
-              clearable
-              @input="handleAppleIdInput"
-              :disabled="!canEditField('apple_id')"
-            >
-              <template #suffix>
-                <i v-if="errors.apple_id" class="el-icon-warning text-danger"></i>
-              </template>
-            </el-input>
-            <div v-if="errors.apple_id" class="el-form-item__error">
-              {{ errors.apple_id }}
-            </div>
-            <div v-else class="el-form-item__tip">
-              请输入有效的 Apple ID 手机号或邮箱
-            </div>
-          </el-form-item>
-
-          <!-- 账户信息 -->
-          <el-divider content-position="left">
-            <i class="fas fa-wallet"></i> 账户信息
-          </el-divider>
-
-          <el-row :gutter="20">
-            <el-col v-if="canViewField('balance')" :span="8">
-              <el-form-item label="余额">
-                <el-input-number
-                  v-model="customerForm.balance"
-                  :precision="2"
-                  :step="0.01"
-                  :min="0"
-                  placeholder="请输入余额"
-                  controls-position="right"
-                  class="w-full"
-                  :disabled="!canEditField('balance')"
-                />
-              </el-form-item>
-            </el-col>
-            <el-col v-if="canViewField('points')" :span="8">
-              <el-form-item label="积分">
-                <el-input-number
-                  v-model="customerForm.points"
-                  :min="0"
-                  placeholder="请输入积分"
-                  controls-position="right"
-                  class="w-full"
-                  :disabled="!canEditField('points')"
-                />
-              </el-form-item>
-            </el-col>
-            <el-col v-if="canViewField('blacklist')" :span="8">
-              <el-form-item label="黑名单状态">
-                <el-switch
-                  v-model="customerForm.blacklist"
-                  active-text="黑名单"
-                  inactive-text="正常"
-                  :disabled="!canEditField('blacklist')"
-                />
-              </el-form-item>
-            </el-col>
-          </el-row>
-
-          <!-- 密码设置（仅编辑模式显示） -->
-          <el-divider v-if="modalMode === 'edit'" content-position="left">
-            <i class="fas fa-key"></i> 密码设置
-          </el-divider>
-
-          <el-row v-if="modalMode === 'edit'" :gutter="20">
-            <el-col :span="24">
-              <el-form-item label="修改密码">
-                <el-checkbox v-model="customerForm.changePassword">启用密码修改</el-checkbox>
-                <span class="text-secondary text-xs ml-3">
-                  勾选后可为H5商城用户设置或修改登录密码
-                </span>
-              </el-form-item>
-            </el-col>
-          </el-row>
-
-          <el-row v-if="modalMode === 'edit' && customerForm.changePassword" :gutter="20">
-            <el-col :span="12">
-              <el-form-item label="新密码" required>
-                <el-input
-                  v-model="customerForm.password"
-                  type="password"
-                  placeholder="请输入新密码（至少6位）"
-                  clearable
-                  show-password
-                  maxlength="20"
-                />
-              </el-form-item>
-            </el-col>
-            <el-col :span="12">
-              <el-form-item label="确认密码" required>
-                <el-input
-                  v-model="customerForm.confirmPassword"
-                  type="password"
-                  placeholder="请再次输入新密码"
-                  clearable
-                  show-password
-                  maxlength="20"
-                />
-              </el-form-item>
-            </el-col>
-          </el-row>
-
-          <!-- 备注 -->
-          <el-divider content-position="left">
-            <i class="fas fa-comment"></i> 备注
-          </el-divider>
-
-          <el-form-item v-if="canViewField('remarks')" label="备注">
-            <el-input
-              v-model="customerForm.remarks"
-              type="textarea"
-              placeholder="请输入备注信息"
-              :rows="3"
-              maxlength="500"
-              show-word-limit
-              :disabled="!canEditField('remarks')"
-            />
-          </el-form-item>
-        </el-form>
-
-        <template #footer>
-          <el-button type="default" @click="closeCustomerModal" :disabled="isSubmitting">
-            取消
-          </el-button>
-          <el-button type="primary" @click="saveCustomer" :disabled="isSubmitting" :loading="isSubmitting">
-            <span v-if="isSubmitting">保存中...</span>
-            <template v-else>{{ modalMode === 'add' ? '新增' : '保存' }}</template>
-          </el-button>
-        </template>
-      </MobileDialog>
-
-      <!-- 客户详情对话框 -->
-      <MobileDialog
-        v-model="showDetailModal"
-        title="客户详情"
-        width="1000px"
-        dialog-class="customers-detail-dialog"
-        :close-on-click-modal="false"
-        @close="closeDetailModal"
-        :show-default-footer="false"
-      >
-        <div v-if="selectedCustomer" class="customer-detail-view admin-page">
-          <!-- 客户信息面板 - 简洁设计 -->
-          <div class="customer-info-panel">
-            <!-- 左侧：基本信息和属性 -->
-            <div class="panel-left">
-              <div class="info-header">
-                <div class="customer-avatar">
-                  <i class="fas fa-user"></i>
-                </div>
-                <div class="customer-basic">
-                  <h3 class="customer-name">
-                    {{ canViewField('name') ? selectedCustomer.name : `客户 #${String(selectedCustomer.id || '').padStart(6, '0')}` }}
-                  </h3>
-                  <div class="customer-meta">
-                    <el-tag v-if="canViewField('customer_type')" :type="getCustomerTypeTagType(selectedCustomer.customer_type)" size="small">
-                      {{ getCustomerTypeLabel(selectedCustomer.customer_type) }}
-                    </el-tag>
-                    <el-tag v-if="canViewField('vip_level')" :type="getVipLevelType(selectedCustomer.vip_level)" size="small">
-                      <i :class="getVipLevelIcon(selectedCustomer.vip_level)"></i> {{ getVipLevelLabel(selectedCustomer.vip_level) }}
-                    </el-tag>
-                    <el-tag v-if="canViewField('status')" :type="selectedCustomer.status === 1 ? 'success' : 'info'" size="small">
-                      {{ selectedCustomer.status === 1 ? '正常' : '禁用' }}
-                    </el-tag>
-                    <span v-if="canViewField('gender')" class="customer-gender-meta">
-                      {{ getGenderLabel(selectedCustomer.gender) }}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="info-grid">
-                <div v-if="canViewField('phone')" class="info-row info-row-phone">
-                  <span class="label" title="电话" aria-label="电话">
-                    <i class="fas fa-mobile-alt"></i>
-                  </span>
-                  <span class="value phone" :title="selectedCustomer.phone || '-'">{{ selectedCustomer.phone || '-' }}</span>
-                </div>
-                <div v-if="canViewField('member_number')" class="info-row info-row-member">
-                  <span class="label" title="会员号" aria-label="会员号">
-                    <i class="fas fa-id-badge"></i>
-                  </span>
-                  <span class="value" :title="selectedCustomer.member_number || '-'">{{ selectedCustomer.member_number || '-' }}</span>
-                </div>
-                <div v-if="canViewField('id_card')" class="info-row wide-info-row info-row-id-card">
-                  <span class="label" title="身份证号" aria-label="身份证号">
-                    <i class="fas fa-address-card"></i>
-                  </span>
-                  <span class="value" :title="selectedCustomer.id_card || '-'">{{ selectedCustomer.id_card || '-' }}</span>
-                </div>
-                <div v-if="canViewField('email')" class="info-row wide-info-row info-row-email">
-                  <span class="label" title="邮箱" aria-label="邮箱">
-                    <i class="fas fa-envelope"></i>
-                  </span>
-                  <span class="value" :title="selectedCustomer.email || '-'">{{ selectedCustomer.email || '-' }}</span>
-                </div>
-                <div v-if="canViewField('address')" class="info-row wide-info-row info-row-address">
-                  <span class="label" title="地址" aria-label="地址">
-                    <i class="fas fa-home"></i>
-                  </span>
-                  <span class="value" :title="selectedCustomer.address || '-'">{{ selectedCustomer.address || '-' }}</span>
-                </div>
-                <div v-if="canViewField('city') || canViewField('province')" class="info-row wide-info-row info-row-region">
-                  <span class="label" title="地区" aria-label="地区">
-                    <i class="fas fa-map-marker-alt"></i>
-                  </span>
-                  <span class="value" :title="formatCustomerRegion(selectedCustomer, { province: canViewField('province'), city: canViewField('city') })">{{ formatCustomerRegion(selectedCustomer, { province: canViewField('province'), city: canViewField('city') }) }}</span>
+                    清空选择
+                  </el-button>
                 </div>
               </div>
             </div>
 
-            <!-- 右侧：账户统计 -->
-            <div class="panel-right">
-              <div class="stats-card">
-                <div v-if="canViewField('balance')" class="stat-item">
-                  <div class="stat-icon balance">
-                    <i class="fas fa-wallet"></i>
-                  </div>
-                  <div class="stat-content">
-                    <div class="stat-label">账户余额</div>
-                    <div class="stat-value">¥{{ formatNumber(selectedCustomer.balance || 0) }}</div>
-                  </div>
-                </div>
-                <div v-if="canViewField('points')" class="stat-item">
-                  <div class="stat-icon points">
-                    <i class="fas fa-star"></i>
-                  </div>
-                  <div class="stat-content">
-                    <div class="stat-label">积分</div>
-                    <div class="stat-value">{{ selectedCustomer.points || 0 }}</div>
-                  </div>
-                </div>
-                <div v-if="canViewField('total_spent')" class="stat-item">
-                  <div class="stat-icon spent">
-                    <i class="fas fa-shopping-cart"></i>
-                  </div>
-                  <div class="stat-content">
-                    <div class="stat-label">总消费</div>
-                    <div class="stat-value">¥{{ formatNumber(selectedCustomer.total_spent || 0) }}</div>
-                  </div>
-                </div>
-                <div v-if="canViewField('purchase_count')" class="stat-item">
-                  <div class="stat-icon count">
-                    <i class="fas fa-shopping-bag"></i>
-                  </div>
-                  <div class="stat-content">
-                    <div class="stat-label">购买次数</div>
-                    <div class="stat-value">{{ selectedCustomer.purchase_count || 0 }} 次</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 其他信息 -->
-          <div class="extra-info" v-if="(canViewField('wechat') && selectedCustomer.wechat) || (canViewField('qq') && selectedCustomer.qq) || (canViewField('apple_id') && selectedCustomer.apple_id) || (canViewField('remarks') && selectedCustomer.remarks) || (canViewField('created_at') && selectedCustomer.created_at) || (canViewField('last_purchase_date') && selectedCustomer.last_purchase_date)">
-            <div v-if="canViewField('wechat') && selectedCustomer.wechat" class="extra-info-item">
-              <i class="fab fa-weixin text-wechat"></i>
-              <span>微信: {{ selectedCustomer.wechat }}</span>
-            </div>
-            <div v-if="canViewField('qq') && selectedCustomer.qq" class="extra-info-item">
-              <i class="fab fa-qq text-qq"></i>
-              <span>QQ: {{ selectedCustomer.qq }}</span>
-            </div>
-            <div v-if="canViewField('apple_id') && selectedCustomer.apple_id" class="extra-info-item">
-              <i class="fab fa-apple"></i>
-              <span>Apple ID: {{ selectedCustomer.apple_id }}</span>
-            </div>
-            <div v-if="canViewField('created_at') && selectedCustomer.created_at" class="extra-info-item">
-              <i class="fas fa-calendar-alt"></i>
-              <span>注册时间: {{ formatDate(selectedCustomer.created_at) }}</span>
-            </div>
-            <div v-if="canViewField('last_purchase_date') && selectedCustomer.last_purchase_date" class="extra-info-item">
-              <i class="fas fa-clock"></i>
-              <span>最后购买: {{ formatDate(selectedCustomer.last_purchase_date) }}</span>
-            </div>
-            <div v-if="canViewField('remarks') && selectedCustomer.remarks" class="extra-info-item remarks">
-              <i class="fas fa-comment"></i>
-              <span>备注: {{ selectedCustomer.remarks }}</span>
-            </div>
-          </div>
-
-          <!-- 购买记录表格 -->
-          <el-divider content-position="left">
-            <i class="fas fa-shopping-cart"></i> 购买记录
-            <el-tag size="small" class="ml-3">共 {{ purchasesPagination.total }} 条</el-tag>
-          </el-divider>
-
-          <div v-if="customerPurchases.length > 0" class="purchases-section">
             <div class="table-responsive">
+              <!-- 错误状态 -->
+              <div
+                v-if="hasError"
+                class="table-error"
+              >
+                <DataEmptyState
+                  description="加载失败"
+                  :image-size="200"
+                >
+                  <el-button
+                    type="primary"
+                    @click="refresh(() => loadCustomers())"
+                  >
+                    重试
+                  </el-button>
+                </DataEmptyState>
+              </div>
+
+              <!-- 正常内容 -->
               <el-table
-                :data="customerPurchases"
+                v-else
+                ref="customersTableRef"
+                :data="isLoading ? [] : customers"
                 border
                 stripe
-                class="data-table devices-table customer-purchases-table"
+                class="data-table devices-table base-data-table customers-data-table"
                 table-layout="fixed"
                 :fit="true"
-                row-key="id"
+                :row-key="getCustomerRowKey"
+                :expand-row-keys="isMobile && mobileActionRowId ? [mobileActionRowId] : []"
+                @selection-change="handleSelectionChange"
+                @row-click="handleCustomerRowClick"
               >
-                <el-table-column label="序号" width="60" align="center">
-                  <template #default="{ $index }">
-                    <span class="index-badge">{{ $index + 1 }}</span>
+                <template #empty>
+                  <TableLoadingRow
+                    v-if="isLoading"
+                    mode="block"
+                    text="加载客户列表..."
+                  />
+                  <DataEmptyState
+                    v-else
+                    description="暂无客户数据"
+                  />
+                </template>
+
+                <el-table-column
+                  v-if="!isMobile"
+                  type="selection"
+                  width="48"
+                  align="center"
+                />
+
+                <el-table-column
+                  v-if="isMobile && showMemberNumberColumn"
+                  label="会员号"
+                  :min-width="customerMobileColumnWidths.memberNumber"
+                  align="center"
+                  class-name="identifier-column customers-cell-member"
+                >
+                  <template #default="{ row: customer }">
+                    <span
+                      v-if="customer.member_number"
+                      class="mobile-member-number"
+                      v-html="highlightText(customer.member_number, searchKeyword)"
+                    />
+                    <span v-else>-</span>
                   </template>
                 </el-table-column>
-                <el-table-column prop="model" label="型号" min-width="116" align="center">
-                  <template #default="{ row }">{{ row.model || '-' }}</template>
-                </el-table-column>
-                <el-table-column prop="color" label="颜色" min-width="82" align="center">
-                  <template #default="{ row }">{{ row.color || '-' }}</template>
-                </el-table-column>
-                <el-table-column prop="memory" label="内存" min-width="86" align="center">
-                  <template #default="{ row }">{{ row.memory || '-' }}</template>
-                </el-table-column>
-                <el-table-column label="成色" min-width="82" align="center">
-                  <template #default="{ row: purchase }">
-                      <el-tag :type="purchase.is_new === '全新' ? 'success' : 'warning'" size="small">
-                        {{ purchase.is_new }}
-                      </el-tag>
+
+                <el-table-column
+                  v-if="showCustomerInfoColumn"
+                  :label="isMobile ? '姓名' : '客户信息'"
+                  :min-width="isMobile ? customerMobileColumnWidths.name : 220"
+                  align="center"
+                >
+                  <template #default="{ row: customer }">
+                    <div class="customer-info">
+                      <div class="customer-primary-line">
+                        <strong
+                          v-if="canViewField('name')"
+                          class="customer-name"
+                          v-html="highlightText(customer.name || '-', searchKeyword)"
+                        />
+                        <span
+                          v-if="!isMobile && canViewField('id')"
+                          class="customer-id text-muted small"
+                        >#{{ String(customer.id).padStart(6, '0') }}</span>
+                        <span
+                          v-if="!isMobile && canViewField('member_number') && customer.member_number"
+                          class="member-number small text-primary"
+                        >
+                          <i class="fas fa-id-card" />
+                          <span v-html="highlightText(customer.member_number, searchKeyword)" />
+                        </span>
+                      </div>
+                    </div>
                   </template>
                 </el-table-column>
-                <el-table-column label="IMEI" :min-width="purchaseImeiColumnWidth" align="center" class-name="identifier-column">
-                  <template #default="{ row: purchase }"><span class="imei">{{ purchase.imei || '-' }}</span></template>
-                </el-table-column>
-                <el-table-column label="序列号" :min-width="purchaseSerialColumnWidth" align="center" class-name="identifier-column">
-                  <template #default="{ row: purchase }"><span class="serial-number">{{ purchase.serial_number || '-' }}</span></template>
-                </el-table-column>
-                <el-table-column label="售价" min-width="96" align="center">
-                  <template #default="{ row: purchase }"><span class="price">¥{{ formatNumber(purchase.sale_price) }}</span></template>
-                </el-table-column>
-                <el-table-column label="利润" min-width="96" align="center">
-                  <template #default="{ row: purchase }">
-                    <span :class="['price-cell', Number(purchase.profit) > 0 ? 'profit-positive' : 'profit-negative']">
-                      ¥{{ formatNumber(purchase.profit) }}
+
+                <el-table-column
+                  v-if="!isMobile && showAppleIdColumn"
+                  label="Apple ID"
+                  min-width="170"
+                  align="center"
+                  class-name="customers-cell-apple-id identifier-column"
+                >
+                  <template #default="{ row: customer }">
+                    <span
+                      v-if="customer.apple_id"
+                      class="apple-id-value"
+                    >
+                      <i class="fab fa-apple" />
+                      <span v-html="highlightText(customer.apple_id, searchKeyword)" />
                     </span>
+                    <span v-else>-</span>
                   </template>
                 </el-table-column>
-                <el-table-column label="销售日期" min-width="132" align="center">
-                  <template #default="{ row: purchase }"><span class="time-cell">{{ formatDate(purchase.sale_date) }}</span></template>
+
+                <el-table-column
+                  v-if="showContactColumn"
+                  :label="isMobile ? '手机号' : '联系方式'"
+                  :min-width="isMobile ? customerMobileColumnWidths.phone : 220"
+                  align="center"
+                  class-name="customers-cell-phone"
+                >
+                  <template #default="{ row: customer }">
+                    <div class="contact-info">
+                      <div
+                        v-if="canViewField('phone') && customer.phone"
+                        class="phone primary"
+                      >
+                        <i class="fas fa-phone" />
+                        <span v-html="highlightText(customer.phone, searchKeyword)" />
+                      </div>
+                      <div
+                        v-if="!isMobile && ((canViewField('wechat') && customer.wechat) || (canViewField('qq') && customer.qq))"
+                        class="social-links small"
+                      >
+                        <span
+                          v-if="canViewField('wechat') && customer.wechat"
+                          class="social-tag"
+                          title="微信"
+                        >
+                          <i class="fab fa-weixin" />
+                          <span v-html="highlightText(customer.wechat, searchKeyword)" />
+                        </span>
+                        <span
+                          v-if="canViewField('qq') && customer.qq"
+                          class="social-tag"
+                          title="QQ"
+                        >
+                          <i class="fab fa-qq" />
+                          <span v-html="highlightText(customer.qq, searchKeyword)" />
+                        </span>
+                      </div>
+                    </div>
+                  </template>
                 </el-table-column>
-                <el-table-column prop="salesperson" label="销售员" min-width="96" align="center">
-                  <template #default="{ row }">{{ row.salesperson || '-' }}</template>
+
+                <el-table-column
+                  v-if="!isMobile && showCustomerTypeColumn"
+                  label="客户类型"
+                  min-width="104"
+                  align="center"
+                >
+                  <template #default="{ row: customer }">
+                    <el-tag
+                      v-if="canViewField('customer_type')"
+                      :type="getCustomerTypeTagType(customer.customer_type)"
+                      size="small"
+                    >
+                      {{ getCustomerTypeLabel(customer.customer_type) }}
+                    </el-tag>
+                    <div
+                      v-if="canViewField('blacklist') && customer.blacklist"
+                      class="small text-danger mt-1"
+                    >
+                      <i class="fas fa-exclamation-triangle" /> 黑名单
+                    </div>
+                  </template>
+                </el-table-column>
+
+                <el-table-column
+                  v-if="!isMobile && showVipColumn"
+                  label="VIP等级"
+                  min-width="112"
+                  align="center"
+                >
+                  <template #default="{ row: customer }">
+                    <el-tag
+                      :type="getVipLevelType(customer.vip_level)"
+                      size="small"
+                    >
+                      <i
+                        :class="getVipLevelIcon(customer.vip_level)"
+                        class="mr-1"
+                      />
+                      {{ getVipLevelLabel(customer.vip_level) }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+
+                <el-table-column
+                  v-if="!isMobile && showAccountColumn"
+                  label="账户信息"
+                  min-width="126"
+                  align="center"
+                >
+                  <template #default="{ row: customer }">
+                    <div class="account-info">
+                      <div
+                        v-if="canViewField('balance')"
+                        class="table-info-line"
+                      >
+                        <span class="amount-label">余额</span>
+                        <span class="amount-value">¥{{ formatNumber(customer.balance || 0) }}</span>
+                      </div>
+                      <div
+                        v-if="canViewField('points')"
+                        class="table-info-line"
+                      >
+                        <span class="points-label">积分</span>
+                        <span class="points-value">{{ customer.points || 0 }}</span>
+                      </div>
+                    </div>
+                  </template>
+                </el-table-column>
+
+                <el-table-column
+                  v-if="!isMobile && showRegionColumn"
+                  label="地区"
+                  min-width="178"
+                  align="center"
+                >
+                  <template #default="{ row: customer }">
+                    <div class="location-info">
+                      <div
+                        v-if="(canViewField('province') || canViewField('city')) && formatCustomerRegion(customer, { province: canViewField('province'), city: canViewField('city') }) !== '-'"
+                        class="table-info-line city"
+                      >
+                        <i class="fas fa-map-marker-alt" />
+                        <span v-html="highlightText(formatCustomerRegion(customer, { province: canViewField('province'), city: canViewField('city') }), searchKeyword)" />
+                      </div>
+                      <div
+                        v-if="canViewField('address') && customer.address"
+                        class="table-info-line address small text-muted"
+                      >
+                        <i class="fas fa-home" />
+                        <!-- 如果有搜索关键词，显示匹配的片段 -->
+                        <span v-if="searchKeyword && isMatch(customer.address, searchKeyword)">
+                          <span v-html="getMatchSnippet(customer.address, searchKeyword, 50, 20)" />
+                        </span>
+                        <!-- 否则显示截断的地址 -->
+                        <span v-else>
+                          {{ customer.address.length > 25 ? customer.address.substring(0, 25) + '...' : customer.address }}
+                        </span>
+                      </div>
+                    </div>
+                  </template>
+                </el-table-column>
+
+                <el-table-column
+                  v-if="!isMobile && showStatsColumn"
+                  label="消费统计"
+                  min-width="170"
+                  align="center"
+                >
+                  <template #default="{ row: customer }">
+                    <div class="purchase-info">
+                      <div class="table-info-line purchase-summary">
+                        <span
+                          v-if="canViewField('purchase_count')"
+                          class="purchase-count"
+                        >
+                          <span class="count-label">购买数量</span>
+                          <span class="count-value">{{ customer.purchase_count || 0 }} 台</span>
+                        </span>
+                        <span
+                          v-if="canViewField('total_spent')"
+                          class="total-spent"
+                        >
+                          <span class="spent-label">总消费</span>
+                          <span class="spent-value">¥{{ formatNumber(customer.total_spent || 0) }}</span>
+                        </span>
+                      </div>
+                      <div
+                        v-if="canViewField('last_purchase_date') && customer.last_purchase_date"
+                        class="table-info-line last-purchase small text-muted"
+                      >
+                        <span class="purchase-label">最后</span>
+                        {{ formatDate(customer.last_purchase_date) }}
+                      </div>
+                    </div>
+                  </template>
+                </el-table-column>
+
+                <el-table-column
+                  v-if="!isMobile && showStatusColumn"
+                  label="状态"
+                  min-width="82"
+                  align="center"
+                >
+                  <template #default="{ row: customer }">
+                    <el-tag
+                      :type="getStatusTagType(customer.status)"
+                      size="small"
+                    >
+                      {{ getStatusLabel(customer.status) }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+
+                <el-table-column
+                  v-if="showActionField"
+                  label="操作"
+                  :width="customerActionColumnWidth"
+                  align="center"
+                  class-name="actions-column"
+                >
+                  <template #default="{ row: customer }">
+                    <div class="action-buttons">
+                      <el-button
+                        type="info"
+                        size="small"
+                        title="查看详情"
+                        @click.stop="viewCustomerDetail(customer)"
+                      >
+                        <i class="fas fa-eye" />
+                        详情
+                      </el-button>
+                      <el-button
+                        v-if="canEdit"
+                        type="primary"
+                        size="small"
+                        title="编辑客户"
+                        @click.stop="requirePermission('edit', () => editCustomer(customer))"
+                      >
+                        <i class="fas fa-edit" />
+                        编辑
+                      </el-button>
+                      <el-button
+                        v-if="canDelete"
+                        type="danger"
+                        size="small"
+                        title="删除客户"
+                        @click.stop="requirePermission('delete', () => deleteCustomer(customer))"
+                      >
+                        <i class="fas fa-trash" />
+                        删除
+                      </el-button>
+                    </div>
+                  </template>
+                </el-table-column>
+
+                <el-table-column
+                  v-if="isMobile && showMobileActionField"
+                  type="expand"
+                  width="1"
+                  class-name="mobile-expand-column"
+                  label-class-name="mobile-expand-header"
+                >
+                  <template #default="{ row: customer }">
+                    <div class="mobile-row-actions">
+                      <el-button
+                        type="info"
+                        size="small"
+                        class="mobile-action-btn mobile-action-btn-view"
+                        @click.stop="viewCustomerDetail(customer)"
+                      >
+                        <i class="fas fa-eye" />
+                        <span>详情</span>
+                      </el-button>
+                      <el-button
+                        v-if="canEdit"
+                        type="primary"
+                        size="small"
+                        class="mobile-action-btn mobile-action-btn-edit"
+                        @click.stop="requirePermission('edit', () => editCustomer(customer))"
+                      >
+                        <i class="fas fa-edit" />
+                        <span>编辑</span>
+                      </el-button>
+                      <el-button
+                        v-if="canDelete"
+                        type="danger"
+                        size="small"
+                        class="mobile-action-btn mobile-action-btn-delete"
+                        @click.stop="requirePermission('delete', () => deleteCustomer(customer))"
+                      >
+                        <i class="fas fa-trash" />
+                        <span>删除</span>
+                      </el-button>
+                    </div>
+                  </template>
                 </el-table-column>
               </el-table>
             </div>
 
-            <Pagination
-              v-if="customerPurchases.length > 0"
-              v-model:current="purchasesPagination.page"
-              v-model:page-size="purchasesPagination.limit"
-              :total="Number(purchasesPagination.total)"
-              :page-sizes="[10, 20, 50, 100]"
-              size="small"
-              :show-range="true"
-              @change="handlePurchasesPaginationChange"
-            />
+            <!-- 统一分页组件 -->
+            <div class="table-pagination">
+              <Pagination
+                v-if="pagination.total > 0"
+                v-model:current="pagination.page"
+                v-model:page-size="pagination.page_size"
+                :total="pagination.total"
+                :page-sizes="[20, 50, 100]"
+                :show-total="true"
+                :show-range="true"
+                :show-page-sizes="true"
+                :show-quick-jumper="true"
+                :disabled="isLoading"
+                @change="handlePaginationChange"
+              />
+            </div>
           </div>
-          <el-empty v-else description="暂无购买记录" :image-size="200">
-            <template #description>
-              <p class="text-muted">该客户还没有购买记录</p>
-            </template>
-          </el-empty>
         </div>
 
-        <template #footer>
-          <el-button type="default" @click="closeDetailModal">
-            关闭
-          </el-button>
-        </template>
-      </MobileDialog>
-    </div>
+        <!-- 积分设置对话框 -->
+        <MobileDialog
+          v-model="showPointsSettingsModal"
+          title="积分设置"
+          width="560px"
+          dialog-class="customers-points-dialog"
+          :close-on-click-modal="false"
+          :show-default-footer="false"
+        >
+          <el-form
+            :model="pointsConfigForm"
+            label-width="120px"
+            class="points-settings-form"
+            :disabled="pointsConfigLoading || pointsConfigSaving"
+          >
+            <el-form-item label="自动累计">
+              <el-switch
+                v-model="pointsConfigForm.enabled"
+                active-text="启用"
+                inactive-text="停用"
+              />
+            </el-form-item>
+
+            <el-form-item
+              label="积分比例"
+              required
+            >
+              <div class="points-ratio-control">
+                <span>消费</span>
+                <el-input-number
+                  v-model="pointsConfigForm.amount_per_point"
+                  :min="1"
+                  :precision="2"
+                  :step="100"
+                  controls-position="right"
+                  class="points-ratio-input"
+                />
+                <span>元 = 1 积分</span>
+              </div>
+            </el-form-item>
+
+            <el-form-item
+              label="参与机况"
+              required
+            >
+              <el-checkbox-group v-model="pointsIncludedConditions">
+                <el-checkbox label="new">
+                  全新
+                </el-checkbox>
+                <el-checkbox label="used">
+                  二手
+                </el-checkbox>
+              </el-checkbox-group>
+            </el-form-item>
+
+            <div class="points-settings-preview">
+              <div class="preview-title">
+                <i class="fas fa-calculator" />
+                当前规则
+              </div>
+              <div class="preview-content">
+                {{ pointsConfigPreview }}
+              </div>
+            </div>
+          </el-form>
+
+          <template #footer>
+            <el-button
+              type="default"
+              :disabled="pointsConfigSaving"
+              @click="closePointsSettings"
+            >
+              取消
+            </el-button>
+            <el-button
+              type="primary"
+              :disabled="pointsConfigSaving || !pointsConfigValid"
+              :loading="pointsConfigSaving"
+              @click="savePointsSettings"
+            >
+              保存设置
+            </el-button>
+          </template>
+        </MobileDialog>
+
+        <!-- 新增/编辑客户对话框 -->
+        <MobileDialog
+          v-model="showCustomerModal"
+          :title="modalMode === 'add' ? '新增客户' : '编辑客户'"
+          width="800px"
+          dialog-class="customers-form-dialog"
+          :close-on-click-modal="false"
+          :show-default-footer="false"
+          @close="closeCustomerModal"
+        >
+          <el-form
+            :model="customerForm"
+            label-width="100px"
+            :disabled="isSubmitting"
+            class="customers-dialog-form"
+          >
+            <!-- 基本信息 -->
+            <el-divider content-position="left">
+              <i class="fas fa-user" /> 基本信息
+            </el-divider>
+
+            <el-row :gutter="20">
+              <el-col
+                v-if="canViewField('name')"
+                :span="12"
+              >
+                <el-form-item
+                  label="客户姓名"
+                  required
+                >
+                  <el-input
+                    v-model="customerForm.name"
+                    placeholder="请输入客户姓名"
+                    clearable
+                    maxlength="50"
+                    show-word-limit
+                    :disabled="!canEditField('name')"
+                    @input="handleCustomerNameInput"
+                  />
+                </el-form-item>
+              </el-col>
+              <el-col
+                v-if="canViewField('phone')"
+                :span="12"
+              >
+                <el-form-item
+                  label="联系电话"
+                  required
+                >
+                  <el-input
+                    v-model="customerForm.phone"
+                    placeholder="请输入联系电话"
+                    clearable
+                    maxlength="11"
+                    :disabled="!canEditField('phone')"
+                    @input="handleCustomerPhoneInput"
+                  />
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <el-row :gutter="20">
+              <el-col
+                v-if="canViewField('email')"
+                :span="12"
+              >
+                <el-form-item label="邮箱地址">
+                  <el-input
+                    v-model="customerForm.email"
+                    placeholder="请输入邮箱地址"
+                    clearable
+                    :disabled="!canEditField('email')"
+                  />
+                </el-form-item>
+              </el-col>
+              <el-col
+                v-if="canViewField('id_card')"
+                :span="12"
+              >
+                <el-form-item label="身份证号">
+                  <el-input
+                    v-model="customerForm.id_card"
+                    placeholder="请输入身份证号"
+                    clearable
+                    maxlength="18"
+                    :disabled="!canEditField('id_card')"
+                    @input="handleIdCardInput"
+                  />
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <el-form-item
+              v-if="canViewField('address')"
+              label="地址"
+            >
+              <el-input
+                v-model="customerForm.address"
+                placeholder="请输入详细地址"
+                clearable
+                maxlength="200"
+                show-word-limit
+                :disabled="!canEditField('address')"
+              />
+            </el-form-item>
+
+            <!-- 客户属性 -->
+            <el-divider content-position="left">
+              <i class="fas fa-tag" /> 客户属性
+            </el-divider>
+
+            <el-row :gutter="20">
+              <el-col
+                v-if="canViewField('customer_type')"
+                :span="12"
+              >
+                <el-form-item label="客户类型">
+                  <el-select
+                    v-model="customerForm.customer_type"
+                    placeholder="请选择客户类型"
+                    class="w-full"
+                    :disabled="!canEditField('customer_type')"
+                  >
+                    <el-option
+                      v-for="type in CUSTOMER_TYPES"
+                      :key="type.value"
+                      :label="type.label"
+                      :value="type.value"
+                    >
+                      <span class="float-left">
+                        <i :class="type.icon" />
+                        {{ type.label }}
+                      </span>
+                    </el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col
+                v-if="canViewField('vip_level')"
+                :span="12"
+              >
+                <el-form-item label="VIP等级">
+                  <el-select
+                    v-model="customerForm.vip_level"
+                    placeholder="请选择VIP等级"
+                    class="w-full"
+                    :disabled="!canEditField('vip_level')"
+                  >
+                    <el-option
+                      v-for="vip in VIP_LEVELS"
+                      :key="vip.value"
+                      :label="vip.label"
+                      :value="vip.value"
+                    >
+                      <span class="float-left">
+                        <i
+                          :class="vip.icon"
+                          :style="{ color: getVipColor(vip.value) }"
+                        />
+                        {{ vip.label }}
+                      </span>
+                    </el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <el-row :gutter="20">
+              <el-col
+                v-if="canViewField('gender')"
+                :span="12"
+              >
+                <el-form-item label="性别">
+                  <el-radio-group
+                    v-model="customerForm.gender"
+                    :disabled="!canEditField('gender')"
+                  >
+                    <el-radio value="male">
+                      男
+                    </el-radio>
+                    <el-radio value="female">
+                      女
+                    </el-radio>
+                  </el-radio-group>
+                </el-form-item>
+              </el-col>
+              <el-col
+                v-if="canViewField('birthday')"
+                :span="12"
+              >
+                <el-form-item label="生日">
+                  <el-date-picker
+                    v-model="customerForm.birthday"
+                    type="date"
+                    placeholder="请选择生日"
+                    class="w-full"
+                    format="YYYY-MM-DD"
+                    value-format="YYYY-MM-DD"
+                    :disabled="!canEditField('birthday')"
+                  />
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <el-form-item
+              v-if="canViewField('city') || canViewField('province')"
+              label="城市省份"
+            >
+              <CitySelector
+                v-model="cityLocation"
+                @change="handleLocationChange"
+              />
+            </el-form-item>
+
+            <!-- 联系方式 -->
+            <el-divider content-position="left">
+              <i class="fas fa-address-book" /> 联系方式
+            </el-divider>
+
+            <el-row :gutter="20">
+              <el-col
+                v-if="canViewField('wechat')"
+                :span="12"
+              >
+                <el-form-item label="微信号">
+                  <el-input
+                    v-model="customerForm.wechat"
+                    placeholder="请输入微信号"
+                    clearable
+                    :disabled="!canEditField('wechat')"
+                  />
+                </el-form-item>
+              </el-col>
+              <el-col
+                v-if="canViewField('qq')"
+                :span="12"
+              >
+                <el-form-item label="QQ号">
+                  <el-input
+                    v-model="customerForm.qq"
+                    placeholder="请输入QQ号"
+                    clearable
+                    maxlength="15"
+                    :disabled="!canEditField('qq')"
+                  />
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <el-form-item
+              v-if="canViewField('apple_id')"
+              label="Apple ID"
+            >
+              <el-input
+                v-model="customerForm.apple_id"
+                placeholder="请输入Apple ID手机号或邮箱"
+                clearable
+                :disabled="!canEditField('apple_id')"
+                @input="handleAppleIdInput"
+              >
+                <template #suffix>
+                  <i
+                    v-if="errors.apple_id"
+                    class="el-icon-warning text-danger"
+                  />
+                </template>
+              </el-input>
+              <div
+                v-if="errors.apple_id"
+                class="el-form-item__error"
+              >
+                {{ errors.apple_id }}
+              </div>
+              <div
+                v-else
+                class="el-form-item__tip"
+              >
+                请输入有效的 Apple ID 手机号或邮箱
+              </div>
+            </el-form-item>
+
+            <!-- 账户信息 -->
+            <el-divider content-position="left">
+              <i class="fas fa-wallet" /> 账户信息
+            </el-divider>
+
+            <el-row :gutter="20">
+              <el-col
+                v-if="canViewField('balance')"
+                :span="8"
+              >
+                <el-form-item label="余额">
+                  <el-input-number
+                    v-model="customerForm.balance"
+                    :precision="2"
+                    :step="0.01"
+                    :min="0"
+                    placeholder="请输入余额"
+                    controls-position="right"
+                    class="w-full"
+                    :disabled="!canEditField('balance')"
+                  />
+                </el-form-item>
+              </el-col>
+              <el-col
+                v-if="canViewField('points')"
+                :span="8"
+              >
+                <el-form-item label="积分">
+                  <el-input-number
+                    v-model="customerForm.points"
+                    :min="0"
+                    placeholder="请输入积分"
+                    controls-position="right"
+                    class="w-full"
+                    :disabled="!canEditField('points')"
+                  />
+                </el-form-item>
+              </el-col>
+              <el-col
+                v-if="canViewField('blacklist')"
+                :span="8"
+              >
+                <el-form-item label="黑名单状态">
+                  <el-switch
+                    v-model="customerForm.blacklist"
+                    active-text="黑名单"
+                    inactive-text="正常"
+                    :disabled="!canEditField('blacklist')"
+                  />
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <!-- 密码设置（仅编辑模式显示） -->
+            <el-divider
+              v-if="modalMode === 'edit'"
+              content-position="left"
+            >
+              <i class="fas fa-key" /> 密码设置
+            </el-divider>
+
+            <el-row
+              v-if="modalMode === 'edit'"
+              :gutter="20"
+            >
+              <el-col :span="24">
+                <el-form-item label="修改密码">
+                  <el-checkbox v-model="customerForm.changePassword">
+                    启用密码修改
+                  </el-checkbox>
+                  <span class="text-secondary text-xs ml-3">
+                    勾选后可为H5商城用户设置或修改登录密码
+                  </span>
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <el-row
+              v-if="modalMode === 'edit' && customerForm.changePassword"
+              :gutter="20"
+            >
+              <el-col :span="12">
+                <el-form-item
+                  label="新密码"
+                  required
+                >
+                  <el-input
+                    v-model="customerForm.password"
+                    type="password"
+                    placeholder="请输入新密码（至少6位）"
+                    clearable
+                    show-password
+                    maxlength="20"
+                  />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item
+                  label="确认密码"
+                  required
+                >
+                  <el-input
+                    v-model="customerForm.confirmPassword"
+                    type="password"
+                    placeholder="请再次输入新密码"
+                    clearable
+                    show-password
+                    maxlength="20"
+                  />
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <!-- 备注 -->
+            <el-divider content-position="left">
+              <i class="fas fa-comment" /> 备注
+            </el-divider>
+
+            <el-form-item
+              v-if="canViewField('remarks')"
+              label="备注"
+            >
+              <el-input
+                v-model="customerForm.remarks"
+                type="textarea"
+                placeholder="请输入备注信息"
+                :rows="3"
+                maxlength="500"
+                show-word-limit
+                :disabled="!canEditField('remarks')"
+              />
+            </el-form-item>
+          </el-form>
+
+          <template #footer>
+            <el-button
+              type="default"
+              :disabled="isSubmitting"
+              @click="closeCustomerModal"
+            >
+              取消
+            </el-button>
+            <el-button
+              type="primary"
+              :disabled="isSubmitting"
+              :loading="isSubmitting"
+              @click="saveCustomer"
+            >
+              <span v-if="isSubmitting">保存中...</span>
+              <template v-else>
+                {{ modalMode === 'add' ? '新增' : '保存' }}
+              </template>
+            </el-button>
+          </template>
+        </MobileDialog>
+
+        <!-- 客户详情对话框 -->
+        <MobileDialog
+          v-model="showDetailModal"
+          title="客户详情"
+          width="1000px"
+          dialog-class="customers-detail-dialog"
+          :close-on-click-modal="false"
+          :show-default-footer="false"
+          @close="closeDetailModal"
+        >
+          <div
+            v-if="selectedCustomer"
+            class="customer-detail-view admin-page"
+          >
+            <!-- 客户信息面板 - 简洁设计 -->
+            <div class="customer-info-panel">
+              <!-- 左侧：基本信息和属性 -->
+              <div class="panel-left">
+                <div class="info-header">
+                  <div class="customer-avatar">
+                    <i class="fas fa-user" />
+                  </div>
+                  <div class="customer-basic">
+                    <h3 class="customer-name">
+                      {{ canViewField('name') ? selectedCustomer.name : `客户 #${String(selectedCustomer.id || '').padStart(6, '0')}` }}
+                    </h3>
+                    <div class="customer-meta">
+                      <el-tag
+                        v-if="canViewField('customer_type')"
+                        :type="getCustomerTypeTagType(selectedCustomer.customer_type)"
+                        size="small"
+                      >
+                        {{ getCustomerTypeLabel(selectedCustomer.customer_type) }}
+                      </el-tag>
+                      <el-tag
+                        v-if="canViewField('vip_level')"
+                        :type="getVipLevelType(selectedCustomer.vip_level)"
+                        size="small"
+                      >
+                        <i :class="getVipLevelIcon(selectedCustomer.vip_level)" /> {{ getVipLevelLabel(selectedCustomer.vip_level) }}
+                      </el-tag>
+                      <el-tag
+                        v-if="canViewField('status')"
+                        :type="selectedCustomer.status === 1 ? 'success' : 'info'"
+                        size="small"
+                      >
+                        {{ selectedCustomer.status === 1 ? '正常' : '禁用' }}
+                      </el-tag>
+                      <span
+                        v-if="canViewField('gender')"
+                        class="customer-gender-meta"
+                      >
+                        {{ getGenderLabel(selectedCustomer.gender) }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="info-grid">
+                  <div
+                    v-if="canViewField('phone')"
+                    class="info-row info-row-phone"
+                  >
+                    <span
+                      class="label"
+                      title="电话"
+                      aria-label="电话"
+                    >
+                      <i class="fas fa-mobile-alt" />
+                    </span>
+                    <span
+                      class="value phone"
+                      :title="selectedCustomer.phone || '-'"
+                    >{{ selectedCustomer.phone || '-' }}</span>
+                  </div>
+                  <div
+                    v-if="canViewField('member_number')"
+                    class="info-row info-row-member"
+                  >
+                    <span
+                      class="label"
+                      title="会员号"
+                      aria-label="会员号"
+                    >
+                      <i class="fas fa-id-badge" />
+                    </span>
+                    <span
+                      class="value"
+                      :title="selectedCustomer.member_number || '-'"
+                    >{{ selectedCustomer.member_number || '-' }}</span>
+                  </div>
+                  <div
+                    v-if="canViewField('id_card')"
+                    class="info-row wide-info-row info-row-id-card"
+                  >
+                    <span
+                      class="label"
+                      title="身份证号"
+                      aria-label="身份证号"
+                    >
+                      <i class="fas fa-address-card" />
+                    </span>
+                    <span
+                      class="value"
+                      :title="selectedCustomer.id_card || '-'"
+                    >{{ selectedCustomer.id_card || '-' }}</span>
+                  </div>
+                  <div
+                    v-if="canViewField('email')"
+                    class="info-row wide-info-row info-row-email"
+                  >
+                    <span
+                      class="label"
+                      title="邮箱"
+                      aria-label="邮箱"
+                    >
+                      <i class="fas fa-envelope" />
+                    </span>
+                    <span
+                      class="value"
+                      :title="selectedCustomer.email || '-'"
+                    >{{ selectedCustomer.email || '-' }}</span>
+                  </div>
+                  <div
+                    v-if="canViewField('address')"
+                    class="info-row wide-info-row info-row-address"
+                  >
+                    <span
+                      class="label"
+                      title="地址"
+                      aria-label="地址"
+                    >
+                      <i class="fas fa-home" />
+                    </span>
+                    <span
+                      class="value"
+                      :title="selectedCustomer.address || '-'"
+                    >{{ selectedCustomer.address || '-' }}</span>
+                  </div>
+                  <div
+                    v-if="canViewField('city') || canViewField('province')"
+                    class="info-row wide-info-row info-row-region"
+                  >
+                    <span
+                      class="label"
+                      title="地区"
+                      aria-label="地区"
+                    >
+                      <i class="fas fa-map-marker-alt" />
+                    </span>
+                    <span
+                      class="value"
+                      :title="formatCustomerRegion(selectedCustomer, { province: canViewField('province'), city: canViewField('city') })"
+                    >{{ formatCustomerRegion(selectedCustomer, { province: canViewField('province'), city: canViewField('city') }) }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 右侧：账户统计 -->
+              <div class="panel-right">
+                <div class="stats-card">
+                  <div
+                    v-if="canViewField('balance')"
+                    class="stat-item"
+                  >
+                    <div class="stat-icon balance">
+                      <i class="fas fa-wallet" />
+                    </div>
+                    <div class="stat-content">
+                      <div class="stat-label">
+                        账户余额
+                      </div>
+                      <div class="stat-value">
+                        ¥{{ formatNumber(selectedCustomer.balance || 0) }}
+                      </div>
+                    </div>
+                  </div>
+                  <div
+                    v-if="canViewField('points')"
+                    class="stat-item"
+                  >
+                    <div class="stat-icon points">
+                      <i class="fas fa-star" />
+                    </div>
+                    <div class="stat-content">
+                      <div class="stat-label">
+                        积分
+                      </div>
+                      <div class="stat-value">
+                        {{ selectedCustomer.points || 0 }}
+                      </div>
+                    </div>
+                  </div>
+                  <div
+                    v-if="canViewField('total_spent')"
+                    class="stat-item"
+                  >
+                    <div class="stat-icon spent">
+                      <i class="fas fa-shopping-cart" />
+                    </div>
+                    <div class="stat-content">
+                      <div class="stat-label">
+                        总消费
+                      </div>
+                      <div class="stat-value">
+                        ¥{{ formatNumber(selectedCustomer.total_spent || 0) }}
+                      </div>
+                    </div>
+                  </div>
+                  <div
+                    v-if="canViewField('purchase_count')"
+                    class="stat-item"
+                  >
+                    <div class="stat-icon count">
+                      <i class="fas fa-shopping-bag" />
+                    </div>
+                    <div class="stat-content">
+                      <div class="stat-label">
+                        购买次数
+                      </div>
+                      <div class="stat-value">
+                        {{ selectedCustomer.purchase_count || 0 }} 次
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 其他信息 -->
+            <div
+              v-if="(canViewField('wechat') && selectedCustomer.wechat) || (canViewField('qq') && selectedCustomer.qq) || (canViewField('apple_id') && selectedCustomer.apple_id) || (canViewField('remarks') && selectedCustomer.remarks) || (canViewField('created_at') && selectedCustomer.created_at) || (canViewField('last_purchase_date') && selectedCustomer.last_purchase_date)"
+              class="extra-info"
+            >
+              <div
+                v-if="canViewField('wechat') && selectedCustomer.wechat"
+                class="extra-info-item"
+              >
+                <i class="fab fa-weixin text-wechat" />
+                <span>微信: {{ selectedCustomer.wechat }}</span>
+              </div>
+              <div
+                v-if="canViewField('qq') && selectedCustomer.qq"
+                class="extra-info-item"
+              >
+                <i class="fab fa-qq text-qq" />
+                <span>QQ: {{ selectedCustomer.qq }}</span>
+              </div>
+              <div
+                v-if="canViewField('apple_id') && selectedCustomer.apple_id"
+                class="extra-info-item"
+              >
+                <i class="fab fa-apple" />
+                <span>Apple ID: {{ selectedCustomer.apple_id }}</span>
+              </div>
+              <div
+                v-if="canViewField('created_at') && selectedCustomer.created_at"
+                class="extra-info-item"
+              >
+                <i class="fas fa-calendar-alt" />
+                <span>注册时间: {{ formatDate(selectedCustomer.created_at) }}</span>
+              </div>
+              <div
+                v-if="canViewField('last_purchase_date') && selectedCustomer.last_purchase_date"
+                class="extra-info-item"
+              >
+                <i class="fas fa-clock" />
+                <span>最后购买: {{ formatDate(selectedCustomer.last_purchase_date) }}</span>
+              </div>
+              <div
+                v-if="canViewField('remarks') && selectedCustomer.remarks"
+                class="extra-info-item remarks"
+              >
+                <i class="fas fa-comment" />
+                <span>备注: {{ selectedCustomer.remarks }}</span>
+              </div>
+            </div>
+
+            <!-- 购买记录表格 -->
+            <el-divider content-position="left">
+              <i class="fas fa-shopping-cart" /> 购买记录
+              <el-tag
+                size="small"
+                class="ml-3"
+              >
+                共 {{ purchasesPagination.total }} 条
+              </el-tag>
+            </el-divider>
+
+            <div
+              v-if="customerPurchases.length > 0"
+              class="purchases-section"
+            >
+              <div class="table-responsive">
+                <el-table
+                  :data="customerPurchases"
+                  border
+                  stripe
+                  class="data-table devices-table customer-purchases-table"
+                  table-layout="fixed"
+                  :fit="true"
+                  row-key="id"
+                >
+                  <el-table-column
+                    label="序号"
+                    width="60"
+                    align="center"
+                  >
+                    <template #default="{ $index }">
+                      <span class="index-badge">{{ $index + 1 }}</span>
+                    </template>
+                  </el-table-column>
+                  <el-table-column
+                    prop="model"
+                    label="型号"
+                    min-width="116"
+                    align="center"
+                  >
+                    <template #default="{ row }">
+                      {{ row.model || '-' }}
+                    </template>
+                  </el-table-column>
+                  <el-table-column
+                    prop="color"
+                    label="颜色"
+                    min-width="82"
+                    align="center"
+                  >
+                    <template #default="{ row }">
+                      {{ row.color || '-' }}
+                    </template>
+                  </el-table-column>
+                  <el-table-column
+                    prop="memory"
+                    label="内存"
+                    min-width="86"
+                    align="center"
+                  >
+                    <template #default="{ row }">
+                      {{ row.memory || '-' }}
+                    </template>
+                  </el-table-column>
+                  <el-table-column
+                    label="成色"
+                    min-width="82"
+                    align="center"
+                  >
+                    <template #default="{ row: purchase }">
+                      <el-tag
+                        :type="purchase.is_new === '全新' ? 'success' : 'warning'"
+                        size="small"
+                      >
+                        {{ purchase.is_new }}
+                      </el-tag>
+                    </template>
+                  </el-table-column>
+                  <el-table-column
+                    label="IMEI"
+                    :min-width="purchaseImeiColumnWidth"
+                    align="center"
+                    class-name="identifier-column"
+                  >
+                    <template #default="{ row: purchase }">
+                      <span class="imei">{{ purchase.imei || '-' }}</span>
+                    </template>
+                  </el-table-column>
+                  <el-table-column
+                    label="序列号"
+                    :min-width="purchaseSerialColumnWidth"
+                    align="center"
+                    class-name="identifier-column"
+                  >
+                    <template #default="{ row: purchase }">
+                      <span class="serial-number">{{ purchase.serial_number || '-' }}</span>
+                    </template>
+                  </el-table-column>
+                  <el-table-column
+                    label="售价"
+                    min-width="96"
+                    align="center"
+                  >
+                    <template #default="{ row: purchase }">
+                      <span class="price">
+                        {{ purchase.sale_price == null ? '-' : `¥${formatNumber(purchase.sale_price)}` }}
+                      </span>
+                    </template>
+                  </el-table-column>
+                  <el-table-column
+                    label="利润"
+                    min-width="96"
+                    align="center"
+                  >
+                    <template #default="{ row: purchase }">
+                      <span :class="['price-cell', purchase.profit != null && Number(purchase.profit) > 0 ? 'profit-positive' : 'profit-negative']">
+                        {{ purchase.profit == null ? '-' : `¥${formatNumber(purchase.profit)}` }}
+                      </span>
+                    </template>
+                  </el-table-column>
+                  <el-table-column
+                    label="销售日期"
+                    min-width="132"
+                    align="center"
+                  >
+                    <template #default="{ row: purchase }">
+                      <span class="time-cell">{{ formatDate(purchase.sale_time) }}</span>
+                    </template>
+                  </el-table-column>
+                  <el-table-column
+                    prop="salesperson"
+                    label="销售员"
+                    min-width="96"
+                    align="center"
+                  >
+                    <template #default="{ row }">
+                      {{ row.salesperson || '-' }}
+                    </template>
+                  </el-table-column>
+                </el-table>
+              </div>
+
+              <Pagination
+                v-if="customerPurchases.length > 0"
+                v-model:current="purchasesPagination.page"
+                v-model:page-size="purchasesPagination.page_size"
+                :total="Number(purchasesPagination.total)"
+                :page-sizes="[10, 20, 50, 100]"
+                size="small"
+                :show-range="true"
+                @change="handlePurchasesPaginationChange"
+              />
+            </div>
+            <DataEmptyState
+              v-else
+              description="暂无购买记录"
+              :image-size="200"
+            >
+              <template #description>
+                <p class="text-muted">
+                  该客户还没有购买记录
+                </p>
+              </template>
+            </DataEmptyState>
+          </div>
+
+          <template #footer>
+            <el-button
+              type="default"
+              @click="closeDetailModal"
+            >
+              关闭
+            </el-button>
+          </template>
+        </MobileDialog>
+      </div>
     </PermissionGate>
   </div>
 </template>
@@ -1139,13 +1674,12 @@ import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useLoadingState } from '@/composables'
 import { useImportExport } from '@/composables/useImportExport'
 import { useRefreshData } from '@/composables/useRefreshData'
-import { useDebounce, useSearchDebounce } from '@/composables/useDebounce'
 import { useCachedRequest, DEFAULT_CACHE_TTL } from '@/composables/usePageCache'
 import { useSearchHighlight } from '@/composables/useSearchHighlight'
-import { fieldPermissions } from '@/composables/useFieldPermissions'
+import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { unifiedApi } from '@/utils/unified-api'
 import { useMobile } from '@/composables/mobile'
-import { ElEmpty, ElButton, ElMessageBox, ElTable } from 'element-plus'
+import { ElButton, ElMessageBox, ElTable } from 'element-plus'
 import Pagination from '../../components/Pagination.vue'
 import CitySelector from '../../components/CitySelector.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
@@ -1154,7 +1688,7 @@ import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { PermissionGate, PageHeader } from '@/components/base'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { getActionColumnMinWidth, getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
-import { isValidAppleAccount, isValidEmail, isValidIdCard, isValidMobilePhone, normalizeAppleId, normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
+import { isValidAppleAccount, isValidIdCard, isValidMobilePhone, normalizeAppleId, normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
 import { logger } from '@/utils/logger'
 
 interface CustomerListItem {
@@ -1218,34 +1752,36 @@ interface CustomerPurchaseItem {
   memory?: string
   imei?: string
   serial_number?: string
-  sale_price?: number | string
-  purchase_price?: number | string
-  sale_date?: string
+  sale_price: number | null
+  purchase_cost: number | null
+  sale_time?: string
   created_at?: string
   payment_method?: string
   status?: string
   is_new?: string
-  profit?: number | string
+  profit: number | null
   salesperson?: string
 }
 
 interface CustomerPurchasesPagination {
   page: number
-  limit: number
+  page_size: number
   total: number
-  pages: number
+  total_pages: number
+  has_next: boolean
+  has_prev: boolean
 }
 
 interface CustomerStatsState {
-  totalCustomers: number
-  activeCustomers: number
-  newCustomers: number
-  premiumCustomers: number
+  total_customers: number
+  active_customers: number
+  new_customers: number
+  premium_customers: number
 }
 
 interface CustomersQueryParams {
   page: number
-  limit: number
+  page_size: number
   search?: string
   search_fields?: string
   search_type?: string
@@ -1260,9 +1796,7 @@ interface CustomersQueryParams {
 
 interface CustomerListResponseData {
   customers?: CustomerListItem[]
-  pagination?: {
-    total?: number
-  }
+  pagination?: { total?: number; page_size?: number; total_pages?: number; has_next?: boolean; has_prev?: boolean }
   stats?: Partial<CustomerStatsState>
 }
 
@@ -1286,7 +1820,7 @@ const {
   canEdit,
   canDelete,
   canExport,
-  getModulePermissions,
+  getModulePermissions: _getModulePermissions,
   requirePermission,
   handleNoPermission
 } = usePagePermissions('customers')
@@ -1294,8 +1828,8 @@ const {
 const canManagePoints = computed(() => hasPermission('manage'))
 
 // 路由和状态管理
-const router = useRouter()
-const { success, error, warning, info, handleApiError, confirm } = useNotification({ debounce: true })
+const _router = useRouter()
+const { success, error, warning, info, handleApiError } = useNotification({ debounce: true })
 const { refreshing, refresh } = useRefreshData()
 const { init: initFieldPermissions } = fieldPermissions
 const { isMobile } = useMobile()
@@ -1311,7 +1845,7 @@ const errorMessage = ref('')
 const hasError = computed(() => !!errorMessage.value)
 const pagination = reactive({
   page: 1,
-  pageSize: 20,
+  page_size: 20,
   total: 0
 })
 const selectedRows = ref<CustomerListItem[]>([])
@@ -1406,7 +1940,13 @@ const showAccountColumn = computed(() => ['balance', 'points'].some(fieldName =>
 const showRegionColumn = computed(() => ['city', 'province', 'address'].some(fieldName => canViewField(fieldName)))
 const showStatsColumn = computed(() => ['total_spent', 'purchase_count', 'last_purchase_date'].some(fieldName => canViewField(fieldName)))
 const showStatusColumn = computed(() => canViewField('status'))
-const showActionField = computed(() => canViewField('actions') && (canEdit.value || canDelete.value || canView.value) && !isMobile.value)
+const showActionField = computed(() => (
+  shouldShowActionColumn(canViewField('actions'), [canEdit.value, canDelete.value]) && !isMobile.value
+))
+const showMobileActionField = computed(() => shouldShowActionColumn(
+  canViewField('actions'),
+  [canEdit.value, canDelete.value]
+))
 const customerActionColumnWidth = computed(() => getActionColumnMinWidth([
   ...(canEdit.value ? ['编辑'] : []),
   '详情',
@@ -1475,9 +2015,9 @@ const handleSelectionChange = (rows: CustomerListItem[]) => {
   selectedRows.value = rows
 }
 
-const setPagination = (page, pageSize, total) => {
+const setPagination = (page, page_size, total) => {
   pagination.page = page
-  pagination.pageSize = pageSize
+  pagination.page_size = page_size
   pagination.total = total
 }
 
@@ -1505,16 +2045,9 @@ const setSubmitLoading = (loading) => {
 
 // 加载状态
 const { loading: isExporting } = useLoadingState()
-const { loading: isRefreshing } = useLoadingState()
 const { exportFile, buildDateFilename, sanitizeParams } = useImportExport()
 
 // 搜索和筛选
-const { handleSearchInput, clearSearch: resetSearchKeyword } = useSearchDebounce(
-  (keyword: string) => {
-    performSearch(keyword)
-  },
-  500
-)
 
 // 刷新防抖 - 使用防抖防止频繁刷新
 let refreshTimeoutId: NodeJS.Timeout | null = null
@@ -1553,18 +2086,18 @@ const getMonthEnd = () => {
 }
 
 const filterValues = reactive({
-  customerType: '',
+  customer_type: '',
   status: '',
-  vipLevel: '',
-  registerDateStart: '',
-  registerDateEnd: ''
+  vip_level: '',
+  register_date_start: '',
+  register_date_end: ''
 })
 
 // 搜索相关状态
 const searchExpanded = ref(false)
 
 // 日期范围选择器变量
-const registerDateRange = ref<[string, string] | null>(null)
+const register_date_range = ref<[string, string] | null>(null)
 
 // 客户类型配置（统一管理）
 const CUSTOMER_TYPES = [
@@ -1622,9 +2155,9 @@ const PROVINCE_NAME_BY_CODE: Record<string, string> = {
 }
 
 // 筛选器配置
-const filterConfigs = [
+const _filterConfigs = [
   {
-    key: 'customerType',
+    key: 'customer_type',
     label: '客户类型',
     type: 'select' as const,
     options: CUSTOMER_TYPES.map(t => ({ label: t.label, value: t.value })),
@@ -1642,37 +2175,37 @@ const filterConfigs = [
     allText: '全部状态'
   },
   {
-    key: 'vipLevel',
+    key: 'vip_level',
     label: 'VIP等级',
     type: 'select' as const,
     options: VIP_LEVELS.map(v => ({ label: v.label, value: v.value })),
     allText: '全部等级'
   },
   {
-    key: 'registerDate',
+    key: 'register_date',
     label: '注册日期',
     type: 'daterange' as const
   }
 ]
 
 // 快捷标签
-const quickTags = [
+const _quickTags = [
   {
     key: 'vip-customers',
     label: 'VIP客户',
-    filters: { customerType: 'vip' }
+    filters: { customer_type: 'vip' }
   },
   {
     key: 'wholesale-customers',
     label: '同行（批发）',
-    filters: { customerType: 'wholesale' }
+    filters: { customer_type: 'wholesale' }
   },
   {
     key: 'new-customers',
     label: '本月新增',
     filters: {
-      registerDateStart: getMonthStart(),
-      registerDateEnd: getMonthEnd()
+      register_date_start: getMonthStart(),
+      register_date_end: getMonthEnd()
     }
   },
   {
@@ -1690,10 +2223,10 @@ const quickTags = [
 // 数据状态
 const customers = ref<CustomerListItem[]>([])
 const stats = reactive<CustomerStatsState>({
-  totalCustomers: 0,
-  activeCustomers: 0,
-  newCustomers: 0,
-  premiumCustomers: 0
+  total_customers: 0,
+  active_customers: 0,
+  new_customers: 0,
+  premium_customers: 0
 })
 
 // 模态框状态
@@ -1761,7 +2294,7 @@ const pointsConfigPreview = computed(() => {
   ].filter(Boolean).join('、') || '未选择机况'
 
   if (!pointsConfigForm.value.enabled) {
-    return `自动积分已停用；销售出库暂不累计积分。`
+    return '自动积分已停用；销售出库暂不累计积分。'
   }
 
   return `${conditions}参与积分，销售出库按消费 ${amount} 元累计 1 积分；批发、划拨不计积分。`
@@ -1782,9 +2315,11 @@ const purchaseSerialColumnWidth = computed(() => getIdentifierColumnMinWidth(
 ))
 const purchasesPagination = ref<CustomerPurchasesPagination>({
   page: 1,
-  limit: 10,
+  page_size: 10,
   total: 0,
-  pages: 0
+  total_pages: 0,
+  has_next: false,
+  has_prev: false
 })
 const { loading: purchasesLoading } = useLoadingState()
 
@@ -1895,7 +2430,7 @@ const savePointsSettings = async () => {
 }
 
 // 方法
-const performSearch = (keyword: string) => {
+const _performSearch = (_keyword: string) => {
   // 更新搜索并重新加载数据
   pagination.page = 1
   loadCustomers()
@@ -1925,11 +2460,11 @@ const handleSearch = () => {
 // 日期范围变化处理
 const handleDateRangeChange = (value: [string, string] | null) => {
   if (value && value.length === 2) {
-    filterValues.registerDateStart = value[0]
-    filterValues.registerDateEnd = value[1]
+    filterValues.register_date_start = value[0]
+    filterValues.register_date_end = value[1]
   } else {
-    filterValues.registerDateStart = ''
-    filterValues.registerDateEnd = ''
+    filterValues.register_date_start = ''
+    filterValues.register_date_end = ''
   }
   handleSearch()
 }
@@ -1938,7 +2473,7 @@ const handleReset = () => {
   // 清空搜索关键词
   searchKeyword.value = ''
   // 清空日期范围
-  registerDateRange.value = null
+  register_date_range.value = null
   // 清空筛选条件
   Object.keys(filterValues).forEach(key => {
     filterValues[key] = ''
@@ -1948,15 +2483,15 @@ const handleReset = () => {
   loadCustomers()
 }
 
-const handlePaginationChange = (page: number, pageSize: number) => {
-  setPagination(page, pageSize, pagination.total)
+const handlePaginationChange = (page: number, page_size: number) => {
+  setPagination(page, page_size, pagination.total)
   loadCustomers()
 }
 
 const loadCustomers = async (showLoadingState = true) => {
   if (!canView.value) {
     customers.value = []
-    setPagination(1, pagination.pageSize, 0)
+    setPagination(1, pagination.page_size, 0)
     setDataLoading(false)
     return
   }
@@ -1970,7 +2505,7 @@ const loadCustomers = async (showLoadingState = true) => {
     // 构建搜索参数
     const params: CustomersQueryParams = {
       page: pagination.page,
-      limit: pagination.pageSize,
+      page_size: pagination.page_size,
       sort_by: 'created_at',
       sort_order: 'desc'
     }
@@ -1993,20 +2528,20 @@ const loadCustomers = async (showLoadingState = true) => {
     }
 
     // 添加筛选条件
-    if (filterValues.customerType) {
-      params.customer_type = filterValues.customerType
+    if (filterValues.customer_type) {
+      params.customer_type = filterValues.customer_type
     }
     if (filterValues.status) {
       params.status = filterValues.status
     }
-    if (filterValues.vipLevel) {
-      params.vip_level = filterValues.vipLevel
+    if (filterValues.vip_level) {
+      params.vip_level = filterValues.vip_level
     }
-    if (filterValues.registerDateStart) {
-      params.register_date_start = filterValues.registerDateStart
+    if (filterValues.register_date_start) {
+      params.register_date_start = filterValues.register_date_start
     }
-    if (filterValues.registerDateEnd) {
-      params.register_date_end = filterValues.registerDateEnd
+    if (filterValues.register_date_end) {
+      params.register_date_end = filterValues.register_date_end
     }
 
     const response = await unifiedApi.get('/customers', { params })
@@ -2016,7 +2551,7 @@ const loadCustomers = async (showLoadingState = true) => {
       customers.value = Array.isArray(responseData.customers) ? responseData.customers : []
       setPagination(
         pagination.page,
-        pagination.pageSize,
+        pagination.page_size,
         Number(responseData.pagination?.total) || 0
       )
 
@@ -2051,10 +2586,10 @@ const CACHE_KEYS = {
 const loadStats = async () => {
   if (!canView.value) {
     Object.assign(stats, {
-      totalCustomers: 0,
-      activeCustomers: 0,
-      newCustomers: 0,
-      premiumCustomers: 0
+      total_customers: 0,
+      active_customers: 0,
+      new_customers: 0,
+      premium_customers: 0
     })
     return
   }
@@ -2063,7 +2598,13 @@ const loadStats = async () => {
     const response = await useCachedRequest(CACHE_KEYS.customerStats, () =>
       unifiedApi.get('/customers/stats'), DEFAULT_CACHE_TTL.STATIC)
     if (response.success) {
-      Object.assign(stats, response.data)
+      const data = response.data || {}
+      Object.assign(stats, {
+        total_customers: Number(data.total_customers ?? 0),
+        active_customers: Number(data.active_customers ?? 0),
+        new_customers: Number(data.new_customers ?? 0),
+        premium_customers: Number(data.premium_customers ?? 0)
+      })
     }
   } catch (err) {
     logger.error('加载统计数据失败:', err)
@@ -2301,9 +2842,11 @@ const closeDetailModal = () => {
   customerPurchases.value = []
   purchasesPagination.value = {
     page: 1,
-    limit: 10,
+    page_size: 10,
     total: 0,
-    pages: 0
+    total_pages: 0,
+    has_next: false,
+    has_prev: false
   }
 }
 
@@ -2331,7 +2874,7 @@ const loadCustomerPurchases = async (customerId: number, page: number = 1) => {
     const response = await unifiedApi.get(`/customers/${customerId}/purchases`, {
       params: {
         page,
-        limit: purchasesPagination.value.limit
+        page_size: purchasesPagination.value.page_size
       }
     })
     if (response.success) {
@@ -2352,15 +2895,15 @@ const loadCustomerPurchases = async (customerId: number, page: number = 1) => {
 }
 
 // 处理分页大小变化
-const handlePageSizeChange = (limit: number) => {
-  purchasesPagination.value.limit = limit
+const handlePageSizeChange = (page_size: number) => {
+  purchasesPagination.value.page_size = page_size
   purchasesPagination.value.page = 1 // 重置到第一页
   loadCustomerPurchases(selectedCustomer.value?.id, 1)
 }
 
-const handlePurchasesPaginationChange = (page: number, pageSize: number) => {
-  if (pageSize !== purchasesPagination.value.limit) {
-    handlePageSizeChange(pageSize)
+const handlePurchasesPaginationChange = (page: number, page_size: number) => {
+  if (page_size !== purchasesPagination.value.page_size) {
+    handlePageSizeChange(page_size)
     return
   }
 
@@ -2368,7 +2911,7 @@ const handlePurchasesPaginationChange = (page: number, pageSize: number) => {
 }
 
 // 切换消费记录分页
-const loadPurchasePurchases = (page: number) => {
+const _loadPurchasePurchases = (page: number) => {
   if (selectedCustomer.value) {
     loadCustomerPurchases(selectedCustomer.value.id, page)
   }
@@ -2427,7 +2970,7 @@ const handleExport = async () => {
     filename: buildDateFilename('客户列表', 'xlsx'),
     params: sanitizeParams({
       keyword: searchKeyword.value,
-      customer_type: filterValues.customerType,
+      customer_type: filterValues.customer_type,
       status: filterValues.status
     }),
     allowed: canExport,
@@ -2463,10 +3006,12 @@ const getCustomerTypeLabel = (type: string) => {
 const getStatusTagType = (status: string): 'success' | 'warning' | 'info' | 'primary' | 'danger' => {
   const statusMap: Record<string, 'success' | 'warning' | 'info' | 'primary' | 'danger'> = {
     active: 'success',    // 活跃 - 绿色
+    '1': 'success',       // 活跃状态的数字值
     inactive: 'info',      // 非活跃 - 蓝色
+    '0': 'info',           // 非活跃状态的数字值
     blacklist: 'danger'    // 黑名单 - 红色
   }
-  return statusMap[status] || 'info' // 默认返回 info 类型
+  return statusMap[String(status)] || 'info' // 默认返回 info 类型
 }
 
 const getStatusLabel = (status: string) => {
@@ -2511,7 +3056,7 @@ const getVipColor = (level: string) => {
 }
 
 // 性别相关函数
-const getGenderIcon = (gender: string) => {
+const _getGenderIcon = (gender: string) => {
   const iconMap: Record<string, string> = {
     1: 'fas fa-male text-primary',
     2: 'fas fa-female text-danger',
@@ -2581,8 +3126,8 @@ onUnmounted(() => {
 <style lang="scss" scoped>
 // 搜索高亮样式
 :deep(.highlight) {
-  background-color: #fff3cd;
-  color: #856404;
+  background-color: var(--tf-color-warning-legacy);
+  color: var(--tf-color-warning-text-legacy);
   padding: 0 2px;
   border-radius: 2px;
   font-weight: 600;
@@ -2664,19 +3209,19 @@ onUnmounted(() => {
 }
 
 .stat-icon {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand));
   color: white;
 
   &.active {
-    background: linear-gradient(135deg, #28a745, #20c997);
+    background: linear-gradient(135deg, var(--success-color), var(--tf-color-teal-500));
   }
 
   &.recent {
-    background: linear-gradient(135deg, #ffc107, #ff9800);
+    background: linear-gradient(135deg, var(--warning-color), var(--tf-color-orange-material-500));
   }
 
   &.premium {
-    background: linear-gradient(135deg, #dc3545, #fd7e14);
+    background: linear-gradient(135deg, var(--danger-color), var(--tf-color-orange-bootstrap));
   }
 }
 
@@ -2994,8 +3539,8 @@ onUnmounted(() => {
   h4 {
     margin: 0 0 16px 0;
     padding: 8px 0;
-    border-bottom: 1px solid #e5e7eb;
-    color: #374151;
+    border-bottom: 1px solid var(--tf-color-neutral-200);
+    color: var(--tf-color-neutral-700);
     font-size: 16px;
     font-weight: 600;
   }
@@ -3020,7 +3565,7 @@ onUnmounted(() => {
       align-items: center;
       gap: 16px;
       padding: 20px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
       border-radius: 12px;
       color: white;
       margin-bottom: 16px;
@@ -3063,7 +3608,7 @@ onUnmounted(() => {
           border: 1px solid rgba(255, 255, 255, 0.45);
           border-radius: 4px;
           background: rgba(255, 255, 255, 0.16);
-          color: #fff;
+          color: var(--color-bg-white);
           font-size: 12px;
           font-weight: 600;
           line-height: 1;
@@ -3085,59 +3630,59 @@ onUnmounted(() => {
         column-gap: 8px;
         min-width: 0;
         padding: 9px 14px;
-        background: #f8f9fa;
+        background: var(--tf-color-surface-muted);
         border-radius: 8px;
         transition: all 0.2s ease;
 
         &:hover {
-          background: #e9ecef;
+          background: var(--tf-color-border-muted);
         }
 
         &.info-row-phone {
-          background: #f0f9f2;
+          background: var(--tf-color-success-surface-soft);
 
           .label i {
-            color: #2f9e44;
+            color: var(--tf-color-green-material-700);
           }
         }
 
         &.info-row-member {
-          background: #f0f7ff;
+          background: var(--tf-color-blue-tailwind-50);
 
           .label i {
-            color: #2f80ed;
+            color: var(--tf-color-blue-500);
           }
         }
 
         &.info-row-id-card {
-          background: #f6f2ff;
+          background: var(--tf-color-purple-50-alt);
 
           .label i {
-            color: #7048e8;
+            color: var(--tf-color-violet-600);
           }
         }
 
         &.info-row-email {
-          background: #effafd;
+          background: var(--tf-color-blue-50);
 
           .label i {
-            color: #1098ad;
+            color: var(--tf-color-customer-stat-cyan);
           }
         }
 
         &.info-row-address {
-          background: #fff7ed;
+          background: var(--tf-color-orange-50);
 
           .label i {
-            color: #f08c00;
+            color: var(--tf-color-orange-dark);
           }
         }
 
         &.info-row-region {
-          background: #fff1f2;
+          background: var(--tf-color-rose-50);
 
           .label i {
-            color: #e03131;
+            color: var(--tf-color-red-600);
           }
         }
 
@@ -3152,14 +3697,14 @@ onUnmounted(() => {
 
         .label {
           font-size: 13px;
-          color: #6c757d;
+          color: var(--tf-color-muted);
           font-weight: 500;
           line-height: 1.35;
           white-space: nowrap;
           text-align: center;
 
           i {
-            color: #6c757d;
+            color: var(--tf-color-muted);
             font-size: 14px;
           }
         }
@@ -3167,7 +3712,7 @@ onUnmounted(() => {
         .value {
           min-width: 0;
           font-size: 13px;
-          color: #212529;
+          color: var(--tf-color-gray-bootstrap-900);
           font-weight: 500;
           line-height: 1.3;
           text-align: right;
@@ -3209,7 +3754,7 @@ onUnmounted(() => {
         align-items: center;
         gap: 12px;
         padding: 12px;
-        background: #f8f9fa;
+        background: var(--tf-color-surface-muted);
         border-radius: 10px;
         transition: all 0.2s ease;
 
@@ -3228,22 +3773,22 @@ onUnmounted(() => {
           font-size: 18px;
 
           &.balance {
-            background: linear-gradient(135deg, #198754, #20c997);
+            background: linear-gradient(135deg, var(--tf-color-green-700), var(--tf-color-teal-500));
             color: white;
           }
 
           &.points {
-            background: linear-gradient(135deg, #fd7e14, #ffc107);
+            background: linear-gradient(135deg, var(--tf-color-orange-bootstrap), var(--warning-color));
             color: white;
           }
 
           &.spent {
-            background: linear-gradient(135deg, #dc3545, #e74c3c);
+            background: linear-gradient(135deg, var(--danger-color), var(--tf-color-red-legacy));
             color: white;
           }
 
           &.count {
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: linear-gradient(135deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand));
             color: white;
           }
         }
@@ -3253,14 +3798,14 @@ onUnmounted(() => {
 
           .stat-label {
             font-size: 12px;
-            color: #6c757d;
+            color: var(--tf-color-muted);
             margin-bottom: 4px;
           }
 
           .stat-value {
             font-size: 18px;
             font-weight: 700;
-            color: #212529;
+            color: var(--tf-color-gray-bootstrap-900);
           }
         }
       }
@@ -3273,7 +3818,7 @@ onUnmounted(() => {
     flex-wrap: wrap;
     gap: 10px;
     padding: 16px;
-    background: #f8f9fa;
+    background: var(--tf-color-surface-muted);
     border-radius: 12px;
 
     .extra-info-item {
@@ -3284,7 +3829,7 @@ onUnmounted(() => {
       background: white;
       border-radius: 8px;
       font-size: 13px;
-      color: #495057;
+      color: var(--tf-color-gray-bootstrap-700);
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 
       i {
@@ -3293,8 +3838,8 @@ onUnmounted(() => {
 
       &.remarks {
         flex-basis: 100%;
-        background: #fff9e6;
-        border: 1px solid #ffeeba;
+        background: var(--tf-color-warning-pale);
+        border: 1px solid var(--tf-color-amber-100);
       }
     }
   }
@@ -3306,29 +3851,29 @@ onUnmounted(() => {
 
   // 金额和特殊值的样式
   .amount-value {
-    color: #dc2626;
+    color: var(--tf-color-red-600);
     font-weight: 700;
     font-size: 16px;
   }
 
   .total-spent {
-    color: #dc2626;
+    color: var(--tf-color-red-600);
     font-weight: 700;
     font-size: 16px;
   }
 
   .text-success {
-    color: #28a745;
+    color: var(--success-color);
     font-weight: 600;
   }
 
   .text-danger {
-    color: #dc3545;
+    color: var(--danger-color);
     font-weight: 600;
   }
 
   .text-muted {
-    color: #6c757d;
+    color: var(--tf-color-muted);
   }
 
   .small {
@@ -3336,7 +3881,7 @@ onUnmounted(() => {
   }
 
   .remarks-text {
-    color: #2c3e50;
+    color: var(--tf-color-heading);
     line-height: 1.6;
     white-space: pre-wrap;
   }
@@ -3346,7 +3891,7 @@ onUnmounted(() => {
 .detail-section {
   margin-bottom: 24px;
   padding-bottom: 16px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--tf-color-neutral-200);
 
   &:last-child {
     margin-bottom: 0;
@@ -3355,7 +3900,7 @@ onUnmounted(() => {
 
   h4 {
     margin: 0 0 12px 0;
-    color: #374151;
+    color: var(--tf-color-neutral-700);
     font-size: 16px;
     font-weight: 600;
   }
@@ -3375,34 +3920,34 @@ onUnmounted(() => {
   .label {
     flex-shrink: 0;
     width: 100px;
-    color: #6b7280;
+    color: var(--tf-color-neutral-500);
     font-weight: 500;
     font-size: 14px;
   }
 
   .value {
     flex: 1;
-    color: #374151;
+    color: var(--tf-color-neutral-700);
     font-size: 14px;
     word-break: break-word;
 
     &.status-active {
-      color: #10b981;
+      color: var(--tf-status-success-color);
       font-weight: 500;
     }
 
     &.status-inactive {
-      color: #ef4444;
+      color: var(--tf-status-danger-color);
       font-weight: 500;
     }
 
     &.text-danger {
-      color: #ef4444;
+      color: var(--tf-color-red-500);
       font-weight: 500;
     }
 
     &.text-success {
-      color: #10b981;
+      color: var(--tf-color-emerald-500);
       font-weight: 500;
     }
   }
@@ -3472,7 +4017,7 @@ onUnmounted(() => {
       margin-right: 0;
       min-height: 40px;
       padding: 0 12px;
-      border: 1px solid #dbe3ef;
+      border: 1px solid var(--tf-color-border-blue);
       border-radius: 12px;
       display: inline-flex;
       align-items: center;
@@ -3695,7 +4240,7 @@ onUnmounted(() => {
     padding: 0 5px;
     border-radius: 6px;
     background: var(--el-color-primary);
-    color: #fff;
+    color: var(--color-bg-white);
     font-weight: 600;
   }
 

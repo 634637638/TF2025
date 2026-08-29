@@ -193,7 +193,7 @@ export function useMobileMenu(config: MobileMenuConfig) {
   }
 
   // 处理快捷操作
-  const handleQuickAction = (action: any) => {
+  const handleQuickAction = (action: NonNullable<MobileMenuConfig['quickActions']>[number]) => {
     if (action.handler) {
       action.handler()
     }

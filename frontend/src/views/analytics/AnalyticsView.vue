@@ -7,176 +7,240 @@
       module-name="数据分析"
       permission-code="analytics:view"
     >
-
-    <!-- 权限验证通过后的内容 -->
-    <div class="admin-page-content">
-      <!-- 页面头部 -->
-      <PageHeader
-        icon="fas fa-chart-line"
-        title="数据分析"
-      >
-        <template #actions>
-          <el-button type="info" :icon="Refresh" @click="refreshData" :loading="refreshing" :disabled="refreshing">
-            刷新
-          </el-button>
-          <el-button
-            v-if="canExport"
-            type="success"
-            :icon="Download"
-            @click="exportAnalyticsData"
-          >
-            导出报告
-          </el-button>
-        </template>
-      </PageHeader>
-
-      <!-- 公共检索区域 -->
-      <UnifiedSearchPanel
-        v-model:expanded="searchExpanded"
-        :loading="loading"
-      >
-        <template #primary>
-          <el-input
-            :model-value="getSearchSummary()"
-            disabled
-            @click.stop
-          >
-            <template #prefix>
-              <i class="fas fa-filter"></i>
-            </template>
-          </el-input>
-        </template>
-
-        <template #actions>
-          <el-button type="primary" @click="handleSearch" :loading="loading">
-            查询
-          </el-button>
-          <el-button type="default" @click="handleReset">
-            重置
-          </el-button>
-        </template>
-
-        <!-- 日期范围 -->
-        <div class="form-group filter-item">
-          <el-date-picker
-            v-model="filterStartDate"
-            type="date"
-            placeholder="开始日期"
-            format="YYYY-MM-DD"
-            value-format="YYYY-MM-DD"
-            :clearable="true"
-          />
-        </div>
-        <div class="form-group filter-item">
-          <el-date-picker
-            v-model="filterEndDate"
-            type="date"
-            placeholder="结束日期"
-            format="YYYY-MM-DD"
-            value-format="YYYY-MM-DD"
-            :clearable="true"
-          />
-        </div>
-        <!-- 快捷选择 -->
-        <div class="form-group filter-item">
-          <el-select
-            v-model="filterQuickSelect"
-            placeholder="快捷选择"
-            @change="handleQuickSelect"
-            clearable
-          >
-            <el-option label="今天" value="today" />
-            <el-option label="昨天" value="yesterday" />
-            <el-option label="本周" value="thisWeek" />
-            <el-option label="上周" value="lastWeek" />
-            <el-option label="本月" value="thisMonth" />
-            <el-option label="上月" value="lastMonth" />
-            <el-option label="本年" value="thisYear" />
-            <el-option label="去年" value="lastYear" />
-            <el-option label="最近7天" value="last7Days" />
-            <el-option label="最近30天" value="last30Days" />
-            <el-option label="最近90天" value="last90Days" />
-          </el-select>
-        </div>
-        <!-- 店铺选择 -->
-        <div class="form-group filter-item">
-          <el-select
-            v-model="filterStoreId"
-            placeholder="全部店铺"
-            clearable
-          >
-            <el-option label="全部店铺" value="" />
-            <el-option
-              v-for="store in storeList"
-              :key="store.id"
-              :label="store.name"
-              :value="store.id"
-            />
-          </el-select>
-        </div>
-        <!-- 供应商选择 -->
-        <div class="form-group filter-item">
-          <el-select
-            v-model="filterSupplierId"
-            placeholder="全部供应商"
-            clearable
-            filterable
-          >
-            <el-option label="全部供应商" value="" />
-            <el-option
-              v-for="supplier in supplierList"
-              :key="supplier.id"
-              :label="supplier.name"
-              :value="supplier.id"
-            />
-          </el-select>
-        </div>
-      </UnifiedSearchPanel>
-
-    <!-- 核心分析标签页 -->
-    <div class="analytics-tabs admin-page-content">
-      <!-- TAB导航 -->
-      <div v-if="visibleAnalyticsTabs.length" class="tab-navigation tf-page-tabs">
-        <el-button
-          v-for="tab in visibleAnalyticsTabs"
-          :key="tab.key"
-          :type="activeTab === tab.key ? 'primary' : 'default'"
-          @click="activeTab = tab.key"
+      <!-- 权限验证通过后的内容 -->
+      <div class="admin-page-content">
+        <!-- 页面头部 -->
+        <PageHeader
+          icon="fas fa-chart-line"
+          title="数据分析"
         >
-          <i :class="tab.icon"></i>
-          {{ tab.label }}
-        </el-button>
-      </div>
+          <template #actions>
+            <el-button
+              v-if="canViewAnalyticsField('system_info.operations')"
+              type="info"
+              :icon="Refresh"
+              :loading="refreshing"
+              :disabled="refreshing"
+              @click="refreshData"
+            >
+              刷新
+            </el-button>
+            <el-button
+              v-if="canExport && canViewAnalyticsField('system_info.operations')"
+              type="success"
+              :icon="Download"
+              @click="exportAnalyticsData"
+            >
+              导出报告
+            </el-button>
+          </template>
+        </PageHeader>
 
-      <!-- TAB内容 -->
-      <div v-if="visibleAnalyticsTabs.length" class="tab-content tf-tab-content">
-        <template v-for="tab in visibleAnalyticsTabs" :key="tab.key">
-          <div
-            v-if="activeTab === tab.key"
-            class="tab-panel tf-tab-panel"
-          >
-            <KeepAlive>
-              <component
-                ref="activeAnalyticsRef"
-                :is="tab.component"
-                :loading="loading"
-                :is-active="activeTab === tab.key"
-                :start-date="filterStartDate"
-                :end-date="filterEndDate"
-                :store-id="filterStoreId"
-                :supplier-id="filterSupplierId"
-                :search-trigger="searchTrigger"
-                @loading-change="handleTabLoading"
-              />
-            </KeepAlive>
+        <!-- 公共检索区域 -->
+        <UnifiedSearchPanel
+          v-model:expanded="searchExpanded"
+          :loading="loading"
+        >
+          <template #primary>
+            <el-input
+              :model-value="getSearchSummary()"
+              disabled
+              @click.stop
+            >
+              <template #prefix>
+                <i class="fas fa-filter" />
+              </template>
+            </el-input>
+          </template>
+
+          <template #actions>
+            <el-button
+              type="primary"
+              :loading="loading"
+              @click="handleSearch"
+            >
+              查询
+            </el-button>
+            <el-button
+              type="default"
+              @click="handleReset"
+            >
+              重置
+            </el-button>
+          </template>
+
+          <!-- 日期范围 -->
+          <div class="form-group filter-item">
+            <el-date-picker
+              v-model="filterStartDate"
+              type="date"
+              placeholder="开始日期"
+              format="YYYY-MM-DD"
+              value-format="YYYY-MM-DD"
+              :clearable="true"
+            />
           </div>
-        </template>
+          <div class="form-group filter-item">
+            <el-date-picker
+              v-model="filterEndDate"
+              type="date"
+              placeholder="结束日期"
+              format="YYYY-MM-DD"
+              value-format="YYYY-MM-DD"
+              :clearable="true"
+            />
+          </div>
+          <!-- 快捷选择 -->
+          <div class="form-group filter-item">
+            <el-select
+              v-model="filterQuickSelect"
+              placeholder="快捷选择"
+              clearable
+              @change="handleQuickSelect"
+            >
+              <el-option
+                label="今天"
+                value="today"
+              />
+              <el-option
+                label="昨天"
+                value="yesterday"
+              />
+              <el-option
+                label="本周"
+                value="thisWeek"
+              />
+              <el-option
+                label="上周"
+                value="lastWeek"
+              />
+              <el-option
+                label="本月"
+                value="thisMonth"
+              />
+              <el-option
+                label="上月"
+                value="lastMonth"
+              />
+              <el-option
+                label="本年"
+                value="thisYear"
+              />
+              <el-option
+                label="去年"
+                value="lastYear"
+              />
+              <el-option
+                label="最近7天"
+                value="last7Days"
+              />
+              <el-option
+                label="最近30天"
+                value="last30Days"
+              />
+              <el-option
+                label="最近90天"
+                value="last90Days"
+              />
+            </el-select>
+          </div>
+          <!-- 店铺选择 -->
+          <div class="form-group filter-item">
+            <el-select
+              v-model="filterStoreId"
+              placeholder="全部店铺"
+              clearable
+            >
+              <el-option
+                label="全部店铺"
+                value=""
+              />
+              <el-option
+                v-for="store in storeList"
+                :key="store.id"
+                :label="store.name"
+                :value="store.id"
+              />
+            </el-select>
+          </div>
+          <!-- 供应商选择 -->
+          <div class="form-group filter-item">
+            <el-select
+              v-model="filterSupplierId"
+              placeholder="全部供应商"
+              clearable
+              filterable
+            >
+              <el-option
+                label="全部供应商"
+                value=""
+              />
+              <el-option
+                v-for="supplier in supplierList"
+                :key="supplier.id"
+                :label="supplier.name"
+                :value="supplier.id"
+              />
+            </el-select>
+          </div>
+        </UnifiedSearchPanel>
+
+        <!-- 核心分析标签页 -->
+        <div class="analytics-tabs admin-page-content">
+          <!-- TAB导航 -->
+          <div
+            v-if="visibleAnalyticsTabs.length"
+            class="tab-navigation tf-page-tabs"
+          >
+            <el-button
+              v-for="tab in visibleAnalyticsTabs"
+              :key="tab.key"
+              :type="activeTab === tab.key ? 'primary' : 'default'"
+              @click="activeTab = tab.key"
+            >
+              <i :class="tab.icon" />
+              {{ tab.label }}
+            </el-button>
+          </div>
+
+          <!-- TAB内容 -->
+          <div
+            v-if="visibleAnalyticsTabs.length"
+            class="tab-content tf-tab-content"
+          >
+            <template
+              v-for="tab in visibleAnalyticsTabs"
+              :key="tab.key"
+            >
+              <div
+                v-if="activeTab === tab.key"
+                class="tab-panel tf-tab-panel"
+              >
+                <KeepAlive>
+                  <component
+                    :is="tab.component"
+                    ref="activeAnalyticsRef"
+                    :loading="loading"
+                    :is-active="activeTab === tab.key"
+                    :start-date="searchParams.start_date"
+                    :end-date="searchParams.end_date"
+                    :store-id="searchParams.store_id"
+                    :supplier-id="searchParams.supplier_id"
+                    :search-trigger="searchTrigger"
+                    @loading-change="handleTabLoading"
+                  />
+                </KeepAlive>
+              </div>
+            </template>
+          </div>
+          <DataEmptyState
+            v-else
+            state="permission"
+            size="page"
+            description="当前角色未开启任何分析分组字段，请在字段权限中开启对应子页面"
+          />
+        </div>
       </div>
-      <div v-else class="analytics-empty-state">
-        当前角色未开启任何分析分组字段，请在字段权限中开启对应子页面。
-      </div>
-    </div>
-    </div>
     </PermissionGate>
   </div>
 </template>
@@ -197,6 +261,7 @@ import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
 import { sortOptionsByOrder } from '@/utils/option-sort'
+import { extractResponseData } from '@/utils/api-response'
 
 const SalesAnalytics = defineAsyncComponent(() => import('./page/SalesAnalytics.vue'))
 const InventoryAnalytics = defineAsyncComponent(() => import('./page/InventoryAnalytics.vue'))
@@ -221,6 +286,21 @@ const filterSupplierId = ref('')
 const storeList = ref<any[]>([])
 const supplierList = ref<any[]>([])
 const searchTrigger = ref(0)
+
+interface AnalyticsSearchParams {
+  start_date: string
+  end_date: string
+  store_id: string
+  supplier_id: string
+}
+
+// 页面筛选统一使用 API 契约中的 snake_case；子页面的 prop 名称仅是 Vue 展示层边界。
+const searchParams = computed<AnalyticsSearchParams>(() => ({
+  start_date: filterStartDate.value,
+  end_date: filterEndDate.value,
+  store_id: filterStoreId.value,
+  supplier_id: filterSupplierId.value
+}))
 
 // 响应式数据
 const activeTab = ref('sales')
@@ -385,63 +465,63 @@ const handleQuickSelect = (value: string) => {
   const today = TimeUtil.now()
   const year = today.year()
   const month = today.month()
-  const day = today.date()
+  const _day = today.date()
 
   switch (value) {
-    case 'today':
-      filterStartDate.value = TimeUtil.format(today, TIME_FORMATS.DATE)
-      filterEndDate.value = TimeUtil.format(today, TIME_FORMATS.DATE)
-      break
-    case 'yesterday':
-      const yesterday = TimeUtil.subtract(today, 1, 'day')
-      filterStartDate.value = TimeUtil.format(yesterday, TIME_FORMATS.DATE)
-      filterEndDate.value = TimeUtil.format(yesterday, TIME_FORMATS.DATE)
-      break
-    case 'thisWeek':
-      const weekStart = TimeUtil.startOf(today, 'week').add(1, 'day') // 周一
-      filterStartDate.value = TimeUtil.format(weekStart, TIME_FORMATS.DATE)
-      filterEndDate.value = TimeUtil.format(today, TIME_FORMATS.DATE)
-      break
-    case 'lastWeek':
-      const lastWeekStart = TimeUtil.startOf(today, 'week').subtract(6, 'day')
-      const lastWeekEnd = lastWeekStart.add(6, 'day')
-      filterStartDate.value = TimeUtil.format(lastWeekStart, TIME_FORMATS.DATE)
-      filterEndDate.value = TimeUtil.format(lastWeekEnd, TIME_FORMATS.DATE)
-      break
-    case 'thisMonth':
-      filterStartDate.value = `${year}-${String(month + 1).padStart(2, '0')}-01`
-      filterEndDate.value = TimeUtil.format(today, TIME_FORMATS.DATE)
-      break
-    case 'lastMonth':
-      filterStartDate.value = `${year}-${String(month).padStart(2, '0')}-01`
-      const lastDayOfLastMonth = TimeUtil.endOf(today.subtract(1, 'month'), 'month').date()
-      filterEndDate.value = `${year}-${String(month).padStart(2, '0')}-${String(lastDayOfLastMonth).padStart(2, '0')}`
-      break
-    case 'thisYear':
-      filterStartDate.value = `${year}-01-01`
-      filterEndDate.value = TimeUtil.format(today, TIME_FORMATS.DATE)
-      break
-    case 'lastYear':
-      filterStartDate.value = `${year - 1}-01-01`
-      filterEndDate.value = `${year - 1}-12-31`
-      break
-    case 'last7Days':
-      const d7 = TimeUtil.subtract(today, 7, 'day')
-      filterStartDate.value = TimeUtil.format(d7, TIME_FORMATS.DATE)
-      filterEndDate.value = TimeUtil.format(today, TIME_FORMATS.DATE)
-      break
-    case 'last30Days':
-      const d30 = TimeUtil.subtract(today, 30, 'day')
-      filterStartDate.value = TimeUtil.format(d30, TIME_FORMATS.DATE)
-      filterEndDate.value = TimeUtil.format(today, TIME_FORMATS.DATE)
-      break
-    case 'last90Days':
-      const d90 = TimeUtil.subtract(today, 90, 'day')
-      filterStartDate.value = TimeUtil.format(d90, TIME_FORMATS.DATE)
-      filterEndDate.value = TimeUtil.format(today, TIME_FORMATS.DATE)
-      break
-    default:
-      return
+  case 'today':
+    filterStartDate.value = TimeUtil.format(today, TIME_FORMATS.DATE)
+    filterEndDate.value = TimeUtil.format(today, TIME_FORMATS.DATE)
+    break
+  case 'yesterday':
+    const yesterday = TimeUtil.subtract(today, 1, 'day')
+    filterStartDate.value = TimeUtil.format(yesterday, TIME_FORMATS.DATE)
+    filterEndDate.value = TimeUtil.format(yesterday, TIME_FORMATS.DATE)
+    break
+  case 'thisWeek':
+    const weekStart = TimeUtil.startOf(today, 'week').add(1, 'day') // 周一
+    filterStartDate.value = TimeUtil.format(weekStart, TIME_FORMATS.DATE)
+    filterEndDate.value = TimeUtil.format(today, TIME_FORMATS.DATE)
+    break
+  case 'lastWeek':
+    const lastWeekStart = TimeUtil.startOf(today, 'week').subtract(6, 'day')
+    const lastWeekEnd = lastWeekStart.add(6, 'day')
+    filterStartDate.value = TimeUtil.format(lastWeekStart, TIME_FORMATS.DATE)
+    filterEndDate.value = TimeUtil.format(lastWeekEnd, TIME_FORMATS.DATE)
+    break
+  case 'thisMonth':
+    filterStartDate.value = `${year}-${String(month + 1).padStart(2, '0')}-01`
+    filterEndDate.value = TimeUtil.format(today, TIME_FORMATS.DATE)
+    break
+  case 'lastMonth':
+    filterStartDate.value = `${year}-${String(month).padStart(2, '0')}-01`
+    const lastDayOfLastMonth = TimeUtil.endOf(today.subtract(1, 'month'), 'month').date()
+    filterEndDate.value = `${year}-${String(month).padStart(2, '0')}-${String(lastDayOfLastMonth).padStart(2, '0')}`
+    break
+  case 'thisYear':
+    filterStartDate.value = `${year}-01-01`
+    filterEndDate.value = TimeUtil.format(today, TIME_FORMATS.DATE)
+    break
+  case 'lastYear':
+    filterStartDate.value = `${year - 1}-01-01`
+    filterEndDate.value = `${year - 1}-12-31`
+    break
+  case 'last7Days':
+    const d7 = TimeUtil.subtract(today, 7, 'day')
+    filterStartDate.value = TimeUtil.format(d7, TIME_FORMATS.DATE)
+    filterEndDate.value = TimeUtil.format(today, TIME_FORMATS.DATE)
+    break
+  case 'last30Days':
+    const d30 = TimeUtil.subtract(today, 30, 'day')
+    filterStartDate.value = TimeUtil.format(d30, TIME_FORMATS.DATE)
+    filterEndDate.value = TimeUtil.format(today, TIME_FORMATS.DATE)
+    break
+  case 'last90Days':
+    const d90 = TimeUtil.subtract(today, 90, 'day')
+    filterStartDate.value = TimeUtil.format(d90, TIME_FORMATS.DATE)
+    filterEndDate.value = TimeUtil.format(today, TIME_FORMATS.DATE)
+    break
+  default:
+    return
   }
   handleSearch()
 }
@@ -475,12 +555,12 @@ const getSearchSummary = () => {
     }
   }
 
-  const selectedStore = storeList.value.find(s => s.id === filterStoreId.value)
+  const selectedStore = storeList.value.find(s => String(s.id) === String(filterStoreId.value))
   if (selectedStore) {
     parts.push(selectedStore.name)
   }
 
-  const selectedSupplier = supplierList.value.find(s => s.id === filterSupplierId.value)
+  const selectedSupplier = supplierList.value.find(s => String(s.id) === String(filterSupplierId.value))
   if (selectedSupplier) {
     parts.push(selectedSupplier.name)
   }
@@ -488,23 +568,19 @@ const getSearchSummary = () => {
   return parts.length > 0 ? parts.join(' | ') : '数据分析筛选'
 }
 
-// 获取搜索参数（供子组件使用）
-const getSearchParams = () => ({
-  startDate: filterStartDate.value,
-  endDate: filterEndDate.value,
-  storeId: filterStoreId.value,
-  supplierId: filterSupplierId.value
-})
-
 // 加载店铺列表
 const loadStoreList = async () => {
   try {
     const { unifiedApi } = await import('@/utils/unified-api')
     const response = await unifiedApi.get('/stores', { params: { all: true } })
-    if (response.success && response.data) {
-      storeList.value = sortOptionsByOrder(response.data)
+    if (response.success) {
+      const stores = extractResponseData<any[]>(response)
+      storeList.value = Array.isArray(stores) ? sortOptionsByOrder(stores) : []
+    } else {
+      storeList.value = []
     }
   } catch (err) {
+    storeList.value = []
     logger.error('加载店铺列表失败:', err)
   }
 }
@@ -513,11 +589,15 @@ const loadStoreList = async () => {
 const loadSupplierList = async () => {
   try {
     const { unifiedApi } = await import('@/utils/unified-api')
-    const response = await unifiedApi.get('/suppliers', { params: { all: true } })
-    if (response.success && response.data) {
-      supplierList.value = response.data
+    const response = await unifiedApi.get('/suppliers', { params: { page: 1, page_size: 10000 } })
+    if (response.success) {
+      const suppliers = extractResponseData<any[]>(response)
+      supplierList.value = Array.isArray(suppliers) ? sortOptionsByOrder(suppliers) : []
+    } else {
+      supplierList.value = []
     }
   } catch (err) {
+    supplierList.value = []
     logger.error('加载供应商列表失败:', err)
   }
 }
@@ -605,8 +685,8 @@ onMounted(() => {
   padding: 24px;
   background: white;
   border-radius: 12px;
-  border: 1px solid #e8ecef;
-  color: #606266;
+  border: 1px solid var(--tf-color-border-cool);
+  color: var(--color-text-regular);
   text-align: center;
 }
 

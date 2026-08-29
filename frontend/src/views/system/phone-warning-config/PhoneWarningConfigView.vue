@@ -1,18 +1,27 @@
 <template>
   <div class="phone-warning-config admin-page admin-page-content safe-area-top safe-area-bottom">
-    <el-empty
+    <DataEmptyState
       v-if="!canViewWarningConfig"
       description="当前账号暂无库存预警配置查看权限"
     />
 
-    <el-card v-else shadow="never" class="config-card">
+    <el-card
+      v-else
+      shadow="never"
+      class="config-card"
+    >
       <template #header>
         <div class="card-toolbar">
           <div>
-            <div class="card-toolbar__title">型号母模板</div>
-            <div class="card-toolbar__subtitle">展开后查看并维护颜色 / 内存 / 库存类型子模板</div>
+            <div class="card-toolbar__title">
+              型号母模板
+            </div>
+            <div class="card-toolbar__subtitle">
+              展开后查看并维护颜色 / 内存 / 库存类型子模板
+            </div>
           </div>
           <el-input
+            v-if="canViewField('filters.search')"
             v-model="searchKeyword"
             placeholder="搜索品牌、型号、模板名"
             clearable
@@ -32,23 +41,36 @@
         style="width: 100%"
       >
         <template #empty>
-          <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
-          <el-empty v-else description="暂无库存预警模板" />
+          <TableLoadingRow
+            v-if="loading"
+            mode="block"
+            text="加载中..."
+          />
+          <DataEmptyState
+            v-else
+            description="暂无库存预警模板"
+          />
         </template>
 
-        <el-table-column type="expand" width="56">
+        <el-table-column
+          v-if="canViewField('config.template_info') || canViewField('config.color') || canViewField('config.memory') || canViewField('config.condition') || canViewField('config.threshold') || canViewField('config.is_enabled')"
+          type="expand"
+          width="56"
+        >
           <template #default="{ row }">
             <div class="child-panel">
               <div class="child-panel__header">
                 <div>
-                  <div class="child-panel__title">子模板组合</div>
+                  <div class="child-panel__title">
+                    子模板组合
+                  </div>
                   <div class="child-panel__subtitle">
                     共 {{ row.children.length }} 条规则，可分别设置颜色、内存和预警台数
                   </div>
                 </div>
                 <el-space wrap>
                   <el-button
-                    v-if="canEditWarningConfig"
+                    v-if="canEditWarningConfig && canViewField('system_info.operations')"
                     type="primary"
                     size="small"
                     plain
@@ -57,7 +79,7 @@
                     批量编辑
                   </el-button>
                   <el-button
-                    v-if="canEditWarningConfig"
+                    v-if="canEditWarningConfig && canViewField('system_info.operations')"
                     type="danger"
                     size="small"
                     plain
@@ -69,10 +91,32 @@
               </div>
 
               <div class="child-panel__meta">
-                <el-tag size="small" type="primary">颜色 {{ row.colorCount }}</el-tag>
-                <el-tag size="small" type="success">内存 {{ row.memoryCount }}</el-tag>
-                <el-tag size="small" type="info">{{ row.conditionSummary }}</el-tag>
-                <el-tag size="small" :type="row.enabledCount === row.children.length ? 'success' : 'warning'">
+                <el-tag
+                  v-if="canViewField('config.color')"
+                  size="small"
+                  type="primary"
+                >
+                  颜色 {{ row.colorCount }}
+                </el-tag>
+                <el-tag
+                  v-if="canViewField('config.memory')"
+                  size="small"
+                  type="success"
+                >
+                  内存 {{ row.memoryCount }}
+                </el-tag>
+                <el-tag
+                  v-if="canViewField('config.condition')"
+                  size="small"
+                  type="info"
+                >
+                  {{ row.conditionSummary }}
+                </el-tag>
+                <el-tag
+                  v-if="canViewField('config.is_enabled')"
+                  size="small"
+                  :type="row.enabledCount === row.children.length ? 'success' : 'warning'"
+                >
                   启用 {{ row.enabledCount }}/{{ row.children.length }}
                 </el-tag>
               </div>
@@ -86,43 +130,99 @@
                   :table-layout="'auto'"
                   :fit="true"
                 >
-                  <el-table-column prop="config_name" label="子模板名称" min-width="220">
+                  <el-table-column
+                    v-if="canViewField('config.template_info')"
+                    prop="config_name"
+                    label="子模板名称"
+                    min-width="220"
+                  >
                     <template #default="{ row: child }">
                       <span>{{ child.config_name || getDisplayName(child) }}</span>
                     </template>
                   </el-table-column>
 
-                  <el-table-column prop="color_name" label="颜色" min-width="140">
+                  <el-table-column
+                    v-if="canViewField('config.color')"
+                    prop="color_name"
+                    label="颜色"
+                    min-width="140"
+                  >
                     <template #default="{ row: child }">
-                      <el-tag v-if="child.color_name" size="small">{{ child.color_name }}</el-tag>
-                      <span v-else class="text-muted">全部颜色</span>
+                      <el-tag
+                        v-if="child.color_name"
+                        size="small"
+                      >
+                        {{ child.color_name }}
+                      </el-tag>
+                      <span
+                        v-else
+                        class="text-muted"
+                      >全部颜色</span>
                     </template>
                   </el-table-column>
 
-                  <el-table-column prop="memory_size" label="内存" min-width="140">
+                  <el-table-column
+                    v-if="canViewField('config.memory')"
+                    prop="memory_size"
+                    label="内存"
+                    min-width="140"
+                  >
                     <template #default="{ row: child }">
-                      <el-tag v-if="child.memory_size" size="small" type="info">{{ child.memory_size }}</el-tag>
-                      <span v-else class="text-muted">全部内存</span>
+                      <el-tag
+                        v-if="child.memory_size"
+                        size="small"
+                        type="info"
+                      >
+                        {{ child.memory_size }}
+                      </el-tag>
+                      <span
+                        v-else
+                        class="text-muted"
+                      >全部内存</span>
                     </template>
                   </el-table-column>
 
-                  <el-table-column prop="is_new" label="库存类型" min-width="120" align="center">
+                  <el-table-column
+                    v-if="canViewField('config.condition')"
+                    prop="is_new"
+                    label="库存类型"
+                    min-width="120"
+                    align="center"
+                  >
                     <template #default="{ row: child }">
-                      <el-tag :type="getConditionTagType(child.is_new)" size="small">
+                      <el-tag
+                        :type="getConditionTagType(child.is_new)"
+                        size="small"
+                      >
                         {{ getConditionLabel(child.is_new) }}
                       </el-tag>
                     </template>
                   </el-table-column>
 
-                  <el-table-column prop="min_stock" label="预警阈值" min-width="120" align="center">
+                  <el-table-column
+                    v-if="canViewField('config.threshold')"
+                    prop="min_stock"
+                    label="预警阈值"
+                    min-width="120"
+                    align="center"
+                  >
                     <template #default="{ row: child }">
-                      <el-tag :type="getThresholdTagType(child.min_stock)" size="large">
+                      <el-tag
+                        :type="getThresholdTagType(child.min_stock)"
+                        size="large"
+                      >
                         {{ child.min_stock }} 台
                       </el-tag>
                     </template>
                   </el-table-column>
 
-                  <el-table-column prop="warning_enabled" label="状态" min-width="120" align="center">
+                  <el-table-column
+                    v-if="canViewField('config.is_enabled')"
+                    prop="warning_enabled"
+                    label="状态"
+                    min-width="120"
+                    align="center"
+                  >
                     <template #default="{ row: child }">
                       <el-switch
                         v-model="child.warning_enabled"
@@ -135,15 +235,39 @@
                     </template>
                   </el-table-column>
 
-                  <el-table-column prop="remarks" label="备注" min-width="180" />
+                  <el-table-column
+                    v-if="canViewField('config.template_info')"
+                    prop="remarks"
+                    label="备注"
+                    min-width="180"
+                  />
 
-                  <el-table-column v-if="canEditWarningConfig" label="操作" :width="$getActionColumnWidth(2)" align="center" class-name="actions-column">
+                  <el-table-column
+                    v-if="canEditWarningConfig && canViewField('system_info.operations')"
+                    label="操作"
+                    :width="$getActionColumnWidth(2)"
+                    align="center"
+                    class-name="actions-column"
+                  >
                     <template #default="{ row: child }">
-                      <div v-if="canEditWarningConfig" class="table-actions">
-                        <el-button type="primary" link size="small" @click.stop="openEditDialog(child)">
+                      <div
+                        v-if="canEditWarningConfig"
+                        class="table-actions"
+                      >
+                        <el-button
+                          type="primary"
+                          link
+                          size="small"
+                          @click.stop="openEditDialog(child)"
+                        >
                           编辑
                         </el-button>
-                        <el-button type="danger" link size="small" @click.stop="handleDelete(child)">
+                        <el-button
+                          type="danger"
+                          link
+                          size="small"
+                          @click.stop="handleDelete(child)"
+                        >
                           删除
                         </el-button>
                       </div>
@@ -155,43 +279,100 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="config_name" label="模板名称" min-width="220">
+        <el-table-column
+          v-if="canViewField('config.template_info')"
+          prop="config_name"
+          label="模板名称"
+          min-width="220"
+        >
           <template #default="{ row }">
             <div class="template-name">
-              <div class="template-name__title">{{ row.config_name || `${row.brand_name} ${row.model_name}` }}</div>
-              <div class="template-name__sub">{{ row.variantSummary }}</div>
+              <div class="template-name__title">
+                {{ row.config_name || `${row.brand_name} ${row.model_name}` }}
+              </div>
+              <div class="template-name__sub">
+                {{ row.variantSummary }}
+              </div>
             </div>
           </template>
         </el-table-column>
 
-        <el-table-column prop="brand_name" label="品牌" min-width="100" />
+        <el-table-column
+          v-if="canViewField('config.template_info')"
+          prop="brand_name"
+          label="品牌"
+          min-width="100"
+        />
 
-        <el-table-column prop="model_name" label="型号" min-width="140" />
+        <el-table-column
+          v-if="canViewField('config.template_info')"
+          prop="model_name"
+          label="型号"
+          min-width="140"
+        />
 
-        <el-table-column label="颜色 / 内存" min-width="220">
+        <el-table-column
+          v-if="canViewField('config.color') || canViewField('config.memory')"
+          label="颜色 / 内存"
+          min-width="220"
+        >
           <template #default="{ row }">
             <div class="summary-tags">
-              <el-tag size="small">{{ row.colorSummary }}</el-tag>
-              <el-tag size="small" type="info">{{ row.memorySummary }}</el-tag>
+              <el-tag
+                v-if="canViewField('config.color')"
+                size="small"
+              >
+                {{ row.colorSummary }}
+              </el-tag>
+              <el-tag
+                v-if="canViewField('config.memory')"
+                size="small"
+                type="info"
+              >
+                {{ row.memorySummary }}
+              </el-tag>
             </div>
           </template>
         </el-table-column>
 
-        <el-table-column label="库存类型" min-width="120" align="center">
+        <el-table-column
+          v-if="canViewField('config.condition')"
+          label="库存类型"
+          min-width="120"
+          align="center"
+        >
           <template #default="{ row }">
-            <el-tag size="small" type="success">{{ row.conditionSummary }}</el-tag>
+            <el-tag
+              size="small"
+              type="success"
+            >
+              {{ row.conditionSummary }}
+            </el-tag>
           </template>
         </el-table-column>
 
-        <el-table-column label="阈值范围" min-width="120" align="center">
+        <el-table-column
+          v-if="canViewField('config.threshold')"
+          label="阈值范围"
+          min-width="120"
+          align="center"
+        >
           <template #default="{ row }">
-            <el-tag :type="row.thresholdTagType" size="large">
+            <el-tag
+              :type="row.thresholdTagType"
+              size="large"
+            >
               {{ row.thresholdSummary }}
             </el-tag>
           </template>
         </el-table-column>
 
-        <el-table-column label="状态" min-width="110" align="center">
+        <el-table-column
+          v-if="canViewField('config.is_enabled')"
+          label="状态"
+          min-width="110"
+          align="center"
+        >
           <template #default="{ row }">
             <div class="status-summary">
               <span class="status-summary__value">{{ row.enabledCount }}/{{ row.children.length }}</span>
@@ -200,15 +381,40 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="remarks" label="备注" min-width="160" class-name="complete-text-column wrapped-text-column" />
+        <el-table-column
+          v-if="canViewField('config.template_info')"
+          prop="remarks"
+          label="备注"
+          min-width="160"
+          class-name="complete-text-column wrapped-text-column"
+        />
 
-        <el-table-column v-if="canEditWarningConfig" label="操作" :width="$getActionColumnWidth(2)" align="center" class-name="actions-column">
+        <el-table-column
+          v-if="canEditWarningConfig && canViewField('system_info.operations')"
+          label="操作"
+          :width="$getActionColumnWidth(2)"
+          align="center"
+          class-name="actions-column"
+        >
           <template #default="{ row }">
-            <div v-if="canEditWarningConfig" class="table-actions">
-              <el-button type="primary" link size="small" @click.stop="openEditDialog(row)">
+            <div
+              v-if="canEditWarningConfig"
+              class="table-actions"
+            >
+              <el-button
+                type="primary"
+                link
+                size="small"
+                @click.stop="openEditDialog(row)"
+              >
                 编辑
               </el-button>
-              <el-button type="danger" link size="small" @click.stop="handleDeleteGroup(row)">
+              <el-button
+                type="danger"
+                link
+                size="small"
+                @click.stop="handleDeleteGroup(row)"
+              >
                 删除
               </el-button>
             </div>
@@ -233,7 +439,11 @@
         label-position="left"
       >
         <div class="dialog-grid">
-          <el-form-item label="选择品牌" prop="brand_id">
+          <el-form-item
+            v-if="canViewField('config.template_info')"
+            label="选择品牌"
+            prop="brand_id"
+          >
             <el-select
               v-model="formData.brand_id"
               placeholder="请选择品牌"
@@ -250,7 +460,11 @@
             </el-select>
           </el-form-item>
 
-          <el-form-item label="选择型号" prop="model_id">
+          <el-form-item
+            v-if="canViewField('config.template_info')"
+            label="选择型号"
+            prop="model_id"
+          >
             <el-select
               v-model="formData.model_id"
               placeholder="请先选择品牌，再选择型号"
@@ -269,7 +483,10 @@
         </div>
 
         <div class="dialog-grid">
-          <el-form-item label="选择颜色">
+          <el-form-item
+            v-if="canViewField('config.color')"
+            label="选择颜色"
+          >
             <el-select
               v-model="formData.color_ids"
               placeholder="可多选，不选则表示全部颜色"
@@ -286,7 +503,10 @@
             </el-select>
           </el-form-item>
 
-          <el-form-item label="选择内存">
+          <el-form-item
+            v-if="canViewField('config.memory')"
+            label="选择内存"
+          >
             <el-select
               v-model="formData.memory_ids"
               placeholder="可多选，不选则表示全部内存"
@@ -304,7 +524,10 @@
           </el-form-item>
         </div>
 
-        <el-form-item label="库存类型">
+        <el-form-item
+          v-if="canViewField('config.condition')"
+          label="库存类型"
+        >
           <el-select
             v-model="formData.condition_values"
             placeholder="可多选，不选则表示全部库存"
@@ -318,11 +541,17 @@
               :value="item.value"
             />
           </el-select>
-          <div class="form-tip">支持多选全新和二手，不选则生成“全部库存”子模板</div>
+          <div class="form-tip">
+            支持多选全新和二手，不选则生成“全部库存”子模板
+          </div>
         </el-form-item>
 
         <div class="dialog-grid">
-          <el-form-item label="模板名称" prop="config_name">
+          <el-form-item
+            v-if="canViewField('config.template_info')"
+            label="模板名称"
+            prop="config_name"
+          >
             <el-input
               v-model="formData.config_name"
               placeholder="如：iPhone 16 系列模板"
@@ -330,7 +559,11 @@
             />
           </el-form-item>
 
-          <el-form-item label="默认阈值" prop="min_stock">
+          <el-form-item
+            v-if="canViewField('config.threshold')"
+            label="默认阈值"
+            prop="min_stock"
+          >
             <div class="default-threshold">
               <el-input-number
                 v-model="formData.min_stock"
@@ -340,15 +573,23 @@
                 controls-position="right"
               />
               <span class="unit-label">台</span>
-              <el-button plain @click="applyDefaultThresholdToAll">
+              <el-button
+                plain
+                @click="applyDefaultThresholdToAll"
+              >
                 应用到全部组合
               </el-button>
             </div>
-            <div class="form-tip">这是默认值，下面每个颜色 / 内存组合都可以再单独改成 2 台、5 台等不同阈值</div>
+            <div class="form-tip">
+              这是默认值，下面每个颜色 / 内存组合都可以再单独改成 2 台、5 台等不同阈值
+            </div>
           </el-form-item>
         </div>
 
-        <el-form-item label="模板备注">
+        <el-form-item
+          v-if="canViewField('config.template_info')"
+          label="模板备注"
+        >
           <el-input
             v-model="formData.remarks"
             type="textarea"
@@ -357,14 +598,23 @@
           />
         </el-form-item>
 
-        <el-form-item label="子模板组合" class="variant-form-item">
+        <el-form-item
+          v-if="canViewField('config.color') || canViewField('config.memory') || canViewField('config.condition') || canViewField('config.threshold') || canViewField('config.is_enabled')"
+          label="子模板组合"
+          class="variant-form-item"
+        >
           <div class="variant-editor">
             <div class="variant-editor__header">
               <div>
-                <div class="variant-editor__title">已生成 {{ variantDrafts.length }} 个子模板</div>
-                <div class="variant-editor__subtitle">每个组合都可以分别设置阈值和启用状态</div>
+                <div class="variant-editor__title">
+                  已生成 {{ variantDrafts.length }} 个子模板
+                </div>
+                <div class="variant-editor__subtitle">
+                  每个组合都可以分别设置阈值和启用状态
+                </div>
               </div>
               <el-switch
+                v-if="canViewField('config.is_enabled')"
                 v-model="formData.warning_enabled"
                 :active-value="1"
                 :inactive-value="0"
@@ -373,12 +623,15 @@
               />
             </div>
 
-            <el-empty
+            <DataEmptyState
               v-if="!variantDrafts.length"
               description="请先选择品牌、型号，以及颜色 / 内存 / 库存类型组合"
             />
 
-            <div v-else class="table-scroll-shell">
+            <div
+              v-else
+              class="table-scroll-shell"
+            >
               <el-table
                 :data="variantDrafts"
                 border
@@ -387,29 +640,66 @@
                 :table-layout="'auto'"
                 :fit="true"
               >
-                <el-table-column prop="color_name" label="颜色" min-width="140">
+                <el-table-column
+                  prop="color_name"
+                  label="颜色"
+                  min-width="140"
+                >
                   <template #default="{ row }">
-                    <el-tag v-if="row.color_name" size="small">{{ row.color_name }}</el-tag>
-                    <span v-else class="text-muted">全部颜色</span>
+                    <el-tag
+                      v-if="row.color_name"
+                      size="small"
+                    >
+                      {{ row.color_name }}
+                    </el-tag>
+                    <span
+                      v-else
+                      class="text-muted"
+                    >全部颜色</span>
                   </template>
                 </el-table-column>
 
-                <el-table-column prop="memory_size" label="内存" min-width="140">
+                <el-table-column
+                  prop="memory_size"
+                  label="内存"
+                  min-width="140"
+                >
                   <template #default="{ row }">
-                    <el-tag v-if="row.memory_size" size="small" type="info">{{ row.memory_size }}</el-tag>
-                    <span v-else class="text-muted">全部内存</span>
+                    <el-tag
+                      v-if="row.memory_size"
+                      size="small"
+                      type="info"
+                    >
+                      {{ row.memory_size }}
+                    </el-tag>
+                    <span
+                      v-else
+                      class="text-muted"
+                    >全部内存</span>
                   </template>
                 </el-table-column>
 
-                <el-table-column prop="condition_label" label="库存类型" min-width="130" align="center">
+                <el-table-column
+                  prop="condition_label"
+                  label="库存类型"
+                  min-width="130"
+                  align="center"
+                >
                   <template #default="{ row }">
-                    <el-tag :type="getConditionTagType(row.is_new)" size="small">
+                    <el-tag
+                      :type="getConditionTagType(row.is_new)"
+                      size="small"
+                    >
                       {{ row.condition_label }}
                     </el-tag>
                   </template>
                 </el-table-column>
 
-                <el-table-column label="预警阈值" min-width="180" align="center">
+                <el-table-column
+                  label="预警阈值"
+                  min-width="180"
+                  align="center"
+                >
                   <template #default="{ row }">
                     <el-input-number
                       v-model="row.min_stock"
@@ -421,7 +711,11 @@
                   </template>
                 </el-table-column>
 
-                <el-table-column label="启用" min-width="120" align="center">
+                <el-table-column
+                  label="启用"
+                  min-width="120"
+                  align="center"
+                >
                   <template #default="{ row }">
                     <el-switch
                       v-model="row.warning_enabled"
@@ -437,7 +731,12 @@
       </el-form>
 
       <template #footer>
-        <el-button type="default" @click="dialogVisible = false">取消</el-button>
+        <el-button
+          type="default"
+          @click="dialogVisible = false"
+        >
+          取消
+        </el-button>
         <el-button
           type="primary"
           :loading="submitting"
@@ -457,6 +756,7 @@ import { ElMessageBox, type FormInstance } from 'element-plus'
 import { ValidationRules } from '@/composables'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
+import { fieldPermissions } from '@/composables/useFieldPermissions'
 import { useLoadingState } from '@/composables'
 import phoneStockWarningsApi from '@/api/phone-stock-warnings'
 import { baseDataApi } from '@/api/base-data'
@@ -468,6 +768,8 @@ const {
   canEdit: canEditWarningConfig,
   handleNoPermission
 } = usePagePermissions('settings')
+const PHONE_WARNING_MODULE_KEY = 'phone_warning_config'
+const canViewField = (fieldKey: string) => fieldPermissions.isFieldVisible(PHONE_WARNING_MODULE_KEY, fieldKey)
 
 const { loading } = useLoadingState()
 const configList = ref<any[]>([])
@@ -515,7 +817,7 @@ const formRules = {
   ]
 }
 
-const enabledConfigCount = computed(() => {
+const _enabledConfigCount = computed(() => {
   return configList.value.filter(item => item.warning_enabled === 1).length
 })
 
@@ -607,7 +909,7 @@ const filteredGroupedConfigs = computed(() => {
   })
 })
 
-const filteredChildConfigCount = computed(() => {
+const _filteredChildConfigCount = computed(() => {
   return filteredGroupedConfigs.value.reduce((total, group) => total + group.children.length, 0)
 })
 
@@ -1036,6 +1338,7 @@ watch(
 )
 
 onMounted(() => {
+  void fieldPermissions.init()
   if (!canViewWarningConfig.value) {
     return
   }
@@ -1063,7 +1366,7 @@ defineExpose({
   padding: 20px;
   background:
     radial-gradient(circle at top right, rgba(246, 177, 122, 0.12), transparent 28%),
-    linear-gradient(180deg, #f7fafc 0%, #eef3f7 100%);
+    linear-gradient(180deg, var(--tf-color-surface-gray) 0%, var(--tf-color-surface-cool) 100%);
   border-radius: 28px;
 
   .config-card {
@@ -1071,12 +1374,12 @@ defineExpose({
     border: 1px solid var(--warning-border);
     border-radius: 24px;
     box-shadow: 0 18px 46px rgba(31, 41, 55, 0.08);
-    background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+    background: linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-surface-cool-alt) 100%);
 
     :deep(.el-card__header) {
       padding: 22px 24px;
       border-bottom: 1px solid rgba(32, 87, 129, 0.08);
-      background: linear-gradient(180deg, #fbfdff 0%, #f4f8fb 100%);
+      background: linear-gradient(180deg, var(--tf-color-surface-blue-alt) 0%, var(--tf-color-surface-cool-soft) 100%);
     }
 
     :deep(.el-card__body) {
@@ -1094,12 +1397,12 @@ defineExpose({
   .card-toolbar__title {
     font-size: 20px;
     font-weight: 700;
-    color: #1f2937;
+    color: var(--tf-color-neutral-800);
   }
 
   .card-toolbar__subtitle {
     margin-top: 6px;
-    color: #8a94a0;
+    color: var(--tf-color-gray-ui-500);
     font-size: 13px;
   }
 
@@ -1109,12 +1412,12 @@ defineExpose({
 
   .template-name__title {
     font-weight: 700;
-    color: #1f2937;
+    color: var(--tf-color-neutral-800);
   }
 
   .template-name__sub {
     margin-top: 6px;
-    color: #8a94a0;
+    color: var(--tf-color-gray-ui-500);
     font-size: 12px;
   }
 
@@ -1144,7 +1447,7 @@ defineExpose({
   }
 
   .status-summary__label {
-    color: #8a94a0;
+    color: var(--tf-color-gray-ui-500);
     font-size: 12px;
   }
 
@@ -1152,7 +1455,7 @@ defineExpose({
     padding: 16px;
     border: 1px solid rgba(32, 87, 129, 0.08);
     background:
-      linear-gradient(180deg, #ffffff 0%, #f7fafc 100%);
+      linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-surface-gray) 100%);
     border-radius: 18px;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
   }
@@ -1168,12 +1471,12 @@ defineExpose({
   .child-panel__title {
     font-size: 15px;
     font-weight: 700;
-    color: #1f2937;
+    color: var(--tf-color-neutral-800);
   }
 
   .child-panel__subtitle {
     margin-top: 4px;
-    color: #8a94a0;
+    color: var(--tf-color-gray-ui-500);
     font-size: 12px;
   }
 
@@ -1202,7 +1505,7 @@ defineExpose({
     padding: 12px 14px;
     border: 1px solid rgba(32, 87, 129, 0.08);
     border-radius: 16px;
-    background: linear-gradient(180deg, #fbfdff 0%, #f4f8fb 100%);
+    background: linear-gradient(180deg, var(--tf-color-surface-blue-alt) 0%, var(--tf-color-surface-cool-soft) 100%);
   }
 
   .variant-editor {
@@ -1212,7 +1515,7 @@ defineExpose({
     border-radius: 18px;
     background:
       radial-gradient(circle at top right, rgba(246, 177, 122, 0.1), transparent 30%),
-      linear-gradient(180deg, #fcfdff 0%, #f7fafc 100%);
+      linear-gradient(180deg, var(--tf-color-surface-blue-alt) 0%, var(--tf-color-surface-gray) 100%);
   }
 
   .variant-editor__header {
@@ -1228,12 +1531,12 @@ defineExpose({
   .variant-editor__title {
     font-size: 15px;
     font-weight: 700;
-    color: #1f2937;
+    color: var(--tf-color-neutral-800);
   }
 
   .variant-editor__subtitle {
     margin-top: 4px;
-    color: #8a94a0;
+    color: var(--tf-color-gray-ui-500);
     font-size: 12px;
   }
 
@@ -1242,18 +1545,18 @@ defineExpose({
   }
 
   .text-muted {
-    color: #909399;
+    color: var(--color-info);
   }
 
   .form-tip {
     margin-top: 6px;
-    color: #8a94a0;
+    color: var(--tf-color-gray-ui-500);
     font-size: 12px;
     line-height: 1.6;
   }
 
   .unit-label {
-    color: #606266;
+    color: var(--color-text-regular);
   }
 
   :deep(.warning-dialog .el-dialog__body) {
@@ -1266,7 +1569,7 @@ defineExpose({
 
   :deep(.el-table .el-table__expanded-cell) {
     padding: 16px;
-    background: #f7fafc;
+    background: var(--tf-color-surface-gray);
   }
 
   :deep(.el-input__wrapper),

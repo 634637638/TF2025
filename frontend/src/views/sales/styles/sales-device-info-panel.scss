@@ -1,0 +1,497 @@
+.device-info-section h4 {
+  margin: 0 0 20px;
+  color: var(--admin-section-title-color);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.device-card.compact {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--admin-table-panel-border);
+  border-radius: var(--admin-panel-radius);
+  background: var(--admin-table-panel-bg);
+}
+
+.device-image {
+  width: 80px;
+  height: 80px;
+  overflow: hidden;
+  flex-shrink: 0;
+  border-radius: 8px;
+}
+
+.device-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.device-details {
+  min-width: 0;
+}
+
+.device-details h5 {
+  margin: 0 0 12px;
+  color: var(--admin-data-table-cell-color);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.device-name {
+  color: var(--tf-color-heading);
+  font-weight: 600;
+}
+
+.device-specs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.spec-item {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.imei {
+  display: inline;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--tf-color-gray-bootstrap-700);
+  font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
+  font-size: inherit;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-align: center;
+}
+
+.imei:hover {
+  transform: none;
+  background: transparent;
+}
+
+.condition-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.condition-badge.new {
+  background: var(--tf-button-success-soft-bg);
+  color: var(--tf-button-success-soft-color);
+}
+
+.condition-badge.used {
+  background: var(--tf-button-warning-soft-bg);
+  color: var(--tf-button-warning-soft-color);
+}
+
+.device-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.meta-item {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--admin-table-panel-border);
+  border-radius: 10px;
+  background: var(--admin-table-panel-bg);
+  font-size: 13px;
+}
+
+.meta-item-wide {
+  grid-column: span 2;
+}
+
+.meta-label {
+  color: var(--admin-record-count-color);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.meta-value {
+  color: var(--admin-data-table-cell-color);
+  font-weight: 600;
+  line-height: 1.35;
+  word-break: break-all;
+}
+
+.meta-value.price {
+  color: var(--tf-button-danger-soft-color);
+  font-weight: 600;
+}
+
+.sale-mobile-device {
+  min-width: 0;
+}
+
+.sale-mobile-device-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sale-mobile-device-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--tf-button-primary-bg);
+  box-shadow: var(--tf-button-primary-shadow);
+  color: var(--tf-button-primary-color);
+}
+
+.sale-mobile-device-main {
+  display: flex;
+  min-width: 0;
+  overflow: hidden;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.sale-mobile-device-name,
+.sale-mobile-device-specs {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sale-mobile-device-name {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.sale-mobile-device-specs {
+  font-size: 13px;
+  opacity: 0.92;
+}
+
+.sale-mobile-device-tags {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.sale-mobile-device-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--tf-button-overlay-bg);
+  color: var(--tf-button-on-color);
+  font-size: 12px;
+  font-weight: 700;
+  backdrop-filter: blur(10px);
+}
+
+.sale-mobile-info-grid,
+.sale-mobile-code-row,
+.sale-mobile-spec-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.sale-mobile-purchase-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.sale-mobile-info-item,
+.sale-mobile-code-item,
+.sale-mobile-spec-item,
+.sale-mobile-purchase-row {
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid var(--admin-table-panel-border);
+  border-radius: 14px;
+  background: var(--admin-table-panel-bg);
+}
+
+.sale-mobile-info-label,
+.sale-mobile-code-label,
+.sale-mobile-spec-label,
+.sale-mobile-purchase-label {
+  display: block;
+  color: var(--admin-record-count-color);
+  font-size: 11px;
+}
+
+.sale-mobile-info-value,
+.sale-mobile-spec-value,
+.sale-mobile-purchase-value {
+  display: block;
+  margin-top: 4px;
+  color: var(--admin-data-table-cell-color);
+  font-size: 13px;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.sale-mobile-spec-price {
+  color: var(--tf-button-danger-soft-color);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.sale-mobile-code-value {
+  display: block;
+  margin-top: 4px;
+  color: var(--admin-data-table-cell-color);
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  word-break: break-all;
+}
+
+.batch-devices-list {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid var(--tf-color-gray-material-300);
+  border-radius: 8px;
+  background: var(--tf-color-neutral-25);
+}
+
+.device-item {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  border-bottom: 1px solid var(--tf-color-gray-material-300);
+  background: white;
+  transition: background-color 0.2s;
+}
+
+.device-item:last-child {
+  border-bottom: none;
+}
+
+.device-item:hover {
+  background-color: var(--tf-color-surface-muted);
+}
+
+.device-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  margin-right: 12px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--tf-color-blue-bootstrap);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.batch-summary {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 16px;
+  padding: 16px;
+  border-left: 4px solid var(--tf-color-blue-material-500);
+  border-radius: 8px;
+  background: var(--tf-color-blue-100);
+}
+
+.batch-summary .summary-item {
+  text-align: center;
+}
+
+.batch-summary .label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.batch-summary .value {
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.batch-summary .value.positive {
+  color: var(--success-color);
+}
+
+.batch-summary .value.negative {
+  color: var(--danger-color);
+}
+
+@media (max-width: 768px) {
+  .device-card.compact {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .device-image {
+    align-self: center;
+  }
+}
+
+@media (max-width: 767px) {
+  .device-info-section h4 {
+    margin-bottom: 16px;
+    font-size: 15px;
+  }
+
+  .device-card.compact {
+    padding: 8px 0 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .device-details h5 {
+    margin-bottom: 0;
+    font-size: 13px;
+    text-align: left;
+  }
+
+  .sale-mobile-device-card {
+    gap: 8px;
+  }
+
+  .sale-mobile-device-head {
+    padding: 10px 12px;
+    border-radius: 14px;
+  }
+
+  .sale-mobile-device-main {
+    gap: 6px;
+  }
+
+  .sale-mobile-device-name {
+    font-size: 14px;
+  }
+
+  .sale-mobile-device-specs {
+    font-size: 12px;
+  }
+
+  .sale-mobile-device-tag {
+    min-height: 24px;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+
+  .sale-mobile-info-grid,
+  .sale-mobile-code-row,
+  .sale-mobile-purchase-grid {
+    gap: 8px;
+  }
+
+  .sale-mobile-info-item,
+  .sale-mobile-code-item,
+  .sale-mobile-purchase-row {
+    padding: 10px;
+    border-radius: 12px;
+  }
+
+  .sale-mobile-info-label,
+  .sale-mobile-code-label,
+  .sale-mobile-purchase-label {
+    font-size: 10px;
+  }
+
+  .sale-mobile-info-value,
+  .sale-mobile-purchase-value {
+    font-size: 12px;
+  }
+
+  .sale-mobile-code-value {
+    font-size: 11px;
+  }
+
+  .batch-devices-list {
+    max-height: 200px;
+  }
+
+  .device-item.compact {
+    padding: 10px;
+  }
+
+  .device-number {
+    width: 20px;
+    height: 20px;
+    font-size: 11px;
+  }
+
+  .device-item .device-image {
+    width: 40px;
+    height: 40px;
+  }
+
+  .device-name {
+    font-size: 13px;
+  }
+
+  .device-specs .spec-item {
+    font-size: 11px;
+  }
+
+  .batch-summary {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .batch-summary .summary-item {
+    font-size: 13px;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .device-info-section h4,
+  .device-details h5 {
+    color: var(--color-bg-white);
+  }
+
+  .device-card.compact {
+    border-color: rgba(255, 255, 255, 0.1);
+    background: rgba(40, 40, 40, 0.8);
+  }
+}
+
+@media (max-width: 375px) {
+  .device-meta {
+    font-size: 11px;
+  }
+
+  .meta-label {
+    min-width: 55px;
+    font-size: 10px;
+  }
+
+  .meta-value {
+    font-size: 11px;
+  }
+}

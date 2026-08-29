@@ -15,14 +15,19 @@
         <div class="photo-upload-area">
           <div class="photo-upload-actions">
             <el-upload
+              v-if="canUpload"
               class="toolbar-upload"
               :show-file-list="false"
               :http-request="customUploadRequest"
               accept="image/*,.heic,.heif,.pdf,application/pdf"
               multiple
             >
-              <el-button type="primary" size="default" class="toolbar-action-btn">
-                <i class="fas fa-image"></i> 上传图片
+              <el-button
+                type="primary"
+                size="default"
+                class="toolbar-action-btn"
+              >
+                <i class="fas fa-image" /> 上传图片
               </el-button>
             </el-upload>
             <el-button
@@ -32,21 +37,25 @@
               :disabled="previewPhotos.length === 0"
               @click="downloadToolbarPhotos"
             >
-              <i class="fas fa-download"></i> {{ selectedPhotos.length > 0 ? '下载选中' : '下载全部' }}
+              <i class="fas fa-download" /> {{ selectedPhotos.length > 0 ? '下载选中' : '下载全部' }}
             </el-button>
             <el-button
+              v-if="canUpload"
               class="toolbar-action-btn"
               type="danger"
               size="default"
               :disabled="previewPhotos.length === 0"
               @click="deleteToolbarPhotos"
             >
-              <i class="fas fa-trash"></i> {{ selectedPhotos.length > 0 ? '删除选中' : '删除全部' }}
+              <i class="fas fa-trash" /> {{ selectedPhotos.length > 0 ? '删除选中' : '删除全部' }}
             </el-button>
           </div>
         </div>
 
-        <div v-if="previewPhotos.length > 0" class="photo-grid-area">
+        <div
+          v-if="previewPhotos.length > 0"
+          class="photo-grid-area"
+        >
           <div class="photo-toolbar">
             <div class="toolbar-left">
               <el-checkbox
@@ -56,7 +65,10 @@
               >
                 全选
               </el-checkbox>
-              <span v-if="selectedPhotos.length > 0" class="selected-count">
+              <span
+                v-if="selectedPhotos.length > 0"
+                class="selected-count"
+              >
                 已选择 {{ selectedPhotos.length }} 张
               </span>
             </div>
@@ -78,43 +90,73 @@
               @click="openPhotoViewer(index)"
               @mouseenter="onPhotoHover(index)"
             >
-              <div class="photo-checkbox" @click.stop="togglePhotoSelection(index)">
+              <div
+                class="photo-checkbox"
+                @click.stop="togglePhotoSelection(index)"
+              >
                 <el-checkbox :model-value="selectedPhotos.includes(index)" />
               </div>
 
-              <AsyncImage :src="resolvePhotoUrl(photo)" alt="国补照片" mode="eager" class="photo-image" />
+              <AsyncImage
+                :src="resolvePhotoUrl(photo)"
+                alt="国补照片"
+                mode="eager"
+                class="photo-image"
+              />
 
               <div class="photo-actions">
-                <el-button class="action-btn view-btn" circle @click.stop="openPhotoViewer(index)">
-                  <i class="fas fa-search-plus"></i>
+                <el-button
+                  class="action-btn view-btn"
+                  circle
+                  @click.stop="openPhotoViewer(index)"
+                >
+                  <i class="fas fa-search-plus" />
                 </el-button>
-                <el-button class="action-btn delete-btn" circle @click.stop="removePhotoFromPreview(index)">
-                  <i class="fas fa-trash-alt"></i>
+                <el-button
+                  v-if="canUpload"
+                  class="action-btn delete-btn"
+                  circle
+                  @click.stop="removePhotoFromPreview(index)"
+                >
+                  <i class="fas fa-trash-alt" />
                 </el-button>
               </div>
 
-              <div v-if="selectedPhotos.includes(index)" class="selected-overlay">
-                <i class="fas fa-check-circle"></i>
+              <div
+                v-if="selectedPhotos.includes(index)"
+                class="selected-overlay"
+              >
+                <i class="fas fa-check-circle" />
               </div>
             </div>
           </div>
 
           <div class="photo-count-info">
-            <i class="fas fa-images"></i> 共 {{ previewPhotos.length }} 张照片
+            <i class="fas fa-images" /> 共 {{ previewPhotos.length }} 张照片
           </div>
         </div>
 
-        <div v-else class="no-photo-hint">
-          <i class="fas fa-image"></i>
-          <p>暂无照片，请点击上方按钮上传</p>
+        <div
+          v-else
+          class="no-photo-hint"
+        >
+          <i class="fas fa-image" />
+          <p>{{ canUpload ? '暂无照片，请点击上方按钮上传' : '暂无照片' }}</p>
         </div>
       </div>
 
       <template #footer>
         <div class="tf-dialog-actions photo-preview-footer">
-          <el-button @click="closeDialog">取消</el-button>
-          <el-button type="primary" :loading="savingPhotos" @click="savePhotoChanges">
-            <i class="fas fa-save"></i> 保存
+          <el-button @click="closeDialog">
+            关闭
+          </el-button>
+          <el-button
+            v-if="canUpload"
+            type="primary"
+            :loading="savingPhotos"
+            @click="savePhotoChanges"
+          >
+            <i class="fas fa-save" /> 保存
           </el-button>
         </div>
       </template>
@@ -130,8 +172,13 @@
     >
       <div class="photo-viewer-content">
         <div class="photo-viewer-main">
-          <el-button class="photo-nav-btn prev" circle :disabled="currentPhotoIndex === 0" @click="prevPhoto">
-            <i class="fas fa-chevron-left"></i>
+          <el-button
+            class="photo-nav-btn prev"
+            circle
+            :disabled="currentPhotoIndex === 0"
+            @click="prevPhoto"
+          >
+            <i class="fas fa-chevron-left" />
           </el-button>
           <div class="photo-viewer-image">
             <AsyncImage
@@ -142,7 +189,10 @@
               @load="handleViewerImageLoad"
               @error="handleViewerImageLoad"
             />
-            <div v-if="viewerLoading" class="photo-viewer-loading">
+            <div
+              v-if="viewerLoading"
+              class="photo-viewer-loading"
+            >
               <InlineLoading text="图片加载中..." />
             </div>
           </div>
@@ -152,15 +202,22 @@
             :disabled="currentPhotoIndex === previewPhotos.length - 1"
             @click="nextPhoto"
           >
-            <i class="fas fa-chevron-right"></i>
+            <i class="fas fa-chevron-right" />
           </el-button>
         </div>
         <div class="photo-viewer-actions">
-          <el-button type="primary" @click="downloadCurrentPhoto">
-            <i class="fas fa-download"></i> 下载
+          <el-button
+            type="primary"
+            @click="downloadCurrentPhoto"
+          >
+            <i class="fas fa-download" /> 下载
           </el-button>
-          <el-button type="danger" @click="removePhotoFromPreview(currentPhotoIndex)">
-            <i class="fas fa-trash"></i> 删除
+          <el-button
+            v-if="canUpload"
+            type="danger"
+            @click="removePhotoFromPreview(currentPhotoIndex)"
+          >
+            <i class="fas fa-trash" /> 删除
           </el-button>
         </div>
       </div>
@@ -184,6 +241,7 @@ const AsyncImage = defineAsyncComponent(() => import('@/components/Image.vue'))
 const props = defineProps<{
   modelValue: boolean
   item: any | null
+  canUpload: boolean
 }>()
 
 const emit = defineEmits<{
@@ -203,6 +261,7 @@ const photoSelectAll = ref(false)
 const isDragging = ref(false)
 const showPhotoViewer = ref(false)
 const viewerLoading = ref(false)
+const canUpload = computed(() => props.canUpload)
 
 const decodedPhotoCache = new Set<string>()
 const pendingPhotoLoads = new Map<string, Promise<void>>()
@@ -402,6 +461,12 @@ const convertPDFToImage = async (pdfFile: File): Promise<File> => {
 }
 
 const customUploadRequest = async (options: any) => {
+  if (!canUpload.value) {
+    ElMessage.warning('您没有图片上传权限')
+    options.onError?.(new Error('没有图片上传权限'))
+    return
+  }
+
   const { file, onSuccess, onError } = options
   const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
   const isLt10M = file.size / 1024 / 1024 < 10
@@ -570,6 +635,11 @@ const downloadSelectedPhotos = async () => {
 }
 
 const applyPhotoDeletion = (indexes: number[], successMessage: string) => {
+  if (!canUpload.value) {
+    ElMessage.warning('您没有图片上传权限')
+    return
+  }
+
   const sortedIndexes = [...indexes].sort((a, b) => b - a)
   sortedIndexes.forEach(index => {
     deletedPhotos.value.push(previewPhotos.value[index])
@@ -640,6 +710,11 @@ const nextPhoto = () => {
 }
 
 const removePhotoFromPreview = (index: number) => {
+  if (!canUpload.value) {
+    ElMessage.warning('您没有图片上传权限')
+    return
+  }
+
   ElMessageBox.confirm('确定要删除这张照片吗？', '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
@@ -688,6 +763,10 @@ const downloadAllPhotos = async () => {
 
 const savePhotoChanges = async () => {
   if (savingPhotos.value) return
+  if (!canUpload.value) {
+    ElMessage.warning('您没有图片上传权限')
+    return
+  }
 
   if (!props.item?.id) {
     ElMessage.error('未找到要更新的记录')
@@ -696,7 +775,7 @@ const savePhotoChanges = async () => {
 
   try {
     savingPhotos.value = true
-    const response = await unifiedApi.put(`/subsidy/${props.item.id}`, {
+    const response = await unifiedApi.put(`/subsidy/${props.item.id}/photos`, {
       subsidy_photos: previewPhotos.value,
       deleted_photos: deletedPhotos.value
     })
@@ -727,7 +806,7 @@ const savePhotoChanges = async () => {
   gap: 12px;
   padding: 14px 16px;
   border-radius: 10px;
-  background: #f8f9fa;
+  background: var(--tf-color-surface-muted);
 }
 
 .photo-upload-area {
@@ -779,7 +858,7 @@ const savePhotoChanges = async () => {
 }
 
 .selected-count {
-  color: #6c757d;
+  color: var(--tf-color-muted);
   font-size: 13px;
 }
 
@@ -797,11 +876,11 @@ const savePhotoChanges = async () => {
   overflow: hidden;
   border-radius: 12px;
   border: 3px solid transparent;
-  background: #fff;
+  background: var(--color-bg-white);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 
   &.selected {
-    border-color: #409eff;
+    border-color: var(--color-primary);
   }
 }
 
@@ -877,14 +956,14 @@ const savePhotoChanges = async () => {
 
   i {
     font-size: 42px;
-    color: #409eff;
+    color: var(--color-primary);
   }
 }
 
 .photo-count-info,
 .no-photo-hint {
   text-align: center;
-  color: #6c757d;
+  color: var(--tf-color-muted);
 }
 
 .no-photo-hint {
@@ -908,7 +987,7 @@ const savePhotoChanges = async () => {
   min-height: 0;
   padding: 20px;
   overflow: hidden;
-  background: #f5f5f5;
+  background: var(--tf-color-surface-soft);
   border-radius: 8px;
   box-sizing: border-box;
 }
@@ -990,7 +1069,7 @@ const savePhotoChanges = async () => {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  color: #606266;
+  color: var(--color-text-regular);
   background: rgba(245, 247, 250, 0.92);
   border-radius: 8px;
 }
@@ -1014,8 +1093,8 @@ const savePhotoChanges = async () => {
 
   :deep(.photo-preview-dialog .el-dialog__footer) {
     padding-top: 12px;
-    border-top: 1px solid #ebeef5;
-    background: #fff;
+    border-top: 1px solid var(--color-border-light);
+    background: var(--color-bg-white);
   }
 
   .photo-viewer-actions {

@@ -5,8 +5,11 @@
         <h1>{{ siteSettingsStore.displayName }}</h1>
         <p>{{ siteSettingsStore.settings.siteSubtitle || '安全，高效的管理平台' }}</p>
       </div>
-      <form @submit.prevent="handleLogin" class="login-form">
-            <div class="form-group">
+      <form
+        class="login-form"
+        @submit.prevent="handleLogin"
+      >
+        <div class="form-group">
           <label for="username">用户名</label>
           <input
             id="username"
@@ -16,7 +19,7 @@
             placeholder="请输入用户名"
             :disabled="loading || isLocked"
             autocomplete="username"
-          />
+          >
         </div>
         <div class="form-group">
           <label for="password">密码</label>
@@ -28,18 +31,28 @@
             placeholder="请输入密码"
             :disabled="loading || isLocked"
             autocomplete="current-password"
-          />
+          >
         </div>
 
         <!-- 登录尝试次数提示 -->
-        <div v-if="isLocked" class="login-tips locked">
+        <div
+          v-if="isLocked"
+          class="login-tips locked"
+        >
           <small>账户已被临时锁定，请在 {{ lockTime }} 后重试</small>
         </div>
-        <div v-else-if="remainingAttempts < 5" class="login-tips warning">
+        <div
+          v-else-if="remainingAttempts < 5"
+          class="login-tips warning"
+        >
           <small>剩余尝试次数: {{ remainingAttempts }}/5</small>
         </div>
 
-        <button type="submit" class="login-button" :disabled="loading || isLocked">
+        <button
+          type="submit"
+          class="login-button"
+          :disabled="loading || isLocked"
+        >
           {{ loading ? '登录中...' : isLocked ? '账户已锁定' : '登录' }}
         </button>
       </form>
@@ -88,10 +101,10 @@ const initializeAuth = () => {
 
   // 改进的验证逻辑：验证token格式而不是简单删除
   const isValidToken = (token: string): boolean => {
-    if (!token || typeof token !== 'string') return false;
-    const parts = token.split('.');
-    return parts.length === 3 && parts.every(part => part.length > 0);
-  };
+    if (!token || typeof token !== 'string') return false
+    const parts = token.split('.')
+    return parts.length === 3 && parts.every(part => part.length > 0)
+  }
 
   if (sessionToken && !isValidToken(sessionToken)) {
     storage.remove(AUTH_STORAGE_KEYS.TOKEN, 'session')
@@ -121,7 +134,7 @@ const initializeAuth = () => {
       storage.remove(AUTH_STORAGE_KEYS.DEV_TOKEN, 'local')
     }
   }
-};
+}
 
 // 在组件挂载时执行初始化
 onMounted(() => {
@@ -141,7 +154,7 @@ const handleLogin = async () => {
   loading.value = true
   try {
     // 调用登录方法
-    const loginResult = await authStore.login({
+    const _loginResult = await authStore.login({
       username: username.value,
       password: password.value
     })
@@ -164,8 +177,8 @@ const handleLogin = async () => {
     // 清理可能存在的不完整认证数据
     const cleanupAuthData = () => {
       storage.clearAuth()
-      document.cookie = 'tf2025_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-    };
+      document.cookie = 'tf2025_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
+    }
 
     // 处理登录尝试次数限制
     if (error?.response?.status === 429) {
@@ -204,28 +217,28 @@ const handleLogin = async () => {
         friendlyMessage = backendMessage
       }
 
-      cleanupAuthData(); // 清理无效认证数据
+      cleanupAuthData() // 清理无效认证数据
     } else if (error?.message) {
       // 使用前端错误消息，但进行友好的转换
       const errorMsg = error.message
 
       if (errorMsg.includes('401') || errorMsg.includes('Unauthorized')) {
         friendlyMessage = '密码或账户错误'
-        cleanupAuthData(); // 清理无效认证数据
+        cleanupAuthData() // 清理无效认证数据
       } else if (errorMsg.includes('Network Error')) {
         friendlyMessage = '后端服务器连接出错'
       } else if (errorMsg.includes('timeout')) {
         friendlyMessage = '请求超时，请稍后重试'
       } else if (errorMsg.includes('Token存储验证失败')) {
         friendlyMessage = '登录状态保存失败，请重新尝试登录'
-        cleanupAuthData(); // 清理无效的存储数据
+        cleanupAuthData() // 清理无效的存储数据
       } else if (errorMsg.includes('存储验证失败') || errorMsg.includes('存储数据损坏')) {
         friendlyMessage = '浏览器存储数据异常，请清理浏览器缓存后重试'
-        cleanupAuthData(); // 清理损坏的存储数据
+        cleanupAuthData() // 清理损坏的存储数据
       } else {
         friendlyMessage = '登录失败，请稍后重试'
         // 对于未知错误，也清理认证数据以防状态不一致
-        cleanupAuthData();
+        cleanupAuthData()
       }
     }
 
@@ -252,7 +265,7 @@ const handleLogin = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
   padding: 20px;
 }
 
@@ -271,14 +284,14 @@ const handleLogin = async () => {
 }
 
 .login-header h1 {
-  color: #333;
+  color: var(--text-primary);
   margin-bottom: 10px;
   font-size: 2rem;
   font-weight: 600;
 }
 
 .login-header p {
-  color: #666;
+  color: var(--text-secondary);
   margin: 0;
   font-size: 0.95rem;
 }
@@ -288,32 +301,32 @@ const handleLogin = async () => {
   padding: 8px 12px;
   background: rgba(102, 126, 234, 0.1);
   border-radius: 5px;
-  border-left: 3px solid #667eea;
+  border-left: 3px solid var(--tf-color-indigo-brand);
 }
 
 .login-tips.warning {
   background: rgba(255, 193, 7, 0.1);
-  border-left-color: #ffc107;
+  border-left-color: var(--warning-color);
 }
 
 .login-tips.locked {
   background: rgba(220, 53, 69, 0.1);
-  border-left-color: #dc3545;
+  border-left-color: var(--danger-color);
 }
 
 .login-tips small {
-  color: #555;
+  color: var(--tf-color-gray-500-solid);
   font-size: 12px;
   line-height: 1.4;
 }
 
 .login-tips.locked small {
-  color: #dc3545;
+  color: var(--danger-color);
   font-weight: 500;
 }
 
 .login-tips.warning small {
-  color: #f57c00;
+  color: var(--tf-color-orange-material-700);
 }
 
 .form-group {
@@ -323,14 +336,14 @@ const handleLogin = async () => {
 .form-group label {
   display: block;
   margin-bottom: 5px;
-  color: #333;
+  color: var(--text-primary);
   font-weight: 500;
 }
 
 .form-control {
   width: 100%;
   padding: 12px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--tf-color-gray-300-alt);
   border-radius: 5px;
   font-size: 16px;
   transition: border-color 0.3s;
@@ -338,7 +351,7 @@ const handleLogin = async () => {
 
 .form-control:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: var(--tf-color-indigo-brand);
   box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
 }
 

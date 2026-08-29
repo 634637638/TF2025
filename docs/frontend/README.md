@@ -67,6 +67,12 @@
 - 一键启动和构建强制检查
 - 静态审计与浏览器验证边界
 
+### 5.5 [全局空状态统一规范](./empty-state-standard.md)
+- 无数据、筛选无结果、请求失败和无权限状态边界
+- `DataEmptyState` 唯一公共入口
+- PC、手机端和表格统一视觉
+- `check:empty-states` 强制审计
+
 ### 6. [页面结构规范](./page-structure-standards.md)
 - 页面组织模式
 - 组件结构标准
@@ -82,6 +88,10 @@
 ### 8. [CRUD 逻辑规范](./crud-standards.md)
 - 增删改查标准模式
 - 表单处理规范
+
+### 8.1 [字段一致性规范](./field-consistency-standards.md)
+- 前后端与数据库使用唯一规范字段
+- 旧字段只允许在一次性迁移中出现
 - 数据验证流程
 - 批量操作标准
 

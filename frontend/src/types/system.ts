@@ -169,9 +169,11 @@ export interface OperationLogListResponse {
   logs: OperationLog[]
   pagination: {
     page: number
-    limit: number
+    page_size: number
     total: number
-    pages: number
+    total_pages: number
+    has_next: boolean
+    has_prev: boolean
   }
 }
 

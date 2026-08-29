@@ -74,14 +74,14 @@ export const dataCheckApi = {
   /**
    * 合并重复数据
    */
-  mergeDuplicates: (data: { type: string; primaryId: number; duplicateIds: number[] }) => {
+  mergeDuplicates: (data: { type: string; primary_id: number; duplicate_ids: number[] }) => {
     return unifiedApi.post('/data-check/merge', data)
   },
 
   /**
    * 批量合并多组重复数据（优化版）
    */
-  batchMergeMultipleGroups: (data: { type: string; mergeGroups: Array<{ primaryId: number; duplicateIds: number[] }> }) => {
+  batchMergeMultipleGroups: (data: { type: string; merge_groups: Array<{ primary_id: number; duplicate_ids: number[] }> }) => {
     return unifiedApi.post('/data-check/batch-merge', data)
   },
 
@@ -95,7 +95,7 @@ export const dataCheckApi = {
   /**
    * 编辑数据
    */
-  editData: (type: string, id: number, data: any) => {
+  editData: (type: string, id: number, data: unknown) => {
     return unifiedApi.put(`/data-check/edit/${type}/${id}`, data)
   },
 
@@ -148,8 +148,8 @@ export const dataImportApi = {
   /**
    * 分析Excel数据
    */
-  analyzeData: (filePath: string, options = {}) => {
-    return unifiedApi.post('/data-import/analyze', { filePath, options }, {
+  analyzeData: (fileToken: string, options: Record<string, unknown> = {}) => {
+    return unifiedApi.post('/data-import/analyze', { file_token: fileToken, options }, {
       timeout: 300000 // 5分钟超时，用于大数据量分析
     })
   },
@@ -157,26 +157,28 @@ export const dataImportApi = {
   /**
    * 执行数据导入
    */
-  importData: (filePath: string, options: {
+  importData: (fileToken: string, options: {
     strategy?: 'smart' | 'skip' | 'overwrite' | 'merge' | 'replace_all'
-    createMissing?: boolean
-    [key: string]: any
+    create_missing?: boolean
+    skip_duplicates?: boolean
+    overwrite?: boolean
+    merge?: boolean
   }) => {
-    return unifiedApi.post('/data-import/import', { filePath, options })
+    return unifiedApi.post('/data-import/import', { file_token: fileToken, options })
   },
 
   /**
    * 获取导入进度
    */
   getProgress: (importId: string | number) => {
-    return unifiedApi.get(`/data-import/progress/${importId}`)
+    return unifiedApi.get(`/data-import/progress/${encodeURIComponent(String(importId))}`)
   },
 
   /**
    * 获取导入历史
    */
-  getHistory: () => {
-    return unifiedApi.get('/data-import/history')
+  getHistory: (params: { page?: number; page_size?: number; status?: string; strategy?: string; user_id?: number } = {}) => {
+    return unifiedApi.get('/data-import/history', { params })
   },
 
   /**

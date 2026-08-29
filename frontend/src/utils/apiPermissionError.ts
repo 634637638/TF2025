@@ -100,17 +100,17 @@ export function handlePermissionError(
 
   // 根据操作类型显示相应的提示
   switch (inferredOperation) {
-    case 'create':
-      showCreateDenied(inferredModuleName)
-      break
-    case 'edit':
-      showEditDenied(inferredModuleName)
-      break
-    case 'delete':
-      showDeleteDenied(inferredModuleName)
-      break
-    default:
-      showViewDenied(inferredModuleName)
+  case 'create':
+    showCreateDenied(inferredModuleName)
+    break
+  case 'edit':
+    showEditDenied(inferredModuleName)
+    break
+  case 'delete':
+    showDeleteDenied(inferredModuleName)
+    break
+  default:
+    showViewDenied(inferredModuleName)
   }
 
   return true // 已处理权限错误
@@ -125,17 +125,18 @@ export function handlePermissionError(
  * @param operation 操作类型（可选）
  */
 export function handleApiErrorWithPermission(
-  error: any,
+  error: unknown,
   defaultMessage: string = '操作失败',
   moduleName?: string,
   operation?: 'view' | 'create' | 'edit' | 'delete'
 ): void {
+  const apiError = error as ApiErrorResponse & { message?: string }
   // 首先尝试处理为权限错误
-  const isPermissionError = handlePermissionError(error, moduleName, operation)
+  const isPermissionError = handlePermissionError(apiError, moduleName, operation)
 
   // 如果不是权限错误，显示默认错误消息
   if (!isPermissionError) {
-    const message = error.response?.data?.message || error.message || defaultMessage
+    const message = apiError.response?.data?.message || apiError.message || defaultMessage
     logger.error('API 错误', message)
     // 这里可以调用其他错误显示方法
     // showError(message)
@@ -145,10 +146,11 @@ export function handleApiErrorWithPermission(
 /**
  * 检查响应是否是权限错误
  */
-export function isPermissionError(error: any): boolean {
-  return error.response?.status === 403 ||
-         error.response?.data?.code === 'INSUFFICIENT_PERMISSIONS' ||
-         error.response?.data?.code === 'AUTH_ERROR'
+export function isPermissionError(error: unknown): boolean {
+  const apiError = error as ApiErrorResponse
+  return apiError.response?.status === 403 ||
+         apiError.response?.data?.code === 'INSUFFICIENT_PERMISSIONS' ||
+         apiError.response?.data?.code === 'AUTH_ERROR'
 }
 
 export default {

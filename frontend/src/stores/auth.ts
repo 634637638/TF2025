@@ -12,7 +12,6 @@ import { storage } from '@/services/storage'
 import { AUTH_STORAGE_KEYS } from '@/constants/storage'
 import { PermissionMapper, PermissionUtils } from '@/utils/permissionMapper'
 import type { User, LoginCredentials } from '@/types'
-import { logger } from '@/utils/logger'
 import { showElementWarning } from '@/utils/element-feedback'
 
 const PERMISSIONS_ADMIN_REQUIREMENTS = [
@@ -23,22 +22,49 @@ const PERMISSIONS_ADMIN_REQUIREMENTS = [
 ]
 
 type PersistedAuthState = {
-  token: string
-  refreshToken: string
-  user: User | null
-  permissions: string[] | Record<string, any> | null
-  roles: any[]
-  lastActivity: number
+  token?: string
+  refreshToken?: string
+  user?: User | null
+  permissions?: unknown
+  roles?: unknown
+  lastActivity?: number
 }
+
+type UnknownRecord = Record<string, unknown>
+
+interface AuthUserApiPayload extends Omit<User, 'role' | 'roles'> {
+  role?: unknown
+  roles?: unknown
+}
+
+interface PermissionApiPayload {
+  roles?: unknown
+  userPermissions?: unknown
+  permissionVisibility?: unknown
+  summary?: unknown
+  [key: string]: unknown
+}
+
+const asRecord = (value: unknown): UnknownRecord | null => (
+  value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? value as UnknownRecord
+    : null
+)
+
+const stringArray = (value: unknown): string[] => (
+  Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string' && item.length > 0)
+    : []
+)
 
 export const useAuthStore = defineStore('auth', () => {
   // =========== 状态 ===========
   const token = ref<string>('')
   const refreshToken = ref<string>('')
   const user = ref<User | null>(null)
-  const permissions = ref<string[] | Record<string, any> | null>(null)
+  const permissions = ref<string[]>([])
   const permissionVisibility = ref<Record<string, boolean>>({}) // 新增：权限可见性映射
-  const roles = ref<any[]>([])
+  const roles = ref<string[]>([])
   const isLoading = ref(false)
   const lastActivity = ref<number>(Date.now())
   const sessionTimeout = ref<number>(30 * 60 * 1000) // 30分钟
@@ -63,13 +89,13 @@ export const useAuthStore = defineStore('auth', () => {
     return hasToken
   })
 
-  const userRoles = computed<any[]>(() => {
+  const userRoles = computed<string[]>(() => {
     const roleSource = user.value?.roles ?? roles.value
     if (!roleSource) return []
     return Array.isArray(roleSource) ? roleSource : [roleSource]
   })
 
-  const getRoleTokens = (role: any): string[] => {
+  const getRoleTokens = (role: unknown): string[] => {
     if (!role) return []
 
     if (typeof role === 'string') {
@@ -79,13 +105,16 @@ export const useAuthStore = defineStore('auth', () => {
         .filter(Boolean)
     }
 
+    const roleRecord = asRecord(role)
+    if (!roleRecord) return []
+
     return [
-      role?.roleName,
-      role?.name,
-      role?.role_name,
-      role?.roleCode,
-      role?.code,
-      role?.role_code
+      roleRecord.roleName,
+      roleRecord.name,
+      roleRecord.role_name,
+      roleRecord.roleCode,
+      roleRecord.code,
+      roleRecord.role_code
     ]
       .flatMap((token) => typeof token === 'string'
         ? token.split(',').map((item) => item.trim())
@@ -104,70 +133,7 @@ export const useAuthStore = defineStore('auth', () => {
     return normalizedRoles[0] || undefined
   })
 
-  const userPermissions = computed(() => {
-    // ⚠️ 容错处理：确保始终返回数组
-    try {
-      // 1. 如果 permissions 为空或 null，返回空数组
-      if (!permissions.value) {
-        return []
-      }
-
-      // 2. 如果本身就是数组格式，直接使用（最常见的情况）
-      if (Array.isArray(permissions.value)) {
-        return permissions.value
-      }
-
-      // 3. 如果是对象格式，尝试提取权限
-      if (typeof permissions.value === 'object') {
-        const permissionPayload = permissions.value as Record<string, any>
-
-        // 3.1 检查是否包含新的扁平化权限字段
-        if (permissionPayload.userPermissions && Array.isArray(permissionPayload.userPermissions)) {
-          return permissionPayload.userPermissions
-        }
-
-        // 3.2 处理对象格式的权限数据（兼容性处理）
-        const permissionList: string[] = []
-
-        // 遍历权限对象，提取所有模块的权限
-        Object.entries(permissions.value).forEach(([moduleKey, modulePerms]) => {
-          if (modulePerms && typeof modulePerms === 'object' && modulePerms.permissions && Array.isArray(modulePerms.permissions)) {
-            // 处理实际的权限格式：{sales_salesview: {permissions: ["view", "create", "edit", "delete"]}}
-            modulePerms.permissions.forEach((permission: string) => {
-              const fullPermission = `${moduleKey}:${permission}`
-              permissionList.push(fullPermission)
-            })
-          } else if (modulePerms && Array.isArray(modulePerms)) {
-            // 处理数组格式：{sales_salesview: ["view", "create", "edit", "delete"]}
-            modulePerms.forEach((permission: string) => {
-              const fullPermission = `${moduleKey}:${permission}`
-              permissionList.push(fullPermission)
-            })
-          }
-        })
-
-        if (permissionList.length > 0) {
-          return permissionList
-        }
-      }
-
-      // 4. 如果是字符串，尝试解析为 JSON
-      if (typeof permissions.value === 'string') {
-        try {
-          const parsed = JSON.parse(permissions.value)
-          if (Array.isArray(parsed)) {
-            return parsed
-          }
-        } catch (e) {
-          // 解析失败，忽略
-        }
-      }
-
-      return []
-    } catch (error) {
-      return []
-    }
-  })
+  const userPermissions = computed<string[]>(() => permissions.value)
 
   const isAdmin = computed(() => {
     const perms = userPermissions.value
@@ -183,7 +149,7 @@ export const useAuthStore = defineStore('auth', () => {
   })
 
   const isActive = computed(() => {
-    const status = user.value?.status as any
+    const status: unknown = user.value?.status
     
     // 数据库中status可能是1（数字）或'active'（字符串）
     const statusCheck = status === 'active' || status === 1
@@ -266,9 +232,8 @@ export const useAuthStore = defineStore('auth', () => {
     if (!isAuthenticated.value || !isActive.value) return false
 
     const userPerms = userPermissions.value
-      .filter(p => p != null) // 过滤掉null/undefined
-      .map(p => typeof p === 'string' ? PermissionMapper.normalizePermission(p) : PermissionMapper.normalizePermission(p.name || p.code))
-      .filter(p => p != null) // 再次过滤确保没有空值
+      .map((permission) => PermissionMapper.normalizePermission(permission))
+      .filter(Boolean)
 
     return permissions.some(perm => {
       if (!perm) return false // 检查权限参数是否有效
@@ -317,7 +282,7 @@ export const useAuthStore = defineStore('auth', () => {
       } else {
         return false
       }
-    } catch (error) {
+    } catch {
       return false
     }
   }
@@ -325,87 +290,83 @@ export const useAuthStore = defineStore('auth', () => {
   // 新增：获取角色权限可见性配置
   const fetchRolePermissionVisibility = async (roleId: number): Promise<Record<string, boolean> | null> => {
     try {
-      const response = await api.get(`/permissions/visibility/${roleId}`)
+      const response = await api.get<{ visibility?: Record<string, boolean> }>(`/permissions/visibility/${roleId}`)
 
       if (response?.success && response.data) {
         return response.data.visibility || {}
       }
       return null
-    } catch (error) {
+    } catch {
       return null
     }
   }
 
-  const normalizeRolesPayload = (rawRoles: any): any[] => {
-    if (Array.isArray(rawRoles)) {
-      return rawRoles.filter(Boolean)
-    }
-
-    return rawRoles ? [rawRoles] : []
+  const normalizeRolesPayload = (rawRoles: unknown): string[] => {
+    const roleValues = Array.isArray(rawRoles) ? rawRoles : rawRoles ? [rawRoles] : []
+    return Array.from(new Set(roleValues.flatMap((role) => getRoleTokens(role))))
   }
 
-  const normalizePermissionsPayload = (rawPermissions: any): string[] | Record<string, any> => {
-    if (rawPermissions && typeof rawPermissions === 'object') {
-      if (Array.isArray(rawPermissions.userPermissions)) {
-        return rawPermissions
+  const normalizePermissionsPayload = (rawPermissions: unknown): string[] => {
+    if (Array.isArray(rawPermissions)) {
+      return stringArray(rawPermissions)
+    }
+
+    const permissionRecord = asRecord(rawPermissions)
+    if (permissionRecord) {
+      const flattenedPermissions = stringArray(permissionRecord.userPermissions)
+      if (flattenedPermissions.length > 0) {
+        return flattenedPermissions
       }
 
-      if (Array.isArray(rawPermissions)) {
-        return rawPermissions
-      }
+      const summary = asRecord(permissionRecord.summary)
+      const permissionSource = summary || permissionRecord
 
       const flatPermissions: string[] = []
-      Object.entries(rawPermissions).forEach(([moduleKey, modulePerms]) => {
-        const modulePermissionValue = modulePerms as any
+      Object.entries(permissionSource).forEach(([moduleKey, modulePerms]) => {
+        const modulePermissionRecord = asRecord(modulePerms)
+        const actions = modulePermissionRecord
+          ? stringArray(modulePermissionRecord.permissions)
+          : stringArray(modulePerms)
 
-        if (
-          modulePermissionValue &&
-          typeof modulePermissionValue === 'object' &&
-          Array.isArray(modulePermissionValue.permissions)
-        ) {
-          modulePermissionValue.permissions.forEach((permission: string) => {
-            flatPermissions.push(`${moduleKey}:${permission}`)
-          })
-        } else if (Array.isArray(modulePerms)) {
-          modulePerms.forEach((permission: string) => {
-            flatPermissions.push(`${moduleKey}:${permission}`)
-          })
-        }
+        actions.forEach((permission) => {
+          flatPermissions.push(`${moduleKey}:${permission}`)
+        })
       })
 
-      return flatPermissions
+      return Array.from(new Set(flatPermissions))
     }
 
     return []
   }
 
-  const extractAuthPayload = (response: any) => {
-    const payload = response?.data && typeof response.data === 'object' ? response.data : response
-    const userData = payload?.user || response?.user || null
+  const extractAuthPayload = (response: unknown) => {
+    const responseRecord = asRecord(response) || {}
+    const payload = asRecord(responseRecord.data) || responseRecord
+    const userRecord = asRecord(payload.user) || asRecord(responseRecord.user)
     const normalizedRoles = normalizeRolesPayload(
-      userData?.roles || payload?.roles || userData?.role || null
+      userRecord?.roles || payload.roles || userRecord?.role || null
     )
-    const primaryRole = (() => {
-      const firstRole = normalizedRoles[0]
-      if (!firstRole) return null
-      return typeof firstRole === 'string'
-        ? firstRole
-        : (firstRole?.name || firstRole?.code || null)
-    })()
-    const accessProfile = payload?.accessProfile || userData?.access_profile || null
+    const primaryRole = normalizedRoles[0] || null
+    const accessProfile = payload.accessProfile || userRecord?.access_profile || null
     const normalizedPermissions = normalizePermissionsPayload(
-      accessProfile || payload?.permissions || userData?.permissions || []
+      accessProfile || payload.permissions || userRecord?.permissions || []
     )
+    const tokenValue = payload.token || payload.accessToken || responseRecord.token || responseRecord.accessToken
+    const refreshTokenValue = payload.refreshToken || responseRecord.refreshToken
+    const status = userRecord?.status === 'inactive' ? 'inactive' : 'active'
+    const userData = userRecord
+      ? {
+        ...userRecord,
+        role: typeof userRecord.role === 'string' ? userRecord.role : primaryRole,
+        roles: normalizedRoles,
+        status
+      } as User
+      : null
 
     return {
-      userData: userData ? {
-        ...userData,
-        role: userData?.role || primaryRole,
-        roles: normalizedRoles,
-        status: userData?.status || 'active'
-      } : null,
-      token: payload?.token || payload?.accessToken || response?.token || response?.accessToken || '',
-      refreshToken: payload?.refreshToken || response?.refreshToken || '',
+      userData,
+      token: typeof tokenValue === 'string' ? tokenValue : '',
+      refreshToken: typeof refreshTokenValue === 'string' ? refreshTokenValue : '',
       permissions: normalizedPermissions,
       roles: normalizedRoles
     }
@@ -436,25 +397,20 @@ export const useAuthStore = defineStore('auth', () => {
           roles: userRoles
         } = extractAuthPayload(response)
 
+        if (!userData || !finalToken) {
+          throw new Error('登录响应数据不完整')
+        }
+
         // 设置认证信息
         token.value = finalToken
         refreshToken.value = refreshTkn || ''
-        user.value = {
-          ...userData,
-          roles: userRoles,
-          status: userData?.status || 'active'
-        }
+        user.value = { ...userData, roles: userRoles }
         permissions.value = userPermissions || []
         roles.value = userRoles || []
         lastActivity.value = Date.now()
         loginAttempts.value = 0
         isLocked.value = false
         lockReason.value = ''
-
-        // 验证必要数据
-        if (!userData || !finalToken) {
-          throw new Error('登录响应数据不完整')
-        }
 
         // 持久化存储（只执行一次）
         persistAuthData()
@@ -474,7 +430,7 @@ export const useAuthStore = defineStore('auth', () => {
         throw new Error(response?.message || '登录失败')
       }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       loginAttempts.value++
 
       // 检查是否需要锁定账户
@@ -549,7 +505,7 @@ export const useAuthStore = defineStore('auth', () => {
         return true
       }
 
-    } catch (error) {
+    } catch {
       // 刷新失败，清除认证信息
       clearAuth()
       return false
@@ -585,7 +541,7 @@ export const useAuthStore = defineStore('auth', () => {
         throw new Error(response.data?.message || '更新失败')
       }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw error
 
     } finally {
@@ -612,7 +568,7 @@ export const useAuthStore = defineStore('auth', () => {
         throw new Error(response.data?.message || '密码修改失败')
       }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw error
 
     } finally {
@@ -656,12 +612,9 @@ export const useAuthStore = defineStore('auth', () => {
 
       // 确保用户对象有正确的role字段
       const firstRole = roles.value.length > 0 ? roles.value[0] : null
-      const normalizedRole = typeof firstRole === 'string'
-        ? firstRole
-        : (firstRole?.name || firstRole?.code || null)
       const userWithRole = user.value ? {
         ...user.value,
-        role: user.value.role || normalizedRole,
+        role: user.value.role || firstRole,
         roles: roles.value.length > 0 ? roles.value : (user.value.roles || [])
       } : null
 
@@ -679,11 +632,11 @@ export const useAuthStore = defineStore('auth', () => {
       // 保存到 sessionStorage
       try {
         storage.setToken(token.value)
-      } catch (sessionError) {
+      } catch {
         // sessionStorage 保存失败，忽略
       }
 
-    } catch (error) {
+    } catch {
       // 持久化认证数据失败，忽略
     }
   }
@@ -702,7 +655,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       // 优先检查sessionStorage，这是最可靠的token来源
       const sessionToken = storage.getToken()
-      const savedAuth = storage.getAuth()
+      const savedAuth = storage.getAuth<PersistedAuthState>()
 
       // 关键修复：如果有 sessionToken，立即设置到 store
       // 这确保在异步操作期间，token 已经可用
@@ -724,16 +677,18 @@ export const useAuthStore = defineStore('auth', () => {
         // 尝试从localStorage恢复权限数据（如果存在）
         if (savedAuth) {
           try {
-            const authData: PersistedAuthState = savedAuth as any
+            const authData = savedAuth
+            const restoredPermissions = normalizePermissionsPayload(authData.permissions)
+            const restoredRoles = normalizeRolesPayload(authData.roles || authData.user?.roles)
             refreshToken.value = authData.refreshToken || ''
-            if (authData.user && authData.permissions && authData.permissions.length > 0) {
+            if (authData.user && restoredPermissions.length > 0) {
               // 同步恢复权限数据
               user.value = {
                 ...authData.user,
-                status: authData.user.status || 'active', // 确保status字段存在
+                status: authData.user.status || 'active' // 确保status字段存在
               }
-              permissions.value = authData.permissions
-              roles.value = authData.roles || []
+              permissions.value = restoredPermissions
+              roles.value = restoredRoles
 
               
               // 异步刷新权限数据（不阻塞）
@@ -749,7 +704,7 @@ export const useAuthStore = defineStore('auth', () => {
               isAuthenticating.value = false
               return // 直接返回，使用恢复的权限数据
             }
-          } catch (e) {
+          } catch {
             storage.remove(AUTH_STORAGE_KEYS.AUTH, 'local')
           }
         }
@@ -773,7 +728,7 @@ export const useAuthStore = defineStore('auth', () => {
       // 如果没有sessionToken但有localStorage数据
       if (savedAuth) {
         try {
-          const authData: PersistedAuthState = savedAuth as any
+          const authData = savedAuth
 
           if (authData.token && authData.token.length > 10) {
             token.value = authData.token
@@ -782,8 +737,8 @@ export const useAuthStore = defineStore('auth', () => {
             // 恢复用户数据并确保有正确的role字段
             if (authData.user) {
               // 优先使用保存的角色数据
-              const savedRoles = authData.roles || (authData.user.roles || []);
-              const savedRole = authData.user.role || (savedRoles.length > 0 ? savedRoles[0] : null);
+              const savedRoles = normalizeRolesPayload(authData.roles || authData.user.roles)
+              const savedRole = authData.user.role || (savedRoles.length > 0 ? savedRoles[0] : null)
               
               const restoredUser = {
                 ...authData.user,
@@ -798,8 +753,8 @@ export const useAuthStore = defineStore('auth', () => {
               roles.value = []
             }
 
-            permissions.value = authData.permissions || []
-            roles.value = authData.roles || (user.value?.roles || [])
+            permissions.value = normalizePermissionsPayload(authData.permissions)
+            roles.value = normalizeRolesPayload(authData.roles || user.value?.roles)
             lastActivity.value = authData.lastActivity || Date.now()
 
             // 同步到sessionStorage
@@ -832,7 +787,7 @@ export const useAuthStore = defineStore('auth', () => {
             isAuthenticating.value = false
             return
           }
-        } catch (error) {
+        } catch {
           // 解析localStorage失败，忽略
         }
       }
@@ -840,7 +795,7 @@ export const useAuthStore = defineStore('auth', () => {
       // 不通知其他窗口，避免影响已登录的窗口
       clearAuth(false)
 
-    } catch (error) {
+    } catch {
       // 加载持久化认证数据失败，不通知其他窗口
       clearAuth(false)
     } finally {
@@ -881,7 +836,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     try {
       setBackendDisconnectedState(disconnected)
-    } catch (error) {
+    } catch {
       // 保存后端失联状态失败，忽略
     }
   }
@@ -963,12 +918,12 @@ export const useAuthStore = defineStore('auth', () => {
   // 强制刷新权限数据
   const forceRefreshPermissions = async (): Promise<void> => {
     // 清除权限缓存
-    permissions.value = null
+    permissions.value = []
 
     // 重新获取用户信息和权限
     await fetchUserInfo()
 
-    }
+  }
 
   const fetchUserInfo = async (): Promise<void> => {
     if (fetchUserInfoPromise) {
@@ -976,152 +931,137 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     fetchUserInfoPromise = (async () => {
-    try {
+      try {
       // 检查是否有有效token
-      if (!token.value || token.value.length < 10) {
-        return
-      }
+        if (!token.value || token.value.length < 10) {
+          return
+        }
 
-      // 1. 先获取用户基本信息
-      const userResponse = await api.get('/auth/user', {
-        showLoading: false,
-        showError: false
-      })
+        // 1. 先获取用户基本信息
+        const userResponse = await api.get<AuthUserApiPayload>('/auth/user', {
+          showLoading: false,
+          showError: false
+        })
 
-      // 2. 获取权限数据
-      const permissionsResponse = await api.get('/permissions/user-permissions', {
-        showLoading: false,
-        showError: false
-      })
+        // 2. 获取权限数据
+        const permissionsResponse = await api.get<PermissionApiPayload>('/permissions/user-permissions', {
+          showLoading: false,
+          showError: false
+        })
 
-      if (userResponse?.success) {
+        if (userResponse?.success) {
         // 获取API返回的角色数据
-        const apiRoles = userResponse.data?.roles || []
-        const permissionRoles = Array.isArray(permissionsResponse?.data?.roles)
-          ? permissionsResponse.data.roles
-              .map((role: any) => role?.roleName || role?.name || role)
-              .filter(Boolean)
-          : []
+          const apiRoles = normalizeRolesPayload(userResponse.data?.roles)
+          const permissionRoles = normalizeRolesPayload(permissionsResponse?.data?.roles)
 
-        // 保存当前的角色数据（从localStorage恢复的）- 这是最重要的
-        const currentRoles = roles.value || []
-        const currentUserRole = user.value?.role
+          // 保存当前的角色数据（从localStorage恢复的）- 这是最重要的
+          const currentRoles = roles.value || []
+          const currentUserRole = user.value?.role
 
-        // 修复：优先保留已有角色数据，避免被API空数据覆盖
-        let finalRoles = currentRoles
-        let finalUserRole = currentUserRole
+          // 修复：优先保留已有角色数据，避免被API空数据覆盖
+          let finalRoles = currentRoles
+          let finalUserRole = currentUserRole
 
-        // 只有当API确实返回了有效的角色数据时，才使用API数据
-        if (apiRoles.length > 0 && apiRoles[0] && apiRoles[0] !== '未知角色') {
+          // 只有当API确实返回了有效的角色数据时，才使用API数据
+          if (apiRoles.length > 0 && apiRoles[0] && apiRoles[0] !== '未知角色') {
           // API返回了有效的角色数据，使用API数据
-          finalRoles = apiRoles
-          finalUserRole = userResponse.data?.role || apiRoles[0]
-        } else if (permissionRoles.length > 0) {
-          finalRoles = permissionRoles
-          finalUserRole = permissionRoles[0]
-        } else {
+            finalRoles = apiRoles
+            finalUserRole = typeof userResponse.data?.role === 'string'
+              ? userResponse.data.role
+              : apiRoles[0]
+          } else if (permissionRoles.length > 0) {
+            finalRoles = permissionRoles
+            finalUserRole = permissionRoles[0]
+          } else {
           // API没有返回角色数据或返回了无效数据，完全保留现有的角色数据
 
-          // 确保使用所有可能的角色数据源
-          const userObjectRoles = user.value?.roles || []
-          const storeRoles = roles.value || []
+            // 确保使用所有可能的角色数据源
+            const userObjectRoles = user.value?.roles || []
+            const storeRoles = roles.value || []
 
-          // 优先级：currentRoles > userObjectRoles > storeRoles
-          finalRoles = currentRoles.length > 0 ? currentRoles :
-                     (userObjectRoles.length > 0 ? userObjectRoles : storeRoles)
+            // 优先级：currentRoles > userObjectRoles > storeRoles
+            finalRoles = currentRoles.length > 0 ? currentRoles :
+              (userObjectRoles.length > 0 ? userObjectRoles : storeRoles)
 
-          finalUserRole = currentUserRole || (finalRoles.length > 0 ? finalRoles[0] : null)
-        }
+            finalUserRole = currentUserRole || (finalRoles.length > 0 ? finalRoles[0] : null)
+          }
 
-        // 更新store中的角色数据
-        roles.value = finalRoles
+          // 更新store中的角色数据
+          roles.value = finalRoles
 
-        // 更新用户基本信息，确保不丢失角色数据和状态
-        user.value = {
-          ...userResponse.data,
-          roles: finalRoles,
-          role: finalUserRole, // 确保role字段正确
-          status: userResponse.data?.status || user.value?.status || 'active' // 确保status字段存在
-        }
+          // 更新用户基本信息，确保不丢失角色数据和状态
+          user.value = {
+            ...userResponse.data,
+            roles: finalRoles,
+            role: finalUserRole, // 确保role字段正确
+            status: userResponse.data?.status || user.value?.status || 'active' // 确保status字段存在
+          } as User
 
-        // 强制确保user对象有role字段
-        if (!user.value.role && finalRoles.length > 0) {
-          user.value.role = finalRoles[0]
-        }
+          // 强制确保user对象有role字段
+          if (!user.value.role && finalRoles.length > 0) {
+            user.value.role = finalRoles[0]
+          }
 
-        // 使用最终的角色数据
-        const rolesData = user.value.roles || []
+          // 使用最终的角色数据
+          const rolesData = user.value.roles || []
 
-        // 确保roles.value与user.value.roles同步
-        if (rolesData.length > 0 && roles.value.length === 0) {
-          roles.value = rolesData
-        }
+          // 确保roles.value与user.value.roles同步
+          if (rolesData.length > 0 && roles.value.length === 0) {
+            roles.value = rolesData
+          }
 
-        // 处理权限数据
-        if (permissionsResponse?.success) {
+          // 处理权限数据
+          if (permissionsResponse?.success) {
           // 优先使用新的userPermissions字段（扁平化权限数组）
-          if (permissionsResponse.data?.userPermissions && Array.isArray(permissionsResponse.data.userPermissions)) {
-            permissions.value = permissionsResponse.data
+            permissions.value = normalizePermissionsPayload(permissionsResponse.data)
+          }
+
+          // 处理权限可见性数据
+          const visibility = asRecord(permissionsResponse.data?.permissionVisibility)
+          if (visibility) {
+            permissionVisibility.value = Object.fromEntries(
+              Object.entries(visibility).filter((entry): entry is [string, boolean] => typeof entry[1] === 'boolean')
+            )
           } else {
-          // 兼容性处理：将对象格式的权限转换为数组格式
-          const permissionArray = []
-          // 权限数据直接在 data 中，不是 data.permissions
-          const permissionsByModule = permissionsResponse.data || {}
-
-          Object.entries(permissionsByModule).forEach(([moduleKey, moduleData]) => {
-            if (Array.isArray(moduleData)) {
-              // 权限数据是数组格式，如 ["create", "delete", "edit", "menu_view", "view"]
-              moduleData.forEach((permission) => {
-                const fullPermission = `${moduleKey}:${permission}`
-                permissionArray.push(fullPermission)
-              })
-            }
-          })
-
-          permissions.value = permissionArray
+            permissionVisibility.value = {}
           }
+
+          // 更新持久化数据
+          persistAuthData()
+        }
+      } catch (error: unknown) {
+        const requestError = error as {
+          response?: { status?: number; data?: { code?: string } }
+        }
+        // 检查是否是token过期错误
+        if (requestError.response?.data?.code === 'TOKEN_EXPIRED' || requestError.response?.data?.code === 'TOKEN_REVOKED') {
+          clearAuth()
+          return
         }
 
-        // 处理权限可见性数据
-        if (permissionsResponse.data?.permissionVisibility && typeof permissionsResponse.data.permissionVisibility === 'object') {
-          permissionVisibility.value = permissionsResponse.data.permissionVisibility
-        } else {
-          permissionVisibility.value = {}
-        }
-
-        // 更新持久化数据
-        persistAuthData()
-      }
-    } catch (error) {
-      // 检查是否是token过期错误
-      if (error.response?.data?.code === 'TOKEN_EXPIRED' || error.response?.data?.code === 'TOKEN_REVOKED') {
-        clearAuth()
-        return
-      }
-
-      // 如果token验证失败，尝试从localStorage恢复用户信息
-      if (error.response?.status === 401) {
-        try {
-          const savedAuth = storage.getAuth()
-          if (savedAuth) {
-            const authData: PersistedAuthState = savedAuth as any
-            if (authData.user) {
-              user.value = authData.user
-              roles.value = authData.roles || []
-              permissions.value = authData.permissions || []
-              return
+        // 如果token验证失败，尝试从localStorage恢复用户信息
+        if (requestError.response?.status === 401) {
+          try {
+            const savedAuth = storage.getAuth<PersistedAuthState>()
+            if (savedAuth) {
+              const authData = savedAuth
+              if (authData.user) {
+                user.value = authData.user
+                roles.value = normalizeRolesPayload(authData.roles || authData.user.roles)
+                permissions.value = normalizePermissionsPayload(authData.permissions)
+                return
+              }
             }
-          }
-        } catch (recoverError) {
+          } catch {
           // 恢复失败，忽略
-        }
-        // 如果恢复失败，抛出错误让上层处理
-        throw new Error('Token验证失败且无法恢复')
-      } else {
+          }
+          // 如果恢复失败，抛出错误让上层处理
+          throw new Error('Token验证失败且无法恢复')
+        } else {
         // 其他错误也抛出，让调用方决定如何处理
-        throw error
+          throw error
+        }
       }
-    }
     })().finally(() => {
       fetchUserInfoPromise = null
     })
@@ -1188,7 +1128,7 @@ export const useAuthStore = defineStore('auth', () => {
   // 🔒 认证数据仅存 sessionStorage，关闭浏览器后自动清除
   if (typeof window !== 'undefined' && window.sessionStorage) {
     const immediateToken = storage.getToken()
-    const savedAuth = storage.getAuth()
+    const savedAuth = storage.getAuth<PersistedAuthState>()
 
     // 📡 检查后端失联状态（从 sessionStorage）
     const backendDisconnectedStr = storage.get<string>(AUTH_STORAGE_KEYS.BACKEND_DISCONNECTED, 'session')
@@ -1206,16 +1146,16 @@ export const useAuthStore = defineStore('auth', () => {
     // 2. 立即恢复用户数据和权限（防止权限检查失败）
     if (savedAuth) {
       try {
-        const authData: PersistedAuthState = savedAuth as any
+        const authData = savedAuth
         if (authData.user) {
           user.value = {
             ...authData.user,
             status: authData.user.status || 'active'
           }
-          permissions.value = authData.permissions || []
-          roles.value = authData.roles || (authData.user.roles || [])
+          permissions.value = normalizePermissionsPayload(authData.permissions)
+          roles.value = normalizeRolesPayload(authData.roles || authData.user.roles)
         }
-      } catch (e) {
+      } catch {
         // 解析保存的认证数据失败，忽略
       }
     }
@@ -1257,6 +1197,17 @@ export const useAuthStore = defineStore('auth', () => {
   //     }
   //   }, 100)
   // }
+
+  // 监听权限数据变化，自动持久化
+  watch(
+    () => [user.value, permissions.value, roles.value],
+    () => {
+      if (isAuthenticated.value && user.value) {
+        persistAuthData()
+      }
+    },
+    { deep: true, immediate: false }
+  )
 
   // =========== 返回状态和方法 ===========
   return {
@@ -1315,15 +1266,4 @@ export const useAuthStore = defineStore('auth', () => {
     setBackendDisconnected,
     checkBackendHealth
   }
-
-  // 监听权限数据变化，自动持久化
-  watch(
-    () => [user.value, permissions.value, roles.value],
-    () => {
-      if (isAuthenticated.value && user.value) {
-        persistAuthData()
-      }
-    },
-    { deep: true, immediate: false }
-  )
 })

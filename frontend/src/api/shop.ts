@@ -7,7 +7,7 @@ import { unifiedApi } from '@/utils/unified-api'
 
 export interface ShopConfig {
   key: string
-  value: any
+  value: unknown
   type: string
   description?: string
 }
@@ -108,7 +108,7 @@ export interface TemplatePhone {
  * 获取所有商城配置
  */
 export function getAllConfigs() {
-  return unifiedApi.get<any>('/shop/config')
+  return unifiedApi.get<Record<string, unknown>>('/shop/config')
 }
 
 /**
@@ -121,14 +121,14 @@ export function getConfigsByCategory(category: string) {
 /**
  * 更新单个配置
  */
-export function updateConfig(key: string, value: any) {
+export function updateConfig(key: string, value: unknown) {
   return unifiedApi.put(`/shop/config/${key}`, { value })
 }
 
 /**
  * 批量更新配置
  */
-export function batchUpdateConfigs(configs: Array<{ key: string; value: any }>) {
+export function batchUpdateConfigs(configs: Array<{ key: string; value: unknown }>) {
   return unifiedApi.post('/shop/config/batch', { configs })
 }
 
@@ -202,10 +202,10 @@ export function deleteImage(imageId: number) {
 
 interface OrderListParams {
   page?: number
-  limit?: number
+  page_size?: number
   status?: string
-  startDate?: string
-  endDate?: string
+  start_date?: string
+  end_date?: string
   search?: string
 }
 
@@ -216,7 +216,8 @@ export function getOrders(params?: OrderListParams) {
   return unifiedApi.get<{
     data: ShopOrder[]
     page: number
-    limit: number
+    page_size: number
+    total_pages: number
     total: number
   }>('/shop/orders', { params })
 }
@@ -225,7 +226,7 @@ export function getOrders(params?: OrderListParams) {
  * 获取订单详情
  */
 export function getOrderDetail(orderId: number) {
-  return unifiedApi.get<ShopOrder & { items: any[] }>(`/shop/orders/${orderId}`)
+  return unifiedApi.get<ShopOrder & { items: Record<string, unknown>[] }>(`/shop/orders/${orderId}`)
 }
 
 /**

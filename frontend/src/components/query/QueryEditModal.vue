@@ -12,19 +12,36 @@
   >
     <template #footer>
       <div class="dialog-footer">
-        <el-button type="default" @click="dialogVisible = false" :disabled="submitting">
-          <i class="fas fa-times"></i>
+        <el-button
+          type="default"
+          :disabled="submitting"
+          @click="dialogVisible = false"
+        >
+          <i class="fas fa-times" />
           取消
         </el-button>
-        <el-button type="primary" :disabled="submitting" @click="handleSubmit">
-          <i v-if="!submitting" class="fas fa-save"></i>
+        <el-button
+          type="primary"
+          :disabled="submitting"
+          @click="handleSubmit"
+        >
+          <i
+            v-if="!submitting"
+            class="fas fa-save"
+          />
           {{ submitting ? '保存中...' : '保存更改' }}
         </el-button>
       </div>
     </template>
 
-    <div v-if="initializing" class="dialog-loading">
-      <SectionLoading text="加载编辑数据中..." size="large" />
+    <div
+      v-if="initializing"
+      class="dialog-loading"
+    >
+      <SectionLoading
+        text="加载编辑数据中..."
+        size="large"
+      />
     </div>
 
     <el-form
@@ -37,13 +54,16 @@
     >
       <div class="form-section">
         <div class="section-title">
-          <i class="fas fa-mobile-alt"></i>
+          <i class="fas fa-mobile-alt" />
           设备信息
         </div>
 
         <!-- 品牌、型号、颜色、内存 一行展示 -->
         <div class="form-row form-row-4">
-          <el-form-item label="品牌" prop="brand">
+          <el-form-item
+            label="品牌"
+            prop="brand"
+          >
             <el-select
               v-model="formData.brand"
               placeholder="请选择"
@@ -61,7 +81,10 @@
             </el-select>
           </el-form-item>
 
-          <el-form-item label="型号" prop="model">
+          <el-form-item
+            label="型号"
+            prop="model"
+          >
             <el-select
               v-model="formData.model"
               placeholder="请选择"
@@ -80,7 +103,10 @@
             </el-select>
           </el-form-item>
 
-          <el-form-item label="颜色" prop="color">
+          <el-form-item
+            label="颜色"
+            prop="color"
+          >
             <el-select
               v-model="formData.color"
               placeholder="请选择"
@@ -98,7 +124,10 @@
             </el-select>
           </el-form-item>
 
-          <el-form-item label="内存" prop="memory">
+          <el-form-item
+            label="内存"
+            prop="memory"
+          >
             <el-select
               v-model="formData.memory"
               placeholder="请选择"
@@ -119,7 +148,10 @@
 
         <!-- 序列号、IMEI、机况 一行展示 -->
         <div class="form-row form-row-3">
-          <el-form-item label="序列号" prop="serial_number">
+          <el-form-item
+            label="序列号"
+            prop="serial_number"
+          >
             <el-input
               v-model="formData.serial_number"
               placeholder="请输入序列号"
@@ -128,13 +160,19 @@
               @input="formatSerialNumber"
             >
               <template #suffix>
-                <i class="fas fa-hashtag"></i>
+                <i class="fas fa-hashtag" />
               </template>
             </el-input>
           </el-form-item>
 
-          <el-form-item label="IMEI" prop="imei">
-            <div class="imei-input-wrapper" @dblclick="toggleNoIMEIMode">
+          <el-form-item
+            label="IMEI"
+            prop="imei"
+          >
+            <div
+              class="imei-input-wrapper"
+              @dblclick="toggleNoIMEIMode"
+            >
               <el-input
                 v-model="formData.imei"
                 :placeholder="formData.isNoIMEIMode ? '已启用无IMEI模式' : '请输入15位IMEI号'"
@@ -143,31 +181,49 @@
                 @input="formatImei"
               >
                 <template #suffix>
-                  <span v-if="formData.isNoIMEIMode" class="imei-badge">
-                    <i class="fas fa-check-circle"></i>
+                  <span
+                    v-if="formData.isNoIMEIMode"
+                    class="imei-badge"
+                  >
+                    <i class="fas fa-check-circle" />
                     无IMEI
                   </span>
-                  <i v-else class="fas fa-barcode"></i>
+                  <i
+                    v-else
+                    class="fas fa-barcode"
+                  />
                 </template>
               </el-input>
             </div>
           </el-form-item>
 
-          <el-form-item label="机况" prop="is_new">
+          <el-form-item
+            label="机况"
+            prop="is_new"
+          >
             <el-select
               v-model="formData.is_new"
               placeholder="请选择"
               teleported
               popper-class="tf2025-form-popper"
             >
-              <el-option label="全新" value="1" />
-              <el-option label="二手" value="0" />
+              <el-option
+                label="全新"
+                value="1"
+              />
+              <el-option
+                label="二手"
+                value="0"
+              />
             </el-select>
           </el-form-item>
         </div>
 
         <div class="form-row form-row-4">
-          <el-form-item label="供应商" prop="supplier_id">
+          <el-form-item
+            label="供应商"
+            prop="supplier_id"
+          >
             <el-select
               v-model="formData.supplier_id"
               placeholder="请选择供应商"
@@ -185,7 +241,10 @@
             </el-select>
           </el-form-item>
 
-          <el-form-item label="店铺" prop="store_id">
+          <el-form-item
+            label="店铺"
+            prop="store_id"
+          >
             <el-select
               v-model="formData.store_id"
               placeholder="请选择店铺"
@@ -203,19 +262,27 @@
             </el-select>
           </el-form-item>
 
-          <el-form-item label="入库价格" prop="purchase_price">
+          <el-form-item
+            label="入库价格"
+            prop="purchase_cost"
+          >
             <el-input
-              :model-value="formatPriceInputValue(formData.purchase_price)"
+              :model-value="formatPriceInputValue(formData.purchase_cost)"
               placeholder="请输入入库价格"
               inputmode="numeric"
               clearable
-              @input="handlePriceInput('purchase_price', $event)"
+              @input="handlePriceInput('purchase_cost', $event)"
             >
-              <template #prefix>¥</template>
+              <template #prefix>
+                ¥
+              </template>
             </el-input>
           </el-form-item>
 
-          <el-form-item label="销售价格" prop="sale_price">
+          <el-form-item
+            label="销售价格"
+            prop="sale_price"
+          >
             <el-input
               :model-value="formatPriceInputValue(formData.sale_price)"
               placeholder="请输入销售价格"
@@ -223,9 +290,14 @@
               clearable
               @input="handlePriceInput('sale_price', $event)"
             >
-              <template #prefix>¥</template>
+              <template #prefix>
+                ¥
+              </template>
             </el-input>
-            <div v-if="showProfit" class="profit-hint">
+            <div
+              v-if="showProfit"
+              class="profit-hint"
+            >
               利润: <span class="profit-value">¥{{ profit }}</span>
             </div>
           </el-form-item>
@@ -234,31 +306,40 @@
 
       <div class="form-section">
         <div class="section-title">
-          <i class="fas fa-user"></i>
+          <i class="fas fa-user" />
           客户信息
         </div>
 
         <div class="form-row form-row-3">
-          <el-form-item label="客户手机" class="mobile-span-2">
+          <el-form-item
+            label="客户手机"
+            class="mobile-span-2"
+          >
             <div class="customer-search-container">
               <el-input
                 v-model="formData.customer_phone"
                 placeholder="请输入用户手机号"
                 maxlength="11"
                 clearable
+                :readonly="editFoundCustomer !== null"
                 @input="handleCustomerPhoneInput"
                 @focus="editShowCustomerSearchResults = true"
                 @blur="handleCustomerPhoneBlur"
                 @clear="handleCustomerClear"
-                :readonly="editFoundCustomer !== null"
               />
 
               <div
                 v-if="editShowCustomerSearchResults && (editCustomerOptions.length > 0 || editCustomerLookupLoading || (formData.customer_phone.length >= 11 && !editFoundCustomer && !editCustomerLookupLoading))"
                 class="customer-search-results"
               >
-                <div v-if="editCustomerLookupLoading" class="search-loading">
-                  <InlineLoading text="搜索中..." size="small" />
+                <div
+                  v-if="editCustomerLookupLoading"
+                  class="search-loading"
+                >
+                  <InlineLoading
+                    text="搜索中..."
+                    size="small"
+                  />
                 </div>
                 <template v-else>
                   <div
@@ -269,8 +350,13 @@
                   >
                     <div class="customer-info">
                       <div class="customer-headline">
-                        <div class="customer-name">{{ customer.name }}</div>
-                        <span v-if="customer.member_number" class="member-number">{{ customer.member_number }}</span>
+                        <div class="customer-name">
+                          {{ customer.name }}
+                        </div>
+                        <span
+                          v-if="customer.member_number"
+                          class="member-number"
+                        >{{ customer.member_number }}</span>
                       </div>
                       <div class="customer-subline">
                         <span class="customer-phone">{{ customer.phone }}</span>
@@ -283,7 +369,7 @@
                     class="create-new-customer"
                     @mousedown.prevent="createNewCustomer"
                   >
-                    <i class="fas fa-user-plus"></i>
+                    <i class="fas fa-user-plus" />
                     点击创建该用户
                   </div>
                 </template>
@@ -301,32 +387,32 @@
                 :readonly="!editFoundCustomer && !customerCreating ? true : !customerNameEditing"
                 clearable
                 data-field="customer_name"
+                :class="{ 'editable': editFoundCustomer || customerCreating }"
                 @dblclick="enableCustomerNameEdit"
                 @touchend="handleCustomerNameTouchEnd"
                 @input="formatCustomerName"
                 @blur="handleCustomerNameBlur"
                 @keyup.enter="saveCustomerNameEdit"
-                :class="{ 'editable': editFoundCustomer || customerCreating }"
               />
               <el-button
                 v-if="customerNameEditing"
                 class="customer-lock-button"
                 type="success"
                 plain
-                @click="saveCustomerNameEdit"
                 title="当前已解锁，点击保存并锁定"
+                @click="saveCustomerNameEdit"
               >
-                <i class="fas fa-lock-open"></i>
+                <i class="fas fa-lock-open" />
               </el-button>
               <el-button
                 v-if="editFoundCustomer !== null && !customerNameEditing"
                 class="customer-lock-button"
                 type="info"
                 plain
-                @click="clearSelectedCustomer"
                 title="当前已锁定，点击清除客户选择"
+                @click="clearSelectedCustomer"
               >
-                <i class="fas fa-lock"></i>
+                <i class="fas fa-lock" />
               </el-button>
             </div>
           </el-form-item>
@@ -340,7 +426,7 @@
               @input="formatAppleId"
             >
               <template #suffix>
-                <i class="fab fa-apple"></i>
+                <i class="fab fa-apple" />
               </template>
             </el-input>
           </el-form-item>
@@ -349,14 +435,17 @@
 
       <div class="form-section">
         <div class="section-title">
-          <i class="fas fa-shopping-cart"></i>
+          <i class="fas fa-shopping-cart" />
           销售信息
         </div>
 
         <div class="form-row form-row-3">
-          <el-form-item label="入库日期" class="date-picker-item">
+          <el-form-item
+            label="入库日期"
+            class="date-picker-item"
+          >
             <el-date-picker
-              v-model="formData.Inventorytime"
+              v-model="formData.inventory_time"
               type="date"
               placeholder="请选择入库日期"
               format="YYYY-MM-DD"
@@ -365,9 +454,12 @@
             />
           </el-form-item>
 
-          <el-form-item label="销售日期" class="date-picker-item">
+          <el-form-item
+            label="销售日期"
+            class="date-picker-item"
+          >
             <el-date-picker
-              v-model="formData.salestime"
+              v-model="formData.sale_time"
               type="date"
               placeholder="请选择销售日期"
               format="YYYY-MM-DD"
@@ -383,7 +475,7 @@
               placeholder="当前用户"
             >
               <template #suffix>
-                <i class="fas fa-user"></i>
+                <i class="fas fa-user" />
               </template>
             </el-input>
           </el-form-item>
@@ -417,10 +509,22 @@
               popper-class="tf2025-form-popper"
               @change="handlePaymentMethodChange"
             >
-              <el-option label="现金支付" value="cash" />
-              <el-option label="移动支付" value="mobile" />
-              <el-option label="银行卡" value="bank_card" />
-              <el-option label="国补刷卡" value="subsidy_card" />
+              <el-option
+                label="现金支付"
+                value="cash"
+              />
+              <el-option
+                label="移动支付"
+                value="mobile"
+              />
+              <el-option
+                label="银行卡"
+                value="bank_card"
+              />
+              <el-option
+                label="国补刷卡"
+                value="subsidy_card"
+              />
             </el-select>
           </el-form-item>
 
@@ -437,20 +541,38 @@
               @change="handlePaymentChannelChange"
             >
               <template v-if="formData.payment_method === 'mobile'">
-                <el-option label="微信" value="wechat" />
-                <el-option label="支付宝" value="alipay" />
+                <el-option
+                  label="微信"
+                  value="wechat"
+                />
+                <el-option
+                  label="支付宝"
+                  value="alipay"
+                />
               </template>
               <template v-if="formData.payment_method === 'bank_card'">
-                <el-option label="刷卡消费" value="card_consumption" />
-                <el-option label="银行转账" value="bank_transfer" />
+                <el-option
+                  label="刷卡消费"
+                  value="card_consumption"
+                />
+                <el-option
+                  label="银行转账"
+                  value="bank_transfer"
+                />
               </template>
               <template v-if="formData.payment_method === 'subsidy_card'">
-                <el-option label="国补刷卡" value="subsidy_card" />
+                <el-option
+                  label="国补刷卡"
+                  value="subsidy_card"
+                />
               </template>
             </el-select>
           </el-form-item>
 
-          <el-form-item label="状态" prop="status">
+          <el-form-item
+            label="状态"
+            prop="status"
+          >
             <el-select
               v-model="formData.status"
               placeholder="请选择状态"
@@ -467,7 +589,10 @@
           </el-form-item>
         </div>
 
-        <el-form-item label="备注" class="mobile-span-2">
+        <el-form-item
+          label="备注"
+          class="mobile-span-2"
+        >
           <el-input
             v-model="formData.remarks"
             type="textarea"
@@ -492,6 +617,7 @@ import MobileDialog from '@/components/MobileDialog.vue'
 import SectionLoading from '@/components/SectionLoading.vue'
 import { useMobile } from '@/composables/mobile'
 import unifiedApi from '@/utils/unified-api'
+import { toCanonicalPhoneUpdatePayload } from '@/utils/phone-update-payload'
 import { extractResponseData } from '@/utils/api-response'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { isValidMobilePhone, normalizeAppleId, normalizePersonName, normalizePhoneDigits, resolveAppleAccountEmail } from '@/utils/security'
@@ -577,7 +703,7 @@ interface FormData {
   memory: string
   is_new: string
   status: string
-  purchase_price: number
+  purchase_cost: number
   sale_price: number
   customer_id: string
   customer_phone: string
@@ -588,8 +714,8 @@ interface FormData {
   purchase_operator_id: string
   sale_operator_id: string
   supplier_id: number | null
-  Inventorytime: string
-  salestime: string
+  inventory_time: string
+  sale_time: string
   payment_method: string
   payment_channel: string
   isNoIMEIMode: boolean
@@ -601,21 +727,17 @@ interface PhoneUpdateRequest {
   model_id: number
   color_id: number
   memory_id: number
-  brand: string
-  model: string
-  color: string
-  memory: string
   imei: string
   serial_number: string
   condition: string
   supplier_id: number | null
   store_id: number | null
-  purchase_price: number
+  purchase_cost: number | null
   sale_price: number
   customer_phone: string
   customer_name: string | null
-  Inventorytime: string | null
-  salestime: string | null
+  inventory_time: string | null
+  sale_time: string | null
   status: string
   remarks: string
   payment_method: string | null
@@ -626,7 +748,7 @@ interface PhoneUpdateRequest {
   apple_id?: string | null
 }
 
-type PriceField = 'purchase_price' | 'sale_price'
+type PriceField = 'purchase_cost' | 'sale_price'
 
 const EMPTY_OPTIONS: EditModalOptions = {
   suppliers: [],
@@ -778,13 +900,13 @@ const fetchEditOptions = async (): Promise<EditModalOptions> => {
           memoriesRes,
           usersRes
         ] = await Promise.all([
-          unifiedApi.get('/suppliers?limit=10000'),
-          unifiedApi.get('/stores?all=true&limit=10000'),
-          unifiedApi.get('/brands?status=1&limit=10000'),
-          unifiedApi.get('/models?limit=10000'),
-          unifiedApi.get('/colors?limit=10000'),
-          unifiedApi.get('/memories?limit=10000'),
-          unifiedApi.get('/users/employees?limit=10000')
+          unifiedApi.get('/suppliers?page_size=10000'),
+          unifiedApi.get('/stores?all=true'),
+          unifiedApi.get('/brands?status=1&page_size=10000'),
+          unifiedApi.get('/models?page_size=10000'),
+          unifiedApi.get('/colors?page_size=10000'),
+          unifiedApi.get('/memories?page_size=10000'),
+          unifiedApi.get('/users/employees?page_size=10000')
         ])
 
         const brandsRaw = extractNestedList(brandsRes?.data, ['data'])
@@ -792,21 +914,21 @@ const fetchEditOptions = async (): Promise<EditModalOptions> => {
         const options: EditModalOptions = {
           suppliers: suppliersRes.success && Array.isArray(suppliersRes.data)
             ? sortByOrder(
-                suppliersRes.data.map((item) => ({
-                  id: Number(item.id || 0),
-                  name: item.name,
-                  sort_order: Number(item.sort_order || 0)
-                }))
-              )
+              suppliersRes.data.map((item) => ({
+                id: Number(item.id || 0),
+                name: item.name,
+                sort_order: Number(item.sort_order || 0)
+              }))
+            )
             : [],
           stores: storesRes.success && Array.isArray(storesRes.data)
             ? sortByOrder(
-                storesRes.data.map((item) => ({
-                  id: Number(item.id || 0),
-                  name: item.name,
-                  sort_order: Number(item.sort_order || 0)
-                }))
-              )
+              storesRes.data.map((item) => ({
+                id: Number(item.id || 0),
+                name: item.name,
+                sort_order: Number(item.sort_order || 0)
+              }))
+            )
             : [],
           brands: sortByOrder(
             brandsRaw
@@ -836,57 +958,57 @@ const fetchEditOptions = async (): Promise<EditModalOptions> => {
           colors: colorsRes.success ? normalizeNameList(colorsRes.data) : [],
           colorItems: colorsRes.success
             ? sortByOrder(
-                extractNestedList(colorsRes.data, ['data', 'colors'])
-                  .map((item): OptionItem | null => {
-                    if (typeof item === 'string') return null
-                    const rawItem = toRecord(item) as RawLookupItem | null
-                    return rawItem?.name
-                      ? { id: Number(rawItem.id || 0), name: rawItem.name, sort_order: Number(rawItem.sort_order || 0) }
-                      : null
-                  })
-                  .filter(isOptionItem)
-              )
+              extractNestedList(colorsRes.data, ['data', 'colors'])
+                .map((item): OptionItem | null => {
+                  if (typeof item === 'string') return null
+                  const rawItem = toRecord(item) as RawLookupItem | null
+                  return rawItem?.name
+                    ? { id: Number(rawItem.id || 0), name: rawItem.name, sort_order: Number(rawItem.sort_order || 0) }
+                    : null
+                })
+                .filter(isOptionItem)
+            )
             : [],
           memories: memoriesRes.success ? normalizeNameList(memoriesRes.data, ['size', 'capacity', 'name']) : [],
           memoryItems: memoriesRes.success
             ? sortByOrder(
-                extractNestedList(memoriesRes.data, ['data', 'memories'])
-                  .map((item): OptionItem | null => {
-                    if (typeof item === 'string') return null
-                    const rawItem = toRecord(item) as RawLookupItem | null
-                    const name = rawItem?.size || rawItem?.capacity || rawItem?.name
-                    return name
-                      ? { id: Number(rawItem.id || 0), name: String(name), sort_order: Number(rawItem.sort_order || 0) }
-                      : null
-                  })
-                  .filter(isOptionItem)
-              )
+              extractNestedList(memoriesRes.data, ['data', 'memories'])
+                .map((item): OptionItem | null => {
+                  if (typeof item === 'string') return null
+                  const rawItem = toRecord(item) as RawLookupItem | null
+                  const name = rawItem?.size || rawItem?.capacity || rawItem?.name
+                  return name
+                    ? { id: Number(rawItem.id || 0), name: String(name), sort_order: Number(rawItem.sort_order || 0) }
+                    : null
+                })
+                .filter(isOptionItem)
+            )
             : [],
           users: usersRes.success && Array.isArray(usersRes.data?.employees)
             ? sortOptionsByOrder(usersRes.data.employees.map((item) => ({
-                id: Number(item.id || 0),
-                name: item.name
-              })))
+              id: Number(item.id || 0),
+              name: item.name
+            })))
             : []
         }
 
         cachedOptions = options
         return cloneOptions(options)
       } catch (error) {
-        const fallback: EditModalOptions = {
+        const emptyOptions: EditModalOptions = {
           suppliers: [],
           stores: [],
-          brands: ['Apple', '华为', '小米', 'OPPO', 'vivo', '三星', '荣耀'],
+          brands: [],
           brandItems: [],
           models: [],
-          colors: ['黑色', '白色', '红色', '蓝色', '金色', '银色', '绿色', '紫色'],
+          colors: [],
           colorItems: [],
-          memories: ['64GB', '128GB', '256GB', '512GB', '1TB'],
+          memories: [],
           memoryItems: [],
           users: []
         }
-        cachedOptions = fallback
-        return cloneOptions(fallback)
+        cachedOptions = emptyOptions
+        return cloneOptions(emptyOptions)
       } finally {
         optionsPromise = null
       }
@@ -898,18 +1020,18 @@ const fetchEditOptions = async (): Promise<EditModalOptions> => {
 
 const normalizePhoneData = (item: unknown): NormalizedPhoneData => {
   const rawItem = toRecord(item)
-  const basicSection = toRecord(rawItem?.基本信息) as NormalizedSection | null
-  const priceSection = toRecord(rawItem?.价格信息) as NormalizedSection | null
-  const timeSection = toRecord(rawItem?.时间信息) as NormalizedSection | null
-  const supplierSection = toRecord(rawItem?.供应商信息) as NormalizedSection | null
-  const storeSection = toRecord(rawItem?.店铺信息) as NormalizedSection | null
-  const customerSection = toRecord(rawItem?.客户信息) as NormalizedSection | null
-  const operatorSection = toRecord(rawItem?.操作员信息) as NormalizedSection | null
-  const saleSection = toRecord(rawItem?.销售信息) as NormalizedSection | null
+  const basicSection = toRecord(rawItem?.基本信息 || rawItem?.basic_info) as NormalizedSection | null
+  const priceSection = toRecord(rawItem?.价格信息 || rawItem?.price_info) as NormalizedSection | null
+  const timeSection = toRecord(rawItem?.时间信息 || rawItem?.time_info) as NormalizedSection | null
+  const supplierSection = toRecord(rawItem?.供应商信息 || rawItem?.supplier_info) as NormalizedSection | null
+  const storeSection = toRecord(rawItem?.店铺信息 || rawItem?.store_info) as NormalizedSection | null
+  const customerSection = toRecord(rawItem?.客户信息 || rawItem?.customer_info) as NormalizedSection | null
+  const operatorSection = toRecord(rawItem?.操作员信息 || rawItem?.operator_info) as NormalizedSection | null
+  const saleSection = toRecord(rawItem?.销售信息 || rawItem?.sale_info) as NormalizedSection | null
 
   if (basicSection && priceSection && timeSection) {
-    const purchasePrice = Number(priceSection.purchase_price || 0)
-    const salePrice = Number(priceSection.sale_price || 0)
+    const purchasePrice = priceSection.purchase_cost === null || priceSection.purchase_cost === undefined ? null : Number(priceSection.purchase_cost)
+    const salePrice = priceSection.sale_price === null || priceSection.sale_price === undefined ? null : Number(priceSection.sale_price)
 
     return {
       基本信息: {
@@ -926,10 +1048,14 @@ const normalizePhoneData = (item: unknown): NormalizedPhoneData => {
       },
       价格信息: {
         ...(priceSection || {}),
-        purchase_price: purchasePrice,
+        purchase_cost: purchasePrice,
         sale_price: salePrice
       },
-      时间信息: timeSection || {},
+      时间信息: {
+        ...(timeSection || {}),
+        inventory_time: timeSection?.inventory_time,
+        sale_time: timeSection?.sale_time
+      },
       客户信息: {
         ...(customerSection || {}),
         customer_id: customerSection?.customer_id ?? null
@@ -965,12 +1091,12 @@ const normalizePhoneData = (item: unknown): NormalizedPhoneData => {
       store_name: rawItem?.store_name as string || ''
     },
     价格信息: {
-      purchase_price: Number(rawItem?.purchase_price || 0),
-      sale_price: Number(rawItem?.sale_price || 0)
+      purchase_cost: rawItem?.purchase_cost === null || rawItem?.purchase_cost === undefined ? null : Number(rawItem.purchase_cost),
+      sale_price: rawItem?.sale_price === null || rawItem?.sale_price === undefined ? null : Number(rawItem.sale_price)
     },
     时间信息: {
-      Inventorytime: rawItem?.Inventorytime as string || rawItem?.inventorytime as string || rawItem?.created_at as string || '',
-      salestime: rawItem?.salestime as string || rawItem?.sale_date as string || ''
+      inventory_time: rawItem?.inventory_time as string || '',
+      sale_time: rawItem?.sale_time as string || ''
     },
     客户信息: {
       customer_id: rawItem?.customer_id as number | string | null | undefined ?? null,
@@ -1011,7 +1137,7 @@ const defaultFormState = (): FormData => ({
   memory: '',
   is_new: '1',
   status: 'in_stock',
-  purchase_price: 0,
+  purchase_cost: 0,
   sale_price: 0,
   customer_id: '',
   customer_phone: '',
@@ -1022,8 +1148,8 @@ const defaultFormState = (): FormData => ({
   purchase_operator_id: '',
   sale_operator_id: '',
   supplier_id: null,
-  Inventorytime: '',
-  salestime: '',
+  inventory_time: '',
+  sale_time: '',
   payment_method: '',
   payment_channel: '',
   isNoIMEIMode: false,
@@ -1170,12 +1296,12 @@ const availableModels = computed(() => {
 })
 
 const profit = computed(() => {
-  if (!formData.purchase_price || !formData.sale_price) return 0
-  return formData.sale_price - formData.purchase_price
+  if (!formData.purchase_cost || !formData.sale_price) return 0
+  return formData.sale_price - formData.purchase_cost
 })
 
 const showProfit = computed(() => {
-  return (formData.purchase_price || 0) > 0 && (formData.sale_price || 0) > 0
+  return (formData.purchase_cost || 0) > 0 && (formData.sale_price || 0) > 0
 })
 
 const showPaymentChannel = computed(() => {
@@ -1236,41 +1362,41 @@ const loadDialogData = async () => {
     const customerInfo = normalized.客户信息 || {}
     const operatorInfo = normalized.操作员信息 || {}
     const saleInfo = normalized.销售信息 || {}
-    const rawImei = basicInfo.imei || response.data?.imei || ''
-    const rawSerialNumber = basicInfo.serial_number || response.data?.serial_number || ''
+    const rawImei = basicInfo.imei || ''
+    const rawSerialNumber = basicInfo.serial_number || ''
     const isNoImeiPhone = !rawImei && Boolean(rawSerialNumber)
 
     Object.assign(formData, {
-      id: Number(basicInfo.phone_id || response.data?.id || props.phoneId || 0),
+      id: Number(basicInfo.phone_id || props.phoneId || 0),
       imei: rawImei || (isNoImeiPhone ? rawSerialNumber : ''),
       serial_number: rawSerialNumber,
-      brand_id: toNullableNumber(basicInfo.brand_id ?? response.data?.brand_id),
-      brand: basicInfo.brand || response.data?.brand || '',
-      model_id: toNullableNumber(basicInfo.model_id ?? response.data?.model_id),
-      model: basicInfo.model || response.data?.model || '',
-      color_id: toNullableNumber(basicInfo.color_id ?? response.data?.color_id),
-      color: basicInfo.color || response.data?.color || '',
-      memory_id: toNullableNumber(basicInfo.memory_id ?? response.data?.memory_id),
-      memory: basicInfo.memory || response.data?.memory || '',
-      is_new: basicInfo.is_new === 1 ? '1' : '0',
-      status: basicInfo.status_code || response.data?.status || 'in_stock',
-      purchase_price: Number(priceInfo.purchase_price ?? response.data?.purchase_price ?? 0),
-      sale_price: Number(priceInfo.sale_price ?? response.data?.sale_price ?? 0),
+      brand_id: toNullableNumber(basicInfo.brand_id),
+      brand: basicInfo.brand || '',
+      model_id: toNullableNumber(basicInfo.model_id),
+      model: basicInfo.model || '',
+      color_id: toNullableNumber(basicInfo.color_id),
+      color: basicInfo.color || '',
+      memory_id: toNullableNumber(basicInfo.memory_id),
+      memory: basicInfo.memory || '',
+      is_new: basicInfo.is_new === 1 || basicInfo.is_new === '1' ? '1' : '0',
+      status: basicInfo.status_code || 'in_stock',
+      purchase_cost: Number(priceInfo.purchase_cost || 0),
+      sale_price: Number(priceInfo.sale_price || 0),
       customer_id: customerInfo.customer_id ? String(customerInfo.customer_id) : '',
-      customer_phone: normalizeCustomerPhone(customerInfo.customer_phone || response.data?.customer_phone || ''),
-      customer_name: normalizePersonName(customerInfo.customer_name || response.data?.customer_name || '', 20),
-      apple_id: normalizeAppleId(customerInfo.apple_id || response.data?.customer_apple_id || response.data?.apple_id || ''),
-      store_id: toNullableNumber(storeInfo.store_id ?? response.data?.store_id),
-      purchase_operator_name: operatorInfo.inventory_operator_name || operatorInfo.purchase_operator_name || response.data?.inventory_operator_name || '',
-      purchase_operator_id: operatorInfo.inventory_operator_id ? String(operatorInfo.inventory_operator_id) : (response.data?.inventory_operator_id ? String(response.data.inventory_operator_id) : ''),
-      sale_operator_id: operatorInfo.sale_operator_id ? String(operatorInfo.sale_operator_id) : (response.data?.sale_operator_id ? String(response.data.sale_operator_id) : ''),
-      supplier_id: supplierInfo.supplier_id ?? response.data?.supplier_id ?? null,
-      Inventorytime: normalizeDate(timeInfo.Inventorytime || response.data?.Inventorytime),
-      salestime: normalizeDate(timeInfo.salestime || response.data?.salestime),
-      payment_method: saleInfo.payment_method || response.data?.payment_method || '',
-      payment_channel: saleInfo.payment_channel || response.data?.payment_channel || '',
+      customer_phone: normalizeCustomerPhone(customerInfo.customer_phone || ''),
+      customer_name: normalizePersonName(customerInfo.customer_name || '', 20),
+      apple_id: normalizeAppleId(customerInfo.apple_id || ''),
+      store_id: toNullableNumber(storeInfo.store_id),
+      purchase_operator_name: operatorInfo.inventory_operator_name || operatorInfo.purchase_operator_name || '',
+      purchase_operator_id: operatorInfo.inventory_operator_id ? String(operatorInfo.inventory_operator_id) : '',
+      sale_operator_id: operatorInfo.sale_operator_id ? String(operatorInfo.sale_operator_id) : '',
+      supplier_id: supplierInfo.supplier_id ?? null,
+      inventory_time: normalizeDate(timeInfo.inventory_time ? String(timeInfo.inventory_time) : ''),
+      sale_time: normalizeDate(timeInfo.sale_time ? String(timeInfo.sale_time) : ''),
+      payment_method: saleInfo.payment_method || '',
+      payment_channel: saleInfo.payment_channel || '',
       isNoIMEIMode: isNoImeiPhone || rawImei === rawSerialNumber,
-      remarks: basicInfo.remarks || response.data?.remarks || ''
+      remarks: basicInfo.remarks || ''
     })
 
     syncCatalogSelections()
@@ -1792,31 +1918,25 @@ const handleSubmit = async () => {
       return
     }
 
-    const requestData: PhoneUpdateRequest = {
+    const requestData = toCanonicalPhoneUpdatePayload({
       brand_id: formData.brand_id,
       model_id: formData.model_id,
       color_id: formData.color_id,
       memory_id: formData.memory_id,
-      brand: formData.brand,
-      model: formData.model,
-      color: formData.color,
-      memory: formData.memory,
       imei: resolvedImei,
       serial_number: formData.serial_number,
       condition: formData.is_new === '1' ? 'new' : 'used',
-      supplier_id: formData.supplier_id ? Number(formData.supplier_id) : null,
+      supplier_id: formData.supplier_id,
       store_id: resolvedStoreId,
-      purchase_price: Number(formData.purchase_price || 0),
-      sale_price: Number(formData.sale_price || 0),
+      purchase_cost: formData.purchase_cost,
+      sale_price: formData.sale_price,
       customer_phone: normalizedCustomerPhone,
       customer_name: normalizedCustomerName || null,
-      Inventorytime: formData.Inventorytime || null,
-      salestime: formData.salestime || null,
+      inventory_time: formData.inventory_time,
+      sale_time: formData.sale_time,
       status: formData.status,
-      remarks: formData.remarks || '',
-      payment_method: formData.payment_method || null,
-      payment_channel: formData.payment_channel || null
-    }
+      remarks: formData.remarks || ''
+    }) as PhoneUpdateRequest
 
     if (formData.customer_id !== originalEditValues.value.customer_id) {
       requestData.customer_id = formData.customer_id ? Number(formData.customer_id) : null
@@ -1916,9 +2036,9 @@ onBeforeUnmount(() => {
 .form-section {
   margin-bottom: 24px;
   padding: 18px 18px 14px;
-  border: 1px solid #eef2f7;
+  border: 1px solid var(--tf-color-surface-cool);
   border-radius: 18px;
-  background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+  background: linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-surface-cool-alt) 100%);
 }
 
 .section-title {
@@ -1928,10 +2048,10 @@ onBeforeUnmount(() => {
   margin-bottom: 16px;
   font-size: 15px;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--tf-color-neutral-800);
 
   i {
-    color: #2563eb;
+    color: var(--tf-color-blue-600);
   }
 }
 
@@ -2010,7 +2130,7 @@ onBeforeUnmount(() => {
 :global(.query-edit-dialog .mobile-dialog-sheet-header) {
   min-height: calc(72px + env(safe-area-inset-top));
   padding: calc(12px + env(safe-area-inset-top)) 56px 12px 16px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%) !important;
 }
 
 :global(.query-edit-dialog .mobile-dialog-sheet-title) {
@@ -2027,29 +2147,29 @@ onBeforeUnmount(() => {
 }
 
 :global(.query-edit-dialog .mobile-dialog-sheet-body) {
-  background: #ffffff;
+  background: var(--color-bg-white);
 }
 
 :global(.query-edit-dialog .mobile-dialog-sheet-footer) {
-  background: #ffffff;
+  background: var(--color-bg-white);
 }
 
 .input-hint {
   margin-top: 6px;
   font-size: 12px;
   line-height: 1.4;
-  color: #6b7280;
+  color: var(--tf-color-neutral-500);
 }
 
 .profit-hint {
   margin-top: 8px;
   font-size: 12px;
-  color: #64748b;
+  color: var(--tf-color-slate-500);
 }
 
 .profit-value {
   font-weight: 700;
-  color: #059669;
+  color: var(--tf-color-emerald-600);
 }
 
 .imei-input-wrapper {
@@ -2061,7 +2181,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  color: #10b981;
+  color: var(--tf-color-emerald-500);
 }
 
 .customer-search-container {
@@ -2077,7 +2197,7 @@ onBeforeUnmount(() => {
   max-height: 300px;
   overflow-y: auto;
   background: white;
-  border: 1px solid #ddd;
+  border: 1px solid var(--tf-color-gray-300-alt);
   border-radius: 6px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   margin-top: 4px;
@@ -2089,7 +2209,7 @@ onBeforeUnmount(() => {
   gap: 8px;
   justify-content: center;
   padding: 16px 20px;
-  color: #666;
+  color: var(--text-secondary);
   font-size: 14px;
 }
 
@@ -2097,10 +2217,10 @@ onBeforeUnmount(() => {
   padding: 16px 20px;
   cursor: pointer;
   transition: background-color 0.2s;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--tf-color-gray-200-alt);
 
   &:hover {
-    background: #f8f9fa;
+    background: var(--tf-color-surface-muted);
   }
 }
 
@@ -2130,21 +2250,21 @@ onBeforeUnmount(() => {
 
 .customer-name {
   font-weight: 600;
-  color: #1f2937;
+  color: var(--tf-color-neutral-800);
   font-size: 14px;
   line-height: 1.2;
   min-width: 0;
 }
 
 .customer-phone {
-  color: #475569;
+  color: var(--tf-color-slate-600);
   font-size: 12px;
   line-height: 1.2;
 }
 
 .member-number {
-  background: linear-gradient(135deg, #eef6ff 0%, #dbeafe 100%);
-  color: #1d4ed8;
+  background: linear-gradient(135deg, var(--tf-color-surface-blue-soft) 0%, var(--tf-color-blue-tailwind-100) 100%);
+  color: var(--tf-color-blue-700);
   padding: 2px 8px;
   border-radius: 999px;
   font-size: 11px;
@@ -2154,7 +2274,7 @@ onBeforeUnmount(() => {
 }
 
 .vip-badge {
-  background: linear-gradient(135deg, #fb7185 0%, #f59e0b 100%);
+  background: linear-gradient(135deg, var(--tf-color-rose-400) 0%, var(--tf-color-amber-500) 100%);
   color: white;
   padding: 2px 8px;
   border-radius: 999px;
@@ -2169,8 +2289,8 @@ onBeforeUnmount(() => {
 .create-new-customer {
   padding: 16px 20px;
   cursor: pointer;
-  color: #28a745;
-  background: #f8f9fa;
+  color: var(--success-color);
+  background: var(--tf-color-surface-muted);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -2178,7 +2298,7 @@ onBeforeUnmount(() => {
   font-weight: 500;
 
   &:hover {
-    background: #e9ecef;
+    background: var(--tf-color-border-muted);
   }
 }
 
@@ -2282,7 +2402,7 @@ onBeforeUnmount(() => {
 :deep(.el-input-number .el-input__wrapper),
 :deep(.el-textarea__inner) {
   border-radius: 12px;
-  box-shadow: 0 0 0 1px #dbe3ef inset;
+  box-shadow: 0 0 0 1px var(--tf-color-border-blue) inset;
 }
 
 :deep(.el-input__wrapper),
@@ -2314,7 +2434,7 @@ onBeforeUnmount(() => {
 :deep(.el-select__wrapper.is-focused),
 :deep(.el-date-editor .el-input__wrapper.is-focus),
 :deep(.el-input-number .el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 1px #7c3aed inset;
+  box-shadow: 0 0 0 1px var(--tf-color-violet-600) inset;
 }
 
 :deep(.el-input-number .el-input__wrapper) {

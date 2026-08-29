@@ -1,9 +1,16 @@
-import { ref, computed, inject, onUnmounted } from 'vue'
+import { ref, computed, inject } from 'vue'
 import { useMessageStore } from '@/stores/message'
 import { ErrorBoundary, ErrorType, ErrorLevel, type DetailedErrorInfo } from '@/utils/error-boundary'
 import { storage } from '@/services/storage'
-import { AUTH_STORAGE_KEYS } from '@/constants/storage'
 import { logger } from '@/utils/logger'
+
+type ErrorContext = Record<string, unknown>
+interface ApiErrorLike {
+  response?: { status?: number; data?: { message?: string; errors?: unknown } }
+  request?: unknown
+  config?: { url?: string; method?: string }
+  message?: string
+}
 
 
 type HandlerLevel = 'error' | 'warning' | 'info' | 'fatal'
@@ -39,15 +46,15 @@ export function useErrorHandler() {
 
   const mapLevel = (level: HandlerLevel): ErrorLevel => {
     switch (level) {
-      case 'fatal':
-        return ErrorLevel.CRITICAL
-      case 'error':
-        return ErrorLevel.HIGH
-      case 'warning':
-        return ErrorLevel.MEDIUM
-      case 'info':
-      default:
-        return ErrorLevel.LOW
+    case 'fatal':
+      return ErrorLevel.CRITICAL
+    case 'error':
+      return ErrorLevel.HIGH
+    case 'warning':
+      return ErrorLevel.MEDIUM
+    case 'info':
+    default:
+      return ErrorLevel.LOW
     }
   }
 
@@ -57,7 +64,7 @@ export function useErrorHandler() {
   const recordError = (
     error: Error | string,
     level: HandlerLevel = 'error',
-    context?: Record<string, any>
+    context?: ErrorContext
   ) => {
     const errorInfo: DetailedErrorInfo = {
       id: `err_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -100,16 +107,16 @@ export function useErrorHandler() {
 
     // 根据错误级别显示通知
     switch (level) {
-      case 'error':
-      case 'fatal':
-        messageStore.error(errorInfo.message)
-        break
-      case 'warning':
-        messageStore.warning(errorInfo.message)
-        break
-      case 'info':
-        messageStore.info(errorInfo.message)
-        break
+    case 'error':
+    case 'fatal':
+      messageStore.error(errorInfo.message)
+      break
+    case 'warning':
+      messageStore.warning(errorInfo.message)
+      break
+    case 'info':
+      messageStore.info(errorInfo.message)
+      break
     }
 
     // 记录到控制台
@@ -122,97 +129,98 @@ export function useErrorHandler() {
   /**
    * 处理API错误
    */
-  const handleApiError = (error: any, defaultMessage: string = '请求失败') => {
+  const handleApiError = (error: unknown, defaultMessage: string = '请求失败') => {
+    const apiError = error as ApiErrorLike
     let message = defaultMessage
     let level: HandlerLevel = 'error'
-    let context: Record<string, any> = {}
+    let context: ErrorContext = {}
 
-    if (error.response) {
+    if (apiError.response) {
       // HTTP错误响应
-      const { status, data } = error.response
+      const { status, data } = apiError.response
       context = {
         status,
-        url: error.config?.url,
-        method: error.config?.method?.toUpperCase()
+        url: apiError.config?.url,
+        method: apiError.config?.method?.toUpperCase()
       }
 
       switch (status) {
-        case 400:
-          message = data?.message || '请求参数错误'
-          level = 'warning'
-          break
-        case 401:
-          message = '未授权，请重新登录'
-          level = 'warning'
-          // 清除认证信息
-          clearAuth()
-          // 跳转到登录页
-          setTimeout(() => {
-            if (typeof window !== 'undefined') {
-              window.location.href = '/login'
-            }
-          }, 1000)
-          break
-        case 403:
-          message = '权限不足，无法执行此操作'
-          level = 'warning'
-          break
-        case 404:
-          message = '请求的资源不存在'
-          level = 'warning'
-          break
-        case 409:
-          message = data?.message || '操作冲突，请检查数据'
-          level = 'warning'
-          break
-        case 422:
-          message = data?.message || '数据验证失败'
-          level = 'warning'
-          if (data?.errors && Array.isArray(data.errors)) {
-            message += `：${data.errors.join('；')}`
+      case 400:
+        message = data?.message || '请求参数错误'
+        level = 'warning'
+        break
+      case 401:
+        message = '未授权，请重新登录'
+        level = 'warning'
+        // 清除认证信息
+        clearAuth()
+        // 跳转到登录页
+        setTimeout(() => {
+          if (typeof window !== 'undefined') {
+            window.location.href = '/login'
           }
-          break
-        case 429:
-          message = '请求过于频繁，请稍后再试'
-          level = 'warning'
-          break
-        case 500:
-          message = '服务器内部错误'
-          level = 'error'
-          break
-        case 502:
-        case 503:
-        case 504:
-          message = '服务暂时不可用，请稍后重试'
-          level = 'error'
-          break
-        default:
-          message = data?.message || defaultMessage
-          level = 'error'
+        }, 1000)
+        break
+      case 403:
+        message = '权限不足，无法执行此操作'
+        level = 'warning'
+        break
+      case 404:
+        message = '请求的资源不存在'
+        level = 'warning'
+        break
+      case 409:
+        message = data?.message || '操作冲突，请检查数据'
+        level = 'warning'
+        break
+      case 422:
+        message = data?.message || '数据验证失败'
+        level = 'warning'
+        if (data?.errors && Array.isArray(data.errors)) {
+          message += `：${data.errors.join('；')}`
+        }
+        break
+      case 429:
+        message = '请求过于频繁，请稍后再试'
+        level = 'warning'
+        break
+      case 500:
+        message = '服务器内部错误'
+        level = 'error'
+        break
+      case 502:
+      case 503:
+      case 504:
+        message = '服务暂时不可用，请稍后重试'
+        level = 'error'
+        break
+      default:
+        message = data?.message || defaultMessage
+        level = 'error'
       }
 
       context.responseData = data
-    } else if (error.request) {
+    } else if (apiError.request) {
       // 网络错误
       message = '网络连接失败，请检查网络设置'
       level = 'error'
       context = {
-        url: error.config?.url,
-        method: error.config?.method?.toUpperCase()
+        url: apiError.config?.url,
+        method: apiError.config?.method?.toUpperCase()
       }
     } else {
       // 其他错误
-      message = error.message || defaultMessage
+      message = apiError.message || defaultMessage
       context = { originalError: error }
     }
 
-    return recordError(error, level, context)
+    return recordError(new Error(message || String(error)), level, context)
   }
 
   /**
    * 处理表单验证错误
    */
-  const handleValidationError = (errors: string[] | Record<string, string>, context?: Record<string, any>) => {
+  const handleValidationError = (errors: string[] | Record<string, string>, context?: ErrorContext) => {
     const errorMessage = Array.isArray(errors) ? errors.join('；') : Object.values(errors).join('；')
     return recordError(new Error(errorMessage), 'warning', { type: 'validation', ...context })
   }
@@ -220,14 +228,14 @@ export function useErrorHandler() {
   /**
    * 处理业务逻辑错误
    */
-  const handleBusinessError = (message: string, context?: Record<string, any>) => {
+  const handleBusinessError = (message: string, context?: ErrorContext) => {
     return recordError(new Error(message), 'warning', { type: 'business', ...context })
   }
 
   /**
    * 处理系统错误
    */
-  const handleSystemError = (error: Error | string, context?: Record<string, any>) => {
+  const handleSystemError = (error: Error | string, context?: ErrorContext) => {
     return recordError(error, 'error', { type: 'system', ...context })
   }
 
@@ -261,8 +269,8 @@ export function useErrorHandler() {
     try {
       const auth = storage.getAuth()
       if (auth) {
-        const userData = auth as any
-        return userData.id || userData.username || userData.user?.id
+        const userData = auth as { id?: number; username?: string; user?: { id?: number } }
+        return userData.id ?? userData.user?.id
       }
     } catch {
       // 忽略错误
@@ -275,15 +283,15 @@ export function useErrorHandler() {
    */
   const mapToErrorBoundaryType = (level: HandlerLevel): ErrorType => {
     switch (level) {
-      case 'error':
-      case 'fatal':
-        return ErrorType.JAVASCRIPT
-      case 'warning':
-        return ErrorType.BUSINESS
-      case 'info':
-        return ErrorType.VUE
-      default:
-        return ErrorType.JAVASCRIPT
+    case 'error':
+    case 'fatal':
+      return ErrorType.JAVASCRIPT
+    case 'warning':
+      return ErrorType.BUSINESS
+    case 'info':
+      return ErrorType.VUE
+    default:
+      return ErrorType.JAVASCRIPT
     }
   }
 
@@ -317,7 +325,7 @@ export function useErrorHandler() {
       fallbackMessage?: string
       showSuccess?: boolean
       successMessage?: string
-      context?: Record<string, any>
+      context?: ErrorContext
     }
   ): Promise<T | null> => {
     try {
@@ -361,9 +369,9 @@ export function useErrorHandler() {
     withErrorHandling,
 
     // 业务错误类型处理方法
-    handleNetworkError: (error: any, context?: any) => handleApiError(error, context?.defaultMessage || '网络请求失败'),
-    handlePermissionError: (error: any, context?: any) => handleApiError(error, context?.defaultMessage || '权限不足'),
-    handleUserInputError: (message: string, context?: any) => handleValidationError([message], { ...context, type: BusinessErrorType.USER_INPUT })
+    handleNetworkError: (error: unknown, context?: ErrorContext & { defaultMessage?: string }) => handleApiError(error, context?.defaultMessage || '网络请求失败'),
+    handlePermissionError: (error: unknown, context?: ErrorContext & { defaultMessage?: string }) => handleApiError(error, context?.defaultMessage || '权限不足'),
+    handleUserInputError: (message: string, context?: ErrorContext) => handleValidationError([message], { ...context, type: BusinessErrorType.USER_INPUT })
   }
 }
 

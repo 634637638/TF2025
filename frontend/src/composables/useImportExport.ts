@@ -14,8 +14,8 @@ export interface FileDownloadOptions {
 export interface ExportFileOptions {
   url: string
   filename: string
-  params?: Record<string, any>
-  data?: any
+  params?: object
+  data?: unknown
   method?: 'get' | 'post'
   config?: RequestConfig
   mimeType?: string
@@ -37,7 +37,7 @@ export interface ExportTextFileOptions extends FileDownloadOptions {
   onError?: (error: unknown, fallbackMessage: string) => void
 }
 
-export interface ImportFileOptions<T = any> {
+export interface ImportFileOptions<_T = unknown> {
   url: string
   file?: File
   fieldName?: string
@@ -71,7 +71,7 @@ const saveBlobFile = (data: BlobPart | Blob, options: FileDownloadOptions) => {
   window.URL.revokeObjectURL(url)
 }
 
-const sanitizeParams = <T extends Record<string, any>>(params?: T): Partial<T> => {
+const sanitizeParams = (params?: object): Record<string, unknown> => {
   if (!params) {
     return {}
   }
@@ -88,7 +88,7 @@ const sanitizeParams = <T extends Record<string, any>>(params?: T): Partial<T> =
 
       return true
     })
-  ) as Partial<T>
+  )
 }
 
 const resolveAllowed = (allowed?: MaybeRef<boolean>) => allowed === undefined ? true : !!unref(allowed)
@@ -205,7 +205,7 @@ export const useImportExport = () => {
     })
   }
 
-  const importFile = async <T = any>({
+  const importFile = async <T = unknown>({
     url,
     file,
     fieldName = 'file',

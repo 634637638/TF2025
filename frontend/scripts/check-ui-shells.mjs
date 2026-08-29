@@ -45,6 +45,13 @@ requireToken(paginationStyleSource, '.pagination-wrapper', 'src/styles/component
 for (const file of walk(sourceRoot)) {
   const source = readFileSync(file, 'utf8')
   const relativeFile = relative(root, file)
+  // Views may keep route-level pages and page-internal sections in separate
+  // directories. Only the latter should not be required to render the app
+  // shell themselves.
+  const isViewComponent = relativeFile.startsWith('src/views/') && (
+    relativeFile.includes('/components/') ||
+    relativeFile.includes('/page/')
+  )
   const isPublicImplementation = [
     'src/components/Pagination.vue',
     'src/components/search/UnifiedSearchPanel.vue'
@@ -63,7 +70,7 @@ for (const file of walk(sourceRoot)) {
     findings.push(`${relativeFile}:${lineNumber(source, footer.index)} 弹窗 footer 按钮必须放入 tf-dialog-actions；历史 *-dialog-footer/*-modal-footer 仅作兼容`)
   }
 
-  if (relativeFile.startsWith('src/views/') && !relativeFile.startsWith('src/views/H5-') && /<PageHeader\b/i.test(source)) {
+  if (relativeFile.startsWith('src/views/') && !isViewComponent && !relativeFile.startsWith('src/views/H5-') && /<PageHeader\b/i.test(source)) {
     if (!/class=["'][^"']*\badmin-page\b/i.test(source)) {
       findings.push(`${relativeFile}:1 使用 PageHeader 的后台页面根节点必须接入 admin-page`)
     }

@@ -12,8 +12,14 @@
     :show-default-footer="false"
     @close="handleClose"
   >
-    <div v-if="loadingPhoneData" class="publish-to-h5-loading">
-      <InlineLoading text="加载商品信息中..." size="large" />
+    <div
+      v-if="loadingPhoneData"
+      class="publish-to-h5-loading"
+    >
+      <InlineLoading
+        text="加载商品信息中..."
+        size="large"
+      />
     </div>
     <el-form
       v-else
@@ -34,7 +40,9 @@
               clearable
               inputmode="decimal"
             >
-              <template #prefix>¥</template>
+              <template #prefix>
+                ¥
+              </template>
             </el-input>
           </el-form-item>
 
@@ -42,118 +50,186 @@
           <template v-if="!isNewPhone">
             <!-- 商品成色 -->
             <el-form-item label="商品成色">
-            <el-select
-              v-model="form.condition_grade"
-              class="publish-to-h5-control publish-to-h5-select-control w-full"
-              placeholder="请选择商品成色"
-              filterable
-              allow-create
-              teleported
-              fit-input-width
-              popper-class="tf2025-form-popper"
-            >
-              <el-option label="99新" value="99新" />
-              <el-option label="98新" value="98新" />
-              <el-option label="97新" value="97新" />
-              <el-option label="95新" value="95新" />
-              <el-option label="靓机" value="靓机" />
-              <el-option label="小花" value="小花" />
-              <el-option label="大花" value="大花" />
-              <el-option label="外爆" value="外爆" />
-              <el-option label="内爆" value="内爆" />
-            </el-select>
-          </el-form-item>
+              <el-select
+                v-model="form.condition_grade"
+                class="publish-to-h5-control publish-to-h5-select-control w-full"
+                placeholder="请选择商品成色"
+                filterable
+                allow-create
+                teleported
+                fit-input-width
+                popper-class="tf2025-form-popper"
+              >
+                <el-option
+                  label="99新"
+                  value="99新"
+                />
+                <el-option
+                  label="98新"
+                  value="98新"
+                />
+                <el-option
+                  label="97新"
+                  value="97新"
+                />
+                <el-option
+                  label="95新"
+                  value="95新"
+                />
+                <el-option
+                  label="靓机"
+                  value="靓机"
+                />
+                <el-option
+                  label="小花"
+                  value="小花"
+                />
+                <el-option
+                  label="大花"
+                  value="大花"
+                />
+                <el-option
+                  label="外爆"
+                  value="外爆"
+                />
+                <el-option
+                  label="内爆"
+                  value="内爆"
+                />
+              </el-select>
+            </el-form-item>
 
-          <!-- 电池状况 -->
-          <el-form-item label="电池状况">
-            <el-input
-              v-model="batteryDisplayValue"
-              class="publish-to-h5-control publish-to-h5-input-control"
-              placeholder="电池情况"
-              clearable
-              @input="handleBatteryInput"
-            >
-              <template v-if="isBatteryNumeric" #suffix>%</template>
-            </el-input>
-          </el-form-item>
+            <!-- 电池状况 -->
+            <el-form-item label="电池状况">
+              <el-input
+                v-model="batteryDisplayValue"
+                class="publish-to-h5-control publish-to-h5-input-control"
+                placeholder="电池情况"
+                clearable
+                @input="handleBatteryInput"
+              >
+                <template
+                  v-if="isBatteryNumeric"
+                  #suffix
+                >
+                  %
+                </template>
+              </el-input>
+            </el-form-item>
 
-          <!-- 系统版本 -->
-          <el-form-item label="系统版本">
-            <el-input
-              v-model="form.system_version"
-              class="publish-to-h5-control publish-to-h5-input-control"
-              placeholder="如：iOS 17.2"
-              clearable
-            />
-          </el-form-item>
+            <!-- 系统版本 -->
+            <el-form-item label="系统版本">
+              <el-input
+                v-model="form.system_version"
+                class="publish-to-h5-control publish-to-h5-input-control"
+                placeholder="如：iOS 17.2"
+                clearable
+              />
+            </el-form-item>
           </template>
         </div>
 
         <!-- 右列 -->
         <div class="publish-to-h5-column">
           <template v-if="!isNewPhone">
-          <!-- 屏幕状况 -->
-          <el-form-item label="屏幕状况">
-            <el-select
-              v-model="form.screen_condition"
-              class="publish-to-h5-control publish-to-h5-select-control w-full"
-              placeholder="请选择屏幕状况"
-              teleported
-              fit-input-width
-              popper-class="tf2025-form-popper"
-            >
-              <el-option label="全原" value="original" />
-              <el-option label="换原屏" value="replaced_original" />
-              <el-option label="国产屏幕" value="domestic" />
-              <el-option label="原换盖板" value="replaced_glass" />
-            </el-select>
-          </el-form-item>
-
-          <!-- 销售版本 -->
-          <el-form-item label="销售版本">
-            <el-select
-              v-model="form.model_version"
-              class="publish-to-h5-control publish-to-h5-select-control w-full"
-              placeholder="请选择销售版本"
-              filterable
-              clearable
-              teleported
-              fit-input-width
-              popper-class="tf2025-form-popper"
-            >
-              <el-option label="国行" value="国行" />
-              <el-option label="美版" value="美版" />
-              <el-option label="日版" value="日版" />
-              <el-option label="港版" value="港版" />
-              <el-option label="奥版" value="奥版" />
-              <el-option label="加拿大" value="加拿大" />
-            </el-select>
-          </el-form-item>
-
-          <!-- 保修日期 -->
-          <el-form-item label="保修日期">
-            <div class="publish-to-h5-warranty-row">
-              <el-date-picker
-                v-model="form.warranty_date"
-                class="publish-to-h5-control publish-to-h5-picker-control flex-1"
-                type="date"
-                placeholder="选择保修日期"
-                value-format="YYYY-MM-DD"
-                :disabled="form.is_warranty_expired"
+            <!-- 屏幕状况 -->
+            <el-form-item label="屏幕状况">
+              <el-select
+                v-model="form.screen_condition"
+                class="publish-to-h5-control publish-to-h5-select-control w-full"
+                placeholder="请选择屏幕状况"
                 teleported
+                fit-input-width
                 popper-class="tf2025-form-popper"
-              />
-              <el-checkbox v-model="form.is_warranty_expired" @change="handleWarrantyExpiredChange">
-                已过保
-              </el-checkbox>
-            </div>
-          </el-form-item>
+              >
+                <el-option
+                  label="全原"
+                  value="original"
+                />
+                <el-option
+                  label="换原屏"
+                  value="replaced_original"
+                />
+                <el-option
+                  label="国产屏幕"
+                  value="domestic"
+                />
+                <el-option
+                  label="原换盖板"
+                  value="replaced_glass"
+                />
+              </el-select>
+            </el-form-item>
+
+            <!-- 销售版本 -->
+            <el-form-item label="销售版本">
+              <el-select
+                v-model="form.model_version"
+                class="publish-to-h5-control publish-to-h5-select-control w-full"
+                placeholder="请选择销售版本"
+                filterable
+                clearable
+                teleported
+                fit-input-width
+                popper-class="tf2025-form-popper"
+              >
+                <el-option
+                  label="国行"
+                  value="国行"
+                />
+                <el-option
+                  label="美版"
+                  value="美版"
+                />
+                <el-option
+                  label="日版"
+                  value="日版"
+                />
+                <el-option
+                  label="港版"
+                  value="港版"
+                />
+                <el-option
+                  label="奥版"
+                  value="奥版"
+                />
+                <el-option
+                  label="加拿大"
+                  value="加拿大"
+                />
+              </el-select>
+            </el-form-item>
+
+            <!-- 保修日期 -->
+            <el-form-item label="保修日期">
+              <div class="publish-to-h5-warranty-row">
+                <el-date-picker
+                  v-model="form.warranty_date"
+                  class="publish-to-h5-control publish-to-h5-picker-control flex-1"
+                  type="date"
+                  placeholder="选择保修日期"
+                  value-format="YYYY-MM-DD"
+                  :disabled="form.is_warranty_expired"
+                  teleported
+                  popper-class="tf2025-form-popper"
+                />
+                <el-checkbox
+                  v-model="form.is_warranty_expired"
+                  @change="handleWarrantyExpiredChange"
+                >
+                  已过保
+                </el-checkbox>
+              </div>
+            </el-form-item>
           </template>
         </div>
       </div>
 
       <!-- 商品素材（跨两列） -->
-      <el-form-item label="商品素材" class="publish-to-h5-media-field">
+      <el-form-item
+        label="商品素材"
+        class="publish-to-h5-media-field"
+      >
         <div class="publish-to-h5-media">
           <!-- 统一上传按钮 -->
           <el-upload
@@ -167,17 +243,29 @@
             :auto-upload="false"
             :on-change="handleFileChange"
           >
-            <el-button type="primary" :loading="uploading" :disabled="uploading">
-              <i class="fas fa-upload"></i>
+            <el-button
+              type="primary"
+              :loading="uploading"
+              :disabled="uploading"
+            >
+              <i class="fas fa-upload" />
               <span class="ml-2">上传图片/视频</span>
             </el-button>
           </el-upload>
 
           <!-- 待上传文件预览 -->
-          <div v-if="pendingFiles.length > 0" class="mt-4">
+          <div
+            v-if="pendingFiles.length > 0"
+            class="mt-4"
+          >
             <div class="flex items-center justify-between mb-2">
               <span class="text-sm font-semibold text-gray-600">待上传文件 ({{ pendingFiles.length }})</span>
-              <el-button type="primary" size="small" :loading="uploading" @click="uploadPendingFiles">
+              <el-button
+                type="primary"
+                size="small"
+                :loading="uploading"
+                @click="uploadPendingFiles"
+              >
                 开始上传
               </el-button>
             </div>
@@ -193,7 +281,7 @@
                   :src="previewUrl(file)"
                   class="publish-to-h5-media-thumb"
                   muted
-                ></video>
+                />
                 <!-- 图片预览 -->
                 <Image
                   v-else
@@ -205,29 +293,42 @@
 
                 <!-- 文件类型标记 -->
                 <div class="image-badge">
-                  <i :class="file.raw?.type?.startsWith('video/') ? 'fas fa-video' : 'fas fa-image'"></i>
+                  <i :class="file.raw?.type?.startsWith('video/') ? 'fas fa-video' : 'fas fa-image'" />
                   {{ file.raw?.type?.startsWith('video/') ? '视频' : '图片' }}
                 </div>
 
                 <!-- 移除按钮 -->
                 <div
-                  @click.stop="removePendingFile(index)"
                   class="image-delete-btn"
+                  @click.stop="removePendingFile(index)"
                 >
-                  <i class="fas fa-times text-white text-xs"></i>
+                  <i class="fas fa-times text-white text-xs" />
                 </div>
               </div>
             </div>
           </div>
 
           <!-- 已上传视频预览 -->
-          <div v-if="productVideo" class="mt-3">
+          <div
+            v-if="productVideo"
+            class="mt-3"
+          >
             <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-              <video :src="formatImageUrl(productVideo)" class="video-thumbnail" controls></video>
+              <video
+                :src="formatImageUrl(productVideo)"
+                class="video-thumbnail"
+                controls
+              />
               <div class="flex-1">
-                <div class="text-xs text-gray-500">已上传视频</div>
-                <el-button type="danger" size="small" @click="deleteVideo">
-                  <i class="fas fa-trash"></i> 删除
+                <div class="text-xs text-gray-500">
+                  已上传视频
+                </div>
+                <el-button
+                  type="danger"
+                  size="small"
+                  @click="deleteVideo"
+                >
+                  <i class="fas fa-trash" /> 删除
                 </el-button>
               </div>
             </div>
@@ -240,74 +341,91 @@
             :animation="200"
             handle=".drag-handle"
             item-key="id"
-            @end="handleImageDragEnd"
             class="image-grid mt-4"
+            @end="handleImageDragEnd"
           >
             <template #item="{ element: image }">
               <div
                 class="publish-to-h5-media-card"
               >
-              <!-- 视频显示 -->
-              <video
-                v-if="image.image_type === 'video'"
-                :src="formatImageUrl(image.image_url)"
-                class="publish-to-h5-media-thumb"
-                muted
-              ></video>
-              <!-- 图片显示 -->
-              <Image
-                v-else
-                :src="image.image_url"
-                alt="商品图片"
-                mode="eager"
-                class="publish-to-h5-media-thumb is-previewable"
-              />
+                <!-- 视频显示 -->
+                <video
+                  v-if="image.image_type === 'video'"
+                  :src="formatImageUrl(image.image_url)"
+                  class="publish-to-h5-media-thumb"
+                  muted
+                />
+                <!-- 图片显示 -->
+                <Image
+                  v-else
+                  :src="image.image_url"
+                  alt="商品图片"
+                  mode="eager"
+                  class="publish-to-h5-media-thumb is-previewable"
+                />
 
-              <!-- 拖拽手柄 - 左上角 -->
-              <div class="drag-handle drag-handle-absolute">
-                <i class="fas fa-grip-vertical text-white text-xs"></i>
-              </div>
+                <!-- 拖拽手柄 - 左上角 -->
+                <div class="drag-handle drag-handle-absolute">
+                  <i class="fas fa-grip-vertical text-white text-xs" />
+                </div>
 
-              <!-- 主图标记 - 左下角 -->
-              <div v-if="image.is_primary" class="image-primary-tag">
-                主图
-              </div>
-
-              <!-- 删除按钮 - 始终显示在右上角 -->
-              <div
-                @click.stop="deleteImage(image)"
-                class="image-delete-btn"
-              >
-                <i class="fas fa-times text-white text-xs"></i>
-              </div>
-
-              <!-- 设置主图按钮 - 悬停时显示 -->
-              <div class="image-actions">
+                <!-- 主图标记 - 左下角 -->
                 <div
-                  v-if="!image.is_primary && image.image_type !== 'video'"
-                  @click.stop="setPrimaryImage(image)"
-                  class="image-set-primary-btn"
+                  v-if="image.is_primary"
+                  class="image-primary-tag"
                 >
-                  <i class="fas fa-star text-danger text-sm"></i>
+                  主图
+                </div>
+
+                <!-- 删除按钮 - 始终显示在右上角 -->
+                <div
+                  class="image-delete-btn"
+                  @click.stop="deleteImage(image)"
+                >
+                  <i class="fas fa-times text-white text-xs" />
+                </div>
+
+                <!-- 设置主图按钮 - 悬停时显示 -->
+                <div class="image-actions">
+                  <div
+                    v-if="!image.is_primary && image.image_type !== 'video'"
+                    class="image-set-primary-btn"
+                    @click.stop="setPrimaryImage(image)"
+                  >
+                    <i class="fas fa-star text-danger text-sm" />
+                  </div>
+                </div>
+
+                <!-- 视频标记 -->
+                <div
+                  v-if="image.image_type === 'video'"
+                  class="image-badge"
+                >
+                  <i class="fas fa-video" />
+                  视频
                 </div>
               </div>
-
-              <!-- 视频标记 -->
-              <div v-if="image.image_type === 'video'" class="image-badge">
-                <i class="fas fa-video"></i>
-                视频
-              </div>
-            </div>
-          </template>
-        </draggable>
+            </template>
+          </draggable>
         </div>
       </el-form-item>
     </el-form>
 
     <template #footer>
       <div class="tf-dialog-actions publish-to-h5-footer">
-        <el-button type="default" @click="handleClose">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
+        <el-button
+          type="default"
+          @click="handleClose"
+        >
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          :loading="saving"
+          @click="handleSave"
+        >
+          保存
+        </el-button>
       </div>
     </template>
   </MobileDialog>
@@ -826,14 +944,14 @@ const previewUrl = (file: PendingUploadFile) => {
   return ensurePublishPendingFileUrl(file)
 }
 
-const openPendingImagePreview = (clickedIndex: number) => {
+const _openPendingImagePreview = (clickedIndex: number) => {
   const previewState = buildPublishPreviewStateFromPending(pendingFiles.value, clickedIndex)
   previewImageUrls.value = previewState.urls
   previewInitialIndex.value = previewState.initialIndex
   showImagePreview.value = previewState.urls.length > 0
 }
 
-const openUploadedImagePreview = (clickedImage: UploadedMediaItem) => {
+const _openUploadedImagePreview = (clickedImage: UploadedMediaItem) => {
   const previewState = buildPublishPreviewStateFromUploaded(images.value, clickedImage, formatImageUrl)
   previewImageUrls.value = previewState.urls
   previewInitialIndex.value = previewState.initialIndex
@@ -1127,7 +1245,7 @@ defineExpose({
 }
 
 .publish-to-h5-loading :deep(.inline-loading) {
-  color: #2563eb;
+  color: var(--tf-color-blue-600);
 }
 
 .publish-to-h5-form {
@@ -1183,14 +1301,14 @@ defineExpose({
   aspect-ratio: 1;
   border-radius: 8px;
   overflow: hidden;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--tf-color-neutral-200);
   cursor: move;
 }
 
 .publish-to-h5-media-card.is-pending {
   border-style: dashed;
-  border-color: #409eff;
-  background: #f0f9ff;
+  border-color: var(--color-primary);
+  background: var(--tf-color-blue-50);
 }
 
 .publish-to-h5-media-thumb {
@@ -1220,7 +1338,7 @@ defineExpose({
 
 :deep(.publish-to-h5-form .el-form-item__label) {
   font-weight: 600;
-  color: #4b5563;
+  color: var(--tf-color-neutral-600);
 }
 
 :deep(.publish-to-h5-form .publish-to-h5-control),

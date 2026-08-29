@@ -2,99 +2,99 @@
  * 菜单服务类
  * 处理所有菜单相关的业务逻辑
  */
-const { getDatabase } = require('../config/database');
-const XLSX = require('xlsx');
-const fs = require('fs');
-const log = require('../utils/log');
-const { getUploadsRoot } = require('../utils/upload-paths');
-const { validateSpreadsheetFile, sheetToJsonSafe } = require('../utils/spreadsheet-security');
+const { getDatabase } = require('../config/database')
+const XLSX = require('xlsx')
+const fs = require('fs')
+const log = require('../utils/log')
+const { getUploadsRoot } = require('../utils/upload-paths')
+const { validateSpreadsheetFile, readSpreadsheetFileSafe, sheetToJsonSafe } = require('../utils/spreadsheet-security')
 const {
   ensureIconSchema,
   ensureMenuIconSchema,
   iconJoinSelect,
   iconLeftJoin
-} = require('../utils/iconStore');
-const { hasColumn } = require('./schemaInspector.service');
+} = require('../utils/iconStore')
+const { hasColumn } = require('./schemaInspector.service')
 
 class MenuService {
   constructor() {
-    this.db = getDatabase();
+    this.db = getDatabase()
   }
 
   async syncBoundModuleName(menuId, moduleId, moduleKey, menuName) {
-    const normalizedName = String(menuName || '').trim();
+    const normalizedName = String(menuName || '').trim()
     if (!normalizedName || (!moduleId && !moduleKey)) {
-      return;
+      return
     }
 
     const [supportsCustomName, supportsOriginalName, supportsMenuId] = await Promise.all([
       hasColumn('modules', 'is_custom_name', this.db),
       hasColumn('modules', 'original_name', this.db),
       hasColumn('modules', 'menu_id', this.db)
-    ]);
+    ])
     const optionalFields = [
       supportsCustomName ? 'is_custom_name' : null,
       supportsOriginalName ? 'original_name' : null,
       supportsMenuId ? 'menu_id' : null
-    ].filter(Boolean);
-    const selectFields = ['id', '`key`', 'name', ...optionalFields].join(', ');
+    ].filter(Boolean)
+    const selectFields = ['id', '`key`', 'name', ...optionalFields].join(', ')
 
-    let modules = [];
+    let modules = []
     if (moduleId) {
       [modules] = await this.db.execute(
         `SELECT ${selectFields} FROM modules WHERE id = ? LIMIT 1`,
         [moduleId]
-      );
+      )
     }
 
     if (modules.length === 0 && moduleKey) {
       [modules] = await this.db.execute(
         `SELECT ${selectFields} FROM modules WHERE \`key\` = ? LIMIT 1`,
         [moduleKey]
-      );
+      )
     }
 
     if (modules.length === 0) {
-      return;
+      return
     }
 
-    const module = modules[0];
-    const updateFields = [];
-    const updateValues = [];
+    const module = modules[0]
+    const updateFields = []
+    const updateValues = []
 
     if (module.name !== normalizedName) {
-      updateFields.push('name = ?');
-      updateValues.push(normalizedName);
+      updateFields.push('name = ?')
+      updateValues.push(normalizedName)
     }
 
     // 名称即使暂时相同也必须标记保护，否则后续模块扫描仍可能恢复默认名称。
     if (supportsCustomName && Number(module.is_custom_name) !== 1) {
-      updateFields.push('is_custom_name = 1');
+      updateFields.push('is_custom_name = 1')
     }
 
     if (supportsOriginalName && module.name !== normalizedName) {
-      updateFields.push('original_name = COALESCE(original_name, ?)');
-      updateValues.push(module.original_name || module.name || normalizedName);
+      updateFields.push('original_name = COALESCE(original_name, ?)')
+      updateValues.push(module.original_name || module.name || normalizedName)
     }
 
     if (supportsMenuId && menuId && !module.menu_id) {
-      updateFields.push('menu_id = ?');
-      updateValues.push(menuId);
+      updateFields.push('menu_id = ?')
+      updateValues.push(menuId)
     }
 
     if (updateFields.length === 0) {
-      return;
+      return
     }
 
-    updateFields.push('updated_at = NOW()');
-    updateValues.push(module.id);
+    updateFields.push('updated_at = NOW()')
+    updateValues.push(module.id)
 
     await this.db.execute(
       `UPDATE modules SET ${updateFields.join(', ')} WHERE id = ?`,
       updateValues
-    );
+    )
 
-    log.debug(`✅ 已同步并保护菜单绑定模块名称: ${module.key} "${module.name}" -> "${normalizedName}"`);
+    log.debug(`✅ 已同步并保护菜单绑定模块名称: ${module.key} "${module.name}" -> "${normalizedName}"`)
   }
 
   /**
@@ -109,18 +109,18 @@ class MenuService {
         status,
         keyword,
         is_tree
-      } = filters;
+      } = filters
 
       if (is_tree) {
         // 返回树形结构
-        return await this.getMenuTree(menu_type, status, keyword);
+        return await this.getMenuTree(menu_type, status, keyword)
       } else {
         // 返回分页列表
-        return await this.getMenuListWithPagination(page, limit, menu_type, status, keyword);
+        return await this.getMenuListWithPagination(page, limit, menu_type, status, keyword)
       }
     } catch (error) {
-      log.error('获取菜单列表失败:', error);
-      return { success: false, message: '获取菜单列表失败', code: 'DATABASE_ERROR' };
+      log.error('获取菜单列表失败:', error)
+      return { success: false, message: '获取菜单列表失败', code: 'DATABASE_ERROR' }
     }
   }
 
@@ -130,12 +130,12 @@ class MenuService {
    */
   async getUserMenus(user) {
     try {
-      const UnifiedMenuService = require('./unifiedMenu.service');
-      const result = await UnifiedMenuService.getUserMenus({ user });
-      return result;
+      const UnifiedMenuService = require('./unifiedMenu.service')
+      const result = await UnifiedMenuService.getUserMenus({ user })
+      return result
     } catch (error) {
-      log.error('获取用户菜单失败:', error);
-      return { success: false, message: '获取用户菜单失败', code: 'DATABASE_ERROR' };
+      log.error('获取用户菜单失败:', error)
+      return { success: false, message: '获取用户菜单失败', code: 'DATABASE_ERROR' }
     }
   }
 
@@ -144,51 +144,51 @@ class MenuService {
    */
   async getMenuById(id) {
     try {
-      await ensureIconSchema(this.db);
+      await ensureIconSchema(this.db)
       const query = `
         SELECT ${iconJoinSelect('m', 'i')}
         FROM menus m
         ${iconLeftJoin('m', 'i')}
         WHERE m.id = ?
-      `;
-      const [menus] = await this.db.execute(query, [id]);
+      `
+      const [menus] = await this.db.execute(query, [id])
 
       if (menus.length === 0) {
-        return { success: false, message: '菜单不存在', code: 'NOT_FOUND' };
+        return { success: false, message: '菜单不存在', code: 'NOT_FOUND' }
       }
 
       return {
         success: true,
         message: '获取菜单详情成功',
         data: menus[0]
-      };
+      }
     } catch (error) {
-      log.error('获取菜单详情失败:', error);
-      return { success: false, message: '获取菜单详情失败', code: 'DATABASE_ERROR' };
+      log.error('获取菜单详情失败:', error)
+      return { success: false, message: '获取菜单详情失败', code: 'DATABASE_ERROR' }
     }
   }
 
   /**
    * 创建菜单
    */
-  async createMenu(menuData, user) {
+  async createMenu(menuData, _user) {
     try {
-      await ensureMenuIconSchema(this.db);
+      await ensureMenuIconSchema(this.db)
 
       // 验证数据
-      const validation = this.validateMenuData(menuData, false);
+      const validation = this.validateMenuData(menuData, false)
       if (!validation.valid) {
-        return { success: false, message: validation.message, code: 'VALIDATION_ERROR' };
+        return { success: false, message: validation.message, code: 'VALIDATION_ERROR' }
       }
 
       // 检查菜单名称是否重复
       const [existingMenu] = await this.db.execute(
         'SELECT id FROM menus WHERE name = ?',
         [menuData.name]
-      );
+      )
 
       if (existingMenu.length > 0) {
-        return { success: false, message: '菜单名称已存在', code: 'DUPLICATE_NAME' };
+        return { success: false, message: '菜单名称已存在', code: 'DUPLICATE_NAME' }
       }
 
       // 如果有父菜单，检查父菜单是否存在
@@ -196,25 +196,25 @@ class MenuService {
         const [parentMenu] = await this.db.execute(
           'SELECT id FROM menus WHERE id = ?',
           [menuData.parent_id]
-        );
+        )
 
         if (parentMenu.length === 0) {
-          return { success: false, message: '父菜单不存在', code: 'PARENT_NOT_FOUND' };
+          return { success: false, message: '父菜单不存在', code: 'PARENT_NOT_FOUND' }
         }
       }
 
       // 处理模块关联
-      let moduleId = menuData.module_id || null;
-      let moduleKey = menuData.module_key || null;
+      let moduleId = menuData.module_id || null
+      let moduleKey = menuData.module_key || null
 
       // 如果指定了 module_key 但没有 module_id，自动查找
       if (moduleKey && !moduleId) {
         const [moduleResult] = await this.db.execute(
           'SELECT id FROM modules WHERE `key` = ?',
           [moduleKey]
-        );
+        )
         if (moduleResult.length > 0) {
-          moduleId = moduleResult[0].id;
+          moduleId = moduleResult[0].id
         }
       }
 
@@ -223,9 +223,9 @@ class MenuService {
         const [moduleResult] = await this.db.execute(
           'SELECT `key` FROM modules WHERE id = ?',
           [moduleId]
-        );
+        )
         if (moduleResult.length > 0) {
-          moduleKey = moduleResult[0].key;
+          moduleKey = moduleResult[0].key
         }
       }
 
@@ -235,7 +235,7 @@ class MenuService {
           parent_id, name, url, icon, sort_order,
           menu_type, target, remarks, is_active, module_id, module_key
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `;
+      `
 
       const [result] = await this.db.execute(insertQuery, [
         menuData.parent_id !== undefined ? menuData.parent_id : 0,
@@ -249,42 +249,42 @@ class MenuService {
         menuData.is_active !== false ? 1 : 0,
         moduleId,
         moduleKey
-      ]);
+      ])
 
-      await this.syncBoundModuleName(result.insertId, moduleId, moduleKey, menuData.name);
+      await this.syncBoundModuleName(result.insertId, moduleId, moduleKey, menuData.name)
 
       return {
         success: true,
         message: '创建菜单成功',
         data: { id: result.insertId, ...menuData }
-      };
+      }
     } catch (error) {
-      log.error('创建菜单失败:', error);
-      return { success: false, message: '创建菜单失败', code: 'DATABASE_ERROR' };
+      log.error('创建菜单失败:', error)
+      return { success: false, message: '创建菜单失败', code: 'DATABASE_ERROR' }
     }
   }
 
   /**
    * 更新菜单
    */
-  async updateMenu(id, menuData, user) {
+  async updateMenu(id, menuData, _user) {
     try {
-      await ensureMenuIconSchema(this.db);
+      await ensureMenuIconSchema(this.db)
 
       // 验证数据
-      const validation = this.validateMenuData(menuData, true);
+      const validation = this.validateMenuData(menuData, true)
       if (!validation.valid) {
-        return { success: false, message: validation.message, code: 'VALIDATION_ERROR' };
+        return { success: false, message: validation.message, code: 'VALIDATION_ERROR' }
       }
 
       // 检查菜单是否存在
       const [existingMenu] = await this.db.execute(
         'SELECT * FROM menus WHERE id = ?',
         [id]
-      );
+      )
 
       if (existingMenu.length === 0) {
-        return { success: false, message: '菜单不存在', code: 'NOT_FOUND' };
+        return { success: false, message: '菜单不存在', code: 'NOT_FOUND' }
       }
 
       // 检查菜单名称是否重复（排除自己）
@@ -292,16 +292,16 @@ class MenuService {
         const [duplicateMenu] = await this.db.execute(
           'SELECT id FROM menus WHERE name = ? AND id != ?',
           [menuData.name, id]
-        );
+        )
 
         if (duplicateMenu.length > 0) {
-          return { success: false, message: '菜单名称已存在', code: 'DUPLICATE_NAME' };
+          return { success: false, message: '菜单名称已存在', code: 'DUPLICATE_NAME' }
         }
       }
 
       // 检查是否设置了自己为父菜单
-      if (menuData.parent_id && menuData.parent_id == id) {
-        return { success: false, message: '不能设置自己为父菜单', code: 'INVALID_PARENT' };
+      if (menuData.parent_id && Number(menuData.parent_id) === Number(id)) {
+        return { success: false, message: '不能设置自己为父菜单', code: 'INVALID_PARENT' }
       }
 
       // 检查父菜单是否存在
@@ -309,25 +309,25 @@ class MenuService {
         const [parentMenu] = await this.db.execute(
           'SELECT id FROM menus WHERE id = ?',
           [menuData.parent_id]
-        );
+        )
 
         if (parentMenu.length === 0) {
-          return { success: false, message: '父菜单不存在', code: 'PARENT_NOT_FOUND' };
+          return { success: false, message: '父菜单不存在', code: 'PARENT_NOT_FOUND' }
         }
       }
 
       // 处理模块关联
-      let moduleId = menuData.module_id !== undefined ? menuData.module_id : existingMenu[0].module_id;
-      let moduleKey = menuData.module_key !== undefined ? menuData.module_key : existingMenu[0].module_key;
+      let moduleId = menuData.module_id !== undefined ? menuData.module_id : existingMenu[0].module_id
+      let moduleKey = menuData.module_key !== undefined ? menuData.module_key : existingMenu[0].module_key
 
       // 如果只提供了 module_key，自动查找 module_id
       if (moduleKey && !moduleId) {
         const [moduleResult] = await this.db.execute(
           'SELECT id FROM modules WHERE `key` = ?',
           [moduleKey]
-        );
+        )
         if (moduleResult.length > 0) {
-          moduleId = moduleResult[0].id;
+          moduleId = moduleResult[0].id
         }
       }
 
@@ -336,9 +336,9 @@ class MenuService {
         const [moduleResult] = await this.db.execute(
           'SELECT `key` FROM modules WHERE id = ?',
           [moduleId]
-        );
+        )
         if (moduleResult.length > 0) {
-          moduleKey = moduleResult[0].key;
+          moduleKey = moduleResult[0].key
         }
       }
 
@@ -348,10 +348,10 @@ class MenuService {
           parent_id = ?, name = ?, url = ?, icon = ?, sort_order = ?,
           menu_type = ?, target = ?, remarks = ?, is_active = ?, module_id = ?, module_key = ?
         WHERE id = ?
-      `;
+      `
 
       // 确保所有参数都不是 undefined，使用 ?? 运算符提供 null 默认值
-      const nextMenuName = menuData.name ?? existingMenu[0].name;
+      const nextMenuName = menuData.name ?? existingMenu[0].name
       await this.db.execute(updateQuery, [
         menuData.parent_id !== undefined ? menuData.parent_id : existingMenu[0].parent_id,
         nextMenuName,
@@ -365,57 +365,57 @@ class MenuService {
         moduleId,
         moduleKey,
         id
-      ]);
+      ])
 
-      await this.syncBoundModuleName(id, moduleId, moduleKey, nextMenuName);
+      await this.syncBoundModuleName(id, moduleId, moduleKey, nextMenuName)
 
       return {
         success: true,
         message: '更新菜单成功',
         data: { id: parseInt(id), ...menuData }
-      };
+      }
     } catch (error) {
-      log.error('更新菜单失败:', error);
-      return { success: false, message: '更新菜单失败', code: 'DATABASE_ERROR' };
+      log.error('更新菜单失败:', error)
+      return { success: false, message: '更新菜单失败', code: 'DATABASE_ERROR' }
     }
   }
 
   /**
    * 删除菜单
    */
-  async deleteMenu(id, user) {
+  async deleteMenu(id, _user) {
     try {
       // 检查菜单是否存在
       const [existingMenu] = await this.db.execute(
         'SELECT * FROM menus WHERE id = ?',
         [id]
-      );
+      )
 
       if (existingMenu.length === 0) {
-        return { success: false, message: '菜单不存在', code: 'NOT_FOUND' };
+        return { success: false, message: '菜单不存在', code: 'NOT_FOUND' }
       }
 
       // 检查是否有子菜单
       const [children] = await this.db.execute(
         'SELECT id FROM menus WHERE parent_id = ?',
         [id]
-      );
+      )
 
       if (children.length > 0) {
-        return { success: false, message: '请先删除子菜单', code: 'HAS_CHILDREN' };
+        return { success: false, message: '请先删除子菜单', code: 'HAS_CHILDREN' }
       }
 
       // 真正删除菜单
-      await this.db.execute('DELETE FROM menus WHERE id = ?', [id]);
+      await this.db.execute('DELETE FROM menus WHERE id = ?', [id])
 
       return {
         success: true,
         message: '删除菜单成功',
         data: { id: parseInt(id) }
-      };
+      }
     } catch (error) {
-      log.error('删除菜单失败:', error);
-      return { success: false, message: '删除菜单失败', code: 'DATABASE_ERROR' };
+      log.error('删除菜单失败:', error)
+      return { success: false, message: '删除菜单失败', code: 'DATABASE_ERROR' }
     }
   }
 
@@ -428,122 +428,122 @@ class MenuService {
         SELECT id, name, parent_id
         FROM menus
         WHERE (menu_type = 'menu' OR menu_type = 'directory')
-      `;
+      `
 
-      const params = [];
+      const params = []
       if (menuType) {
-        query += ' AND menu_type = ?';
-        params.push(menuType);
+        query += ' AND menu_type = ?'
+        params.push(menuType)
       }
 
-      query += ' ORDER BY sort_order ASC, id ASC';
+      query += ' ORDER BY sort_order ASC, id ASC'
 
-      const [menus] = await this.db.execute(query, params);
+      const [menus] = await this.db.execute(query, params)
 
       // 构建选项树
-      const options = this.buildMenuOptions(menus);
+      const options = this.buildMenuOptions(menus)
 
       return {
         success: true,
         message: '获取父菜单选项成功',
         data: options
-      };
+      }
     } catch (error) {
-      log.error('获取父菜单选项失败:', error);
-      return { success: false, message: '获取父菜单选项失败', code: 'DATABASE_ERROR' };
+      log.error('获取父菜单选项失败:', error)
+      return { success: false, message: '获取父菜单选项失败', code: 'DATABASE_ERROR' }
     }
   }
 
   /**
    * 更新菜单状态
    */
-  async updateMenuStatus(id, status, user) {
+  async updateMenuStatus(id, status, _user) {
     try {
       const [existingMenu] = await this.db.execute(
         'SELECT * FROM menus WHERE id = ?',
         [id]
-      );
+      )
 
       if (existingMenu.length === 0) {
-        return { success: false, message: '菜单不存在', code: 'NOT_FOUND' };
+        return { success: false, message: '菜单不存在', code: 'NOT_FOUND' }
       }
 
       await this.db.execute(
         'UPDATE menus SET is_active = ? WHERE id = ?',
         [status ? 1 : 0, id]
-      );
+      )
 
       return {
         success: true,
         message: '更新菜单状态成功',
         data: { id: parseInt(id), is_active: status ? 1 : 0, status: status ? 1 : 0 }
-      };
+      }
     } catch (error) {
-      log.error('更新菜单状态失败:', error);
-      return { success: false, message: '更新菜单状态失败', code: 'DATABASE_ERROR' };
+      log.error('更新菜单状态失败:', error)
+      return { success: false, message: '更新菜单状态失败', code: 'DATABASE_ERROR' }
     }
   }
 
   /**
    * 批量更新菜单排序
    */
-  async updateMenuSort(menuSorts, user) {
+  async updateMenuSort(menuSorts, _user) {
     try {
-      const connection = await this.db.getConnection();
+      const connection = await this.db.getConnection()
 
       try {
-        await connection.beginTransaction();
+        await connection.beginTransaction()
 
         for (const item of menuSorts) {
           await connection.execute(
             'UPDATE menus SET sort_order = ?, updated_at = NOW() WHERE id = ?',
             [item.sort_order, item.id]
-          );
+          )
         }
 
-        await connection.commit();
+        await connection.commit()
 
         return {
           success: true,
           message: '更新菜单排序成功',
           data: { updatedCount: menuSorts.length }
-        };
+        }
       } catch (error) {
-        await connection.rollback();
-        throw error;
+        await connection.rollback()
+        throw error
       } finally {
-        connection.release();
+        connection.release()
       }
     } catch (error) {
-      log.error('更新菜单排序失败:', error);
-      return { success: false, message: '更新菜单排序失败', code: 'DATABASE_ERROR' };
+      log.error('更新菜单排序失败:', error)
+      return { success: false, message: '更新菜单排序失败', code: 'DATABASE_ERROR' }
     }
   }
 
   /**
    * 复制菜单
    */
-  async copyMenu(id, { title, name }, user) {
+  async copyMenu(id, { title, name }, _user) {
     try {
       const [existingMenu] = await this.db.execute(
         'SELECT * FROM menus WHERE id = ?',
         [id]
-      );
+      )
 
       if (existingMenu.length === 0) {
-        return { success: false, message: '菜单不存在', code: 'NOT_FOUND' };
+        return { success: false, message: '菜单不存在', code: 'NOT_FOUND' }
       }
 
-      const menu = existingMenu[0];
+      const menu = existingMenu[0]
 
       // 检查新名称是否重复
       const [duplicateMenu] = await this.db.execute(
         'SELECT id FROM menus WHERE name = ?',
         [name]
-      );
+      )
 
       if (duplicateMenu.length > 0) {
-        return { success: false, message: '菜单名称已存在', code: 'DUPLICATE_NAME' };
+        return { success: false, message: '菜单名称已存在', code: 'DUPLICATE_NAME' }
       }
 
       // 复制菜单
@@ -553,7 +553,7 @@ class MenuService {
           sort_order, menu_type, is_hidden, is_cache, is_affix,
           is_external, permission, remark, is_active
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `;
+      `
 
       const [result] = await this.db.execute(insertQuery, [
         menu.parent_id,
@@ -572,16 +572,16 @@ class MenuService {
         menu.permission,
         `复制自: ${menu.remark || menu.title}`,
         menu.is_active
-      ]);
+      ])
 
       return {
         success: true,
         message: '复制菜单成功',
         data: { id: result.insertId, name, title }
-      };
+      }
     } catch (error) {
-      log.error('复制菜单失败:', error);
-      return { success: false, message: '复制菜单失败', code: 'DATABASE_ERROR' };
+      log.error('复制菜单失败:', error)
+      return { success: false, message: '复制菜单失败', code: 'DATABASE_ERROR' }
     }
   }
 
@@ -599,16 +599,16 @@ class MenuService {
           COUNT(CASE WHEN is_active = 1 THEN 1 END) as active_count,
           COUNT(CASE WHEN is_hidden = 1 THEN 1 END) as hidden_count
         FROM menus
-      `);
+      `)
 
       return {
         success: true,
         message: '获取菜单统计信息成功',
         data: stats[0]
-      };
+      }
     } catch (error) {
-      log.error('获取菜单统计信息失败:', error);
-      return { success: false, message: '获取菜单统计信息失败', code: 'DATABASE_ERROR' };
+      log.error('获取菜单统计信息失败:', error)
+      return { success: false, message: '获取菜单统计信息失败', code: 'DATABASE_ERROR' }
     }
   }
 
@@ -617,32 +617,32 @@ class MenuService {
    */
   async getMenuListWithPagination(page, limit, menu_type, status, keyword) {
     try {
-      await ensureIconSchema(this.db);
-      const offset = (page - 1) * limit;
-      let whereClause = 'WHERE 1=1';
-      const params = [];
+      await ensureIconSchema(this.db)
+      const offset = (page - 1) * limit
+      let whereClause = 'WHERE 1=1'
+      const params = []
 
       if (menu_type) {
-        whereClause += ' AND m.menu_type = ?';
-        params.push(menu_type);
+        whereClause += ' AND m.menu_type = ?'
+        params.push(menu_type)
       }
 
       if (status !== undefined) {
-        whereClause += ' AND m.is_active = ?';
-        params.push(status ? 1 : 0);
+        whereClause += ' AND m.is_active = ?'
+        params.push(status ? 1 : 0)
       }
 
       if (keyword) {
-        whereClause += ' AND (m.title LIKE ? OR m.name LIKE ? OR m.path LIKE ?)';
-        params.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`);
+        whereClause += ' AND (m.title LIKE ? OR m.name LIKE ? OR m.path LIKE ?)'
+        params.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`)
       }
 
       // 获取总数
       const [countResult] = await this.db.execute(
         `SELECT COUNT(*) as total FROM menus m ${whereClause}`,
         params
-      );
-      const total = countResult[0].total;
+      )
+      const total = countResult[0].total
 
       // 获取数据
       const [menus] = await this.db.execute(
@@ -653,7 +653,7 @@ class MenuService {
          ORDER BY m.sort_order ASC, m.id ASC
          LIMIT ? OFFSET ?`,
         [...params, limit, offset]
-      );
+      )
 
       return {
         success: true,
@@ -667,10 +667,10 @@ class MenuService {
             pages: Math.ceil(total / limit)
           }
         }
-      };
+      }
     } catch (error) {
-      log.error('获取分页菜单列表失败:', error);
-      throw error;
+      log.error('获取分页菜单列表失败:', error)
+      throw error
     }
   }
 
@@ -679,44 +679,44 @@ class MenuService {
    */
   async getMenuTree(menu_type, status, keyword) {
     try {
-      await ensureIconSchema(this.db);
+      await ensureIconSchema(this.db)
       let query = `
         SELECT ${iconJoinSelect('m', 'i')}
         FROM menus m
         ${iconLeftJoin('m', 'i')}
         WHERE 1=1
-      `;
-      const params = [];
+      `
+      const params = []
 
       if (menu_type) {
-        query += ' AND m.menu_type = ?';
-        params.push(menu_type);
+        query += ' AND m.menu_type = ?'
+        params.push(menu_type)
       }
 
       if (status !== undefined) {
-        query += ' AND m.is_active = ?';
-        params.push(status ? 1 : 0);
+        query += ' AND m.is_active = ?'
+        params.push(status ? 1 : 0)
       }
 
       if (keyword) {
-        query += ' AND (m.title LIKE ? OR m.name LIKE ?)';
-        params.push(`%${keyword}%`, `%${keyword}%`);
+        query += ' AND (m.title LIKE ? OR m.name LIKE ?)'
+        params.push(`%${keyword}%`, `%${keyword}%`)
       }
 
-      query += ' ORDER BY m.sort_order ASC, m.id ASC';
+      query += ' ORDER BY m.sort_order ASC, m.id ASC'
 
-      const [menus] = await this.db.execute(query, params);
+      const [menus] = await this.db.execute(query, params)
 
-      const menuTree = this.buildMenuTree(menus);
+      const menuTree = this.buildMenuTree(menus)
 
       return {
         success: true,
         message: '获取菜单树成功',
         data: menuTree
-      };
+      }
     } catch (error) {
-      log.error('获取菜单树失败:', error);
-      throw error;
+      log.error('获取菜单树失败:', error)
+      throw error
     }
   }
 
@@ -724,36 +724,36 @@ class MenuService {
    * 构建菜单树
    */
   buildMenuTree(menus) {
-    const menuMap = {};
-    const rootMenus = [];
+    const menuMap = {}
+    const rootMenus = []
 
     // 建立菜单映射
     menus.forEach(menu => {
-      menuMap[menu.id] = { ...menu, children: [] };
-    });
+      menuMap[menu.id] = { ...menu, children: [] }
+    })
 
     // 构建树形结构
     menus.forEach(menu => {
       // parent_id 为 null 或 0 表示根菜单
       if (menu.parent_id === null || menu.parent_id === 0) {
-        rootMenus.push(menuMap[menu.id]);
+        rootMenus.push(menuMap[menu.id])
       } else {
-        const parent = menuMap[menu.parent_id];
+        const parent = menuMap[menu.parent_id]
         if (parent) {
-          parent.children.push(menuMap[menu.id]);
+          parent.children.push(menuMap[menu.id])
         }
       }
-    });
+    })
 
-    return rootMenus;
+    return rootMenus
   }
 
   /**
    * 构建菜单选项
    */
   buildMenuOptions(menus) {
-    const menuMap = {};
-    const rootOptions = [];
+    const menuMap = {}
+    const rootOptions = []
 
     // 建立菜单映射
     menus.forEach(menu => {
@@ -761,22 +761,22 @@ class MenuService {
         value: menu.id,
         label: menu.title,
         children: []
-      };
-    });
+      }
+    })
 
     // 构建树形结构
     menus.forEach(menu => {
       if (menu.parent_id === null) {
-        rootOptions.push(menuMap[menu.id]);
+        rootOptions.push(menuMap[menu.id])
       } else {
-        const parent = menuMap[menu.parent_id];
+        const parent = menuMap[menu.parent_id]
         if (parent) {
-          parent.children.push(menuMap[menu.id]);
+          parent.children.push(menuMap[menu.id])
         }
       }
-    });
+    })
 
-    return rootOptions;
+    return rootOptions
   }
 
   /**
@@ -785,43 +785,43 @@ class MenuService {
   validateMenuData(data, isUpdate = false) {
     if (!isUpdate) {
       if (!data.name || !data.name.trim()) {
-        return { valid: false, message: '菜单名称不能为空' };
+        return { valid: false, message: '菜单名称不能为空' }
       }
 
       // 放宽验证规则: 允许中文、英文、数字、下划线、横线和中文标点
       // 只要不为空且长度在合理范围内即可
       if (data.name.length > 100) {
-        return { valid: false, message: '菜单名称长度不能超过100个字符' };
+        return { valid: false, message: '菜单名称长度不能超过100个字符' }
       }
 
       // 检查是否包含特殊字符(只允许中文、英文、数字、下划线、横线、空格、括号、斜杠)
       if (!/^[\u4e00-\u9fa5a-zA-Z0-9_\-/()\s]*$/.test(data.name)) {
-        return { valid: false, message: '菜单名称只能包含中文、英文、数字、下划线、横线、括号和斜杠' };
+        return { valid: false, message: '菜单名称只能包含中文、英文、数字、下划线、横线、括号和斜杠' }
       }
     }
 
     if (data.title && !data.title.trim()) {
-      return { valid: false, message: '菜单标题不能为空' };
+      return { valid: false, message: '菜单标题不能为空' }
     }
 
     if (data.menu_type && !['menu', 'button', 'directory'].includes(data.menu_type)) {
-      return { valid: false, message: '菜单类型无效' };
+      return { valid: false, message: '菜单类型无效' }
     }
 
     if (data.icon && String(data.icon).trim().length > 255) {
-      return { valid: false, message: '菜单图标长度不能超过255个字符' };
+      return { valid: false, message: '菜单图标长度不能超过255个字符' }
     }
 
     if (data.sort_order !== undefined && (data.sort_order < 0 || !Number.isInteger(data.sort_order))) {
-      return { valid: false, message: '排序顺序必须是非负整数' };
+      return { valid: false, message: '排序顺序必须是非负整数' }
     }
 
-    return { valid: true };
+    return { valid: true }
   }
 
   async exportMenus(filters = {}) {
     try {
-      const { menu_type, status, keyword } = filters;
+      const { menu_type, status, keyword } = filters
       let query = `
         SELECT
           m.id,
@@ -840,27 +840,27 @@ class MenuService {
         FROM menus m
         LEFT JOIN menus p ON m.parent_id = p.id
         WHERE 1 = 1
-      `;
-      const params = [];
+      `
+      const params = []
 
       if (menu_type) {
-        query += ' AND m.menu_type = ?';
-        params.push(menu_type);
+        query += ' AND m.menu_type = ?'
+        params.push(menu_type)
       }
 
       if (status !== undefined && status !== null && status !== '') {
-        query += ' AND m.is_active = ?';
-        params.push(Number(status) ? 1 : 0);
+        query += ' AND m.is_active = ?'
+        params.push(Number(status) ? 1 : 0)
       }
 
       if (keyword) {
-        query += ' AND (m.name LIKE ? OR m.url LIKE ?)';
-        params.push(`%${keyword}%`, `%${keyword}%`);
+        query += ' AND (m.name LIKE ? OR m.url LIKE ?)'
+        params.push(`%${keyword}%`, `%${keyword}%`)
       }
 
-      query += ' ORDER BY COALESCE(m.parent_id, 0), m.sort_order ASC, m.id ASC';
+      query += ' ORDER BY COALESCE(m.parent_id, 0), m.sort_order ASC, m.id ASC'
 
-      const [menus] = await this.db.execute(query, params);
+      const [menus] = await this.db.execute(query, params)
       const rows = menus.map((item) => ({
         ID: item.id,
         父级ID: item.parent_id || 0,
@@ -875,44 +875,44 @@ class MenuService {
         备注: item.remarks || '',
         模块KEY: item.module_key || '',
         模块ID: item.module_id || ''
-      }));
+      }))
 
-      const worksheet = XLSX.utils.json_to_sheet(rows);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, '菜单管理');
+      const worksheet = XLSX.utils.json_to_sheet(rows)
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, '菜单管理')
 
       return {
         success: true,
         message: '导出菜单成功',
         data: XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' })
-      };
+      }
     } catch (error) {
-      log.error('导出菜单失败:', error);
-      return { success: false, message: '导出菜单失败', code: 'DATABASE_ERROR' };
+      log.error('导出菜单失败:', error)
+      return { success: false, message: '导出菜单失败', code: 'DATABASE_ERROR' }
     }
   }
 
   async importMenus(file) {
-    let cleanupError = null;
+    let cleanupError = null
 
     try {
-      const safeFilePath = validateSpreadsheetFile(file.path, { rootPath: getUploadsRoot() });
-      const workbook = XLSX.readFile(safeFilePath);
-      const sheetName = workbook.SheetNames[0];
-      const rows = sheetToJsonSafe(workbook.Sheets[sheetName], { defval: '' });
+      const safeFilePath = validateSpreadsheetFile(file.path, { rootPath: getUploadsRoot() })
+      const workbook = readSpreadsheetFileSafe(safeFilePath)
+      const sheetName = workbook.SheetNames[0]
+      const rows = sheetToJsonSafe(workbook.Sheets[sheetName], { defval: '' })
 
       if (!Array.isArray(rows) || rows.length === 0) {
-        return { success: false, message: '导入文件没有有效数据', code: 'INVALID_FILE' };
+        return { success: false, message: '导入文件没有有效数据', code: 'INVALID_FILE' }
       }
 
-      const [existingMenus] = await this.db.execute('SELECT id, name FROM menus');
-      const menuNameMap = new Map(existingMenus.map(item => [String(item.name), item.id]));
+      const [existingMenus] = await this.db.execute('SELECT id, name FROM menus')
+      const menuNameMap = new Map(existingMenus.map(item => [String(item.name), item.id]))
       const normalizedRows = rows.map((row) => {
-        const name = String(row['菜单名称'] || row['name'] || '').trim();
-        const explicitId = row['ID'] !== '' && row['ID'] !== undefined ? Number(row['ID']) : null;
-        const parentIdCell = row['父级ID'] !== '' && row['父级ID'] !== undefined ? Number(row['父级ID']) : null;
-        const hasExplicitParentId = Number.isInteger(parentIdCell);
-        const parentName = String(row['父级菜单'] || '').trim();
+        const name = String(row['菜单名称'] || row['name'] || '').trim()
+        const explicitId = row['ID'] !== '' && row['ID'] !== undefined ? Number(row['ID']) : null
+        const parentIdCell = row['父级ID'] !== '' && row['父级ID'] !== undefined ? Number(row['父级ID']) : null
+        const hasExplicitParentId = Number.isInteger(parentIdCell)
+        const parentName = String(row['父级菜单'] || '').trim()
 
         return {
           name,
@@ -935,14 +935,14 @@ class MenuService {
             module_key: String(row['模块KEY'] || '').trim() || null,
             module_id: row['模块ID'] !== '' && row['模块ID'] !== undefined ? Number(row['模块ID']) || null : null
           }
-        };
-      }).filter((row) => row.name);
-      let importedCount = 0;
-      let updatedCount = 0;
-      const importedTargets = [];
+        }
+      }).filter((row) => row.name)
+      let importedCount = 0
+      let updatedCount = 0
+      const importedTargets = []
 
       for (const row of normalizedRows) {
-        const targetId = row.explicitId || menuNameMap.get(row.name);
+        const targetId = row.explicitId || menuNameMap.get(row.name)
 
         if (targetId) {
           await this.db.execute(
@@ -963,10 +963,10 @@ class MenuService {
               row.payload.module_id,
               targetId
             ]
-          );
-          menuNameMap.set(row.name, targetId);
-          updatedCount += 1;
-          importedTargets.push({ ...row, targetId });
+          )
+          menuNameMap.set(row.name, targetId)
+          updatedCount += 1
+          importedTargets.push({ ...row, targetId })
         } else {
           const [insertResult] = await this.db.execute(
             `INSERT INTO menus (
@@ -985,27 +985,27 @@ class MenuService {
               row.payload.module_key,
               row.payload.module_id
             ]
-          );
-          menuNameMap.set(row.name, insertResult.insertId);
-          importedCount += 1;
-          importedTargets.push({ ...row, targetId: insertResult.insertId });
+          )
+          menuNameMap.set(row.name, insertResult.insertId)
+          importedCount += 1
+          importedTargets.push({ ...row, targetId: insertResult.insertId })
         }
       }
 
       for (const row of importedTargets) {
         if (row.hasExplicitParentId || !row.parentName || !row.targetId) {
-          continue;
+          continue
         }
 
-        const resolvedParentId = menuNameMap.get(row.parentName) || 0;
+        const resolvedParentId = menuNameMap.get(row.parentName) || 0
         if (resolvedParentId === row.targetId || resolvedParentId === row.payload.parent_id) {
-          continue;
+          continue
         }
 
         await this.db.execute(
           'UPDATE menus SET parent_id = ?, updated_at = NOW() WHERE id = ?',
           [resolvedParentId, row.targetId]
-        );
+        )
       }
 
       return {
@@ -1016,24 +1016,24 @@ class MenuService {
           updated: updatedCount,
           total: importedCount + updatedCount
         }
-      };
+      }
     } catch (error) {
-      log.error('导入菜单失败:', error);
-      return { success: false, message: '导入菜单失败', code: 'INVALID_FILE' };
+      log.error('导入菜单失败:', error)
+      return { success: false, message: '导入菜单失败', code: 'INVALID_FILE' }
     } finally {
       try {
         if (file?.path && fs.existsSync(file.path)) {
-          fs.unlinkSync(file.path);
+          fs.unlinkSync(file.path)
         }
       } catch (error) {
-        cleanupError = error;
+        cleanupError = error
       }
 
       if (cleanupError) {
-        log.warn('清理菜单导入临时文件失败:', cleanupError.message);
+        log.warn('清理菜单导入临时文件失败:', cleanupError.message)
       }
     }
   }
 }
 
-module.exports = MenuService;
+module.exports = MenuService

@@ -1,10 +1,16 @@
 <template>
   <div class="admin-container">
     <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link
+      rel="stylesheet"
+      href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    >
 
     <!-- 屏幕锁定覆盖层 -->
-    <ScreenLock :isLocked="isLocked" @update:isLocked="handleLockStateChange" />
+    <ScreenLock
+      :is-locked="isLocked"
+      @update:is-locked="handleLockStateChange"
+    />
 
     <div class="admin-layout">
       <!-- 桌面端侧边栏 - 仅在非移动端显示 -->
@@ -12,8 +18,8 @@
         v-if="!isMobile"
         :collapsed="sidebarCollapsed"
         :menu-items="menuItems"
-        @menu-click="handleMenuNavigation"
         class="sidebar-component"
+        @menu-click="handleMenuNavigation"
       />
 
       <!-- 移动端响应式菜单 - 仅在移动端显示 -->
@@ -34,24 +40,35 @@
       <ReminderHost />
 
       <!-- 主内容区域 -->
-      <div class="main-content" :class="{ expanded: sidebarCollapsed }">
+      <div
+        class="main-content"
+        :class="{ expanded: sidebarCollapsed }"
+      >
         <!-- 顶部栏 -->
-        <header class="topbar" :class="{ scrolled: isScrolled }">
+        <header
+          class="topbar"
+          :class="{ scrolled: isScrolled }"
+        >
           <div class="header-left">
             <!-- 多标签页 - 仅PC端显示 -->
             <TabsBar v-if="!isMobile" />
           </div>
           <div class="topbar-actions">
             <!-- 用户信息显示 -->
-            <div class="user-info" v-if="isAuthenticated">
+            <div
+              v-if="isAuthenticated"
+              class="user-info"
+            >
               <!-- 用户头像放在最前面 -->
               <div class="user-avatar">
-                <i class="fas fa-user-circle"></i>
+                <i class="fas fa-user-circle" />
               </div>
 
               <!-- 用户信息区域：姓名和角色 -->
               <div class="user-main-info">
-                <div class="user-name">{{ authUser?.name || authUser?.username || '未知用户' }}</div>
+                <div class="user-name">
+                  {{ authUser?.name || authUser?.username || '未知用户' }}
+                </div>
                 <span class="user-role">{{ userRoleText }}</span>
               </div>
 
@@ -64,12 +81,20 @@
             </div>
             <div class="topbar-buttons">
               <!-- 屏幕锁定按钮 -->
-              <button class="btn tf-button--topbar tf-button--manage btn-lock" @click="toggleScreenLock" :title="isLocked ? '解锁屏幕' : '锁定屏幕'">
-                <i :class="isLocked ? 'fas fa-unlock' : 'fas fa-lock'"></i>
+              <button
+                class="btn tf-button--topbar tf-button--manage btn-lock"
+                :title="isLocked ? '解锁屏幕' : '锁定屏幕'"
+                @click="toggleScreenLock"
+              >
+                <i :class="isLocked ? 'fas fa-unlock' : 'fas fa-lock'" />
                 <span>{{ isLocked ? '解锁' : '锁定' }}</span>
               </button>
-              <button class="btn tf-button--topbar tf-button--danger logout-btn" @click="handleLogout" title="退出登录">
-                <i class="fas fa-power-off"></i>
+              <button
+                class="btn tf-button--topbar tf-button--danger logout-btn"
+                title="退出登录"
+                @click="handleLogout"
+              >
+                <i class="fas fa-power-off" />
                 <span class="btn-text">退出登录</span>
               </button>
             </div>
@@ -77,13 +102,16 @@
         </header>
 
         <!-- 内容区域 -->
-        <div class="content-area" ref="contentAreaRef">
+        <div
+          ref="contentAreaRef"
+          class="content-area"
+        >
           <!-- 已打开标签页保持组件实例，切换页面不重载；只有手动刷新当前标签时才重建当前页面 -->
           <router-view v-slot="{ Component, route: viewRoute }">
             <KeepAlive :max="12">
               <component
-                v-if="!isRefreshingCurrentRoute(viewRoute.path)"
                 :is="Component"
+                v-if="!isRefreshingCurrentRoute(viewRoute.path)"
                 :key="getRouteCacheKey(viewRoute.path)"
               />
             </KeepAlive>
@@ -105,7 +133,6 @@ import TabsBar from '@/components/TabsBar.vue'
 import { useMenuWidth } from '@/composables/useMenuWidth'
 import { useMobile } from '@/composables/mobile'
 import { useScreenLock } from '@/composables/useScreenLock'
-import { unifiedApi as api } from '@/utils/unified-api'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useSiteSettingsStore } from '@/stores/siteSettings'
@@ -114,9 +141,8 @@ import { useTabsStore } from '@/stores/tabs'
 import { storeToRefs } from 'pinia'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { MenuItem } from '@/types/menu'
-import { TimeUtil, TIME_FORMATS } from '@/utils/time'
+import { TimeUtil } from '@/utils/time'
 import { storage } from '@/services/storage'
-import { SECURITY_STORAGE_KEYS } from '@/constants/storage'
 import { canAccessRoutePath } from '@/constants/routePermissions'
 import { logger } from '@/utils/logger'
 
@@ -126,7 +152,7 @@ const route = useRoute()
 
 // 认证状态管理
 const authStore = useAuthStore()
-const siteSettingsStore = useSiteSettingsStore()
+const _siteSettingsStore = useSiteSettingsStore()
 const menuStore = useMenuStore()
 const tabsStore = useTabsStore()
 const { user: authUser, isAuthenticated } = storeToRefs(authStore)
@@ -454,7 +480,7 @@ onUnmounted(() => {
   flex-direction: column;
   margin-left: 0;
   transition: margin-left 0.3s ease;
-  background-color: #f5f5f5;
+  background-color: var(--tf-color-surface-soft);
   overflow: hidden;
 }
 
@@ -462,7 +488,7 @@ onUnmounted(() => {
   background: white;
   padding: 0;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  border-bottom: 1px solid #e8ecef;
+  border-bottom: 1px solid var(--tf-color-border-cool);
   display: flex;
   justify-content: space-between;
   align-items: stretch;
@@ -476,7 +502,7 @@ onUnmounted(() => {
 
 .topbar.scrolled {
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  border-bottom-color: #d8dee9;
+  border-bottom-color: var(--tf-color-border-blue-light);
 }
 
 .header-left {
@@ -502,7 +528,7 @@ onUnmounted(() => {
 }
 
 .breadcrumb-item {
-  color: #666;
+  color: var(--text-secondary);
   text-decoration: none;
   display: flex;
   align-items: center;
@@ -512,24 +538,24 @@ onUnmounted(() => {
 }
 
 .breadcrumb-item:hover {
-  color: #3498db;
+  color: var(--tf-color-blue-legacy);
 }
 
 .breadcrumb-item.current {
-  color: #333;
+  color: var(--text-primary);
   font-weight: 600;
   cursor: default;
 }
 
 .breadcrumb-separator {
-  color: #999;
+  color: var(--text-muted);
   font-size: 12px;
 }
 
 .header-divider {
   width: 1px;
   height: 24px;
-  background: #ddd;
+  background: var(--tf-color-gray-300-alt);
   margin: 0 20px;
 }
 
@@ -559,7 +585,7 @@ onUnmounted(() => {
   width: 28px; /* 调整头像大小以适应40px高度 */
   height: 28px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -606,7 +632,7 @@ onUnmounted(() => {
   align-items: center;
   font-size: 14px;
   font-weight: 600;
-  color: #8a3f00;
+  color: var(--tf-color-amber-800);
   line-height: 1;
   white-space: nowrap;
   max-width: 100%;
@@ -624,7 +650,7 @@ onUnmounted(() => {
 
 .user-role {
   font-size: 10px;
-  color: #667eea;
+  color: var(--tf-color-indigo-brand);
   font-weight: 600;
   background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
   padding: 2px 6px;
@@ -644,7 +670,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   font-size: 11px;
-  color: #667eea;
+  color: var(--tf-color-indigo-brand);
   white-space: nowrap;
   font-weight: 600;
   letter-spacing: 0.5px;
@@ -657,7 +683,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   font-size: 11px;
-  color: #95a5a6;
+  color: var(--tf-color-gray-legacy-500);
 }
 
 .status-indicator {
@@ -668,13 +694,13 @@ onUnmounted(() => {
 }
 
 .status-indicator.online {
-  background: #2ecc71;
+  background: var(--tf-color-green-flat);
   box-shadow: 0 0 0 2px rgba(46, 204, 113, 0.2);
 }
 
 .login-time {
   font-size: 10px;
-  color: #bdc3c7;
+  color: var(--tf-color-gray-flat-400);
 }
 
 .topbar-buttons {
@@ -714,19 +740,19 @@ onUnmounted(() => {
 
 .welcome-section h1 {
   margin: 0 0 8px 0;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
   font-size: 28px;
 }
 
 .welcome-section p {
   margin: 0;
-  color: #7f8c8d;
+  color: var(--tf-color-gray-cool-500);
   font-size: 16px;
 }
 
 .dashboard h2 {
   margin: 0 0 20px 0;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
   font-size: 22px;
 }
 
@@ -754,7 +780,7 @@ onUnmounted(() => {
 .stat-icon {
   width: 50px;
   height: 50px;
-  background: #409EFF;
+  background: var(--color-primary);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -770,14 +796,14 @@ onUnmounted(() => {
 
 .stat-content h3 {
   margin: 0 0 4px 0;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
   font-size: 16px;
   font-weight: 600;
 }
 
 .stat-content p {
   margin: 0;
-  color: #7f8c8d;
+  color: var(--tf-color-gray-cool-500);
   font-size: 14px;
 }
 
@@ -791,13 +817,13 @@ onUnmounted(() => {
 
 .placeholder-content h2 {
   margin: 0 0 12px 0;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
   font-size: 24px;
 }
 
 .placeholder-content p {
   margin: 0;
-  color: #7f8c8d;
+  color: var(--tf-color-gray-cool-500);
   font-size: 16px;
 }
 
@@ -1014,15 +1040,15 @@ onUnmounted(() => {
 }
 
 .content-area::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--tf-color-gray-100);
 }
 
 .content-area::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: var(--tf-color-gray-300);
   border-radius: 3px;
 }
 
 .content-area::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  background: var(--tf-color-gray-400);
 }
 </style>

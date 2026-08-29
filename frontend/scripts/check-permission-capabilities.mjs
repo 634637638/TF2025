@@ -4,7 +4,7 @@ import { extname, join, relative, resolve } from 'node:path'
 
 const frontendRoot = resolve(import.meta.dirname, '..')
 const projectRoot = resolve(frontendRoot, '..')
-const registryPath = resolve(projectRoot, 'config/module-permission-capabilities.json')
+const registryPath = resolve(projectRoot, 'backend/src/config/module-permission-capabilities.json')
 const modulesConfigPath = resolve(frontendRoot, 'src/config/modules.ts')
 const permissionMapperPath = resolve(frontendRoot, 'src/utils/permissionMapper.ts')
 const pagePermissionsPath = resolve(frontendRoot, 'src/composables/usePagePermissions.ts')
@@ -19,7 +19,7 @@ const unique = values => [...new Set(values)]
 const sameJson = (left, right) => JSON.stringify(left) === JSON.stringify(right)
 
 if (!existsSync(registryPath)) {
-  console.error('权限能力审计失败：缺少 config/module-permission-capabilities.json')
+  console.error('权限能力审计失败：缺少 backend/src/config/module-permission-capabilities.json')
   process.exit(1)
 }
 

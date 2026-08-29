@@ -1,6 +1,6 @@
-const log = require('../utils/log');
-const SystemSettingsService = require('../services/system-settings.service');
-const ApiResponse = require('../utils/response');
+const log = require('../utils/log')
+const SystemSettingsService = require('../services/system-settings.service')
+const ApiResponse = require('../utils/response')
 
 /**
  * 系统配置控制器
@@ -11,11 +11,11 @@ class SystemSettingsController {
    */
   async getAllSettings(req, res) {
     try {
-      const result = await SystemSettingsService.getAllSettings();
-      ApiResponse.success(res, '获取配置成功', result, 200);
+      const result = await SystemSettingsService.getAllSettings()
+      ApiResponse.success(res, '获取配置成功', result, 200)
     } catch (error) {
-      log.error('获取配置失败:', error);
-      ApiResponse.error(res, error.message, 500);
+      log.error('获取配置失败:', error)
+      ApiResponse.error(res, error.message, 500)
     }
   }
 
@@ -24,12 +24,12 @@ class SystemSettingsController {
    */
   async getSettingsByCategory(req, res) {
     try {
-      const { category } = req.params;
-      const result = await SystemSettingsService.getSettingsByCategory(category);
-      ApiResponse.success(res, '获取配置成功', result, 200);
+      const { category } = req.params
+      const result = await SystemSettingsService.getSettingsByCategory(category)
+      ApiResponse.success(res, '获取配置成功', result, 200)
     } catch (error) {
-      log.error('获取配置失败:', error);
-      ApiResponse.error(res, error.message, 500);
+      log.error('获取配置失败:', error)
+      ApiResponse.error(res, error.message, 500)
     }
   }
 
@@ -38,8 +38,8 @@ class SystemSettingsController {
    */
   async getSettingByKey(req, res) {
     try {
-      const { key } = req.params;
-      const result = await SystemSettingsService.getSettingByKey(key);
+      const { key } = req.params
+      const result = await SystemSettingsService.getSettingByKey(key)
 
       if (!result) {
         // 营销词库是可选配置：首次打开后台时尚未保存也应返回空配置，
@@ -48,9 +48,9 @@ class SystemSettingsController {
           return ApiResponse.success(res, '营销词库尚未初始化，使用默认词库', {
             key,
             type: 'json'
-          }, 200);
+          }, 200)
         }
-        return ApiResponse.error(res, '配置不存在', 404);
+        return ApiResponse.error(res, '配置不存在', 404)
       }
 
       if (key === 'marketing_generation_config' && result?.value && typeof result.value === 'object') {
@@ -58,13 +58,13 @@ class SystemSettingsController {
           ...result.value,
           apiKey: '',
           hasApiKey: Boolean(result.value.apiKey)
-        };
+        }
       }
 
-      ApiResponse.success(res, '获取配置成功', result, 200);
+      ApiResponse.success(res, '获取配置成功', result, 200)
     } catch (error) {
-      log.error('获取配置失败:', error);
-      ApiResponse.error(res, error.message, 500);
+      log.error('获取配置失败:', error)
+      ApiResponse.error(res, error.message, 500)
     }
   }
 
@@ -73,12 +73,12 @@ class SystemSettingsController {
    */
   async updateSetting(req, res) {
     try {
-      const { key } = req.params;
-      const { value, type } = req.body;
+      const { key } = req.params
+      const { value, type } = req.body
 
-      let nextValue = value;
+      let nextValue = value
       if (key === 'marketing_generation_config' && value && typeof value === 'object') {
-        const existing = await SystemSettingsService.getSettingByKey(key);
+        const existing = await SystemSettingsService.getSettingByKey(key)
         if (
           existing?.value &&
           typeof existing.value === 'object' &&
@@ -89,15 +89,15 @@ class SystemSettingsController {
             ...existing.value,
             ...value,
             apiKey: existing.value.apiKey
-          };
+          }
         }
       }
 
-      const result = await SystemSettingsService.updateSetting(key, nextValue, type);
-      ApiResponse.success(res, '更新配置成功', result, 200);
+      const result = await SystemSettingsService.updateSetting(key, nextValue, type)
+      ApiResponse.success(res, '更新配置成功', result, 200)
     } catch (error) {
-      log.error('更新配置失败:', error);
-      ApiResponse.error(res, error.message, 500);
+      log.error('更新配置失败:', error)
+      ApiResponse.error(res, error.message, 500)
     }
   }
 
@@ -106,17 +106,17 @@ class SystemSettingsController {
    */
   async batchUpdateSettings(req, res) {
     try {
-      const { settings } = req.body;
+      const { settings } = req.body
 
       if (!Array.isArray(settings)) {
-        return ApiResponse.error(res, 'settings 必须是数组', 400);
+        return ApiResponse.error(res, 'settings 必须是数组', 400)
       }
 
-      const result = await SystemSettingsService.batchUpdateSettings(settings);
-      ApiResponse.success(res, '批量更新配置成功', result, 200);
+      const result = await SystemSettingsService.batchUpdateSettings(settings)
+      ApiResponse.success(res, '批量更新配置成功', result, 200)
     } catch (error) {
-      log.error('批量更新配置失败:', error);
-      ApiResponse.error(res, error.message, 500);
+      log.error('批量更新配置失败:', error)
+      ApiResponse.error(res, error.message, 500)
     }
   }
 
@@ -125,12 +125,12 @@ class SystemSettingsController {
    */
   async deleteSetting(req, res) {
     try {
-      const { key } = req.params;
-      await SystemSettingsService.deleteSetting(key);
-      ApiResponse.success(res, '删除配置成功', null, 200);
+      const { key } = req.params
+      await SystemSettingsService.deleteSetting(key)
+      ApiResponse.success(res, '删除配置成功', null, 200)
     } catch (error) {
-      log.error('删除配置失败:', error);
-      ApiResponse.error(res, error.message, 500);
+      log.error('删除配置失败:', error)
+      ApiResponse.error(res, error.message, 500)
     }
   }
 
@@ -139,21 +139,21 @@ class SystemSettingsController {
    */
   async getAttendanceSettings(req, res) {
     try {
-      const settings = await SystemSettingsService.getSettingsByCategory('attendance');
+      const settings = await SystemSettingsService.getSettingsByCategory('attendance')
 
       // 转换为键值对格式
-      const result = {};
+      const result = {}
       settings.forEach(setting => {
         result[setting.key_name] = SystemSettingsService.parseSettingValue(
           setting.value,
           setting.type
-        );
-      });
+        )
+      })
 
-      ApiResponse.success(res, '获取考勤配置成功', result, 200);
+      ApiResponse.success(res, '获取考勤配置成功', result, 200)
     } catch (error) {
-      log.error('获取考勤配置失败:', error);
-      ApiResponse.error(res, error.message, 500);
+      log.error('获取考勤配置失败:', error)
+      ApiResponse.error(res, error.message, 500)
     }
   }
 
@@ -162,7 +162,7 @@ class SystemSettingsController {
    */
   async getMarkupConfig(req, res) {
     try {
-      const setting = await SystemSettingsService.getSettingByKey('price_markup_config');
+      const setting = await SystemSettingsService.getSettingByKey('price_markup_config')
 
       // 默认配置
       const defaultConfig = {
@@ -177,13 +177,13 @@ class SystemSettingsController {
           enabled: false,
           adjustment: 0
         }
-      };
+      }
 
-      const result = setting ? setting.value : defaultConfig;
-      ApiResponse.success(res, '获取加价配置成功', result, 200);
+      const result = setting ? setting.value : defaultConfig
+      ApiResponse.success(res, '获取加价配置成功', result, 200)
     } catch (error) {
-      log.error('获取加价配置失败:', error);
-      ApiResponse.error(res, error.message, 500);
+      log.error('获取加价配置失败:', error)
+      ApiResponse.error(res, error.message, 500)
     }
   }
 
@@ -192,11 +192,11 @@ class SystemSettingsController {
    */
   async saveMarkupConfig(req, res) {
     try {
-      const config = req.body;
+      const config = req.body
 
       // 验证配置数据
       if (!config || typeof config !== 'object') {
-        return ApiResponse.error(res, '配置数据无效', 400);
+        return ApiResponse.error(res, '配置数据无效', 400)
       }
 
       // 保存到 settings 表
@@ -204,14 +204,14 @@ class SystemSettingsController {
         'price_markup_config',
         JSON.stringify(config),
         'json'
-      );
+      )
 
-      ApiResponse.success(res, '保存加价配置成功', config, 200);
+      ApiResponse.success(res, '保存加价配置成功', config, 200)
     } catch (error) {
-      log.error('保存加价配置失败:', error);
-      ApiResponse.error(res, error.message, 500);
+      log.error('保存加价配置失败:', error)
+      ApiResponse.error(res, error.message, 500)
     }
   }
 }
 
-module.exports = new SystemSettingsController();
+module.exports = new SystemSettingsController()

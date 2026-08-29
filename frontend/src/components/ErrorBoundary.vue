@@ -1,12 +1,18 @@
 <template>
   <div class="error-boundary">
     <!-- 正常内容 -->
-    <div v-if="!hasError" class="error-boundary-content">
+    <div
+      v-if="!hasError"
+      class="error-boundary-content"
+    >
       <slot />
     </div>
 
     <!-- 增强错误状态 -->
-    <div v-else class="error-boundary-error">
+    <div
+      v-else
+      class="error-boundary-error"
+    >
       <el-result
         icon="warning"
         :title="errorTitle"
@@ -15,10 +21,10 @@
         <template #extra>
           <div class="error-actions">
             <el-button
-              type="primary"
-              @click="retry"
-              :loading="isRetrying"
               v-if="showRetry"
+              type="primary"
+              :loading="isRetrying"
+              @click="retry"
             >
               <el-icon><Refresh /></el-icon>
               重试
@@ -38,25 +44,48 @@
               刷新页面
             </el-button>
 
-            <el-dropdown @command="handleReport" v-if="isDevelopment">
-              <el-button type="info" plain>
+            <el-dropdown
+              v-if="isDevelopment"
+              @command="handleReport"
+            >
+              <el-button
+                type="info"
+                plain
+              >
                 <el-icon><MessageBox /></el-icon>
                 报告问题
-                <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+                <el-icon class="el-icon--right">
+                  <ArrowDown />
+                </el-icon>
               </el-button>
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item command="copy">复制错误信息</el-dropdown-item>
-                  <el-dropdown-item command="console">在控制台查看</el-dropdown-item>
-                  <el-dropdown-item command="screenshot" v-if="canScreenshot">生成错误截图</el-dropdown-item>
+                  <el-dropdown-item command="copy">
+                    复制错误信息
+                  </el-dropdown-item>
+                  <el-dropdown-item command="console">
+                    在控制台查看
+                  </el-dropdown-item>
+                  <el-dropdown-item
+                    v-if="canScreenshot"
+                    command="screenshot"
+                  >
+                    生成错误截图
+                  </el-dropdown-item>
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
           </div>
 
           <!-- 错误详情（可展开） -->
-          <el-collapse v-if="isDevelopment && errorDetails" class="error-details">
-            <el-collapse-item title="查看错误详情" name="details">
+          <el-collapse
+            v-if="isDevelopment && errorDetails"
+            class="error-details"
+          >
+            <el-collapse-item
+              title="查看错误详情"
+              name="details"
+            >
               <div class="error-info">
                 <div class="error-item">
                   <strong>错误类型:</strong> {{ errorType }}
@@ -64,11 +93,17 @@
                 <div class="error-item">
                   <strong>错误消息:</strong> {{ errorInfo?.error?.message || '未知错误' }}
                 </div>
-                <div class="error-item" v-if="errorInfo?.error?.stack">
+                <div
+                  v-if="errorInfo?.error?.stack"
+                  class="error-item"
+                >
                   <strong>错误堆栈:</strong>
                   <pre class="error-stack">{{ errorInfo.error.stack }}</pre>
                 </div>
-                <div class="error-item" v-if="errorInfo?.errorInfo">
+                <div
+                  v-if="errorInfo?.errorInfo"
+                  class="error-item"
+                >
                   <strong>组件信息:</strong> {{ errorInfo.errorInfo }}
                 </div>
                 <div class="error-item">
@@ -88,7 +123,12 @@
     </div>
 
     <!-- 错误回退插槽 -->
-    <slot v-if="hasError" name="fallback" :error="errorInfo" :retry="retry" />
+    <slot
+      v-if="hasError"
+      name="fallback"
+      :error="errorInfo"
+      :retry="retry"
+    />
   </div>
 </template>
 
@@ -112,7 +152,7 @@ interface Props {
   title?: string
   message?: string
   showRetry?: boolean
-  onError?: (error: unknown, instance: unknown, info: string) => void
+  onError?: (_error: unknown, _instance: unknown, _info: string) => void
   onRecover?: () => void
 }
 
@@ -149,7 +189,12 @@ const toErrorLike = (value: unknown): ErrorLike | null => {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  showRetry: true
+  fallback: '',
+  title: '',
+  message: '',
+  showRetry: true,
+  onError: undefined,
+  onRecover: undefined
 })
 
 const emit = defineEmits<Emits>()
@@ -158,9 +203,9 @@ const emit = defineEmits<Emits>()
 const router = useRouter()
 const { success, error: notifyError, warning, info } = useNotification()
 const { handleError } = useErrorBoundary()
-const instance = getCurrentInstance()
+const _instance = getCurrentInstance()
 
-type Html2Canvas = (element: HTMLElement) => Promise<HTMLCanvasElement>
+type Html2Canvas = (_element: HTMLElement) => Promise<HTMLCanvasElement>
 type WindowWithHtml2Canvas = Window & typeof globalThis & {
   html2canvas?: Html2Canvas
 }
@@ -357,15 +402,15 @@ const reload = () => {
 // 错误报告功能
 const handleReport = async (command: string) => {
   switch (command) {
-    case 'copy':
-      await copyErrorInfo()
-      break
-    case 'console':
-      consoleError()
-      break
-    case 'screenshot':
-      await takeScreenshot()
-      break
+  case 'copy':
+    await copyErrorInfo()
+    break
+  case 'console':
+    consoleError()
+    break
+  case 'screenshot':
+    await takeScreenshot()
+    break
   }
 }
 
@@ -490,7 +535,7 @@ defineExpose({
   display: flex;
   align-items: center;
   gap: 20px;
-  background-color: #fff;
+  background-color: var(--color-bg-white);
   padding: 32px;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -500,7 +545,7 @@ defineExpose({
 
 .error-icon {
   font-size: 48px;
-  color: #f56c6c;
+  color: var(--color-danger);
   flex-shrink: 0;
 }
 
@@ -511,13 +556,13 @@ defineExpose({
 .error-title {
   font-size: 20px;
   font-weight: 600;
-  color: #303133;
+  color: var(--color-text-primary);
   margin: 0 0 8px 0;
 }
 
 .error-message {
   font-size: 14px;
-  color: #606266;
+  color: var(--color-text-regular);
   margin: 0 0 24px 0;
   line-height: 1.6;
 }
@@ -532,7 +577,7 @@ defineExpose({
   margin-top: 20px;
   max-width: 800px;
   width: 100%;
-  background-color: #fff;
+  background-color: var(--color-bg-white);
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -540,16 +585,16 @@ defineExpose({
 
 .error-details h4 {
   margin: 0 0 12px 0;
-  color: #303133;
+  color: var(--color-text-primary);
   font-size: 16px;
 }
 
 .error-details pre {
-  background-color: #f5f7fa;
+  background-color: var(--tf-color-surface);
   padding: 12px;
   border-radius: 4px;
   font-size: 12px;
-  color: #606266;
+  color: var(--color-text-regular);
   overflow-x: auto;
   white-space: pre-wrap;
   word-break: break-word;

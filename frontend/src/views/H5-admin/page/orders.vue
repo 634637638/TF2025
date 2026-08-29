@@ -10,169 +10,514 @@
     module-name="商城订单"
     permission-code="h5-orders:view"
   >
+    <div class="sales-management-page admin-page-content">
+      <!-- 统计卡片 -->
+      <div
+        v-if="showStatsCards"
+        class="stats-cards"
+      >
+        <div
+          v-if="canViewOrderField('stats_total_orders')"
+          class="stat-card"
+          @click="filterByStatus('')"
+        >
+          <div class="stat-icon bg-gradient-pending">
+            <i class="fas fa-shopping-cart" />
+          </div>
+          <div class="stat-content">
+            <div class="stat-value">
+              {{ statistics.total?.total_orders || 0 }}
+            </div>
+            <div class="stat-label">
+              全部订单
+            </div>
+          </div>
+        </div>
+        <div
+          v-if="canViewOrderField('stats_pending_orders')"
+          class="stat-card"
+          @click="filterByStatus('pending')"
+        >
+          <div class="stat-icon bg-gradient-processing">
+            <i class="fas fa-clock" />
+          </div>
+          <div class="stat-content">
+            <div class="stat-value">
+              {{ getStatusCount('pending') }}
+            </div>
+            <div class="stat-label">
+              待支付
+            </div>
+          </div>
+        </div>
+        <div
+          v-if="canViewOrderField('stats_paid_orders')"
+          class="stat-card"
+          @click="filterByStatus('paid')"
+        >
+          <div class="stat-icon bg-gradient-shipped">
+            <i class="fas fa-hourglass-half" />
+          </div>
+          <div class="stat-content">
+            <div class="stat-value">
+              {{ getStatusCount('paid') }}
+            </div>
+            <div class="stat-label">
+              待审核
+            </div>
+          </div>
+        </div>
+        <div
+          v-if="canViewOrderField('stats_confirmed_orders')"
+          class="stat-card"
+          @click="filterByStatus('confirmed')"
+        >
+          <div class="stat-icon bg-gradient-completed">
+            <i class="fas fa-check-circle" />
+          </div>
+          <div class="stat-content">
+            <div class="stat-value">
+              {{ getStatusCount('confirmed') }}
+            </div>
+            <div class="stat-label">
+              待发货
+            </div>
+          </div>
+        </div>
+        <div
+          v-if="canViewOrderField('stats_shipped_orders')"
+          class="stat-card"
+          @click="filterByStatus('shipped')"
+        >
+          <div class="stat-icon bg-gradient-refunded">
+            <i class="fas fa-truck" />
+          </div>
+          <div class="stat-content">
+            <div class="stat-value">
+              {{ getStatusCount('shipped') }}
+            </div>
+            <div class="stat-label">
+              已发货
+            </div>
+          </div>
+        </div>
+        <div
+          v-if="canViewOrderField('stats_completed_orders')"
+          class="stat-card"
+          @click="filterByStatus('completed')"
+        >
+          <div class="stat-icon bg-gradient-cancelled">
+            <i class="fas fa-check-double" />
+          </div>
+          <div class="stat-content">
+            <div class="stat-value">
+              {{ getStatusCount('completed') }}
+            </div>
+            <div class="stat-label">
+              已完成
+            </div>
+          </div>
+        </div>
+      </div>
 
-  <div class="sales-management-page admin-page-content">
-    <!-- 统计卡片 -->
-    <div v-if="showStatsCards" class="stats-cards">
-      <div v-if="canViewOrderField('stats_total_orders')" class="stat-card" @click="filterByStatus('')">
-        <div class="stat-icon bg-gradient-pending">
-          <i class="fas fa-shopping-cart"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ statistics.total?.total_orders || 0 }}</div>
-          <div class="stat-label">全部订单</div>
-        </div>
-      </div>
-      <div v-if="canViewOrderField('stats_pending_orders')" class="stat-card" @click="filterByStatus('pending')">
-        <div class="stat-icon bg-gradient-processing">
-          <i class="fas fa-clock"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ getStatusCount('pending') }}</div>
-          <div class="stat-label">待支付</div>
-        </div>
-      </div>
-      <div v-if="canViewOrderField('stats_paid_orders')" class="stat-card" @click="filterByStatus('paid')">
-        <div class="stat-icon bg-gradient-shipped">
-          <i class="fas fa-hourglass-half"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ getStatusCount('paid') }}</div>
-          <div class="stat-label">待审核</div>
-        </div>
-      </div>
-      <div v-if="canViewOrderField('stats_confirmed_orders')" class="stat-card" @click="filterByStatus('confirmed')">
-        <div class="stat-icon bg-gradient-completed">
-          <i class="fas fa-check-circle"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ getStatusCount('confirmed') }}</div>
-          <div class="stat-label">待发货</div>
-        </div>
-      </div>
-      <div v-if="canViewOrderField('stats_shipped_orders')" class="stat-card" @click="filterByStatus('shipped')">
-        <div class="stat-icon bg-gradient-refunded">
-          <i class="fas fa-truck"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ getStatusCount('shipped') }}</div>
-          <div class="stat-label">已发货</div>
-        </div>
-      </div>
-      <div v-if="canViewOrderField('stats_completed_orders')" class="stat-card" @click="filterByStatus('completed')">
-        <div class="stat-icon bg-gradient-cancelled">
-          <i class="fas fa-check-double"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ getStatusCount('completed') }}</div>
-          <div class="stat-label">已完成</div>
-        </div>
-      </div>
-    </div>
+      <!-- 筛选栏 -->
+      <el-card
+        class="filter-card admin-panel"
+        shadow="never"
+      >
+        <el-form
+          :model="filters"
+          :inline="true"
+          class="filter-form"
+        >
+          <el-form-item
+            v-if="canViewOrderField('filter_status')"
+            label="订单状态"
+          >
+            <el-select
+              v-model="filters.status"
+              placeholder="全部状态"
+              clearable
+              @change="handleFilterChange"
+            >
+              <el-option
+                label="全部"
+                value=""
+              />
+              <el-option
+                label="待支付"
+                value="pending"
+              />
+              <el-option
+                label="待审核"
+                value="paid"
+              />
+              <el-option
+                label="待发货"
+                value="confirmed"
+              />
+              <el-option
+                label="已发货"
+                value="shipped"
+              />
+              <el-option
+                label="已完成"
+                value="completed"
+              />
+              <el-option
+                label="已取消"
+                value="cancelled"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item
+            v-if="canViewOrderField('filter_customer_name')"
+            label="客户姓名"
+          >
+            <el-input
+              v-model="filters.customer_name"
+              placeholder="输入客户姓名"
+              clearable
+              class="w-36"
+              @keyup.enter="handleFilterChange"
+            />
+          </el-form-item>
+          <el-form-item
+            v-if="canViewOrderField('filter_customer_phone')"
+            label="客户电话"
+          >
+            <el-input
+              v-model="filters.customer_phone"
+              placeholder="输入电话"
+              clearable
+              class="w-36"
+              @keyup.enter="handleFilterChange"
+            />
+          </el-form-item>
+          <el-form-item
+            v-if="canViewOrderField('filter_order_number')"
+            label="订单号"
+          >
+            <el-input
+              v-model="filters.order_number"
+              placeholder="输入订单号"
+              clearable
+              class="w-44"
+              @keyup.enter="handleFilterChange"
+            />
+          </el-form-item>
+          <el-form-item
+            v-if="canViewOrderField('filter_date_range')"
+            label="下单时间"
+          >
+            <el-date-picker
+              v-model="dateRange"
+              type="daterange"
+              range-separator="至"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              format="YYYY-MM-DD"
+              value-format="YYYY-MM-DD"
+              clearable
+              class="w-60"
+              @change="handleFilterChange"
+            />
+          </el-form-item>
+          <el-form-item>
+            <el-button
+              type="primary"
+              @click="handleFilterChange"
+            >
+              搜索
+            </el-button>
+            <el-button @click="resetFilters">
+              重置
+            </el-button>
+          </el-form-item>
+        </el-form>
+      </el-card>
 
-    <!-- 筛选栏 -->
-    <el-card class="filter-card admin-panel" shadow="never">
-      <el-form :model="filters" :inline="true" class="filter-form">
-        <el-form-item v-if="canViewOrderField('filter_status')" label="订单状态">
-          <el-select v-model="filters.status" placeholder="全部状态" clearable @change="handleFilterChange">
-            <el-option label="全部" value=""></el-option>
-            <el-option label="待支付" value="pending"></el-option>
-            <el-option label="待审核" value="paid"></el-option>
-            <el-option label="待发货" value="confirmed"></el-option>
-            <el-option label="已发货" value="shipped"></el-option>
-            <el-option label="已完成" value="completed"></el-option>
-            <el-option label="已取消" value="cancelled"></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item v-if="canViewOrderField('filter_customer_name')" label="客户姓名">
-          <el-input v-model="filters.customer_name" placeholder="输入客户姓名" clearable class="w-36" @keyup.enter="handleFilterChange"/>
-        </el-form-item>
-        <el-form-item v-if="canViewOrderField('filter_customer_phone')" label="客户电话">
-          <el-input v-model="filters.customer_phone" placeholder="输入电话" clearable class="w-36" @keyup.enter="handleFilterChange"/>
-        </el-form-item>
-        <el-form-item v-if="canViewOrderField('filter_order_number')" label="订单号">
-          <el-input v-model="filters.order_number" placeholder="输入订单号" clearable class="w-44" @keyup.enter="handleFilterChange"/>
-        </el-form-item>
-        <el-form-item v-if="canViewOrderField('filter_date_range')" label="下单时间">
-          <el-date-picker
-            v-model="dateRange"
-            type="daterange"
-            range-separator="至"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
-            format="YYYY-MM-DD"
-            value-format="YYYY-MM-DD"
-            clearable
-            class="w-60"
-            @change="handleFilterChange"
+      <!-- 订单列表 -->
+      <el-card
+        class="table-card admin-panel admin-table-panel"
+        shadow="never"
+      >
+        <el-table
+          :data="loading ? [] : orders"
+          class="data-table w-full"
+          :border="true"
+        >
+          <template #empty>
+            <TableLoadingRow
+              v-if="loading"
+              mode="block"
+              text="加载中..."
+            />
+            <DataEmptyState
+              v-else
+              description="暂无订单"
+            />
+          </template>
+          <el-table-column
+            prop="order_number"
+            label="订单号"
+            width="160"
+            fixed
+          >
+            <template #default="{ row }">
+              <el-tag size="small">
+                {{ row.order_number }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column
+            prop="customer_name"
+            label="客户姓名"
+            width="100"
           />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleFilterChange">搜索</el-button>
-          <el-button @click="resetFilters">重置</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
+          <el-table-column
+            prop="customer_phone"
+            label="联系电话"
+            width="120"
+          />
+          <el-table-column
+            label="订单金额"
+            width="100"
+            align="right"
+          >
+            <template #default="{ row }">
+              <span class="amount">¥{{ parseFloat(row.total_amount).toFixed(2) }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column
+            prop="status"
+            label="状态"
+            width="100"
+          >
+            <template #default="{ row }">
+              <el-tag :type="getStatusType(row.status)">
+                {{ getStatusText(row.status) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column
+            prop="created_at"
+            label="下单时间"
+            width="160"
+          >
+            <template #default="{ row }">
+              {{ formatTime(row.created_at) }}
+            </template>
+          </el-table-column>
+          <el-table-column
+            v-if="showOrderActionField"
+            label="操作"
+            :width="orderActionColumnWidth"
+            class-name="actions-column"
+          >
+            <template #default="{ row }">
+              <div class="action-buttons">
+                <!-- 待支付状态：显示"查看"和"取消" -->
+                <template v-if="row.status === 'pending'">
+                  <el-button
+                    size="small"
+                    type="info"
+                    link
+                    @click.stop="viewOrder(row)"
+                  >
+                    <i class="fas fa-eye" /> 查看
+                  </el-button>
+                  <el-button
+                    v-if="canEdit"
+                    size="small"
+                    type="danger"
+                    link
+                    @click.stop="cancelOrder(row)"
+                  >
+                    取消
+                  </el-button>
+                </template>
 
-    <!-- 订单列表 -->
-    <el-card class="table-card admin-panel admin-table-panel" shadow="never">
-      <el-table :data="loading ? [] : orders" class="data-table w-full" :border="true">
-        <template #empty>
-          <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
-          <el-empty v-else description="暂无订单" />
-        </template>
-        <el-table-column prop="order_number" label="订单号" width="160" fixed>
-          <template #default="{ row }">
-            <el-tag size="small">{{ row.order_number }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="customer_name" label="客户姓名" width="100"/>
-        <el-table-column prop="customer_phone" label="联系电话" width="120"/>
-        <el-table-column label="订单金额" width="100" align="right">
-          <template #default="{ row }">
-            <span class="amount">¥{{ parseFloat(row.total_amount).toFixed(2) }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
-          <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)">{{ getStatusText(row.status) }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="created_at" label="下单时间" width="160">
-          <template #default="{ row }">
-            {{ formatTime(row.created_at) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" :width="orderActionColumnWidth" class-name="actions-column">
-          <template #default="{ row }">
-            <div class="action-buttons">
-              <!-- 待支付状态：显示"查看"和"取消" -->
+                <!-- 待审核状态：显示"查看"、"通过"、"拒绝"、"取消" -->
+                <template v-if="row.status === 'paid'">
+                  <el-button
+                    size="small"
+                    type="info"
+                    link
+                    @click.stop="viewOrder(row)"
+                  >
+                    <i class="fas fa-eye" /> 查看
+                  </el-button>
+                  <el-button
+                    v-if="canEdit"
+                    size="small"
+                    type="success"
+                    link
+                    @click.stop="confirmOrder(row)"
+                  >
+                    通过
+                  </el-button>
+                  <el-button
+                    v-if="canEdit"
+                    size="small"
+                    type="warning"
+                    link
+                    @click.stop="rejectOrder(row)"
+                  >
+                    拒绝
+                  </el-button>
+                  <el-button
+                    v-if="canEdit"
+                    size="small"
+                    type="danger"
+                    link
+                    @click.stop="cancelOrder(row)"
+                  >
+                    取消
+                  </el-button>
+                </template>
+
+                <!-- 待发货状态：显示"查看"和"发货" -->
+                <template v-if="row.status === 'confirmed'">
+                  <el-button
+                    size="small"
+                    type="info"
+                    link
+                    @click.stop="viewOrder(row)"
+                  >
+                    <i class="fas fa-eye" /> 查看
+                  </el-button>
+                  <el-button
+                    v-if="canEdit"
+                    size="small"
+                    type="primary"
+                    link
+                    @click.stop="shipOrder(row)"
+                  >
+                    发货
+                  </el-button>
+                </template>
+
+                <!-- 已发货状态：显示"查看"和"完成" -->
+                <template v-if="row.status === 'shipped'">
+                  <el-button
+                    size="small"
+                    type="info"
+                    link
+                    @click.stop="viewOrder(row)"
+                  >
+                    <i class="fas fa-eye" /> 查看
+                  </el-button>
+                  <el-button
+                    v-if="canEdit"
+                    size="small"
+                    type="success"
+                    link
+                    @click.stop="completeOrder(row)"
+                  >
+                    完成
+                  </el-button>
+                </template>
+
+                <!-- 已完成/已取消状态：只显示"查看" -->
+                <template v-if="['completed', 'cancelled'].includes(row.status)">
+                  <el-button
+                    size="small"
+                    type="info"
+                    link
+                    @click.stop="viewOrder(row)"
+                  >
+                    <i class="fas fa-eye" /> 查看
+                  </el-button>
+                </template>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <div class="mobile-orders-list">
+          <TableLoadingRow
+            v-if="loading"
+            mode="block"
+            text="加载中..."
+          />
+          <DataEmptyState
+            v-else-if="orders.length === 0"
+            description="暂无订单"
+          />
+          <div
+            v-for="row in orders"
+            v-else
+            :key="row.id"
+            class="mobile-order-card"
+          >
+            <div class="mobile-order-card__head">
+              <div class="mobile-order-card__number">
+                {{ row.order_number }}
+              </div>
+              <el-tag
+                :type="getStatusType(row.status)"
+                size="small"
+              >
+                {{ getStatusText(row.status) }}
+              </el-tag>
+            </div>
+            <div class="mobile-order-card__body">
+              <div class="mobile-order-card__item">
+                <span>客户</span>
+                <strong>{{ row.customer_name || '-' }}</strong>
+              </div>
+              <div class="mobile-order-card__item">
+                <span>电话</span>
+                <strong>{{ row.customer_phone || '-' }}</strong>
+              </div>
+              <div class="mobile-order-card__item">
+                <span>金额</span>
+                <strong class="amount">¥{{ Number(row.total_amount).toFixed(2) }}</strong>
+              </div>
+              <div class="mobile-order-card__item">
+                <span>下单</span>
+                <strong>{{ formatTime(row.created_at) }}</strong>
+              </div>
+            </div>
+            <div
+              v-if="showOrderActionField"
+              class="mobile-order-card__actions"
+            >
               <template v-if="row.status === 'pending'">
-                <el-button size="small" type="info" @click.stop="viewOrder(row)" link>
-                  <i class="fas fa-eye"></i> 查看
+                <el-button
+                  size="small"
+                  type="info"
+                  plain
+                  @click="viewOrder(row)"
+                >
+                  查看
                 </el-button>
                 <el-button
                   v-if="canEdit"
                   size="small"
                   type="danger"
-                  link
-                  @click.stop="cancelOrder(row)"
+                  plain
+                  @click="cancelOrder(row)"
                 >
                   取消
                 </el-button>
               </template>
-
-              <!-- 待审核状态：显示"查看"、"通过"、"拒绝"、"取消" -->
               <template v-if="row.status === 'paid'">
-                <el-button size="small" type="info" @click.stop="viewOrder(row)" link>
-                  <i class="fas fa-eye"></i> 查看
+                <el-button
+                  size="small"
+                  type="info"
+                  plain
+                  @click="viewOrder(row)"
+                >
+                  查看
                 </el-button>
                 <el-button
                   v-if="canEdit"
                   size="small"
                   type="success"
-                  link
-                  @click.stop="confirmOrder(row)"
+                  plain
+                  @click="confirmOrder(row)"
                 >
                   通过
                 </el-button>
@@ -180,8 +525,8 @@
                   v-if="canEdit"
                   size="small"
                   type="warning"
-                  link
-                  @click.stop="rejectOrder(row)"
+                  plain
+                  @click="rejectOrder(row)"
                 >
                   拒绝
                 </el-button>
@@ -189,374 +534,536 @@
                   v-if="canEdit"
                   size="small"
                   type="danger"
-                  link
-                  @click.stop="cancelOrder(row)"
+                  plain
+                  @click="cancelOrder(row)"
                 >
                   取消
                 </el-button>
               </template>
-
-              <!-- 待发货状态：显示"查看"和"发货" -->
               <template v-if="row.status === 'confirmed'">
-                <el-button size="small" type="info" @click.stop="viewOrder(row)" link>
-                  <i class="fas fa-eye"></i> 查看
+                <el-button
+                  size="small"
+                  type="info"
+                  plain
+                  @click="viewOrder(row)"
+                >
+                  查看
                 </el-button>
                 <el-button
                   v-if="canEdit"
                   size="small"
                   type="primary"
-                  link
-                  @click.stop="shipOrder(row)"
+                  plain
+                  @click="shipOrder(row)"
                 >
                   发货
                 </el-button>
               </template>
-
-              <!-- 已发货状态：显示"查看"和"完成" -->
               <template v-if="row.status === 'shipped'">
-                <el-button size="small" type="info" @click.stop="viewOrder(row)" link>
-                  <i class="fas fa-eye"></i> 查看
+                <el-button
+                  size="small"
+                  type="info"
+                  plain
+                  @click="viewOrder(row)"
+                >
+                  查看
                 </el-button>
                 <el-button
                   v-if="canEdit"
                   size="small"
                   type="success"
-                  link
-                  @click.stop="completeOrder(row)"
+                  plain
+                  @click="completeOrder(row)"
                 >
                   完成
                 </el-button>
               </template>
-
-              <!-- 已完成/已取消状态：只显示"查看" -->
               <template v-if="['completed', 'cancelled'].includes(row.status)">
-                <el-button size="small" type="info" @click.stop="viewOrder(row)" link>
-                  <i class="fas fa-eye"></i> 查看
+                <el-button
+                  size="small"
+                  type="info"
+                  plain
+                  @click="viewOrder(row)"
+                >
+                  查看
                 </el-button>
               </template>
             </div>
-          </template>
-        </el-table-column>
-      </el-table>
+          </div>
+        </div>
 
-      <div class="mobile-orders-list">
-        <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
-        <el-empty v-else-if="orders.length === 0" description="暂无订单" />
+        <!-- 分页 -->
         <div
-          v-else
-          v-for="row in orders"
-          :key="row.id"
-          class="mobile-order-card"
+          v-if="!loading"
+          class="pagination-wrapper"
         >
-          <div class="mobile-order-card__head">
-            <div class="mobile-order-card__number">{{ row.order_number }}</div>
-            <el-tag :type="getStatusType(row.status)" size="small">{{ getStatusText(row.status) }}</el-tag>
-          </div>
-          <div class="mobile-order-card__body">
-            <div class="mobile-order-card__item">
-              <span>客户</span>
-              <strong>{{ row.customer_name || '-' }}</strong>
-            </div>
-            <div class="mobile-order-card__item">
-              <span>电话</span>
-              <strong>{{ row.customer_phone || '-' }}</strong>
-            </div>
-            <div class="mobile-order-card__item">
-              <span>金额</span>
-              <strong class="amount">¥{{ Number(row.total_amount).toFixed(2) }}</strong>
-            </div>
-            <div class="mobile-order-card__item">
-              <span>下单</span>
-              <strong>{{ formatTime(row.created_at) }}</strong>
-            </div>
-          </div>
-          <div class="mobile-order-card__actions">
-            <template v-if="row.status === 'pending'">
-              <el-button size="small" type="info" plain @click="viewOrder(row)">查看</el-button>
-              <el-button v-if="canEdit" size="small" type="danger" plain @click="cancelOrder(row)">取消</el-button>
-            </template>
-            <template v-if="row.status === 'paid'">
-              <el-button size="small" type="info" plain @click="viewOrder(row)">查看</el-button>
-              <el-button v-if="canEdit" size="small" type="success" plain @click="confirmOrder(row)">通过</el-button>
-              <el-button v-if="canEdit" size="small" type="warning" plain @click="rejectOrder(row)">拒绝</el-button>
-              <el-button v-if="canEdit" size="small" type="danger" plain @click="cancelOrder(row)">取消</el-button>
-            </template>
-            <template v-if="row.status === 'confirmed'">
-              <el-button size="small" type="info" plain @click="viewOrder(row)">查看</el-button>
-              <el-button v-if="canEdit" size="small" type="primary" plain @click="shipOrder(row)">发货</el-button>
-            </template>
-            <template v-if="row.status === 'shipped'">
-              <el-button size="small" type="info" plain @click="viewOrder(row)">查看</el-button>
-              <el-button v-if="canEdit" size="small" type="success" plain @click="completeOrder(row)">完成</el-button>
-            </template>
-            <template v-if="['completed', 'cancelled'].includes(row.status)">
-              <el-button size="small" type="info" plain @click="viewOrder(row)">查看</el-button>
-            </template>
-          </div>
+          <Pagination
+            v-model:current="pagination.page"
+            v-model:page-size="pagination.page_size"
+            :page-sizes="[10, 20, 50, 100]"
+            :total="pagination.total"
+            :show-range="true"
+            @change="handlePaginationChange"
+          />
         </div>
-      </div>
+      </el-card>
 
-      <!-- 分页 -->
-      <div v-if="!loading" class="pagination-wrapper">
-        <Pagination
-          v-model:current="pagination.page"
-          v-model:page-size="pagination.limit"
-          :page-sizes="[10, 20, 50, 100]"
-          :total="pagination.total"
-          :show-range="true"
-          @change="handlePaginationChange"
-        />
-      </div>
-    </el-card>
-
-    <!-- 订单详情弹窗 -->
-    <MobileDialog
-      v-model="showDetailDialog"
-      :title="`订单详情 - ${currentOrder?.order_number || ''}`"
-      width="800px"
-      :close-on-click-modal="false"
-      dialog-class="h5-order-dialog h5-order-detail-dialog"
-      :show-default-footer="false"
-    >
-      <div v-if="currentOrder" class="order-detail">
-        <!-- 订单状态 -->
-        <div class="detail-section">
-          <div class="section-title">订单状态</div>
-          <div class="status-info">
-            <el-tag :type="getStatusType(currentOrder.status)" size="large">
-              {{ getStatusText(currentOrder.status) }}
-            </el-tag>
-            <span class="order-time">下单时间：{{ formatTime(currentOrder.created_at) }}</span>
-          </div>
-          <!-- 状态时间线 -->
-          <div class="status-timeline" v-if="getStatusTimeline(currentOrder).length > 0">
-            <div v-for="(item, index) in getStatusTimeline(currentOrder)" :key="index" class="timeline-item">
-              <div class="timeline-dot" :class="{ active: item.active }"></div>
-              <div class="timeline-content">
-                <div class="timeline-title">{{ item.title }}</div>
-                <div class="timeline-time" v-if="item.time">{{ formatTime(item.time) }}</div>
-              </div>
+      <!-- 订单详情弹窗 -->
+      <MobileDialog
+        v-model="showDetailDialog"
+        :title="`订单详情 - ${currentOrder?.order_number || ''}`"
+        width="800px"
+        :close-on-click-modal="false"
+        dialog-class="h5-order-dialog h5-order-detail-dialog"
+        :show-default-footer="false"
+      >
+        <div
+          v-if="currentOrder"
+          class="order-detail"
+        >
+          <!-- 订单状态 -->
+          <div class="detail-section">
+            <div class="section-title">
+              订单状态
             </div>
-          </div>
-        </div>
-
-        <!-- 客户信息 -->
-        <div class="detail-section">
-          <div class="section-title">客户信息</div>
-          <div class="info-grid">
-            <div class="info-item">
-              <label>客户姓名</label>
-              <span>{{ currentOrder.customer_name }}</span>
+            <div class="status-info">
+              <el-tag
+                :type="getStatusType(currentOrder.status)"
+                size="large"
+              >
+                {{ getStatusText(currentOrder.status) }}
+              </el-tag>
+              <span class="order-time">下单时间：{{ formatTime(currentOrder.created_at) }}</span>
             </div>
-            <div class="info-item">
-              <label>联系电话</label>
-              <span>{{ currentOrder.customer_phone }}</span>
-            </div>
-            <div class="info-item full-width" v-if="currentOrder.customer_address">
-              <label>收货地址</label>
-              <span>{{ currentOrder.customer_address }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- 订单商品 -->
-        <div class="detail-section">
-          <div class="section-title">商品信息</div>
-          <div class="order-items">
-            <div v-for="item in currentOrder.items" :key="item.id" class="order-item">
-              <div class="item-info">
-                <div class="item-name">{{ item.phone_info?.brand }} {{ item.phone_info?.model }}</div>
-                <div class="item-specs">
-                  <span v-if="item.phone_info?.color">{{ item.phone_info.color }}</span>
-                  <span v-if="item.phone_info?.memory"> | {{ item.phone_info.memory }}</span>
+            <!-- 状态时间线 -->
+            <div
+              v-if="getStatusTimeline(currentOrder).length > 0"
+              class="status-timeline"
+            >
+              <div
+                v-for="(item, index) in getStatusTimeline(currentOrder)"
+                :key="index"
+                class="timeline-item"
+              >
+                <div
+                  class="timeline-dot"
+                  :class="{ active: item.active }"
+                />
+                <div class="timeline-content">
+                  <div class="timeline-title">
+                    {{ item.title }}
+                  </div>
+                  <div
+                    v-if="item.time"
+                    class="timeline-time"
+                  >
+                    {{ formatTime(item.time) }}
+                  </div>
                 </div>
               </div>
-              <div class="item-quantity">x{{ item.quantity }}</div>
-              <div class="item-price">¥{{ Number(item.sale_price).toFixed(2) }}</div>
-              <div class="item-subtotal">¥{{ Number(item.subtotal).toFixed(2) }}</div>
             </div>
           </div>
-        </div>
 
-        <!-- 价格信息 -->
-        <div class="detail-section">
-          <div class="section-title">价格信息</div>
-          <div class="price-summary">
-            <div class="price-row">
-              <span>商品总额</span>
-              <span>¥{{ Number(currentOrder.total_amount).toFixed(2) }}</span>
+          <!-- 客户信息 -->
+          <div class="detail-section">
+            <div class="section-title">
+              客户信息
             </div>
-            <div class="price-row total">
-              <span>应付金额</span>
-              <span class="total-amount">¥{{ Number(currentOrder.total_amount).toFixed(2) }}</span>
+            <div class="info-grid">
+              <div class="info-item">
+                <label>客户姓名</label>
+                <span>{{ currentOrder.customer_name }}</span>
+              </div>
+              <div class="info-item">
+                <label>联系电话</label>
+                <span>{{ currentOrder.customer_phone }}</span>
+              </div>
+              <div
+                v-if="currentOrder.customer_address"
+                class="info-item full-width"
+              >
+                <label>收货地址</label>
+                <span>{{ currentOrder.customer_address }}</span>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- 备注 -->
-        <div class="detail-section" v-if="currentOrder.remarks">
-          <div class="section-title">订单备注</div>
-          <p>{{ currentOrder.remarks }}</p>
-        </div>
-
-        <!-- 物流信息（已发货状态） -->
-        <div class="detail-section" v-if="['shipped', 'completed'].includes(currentOrder.status) && currentOrder.shipping_info">
-          <div class="section-title">物流信息</div>
-          <div class="shipping-info">
-            <div class="info-item">
-              <label>物流公司</label>
-              <span>{{ currentOrder.shipping_info.company || '-' }}</span>
+          <!-- 订单商品 -->
+          <div class="detail-section">
+            <div class="section-title">
+              商品信息
             </div>
-            <div class="info-item">
-              <label>物流单号</label>
-              <span>{{ currentOrder.shipping_info.tracking_number || '-' }}</span>
-            </div>
-            <div class="info-item" v-if="currentOrder.shipped_at">
-              <label>发货时间</label>
-              <span>{{ formatTime(currentOrder.shipped_at) }}</span>
-            </div>
-            <div class="info-item" v-if="currentOrder.shipping_info.remarks">
-              <label>发货备注</label>
-              <span>{{ currentOrder.shipping_info.remarks }}</span>
+            <div class="order-items">
+              <div
+                v-for="item in currentOrder.items"
+                :key="item.id"
+                class="order-item"
+              >
+                <div class="item-info">
+                  <div class="item-name">
+                    {{ item.phone_info?.brand }} {{ item.phone_info?.model }}
+                  </div>
+                  <div class="item-specs">
+                    <span v-if="item.phone_info?.color">{{ item.phone_info.color }}</span>
+                    <span v-if="item.phone_info?.memory"> | {{ item.phone_info.memory }}</span>
+                  </div>
+                </div>
+                <div class="item-quantity">
+                  x{{ item.quantity }}
+                </div>
+                <div class="item-price">
+                  ¥{{ Number(item.sale_price).toFixed(2) }}
+                </div>
+                <div class="item-subtotal">
+                  ¥{{ Number(item.subtotal).toFixed(2) }}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- 支付信息（已支付状态） -->
-        <div class="detail-section" v-if="['paid', 'confirmed', 'shipped', 'completed'].includes(currentOrder.status)">
-          <div class="section-title">支付信息</div>
-          <div class="payment-info">
-            <div class="info-item" v-if="currentOrder.paid_at">
-              <label>支付时间</label>
-              <span>{{ formatTime(currentOrder.paid_at) }}</span>
+          <!-- 价格信息 -->
+          <div class="detail-section">
+            <div class="section-title">
+              价格信息
             </div>
-            <div class="info-item" v-if="currentOrder.payment_method">
-              <label>支付方式</label>
-              <span>{{ getPaymentMethodText(currentOrder.payment_method) }}</span>
+            <div class="price-summary">
+              <div class="price-row">
+                <span>商品总额</span>
+                <span>¥{{ Number(currentOrder.total_amount).toFixed(2) }}</span>
+              </div>
+              <div class="price-row total">
+                <span>应付金额</span>
+                <span class="total-amount">¥{{ Number(currentOrder.total_amount).toFixed(2) }}</span>
+              </div>
             </div>
-            <div class="info-item" v-if="currentOrder.payment_proof">
-              <label>支付凭证</label>
-              <el-image
+          </div>
+
+          <!-- 备注 -->
+          <div
+            v-if="currentOrder.remarks"
+            class="detail-section"
+          >
+            <div class="section-title">
+              订单备注
+            </div>
+            <p>{{ currentOrder.remarks }}</p>
+          </div>
+
+          <!-- 物流信息（已发货状态） -->
+          <div
+            v-if="['shipped', 'completed'].includes(currentOrder.status) && currentOrder.shipping_info"
+            class="detail-section"
+          >
+            <div class="section-title">
+              物流信息
+            </div>
+            <div class="shipping-info">
+              <div class="info-item">
+                <label>物流公司</label>
+                <span>{{ currentOrder.shipping_info.company || '-' }}</span>
+              </div>
+              <div class="info-item">
+                <label>物流单号</label>
+                <span>{{ currentOrder.shipping_info.tracking_number || '-' }}</span>
+              </div>
+              <div
+                v-if="currentOrder.shipped_at"
+                class="info-item"
+              >
+                <label>发货时间</label>
+                <span>{{ formatTime(currentOrder.shipped_at) }}</span>
+              </div>
+              <div
+                v-if="currentOrder.shipping_info.remarks"
+                class="info-item"
+              >
+                <label>发货备注</label>
+                <span>{{ currentOrder.shipping_info.remarks }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 支付信息（已支付状态） -->
+          <div
+            v-if="['paid', 'confirmed', 'shipped', 'completed'].includes(currentOrder.status)"
+            class="detail-section"
+          >
+            <div class="section-title">
+              支付信息
+            </div>
+            <div class="payment-info">
+              <div
+                v-if="currentOrder.paid_at"
+                class="info-item"
+              >
+                <label>支付时间</label>
+                <span>{{ formatTime(currentOrder.paid_at) }}</span>
+              </div>
+              <div
+                v-if="currentOrder.payment_method"
+                class="info-item"
+              >
+                <label>支付方式</label>
+                <span>{{ getPaymentMethodText(currentOrder.payment_method) }}</span>
+              </div>
+              <div
                 v-if="currentOrder.payment_proof"
-                :src="currentOrder.payment_proof"
-                :preview-src-list="[currentOrder.payment_proof]"
-                fit="cover"
-                class="product-thumb"
-                preview-teleported
-              />
+                class="info-item"
+              >
+                <label>支付凭证</label>
+                <el-image
+                  v-if="currentOrder.payment_proof"
+                  :src="currentOrder.payment_proof"
+                  :preview-src-list="[currentOrder.payment_proof]"
+                  fit="cover"
+                  class="product-thumb"
+                  preview-teleported
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- 操作记录 -->
+          <div
+            v-if="currentOrder.operation_history && currentOrder.operation_history.length > 0"
+            class="detail-section"
+          >
+            <div class="section-title">
+              操作记录
+            </div>
+            <div class="operation-history">
+              <div
+                v-for="(op, index) in currentOrder.operation_history"
+                :key="index"
+                class="operation-item"
+              >
+                <div class="operation-action">
+                  {{ op.action }}
+                </div>
+                <div class="operation-detail">
+                  {{ op.detail }}
+                </div>
+                <div class="operation-time">
+                  {{ formatTime(op.created_at) }}
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- 操作记录 -->
-        <div class="detail-section" v-if="currentOrder.operation_history && currentOrder.operation_history.length > 0">
-          <div class="section-title">操作记录</div>
-          <div class="operation-history">
-            <div v-for="(op, index) in currentOrder.operation_history" :key="index" class="operation-item">
-              <div class="operation-action">{{ op.action }}</div>
-              <div class="operation-detail">{{ op.detail }}</div>
-              <div class="operation-time">{{ formatTime(op.created_at) }}</div>
-            </div>
+        <template #footer>
+          <div class="dialog-footer">
+            <!-- 待支付状态：无操作 -->
+            <template v-if="currentOrder.status === 'pending'">
+              <el-button
+                type="default"
+                @click="showDetailDialog = false"
+              >
+                关闭
+              </el-button>
+            </template>
+
+            <!-- 待审核状态：审核通过/拒绝 -->
+            <template v-else-if="currentOrder.status === 'paid'">
+              <el-button
+                v-if="canEdit"
+                :loading="submitting"
+                @click="rejectOrder(currentOrder)"
+              >
+                拒绝
+              </el-button>
+              <el-button
+                v-if="canEdit"
+                type="primary"
+                :loading="submitting"
+                @click="confirmOrder(currentOrder)"
+              >
+                审核通过
+              </el-button>
+            </template>
+
+            <!-- 待发货状态：发货 -->
+            <template v-else-if="currentOrder.status === 'confirmed'">
+              <el-button
+                type="default"
+                @click="showDetailDialog = false"
+              >
+                关闭
+              </el-button>
+              <el-button
+                v-if="canEdit"
+                type="primary"
+                @click="shipOrder(currentOrder)"
+              >
+                发货
+              </el-button>
+            </template>
+
+            <!-- 已发货状态：完成订单 -->
+            <template v-else-if="currentOrder.status === 'shipped'">
+              <el-button
+                type="default"
+                @click="showDetailDialog = false"
+              >
+                关闭
+              </el-button>
+              <el-button
+                v-if="canEdit"
+                type="success"
+                @click="completeOrder(currentOrder)"
+              >
+                完成订单
+              </el-button>
+            </template>
+
+            <!-- 已完成/已取消状态：只显示关闭 -->
+            <template v-else>
+              <el-button
+                type="primary"
+                @click="showDetailDialog = false"
+              >
+                关闭
+              </el-button>
+            </template>
           </div>
-        </div>
-      </div>
+        </template>
+      </MobileDialog>
 
-      <template #footer>
-        <div class="dialog-footer">
-          <!-- 待支付状态：无操作 -->
-          <template v-if="currentOrder.status === 'pending'">
-            <el-button type="default" @click="showDetailDialog = false">关闭</el-button>
-          </template>
+      <!-- 发货弹窗 -->
+      <MobileDialog
+        v-model="showShipDialog"
+        title="订单发货"
+        width="500px"
+        dialog-class="h5-order-dialog"
+        :show-default-footer="false"
+      >
+        <el-form
+          :model="shipForm"
+          label-width="100px"
+          class="h5-order-action-form"
+        >
+          <el-form-item label="物流公司">
+            <el-input
+              v-model="shipForm.shipping_company"
+              placeholder="请输入物流公司名称"
+            />
+          </el-form-item>
+          <el-form-item label="物流单号">
+            <el-input
+              v-model="shipForm.tracking_number"
+              placeholder="请输入物流单号"
+            />
+          </el-form-item>
+          <el-form-item label="备注">
+            <el-input
+              v-model="shipForm.remarks"
+              type="textarea"
+              :rows="3"
+              placeholder="请输入备注信息（可选）"
+            />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button
+            type="default"
+            @click="showShipDialog = false"
+          >
+            取消
+          </el-button>
+          <el-button
+            v-if="canEdit"
+            type="primary"
+            :loading="submitting"
+            @click="confirmShip"
+          >
+            确认发货
+          </el-button>
+        </template>
+      </MobileDialog>
 
-          <!-- 待审核状态：审核通过/拒绝 -->
-          <template v-else-if="currentOrder.status === 'paid'">
-            <el-button v-if="canEdit" @click="rejectOrder(currentOrder)" :loading="submitting">拒绝</el-button>
-            <el-button v-if="canEdit" type="primary" @click="confirmOrder(currentOrder)" :loading="submitting">审核通过</el-button>
-          </template>
+      <!-- 完成订单弹窗 -->
+      <MobileDialog
+        v-model="showCompleteDialog"
+        title="完成订单"
+        width="500px"
+        dialog-class="h5-order-dialog"
+        :show-default-footer="false"
+      >
+        <el-form
+          :model="completeForm"
+          label-width="100px"
+          class="h5-order-action-form"
+        >
+          <el-form-item label="备注">
+            <el-input
+              v-model="completeForm.remarks"
+              type="textarea"
+              :rows="4"
+              placeholder="请输入备注信息（可选）"
+            />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button
+            type="default"
+            @click="showCompleteDialog = false"
+          >
+            取消
+          </el-button>
+          <el-button
+            v-if="canEdit"
+            type="success"
+            :loading="submitting"
+            @click="confirmComplete"
+          >
+            确认完成
+          </el-button>
+        </template>
+      </MobileDialog>
 
-          <!-- 待发货状态：发货 -->
-          <template v-else-if="currentOrder.status === 'confirmed'">
-            <el-button type="default" @click="showDetailDialog = false">关闭</el-button>
-            <el-button v-if="canEdit" type="primary" @click="shipOrder(currentOrder)">发货</el-button>
-          </template>
-
-          <!-- 已发货状态：完成订单 -->
-          <template v-else-if="currentOrder.status === 'shipped'">
-            <el-button type="default" @click="showDetailDialog = false">关闭</el-button>
-            <el-button v-if="canEdit" type="success" @click="completeOrder(currentOrder)">完成订单</el-button>
-          </template>
-
-          <!-- 已完成/已取消状态：只显示关闭 -->
-          <template v-else>
-            <el-button type="primary" @click="showDetailDialog = false">关闭</el-button>
-          </template>
-        </div>
-      </template>
-    </MobileDialog>
-
-    <!-- 发货弹窗 -->
-    <MobileDialog
-      v-model="showShipDialog"
-      title="订单发货"
-      width="500px"
-      dialog-class="h5-order-dialog"
-      :show-default-footer="false"
-    >
-      <el-form :model="shipForm" label-width="100px" class="h5-order-action-form">
-        <el-form-item label="物流公司">
-          <el-input v-model="shipForm.shipping_company" placeholder="请输入物流公司名称"/>
-        </el-form-item>
-        <el-form-item label="物流单号">
-          <el-input v-model="shipForm.tracking_number" placeholder="请输入物流单号"/>
-        </el-form-item>
-        <el-form-item label="备注">
-          <el-input v-model="shipForm.remarks" type="textarea" :rows="3" placeholder="请输入备注信息（可选）"/>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button type="default" @click="showShipDialog = false">取消</el-button>
-        <el-button v-if="canEdit" type="primary" @click="confirmShip" :loading="submitting">确认发货</el-button>
-      </template>
-    </MobileDialog>
-
-    <!-- 完成订单弹窗 -->
-    <MobileDialog
-      v-model="showCompleteDialog"
-      title="完成订单"
-      width="500px"
-      dialog-class="h5-order-dialog"
-      :show-default-footer="false"
-    >
-      <el-form :model="completeForm" label-width="100px" class="h5-order-action-form">
-        <el-form-item label="备注">
-          <el-input v-model="completeForm.remarks" type="textarea" :rows="4" placeholder="请输入备注信息（可选）"/>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button type="default" @click="showCompleteDialog = false">取消</el-button>
-        <el-button v-if="canEdit" type="success" @click="confirmComplete" :loading="submitting">确认完成</el-button>
-      </template>
-    </MobileDialog>
-
-    <!-- 取消订单弹窗 -->
-    <MobileDialog
-      v-model="showCancelDialog"
-      title="取消订单"
-      width="500px"
-      dialog-class="h5-order-dialog"
-      :show-default-footer="false"
-    >
-      <el-form :model="cancelForm" label-width="100px" class="h5-order-action-form">
-        <el-form-item label="取消原因" required>
-          <el-input v-model="cancelForm.reason" type="textarea" :rows="4" placeholder="请输入取消原因"/>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button type="default" @click="showCancelDialog = false">取消</el-button>
-        <el-button v-if="canEdit" type="danger" @click="confirmCancel" :loading="submitting">确认取消</el-button>
-      </template>
-    </MobileDialog>
-  </div>
+      <!-- 取消订单弹窗 -->
+      <MobileDialog
+        v-model="showCancelDialog"
+        title="取消订单"
+        width="500px"
+        dialog-class="h5-order-dialog"
+        :show-default-footer="false"
+      >
+        <el-form
+          :model="cancelForm"
+          label-width="100px"
+          class="h5-order-action-form"
+        >
+          <el-form-item
+            label="取消原因"
+            required
+          >
+            <el-input
+              v-model="cancelForm.reason"
+              type="textarea"
+              :rows="4"
+              placeholder="请输入取消原因"
+            />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button
+            type="default"
+            @click="showCancelDialog = false"
+          >
+            取消
+          </el-button>
+          <el-button
+            v-if="canEdit"
+            type="danger"
+            :loading="submitting"
+            @click="confirmCancel"
+          >
+            确认取消
+          </el-button>
+        </template>
+      </MobileDialog>
+    </div>
   </PermissionGate>
 </template>
 
@@ -569,7 +1076,7 @@ import { PermissionGate } from '@/components/base'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import Pagination from '@/components/Pagination.vue'
 import { usePagePermissions } from '@/composables/usePagePermissions'
-import { fieldPermissions } from '@/composables/useFieldPermissions'
+import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useLoadingState } from '@/composables'
 import { api } from '@/utils/unified-api'
 import logger from '@/utils/logger'
@@ -577,7 +1084,7 @@ import { getAdaptiveActionColumnWidth } from '@/utils/table-layout'
 import type { HeaderAction } from '@/types'
 
 // 注入父组件提供的注册方法
-const registerHeaderActions = inject<(actions: HeaderAction[]) => void>('registerHeaderActions')
+const registerHeaderActions = inject<(_actions: HeaderAction[]) => void>('registerHeaderActions')
 const clearHeaderActions = inject<() => void>('clearHeaderActions')
 
 interface OrderItem {
@@ -615,7 +1122,7 @@ interface OrderStatistics {
 }
 type OrderDateRange = [string, string] | []
 
-const router = useRouter()
+const _router = useRouter()
 const orderPermissions = usePagePermissions('h5-admin-orders')
 const { handleNoPermission } = orderPermissions
 const canView = computed(() => orderPermissions.canView.value)
@@ -648,7 +1155,7 @@ const submitting = ref(false)
 // 分页
 const pagination = reactive({
   page: 1,
-  limit: 20,
+  page_size: 20,
   total: 0
 })
 
@@ -688,7 +1195,8 @@ const orderFieldMap: Record<string, string> = {
   filter_customer_name: 'filters.customer_name',
   filter_customer_phone: 'filters.customer_phone',
   filter_order_number: 'filters.order_number',
-  filter_date_range: 'filters.date_range'
+  filter_date_range: 'filters.date_range',
+  actions: 'system_info.operations'
 }
 
 const canViewOrderField = (fieldName: string) => {
@@ -702,6 +1210,10 @@ const showStatsCards = computed(() => (
   canViewOrderField('stats_confirmed_orders') ||
   canViewOrderField('stats_shipped_orders') ||
   canViewOrderField('stats_completed_orders')
+))
+const showOrderActionField = computed(() => shouldShowActionColumn(
+  canViewOrderField('actions'),
+  [canEdit.value]
 ))
 
 const ensureOrderViewPermission = () => {
@@ -726,7 +1238,7 @@ const loadOrders = async () => {
   try {
     const params: Record<string, unknown> = {
       page: pagination.page,
-      limit: pagination.limit
+      page_size: pagination.page_size
     }
 
     if (filters.status) params.status = filters.status
@@ -744,7 +1256,7 @@ const loadOrders = async () => {
     // 分页信息在 response.pagination 中
     if (response.pagination) {
       pagination.page = Number(response.pagination.page) || 1
-      pagination.limit = Number(response.pagination.limit) || 20
+      pagination.page_size = Number(response.pagination.page_size) || 20
       pagination.total = Number(response.pagination.total) || 0
     }
   } catch (error: any) {
@@ -806,7 +1318,7 @@ const handleSizeChange = (size: number) => {
     return
   }
 
-  pagination.limit = size
+  pagination.page_size = size
   pagination.page = 1
   loadOrders()
 }
@@ -821,7 +1333,7 @@ const handleCurrentChange = (page: number) => {
 }
 
 const handlePaginationChange = (page: number, size: number) => {
-  if (size !== pagination.limit) {
+  if (size !== pagination.page_size) {
     handleSizeChange(size)
     return
   }
@@ -1200,7 +1712,7 @@ onUnmounted(() => {
   margin-bottom: 20px;
 
   .stat-card {
-    background: #fff;
+    background: var(--color-bg-white);
     border-radius: 12px;
     padding: 20px;
     display: flex;
@@ -1222,7 +1734,7 @@ onUnmounted(() => {
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #fff;
+      color: var(--color-bg-white);
       font-size: 24px;
 
       i {
@@ -1236,13 +1748,13 @@ onUnmounted(() => {
       .stat-value {
         font-size: 24px;
         font-weight: 600;
-        color: #333;
+        color: var(--text-primary);
         line-height: 1;
       }
 
       .stat-label {
         font-size: 13px;
-        color: #999;
+        color: var(--text-muted);
         margin-top: 4px;
       }
     }
@@ -1264,7 +1776,7 @@ onUnmounted(() => {
 .table-card {
   .amount {
     font-weight: 600;
-    color: #ff1744;
+    color: var(--tf-color-accent-pink);
   }
 
   .action-buttons {
@@ -1294,10 +1806,10 @@ onUnmounted(() => {
     .section-title {
       font-size: 14px;
       font-weight: 600;
-      color: #333;
+      color: var(--text-primary);
       margin-bottom: 12px;
       padding-bottom: 8px;
-      border-bottom: 1px solid #eee;
+      border-bottom: 1px solid var(--tf-color-gray-200-alt);
     }
 
     .status-info {
@@ -1307,7 +1819,7 @@ onUnmounted(() => {
 
       .order-time {
         font-size: 13px;
-        color: #999;
+        color: var(--text-muted);
       }
     }
 
@@ -1327,12 +1839,12 @@ onUnmounted(() => {
 
         label {
           font-size: 13px;
-          color: #999;
+          color: var(--text-muted);
         }
 
         span {
           font-size: 14px;
-          color: #333;
+          color: var(--text-primary);
         }
       }
     }
@@ -1344,7 +1856,7 @@ onUnmounted(() => {
       grid-template-columns: 3fr 1fr 1fr 1fr;
       gap: 12px;
       padding: 12px;
-      background: #f8f9fa;
+      background: var(--tf-color-surface-muted);
       border-radius: 8px;
       align-items: center;
 
@@ -1352,30 +1864,30 @@ onUnmounted(() => {
         .item-name {
           font-size: 14px;
           font-weight: 500;
-          color: #333;
+          color: var(--text-primary);
         }
 
         .item-specs {
           font-size: 12px;
-          color: #999;
+          color: var(--text-muted);
           margin-top: 2px;
         }
       }
 
       .item-quantity {
         font-size: 14px;
-        color: #666;
+        color: var(--text-secondary);
       }
 
       .item-price {
         font-size: 14px;
-        color: #666;
+        color: var(--text-secondary);
       }
 
       .item-subtotal {
         font-size: 14px;
         font-weight: 600;
-        color: #ff1744;
+        color: var(--tf-color-accent-pink);
       }
     }
   }
@@ -1386,10 +1898,10 @@ onUnmounted(() => {
       justify-content: space-between;
       padding: 8px 0;
       font-size: 14px;
-      color: #666;
+      color: var(--text-secondary);
 
       &.total {
-        border-top: 1px solid #eee;
+        border-top: 1px solid var(--tf-color-gray-200-alt);
         padding-top: 12px;
         margin-top: 8px;
         font-size: 16px;
@@ -1398,7 +1910,7 @@ onUnmounted(() => {
         .total-amount {
           font-size: 20px;
           font-weight: 600;
-          color: #ff1744;
+          color: var(--tf-color-accent-pink);
         }
       }
     }
@@ -1424,13 +1936,13 @@ onUnmounted(() => {
         width: 12px;
         height: 12px;
         border-radius: 50%;
-        background: #e0e0e0;
+        background: var(--tf-color-gray-material-300);
         position: absolute;
         left: -25px;
         top: 4px;
 
         &.active {
-          background: #409eff;
+          background: var(--color-primary);
           box-shadow: 0 0 0 4px rgba(64, 158, 255, 0.2);
         }
       }
@@ -1441,12 +1953,12 @@ onUnmounted(() => {
         .timeline-title {
           font-size: 14px;
           font-weight: 500;
-          color: #333;
+          color: var(--text-primary);
         }
 
         .timeline-time {
           font-size: 12px;
-          color: #999;
+          color: var(--text-muted);
           margin-top: 4px;
         }
       }
@@ -1471,12 +1983,12 @@ onUnmounted(() => {
 
       label {
         font-size: 12px;
-        color: #999;
+        color: var(--text-muted);
       }
 
       span {
         font-size: 14px;
-        color: #333;
+        color: var(--text-primary);
       }
     }
   }
@@ -1486,7 +1998,7 @@ onUnmounted(() => {
     .operation-item {
       padding: 12px;
       border-radius: 8px;
-      background: #f5f5f5;
+      background: var(--tf-color-surface-soft);
       margin-bottom: 8px;
 
       &:last-child {
@@ -1496,19 +2008,19 @@ onUnmounted(() => {
       .operation-action {
         font-size: 14px;
         font-weight: 500;
-        color: #333;
+        color: var(--text-primary);
         margin-bottom: 4px;
       }
 
       .operation-detail {
         font-size: 13px;
-        color: #666;
+        color: var(--text-secondary);
         margin-bottom: 4px;
       }
 
       .operation-time {
         font-size: 12px;
-        color: #999;
+        color: var(--text-muted);
       }
     }
   }
@@ -1597,7 +2109,7 @@ onUnmounted(() => {
         height: auto;
         margin-bottom: 7px;
         padding: 0 !important;
-        color: #334155;
+        color: var(--tf-color-slate-700);
         font-size: 13px;
         font-weight: 700;
         line-height: 1.4;
@@ -1643,7 +2155,7 @@ onUnmounted(() => {
     padding: 12px;
     border: 1px solid rgba(226, 232, 240, 0.92);
     border-radius: 14px;
-    background: #fff;
+    background: var(--color-bg-white);
     box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05);
   }
 
@@ -1657,7 +2169,7 @@ onUnmounted(() => {
 
   .mobile-order-card__number {
     min-width: 0;
-    color: #0f172a;
+    color: var(--tf-color-slate-900);
     font-size: 13px;
     font-weight: 800;
     overflow: hidden;
@@ -1678,16 +2190,16 @@ onUnmounted(() => {
     min-width: 0;
     padding: 8px;
     border-radius: 10px;
-    background: #f8fafc;
+    background: var(--tf-color-slate-50);
 
     span {
-      color: #64748b;
+      color: var(--tf-color-slate-500);
       font-size: 11px;
       font-weight: 700;
     }
 
     strong {
-      color: #0f172a;
+      color: var(--tf-color-slate-900);
       font-size: 12px;
       line-height: 1.3;
       overflow-wrap: anywhere;
@@ -1798,7 +2310,7 @@ onUnmounted(() => {
     height: auto;
     margin-bottom: 8px;
     padding: 0 !important;
-    color: #334155;
+    color: var(--tf-color-slate-700);
     font-size: 13px;
     font-weight: 700;
     line-height: 1.4;

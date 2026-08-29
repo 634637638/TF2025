@@ -1,15 +1,15 @@
-const BaseRepository = require('./base.repository');
-const { hasColumn, hasTable } = require('../services/schemaInspector.service');
-const log = require('../utils/log');
+const BaseRepository = require('./base.repository')
+const { hasColumn, hasTable } = require('../services/schemaInspector.service')
+const log = require('../utils/log')
 
 class QueryRepository extends BaseRepository {
   constructor() {
-    super('phones');
+    super('phones')
   }
 
   normalizeStatus(status) {
     if (!status) {
-      return undefined;
+      return undefined
     }
 
     const statusMapping = {
@@ -28,23 +28,23 @@ class QueryRepository extends BaseRepository {
       '已退货': 'returned',
       '损坏': 'damaged',
       '可用': 'available'
-    };
+    }
 
-    return statusMapping[status] || status;
+    return statusMapping[status] || status
   }
 
   isSalesRelatedStatus(status) {
-    return ['sold', 'peer_transfer', 'supplier_proxy'].includes(status);
+    return ['sold', 'peer_transfer', 'supplier_proxy'].includes(status)
   }
 
   getBusinessTimeExpression(status) {
-    const normalizedStatus = this.normalizeStatus(status);
+    const normalizedStatus = this.normalizeStatus(status)
 
     if (normalizedStatus) {
-      return this.isSalesRelatedStatus(normalizedStatus) ? 'p.salestime' : 'p.Inventorytime';
+      return this.isSalesRelatedStatus(normalizedStatus) ? 'p.sale_time' : 'p.inventory_time'
     }
 
-    return 'p.salestime';
+    return 'p.sale_time'
   }
 
   /**
@@ -53,7 +53,7 @@ class QueryRepository extends BaseRepository {
   async getComprehensivePhoneQuery(filters = {}) {
     const {
       page = 1,
-      limit = 20,
+      page_size = 20,
       phone_id,
       supplier_id,
       store_id,
@@ -68,94 +68,95 @@ class QueryRepository extends BaseRepository {
       start_date,
       end_date,
       search_term,
-      sort_field = 'salestime',
+      sort_field = 'sale_time',
       sort_order = 'DESC'
-    } = filters;
+    } = filters
 
-    const normalizedStatus = this.normalizeStatus(status);
+    const normalizedStatus = this.normalizeStatus(status)
 
     // 如果查询状态是 reserved（预订），则查询预订表
     if (normalizedStatus === 'reserved') {
-      return this.getPreorderQuery(filters);
+      return this.getPreorderQuery(filters)
     }
 
-    const normalizedPage = parseInt(page, 10) || 1;
-    const normalizedLimit = parseInt(limit, 10) || 20;
-    const offset = (normalizedPage - 1) * normalizedLimit;
-    const db = this.getConnection();
-    const supportsSalesPaymentChannel = await hasColumn('sales', 'payment_channel', db);
-    const supportsPaymentRecordsTable = await hasTable('payment_records', db);
+    const normalizedPage = Math.max(parseInt(page, 10) || 1, 1)
+    const normalizedLimit = Math.min(Math.max(parseInt(page_size, 10) || 20, 1), 100)
+    const offset = (normalizedPage - 1) * normalizedLimit
+    const db = this.getConnection()
+
+    const supportsSalesPaymentChannel = await hasColumn('sales', 'payment_channel', db)
+    const supportsPaymentRecordsTable = await hasTable('payment_records', db)
     const supportsPaymentRecordsChannel = supportsPaymentRecordsTable
       ? await hasColumn('payment_records', 'payment_channel', db)
-      : false;
+      : false
     const paymentChannelFallbackExpr = supportsPaymentRecordsChannel
       ? `(SELECT pr.payment_channel
           FROM payment_records pr
           WHERE pr.order_id IN (latest_sale.id, p.id)
           ORDER BY pr.id DESC
           LIMIT 1)`
-      : 'NULL';
+      : 'NULL'
     const salesPaymentChannelSelect = supportsSalesPaymentChannel
       ? `COALESCE(latest_sale.payment_channel, ${paymentChannelFallbackExpr}) as payment_channel`
-      : `${paymentChannelFallbackExpr} as payment_channel`;
+      : `${paymentChannelFallbackExpr} as payment_channel`
 
     // 构建WHERE条件
-    const whereConditions = [];
-    const whereParams = [];
+    const whereConditions = []
+    const whereParams = []
 
     if (phone_id) {
-      whereConditions.push('p.id = ?');
-      whereParams.push(phone_id);
+      whereConditions.push('p.id = ?')
+      whereParams.push(phone_id)
     }
 
     if (supplier_id) {
-      whereConditions.push('p.supplier_id = ?');
-      whereParams.push(supplier_id);
+      whereConditions.push('p.supplier_id = ?')
+      whereParams.push(supplier_id)
     }
 
     // 优先使用多门店过滤 - 使用销售店铺而不是手机当前所在店铺
     if (store_ids && Array.isArray(store_ids) && store_ids.length > 0) {
-      const placeholders = store_ids.map(() => '?').join(',');
-      whereConditions.push(`COALESCE(latest_sale.store_id, p.store_id) IN (${placeholders})`);
-      whereParams.push(...store_ids);
+      const placeholders = store_ids.map(() => '?').join(',')
+      whereConditions.push(`COALESCE(latest_sale.store_id, p.store_id) IN (${placeholders})`)
+      whereParams.push(...store_ids)
     } else if (store_id) {
-      whereConditions.push('COALESCE(latest_sale.store_id, p.store_id) = ?');
-      whereParams.push(store_id);
+      whereConditions.push('COALESCE(latest_sale.store_id, p.store_id) = ?')
+      whereParams.push(store_id)
     }
 
     if (brand) {
-      whereConditions.push('b.name LIKE ?');
-      whereParams.push(`%${brand}%`);
+      whereConditions.push('b.name LIKE ?')
+      whereParams.push(`%${brand}%`)
     }
 
     if (model) {
-      whereConditions.push('m.name LIKE ?');
-      whereParams.push(`%${model}%`);
+      whereConditions.push('m.name LIKE ?')
+      whereParams.push(`%${model}%`)
     }
 
     if (color) {
-      whereConditions.push('co.name LIKE ?');
-      whereParams.push(`%${color}%`);
+      whereConditions.push('co.name LIKE ?')
+      whereParams.push(`%${color}%`)
     }
 
     if (memory) {
-      whereConditions.push('mem.size LIKE ?');
-      whereParams.push(`%${memory}%`);
+      whereConditions.push('mem.size LIKE ?')
+      whereParams.push(`%${memory}%`)
     }
 
-    const businessTimeExpression = this.getBusinessTimeExpression(normalizedStatus);
+    const businessTimeExpression = this.getBusinessTimeExpression(normalizedStatus)
 
     if (normalizedStatus) {
-      whereConditions.push('p.status = ?');
-      whereParams.push(normalizedStatus);
+      whereConditions.push('p.status = ?')
+      whereParams.push(normalizedStatus)
     } else if (!phone_id) {
-      whereConditions.push('p.status IN (?, ?, ?)');
-      whereParams.push('sold', 'peer_transfer', 'supplier_proxy');
+      whereConditions.push('p.status IN (?, ?, ?)')
+      whereParams.push('sold', 'peer_transfer', 'supplier_proxy')
     }
 
     if (is_new !== undefined) {
-      whereConditions.push('p.is_new = ?');
-      whereParams.push(is_new);
+      whereConditions.push('p.is_new = ?')
+      whereParams.push(is_new)
     }
 
     // 人员筛选：
@@ -164,36 +165,38 @@ class QueryRepository extends BaseRepository {
     // 3. 默认列表只展示销售类状态，因此默认按销售员过滤
     if (sale_operator_id) {
       if (normalizedStatus && !this.isSalesRelatedStatus(normalizedStatus)) {
-        whereConditions.push('p.inventory_operator_id = ?');
-        whereParams.push(sale_operator_id);
+        whereConditions.push('p.inventory_operator_id = ?')
+        whereParams.push(sale_operator_id)
       } else {
-        whereConditions.push('EXISTS (SELECT 1 FROM sales s WHERE s.phone_id = p.id AND s.operator_id = ?)');
-        whereParams.push(sale_operator_id);
+        whereConditions.push('EXISTS (SELECT 1 FROM sales s WHERE s.phone_id = p.id AND s.operator_id = ?)')
+        whereParams.push(sale_operator_id)
       }
     }
 
     if (start_date) {
-      whereConditions.push(`${businessTimeExpression} >= ?`);
-      whereParams.push(`${start_date} 00:00:00`);
+      whereConditions.push(`${businessTimeExpression} >= ?`)
+      whereParams.push(`${start_date} 00:00:00`)
     }
 
     if (end_date) {
-      whereConditions.push(`${businessTimeExpression} <= ?`);
-      whereParams.push(`${end_date} 23:59:59`);
+      whereConditions.push(`${businessTimeExpression} <= ?`)
+      whereParams.push(`${end_date} 23:59:59`)
     }
 
     if (search_term) {
-      whereConditions.push('(p.imei LIKE ? OR p.serial_number LIKE ? OR c.name LIKE ? OR c.phone LIKE ?)');
-      whereParams.push(`%${search_term}%`, `%${search_term}%`, `%${search_term}%`, `%${search_term}%`);
+      whereConditions.push('(p.imei LIKE ? OR p.serial_number LIKE ? OR c.name LIKE ? OR c.phone LIKE ?)')
+      whereParams.push(`%${search_term}%`, `%${search_term}%`, `%${search_term}%`, `%${search_term}%`)
     }
 
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : ''
 
     // 验证排序字段 - 更新为新的字段名
     const orderByFieldMap = {
       business_time: businessTimeExpression,
-      Inventorytime: 'p.Inventorytime',
-      salestime: 'p.salestime',
+      inventory_time: 'p.inventory_time',
+      sale_time: 'p.sale_time',
+      sale_price: 'p.sale_price',
+      purchase_cost: 'p.purchase_cost',
       brand: 'b.name',
       brand_name: 'b.name',
       model: 'm.name',
@@ -202,12 +205,12 @@ class QueryRepository extends BaseRepository {
       sale_price: 'p.sale_price',
       purchase_unit_price: 'p.purchase_cost',
       purchase_cost: 'p.purchase_cost'
-    };
+    }
     const validSortField = Object.prototype.hasOwnProperty.call(orderByFieldMap, sort_field)
       ? sort_field
-      : 'salestime';
-    const validSortOrder = sort_order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
-    const orderByField = orderByFieldMap[validSortField];
+      : 'sale_time'
+    const validSortOrder = String(sort_order).toUpperCase() === 'ASC' ? 'ASC' : 'DESC'
+    const orderByField = orderByFieldMap[validSortField]
     const latestSaleJoinClause = `
       LEFT JOIN sales latest_sale ON latest_sale.id = (
         SELECT s.id
@@ -216,7 +219,7 @@ class QueryRepository extends BaseRepository {
         ORDER BY s.created_at DESC, s.id DESC
         LIMIT 1
       )
-    `;
+    `
 
     const buildDetailQuery = ({ whereSql, orderSql }) => `
       SELECT
@@ -251,7 +254,7 @@ class QueryRepository extends BaseRepository {
         END as model,
         co.name as color,
         mem.size as memory,
-        p.purchase_cost as purchase_price,
+        p.purchase_cost as purchase_cost,
         p.sale_price as sale_price,
         pl.wholesale_price,
         pl.retail_price,
@@ -261,8 +264,8 @@ class QueryRepository extends BaseRepository {
         p.quality_grade,
         p.remarks,
         p.purchase_number,
-        p.Inventorytime,
-        p.salestime,
+        p.inventory_time,
+        p.sale_time,
         p.inventory_operator_id,
 
         -- 图片信息
@@ -300,11 +303,11 @@ class QueryRepository extends BaseRepository {
         latest_sale.payment_method,
         ${salesPaymentChannelSelect},
         latest_sale.invoice_number,
-        latest_sale.sale_date as sales_sale_date,
+        latest_sale.sale_time as sales_sale_time,
         latest_sale.created_at as sale_created_at,
         latest_sale.operator_id as sales_record_operator_id,
         COALESCE(latest_sale.operator_id, p.sale_operator_id) as sale_operator_id,
-        p.salestime as phones_salestime
+        p.sale_time as phones_sale_time
 
       FROM phones p
       LEFT JOIN brands b ON p.brand_id = b.id
@@ -328,26 +331,26 @@ class QueryRepository extends BaseRepository {
       ${whereSql}
 
       ${orderSql}
-    `;
+    `
 
     try {
-      const filterJoins = [];
+      const filterJoins = []
       if (brand || validSortField === 'brand') {
-        filterJoins.push('LEFT JOIN brands b ON p.brand_id = b.id');
+        filterJoins.push('LEFT JOIN brands b ON p.brand_id = b.id')
       }
       if (model || validSortField === 'model') {
-        filterJoins.push('LEFT JOIN models m ON p.model_id = m.id');
+        filterJoins.push('LEFT JOIN models m ON p.model_id = m.id')
       }
       if (color) {
-        filterJoins.push('LEFT JOIN colors co ON p.color_id = co.id');
+        filterJoins.push('LEFT JOIN colors co ON p.color_id = co.id')
       }
       if (memory) {
-        filterJoins.push('LEFT JOIN memories mem ON p.memory_id = mem.id');
+        filterJoins.push('LEFT JOIN memories mem ON p.memory_id = mem.id')
       }
       // 如果使用了店铺筛选或搜索词，需要包含 latest_sale 子查询
       if (search_term || store_id || (store_ids && store_ids.length > 0)) {
-        filterJoins.push(latestSaleJoinClause);
-        filterJoins.push('LEFT JOIN customers c ON latest_sale.customer_id = c.id');
+        filterJoins.push(latestSaleJoinClause)
+        filterJoins.push('LEFT JOIN customers c ON latest_sale.customer_id = c.id')
       }
 
       const countQuery = `
@@ -355,7 +358,7 @@ class QueryRepository extends BaseRepository {
         FROM phones p
         ${filterJoins.join('\n')}
         ${whereClause}
-      `;
+      `
 
       const idQuery = `
         SELECT DISTINCT p.id
@@ -366,51 +369,51 @@ class QueryRepository extends BaseRepository {
           ${orderByField} ${validSortOrder},
           p.id DESC
         LIMIT ? OFFSET ?
-      `;
+      `
 
       const [[countResult], [pagedRows]] = await Promise.all([
         db.query(countQuery, whereParams),
         db.query(idQuery, [...whereParams, normalizedLimit, offset])
-      ]);
-      const total = countResult[0].total;
-      const pagedPhoneIds = pagedRows.map(row => row.id);
+      ])
+      const total = countResult[0].total
+      const pagedPhoneIds = pagedRows.map(row => row.id)
 
       if (pagedPhoneIds.length === 0) {
         return {
           data: [],
           pagination: {
             page: normalizedPage,
-            limit: normalizedLimit,
+            page_size: normalizedLimit,
             total: parseInt(total),
-            totalPages: Math.ceil(total / normalizedLimit),
-            hasNextPage: normalizedPage < Math.ceil(total / normalizedLimit),
-            hasPrevPage: normalizedPage > 1
+            total_pages: Math.ceil(total / normalizedLimit),
+            has_next: normalizedPage < Math.ceil(total / normalizedLimit),
+            has_prev: normalizedPage > 1
           }
-        };
+        }
       }
 
-      const detailPlaceholders = pagedPhoneIds.map(() => '?').join(',');
+      const detailPlaceholders = pagedPhoneIds.map(() => '?').join(',')
       const detailQuery = buildDetailQuery({
         whereSql: `WHERE p.id IN (${detailPlaceholders})`,
         orderSql: `ORDER BY FIELD(p.id, ${detailPlaceholders})`
-      });
+      })
 
-      const [results] = await db.query(detailQuery, [...pagedPhoneIds, ...pagedPhoneIds]);
+      const [results] = await db.query(detailQuery, [...pagedPhoneIds, ...pagedPhoneIds])
 
       return {
         data: results,
         pagination: {
           page: normalizedPage,
-          limit: normalizedLimit,
+          page_size: normalizedLimit,
           total: parseInt(total),
-          totalPages: Math.ceil(total / normalizedLimit),
-          hasNextPage: normalizedPage < Math.ceil(total / normalizedLimit),
-          hasPrevPage: normalizedPage > 1
+          total_pages: Math.ceil(total / normalizedLimit),
+          has_next: normalizedPage < Math.ceil(total / normalizedLimit),
+          has_prev: normalizedPage > 1
         }
-      };
+      }
     } catch (error) {
-      log.error('综合查询失败:', error);
-      throw new Error('综合查询失败: ' + error.message);
+      log.error('综合查询失败:', error)
+      throw new Error('综合查询失败: ' + error.message)
     }
   }
 
@@ -429,56 +432,56 @@ class QueryRepository extends BaseRepository {
       sale_operator_id,
       start_date,
       end_date
-    } = filters;
+    } = filters
 
     // 构建WHERE条件
-    const whereConditions = [];
-    const whereParams = [];
+    const whereConditions = []
+    const whereParams = []
 
     if (supplier_id) {
-      whereConditions.push('p.supplier_id = ?');
-      whereParams.push(supplier_id);
+      whereConditions.push('p.supplier_id = ?')
+      whereParams.push(supplier_id)
     }
 
     // 优先使用多门店过滤 - 使用销售店铺而不是手机当前所在店铺
     if (store_ids && Array.isArray(store_ids) && store_ids.length > 0) {
-      const placeholders = store_ids.map(() => '?').join(',');
-      whereConditions.push(`COALESCE(latest_sale.store_id, p.store_id) IN (${placeholders})`);
-      whereParams.push(...store_ids);
+      const placeholders = store_ids.map(() => '?').join(',')
+      whereConditions.push(`COALESCE(latest_sale.store_id, p.store_id) IN (${placeholders})`)
+      whereParams.push(...store_ids)
     } else if (store_id) {
-      whereConditions.push('COALESCE(latest_sale.store_id, p.store_id) = ?');
-      whereParams.push(store_id);
+      whereConditions.push('COALESCE(latest_sale.store_id, p.store_id) = ?')
+      whereParams.push(store_id)
     }
 
     if (brand) {
-      whereConditions.push('b.name LIKE ?');
-      whereParams.push(`%${brand}%`);
+      whereConditions.push('b.name LIKE ?')
+      whereParams.push(`%${brand}%`)
     }
 
     if (model) {
-      whereConditions.push('m.name LIKE ?');
-      whereParams.push(`%${model}%`);
+      whereConditions.push('m.name LIKE ?')
+      whereParams.push(`%${model}%`)
     }
 
-    const normalizedStatus = this.normalizeStatus(status);
+    const normalizedStatus = this.normalizeStatus(status)
     const statisticsTimeExpression = normalizedStatus
       ? this.getBusinessTimeExpression(normalizedStatus)
       : `COALESCE(
           CASE
-            WHEN p.status IN ('sold', 'peer_transfer', 'supplier_proxy') THEN p.salestime
+            WHEN p.status IN ('sold', 'peer_transfer', 'supplier_proxy') THEN p.sale_time
             ELSE NULL
           END,
-          p.Inventorytime
-        )`;
+          p.inventory_time
+        )`
 
     if (normalizedStatus) {
-      whereConditions.push('p.status = ?');
-      whereParams.push(normalizedStatus);
+      whereConditions.push('p.status = ?')
+      whereParams.push(normalizedStatus)
     }
 
     if (is_new !== undefined) {
-      whereConditions.push('p.is_new = ?');
-      whereParams.push(is_new);
+      whereConditions.push('p.is_new = ?')
+      whereParams.push(is_new)
     }
 
     // 人员筛选：
@@ -489,11 +492,11 @@ class QueryRepository extends BaseRepository {
     if (sale_operator_id) {
       if (normalizedStatus) {
         if (this.isSalesRelatedStatus(normalizedStatus)) {
-          whereConditions.push('EXISTS (SELECT 1 FROM sales s WHERE s.phone_id = p.id AND s.operator_id = ?)');
-          whereParams.push(sale_operator_id);
+          whereConditions.push('EXISTS (SELECT 1 FROM sales s WHERE s.phone_id = p.id AND s.operator_id = ?)')
+          whereParams.push(sale_operator_id)
         } else {
-          whereConditions.push('p.inventory_operator_id = ?');
-          whereParams.push(sale_operator_id);
+          whereConditions.push('p.inventory_operator_id = ?')
+          whereParams.push(sale_operator_id)
         }
       } else {
         whereConditions.push(`(
@@ -502,32 +505,32 @@ class QueryRepository extends BaseRepository {
           OR
           (p.status NOT IN ('sold', 'peer_transfer', 'supplier_proxy')
             AND p.inventory_operator_id = ?)
-        )`);
-        whereParams.push(sale_operator_id, sale_operator_id);
+        )`)
+        whereParams.push(sale_operator_id, sale_operator_id)
       }
     }
 
     if (start_date) {
-      whereConditions.push(`${statisticsTimeExpression} >= ?`);
-      whereParams.push(`${start_date} 00:00:00`);
+      whereConditions.push(`${statisticsTimeExpression} >= ?`)
+      whereParams.push(`${start_date} 00:00:00`)
     }
 
     if (end_date) {
-      whereConditions.push(`${statisticsTimeExpression} <= ?`);
-      whereParams.push(`${end_date} 23:59:59`);
+      whereConditions.push(`${statisticsTimeExpression} <= ?`)
+      whereParams.push(`${end_date} 23:59:59`)
     }
 
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : ''
 
     // 如果使用了店铺筛选，需要包含 latest_sale 子查询
-    const needsLatestSale = store_id || (store_ids && store_ids.length > 0);
+    const needsLatestSale = store_id || (store_ids && store_ids.length > 0)
     const latestSaleJoin = needsLatestSale ? `
       LEFT JOIN (
         SELECT phone_id, store_id, MAX(id) as max_id
         FROM sales
         GROUP BY phone_id
       ) latest_sale ON p.id = latest_sale.phone_id
-    ` : '';
+    ` : ''
 
     const query = `
       SELECT
@@ -543,15 +546,15 @@ class QueryRepository extends BaseRepository {
       LEFT JOIN models m ON p.model_id = m.id
       ${latestSaleJoin}
       ${whereClause}
-    `;
+    `
 
     try {
-      const db = this.getConnection();
-      const [results] = await db.query(query, whereParams);
-      return results[0];
+      const db = this.getConnection()
+      const [results] = await db.query(query, whereParams)
+      return results[0]
     } catch (error) {
-      log.error('统计查询失败:', error);
-      throw new Error('统计查询失败: ' + error.message);
+      log.error('统计查询失败:', error)
+      throw new Error('统计查询失败: ' + error.message)
     }
   }
 
@@ -559,15 +562,15 @@ class QueryRepository extends BaseRepository {
    * 获取退库记录列表
    */
   async getReturnGoodsRecords(filters = {}) {
-    const page = Math.max(parseInt(filters.page, 10) || 1, 1);
-    const limit = Math.min(Math.max(parseInt(filters.limit, 10) || 20, 1), 100);
-    const offset = (page - 1) * limit;
-    const keyword = String(filters.keyword || '').trim();
-    const startDate = String(filters.start_date || '').trim();
-    const endDate = String(filters.end_date || '').trim();
+    const page = Math.max(parseInt(filters.page, 10) || 1, 1)
+    const page_size = Math.min(Math.max(parseInt(filters.page_size, 10) || 20, 1), 100)
+    const offset = (page - 1) * page_size
+    const keyword = String(filters.keyword || '').trim()
+    const startDate = String(filters.start_date || '').trim()
+    const endDate = String(filters.end_date || '').trim()
 
-    const whereConditions = [];
-    const params = [];
+    const whereConditions = []
+    const params = []
 
     if (keyword) {
       whereConditions.push(`(
@@ -582,8 +585,8 @@ class QueryRepository extends BaseRepository {
         OR u.name LIKE ?
         OR srl.original_sale_operator_name LIKE ?
         OR srl.remarks LIKE ?
-      )`);
-      const keywordPattern = `%${keyword}%`;
+      )`)
+      const keywordPattern = `%${keyword}%`
       params.push(
         keywordPattern,
         keywordPattern,
@@ -596,22 +599,22 @@ class QueryRepository extends BaseRepository {
         keywordPattern,
         keywordPattern,
         keywordPattern
-      );
+      )
     }
 
     if (startDate) {
-      whereConditions.push('DATE(srl.reversal_date) >= ?');
-      params.push(startDate);
+      whereConditions.push('DATE(srl.reversal_date) >= ?')
+      params.push(startDate)
     }
 
     if (endDate) {
-      whereConditions.push('DATE(srl.reversal_date) <= ?');
-      params.push(endDate);
+      whereConditions.push('DATE(srl.reversal_date) <= ?')
+      params.push(endDate)
     }
 
     const whereClause = whereConditions.length > 0
       ? `WHERE ${whereConditions.join(' AND ')}`
-      : '';
+      : ''
 
     const baseFromSql = `
       FROM sale_reversal_logs srl
@@ -623,7 +626,7 @@ class QueryRepository extends BaseRepository {
       LEFT JOIN customers c ON srl.original_customer_id = c.id
       LEFT JOIN users u ON srl.operator_id = u.id
       ${whereClause}
-    `;
+    `
 
     const query = `
       SELECT
@@ -661,12 +664,12 @@ class QueryRepository extends BaseRepository {
       ${baseFromSql}
       ORDER BY srl.reversal_date DESC, srl.id DESC
       LIMIT ? OFFSET ?
-    `;
+    `
 
     const countSql = `
       SELECT COUNT(*) AS total
       ${baseFromSql}
-    `;
+    `
 
     const statsSql = `
       SELECT
@@ -674,102 +677,102 @@ class QueryRepository extends BaseRepository {
         COUNT(DISTINCT srl.phone_id) AS total_phones,
         COUNT(DISTINCT DATE(srl.reversal_date)) AS total_days
       ${baseFromSql}
-    `;
+    `
 
     try {
-      const db = this.getConnection();
-      const [rows] = await db.query(query, [...params, limit, offset]);
-      const [countRows] = await db.query(countSql, params);
-      const [statsRows] = await db.query(statsSql, params);
+      const db = this.getConnection()
+      const [rows] = await db.query(query, [...params, page_size, offset])
+      const [countRows] = await db.query(countSql, params)
+      const [statsRows] = await db.query(statsSql, params)
 
-      const total = parseInt(countRows?.[0]?.total, 10) || 0;
-      const totalPages = total > 0 ? Math.ceil(total / limit) : 0;
-      const stats = statsRows?.[0] || {};
+      const total = parseInt(countRows?.[0]?.total, 10) || 0
+      const total_pages = total > 0 ? Math.ceil(total / page_size) : 0
+      const stats = statsRows?.[0] || {}
 
       return {
         data: rows,
         pagination: {
           page,
-          limit,
+          page_size,
           total,
-          totalPages,
-          hasNextPage: page < totalPages,
-          hasPrevPage: page > 1
+          total_pages,
+          has_next: page < total_pages,
+          has_prev: page > 1
         },
         stats: {
           total_records: parseInt(stats.total_records, 10) || 0,
           total_phones: parseInt(stats.total_phones, 10) || 0,
           total_days: parseInt(stats.total_days, 10) || 0
         }
-      };
+      }
     } catch (error) {
-      log.error('退库记录查询失败:', error);
-      throw new Error('退库记录查询失败: ' + error.message);
+      log.error('退库记录查询失败:', error)
+      throw new Error('退库记录查询失败: ' + error.message)
     }
   }
 
   async updateReturnGoodsRecord(recordId, payload = {}) {
-    const db = this.getConnection();
-    const updateFields = [];
-    const params = [];
+    const db = this.getConnection()
+    const updateFields = []
+    const params = []
 
     if (Object.prototype.hasOwnProperty.call(payload, 'original_sale_type')) {
-      updateFields.push('original_sale_type = ?');
-      params.push(payload.original_sale_type || null);
+      updateFields.push('original_sale_type = ?')
+      params.push(payload.original_sale_type || null)
     }
 
     if (Object.prototype.hasOwnProperty.call(payload, 'original_sale_operator_id')) {
-      updateFields.push('original_sale_operator_id = ?');
-      params.push(payload.original_sale_operator_id || null);
+      updateFields.push('original_sale_operator_id = ?')
+      params.push(payload.original_sale_operator_id || null)
     }
 
     if (Object.prototype.hasOwnProperty.call(payload, 'original_sale_operator_name')) {
-      updateFields.push('original_sale_operator_name = ?');
-      params.push(payload.original_sale_operator_name || null);
+      updateFields.push('original_sale_operator_name = ?')
+      params.push(payload.original_sale_operator_name || null)
     }
 
     if (Object.prototype.hasOwnProperty.call(payload, 'reversal_date')) {
-      updateFields.push('reversal_date = ?');
-      params.push(payload.reversal_date || null);
+      updateFields.push('reversal_date = ?')
+      params.push(payload.reversal_date || null)
     }
 
     if (Object.prototype.hasOwnProperty.call(payload, 'remarks')) {
-      updateFields.push('remarks = ?');
-      params.push(payload.remarks || null);
+      updateFields.push('remarks = ?')
+      params.push(payload.remarks || null)
     }
 
     if (updateFields.length === 0) {
-      throw new Error('没有可更新的字段');
+      throw new Error('没有可更新的字段')
     }
 
-    params.push(recordId);
+    params.push(recordId)
 
     const [result] = await db.execute(
       `UPDATE sale_reversal_logs
        SET ${updateFields.join(', ')}, updated_at = NOW()
        WHERE id = ?`,
       params
-    );
+    )
 
     if (!result.affectedRows) {
-      throw new Error('退库记录不存在');
+      throw new Error('退库记录不存在')
     }
 
-    return true;
+    return true
   }
 
   async deleteReturnGoodsRecord(recordId) {
-    const db = this.getConnection();
+    const db = this.getConnection()
     const [result] = await db.execute(
       'DELETE FROM sale_reversal_logs WHERE id = ?',
       [recordId]
-    );
+    )
 
     if (!result.affectedRows) {
-      throw new Error('退库记录不存在');
+      throw new Error('退库记录不存在')
     }
 
-    return true;
+    return true
   }
 
   
@@ -777,32 +780,32 @@ class QueryRepository extends BaseRepository {
    * 退库操作 - 删除购买信息，恢复库存状态
    */
   async returnToStock(phoneId, operatorId, returnInfo = {}) {
-    const pool = this.getConnection();
-    let connection;
+    const pool = this.getConnection()
+    let connection
 
     try {
       // 从连接池获取一个连接
-      connection = await pool.getConnection();
+      connection = await pool.getConnection()
 
       // 开始事务
-      await connection.beginTransaction();
+      await connection.beginTransaction()
 
       // 1. 获取手机当前信息
       const [phoneRecords] = await connection.execute(
         'SELECT status FROM phones WHERE id = ?',
         [phoneId]
-      );
+      )
 
       if (phoneRecords.length === 0) {
-        throw new Error('手机不存在');
+        throw new Error('手机不存在')
       }
 
-      const phone = phoneRecords[0];
+      const phone = phoneRecords[0]
 
       // 只允许退库已售出、同行批发、代供应商划拨的手机
-      const allowedStatuses = ['sold', 'peer_transfer', 'supplier_proxy'];
+      const allowedStatuses = ['sold', 'peer_transfer', 'supplier_proxy']
       if (!allowedStatuses.includes(phone.status)) {
-        throw new Error('只能退库已售出、同行批发或划拨的手机');
+        throw new Error('只能退库已售出、同行批发或划拨的手机')
       }
 
       // 2. 获取销售记录信息
@@ -819,23 +822,23 @@ class QueryRepository extends BaseRepository {
         LEFT JOIN users phone_sale_user ON p.sale_operator_id = phone_sale_user.id
         WHERE s.phone_id = ?`,
         [phoneId]
-      );
+      )
 
       log.debug('退库 - 查找销售记录:', {
         phoneId,
         foundRecords: saleRecords.length,
         records: saleRecords
-      });
+      })
 
       if (saleRecords.length === 0) {
-        throw new Error('未找到相关销售记录，无法退库。只有已创建销售记录的已售出/批发/划拨商品才能退库。');
+        throw new Error('未找到相关销售记录，无法退库。只有已创建销售记录的已售出/批发/划拨商品才能退库。')
       }
 
-      const originalSaleId = saleRecords[0].id;
-      const originalCustomerId = saleRecords[0].customer_id;
-      const saleType = phone.status;
-      const originalSaleOperatorId = saleRecords[0].operator_id || null;
-      const originalSaleOperatorName = saleRecords[0].sale_operator_name || null;
+      const originalSaleId = saleRecords[0].id
+      const originalCustomerId = saleRecords[0].customer_id
+      const saleType = phone.status
+      const originalSaleOperatorId = saleRecords[0].operator_id || null
+      const originalSaleOperatorName = saleRecords[0].sale_operator_name || null
 
       log.debug('退库 - 销售记录详情:', {
         originalSaleId,
@@ -843,49 +846,49 @@ class QueryRepository extends BaseRepository {
         originalSaleOperatorId,
         saleType,
         originalSaleOperatorName
-      });
+      })
 
       // 3. 删除销售记录
       await connection.execute(
         'DELETE FROM sales WHERE phone_id = ?',
         [phoneId]
-      );
+      )
 
       // 4. 更新手机状态，清除所有销售相关信息，恢复到入库时的原始状态
       await connection.execute(
         `UPDATE phones SET
           status = 'in_stock',
-          salestime = NULL,
+          sale_time = NULL,
           sale_price = NULL,
           sale_operator_id = NULL
         WHERE id = ?`,
         [phoneId]
-      );
+      )
 
       // 5. 记录退库日志
-      const remarks = returnInfo.remarks || `客户退库操作 - ${returnInfo.return_reason || '未指定原因'} (${returnInfo.handle_method || '未指定处理方式'})`;
+      const remarks = returnInfo.remarks || `客户退库操作 - ${returnInfo.return_reason || '未指定原因'} (${returnInfo.handle_method || '未指定处理方式'})`
       await connection.execute(
         `INSERT INTO sale_reversal_logs
           (phone_id, original_sale_id, original_sale_type, original_customer_id, original_sale_operator_id, original_sale_operator_name, operator_id, reversal_date, remarks)
         VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)`,
         [phoneId, originalSaleId, saleType, originalCustomerId, originalSaleOperatorId, originalSaleOperatorName, operatorId, remarks]
-      );
+      )
 
-      await connection.commit();
+      await connection.commit()
 
       return {
         success: true,
         message: '退库成功，手机已恢复到未销售状态'
-      };
+      }
     } catch (error) {
       if (connection) {
-        await connection.rollback();
+        await connection.rollback()
       }
-      log.error('退库操作失败:', error);
-      throw error;
+      log.error('退库操作失败:', error)
+      throw error
     } finally {
       if (connection) {
-        connection.release();
+        connection.release()
       }
     }
   }
@@ -894,32 +897,32 @@ class QueryRepository extends BaseRepository {
    * 删除手机记录（包括关联的销售记录）
    */
   async deletePhoneRecord(phoneId) {
-    const pool = this.getConnection();
-    let connection;
+    const pool = this.getConnection()
+    let connection
 
     try {
       // 从连接池获取一个连接
-      connection = await pool.getConnection();
+      connection = await pool.getConnection()
 
       // 开始事务
-      await connection.beginTransaction();
+      await connection.beginTransaction()
 
       // 1. 删除关联的销售记录
       await connection.execute(
         'DELETE FROM sales WHERE phone_id = ?',
         [phoneId]
-      );
+      )
 
       // 2. 尝试删除返销日志记录（如果表存在）
       try {
         await connection.execute(
           'DELETE FROM sale_reversal_logs WHERE phone_id = ?',
           [phoneId]
-        );
+        )
       } catch (logError) {
         // 如果表不存在，忽略错误继续执行
-        if (!logError.message.includes("Table") || !logError.message.includes("doesn't exist")) {
-          throw logError; // 如果是其他错误，重新抛出
+        if (!logError.message.includes('Table') || !logError.message.includes("doesn't exist")) {
+          throw logError // 如果是其他错误，重新抛出
         }
       }
 
@@ -928,11 +931,11 @@ class QueryRepository extends BaseRepository {
         await connection.execute(
           'DELETE FROM sales_order_items WHERE phone_id = ?',
           [phoneId]
-        );
+        )
       } catch (orderError) {
         // 如果表不存在或约束问题，忽略错误继续执行
-        if (!orderError.message.includes("Table") || !orderError.message.includes("doesn't exist")) {
-          log.warn(`删除销售订单项记录时出现警告: ${orderError.message}`);
+        if (!orderError.message.includes('Table') || !orderError.message.includes("doesn't exist")) {
+          log.warn(`删除销售订单项记录时出现警告: ${orderError.message}`)
         }
       }
 
@@ -940,11 +943,11 @@ class QueryRepository extends BaseRepository {
         await connection.execute(
           'DELETE FROM rentals WHERE phone_id = ?',
           [phoneId]
-        );
+        )
       } catch (rentalError) {
         // 如果表不存在或约束问题，忽略错误继续执行
-        if (!rentalError.message.includes("Table") || !rentalError.message.includes("doesn't exist")) {
-          log.warn(`删除租赁记录时出现警告: ${rentalError.message}`);
+        if (!rentalError.message.includes('Table') || !rentalError.message.includes("doesn't exist")) {
+          log.warn(`删除租赁记录时出现警告: ${rentalError.message}`)
         }
       }
 
@@ -952,14 +955,14 @@ class QueryRepository extends BaseRepository {
       const [result] = await connection.execute(
         'DELETE FROM phones WHERE id = ?',
         [phoneId]
-      );
+      )
 
       if (result.affectedRows === 0) {
-        throw new Error('手机记录不存在');
+        throw new Error('手机记录不存在')
       }
 
       // 提交事务
-      await connection.commit();
+      await connection.commit()
 
       return {
         success: true,
@@ -968,18 +971,18 @@ class QueryRepository extends BaseRepository {
           sales: result.affectedRows,
           phone: 1
         }
-      };
+      }
     } catch (error) {
       // 回滚事务
       if (connection) {
-        await connection.rollback();
+        await connection.rollback()
       }
-      log.error('删除手机记录失败:', error);
-      throw error;
+      log.error('删除手机记录失败:', error)
+      throw error
     } finally {
       // 释放连接回连接池
       if (connection) {
-        connection.release();
+        connection.release()
       }
     }
   }
@@ -989,9 +992,9 @@ class QueryRepository extends BaseRepository {
    */
   async getQueryOptionsData() {
     try {
-      log.info('获取查询选项数据（直接从数据库查询）');
+      log.info('获取查询选项数据（直接从数据库查询）')
 
-      const db = this.getConnection();
+      const db = this.getConnection()
 
       // 先检查数据库中是否有数据
       const [countCheck] = await db.query(`
@@ -1002,9 +1005,9 @@ class QueryRepository extends BaseRepository {
           (SELECT COUNT(*) FROM models WHERE status = 1 OR status IS NULL) as models,
           (SELECT COUNT(*) FROM colors WHERE status = 1 OR status IS NULL) as colors,
           (SELECT COUNT(*) FROM memories WHERE status = 1 OR status IS NULL) as memories
-      `);
+      `)
 
-      log.info('数据库数据统计:', countCheck[0]);
+      log.info('数据库数据统计:', countCheck[0])
 
       // 并行查询所有选项数据
       const [
@@ -1033,14 +1036,14 @@ class QueryRepository extends BaseRepository {
         db.query('SELECT id, name, sort_order FROM colors WHERE (status = 1 OR status IS NULL) ORDER BY sort_order, id'),
         // 内存
         db.query('SELECT id, size as name, sort_order FROM memories WHERE (status = 1 OR status IS NULL) ORDER BY sort_order, id')
-      ]);
+      ])
 
-      const suppliers = suppliersResult[0] || [];
-      const stores = storesResult[0] || [];
-      const brands = brandsResult[0] || [];
-      const models = modelsResult[0] || [];
-      const colors = colorsResult[0] || [];
-      const memories = memoriesResult[0] || [];
+      const suppliers = suppliersResult[0] || []
+      const stores = storesResult[0] || []
+      const brands = brandsResult[0] || []
+      const models = modelsResult[0] || []
+      const colors = colorsResult[0] || []
+      const memories = memoriesResult[0] || []
 
       log.info('查询选项数据获取成功', {
         suppliers: suppliers.length,
@@ -1049,15 +1052,15 @@ class QueryRepository extends BaseRepository {
         models: models.length,
         colors: colors.length,
         memories: memories.length
-      });
+      })
 
       // 如果没有数据，输出调试信息
-      if (suppliers.length === 0) log.warn('供应商数据为空');
-      if (stores.length === 0) log.warn('店铺数据为空');
-      if (brands.length === 0) log.warn('品牌数据为空');
-      if (models.length === 0) log.warn('型号数据为空');
-      if (colors.length === 0) log.warn('颜色数据为空');
-      if (memories.length === 0) log.warn('内存数据为空');
+      if (suppliers.length === 0) log.warn('供应商数据为空')
+      if (stores.length === 0) log.warn('店铺数据为空')
+      if (brands.length === 0) log.warn('品牌数据为空')
+      if (models.length === 0) log.warn('型号数据为空')
+      if (colors.length === 0) log.warn('颜色数据为空')
+      if (memories.length === 0) log.warn('内存数据为空')
 
       return {
         suppliers,
@@ -1066,20 +1069,11 @@ class QueryRepository extends BaseRepository {
         models,
         colors,
         memories
-      };
+      }
 
     } catch (error) {
-      log.error('获取查询选项数据失败:', error);
-
-      // 如果数据库查询失败，返回空数组而不是抛出错误，确保页面可以加载
-      return {
-        suppliers: [],
-        stores: [],
-        brands: [],
-        models: [],
-        colors: [],
-        memories: []
-      };
+      log.error('获取查询选项数据失败:', error)
+      throw error
     }
   }
 
@@ -1089,7 +1083,7 @@ class QueryRepository extends BaseRepository {
   async getPreorderQuery(filters = {}) {
     const {
       page = 1,
-      limit = 20,
+      page_size = 20,
       supplier_id,
       store_id,
       store_ids,
@@ -1102,75 +1096,91 @@ class QueryRepository extends BaseRepository {
       search_term,
       sort_field = 'created_at',
       sort_order = 'DESC'
-    } = filters;
+    } = filters
 
-    const normalizedPage = parseInt(page, 10) || 1;
-    const normalizedLimit = parseInt(limit, 10) || 20;
-    const offset = (normalizedPage - 1) * normalizedLimit;
-    const db = this.getConnection();
+    const normalizedPage = Math.max(parseInt(page, 10) || 1, 1)
+    const normalizedLimit = Math.min(Math.max(parseInt(page_size, 10) || 20, 1), 100)
+    const offset = (normalizedPage - 1) * normalizedLimit
+    const db = this.getConnection()
+
+    const preorderSortFieldMap = {
+      created_at: 'pr.created_at',
+      brand: 'b.name',
+      brand_name: 'b.name',
+      model: 'm.name',
+      model_name: 'm.name',
+      color: 'co.name',
+      memory: 'mem.size',
+      price: 'pr.total_price',
+      sale_price: 'pr.total_price',
+      purchase_unit_price: 'p.purchase_cost',
+      purchase_cost: 'p.purchase_cost'
+    }
+    const preorderSortField = preorderSortFieldMap[sort_field] || preorderSortFieldMap.created_at
+    const preorderSortOrder = String(sort_order).toUpperCase() === 'ASC' ? 'ASC' : 'DESC'
 
     // 构建WHERE条件
-    const whereConditions = [];
-    const whereParams = [];
+    const whereConditions = []
+    const whereParams = []
 
     // 只查询pending和arrived状态的预订
-    whereConditions.push('pr.status IN (?, ?)');
-    whereParams.push('pending', 'arrived');
+    whereConditions.push('pr.status IN (?, ?)')
+    whereParams.push('pending', 'arrived')
 
     if (brand) {
-      whereConditions.push('b.name LIKE ?');
-      whereParams.push(`%${brand}%`);
+      whereConditions.push('b.name LIKE ?')
+      whereParams.push(`%${brand}%`)
     }
 
     if (model) {
-      whereConditions.push('m.name LIKE ?');
-      whereParams.push(`%${model}%`);
+      whereConditions.push('m.name LIKE ?')
+      whereParams.push(`%${model}%`)
     }
 
     if (color) {
-      whereConditions.push('co.name LIKE ?');
-      whereParams.push(`%${color}%`);
+      whereConditions.push('co.name LIKE ?')
+      whereParams.push(`%${color}%`)
     }
 
     if (memory) {
-      whereConditions.push('mem.size LIKE ?');
-      whereParams.push(`%${memory}%`);
+      whereConditions.push('mem.size LIKE ?')
+      whereParams.push(`%${memory}%`)
     }
 
     // 店铺筛选：对于已匹配的预订，使用手机的店铺；对于待匹配的，使用预订的店铺
     if (store_ids && Array.isArray(store_ids) && store_ids.length > 0) {
-      const placeholders = store_ids.map(() => '?').join(',');
-      whereConditions.push(`(COALESCE(st.id, pr.store_id) IN (${placeholders}))`);
-      whereParams.push(...store_ids);
+      const placeholders = store_ids.map(() => '?').join(',')
+      whereConditions.push(`(COALESCE(st.id, pr.store_id) IN (${placeholders}))`)
+      whereParams.push(...store_ids)
     } else if (store_id) {
-      whereConditions.push('(COALESCE(st.id, pr.store_id) = ?)');
-      whereParams.push(store_id);
+      whereConditions.push('(COALESCE(st.id, pr.store_id) = ?)')
+      whereParams.push(store_id)
     }
 
     // 供应商筛选：只对已匹配的预订有效
     if (supplier_id) {
-      whereConditions.push('(p.supplier_id = ? OR pr.status = ?)');
-      whereParams.push(supplier_id, 'pending');
+      whereConditions.push('(p.supplier_id = ? OR pr.status = ?)')
+      whereParams.push(supplier_id, 'pending')
     }
 
     // 日期筛选
     if (start_date) {
-      whereConditions.push('pr.created_at >= ?');
-      whereParams.push(`${start_date} 00:00:00`);
+      whereConditions.push('pr.created_at >= ?')
+      whereParams.push(`${start_date} 00:00:00`)
     }
 
     if (end_date) {
-      whereConditions.push('pr.created_at <= ?');
-      whereParams.push(`${end_date} 23:59:59`);
+      whereConditions.push('pr.created_at <= ?')
+      whereParams.push(`${end_date} 23:59:59`)
     }
 
     // 搜索条件
     if (search_term) {
-      whereConditions.push('(pr.customer_name LIKE ? OR pr.customer_phone LIKE ? OR pr.preorder_number LIKE ? OR p.imei LIKE ?)');
-      whereParams.push(`%${search_term}%`, `%${search_term}%`, `%${search_term}%`, `%${search_term}%`);
+      whereConditions.push('(c.name LIKE ? OR c.phone LIKE ? OR pr.preorder_number LIKE ? OR p.imei LIKE ?)')
+      whereParams.push(`%${search_term}%`, `%${search_term}%`, `%${search_term}%`, `%${search_term}%`)
     }
 
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : ''
 
     // 构建查询
     const query = `
@@ -1187,7 +1197,7 @@ class QueryRepository extends BaseRepository {
         m.name as model,
         co.name as color,
         mem.size as memory,
-        COALESCE(p.purchase_cost, 0) as purchase_price,
+        COALESCE(p.purchase_cost, 0) as purchase_cost,
         pr.total_price as sale_price,
         NULL as wholesale_price,
         NULL as retail_price,
@@ -1198,8 +1208,8 @@ class QueryRepository extends BaseRepository {
         COALESCE(p.quality_grade, '') as quality_grade,
         pr.remarks,
         NULL as purchase_number,
-        COALESCE(p.Inventorytime, NULL) as Inventorytime,
-        NULL as salestime,
+        COALESCE(p.inventory_time, NULL) as inventory_time,
+        NULL as sale_time,
         COALESCE(p.inventory_operator_id, NULL) as inventory_operator_id,
 
         -- 供应商信息
@@ -1223,8 +1233,8 @@ class QueryRepository extends BaseRepository {
 
         -- 客户信息
         pr.customer_id,
-        pr.customer_name,
-        pr.customer_phone,
+        c.name AS customer_name,
+        c.phone AS customer_phone,
         c.apple_id as customer_apple_id,
         NULL as sale_id,
         NULL as sale_type,
@@ -1233,11 +1243,11 @@ class QueryRepository extends BaseRepository {
         NULL as payment_method,
         NULL as payment_channel,
         pr.preorder_number as invoice_number,
-        NULL as sales_sale_date,
+        NULL as sales_sale_time,
         pr.created_at as sale_created_at,
         NULL as sales_record_operator_id,
         pr.created_by as sale_operator_id,
-        pr.created_at as phones_salestime
+        pr.created_at as phones_sale_time
 
       FROM preorders pr
       LEFT JOIN brands b ON pr.brand_id = b.id
@@ -1250,9 +1260,9 @@ class QueryRepository extends BaseRepository {
       LEFT JOIN stores st ON p.store_id = st.id
       LEFT JOIN users inventory_op ON p.inventory_operator_id = inventory_op.id
       ${whereClause}
-      ORDER BY pr.${sort_field === 'salestime' ? 'created_at' : sort_field} ${sort_order}
+      ORDER BY ${preorderSortField} ${preorderSortOrder}
       LIMIT ${normalizedLimit} OFFSET ${offset}
-    `;
+    `
 
     // 计数查询
     const countQuery = `
@@ -1262,23 +1272,35 @@ class QueryRepository extends BaseRepository {
       LEFT JOIN models m ON pr.model_id = m.id
       LEFT JOIN colors co ON pr.color_id = co.id
       LEFT JOIN memories mem ON pr.memory_id = mem.id
+      LEFT JOIN customers c ON pr.customer_id = c.id
       LEFT JOIN phones p ON pr.matched_phone_id = p.id
       LEFT JOIN suppliers supp ON p.supplier_id = supp.id
       LEFT JOIN stores st ON p.store_id = st.id
       ${whereClause}
-    `;
+    `
 
     try {
-      const [data] = await db.execute(query, whereParams);
-      const [countResult] = await db.execute(countQuery, whereParams);
-      const total = countResult[0]?.total || 0;
+      const [data] = await db.execute(query, whereParams)
+      const [countResult] = await db.execute(countQuery, whereParams)
+      const total = countResult[0]?.total || 0
 
-      return { data, total };
+      const total_pages = total > 0 ? Math.ceil(total / normalizedLimit) : 0
+      return {
+        data,
+        pagination: {
+          page: normalizedPage,
+          page_size: normalizedLimit,
+          total: Number(total),
+          total_pages,
+          has_next: normalizedPage < total_pages,
+          has_prev: normalizedPage > 1
+        }
+      }
     } catch (error) {
-      log.error('查询预订数据失败:', error);
-      throw error;
+      log.error('查询预订数据失败:', error)
+      throw error
     }
   }
 }
 
-module.exports = QueryRepository;
+module.exports = QueryRepository

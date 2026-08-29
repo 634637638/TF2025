@@ -16,9 +16,12 @@ dayjs.extend(timezone)
 dayjs.extend(relativeTime)
 dayjs.locale('zh-cn')
 import { logger } from '@/utils/logger'
+import type { App } from 'vue'
 
 // 北京时区配置
 export const BEIJING_TIMEZONE = 'Asia/Shanghai'
+type TimeInput = Date | string | number | dayjs.Dayjs
+type TimeUnit = 'year' | 'month' | 'week' | 'day' | 'hour' | 'minute' | 'second'
 
 /**
  * 时间格式类型
@@ -336,7 +339,7 @@ export class TimeUtil {
     showDate = true
   ): string {
     const time = this.toBeijing(date)
-    const now = this.now()
+    const _now = this.now()
 
     if (this.isToday(date)) {
       return `今天 ${time.format(TIME_FORMATS.TIME)}`
@@ -466,7 +469,7 @@ export class TimeUtil {
  * Vue插件：安装时间工具
  */
 export const TimePlugin = {
-  install(app: any) {
+  install(app: App) {
     // 全局属性
     app.config.globalProperties.$time = TimeUtil
     app.provide('timeUtil', TimeUtil)
@@ -486,20 +489,20 @@ export function useTime() {
     timeUtil: TimeUtil,
     now: () => TimeUtil.now(),
     getBeijingTime: () => TimeUtil.now().toDate(),
-    format: (date: any, format?: any) => TimeUtil.format(date, format),
-    fromNow: (date: any) => TimeUtil.fromNow(date),
-    diff: (date1: any, date2?: any, unit?: any) => TimeUtil.diff(date1, date2, unit),
-    add: (date: any, amount: any, unit: any) => TimeUtil.add(date, amount, unit),
-    subtract: (date: any, amount: any, unit?: any) => TimeUtil.subtract(date, amount, unit),
-    startOf: (date: any, unit: any) => TimeUtil.startOf(date, unit),
-    endOf: (date: any, unit: any) => TimeUtil.endOf(date, unit),
-    isToday: (date: any) => TimeUtil.isToday(date),
-    isWeekday: (date?: any) => TimeUtil.isWeekday(date),
-    isWeekend: (date?: any) => TimeUtil.isWeekend(date),
-    getDayName: (date?: any) => TimeUtil.getDayName(date),
-    getMonthName: (date?: any) => TimeUtil.getMonthName(date),
-    getFriendlyTime: (date: any, showDate?: any) => TimeUtil.getFriendlyTime(date, showDate),
-    getCountdown: (date: any) => TimeUtil.getCountdown(date)
+    format: (date: TimeInput, format?: keyof TimeFormats | string) => TimeUtil.format(date, format),
+    fromNow: (date: TimeInput) => TimeUtil.fromNow(date),
+    diff: (date1: TimeInput, date2?: TimeInput, unit?: TimeUnit) => TimeUtil.diff(date1, date2, unit),
+    add: (date: TimeInput, amount: number, unit: TimeUnit) => TimeUtil.add(date, amount, unit),
+    subtract: (date: TimeInput, amount: number, unit?: TimeUnit) => TimeUtil.subtract(date, amount, unit),
+    startOf: (date: TimeInput, unit: TimeUnit) => TimeUtil.startOf(date, unit),
+    endOf: (date: TimeInput, unit: TimeUnit) => TimeUtil.endOf(date, unit),
+    isToday: (date: TimeInput) => TimeUtil.isToday(date),
+    isWeekday: (date?: TimeInput) => TimeUtil.isWeekday(date),
+    isWeekend: (date?: TimeInput) => TimeUtil.isWeekend(date),
+    getDayName: (date?: TimeInput) => TimeUtil.getDayName(date),
+    getMonthName: (date?: TimeInput) => TimeUtil.getMonthName(date),
+    getFriendlyTime: (date: TimeInput, showDate?: boolean) => TimeUtil.getFriendlyTime(date, showDate),
+    getCountdown: (date: TimeInput) => TimeUtil.getCountdown(date)
   }
 }
 

@@ -10,14 +10,12 @@ export { useLocalStorage, useSessionStorage, LocalStorageUtil, storage } from '.
 
 // 导入用于默认导出
 import { useAsync } from './core/useAsync'
-import { useEventBus, createEventBus } from './core/useEventBus'
+import { useEventBus } from './core/useEventBus'
 import { useConfirm } from './ui/useConfirm'
 import { useMediaQuery } from './ui/useMediaQuery'
-import { useWindowSize } from './ui/useWindowSize'
-import { useLocalStorage, storage } from './core/useLocalStorage'
-import { useClipboard, ClipboardUtil } from './utils/useClipboard'
+import { useLocalStorage } from './core/useLocalStorage'
+import { useClipboard } from './utils/useClipboard'
 import { useForm, ValidationRules } from './forms/useForm'
-import { useLoading, createLoading } from './useLoading'
 import { useImportExport } from './useImportExport'
 import {
   useResponsive,
@@ -25,10 +23,7 @@ import {
   useMobileDevice,
   useMobileDetection,
   useMobileForm,
-  useMobileGestures,
-  useMobileViewport,
-  useMobilePerformance,
-  getGlobalResponsiveState
+  useMobileGestures
 } from './mobile'
 
 // UI 功能
@@ -88,15 +83,13 @@ import { usePagination } from './usePagination'
 
 // 统一通知 composable
 export { useNotification, notifications } from './useNotification'
-import { useNotification } from './useNotification'
 
 // 页面状态 composable
 export { usePageState, useTableState } from './usePageState'
-import { usePageState, useTableState } from './usePageState'
 
 // 防抖 composable（从独立文件导入）
 export { useDebounce, useDebouncedValue, useSearchDebounce } from './useDebounce'
-import { useDebounce, useDebouncedValue, useSearchDebounce } from './useDebounce'
+import { useDebounce } from './useDebounce'
 
 // 最新请求控制
 export { useLatestRequest, isCanceledError } from './useLatestRequest'

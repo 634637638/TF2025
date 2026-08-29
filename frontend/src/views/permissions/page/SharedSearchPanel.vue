@@ -1,5 +1,8 @@
 <template>
-  <div v-if="searchableTabs.includes(ctx.activeTab)" class="permissions-shared-search">
+  <div
+    v-if="searchableTabs.includes(ctx.activeTab)"
+    class="permissions-shared-search"
+  >
     <UnifiedSearchPanel
       v-if="ctx.activeTab === 'roles'"
       v-model:expanded="ctx.roleSearchExpanded"
@@ -8,6 +11,7 @@
     >
       <template #primary>
         <el-input
+          v-if="ctx.canViewPermissionsField('roles.name') || ctx.canViewPermissionsField('roles.code') || ctx.canViewPermissionsField('roles.description')"
           v-model="ctx.roleSearchForm.name"
           placeholder="搜索角色名称 / 编码 / 描述"
           clearable
@@ -15,14 +19,18 @@
           @click.stop
         >
           <template #prefix>
-            <i class="fas fa-search"></i>
+            <i class="fas fa-search" />
           </template>
         </el-input>
       </template>
 
-      <div class="form-group filter-item" data-field="roleHint">
+      <div
+        class="form-group filter-item"
+        data-field="roleHint"
+        v-if="ctx.canViewPermissionsField('roles.name') || ctx.canViewPermissionsField('roles.code') || ctx.canViewPermissionsField('roles.description')"
+      >
         <div class="search-hint-card">
-          <i class="fas fa-database"></i>
+          <i class="fas fa-database" />
           <span>角色由数据库驱动，支持按名称、编码和描述搜索。</span>
         </div>
       </div>
@@ -36,6 +44,7 @@
     >
       <template #primary>
         <el-input
+          v-if="ctx.canViewPermissionsField('users.username') || ctx.canViewPermissionsField('users.full_name')"
           v-model="ctx.userSearchForm.username"
           placeholder="搜索用户名/姓名"
           clearable
@@ -43,14 +52,18 @@
           @click.stop
         >
           <template #prefix>
-            <i class="fas fa-search"></i>
+            <i class="fas fa-search" />
           </template>
         </el-input>
       </template>
 
-      <div class="form-group filter-item" data-field="role">
+      <div
+        class="form-group filter-item"
+        data-field="role"
+        v-if="ctx.canViewPermissionsField('users.roles')"
+      >
         <el-select
-          v-model="ctx.userSearchForm.roleId"
+          v-model="ctx.userSearchForm.role_id"
           placeholder="角色筛选"
           clearable
           filterable
@@ -74,28 +87,35 @@
     >
       <template #primary>
         <el-input
-          v-model="ctx.storeBindingSearchForm.userName"
+          v-if="ctx.canViewPermissionsField('store_bindings.username') || ctx.canViewPermissionsField('store_bindings.name')"
+          v-model="ctx.storeBindingSearchForm.user_name"
           placeholder="搜索员工姓名"
           clearable
           @keyup.enter="ctx.searchStoreBindings"
           @click.stop
         >
           <template #prefix>
-            <i class="fas fa-search"></i>
+            <i class="fas fa-search" />
           </template>
         </el-input>
       </template>
 
-      <div class="form-group filter-item">
+      <div
+        v-if="ctx.canViewPermissionsField('store_bindings.stores')"
+        class="form-group filter-item"
+      >
         <el-select
-          v-model="ctx.storeBindingSearchForm.storeId"
+          v-model="ctx.storeBindingSearchForm.store_id"
           placeholder="门店筛选"
           clearable
           filterable
           style="width: 100%"
           @change="ctx.searchStoreBindings"
         >
-          <el-option label="全部门店" value="" />
+          <el-option
+            label="全部门店"
+            value=""
+          />
           <el-option
             v-for="store in ctx.storeList"
             :key="store.id"
@@ -105,17 +125,29 @@
         </el-select>
       </div>
 
-      <div class="form-group filter-item">
+      <div
+        v-if="ctx.canViewPermissionsField('store_bindings.status')"
+        class="form-group filter-item"
+      >
         <el-select
-          v-model="ctx.storeBindingSearchForm.hasStore"
+          v-model="ctx.storeBindingSearchForm.has_store"
           placeholder="绑定状态"
           clearable
           style="width: 100%"
           @change="ctx.searchStoreBindings"
         >
-          <el-option label="全部" value="" />
-          <el-option label="已绑定" value="true" />
-          <el-option label="未绑定" value="false" />
+          <el-option
+            label="全部"
+            value=""
+          />
+          <el-option
+            label="已绑定"
+            value="true"
+          />
+          <el-option
+            label="未绑定"
+            value="false"
+          />
         </el-select>
       </div>
     </UnifiedSearchPanel>
@@ -128,6 +160,7 @@
     >
       <template #primary>
         <el-input
+          v-if="ctx.canViewPermissionsField('logs.username')"
           v-model="ctx.logSearchForm.username"
           placeholder="搜索操作用户"
           clearable
@@ -135,12 +168,15 @@
           @click.stop
         >
           <template #prefix>
-            <i class="fas fa-search"></i>
+            <i class="fas fa-search" />
           </template>
         </el-input>
       </template>
 
-      <div class="form-group filter-item">
+      <div
+        v-if="ctx.canViewPermissionsField('logs.action')"
+        class="form-group filter-item"
+      >
         <el-select
           v-model="ctx.logSearchForm.action"
           placeholder="操作类型"
@@ -148,19 +184,49 @@
           style="width: 100%"
           @change="ctx.searchLogs"
         >
-          <el-option label="全部操作" value="" />
-          <el-option label="创建" value="create" />
-          <el-option label="编辑" value="edit" />
-          <el-option label="删除" value="delete" />
-          <el-option label="分配" value="assign" />
-          <el-option label="权限配置" value="permission" />
-          <el-option label="启用" value="enable" />
-          <el-option label="禁用" value="disable" />
-          <el-option label="同步" value="sync" />
+          <el-option
+            label="全部操作"
+            value=""
+          />
+          <el-option
+            label="创建"
+            value="create"
+          />
+          <el-option
+            label="编辑"
+            value="edit"
+          />
+          <el-option
+            label="删除"
+            value="delete"
+          />
+          <el-option
+            label="分配"
+            value="assign"
+          />
+          <el-option
+            label="权限配置"
+            value="permission"
+          />
+          <el-option
+            label="启用"
+            value="enable"
+          />
+          <el-option
+            label="禁用"
+            value="disable"
+          />
+          <el-option
+            label="同步"
+            value="sync"
+          />
         </el-select>
       </div>
 
-      <div class="form-group filter-item">
+      <div
+        v-if="ctx.canViewPermissionsField('logs.created_at')"
+        class="form-group filter-item"
+      >
         <el-date-picker
           v-model="ctx.logSearchForm.dateRange"
           type="daterange"
@@ -170,8 +236,8 @@
           format="YYYY-MM-DD"
           value-format="YYYY-MM-DD"
           clearable
-          @change="ctx.searchLogs"
           style="width: 100%"
+          @change="ctx.searchLogs"
         />
       </div>
     </UnifiedSearchPanel>
@@ -195,9 +261,9 @@ const searchableTabs = ['roles', 'userRoles', 'storeBindings', 'logs']
   min-height: 32px;
   padding: 8px 12px;
   border-radius: 10px;
-  background: #f8fafc;
+  background: var(--tf-color-slate-50);
   border: 1px dashed rgba(100, 116, 139, 0.28);
-  color: #64748b;
+  color: var(--tf-color-slate-500);
   font-size: 12px;
   line-height: 1.5;
 }

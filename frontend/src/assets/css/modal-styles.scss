@@ -93,7 +93,7 @@
  * 1. 优先使用 MobileDialog 或统一收口后的 el-dialog，避免继续新增自定义 modal-overlay 实现
  * 2. 模态框样式应放在全局样式文件或非 scoped style 块中
  * 3. 全局配置 Element Plus 语言包和时区
- * 4. 使用渐变色头部（#667eea -> #764ba2）保持视觉一致性
+ * 4. 使用渐变色头部（var(--tf-color-indigo-brand) -> var(--tf-color-purple-brand)）保持视觉一致性
  * 5. 确保遮罩层为半透明黑色 rgba(0, 0, 0, 0.5)
  * 6. 所有包装元素必须设置 border: none 和 outline: none
  */
@@ -223,16 +223,16 @@
   }
 
   &::-webkit-scrollbar-track {
-    background: #f1f1f1;
+    background: var(--tf-color-gray-100);
     border-radius: 3px;
   }
 
   &::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
+    background: var(--tf-color-gray-300);
     border-radius: 3px;
 
     &:hover {
-      background: #a8a8a8;
+      background: var(--tf-color-gray-400);
     }
   }
 }
@@ -292,7 +292,7 @@
     }
 
     &:disabled {
-      background: #f9fafb;
+      background: var(--tf-color-neutral-50);
       cursor: not-allowed;
     }
   }

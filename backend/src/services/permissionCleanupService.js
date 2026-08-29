@@ -1,6 +1,6 @@
-const { getDatabase } = require('../config/database');
-const { normalizePermissionType } = require('../config/module-permission-actions');
-const log = require('../utils/log');
+const { getDatabase } = require('../config/database')
+const { normalizePermissionType } = require('../config/module-permission-actions')
+const log = require('../utils/log')
 
 // 强制重新加载
 
@@ -9,7 +9,7 @@ const log = require('../utils/log');
  */
 class PermissionCleanupService {
   constructor() {
-    this.connection = null;
+    this.connection = null
   }
 
   /**
@@ -17,16 +17,16 @@ class PermissionCleanupService {
    */
   async initConnection() {
     if (!this.connection) {
-      this.connection = getDatabase();
+      this.connection = getDatabase()
     }
-    return this.connection;
+    return this.connection
   }
 
   /**
    * 关闭数据库连接
    */
   async closeConnection() {
-    this.connection = null;
+    this.connection = null
   }
 
   /**
@@ -35,50 +35,50 @@ class PermissionCleanupService {
    * @returns {object} 清理结果
    */
   async cleanupRolePermissions(roleId) {
-    await this.initConnection();
+    await this.initConnection()
 
     try {
-      log.debug(`🧹 开始清理角色 ${roleId} 的权限...`);
+      log.debug(`🧹 开始清理角色 ${roleId} 的权限...`)
 
       // 1. 获取角色信息
       const [roleInfo] = await this.connection.execute(
         'SELECT id, name FROM roles WHERE id = ?',
         [roleId]
-      );
+      )
 
       if (roleInfo.length === 0) {
-        throw new Error(`角色 ${roleId} 不存在`);
+        throw new Error(`角色 ${roleId} 不存在`)
       }
 
-      const role = roleInfo[0];
-      log.debug(`📋 处理角色: ${role.name}`);
+      const role = roleInfo[0]
+      log.debug(`📋 处理角色: ${role.name}`)
 
       // 2. 获取所有活跃的模块
       const [activeModules] = await this.connection.execute(
         'SELECT `key`, name, category FROM modules WHERE is_active = 1'
-      );
+      )
 
-      const activeModuleKeys = activeModules.map(m => m.key);
-      log.debug(`📦 当前活跃模块数量: ${activeModuleKeys.length}`);
+      const activeModuleKeys = activeModules.map(m => m.key)
+      log.debug(`📦 当前活跃模块数量: ${activeModuleKeys.length}`)
 
       // 3. 只做安全清理，不再根据角色类型或角色名称自动灌权限
-      const cleanupResult = await this.cleanupPermissionRecords(role.id, activeModuleKeys);
+      const cleanupResult = await this.cleanupPermissionRecords(role.id, activeModuleKeys)
 
       // 4. 记录清理日志
-      await this.logCleanup(roleId, cleanupResult);
+      await this.logCleanup(roleId, cleanupResult)
 
       return {
         success: true,
         roleId: roleId,
         roleName: role.name,
         ...cleanupResult
-      };
+      }
 
     } catch (error) {
-      log.error(`❌ 清理角色 ${roleId} 权限失败:`, error);
-      throw error;
+      log.error(`❌ 清理角色 ${roleId} 权限失败:`, error)
+      throw error
     } finally {
-      await this.closeConnection();
+      await this.closeConnection()
     }
   }
 
@@ -90,9 +90,9 @@ class PermissionCleanupService {
          AND TABLE_NAME = ?
        LIMIT 1`,
       [tableName]
-    );
+    )
 
-    return rows.length > 0;
+    return rows.length > 0
   }
 
   async cleanupPermissionRecords(roleId, activeModuleKeys) {
@@ -105,31 +105,31 @@ class PermissionCleanupService {
       keptPermissions: 0,
       menuPermissions: 0,
       actionPermissions: 0
-    };
+    }
 
     if (activeModuleKeys.length === 0) {
       const [deletedAllPermissions] = await this.connection.execute(
         'DELETE FROM role_permissions WHERE role_id = ?',
         [roleId]
-      );
-      result.deletedPermissions += deletedAllPermissions.affectedRows;
+      )
+      result.deletedPermissions += deletedAllPermissions.affectedRows
 
       if (await this.hasTable('role_menu_visibility')) {
         const [deletedAllMenuVisibility] = await this.connection.execute(
           'DELETE FROM role_menu_visibility WHERE role_id = ?',
           [roleId]
-        );
-        result.deletedMenuVisibility += deletedAllMenuVisibility.affectedRows;
+        )
+        result.deletedMenuVisibility += deletedAllMenuVisibility.affectedRows
       }
     } else {
-      const placeholders = activeModuleKeys.map(() => '?').join(', ');
+      const placeholders = activeModuleKeys.map(() => '?').join(', ')
       const [deletedInvalidPermissions] = await this.connection.execute(
         `DELETE FROM role_permissions
          WHERE role_id = ?
            AND module_key NOT IN (${placeholders})`,
         [roleId, ...activeModuleKeys]
-      );
-      result.deletedPermissions += deletedInvalidPermissions.affectedRows;
+      )
+      result.deletedPermissions += deletedInvalidPermissions.affectedRows
 
       if (await this.hasTable('role_menu_visibility')) {
         const [deletedInvalidMenuVisibility] = await this.connection.execute(
@@ -137,8 +137,8 @@ class PermissionCleanupService {
            WHERE role_id = ?
              AND module_key NOT IN (${placeholders})`,
           [roleId, ...activeModuleKeys]
-        );
-        result.deletedMenuVisibility += deletedInvalidMenuVisibility.affectedRows;
+        )
+        result.deletedMenuVisibility += deletedInvalidMenuVisibility.affectedRows
       }
     }
 
@@ -148,16 +148,16 @@ class PermissionCleanupService {
        WHERE role_id = ?
          AND permission_type LIKE ?`,
       [roleId, '%\\_permission']
-    );
+    )
 
     for (const row of legacyPermissionRows) {
-      const normalizedType = normalizePermissionType(row.permission_type);
+      const normalizedType = normalizePermissionType(row.permission_type)
       if (normalizedType !== row.permission_type) {
         await this.connection.execute(
           'UPDATE role_permissions SET permission_type = ? WHERE id = ?',
           [normalizedType, row.id]
-        );
-        result.normalizedPermissions += 1;
+        )
+        result.normalizedPermissions += 1
       }
     }
 
@@ -168,7 +168,7 @@ class PermissionCleanupService {
        GROUP BY module_key, permission_type
        HAVING COUNT(*) > 1`,
       [roleId]
-    );
+    )
 
     for (const row of duplicateRows) {
       const [deletedDuplicateRows] = await this.connection.execute(
@@ -178,31 +178,31 @@ class PermissionCleanupService {
            AND permission_type = ?
            AND id != ?`,
         [roleId, row.module_key, row.permission_type, row.keep_id]
-      );
-      result.duplicatePermissions += deletedDuplicateRows.affectedRows;
-      result.deletedPermissions += deletedDuplicateRows.affectedRows;
+      )
+      result.duplicatePermissions += deletedDuplicateRows.affectedRows
+      result.deletedPermissions += deletedDuplicateRows.affectedRows
     }
 
     const [finalPermissions] = await this.connection.execute(
       'SELECT permission_type, COUNT(*) as count FROM role_permissions WHERE role_id = ? GROUP BY permission_type',
       [roleId]
-    );
+    )
 
     finalPermissions.forEach(p => {
-      if (p.permission_type === 'menu_view') result.menuPermissions = p.count;
-      else result.actionPermissions += p.count;
-    });
+      if (p.permission_type === 'menu_view') result.menuPermissions = p.count
+      else result.actionPermissions += p.count
+    })
 
     if (await this.hasTable('role_menu_visibility')) {
       const [menuVisibilityRows] = await this.connection.execute(
         'SELECT COUNT(*) AS count FROM role_menu_visibility WHERE role_id = ? AND visible = 1',
         [roleId]
-      );
-      result.menuPermissions = Number(menuVisibilityRows[0]?.count || 0);
+      )
+      result.menuPermissions = Number(menuVisibilityRows[0]?.count || 0)
     }
 
-    result.keptPermissions = result.menuPermissions + result.actionPermissions;
-    return result;
+    result.keptPermissions = result.menuPermissions + result.actionPermissions
+    return result
   }
 
   /**
@@ -221,9 +221,9 @@ class PermissionCleanupService {
             timestamp: new Date().toISOString()
           })
         ]
-      );
+      )
     } catch (error) {
-      log.warn('记录清理日志失败:', error.message);
+      log.warn('记录清理日志失败:', error.message)
     }
   }
 
@@ -231,28 +231,28 @@ class PermissionCleanupService {
    * 清理所有角色的权限
    */
   async cleanupAllRolePermissions() {
-    await this.initConnection();
+    await this.initConnection()
 
     try {
       const [roles] = await this.connection.execute(
         'SELECT id FROM roles WHERE is_active = 1'
-      );
+      )
 
-      log.debug(`🧹 开始清理 ${roles.length} 个角色的权限...`);
+      log.debug(`🧹 开始清理 ${roles.length} 个角色的权限...`)
 
-      const results = [];
+      const results = []
       for (const role of roles) {
         try {
-          const result = await this.cleanupRolePermissions(role.id);
-          results.push(result);
-          log.debug(`✅ 角色 ${role.id} 清理完成`);
+          const result = await this.cleanupRolePermissions(role.id)
+          results.push(result)
+          log.debug(`✅ 角色 ${role.id} 清理完成`)
         } catch (error) {
-          log.error(`❌ 角色 ${role.id} 清理失败:`, error.message);
+          log.error(`❌ 角色 ${role.id} 清理失败:`, error.message)
           results.push({
             success: false,
             roleId: role.id,
             error: error.message
-          });
+          })
         }
       }
 
@@ -260,13 +260,13 @@ class PermissionCleanupService {
         success: true,
         total: roles.length,
         results: results
-      };
+      }
 
     } catch (error) {
-      log.error('❌ 批量清理权限失败:', error);
-      throw error;
+      log.error('❌ 批量清理权限失败:', error)
+      throw error
     } finally {
-      await this.closeConnection();
+      await this.closeConnection()
     }
   }
 }
@@ -275,65 +275,65 @@ class PermissionCleanupService {
  * 触发权限清理的中间件
  */
 async function triggerPermissionCleanup(req, res, next) {
-  const cleanupService = new PermissionCleanupService();
+  const cleanupService = new PermissionCleanupService()
 
   try {
     // 检查是否是角色相关的操作
     if (req.path.includes('/roles') && (req.method === 'PUT' || req.method === 'DELETE' || req.method === 'POST')) {
-      const roleId = req.params.id || req.body.role_id;
+      const roleId = req.params.id || req.body.role_id
 
       if (roleId) {
         // 异步执行权限清理，不阻塞当前请求
         setImmediate(async () => {
           try {
-            await cleanupService.cleanupRolePermissions(roleId);
-            log.debug(`🔄 角色变更后自动清理权限完成: 角色ID ${roleId}`);
+            await cleanupService.cleanupRolePermissions(roleId)
+            log.debug(`🔄 角色变更后自动清理权限完成: 角色ID ${roleId}`)
           } catch (error) {
-            log.error(`🔄 自动清理权限失败: 角色ID ${roleId}`, error);
+            log.error(`🔄 自动清理权限失败: 角色ID ${roleId}`, error)
           }
-        });
+        })
       }
     }
   } catch (error) {
-    log.warn('权限清理触发失败:', error);
+    log.warn('权限清理触发失败:', error)
   }
 
-  next();
+  next()
 }
 
 /**
  * 手动触发权限清理的API端点
  */
 async function manualCleanup(req, res) {
-  const cleanupService = new PermissionCleanupService();
-  const { roleId, cleanupAll = false } = req.body;
+  const cleanupService = new PermissionCleanupService()
+  const { roleId, cleanupAll = false } = req.body
 
   try {
-    let result;
+    let result
 
     if (cleanupAll) {
-      result = await cleanupService.cleanupAllRolePermissions();
+      result = await cleanupService.cleanupAllRolePermissions()
     } else if (roleId) {
-      result = await cleanupService.cleanupRolePermissions(roleId);
+      result = await cleanupService.cleanupRolePermissions(roleId)
     } else {
       return res.status(400).json({
         success: false,
         message: '请提供角色ID或设置cleanupAll为true'
-      });
+      })
     }
 
     res.json({
       success: true,
       message: '权限清理完成',
       data: result
-    });
+    })
 
   } catch (error) {
-    log.error('手动权限清理失败:', error);
+    log.error('手动权限清理失败:', error)
     res.status(500).json({
       success: false,
       message: '权限清理失败: ' + error.message
-    });
+    })
   }
 }
 
@@ -341,4 +341,4 @@ module.exports = {
   PermissionCleanupService,
   triggerPermissionCleanup,
   manualCleanup
-};
+}

@@ -8,22 +8,32 @@ import type { RequestConfig } from '@/utils/unified-api'
  * 获取在库手机列表（价目表用）- 参考销售管理的逻辑
  * 直接从 phones 表获取 status='in_stock' 的商品
  */
-export function getStockPhones(params?: any) {
+export function getStockPhones(params?: unknown) {
   return unifiedApi.get('/sales/phones/available', { params })
 }
 
 /**
  * 获取价格列表（管理端）
  */
-export function getPriceList(params?: any) {
+export function getPriceList(params?: unknown) {
   return unifiedApi.get('/price-list', { params })
 }
 
 /**
  * 根据ID获取价格历史
  */
-export function getPriceHistory(id: number, params?: any, config?: RequestConfig) {
+export function getPriceHistory(id: number, params?: unknown, config?: RequestConfig) {
   return unifiedApi.get(`/price-list/${id}/history`, { params, ...config })
+}
+
+/**
+ * 批量获取价格趋势
+ */
+export function getPriceHistoryTrends(ids: number[], config?: RequestConfig) {
+  return unifiedApi.get('/price-list/history/trends', {
+    params: { ids: ids.join(',') },
+    ...config
+  })
 }
 
 /**
@@ -57,7 +67,7 @@ export function clearAllPriceHistory() {
 /**
  * 创建/更新价格记录
  */
-export function upsertPriceItem(data: any) {
+export function upsertPriceItem(data: unknown) {
   return unifiedApi.post('/price-list', data)
 }
 
@@ -78,7 +88,7 @@ export function getAllSyncConfigs() {
 /**
  * 创建新的同步配置
  */
-export function createSyncConfig(data: any) {
+export function createSyncConfig(data: unknown) {
   return unifiedApi.post('/price-list/sync/configs', data)
 }
 
@@ -106,7 +116,7 @@ export function deleteSyncConfig(configId: number) {
 /**
  * 更新指定ID的同步配置
  */
-export function updateSyncConfigById(configId: number, data: any) {
+export function updateSyncConfigById(configId: number, data: unknown) {
   return unifiedApi.put(`/price-list/sync/config/${configId}`, data)
 }
 
@@ -121,7 +131,7 @@ export function getSyncConfig(hidePassword: boolean = true) {
 /**
  * 更新同步配置
  */
-export function updateSyncConfig(data: any) {
+export function updateSyncConfig(data: unknown) {
   return unifiedApi.put('/price-list/sync/config', data)
 }
 
@@ -135,7 +145,7 @@ export function triggerSync() {
 /**
  * 获取同步日志
  */
-export function getSyncLogs(params?: any) {
+export function getSyncLogs(params?: unknown) {
   return unifiedApi.get('/price-list/sync/logs', { params })
 }
 

@@ -4,22 +4,44 @@
 -->
 <template>
   <div class="checkout-page">
-    <div v-if="loading" class="loading-state">
-      <SectionLoading text="加载结算信息中..." size="large" />
+    <div
+      v-if="loading"
+      class="loading-state"
+    >
+      <SectionLoading
+        text="加载结算信息中..."
+        size="large"
+      />
     </div>
 
-    <div v-else class="checkout-content">
+    <div
+      v-else
+      class="checkout-content"
+    >
       <!-- 商品信息 -->
       <div class="section">
-        <h3 class="section-title">商品信息</h3>
+        <h3 class="section-title">
+          商品信息
+        </h3>
         <div class="order-items">
-          <div v-for="item in orderItems" :key="item.phoneId" class="order-item">
+          <div
+            v-for="item in orderItems"
+            :key="item.phoneId"
+            class="order-item"
+          >
             <div class="item-image">
-              <img :src="getImageUrl(item.image)" :alt="`${item.brand_name} ${item.model_name}`" />
+              <img
+                :src="getImageUrl(item.image)"
+                :alt="`${item.brand_name} ${item.model_name}`"
+              >
             </div>
             <div class="item-info">
-              <h4 class="item-title">{{ item.brand_name }} {{ item.model_name }}</h4>
-              <p class="item-specs">{{ item.color_name }} | {{ item.memory_name }}</p>
+              <h4 class="item-title">
+                {{ item.brand_name }} {{ item.model_name }}
+              </h4>
+              <p class="item-specs">
+                {{ item.color_name }} | {{ item.memory_name }}
+              </p>
               <div class="item-footer">
                 <span class="item-price">¥{{ formatPrice(item.salePrice) }}</span>
                 <span class="item-quantity">x{{ item.quantity }}</span>
@@ -31,14 +53,16 @@
 
       <!-- 支付方式 - 横向排列 -->
       <div class="section payment-section">
-        <h3 class="section-title">支付方式</h3>
+        <h3 class="section-title">
+          支付方式
+        </h3>
         <div class="payment-tabs">
           <div
             class="payment-tab"
             :class="{ active: form.paymentMethod === 'pickup' }"
             @click="selectPaymentMethod('pickup')"
           >
-            <i class="fas fa-store"></i>
+            <i class="fas fa-store" />
             <span>到店自提</span>
           </div>
           <div
@@ -46,7 +70,10 @@
             :class="{ active: form.paymentMethod === 'wechat' }"
             @click="selectPaymentMethod('wechat')"
           >
-            <i class="fab fa-weixin" style="color: #09bb07;"></i>
+            <i
+              class="fab fa-weixin"
+              style="color: #09bb07;"
+            />
             <span>微信</span>
           </div>
           <div
@@ -54,15 +81,23 @@
             :class="{ active: form.paymentMethod === 'alipay' }"
             @click="selectPaymentMethod('alipay')"
           >
-            <i class="fab fa-alipay" style="color: #1677ff;"></i>
+            <i
+              class="fab fa-alipay"
+              style="color: #1677ff;"
+            />
             <span>支付宝</span>
           </div>
         </div>
 
         <!-- 到店自提 - 店铺选择 -->
-        <div v-if="form.paymentMethod === 'pickup'" class="payment-content">
+        <div
+          v-if="form.paymentMethod === 'pickup'"
+          class="payment-content"
+        >
           <div class="store-selection">
-            <h4 class="content-title">选择自提店铺</h4>
+            <h4 class="content-title">
+              选择自提店铺
+            </h4>
             <div class="store-list">
               <div
                 v-for="store in availableStores"
@@ -72,56 +107,126 @@
                 @click="selectedStore = store"
               >
                 <div class="store-info">
-                  <h5 class="store-name">{{ store.name }}</h5>
-                  <p v-if="store.address" class="store-address">{{ store.address }}</p>
-                  <p v-if="store.phone" class="store-phone">
-                    <i class="fas fa-phone"></i>
+                  <h5 class="store-name">
+                    {{ store.name }}
+                  </h5>
+                  <p
+                    v-if="store.address"
+                    class="store-address"
+                  >
+                    {{ store.address }}
+                  </p>
+                  <p
+                    v-if="store.phone"
+                    class="store-phone"
+                  >
+                    <i class="fas fa-phone" />
                     {{ store.phone }}
                   </p>
                 </div>
-                <i :class="selectedStore?.id === store.id ? 'fas fa-check-circle active' : 'far fa-circle'"></i>
+                <i :class="selectedStore?.id === store.id ? 'fas fa-check-circle active' : 'far fa-circle'" />
               </div>
             </div>
           </div>
         </div>
 
         <!-- 微信/支付宝 - 收货信息 -->
-        <div v-if="form.paymentMethod === 'wechat' || form.paymentMethod === 'alipay'" class="payment-content">
-          <div v-if="isLoggedIn" class="user-address-info">
-            <h4 class="content-title">收货信息</h4>
-            <div class="user-address-card" v-if="userDefaultAddress">
+        <div
+          v-if="form.paymentMethod === 'wechat' || form.paymentMethod === 'alipay'"
+          class="payment-content"
+        >
+          <div
+            v-if="isLoggedIn"
+            class="user-address-info"
+          >
+            <h4 class="content-title">
+              收货信息
+            </h4>
+            <div
+              v-if="userDefaultAddress"
+              class="user-address-card"
+            >
               <div class="address-info">
                 <div class="address-name-phone">
                   <span class="address-name">{{ userDefaultAddress.name }}</span>
                   <span class="address-phone">{{ userDefaultAddress.phone }}</span>
                 </div>
-                <p class="address-detail">{{ userDefaultAddress.address }}</p>
+                <p class="address-detail">
+                  {{ userDefaultAddress.address }}
+                </p>
               </div>
-              <el-button size="small" type="primary" plain @click="showAddressModal = true">
+              <el-button
+                size="small"
+                type="primary"
+                plain
+                @click="showAddressModal = true"
+              >
                 修改地址
               </el-button>
             </div>
-            <div v-else class="no-address-hint">
+            <div
+              v-else
+              class="no-address-hint"
+            >
               <p>您还没有设置收货地址</p>
-              <el-button size="small" type="primary" @click="showAddressModal = true">
+              <el-button
+                size="small"
+                type="primary"
+                @click="showAddressModal = true"
+              >
                 添加地址
               </el-button>
             </div>
           </div>
-          <div v-else class="guest-address-info">
-            <h4 class="content-title">收货信息</h4>
-            <el-form ref="deliveryFormRef" :model="deliveryForm" :rules="deliveryFormRules" label-position="top" size="small">
+          <div
+            v-else
+            class="guest-address-info"
+          >
+            <h4 class="content-title">
+              收货信息
+            </h4>
+            <el-form
+              ref="deliveryFormRef"
+              :model="deliveryForm"
+              :rules="deliveryFormRules"
+              label-position="top"
+              size="small"
+            >
               <div class="delivery-form">
                 <div class="form-row">
-                  <el-form-item label="收货人" prop="name" class="form-item-half">
-                    <el-input v-model="deliveryForm.name" placeholder="收货人姓名" />
+                  <el-form-item
+                    label="收货人"
+                    prop="name"
+                    class="form-item-half"
+                  >
+                    <el-input
+                      v-model="deliveryForm.name"
+                      placeholder="收货人姓名"
+                    />
                   </el-form-item>
-                  <el-form-item label="联系电话" prop="phone" class="form-item-half">
-                    <el-input v-model="deliveryForm.phone" placeholder="手机号码" maxlength="11" @input="deliveryForm.phone = normalizeCustomerPhone(deliveryForm.phone)" />
+                  <el-form-item
+                    label="联系电话"
+                    prop="phone"
+                    class="form-item-half"
+                  >
+                    <el-input
+                      v-model="deliveryForm.phone"
+                      placeholder="手机号码"
+                      maxlength="11"
+                      @input="deliveryForm.phone = normalizeCustomerPhone(deliveryForm.phone)"
+                    />
                   </el-form-item>
                 </div>
-                <el-form-item label="收货地址" prop="address">
-                  <el-input v-model="deliveryForm.address" type="textarea" placeholder="详细地址" :rows="2" />
+                <el-form-item
+                  label="收货地址"
+                  prop="address"
+                >
+                  <el-input
+                    v-model="deliveryForm.address"
+                    type="textarea"
+                    placeholder="详细地址"
+                    :rows="2"
+                  />
                 </el-form-item>
               </div>
             </el-form>
@@ -131,7 +236,9 @@
 
       <!-- 备注 -->
       <div class="section">
-        <h3 class="section-title">备注信息</h3>
+        <h3 class="section-title">
+          备注信息
+        </h3>
         <el-input
           v-model="form.remarks"
           type="textarea"
@@ -165,7 +272,12 @@
         <span class="label">合计：</span>
         <span class="amount">¥{{ totalAmount }}</span>
       </div>
-      <el-button type="primary" class="submit-btn" :loading="submitting" @click="handleSubmit">
+      <el-button
+        type="primary"
+        class="submit-btn"
+        :loading="submitting"
+        @click="handleSubmit"
+      >
         提交订单
       </el-button>
     </div>
@@ -180,22 +292,63 @@
       :show-default-footer="false"
       @close="handleAddressModalClose"
     >
-      <el-form ref="addressFormRef" :model="addressForm" :rules="addressFormRules" label-position="top" size="default">
+      <el-form
+        ref="addressFormRef"
+        :model="addressForm"
+        :rules="addressFormRules"
+        label-position="top"
+        size="default"
+      >
         <div class="form-row">
-          <el-form-item label="收货人" prop="name" class="form-item-half">
-            <el-input v-model="addressForm.name" placeholder="请输入收货人姓名" />
+          <el-form-item
+            label="收货人"
+            prop="name"
+            class="form-item-half"
+          >
+            <el-input
+              v-model="addressForm.name"
+              placeholder="请输入收货人姓名"
+            />
           </el-form-item>
-          <el-form-item label="联系电话" prop="phone" class="form-item-half">
-            <el-input v-model="addressForm.phone" placeholder="请输入手机号码" maxlength="11" @input="addressForm.phone = normalizeCustomerPhone(addressForm.phone)" />
+          <el-form-item
+            label="联系电话"
+            prop="phone"
+            class="form-item-half"
+          >
+            <el-input
+              v-model="addressForm.phone"
+              placeholder="请输入手机号码"
+              maxlength="11"
+              @input="addressForm.phone = normalizeCustomerPhone(addressForm.phone)"
+            />
           </el-form-item>
         </div>
-        <el-form-item label="收货地址" prop="address">
-          <el-input v-model="addressForm.address" type="textarea" placeholder="请输入详细地址" :rows="3" />
+        <el-form-item
+          label="收货地址"
+          prop="address"
+        >
+          <el-input
+            v-model="addressForm.address"
+            type="textarea"
+            placeholder="请输入详细地址"
+            :rows="3"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button type="default" @click="showAddressModal = false">取消</el-button>
-        <el-button type="primary" @click="saveAddress" :loading="savingAddress">保存</el-button>
+        <el-button
+          type="default"
+          @click="showAddressModal = false"
+        >
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          :loading="savingAddress"
+          @click="saveAddress"
+        >
+          保存
+        </el-button>
       </template>
     </MobileDialog>
   </div>
@@ -206,7 +359,7 @@ import { ref, computed, onMounted, onActivated, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, FormInstance } from 'element-plus'
 import { ValidationRules } from '@/composables'
-import { createOrder, getCart, getProductDetail, getStockDistribution } from '@/api/shop-public'
+import { createOrder, getProductDetail, getStockDistribution } from '@/api/shop-public'
 import { getPublicConfig } from '@/api/shop-public'
 import { baseDataApi } from '@/api/base-data'
 import SectionLoading from '@/components/SectionLoading.vue'
@@ -224,7 +377,7 @@ const isLoggedIn = computed(() => tokenManager.isAuthenticated() && !!currentUse
 const normalizeCustomerPhone = (phone: unknown) => normalizePhoneDigits(phone)
 
 // 表单数据
-const formRef = ref<FormInstance>()
+const _formRef = ref<FormInstance>()
 const deliveryFormRef = ref<FormInstance>()
 const form = ref({
   customerName: '',
@@ -361,7 +514,7 @@ const addressFormRules = {
 }
 
 // 表单验证规则
-const formRules = {
+const _formRules = {
   customerName: [
     ValidationRules.required('请输入联系人姓名')
   ],
@@ -693,8 +846,7 @@ const handleSubmit = async () => {
       cartId: storage.getH5CartId() || undefined
     }
 
-    const response: any = await createOrder(orderData)
-    const result = response.data || response
+    const result = await createOrder(orderData)
 
     // 清空购物车
     if (orderData.cartId) {
@@ -705,6 +857,7 @@ const handleSubmit = async () => {
     storage.set(H5_STORAGE_KEYS.ORDER_SUCCESS, {
       orderNumber: result.orderNumber,
       totalAmount: result.totalAmount,
+      accessToken: result.accessToken,
       timestamp: Date.now()
     }, 'session')
 
@@ -874,7 +1027,7 @@ onActivated(async () => {
 <style scoped lang="scss">
 .checkout-page {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: var(--tf-color-surface-soft);
   padding-bottom: 60px;
 }
 
@@ -890,7 +1043,7 @@ onActivated(async () => {
 
 // 区块
 .section {
-  background: #fff;
+  background: var(--color-bg-white);
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 8px;
@@ -898,7 +1051,7 @@ onActivated(async () => {
   .section-title {
     font-size: 16px;
     font-weight: 500;
-    color: #333;
+    color: var(--text-primary);
     margin: 0 0 16px;
   }
 }
@@ -917,12 +1070,12 @@ onActivated(async () => {
       margin: 0;
       font-size: 14px;
       font-weight: 500;
-      color: #333;
+      color: var(--text-primary);
     }
 
     .required-hint {
       font-size: 11px;
-      color: #ff1744;
+      color: var(--tf-color-accent-pink);
     }
   }
 
@@ -935,8 +1088,8 @@ onActivated(async () => {
   .address-card {
     flex: 1;
     min-width: calc(50% - 4px);
-    background: #f8f9fa;
-    border: 1px solid #e9ecef;
+    background: var(--tf-color-surface-muted);
+    border: 1px solid var(--tf-color-border-muted);
     border-radius: 8px;
     padding: 8px 10px;
     display: flex;
@@ -945,8 +1098,8 @@ onActivated(async () => {
     transition: all 0.2s ease;
 
     &:hover {
-      border-color: #667eea;
-      background: #fff;
+      border-color: var(--tf-color-indigo-brand);
+      background: var(--color-bg-white);
       box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
     }
 
@@ -959,7 +1112,7 @@ onActivated(async () => {
       width: 32px;
       height: 32px;
       border-radius: 6px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -967,7 +1120,7 @@ onActivated(async () => {
 
       i {
         font-size: 14px;
-        color: #fff;
+        color: var(--color-bg-white);
       }
     }
 
@@ -1001,10 +1154,10 @@ onActivated(async () => {
         font-size: 13px;
 
         .el-input__inner {
-          color: #333;
+          color: var(--text-primary);
 
           &::placeholder {
-            color: #999;
+            color: var(--text-muted);
             font-size: 12px;
           }
         }
@@ -1012,11 +1165,11 @@ onActivated(async () => {
 
       &:deep(.el-input__clear) {
         font-size: 14px;
-        color: #999;
+        color: var(--text-muted);
       }
 
       &:deep(.el-input__clear:hover) {
-        color: #667eea;
+        color: var(--tf-color-indigo-brand);
       }
     }
   }
@@ -1027,7 +1180,7 @@ onActivated(async () => {
   .order-item {
     display: flex;
     padding: 12px 0;
-    border-bottom: 1px solid #f5f5f5;
+    border-bottom: 1px solid var(--tf-color-surface-soft);
 
     &:last-child {
       border-bottom: none;
@@ -1038,7 +1191,7 @@ onActivated(async () => {
       height: 80px;
       border-radius: 8px;
       overflow: hidden;
-      background: #f5f5f5;
+      background: var(--tf-color-surface-soft);
       flex-shrink: 0;
 
       img {
@@ -1058,13 +1211,13 @@ onActivated(async () => {
       .item-title {
         font-size: 14px;
         font-weight: 500;
-        color: #333;
+        color: var(--text-primary);
         margin: 0 0 4px;
       }
 
       .item-specs {
         font-size: 12px;
-        color: #999;
+        color: var(--text-muted);
         margin: 0 0 8px;
       }
 
@@ -1076,12 +1229,12 @@ onActivated(async () => {
         .item-price {
           font-size: 16px;
           font-weight: 500;
-          color: #ff1744;
+          color: var(--tf-color-accent-pink);
         }
 
         .item-quantity {
           font-size: 14px;
-          color: #999;
+          color: var(--text-muted);
         }
       }
     }
@@ -1103,7 +1256,7 @@ onActivated(async () => {
     align-items: center;
     justify-content: center;
     padding: 12px 8px;
-    background: #f8f9fa;
+    background: var(--tf-color-surface-muted);
     border: 2px solid transparent;
     border-radius: 8px;
     cursor: pointer;
@@ -1116,16 +1269,16 @@ onActivated(async () => {
 
     span {
       font-size: 13px;
-      color: #666;
+      color: var(--text-secondary);
     }
 
     &.active {
-      background: #fff;
-      border-color: #667eea;
+      background: var(--color-bg-white);
+      border-color: var(--tf-color-indigo-brand);
       box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
 
       span {
-        color: #667eea;
+        color: var(--tf-color-indigo-brand);
         font-weight: 500;
       }
     }
@@ -1138,7 +1291,7 @@ onActivated(async () => {
   .content-title {
     font-size: 14px;
     font-weight: 500;
-    color: #333;
+    color: var(--text-primary);
     margin: 0 0 12px;
   }
 }
@@ -1156,23 +1309,23 @@ onActivated(async () => {
     align-items: center;
     justify-content: space-between;
     padding: 12px;
-    background: #f8f9fa;
+    background: var(--tf-color-surface-muted);
     border: 2px solid transparent;
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.3s ease;
 
     &:hover {
-      background: #fff;
-      border-color: #e0e0e0;
+      background: var(--color-bg-white);
+      border-color: var(--tf-color-gray-material-300);
     }
 
     &.selected {
-      background: #f0f4ff;
-      border-color: #667eea;
+      background: var(--tf-color-indigo-surface);
+      border-color: var(--tf-color-indigo-brand);
 
       i.fa-check-circle.active {
-        color: #667eea;
+        color: var(--tf-color-indigo-brand);
       }
     }
 
@@ -1182,19 +1335,19 @@ onActivated(async () => {
       .store-name {
         font-size: 14px;
         font-weight: 500;
-        color: #333;
+        color: var(--text-primary);
         margin: 0 0 6px;
       }
 
       .store-address {
         font-size: 12px;
-        color: #666;
+        color: var(--text-secondary);
         margin: 0 0 4px;
       }
 
       .store-phone {
         font-size: 12px;
-        color: #999;
+        color: var(--text-muted);
         margin: 0;
 
         i {
@@ -1207,7 +1360,7 @@ onActivated(async () => {
     i.fa-check-circle,
     i.fa-circle {
       font-size: 20px;
-      color: #ddd;
+      color: var(--tf-color-gray-300-alt);
     }
   }
 }
@@ -1219,7 +1372,7 @@ onActivated(async () => {
     align-items: center;
     justify-content: space-between;
     padding: 16px;
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    background: linear-gradient(135deg, var(--tf-color-surface-muted) 0%, var(--tf-color-border-muted) 100%);
     border-radius: 8px;
 
     .address-info {
@@ -1234,20 +1387,20 @@ onActivated(async () => {
         .address-name {
           font-size: 15px;
           font-weight: 500;
-          color: #333;
+          color: var(--text-primary);
           margin: 0;
         }
 
         .address-phone {
           font-size: 13px;
-          color: #666;
+          color: var(--text-secondary);
           margin: 0;
         }
       }
 
       .address-detail {
         font-size: 13px;
-        color: #666;
+        color: var(--text-secondary);
         margin: 0;
         line-height: 1.5;
       }
@@ -1257,12 +1410,12 @@ onActivated(async () => {
   .no-address-hint {
     text-align: center;
     padding: 24px 16px;
-    background: #f8f9fa;
+    background: var(--tf-color-surface-muted);
     border-radius: 8px;
 
     p {
       font-size: 14px;
-      color: #999;
+      color: var(--text-muted);
       margin: 0 0 12px;
     }
   }
@@ -1312,7 +1465,7 @@ onActivated(async () => {
     display: flex;
     align-items: center;
     padding: 12px;
-    border: 1px solid #eee;
+    border: 1px solid var(--tf-color-gray-200-alt);
     border-radius: 8px;
     margin-bottom: 8px;
     cursor: pointer;
@@ -1322,11 +1475,11 @@ onActivated(async () => {
     }
 
     &.active {
-      border-color: #ff6b00;
-      background: #fff8f0;
+      border-color: var(--tf-color-accent-orange);
+      background: var(--tf-color-orange-surface);
 
       i.fa-check-circle.active {
-        color: #ff6b00;
+        color: var(--tf-color-accent-orange);
       }
     }
 
@@ -1342,19 +1495,19 @@ onActivated(async () => {
 
       .payment-name {
         font-size: 14px;
-        color: #333;
+        color: var(--text-primary);
       }
 
       .payment-desc {
         font-size: 12px;
-        color: #999;
+        color: var(--text-muted);
       }
     }
 
     i.fa-check-circle,
     i.fa-circle {
       font-size: 18px;
-      color: #ddd;
+      color: var(--tf-color-gray-300-alt);
     }
   }
 }
@@ -1366,17 +1519,17 @@ onActivated(async () => {
     justify-content: space-between;
     padding: 8px 0;
     font-size: 14px;
-    color: #666;
+    color: var(--text-secondary);
 
     &.total {
       padding-top: 12px;
-      border-top: 1px solid #eee;
+      border-top: 1px solid var(--tf-color-gray-200-alt);
       font-size: 16px;
-      color: #333;
+      color: var(--text-primary);
       font-weight: 500;
 
       .total-amount {
-        color: #ff1744;
+        color: var(--tf-color-accent-pink);
         font-size: 20px;
       }
     }
@@ -1394,20 +1547,20 @@ onActivated(async () => {
   justify-content: space-between;
   padding: 12px 16px;
   padding-bottom: calc(12px + env(safe-area-inset-bottom));
-  background: #fff;
-  border-top: 1px solid #eee;
+  background: var(--color-bg-white);
+  border-top: 1px solid var(--tf-color-gray-200-alt);
   z-index: 100;
 
   .price-info {
     .label {
       font-size: 14px;
-      color: #666;
+      color: var(--text-secondary);
     }
 
     .amount {
       font-size: 20px;
       font-weight: 500;
-      color: #ff1744;
+      color: var(--tf-color-accent-pink);
     }
   }
 

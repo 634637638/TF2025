@@ -2,14 +2,17 @@
   <div class="subsidy-list-section">
     <div class="table-section admin-panel admin-table-panel">
       <div class="section-title">
-        <i class="fas fa-list"></i>
+        <i class="fas fa-list" />
         国补申请列表
         <span class="record-count">共 {{ subsidyPagination?.total || 0 }} 条记录</span>
       </div>
 
-      <div v-if="selectedItems.length > 0" class="batch-actions-bar">
+      <div
+        v-if="selectedItems.length > 0"
+        class="batch-actions-bar"
+      >
         <div class="batch-info">
-          <i class="fas fa-check-square"></i>
+          <i class="fas fa-check-square" />
           <span>已选择 <strong>{{ selectedItems.length }}</strong> 条记录</span>
         </div>
         <div class="batch-actions-buttons">
@@ -19,7 +22,7 @@
             :disabled="selectedItems.length === 0"
             @click="emit('pin-selected-items')"
           >
-            <i class="fas fa-thumbtack"></i>
+            <i class="fas fa-thumbtack" />
             <span>固定选中项 ({{ selectedItems.length }})</span>
           </el-button>
           <el-button
@@ -28,35 +31,40 @@
             size="small"
             @click="emit('clear-pinned-items')"
           >
-            <i class="fas fa-trash-alt"></i>
+            <i class="fas fa-trash-alt" />
             <span>清除固定项 ({{ pinnedItems.length }})</span>
           </el-button>
           <el-button
+            v-if="canBatchUpdate"
             type="primary"
             size="small"
             :disabled="selectedItems.length === 0"
             @click="emit('open-batch-dialog')"
           >
-            <i class="fas fa-calendar-alt"></i>
+            <i class="fas fa-calendar-alt" />
             <span>批量修改时间</span>
           </el-button>
           <el-button
             size="small"
             @click="emit('clear-selection')"
           >
-            <i class="fas fa-times"></i>
+            <i class="fas fa-times" />
             <span>取消选择</span>
           </el-button>
         </div>
       </div>
 
       <div class="table-container table-responsive">
-        <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
+        <TableLoadingRow
+          v-if="loading"
+          mode="block"
+          text="加载中..."
+        />
 
-        <div v-else-if="subsidyList.length === 0" class="empty-state">
-          <i class="fas fa-inbox"></i>
-          <p>暂无国补申请记录</p>
-        </div>
+        <DataEmptyState
+          v-else-if="subsidyList.length === 0"
+          description="暂无国补申请记录"
+        />
 
         <el-table
           v-else-if="!isMobile"
@@ -70,7 +78,11 @@
           :row-class-name="getTableRowClassName"
           @row-dblclick="(row) => emit('row-double-click', row)"
         >
-          <el-table-column width="54" align="center" class-name="selection-column">
+          <el-table-column
+            width="54"
+            align="center"
+            class-name="selection-column"
+          >
             <template #header>
               <el-checkbox
                 :model-value="selectAll"
@@ -98,8 +110,12 @@
             header-align="center"
           >
             <template #default="{ row }">
-              <template v-if="column.key === 'store_name'">{{ row.store_name || '-' }}</template>
-              <template v-else-if="column.key === 'sale_time'">{{ formatDate(row.sale_time) }}</template>
+              <template v-if="column.key === 'store_name'">
+                {{ row.store_name || '-' }}
+              </template>
+              <template v-else-if="column.key === 'sale_time'">
+                {{ formatDate(row.sale_time) }}
+              </template>
 
               <span
                 v-else-if="column.key === 'customer_name'"
@@ -126,13 +142,24 @@
                   title="点击复制"
                   @click.stop="copyToClipboard(getDisplayInfo(row, 'idcard'), '身份证号')"
                 >{{ getDisplayInfo(row, 'idcard') }}</span>
-                <span v-else class="text-muted">-</span>
+                <span
+                  v-else
+                  class="text-muted"
+                >-</span>
               </template>
 
-              <template v-else-if="column.key === 'brand'">{{ row.phone_brand || '-' }}</template>
-              <template v-else-if="column.key === 'model'">{{ row.phone_model || '-' }}</template>
-              <template v-else-if="column.key === 'color'">{{ row.phone_color || '-' }}</template>
-              <template v-else-if="column.key === 'memory'">{{ row.phone_memory || '-' }}</template>
+              <template v-else-if="column.key === 'brand'">
+                {{ row.phone_brand || '-' }}
+              </template>
+              <template v-else-if="column.key === 'model'">
+                {{ row.phone_model || '-' }}
+              </template>
+              <template v-else-if="column.key === 'color'">
+                {{ row.phone_color || '-' }}
+              </template>
+              <template v-else-if="column.key === 'memory'">
+                {{ row.phone_memory || '-' }}
+              </template>
 
               <span
                 v-else-if="column.key === 'serial_number'"
@@ -161,75 +188,142 @@
                   @mouseenter="showQRCode($event, row.imei2, 'IMEI2')"
                   @mouseleave="hideQRCode"
                 >{{ row.imei2 }}</span>
-                <span v-else class="text-muted">-</span>
+                <span
+                  v-else
+                  class="text-muted"
+                >-</span>
               </template>
 
-              <span v-else-if="column.key === 'sale_price'" class="table-price sale-price">¥{{ formatMoney(row.sale_price) }}</span>
-              <span v-else-if="column.key === 'subsidy_amount'" class="table-price subsidy-price">¥{{ formatMoney(getSubsidyFinalPrice(row)) }}</span>
+              <span
+                v-else-if="column.key === 'sale_price'"
+                class="table-price sale-price"
+              >¥{{ formatMoney(row.sale_price) }}</span>
+              <span
+                v-else-if="column.key === 'subsidy_amount'"
+                class="table-price subsidy-price"
+              >¥{{ formatMoney(getSubsidyFinalPrice(row)) }}</span>
 
               <template v-else-if="column.key === 'remarks'">
-                <span v-if="row.remarks" class="remarks-tag" :title="row.remarks" @click.stop="copyRemarks(row.remarks)">备注</span>
-                <span v-else class="text-muted">-</span>
+                <span
+                  v-if="row.remarks"
+                  class="remarks-tag"
+                  :title="row.remarks"
+                  @click.stop="copyRemarks(row.remarks)"
+                >备注</span>
+                <span
+                  v-else
+                  class="text-muted"
+                >-</span>
               </template>
 
               <div
                 v-else-if="column.key === 'subsidy_photos'"
                 class="photo-icon-wrapper clickable"
-                :title="photoCount(row) > 0 ? '点击查看/管理国补照片' : '点击上传国补照片'"
+                :title="canUpload ? (photoCount(row) > 0 ? '点击查看/管理国补照片' : '点击上传国补照片') : '点击查看国补照片'"
                 @click.stop="emit('open-photo-manage', row)"
               >
                 <template v-if="photoCount(row) > 0">
-                  <i class="fas fa-images photo-icon"></i>
+                  <i class="fas fa-images photo-icon" />
                   <span class="photo-count">{{ photoCount(row) }}</span>
                 </template>
                 <template v-else>
-                  <i class="fas fa-image photo-icon-empty"></i>
+                  <i class="fas fa-image photo-icon-empty" />
                   <span class="upload-hint">图片</span>
                 </template>
               </div>
 
               <template v-else-if="column.key === 'apply_time'">
-                <div v-if="hasApplyTime(row)" class="time-badge approval-time">
+                <div
+                  v-if="hasApplyTime(row)"
+                  class="time-badge approval-time"
+                >
                   {{ formatDate(row.apply_time) }}
                 </div>
-                <el-button v-else-if="canApprove" type="primary" size="small" class="table-action table-action--manage table-inline-action" title="审批" @click.stop="emit('audit', row)">
-                  <i class="fas fa-clipboard-check"></i><span>审批</span>
+                <el-button
+                  v-else-if="canApprove"
+                  type="primary"
+                  size="small"
+                  class="table-action table-action--manage table-inline-action"
+                  title="审批"
+                  @click.stop="emit('audit', row)"
+                >
+                  <i class="fas fa-clipboard-check" /><span class="btn-text">审批</span>
                 </el-button>
+                <span
+                  v-else
+                  class="text-muted"
+                >-</span>
               </template>
 
               <template v-else-if="column.key === 'arrival_time'">
-                <div v-if="hasArrivalTime(row)" class="time-badge arrival-time">
+                <div
+                  v-if="hasArrivalTime(row)"
+                  class="time-badge arrival-time"
+                >
                   {{ formatDate(row.arrival_time) }}
                 </div>
-                <el-button v-else-if="canEdit" type="success" size="small" class="table-action table-action--finance table-inline-action" title="到账" @click.stop="emit('confirm-arrival', row)">
-                  <i class="fas fa-hand-holding-usd"></i><span>到账</span>
+                <el-button
+                  v-else-if="canArrival"
+                  type="success"
+                  size="small"
+                  class="table-action table-action--finance table-inline-action"
+                  title="到账"
+                  @click.stop="emit('confirm-arrival', row)"
+                >
+                  <i class="fas fa-hand-holding-usd" /><span class="btn-text">到账</span>
                 </el-button>
+                <span
+                  v-else
+                  class="text-muted"
+                >-</span>
               </template>
 
-              <div v-else-if="column.key === 'actions'" class="action-buttons">
-                <el-button v-if="canEdit" type="primary" size="small" class="table-action table-action--edit" title="编辑" @click.stop="emit('edit', row)">
-                  <i class="fas fa-edit"></i><span class="btn-text">编辑</span>
+              <div
+                v-else-if="column.key === 'actions'"
+                class="action-buttons"
+              >
+                <el-button
+                  v-if="canEdit"
+                  type="primary"
+                  size="small"
+                  class="table-action table-action--edit"
+                  title="编辑"
+                  @click.stop="emit('edit', row)"
+                >
+                  <i class="fas fa-edit" /><span class="btn-text">编辑</span>
                 </el-button>
-                <el-button v-if="canDelete" type="danger" size="small" class="table-action table-action--delete" title="删除" @click.stop="emit('delete', row)">
-                  <i class="fas fa-trash-alt"></i><span class="btn-text">删除</span>
+                <el-button
+                  v-if="canDelete"
+                  type="danger"
+                  size="small"
+                  class="table-action table-action--delete"
+                  title="删除"
+                  @click.stop="emit('delete', row)"
+                >
+                  <i class="fas fa-trash-alt" /><span class="btn-text">删除</span>
                 </el-button>
               </div>
             </template>
           </el-table-column>
         </el-table>
 
-        <div v-else class="mobile-card-list">
+        <div
+          v-else
+          class="mobile-card-list"
+        >
           <div
             v-for="item in displayList"
             :key="item.id"
-            v-memo="[item, isSelectedItem(item.id), isPinnedItem(item.id), isShowingHandlerInfo(item)]"
             class="mobile-subsidy-card"
             :class="{ 'selected-row': isSelectedItem(item.id), 'pinned-row': isPinnedItem(item.id) }"
             @click="emit('row-double-click', item)"
           >
-            <div class="mobile-card-accent"></div>
+            <div class="mobile-card-accent" />
             <div class="mobile-card-shell">
-              <div class="mobile-select-cell" @click.stop>
+              <div
+                class="mobile-select-cell"
+                @click.stop
+              >
                 <el-checkbox
                   :model-value="isSelectedItem(item.id)"
                   @click.stop
@@ -240,89 +334,152 @@
               <div class="mobile-card-content">
                 <div class="mobile-card-head">
                   <div class="mobile-meta-line">
-                    <span v-if="fieldVisibility.saleTime" class="mobile-date">{{ formatDate(item.sale_time) }}</span>
-                    <span v-if="fieldVisibility.storeName" class="mobile-store">{{ item.store_name || '-' }}</span>
+                    <span
+                      v-if="fieldVisibility.sale_time"
+                      class="mobile-date"
+                    >{{ formatDate(item.sale_time) }}</span>
+                    <span
+                      v-if="fieldVisibility.store_name"
+                      class="mobile-store"
+                    >{{ item.store_name || '-' }}</span>
                   </div>
-                  <span v-if="isHandlerSubsidy(item)" class="mobile-handler-badge">代办</span>
+                  <span
+                    v-if="fieldVisibility.has_different_handler && isHandlerSubsidy(item)"
+                    class="mobile-handler-badge"
+                  >代办</span>
                 </div>
 
                 <div class="mobile-device-line">
-                  <span v-if="fieldVisibility.brand" class="mobile-brand-text">
+                  <span
+                    v-if="fieldVisibility.brand"
+                    class="mobile-brand-text"
+                  >
                     {{ item.phone_brand || '-' }}
                   </span>
-                  <span v-if="fieldVisibility.model" class="mobile-model-title">
+                  <span
+                    v-if="fieldVisibility.model"
+                    class="mobile-model-title"
+                  >
                     {{ item.phone_model || '-' }}
                   </span>
-                  <span v-if="fieldVisibility.color" class="mobile-spec-text">
+                  <span
+                    v-if="fieldVisibility.color"
+                    class="mobile-spec-text"
+                  >
                     {{ item.phone_color || '颜色-' }}
                   </span>
-                  <span v-if="fieldVisibility.memory" class="mobile-spec-text">
+                  <span
+                    v-if="fieldVisibility.memory"
+                    class="mobile-spec-text"
+                  >
                     {{ item.phone_memory || '内存-' }}
                   </span>
                 </div>
 
                 <div class="mobile-person-line">
-                  <span v-if="fieldVisibility.customerName" class="mobile-name">
-                    <i class="fas fa-user"></i>
+                  <span
+                    v-if="fieldVisibility.customer_name"
+                    class="mobile-name"
+                  >
+                    <i class="fas fa-user" />
                     {{ getDisplayInfo(item, 'name') || '-' }}
                   </span>
-                  <span v-if="fieldVisibility.customerPhone" class="mobile-phone">
-                    <i class="fas fa-phone-alt"></i>
+                  <span
+                    v-if="fieldVisibility.customer_phone"
+                    class="mobile-phone"
+                  >
+                    <i class="fas fa-phone-alt" />
                     {{ getDisplayInfo(item, 'phone') || '-' }}
                   </span>
-                  <span v-if="fieldVisibility.salePrice" class="mobile-price">
+                  <span
+                    v-if="fieldVisibility.sale_price"
+                    class="mobile-price"
+                  >
                     ¥{{ formatMoney(item.sale_price) }}
                   </span>
-                  <span v-else-if="fieldVisibility.subsidyAmount" class="mobile-price mobile-price--subsidy">
+                  <span
+                    v-if="fieldVisibility.subsidy_amount"
+                    class="mobile-price mobile-price--subsidy"
+                  >
                     补后 ¥{{ formatMoney(getSubsidyFinalPrice(item)) }}
                   </span>
                 </div>
 
-                <div class="mobile-card-actions" @click.stop>
+                <div
+                  v-if="fieldVisibility.apply_time || canApprove || fieldVisibility.arrival_time || canArrival"
+                  class="mobile-workflow-fields"
+                  @click.stop
+                >
+                  <div
+                    v-if="fieldVisibility.apply_time || canApprove"
+                    class="mobile-workflow-field"
+                  >
+                    <span class="mobile-workflow-label">国补提交</span>
+                    <span
+                      v-if="hasApplyTime(item)"
+                      class="mobile-action-status is-approved"
+                    >{{ formatDate(item.apply_time) }}</span>
+                    <el-button
+                      v-else-if="canApprove"
+                      type="primary"
+                      size="small"
+                      class="table-action table-action--manage table-inline-action"
+                      title="审批"
+                      @click.stop="emit('audit', item)"
+                    >
+                      审批
+                    </el-button>
+                    <span
+                      v-else
+                      class="text-muted"
+                    >-</span>
+                  </div>
+
+                  <div
+                    v-if="fieldVisibility.arrival_time || canArrival"
+                    class="mobile-workflow-field"
+                  >
+                    <span class="mobile-workflow-label">国补到账</span>
+                    <span
+                      v-if="hasArrivalTime(item)"
+                      class="mobile-action-status is-arrived"
+                    >{{ formatDate(item.arrival_time) }}</span>
+                    <el-button
+                      v-else-if="canArrival"
+                      type="success"
+                      size="small"
+                      class="table-action table-action--finance table-inline-action"
+                      title="到账"
+                      @click.stop="emit('confirm-arrival', item)"
+                    >
+                      到账
+                    </el-button>
+                    <span
+                      v-else
+                      class="text-muted"
+                    >-</span>
+                  </div>
+                </div>
+
+                <div
+                  v-if="fieldVisibility.subsidy_photos || canUpload || canEdit || canDelete"
+                  class="mobile-card-actions"
+                  @click.stop
+                >
                   <button
+                    v-if="fieldVisibility.subsidy_photos || canUpload"
                     type="button"
                     class="mobile-action-mark mobile-photo-action"
                     :class="{ 'has-photos': photoCount(item) > 0 }"
-                    :title="photoCount(item) > 0 ? '查看/管理国补照片' : '上传国补照片'"
+                    :title="canUpload ? (photoCount(item) > 0 ? '查看/管理国补照片' : '上传国补照片') : '查看国补照片'"
                     @click.stop="emit('open-photo-manage', item)"
                   >
-                    <i :class="photoCount(item) > 0 ? 'fas fa-images' : 'far fa-image'"></i>
-                    <span v-if="photoCount(item) > 0" class="mobile-photo-count">{{ photoCount(item) }}</span>
+                    <i :class="photoCount(item) > 0 ? 'fas fa-images' : 'far fa-image'" />
+                    <span
+                      v-if="photoCount(item) > 0"
+                      class="mobile-photo-count"
+                    >{{ photoCount(item) }}</span>
                   </button>
-                  <el-button
-                    v-if="fieldVisibility.applyTime && canApprove && !hasApplyTime(item)"
-                    type="primary"
-                    size="small"
-                    class="table-action table-action--manage table-inline-action"
-                    title="审批"
-                    @click.stop="emit('audit', item)"
-                  >
-                    审批
-                  </el-button>
-                  <span
-                    v-else-if="fieldVisibility.applyTime"
-                    class="mobile-action-status"
-                    :class="hasApplyTime(item) ? 'is-approved' : 'is-pending'"
-                  >
-                    {{ hasApplyTime(item) ? '已审' : '待审' }}
-                  </span>
-                  <el-button
-                    v-if="fieldVisibility.arrivalTime && canEdit && !hasArrivalTime(item)"
-                    type="success"
-                    size="small"
-                    class="table-action table-action--finance table-inline-action"
-                    title="到账"
-                    @click.stop="emit('confirm-arrival', item)"
-                  >
-                    到账
-                  </el-button>
-                  <span
-                    v-else-if="fieldVisibility.arrivalTime"
-                    class="mobile-action-status"
-                    :class="hasArrivalTime(item) ? 'is-arrived' : 'is-waiting'"
-                  >
-                    {{ hasArrivalTime(item) ? '已到' : '待到' }}
-                  </span>
                   <el-button
                     v-if="canEdit"
                     type="primary"
@@ -361,14 +518,14 @@
             <span class="qrcode-title">{{ qrCodeTitle }}</span>
             <span class="qrcode-value">{{ qrCodeValue }}</span>
           </div>
-          <canvas ref="qrCodeCanvas"></canvas>
+          <canvas ref="qrCodeCanvas" />
         </div>
       </div>
 
       <PaginationComponent
         v-if="subsidyPagination && subsidyPagination.total > 0"
-        :current="subsidyPagination.current"
-        :page-size="subsidyPagination.pageSize"
+        :current="subsidyPagination.page"
+        :page-size="subsidyPagination.page_size"
         :total="subsidyPagination.total"
         :page-sizes="[20, 50, 100, 200]"
         :show-total="true"
@@ -376,7 +533,7 @@
         :show-page-sizes="true"
         :show-quick-jumper="true"
         @update:current="(page) => emit('page-change', page)"
-        @update:pageSize="(pageSize) => emit('page-size-change', pageSize)"
+        @update:page-size="(page_size) => emit('page-size-change', page_size)"
       />
     </div>
   </div>
@@ -398,10 +555,10 @@ interface TableColumn {
 }
 
 interface PaginationState {
-  current: number
-  pageSize: number
+  page: number
+  page_size: number
   total: number
-  totalPages?: number
+  total_pages?: number
 }
 
 const props = defineProps<{
@@ -415,6 +572,8 @@ const props = defineProps<{
   pinnedItems: any[]
   subsidyPagination: PaginationState
   canApprove: boolean
+  canArrival: boolean
+  canUpload: boolean
   canEdit: boolean
   canDelete: boolean
   canShowActions: boolean
@@ -441,6 +600,9 @@ const emit = defineEmits<{
 }>()
 
 const handlerInfoVisibility = ref<Map<number, boolean>>(new Map())
+const canBatchUpdate = computed(() => (
+  props.canApprove || props.canArrival
+))
 const qrCodeVisible = ref(false)
 const qrCodePosition = ref({ top: '0px', left: '0px' })
 const qrCodeTitle = ref('')
@@ -493,8 +655,8 @@ const getColumnValue = (row: any, key: string) => {
     subsidy_amount: `¥${formatMoney(getSubsidyFinalPrice(row))}`,
     remarks: row.remarks ? '备注' : '-',
     subsidy_photos: photoCount(row) > 0 ? String(photoCount(row)) : '图片',
-    apply_time: hasApplyTime(row) ? formatDate(row.apply_time) : '审批',
-    arrival_time: hasArrivalTime(row) ? formatDate(row.arrival_time) : '到账'
+    apply_time: hasApplyTime(row) ? formatDate(row.apply_time) : (props.canApprove ? '审批' : '-'),
+    arrival_time: hasArrivalTime(row) ? formatDate(row.arrival_time) : (props.canArrival ? '到账' : '-')
   }
   return valueMap[key] as string | number | null | undefined
 }
@@ -512,11 +674,11 @@ const getColumnMinWidth = (column: TableColumn) => {
 
   // 姓名、电话、身份证可以切换为办理人，隐藏状态下也要为完整内容预留宽度。
   if (column.key === 'customer_name') {
-    values.push(...props.displayList.map(row => row?.handlerInfo?.handlerName))
+    values.push(...props.displayList.map(row => row?.handler_info?.handler_name))
   } else if (column.key === 'customer_phone') {
-    values.push(...props.displayList.map(row => row?.handlerInfo?.handlerPhone))
+    values.push(...props.displayList.map(row => row?.handler_info?.handler_phone))
   } else if (column.key === 'customer_idcard') {
-    values.push(...props.displayList.map(row => row?.handlerInfo?.handlerIdcard))
+    values.push(...props.displayList.map(row => row?.handler_info?.handler_idcard))
   }
 
   const minWidth = columnBaseWidths[column.key] || 88
@@ -531,7 +693,15 @@ const getColumnMinWidth = (column: TableColumn) => {
     return getIdentifierColumnMinWidth(values, options)
   }
 
-  return getTextColumnMinWidth(values, options)
+  const contentWidth = getTextColumnMinWidth(values, options)
+  if (column.key === 'apply_time' && props.canApprove) {
+    return Math.max(contentWidth, getActionColumnMinWidth(['审批'], { minWidth, horizontalPadding: 16 }))
+  }
+  if (column.key === 'arrival_time' && props.canArrival) {
+    return Math.max(contentWidth, getActionColumnMinWidth(['到账'], { minWidth, horizontalPadding: 16 }))
+  }
+
+  return contentWidth
 }
 
 const getColumnClassName = (key: string) => {
@@ -566,7 +736,7 @@ const getSubsidyFinalPrice = (item: any) => {
 const hasApplyTime = (item: any) => Boolean(item?.apply_time && item.apply_time !== '')
 const hasArrivalTime = (item: any) => Boolean(item?.arrival_time && item.arrival_time !== '')
 const photoCount = (item: any) => Array.isArray(item?.subsidy_photos) ? item.subsidy_photos.length : 0
-const isHandlerSubsidy = (item: any) => Boolean(item?.hasDifferentHandler)
+const isHandlerSubsidy = (item: any) => Boolean(item?.has_different_handler)
 
 const toggleListItemCustomerInfo = (itemId: number) => {
   const currentState = handlerInfoVisibility.value.get(itemId) || false
@@ -575,30 +745,35 @@ const toggleListItemCustomerInfo = (itemId: number) => {
 
 const getDisplayInfo = (item: any, field: 'name' | 'phone' | 'idcard') => {
   const showHandler = handlerInfoVisibility.value.get(item.id) || false
-  const handlerInfo = item?.handlerInfo
+  const handler_info = item?.handler_info
 
-  if (showHandler && item?.hasDifferentHandler && handlerInfo) {
+  if (showHandler && item?.has_different_handler && handler_info) {
     switch (field) {
-      case 'name':
-        return handlerInfo.handlerName
-      case 'phone':
-        return handlerInfo.handlerPhone
-      case 'idcard':
-        return handlerInfo.handlerIdcard
+    case 'name':
+      return props.fieldVisibility.handler_name ? handler_info.handler_name : item?.customer_name
+    case 'phone':
+      return props.fieldVisibility.handler_phone ? handler_info.handler_phone : item?.customer_phone
+    case 'idcard':
+      return props.fieldVisibility.handler_idcard ? handler_info.handler_idcard : item?.customer_idcard
     }
   }
 
   switch (field) {
-    case 'name':
-      return item?.customer_name
-    case 'phone':
-      return item?.customer_phone
-    case 'idcard':
-      return item?.customer_idcard
+  case 'name':
+    return item?.customer_name
+  case 'phone':
+    return item?.customer_phone
+  case 'idcard':
+    return item?.customer_idcard
   }
 }
 
-const hasHandlerInfo = (item: any) => item.hasDifferentHandler && item.handlerInfo
+const hasHandlerInfo = (item: any) => (
+  props.fieldVisibility.has_different_handler &&
+  item.has_different_handler &&
+  item.handler_info &&
+  (props.fieldVisibility.handler_name || props.fieldVisibility.handler_phone || props.fieldVisibility.handler_idcard)
+)
 const isShowingHandlerInfo = (item: any) => handlerInfoVisibility.value.get(item.id) || false
 
 const copyToClipboard = async (text: string, label: string) => {
@@ -791,7 +966,7 @@ onUnmounted(() => {
     align-items: center;
     justify-content: space-between;
     padding: 12px 16px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
     border-radius: 8px;
     margin-bottom: 16px;
     animation: slideDown 0.3s ease-out;
@@ -819,14 +994,14 @@ onUnmounted(() => {
   .empty-state {
     padding: 60px 20px;
     text-align: center;
-    color: #6c757d;
+    color: var(--tf-color-muted);
   }
 
   .loading-spinner {
     width: 48px;
     height: 48px;
-    border: 4px solid #e9ecef;
-    border-top-color: #667eea;
+    border: 4px solid var(--tf-color-border-muted);
+    border-top-color: var(--tf-color-indigo-brand);
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin: 0 auto 20px;
@@ -835,7 +1010,7 @@ onUnmounted(() => {
   .empty-state i {
     font-size: 4rem;
     margin-bottom: 20px;
-    color: #dee2e6;
+    color: var(--tf-color-border-subtle);
   }
 
   .table-price {
@@ -845,11 +1020,11 @@ onUnmounted(() => {
   }
 
   .table-price.sale-price {
-    color: #dc2626;
+    color: var(--tf-color-red-600);
   }
 
   .table-price.subsidy-price {
-    color: #16a34a;
+    color: var(--tf-color-green-600);
   }
 
   .time-badge {
@@ -877,7 +1052,7 @@ onUnmounted(() => {
 
   .clickable-text {
     cursor: pointer;
-    color: #667eea !important;
+    color: var(--tf-color-indigo-brand);
     transition: all 0.2s;
     padding: 2px 4px;
     border-radius: 4px;
@@ -885,8 +1060,8 @@ onUnmounted(() => {
   }
 
   .clickable-text:hover {
-    background: #e0e7ff !important;
-    color: #5a67d8 !important;
+    background: var(--tf-color-indigo-100);
+    color: var(--tf-color-indigo-legacy);
   }
 
   .clickable-text.customer-info-toggle {
@@ -898,26 +1073,26 @@ onUnmounted(() => {
   }
 
   .clickable-text.customer-info-toggle.has-handler-but-showing-purchaser {
-    background: linear-gradient(135deg, #dbeafe, #bfdbfe) !important;
-    color: #1e40af !important;
-    border: 1px solid #3b82f6;
+    background: linear-gradient(135deg, var(--tf-color-blue-tailwind-100), var(--tf-color-blue-tailwind-200));
+    color: var(--tf-color-blue-tailwind-800);
+    border: 1px solid var(--tf-color-blue-500);
   }
 
   .clickable-text.customer-info-toggle.showing-handler {
-    background: linear-gradient(135deg, #fef3c7, #fde68a) !important;
-    color: #92400e !important;
-    border: 1px solid #fbbf24;
+    background: linear-gradient(135deg, var(--tf-color-amber-100), var(--tf-color-amber-200));
+    color: var(--tf-color-amber-800);
+    border: 1px solid var(--tf-color-amber-400);
   }
 
   .text-muted {
-    color: #adb5bd !important;
+    color: var(--tf-color-gray-bootstrap-500) !important;
   }
 
   .remarks-tag {
     display: inline-block;
     padding: 2px 10px;
-    background-color: #ffc107;
-    color: #fff;
+    background-color: var(--warning-color);
+    color: var(--color-bg-white);
     font-size: 12px;
     border-radius: 4px;
     cursor: pointer;
@@ -925,7 +1100,7 @@ onUnmounted(() => {
   }
 
   .remarks-tag:hover {
-    background-color: #ffca2c;
+    background-color: var(--tf-color-yellow-bootstrap);
     transform: scale(1.05);
   }
 
@@ -935,7 +1110,7 @@ onUnmounted(() => {
     justify-content: center;
     gap: 3px;
     padding: 3px 7px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
     border-radius: 4px;
     cursor: pointer;
     transition: all 0.3s;
@@ -955,7 +1130,7 @@ onUnmounted(() => {
   .photo-icon-empty,
   .upload-hint,
   .photo-count {
-    color: #fff;
+    color: var(--color-bg-white);
   }
 
   .upload-hint {
@@ -983,8 +1158,8 @@ onUnmounted(() => {
     overflow: hidden;
     background:
       radial-gradient(circle at top right, rgba(219, 234, 254, 0.65), transparent 38%),
-      linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-    border: 1px solid #e2e8f0;
+      linear-gradient(135deg, var(--color-bg-white) 0%, var(--tf-color-slate-50) 100%);
+    border: 1px solid var(--tf-color-slate-200);
     border-radius: 14px;
     box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
     cursor: pointer;
@@ -996,20 +1171,20 @@ onUnmounted(() => {
   }
 
   .mobile-subsidy-card.selected-row {
-    border-color: #60a5fa;
+    border-color: var(--tf-color-blue-400);
     box-shadow: 0 10px 24px rgba(37, 99, 235, 0.16);
   }
 
   .mobile-subsidy-card.pinned-row {
-    border-color: #fbbf24;
-    background: linear-gradient(135deg, #fffbeb 0%, #fff 58%);
+    border-color: var(--tf-color-amber-400);
+    background: linear-gradient(135deg, var(--tf-color-amber-50) 0%, var(--color-bg-white) 58%);
   }
 
   .mobile-card-accent {
     position: absolute;
     inset: 0 auto 0 0;
     width: 4px;
-    background: linear-gradient(180deg, #2563eb, #06b6d4);
+    background: linear-gradient(180deg, var(--tf-color-blue-600), var(--tf-color-cyan-mint));
   }
 
   .mobile-card-shell {
@@ -1059,7 +1234,7 @@ onUnmounted(() => {
   .mobile-date {
     flex-shrink: 0;
     font-size: 12px;
-    color: #64748b;
+    color: var(--tf-color-slate-500);
     font-weight: 700;
   }
 
@@ -1068,7 +1243,7 @@ onUnmounted(() => {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    color: #0f172a;
+    color: var(--tf-color-slate-900);
     font-size: 13px;
     font-weight: 700;
   }
@@ -1077,8 +1252,8 @@ onUnmounted(() => {
     flex-shrink: 0;
     padding: 3px 8px;
     border-radius: 999px;
-    background: linear-gradient(135deg, #f97316, #f59e0b);
-    color: #fff;
+    background: linear-gradient(135deg, var(--tf-color-orange-tailwind-500), var(--tf-color-amber-500));
+    color: var(--color-bg-white);
     font-size: 11px;
     font-weight: 800;
     line-height: 1.2;
@@ -1110,7 +1285,7 @@ onUnmounted(() => {
     justify-content: center;
     border: none;
     border-radius: 10px;
-    color: #fff;
+    color: var(--color-bg-white);
     cursor: pointer;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
   }
@@ -1120,12 +1295,12 @@ onUnmounted(() => {
   }
 
   .mobile-photo-action {
-    background: linear-gradient(135deg, #2563eb, #38bdf8);
+    background: linear-gradient(135deg, var(--tf-color-blue-600), var(--tf-color-sky-400));
     box-shadow: 0 8px 16px rgba(37, 99, 235, 0.22);
   }
 
   .mobile-photo-action.has-photos {
-    background: linear-gradient(135deg, #059669, #34d399);
+    background: linear-gradient(135deg, var(--tf-color-emerald-600), var(--tf-color-emerald-400));
     box-shadow: 0 8px 16px rgba(5, 150, 105, 0.2);
   }
 
@@ -1137,8 +1312,8 @@ onUnmounted(() => {
     height: 16px;
     padding: 0 4px;
     border-radius: 999px;
-    background: #ef4444;
-    color: #fff;
+    background: var(--tf-color-red-500);
+    color: var(--color-bg-white);
     font-size: 10px;
     font-weight: 800;
     line-height: 16px;
@@ -1160,9 +1335,9 @@ onUnmounted(() => {
   .mobile-brand-text {
     flex: 0 0 auto;
     padding: 0 8px;
-    background: linear-gradient(135deg, #eff6ff, #dbeafe);
-    border-color: #bfdbfe;
-    color: #1d4ed8;
+    background: linear-gradient(135deg, var(--tf-color-blue-tailwind-50), var(--tf-color-blue-tailwind-100));
+    border-color: var(--tf-color-blue-tailwind-200);
+    color: var(--tf-color-blue-700);
     font-size: 12px;
     font-weight: 800;
     box-shadow: 0 4px 10px rgba(37, 99, 235, 0.08);
@@ -1171,9 +1346,9 @@ onUnmounted(() => {
   .mobile-model-title {
     flex: 0 0 auto;
     padding: 0 10px;
-    background: #ffffff;
-    border-color: #cbd5e1;
-    color: #0f172a;
+    background: var(--color-bg-white);
+    border-color: var(--tf-color-slate-300);
+    color: var(--tf-color-slate-900);
     font-size: 14px;
     font-weight: 800;
     line-height: 1.3;
@@ -1183,9 +1358,9 @@ onUnmounted(() => {
   .mobile-spec-text {
     flex: 0 0 auto;
     padding: 0 8px;
-    background: #f8fafc;
-    border-color: #e2e8f0;
-    color: #475569;
+    background: var(--tf-color-slate-50);
+    border-color: var(--tf-color-slate-200);
+    color: var(--tf-color-slate-600);
     font-size: 12px;
     font-weight: 700;
   }
@@ -1193,13 +1368,13 @@ onUnmounted(() => {
   .mobile-price {
     flex-shrink: 0;
     margin-left: auto;
-    color: #dc2626;
+    color: var(--tf-color-red-600);
     font-size: 13px;
     font-weight: 800;
   }
 
   .mobile-price--subsidy {
-    color: #16a34a;
+    color: var(--tf-color-green-600);
     font-size: 12px;
   }
 
@@ -1208,7 +1383,7 @@ onUnmounted(() => {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    color: #475569;
+    color: var(--tf-color-slate-600);
     font-size: 12px;
     font-weight: 700;
     overflow: hidden;
@@ -1225,7 +1400,32 @@ onUnmounted(() => {
   .mobile-phone {
     flex: 1 1 auto;
     min-width: 0;
-    color: #64748b;
+    color: var(--tf-color-slate-500);
+  }
+
+  .mobile-workflow-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 2px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--tf-color-slate-200);
+  }
+
+  .mobile-workflow-field {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+
+  .mobile-workflow-label {
+    min-width: 0;
+    color: var(--tf-color-slate-600);
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
   }
 
   .mobile-card-actions {
@@ -1234,7 +1434,7 @@ onUnmounted(() => {
     gap: 4px;
     margin-top: 2px;
     padding-top: 8px;
-    border-top: 1px dashed #e2e8f0;
+    border-top: 1px dashed var(--tf-color-slate-200);
   }
 
   .mobile-action-status {
@@ -1249,29 +1449,33 @@ onUnmounted(() => {
   }
 
   .mobile-action-status.is-pending {
-    background: #fef3c7;
-    color: #92400e;
+    background: var(--tf-status-warning-bg);
+    color: var(--tf-status-warning-color);
+    border: 1px solid var(--tf-status-warning-border);
   }
 
   .mobile-action-status.is-approved {
-    background: #dbeafe;
-    color: #1d4ed8;
+    background: var(--tf-status-success-bg);
+    color: var(--tf-status-success-color);
+    border: 1px solid var(--tf-status-success-border);
   }
 
   .mobile-action-status.is-arrived {
-    background: #dcfce7;
-    color: #15803d;
+    background: var(--tf-status-success-bg);
+    color: var(--tf-status-success-color);
+    border: 1px solid var(--tf-status-success-border);
   }
 
   .mobile-action-status.is-waiting {
-    background: #fee2e2;
-    color: #b91c1c;
+    background: var(--tf-status-danger-bg);
+    color: var(--tf-status-danger-color);
+    border: 1px solid var(--tf-status-danger-border);
   }
 
   .qrcode-tooltip {
     position: fixed;
     background: white;
-    border: 1px solid #dee2e6;
+    border: 1px solid var(--tf-color-border-subtle);
     border-radius: 8px;
     padding: 16px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -1294,11 +1498,11 @@ onUnmounted(() => {
   .qrcode-title {
     flex: 0 0 auto;
     font-weight: 600;
-    color: #fff;
+    color: var(--color-bg-white);
     font-size: 12px;
     line-height: 22px;
     padding: 0 7px;
-    background: #4f46e5;
+    background: var(--tf-color-indigo-600);
     border-radius: 4px;
   }
 
@@ -1307,29 +1511,29 @@ onUnmounted(() => {
     font-size: 12px;
     font-weight: 600;
     line-height: 20px;
-    color: #4338ca;
+    color: var(--tf-color-indigo-700);
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     padding: 0 6px;
-    background: #eef2ff;
-    border: 1px solid #c7d2fe;
+    background: var(--tf-color-indigo-50);
+    border: 1px solid var(--tf-color-indigo-200);
     border-radius: 4px;
     white-space: nowrap;
   }
 
   .qrcode-meta.is-imei .qrcode-title {
-    background: #059669;
+    background: var(--tf-color-emerald-600);
   }
 
   .qrcode-meta.is-imei .qrcode-value {
-    color: #047857;
-    background: #ecfdf5;
-    border-color: #a7f3d0;
+    color: var(--tf-color-emerald-700);
+    background: var(--tf-color-emerald-50);
+    border-color: var(--tf-color-emerald-200);
   }
 
   .qrcode-tooltip canvas {
     display: block;
     margin: 0 auto;
-    border: 1px solid #dee2e6;
+    border: 1px solid var(--tf-color-border-subtle);
     border-radius: 4px;
   }
 }

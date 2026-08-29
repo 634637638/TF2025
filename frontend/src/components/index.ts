@@ -62,7 +62,7 @@ export class GlobalComponentManager {
    * 处理组件模块
    */
   private async processComponentModules(
-    modules: Record<string, () => Promise<any>>
+    modules: Record<string, () => Promise<unknown>>
   ): Promise<void> {
     for (const path in modules) {
       try {
@@ -269,16 +269,18 @@ export class GlobalComponentManager {
   /**
    * 检查组件有效性
    */
-  private isValidComponent(component: any): boolean {
-    return component && (
-      typeof component === 'object' ||
-      typeof component === 'function'
-    ) && (
-      component.name ||
-      component.__vccOpts ||
-      component.setup ||
-      component.render ||
-      component.template
+  private isValidComponent(component: unknown): component is Component {
+    if (!component || (typeof component !== 'object' && typeof component !== 'function')) {
+      return false
+    }
+
+    const candidate = component as Record<string, unknown>
+    return Boolean(
+      candidate.name ||
+      candidate.__vccOpts ||
+      candidate.setup ||
+      candidate.render ||
+      candidate.template
     )
   }
 
@@ -380,10 +382,12 @@ export async function registerGlobalComponents(app: App): Promise<ComponentStats
 
   // 手动注册关键组件 - Image全局图片组件
   try {
-    const Image = (await import('./Image.vue')).default
-    app.component('Image', Image)
+    const GlobalImage = (await import('./Image.vue')).default
+
+    // 模板中统一使用 <Image>，保留单词组件名；组件名规则已在 eslint.config.js 中对该文件持久豁免。
+    app.component('Image', GlobalImage)
     // 保留 AppImage 别名以兼容现有代码
-    app.component('AppImage', Image)
+    app.component('AppImage', GlobalImage)
   } catch (error) {
     // Image 组件注册失败，忽略
   }
@@ -510,7 +514,7 @@ if (import.meta.env.DEV) {
     getManager: () => componentManager,
     getStats: () => getComponentStats(),
     getRegistered: () => getRegisteredComponents(),
-    getByCategory: (category: string) => getComponentsByCategory(category as any),
+    getByCategory: (category: string) => getComponentsByCategory(category as ComponentConfig['category']),
     isRegistered: function(name: string) {
       try {
         return isComponentRegistered(name)
@@ -523,7 +527,10 @@ if (import.meta.env.DEV) {
 
   // 添加调试工具到控制台
   try {
-    (window as any).tfComponents = window.__TF2025_COMPONENT_DEBUG__
+    const debugWindow = window as Window & {
+      tfComponents?: typeof window.__TF2025_COMPONENT_DEBUG__
+    }
+    debugWindow.tfComponents = window.__TF2025_COMPONENT_DEBUG__
   } catch (error) {
     // 初始化组件调试工具失败，忽略
   }

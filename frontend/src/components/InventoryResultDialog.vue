@@ -9,11 +9,23 @@
       >
         <div class="inventory-mobile-sheet">
           <div class="inventory-mobile-header">
-            <div class="inventory-mobile-title">{{ product.brand }} {{ product.model }} 在库明细</div>
-            <button type="button" class="inventory-mobile-close" @click="handleClose">
+            <div class="inventory-mobile-title">
+              {{ product.brand }} {{ product.model }} 在库明细
+            </div>
+            <button
+              type="button"
+              class="inventory-mobile-close"
+              @click="handleClose"
+            >
               <i class="el-icon">
-                <svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
-                  <path fill="currentColor" d="M764.288 214.656a42.624 42.624 0 0 1 60.224 60.288L572.16 527.104l252.352 252.224a42.624 42.624 0 1 1-60.224 60.288L512 587.392 259.648 839.616a42.624 42.624 0 1 1-60.224-60.288l252.352-252.224L199.424 274.944a42.624 42.624 0 0 1 60.224-60.288L512 466.88z" />
+                <svg
+                  viewBox="0 0 1024 1024"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    fill="currentColor"
+                    d="M764.288 214.656a42.624 42.624 0 0 1 60.224 60.288L572.16 527.104l252.352 252.224a42.624 42.624 0 1 1-60.224 60.288L512 587.392 259.648 839.616a42.624 42.624 0 1 1-60.224-60.288l252.352-252.224L199.424 274.944a42.624 42.624 0 0 1 60.224-60.288L512 466.88z"
+                  />
                 </svg>
               </i>
             </button>
@@ -26,25 +38,47 @@
                   <span class="brand">{{ product.brand }}</span>
                   <span class="model">{{ product.model }}</span>
                 </div>
-                <div class="product-specs" v-if="product.color || product.memory">
-                  <span v-if="product.color" class="color">{{ product.color }}</span>
-                  <span v-if="product.memory" class="memory">{{ product.memory }}</span>
+                <div
+                  v-if="product.color || product.memory"
+                  class="product-specs"
+                >
+                  <span
+                    v-if="product.color"
+                    class="color"
+                  >{{ product.color }}</span>
+                  <span
+                    v-if="product.memory"
+                    class="memory"
+                  >{{ product.memory }}</span>
                 </div>
-                <span v-if="!loading" class="total-count">共{{ totalCount }}台</span>
+                <span
+                  v-if="!loading"
+                  class="total-count"
+                >共{{ totalCount }}台</span>
               </div>
             </div>
 
-            <SectionLoading v-if="loading" text="加载中..." size="compact" />
+            <SectionLoading
+              v-if="loading"
+              text="加载中..."
+              size="compact"
+            />
 
-            <div v-else class="inventory-list mobile-only">
+            <div
+              v-else
+              class="inventory-list mobile-only"
+            >
               <div
                 v-for="(item, index) in inventoryData"
                 :key="item.id"
                 class="inventory-item"
                 :class="{ 'priority-item': index === 0 }"
               >
-                <div class="item-rank" :class="`rank-${Math.min(index + 1, 3)}`">
-                  <span v-if="index === 0"><i class="fas fa-star"></i></span>
+                <div
+                  class="item-rank"
+                  :class="`rank-${Math.min(index + 1, 3)}`"
+                >
+                  <span v-if="index === 0"><i class="fas fa-star" /></span>
                   <span v-else>{{ index + 1 }}</span>
                 </div>
 
@@ -58,7 +92,10 @@
                       <span class="imei-label">序列号</span>
                       {{ item.imei }}
                     </span>
-                    <span class="item-days" :class="getDaysClass(item.inventory_days)">
+                    <span
+                      class="item-days"
+                      :class="getDaysClass(item.inventory_days)"
+                    >
                       <span class="number">{{ item.inventory_days }}</span>
                       <span class="label">天</span>
                     </span>
@@ -66,12 +103,14 @@
                 </div>
               </div>
 
-              <div v-if="!loading && inventoryData.length === 0" class="empty-result">
-                <el-empty description="暂无在库明细" />
+              <div
+                v-if="!loading && inventoryData.length === 0"
+                class="empty-result"
+              >
+                <DataEmptyState description="暂无在库明细" />
               </div>
             </div>
           </div>
-
         </div>
       </div>
     </transition>
@@ -93,25 +132,47 @@
           <span class="brand">{{ product.brand }}</span>
           <span class="model">{{ product.model }}</span>
         </div>
-        <div class="product-specs" v-if="product.color || product.memory">
-          <span v-if="product.color" class="color">{{ product.color }}</span>
-          <span v-if="product.memory" class="memory">{{ product.memory }}</span>
+        <div
+          v-if="product.color || product.memory"
+          class="product-specs"
+        >
+          <span
+            v-if="product.color"
+            class="color"
+          >{{ product.color }}</span>
+          <span
+            v-if="product.memory"
+            class="memory"
+          >{{ product.memory }}</span>
         </div>
-        <span v-if="!loading" class="total-count">共{{ totalCount }}台</span>
+        <span
+          v-if="!loading"
+          class="total-count"
+        >共{{ totalCount }}台</span>
       </div>
     </div>
 
-    <SectionLoading v-if="loading" text="加载中..." size="compact" />
+    <SectionLoading
+      v-if="loading"
+      text="加载中..."
+      size="compact"
+    />
 
-    <div v-else class="inventory-list">
+    <div
+      v-else
+      class="inventory-list"
+    >
       <div
         v-for="(item, index) in inventoryData"
         :key="item.id"
         class="inventory-item"
         :class="{ 'priority-item': index === 0 }"
       >
-        <div class="item-rank" :class="`rank-${Math.min(index + 1, 3)}`">
-          <span v-if="index === 0"><i class="fas fa-star"></i></span>
+        <div
+          class="item-rank"
+          :class="`rank-${Math.min(index + 1, 3)}`"
+        >
+          <span v-if="index === 0"><i class="fas fa-star" /></span>
           <span v-else>{{ index + 1 }}</span>
         </div>
 
@@ -125,7 +186,10 @@
               <span class="imei-label">序列号</span>
               {{ item.imei }}
             </span>
-            <span class="item-days" :class="getDaysClass(item.inventory_days)">
+            <span
+              class="item-days"
+              :class="getDaysClass(item.inventory_days)"
+            >
               <span class="number">{{ item.inventory_days }}</span>
               <span class="label">天</span>
             </span>
@@ -133,8 +197,11 @@
         </div>
       </div>
 
-      <div v-if="!loading && inventoryData.length === 0" class="empty-result">
-        <el-empty description="暂无在库明细" />
+      <div
+        v-if="!loading && inventoryData.length === 0"
+        class="empty-result"
+      >
+        <DataEmptyState description="暂无在库明细" />
       </div>
     </div>
   </MobileDialog>
@@ -166,17 +233,10 @@ interface LongInventoryQueryParams {
   memory?: string
 }
 
-interface InventoryResultError {
-  response?: {
-    status?: number
-  }
-  message?: string
-}
-
 // Props
 interface Props extends ModelValueProps {
-  product: Product
-  queryToken: string
+  product?: Product
+  queryToken?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -247,45 +307,14 @@ const loadData = async () => {
 
     if (response.success) {
       inventoryData.value = extractResponseData<InventoryItem[]>(response)
+    } else {
+      inventoryData.value = []
+      ElMessage.error(response.message || '加载在库数据失败')
     }
   } catch (error: unknown) {
     logger.error('加载在库数据失败:', error)
-    const requestError = error as InventoryResultError
-
-    // 如果后端返回 404，使用模拟数据作为演示
-    if (requestError.response?.status === 404 || requestError.message?.includes('404')) {
-      ElMessage.warning({
-        message: '后端服务未连接，显示模拟数据',
-        duration: 2000,
-        offset: 60
-      })
-      // 使用模拟数据 - 仅显示在库商品
-      inventoryData.value = [
-        {
-          id: 1,
-          store_name: '总店',
-          imei: '4901542032375185',
-          inventory_date: '2024-01-15',
-          inventory_days: Math.floor((Date.now() - new Date('2024-01-15').getTime()) / (1000 * 60 * 60 * 24))
-        },
-        {
-          id: 2,
-          store_name: '广场店',
-          imei: '4901542032375186',
-          inventory_date: '2024-02-01',
-          inventory_days: Math.floor((Date.now() - new Date('2024-02-01').getTime()) / (1000 * 60 * 60 * 24))
-        },
-        {
-          id: 3,
-          store_name: '三小店',
-          imei: '4901542032375187',
-          inventory_date: '2024-02-20',
-          inventory_days: Math.floor((Date.now() - new Date('2024-02-20').getTime()) / (1000 * 60 * 60 * 24))
-        }
-      ]
-    } else {
-      ElMessage.error('加载数据失败')
-    }
+    inventoryData.value = []
+    ElMessage.error('在库明细加载失败，请稍后重试')
   } finally {
     loading.value = false
   }
@@ -344,7 +373,7 @@ onUnmounted(() => {
   max-height: calc(var(--inventory-viewport-height, 100vh) - 48px);
   display: flex;
   flex-direction: column;
-  background: #ffffff;
+  background: var(--color-bg-white);
   border-radius: 18px;
   box-shadow: 0 24px 48px rgba(15, 23, 42, 0.22);
   overflow: hidden;
@@ -357,8 +386,8 @@ onUnmounted(() => {
   justify-content: center;
   min-height: 68px;
   padding: 12px 52px 12px 16px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #ffffff;
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
+  color: var(--color-bg-white);
 }
 
 .inventory-mobile-title {
@@ -381,7 +410,7 @@ onUnmounted(() => {
   border: none;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.18);
-  color: #ffffff;
+  color: var(--color-bg-white);
   transform: translateY(-50%);
 }
 
@@ -422,7 +451,7 @@ onUnmounted(() => {
 
   .el-dialog__body {
     padding: 10px 0 0 !important;
-    background: #ffffff !important;
+    background: var(--color-bg-white) !important;
   }
 
 }
@@ -451,7 +480,7 @@ onUnmounted(() => {
   --product-info-scale: 1;
   margin: 0 0 12px 0;
   padding: 16px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
   border-radius: 12px;
   color: white;
   overflow: hidden;
@@ -507,7 +536,7 @@ onUnmounted(() => {
     border-radius: 12px;
     font-size: 15px;
     font-weight: 700;
-    color: #fff;
+    color: var(--color-bg-white);
     margin-left: auto;
     white-space: nowrap;
     align-self: center;
@@ -547,25 +576,25 @@ onUnmounted(() => {
     align-items: center;
     gap: 12px;
     padding: 14px 16px;
-    border: 1px solid #e8e8e8;
+    border: 1px solid var(--tf-color-gray-ant-300);
     border-radius: 10px;
     margin-bottom: 12px;
     transition: all 0.3s ease;
-    background: #ffffff;
+    background: var(--color-bg-white);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 
     &:hover {
-      border-color: #667eea;
+      border-color: var(--tf-color-indigo-brand);
       transform: translateY(-2px);
       box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
     }
 
     &.priority-item {
-      background: linear-gradient(135deg, #fff7e6 0%, #ffe8cc 100%);
-      border-color: #ffa500;
+      background: linear-gradient(135deg, var(--tf-color-orange-ant-surface) 0%, var(--tf-color-warning-legacy) 100%);
+      border-color: var(--tf-color-orange);
 
       .item-rank {
-        background: linear-gradient(135deg, #ffa500 0%, #ff6b6b 100%);
+        background: linear-gradient(135deg, var(--tf-color-orange) 0%, var(--tf-color-coral) 100%);
         color: white;
         box-shadow: 0 2px 8px rgba(255, 107, 107, 0.4);
       }
@@ -580,23 +609,23 @@ onUnmounted(() => {
       justify-content: center;
       font-weight: 600;
       font-size: 14px;
-      background: #f0f0f0;
-      color: #999;
+      background: var(--tf-color-gray-200);
+      color: var(--text-muted);
       flex-shrink: 0;
 
       &.rank-1 {
-        background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
-        color: #b8860b;
+        background: linear-gradient(135deg, var(--tf-color-gold) 0%, var(--tf-color-yellow-bright) 100%);
+        color: var(--tf-color-dark-goldenrod);
       }
 
       &.rank-2 {
-        background: linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 100%);
-        color: #666;
+        background: linear-gradient(135deg, var(--tf-color-silver) 0%, var(--tf-color-gray-ant-300) 100%);
+        color: var(--text-secondary);
       }
 
       &.rank-3 {
-        background: linear-gradient(135deg, #cd7f32 0%, #e5a35d 100%);
-        color: #8b4513;
+        background: linear-gradient(135deg, var(--tf-color-bronze) 0%, var(--tf-color-amber-muted) 100%);
+        color: var(--tf-color-brown);
       }
 
       i {
@@ -619,7 +648,7 @@ onUnmounted(() => {
 
         .store-name {
           font-weight: 600;
-          color: #667eea;
+          color: var(--tf-color-indigo-brand);
           font-size: 14px;
           flex: 1 1 auto;
           min-width: 0;
@@ -629,7 +658,7 @@ onUnmounted(() => {
         }
 
         .date {
-          color: #27ae60;
+          color: var(--tf-color-green-legacy);
           font-size: 12px;
           display: flex;
           align-items: center;
@@ -650,7 +679,7 @@ onUnmounted(() => {
           display: flex;
           align-items: center;
           gap: 4px;
-          color: #7f8c8d;
+          color: var(--tf-color-gray-cool-500);
           font-size: 13px;
           font-family: 'Courier New', monospace;
           min-width: 0;
@@ -660,7 +689,7 @@ onUnmounted(() => {
           text-overflow: ellipsis;
 
           .imei-label {
-            color: #475569;
+            color: var(--tf-color-slate-600);
             font-weight: 600;
             flex-shrink: 0;
           }
@@ -691,23 +720,23 @@ onUnmounted(() => {
           }
 
           &.days-normal {
-            background: #e8f5e9;
-            color: #2e7d32;
+            background: var(--tf-color-surface-green);
+            color: var(--tf-color-green-material-800);
           }
 
           &.days-caution {
-            background: #fff3e0;
-            color: #e65100;
+            background: var(--tf-color-orange-material-50);
+            color: var(--tf-color-orange-material-900);
           }
 
           &.days-warning {
-            background: #fff8e1;
-            color: #f57f17;
+            background: var(--tf-color-amber-material-50);
+            color: var(--tf-color-amber-material-900);
           }
 
           &.days-critical {
-            background: #ffebee;
-            color: #c62828;
+            background: var(--tf-color-red-50);
+            color: var(--tf-color-red-material-800);
           }
         }
       }

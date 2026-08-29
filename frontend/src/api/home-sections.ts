@@ -16,8 +16,6 @@ export interface HomeSection {
   is_enabled: boolean
   sort_order: number
   product_limit: number
-  fill_count: number
-  auto_fill: boolean
   product_count?: number
   products?: HomeSectionProduct[]
 }

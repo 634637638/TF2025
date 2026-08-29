@@ -5,18 +5,33 @@
 <template>
   <div class="order-query-page">
     <!-- 未登录验证表单 -->
-    <div v-if="!isAuthenticated && !verified" class="verify-section">
+    <div
+      v-if="!isAuthenticated && !verified"
+      class="verify-section"
+    >
       <div class="verify-card">
         <div class="verify-header">
-          <i class="fas fa-shield-alt verify-icon"></i>
-          <h2 class="verify-title">订单查询</h2>
-          <p class="verify-desc">请输入下单时的手机号和姓名查询订单</p>
+          <i class="fas fa-shield-alt verify-icon" />
+          <h2 class="verify-title">
+            订单查询
+          </h2>
+          <p class="verify-desc">
+            请输入下单时的手机号和姓名查询订单
+          </p>
         </div>
 
-        <el-form :model="form.values" :rules="verifyRules" ref="verifyFormRef" label-position="top">
-          <el-form-item label="手机号" prop="phone">
+        <el-form
+          ref="verifyFormRef"
+          :model="form.values"
+          :rules="verifyRules"
+          label-position="top"
+        >
+          <el-form-item
+            label="手机号"
+            prop="customer_phone"
+          >
             <el-input
-              :model-value="form.values.phone"
+              :model-value="form.values.customer_phone"
               type="tel"
               maxlength="11"
               placeholder="请输入手机号"
@@ -25,21 +40,24 @@
               @blur="validate()"
             >
               <template #prefix>
-                <i class="fas fa-phone"></i>
+                <i class="fas fa-phone" />
               </template>
             </el-input>
           </el-form-item>
 
-          <el-form-item label="姓名" prop="name">
+          <el-form-item
+            label="姓名"
+            prop="customer_name"
+          >
             <el-input
-              :model-value="form.values.name"
+              :model-value="form.values.customer_name"
               placeholder="请输入下单时的姓名"
               size="large"
-              @update:model-value="setFieldValue('name', $event)"
+              @update:model-value="setFieldValue('customer_name', $event)"
               @blur="validate()"
             >
               <template #prefix>
-                <i class="fas fa-user"></i>
+                <i class="fas fa-user" />
               </template>
             </el-input>
           </el-form-item>
@@ -49,8 +67,8 @@
               type="primary"
               size="large"
               :loading="verifying"
-              @click="handleVerify"
               class="w-full"
+              @click="handleVerify"
             >
               查询订单
             </el-button>
@@ -58,36 +76,61 @@
         </el-form>
 
         <div class="verify-tips">
-          <p><i class="fas fa-info-circle"></i> 为保护您的隐私，需要验证手机号和姓名</p>
-          <p><i class="fas fa-lock"></i> 您的信息仅用于订单验证，不会被泄露</p>
-          <p><i class="fas fa-user-plus"></i> 已有账号？<a @click="goToLogin">立即登录</a></p>
+          <p><i class="fas fa-info-circle" /> 为保护您的隐私，需要验证手机号和姓名</p>
+          <p><i class="fas fa-lock" /> 您的信息仅用于订单验证，不会被泄露</p>
+          <p><i class="fas fa-user-plus" /> 已有账号？<a @click="goToLogin">立即登录</a></p>
         </div>
       </div>
     </div>
 
     <!-- 订单列表 -->
-    <div v-else class="orders-section">
+    <div
+      v-else
+      class="orders-section"
+    >
       <div class="orders-header">
         <div class="user-info">
-          <i class="fas fa-user-circle"></i>
+          <i class="fas fa-user-circle" />
           <span>{{ displayName }}</span>
           <span class="phone">{{ formatPhone(displayPhone) }}</span>
         </div>
-        <el-button link @click="handleLogout">
-          <i class="fas fa-sign-out-alt"></i> 退出
+        <el-button
+          link
+          @click="handleLogout"
+        >
+          <i class="fas fa-sign-out-alt" /> 退出
         </el-button>
       </div>
 
       <!-- 订单列表 -->
-      <div v-if="loading" class="loading-state">
-        <SectionLoading text="加载订单中..." size="large" />
+      <div
+        v-if="loading"
+        class="loading-state"
+      >
+        <SectionLoading
+          text="加载订单中..."
+          size="large"
+        />
       </div>
 
-      <div v-else-if="orders.length > 0" class="orders-list">
-        <div v-for="order in orders" :key="order.id" class="order-card" @click="goToDetail(order.order_number)">
+      <div
+        v-else-if="orders.length > 0"
+        class="orders-list"
+      >
+        <div
+          v-for="order in orders"
+          :key="order.id"
+          class="order-card"
+          @click="goToDetail(order)"
+        >
           <div class="order-header">
-            <div class="order-number">订单号：{{ order.order_number }}</div>
-            <div class="order-status" :class="`status-${order.status}`">
+            <div class="order-number">
+              订单号：{{ order.order_number }}
+            </div>
+            <div
+              class="order-status"
+              :class="`status-${order.status}`"
+            >
               {{ getStatusText(order.status) }}
             </div>
           </div>
@@ -105,10 +148,21 @@
             </div>
 
             <div class="order-items-preview">
-              <div v-for="(item, index) in getFirstItems(order.items)" :key="index" class="item-preview">
-                <img v-if="item.image_url" :src="formatImageUrl(item.image_url)" :alt="item.product_name" />
+              <div
+                v-for="(item, index) in getFirstItems(order.items)"
+                :key="index"
+                class="item-preview"
+              >
+                <img
+                  v-if="item.image_url"
+                  :src="formatImageUrl(item.image_url)"
+                  :alt="item.product_name"
+                >
                 <span>{{ item.product_name || '商品' }}</span>
-                <span v-if="order.items.length > 1" class="more-count">等{{ order.items.length }}件</span>
+                <span
+                  v-if="order.items.length > 1"
+                  class="more-count"
+                >等{{ order.items.length }}件</span>
               </div>
             </div>
 
@@ -117,30 +171,43 @@
                 <span class="label">订单金额：</span>
                 <span class="amount">¥{{ parseFloat(order.total_amount).toFixed(2) }}</span>
               </div>
-              <i class="fas fa-chevron-right arrow-icon"></i>
+              <i class="fas fa-chevron-right arrow-icon" />
             </div>
           </div>
         </div>
 
         <!-- 分页 -->
-        <div v-if="hasMore" class="load-more" @click="loadMore">
-          <el-button :loading="loadingMore">加载更多</el-button>
+        <div
+          v-if="hasMore"
+          class="load-more"
+          @click="loadMore"
+        >
+          <el-button :loading="loadingMore">
+            加载更多
+          </el-button>
         </div>
       </div>
 
       <!-- 空状态 -->
-      <div v-else class="empty-state">
-        <el-empty description="暂无订单记录">
-          <el-button type="primary" @click="goHome">去逛逛</el-button>
-        </el-empty>
-      </div>
+      <DataEmptyState
+        v-else
+        size="page"
+        description="暂无订单记录"
+      >
+        <el-button
+          type="primary"
+          @click="goHome"
+        >
+          去逛逛
+        </el-button>
+      </DataEmptyState>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { ElMessage, type FormInstance } from 'element-plus'
 import { useForm, ValidationRules, useLoadingState } from '@/composables'
 import { getOrdersByPhone } from '@/api/shop-public'
@@ -149,6 +216,8 @@ import SectionLoading from '@/components/SectionLoading.vue'
 import { formatImageUrl } from '@/utils/format'
 import { normalizePhoneDigits } from '@/utils/security'
 import { logger } from '@/utils/logger'
+import { storage } from '@/services/storage'
+import { H5_STORAGE_KEYS } from '@/constants/storage'
 const router = useRouter()
 
 // 认证状态
@@ -166,32 +235,32 @@ const displayName = computed(() => {
   if (isAuthenticated.value && currentUser.value) {
     return currentUser.value.name
   }
-  return form.values.name
+  return form.values.customer_name
 })
 
 const displayPhone = computed(() => {
   if (isAuthenticated.value && currentUser.value) {
     return currentUser.value.phone
   }
-  return form.values.phone
+  return form.values.customer_phone
 })
 
 // 验证表单
 const verifyFormRef = ref<FormInstance>()
-const setPhoneFieldValue = (value: string) => setFieldValue('phone', normalizePhoneDigits(value))
+const setPhoneFieldValue = (value: string) => setFieldValue('customer_phone', normalizePhoneDigits(value))
 
 // 使用 useForm 管理表单
 const { form, validate, setFieldValue, reset } = useForm({
   initialValues: {
-    phone: '',
-    name: ''
+    customer_phone: '',
+    customer_name: ''
   },
   validationRules: {
-    phone: [
+    customer_phone: [
       ValidationRules.required('请输入手机号'),
       ValidationRules.phone('请输入正确的手机号')
     ],
-    name: [
+    customer_name: [
       ValidationRules.required('请输入姓名'),
       ValidationRules.minLength(2, '姓名至少2个字符')
     ]
@@ -201,19 +270,19 @@ const { form, validate, setFieldValue, reset } = useForm({
 // 转换为 el-form 格式的 rules
 const verifyRules = computed(() => {
   const rules: Record<string, any[]> = {}
-  if (form.errors.phone) {
-    rules.phone = [{ required: true, message: form.errors.phone, trigger: 'blur' }]
+  if (form.errors.customer_phone) {
+    rules.customer_phone = [{ required: true, message: form.errors.customer_phone, trigger: 'blur' }]
   }
-  if (form.errors.name) {
-    rules.name = [{ required: true, message: form.errors.name, trigger: 'blur' }]
+  if (form.errors.customer_name) {
+    rules.customer_name = [{ required: true, message: form.errors.customer_name, trigger: 'blur' }]
   }
   return rules
 })
 
 // 订单数据
 const orders = ref<any[]>([])
-const currentPage = ref(1)
-const pageSize = 10
+const current_page = ref(1)
+const page_size = 10
 const total = ref(0)
 
 // 是否有更多
@@ -241,14 +310,15 @@ watch(() => router.currentRoute.value,
       if (isAuthenticated.value && currentUser.value) {
         loadUserOrders()
       } else if (verified.value) {
-        const normalizedPhone = normalizePhoneDigits(form.values.phone)
+        const normalizedPhone = normalizePhoneDigits(form.values.customer_phone)
         // 未登录用户，重新查询订单
         getOrdersByPhone(normalizedPhone, {
           page: 1,
-          limit: pageSize
+          page_size,
+          customer_name: form.values.customer_name
         }).then((result: any) => {
           const validOrders = (result.data || []).filter((order: any) =>
-            order.customer_name === form.values.name
+            order.customer_name === form.values.customer_name
           )
           orders.value = validOrders
           total.value = result.total || 0
@@ -267,7 +337,7 @@ const loadUserOrders = async () => {
     orders.value = result || []
     // H5_orders 表可能没有 total 字段，使用数据长度
     total.value = result.length || 0
-    currentPage.value = 1
+    current_page.value = 1
   } catch (error: any) {
     logger.error('加载用户订单失败:', error)
     ElMessage.error(error.message || '加载订单失败')
@@ -284,17 +354,18 @@ const handleVerify = async () => {
     await verifyFormRef.value.validate()
 
     verifying.value = true
-    const normalizedPhone = normalizePhoneDigits(form.values.phone)
+    const normalizedPhone = normalizePhoneDigits(form.values.customer_phone)
 
     // 查询订单
     const result: any = await getOrdersByPhone(normalizedPhone, {
       page: 1,
-      limit: pageSize
+      page_size,
+      customer_name: form.values.customer_name
     })
 
     // 验证姓名：检查订单中是否有匹配的姓名
     const hasValidOrder = result.data && result.data.some((order: any) =>
-      order.customer_name === form.values.name
+      order.customer_name === form.values.customer_name
     )
 
     if (!hasValidOrder) {
@@ -306,7 +377,7 @@ const handleVerify = async () => {
     verified.value = true
     orders.value = result.data || []
     total.value = result.total || 0
-    currentPage.value = 1
+    current_page.value = 1
 
     ElMessage.success(`查询成功，找到 ${orders.value.length} 条订单记录`)
   } catch (error: any) {
@@ -332,7 +403,7 @@ const handleLogout = () => {
     reset()
   }
   orders.value = []
-  currentPage.value = 1
+  current_page.value = 1
   total.value = 0
 }
 
@@ -349,23 +420,24 @@ const loadMore = async () => {
   if (loadingMore.value || !hasMore.value) return
 
   loadingMore.value = true
-  currentPage.value++
+  current_page.value++
 
   try {
     if (isAuthenticated.value) {
       // 已登录用户加载更多（暂时不支持分页）
       ElMessage.info('没有更多订单了')
     } else {
-      const normalizedPhone = normalizePhoneDigits(form.values.phone)
+      const normalizedPhone = normalizePhoneDigits(form.values.customer_phone)
       // 未登录用户加载更多
       const result: any = await getOrdersByPhone(normalizedPhone, {
-        page: currentPage.value,
-        limit: pageSize
+        page: current_page.value,
+        page_size,
+        customer_name: form.values.customer_name
       })
 
       // 过滤只显示匹配的订单
       const validOrders = (result.data || []).filter((order: any) =>
-        order.customer_name === form.values.name
+        order.customer_name === form.values.customer_name
       )
 
       orders.value.push(...validOrders)
@@ -374,7 +446,7 @@ const loadMore = async () => {
   } catch (error: any) {
     logger.error('加载更多失败:', error)
     ElMessage.error('加载失败')
-    currentPage.value--
+    current_page.value--
   } finally {
     loadingMore.value = false
   }
@@ -427,10 +499,16 @@ const getFirstItems = (items: any[]) => {
 }
 
 // 跳转到订单详情
-const goToDetail = (orderNumber: string) => {
+const goToDetail = (order: any) => {
+  storage.set(H5_STORAGE_KEYS.ORDER_SUCCESS, {
+    orderNumber: order.order_number,
+    totalAmount: order.total_amount,
+    accessToken: order.access_token,
+    timestamp: Date.now()
+  }, 'session')
   router.push({
     name: 'MobileOrderDetail',
-    params: { orderNumber }
+    params: { orderNumber: order.order_number }
   })
 }
 
@@ -443,7 +521,7 @@ const goHome = () => {
 <style scoped lang="scss">
 .order-query-page {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: var(--tf-color-surface-soft);
 }
 
 // 验证区域
@@ -457,7 +535,7 @@ const goHome = () => {
   .verify-card {
     width: 100%;
     max-width: 400px;
-    background: #fff;
+    background: var(--color-bg-white);
     border-radius: 16px;
     padding: 32px 24px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
@@ -468,20 +546,20 @@ const goHome = () => {
 
       .verify-icon {
         font-size: 48px;
-        color: #409eff;
+        color: var(--color-primary);
         margin-bottom: 16px;
       }
 
       .verify-title {
         font-size: 24px;
         font-weight: 600;
-        color: #333;
+        color: var(--text-primary);
         margin: 0 0 8px;
       }
 
       .verify-desc {
         font-size: 14px;
-        color: #999;
+        color: var(--text-muted);
         margin: 0;
       }
     }
@@ -489,14 +567,14 @@ const goHome = () => {
     .verify-tips {
       margin-top: 24px;
       padding-top: 24px;
-      border-top: 1px solid #f0f0f0;
+      border-top: 1px solid var(--tf-color-gray-200);
 
       p {
         display: flex;
         align-items: center;
         gap: 8px;
         font-size: 13px;
-        color: #666;
+        color: var(--text-secondary);
         margin: 8px 0;
 
         &:first-child {
@@ -504,7 +582,7 @@ const goHome = () => {
         }
 
         i {
-          color: #409eff;
+          color: var(--color-primary);
         }
       }
     }
@@ -519,7 +597,7 @@ const goHome = () => {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: #fff;
+    background: var(--color-bg-white);
     padding: 16px;
     margin-bottom: 12px;
 
@@ -528,15 +606,15 @@ const goHome = () => {
       align-items: center;
       gap: 8px;
       font-size: 15px;
-      color: #333;
+      color: var(--text-primary);
 
       i {
         font-size: 24px;
-        color: #409eff;
+        color: var(--color-primary);
       }
 
       .phone {
-        color: #999;
+        color: var(--text-muted);
         font-size: 14px;
       }
     }
@@ -551,7 +629,7 @@ const goHome = () => {
 // 订单列表
 .orders-list {
   .order-card {
-    background: #fff;
+    background: var(--color-bg-white);
     margin: 0 12px 12px;
     border-radius: 12px;
     overflow: hidden;
@@ -567,12 +645,12 @@ const goHome = () => {
       justify-content: space-between;
       align-items: center;
       padding: 12px 16px;
-      background: #f8f9fa;
-      border-bottom: 1px solid #f0f0f0;
+      background: var(--tf-color-surface-muted);
+      border-bottom: 1px solid var(--tf-color-gray-200);
 
       .order-number {
         font-size: 13px;
-        color: #666;
+        color: var(--text-secondary);
       }
 
       .order-status {
@@ -582,28 +660,33 @@ const goHome = () => {
         border-radius: 4px;
 
         &.status-pending {
-          color: #ff9800;
-          background: #fff3e0;
+          color: var(--tf-status-warning-color);
+          background: var(--tf-status-warning-bg);
+          border: 1px solid var(--tf-status-warning-border);
         }
 
         &.status-paid {
-          color: #2196f3;
-          background: #e3f2fd;
+          color: var(--tf-status-success-color);
+          background: var(--tf-status-success-bg);
+          border: 1px solid var(--tf-status-success-border);
         }
 
         &.status-shipped {
-          color: #4caf50;
-          background: #e8f5e9;
+          color: var(--tf-status-info-color);
+          background: var(--tf-status-info-bg);
+          border: 1px solid var(--tf-status-info-border);
         }
 
         &.status-completed {
-          color: #9e9e9e;
-          background: #f5f5f5;
+          color: var(--tf-status-success-color);
+          background: var(--tf-status-success-bg);
+          border: 1px solid var(--tf-status-success-border);
         }
 
         &.status-cancelled {
-          color: #f44336;
-          background: #ffebee;
+          color: var(--tf-status-danger-color);
+          background: var(--tf-status-danger-bg);
+          border: 1px solid var(--tf-status-danger-border);
         }
       }
     }
@@ -621,12 +704,12 @@ const goHome = () => {
 
           .label {
             font-size: 13px;
-            color: #999;
+            color: var(--text-muted);
           }
 
           .value {
             font-size: 13px;
-            color: #333;
+            color: var(--text-primary);
           }
         }
       }
@@ -640,11 +723,11 @@ const goHome = () => {
           display: flex;
           align-items: center;
           gap: 6px;
-          background: #f5f5f5;
+          background: var(--tf-color-surface-soft);
           padding: 6px 10px;
           border-radius: 6px;
           font-size: 12px;
-          color: #666;
+          color: var(--text-secondary);
 
           img {
             width: 24px;
@@ -654,7 +737,7 @@ const goHome = () => {
           }
 
           .more-count {
-            color: #999;
+            color: var(--text-muted);
             font-size: 11px;
           }
         }
@@ -665,23 +748,23 @@ const goHome = () => {
         justify-content: space-between;
         align-items: center;
         padding-top: 12px;
-        border-top: 1px solid #f0f0f0;
+        border-top: 1px solid var(--tf-color-gray-200);
 
         .order-total {
           .label {
             font-size: 14px;
-            color: #666;
+            color: var(--text-secondary);
           }
 
           .amount {
             font-size: 18px;
             font-weight: 500;
-            color: #ff1744;
+            color: var(--tf-color-accent-pink);
           }
         }
 
         .arrow-icon {
-          color: #ddd;
+          color: var(--tf-color-gray-300-alt);
           font-size: 14px;
         }
       }

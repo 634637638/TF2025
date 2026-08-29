@@ -19,14 +19,14 @@ interface StockInEditPhoneOptions {
   memory?: number | string
   serial_number?: string
   imei?: string
-  purchase_price?: number
+  purchase_cost?: number
 }
 
 interface StockInEditResponse {
   id?: string | number
   supplier_id?: string | number
   store_id?: string | number
-  Inventorytime?: string | null
+  inventory_time?: string | null
   operator_name?: string
   phone_condition?: string
   note?: string
@@ -57,7 +57,7 @@ export const createEmptyStockInPhone = (): StockInPhoneItem => ({
   memory: '',
   serial_number: '',
   imei: '',
-  purchase_price: undefined,
+  purchase_cost: undefined,
   is_published: 1,
   imeiValid: undefined,
   serialValid: undefined,
@@ -96,7 +96,7 @@ export const createCreateModeStockInForm = (
   id: '',
   supplier_id: '',
   store_id: '',
-  stock_in_date: TimeUtil.nowFormatted(TIME_FORMATS.DATE),
+  inventory_time: TimeUtil.nowFormatted(TIME_FORMATS.DATE),
   operator_name: options.operatorName,
   product_status: '全新',
   remarks: '',
@@ -113,7 +113,7 @@ export const createEditModePhoneItem = (
   memory: phone.memory,
   serial_number: phone.serial_number || '',
   imei: phone.imei || '',
-  purchase_price: phone.purchase_price,
+  purchase_cost: phone.purchase_cost,
   imeiValid: undefined,
   serialValid: undefined,
   isNoIMEIMode
@@ -137,8 +137,8 @@ export const mapStockInEditResponseToForm = (
     id: data.id ? String(data.id) : '',
     supplier_id: data.supplier_id ? String(data.supplier_id) : '',
     store_id: data.store_id || '',
-    stock_in_date: data.Inventorytime
-      ? TimeUtil.format(data.Inventorytime, TIME_FORMATS.DATE)
+    inventory_time: data.inventory_time
+      ? TimeUtil.format(data.inventory_time, TIME_FORMATS.DATE)
       : TimeUtil.nowFormatted(TIME_FORMATS.DATE),
     operator_name: data.operator_name || operatorName,
     product_status: data.phone_condition || '全新',
@@ -152,7 +152,7 @@ export const mapStockInEditResponseToForm = (
           memory: data.memory_id || '',
           serial_number: data.serial_number || '',
           imei: data.imei || '',
-          purchase_price: data.unit_cost || undefined
+          purchase_cost: data.unit_cost || undefined
         },
         detectNoIMEIMode(data.imei || undefined, data.serial_number || undefined)
       )
@@ -348,7 +348,7 @@ export const buildStockInSubmitPayload = (
     return {
       supplier_id: formData.supplier_id,
       store_id: formData.store_id,
-      stock_in_date: formData.stock_in_date,
+      inventory_time: formData.inventory_time,
       operator_name: formData.operator_name,
       condition: formData.product_status === '全新' ? '全新' : '二手',
       products: formData.phones.map((phone) => ({
@@ -358,10 +358,10 @@ export const buildStockInSubmitPayload = (
         memory_id: phone.memory,
         imei: phone.imei,
         serial_number: phone.serial_number,
-        purchase_price: phone.purchase_price,
+        purchase_cost: phone.purchase_cost,
         is_published: phone.is_published ?? 1
       })),
-      notes: formData.remarks
+      remarks: formData.remarks
     }
   }
 
@@ -374,7 +374,8 @@ export const buildStockInSubmitPayload = (
     memory_id: phone.memory,
     imei: phone.imei,
     serial_number: phone.serial_number,
-    purchase_cost: phone.purchase_price,
+    purchase_cost: phone.purchase_cost,
+    inventory_time: formData.inventory_time,
     store_id: formData.store_id,
     supplier_id: formData.supplier_id,
     is_new: formData.product_status,
@@ -397,7 +398,7 @@ export const validateStockInPhone = (phone: StockInPhoneItem): string | null => 
     return '请输入有效的序列号'
   }
 
-  if (!phone.purchase_price || phone.purchase_price <= 0) {
+  if (!phone.purchase_cost || phone.purchase_cost <= 0) {
     return '请输入有效的入库价格'
   }
 
@@ -437,12 +438,12 @@ export interface StockInDropdownData {
 
 export const loadStockInDropdownData = async (): Promise<StockInDropdownData> => {
   const results = await Promise.all([
-    unifiedApi.get('/suppliers?limit=10000'),
+    unifiedApi.get('/suppliers?page_size=10000'),
     unifiedApi.get('/stores?all=true'),
-    unifiedApi.get('/brands?status=1&limit=100'),
-    unifiedApi.get('/models?status=1&limit=100'),
-    unifiedApi.get('/colors?limit=100'),
-    unifiedApi.get('/memories?limit=100')
+    unifiedApi.get('/brands?status=1&page_size=100'),
+    unifiedApi.get('/models?status=1&page_size=100'),
+    unifiedApi.get('/colors?page_size=100'),
+    unifiedApi.get('/memories?page_size=100')
   ])
 
   const [suppliersRes, storesRes, brandsRes, modelsRes, colorsRes, memoriesRes] = results
@@ -484,11 +485,10 @@ export const loadStockInDropdownData = async (): Promise<StockInDropdownData> =>
     : []
 
   const memories = memoriesRes.success
-    ? sortBySortOrder(extractResponseData<Array<{ id: number; name?: string; capacity?: string; sort_order?: number }>>(memoriesRes))
+    ? sortBySortOrder(extractResponseData<Array<{ id: number; size: string; sort_order?: number }>>(memoriesRes))
       .map((memory) => ({
         id: memory.id,
-        name: memory.name || memory.capacity,
-        capacity: memory.capacity
+        size: memory.size
       }))
     : []
 

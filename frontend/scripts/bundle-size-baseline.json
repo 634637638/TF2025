@@ -1,0 +1,12 @@
+{
+  "maxInitialJsBytes": 650000,
+  "maxInitialCssBytes": 250000,
+  "maxInitialTotalBytes": 900000,
+  "maxSingleLazyJsBytes": 1400000,
+  "forbiddenInitialAssetPatterns": [
+    "heic2any",
+    "pdf",
+    "zxing",
+    "html2canvas"
+  ]
+}

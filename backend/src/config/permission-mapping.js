@@ -1,4 +1,4 @@
-'use strict';
+'use strict'
 
 /**
  * 权限映射表 - 将标准权限字符串映射到数据库中的权限格式。
@@ -244,6 +244,8 @@ module.exports = Object.freeze({
   'subsidy:edit': ['subsidy_subsidyview:edit', 'subsidy:edit'],
   'subsidy:delete': ['subsidy_subsidyview:delete', 'subsidy:delete'],
   'subsidy:approve': ['subsidy_subsidyview:approve', 'subsidy:approve'],
+  'subsidy:arrival': ['subsidy_subsidyview:arrival', 'subsidy:arrival'],
+  'subsidy:upload': ['subsidy_subsidyview:upload', 'subsidy:upload'],
   'subsidy:export': ['subsidy_subsidyview:export', 'subsidy:export'],
 
   // 供应商付款管理权限映射
@@ -314,7 +316,7 @@ module.exports = Object.freeze({
   'system:view': ['system_systemview:view', 'system_systemview:menu_view'],
   'system:create': ['system_systemview:create'],
   'system:edit': ['system_systemview:edit'],
-  'system:delete': ['system_systemview:delete'],
+  'system:delete': ['system_systemview:delete']
 
   // 通用映射规则
-});
+})

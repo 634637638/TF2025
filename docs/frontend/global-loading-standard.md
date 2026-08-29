@@ -120,7 +120,7 @@ Element Plus `el-table` 空状态请改用：
 ```vue
 <template #empty>
   <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
-  <el-empty v-else description="暂无数据" />
+  <DataEmptyState v-else description="暂无数据" />
 </template>
 ```
 

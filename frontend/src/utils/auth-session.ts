@@ -6,6 +6,12 @@
 import { AUTH_STORAGE_KEYS } from '@/constants/storage'
 import { storage } from '@/services/storage'
 
+declare global {
+  interface Window {
+    __TF2025__GLOBAL_CLEAR__?: boolean
+  }
+}
+
 export const BACKEND_DISCONNECT_GRACE_MS = 5 * 60 * 1000  // 5分钟宽限期，给网络恢复更多时间
 
 interface ClearAuthOptions {
@@ -22,7 +28,7 @@ export const clearPersistedAuthData = (options: ClearAuthOptions = {}): void => 
     clearDisconnectState = true
   } = options
 
-  ;(window as any).__TF2025__GLOBAL_CLEAR__ = true
+  window.__TF2025__GLOBAL_CLEAR__ = true
 
   // 清除 sessionStorage 中的认证数据
   storage.remove(AUTH_STORAGE_KEYS.AUTH, 'session')
@@ -47,7 +53,7 @@ export const clearPersistedAuthData = (options: ClearAuthOptions = {}): void => 
     storage.set(AUTH_STORAGE_KEYS.LOGOUT_EVENT, Date.now().toString(), 'session')
   }
 
-  ;(window as any).__TF2025__GLOBAL_CLEAR__ = false
+  window.__TF2025__GLOBAL_CLEAR__ = false
 }
 
 /**

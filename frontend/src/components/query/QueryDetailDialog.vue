@@ -6,13 +6,30 @@
         class="query-detail-mobile-overlay"
         @click.self="handleClose"
       >
-        <div class="query-detail-mobile-sheet" role="dialog" aria-modal="true">
+        <div
+          class="query-detail-mobile-sheet"
+          role="dialog"
+          aria-modal="true"
+        >
           <div class="query-detail-mobile-header">
-            <div class="query-detail-mobile-title">设备销售信息</div>
-            <button type="button" class="query-detail-mobile-close" @click="handleClose" aria-label="关闭">
+            <div class="query-detail-mobile-title">
+              设备销售信息
+            </div>
+            <button
+              type="button"
+              class="query-detail-mobile-close"
+              aria-label="关闭"
+              @click="handleClose"
+            >
               <i class="el-icon">
-                <svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
-                  <path fill="currentColor" d="M764.288 214.656a42.624 42.624 0 0 1 60.224 60.288L572.16 527.104l252.352 252.224a42.624 42.624 0 1 1-60.224 60.288L512 587.392 259.648 839.616a42.624 42.624 0 1 1-60.224-60.288l252.352-252.224L199.424 274.944a42.624 42.624 0 0 1 60.224-60.288L512 466.88z" />
+                <svg
+                  viewBox="0 0 1024 1024"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    fill="currentColor"
+                    d="M764.288 214.656a42.624 42.624 0 0 1 60.224 60.288L572.16 527.104l252.352 252.224a42.624 42.624 0 1 1-60.224 60.288L512 587.392 259.648 839.616a42.624 42.624 0 1 1-60.224-60.288l252.352-252.224L199.424 274.944a42.624 42.624 0 0 1 60.224-60.288L512 466.88z"
+                  />
                 </svg>
               </i>
             </button>
@@ -138,7 +155,7 @@ onUnmounted(() => {
 .query-detail-mobile-sheet {
   width: min(100%, 560px);
   max-height: calc(100dvh - 4px);
-  background: #ffffff;
+  background: var(--color-bg-white);
   border-radius: 28px;
   overflow: hidden;
   display: flex;
@@ -153,14 +170,14 @@ onUnmounted(() => {
   justify-content: center;
   min-height: calc(72px + env(safe-area-inset-top));
   padding: calc(12px + env(safe-area-inset-top)) 56px 12px 16px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
 }
 
 .query-detail-mobile-title,
 .query-detail-desktop-title {
   font-size: 18px;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--color-bg-white);
   line-height: 1.3;
 }
 
@@ -173,7 +190,7 @@ onUnmounted(() => {
   border: 0;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.16);
-  color: #ffffff;
+  color: var(--color-bg-white);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -191,7 +208,7 @@ onUnmounted(() => {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   padding: 6px 6px max(8px, env(safe-area-inset-bottom));
-  background: #ffffff;
+  background: var(--color-bg-white);
 }
 
 .query-detail-desktop-header {
@@ -202,7 +219,7 @@ onUnmounted(() => {
   justify-content: center;
   padding: 12px 52px 12px 18px;
   border-radius: 18px 18px 0 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
 }
 
 :deep(.query-detail-dialog.el-dialog) {
@@ -217,7 +234,7 @@ onUnmounted(() => {
 
 :deep(.query-detail-dialog .el-dialog__body) {
   padding: 12px;
-  background: #ffffff;
+  background: var(--color-bg-white);
 }
 
 :deep(.query-detail-dialog .el-dialog__headerbtn) {
@@ -230,7 +247,7 @@ onUnmounted(() => {
 }
 
 :deep(.query-detail-dialog .el-dialog__close) {
-  color: #ffffff;
+  color: var(--color-bg-white);
 }
 
 .query-detail-sheet-fade-enter-active,

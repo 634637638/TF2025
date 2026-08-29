@@ -1,0 +1,204 @@
+.edit-phone-dialog {
+  .info-cards-container {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .info-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 16px;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 12px;
+    background: white;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+  }
+
+  .info-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+  }
+
+  .card-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+    border-radius: 10px;
+    color: white;
+    font-size: 18px;
+  }
+
+  .card-icon.brand {
+    background: var(--tf-button-primary-bg);
+  }
+
+  .card-icon.model {
+    background: var(--tf-button-view-soft-color);
+  }
+
+  .card-icon.color {
+    background: var(--tf-button-manage-bg);
+  }
+
+  .card-icon.memory {
+    background: var(--tf-button-warning-bg);
+  }
+
+  .card-icon.serial {
+    background: var(--tf-button-finance-bg);
+  }
+
+  .card-icon.price {
+    background: var(--tf-button-success-bg);
+  }
+
+  .card-details {
+    width: 100%;
+    min-width: 0;
+    flex: 1;
+    text-align: center;
+  }
+
+  .card-label {
+    margin-bottom: 4px;
+    color: var(--tf-color-slate-400);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .card-primary-text {
+    overflow: hidden;
+    color: var(--tf-color-slate-800);
+    font-size: 13px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .card-primary-text.small-text {
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .sales-edit-form-shell {
+    padding: 18px 16px;
+    border-radius: 12px;
+    background: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
+
+  .sales-edit-form-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px 14px;
+  }
+
+  .sales-edit-field-label {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--tf-color-neutral-600);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .sales-edit-imei-badge {
+    margin-left: 8px;
+    color: var(--tf-color-emerald-500);
+    font-size: 12px;
+  }
+
+  .sales-edit-imei-suffix,
+  .sales-edit-imei-hint {
+    color: var(--tf-color-neutral-500);
+    font-size: 11px;
+  }
+
+  .sales-edit-imei-field,
+  .sales-edit-remarks-field {
+    grid-column: span 2;
+  }
+
+  .full-width {
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .edit-phone-dialog {
+    .info-cards-container {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .info-card {
+      padding: 12px;
+    }
+
+    .card-icon {
+      width: 36px;
+      height: 36px;
+      font-size: 16px;
+    }
+
+    .card-label {
+      font-size: 9px;
+    }
+
+    .card-primary-text {
+      font-size: 12px;
+    }
+
+    .sales-edit-form-shell {
+      padding: 12px 10px;
+      border-radius: 12px;
+    }
+
+    .sales-edit-form-grid {
+      grid-template-columns: minmax(0, 0.92fr) minmax(0, 0.92fr) minmax(112px, 1.16fr);
+      gap: 10px;
+    }
+
+    .sales-edit-field-label {
+      margin-bottom: 5px;
+      font-size: 12px;
+    }
+
+    .sales-edit-imei-field {
+      grid-column: span 2;
+    }
+
+    .sales-edit-remarks-field {
+      grid-column: 1 / -1;
+    }
+
+    .sales-edit-form-grid :deep(.el-input__wrapper),
+    .sales-edit-form-grid :deep(.el-select__wrapper),
+    .sales-edit-form-grid :deep(.el-date-editor .el-input__wrapper),
+    .sales-edit-form-grid :deep(.el-input-number) {
+      min-height: 36px;
+    }
+
+    .sales-edit-form-grid :deep(.el-input__inner),
+    .sales-edit-form-grid :deep(.el-select__selected-item),
+    .sales-edit-form-grid :deep(.el-date-editor .el-input__inner),
+    .sales-edit-form-grid :deep(.el-textarea__inner),
+    .sales-edit-form-grid :deep(.el-input-number .el-input__inner) {
+      font-size: 13px;
+    }
+
+    .sales-edit-form-grid :deep(.el-textarea__inner) {
+      min-height: 68px;
+      padding: 8px 10px;
+    }
+  }
+}

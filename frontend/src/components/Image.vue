@@ -12,7 +12,7 @@
   使用示例：
   <Image src="product.image" alt="产品图片" />
   <Image src="/uploads/shop/xxx.jpg" width="200" height="200" />
-  <Image src="xxx.jpg" mode="smart" />  <!-- 启用智能降级 -->
+  Image 组件的 mode="smart" 可启用智能降级。
 -->
 <template>
   <div
@@ -30,14 +30,20 @@
       :class="{ 'fade-in': fadeIn }"
       @load="handleLoad"
       @error.stop="handleImageError"
-    />
-    <div v-else-if="hasError" class="tf-image-error">
+    >
+    <div
+      v-else-if="hasError"
+      class="tf-image-error"
+    >
       <slot name="error">
-        <i class="fas fa-exclamation-triangle"></i>
+        <i class="fas fa-exclamation-triangle" />
         <span>图片加载失败</span>
       </slot>
     </div>
-    <div v-else class="tf-image-placeholder">
+    <div
+      v-else
+      class="tf-image-placeholder"
+    >
       <slot name="placeholder">
         <InlineLoading size="small" />
       </slot>
@@ -56,7 +62,7 @@
     ]"
     @error.stop="handleImageError"
     @load="handleLoad"
-  />
+  >
 </template>
 
 <script setup lang="ts">
@@ -88,11 +94,15 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   src: '',
   alt: '',
+  width: undefined,
+  height: undefined,
   mode: 'lazy',
   fit: 'cover',
+  defaultImage: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"%3E%3Crect width="200" height="200" fill="%23f5f5f5"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%23999" font-size="16"%3E%E6%97%A0%E5%9B%BE%E7%89%87%3C/text%3E%3C/svg%3E',
+  fallback: '',
   fadeIn: true,
   threshold: 0.1,
-  defaultImage: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"%3E%3Crect width="200" height="200" fill="%23f5f5f5"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%23999" font-size="16"%3E%E6%97%A0%E5%9B%BE%E7%89%87%3C/text%3E%3C/svg%3E'
+  productInfo: undefined
 })
 
 interface Emits {
@@ -327,17 +337,17 @@ onUnmounted(() => {
   justify-content: center;
   height: 100%;
   min-height: 100px;
-  color: #999;
+  color: var(--text-muted);
   font-size: 14px;
 }
 
 .tf-image-placeholder i {
   font-size: 24px;
-  color: #ddd;
+  color: var(--tf-color-gray-300-alt);
 }
 
 .tf-image-error {
-  color: #f56c6c;
+  color: var(--color-danger);
 }
 
 .tf-image-error i {

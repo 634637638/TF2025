@@ -1,11 +1,26 @@
 <template>
-  <tr v-if="mode === 'row'" class="table-loading-row">
-    <td :colspan="colspan" class="table-loading-row__cell">
-      <SectionLoading :text="text" :size="sectionSize" />
+  <tr
+    v-if="mode === 'row'"
+    class="table-loading-row"
+  >
+    <td
+      :colspan="colspan"
+      class="table-loading-row__cell"
+    >
+      <SectionLoading
+        :text="text"
+        :size="sectionSize"
+      />
     </td>
   </tr>
-  <div v-else class="table-loading-row__block">
-    <SectionLoading :text="text" :size="sectionSize" />
+  <div
+    v-else
+    class="table-loading-row__block"
+  >
+    <SectionLoading
+      :text="text"
+      :size="sectionSize"
+    />
   </div>
 </template>
 

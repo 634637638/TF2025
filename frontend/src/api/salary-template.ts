@@ -14,34 +14,29 @@ export interface SalaryTemplate {
   base_salary: number
   // 自动涨薪规则
   auto_raise_rule?: {
-    enabled: boolean
-    years: number // 每几年涨一次
-    amount: number // 涨多少
-  }
-  // 手动调整记录
-  base_salary_adjustments?: Array<{
-    date: string
-    amount: number
-    reason: string
-    operator: string
-  }>
+    enabled?: boolean
+    years?: number
+    months?: number
+    amount?: number
+    max_salary?: number
+  } | string | null
   commission_type: 'fixed' | 'percentage'
   commission_fixed?: number
+  commission_new_fixed?: number
+  commission_used_fixed?: number
   commission_percentage?: number
   overtime_hourly_rate: number
-  leave_daily_deduction: number
-  absent_daily_deduction: number
-  salary_cycle_days: number
-  social_insurance_rate?: number
-  tax_rate?: number
+  rest_days: number
   is_active: boolean
   is_default: boolean
-  created_by?: number
+  employee_count?: number
+  created_at?: string
+  updated_at?: string
 }
 
 export interface TemplateFilters {
   page?: number
-  limit?: number
+  page_size?: number
   is_active?: boolean
   is_default?: boolean
 }
@@ -104,7 +99,7 @@ export const salaryTemplateApi = {
    * 设置员工工资模板
    */
   setEmployeeTemplate: (userId: number, templateId: number | null) => {
-    return unifiedApi.put(`/salary-templates/employees/${userId}/template`, { templateId })
+    return unifiedApi.put(`/salary-templates/employees/${userId}/template`, { template_id: templateId })
   }
 }
 

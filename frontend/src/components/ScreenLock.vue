@@ -1,5 +1,8 @@
 <template>
-  <div v-if="isLocked" class="screen-lock-overlay">
+  <div
+    v-if="isLocked"
+    class="screen-lock-overlay"
+  >
     <div class="screen-lock-content">
       <!-- 背景媒体 -->
       <div class="lock-background">
@@ -22,15 +25,18 @@
           class="lock-image"
         />
         <!-- 默认背景 -->
-        <div v-else class="default-background">
-          <div class="pattern-bg"></div>
+        <div
+          v-else
+          class="default-background"
+        >
+          <div class="pattern-bg" />
         </div>
       </div>
 
       <!-- 锁定信息 -->
       <div class="lock-info">
         <div class="lock-icon">
-          <i class="fas fa-lock"></i>
+          <i class="fas fa-lock" />
         </div>
         <h1 class="lock-title">
           {{ lockSettings.title || '屏幕已锁定' }}
@@ -43,7 +49,7 @@
       <!-- 密码输入区域 -->
       <div class="lock-form">
         <div class="password-input-group">
-          <i class="fas fa-key input-icon"></i>
+          <i class="fas fa-key input-icon" />
           <input
             ref="passwordInput"
             v-model="password"
@@ -51,19 +57,22 @@
             :placeholder="lockSettings.placeholder || '请输入解锁密码'"
             class="password-input"
             @keyup.enter="handleUnlock"
-          />
+          >
           <button
             type="button"
             class="toggle-password"
             @click="showPassword = !showPassword"
           >
-            <i :class="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+            <i :class="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'" />
           </button>
         </div>
 
         <!-- 错误提示 -->
-        <div v-if="errorMessage" class="error-message">
-          <i class="fas fa-exclamation-circle"></i>
+        <div
+          v-if="errorMessage"
+          class="error-message"
+        >
+          <i class="fas fa-exclamation-circle" />
           {{ errorMessage }}
         </div>
 
@@ -71,12 +80,17 @@
         <button
           type="button"
           class="unlock-button"
-          @click="handleUnlock"
           :disabled="isUnlocking || !password"
+          @click="handleUnlock"
         >
-          <InlineLoading v-if="isUnlocking" text="验证中..." size="small" variant="inherit" />
+          <InlineLoading
+            v-if="isUnlocking"
+            text="验证中..."
+            size="small"
+            variant="inherit"
+          />
           <template v-else>
-            <i class="fas fa-unlock"></i>
+            <i class="fas fa-unlock" />
             解锁
           </template>
         </button>
@@ -84,11 +98,14 @@
 
       <!-- 底部信息 -->
       <div class="lock-footer">
-        <p class="lock-time" v-if="lockTime">
+        <p
+          v-if="lockTime"
+          class="lock-time"
+        >
           锁定时间：{{ formatTime(lockTime) }}
         </p>
         <p class="lock-tips">
-          <i class="fas fa-info-circle"></i>
+          <i class="fas fa-info-circle" />
           如忘记密码，请联系有权限的角色维护人员
         </p>
       </div>
@@ -103,14 +120,12 @@ import { useNotification } from '@/composables/useNotification'
 import Image from './Image.vue'
 import InlineLoading from '@/components/InlineLoading.vue'
 import { formatImageUrl } from '@/utils/format'
-import { TimeUtil, TIME_FORMATS } from '@/utils/time'
-import dayjs from 'dayjs'
 
-const { success, error } = useNotification({ debounce: true })
+const { success, error: _error } = useNotification({ debounce: true })
 
 // Props
 interface Props {
-  isLocked: boolean
+  isLocked?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -285,7 +300,7 @@ onMounted(() => {
   .default-background {
     width: 100%;
     height: 100%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
     position: relative;
 
     .pattern-bg {
@@ -314,7 +329,7 @@ onMounted(() => {
   .lock-title {
     font-size: 32px;
     font-weight: 700;
-    color: #ffffff;
+    color: var(--color-bg-white);
     margin: 0 0 16px 0;
     text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   }
@@ -346,7 +361,7 @@ onMounted(() => {
       background: rgba(255, 255, 255, 0.1);
       border: 2px solid rgba(255, 255, 255, 0.2);
       border-radius: 12px;
-      color: #ffffff;
+      color: var(--color-bg-white);
       font-size: 16px;
       outline: none;
       transition: all 0.3s ease;
@@ -381,7 +396,7 @@ onMounted(() => {
   }
 
   .error-message {
-    color: #ff6b6b;
+    color: var(--tf-color-coral);
     font-size: 14px;
     margin-bottom: 20px;
     display: flex;

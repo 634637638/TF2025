@@ -2,23 +2,25 @@
  * 数据分析相关类型定义
  */
 
+import type { Component } from 'vue'
+
 // 基础统计指标
 export interface BaseMetrics {
   total: number
   change: number
-  changePercent: number
+  change_percent: number
   trend: 'up' | 'down' | 'stable'
 }
 
 // 销售数据统计
 export interface SalesAnalytics {
-  totalSales: BaseMetrics
-  totalOrders: BaseMetrics
-  averageOrderValue: BaseMetrics
-  topProducts: ProductSalesData[]
-  salesByStore: StoreSalesData[]
-  salesByPeriod: SalesPeriodData[]
-  revenueForecast: RevenueForecastData[]
+  total_sales: BaseMetrics
+  total_orders: BaseMetrics
+  average_order_value: BaseMetrics
+  top_products: ProductSalesData[]
+  sales_by_store: StoreSalesData[]
+  sales_by_period: SalesPeriodData[]
+  revenue_forecast: RevenueForecastData[]
 }
 
 // 产品销售数据
@@ -32,18 +34,18 @@ export interface ProductSalesData {
   revenue: number
   profit?: number
   growth?: number
-  stockStatus?: 'in_stock' | 'low_stock' | 'out_of_stock'
+  stock_status?: 'in_stock' | 'low_stock' | 'out_of_stock'
 }
 
 // 店铺销售数据
 export interface StoreSalesData {
   id: number
   name: string
-  totalSales: number
-  totalOrders: number
-  averageOrderValue: number
+  total_sales: number
+  total_orders: number
+  average_order_value: number
   performance: 'excellent' | 'good' | 'average' | 'poor'
-  growthRate: number
+  growth_rate: number
 }
 
 // 销售周期数据
@@ -67,15 +69,15 @@ export interface RevenueForecastData {
 
 // 库存分析数据
 export interface InventoryAnalytics {
-  totalProducts: number
-  totalValue: number
-  lowStockItems: number
-  outOfStockItems: number
-  overstockItems: number
-  stockTurnover: number
-  inventoryHealth: InventoryHealthMetrics
-  categoryAnalysis: CategoryAnalysis[]
-  supplierAnalysis: SupplierAnalysis[]
+  total_products: number
+  total_value: number
+  low_stock_items: number
+  out_of_stock_items: number
+  overstock_items: number
+  stock_turnover: number
+  inventory_health: InventoryHealthMetrics
+  category_analysis: CategoryAnalysis[]
+  supplier_analysis: SupplierAnalysis[]
 }
 
 // 库存健康指标
@@ -91,16 +93,16 @@ export interface InventoryIssue {
   type: 'low_stock' | 'overstock' | 'slow_moving' | 'obsolete'
   severity: 'high' | 'medium' | 'low'
   description: string
-  affectedItems: number
-  potentialLoss: number
+  affected_items: number
+  potential_loss: number
 }
 
 // 分类分析
 export interface CategoryAnalysis {
   category: string
-  totalItems: number
-  totalValue: number
-  turnoverRate: number
+  total_items: number
+  total_value: number
+  turnover_rate: number
   margin: number
   growth: number
 }
@@ -109,22 +111,68 @@ export interface CategoryAnalysis {
 export interface SupplierAnalysis {
   id: number
   name: string
-  totalProducts: number
-  totalValue: number
-  averageDeliveryTime: number
-  qualityScore: number
+  total_products: number
+  total_value: number
+  average_delivery_time: number | null
+  quality_score: number
   reliability: number
+}
+
+export interface InventoryLowStockItem {
+  id: string
+  brand: string
+  model: string
+  color: string
+  current_stock: number
+  reorder_point: number
+  unit_cost: number
+  total_value: number
+  last_sale_time: string | null
+  stock_status: 'in_stock' | 'low_stock' | 'out_of_stock' | 'overstock'
+}
+
+export interface InventoryTurnoverPoint {
+  date: string
+  actual_turnover: number
+  target_turnover: number
+}
+
+export interface InventoryRecentSoldItem {
+  brand: string
+  model: string
+  color: string
+  sale_price: number
+  sale_time: string
+  store: string
+}
+
+export interface InventoryValueBreakdown {
+  count: number
+  value: number
+}
+
+export interface InventoryValue {
+  total_value: number
+  breakdown: {
+    available: InventoryValueBreakdown
+    sold: InventoryValueBreakdown
+    reserved: InventoryValueBreakdown
+  }
 }
 
 // 客户分析数据
 export interface CustomerAnalytics {
-  totalCustomers: BaseMetrics
-  newCustomers: BaseMetrics
-  activeCustomers: BaseMetrics
-  customerRetention: RetentionMetrics
-  customerSegments: CustomerSegment[]
-  customerLifetimeValue: CLVMetrics
-  behaviorAnalysis: CustomerBehaviorData[]
+  total_customers: number
+  customers_growth: number
+  new_customers: number
+  last_month_new_customers: number
+  new_customers_growth: number
+  active_customers: number
+  active_customers_growth: number
+  high_value_customers: number
+  high_value_customers_growth: number
+  customer_segments: CustomerSegment[]
+  insights: CustomerInsight[]
 }
 
 // 留存指标
@@ -140,8 +188,8 @@ export interface CustomerSegment {
   segment: string
   count: number
   percentage: number
-  avgOrderValue: number
-  totalRevenue: number
+  avg_order_value: number
+  total_revenue: number
   characteristics: string[]
 }
 
@@ -349,12 +397,12 @@ export interface AnalyticsReport {
     end: string
   }
   generatedAt: string
-  data: any
+  data: unknown
   summary: ReportSummary
 }
 
 export interface ReportSummary {
-  keyMetrics: Record<string, any>
+  keyMetrics: Record<string, unknown>
   insights: string[]
   recommendations: string[]
   status: 'positive' | 'neutral' | 'negative'
@@ -382,15 +430,15 @@ export interface WidgetConfig {
   title: string
   dataSource: string
   position: { x: number; y: number; w: number; h: number }
-  config: Record<string, any>
+  config: Record<string, unknown>
 }
 
 export interface FilterConfig {
   key: string
   label: string
   type: 'date' | 'select' | 'multiselect' | 'range'
-  options?: Array<{ label: string; value: any }>
-  defaultValue?: any
+  options?: Array<{ label: string; value: unknown }>
+  defaultValue?: unknown
 }
 
 // 实时数据
@@ -418,7 +466,7 @@ export interface ExportConfig {
     end: string
   }
   metrics: string[]
-  filters: Record<string, any>
+  filters: Record<string, unknown>
   includeCharts: boolean
 }
 
@@ -435,11 +483,11 @@ export interface AnalyticsListResponse<T> {
   data?: T[]
   pagination?: {
     page: number
-    pageSize?: number
-    limit?: number
+    page_size?: number
     total: number
-    totalPages?: number
-    pages?: number
+    total_pages?: number
+    has_next?: boolean
+    has_prev?: boolean
   }
   message?: string
   timestamp?: string
@@ -483,9 +531,9 @@ export interface CustomerInsight {
   title: string
   content: string
   impact: 'high' | 'medium' | 'low'
-  impactText: string
+  impact_text: string
   date: string
-  icon?: any // 图标组件（可选）
+  icon?: Component // 图标组件（可选）
 }
 
 // ==================== 员工分析相关类型定义 ====================

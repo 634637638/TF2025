@@ -1,0 +1,85 @@
+.imei {
+  display: inline;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--tf-color-gray-bootstrap-700);
+  font-size: inherit;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-align: center;
+}
+
+.condition-badge,
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.condition-badge.new {
+  background: var(--tf-button-success-soft-bg);
+  color: var(--tf-button-success-soft-color);
+}
+
+.condition-badge.used {
+  background: var(--tf-button-warning-soft-bg);
+  color: var(--tf-button-warning-soft-color);
+}
+
+.status-badge {
+  padding: 5px 12px;
+  font-weight: 700;
+}
+
+.status-badge.in-stock {
+  background: var(--tf-status-sale-available-bg);
+  color: var(--tf-status-sale-available-color);
+  border: 1px solid var(--tf-status-sale-available-border);
+}
+
+.status-badge.sold {
+  background: var(--tf-status-sold-bg);
+  color: var(--tf-status-sold-color);
+  border: 1px solid var(--tf-status-sold-border);
+}
+
+.status-badge.reserved {
+  background: var(--tf-status-reserved-bg);
+  color: var(--tf-status-reserved-color);
+  border: 1px solid var(--tf-status-reserved-border);
+}
+
+.status-badge.repair {
+  background: var(--tf-status-repair-bg);
+  color: var(--tf-status-repair-color);
+  border: 1px solid var(--tf-status-repair-border);
+}
+
+.status-badge.lost {
+  background: var(--tf-status-lost-bg);
+  color: var(--tf-status-lost-color);
+  border: 1px solid var(--tf-status-lost-border);
+}
+
+.empty-cell-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.empty-cell-content i {
+  margin-bottom: 8px;
+  font-size: 2rem;
+}
+
+:deep(.checkbox-column .el-checkbox) {
+  display: flex;
+  justify-content: center;
+}

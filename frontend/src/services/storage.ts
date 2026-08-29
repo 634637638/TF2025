@@ -3,8 +3,9 @@
  * 提供类型安全的存储操作，统一管理 localStorage 和 sessionStorage
  */
 
-import { AUTH_STORAGE_KEYS, H5_STORAGE_KEYS, PREFERENCE_STORAGE_KEYS, SECURITY_STORAGE_KEYS, CACHE_STORAGE_KEYS, ROUTER_STORAGE_KEYS, SESSION_STORAGE_KEYS, type StorageKey } from '@/constants/storage'
+import { AUTH_STORAGE_KEYS, H5_STORAGE_KEYS, PREFERENCE_STORAGE_KEYS, SECURITY_STORAGE_KEYS, CACHE_STORAGE_KEYS, ROUTER_STORAGE_KEYS, type StorageKey } from '@/constants/storage'
 import logger from '@/utils/logger'
+import type { User } from '@/types'
 
 /**
  * 存储类型
@@ -30,6 +31,16 @@ interface StorageData<T> {
   value: T
   timestamp: number
   ttl?: number
+}
+
+interface StoredAuthData {
+  token?: string
+  accessToken?: string
+  refreshToken?: string
+  user?: User | null
+  permissions?: string[] | Record<string, unknown> | null
+  roles?: unknown[]
+  [key: string]: unknown
 }
 
 /**
@@ -72,7 +83,7 @@ class UnifiedStorageService {
   /**
    * 反序列化值
    */
-  private deserialize<T>(raw: string | null, config?: StorageConfig): T | null {
+  private deserialize<T>(raw: string | null, _config?: StorageConfig): T | null {
     if (!raw) return null
 
     try {
@@ -190,14 +201,14 @@ class UnifiedStorageService {
   /**
    * 获取认证数据
    */
-  getAuth<T = any>(): T | null {
+  getAuth<T = StoredAuthData>(): T | null {
     return this.get<T>(AUTH_STORAGE_KEYS.AUTH, 'session')
   }
 
   /**
    * 设置认证数据
    */
-  setAuth<T = any>(data: T): void {
+  setAuth<T = unknown>(data: T): void {
     this.set(AUTH_STORAGE_KEYS.AUTH, data, 'session')
   }
 
@@ -252,7 +263,7 @@ class UnifiedStorageService {
    * 恢复认证数据（已禁用）
    * @deprecated 关闭浏览器后需重新登录，不再支持恢复
    */
-  restoreAuth(): { auth: any; token: string } | null {
+  restoreAuth(): { auth: unknown; token: string } | null {
     // 已禁用，返回 null
     return null
   }
@@ -330,14 +341,14 @@ class UnifiedStorageService {
   /**
    * 获取用户偏好设置
    */
-  getPreferences<T = any>(): T | null {
+  getPreferences<T = unknown>(): T | null {
     return this.get<T>(PREFERENCE_STORAGE_KEYS.PREFERENCES, 'local')
   }
 
   /**
    * 设置用户偏好设置
    */
-  setPreferences<T = any>(preferences: T): void {
+  setPreferences<T = unknown>(preferences: T): void {
     this.set(PREFERENCE_STORAGE_KEYS.PREFERENCES, preferences, 'local')
   }
 
@@ -380,14 +391,14 @@ class UnifiedStorageService {
   /**
    * 获取屏幕锁定设置
    */
-  getScreenLockSettings<T = any>(): T | null {
+  getScreenLockSettings<T = unknown>(): T | null {
     return this.get<T>(SECURITY_STORAGE_KEYS.SCREEN_LOCK_SETTINGS, 'local')
   }
 
   /**
    * 设置屏幕锁定设置
    */
-  setScreenLockSettings<T = any>(settings: T): void {
+  setScreenLockSettings<T = unknown>(settings: T): void {
     this.set(SECURITY_STORAGE_KEYS.SCREEN_LOCK_SETTINGS, settings, 'local')
   }
 
@@ -422,9 +433,9 @@ class UnifiedStorageService {
   /**
    * 导出所有存储数据（用于调试）
    */
-  exportAll(): { local: Record<string, any>; session: Record<string, any> } {
-    const local: Record<string, any> = {}
-    const session: Record<string, any> = {}
+  exportAll(): { local: Record<string, unknown>; session: Record<string, unknown> } {
+    const local: Record<string, unknown> = {}
+    const session: Record<string, unknown> = {}
 
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i)

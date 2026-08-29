@@ -4,7 +4,8 @@
  * 用于补充现有的 security.js 中间件
  */
 
-const log = require('./log');
+const log = require('./log')
+const { randomInt, randomBytes } = require('node:crypto')
 
 // ============================================================================
 // 1. SQL 注入防护工具
@@ -17,51 +18,51 @@ const log = require('./log');
 const ORDER_BY_WHITELIST = {
   // 通用字段
   default: ['id', 'created_at', 'updated_at',
-            'id ASC', 'id DESC',
-            'created_at ASC', 'created_at DESC',
-            'updated_at ASC', 'updated_at DESC'],
+    'id ASC', 'id DESC',
+    'created_at ASC', 'created_at DESC',
+    'updated_at ASC', 'updated_at DESC'],
 
   // 品牌表
   brands: ['id', 'name', 'sort_order', 'created_at', 'updated_at',
-           'id ASC', 'id DESC', 'name ASC', 'name DESC',
-           'sort_order ASC', 'sort_order DESC',
-           'created_at ASC', 'created_at DESC',
-           'updated_at ASC', 'updated_at DESC'],
+    'id ASC', 'id DESC', 'name ASC', 'name DESC',
+    'sort_order ASC', 'sort_order DESC',
+    'created_at ASC', 'created_at DESC',
+    'updated_at ASC', 'updated_at DESC'],
 
   // 供应商表
   suppliers: ['id', 'name', 'contact_phone', 'balance', 'created_at', 'updated_at',
-              'id ASC', 'id DESC', 'name ASC', 'name DESC',
-              'balance ASC', 'balance DESC'],
+    'id ASC', 'id DESC', 'name ASC', 'name DESC',
+    'balance ASC', 'balance DESC'],
 
   // 客户表
   customers: ['id', 'name', 'phone', 'created_at', 'updated_at',
-              'id ASC', 'id DESC', 'name ASC', 'name DESC'],
+    'id ASC', 'id DESC', 'name ASC', 'name DESC'],
 
   // 销售表
-  sales: ['id', 'sale_date', 'total_price', 'profit', 'created_at', 'updated_at',
-          'id ASC', 'id DESC', 'sale_date ASC', 'sale_date DESC',
-          'total_price ASC', 'total_price DESC'],
+  sales: ['id', 'sale_time', 'total_price', 'profit', 'created_at', 'updated_at',
+    'id ASC', 'id DESC', 'sale_time ASC', 'sale_time DESC',
+    'total_price ASC', 'total_price DESC'],
 
   // 库存表
   inventory: ['id', 'brand_id', 'model_id', 'quantity', 'updated_at',
-              'id ASC', 'id DESC', 'quantity ASC', 'quantity DESC'],
+    'id ASC', 'id DESC', 'quantity ASC', 'quantity DESC'],
 
   // 用户表
   users: ['id', 'username', 'name', 'created_at', 'updated_at',
-          'id ASC', 'id DESC', 'username ASC', 'username DESC'],
+    'id ASC', 'id DESC', 'username ASC', 'username DESC'],
 
   // 员工表
   employees: ['id', 'name', 'phone', 'created_at', 'updated_at',
-              'id ASC', 'id DESC', 'name ASC', 'name DESC'],
+    'id ASC', 'id DESC', 'name ASC', 'name DESC'],
 
   // 考勤表
   attendance: ['id', 'record_date', 'employee_id', 'created_at', 'updated_at',
-               'id ASC', 'id DESC', 'record_date ASC', 'record_date DESC'],
+    'id ASC', 'id DESC', 'record_date ASC', 'record_date DESC'],
 
   // 薪资表
   salary: ['id', 'employee_id', 'period', 'created_at', 'updated_at',
-           'id ASC', 'id DESC', 'period ASC', 'period DESC'],
-};
+    'id ASC', 'id DESC', 'period ASC', 'period DESC']
+}
 
 /**
  * 验证并清理 ORDER BY 子句
@@ -71,21 +72,21 @@ const ORDER_BY_WHITELIST = {
  */
 function sanitizeOrderBy(orderBy, tableName = 'default') {
   if (!orderBy || typeof orderBy !== 'string') {
-    return 'id DESC';
+    return 'id DESC'
   }
 
   // 获取允许的排序字段
-  const allowedFields = ORDER_BY_WHITELIST[tableName] || ORDER_BY_WHITELIST.default;
+  const allowedFields = ORDER_BY_WHITELIST[tableName] || ORDER_BY_WHITELIST.default
 
   // 检查是否在白名单中
-  const normalizedOrderBy = orderBy.trim();
+  const normalizedOrderBy = orderBy.trim()
   if (allowedFields.includes(normalizedOrderBy)) {
-    return normalizedOrderBy;
+    return normalizedOrderBy
   }
 
   // 如果不在白名单中，返回默认值
-  log.warn(`[安全警告] 检测到可疑的 ORDER BY 参数: "${orderBy}"，已使用默认值`);
-  return 'id DESC';
+  log.warn(`[安全警告] 检测到可疑的 ORDER BY 参数: "${orderBy}"，已使用默认值`)
+  return 'id DESC'
 }
 
 /**
@@ -95,18 +96,18 @@ function sanitizeOrderBy(orderBy, tableName = 'default') {
  * @returns {number} 安全的数字
  */
 function sanitizeLimitOffset(value, max = 10000) {
-  const num = parseInt(value, 10);
+  const num = parseInt(value, 10)
 
   if (isNaN(num) || num < 0) {
-    return 0;
+    return 0
   }
 
   if (num > max) {
-    log.warn(`[安全警告] LIMIT/OFFSET 值 ${num} 超过最大值 ${max}，已使用最大值`);
-    return max;
+    log.warn(`[安全警告] LIMIT/OFFSET 值 ${num} 超过最大值 ${max}，已使用最大值`)
+    return max
   }
 
-  return num;
+  return num
 }
 
 /**
@@ -117,17 +118,17 @@ function sanitizeLimitOffset(value, max = 10000) {
  */
 function isValidTableName(tableName, allowedTables) {
   if (!tableName || typeof tableName !== 'string') {
-    return false;
+    return false
   }
 
   // 只允许字母、数字、下划线
-  const validPattern = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+  const validPattern = /^[a-zA-Z_][a-zA-Z0-9_]*$/
   if (!validPattern.test(tableName)) {
-    return false;
+    return false
   }
 
   // 检查是否在允许列表中
-  return allowedTables.includes(tableName);
+  return allowedTables.includes(tableName)
 }
 
 /**
@@ -137,12 +138,12 @@ function isValidTableName(tableName, allowedTables) {
  */
 function isValidFieldName(fieldName) {
   if (!fieldName || typeof fieldName !== 'string') {
-    return false;
+    return false
   }
 
   // 只允许字母、数字、下划线
-  const validPattern = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
-  return validPattern.test(fieldName);
+  const validPattern = /^[a-zA-Z_][a-zA-Z0-9_]*$/
+  return validPattern.test(fieldName)
 }
 
 /**
@@ -154,21 +155,21 @@ function isValidFieldName(fieldName) {
  */
 function sanitizeConditionFieldNames(fieldNames, context = 'unknown') {
   if (!Array.isArray(fieldNames)) {
-    return [];
+    return []
   }
 
-  const safeFields = [];
+  const safeFields = []
 
   for (const fieldName of fieldNames) {
     if (isValidFieldName(fieldName)) {
-      safeFields.push(fieldName);
-      continue;
+      safeFields.push(fieldName)
+      continue
     }
 
-    log.warn(`[安全警告] 检测到可疑字段名: "${fieldName}"，上下文: ${context}，已拒绝处理`);
+    log.warn(`[安全警告] 检测到可疑字段名: "${fieldName}"，上下文: ${context}，已拒绝处理`)
   }
 
-  return safeFields;
+  return safeFields
 }
 
 // ============================================================================
@@ -182,11 +183,11 @@ function sanitizeConditionFieldNames(fieldNames, context = 'unknown') {
  */
 function escapeHtml(str) {
   if (str === null || str === undefined) {
-    return '';
+    return ''
   }
 
   if (typeof str !== 'string') {
-    str = String(str);
+    str = String(str)
   }
 
   return str
@@ -195,7 +196,7 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#x27;')
-    .replace(/\//g, '&#x2F;');
+    .replace(/\//g, '&#x2F;')
 }
 
 /**
@@ -205,24 +206,24 @@ function escapeHtml(str) {
  */
 function sanitizeInput(input) {
   if (input === null || input === undefined) {
-    return '';
+    return ''
   }
 
   if (typeof input !== 'string') {
-    input = String(input);
+    input = String(input)
   }
 
   // 移除控制字符（保留换行和制表符）
-  let sanitized = input.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+  let sanitized = input.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
 
   // 移除危险的 JavaScript 模式
-  sanitized = sanitized.replace(/javascript:/gi, '');
-  sanitized = sanitized.replace(/vbscript:/gi, '');
-  sanitized = sanitized.replace(/on\w+\s*=/gi, ''); // 移除事件处理器如 onclick=
-  sanitized = sanitized.replace(/<script[^>]*>.*?<\/script>/gis, ''); // 移除 script 标签
-  sanitized = sanitized.replace(/<iframe[^>]*>.*?<\/iframe>/gis, ''); // 移除 iframe 标签
+  sanitized = sanitized.replace(/javascript:/gi, '')
+  sanitized = sanitized.replace(/vbscript:/gi, '')
+  sanitized = sanitized.replace(/on\w+\s*=/gi, '') // 移除事件处理器如 onclick=
+  sanitized = sanitized.replace(/<script[^>]*>.*?<\/script>/gis, '') // 移除 script 标签
+  sanitized = sanitized.replace(/<iframe[^>]*>.*?<\/iframe>/gis, '') // 移除 iframe 标签
 
-  return sanitized.trim();
+  return sanitized.trim()
 }
 
 /**
@@ -232,34 +233,34 @@ function sanitizeInput(input) {
  */
 function sanitizeObject(obj) {
   if (obj === null || typeof obj !== 'object') {
-    return obj;
+    return obj
   }
 
-  const sanitized = {};
+  const sanitized = {}
   for (const key in obj) {
     if (obj.hasOwnProperty(key)) {
       // 验证字段名
       if (!isValidFieldName(key)) {
-        log.warn(`[安全警告] 检测到无效的字段名: "${key}"，已跳过`);
-        continue;
+        log.warn(`[安全警告] 检测到无效的字段名: "${key}"，已跳过`)
+        continue
       }
 
-      const value = obj[key];
+      const value = obj[key]
       if (typeof value === 'string') {
-        sanitized[key] = sanitizeInput(value);
+        sanitized[key] = sanitizeInput(value)
       } else if (Array.isArray(value)) {
         sanitized[key] = value.map(item =>
           typeof item === 'string' ? sanitizeInput(item) : item
-        );
+        )
       } else if (typeof value === 'object' && value !== null) {
-        sanitized[key] = sanitizeObject(value);
+        sanitized[key] = sanitizeObject(value)
       } else {
-        sanitized[key] = value;
+        sanitized[key] = value
       }
     }
   }
 
-  return sanitized;
+  return sanitized
 }
 
 /**
@@ -268,31 +269,31 @@ function sanitizeObject(obj) {
  * @returns {Object} 清理后的查询参数
  */
 function sanitizeQuery(query) {
-  const sanitized = {};
+  const sanitized = {}
 
   for (const key in query) {
     if (query.hasOwnProperty(key)) {
       if (!isValidFieldName(key)) {
-        log.warn(`[安全警告] 检测到无效的查询参数名: "${key}"，已跳过`);
-        continue;
+        log.warn(`[安全警告] 检测到无效的查询参数名: "${key}"，已跳过`)
+        continue
       }
 
-      const value = query[key];
+      const value = query[key]
       if (typeof value === 'string') {
-        sanitized[key] = sanitizeInput(value);
+        sanitized[key] = sanitizeInput(value)
       } else if (typeof value === 'number' && !isNaN(value)) {
-        sanitized[key] = value;
+        sanitized[key] = value
       } else if (Array.isArray(value)) {
         sanitized[key] = value.map(item =>
           typeof item === 'string' ? sanitizeInput(item) : item
-        );
+        )
       } else {
-        sanitized[key] = value;
+        sanitized[key] = value
       }
     }
   }
 
-  return sanitized;
+  return sanitized
 }
 
 // ============================================================================
@@ -306,11 +307,11 @@ function sanitizeQuery(query) {
  */
 function isValidEmail(email) {
   if (!email || typeof email !== 'string') {
-    return false;
+    return false
   }
   // 更严格的邮箱验证
-  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
-  return emailRegex.test(email) && email.length <= 254;
+  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
+  return emailRegex.test(email) && email.length <= 254
 }
 
 /**
@@ -320,12 +321,12 @@ function isValidEmail(email) {
  */
 function isValidPhone(phone) {
   if (!phone || typeof phone !== 'string') {
-    return false;
+    return false
   }
   // 支持手机号和固定电话
-  const mobileRegex = /^1[3-9]\d{9}$/;
-  const landlineRegex = /^0\d{2,3}-?\d{7,8}$/;
-  return mobileRegex.test(phone) || landlineRegex.test(phone);
+  const mobileRegex = /^1[3-9]\d{9}$/
+  const landlineRegex = /^0\d{2,3}-?\d{7,8}$/
+  return mobileRegex.test(phone) || landlineRegex.test(phone)
 }
 
 /**
@@ -335,30 +336,30 @@ function isValidPhone(phone) {
  */
 function isValidIdCard(idCard) {
   if (!idCard || typeof idCard !== 'string') {
-    return false;
+    return false
   }
 
   // 15位或18位
-  const idCardRegex = /^[1-9]\d{5}(18|19|20)\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{3}[\dXx]$/;
+  const idCardRegex = /^[1-9]\d{5}(18|19|20)\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{3}[\dXx]$/
   if (!idCardRegex.test(idCard)) {
-    return false;
+    return false
   }
 
   // 验证校验码（18位）
   if (idCard.length === 18) {
-    const weights = [7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2];
-    const checkCodes = ['1', '0', 'X', '9', '8', '7', '6', '5', '4', '3', '2'];
+    const weights = [7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2]
+    const checkCodes = ['1', '0', 'X', '9', '8', '7', '6', '5', '4', '3', '2']
 
-    let sum = 0;
+    let sum = 0
     for (let i = 0; i < 17; i++) {
-      sum += parseInt(idCard[i]) * weights[i];
+      sum += parseInt(idCard[i]) * weights[i]
     }
 
-    const checkCode = checkCodes[sum % 11];
-    return idCard[17].toUpperCase() === checkCode;
+    const checkCode = checkCodes[sum % 11]
+    return idCard[17].toUpperCase() === checkCode
   }
 
-  return true;
+  return true
 }
 
 /**
@@ -367,11 +368,11 @@ function isValidIdCard(idCard) {
  * @returns {boolean} 是否有效
  */
 function isValidAmount(amount) {
-  const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+  const num = typeof amount === 'string' ? parseFloat(amount) : amount
   if (isNaN(num)) {
-    return false;
+    return false
   }
-  return num >= 0 && num <= 999999999.99 && /^\d+(\.\d{1,2})?$/.test(String(num));
+  return num >= 0 && num <= 999999999.99 && /^\d+(\.\d{1,2})?$/.test(String(num))
 }
 
 // ============================================================================
@@ -388,38 +389,38 @@ function validatePassword(password) {
     valid: true,
     errors: [],
     strength: 'weak'
-  };
+  }
 
   if (!password) {
-    result.valid = false;
-    result.errors.push('密码不能为空');
-    return result;
+    result.valid = false
+    result.errors.push('密码不能为空')
+    return result
   }
 
   if (password.length < 8) {
-    result.valid = false;
-    result.errors.push('密码长度至少为8位');
+    result.valid = false
+    result.errors.push('密码长度至少为8位')
   }
 
   if (password.length > 128) {
-    result.valid = false;
-    result.errors.push('密码长度不能超过128位');
+    result.valid = false
+    result.errors.push('密码长度不能超过128位')
   }
 
   // 检查密码强度
-  let strength = 0;
-  if (password.length >= 8) strength++;
-  if (password.length >= 12) strength++;
-  if (/[a-z]/.test(password)) strength++;
-  if (/[A-Z]/.test(password)) strength++;
-  if (/[0-9]/.test(password)) strength++;
-  if (/[^a-zA-Z0-9]/.test(password)) strength++;
+  let strength = 0
+  if (password.length >= 8) strength++
+  if (password.length >= 12) strength++
+  if (/[a-z]/.test(password)) strength++
+  if (/[A-Z]/.test(password)) strength++
+  if (/[0-9]/.test(password)) strength++
+  if (/[^a-zA-Z0-9]/.test(password)) strength++
 
-  if (strength <= 2) result.strength = 'weak';
-  else if (strength <= 4) result.strength = 'medium';
-  else result.strength = 'strong';
+  if (strength <= 2) result.strength = 'weak'
+  else if (strength <= 4) result.strength = 'medium'
+  else result.strength = 'strong'
 
-  return result;
+  return result
 }
 
 /**
@@ -428,22 +429,27 @@ function validatePassword(password) {
  * @returns {string} 随机密码
  */
 function generateSecurePassword(length = 16) {
-  const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
-  let password = '';
+  const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*'
+  let password = ''
 
   // 确保至少包含每种字符类型
-  password += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)];
-  password += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)];
-  password += '0123456789'[Math.floor(Math.random() * 10)];
-  password += '!@#$%^&*'[Math.floor(Math.random() * 8)];
+  password += 'abcdefghijklmnopqrstuvwxyz'[randomInt(26)]
+  password += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[randomInt(26)]
+  password += '0123456789'[randomInt(10)]
+  password += '!@#$%^&*'[randomInt(8)]
 
   // 填充剩余长度
   for (let i = password.length; i < length; i++) {
-    password += charset[Math.floor(Math.random() * charset.length)];
+    password += charset[randomInt(charset.length)]
   }
 
   // 打乱字符顺序
-  return password.split('').sort(() => Math.random() - 0.5).join('');
+  const characters = password.split('')
+  for (let index = characters.length - 1; index > 0; index--) {
+    const swapIndex = randomInt(index + 1);
+    [characters[index], characters[swapIndex]] = [characters[swapIndex], characters[index]]
+  }
+  return characters.join('')
 }
 
 // ============================================================================
@@ -455,8 +461,8 @@ function generateSecurePassword(length = 16) {
  */
 const ALLOWED_FILE_EXTENSIONS = [
   '.jpg', '.jpeg', '.png', '.gif', '.webp', // 图片
-  '.pdf', '.doc', '.docx', '.xls', '.xlsx', // 文档
-];
+  '.pdf', '.doc', '.docx', '.xls', '.xlsx' // 文档
+]
 
 /**
  * 允许的 MIME 类型白名单
@@ -470,8 +476,8 @@ const ALLOWED_MIME_TYPES = [
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-];
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+]
 
 /**
  * 验证文件扩展名
@@ -480,11 +486,11 @@ const ALLOWED_MIME_TYPES = [
  */
 function isValidFileExtension(filename) {
   if (!filename || typeof filename !== 'string') {
-    return false;
+    return false
   }
 
-  const ext = filename.toLowerCase().substring(filename.lastIndexOf('.'));
-  return ALLOWED_FILE_EXTENSIONS.includes(ext);
+  const ext = filename.toLowerCase().substring(filename.lastIndexOf('.'))
+  return ALLOWED_FILE_EXTENSIONS.includes(ext)
 }
 
 /**
@@ -494,9 +500,9 @@ function isValidFileExtension(filename) {
  */
 function isValidMimeType(mimeType) {
   if (!mimeType || typeof mimeType !== 'string') {
-    return false;
+    return false
   }
-  return ALLOWED_MIME_TYPES.includes(mimeType);
+  return ALLOWED_MIME_TYPES.includes(mimeType)
 }
 
 /**
@@ -506,19 +512,19 @@ function isValidMimeType(mimeType) {
  */
 function generateSecureFilename(originalName) {
   if (!originalName || typeof originalName !== 'string') {
-    return `file_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+    return `file_${Date.now()}_${randomBytes(8).toString('hex')}`
   }
 
   // 获取扩展名
-  const ext = originalName.toLowerCase().substring(originalName.lastIndexOf('.'));
+  const ext = originalName.toLowerCase().substring(originalName.lastIndexOf('.'))
   if (!ALLOWED_FILE_EXTENSIONS.includes(ext)) {
-    throw new Error('不允许的文件类型');
+    throw new Error('不允许的文件类型')
   }
 
   // 生成随机文件名
-  const timestamp = Date.now();
-  const random = Math.random().toString(36).substring(2, 15);
-  return `${timestamp}_${random}${ext}`;
+  const timestamp = Date.now()
+  const random = randomBytes(8).toString('hex')
+  return `${timestamp}_${random}${ext}`
 }
 
 /**
@@ -528,8 +534,8 @@ function generateSecureFilename(originalName) {
  * @returns {boolean} 是否有效
  */
 function isValidFileSize(size, maxSize = 5 * 1024 * 1024) {
-  const num = parseInt(size, 10);
-  return !isNaN(num) && num > 0 && num <= maxSize;
+  const num = parseInt(size, 10)
+  return !isNaN(num) && num > 0 && num <= maxSize
 }
 
 // ============================================================================
@@ -543,17 +549,17 @@ function isValidFileSize(size, maxSize = 5 * 1024 * 1024) {
  */
 function isSafePath(path) {
   if (!path || typeof path !== 'string') {
-    return false;
+    return false
   }
 
   // 检查路径遍历模式
   if (path.includes('..') || path.includes('~') || path.startsWith('/')) {
-    return false;
+    return false
   }
 
   // 只允许安全字符
-  const safePattern = /^[a-zA-Z0-9_\-./]+$/;
-  return safePattern.test(path);
+  const safePattern = /^[a-zA-Z0-9_\-./]+$/
+  return safePattern.test(path)
 }
 
 /**
@@ -563,7 +569,7 @@ function isSafePath(path) {
  */
 function normalizePath(path) {
   if (!path || typeof path !== 'string') {
-    return '';
+    return ''
   }
 
   // 移除危险字符
@@ -572,7 +578,7 @@ function normalizePath(path) {
     .replace(/~/g, '')
     .replace(/\\/g, '/')
     .replace(/\/+/g, '/')
-    .trim();
+    .trim()
 }
 
 // ============================================================================
@@ -614,5 +620,5 @@ module.exports = {
 
   // 路径安全
   isSafePath,
-  normalizePath,
-};
+  normalizePath
+}

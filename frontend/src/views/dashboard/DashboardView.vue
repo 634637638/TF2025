@@ -6,152 +6,209 @@
     module-name="仪表盘"
     permission-code="dashboard:view"
   >
+    <div class="dashboard admin-page safe-area-top safe-area-bottom">
+      <div class="dashboard-content admin-page-content">
+        <PageHeader title="仪表盘">
+          <template #actions>
+            <el-button
+              v-if="canViewField('system_info.operations')"
+              type="info"
+              :disabled="isRefreshing"
+              @click="refreshData"
+            >
+              <InlineLoading
+                v-if="isRefreshing"
+                text="刷新中..."
+                size="small"
+                variant="inherit"
+              />
+              <template v-else>
+                <i class="fas fa-sync-alt" />
+                刷新数据
+              </template>
+            </el-button>
+          </template>
+        </PageHeader>
 
-  <div class="dashboard admin-page safe-area-top safe-area-bottom">
-    <div class="dashboard-content admin-page-content">
-      <PageHeader title="仪表盘">
-        <template #actions>
-          <el-button type="info" @click="refreshData" :disabled="isRefreshing">
-            <InlineLoading v-if="isRefreshing" text="刷新中..." size="small" variant="inherit" />
-            <template v-else>
-              <i class="fas fa-sync-alt"></i>
-              刷新数据
-            </template>
-          </el-button>
-        </template>
-      </PageHeader>
+        <SectionLoading
+          v-if="isLoading"
+          text="加载中..."
+          size="large"
+        />
 
-      <SectionLoading v-if="isLoading" text="加载中..." size="large" />
+        <div
+          v-else
+          class="dashboard-grid"
+        >
+          <!-- 统计卡片 -->
+          <div class="stats-grid stats-cards">
+            <div
+              v-if="canViewField('stats.today_sales')"
+              class="stat-card"
+              @click="showDetails('sales')"
+            >
+              <div class="stat-icon sales">
+                <i class="fas fa-shopping-cart" />
+              </div>
+              <div class="stat-content">
+                <h3>今日销售</h3>
+                <p class="stat-number">
+                  ¥{{ todaySales }}
+                </p>
+              </div>
+            </div>
 
-      <div v-else class="dashboard-grid">
-      <!-- 统计卡片 -->
-      <div class="stats-grid stats-cards">
-        <div class="stat-card" @click="showDetails('sales')">
-          <div class="stat-icon sales">
-            <i class="fas fa-shopping-cart"></i>
-          </div>
-          <div class="stat-content">
-            <h3>今日销售</h3>
-            <p class="stat-number">¥{{ todaySales }}</p>
-            <span class="stat-change positive">
-              <i class="fas fa-arrow-up"></i>
-              +12.5%
-            </span>
-          </div>
-        </div>
+            <div
+              v-if="canViewField('stats.total_customers')"
+              class="stat-card"
+              @click="showDetails('customers')"
+            >
+              <div class="stat-icon customers">
+                <i class="fas fa-users" />
+              </div>
+              <div class="stat-content">
+                <h3>客户总数</h3>
+                <p class="stat-number">
+                  {{ totalCustomers }}
+                </p>
+              </div>
+            </div>
 
-        <div class="stat-card" @click="showDetails('customers')">
-          <div class="stat-icon customers">
-            <i class="fas fa-users"></i>
-          </div>
-          <div class="stat-content">
-            <h3>客户总数</h3>
-            <p class="stat-number">{{ totalCustomers }}</p>
-            <span class="stat-change positive">
-              <i class="fas fa-arrow-up"></i>
-              +5.2%
-            </span>
-          </div>
-        </div>
+            <div
+              v-if="canViewField('stats.total_products')"
+              class="stat-card"
+              @click="showDetails('inventory')"
+            >
+              <div class="stat-icon inventory">
+                <i class="fas fa-boxes" />
+              </div>
+              <div class="stat-content">
+                <h3>库存商品</h3>
+                <p class="stat-number">
+                  {{ totalProducts }}
+                </p>
+                <div
+                  v-if="inventoryAlert && canViewField('stats.inventory_alert')"
+                  class="inventory-warning"
+                >
+                  <i class="fas fa-exclamation-triangle" />
+                  库存预警
+                </div>
+              </div>
+            </div>
 
-        <div class="stat-card" @click="showDetails('inventory')">
-          <div class="stat-icon inventory">
-            <i class="fas fa-boxes"></i>
+            <div
+              v-if="canViewField('stats.pending_repairs')"
+              class="stat-card"
+              @click="showDetails('repairs')"
+            >
+              <div class="stat-icon repairs">
+                <i class="fas fa-tools" />
+              </div>
+              <div class="stat-content">
+                <h3>待维修</h3>
+                <p class="stat-number">
+                  {{ pendingRepairs }}
+                </p>
+                <div
+                  v-if="urgentRepairs > 0 && canViewField('stats.urgent_repairs')"
+                  class="urgent-repairs"
+                >
+                  <i class="fas fa-bolt" />
+                  {{ urgentRepairs }} 项紧急
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="stat-content">
-            <h3>库存商品</h3>
-            <p class="stat-number">{{ totalProducts }}</p>
-            <span class="stat-change negative">
-              <i class="fas fa-arrow-down"></i>
-              -2.1%
-            </span>
-            <div class="inventory-warning" v-if="inventoryAlert">
-              <i class="fas fa-exclamation-triangle"></i>
-              库存预警
+
+          <!-- 综合预警 -->
+          <ComprehensiveWarnings v-if="canViewField('warnings.comprehensive')" />
+
+          <!-- 待审批提醒 -->
+          <PendingApprovals
+            v-if="canViewField('warnings.pending_approvals')"
+            ref="pendingApprovementsRef"
+          />
+
+          <!-- 快速操作 -->
+          <div
+            v-if="canViewField('actions.quick_actions')"
+            class="quick-actions dashboard-card"
+          >
+            <h2>快速操作</h2>
+            <div class="actions-grid">
+              <button
+                class="action-btn"
+                @click="goToSales"
+              >
+                <i class="fas fa-plus" />
+                新建销售
+              </button>
+              <button
+                class="action-btn"
+                @click="addCustomer"
+              >
+                <i class="fas fa-user-plus" />
+                添加客户
+              </button>
+              <button
+                class="action-btn"
+                @click="goToInventory"
+              >
+                <i class="fas fa-box" />
+                库存管理
+              </button>
+              <button
+                class="action-btn"
+                @click="goToRepairs"
+              >
+                <i class="fas fa-wrench" />
+                维修管理
+              </button>
+              <button
+                class="action-btn"
+                @click="showSystemInfo"
+              >
+                <i class="fas fa-info-circle" />
+                系统信息
+              </button>
+            </div>
+          </div>
+
+          <!-- 最近活动 -->
+          <div
+            v-if="canViewField('activities.recent')"
+            class="recent-activity dashboard-card"
+          >
+            <div class="activity-header">
+              <h2>最近活动</h2>
+            </div>
+            <div class="activity-list">
+              <div
+                v-for="activity in recentActivities"
+                :key="activity.id"
+                class="activity-item"
+              >
+                <div
+                  class="activity-icon"
+                  :class="activity.type"
+                >
+                  <i :class="activity.icon" />
+                </div>
+                <div class="activity-content">
+                  <p>{{ activity.description }}</p>
+                  <span class="activity-time">{{ activity.time }}</span>
+                </div>
+              </div>
+              <DataEmptyState
+                v-if="recentActivities.length === 0"
+                description="暂无近期活动"
+              />
             </div>
           </div>
         </div>
-
-        <div class="stat-card" @click="showDetails('repairs')">
-          <div class="stat-icon repairs">
-            <i class="fas fa-tools"></i>
-          </div>
-          <div class="stat-content">
-            <h3>待维修</h3>
-            <p class="stat-number">{{ pendingRepairs }}</p>
-            <span class="stat-change neutral">
-              <i class="fas fa-minus"></i>
-              0%
-            </span>
-            <div class="urgent-repairs" v-if="urgentRepairs > 0">
-              <i class="fas fa-bolt"></i>
-              {{ urgentRepairs }} 项紧急
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 综合预警 -->
-      <ComprehensiveWarnings />
-
-      <!-- 待审批提醒 -->
-      <PendingApprovals ref="pendingApprovementsRef" />
-
-      <!-- 快速操作 -->
-      <div class="quick-actions dashboard-card">
-        <h2>快速操作</h2>
-        <div class="actions-grid">
-          <button class="action-btn" @click="goToSales">
-            <i class="fas fa-plus"></i>
-            新建销售
-          </button>
-          <button class="action-btn" @click="addCustomer">
-            <i class="fas fa-user-plus"></i>
-            添加客户
-          </button>
-          <button class="action-btn" @click="goToInventory">
-            <i class="fas fa-box"></i>
-            库存管理
-          </button>
-          <button class="action-btn" @click="goToRepairs">
-            <i class="fas fa-wrench"></i>
-            维修管理
-          </button>
-          <button class="action-btn" @click="generateReport">
-            <i class="fas fa-chart-bar"></i>
-            生成报表
-          </button>
-          <button class="action-btn" @click="showSystemInfo">
-            <i class="fas fa-info-circle"></i>
-            系统信息
-          </button>
-        </div>
-      </div>
-
-      <!-- 最近活动 -->
-      <div class="recent-activity dashboard-card">
-        <div class="activity-header">
-          <h2>最近活动</h2>
-          <button class="view-all-btn" @click="viewAllActivities">查看全部</button>
-        </div>
-        <div class="activity-list">
-          <div class="activity-item" v-for="activity in recentActivities" :key="activity.id">
-            <div class="activity-icon" :class="activity.type">
-              <i :class="activity.icon"></i>
-            </div>
-            <div class="activity-content">
-              <p>{{ activity.description }}</p>
-              <span class="activity-time">{{ activity.time }}</span>
-            </div>
-            <button class="activity-action" @click="handleActivity(activity)">
-              <i class="fas fa-ellipsis-v"></i>
-            </button>
-          </div>
-        </div>
-      </div>
       </div>
     </div>
-  </div>
   </PermissionGate>
 </template>
 
@@ -161,6 +218,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
+import { fieldPermissions } from '@/composables/useFieldPermissions'
 import { useLoadingState } from '@/composables'
 import { useCachedRequest, DEFAULT_CACHE_TTL } from '@/composables/usePageCache'
 import { useSiteSettingsStore } from '@/stores/siteSettings'
@@ -182,14 +240,15 @@ const {
   info,
   confirm,
   alert,
-  prompt,
   handleApiError,
-  handleApiSuccess
+  handleApiSuccess: _handleApiSuccess
 } = useNotification()
 
 const router = useRouter()
 const authStore = useAuthStore()
 const { canView } = usePagePermissions('dashboard')
+const DASHBOARD_MODULE_KEY = 'dashboard'
+const canViewField = (fieldKey: string) => fieldPermissions.isFieldVisible(DASHBOARD_MODULE_KEY, fieldKey)
 
 // 待审批提醒组件引用
 const pendingApprovementsRef = ref<InstanceType<typeof PendingApprovals> | null>(null)
@@ -215,43 +274,11 @@ const CACHE_KEYS = {
   recentActivities: '/dashboard/activities'
 }
 
-const recentActivities = ref([
-  {
-    id: 1,
-    type: 'sales',
-    icon: 'fas fa-shopping-cart',
-    description: '完成了一笔销售订单 #1234',
-    time: '5分钟前',
-    details: 'iPhone 13 Pro - 128GB - 深空黑色'
-  },
-  {
-    id: 2,
-    type: 'customer',
-    icon: 'fas fa-user',
-    description: '新增客户：张三',
-    time: '15分钟前',
-    details: '手机：13812345678，地址：北京市朝阳区'
-  },
-  {
-    id: 3,
-    type: 'inventory',
-    icon: 'fas fa-box',
-    description: '库存更新：iPhone 13 Pro',
-    time: '1小时前',
-    details: '入库50台，当前库存：125台'
-  },
-  {
-    id: 4,
-    type: 'repair',
-    icon: 'fas fa-tools',
-    description: '维修完成：屏幕更换',
-    time: '2小时前',
-    details: '客户：李四，费用：280元'
-  }
-])
+// 活动数据必须由后端提供；当前没有活动接口时保持为空，不展示虚构记录。
+const recentActivities = ref<any[]>([])
 
 // 计算属性
-const hasWarning = computed(() => {
+const _hasWarning = computed(() => {
   return inventoryAlert.value || urgentRepairs.value > 0
 })
 
@@ -326,90 +353,36 @@ const refreshData = async () => {
 // 显示详情
 const showDetails = (type: string) => {
   switch (type) {
-    case 'sales':
-      info(`今日销售额 ${todaySales.value}`)
-      break
-    case 'customers':
-      info(`客户总数 ${totalCustomers.value}`)
-      break
-    case 'inventory':
-      if (inventoryAlert.value) {
-        warning('检测到库存预警，请及时处理')
-      } else {
-        info(`库存商品 ${totalProducts.value} 件，正常水平`)
-      }
-      break
-    case 'repairs':
-      if (urgentRepairs.value > 0) {
-        error(`有 ${urgentRepairs.value} 项紧急维修需要立即处理`)
-      } else {
-        info('暂无紧急维修事项')
-      }
-      break
-  }
-}
-
-// 处理活动
-const handleActivity = async (activity: any) => {
-  const action = await prompt(
-    '请选择操作：',
-    '活动操作',
-    {
-      inputPlaceholder: '输入操作（如：查看详情、导出等）'
+  case 'sales':
+    info(`今日销售额 ${todaySales.value}`)
+    break
+  case 'customers':
+    info(`客户总数 ${totalCustomers.value}`)
+    break
+  case 'inventory':
+    if (inventoryAlert.value) {
+      warning('检测到库存预警，请及时处理')
+    } else {
+      info(`库存商品 ${totalProducts.value} 件，正常水平`)
     }
-  )
-
-  if (action && action.value) {
-    success(`已执行：${action.value}`)
-    // 这里可以添加实际的处理逻辑
-  }
-}
-
-// 查看所有活动
-const viewAllActivities = () => {
-  info('正在开发活动详情页面...')
-}
-
-// 生成报表
-const generateReport = async () => {
-  const reportType = await prompt(
-    '请选择报表类型：\n1. 销售报表\n2. 库存报表\n3. 客户报表\n4. 维修报表',
-    '选择报表类型'
-  )
-
-  if (reportType && reportType.value) {
-    info(`正在生成${getReportName(reportType.value)}...`)
-
-    setTimeout(() => {
-      success(`${getReportName(reportType.value)}已生成`, {
-        title: '报表生成完成'
-      })
-    }, 2000)
+    break
+  case 'repairs':
+    if (urgentRepairs.value > 0) {
+      error(`有 ${urgentRepairs.value} 项紧急维修需要立即处理`)
+    } else {
+      info('暂无紧急维修事项')
+    }
+    break
   }
 }
 
 // 显示系统信息
 const showSystemInfo = async () => {
   await alert(
-    `系统版本：TF2025 v1.0.0\n最后更新：${TimeUtil.nowFormatted(TIME_FORMATS.DATETIME)}\n\n数据库连接：正常\nAPI服务：正常\n备份状态：需要更新\n存储空间：充足`,
+    `系统版本：TF2025 v1.0.0\n当前时间：${TimeUtil.nowFormatted(TIME_FORMATS.DATETIME)}\n\n系统状态详情请前往系统管理页面查看。`,
     '系统信息',
     'info'
   )
-}
-
-// 辅助函数
-const getReportName = (type: string): string => {
-  const typeMap: Record<string, string> = {
-    '1': '销售报表',
-    '2': '库存报表',
-    '3': '客户报表',
-    '4': '维修报表',
-    '销售报表': '销售报表',
-    '库存报表': '库存报表',
-    '客户报表': '客户报表',
-    '维修报表': '维修报表'
-  }
-  return typeMap[type] || '报表'
 }
 
 const updateLastUpdateTime = () => {
@@ -475,6 +448,7 @@ const formatNumber = (num: number): string => {
 
 // 生命周期
 onMounted(() => {
+  void fieldPermissions.init()
   if (!canView.value) {
     return
   }
@@ -515,7 +489,7 @@ onUnmounted(() => {
 
 /* 欢迎横幅 */
 .welcome-banner {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
   color: white;
   padding: 20px 40px;
   border-radius: 16px;
@@ -600,22 +574,22 @@ onUnmounted(() => {
 }
 
 .stat-icon.sales {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
   color: white;
 }
 
 .stat-icon.customers {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  background: linear-gradient(135deg, var(--tf-color-pink-gradient) 0%, var(--tf-color-coral-gradient) 100%);
   color: white;
 }
 
 .stat-icon.inventory {
-  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  background: linear-gradient(135deg, var(--tf-color-sky-gradient) 0%, var(--tf-color-cyan-gradient) 100%);
   color: white;
 }
 
 .stat-icon.repairs {
-  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+  background: linear-gradient(135deg, var(--tf-color-green-gradient) 0%, var(--tf-color-teal-gradient) 100%);
   color: white;
 }
 
@@ -625,7 +599,7 @@ onUnmounted(() => {
 
 .stat-content h3 {
   font-size: 14px;
-  color: #7f8c8d;
+  color: var(--tf-color-gray-cool-500);
   margin-bottom: 8px;
   font-weight: 500;
 }
@@ -633,7 +607,7 @@ onUnmounted(() => {
 .stat-number {
   font-size: 24px;
   font-weight: 700;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
   margin-bottom: 4px;
 }
 
@@ -646,21 +620,21 @@ onUnmounted(() => {
 }
 
 .stat-change.positive {
-  color: #27ae60;
+  color: var(--tf-color-green-legacy);
 }
 
 .stat-change.negative {
-  color: #e74c3c;
+  color: var(--tf-color-red-legacy);
 }
 
 .stat-change.neutral {
-  color: #95a5a6;
+  color: var(--tf-color-gray-legacy-500);
 }
 
 .inventory-warning,
 .urgent-repairs {
-  background: #fff3cd;
-  color: #856404;
+  background: var(--tf-color-warning-legacy);
+  color: var(--tf-color-warning-text-legacy);
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 11px;
@@ -671,8 +645,8 @@ onUnmounted(() => {
 }
 
 .urgent-repairs {
-  background: #f8d7da;
-  color: #721c24;
+  background: var(--tf-color-danger-legacy);
+  color: var(--tf-color-danger-text-legacy);
 }
 
 /* 快速操作 */
@@ -685,7 +659,7 @@ onUnmounted(() => {
 
 .quick-actions h2 {
   font-size: 18px;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
   margin-bottom: 20px;
 }
 
@@ -738,7 +712,7 @@ onUnmounted(() => {
 
 .activity-header h2 {
   font-size: 18px;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
   margin: 0;
 }
 
@@ -768,12 +742,12 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   padding: 15px 0;
-  border-bottom: 1px solid #f1f3f4;
+  border-bottom: 1px solid var(--tf-color-surface-google);
   transition: background 0.3s ease;
 }
 
 .activity-item:hover {
-  background: #f8f9fa;
+  background: var(--tf-color-surface-muted);
   margin: 0 -15px;
   padding: 15px;
   border-radius: 6px;
@@ -796,23 +770,23 @@ onUnmounted(() => {
 }
 
 .activity-icon.sales {
-  background: #e3f2fd;
-  color: #2196f3;
+  background: var(--tf-color-blue-100);
+  color: var(--tf-color-blue-material-500);
 }
 
 .activity-icon.customer {
-  background: #f3e5f5;
-  color: #9c27b0;
+  background: var(--tf-color-purple-50);
+  color: var(--tf-color-purple-material);
 }
 
 .activity-icon.inventory {
-  background: #e8f5e8;
-  color: #4caf50;
+  background: var(--tf-color-surface-green-alt);
+  color: var(--tf-color-green-material);
 }
 
 .activity-icon.repair {
-  background: #fff3e0;
-  color: #ff9800;
+  background: var(--tf-color-orange-material-50);
+  color: var(--tf-color-orange-material-500);
 }
 
 .activity-content {
@@ -821,19 +795,19 @@ onUnmounted(() => {
 
 .activity-content p {
   margin-bottom: 4px;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
   font-size: 14px;
 }
 
 .activity-time {
-  color: #7f8c8d;
+  color: var(--tf-color-gray-cool-500);
   font-size: 12px;
 }
 
 .activity-action {
   background: none;
   border: none;
-  color: #95a5a6;
+  color: var(--tf-color-gray-legacy-500);
   cursor: pointer;
   padding: 8px;
   border-radius: 4px;
@@ -841,8 +815,8 @@ onUnmounted(() => {
 }
 
 .activity-action:hover {
-  background: #ecf0f1;
-  color: #2c3e50;
+  background: var(--tf-color-gray-flat-200);
+  color: var(--tf-color-heading);
 }
 
 /* ===== 响应式设计 ===== */

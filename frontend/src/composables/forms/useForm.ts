@@ -4,7 +4,6 @@
  */
 
 import { reactive, watch } from 'vue'
-import type { AsyncState } from '../types'
 import { isValidAppleAccount, isValidEmail, isValidIdCard, isValidMobilePhone } from '@/utils/security'
 import { logger } from '@/utils/logger'
 
@@ -15,7 +14,7 @@ export interface ValidationRule {
   /**
    * 验证函数
    */
-  validator: (...args: any[]) => boolean | string | void
+  validator: (...args: unknown[]) => boolean | string | void
   /**
    * 错误消息
    */
@@ -30,10 +29,10 @@ export interface ValidationRule {
   trigger?: 'change' | 'blur' | 'submit'
 }
 
-type ValidationFormValues = Record<string, any> | undefined
+type ValidationFormValues = Record<string, unknown> | undefined
 
-const resolveValidationContext = (args: any[]): {
-  value: any
+const resolveValidationContext = (args: unknown[]): {
+  value: unknown
   formValues: ValidationFormValues
   callback?: (error?: Error) => void
 } => {
@@ -54,10 +53,10 @@ const resolveValidationContext = (args: any[]): {
 }
 
 const createValidationRule = (
-  validator: (value: any, formValues?: ValidationFormValues) => boolean,
+  validator: (value: unknown, formValues?: ValidationFormValues) => boolean,
   message?: string
 ): ValidationRule => ({
-  validator: (...args: any[]) => {
+  validator: (...args: unknown[]) => {
     const { value, formValues, callback } = resolveValidationContext(args)
     const valid = validator(value, formValues)
 
@@ -78,7 +77,7 @@ export interface FormFieldConfig {
   /**
    * 字段值
    */
-  value: any
+  value: unknown
   /**
    * 验证规则
    */
@@ -90,17 +89,17 @@ export interface FormFieldConfig {
   /**
    * 默认值
    */
-  default?: any
+  default?: unknown
   /**
    * 转换函数
    */
-  transform?: (value: any) => any
+  transform?: (value: unknown) => unknown
 }
 
 /**
  * 表单配置
  */
-export interface UseFormOptions<T extends Record<string, any>> {
+export interface UseFormOptions<T extends Record<string, unknown>> {
   /**
    * 初始值
    */
@@ -134,7 +133,7 @@ export interface UseFormOptions<T extends Record<string, any>> {
 /**
  * 表单状态
  */
-export interface FormState<T extends Record<string, any>> {
+export interface FormState<T extends Record<string, unknown>> {
   /**
    * 表单值
    */
@@ -165,11 +164,11 @@ export interface FormState<T extends Record<string, any>> {
   isSubmitting: boolean
 }
 
-type FormErrors<T extends Record<string, any>> = Partial<Record<keyof T, string>>
-type FormTouched<T extends Record<string, any>> = Partial<Record<keyof T, boolean>>
-type MutableFormValues<T extends Record<string, any>> = T
+type FormErrors<T extends Record<string, unknown>> = Partial<Record<keyof T, string>>
+type FormTouched<T extends Record<string, unknown>> = Partial<Record<keyof T, boolean>>
+type MutableFormValues<T extends Record<string, unknown>> = T
 
-type MutableFormState<T extends Record<string, any>> = {
+type MutableFormState<T extends Record<string, unknown>> = {
   values: T
   errors: FormErrors<T>
   touched: FormTouched<T>
@@ -182,7 +181,7 @@ type MutableFormState<T extends Record<string, any>> = {
 /**
  * 表单返回值
  */
-export interface UseFormReturn<T extends Record<string, any>> {
+export interface UseFormReturn<T extends Record<string, unknown>> {
   /**
    * 表单状态
    */
@@ -190,7 +189,7 @@ export interface UseFormReturn<T extends Record<string, any>> {
   /**
    * 设置字段值
    */
-  setFieldValue: (field: keyof T, value: any) => void
+  setFieldValue: (field: keyof T, value: T[keyof T]) => void
   /**
    * 设置多个字段值
    */
@@ -198,7 +197,7 @@ export interface UseFormReturn<T extends Record<string, any>> {
   /**
    * 获取字段值
    */
-  getFieldValue: (field: keyof T) => any
+  getFieldValue: (field: keyof T) => T[keyof T]
   /**
    * 重置表单
    */
@@ -236,7 +235,7 @@ export interface UseFormReturn<T extends Record<string, any>> {
 /**
  * 使用表单
  */
-export function useForm<T extends Record<string, any>>(
+export function useForm<T extends Record<string, unknown>>(
   options: UseFormOptions<T>
 ): UseFormReturn<T> {
   const {
@@ -307,7 +306,7 @@ export function useForm<T extends Record<string, any>>(
   }
 
   // 设置字段值
-  const setFieldValue = (field: keyof T, value: any) => {
+  const setFieldValue = (field: keyof T, value: T[keyof T]) => {
     const values = form.values as T
     const errors = form.errors as FormErrors<T>
     const touched = form.touched as FormTouched<T>
@@ -348,7 +347,7 @@ export function useForm<T extends Record<string, any>>(
   }
 
   // 获取字段值
-  const getFieldValue = (field: keyof T): any => {
+  const getFieldValue = (field: keyof T): T[keyof T] => {
     const values = form.values as T
     return values[field]
   }
@@ -495,46 +494,46 @@ export const ValidationRules = {
    * @param message 错误提示信息
    */
   required: (message = '此字段为必填项'): ValidationRule => createValidationRule((value) => {
-      if (value === null || value === undefined || value === '') return false
-      if (Array.isArray(value) && value.length === 0) return false
-      return true
-    }, message),
+    if (value === null || value === undefined || value === '') return false
+    if (Array.isArray(value) && value.length === 0) return false
+    return true
+  }, message),
 
   /**
    * 邮箱验证
    * @param message 错误提示信息
    */
   email: (message = '请输入有效的邮箱地址'): ValidationRule => createValidationRule((value) => {
-      if (!value) return true
-      return isValidEmail(String(value).trim())
-    }, message),
+    if (!value) return true
+    return isValidEmail(String(value).trim())
+  }, message),
 
   /**
    * 手机号验证（中国大陆）
    * @param message 错误提示信息
    */
   phone: (message = '请输入正确的手机号'): ValidationRule => createValidationRule((value) => {
-      if (!value) return true
-      return isValidMobilePhone(String(value).trim())
-    }, message),
+    if (!value) return true
+    return isValidMobilePhone(String(value).trim())
+  }, message),
 
   /**
    * Apple ID 账号验证
    * @param message 错误提示信息
    */
   appleAccount: (message = '请输入有效的 Apple ID 手机号或邮箱'): ValidationRule => createValidationRule((value) => {
-      if (!value) return true
-      return isValidAppleAccount(String(value).trim())
-    }, message),
+    if (!value) return true
+    return isValidAppleAccount(String(value).trim())
+  }, message),
 
   /**
    * 身份证号验证
    * @param message 错误提示信息
    */
   idCard: (message = '请输入正确的身份证号'): ValidationRule => createValidationRule((value) => {
-      if (!value) return true
-      return isValidIdCard(String(value).trim())
-    }, message),
+    if (!value) return true
+    return isValidIdCard(String(value).trim())
+  }, message),
 
   /**
    * 最小长度验证
@@ -542,9 +541,9 @@ export const ValidationRules = {
    * @param message 错误提示信息
    */
   minLength: (min: number, message?: string): ValidationRule => createValidationRule((value) => {
-      if (!value) return true
-      return String(value).length >= min
-    }, message || `最少${min}个字符`),
+    if (!value) return true
+    return String(value).length >= min
+  }, message || `最少${min}个字符`),
 
   /**
    * 最大长度验证
@@ -552,38 +551,38 @@ export const ValidationRules = {
    * @param message 错误提示信息
    */
   maxLength: (max: number, message?: string): ValidationRule => createValidationRule((value) => {
-      if (!value) return true
-      return String(value).length <= max
-    }, message || `最多${max}个字符`),
+    if (!value) return true
+    return String(value).length <= max
+  }, message || `最多${max}个字符`),
 
   /**
    * 数字验证
    * @param message 错误提示信息
    */
   number: (message = '请输入有效的数字'): ValidationRule => createValidationRule((value) => {
-      if (!value && value !== 0) return true
-      return !isNaN(Number(value))
-    }, message),
+    if (!value && value !== 0) return true
+    return !isNaN(Number(value))
+  }, message),
 
   /**
    * 正整数验证
    * @param message 错误提示信息
    */
   positiveInteger: (message = '请输入有效的正整数'): ValidationRule => createValidationRule((value) => {
-      if (!value && value !== 0) return true
-      const num = Number(value)
-      return Number.isInteger(num) && num > 0
-    }, message),
+    if (!value && value !== 0) return true
+    const num = Number(value)
+    return Number.isInteger(num) && num > 0
+  }, message),
 
   /**
    * 正数验证（大于0）
    * @param message 错误提示信息
    */
   positiveNumber: (message = '请输入大于0的数字'): ValidationRule => createValidationRule((value) => {
-      if (!value && value !== 0) return true
-      const num = Number(value)
-      return !isNaN(num) && num > 0
-    }, message),
+    if (!value && value !== 0) return true
+    const num = Number(value)
+    return !isNaN(num) && num > 0
+  }, message),
 
   /**
    * 范围验证（数字）
@@ -592,25 +591,25 @@ export const ValidationRules = {
    * @param message 错误提示信息
    */
   range: (min: number, max: number, message?: string): ValidationRule => createValidationRule((value) => {
-      if (!value && value !== 0) return true
-      const num = Number(value)
-      if (isNaN(num)) return false
-      return num >= min && num <= max
-    }, message || `数值应在${min}到${max}之间`),
+    if (!value && value !== 0) return true
+    const num = Number(value)
+    if (isNaN(num)) return false
+    return num >= min && num <= max
+  }, message || `数值应在${min}到${max}之间`),
 
   /**
    * URL验证
    * @param message 错误提示信息
    */
   url: (message = '请输入有效的URL地址'): ValidationRule => createValidationRule((value) => {
-      if (!value) return true
-      try {
-        new URL(String(value))
-        return true
-      } catch {
-        return false
-      }
-    }, message),
+    if (!value) return true
+    try {
+      new URL(String(value))
+      return true
+    } catch {
+      return false
+    }
+  }, message),
 
   /**
    * 自定义正则验证
@@ -618,19 +617,19 @@ export const ValidationRules = {
    * @param message 错误提示信息
    */
   pattern: (regex: RegExp, message = '格式不正确'): ValidationRule => createValidationRule((value) => {
-      if (!value) return true
-      return regex.test(String(value))
-    }, message),
+    if (!value) return true
+    return regex.test(String(value))
+  }, message),
 
   /**
    * 枚举值验证
    * @param values 允许的值列表
    * @param message 错误提示信息
    */
-  enum: (values: any[], message?: string): ValidationRule => createValidationRule((value) => {
-      if (!value && value !== 0) return true
-      return values.includes(value)
-    }, message || `值必须是以下之一: ${values.join(', ')}`),
+  enum: (values: unknown[], message?: string): ValidationRule => createValidationRule((value) => {
+    if (!value && value !== 0) return true
+    return values.includes(value)
+  }, message || `值必须是以下之一: ${values.join(', ')}`),
 
   /**
    * 确认密码验证（需配合表单使用）
@@ -638,72 +637,72 @@ export const ValidationRules = {
    * @param message 错误提示信息
    */
   confirmPassword: (passwordField: string, message = '两次输入的密码不一致'): ValidationRule => createValidationRule((value, formValues) => {
-      if (!value) return true
-      const password = formValues?.[passwordField]
-      return value === password
-    }, message),
+    if (!value) return true
+    const password = formValues?.[passwordField]
+    return value === password
+  }, message),
 
   /**
    * 中文姓名验证
    * @param message 错误提示信息
    */
   chineseName: (message = '请输入正确的中文姓名'): ValidationRule => createValidationRule((value) => {
-      if (!value) return true
-      // 2-20个中文字符
-      const nameRegex = /^[\u4e00-\u9fa5]{2,20}$/
-      return nameRegex.test(String(value).trim())
-    }, message),
+    if (!value) return true
+    // 2-20个中文字符
+    const nameRegex = /^[\u4e00-\u9fa5]{2,20}$/
+    return nameRegex.test(String(value).trim())
+  }, message),
 
   /**
    * 银行卡号验证
    * @param message 错误提示信息
    */
   bankCard: (message = '请输入正确的银行卡号'): ValidationRule => createValidationRule((value) => {
-      if (!value) return true
-      // 16-19位数字
-      const cardRegex = /^\d{16,19}$/
-      return cardRegex.test(String(value).trim())
-    }, message),
+    if (!value) return true
+    // 16-19位数字
+    const cardRegex = /^\d{16,19}$/
+    return cardRegex.test(String(value).trim())
+  }, message),
 
   /**
    * 微信号验证
    * @param message 错误提示信息
    */
   wechat: (message = '请输入正确的微信号'): ValidationRule => createValidationRule((value) => {
-      if (!value) return true
-      // 6-20位，字母开头，可包含字母、数字、下划线、减号
-      const wechatRegex = /^[a-zA-Z][a-zA-Z0-9_-]{5,19}$/
-      return wechatRegex.test(String(value).trim())
-    }, message),
+    if (!value) return true
+    // 6-20位，字母开头，可包含字母、数字、下划线、减号
+    const wechatRegex = /^[a-zA-Z][a-zA-Z0-9_-]{5,19}$/
+    return wechatRegex.test(String(value).trim())
+  }, message),
 
   /**
    * QQ号验证
    * @param message 错误提示信息
    */
   qq: (message = '请输入正确的QQ号'): ValidationRule => createValidationRule((value) => {
-      if (!value) return true
-      // 5-11位数字
-      const qqRegex = /^\d{5,11}$/
-      return qqRegex.test(String(value).trim())
-    }, message),
+    if (!value) return true
+    // 5-11位数字
+    const qqRegex = /^\d{5,11}$/
+    return qqRegex.test(String(value).trim())
+  }, message),
 
   /**
    * 非空数组验证
    * @param message 错误提示信息
    */
   nonEmptyArray: (message = '至少选择一项'): ValidationRule => createValidationRule((value) => {
-      return Array.isArray(value) && value.length > 0
-    }, message),
+    return Array.isArray(value) && value.length > 0
+  }, message),
 
   /**
    * 日期验证
    * @param message 错误提示信息
    */
   date: (message = '请选择有效的日期'): ValidationRule => createValidationRule((value) => {
-      if (!value) return true
-      const date = new Date(value)
-      return !isNaN(date.getTime())
-    }, message),
+    if (!value) return true
+    const date = new Date(value as string | number | Date)
+    return !isNaN(date.getTime())
+  }, message),
 
   /**
    * 日期范围验证
@@ -711,9 +710,9 @@ export const ValidationRules = {
    * @param message 错误提示信息
    */
   dateRange: (startDateField: string, message = '结束日期不能早于开始日期'): ValidationRule => createValidationRule((value, formValues) => {
-      if (!value) return true
-      const startDate = formValues?.[startDateField]
-      if (!startDate) return true
-      return new Date(value) >= new Date(startDate)
-    }, message)
+    if (!value) return true
+    const startDate = formValues?.[startDateField]
+    if (!startDate) return true
+    return new Date(value as string | number | Date) >= new Date(startDate as string | number | Date)
+  }, message)
 }

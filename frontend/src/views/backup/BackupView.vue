@@ -7,18 +7,31 @@
       module-name="备份管理"
       permission-code="backup:view"
     >
-    <!-- 主内容 -->
-      <PageHeader icon="fas fa-database" title="备份管理">
+      <!-- 主内容 -->
+      <PageHeader
+        icon="fas fa-database"
+        title="备份管理"
+      >
         <template #actions>
-          <el-button type="primary" @click="createBackup" :loading="isCreating" v-if="canCreate">
+          <el-button
+            v-if="canCreate && canViewField('system_info.operations')"
+            type="primary"
+            :loading="isCreating"
+            @click="createBackup"
+          >
             <span v-if="isCreating">备份中...</span>
             <template v-else>
-              <i class="fas fa-plus"></i>
+              <i class="fas fa-plus" />
               <span>创建备份</span>
             </template>
           </el-button>
-          <el-button type="info" plain @click="loadBackupList">
-            <i class="fas fa-sync-alt"></i>
+          <el-button
+            v-if="canViewField('system_info.operations')"
+            type="info"
+            plain
+            @click="loadBackupList"
+          >
+            <i class="fas fa-sync-alt" />
             <span>刷新</span>
           </el-button>
         </template>
@@ -29,7 +42,7 @@
         <div class="storage-info-card">
           <div class="info-item">
             <div class="info-icon">
-              <i class="fas fa-hdd"></i>
+              <i class="fas fa-hdd" />
             </div>
             <div class="info-content">
               <span class="info-label">备份总数</span>
@@ -38,7 +51,7 @@
           </div>
           <div class="info-item">
             <div class="info-icon">
-              <i class="fas fa-weight"></i>
+              <i class="fas fa-weight" />
             </div>
             <div class="info-content">
               <span class="info-label">占用空间</span>
@@ -47,7 +60,7 @@
           </div>
           <div class="info-item info-item-path">
             <div class="info-icon">
-              <i class="fas fa-folder-open"></i>
+              <i class="fas fa-folder-open" />
             </div>
             <div class="info-content">
               <span class="info-label">服务器备份目录</span>
@@ -56,13 +69,14 @@
           </div>
           <div class="info-actions">
             <el-button
+              v-if="canViewField('system_info.operations')"
               type="warning"
               size="small"
               plain
-              @click="showCleanupDialog"
               :disabled="!canDelete || backupList.length < 5"
+              @click="showCleanupDialog"
             >
-              <i class="fas fa-broom"></i>
+              <i class="fas fa-broom" />
               清理旧备份
             </el-button>
           </div>
@@ -72,46 +86,86 @@
         <div class="backup-list-card">
           <div class="card-header">
             <h3>
-              <i class="fas fa-list"></i>
+              <i class="fas fa-list" />
               备份列表
             </h3>
           </div>
 
-          <el-table class="data-table"
+          <el-table
+            class="data-table"
             :data="isLoading ? [] : backupList"
             border
             stripe
             style="width: 100%"
           >
             <template #empty>
-              <TableLoadingRow v-if="isLoading" mode="block" text="加载中..." />
-              <el-empty v-else description="暂无备份记录">
-                <el-button v-if="canCreate" type="primary" @click="createBackup">
-                  <i class="fas fa-plus"></i>
+              <TableLoadingRow
+                v-if="isLoading"
+                mode="block"
+                text="加载中..."
+              />
+              <DataEmptyState
+                v-else
+                description="暂无备份记录"
+              >
+                <el-button
+                  v-if="canCreate && canViewField('system_info.operations')"
+                  type="primary"
+                  @click="createBackup"
+                >
+                  <i class="fas fa-plus" />
                   创建第一个备份
                 </el-button>
-              </el-empty>
+              </DataEmptyState>
             </template>
 
-            <el-table-column prop="filename" label="文件名" min-width="280">
+            <el-table-column
+              v-if="canViewField('backup.name')"
+              prop="filename"
+              label="文件名"
+              min-width="280"
+            >
               <template #default="{ row }">
                 <div class="filename-cell">
-                  <i class="fas fa-file-archive"></i>
+                  <i class="fas fa-file-archive" />
                   <span>{{ row.filename }}</span>
                 </div>
               </template>
             </el-table-column>
-            <el-table-column prop="size" label="大小" width="120" align="center">
+            <el-table-column
+              v-if="canViewField('backup.size')"
+              prop="size"
+              label="大小"
+              width="120"
+              align="center"
+            >
               <template #default="{ row }">
-                <el-tag type="info" size="small">{{ row.size }}</el-tag>
+                <el-tag
+                  type="info"
+                  size="small"
+                >
+                  {{ row.size }}
+                </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="created_at" label="创建时间" width="180" align="center">
+            <el-table-column
+              v-if="canViewField('backup.created_at')"
+              prop="created_at"
+              label="创建时间"
+              width="180"
+              align="center"
+            >
               <template #default="{ row }">
                 {{ formatDateTime(row.created_at) }}
               </template>
             </el-table-column>
-            <el-table-column label="操作" :width="$getActionColumnWidth(['下载中', ...(canDelete ? ['删除'] : [])])" align="center" class-name="actions-column">
+            <el-table-column
+              v-if="showActionColumn"
+              label="操作"
+              :width="$getActionColumnWidth(['下载中', ...(canDelete ? ['删除'] : [])])"
+              align="center"
+              class-name="actions-column"
+            >
               <template #default="{ row }">
                 <div class="action-buttons">
                   <el-button
@@ -124,7 +178,7 @@
                   >
                     <span v-if="downloadingFilename === row.filename">下载中</span>
                     <template v-else>
-                      <i class="fas fa-download"></i>
+                      <i class="fas fa-download" />
                       下载
                     </template>
                   </el-button>
@@ -135,7 +189,7 @@
                     link
                     @click.stop="confirmDelete(row.filename)"
                   >
-                    <i class="fas fa-trash"></i>
+                    <i class="fas fa-trash" />
                     删除
                   </el-button>
                 </div>
@@ -156,14 +210,27 @@
       :close-on-click-modal="false"
     >
       <el-form label-width="100px">
-        <el-form-item label="保留数量">
-          <el-input-number v-model="keepCount" :min="1" :max="20" />
+        <el-form-item
+          v-if="canViewField('backup.keep_count')"
+          label="保留数量"
+        >
+          <el-input-number
+            v-model="keepCount"
+            :min="1"
+            :max="20"
+          />
           <span class="form-tip">保留最近的 {{ keepCount }} 份备份</span>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="cleanupDialogVisible = false">取消</el-button>
-        <el-button type="warning" @click="cleanupBackups" :loading="isCleaningUp">
+        <el-button @click="cleanupDialogVisible = false">
+          取消
+        </el-button>
+        <el-button
+          type="warning"
+          :loading="isCleaningUp"
+          @click="cleanupBackups"
+        >
           确认清理
         </el-button>
       </template>
@@ -172,11 +239,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import { unifiedApi } from '@/utils/unified-api'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
+import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { PermissionGate, PageHeader } from '@/components/base'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 
@@ -184,6 +252,11 @@ const { success, error, loading } = useNotification()
 
 // 权限
 const { canView, canCreate, canDelete, requirePermission } = usePagePermissions('backup')
+const canViewField = (fieldKey: string) => fieldPermissions.isFieldVisible('backup_backupview', fieldKey)
+const showActionColumn = computed(() => shouldShowActionColumn(
+  fieldPermissions.isFieldVisible('backup_backupview', 'system_info.operations'),
+  [canDelete.value]
+))
 
 // 状态
 const isLoading = ref(false)
@@ -369,7 +442,7 @@ const cleanupBackups = async () => {
 
   isCleaningUp.value = true
   try {
-    const response = await unifiedApi.post('/backup/cleanup', { keepCount: keepCount.value })
+    const response = await unifiedApi.post('/backup/cleanup', { keep_count: keepCount.value })
     if (response.success) {
       success(response.message || '清理完成')
       cleanupDialogVisible.value = false
@@ -422,7 +495,7 @@ watch(canView, async (value) => {
 <style scoped>
 .backup-management {
   padding: 24px;
-  background: var(--bg-primary, #f5f7fa);
+  background: var(--bg-primary, var(--tf-color-surface));
   min-height: 100vh;
 }
 
@@ -452,7 +525,7 @@ watch(canView, async (value) => {
   width: 48px;
   height: 48px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -475,13 +548,13 @@ watch(canView, async (value) => {
 
 .storage-info-card .info-label {
   font-size: 13px;
-  color: var(--text-secondary, #6c757d);
+  color: var(--text-secondary, var(--tf-color-muted));
 }
 
 .storage-info-card .info-value {
   font-size: 20px;
   font-weight: 600;
-  color: var(--text-primary, #2c3e50);
+  color: var(--text-primary, var(--tf-color-heading));
 }
 
 .storage-info-card .info-path {
@@ -506,21 +579,21 @@ watch(canView, async (value) => {
 .card-header {
   margin-bottom: 20px;
   padding-bottom: 16px;
-  border-bottom: 2px solid var(--bg-tertiary, #f8f9fa);
+  border-bottom: 2px solid var(--bg-tertiary, var(--tf-color-surface-muted));
 }
 
 .card-header h3 {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: var(--text-primary, #2c3e50);
+  color: var(--text-primary, var(--tf-color-heading));
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
 .card-header h3 i {
-  color: var(--primary-color, #667eea);
+  color: var(--primary-color, var(--tf-color-indigo-brand));
 }
 
 /* 文件名单元格 */
@@ -531,7 +604,7 @@ watch(canView, async (value) => {
 }
 
 .filename-cell i {
-  color: var(--primary-color, #667eea);
+  color: var(--primary-color, var(--tf-color-indigo-brand));
   font-size: 16px;
 }
 
@@ -549,13 +622,13 @@ watch(canView, async (value) => {
   align-items: center;
   justify-content: center;
   padding: 60px 20px;
-  color: var(--text-muted, #999);
+  color: var(--text-muted, var(--text-muted));
 }
 
 .empty-state i {
   font-size: 64px;
   margin-bottom: 16px;
-  color: #d8dee9;
+  color: var(--tf-color-border-blue-light);
 }
 
 .empty-state p {
@@ -567,7 +640,7 @@ watch(canView, async (value) => {
 .form-tip {
   margin-left: 12px;
   font-size: 13px;
-  color: var(--text-secondary, #6c757d);
+  color: var(--text-secondary, var(--tf-color-muted));
 }
 
 /* 响应式 */

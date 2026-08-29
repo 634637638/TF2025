@@ -5,14 +5,27 @@
     :class="buttonClasses"
     @click="handleClick"
   >
-    <InlineLoading v-if="loading" size="small" variant="inherit" />
-    <i v-else-if="icon" :class="iconClass"></i>
+    <InlineLoading
+      v-if="loading"
+      size="small"
+      variant="inherit"
+    />
+    <i
+      v-else-if="icon"
+      :class="iconClass"
+    />
 
-    <span v-if="$slots.default" :class="{ 'ml-2': icon || loading }">
-      <slot></slot>
+    <span
+      v-if="$slots.default"
+      :class="{ 'ml-2': icon || loading }"
+    >
+      <slot />
     </span>
 
-    <span v-if="badge" class="badge">{{ badge }}</span>
+    <span
+      v-if="badge"
+      class="badge"
+    >{{ badge }}</span>
   </button>
 </template>
 
@@ -40,10 +53,12 @@ const props = withDefaults(defineProps<Props>(), {
   size: 'md',
   disabled: false,
   loading: false,
+  icon: '',
   iconPosition: 'left',
   outline: false,
   rounded: false,
-  block: false
+  block: false,
+  badge: undefined
 })
 
 interface Emits {
@@ -115,7 +130,7 @@ const handleClick = (event: MouseEvent) => {
 .btn-disabled {
   opacity: 0.6;
   cursor: not-allowed;
-  transform: none !important;
+  transform: none;
 }
 
 /* 加载状态 */
@@ -137,7 +152,7 @@ const handleClick = (event: MouseEvent) => {
   position: absolute;
   top: -8px;
   right: -8px;
-  background: #dc3545;
+  background: var(--danger-color);
   color: white;
   font-size: 10px;
   padding: 2px 6px;

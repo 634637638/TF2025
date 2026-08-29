@@ -329,7 +329,7 @@ button[class*='btn-']:not(.btn-close) i {
 .el-button.tf-button--permission,
 .el-button.tf-button--config {
   @include tf-filled-button(
-    var(--tf-button-manage-bg), var(--tf-button-manage-border), #ffffff,
+    var(--tf-button-manage-bg), var(--tf-button-manage-border), var(--color-bg-white),
     var(--tf-button-manage-hover-bg), var(--tf-button-manage-hover-border)
   );
 }
@@ -337,7 +337,7 @@ button[class*='btn-']:not(.btn-close) i {
 .el-button.tf-button--finance,
 .el-button.tf-button--payment {
   @include tf-filled-button(
-    var(--tf-button-finance-bg), var(--tf-button-finance-border), #ffffff,
+    var(--tf-button-finance-bg), var(--tf-button-finance-border), var(--color-bg-white),
     var(--tf-button-finance-hover-bg), var(--tf-button-finance-hover-border)
   );
 }
@@ -345,7 +345,7 @@ button[class*='btn-']:not(.btn-close) i {
 .el-button.tf-button--transfer,
 .el-button.tf-button--stock {
   @include tf-filled-button(
-    var(--tf-button-transfer-bg), var(--tf-button-transfer-border), #ffffff,
+    var(--tf-button-transfer-bg), var(--tf-button-transfer-border), var(--color-bg-white),
     var(--tf-button-transfer-hover-bg), var(--tf-button-transfer-hover-border)
   );
 }
@@ -355,7 +355,7 @@ button[class*='btn-']:not(.btn-close) i {
 .el-button.tf-button--sync,
 .el-button.tf-button--refresh {
   @include tf-filled-button(
-    var(--tf-button-export-bg), var(--tf-button-export-border), #ffffff,
+    var(--tf-button-export-bg), var(--tf-button-export-border), var(--color-bg-white),
     var(--tf-button-export-hover-bg), var(--tf-button-export-hover-border)
   );
 }
@@ -387,7 +387,7 @@ button[class*='btn-']:not(.btn-close) i {
 }
 
 .btn.btn-dark {
-  @include tf-filled-button(#334155, #334155, #ffffff, #1e293b, #1e293b);
+  @include tf-filled-button(var(--tf-color-slate-700), var(--tf-color-slate-700), var(--color-bg-white), var(--tf-color-slate-800), var(--tf-color-slate-800));
 }
 
 .btn.active,
@@ -444,7 +444,7 @@ button.btn-icon.btn-danger {
 .tf-button-surface--dark .el-button:not(.el-button--primary) {
   background: rgba(255, 255, 255, 0.08) !important;
   border-color: rgba(255, 255, 255, 0.18) !important;
-  color: #f8fafc !important;
+  color: var(--tf-color-slate-50) !important;
 }
 
 /* Element Plus color picker footer keeps clear/confirm on one compact row. */

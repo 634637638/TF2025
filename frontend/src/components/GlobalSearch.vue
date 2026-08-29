@@ -1,16 +1,25 @@
 <template>
   <div class="global-search">
     <!-- 搜索区域标题 -->
-    <div v-if="showTitle" class="search-title">
-      <i class="fas fa-filter"></i>
+    <div
+      v-if="showTitle"
+      class="search-title"
+    >
+      <i class="fas fa-filter" />
       <span>{{ title }}</span>
     </div>
 
     <!-- 搜索表单 -->
-    <div class="search-form" :class="{ 'search-form-compact': compact }">
+    <div
+      class="search-form"
+      :class="{ 'search-form-compact': compact }"
+    >
       <div class="search-row">
         <!-- 筛选条件区域 -->
-        <div v-if="filters && filters.length > 0" class="search-filters">
+        <div
+          v-if="filters && filters.length > 0"
+          class="search-filters"
+        >
           <div
             v-for="filter in filters"
             :key="filter.key"
@@ -27,7 +36,7 @@
                 :placeholder="filter.placeholder || `请输入${filter.label}`"
                 @keyup.enter="handleSearch"
                 @input="debouncedFilterChange(filter.key, localFilterValues[filter.key])"
-              />
+              >
             </template>
 
             <!-- 选择框类型筛选 -->
@@ -38,7 +47,9 @@
                 class="form-control form-control-sm"
                 @change="debouncedFilterChange(filter.key, localFilterValues[filter.key], true)"
               >
-                <option value="">{{ filter.allText || '全部' }}</option>
+                <option value="">
+                  {{ filter.allText || '全部' }}
+                </option>
                 <option
                   v-for="option in filter.options"
                   :key="option.value"
@@ -57,7 +68,7 @@
                 type="date"
                 class="form-control form-control-sm"
                 @change="debouncedFilterChange(filter.key, localFilterValues[filter.key], true)"
-              />
+              >
             </template>
 
             <!-- 日期范围类型筛选 -->
@@ -71,7 +82,7 @@
                   placeholder="开始日期"
                   @input="updateDaterangeStart(filter.key, $event)"
                   @change="handleSearch"
-                />
+                >
                 <span class="daterange-separator">至</span>
                 <input
                   :model-value="filterValues['__daterange_' + filter.key + '_end__']"
@@ -80,7 +91,7 @@
                   placeholder="结束日期"
                   @input="updateDaterangeEnd(filter.key, $event)"
                   @change="handleSearch"
-                />
+                >
               </div>
             </template>
 
@@ -96,7 +107,7 @@
                   @input="handleRemoteSearch(filter, $event)"
                   @focus="showRemoteOptions(filter)"
                   @blur="hideRemoteOptions(filter)"
-                />
+                >
                 <div
                   v-if="filter.showOptions && filter.remoteOptions?.length > 0"
                   class="remote-options"
@@ -129,13 +140,16 @@
                   @keydown.down="navigateEditableOptions(filter, 'down')"
                   @keydown.up="navigateEditableOptions(filter, 'up')"
                   @keydown.enter.prevent="handleEditableEnterKey(filter)"
-                />
+                >
                 <i
                   v-if="filterInputValues[filter.key]"
                   class="editable-clear fas fa-times"
                   @click="clearEditableSelect(filter)"
-                ></i>
-                <i class="editable-dropdown fas fa-chevron-down" @mousedown.prevent="toggleEditableSelect(filter)"></i>
+                />
+                <i
+                  class="editable-dropdown fas fa-chevron-down"
+                  @mousedown.prevent="toggleEditableSelect(filter)"
+                />
                 <div
                   v-if="filterShowOptions[filter.key]"
                   class="editable-options"
@@ -153,7 +167,7 @@
                     class="editable-option new-item"
                     @mousedown="selectNewEditableOption(filter)"
                   >
-                    <i class="fas fa-plus"></i> 使用 "{{ filterInputValues[filter.key] }}"
+                    <i class="fas fa-plus" /> 使用 "{{ filterInputValues[filter.key] }}"
                   </div>
                 </div>
               </div>
@@ -164,24 +178,24 @@
         <!-- 主搜索框 -->
         <div class="search-main">
           <div class="input-group">
-            <i class="fas fa-search input-icon"></i>
+            <i class="fas fa-search input-icon" />
             <input
               ref="searchInput"
               v-model="searchQuery"
-              @input="handleSearchInput"
-              @keyup.enter="handleSearch"
               type="text"
               class="form-control"
               :placeholder="placeholder"
               :disabled="disabled"
-            />
+              @input="handleSearchInput"
+              @keyup.enter="handleSearch"
+            >
             <button
               v-if="searchQuery && showClearButton"
               class="input-clear"
-              @click="handleClear"
               title="清空"
+              @click="handleClear"
             >
-              <i class="fas fa-times"></i>
+              <i class="fas fa-times" />
             </button>
           </div>
         </div>
@@ -190,30 +204,38 @@
         <div class="search-actions">
           <button
             class="btn btn-primary"
-            @click="handleSearch"
             :disabled="loading || disabled"
+            @click="handleSearch"
           >
-            <InlineLoading v-if="loading" :text="compact ? '' : searchButtonText" size="small" variant="inherit" />
+            <InlineLoading
+              v-if="loading"
+              :text="compact ? '' : searchButtonText"
+              size="small"
+              variant="inherit"
+            />
             <template v-else>
-              <i class="fas fa-search"></i>
+              <i class="fas fa-search" />
               <span v-if="!compact">{{ searchButtonText }}</span>
             </template>
           </button>
           <button
             v-if="showResetButton"
             class="btn btn-outline-secondary"
-            @click="handleReset"
             :disabled="loading"
+            @click="handleReset"
           >
-            <i class="fas fa-redo"></i>
+            <i class="fas fa-redo" />
             <span v-if="!compact">{{ resetButtonText }}</span>
           </button>
-          <slot name="extra-actions"></slot>
+          <slot name="extra-actions" />
         </div>
       </div>
 
       <!-- 快捷标签 -->
-      <div v-if="quickTags && quickTags.length > 0" class="quick-tags">
+      <div
+        v-if="quickTags && quickTags.length > 0"
+        class="quick-tags"
+      >
         <span class="quick-tags-label">快捷：</span>
         <button
           v-for="tag in quickTags"
@@ -230,7 +252,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, reactive, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import type {
   ClearEmits,
   FilterChangeEmits,
@@ -258,10 +280,10 @@ interface FilterConfig {
   allText?: string
   remoteOptions?: FilterOption[]
   showOptions?: boolean
-  remoteMethod?: (query: string) => Promise<FilterOption[]>
+  remoteMethod?: (_query: string) => Promise<FilterOption[]>
   
   editableOptions?: string[] | (() => string[])
-  onOptionsChange?: (filter: FilterConfig, value: string) => void
+  onOptionsChange?: (_filter: FilterConfig, _value: string) => void
   
   highlightedIndex?: number
 }
@@ -389,7 +411,7 @@ const emitFilterChange = () => {
   filterChangeTimer = null
 }
 
-const debouncedSearch = (query: string) => {
+const debouncedSearch = (_query: string) => {
   if (searchTimer !== null) {
     clearTimeout(searchTimer)
   }
@@ -482,11 +504,11 @@ const handleClear = () => {
   }
 }
 
-const clearSearch = () => {
+const _clearSearch = () => {
   handleClear()
 }
 
-const clearFilter = (key: string) => {
+const _clearFilter = (key: string) => {
   localFilterValues[key] = ''
 
   
@@ -876,7 +898,7 @@ watch(localFilterValues, (newValues) => {
 }, { deep: true })
 
 
-let handleGlobalClick: ((event: MouseEvent) => void) | null = null
+let handleGlobalClick: ((_event: MouseEvent) => void) | null = null
 
 onMounted(() => {
 
@@ -1163,9 +1185,9 @@ onBeforeUnmount(() => {
             max-height: 180px;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch; /* iOS scroll optimization */
-            position: absolute !important;
+            position: absolute;
             background: white;
-            border: 1px solid #ddd;
+            border: 1px solid var(--tf-color-gray-300-alt);
             border-radius: 6px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 
@@ -1174,14 +1196,14 @@ onBeforeUnmount(() => {
               font-size: 14px;
               line-height: 1.4;
               min-height: 40px; 
-              border-bottom: 1px solid #f0f0f0;
+              border-bottom: 1px solid var(--tf-color-gray-200);
 
               &:last-child {
                 border-bottom: none;
               }
 
               &:active {
-                background-color: #f5f5f5;
+                background-color: var(--tf-color-surface-soft);
               }
             }
           }

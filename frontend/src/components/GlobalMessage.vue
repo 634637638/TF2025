@@ -1,7 +1,13 @@
 <template>
   <Teleport to="body">
-    <div class="global-message-container">
-      <TransitionGroup name="message" tag="div">
+    <div
+      v-bind="$attrs"
+      class="global-message-container"
+    >
+      <TransitionGroup
+        name="message"
+        tag="div"
+      >
         <div
           v-for="message in messageStore.messages"
           :key="message.id"
@@ -11,11 +17,17 @@
           ]"
         >
           <div class="message-content">
-            <div class="message-icon" v-if="message.type">
-              <i :class="getMessageIcon(message.type)"></i>
+            <div
+              v-if="message.type"
+              class="message-icon"
+            >
+              <i :class="getMessageIcon(message.type)" />
             </div>
             <div class="message-body">
-              <div class="message-title" v-if="message.title">
+              <div
+                v-if="message.title"
+                class="message-title"
+              >
                 {{ message.title }}
               </div>
               <div class="message-text">
@@ -23,11 +35,11 @@
               </div>
             </div>
             <div
-              class="message-close"
               v-if="message.showClose"
+              class="message-close"
               @click="closeMessage(message.id)"
             >
-              <i class="fas fa-times"></i>
+              <i class="fas fa-times" />
             </div>
           </div>
         </div>
@@ -41,9 +53,10 @@ import { defineComponent } from 'vue'
 
 export default defineComponent({
   name: 'GlobalMessage',
+  inheritAttrs: false,
   setup() {
     const messageStore = useMessageStore()
-const { success, error, warning, info, handleApiError } = useNotification()
+    const { _success, _error, _warning, _info, _handleApiError } = useNotification()
     const closeMessage = (id) => {
       messageStore.removeMessage(id)
     }
@@ -87,24 +100,24 @@ const { success, error, warning, info, handleApiError } = useNotification()
   display: flex;
   align-items: flex-start;
   padding: 12px 16px;
-  background-color: #fff;
+  background-color: var(--color-bg-white);
   position: relative;
 }
 
 .message-success {
-  border-left: 4px solid #67c23a;
+  border-left: 4px solid var(--color-success);
 }
 
 .message-error {
-  border-left: 4px solid #f56c6c;
+  border-left: 4px solid var(--color-danger);
 }
 
 .message-warning {
-  border-left: 4px solid #e6a23c;
+  border-left: 4px solid var(--color-warning);
 }
 
 .message-info {
-  border-left: 4px solid #909399;
+  border-left: 4px solid var(--color-info);
 }
 
 .message-icon {
@@ -114,19 +127,19 @@ const { success, error, warning, info, handleApiError } = useNotification()
 }
 
 .message-success .message-icon {
-  color: #67c23a;
+  color: var(--color-success);
 }
 
 .message-error .message-icon {
-  color: #f56c6c;
+  color: var(--color-danger);
 }
 
 .message-warning .message-icon {
-  color: #e6a23c;
+  color: var(--color-warning);
 }
 
 .message-info .message-icon {
-  color: #909399;
+  color: var(--color-info);
 }
 
 .message-body {
@@ -137,14 +150,14 @@ const { success, error, warning, info, handleApiError } = useNotification()
 .message-title {
   font-size: 14px;
   font-weight: 600;
-  color: #303133;
+  color: var(--color-text-primary);
   margin-bottom: 4px;
   line-height: 1.4;
 }
 
 .message-text {
   font-size: 13px;
-  color: #606266;
+  color: var(--color-text-regular);
   line-height: 1.4;
   word-break: break-word;
 }
@@ -152,13 +165,13 @@ const { success, error, warning, info, handleApiError } = useNotification()
 .message-close {
   margin-left: 12px;
   cursor: pointer;
-  color: #909399;
+  color: var(--color-info);
   font-size: 14px;
   transition: color 0.3s;
 }
 
 .message-close:hover {
-  color: #606266;
+  color: var(--color-text-regular);
 }
 
 /* 过渡动画 */

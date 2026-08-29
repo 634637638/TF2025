@@ -7,8 +7,14 @@
     }"
     :style="rootStyle"
   >
-    <div class="header-content" :style="contentStyle">
-      <div class="header-left" :style="leftStyle">
+    <div
+      class="header-content"
+      :style="contentStyle"
+    >
+      <div
+        class="header-left"
+        :style="leftStyle"
+      >
         <h1
           class="page-title"
           :class="{ 'page-title--dense-short': isDenseMobileHeader && isShortTitle }"
@@ -19,11 +25,20 @@
             class="page-title-icon"
             :style="iconStyle"
           >
-            <IconRenderer :icon="resolvedIcon" :svg="resolvedIconSvg" />
+            <IconRenderer
+              :icon="resolvedIcon"
+              :svg="resolvedIconSvg"
+            />
           </span>
           <span>{{ title }}</span>
         </h1>
-        <p v-if="description" class="page-description" :style="descriptionStyle">{{ description }}</p>
+        <p
+          v-if="description"
+          class="page-description"
+          :style="descriptionStyle"
+        >
+          {{ description }}
+        </p>
       </div>
       <div
         v-if="$slots.actions || $slots.default"
@@ -33,7 +48,7 @@
         :style="actionsStyle"
       >
         <slot name="actions">
-          <slot></slot>
+          <slot />
         </slot>
       </div>
     </div>
@@ -368,7 +383,7 @@ const actionsStyle = computed<CSSProperties>(() => ({
 
 <style scoped lang="scss">
 .page-header {
-  background: linear-gradient(135deg, #e58714 0%, #3acac1 100%);
+  background: linear-gradient(135deg, var(--tf-color-orange-legacy) 0%, var(--tf-color-page-header-teal) 100%);
   border-radius: 16px;
   padding: 32px;
   margin-bottom: 24px;
@@ -420,7 +435,7 @@ const actionsStyle = computed<CSSProperties>(() => ({
   margin: 0;
   font-size: 32px;
   font-weight: 700;
-  color: #fff;
+  color: var(--color-bg-white);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -428,7 +443,7 @@ const actionsStyle = computed<CSSProperties>(() => ({
 
   .page-title-icon {
     font-size: 0.9em;
-    color: #fff;
+    color: var(--color-bg-white);
     width: 0.9em;
     height: 0.9em;
     display: inline-flex;

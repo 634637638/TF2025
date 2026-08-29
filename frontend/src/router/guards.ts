@@ -1,13 +1,12 @@
-import type { Router, RouteLocationNormalized } from 'vue-router'
+import type { RouteLocationNormalized, Router } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useAppStore } from '@/stores/app'
 import { useLoadingStore } from '@/stores/loading'
-import { useSiteSettingsStore } from '@/stores/siteSettings'
 import { unifiedApi as api } from '@/utils/unified-api'
 import { showElementNotification, showElementWarning } from '@/utils/element-feedback'
 import { canAccessRoutePath, getRoutePermissions } from '@/constants/routePermissions'
 import { clearPersistedAuthData, getBackendDisconnectInfo, setBackendDisconnectedState } from '@/utils/auth-session'
-import { TimeUtil, TIME_FORMATS } from '@/utils/time'
+import { TimeUtil } from '@/utils/time'
 import { storage } from '@/services/storage'
 import { AUTH_STORAGE_KEYS, CACHE_STORAGE_KEYS, ROUTER_STORAGE_KEYS } from '@/constants/storage'
 
@@ -18,6 +17,41 @@ const ROLE_STATUS_TIMEOUT = 5000
 const DEV_TOKEN_BYPASS_FLAG = 'true'
 let lastRoleStatusCheckAt = 0
 let roleStatusCheckPromise: Promise<void> | null = null
+
+type AuthStore = ReturnType<typeof useAuthStore>
+type AppStore = ReturnType<typeof useAppStore>
+
+interface PageVisitData {
+  path: string
+  title?: string
+  from: string
+  timestamp: number
+  userAgent: string
+}
+
+function normalizeStoredStrings(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string' && item.length > 0)
+    : []
+}
+
+function normalizeStoredPermissions(value: unknown): string[] {
+  if (Array.isArray(value)) return normalizeStoredStrings(value)
+  if (!value || typeof value !== 'object') return []
+  return normalizeStoredStrings((value as Record<string, unknown>).userPermissions)
+}
+
+function normalizeStoredRoles(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+
+  return Array.from(new Set(value.flatMap((role) => {
+    if (typeof role === 'string') return role.split(',').map((item) => item.trim()).filter(Boolean)
+    if (!role || typeof role !== 'object') return []
+    const record = role as Record<string, unknown>
+    return [record.roleName, record.name, record.role_name, record.roleCode, record.code, record.role_code]
+      .filter((item): item is string => typeof item === 'string' && item.length > 0)
+  })))
+}
 
 function isLocalDevelopmentHost(): boolean {
   const hostname = window.location.hostname
@@ -280,8 +314,8 @@ export class RouteGuards {
                 authStore.token = savedAuth.token
                 authStore.refreshToken = savedAuth.refreshToken || ''
                 authStore.user = savedAuth.user
-                authStore.permissions = savedAuth.permissions || []
-                authStore.roles = savedAuth.roles || []
+                authStore.permissions = normalizeStoredPermissions(savedAuth.permissions)
+                authStore.roles = normalizeStoredRoles(savedAuth.roles)
                 // 同步到 sessionStorage
                 storage.setToken(savedAuth.token)
               }
@@ -316,7 +350,7 @@ export class RouteGuards {
                 updated_at: TimeUtil.now().toISOString()
               }
               authStore.permissions = ['*']
-              authStore.roles = [{ name: '开发测试角色', code: 'dev_test', permissions: ['*'] }]
+              authStore.roles = ['dev_test']
               authStore.lastActivity = Date.now()
             }
           }
@@ -376,9 +410,10 @@ export class RouteGuards {
               authStore.user.role = currentRole
               authStore.roles = currentRoles
             }
-          }).catch((error: any) => {
+          }).catch((error: unknown) => {
+            const requestError = error as { response?: { status?: number } }
             // 401 错误时，不强制退出，允许用户继续访问
-            if (error.response?.status === 401) {
+            if (requestError.response?.status === 401) {
               // Token 可能已过期，但允许继续访问
             }
           })
@@ -524,7 +559,7 @@ export class RouteGuards {
    * 设置错误处理器
    */
   private setupErrorHandlers(): void {
-    this.router.onError((error) => {
+    this.router.onError((_error) => {
       const loadingStore = useLoadingStore()
 
       // 路由组件懒加载失败、网络波动或导航异常时，确保不会遗留全局加载遮罩。
@@ -537,38 +572,6 @@ export class RouteGuards {
       }
     })
   }
-
-  /**
-   * 获取页面标题
-   */
-  private async getPageTitle(_route: any): Promise<string> {
-    try {
-      const siteSettingsStore = useSiteSettingsStore()
-
-      // 如果站点设置还没有加载完成，等待
-      if (!siteSettingsStore.lastUpdated && !siteSettingsStore.isLoading) {
-        siteSettingsStore.loadSiteSettings().catch((_error) => {
-          // 触发站点设置加载失败，忽略
-        })
-      }
-
-      // 如果正在加载，等待完成
-      if (siteSettingsStore.isLoading) {
-        // 简单等待，不使用复杂的轮询
-        await new Promise(resolve => setTimeout(resolve, 100))
-      }
-
-      // 优先使用全局站点设置中的网站名称
-      const siteName = siteSettingsStore.displayName || '腾飞数码管理系统'
-
-      // 只显示网站名称，不显示页面标题，实现全局统一显示
-      return siteName
-    } catch (error) {
-      // 如果获取站点设置失败，使用默认名称
-      return '腾飞数码管理系统'
-    }
-  }
-
 
   /**
    * 检查用户角色权限
@@ -629,7 +632,7 @@ export class RouteGuards {
   /**
    * 判断是否需要显示页面加载
    */
-  private shouldShowPageLoading(to: any, from: any): boolean {
+  private shouldShowPageLoading(to: RouteLocationNormalized, from: RouteLocationNormalized): boolean {
     if (to.meta?.disableRouteLoading) {
       return false
     }
@@ -650,11 +653,12 @@ export class RouteGuards {
   /**
    * 预取路由数据
    */
-  private async preloadRouteData(to: any, authStore: any): Promise<void> {
+  private async preloadRouteData(to: RouteLocationNormalized, authStore: AuthStore): Promise<void> {
     // 根据路由配置预取必要数据
-    if (to.meta?.preloadData) {
+    const preloadData = to.meta?.preloadData
+    if (typeof preloadData === 'function') {
       try {
-        await to.meta.preloadData(to, authStore)
+        await preloadData(to, authStore)
       } catch (error) {
         // 路由数据预取失败，忽略
       }
@@ -664,7 +668,11 @@ export class RouteGuards {
   /**
    * 处理成功导航
    */
-  private handleSuccessfulNavigation(to: any, from: any, appStore: any): void {
+  private handleSuccessfulNavigation(
+    to: RouteLocationNormalized,
+    from: RouteLocationNormalized,
+    appStore: AppStore
+  ): void {
     // 更新面包屑导航
     appStore.updateBreadcrumb(this.generateBreadcrumb(to))
 
@@ -672,11 +680,12 @@ export class RouteGuards {
     this.recordPageVisit(to, from)
 
     // 检查并显示页面提示（如果配置了）
-    if (to.meta?.pageTip) {
+    if (typeof to.meta?.pageTip === 'string' && to.meta.pageTip) {
+      const pageTip = to.meta.pageTip
       setTimeout(() => {
         showElementNotification({
           title: '页面提示',
-          message: to.meta.pageTip,
+          message: pageTip,
           type: 'info',
           duration: 5000,
           position: 'top-right'
@@ -688,7 +697,7 @@ export class RouteGuards {
   /**
    * 处理页面滚动
    */
-  private handlePageScroll(to: any): void {
+  private handlePageScroll(to: RouteLocationNormalized): void {
     // 检查是否需要保持滚动位置
     if (to.meta?.keepScrollPosition) {
       // 保持当前滚动位置
@@ -696,7 +705,7 @@ export class RouteGuards {
     }
 
     // 检查是否需要滚动到特定位置
-    if (to.meta?.scrollTo) {
+    if (typeof to.meta?.scrollTo === 'string' && to.meta.scrollTo) {
       const element = document.querySelector(to.meta.scrollTo)
       if (element) {
         element.scrollIntoView({ behavior: 'smooth' })
@@ -710,14 +719,14 @@ export class RouteGuards {
   /**
    * 生成面包屑导航
    */
-  private generateBreadcrumb(route: any): Array<{ name: string, path: string }> {
+  private generateBreadcrumb(route: RouteLocationNormalized): Array<{ name: string, path: string }> {
     const breadcrumb: Array<{ name: string, path: string }> = []
 
     // 添加首页
     breadcrumb.push({ name: '首页', path: '/dashboard' })
 
     // 添加当前页面
-    if (route.meta?.title) {
+    if (typeof route.meta?.title === 'string' && route.meta.title) {
       breadcrumb.push({ name: route.meta.title, path: route.path })
     }
 
@@ -727,17 +736,19 @@ export class RouteGuards {
   /**
    * 记录页面访问
    */
-  private recordPageVisit(to: any, from: any): void {
-    const visitData = {
+  private recordPageVisit(to: RouteLocationNormalized, from: RouteLocationNormalized): void {
+    const visitData: PageVisitData = {
       path: to.path,
-      title: to.meta?.title,
+      title: typeof to.meta?.title === 'string' ? to.meta.title : undefined,
       from: from.path,
       timestamp: Date.now(),
       userAgent: navigator.userAgent
     }
 
     // 发送到分析服务（如果配置了）
-    const analytics = (window as any).__TF2025__?.analytics
+    const analytics = window.__TF2025__?.analytics as {
+      trackPageVisit?: (data: PageVisitData) => void
+    } | undefined
     if (analytics?.trackPageVisit) {
       analytics.trackPageVisit(visitData)
     }
@@ -749,9 +760,9 @@ export class RouteGuards {
   /**
    * 保存访问历史
    */
-  private saveVisitHistory(visitData: any): void {
+  private saveVisitHistory(visitData: PageVisitData): void {
     try {
-      const history = storage.get<any[]>(CACHE_STORAGE_KEYS.VISIT_HISTORY, 'local') || []
+      const history = storage.get<PageVisitData[]>(CACHE_STORAGE_KEYS.VISIT_HISTORY, 'local') || []
       history.unshift(visitData)
 
       // 保留最近50条记录

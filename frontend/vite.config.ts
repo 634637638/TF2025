@@ -7,9 +7,11 @@ import Components from 'unplugin-vue-components/vite';
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers';
 import Compression from 'vite-plugin-compression';
 
+// HTTPS 已暂停：如需恢复，将下方 USE_HTTPS 改回 true 即可
+const USE_HTTPS = false;
 const localHttpsKey = resolve(__dirname, 'ssl/local-dev-key.pem');
 const localHttpsCert = resolve(__dirname, 'ssl/local-dev-cert.pem');
-const localHttps = existsSync(localHttpsKey) && existsSync(localHttpsCert)
+const localHttps = USE_HTTPS && existsSync(localHttpsKey) && existsSync(localHttpsCert)
   ? {
       key: readFileSync(localHttpsKey),
       cert: readFileSync(localHttpsCert),
@@ -60,44 +62,16 @@ export default defineConfig({
       output: {
         // 手动配置代码分割策略
         manualChunks: (id) => {
-          // 1. 将大型第三方库单独打包
+          // Only pin the framework core. Feature libraries keep their natural
+          // route/action lazy-loading boundaries instead of being merged whole.
           if (id.includes('node_modules')) {
-            // Vue 生态与 Element Plus 基础能力（Element Plus 与 Vue 依赖紧密，强拆会产生循环 chunk）
             if (
               id.includes('/vue/') ||
               id.includes('/pinia/') ||
               id.includes('/vue-router/') ||
-              id.includes('/@vue/') ||
-              id.includes('/element-plus/') ||
-              id.includes('/@element-plus/') ||
-              id.includes('/@element-plus/icons-vue/')
+              id.includes('/@vue/')
             ) {
-              return 'vue-vendor';
-            }
-
-            // 图表能力 - 已使用按需引入
-            if (id.includes('echarts')) {
-              return 'echarts-core';
-            }
-
-            // DOM 截图与导出能力
-            if (id.includes('/html2canvas/')) {
-              return 'html2canvas';
-            }
-
-            // 扫码能力
-            if (id.includes('/@zxing/')) {
-              return 'zxing';
-            }
-
-            // 图片转换能力
-            if (id.includes('/heic2any/')) {
-              return 'image-convert';
-            }
-
-            // PDF.js
-            if (id.includes('/pdfjs-dist/')) {
-              return 'pdf';
+              return 'vue-core';
             }
 
             // H5 交互与动效库交给 Rollup 自动拆分；强制合并容易和 vue-vendor 形成循环 chunk。
@@ -110,7 +84,8 @@ export default defineConfig({
               return 'core-utils';
             }
 
-            // 其余依赖交给 Rollup 自动拆分，避免循环依赖
+            // Element Plus, ECharts, PDF.js, ZXing, html2canvas and heic2any
+            // are intentionally left to Rollup so dynamic imports remain lazy.
             // 不返回任何值，让 Rollup 自动处理
           }
           // 2. 路由页面代码自动分割（保留按需加载）

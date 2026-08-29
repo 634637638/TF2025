@@ -1,6 +1,6 @@
 # 页面权限能力统一规范
 
-> **唯一能力清单**：`config/module-permission-capabilities.json`  
+> **唯一能力清单**：`backend/src/config/module-permission-capabilities.json`
 > **强制审计**：`cd frontend && npm run check:permissions`  
 > **适用范围**：受登录保护的页面、页面按钮、弹窗操作、批量操作和对应后端接口
 
@@ -28,9 +28,21 @@
 
 “按钮只给管理员看”不是登记 `manage` 的理由。按钮是什么业务动作，就使用什么动作权限；管理员同样通过角色授权获得该权限。
 
+## 动作按钮与字段权限
+
+- 页面动作权限决定按钮和操作是否可用；字段权限只决定业务数据是否展示，二者不能互相代替。
+- 编辑、删除、审批、到账、上传等按钮必须只按各自动作权限显示，关闭权限时直接隐藏，不展示禁用占位按钮。
+- 承载按钮的字段列由 `shouldShowActionColumn(fieldVisible, actionPermissions)` 统一计算：字段可见或对应动作获权时展示，两者都关闭时隐藏。
+- 动作必须放在语义对应的字段列：审批放在审批/提交列，到账放在到账列，上传放在图片列；通用操作列只放编辑、删除等没有独立业务字段的动作。
+- 隐藏审批时间、到账时间等数据字段，不得隐藏已获权的审批、到账按钮，但按钮必须留在各自字段列；后端仍分别使用 `requirePermission` 返回 403。
+- 隐藏图片等敏感字段时，普通列表和详情继续掩码；独立上传权限可保留上传入口，并通过只授予上传角色的专用接口读取管理所需数据。
+- 前端隐藏按钮不是安全边界。所有写接口、状态流转接口、上传接口仍必须使用与按钮一致的后端动作守卫。
+- 字段权限必须贯穿列表、选项接口、详情、打印、导出和写接口。后端不得先返回完整敏感对象再依赖前端隐藏。
+- 通用编辑只提交可见字段，后端对隐藏字段返回 `403 FIELD_PERMISSION_DENIED`；动作执行所必需的状态字段只能在拥有该动作权限时作为明确例外保留。
+
 ## 单一来源
 
-- 模块及动作只在 `config/module-permission-capabilities.json` 登记。
+- 模块及动作只在 `backend/src/config/module-permission-capabilities.json` 登记。
 - `backend/src/config/module-permission-actions.js` 只负责读取清单及维护模块中文元数据，不得再定义动作数组。
 - `frontend/src/config/modules.ts` 和 `frontend/src/utils/permissionMapper.ts` 必须从清单派生，不得复制权限数组。
 - 未登记模块运行时只能回退为 `view`，审计时受保护路由页面未登记会直接失败。

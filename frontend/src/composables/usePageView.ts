@@ -7,6 +7,7 @@ import { ref, type Ref, type ComputedRef } from 'vue'
 import { usePagePermissions } from './usePagePermissions'
 import { useNotification } from './useNotification'
 import { useRefreshData } from './useRefreshData'
+import type { RefreshDataOptions } from './useRefreshData'
 
 interface UsePageViewOptions {
   /** 模块标识（用于权限检查） */
@@ -46,7 +47,7 @@ interface UsePageViewReturn {
   /** 信息提示 */
   info: (message: string) => void
   /** 处理API错误 */
-  handleApiError: (err: any) => void
+  handleApiError: (err: unknown) => void
   /** 确认对话框 */
   confirm: (message: string) => Promise<boolean>
 
@@ -54,7 +55,7 @@ interface UsePageViewReturn {
   /** 是否正在刷新 */
   refreshing: Ref<boolean>
   /** 刷新数据 */
-  refreshData: <T>(fetchFn: () => Promise<T>, options?: any) => Promise<T | null>
+  refreshData: <T>(fetchFn: () => Promise<T>, options?: RefreshDataOptions) => Promise<T | null>
   /** 简化刷新（不显示提示） */
   refresh: <T>(fetchFn: () => Promise<T>) => Promise<T | null>
 
@@ -181,7 +182,7 @@ export function usePageView(options: UsePageViewOptions): UsePageViewReturn {
         success(successMsg)
       }
       return result
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (errorMsg) {
         error(errorMsg)
       } else {

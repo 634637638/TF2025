@@ -1,15 +1,15 @@
-const express = require('express');
-const router = express.Router();
-const QueryController = require('../controllers/query.controller');
-const { unifiedAuth, requirePermission, requireAnyPermission } = require('../middleware/unified-auth');
-const { cacheMiddleware } = require('../middleware/cache');
-const { CACHE_TTL } = require('../config/constants');
+const express = require('express')
+const router = express.Router()
+const QueryController = require('../controllers/query.controller')
+const { unifiedAuth, requirePermission, _requireAnyPermission } = require('../middleware/unified-auth')
+const { cacheMiddleware } = require('../middleware/cache')
+const { CACHE_TTL } = require('../config/constants')
 
 // 实例化控制器
-const queryController = new QueryController();
+const queryController = new QueryController()
 
 // 所有路由都需要身份验证
-router.use(unifiedAuth);
+router.use(unifiedAuth)
 
 /**
  * @route GET /api/query/comprehensive
@@ -17,7 +17,7 @@ router.use(unifiedAuth);
  * @access Private
  * @param {Object} query - 查询参数
  * @param {string} query.page - 页码
- * @param {string} query.limit - 每页数量
+ * @param {string} query.page_size - 每页数量（规范字段）
  * @param {string} query.supplier_id - 供应商ID
  * @param {string} query.store_id - 店铺ID
  * @param {string} query.brand - 品牌
@@ -33,7 +33,7 @@ router.use(unifiedAuth);
  * @param {string} query.sort_field - 排序字段
  * @param {string} query.sort_order - 排序方向
  */
-router.get('/comprehensive', requirePermission('query:view', 'business'), cacheMiddleware({ ttl: CACHE_TTL.SHORT }), queryController.getComprehensiveQuery.bind(queryController));
+router.get('/comprehensive', requirePermission('query:view', 'business'), cacheMiddleware({ ttl: CACHE_TTL.SHORT }), queryController.getComprehensiveQuery.bind(queryController))
 
 /**
  * @route GET /api/query/statistics
@@ -41,23 +41,23 @@ router.get('/comprehensive', requirePermission('query:view', 'business'), cacheM
  * @access Private
  * @param {Object} query - 统计参数
  */
-router.get('/statistics', requirePermission('query:view', 'business'), cacheMiddleware({ ttl: CACHE_TTL.DISABLED }), queryController.getStatistics.bind(queryController));
+router.get('/statistics', requirePermission('query:view', 'business'), cacheMiddleware({ ttl: CACHE_TTL.DISABLED }), queryController.getStatistics.bind(queryController))
 
 /**
  * @route GET /api/query/returngoods
  * @desc 获取退库记录列表
  * @access Private
  */
-router.get('/returngoods', requirePermission('return-goods:view'), cacheMiddleware({ ttl: CACHE_TTL.DISABLED }), queryController.getReturnGoodsRecords.bind(queryController));
-router.put('/returngoods/:id', requirePermission('return-goods:edit'), queryController.updateReturnGoodsRecord.bind(queryController));
-router.delete('/returngoods/:id', requirePermission('return-goods:delete'), queryController.deleteReturnGoodsRecord.bind(queryController));
+router.get('/returngoods', requirePermission('return-goods:view'), cacheMiddleware({ ttl: CACHE_TTL.DISABLED }), queryController.getReturnGoodsRecords.bind(queryController))
+router.put('/returngoods/:id', requirePermission('return-goods:edit'), queryController.updateReturnGoodsRecord.bind(queryController))
+router.delete('/returngoods/:id', requirePermission('return-goods:delete'), queryController.deleteReturnGoodsRecord.bind(queryController))
 
 /**
  * @route GET /api/query/options
  * @desc 获取查询选项数据
  * @access Private
  */
-router.get('/options', requirePermission('query:view', 'business'), cacheMiddleware({ ttl: CACHE_TTL.NEAR_REALTIME }), queryController.getQueryOptions.bind(queryController));
+router.get('/options', requirePermission('query:view', 'business'), cacheMiddleware({ ttl: CACHE_TTL.NEAR_REALTIME }), queryController.getQueryOptions.bind(queryController))
 
 /**
  * @route POST /api/query/batch
@@ -67,7 +67,7 @@ router.get('/options', requirePermission('query:view', 'business'), cacheMiddlew
  * @param {string} body.operation - 操作类型 (reverse_sale, delete)
  * @param {Array} body.phone_ids - 手机ID列表
  */
-router.post('/batch', requirePermission('query:edit', 'business'), queryController.batchOperations.bind(queryController));
+router.post('/batch', requirePermission('query:edit', 'business'), queryController.batchOperations.bind(queryController))
 
 /**
  * @route GET /api/query/export/excel
@@ -75,7 +75,7 @@ router.post('/batch', requirePermission('query:edit', 'business'), queryControll
  * @access Private
  * @param {Object} query - 导出参数
  */
-router.get('/export/excel', requirePermission('query:export', 'business'), queryController.exportToExcel.bind(queryController));
+router.get('/export/excel', requirePermission('query:export', 'business'), queryController.exportToExcel.bind(queryController))
 
 /**
  * @route GET /api/query/phone/:id
@@ -83,7 +83,7 @@ router.get('/export/excel', requirePermission('query:export', 'business'), query
  * @access Private
  * @param {string} params.id - 手机ID
  */
-router.get('/phone/:id', requirePermission('query:view', 'business'), queryController.getPhoneDetail.bind(queryController));
+router.get('/phone/:id', requirePermission('query:view', 'business'), queryController.getPhoneDetail.bind(queryController))
 
 
 /**
@@ -92,7 +92,7 @@ router.get('/phone/:id', requirePermission('query:view', 'business'), queryContr
  * @access Private
  * @param {string} params.id - 手机ID
  */
-router.post('/:id/return-to-stock', requirePermission('query:return-to-stock', 'business'), queryController.returnToStock.bind(queryController));
+router.post('/:id/return-to-stock', requirePermission('query:return-to-stock', 'business'), queryController.returnToStock.bind(queryController))
 
 /**
  * @route DELETE /api/query/:id
@@ -100,7 +100,7 @@ router.post('/:id/return-to-stock', requirePermission('query:return-to-stock', '
  * @access Private
  * @param {string} params.id - 手机ID
  */
-router.delete('/:id', requirePermission('inventory:delete', 'business'), queryController.deletePhoneRecord.bind(queryController));
+router.delete('/:id', requirePermission('inventory:delete', 'business'), queryController.deletePhoneRecord.bind(queryController))
 
 /**
  * @route DELETE /api/query/cache
@@ -109,12 +109,12 @@ router.delete('/:id', requirePermission('inventory:delete', 'business'), queryCo
  */
 router.delete('/cache', (req, res) => {
   try {
-    const { clearCache } = require('../middleware/cache');
-    clearCache('comprehensive');
-    res.json({ success: true, message: '查询缓存已清除' });
+    const { clearCache } = require('../middleware/cache')
+    clearCache('comprehensive')
+    res.json({ success: true, message: '查询缓存已清除' })
   } catch (error) {
-    res.status(500).json({ success: false, message: '清除缓存失败', error: error.message });
+    res.status(500).json({ success: false, message: '清除缓存失败', error: error.message })
   }
-});
+})
 
-module.exports = router;
+module.exports = router

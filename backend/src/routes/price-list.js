@@ -1,13 +1,12 @@
 /**
  * 价目表路由
  */
-const express = require('express');
-const router = express.Router();
-const multer = require('multer');
-const priceListController = require('../controllers/price-list.controller');
-const { unifiedAuth, requirePermission } = require('../middleware/unified-auth');
-const log = require('../utils/log');
-const { requireMockRoutesEnabled } = require('../middleware/mock-route-guard');
+const express = require('express')
+const router = express.Router()
+const multer = require('multer')
+const priceListController = require('../controllers/price-list.controller')
+const { unifiedAuth, requirePermission } = require('../middleware/unified-auth')
+const log = require('../utils/log')
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -19,12 +18,12 @@ const upload = multer({
       file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
       file.mimetype === 'application/vnd.ms-excel'
     ) {
-      cb(null, true);
+      cb(null, true)
     } else {
-      cb(new Error('只支持 Excel 文件格式'), false);
+      cb(new Error('只支持 Excel 文件格式'), false)
     }
   }
-});
+})
 
 // ==================== 管理接口（需要登录和权限）====================
 
@@ -33,35 +32,35 @@ const upload = multer({
  * @desc    获取价格列表（管理端）
  * @access  Private
  */
-router.get('/', unifiedAuth, requirePermission('price-list:view'), priceListController.getPriceList);
+router.get('/', unifiedAuth, requirePermission('price-list:view'), priceListController.getPriceList)
 
 /**
  * @route   GET /api/price-list/export
  * @desc    导出价格列表
  * @access  Private
  */
-router.get('/export', unifiedAuth, requirePermission('price-list:export'), priceListController.exportPriceList);
+router.get('/export', unifiedAuth, requirePermission('price-list:export'), priceListController.exportPriceList)
 
 /**
  * @route   POST /api/price-list/import
  * @desc    导入价格列表
  * @access  Private
  */
-router.post('/import', unifiedAuth, requirePermission('price-list:import'), upload.single('file'), priceListController.importPriceList);
+router.post('/import', unifiedAuth, requirePermission('price-list:import'), upload.single('file'), priceListController.importPriceList)
 
 /**
  * @route   POST /api/price-list
  * @desc    创建/更新价格记录
  * @access  Private
  */
-router.post('/', unifiedAuth, requirePermission('price-list:edit'), priceListController.upsertPriceItem);
+router.post('/', unifiedAuth, requirePermission('price-list:edit'), priceListController.upsertPriceItem)
 
 /**
  * @route   DELETE /api/price-list/:id
  * @desc    删除价格记录
  * @access  Private
  */
-router.delete('/:id', unifiedAuth, requirePermission('price-list:delete'), priceListController.deletePriceItem);
+router.delete('/:id', unifiedAuth, requirePermission('price-list:delete'), priceListController.deletePriceItem)
 
 /**
  * @route   POST /api/price-list/migrate
@@ -69,8 +68,8 @@ router.delete('/:id', unifiedAuth, requirePermission('price-list:delete'), price
  * @access  Private
  */
 router.post('/migrate', unifiedAuth, requirePermission('price-list:edit'), (req, res) => {
-  return res.json({ success: true, message: '表已是新结构，无需迁移', data: { results: [] } });
-});
+  return res.json({ success: true, message: '表已是新结构，无需迁移', data: { results: [] } })
+})
 
 // ==================== 同步配置接口（必须在 /:id 之前定义）====================
 
@@ -79,63 +78,63 @@ router.post('/migrate', unifiedAuth, requirePermission('price-list:edit'), (req,
  * @desc    获取所有同步配置列表
  * @access  Private
  */
-router.get('/sync/configs', unifiedAuth, requirePermission('price-list:view'), priceListController.getAllSyncConfigs);
+router.get('/sync/configs', unifiedAuth, requirePermission('price-list:view'), priceListController.getAllSyncConfigs)
 
 /**
  * @route   POST /api/price-list/sync/configs
  * @desc    创建新的同步配置
  * @access  Private
  */
-router.post('/sync/configs', unifiedAuth, requirePermission('price-list:edit'), priceListController.createSyncConfig);
+router.post('/sync/configs', unifiedAuth, requirePermission('price-list:edit'), priceListController.createSyncConfig)
 
 /**
  * @route   GET /api/price-list/sync/config
  * @desc    获取默认同步配置
  * @access  Private
  */
-router.get('/sync/config', unifiedAuth, requirePermission('price-list:view'), priceListController.getSyncConfig);
+router.get('/sync/config', unifiedAuth, requirePermission('price-list:view'), priceListController.getSyncConfig)
 
 /**
  * @route   PUT /api/price-list/sync/config
  * @desc    更新默认同步配置
  * @access  Private
  */
-router.put('/sync/config', unifiedAuth, requirePermission('price-list:edit'), priceListController.updateSyncConfig);
+router.put('/sync/config', unifiedAuth, requirePermission('price-list:edit'), priceListController.updateSyncConfig)
 
 /**
  * @route   PUT /api/price-list/sync/config/:configId/default
  * @desc    设置默认同步配置
  * @access  Private
  */
-router.put('/sync/config/:configId/default', unifiedAuth, requirePermission('price-list:edit'), priceListController.setDefaultSyncConfig);
+router.put('/sync/config/:configId/default', unifiedAuth, requirePermission('price-list:edit'), priceListController.setDefaultSyncConfig)
 
 /**
  * @route   GET /api/price-list/sync/config/:configId
  * @desc    获取指定ID的同步配置详情（包含密码，用于编辑）
  * @access  Private
  */
-router.get('/sync/config/:configId', unifiedAuth, requirePermission('price-list:view'), priceListController.getSyncConfigById);
+router.get('/sync/config/:configId', unifiedAuth, requirePermission('price-list:view'), priceListController.getSyncConfigById)
 
 /**
  * @route   PUT /api/price-list/sync/config/:configId
  * @desc    更新指定ID的同步配置
  * @access  Private
  */
-router.put('/sync/config/:configId', unifiedAuth, requirePermission('price-list:edit'), priceListController.updateSyncConfigById);
+router.put('/sync/config/:configId', unifiedAuth, requirePermission('price-list:edit'), priceListController.updateSyncConfigById)
 
 /**
  * @route   DELETE /api/price-list/sync/config/:configId
  * @desc    删除同步配置
  * @access  Private
  */
-router.delete('/sync/config/:configId', unifiedAuth, requirePermission('price-list:delete'), priceListController.deleteSyncConfig);
+router.delete('/sync/config/:configId', unifiedAuth, requirePermission('price-list:delete'), priceListController.deleteSyncConfig)
 
 /**
  * @route   POST /api/price-list/sync/trigger
  * @desc    手动触发同步
  * @access  Private
  */
-router.post('/sync/trigger', unifiedAuth, requirePermission('price-list:sync'), priceListController.triggerSync);
+router.post('/sync/trigger', unifiedAuth, requirePermission('price-list:sync'), priceListController.triggerSync)
 
 /**
  * @route   GET /api/price-list/check-iphone16
@@ -144,7 +143,7 @@ router.post('/sync/trigger', unifiedAuth, requirePermission('price-list:sync'), 
  */
 router.get('/check-iphone16', unifiedAuth, requirePermission('price-list:view'), async (req, res) => {
   try {
-    const db = req.app.get('db');
+    const db = req.app.get('db')
 
     // 检查iPhone 16的状态
     const [records] = await db.query(`
@@ -164,21 +163,21 @@ router.get('/check-iphone16', unifiedAuth, requirePermission('price-list:view'),
       LEFT JOIN memories mem ON pl.memory_id = mem.id
       WHERE m.name = 'iPhone 16'
       ORDER BY c.name, mem.size
-    `);
+    `)
 
     return res.json({
       success: true,
       message: `找到 ${records.length} 条iPhone 16记录`,
       data: records
-    });
+    })
   } catch (error) {
-    log.error('检查失败:', error);
+    log.error('检查失败:', error)
     return res.status(500).json({
       success: false,
       message: error.message
-    });
+    })
   }
-});
+})
 
 /**
  * @route   POST /api/price-list/update-iphone16-is-collect
@@ -187,8 +186,8 @@ router.get('/check-iphone16', unifiedAuth, requirePermission('price-list:view'),
  */
 router.post('/update-iphone16-is-collect', unifiedAuth, requirePermission('price-list:edit'), async (req, res) => {
   try {
-    const db = req.app.get('db');
-    const { is_collect = 1 } = req.body;
+    const db = req.app.get('db')
+    const { is_collect = 1 } = req.body
 
     // 更新所有 iPhone 16 的 is_collect
     const [result] = await db.query(`
@@ -196,7 +195,7 @@ router.post('/update-iphone16-is-collect', unifiedAuth, requirePermission('price
       JOIN models m ON pl.model_id = m.id
       SET pl.is_collect = ?
       WHERE m.name = 'iPhone 16'
-    `, [is_collect]);
+    `, [is_collect])
 
     // 查询更新后的记录
     const [records] = await db.query(`
@@ -215,116 +214,70 @@ router.post('/update-iphone16-is-collect', unifiedAuth, requirePermission('price
       LEFT JOIN memories mem ON pl.memory_id = mem.id
       WHERE m.name = 'iPhone 16'
       ORDER BY c.name, mem.size
-    `);
+    `)
 
     return res.json({
       success: true,
       message: `已更新 ${result.affectedRows} 条iPhone 16记录的采集状态为 ${is_collect}`,
       data: records
-    });
+    })
   } catch (error) {
-    log.error('更新失败:', error);
+    log.error('更新失败:', error)
     return res.status(500).json({
       success: false,
       message: error.message
-    });
+    })
   }
-});
-
-/**
- * @route   POST /api/price-list/test-no-inventory
- * @desc    测试仅按 price_list 采集功能
- * @access  Private
- */
-router.post('/test-no-inventory', unifiedAuth, requirePermission('price-list:edit'), requireMockRoutesEnabled('价目表匹配测试模拟接口'), async (req, res) => {
-  try {
-    const service = req.app.get('priceListService');
-
-    if (!service) {
-      return res.status(500).json({ success: false, message: '服务未初始化' });
-    }
-
-    // 模拟外部价格数据（iPhone 16）
-    const externalPrices = new Map();
-    externalPrices.set('苹果-iPhone 16', [
-      { brand: '苹果', model: 'iPhone 16', modelCode: 'A3288', color: '白色', memory: '128GB', price: 4600 },
-      { brand: '苹果', model: 'iPhone 16', modelCode: 'A3288', color: '白色', memory: '256GB', price: 5600 },
-      { brand: '苹果', model: 'iPhone 16', modelCode: 'A3288', color: '粉色', memory: '128GB', price: 4580 },
-      { brand: '苹果', model: 'iPhone 16', modelCode: 'A3288', color: '粉色', memory: '256GB', price: 5450 }
-    ]);
-
-    // 模拟有其他库存（但不是iPhone 16）
-    const inventoryItems = [
-      { brand_name: '苹果', model_number: '11 Pro', color_name: '白色', memory: '128GB' }
-    ];
-
-    log.debug('🧪 测试按 price_list 采集功能...');
-    log.debug('📦 传入商品:', inventoryItems);
-    log.debug('📊 外部价格:', externalPrices.size, '个组合');
-
-    // 调用匹配函数
-    const syncTime = new Date().toISOString();
-    const result = await service.matchInventoryWithPrices(
-      inventoryItems,
-      externalPrices,
-      syncTime
-    );
-
-    return res.json({
-      success: true,
-      message: '测试完成',
-      data: result
-    });
-  } catch (error) {
-    log.error('测试失败:', error);
-    return res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-});
+})
 
 /**
  * @route   GET /api/price-list/sync/logs
  * @desc    获取同步日志
  * @access  Private
  */
-router.get('/sync/logs', unifiedAuth, requirePermission('price-list-sync-logs:view'), priceListController.getSyncLogs);
+router.get('/sync/logs', unifiedAuth, requirePermission('price-list-sync-logs:view'), priceListController.getSyncLogs)
 
 /**
  * @route   DELETE /api/price-list/sync/logs/:id
  * @desc    删除同步日志
  * @access  Private
  */
-router.delete('/sync/logs/:id', unifiedAuth, requirePermission('price-list-sync-logs:delete'), priceListController.deleteSyncLog);
+router.delete('/sync/logs/:id', unifiedAuth, requirePermission('price-list-sync-logs:delete'), priceListController.deleteSyncLog)
 
 /**
  * @route   DELETE /api/price-list/sync/logs
  * @desc    清空同步日志
  * @access  Private
  */
-router.delete('/sync/logs', unifiedAuth, requirePermission('price-list-sync-logs:delete'), priceListController.clearSyncLogs);
+router.delete('/sync/logs', unifiedAuth, requirePermission('price-list-sync-logs:delete'), priceListController.clearSyncLogs)
 
 /**
  * @route   POST /api/price-list/fix-is-collect
  * @desc    修复 is_collect 状态（临时方法）
  * @access  Private
  */
-router.post('/fix-is-collect', unifiedAuth, requirePermission('price-list:edit'), priceListController.fixIsCollect);
+router.post('/fix-is-collect', unifiedAuth, requirePermission('price-list:edit'), priceListController.fixIsCollect)
 
 /**
  * @route   POST /api/price-list/clear-prices
  * @desc    一键清零所有采集价格
  * @access  Private
  */
-router.post('/clear-prices', unifiedAuth, requirePermission('price-list:edit'), priceListController.clearPrices);
+router.post('/clear-prices', unifiedAuth, requirePermission('price-list:edit'), priceListController.clearPrices)
 
 /**
  * @route   DELETE /api/price-list/history/all
  * @desc    清空所有价格历史记录
  * @access  Private
  */
-router.delete('/history/all', unifiedAuth, requirePermission('price-list:delete'), priceListController.clearAllPriceHistory);
+router.delete('/history/all', unifiedAuth, requirePermission('price-list:delete'), priceListController.clearAllPriceHistory)
+
+/**
+ * @route   GET /api/price-list/history/trends
+ * @desc    批量获取价格趋势
+ * @access  Private
+ */
+router.get('/history/trends', unifiedAuth, requirePermission('price-list:view'), priceListController.getPriceHistoryTrends)
 
 // ==================== 带ID参数的路由（必须放在最后）====================
 
@@ -333,27 +286,27 @@ router.delete('/history/all', unifiedAuth, requirePermission('price-list:delete'
  * @desc    获取价格历史
  * @access  Private
  */
-router.get('/:id/history', unifiedAuth, requirePermission('price-list:view'), priceListController.getPriceHistory);
+router.get('/:id/history', unifiedAuth, requirePermission('price-list:view'), priceListController.getPriceHistory)
 
 /**
  * @route   DELETE /api/price-list/:id/history/:historyId
  * @desc    删除单条价格历史记录
  * @access  Private
  */
-router.delete('/:id/history/:historyId', unifiedAuth, requirePermission('price-list:delete'), priceListController.deletePriceHistory);
+router.delete('/:id/history/:historyId', unifiedAuth, requirePermission('price-list:delete'), priceListController.deletePriceHistory)
 
 /**
  * @route   POST /api/price-list/:id/history/batch-delete
  * @desc    批量删除价格历史记录
  * @access  Private
  */
-router.post('/:id/history/batch-delete', unifiedAuth, requirePermission('price-list:delete'), priceListController.batchDeletePriceHistory);
+router.post('/:id/history/batch-delete', unifiedAuth, requirePermission('price-list:delete'), priceListController.batchDeletePriceHistory)
 
 /**
  * @route   DELETE /api/price-list/:id/history
  * @desc    清空价格历史记录
  * @access  Private
  */
-router.delete('/:id/history', unifiedAuth, requirePermission('price-list:delete'), priceListController.clearPriceHistory);
+router.delete('/:id/history', unifiedAuth, requirePermission('price-list:delete'), priceListController.clearPriceHistory)
 
-module.exports = router;
+module.exports = router

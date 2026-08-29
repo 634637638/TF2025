@@ -1,0 +1,108 @@
+.sales-sale-dialog,
+.sales-edit-dialog,
+.inventory-detail-modal {
+  --dialog-vertical-gap: 24px;
+}
+
+.sales-edit-dialog {
+  --dialog-side-gap: 4px;
+  --dialog-max-width: calc(100vw - 8px);
+  --mobile-dialog-body-padding: 8px 4px 8px;
+  --mobile-dialog-footer-padding: 0 4px 4px;
+}
+
+.sales-sale-dialog .el-dialog {
+  margin: auto !important;
+  width: min(1000px, calc(100vw - 32px)) !important;
+  max-width: calc(100vw - 32px) !important;
+  border-radius: 24px !important;
+  overflow: hidden;
+}
+
+.sales-sale-dialog .el-dialog__body {
+  padding: 0 !important;
+}
+
+.sales-edit-dialog .el-dialog {
+  margin: auto !important;
+  width: min(900px, calc(100vw - 32px)) !important;
+  max-width: calc(100vw - 32px) !important;
+  border-radius: 24px !important;
+  overflow: hidden;
+}
+
+.sales-edit-dialog .el-dialog__body {
+  padding: 28px !important;
+  background: var(--color-bg-white) !important;
+}
+
+.sales-edit-dialog .el-dialog__footer {
+  padding: 18px 28px 28px !important;
+  background: var(--color-bg-white) !important;
+  border-top: 1px solid rgba(15, 23, 42, 0.06) !important;
+}
+
+.inventory-detail-modal .el-dialog {
+  margin: auto !important;
+  width: min(1200px, calc(100vw - 32px)) !important;
+  max-width: calc(100vw - 32px) !important;
+  border-radius: 24px !important;
+  overflow: hidden;
+}
+
+.inventory-detail-modal .el-dialog__body {
+  padding: 16px !important;
+  background: var(--color-bg-white) !important;
+}
+
+@media (max-width: 767px) {
+  .sales-sale-dialog .el-dialog {
+    width: calc(100vw - 8px) !important;
+    max-width: calc(100vw - 8px) !important;
+    border-radius: 18px !important;
+  }
+
+  .mobile-dialog-sheet-overlay.sales-sale-dialog {
+    padding: 8px 4px !important;
+  }
+
+  .mobile-dialog-sheet-panel.sales-sale-dialog .mobile-dialog-sheet-body,
+  .mobile-dialog-sheet-panel.sales-sale-dialog .mobile-dialog-sheet-footer {
+    padding: 0 !important;
+  }
+
+  .sales-edit-dialog .el-dialog,
+  .inventory-detail-modal .el-dialog {
+    width: calc(100vw - 8px) !important;
+    max-width: calc(100vw - 8px) !important;
+    border-radius: 18px !important;
+  }
+
+  .mobile-dialog-sheet-overlay.sales-edit-dialog,
+  .mobile-dialog-sheet-overlay.inventory-detail-modal {
+    padding: 8px 4px !important;
+  }
+
+  .sales-edit-dialog .el-dialog__body {
+    padding: 8px 4px !important;
+  }
+
+  .sales-edit-dialog .el-dialog__footer,
+  .inventory-detail-modal .el-dialog__footer {
+    padding: 0 4px 4px !important;
+  }
+
+  .mobile-dialog-sheet-panel.sales-edit-dialog .mobile-dialog-sheet-body {
+    padding: 8px 4px !important;
+  }
+
+  .mobile-dialog-sheet-panel.sales-edit-dialog .mobile-dialog-sheet-footer,
+  .mobile-dialog-sheet-panel.inventory-detail-modal .mobile-dialog-sheet-footer {
+    padding: 0 4px 4px !important;
+  }
+
+  .mobile-dialog-sheet-panel.inventory-detail-modal .mobile-dialog-sheet-body {
+    padding: 4px !important;
+  }
+}
+

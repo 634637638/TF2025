@@ -1,49 +1,101 @@
 <template>
-  <div class="menu-item" :style="{ paddingLeft: `${level * 20}px` }">
-    <div class="menu-content" :class="{ 'is-disabled': !menu.is_active }">
-      <div class="menu-info" @click="toggleExpand">
-        <span class="expand-icon" v-if="hasChildren">
-          <i :class="menu.expanded ? 'fas fa-chevron-down' : 'fas fa-chevron-right'"></i>
+  <div
+    class="menu-item"
+    :style="{ paddingLeft: `${level * 20}px` }"
+  >
+    <div
+      class="menu-content"
+      :class="{ 'is-disabled': !menu.is_active }"
+    >
+      <div
+        class="menu-info"
+        @click="toggleExpand"
+      >
+        <span
+          v-if="hasChildren"
+          class="expand-icon"
+        >
+          <i :class="menu.expanded ? 'fas fa-chevron-down' : 'fas fa-chevron-right'" />
         </span>
-        <span class="expand-icon" v-else></span>
+        <span
+          v-else
+          class="expand-icon"
+        />
         
-        <span class="menu-icon" v-if="menu.icon">
-          <IconRenderer :icon="menu.icon" :svg="menu.icon_svg" />
+        <span
+          v-if="menu.icon"
+          class="menu-icon"
+        >
+          <IconRenderer
+            :icon="menu.icon"
+            :svg="menu.icon_svg"
+          />
         </span>
         
         <div class="menu-details">
-          <div class="menu-name">{{ menu.name }}</div>
+          <div class="menu-name">
+            {{ menu.name }}
+          </div>
           <div class="menu-meta">
-            <span class="menu-url" v-if="menu.url">{{ menu.url }}</span>
+            <span
+              v-if="menu.url"
+              class="menu-url"
+            >{{ menu.url }}</span>
             <span class="menu-order">排序: {{ menu.sort_order }}</span>
-            <span class="menu-target" v-if="menu.target && menu.target !== '_self'">{{ menu.target }}</span>
+            <span
+              v-if="menu.target && menu.target !== '_self'"
+              class="menu-target"
+            >{{ menu.target }}</span>
             <span class="menu-id">ID: {{ menu.id }}</span>
           </div>
-          <div class="menu-remarks" v-if="menu.remarks">{{ menu.remarks }}</div>
+          <div
+            v-if="menu.remarks"
+            class="menu-remarks"
+          >
+            {{ menu.remarks }}
+          </div>
         </div>
         
-        <span class="menu-status" :class="{ 'active': menu.is_active, 'inactive': !menu.is_active }">
+        <span
+          class="menu-status"
+          :class="{ 'active': menu.is_active, 'inactive': !menu.is_active }"
+        >
           {{ menu.is_active ? '启用' : '禁用' }}
         </span>
       </div>
       
       <div class="menu-actions">
-        <button @click="addChild" class="btn-action btn-add" title="添加子菜单">
-          <i class="fas fa-plus"></i>
+        <button
+          class="btn-action btn-add"
+          title="添加子菜单"
+          @click="addChild"
+        >
+          <i class="fas fa-plus" />
           <span>添加</span>
         </button>
-        <button @click="edit" class="btn-action btn-edit" title="编辑">
-          <i class="fas fa-edit"></i>
+        <button
+          class="btn-action btn-edit"
+          title="编辑"
+          @click="edit"
+        >
+          <i class="fas fa-edit" />
           <span>编辑</span>
         </button>
-        <button @click="deleteMenu" class="btn-action btn-delete" title="删除">
-          <i class="fas fa-trash"></i>
+        <button
+          class="btn-action btn-delete"
+          title="删除"
+          @click="deleteMenu"
+        >
+          <i class="fas fa-trash" />
           <span>删除</span>
         </button>
       </div>
     </div>
     
-    <div v-if="hasChildren && menu.expanded" class="menu-children">
+    <div
+      v-if="hasChildren && menu.expanded"
+      class="menu-children"
+    >
       <menu-item
         v-for="child in menu.children"
         :key="child.id"
@@ -120,7 +172,7 @@ const addChild = () => {
 
 <style scoped>
 .menu-item {
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--tf-color-gray-200);
 }
 
 .menu-item:last-child {
@@ -136,7 +188,7 @@ const addChild = () => {
 }
 
 .menu-content:hover {
-  background-color: #f8f9fa;
+  background-color: var(--tf-color-surface-muted);
 }
 
 .menu-content.is-disabled {
@@ -154,14 +206,14 @@ const addChild = () => {
 .expand-icon {
   width: 20px;
   text-align: center;
-  color: #999;
+  color: var(--text-muted);
   font-size: 12px;
 }
 
 .menu-icon {
   width: 20px;
   text-align: center;
-  color: #007bff;
+  color: var(--tf-color-blue-bootstrap);
   font-size: 14px;
 }
 
@@ -172,7 +224,7 @@ const addChild = () => {
 
 .menu-name {
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
   font-size: 15px;
   margin-bottom: 4px;
 }
@@ -185,47 +237,47 @@ const addChild = () => {
 }
 
 .menu-url {
-  color: #0066cc;
+  color: var(--tf-color-blue-corporate);
   font-size: 12px;
   font-family: 'Courier New', monospace;
-  background: #e6f3ff;
+  background: var(--tf-color-blue-pale);
   padding: 2px 6px;
   border-radius: 3px;
-  border: 1px solid #cce7ff;
+  border: 1px solid var(--tf-color-blue-tailwind-100);
 }
 
 .menu-order {
-  color: #666;
+  color: var(--text-secondary);
   font-size: 11px;
-  background: #f0f0f0;
+  background: var(--tf-color-gray-200);
   padding: 2px 6px;
   border-radius: 3px;
 }
 
 .menu-target {
-  color: #ff6b35;
+  color: var(--tf-color-orange-coral);
   font-size: 11px;
-  background: #fff4e6;
+  background: var(--tf-color-orange-ant-surface);
   padding: 2px 6px;
   border-radius: 3px;
-  border: 1px solid #ffd4b3;
+  border: 1px solid var(--tf-color-orange-tailwind-200);
 }
 
 .menu-id {
-  color: #999;
+  color: var(--text-muted);
   font-size: 11px;
   font-family: monospace;
 }
 
 .menu-remarks {
-  color: #666;
+  color: var(--text-secondary);
   font-size: 12px;
   margin-top: 4px;
   font-style: italic;
-  background: #f9f9f9;
+  background: var(--tf-color-surface-plain);
   padding: 4px 8px;
   border-radius: 4px;
-  border-left: 3px solid #ddd;
+  border-left: 3px solid var(--tf-color-gray-300-alt);
 }
 
 .menu-status {
@@ -237,12 +289,12 @@ const addChild = () => {
 }
 
 .menu-status.active {
-  background: #28a745;
+  background: var(--success-color);
   color: white;
 }
 
 .menu-status.inactive {
-  background: #dc3545;
+  background: var(--danger-color);
   color: white;
 }
 
@@ -285,6 +337,6 @@ const addChild = () => {
 }
 
 .menu-children {
-  background: #fafafa;
+  background: var(--tf-color-neutral-25);
 }
 </style>

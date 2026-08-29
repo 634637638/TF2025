@@ -9,28 +9,28 @@
  * @see log.js 统一日志入口
  */
 
-const winston = require('winston');
-const path = require('path');
-const DailyRotateFile = require('winston-daily-rotate-file');
-const { ensureLogDir } = require('./log-paths');
+const winston = require('winston')
+const path = require('path')
+const DailyRotateFile = require('winston-daily-rotate-file')
+const { ensureLogDir } = require('./log-paths')
 
 const ignoreBrokenPipe = (stream) => {
   if (!stream || typeof stream.on !== 'function') {
-    return;
+    return
   }
 
   stream.on('error', (error) => {
     if (error && error.code === 'EPIPE') {
-      return;
+      return
     }
-  });
-};
+  })
+}
 
-ignoreBrokenPipe(process.stdout);
-ignoreBrokenPipe(process.stderr);
+ignoreBrokenPipe(process.stdout)
+ignoreBrokenPipe(process.stderr)
 
 // 日志目录
-const logDir = ensureLogDir();
+const logDir = ensureLogDir()
 
 // 日志格式
 const logFormat = winston.format.combine(
@@ -38,20 +38,20 @@ const logFormat = winston.format.combine(
   winston.format.errors({ stack: true }),
   winston.format.splat(),
   winston.format.json()
-);
+)
 
 // 控制台格式（开发环境）
 const consoleFormat = winston.format.combine(
   winston.format.colorize(),
   winston.format.timestamp({ format: 'HH:mm:ss' }),
   winston.format.printf(({ timestamp, level, message, ...meta }) => {
-    let msg = `${timestamp} [${level}]: ${message}`;
+    let msg = `${timestamp} [${level}]: ${message}`
     if (Object.keys(meta).length > 0) {
-      msg += ` ${JSON.stringify(meta)}`;
+      msg += ` ${JSON.stringify(meta)}`
     }
-    return msg;
+    return msg
   })
-);
+)
 
 // 创建日志传输器
 const transports = {
@@ -86,7 +86,7 @@ const transports = {
     maxSize: '20m',
     maxFiles: '7d'
   })
-};
+}
 
 // 创建 logger 实例
 const logger = winston.createLogger({
@@ -106,34 +106,34 @@ const logger = winston.createLogger({
       new winston.transports.File({ filename: path.join(logDir, 'rejections.log') })
     ]
   })
-});
+})
 
 // 开发环境添加控制台输出
 if (process.env.NODE_ENV !== 'production') {
-  logger.add(transports.console);
+  logger.add(transports.console)
 }
 
 transports.console.on('error', (error) => {
   if (error && error.code === 'EPIPE') {
-    return;
+    return
   }
-});
+})
 
 // 便捷方法
 logger.api = (req, res, next) => {
-  const { method, url, ip } = req;
+  const { method, url, ip } = req
   logger.http(`${method} ${url}`, {
     ip: ip,
     userAgent: req.get('user-agent')
-  });
-  next();
-};
+  })
+  next()
+}
 
 // 流式日志（用于替换原生控制台输出）
 logger.stream = {
   write: (message) => {
-    logger.info(message.trim());
+    logger.info(message.trim())
   }
-};
+}
 
-module.exports = logger;
+module.exports = logger

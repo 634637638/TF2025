@@ -13,10 +13,55 @@ export interface DeviceInfo {
 
 export interface ScanConfig {
   type: 'imei' | 'serial'
-  phone?: any
+  phone?: ScannerPhoneInfo
   enableROIDisplay?: boolean
   enableAndroidOptimization?: boolean
   maxScanTime?: number
+}
+
+export interface ScannerPhoneInfo {
+  brand?: string
+}
+
+interface AndroidOptimization {
+  frameRate: { ideal: number }
+  scanInterval: number
+  maxDecodeAttempts: number
+  enableContrastBoost: boolean
+  tryHarder: boolean
+  cameraTimeout?: number
+  useLegacyDecoder?: boolean
+  brightnessBoost?: boolean
+  contrastBoost?: boolean
+  enableHDR?: boolean
+}
+
+interface ZXingHints {
+  tryHarder: boolean
+  characterSet: string
+  formats?: string[]
+  maxLength?: number
+  minLength?: number
+  pureBarcode?: boolean
+  delayBetweenScanAttempts?: number
+}
+
+interface VideoInputDevice {
+  deviceId: string
+  label: string
+}
+
+interface VideoInputDeviceReader {
+  listVideoInputDevices: () => Promise<VideoInputDevice[]>
+}
+
+export interface ScanPerformanceReport {
+  duration: number
+  frames: number
+  fps: string
+  avgDecodeTime: string
+  errors: number
+  successRate: string
 }
 import { logger } from '@/utils/logger'
 
@@ -102,10 +147,10 @@ export class ScanOptimizer {
   /**
    * 获取安卓优化配置
    */
-  getAndroidOptimization(deviceInfo: DeviceInfo): any {
+  getAndroidOptimization(deviceInfo: DeviceInfo): Partial<AndroidOptimization> {
     if (!deviceInfo.isAndroid) return {}
 
-    const optimizations: any = {
+    const optimizations: AndroidOptimization = {
       frameRate: { ideal: 30 },
       scanInterval: deviceInfo.isLowEnd ? 300 : 200,
       maxDecodeAttempts: deviceInfo.isLowEnd ? 3 : 5,
@@ -115,18 +160,18 @@ export class ScanOptimizer {
 
     // 根据制造商特殊优化
     switch (deviceInfo.manufacturer) {
-      case 'huawei':
-        optimizations.cameraTimeout = 25000
-        optimizations.useLegacyDecoder = deviceInfo.androidVersion < 9
-        break
-      case 'xiaomi':
-        optimizations.brightnessBoost = true
-        optimizations.contrastBoost = true
-        break
-      case 'samsung':
-        optimizations.frameRate = { ideal: 20 }
-        optimizations.enableHDR = true
-        break
+    case 'huawei':
+      optimizations.cameraTimeout = 25000
+      optimizations.useLegacyDecoder = deviceInfo.androidVersion < 9
+      break
+    case 'xiaomi':
+      optimizations.brightnessBoost = true
+      optimizations.contrastBoost = true
+      break
+    case 'samsung':
+      optimizations.frameRate = { ideal: 20 }
+      optimizations.enableHDR = true
+      break
     }
 
     return optimizations
@@ -135,9 +180,12 @@ export class ScanOptimizer {
   /**
    * 生成ZXing解码器提示 - 精准识别优化
    */
-  generateZXingHints(type: 'imei' | 'serial', deviceInfo: DeviceInfo): any {
+  generateZXingHints(type: 'imei' | 'serial', deviceInfo: DeviceInfo): ZXingHints {
     // 生成浏览器兼容的配置对象
-    const hints: any = {}
+    const hints: ZXingHints = {
+      tryHarder: true,
+      characterSet: 'UTF-8'
+    }
 
     // 超强化识别配置
     hints.tryHarder = true // 强制启用最强识别模式
@@ -179,7 +227,7 @@ export class ScanOptimizer {
   /**
    * 获取优化的摄像头设备ID
    */
-  async getOptimalCameraId(codeReader: any, _deviceInfo: DeviceInfo): Promise<string | undefined> {
+  async getOptimalCameraId(codeReader: VideoInputDeviceReader, _deviceInfo: DeviceInfo): Promise<string | undefined> {
     try {
       const videoDevices = await codeReader.listVideoInputDevices()
 
@@ -187,7 +235,7 @@ export class ScanOptimizer {
       if (videoDevices.length === 1) return videoDevices[0].deviceId
 
       // 优先选择后置摄像头
-      const backCamera = videoDevices.find(device => {
+      const backCamera = videoDevices.find((device) => {
         const label = device.label.toLowerCase()
         return label.includes('back') ||
                label.includes('后置') ||
@@ -267,7 +315,7 @@ export class ScanOptimizer {
   /**
    * 获取性能报告
    */
-  getPerformanceReport(): any {
+  getPerformanceReport(): ScanPerformanceReport {
     const duration = Date.now() - this.performanceMetrics.startTime
     const avgDecodeTime = this.performanceMetrics.decodeTime / Math.max(this.performanceMetrics.frameCount, 1)
     const fps = (this.performanceMetrics.frameCount / duration) * 1000
@@ -301,7 +349,7 @@ export class ScanOptimizer {
   /**
    * 生成智能提示
    */
-  generateSmartTips(phone: any, type: 'imei' | 'serial', deviceInfo: DeviceInfo): string[] {
+  generateSmartTips(phone: ScannerPhoneInfo | undefined, type: 'imei' | 'serial', deviceInfo: DeviceInfo): string[] {
     const brand = phone?.brand?.toLowerCase() || ''
     const isApple = brand.includes('apple')
     const isAndroid = deviceInfo.isAndroid
@@ -310,33 +358,33 @@ export class ScanOptimizer {
       // IMEI1扫码提示
       if (isApple) {
         return [
-          "📱 请对准包装盒第三排IMEI1条形码",
-          "💡 苹果包装有三排数字，IMEI1在第3排，通常是15位数字",
-          "⚡ 确保条形码完整，光线充足，避免反光",
-          "🎯 建议距离15-20厘米，水平放置条形码"
+          '📱 请对准包装盒第三排IMEI1条形码',
+          '💡 苹果包装有三排数字，IMEI1在第3排，通常是15位数字',
+          '⚡ 确保条形码完整，光线充足，避免反光',
+          '🎯 建议距离15-20厘米，水平放置条形码'
         ]
       } else if (isAndroid) {
         const manufacturer = deviceInfo.manufacturer
         if (['huawei', 'honor'].includes(manufacturer)) {
           return [
-            "📱 华为设备请扫描IMEI1条形码",
+            '📱 华为设备请扫描IMEI1条形码',
             "💡 通常在包装盒背面，标签为'IMEI1'的条形码",
-            "⚡ 建议开启手电筒，确保光线充足",
-            "🎯 条形码水平放置效果更佳"
+            '⚡ 建议开启手电筒，确保光线充足',
+            '🎯 条形码水平放置效果更佳'
           ]
         } else if (['xiaomi', 'redmi'].includes(manufacturer)) {
           return [
-            "📱 小米设备请扫描IMEI1条形码",
-            "💡 在包装盒或手机背面找到IMEI1标识",
-            "⚡ 保持摄像头稳定，避免晃动",
-            "🎯 建议距离10-15厘米扫描"
+            '📱 小米设备请扫描IMEI1条形码',
+            '💡 在包装盒或手机背面找到IMEI1标识',
+            '⚡ 保持摄像头稳定，避免晃动',
+            '🎯 建议距离10-15厘米扫描'
           ]
         } else {
           return [
-            "📱 请扫描包装上的IMEI1条形码",
+            '📱 请扫描包装上的IMEI1条形码',
             "💡 找到标识为'IMEI1'的条形码，通常是15位数字",
-            "⚡ 确保光线充足，避免阴影遮挡",
-            "🎯 扫描时保持手机稳定，条形码水平"
+            '⚡ 确保光线充足，避免阴影遮挡',
+            '🎯 扫描时保持手机稳定，条形码水平'
           ]
         }
       }
@@ -344,17 +392,17 @@ export class ScanOptimizer {
       // SN序列号扫码提示
       if (isApple) {
         return [
-          "📱 请对准包装盒第二排SN序列号",
-          "💡 苹果包装第2排是SN码，通常是二维码或条形码",
-          "⚡ 系统会自动识别并移除SN前缀",
-          "🎯 建议距离10-15厘米，确保二维码完整"
+          '📱 请对准包装盒第二排SN序列号',
+          '💡 苹果包装第2排是SN码，通常是二维码或条形码',
+          '⚡ 系统会自动识别并移除SN前缀',
+          '🎯 建议距离10-15厘米，确保二维码完整'
         ]
       } else {
         return [
-          "📱 请扫描SN序列号（二维码或条形码）",
+          '📱 请扫描SN序列号（二维码或条形码）',
           "💡 找到包装上标识为'SN'或'序列号'的码",
-          "⚡ 支持QR码、条形码多种格式",
-          "🎯 保持摄像头与码面平行，光线充足"
+          '⚡ 支持QR码、条形码多种格式',
+          '🎯 保持摄像头与码面平行，光线充足'
         ]
       }
     }

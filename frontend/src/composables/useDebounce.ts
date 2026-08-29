@@ -5,7 +5,7 @@
 
 import { ref, watch, onUnmounted, type Ref } from 'vue'
 
-export function useDebounce<T extends (...args: any[]) => any>(
+export function useDebounce<T extends (...args: never[]) => unknown>(
   fn: T,
   delay: number = 300
 ): {

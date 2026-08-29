@@ -4,7 +4,7 @@
  */
 
 import { logger } from '@/utils/logger'
-import permissionCapabilities from '../../../config/module-permission-capabilities.json'
+import permissionCapabilities from '../../../backend/src/config/module-permission-capabilities.json'
 
 const getCapabilityPermissions = (moduleKey: string): string[] => {
   const actions = permissionCapabilities.modules[moduleKey as keyof typeof permissionCapabilities.modules]

@@ -1,27 +1,34 @@
 <template>
   <span
     v-if="safeSvg"
+    v-bind="$attrs"
     class="icon-renderer icon-renderer--svg"
     :class="className"
     v-html="safeSvg"
-  ></span>
+  />
   <span
     v-else-if="iconifyName"
+    v-bind="$attrs"
     class="icon-renderer icon-renderer--iconify-mask"
     :class="className"
     :style="iconifyMaskStyle"
-  ></span>
+  />
   <i
     v-else
+    v-bind="$attrs"
     class="icon-renderer"
     :class="[icon || fallback, className]"
-  ></i>
+  />
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
 import DOMPurify from 'dompurify'
 import { extractIconifyName } from '@/utils/iconify'
+
+defineOptions({
+  inheritAttrs: false
+})
 
 const props = withDefaults(defineProps<{
   icon?: string | null

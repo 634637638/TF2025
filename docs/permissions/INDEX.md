@@ -29,7 +29,7 @@
 - 权限是数据库数据，不靠前端角色名推断。
 - 用户最终权限由后端统一汇总，不由前端拼规则。
 - 菜单显示与页面动作权限分离存储。
-- 模块可配置的动作由 `config/module-permission-capabilities.json` 唯一声明，数据库历史数据不能新增动作。
+- 模块可配置的动作由 `backend/src/config/module-permission-capabilities.json` 唯一声明，数据库历史数据不能新增动作。
 
 ## 权限命名规范
 

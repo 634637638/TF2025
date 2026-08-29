@@ -1,31 +1,46 @@
 <template>
   <div class="returngoods-page admin-page admin-page-content safe-area-top safe-area-bottom">
-    <div class="returngoods-overview">
+    <div
+      v-if="canViewField('stats.summary')"
+      class="returngoods-overview"
+    >
       <div class="overview-card">
         <div class="overview-icon primary">
-          <i class="fas fa-undo-alt"></i>
+          <i class="fas fa-undo-alt" />
         </div>
         <div class="overview-content">
-          <div class="overview-value">{{ stats.total_records }}</div>
-          <div class="overview-label">退库总数</div>
+          <div class="overview-value">
+            {{ stats.total_records }}
+          </div>
+          <div class="overview-label">
+            退库总数
+          </div>
         </div>
       </div>
       <div class="overview-card">
         <div class="overview-icon success">
-          <i class="fas fa-mobile-alt"></i>
+          <i class="fas fa-mobile-alt" />
         </div>
         <div class="overview-content">
-          <div class="overview-value">{{ stats.total_phones }}</div>
-          <div class="overview-label">设备数量</div>
+          <div class="overview-value">
+            {{ stats.total_phones }}
+          </div>
+          <div class="overview-label">
+            设备数量
+          </div>
         </div>
       </div>
       <div class="overview-card">
         <div class="overview-icon warning">
-          <i class="fas fa-calendar-alt"></i>
+          <i class="fas fa-calendar-alt" />
         </div>
         <div class="overview-content">
-          <div class="overview-value">{{ stats.total_days }}</div>
-          <div class="overview-label">涉及天数</div>
+          <div class="overview-value">
+            {{ stats.total_days }}
+          </div>
+          <div class="overview-label">
+            涉及天数
+          </div>
         </div>
       </div>
     </div>
@@ -36,7 +51,10 @@
       @search="handleSearch"
       @reset="handleReset"
     >
-      <template #primary>
+      <template
+        v-if="canViewField('filters.keyword')"
+        #primary
+      >
         <el-input
           v-model="searchForm.keyword"
           placeholder="搜索IMEI、型号、客户、备注"
@@ -45,12 +63,15 @@
           @click.stop
         >
           <template #prefix>
-            <i class="fas fa-search"></i>
+            <i class="fas fa-search" />
           </template>
         </el-input>
       </template>
 
-      <div class="filter-item">
+      <div
+        v-if="canViewField('filters.date_range')"
+        class="filter-item"
+      >
         <el-date-picker
           v-model="searchForm.start_date"
           type="date"
@@ -60,7 +81,10 @@
         />
       </div>
 
-      <div class="filter-item">
+      <div
+        v-if="canViewField('filters.date_range')"
+        class="filter-item"
+      >
         <el-date-picker
           v-model="searchForm.end_date"
           type="date"
@@ -74,27 +98,63 @@
     <div class="returngoods-table-panel admin-panel admin-table-panel">
       <div class="panel-header">
         <div class="panel-title">
-          <i class="fas fa-clipboard-list"></i>
+          <i class="fas fa-clipboard-list" />
           <span>退库记录</span>
         </div>
-        <el-button type="info" plain @click="loadRecords" :disabled="loading">
-          <InlineLoading v-if="loading" text="刷新中..." size="small" variant="inherit" />
+        <el-button
+          type="info"
+          plain
+          :disabled="loading"
+          @click="loadRecords"
+        >
+          <InlineLoading
+            v-if="loading"
+            text="刷新中..."
+            size="small"
+            variant="inherit"
+          />
           <template v-else>
-            <i class="fas fa-sync-alt"></i>
+            <i class="fas fa-sync-alt" />
             <span>刷新</span>
           </template>
         </el-button>
       </div>
 
-      <div v-if="!isMobile" class="table-wrapper">
-        <el-table class="data-table" :data="loading ? [] : records" border stripe style="width: 100%">
+      <div
+        v-if="!isMobile"
+        class="table-wrapper"
+      >
+        <el-table
+          class="data-table"
+          :data="loading ? [] : records"
+          border
+          stripe
+          style="width: 100%"
+        >
           <template #empty>
-            <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
-            <el-empty v-else description="暂无退库记录" />
+            <TableLoadingRow
+              v-if="loading"
+              mode="block"
+              text="加载中..."
+            />
+            <DataEmptyState
+              v-else
+              description="暂无退库记录"
+            />
           </template>
 
-          <el-table-column prop="phone_id" label="设备ID" width="88" align="center" />
-          <el-table-column label="商品信息" min-width="250">
+          <el-table-column
+            v-if="canViewField('record.product_info')"
+            prop="phone_id"
+            label="设备ID"
+            width="88"
+            align="center"
+          />
+          <el-table-column
+            v-if="canViewField('record.customer')"
+            label="商品信息"
+            min-width="250"
+          >
             <template #default="{ row }">
               <div class="product-cell">
                 <div class="product-name">
@@ -106,22 +166,63 @@
               </div>
             </template>
           </el-table-column>
-          <el-table-column prop="customer_name" label="客户" min-width="120" />
-          <el-table-column prop="operator_name" label="操作员" min-width="100" />
-          <el-table-column prop="original_sale_id" label="原销售ID" width="100" align="center" />
-          <el-table-column label="销售类型" min-width="100">
+          <el-table-column
+            v-if="canViewField('record.operator')"
+            prop="customer_name"
+            label="客户"
+            min-width="120"
+          />
+          <el-table-column
+            v-if="canViewField('record.sale_info')"
+            prop="operator_name"
+            label="操作员"
+            min-width="100"
+          />
+          <el-table-column
+            v-if="canViewField('record.sale_info')"
+            prop="original_sale_id"
+            label="原销售ID"
+            width="100"
+            align="center"
+          />
+          <el-table-column
+            v-if="canViewField('record.sale_info')"
+            label="销售类型"
+            min-width="100"
+          >
             <template #default="{ row }">
               {{ getSaleTypeText(row.original_sale_type) }}
             </template>
           </el-table-column>
-          <el-table-column prop="original_sale_operator_name" label="销售员" min-width="110" />
-          <el-table-column label="退库时间" min-width="168">
+          <el-table-column
+            v-if="canViewField('record.reversal_date')"
+            prop="original_sale_operator_name"
+            label="销售员"
+            min-width="110"
+          />
+          <el-table-column
+            v-if="canViewField('record.remarks')"
+            label="退库时间"
+            min-width="168"
+          >
             <template #default="{ row }">
               {{ formatDateTime(row.reversal_date) }}
             </template>
           </el-table-column>
-          <el-table-column prop="remarks" label="备注" min-width="220" class-name="complete-text-column wrapped-text-column" />
-          <el-table-column v-if="canEdit || canDelete" label="操作" :width="$getActionColumnWidth(Number(canEdit) + Number(canDelete))" align="center" class-name="actions-column">
+          <el-table-column
+            v-if="canViewField('record.remarks')"
+            prop="remarks"
+            label="备注"
+            min-width="220"
+            class-name="complete-text-column wrapped-text-column"
+          />
+          <el-table-column
+            v-if="showActionColumn"
+            label="操作"
+            :width="$getActionColumnWidth(Number(canEdit) + Number(canDelete))"
+            align="center"
+            class-name="actions-column"
+          >
             <template #default="{ row }">
               <div class="table-actions">
                 <el-button
@@ -146,13 +247,20 @@
         </el-table>
       </div>
 
-      <div v-else class="mobile-records">
-        <SectionLoading v-if="loading" text="加载中..." />
+      <div
+        v-else
+        class="mobile-records"
+      >
+        <SectionLoading
+          v-if="loading"
+          text="加载中..."
+        />
 
-        <div v-else-if="records.length === 0" class="empty-state">
-          <i class="fas fa-inbox"></i>
-          <span>暂无退库记录</span>
-        </div>
+        <DataEmptyState
+          v-else-if="records.length === 0"
+          size="compact"
+          description="暂无退库记录"
+        />
         <template v-else>
           <div
             v-for="record in records"
@@ -160,53 +268,91 @@
             class="record-card"
           >
             <div class="record-card-header">
-              <div class="record-title">
+              <div
+                v-if="canViewField('record.product_info')"
+                class="record-title"
+              >
                 {{ [record.brand, record.model, record.color, record.memory].filter(Boolean).join(' ') || '未识别设备' }}
               </div>
-              <div class="record-time">{{ formatDateTime(record.reversal_date) }}</div>
+              <div
+                v-if="canViewField('record.reversal_date')"
+                class="record-time"
+              >
+                {{ formatDateTime(record.reversal_date) }}
+              </div>
             </div>
 
-          <div class="record-grid">
-            <div class="record-item">
-              <span class="record-label">设备ID</span>
-              <span class="record-value">{{ record.phone_id || '-' }}</span>
+            <div class="record-grid">
+              <div
+                v-if="canViewField('record.product_info')"
+                class="record-item"
+              >
+                <span class="record-label">设备ID</span>
+                <span class="record-value">{{ record.phone_id || '-' }}</span>
+              </div>
+              <div
+                v-if="canViewField('record.sale_info')"
+                class="record-item"
+              >
+                <span class="record-label">原销售ID</span>
+                <span class="record-value">{{ record.original_sale_id || '-' }}</span>
+              </div>
+              <div
+                v-if="canViewField('record.sale_info')"
+                class="record-item"
+              >
+                <span class="record-label">销售类型</span>
+                <span class="record-value">{{ getSaleTypeText(record.original_sale_type) }}</span>
+              </div>
+              <div
+                v-if="canViewField('record.product_info')"
+                class="record-item"
+              >
+                <span class="record-label">IMEI</span>
+                <span class="record-value">{{ record.imei || '-' }}</span>
+              </div>
+              <div
+                v-if="canViewField('record.sale_info')"
+                class="record-item"
+              >
+                <span class="record-label">销售员</span>
+                <span class="record-value">{{ record.original_sale_operator_name || '-' }}</span>
+              </div>
+              <div
+                v-if="canViewField('record.customer')"
+                class="record-item"
+              >
+                <span class="record-label">客户</span>
+                <span class="record-value">{{ record.customer_name || '-' }}</span>
+              </div>
+              <div
+                v-if="canViewField('record.operator')"
+                class="record-item"
+              >
+                <span class="record-label">操作员</span>
+                <span class="record-value">{{ record.operator_name || '-' }}</span>
+              </div>
+              <div
+                v-if="canViewField('record.customer')"
+                class="record-item"
+              >
+                <span class="record-label">手机号</span>
+                <span class="record-value">{{ record.customer_phone || '-' }}</span>
+              </div>
             </div>
-            <div class="record-item">
-              <span class="record-label">原销售ID</span>
-              <span class="record-value">{{ record.original_sale_id || '-' }}</span>
-            </div>
-            <div class="record-item">
-              <span class="record-label">销售类型</span>
-              <span class="record-value">{{ getSaleTypeText(record.original_sale_type) }}</span>
-            </div>
-            <div class="record-item">
-              <span class="record-label">IMEI</span>
-              <span class="record-value">{{ record.imei || '-' }}</span>
-            </div>
-            <div class="record-item">
-              <span class="record-label">销售员</span>
-              <span class="record-value">{{ record.original_sale_operator_name || '-' }}</span>
-            </div>
-            <div class="record-item">
-              <span class="record-label">客户</span>
-              <span class="record-value">{{ record.customer_name || '-' }}</span>
-            </div>
-            <div class="record-item">
-              <span class="record-label">操作员</span>
-              <span class="record-value">{{ record.operator_name || '-' }}</span>
-            </div>
-            <div class="record-item">
-              <span class="record-label">手机号</span>
-              <span class="record-value">{{ record.customer_phone || '-' }}</span>
-            </div>
-          </div>
 
-          <div class="record-remark" v-if="record.remarks">
-            <span class="record-label">备注</span>
-            <span class="record-remark-text">{{ record.remarks }}</span>
-          </div>
+            <div
+              v-if="canViewField('record.remarks') && record.remarks"
+              class="record-remark"
+            >
+              <span class="record-label">备注</span>
+              <span class="record-remark-text">{{ record.remarks }}</span>
+            </div>
 
-            <div v-if="canEdit || canDelete" class="mobile-actions">
+            <div
+              v-if="showActionColumn"
+              class="mobile-actions"
+            >
               <el-button
                 v-if="canEdit"
                 type="primary"
@@ -214,7 +360,7 @@
                 size="small"
                 @click="openEditDialog(record)"
               >
-                <i class="fas fa-edit"></i>
+                <i class="fas fa-edit" />
                 <span>编辑</span>
               </el-button>
               <el-button
@@ -224,7 +370,7 @@
                 size="small"
                 @click="handleDelete(record)"
               >
-                <i class="fas fa-trash"></i>
+                <i class="fas fa-trash" />
                 <span>删除</span>
               </el-button>
             </div>
@@ -234,7 +380,7 @@
 
       <Pagination
         v-model:current="pagination.page"
-        v-model:page-size="pagination.limit"
+        v-model:page-size="pagination.page_size"
         :total="pagination.total"
         :show-page-sizes="false"
         :show-quick-jumper="false"
@@ -252,13 +398,26 @@
     >
       <div class="edit-dialog-body">
         <div class="edit-grid">
-          <div class="edit-item">
+          <div
+            v-if="canViewField('record.sale_info')"
+            class="edit-item"
+          >
             <label>原销售ID</label>
-            <el-input v-model="editForm.original_sale_id_display" disabled />
+            <el-input
+              v-model="editForm.original_sale_id_display"
+              disabled
+            />
           </div>
-          <div class="edit-item">
+          <div
+            v-if="canViewField('record.sale_info')"
+            class="edit-item"
+          >
             <label>销售类型</label>
-            <el-select v-model="editForm.original_sale_type" placeholder="请选择销售类型" clearable>
+            <el-select
+              v-model="editForm.original_sale_type"
+              placeholder="请选择销售类型"
+              clearable
+            >
               <el-option
                 v-for="option in PHONE_STATUS_OPTIONS"
                 :key="option.value"
@@ -267,7 +426,10 @@
               />
             </el-select>
           </div>
-          <div class="edit-item">
+          <div
+            v-if="canViewField('record.sale_info')"
+            class="edit-item"
+          >
             <label>销售员</label>
             <el-select
               v-model="editForm.original_sale_operator_id"
@@ -284,7 +446,10 @@
               />
             </el-select>
           </div>
-          <div class="edit-item">
+          <div
+            v-if="canViewField('record.reversal_date')"
+            class="edit-item"
+          >
             <label>退库时间</label>
             <el-date-picker
               v-model="editForm.reversal_date"
@@ -296,7 +461,10 @@
               style="width: 100%;"
             />
           </div>
-          <div class="edit-item edit-item-full">
+          <div
+            v-if="canViewField('record.remarks')"
+            class="edit-item edit-item-full"
+          >
             <label>备注</label>
             <el-input
               v-model="editForm.remarks"
@@ -310,8 +478,14 @@
       </div>
       <template #footer>
         <div class="edit-dialog-footer">
-          <el-button @click="editDialogVisible = false">取消</el-button>
-          <el-button type="primary" :loading="submitting" @click="handleSave">
+          <el-button @click="editDialogVisible = false">
+            取消
+          </el-button>
+          <el-button
+            type="primary"
+            :loading="submitting"
+            @click="handleSave"
+          >
             保存
           </el-button>
         </div>
@@ -321,11 +495,12 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { unifiedApi } from '@/utils/unified-api'
 import { useNotification } from '@/composables/useNotification'
 import { useMobile } from '@/composables/mobile'
 import { usePagePermissions } from '@/composables/usePagePermissions'
+import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useLoadingState } from '@/composables'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import MobileDialog from '@/components/MobileDialog.vue'
@@ -363,7 +538,13 @@ interface OperatorOption {
 
 const { success, error } = useNotification()
 const { isMobile } = useMobile()
-const { canView, canEdit, canDelete } = usePagePermissions('returngoods')
+const { canView, canEdit, canDelete, handleNoPermission } = usePagePermissions('returngoods')
+const RETURNGOODS_MODULE_KEY = 'returngoods'
+const canViewField = (fieldKey: string) => fieldPermissions.isFieldVisible(RETURNGOODS_MODULE_KEY, fieldKey)
+const showActionColumn = computed(() => shouldShowActionColumn(
+  canViewField('system_info.operations'),
+  [canEdit.value, canDelete.value]
+))
 
 const { loading } = useLoadingState()
 loading.value = true
@@ -379,7 +560,7 @@ const stats = reactive({
 })
 const pagination = reactive({
   page: 1,
-  limit: 20,
+  page_size: 20,
   total: 0
 })
 
@@ -433,7 +614,7 @@ const loadRecords = async () => {
     const response = await unifiedApi.get('/query/returngoods', {
       params: {
         page: pagination.page,
-        limit: pagination.limit,
+        page_size: pagination.page_size,
         keyword: searchForm.keyword || undefined,
         start_date: searchForm.start_date || undefined,
         end_date: searchForm.end_date || undefined
@@ -496,6 +677,10 @@ const handleOperatorChange = (operatorId: number | null) => {
 }
 
 const handleSave = async () => {
+  if (!canEdit.value) {
+    handleNoPermission('edit')
+    return
+  }
   if (submitting.value) return
   if (!editForm.id) return
 
@@ -524,6 +709,10 @@ const handleSave = async () => {
 }
 
 const handleDelete = async (record: ReturnGoodsRecord) => {
+  if (!canDelete.value) {
+    handleNoPermission('delete')
+    return
+  }
   try {
     await ElMessageBox.confirm(
       `确定删除退库记录 #${record.id} 吗？`,
@@ -573,6 +762,7 @@ defineExpose({
 })
 
 onMounted(() => {
+  void fieldPermissions.init()
   if (!canView.value) {
     loading.value = false
     return
@@ -602,7 +792,7 @@ onMounted(() => {
   gap: 14px;
   padding: 18px;
   border-radius: 18px;
-  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  background: linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-surface-blue) 100%);
   border: 1px solid rgba(148, 163, 184, 0.16);
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
 }
@@ -615,19 +805,19 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   font-size: 18px;
-  color: #ffffff;
+  color: var(--color-bg-white);
 }
 
 .overview-icon.primary {
-  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+  background: linear-gradient(135deg, var(--tf-color-blue-600) 0%, var(--tf-color-blue-500) 100%);
 }
 
 .overview-icon.success {
-  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  background: linear-gradient(135deg, var(--tf-color-emerald-600) 0%, var(--tf-color-emerald-500) 100%);
 }
 
 .overview-icon.warning {
-  background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);
+  background: linear-gradient(135deg, var(--tf-color-amber-600) 0%, var(--tf-color-amber-500) 100%);
 }
 
 .overview-content {
@@ -638,13 +828,13 @@ onMounted(() => {
   font-size: 28px;
   line-height: 1;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--tf-color-slate-900);
 }
 
 .overview-label {
   margin-top: 6px;
   font-size: 13px;
-  color: #64748b;
+  color: var(--tf-color-slate-500);
 }
 
 .returngoods-table-panel {
@@ -665,7 +855,7 @@ onMounted(() => {
   gap: 8px;
   font-size: 16px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--tf-color-slate-900);
 }
 
 .product-cell {
@@ -675,7 +865,7 @@ onMounted(() => {
 .product-name {
   font-size: 14px;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--tf-color-slate-900);
   line-height: 1.4;
   word-break: break-word;
 }
@@ -683,7 +873,7 @@ onMounted(() => {
 .product-meta {
   margin-top: 4px;
   font-size: 12px;
-  color: #64748b;
+  color: var(--tf-color-slate-500);
 }
 
 .table-wrapper {
@@ -709,7 +899,7 @@ onMounted(() => {
 .record-card {
   border: 1px solid rgba(148, 163, 184, 0.18);
   border-radius: 16px;
-  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+  background: linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-surface-blue-alt) 100%);
   padding: 14px;
   box-shadow: 0 10px 20px rgba(15, 23, 42, 0.05);
 }
@@ -724,13 +914,13 @@ onMounted(() => {
 .record-title {
   font-size: 15px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--tf-color-slate-900);
   line-height: 1.45;
 }
 
 .record-time {
   font-size: 12px;
-  color: #2563eb;
+  color: var(--tf-color-blue-600);
   font-weight: 600;
 }
 
@@ -749,12 +939,12 @@ onMounted(() => {
 
 .record-label {
   font-size: 11px;
-  color: #64748b;
+  color: var(--tf-color-slate-500);
 }
 
 .record-value {
   font-size: 13px;
-  color: #0f172a;
+  color: var(--tf-color-slate-900);
   font-weight: 600;
   word-break: break-word;
 }
@@ -765,13 +955,13 @@ onMounted(() => {
   gap: 6px;
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px dashed #e2e8f0;
+  border-top: 1px dashed var(--tf-color-slate-200);
 }
 
 .record-remark-text {
   font-size: 13px;
   line-height: 1.5;
-  color: #334155;
+  color: var(--tf-color-slate-700);
   word-break: break-word;
 }
 
@@ -780,7 +970,7 @@ onMounted(() => {
   gap: 8px;
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px dashed #e2e8f0;
+  border-top: 1px dashed var(--tf-color-slate-200);
 }
 
 .mobile-actions :deep(.el-button) {
@@ -806,7 +996,7 @@ onMounted(() => {
 .edit-item label {
   font-size: 13px;
   font-weight: 600;
-  color: #334155;
+  color: var(--tf-color-slate-700);
 }
 
 .edit-item-full {
@@ -826,7 +1016,7 @@ onMounted(() => {
   justify-content: center;
   gap: 8px;
   padding: 36px 16px;
-  color: #94a3b8;
+  color: var(--tf-color-slate-400);
 }
 
 @media (max-width: 768px) {

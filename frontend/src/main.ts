@@ -1,4 +1,4 @@
-import { createApp } from 'vue'
+import { createApp, type App as VueApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
@@ -26,7 +26,7 @@ import { installDirectives } from '@/directives'
 import { setupPermissionTipDirective } from '@/directives/permissionTip'
 
 // 注册安全指令
-const installSecurityDirectives = (app: any) => {
+const installSecurityDirectives = (app: VueApp) => {
   app.directive('sanitize', vSanitize)
   app.directive('escape-html', vEscapeHtml)
 }
@@ -129,18 +129,15 @@ app.use(NotificationPlugin, {
 // 简化的应用初始化 - 专注于动态路由
 const initializeApp = async () => {
   try {
-    // 站点名称和副标题是登录页首屏品牌信息，必须在挂载前完成初始化，
-    // 避免先渲染前端默认值、接口返回后再切换成数据库配置。
-    try {
-      await initializeSiteSettings()
-    } catch (error) {
-      // 站点设置接口暂时不可用时使用 store 内的公共默认配置，仍可正常登录。
-      logger.warn('站点设置初始化失败，使用公共默认配置', error)
-    }
-
-    // 站点设置已就绪后再挂载应用，登录页从第一次渲染起就使用同一来源。
+    // 先挂载应用，避免跨服务器部署时 API/CORS 暂时不可用导致首屏空白。
+    // 站点名称和 Logo 使用 store 的稳定默认值，接口返回后会自动更新。
     app.mount('#app')
     initAdminTableDragScroll()
+
+    // 站点设置在后台加载，不阻塞登录页和路由渲染。
+    initializeSiteSettings().catch((error) => {
+      logger.warn('站点设置初始化失败，使用公共默认配置', error)
+    })
 
     // 非关键初始化延后执行
     setTimeout(async () => {
@@ -241,19 +238,19 @@ const initializeApp = async () => {
     window.addEventListener('error', (e) => {
       if (e.message === 'ResizeObserver loop completed with undelivered notifications.' ||
           e.message === 'ResizeObserver loop limit exceeded') {
-        e.stopImmediatePropagation();
-        e.preventDefault();
+        e.stopImmediatePropagation()
+        e.preventDefault()
       }
-    });
+    })
 
     // 抑制未处理的 Promise rejection 中的 ResizeObserver 警告
     window.addEventListener('unhandledrejection', (e) => {
       if (e.reason?.message === 'ResizeObserver loop completed with undelivered notifications.' ||
           e.reason?.message === 'ResizeObserver loop limit exceeded') {
-        e.stopImmediatePropagation();
-        e.preventDefault();
+        e.stopImmediatePropagation()
+        e.preventDefault()
       }
-    });
+    })
 
     // 应用初始化完成
 

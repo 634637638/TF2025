@@ -1,13 +1,15 @@
 <template>
   <!-- 移动端侧滑菜单 -->
-  <div class="mobile-slide-menu" :class="{ 'is-open': isOpen }">
-
+  <div
+    class="mobile-slide-menu"
+    :class="{ 'is-open': isOpen }"
+  >
     <!-- 遮罩层 - 点击可关闭菜单 -->
     <div
-      class="menu-overlay"
       v-if="isOpen"
+      class="menu-overlay"
       @click="closeMenu"
-    ></div>
+    />
 
     <!-- 菜单容器 -->
     <div
@@ -26,29 +28,43 @@
           <!-- 用户信息 -->
           <div class="user-info">
             <div class="user-avatar">
-              <i class="fas fa-user-circle"></i>
+              <i class="fas fa-user-circle" />
             </div>
             <div class="user-details">
-              <div class="user-name">{{ userName }}</div>
-              <div class="user-role">{{ userRole }}</div>
+              <div class="user-name">
+                {{ userName }}
+              </div>
+              <div class="user-role">
+                {{ userRole }}
+              </div>
             </div>
           </div>
-
-          </div>
+        </div>
       </div>
 
 
       <!-- 菜单内容区域 -->
       <div class="menu-content">
-        <div v-if="props.isMenuLoading" class="menu-loading-state">
+        <div
+          v-if="props.isMenuLoading"
+          class="menu-loading-state"
+        >
           <InlineLoading text="菜单加载中..." />
         </div>
 
         <!-- 全部菜单 -->
-        <div v-else class="all-menus">
-          <div class="section-title">全部功能</div>
+        <div
+          v-else
+          class="all-menus"
+        >
+          <div class="section-title">
+            全部功能
+          </div>
           <div class="menu-list">
-            <template v-for="(menu, index) in filteredMenuList" :key="menu.id || index">
+            <template
+              v-for="(menu, index) in filteredMenuList"
+              :key="menu.id || index"
+            >
               <!-- 一级菜单 -->
               <div
                 class="menu-item"
@@ -64,17 +80,20 @@
                   @click.stop="handleMenuPrimaryAction(menu)"
                 >
                   <div class="menu-icon">
-                    <IconRenderer :icon="menu.icon" :svg="menu.icon_svg" />
+                    <IconRenderer
+                      :icon="menu.icon"
+                      :svg="menu.icon_svg"
+                    />
                   </div>
                   <span class="menu-name">{{ menu.name || menu.title || '未命名菜单' }}</span>
                   <button
                     v-if="menu.children && menu.children.length > 0"
                     type="button"
                     class="menu-actions"
-                    @click.stop="toggleMenuExpansion(menu)"
                     :aria-label="expandedMenus.has(String(menu.id)) ? '收起子菜单' : '展开子菜单'"
+                    @click.stop="toggleMenuExpansion(menu)"
                   >
-                    <i class="expand-icon fas fa-chevron-down"></i>
+                    <i class="expand-icon fas fa-chevron-down" />
                   </button>
                 </div>
               </div>
@@ -93,7 +112,10 @@
                     @click.stop="navigateToMenu(child)"
                   >
                     <div class="menu-icon">
-                      <IconRenderer :icon="child.icon" :svg="child.icon_svg" />
+                      <IconRenderer
+                        :icon="child.icon"
+                        :svg="child.icon_svg"
+                      />
                     </div>
                     <span class="menu-name">{{ child.name || child.title || '未命名菜单' }}</span>
                   </div>
@@ -104,13 +126,14 @@
         </div>
 
         <!-- 空状态 -->
-        <div v-if="!props.isMenuLoading && filteredMenuList.length === 0" class="empty-state">
-          <i class="fas fa-search empty-icon"></i>
-          <p class="empty-text">没有找到相关菜单</p>
-        </div>
+        <DataEmptyState
+          v-if="!props.isMenuLoading && filteredMenuList.length === 0"
+          state="filtered"
+          size="compact"
+          description="没有找到相关菜单"
+        />
       </div>
-
-      </div>
+    </div>
   </div>
 </template>
 
@@ -280,7 +303,7 @@ const navigateToMenu = (menu: MenuItem) => {
   closeMenu()
 }
 
-const handleQuickAction = (action: any) => {
+const _handleQuickAction = (action: any) => {
   emit('quick-action', action)
   closeMenu()
 }
@@ -484,7 +507,7 @@ onUnmounted(() => {
   /* 宽度现在由 JavaScript 中的 menuStyles 动态设置 */
   width: 280px; /* 默认宽度，会被 JavaScript 覆盖 */
   max-width: none; /* 移除最大宽度限制 */
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
   box-shadow: 2px 0 12px rgba(102, 126, 234, 0.3);
   z-index: 2;
   display: flex;
@@ -498,7 +521,7 @@ onUnmounted(() => {
   padding: 16px 20px;
   background: rgba(255, 255, 255, 0.1);
   border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-  color: #ffffff;
+  color: var(--color-bg-white);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
@@ -530,7 +553,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: flex-end;
   margin-left: auto;
-  color: #ffffff;
+  color: var(--color-bg-white);
   text-align: left;
 }
 
@@ -539,8 +562,8 @@ onUnmounted(() => {
   height: 32px;
   border-radius: var(--radius-full, 50%);
   border: 1px solid var(--tf-button-neutral-border);
-  background: var(--bg-secondary, #ffffff);
-  color: var(--text-secondary, #666666);
+  background: var(--bg-secondary, var(--color-bg-white));
+  color: var(--text-secondary, var(--text-secondary));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -550,9 +573,9 @@ onUnmounted(() => {
 }
 
 .close-btn:hover {
-  background: var(--primary-color, #dc3545);
+  background: var(--primary-color, var(--danger-color));
   color: var(--tf-button-on-color);
-  border-color: var(--primary-color, #dc3545);
+  border-color: var(--primary-color, var(--danger-color));
 }
 
 .user-avatar {
@@ -566,7 +589,7 @@ onUnmounted(() => {
   font-size: 20px;
   margin-right: 12px;
   margin-left: 0;
-  color: #ffffff;
+  color: var(--color-bg-white);
   border: 2px solid rgba(255, 255, 255, 0.3);
 }
 
@@ -581,14 +604,14 @@ onUnmounted(() => {
   font-weight: 600;
   margin-bottom: 2px;
   line-height: 1.2;
-  color: #ffffff;
+  color: var(--color-bg-white);
 }
 
 .user-role {
   font-size: 11px;
   line-height: 1.2;
-  color: #1a1a1a;
-  background: #69f0ae;
+  color: var(--tf-color-neutral-950);
+  background: var(--tf-color-emerald-300);
   padding: 2px 8px;
   border-radius: 10px;
   margin-top: 2px;
@@ -639,12 +662,12 @@ onUnmounted(() => {
 }
 
 .all-menus .menu-list .menu-item.active .menu-item-content .menu-name {
-  color: #ffffff;
+  color: var(--color-bg-white);
   font-weight: 600;
 }
 
 .all-menus .menu-list .menu-item.active .menu-item-content i {
-  color: #ffffff;
+  color: var(--color-bg-white);
 }
 
 .all-menus .menu-list .menu-item.expanded .expand-icon {
@@ -719,7 +742,7 @@ onUnmounted(() => {
 }
 
 .all-menus .menu-list .sub-menu-list .sub-menu-item.active .menu-name {
-  color: #ffffff;
+  color: var(--color-bg-white);
   font-weight: 500;
 }
 
@@ -796,19 +819,19 @@ onUnmounted(() => {
 // Dark mode
 :global(body.dark) {
   .menu-container {
-    background: var(--bg-primary-dark, #1a1a1a);
+    background: var(--bg-primary-dark, var(--tf-color-neutral-950));
   }
 
   .menu-header {
-    background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+    background: linear-gradient(135deg, var(--tf-color-gray-chakra-600) 0%, var(--tf-color-slate-sidebar) 100%);
   }
 
   .section-title {
-    color: var(--text-secondary-dark, #a0aec0);
+    color: var(--text-secondary-dark, var(--tf-color-gray-chakra-400));
   }
 
   .menu-item {
-    border-bottom-color: var(--border-color-dark, #4a5568);
+    border-bottom-color: var(--border-color-dark, var(--tf-color-gray-chakra-600));
   }
 }
 

@@ -14,7 +14,7 @@
  * const { success, error } = useNotification()
  * const { success, error } = useNotification({ debounce: true })
  */
-import { ref, computed, inject, type InjectionKey } from 'vue'
+import { ref, computed, inject } from 'vue'
 import { simpleNotification } from '@/services/notification-simple'
 import type { NotificationOptions, NotificationConfig } from '@/services/notification-simple'
 
@@ -38,6 +38,13 @@ export interface UseNotificationOptions {
   history?: boolean
   /** 最大历史记录数 */
   maxHistory?: number
+}
+
+type DialogConfirmOptions = Omit<Parameters<typeof simpleNotification.confirm>[2], 'type'> & { type?: string }
+type DialogPromptOptions = Parameters<typeof simpleNotification.prompt>[2]
+type NotificationError = {
+  message?: string
+  response?: { status?: number; data?: { message?: string; errors?: string[] } }
 }
 
 // 防抖配置
@@ -95,7 +102,7 @@ const notifications = ref<Notification[]>([])
 /**
  * 添加通知
  */
-const addNotification = (
+const _addNotification = (
   type: 'success' | 'error' | 'warning' | 'info',
   title: string,
   message?: string,
@@ -145,7 +152,6 @@ const clearAll = () => {
 export const useNotification = (options: UseNotificationOptions = {}) => {
   const {
     debounce = false,
-    debounceDelay = 300,
     history = false,
     maxHistory = 100
   } = options
@@ -204,15 +210,17 @@ export const useNotification = (options: UseNotificationOptions = {}) => {
   }
 
   // 对话框方法
-  const confirm = (message: string, title?: string, opts?: any): Promise<boolean> => {
-    return simpleNotification.confirm(message, title, opts)
+  const confirm = (message: string, title?: string, opts?: DialogConfirmOptions): Promise<boolean> => {
+    const type = opts?.type
+    const normalizedType = type === 'success' || type === 'warning' || type === 'info' || type === 'error' ? type : undefined
+    return simpleNotification.confirm(message, title, { ...opts, type: normalizedType })
   }
 
-  const alert = (message: string, title?: string, type?: string): Promise<void> => {
-    return simpleNotification.alert(message, title, type as any)
+  const alert = (message: string, title?: string, type?: 'success' | 'warning' | 'info' | 'error'): Promise<void> => {
+    return simpleNotification.alert(message, title, type)
   }
 
-  const prompt = (message: string, title?: string, opts?: any): Promise<{ value: string } | null> => {
+  const prompt = (message: string, title?: string, opts?: DialogPromptOptions): Promise<{ value: string } | null> => {
     return simpleNotification.prompt(message, title, opts)
   }
 
@@ -227,29 +235,30 @@ export const useNotification = (options: UseNotificationOptions = {}) => {
   }
 
   // API错误处理
-  const handleApiError = (error: any, defaultMessage: string = '操作失败') => {
+  const handleApiError = (error: unknown, defaultMessage: string = '操作失败') => {
+    const apiError = error as NotificationError
     let message = defaultMessage
 
-    if (error?.response?.data?.message) {
-      message = error.response.data.message
-    } else if (error?.response?.data?.errors?.length > 0) {
-      message = error.response.data.errors.join('; ')
-    } else if (error?.message) {
-      message = error.message
+    if (apiError.response?.data?.message) {
+      message = apiError.response.data.message
+    } else if (apiError.response?.data?.errors && apiError.response.data.errors.length > 0) {
+      message = apiError.response.data.errors.join('; ')
+    } else if (apiError.message) {
+      message = apiError.message
     }
 
     // HTTP状态码处理
-    if (error?.response?.status === 400) {
-      message = error?.response?.data?.message || '请求参数错误'
-    } else if (error?.response?.status === 401) {
+    if (apiError.response?.status === 400) {
+      message = apiError.response.data?.message || '请求参数错误'
+    } else if (apiError.response?.status === 401) {
       message = '登录已过期，请重新登录'
-    } else if (error?.response?.status === 403) {
+    } else if (apiError.response?.status === 403) {
       message = '权限不足，无法执行此操作'
-    } else if (error?.response?.status === 404) {
+    } else if (apiError.response?.status === 404) {
       message = '请求的资源不存在'
-    } else if (error?.response?.status === 422) {
+    } else if (apiError.response?.status === 422) {
       message = '数据验证失败：' + message
-    } else if (error?.response?.status === 500) {
+    } else if (apiError.response?.status === 500) {
       message = '服务器内部错误，请稍后重试'
     }
 
@@ -258,14 +267,14 @@ export const useNotification = (options: UseNotificationOptions = {}) => {
   }
 
   // API成功处理
-  const handleApiSuccess = (response: any, defaultMessage: string = '操作成功') => {
-    const message = response?.message || defaultMessage
+  const handleApiSuccess = (response: unknown, defaultMessage: string = '操作成功') => {
+    const message = (response as { message?: string })?.message || defaultMessage
     baseSuccess(message)
     if (history) addToHistory('success', defaultMessage, message)
   }
 
   // 按类型清除
-  const clearByType = (type: 'success' | 'error' | 'warning' | 'info') => {
+  const clearByType = (_type: 'success' | 'error' | 'warning' | 'info') => {
     // 对于simpleNotification，清除所有
     simpleNotification.clearAll()
   }
@@ -294,10 +303,10 @@ export const useNotification = (options: UseNotificationOptions = {}) => {
           : last.message
 
         switch (type) {
-          case 'success': baseSuccess(msg, last.options); break
-          case 'error': baseError(msg, last.options); break
-          case 'warning': baseWarning(msg, last.options); break
-          case 'info': baseInfo(msg, last.options); break
+        case 'success': baseSuccess(msg, last.options); break
+        case 'error': baseError(msg, last.options); break
+        case 'warning': baseWarning(msg, last.options); break
+        case 'info': baseInfo(msg, last.options); break
         }
       }
     })

@@ -1,55 +1,55 @@
 /**
  * 考勤服务
  */
-const AttendanceRepository = require('../repositories/attendance.repository');
-const ApiResponse = require('../utils/response');
-const SystemSettingsService = require('./system-settings.service');
-const SalaryRecordService = require('./salary-record.service');
-const SalaryCalculatorService = require('./salary-calculator.service');
-const { getMonthDateRange } = require('../utils/time');
-const log = require('../utils/log');
+const AttendanceRepository = require('../repositories/attendance.repository')
+const _ApiResponse = require('../utils/response')
+const SystemSettingsService = require('./system-settings.service')
+const SalaryRecordService = require('./salary-record.service')
+const SalaryCalculatorService = require('./salary-calculator.service')
+const { getMonthDateRange } = require('../utils/time')
+const log = require('../utils/log')
 
 class AttendanceService {
   constructor() {
-    this.repository = new AttendanceRepository();
+    this.repository = new AttendanceRepository()
   }
 
   isSalaryAffectingAttendance(record) {
-    return record && ['leave', 'monthly_leave', 'overtime', 'absent'].includes(record.record_type);
+    return record && ['leave', 'monthly_leave', 'overtime'].includes(record.record_type)
   }
 
   getAttendanceSalaryPeriodKey(record) {
-    const period = getMonthDateRange(record?.record_date);
+    const period = getMonthDateRange(record?.record_date)
     if (!period || !record?.employee_id) {
-      return null;
+      return null
     }
 
-    return `${record.employee_id}:${period.period_start}:${period.period_end}`;
+    return `${record.employee_id}:${period.period_start}:${period.period_end}`
   }
 
   async recalculateSalaryForAttendanceChanges(records, operatorId) {
-    const seen = new Set();
+    const seen = new Set()
 
     for (const record of records) {
       if (!record || record.status !== 'approved' || !this.isSalaryAffectingAttendance(record)) {
-        continue;
+        continue
       }
 
-      const key = this.getAttendanceSalaryPeriodKey(record);
+      const key = this.getAttendanceSalaryPeriodKey(record)
       if (!key || seen.has(key)) {
-        continue;
+        continue
       }
-      seen.add(key);
+      seen.add(key)
 
       try {
-        await SalaryRecordService.recalculateExistingSalaryForAttendanceRecord(record, operatorId);
+        await SalaryRecordService.recalculateExistingSalaryForAttendanceRecord(record, operatorId)
       } catch (error) {
         log.error('考勤变更后自动重算工资失败:', {
           attendance_id: record.id,
           employee_id: record.employee_id,
           record_date: record.record_date,
           message: error.message
-        });
+        })
       }
     }
   }
@@ -67,72 +67,74 @@ class AttendanceService {
         FROM users u
         INNER JOIN salary_templates st ON u.salary_template_id = st.id
         WHERE u.id = ?
-      `;
-      const db = this.repository.getConnection();
-      const [result] = await db.execute(query, [employeeId]);
+      `
+      const db = this.repository.getConnection()
+      const [result] = await db.execute(query, [employeeId])
 
-      if (result && result.length > 0 && result[0].rest_days) {
-        return parseInt(result[0].rest_days) || 2;
+      if (result && result.length > 0 && result[0].rest_days !== null) {
+        const configuredRestDays = Number(result[0].rest_days)
+        if (Number.isFinite(configuredRestDays) && configuredRestDays >= 0) {
+          return configuredRestDays
+        }
       }
 
-      // 如果员工没有工资模板或没有配置，使用系统默认值
-      return await SystemSettingsService.getMonthlyLeaveDays();
+      // 未绑定员工模板时，读取系统中真实配置的休假额度。
+      return await SystemSettingsService.getMonthlyLeaveDays()
     } catch (error) {
-      log.error('获取员工休假天数配置失败:', error);
-      // 出错时使用系统默认值
-      return await SystemSettingsService.getMonthlyLeaveDays();
+      log.error('获取员工休假天数配置失败:', error)
+      throw error
     }
   }
 
   async getAttendanceRecords(filters, options) {
     try {
-      return await this.repository.getAttendanceRecordsWithPagination(filters, options);
+      return await this.repository.getAttendanceRecordsWithPagination(filters, options)
     } catch (error) {
-      throw error;
+      throw error
     }
   }
 
   async getAttendanceRecordById(id) {
     try {
-      return await this.repository.getAttendanceRecordById(id);
+      return await this.repository.getAttendanceRecordById(id)
     } catch (error) {
-      throw error;
+      throw error
     }
   }
 
   async createAttendanceRecord(data, userId) {
     try {
-      data.created_by = userId;
-      return await this.repository.createAttendanceRecord(data);
+      data.created_by = userId
+      return await this.repository.createAttendanceRecord(data)
     } catch (error) {
-      throw error;
+      throw error
     }
   }
 
   async updateAttendanceRecord(id, data, operatorId = null) {
     try {
-      const before = await this.repository.getAttendanceRecordById(id);
-      const result = await this.repository.updateAttendanceRecord(id, data);
-      const after = await this.repository.getAttendanceRecordById(id);
+      const before = await this.repository.getAttendanceRecordById(id)
+      const result = await this.repository.updateAttendanceRecord(id, data)
+      const after = await this.repository.getAttendanceRecordById(id)
 
-      await this.recalculateSalaryForAttendanceChanges([before, after], operatorId || data.updated_by || data.approved_by || data.created_by);
+      await this.recalculateSalaryForAttendanceChanges([before, after], operatorId || data.updated_by || data.approved_by || data.created_by)
 
-      return result;
+      return result
     } catch (error) {
-      throw error;
+      throw error
     }
   }
 
   async deleteAttendanceRecord(id, operatorId = null) {
     try {
-      const before = await this.repository.getAttendanceRecordById(id);
-      const result = await this.repository.deleteAttendanceRecord(id);
+      const before = await this.repository.getAttendanceRecordById(id)
+      const result = await this.repository.deleteAttendanceRecord(id)
 
-      await this.recalculateSalaryForAttendanceChanges([before], operatorId || before?.approved_by || before?.created_by);
+      await this.recalculateSalaryForAttendanceChanges([before], operatorId || before?.approved_by || before?.created_by)
 
-      return result;
+      return result
     } catch (error) {
-      throw error;
+      throw error
     }
   }
 
@@ -144,48 +146,48 @@ class AttendanceService {
   async cancelAttendanceRequest(id, userId) {
     try {
       // 首先获取记录信息
-      const record = await this.repository.getAttendanceRecordById(id);
+      const record = await this.repository.getAttendanceRecordById(id)
 
       if (!record) {
-        throw new Error('考勤记录不存在');
+        throw new Error('考勤记录不存在')
       }
 
       // 检查是否为申请人本人
       if (record.employee_id !== userId) {
-        throw new Error('只能取消自己的申请');
+        throw new Error('只能取消自己的申请')
       }
 
       // 检查状态是否为待审批
       if (record.status !== 'pending') {
-        throw new Error('只能取消待审批的申请');
+        throw new Error('只能取消待审批的申请')
       }
 
       // 删除记录
-      return await this.repository.deleteAttendanceRecord(id);
+      return await this.repository.deleteAttendanceRecord(id)
     } catch (error) {
-      throw error;
+      throw error
     }
   }
 
-  async approveAttendanceRecord(id, approverId, status, note) {
+  async approveAttendanceRecord(id, approverId, status, approval_note) {
     try {
-      const before = await this.repository.getAttendanceRecordById(id);
-      const result = await this.repository.approveAttendanceRecord(id, approverId, status, note);
-      const after = await this.repository.getAttendanceRecordById(id);
+      const before = await this.repository.getAttendanceRecordById(id)
+      const result = await this.repository.approveAttendanceRecord(id, approverId, status, approval_note)
+      const after = await this.repository.getAttendanceRecordById(id)
 
-      await this.recalculateSalaryForAttendanceChanges([before, after], approverId);
+      await this.recalculateSalaryForAttendanceChanges([before, after], approverId)
 
-      return result;
+      return result
     } catch (error) {
-      throw error;
+      throw error
     }
   }
 
-  async getEmployeeAttendanceStats(employeeId, startDate, endDate) {
+  async getEmployeeAttendanceStats(employee_id, start_date, end_date) {
     try {
-      return await this.repository.getEmployeeAttendanceStats(employeeId, startDate, endDate);
+      return await this.repository.getEmployeeAttendanceStats(employee_id, start_date, end_date)
     } catch (error) {
-      throw error;
+      throw error
     }
   }
 
@@ -194,9 +196,9 @@ class AttendanceService {
    */
   async getUserUsedMonthlyLeaveDays(employeeId, year, month) {
     try {
-      return await this.repository.getUserUsedMonthlyLeaveDays(employeeId, year, month);
+      return await this.repository.getUserUsedMonthlyLeaveDays(employeeId, year, month)
     } catch (error) {
-      throw error;
+      throw error
     }
   }
 
@@ -210,82 +212,82 @@ class AttendanceService {
    */
   async getUserLeaveBalance(employeeId) {
     try {
-      const now = new Date();
-      const currentYear = now.getFullYear();
-      const currentMonth = now.getMonth() + 1;
+      const now = new Date()
+      const currentYear = now.getFullYear()
+      const currentMonth = now.getMonth() + 1
 
       // 从员工工资模板获取每月休假天数配置
-      const monthlyLeaveDays = await this.getEmployeeMonthlyLeaveDays(employeeId);
+      const monthlyLeaveDays = await this.getEmployeeMonthlyLeaveDays(employeeId)
 
       // 获取上个月的使用情况
-      const lastMonthDate = new Date(currentYear, currentMonth - 2, 1);
-      const lastMonthYear = lastMonthDate.getFullYear();
-      const lastMonth = lastMonthDate.getMonth() + 1;
+      const lastMonthDate = new Date(currentYear, currentMonth - 2, 1)
+      const lastMonthYear = lastMonthDate.getFullYear()
+      const lastMonth = lastMonthDate.getMonth() + 1
 
       const lastMonthUsed = await this.getUserUsedMonthlyLeaveDays(
         employeeId,
         lastMonthYear,
         lastMonth
-      );
+      )
       const lastMonthRegularLeaveDays = await this.repository.getUserRegularLeaveDays(
         employeeId,
         lastMonthYear,
         lastMonth
-      );
+      )
 
       // 只有上个月存在普通请假（leave）时，才阻断上月剩余额度累计到本月
-      const lastMonthHasRegularLeave = Number(lastMonthRegularLeaveDays || 0) > 0;
+      const lastMonthHasRegularLeave = Number(lastMonthRegularLeaveDays || 0) > 0
 
       // 计算上个月剩余天数
-      const lastMonthRemaining = Math.max(0, monthlyLeaveDays - (lastMonthUsed || 0));
+      const lastMonthRemaining = Math.max(0, monthlyLeaveDays - (lastMonthUsed || 0))
       const carryForwardDays = lastMonthHasRegularLeave
         ? 0
-        : Math.min(monthlyLeaveDays, lastMonthRemaining);
+        : Math.min(monthlyLeaveDays, lastMonthRemaining)
 
       const monthlyUsage = [{
         year: lastMonthYear,
         month: lastMonth,
         used: lastMonthUsed || 0,
-        regularLeaveDays: lastMonthRegularLeaveDays || 0,
-        limit: monthlyLeaveDays,
-        isFull: (lastMonthUsed || 0) >= monthlyLeaveDays || lastMonthHasRegularLeave,
+        regular_leave_days: lastMonthRegularLeaveDays || 0,
+        monthly_limit: monthlyLeaveDays,
+        is_full: (lastMonthUsed || 0) >= monthlyLeaveDays || lastMonthHasRegularLeave,
         remaining: carryForwardDays,
-        hasRegularLeave: lastMonthHasRegularLeave
-      }];
+        has_regular_leave: lastMonthHasRegularLeave
+      }]
 
       // 获取当月已使用天数
       const currentMonthUsed = await this.getUserUsedMonthlyLeaveDays(
         employeeId,
         currentYear,
         currentMonth
-      );
+      )
 
       // 本月总可用额度 = 本月额度 + 上月可累计额度，最多 2 个月
       const totalMonthlyQuota = Math.min(
         monthlyLeaveDays * 2,
         monthlyLeaveDays + carryForwardDays
-      );
-      const totalAvailableDays = totalMonthlyQuota - currentMonthUsed;
+      )
+      const totalAvailableDays = totalMonthlyQuota - currentMonthUsed
 
-      const availableDays = Math.max(0, totalAvailableDays);
+      const availableDays = Math.max(0, totalAvailableDays)
 
       return {
-        monthlyLimit: monthlyLeaveDays,
+        monthly_limit: monthlyLeaveDays,
         used: currentMonthUsed || 0,
         available: availableDays,
-        totalQuota: totalMonthlyQuota,
-        isLeaveDisabled: false,
-        consecutiveFullMonths: 0,
-        monthlyHistory: monthlyUsage,
-        lastMonthRemaining: carryForwardDays,
+        total_quota: totalMonthlyQuota,
+        is_leave_disabled: false,
+        consecutive_full_months: 0,
+        monthly_history: monthlyUsage,
+        last_month_remaining: carryForwardDays,
         message: carryForwardDays > 0
           ? `上月剩余${carryForwardDays}天可累积到本月，本月总额度${totalMonthlyQuota}天，当前还可用${availableDays}天`
           : (lastMonthHasRegularLeave
             ? '上月存在请假记录，本月不累计上月剩余休假额度'
             : null)
-      };
+      }
     } catch (error) {
-      throw error;
+      throw error
     }
   }
 
@@ -297,39 +299,39 @@ class AttendanceService {
    */
   async getPendingStats(userId, isAdmin) {
     try {
-      const db = this.repository.getConnection();
+      const db = this.repository.getConnection()
 
       // 构建查询条件
-      const whereClause = isAdmin ? 'WHERE' : 'WHERE employee_id = ? AND';
-      const params = isAdmin ? [] : [userId];
+      const whereClause = isAdmin ? 'WHERE' : 'WHERE employee_id = ? AND'
+      const params = isAdmin ? [] : [userId]
 
       // 获取待审批的考勤记录数量
       // record_type 可能的值: 'monthly_leave', 'overtime', 'late', 'leave'
       const [attendanceResult] = await db.execute(
         `SELECT COUNT(*) as count FROM attendance_records ${whereClause} status = 'pending' AND record_type IN ('monthly_leave', 'overtime', 'late', 'leave')`,
         params
-      );
+      )
 
       // 获取待审批的请假记录数量（包括monthly_leave和leave）
       const [leaveResult] = await db.execute(
         `SELECT COUNT(*) as count FROM attendance_records ${whereClause} status = 'pending' AND record_type IN ('monthly_leave', 'leave')`,
         params
-      );
+      )
 
       // 获取待审批的加班记录数量
       const [overtimeResult] = await db.execute(
         `SELECT COUNT(*) as count FROM attendance_records ${whereClause} status = 'pending' AND record_type = 'overtime'`,
         params
-      );
+      )
 
       return {
         total: attendanceResult[0].count || 0,
         leave: leaveResult[0].count || 0,
         overtime: overtimeResult[0].count || 0
-      };
+      }
     } catch (error) {
-      log.error('获取待审批统计失败:', error);
-      throw error;
+      log.error('获取待审批统计失败:', error)
+      throw error
     }
   }
 
@@ -341,18 +343,18 @@ class AttendanceService {
    */
   async getDashboardStats(userId, isAdmin) {
     try {
-      const db = this.repository.getConnection();
-      const now = new Date();
-      const currentYear = now.getFullYear();
-      const currentMonth = now.getMonth() + 1;
+      const db = this.repository.getConnection()
+      const now = new Date()
+      const currentYear = now.getFullYear()
+      const currentMonth = now.getMonth() + 1
 
       // 上月
-      const lastMonth = currentMonth === 1 ? 12 : currentMonth - 1;
-      const lastMonthYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+      const lastMonth = currentMonth === 1 ? 12 : currentMonth - 1
+      const lastMonthYear = currentMonth === 1 ? currentYear - 1 : currentYear
 
       // 构建基础查询条件
-      const employeeCondition = isAdmin ? '' : 'AND employee_id = ?';
-      const params = isAdmin ? [] : [userId];
+      const employeeCondition = isAdmin ? '' : 'AND employee_id = ?'
+      const _params = isAdmin ? [] : [userId]
 
       // 上月休假天数（monthly_leave）
       const [lastMonthLeaveResult] = await db.execute(
@@ -361,7 +363,7 @@ class AttendanceService {
          WHERE YEAR(record_date) = ? AND MONTH(record_date) = ?
          AND record_type = 'monthly_leave' AND status = 'approved' ${employeeCondition}`,
         isAdmin ? [lastMonthYear, lastMonth] : [lastMonthYear, lastMonth, userId]
-      );
+      )
 
       // 上月加班小时数
       const [lastMonthOvertimeResult] = await db.execute(
@@ -370,7 +372,7 @@ class AttendanceService {
          WHERE YEAR(record_date) = ? AND MONTH(record_date) = ?
          AND record_type = 'overtime' AND status = 'approved' ${employeeCondition}`,
         isAdmin ? [lastMonthYear, lastMonth] : [lastMonthYear, lastMonth, userId]
-      );
+      )
 
       // 本月休假天数（monthly_leave）
       const [currentMonthLeaveResult] = await db.execute(
@@ -379,7 +381,7 @@ class AttendanceService {
          WHERE YEAR(record_date) = ? AND MONTH(record_date) = ?
          AND record_type = 'monthly_leave' AND status IN ('pending', 'approved') ${employeeCondition}`,
         isAdmin ? [currentYear, currentMonth] : [currentYear, currentMonth, userId]
-      );
+      )
 
       // 本月请假天数（leave，无薪）
       const [currentMonthUnpaidLeaveResult] = await db.execute(
@@ -388,7 +390,7 @@ class AttendanceService {
          WHERE YEAR(record_date) = ? AND MONTH(record_date) = ?
          AND record_type = 'leave' AND status IN ('pending', 'approved') ${employeeCondition}`,
         isAdmin ? [currentYear, currentMonth] : [currentYear, currentMonth, userId]
-      );
+      )
 
       // 本月加班小时数
       const [currentMonthOvertimeResult] = await db.execute(
@@ -397,7 +399,7 @@ class AttendanceService {
          WHERE YEAR(record_date) = ? AND MONTH(record_date) = ?
          AND record_type = 'overtime' AND status IN ('pending', 'approved') ${employeeCondition}`,
         isAdmin ? [currentYear, currentMonth] : [currentYear, currentMonth, userId]
-      );
+      )
 
       // 本月费用统计（计算所有 pending + approved 状态的加班费和请假扣款）
       // 获取员工工资模板信息（加班费率和基本工资）
@@ -408,33 +410,40 @@ class AttendanceService {
          LEFT JOIN salary_templates st ON u.salary_template_id = st.id
          WHERE u.status = 1 ${isAdmin ? '' : 'AND u.id = ?'}`,
         isAdmin ? [] : [userId]
-      );
+      )
 
-      // 创建员工工资信息映射，如果没有工资模板则使用默认值
-      const rateMap = new Map();
-      const salaryMap = new Map();
-      const daysInMonth = new Date(currentYear, currentMonth, 0).getDate(); // 当月天数
-      const periodEnd = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
+      // 仅使用真实工资模板数据计算费用；缺少配置的员工不生成估算金额。
+      const rateMap = new Map()
+      const salaryMap = new Map()
+      const daysInMonth = new Date(currentYear, currentMonth, 0).getDate() // 当月天数
+      const periodEnd = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`
 
       for (const row of employeeSalaries) {
-        // 加班费率：如果没有设置，默认按基本工资/174小时计算（每月工作时间约174小时）
-        let overtimeRate = Number(row.overtime_hourly_rate || 0);
-        const templateBaseSalary = Number(row.base_salary || 3000); // 默认基本工资3000
+        const hasBaseSalary = row.base_salary !== null && row.base_salary !== undefined && row.base_salary !== ''
+        const templateBaseSalary = hasBaseSalary ? Number(row.base_salary) : null
+        if (templateBaseSalary === null || !Number.isFinite(templateBaseSalary)) {
+          continue
+        }
         const dynamicSalary = SalaryCalculatorService.calculateDynamicBaseSalary(
           templateBaseSalary,
           row.auto_raise_rule,
           row.hire_date,
           periodEnd
-        );
-        const baseSalary = templateBaseSalary + dynamicSalary.adjustment;
-        if (overtimeRate === 0 && baseSalary > 0) {
-          overtimeRate = baseSalary / 174; // 默认加班费率 = 月工资/174
+        )
+        const baseSalary = templateBaseSalary + dynamicSalary.adjustment
+        const hasOvertimeRate = row.overtime_hourly_rate !== null &&
+          row.overtime_hourly_rate !== undefined &&
+          row.overtime_hourly_rate !== ''
+        if (hasOvertimeRate) {
+          const overtimeRate = Number(row.overtime_hourly_rate)
+          if (Number.isFinite(overtimeRate)) {
+            rateMap.set(row.employee_id, overtimeRate)
+          }
         }
-        rateMap.set(row.employee_id, overtimeRate);
 
         // 日工资 = 月工资/当月天数
-        const dailySalary = baseSalary / daysInMonth;
-        salaryMap.set(row.employee_id, dailySalary);
+        const dailySalary = baseSalary / daysInMonth
+        salaryMap.set(row.employee_id, dailySalary)
       }
 
       // 获取本月所有加班记录计算加班费（pending + approved）
@@ -444,12 +453,14 @@ class AttendanceService {
          WHERE YEAR(record_date) = ? AND MONTH(record_date) = ?
          AND record_type = 'overtime' AND status IN ('pending', 'approved') ${employeeCondition}`,
         isAdmin ? [currentYear, currentMonth] : [currentYear, currentMonth, userId]
-      );
+      )
 
-      let overtimePay = 0;
+      let overtimePay = 0
       for (const record of overtimeRecords) {
-        const rate = rateMap.get(record.employee_id) || 20; // 默认20元/小时
-        overtimePay += Number(record.overtime_hours || 0) * rate;
+        const rate = rateMap.get(record.employee_id)
+        if (Number.isFinite(rate)) {
+          overtimePay += Number(record.overtime_hours || 0) * rate
+        }
       }
 
       // 获取本月所有请假（leave类型）扣款（pending + approved）
@@ -459,35 +470,37 @@ class AttendanceService {
          WHERE YEAR(record_date) = ? AND MONTH(record_date) = ?
          AND record_type = 'leave' AND status IN ('pending', 'approved') ${employeeCondition}`,
         isAdmin ? [currentYear, currentMonth] : [currentYear, currentMonth, userId]
-      );
+      )
 
-      let leaveDeduction = 0;
+      let leaveDeduction = 0
       for (const record of leaveRecords) {
-        const dailySalary = salaryMap.get(record.employee_id) || 100; // 默认100元/天
-        leaveDeduction += Number(record.leave_days || 0) * dailySalary;
+        const dailySalary = salaryMap.get(record.employee_id)
+        if (Number.isFinite(dailySalary)) {
+          leaveDeduction += Number(record.leave_days || 0) * dailySalary
+        }
       }
 
       return {
-        lastMonth: {
-          leaveDays: Number(lastMonthLeaveResult[0]?.total_days || 0),
-          overtimeHours: Number(lastMonthOvertimeResult[0]?.total_hours || 0)
+        last_month: {
+          leave_days: Number(lastMonthLeaveResult[0]?.total_days || 0),
+          overtime_hours: Number(lastMonthOvertimeResult[0]?.total_hours || 0)
         },
-        currentMonth: {
-          leaveDays: Number(currentMonthLeaveResult[0]?.total_days || 0),
-          unpaidLeaveDays: Number(currentMonthUnpaidLeaveResult[0]?.total_days || 0),
-          overtimeHours: Number(currentMonthOvertimeResult[0]?.total_hours || 0)
+        current_month: {
+          leave_days: Number(currentMonthLeaveResult[0]?.total_days || 0),
+          unpaid_leave_days: Number(currentMonthUnpaidLeaveResult[0]?.total_days || 0),
+          overtime_hours: Number(currentMonthOvertimeResult[0]?.total_hours || 0)
         },
         pending: {
-          overtimePay: overtimePay,
-          leaveDeduction: leaveDeduction,
+          overtime_pay: overtimePay,
+          leave_deduction: leaveDeduction,
           count: overtimeRecords.length + leaveRecords.length
         }
-      };
+      }
     } catch (error) {
-      log.error('获取仪表盘统计失败:', error);
-      throw error;
+      log.error('获取仪表盘统计失败:', error)
+      throw error
     }
   }
 }
 
-module.exports = new AttendanceService();
+module.exports = new AttendanceService()

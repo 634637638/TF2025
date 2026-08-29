@@ -5,398 +5,745 @@
       module-name="供应商管理"
       permission-code="suppliers:view"
     >
-    <!-- 页面头部 - 使用公共组件 -->
-    <PageHeader
-      icon="fas fa-truck"
-      title="供应商管理"
-    >
-      <template #actions>
-        <el-button
-          v-if="canCreate"
-          type="primary"
-          @click="handleCreateSupplier"
+      <!-- 页面头部 - 使用公共组件 -->
+      <PageHeader
+        icon="fas fa-truck"
+        title="供应商管理"
+      >
+        <template #actions>
+          <el-button
+            v-if="canCreate"
+            type="primary"
+            @click="handleCreateSupplier"
+          >
+            <i class="fas fa-plus" />
+            新增
+          </el-button>
+          <ImportExportActions
+            :can-export="canExport"
+            :export-loading="exportingSuppliers"
+            export-label="导出"
+            export-loading-label="导出中..."
+            export-icon-class="fas fa-file-export"
+            export-type="success"
+            export-plain
+            @export="handleExport"
+          />
+          <el-button
+            type="info"
+            :loading="refreshing"
+            plain
+            @click="handleRefresh"
+          >
+            <span v-if="refreshing">刷新中...</span>
+            <template v-else>
+              <i class="fas fa-sync-alt" />
+              刷新
+            </template>
+          </el-button>
+        </template>
+      </PageHeader>
+
+      <div class="content admin-page-content">
+        <!-- 统计卡片 -->
+        <div
+          v-if="showStatsCards"
+          class="stats-cards"
         >
-          <i class="fas fa-plus"></i>
-          新增
-        </el-button>
-        <ImportExportActions
-          :can-export="canExport"
-          :export-loading="exportingSuppliers"
-          export-label="导出"
-          export-loading-label="导出中..."
-          export-icon-class="fas fa-file-export"
-          export-type="success"
-          export-plain
-          @export="handleExport"
-        />
-        <el-button
-          type="info"
-          :loading="refreshing"
-          @click="handleRefresh"
-          plain
-        >
-          <span v-if="refreshing">刷新中...</span>
-          <template v-else>
-            <i class="fas fa-sync-alt"></i>
-            刷新
-          </template>
-        </el-button>
-      </template>
-    </PageHeader>
-
-    <div class="content admin-page-content">
-
-    <!-- 统计卡片 -->
-    <div v-if="showStatsCards" class="stats-cards">
-      <div v-if="canViewField('stats_total_suppliers')" class="stat-card">
-        <div class="stat-icon">
-          <i class="fas fa-users"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ pagination.total }}</div>
-          <div class="stat-label">供应商总数</div>
-        </div>
-      </div>
-      <div v-if="canViewField('stats_active_suppliers')" class="stat-card">
-        <div class="stat-icon active">
-          <i class="fas fa-check-circle"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ supplierStats.active }}</div>
-          <div class="stat-label">正常供应商</div>
-        </div>
-      </div>
-      <div v-if="canViewField('stats_inactive_suppliers')" class="stat-card">
-        <div class="stat-icon inactive">
-          <i class="fas fa-pause-circle"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ supplierStats.inactive }}</div>
-          <div class="stat-label">禁用供应商</div>
-        </div>
-      </div>
-      <div v-if="canViewField('stats_phone_completion')" class="stat-card">
-        <div class="stat-icon">
-          <i class="fas fa-phone"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ supplierStats.phoneCompletion }}</div>
-          <div class="stat-label">已留电话</div>
-        </div>
-      </div>
-    </div>
-
-    <UnifiedSearchPanel
-      v-model:expanded="searchExpanded"
-      :loading="loading"
-      @search="searchSuppliers"
-      @reset="resetSearch"
-    >
-      <template #primary>
-        <el-input
-          v-if="canViewField('name')"
-          v-model="searchForm.name"
-          placeholder="搜索供应商名称"
-          clearable
-          @keyup.enter="searchSuppliers"
-          @click.stop
-        >
-          <template #prefix>
-            <el-icon aria-hidden="true"><Search /></el-icon>
-          </template>
-        </el-input>
-      </template>
-
-      <div v-if="canViewField('status')" class="form-group filter-item" data-field="status">
-        <el-select
-          v-model="searchForm.status"
-          placeholder="状态"
-          clearable
-          @change="searchSuppliers"
-        >
-          <el-option label="正常" value="1" />
-          <el-option label="禁用" value="0" />
-        </el-select>
-      </div>
-    </UnifiedSearchPanel>
-
-    <!-- 数据表格区域 -->
-    <div class="table-section admin-panel admin-table-panel">
-      <div class="section-title">
-        <i class="fas fa-list"></i>
-        供应商列表
-        <span class="record-count">共 {{ pagination.total }} 条记录</span>
-      </div>
-      
-      <div class="table-responsive">
-        <el-table
-          ref="suppliersTableRef"
-          :data="loading ? [] : suppliers"
-          border
-          stripe
-          class="data-table devices-table base-data-table suppliers-data-table"
-          table-layout="fixed"
-          :fit="true"
-          :row-key="getSupplierRowKey"
-          :expand-row-keys="isMobile && mobileActionRowId ? [mobileActionRowId] : []"
-          @row-click="(row) => handleMobileRowTap(row.id)"
-        >
-          <template #empty>
-            <TableLoadingRow v-if="loading" mode="block" text="加载供应商列表..." />
-            <div v-else class="empty-state"><i class="fas fa-inbox"></i><p>暂无供应商数据</p><el-button size="small" type="info" @click="loadSuppliers()">重新加载</el-button></div>
-          </template>
-          <el-table-column v-if="showSortField" width="44" align="center" class-name="drag-handle-cell"><template #default><div class="drag-handle" :class="{ disabled: !canEdit }"><i class="fas fa-grip-vertical"></i></div></template></el-table-column>
-          <el-table-column v-if="showSortOrderField" label="排序" width="70" align="center"><template #default="{ row, $index }"><input v-model.number="row.sort_order" type="number" class="sort-order-input" :disabled="!canEdit" min="0" max="9999" @change="handleSortOrderChange($index, row.sort_order || 0)" /></template></el-table-column>
-          <el-table-column v-if="canViewField('id')" label="序号" :width="isMobile ? 54 : 70" align="center"><template #default="{ $index }"><span class="id-badge">{{ $index + 1 }}</span></template></el-table-column>
-          <el-table-column v-if="canViewField('name')" prop="name" label="供应商名称" :min-width="isMobile ? 126 : 160" align="center"><template #default="{ row }"><strong>{{ row.name || '未命名供应商' }}</strong></template></el-table-column>
-          <el-table-column v-if="showContactField" label="联系人" :min-width="isMobile ? 92 : 120" align="center"><template #default="{ row }"><span v-if="row.contact" class="contact-name"><i class="fas fa-user"></i>{{ row.contact }}</span><span v-else class="no-data">-</span></template></el-table-column>
-          <el-table-column v-if="showPhoneField" label="电话" min-width="132" align="center"><template #default="{ row }"><span v-if="row.phone" class="phone-number"><i class="fas fa-phone"></i>{{ row.phone }}</span><span v-else class="no-data">-</span></template></el-table-column>
-          <el-table-column v-if="showAddressField" label="地址" min-width="220" align="center" class-name="complete-text-column wrapped-text-column"><template #default="{ row }"><span v-if="row.address" class="address-text"><i class="fas fa-map-marker-alt"></i>{{ row.address }}</span><span v-else class="no-data">-</span></template></el-table-column>
-          <el-table-column v-if="canViewField('status')" label="状态" :min-width="isMobile ? 72 : 84" align="center"><template #default="{ row }"><span :class="['status-badge', isSupplierActive(row.status) ? 'status-active' : 'status-inactive']"><i :class="isSupplierActive(row.status) ? 'fas fa-check' : 'fas fa-times'"></i>{{ isSupplierActive(row.status) ? '正常' : '禁用' }}</span></template></el-table-column>
-          <el-table-column v-if="showCreatedAtField" label="创建时间" min-width="156" align="center"><template #default="{ row }"><div class="time-info"><i class="fas fa-clock"></i>{{ formatDate(row.created_at) }}</div></template></el-table-column>
-          <el-table-column v-if="showActionField" label="操作" :width="$getActionColumnWidth(1 + Number(canEdit) + Number(canDelete))" align="center" class-name="actions-column"><template #default="{ row }"><div class="action-buttons"><el-button type="success" size="small" @click.stop="viewSupplier(row)"><i class="fas fa-eye"></i><span>查看</span></el-button><el-button v-if="canEdit" v-permission="'suppliers:edit'" type="primary" size="small" @click.stop="editSupplier(row)"><i class="fas fa-edit"></i><span>编辑</span></el-button><el-button v-if="canDelete" v-permission="'suppliers:delete'" type="danger" size="small" @click.stop="deleteSupplier(row)"><i class="fas fa-trash"></i><span>删除</span></el-button></div></template></el-table-column>
-          <el-table-column v-if="isMobile" type="expand" width="1" class-name="mobile-expand-column" label-class-name="mobile-expand-header"><template #default="{ row }"><div class="mobile-row-actions"><el-button type="success" size="small" @click.stop="viewSupplier(row)"><i class="fas fa-eye"></i><span>查看</span></el-button><el-button v-if="canEdit" v-permission="'suppliers:edit'" type="primary" size="small" @click.stop="editSupplier(row)"><i class="fas fa-edit"></i><span>编辑</span></el-button><el-button v-if="canDelete" v-permission="'suppliers:delete'" type="danger" size="small" @click.stop="deleteSupplier(row)"><i class="fas fa-trash"></i><span>删除</span></el-button></div></template></el-table-column>
-        </el-table>
-      </div>
-
-      <!-- 分页组件 -->
-      <Pagination
-        v-if="pagination.total > 0"
-        v-model:current="pagination.page"
-        v-model:page-size="pagination.limit"
-        :total="pagination.total"
-        :page-sizes="[10, 20, 50, 100]"
-        :show-total="true"
-        :show-range="true"
-        :show-page-sizes="true"
-        :show-quick-jumper="true"
-        :disabled="loading"
-        @change="handlePaginationChange"
-      />
-    </div>
-
-    <!-- 创建/编辑模态框 -->
-    <MobileDialog
-      v-model="dialogVisible"
-      :title="isEditMode ? '编辑供应商' : '新增供应商'"
-      width="600px"
-      dialog-class="suppliers-form-dialog crud-dialog-md"
-      :close-on-click-modal="false"
-      :show-default-footer="false"
-    >
-      <el-form :model="formData" label-width="100px">
-        <el-form-item v-if="canViewField('name')" label="供应商名称" required>
-          <el-input
-            v-model="formData.name"
-            placeholder="请输入供应商名称"
-            clearable
-            maxlength="100"
-            show-word-limit
-            :disabled="!canEditField('name')"
-          />
-        </el-form-item>
-
-        <el-form-item v-if="canViewField('contact')" label="联系人">
-          <el-input
-            v-model="formData.contact"
-            placeholder="请输入联系人姓名"
-            clearable
-            maxlength="50"
-            show-word-limit
-            :disabled="!canEditField('contact')"
-          />
-        </el-form-item>
-
-        <el-form-item v-if="canViewField('phone')" label="电话">
-          <el-input
-            v-model="formData.phone"
-            placeholder="请输入联系电话"
-            clearable
-            maxlength="20"
-            show-word-limit
-            :disabled="!canEditField('phone')"
-          />
-        </el-form-item>
-
-        <el-form-item v-if="canViewField('address')" label="地址">
-          <el-input
-            v-model="formData.address"
-            type="textarea"
-            placeholder="请输入地址"
-            :rows="3"
-            maxlength="200"
-            show-word-limit
-            :disabled="!canEditField('address')"
-          />
-        </el-form-item>
-
-        <el-form-item v-if="canViewField('bank_info')" label="银行信息">
-          <el-input
-            v-model="formData.bank_info"
-            type="textarea"
-            placeholder="请输入银行信息"
-            :rows="3"
-            maxlength="200"
-            show-word-limit
-            :disabled="!canEditField('bank_info')"
-          />
-        </el-form-item>
-
-        <el-form-item v-if="canViewField('tax_number')" label="税号">
-          <el-input
-            v-model="formData.tax_number"
-            placeholder="请输入税号"
-            clearable
-            maxlength="50"
-            show-word-limit
-            :disabled="!canEditField('tax_number')"
-          />
-        </el-form-item>
-
-        <el-form-item v-if="canViewField('sort_order')" label="排序">
-          <el-input-number
-            v-model="formData.sort_order"
-            :min="0"
-            :max="9999"
-            placeholder="请输入排序值"
-            style="width: 100%"
-            :disabled="!canEditField('sort_order')"
-          />
-        </el-form-item>
-
-        <el-form-item v-if="canViewField('status')" label="状态">
-          <el-radio-group v-model="formData.status" :disabled="!canEditField('status')">
-            <el-radio :value="1">正常</el-radio>
-            <el-radio :value="0">禁用</el-radio>
-          </el-radio-group>
-        </el-form-item>
-
-        <el-form-item v-if="canViewField('remarks')" label="备注">
-          <el-input
-            v-model="formData.remarks"
-            type="textarea"
-            placeholder="请输入备注信息"
-            :rows="3"
-            maxlength="500"
-            show-word-limit
-            :disabled="!canEditField('remarks')"
-          />
-        </el-form-item>
-      </el-form>
-
-      <template #footer>
-        <el-button type="default" @click="attemptCloseModal">取消</el-button>
-        <el-button type="primary" @click="submitForm" :loading="submitting">
-          {{ isEditMode ? '更新' : '创建' }}
-        </el-button>
-      </template>
-    </MobileDialog>
-
-    <!-- 查看详情模态框 -->
-    <MobileDialog
-      v-model="showDetailModal"
-      title="供应商详情"
-      width="800px"
-      dialog-class="suppliers-detail-dialog crud-dialog-lg"
-      :close-on-click-modal="false"
-      :show-default-footer="false"
-    >
-      <SectionLoading v-if="detailLoading" />
-      <div v-else-if="supplierDetail" class="supplier-detail-view">
-        <!-- 基本信息 -->
-        <div class="detail-section">
-          <h4>基本信息</h4>
-          <div v-if="canViewField('name')" class="detail-row">
-            <span class="label">供应商名称：</span>
-            <span class="value">{{ supplierDetail.name }}</span>
-          </div>
-          <div v-if="canViewField('contact')" class="detail-row">
-            <span class="label">联系人：</span>
-            <span class="value">{{ supplierDetail.contact || '-' }}</span>
-          </div>
-          <div v-if="canViewField('phone')" class="detail-row">
-            <span class="label">联系电话：</span>
-            <span class="value">{{ supplierDetail.phone || '-' }}</span>
-          </div>
-          <div v-if="canViewField('status')" class="detail-row">
-            <span class="label">状态：</span>
-            <span class="value">
-              <span class="status-badge" :class="supplierDetail.status ? 'active' : 'inactive'">
-                <i :class="supplierDetail.status ? 'fas fa-check' : 'fas fa-times'"></i>
-                {{ supplierDetail.status ? '正常' : '禁用' }}
-              </span>
-            </span>
-          </div>
-          <div v-if="canViewField('address')" class="detail-row">
-            <span class="label">地址：</span>
-            <span class="value">{{ supplierDetail.address || '-' }}</span>
-          </div>
-          <div v-if="canViewField('bank_info')" class="detail-row">
-            <span class="label">银行信息：</span>
-            <span class="value">{{ supplierDetail.bank_info || '-' }}</span>
-          </div>
-          <div v-if="canViewField('tax_number')" class="detail-row">
-            <span class="label">税号：</span>
-            <span class="value">{{ supplierDetail.tax_number || '-' }}</span>
-          </div>
-          <div v-if="canViewField('remarks')" class="detail-row">
-            <span class="label">备注：</span>
-            <span class="value">{{ supplierDetail.remarks || '-' }}</span>
-          </div>
-        </div>
-
-        <!-- 统计信息 -->
-        <div class="detail-section">
-          <h4>商品统计</h4>
-          <div class="stats-grid">
-            <div class="stat-item">
-              <div class="stat-number">{{ supplierDetail.stats.accessories_count }}</div>
-              <div class="stat-label">配件数量</div>
-              <div class="stat-amount">¥{{ supplierDetail.stats.accessories_total_cost.toFixed(2) }}</div>
+          <div
+            v-if="canViewField('stats_total_suppliers')"
+            class="stat-card"
+          >
+            <div class="stat-icon">
+              <i class="fas fa-users" />
             </div>
-            <div class="stat-item">
-              <div class="stat-number">{{ supplierDetail.stats.phones_count }}</div>
-              <div class="stat-label">手机数量</div>
-              <div class="stat-amount">¥{{ supplierDetail.stats.phones_total_cost.toFixed(2) }}</div>
+            <div class="stat-content">
+              <div class="stat-value">
+                {{ pagination.total }}
+              </div>
+              <div class="stat-label">
+                供应商总数
+              </div>
             </div>
-            <div class="stat-item">
-              <div class="stat-number">{{ supplierDetail.stats.accessories_count + supplierDetail.stats.phones_count }}</div>
-              <div class="stat-label">商品总数</div>
-              <div class="stat-amount">¥{{ (supplierDetail.stats.accessories_total_cost + supplierDetail.stats.phones_total_cost).toFixed(2) }}</div>
+          </div>
+          <div
+            v-if="canViewField('stats_active_suppliers')"
+            class="stat-card"
+          >
+            <div class="stat-icon active">
+              <i class="fas fa-check-circle" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">
+                {{ supplierStats.active }}
+              </div>
+              <div class="stat-label">
+                正常供应商
+              </div>
+            </div>
+          </div>
+          <div
+            v-if="canViewField('stats_inactive_suppliers')"
+            class="stat-card"
+          >
+            <div class="stat-icon inactive">
+              <i class="fas fa-pause-circle" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">
+                {{ supplierStats.inactive }}
+              </div>
+              <div class="stat-label">
+                禁用供应商
+              </div>
+            </div>
+          </div>
+          <div
+            v-if="canViewField('stats_phone_completion')"
+            class="stat-card"
+          >
+            <div class="stat-icon">
+              <i class="fas fa-phone" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">
+                {{ supplierStats.phoneCompletion }}
+              </div>
+              <div class="stat-label">
+                已留电话
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- 时间信息 -->
-        <div v-if="canViewField('created_at')" class="detail-section">
-          <h4>时间信息</h4>
-          <div class="detail-row">
-            <span class="label">创建时间：</span>
-            <span class="value">{{ formatDate(supplierDetail.created_at) }}</span>
-          </div>
-          <div class="detail-row" v-if="supplierDetail.updated_at">
-            <span class="label">更新时间：</span>
-            <span class="value">{{ formatDate(supplierDetail.updated_at) }}</span>
-          </div>
-        </div>
-      </div>
-
-      <template #footer>
-        <el-button
-          v-if="canEdit && supplierDetail"
-          v-permission="'suppliers:edit'"
-          type="primary"
-          @click="editSupplier(supplierDetail!)"
+        <UnifiedSearchPanel
+          v-model:expanded="searchExpanded"
+          :loading="loading"
+          @search="searchSuppliers"
+          @reset="resetSearch"
         >
-          <template #icon>
-            <i class="fas fa-edit"></i>
+          <template #primary>
+            <el-input
+              v-if="canViewField('name')"
+              v-model="searchForm.name"
+              placeholder="搜索供应商名称"
+              clearable
+              @keyup.enter="searchSuppliers"
+              @click.stop
+            >
+              <template #prefix>
+                <el-icon aria-hidden="true">
+                  <Search />
+                </el-icon>
+              </template>
+            </el-input>
           </template>
-          编辑
-        </el-button>
-        <el-button type="default" @click="closeDetailModal">关闭</el-button>
-      </template>
-    </MobileDialog>
-    </div>
+
+          <div
+            v-if="canViewField('status')"
+            class="form-group filter-item"
+            data-field="status"
+          >
+            <el-select
+              v-model="searchForm.status"
+              placeholder="状态"
+              clearable
+              @change="searchSuppliers"
+            >
+              <el-option
+                label="正常"
+                value="1"
+              />
+              <el-option
+                label="禁用"
+                value="0"
+              />
+            </el-select>
+          </div>
+        </UnifiedSearchPanel>
+
+        <!-- 数据表格区域 -->
+        <div class="table-section admin-panel admin-table-panel">
+          <div class="section-title">
+            <i class="fas fa-list" />
+            供应商列表
+            <span class="record-count">共 {{ pagination.total }} 条记录</span>
+          </div>
+
+          <div class="table-responsive">
+            <el-table
+              ref="suppliersTableRef"
+              :data="loading ? [] : suppliers"
+              border
+              stripe
+              class="data-table devices-table base-data-table suppliers-data-table"
+              table-layout="fixed"
+              :fit="true"
+              :row-key="getSupplierRowKey"
+              :expand-row-keys="isMobile && mobileActionRowId ? [mobileActionRowId] : []"
+              @row-click="(row) => handleMobileRowTap(row.id)"
+            >
+              <template #empty>
+                <TableLoadingRow
+                  v-if="loading"
+                  mode="block"
+                  text="加载供应商列表..."
+                />
+                <DataEmptyState
+                  v-else
+                  description="暂无供应商数据"
+                >
+                  <el-button
+                    size="small"
+                    type="info"
+                    @click="loadSuppliers()"
+                  >
+                    重新加载
+                  </el-button>
+                </DataEmptyState>
+              </template>
+              <el-table-column
+                v-if="showSortField"
+                width="44"
+                align="center"
+                class-name="drag-handle-cell"
+              >
+                <template #default>
+                  <div
+                    class="drag-handle"
+                    :class="{ disabled: !canEdit }"
+                  >
+                    <i class="fas fa-grip-vertical" />
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="showSortOrderField"
+                label="排序"
+                width="70"
+                align="center"
+              >
+                <template #default="{ row, $index }">
+                  <input
+                    v-model.number="row.sort_order"
+                    type="number"
+                    class="sort-order-input"
+                    :disabled="!canEdit"
+                    min="0"
+                    max="9999"
+                    @change="handleSortOrderChange($index, row.sort_order || 0)"
+                  >
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="canViewField('id')"
+                label="序号"
+                :width="isMobile ? 54 : 70"
+                align="center"
+              >
+                <template #default="{ $index }">
+                  <span class="id-badge">{{ $index + 1 }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="canViewField('name')"
+                prop="name"
+                label="供应商名称"
+                :min-width="isMobile ? 126 : 160"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <strong>{{ row.name || '未命名供应商' }}</strong>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="showContactField"
+                label="联系人"
+                :min-width="isMobile ? 92 : 120"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <span
+                    v-if="row.contact"
+                    class="contact-name"
+                  ><i class="fas fa-user" />{{ row.contact }}</span><span
+                    v-else
+                    class="no-data"
+                  >-</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="showPhoneField"
+                label="电话"
+                min-width="132"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <span
+                    v-if="row.phone"
+                    class="phone-number"
+                  ><i class="fas fa-phone" />{{ row.phone }}</span><span
+                    v-else
+                    class="no-data"
+                  >-</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="showAddressField"
+                label="地址"
+                min-width="220"
+                align="center"
+                class-name="complete-text-column wrapped-text-column"
+              >
+                <template #default="{ row }">
+                  <span
+                    v-if="row.address"
+                    class="address-text"
+                  ><i class="fas fa-map-marker-alt" />{{ row.address }}</span><span
+                    v-else
+                    class="no-data"
+                  >-</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="canViewField('status')"
+                label="状态"
+                :min-width="isMobile ? 72 : 84"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <span :class="['status-badge', isSupplierActive(row.status) ? 'status-active' : 'status-inactive']"><i :class="isSupplierActive(row.status) ? 'fas fa-check' : 'fas fa-times'" />{{ isSupplierActive(row.status) ? '正常' : '禁用' }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="showCreatedAtField"
+                label="创建时间"
+                min-width="156"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <div class="time-info">
+                    <i class="fas fa-clock" />{{ formatDate(row.created_at) }}
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="showActionField"
+                label="操作"
+                :width="$getActionColumnWidth(1 + Number(canEdit) + Number(canDelete))"
+                align="center"
+                class-name="actions-column"
+              >
+                <template #default="{ row }">
+                  <div class="action-buttons">
+                    <el-button
+                      type="success"
+                      size="small"
+                      @click.stop="viewSupplier(row)"
+                    >
+                      <i class="fas fa-eye" /><span>查看</span>
+                    </el-button><el-button
+                      v-if="canEdit"
+                      v-permission="'suppliers:edit'"
+                      type="primary"
+                      size="small"
+                      @click.stop="editSupplier(row)"
+                    >
+                      <i class="fas fa-edit" /><span>编辑</span>
+                    </el-button><el-button
+                      v-if="canDelete"
+                      v-permission="'suppliers:delete'"
+                      type="danger"
+                      size="small"
+                      @click.stop="deleteSupplier(row)"
+                    >
+                      <i class="fas fa-trash" /><span>删除</span>
+                    </el-button>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="isMobile"
+                type="expand"
+                width="1"
+                class-name="mobile-expand-column"
+                label-class-name="mobile-expand-header"
+              >
+                <template #default="{ row }">
+                  <div class="mobile-row-actions">
+                    <el-button
+                      type="success"
+                      size="small"
+                      @click.stop="viewSupplier(row)"
+                    >
+                      <i class="fas fa-eye" /><span>查看</span>
+                    </el-button><el-button
+                      v-if="canEdit"
+                      v-permission="'suppliers:edit'"
+                      type="primary"
+                      size="small"
+                      @click.stop="editSupplier(row)"
+                    >
+                      <i class="fas fa-edit" /><span>编辑</span>
+                    </el-button><el-button
+                      v-if="canDelete"
+                      v-permission="'suppliers:delete'"
+                      type="danger"
+                      size="small"
+                      @click.stop="deleteSupplier(row)"
+                    >
+                      <i class="fas fa-trash" /><span>删除</span>
+                    </el-button>
+                  </div>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+
+          <!-- 分页组件 -->
+          <Pagination
+            v-if="pagination.total > 0"
+            v-model:current="pagination.page"
+            v-model:page-size="pagination.page_size"
+            :total="pagination.total"
+            :page-sizes="[10, 20, 50, 100]"
+            :show-total="true"
+            :show-range="true"
+            :show-page-sizes="true"
+            :show-quick-jumper="true"
+            :disabled="loading"
+            @change="handlePaginationChange"
+          />
+        </div>
+
+        <!-- 创建/编辑模态框 -->
+        <MobileDialog
+          v-model="dialogVisible"
+          :title="isEditMode ? '编辑供应商' : '新增供应商'"
+          width="600px"
+          dialog-class="suppliers-form-dialog crud-dialog-md"
+          :close-on-click-modal="false"
+          :show-default-footer="false"
+        >
+          <el-form
+            :model="formData"
+            label-width="100px"
+          >
+            <el-form-item
+              v-if="canViewField('name')"
+              label="供应商名称"
+              required
+            >
+              <el-input
+                v-model="formData.name"
+                placeholder="请输入供应商名称"
+                clearable
+                maxlength="100"
+                show-word-limit
+                :disabled="!canEditField('name')"
+              />
+            </el-form-item>
+
+            <el-form-item
+              v-if="canViewField('contact')"
+              label="联系人"
+            >
+              <el-input
+                v-model="formData.contact"
+                placeholder="请输入联系人姓名"
+                clearable
+                maxlength="50"
+                show-word-limit
+                :disabled="!canEditField('contact')"
+              />
+            </el-form-item>
+
+            <el-form-item
+              v-if="canViewField('phone')"
+              label="电话"
+            >
+              <el-input
+                v-model="formData.phone"
+                placeholder="请输入联系电话"
+                clearable
+                maxlength="20"
+                show-word-limit
+                :disabled="!canEditField('phone')"
+              />
+            </el-form-item>
+
+            <el-form-item
+              v-if="canViewField('address')"
+              label="地址"
+            >
+              <el-input
+                v-model="formData.address"
+                type="textarea"
+                placeholder="请输入地址"
+                :rows="3"
+                maxlength="200"
+                show-word-limit
+                :disabled="!canEditField('address')"
+              />
+            </el-form-item>
+
+            <el-form-item
+              v-if="canViewField('bank_info')"
+              label="银行信息"
+            >
+              <el-input
+                v-model="formData.bank_info"
+                type="textarea"
+                placeholder="请输入银行信息"
+                :rows="3"
+                maxlength="200"
+                show-word-limit
+                :disabled="!canEditField('bank_info')"
+              />
+            </el-form-item>
+
+            <el-form-item
+              v-if="canViewField('tax_number')"
+              label="税号"
+            >
+              <el-input
+                v-model="formData.tax_number"
+                placeholder="请输入税号"
+                clearable
+                maxlength="50"
+                show-word-limit
+                :disabled="!canEditField('tax_number')"
+              />
+            </el-form-item>
+
+            <el-form-item
+              v-if="canViewField('sort_order')"
+              label="排序"
+            >
+              <el-input-number
+                v-model="formData.sort_order"
+                :min="0"
+                :max="9999"
+                placeholder="请输入排序值"
+                style="width: 100%"
+                :disabled="!canEditField('sort_order')"
+              />
+            </el-form-item>
+
+            <el-form-item
+              v-if="canViewField('status')"
+              label="状态"
+            >
+              <el-radio-group
+                v-model="formData.status"
+                :disabled="!canEditField('status')"
+              >
+                <el-radio :value="1">
+                  正常
+                </el-radio>
+                <el-radio :value="0">
+                  禁用
+                </el-radio>
+              </el-radio-group>
+            </el-form-item>
+
+            <el-form-item
+              v-if="canViewField('remarks')"
+              label="备注"
+            >
+              <el-input
+                v-model="formData.remarks"
+                type="textarea"
+                placeholder="请输入备注信息"
+                :rows="3"
+                maxlength="500"
+                show-word-limit
+                :disabled="!canEditField('remarks')"
+              />
+            </el-form-item>
+          </el-form>
+
+          <template #footer>
+            <el-button
+              type="default"
+              @click="attemptCloseModal"
+            >
+              取消
+            </el-button>
+            <el-button
+              type="primary"
+              :loading="submitting"
+              @click="submitForm"
+            >
+              {{ isEditMode ? '更新' : '创建' }}
+            </el-button>
+          </template>
+        </MobileDialog>
+
+        <!-- 查看详情模态框 -->
+        <MobileDialog
+          v-model="showDetailModal"
+          title="供应商详情"
+          width="800px"
+          dialog-class="suppliers-detail-dialog crud-dialog-lg"
+          :close-on-click-modal="false"
+          :show-default-footer="false"
+        >
+          <SectionLoading v-if="detailLoading" />
+          <div
+            v-else-if="supplierDetail"
+            class="supplier-detail-view"
+          >
+            <!-- 基本信息 -->
+            <div class="detail-section">
+              <h4>基本信息</h4>
+              <div
+                v-if="canViewField('name')"
+                class="detail-row"
+              >
+                <span class="label">供应商名称：</span>
+                <span class="value">{{ supplierDetail.name }}</span>
+              </div>
+              <div
+                v-if="canViewField('contact')"
+                class="detail-row"
+              >
+                <span class="label">联系人：</span>
+                <span class="value">{{ supplierDetail.contact || '-' }}</span>
+              </div>
+              <div
+                v-if="canViewField('phone')"
+                class="detail-row"
+              >
+                <span class="label">联系电话：</span>
+                <span class="value">{{ supplierDetail.phone || '-' }}</span>
+              </div>
+              <div
+                v-if="canViewField('status')"
+                class="detail-row"
+              >
+                <span class="label">状态：</span>
+                <span class="value">
+                  <span
+                    class="status-badge"
+                    :class="supplierDetail.status ? 'active' : 'inactive'"
+                  >
+                    <i :class="supplierDetail.status ? 'fas fa-check' : 'fas fa-times'" />
+                    {{ supplierDetail.status ? '正常' : '禁用' }}
+                  </span>
+                </span>
+              </div>
+              <div
+                v-if="canViewField('address')"
+                class="detail-row"
+              >
+                <span class="label">地址：</span>
+                <span class="value">{{ supplierDetail.address || '-' }}</span>
+              </div>
+              <div
+                v-if="canViewField('bank_info')"
+                class="detail-row"
+              >
+                <span class="label">银行信息：</span>
+                <span class="value">{{ supplierDetail.bank_info || '-' }}</span>
+              </div>
+              <div
+                v-if="canViewField('tax_number')"
+                class="detail-row"
+              >
+                <span class="label">税号：</span>
+                <span class="value">{{ supplierDetail.tax_number || '-' }}</span>
+              </div>
+              <div
+                v-if="canViewField('remarks')"
+                class="detail-row"
+              >
+                <span class="label">备注：</span>
+                <span class="value">{{ supplierDetail.remarks || '-' }}</span>
+              </div>
+            </div>
+
+            <!-- 统计信息 -->
+            <div class="detail-section">
+              <h4>商品统计</h4>
+              <div class="stats-grid">
+                <div class="stat-item">
+                  <div class="stat-number">
+                    {{ supplierDetail.stats.accessories_count }}
+                  </div>
+                  <div class="stat-label">
+                    配件数量
+                  </div>
+                  <div class="stat-amount">
+                    ¥{{ supplierDetail.stats.accessories_total_cost.toFixed(2) }}
+                  </div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-number">
+                    {{ supplierDetail.stats.phones_count }}
+                  </div>
+                  <div class="stat-label">
+                    手机数量
+                  </div>
+                  <div class="stat-amount">
+                    ¥{{ supplierDetail.stats.phones_total_cost.toFixed(2) }}
+                  </div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-number">
+                    {{ supplierDetail.stats.accessories_count + supplierDetail.stats.phones_count }}
+                  </div>
+                  <div class="stat-label">
+                    商品总数
+                  </div>
+                  <div class="stat-amount">
+                    ¥{{ (supplierDetail.stats.accessories_total_cost + supplierDetail.stats.phones_total_cost).toFixed(2) }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 时间信息 -->
+            <div
+              v-if="canViewField('created_at')"
+              class="detail-section"
+            >
+              <h4>时间信息</h4>
+              <div class="detail-row">
+                <span class="label">创建时间：</span>
+                <span class="value">{{ formatDate(supplierDetail.created_at) }}</span>
+              </div>
+              <div
+                v-if="canViewField('updated_at') && supplierDetail.updated_at"
+                class="detail-row"
+              >
+                <span class="label">更新时间：</span>
+                <span class="value">{{ formatDate(supplierDetail.updated_at) }}</span>
+              </div>
+            </div>
+          </div>
+
+          <template #footer>
+            <el-button
+              v-if="canEdit && supplierDetail"
+              v-permission="'suppliers:edit'"
+              type="primary"
+              @click="editSupplier(supplierDetail!)"
+            >
+              <template #icon>
+                <i class="fas fa-edit" />
+              </template>
+              编辑
+            </el-button>
+            <el-button
+              type="default"
+              @click="closeDetailModal"
+            >
+              关闭
+            </el-button>
+          </template>
+        </MobileDialog>
+      </div>
     </PermissionGate>
   </div>
 </template>
@@ -412,11 +759,10 @@ import { useImportExport } from '@/composables/useImportExport'
 import { useLoadingState } from '@/composables'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useRefreshData } from '@/composables/useRefreshData'
-import { fieldPermissions } from '@/composables/useFieldPermissions'
+import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useAuthStore } from '@/stores/auth'
 import { normalizePermissionList } from '@/utils/permissionList'
 import Pagination from '../../components/Pagination.vue'
-import InlineLoading from '@/components/InlineLoading.vue'
 import SectionLoading from '@/components/SectionLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { PageHeader, PermissionGate } from '@/components/base'
@@ -433,7 +779,6 @@ import { useElementTableSortable } from '@/composables/useElementTableSortable'
 
 // 供应商详情扩展类型
 interface SupplierDetail extends Supplier {
-  accounts: SupplierAccount[]
   stats: {
     accessories_count: number
     accessories_total_cost: number
@@ -442,23 +787,10 @@ interface SupplierDetail extends Supplier {
   }
 }
 
-// 供应商账户类型
-interface SupplierAccount {
-  id: number
-  type: 'payment' | 'refund' | 'adjust'
-  amount: number
-  balance_before: number
-  balance_after: number
-  remarks: string
-  related_inventory_ids: string
-  operator_name: string
-  created_at: string
-}
-
 // 获取路由实例
-const router = useRouter()
+const _router = useRouter()
 // 使用统一的 composable
-const { success, error, warning, info, handleApiError, confirm } = useNotification()
+const { success, error, warning: _warning, info: _info, handleApiError, confirm } = useNotification()
 const { canView, canCreate, canEdit, canDelete, canExport, handleNoPermission } = usePagePermissions('suppliers')
 const { showViewDenied, showEditDenied, showDeleteDenied, showCreateDenied } = usePermissionToast()
 const { refreshing, refresh } = useRefreshData()
@@ -510,7 +842,9 @@ const showContactField = computed(() => canViewField('contact'))
 const showPhoneField = computed(() => canViewField('phone') && !isMobile.value)
 const showAddressField = computed(() => canViewField('address') && !isMobile.value)
 const showCreatedAtField = computed(() => canViewField('created_at') && !isMobile.value)
-const showActionField = computed(() => canViewField('actions') && (canEdit.value || canDelete.value) && !isMobile.value)
+const showActionField = computed(() => (
+  shouldShowActionColumn(canViewField('actions'), [canEdit.value, canDelete.value]) && !isMobile.value
+))
 const showStatsCards = computed(() => (
   canViewField('stats_total_suppliers') ||
   canViewField('stats_active_suppliers') ||
@@ -612,9 +946,11 @@ const formData = ref({
 // 分页数据
 const pagination = ref({
   page: 1,
-  limit: 100,
+  page_size: 100,
   total: 0,
-  pages: 0
+  total_pages: 0,
+  has_next: false,
+  has_prev: false
 })
 
 // 模态框显示状态
@@ -647,7 +983,7 @@ const loadSuppliers = async (bustCache: boolean = false, silentError: boolean = 
   try {
     const params: any = {
       page: pagination.value.page,
-      limit: pagination.value.limit
+      page_size: pagination.value.page_size
     }
 
     // 添加搜索参数
@@ -672,12 +1008,21 @@ const loadSuppliers = async (bustCache: boolean = false, silentError: boolean = 
     if (response.success) {
       suppliers.value = response.data || []
       // 分页信息在响应顶层，不能从 response.data 里取
-      const apiPagination = response.pagination || { page: 1, limit: 10, total: 0, totalPages: 0 }
+      const apiPagination = response.pagination || {
+        page: 1,
+        page_size: 100,
+        total: 0,
+        total_pages: 0,
+        has_next: false,
+        has_prev: false
+      }
       pagination.value = {
         page: Number(apiPagination.page) || 1,
-        limit: Number(apiPagination.limit) || pagination.value.limit || 100,
+        page_size: Number(apiPagination.page_size) || pagination.value.page_size || 100,
         total: Number(apiPagination.total) || 0,
-        pages: Number((apiPagination as any).pages || (apiPagination as any).totalPages) || 0
+        total_pages: Number(apiPagination.total_pages) || 0,
+        has_next: Boolean(apiPagination.has_next),
+        has_prev: Boolean(apiPagination.has_prev)
       }
 
       // 按 sort_order 排序，确保序号和排序值一致
@@ -685,7 +1030,14 @@ const loadSuppliers = async (bustCache: boolean = false, silentError: boolean = 
     } else {
       logger.error('API返回失败:', response.message)
       suppliers.value = []
-      pagination.value = { page: 1, limit: 10, total: 0, pages: 0 }
+      pagination.value = {
+        page: 1,
+        page_size: 100,
+        total: 0,
+        total_pages: 0,
+        has_next: false,
+        has_prev: false
+      }
       if (!silentError) {
         error(response.message || '获取供应商列表失败')
       }
@@ -697,7 +1049,14 @@ const loadSuppliers = async (bustCache: boolean = false, silentError: boolean = 
 
     logger.error('获取供应商列表失败:', err)
     suppliers.value = []
-    pagination.value = { page: 1, limit: 10, total: 0, pages: 0 }
+    pagination.value = {
+      page: 1,
+      page_size: 100,
+      total: 0,
+      total_pages: 0,
+      has_next: false,
+      has_prev: false
+    }
 
     if (!silentError) {
       // 使用统一的错误处理
@@ -724,15 +1083,15 @@ const resetSearch = () => {
   loadSuppliers()
 }
 
-const changePage = (page: number) => {
+const _changePage = (page: number) => {
   pagination.value.page = page
   loadSuppliers()
 }
 
 // 新的分页变化处理方法
 const handlePaginationChange = (page: number, pageSize: number) => {
-  const oldPageSize = pagination.value.limit
-  pagination.value.limit = pageSize
+  const oldPageSize = pagination.value.page_size
+  pagination.value.page_size = pageSize
   pagination.value.page = pageSize !== oldPageSize ? 1 : page
   loadSuppliers()
 }
@@ -1069,23 +1428,6 @@ useElementTableSortable({
   onMove: handleSupplierRowMove
 })
 
-const getAccountTypeText = (type: string) => {
-  const typeMap: Record<string, string> = {
-    payment: '付款',
-    refund: '退款',
-    adjust: '调整'
-  }
-  return typeMap[type] || type
-}
-
-const getAmountClass = (type: string) => {
-  return type === 'payment' ? 'amount-negative' : 'amount-positive'
-}
-
-const getAmountPrefix = (type: string) => {
-  return type === 'payment' ? '-' : '+'
-}
-
 // 导出功能
 const handleExport = async () => {
   await exportFile({
@@ -1104,7 +1446,7 @@ const handleExport = async () => {
 }
 
 // 增强的操作函数 - 带权限验证
-const deleteSupplierWithPermission = async (supplier: Supplier) => {
+const _deleteSupplierWithPermission = async (supplier: Supplier) => {
   if (!canDelete.value) {
     error('权限不足：您没有删除供应商的权限')
     return
@@ -1141,7 +1483,7 @@ const deleteSupplierWithPermission = async (supplier: Supplier) => {
 }
 
 // 增强的提交函数 - 带权限验证
-const submitFormWithPermission = async () => {
+const _submitFormWithPermission = async () => {
   const action = showCreateModal.value ? 'create' : 'edit'
 
   const hasPermission = action === 'create' ? canCreate.value : canEdit.value
@@ -1233,7 +1575,7 @@ onUnmounted(() => {
 <style scoped>
 .suppliers-view {
   padding: 24px;
-  background: #f5f7fa;
+  background: var(--tf-color-surface);
   min-height: 100vh;
 }
 
@@ -1254,7 +1596,7 @@ onUnmounted(() => {
   gap: 16px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.08);
   transition: all 0.3s ease;
-  border: 1px solid #e8ecef;
+  border: 1px solid var(--tf-color-border-cool);
 }
 
 .stat-card:hover {
@@ -1270,16 +1612,16 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   font-size: 20px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand));
   color: white;
 }
 
 .stat-icon.active {
-  background: linear-gradient(135deg, #28a745, #20c997);
+  background: linear-gradient(135deg, var(--success-color), var(--tf-color-teal-500));
 }
 
 .stat-icon.inactive {
-  background: linear-gradient(135deg, #dc3545, #fd7e14);
+  background: linear-gradient(135deg, var(--danger-color), var(--tf-color-orange-bootstrap));
 }
 
 .stat-content {
@@ -1289,13 +1631,13 @@ onUnmounted(() => {
 .stat-value {
   font-size: 24px;
   font-weight: 700;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
   margin-bottom: 4px;
 }
 
 .stat-label {
   font-size: 14px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
   font-weight: 500;
 }
 
@@ -1305,20 +1647,20 @@ onUnmounted(() => {
   gap: 8px;
   font-size: 16px;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
   margin-bottom: 20px;
   padding-bottom: 12px;
-  border-bottom: 2px solid #f8f9fa;
+  border-bottom: 2px solid var(--tf-color-surface-muted);
 }
 
 .section-title i {
-  color: #667eea;
+  color: var(--tf-color-indigo-brand);
 }
 
 .record-count {
   margin-left: auto;
   font-size: 14px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
   font-weight: 400;
 }
 
@@ -1328,7 +1670,7 @@ onUnmounted(() => {
   border-radius: 12px;
   padding: 24px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-  border: 1px solid #e8ecef;
+  border: 1px solid var(--tf-color-border-cool);
 }
 
 .table-responsive {
@@ -1345,14 +1687,14 @@ onUnmounted(() => {
 }
 
 .table th {
-  background: linear-gradient(135deg, #495057 0%, #343a40 100%);
+  background: linear-gradient(135deg, var(--tf-color-gray-bootstrap-700) 0%, var(--tf-color-gray-bootstrap-800) 100%);
   color: white;
   padding: 12px 10px;
   text-align: center;
   font-weight: 600;
   font-size: 14px;
-  border-right: 1px solid #dee2e6;
-  border-bottom: 2px solid #dee2e6;
+  border-right: 1px solid var(--tf-color-border-subtle);
+  border-bottom: 2px solid var(--tf-color-border-subtle);
   position: relative;
   white-space: nowrap;
 }
@@ -1364,11 +1706,11 @@ onUnmounted(() => {
 .table td {
   padding: 6px 6px;
   font-size: 14px;
-  border-right: 1px solid #e9ecef;
-  border-bottom: 1px solid #e9ecef;
+  border-right: 1px solid var(--tf-color-border-muted);
+  border-bottom: 1px solid var(--tf-color-border-muted);
   vertical-align: middle;
   text-align: center;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
   font-weight: 500;
 }
 
@@ -1382,27 +1724,27 @@ onUnmounted(() => {
 }
 
 .table tbody tr:nth-child(even) {
-  background: #f8f9fa;
+  background: var(--tf-color-surface-muted);
 }
 
 .table tbody tr:hover {
-  background: #e3f2fd;
+  background: var(--tf-color-blue-100);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .table tbody tr:hover td {
-  border-bottom-color: #dee2e6;
+  border-bottom-color: var(--tf-color-border-subtle);
 }
 
 .table tbody tr.is-dragging {
   opacity: 0.5;
-  background: #eff6ff !important;
+  background: var(--tf-color-blue-tailwind-50) !important;
 }
 
 .table tbody tr.is-drag-over {
-  background: #f0f9ff !important;
-  border-top: 2px solid #3b82f6;
+  background: var(--tf-color-blue-50) !important;
+  border-top: 2px solid var(--tf-color-blue-500);
 }
 
 /* 拖拽手柄 */
@@ -1414,7 +1756,7 @@ onUnmounted(() => {
 }
 
 .drag-handle {
-  color: #9ca3af;
+  color: var(--tf-color-neutral-400);
   font-size: 16px;
   cursor: grab;
   display: inline-flex;
@@ -1426,8 +1768,8 @@ onUnmounted(() => {
   transition: all 0.2s;
 
   &:hover {
-    color: #3b82f6;
-    background: #eff6ff;
+    color: var(--tf-color-blue-500);
+    background: var(--tf-color-blue-tailwind-50);
   }
 
   &:active {
@@ -1440,7 +1782,7 @@ onUnmounted(() => {
     pointer-events: none;
 
     &:hover {
-      color: #9ca3af;
+      color: var(--tf-color-neutral-400);
       background: transparent;
     }
   }
@@ -1451,7 +1793,7 @@ onUnmounted(() => {
   width: 50px;
   height: 28px;
   padding: 0 6px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--tf-color-neutral-300);
   border-radius: 6px;
   font-size: 13px;
   font-weight: 600;
@@ -1460,25 +1802,25 @@ onUnmounted(() => {
   transition: all 0.2s;
 
   &:focus:not(:disabled) {
-    border-color: #3b82f6;
+    border-color: var(--tf-color-blue-500);
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
   }
 
   &:hover:not(:disabled) {
-    border-color: #9ca3af;
+    border-color: var(--tf-color-neutral-400);
   }
 
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
-    background-color: #f3f4f6;
+    background-color: var(--tf-color-neutral-100);
   }
 }
 
 /* 表格内容样式 */
 .sort-badge {
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--tf-color-neutral-100);
+  color: var(--tf-color-neutral-500);
   padding: 4px 8px;
   border-radius: 6px;
   font-size: 12px;
@@ -1489,7 +1831,7 @@ onUnmounted(() => {
 }
 
 .id-badge {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand));
   color: white;
   padding: 4px 8px;
   border-radius: 6px;
@@ -1514,8 +1856,8 @@ onUnmounted(() => {
 }
 
 .warning-badge {
-  background: #ffc107;
-  color: #212529;
+  background: var(--warning-color);
+  color: var(--tf-color-gray-bootstrap-900);
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 10px;
@@ -1524,7 +1866,7 @@ onUnmounted(() => {
 
 .supplier-remarks {
   font-size: 13px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1542,7 +1884,7 @@ onUnmounted(() => {
 
 .contact-name, .phone-number, .address-text {
   font-size: 14px;
-  color: #495057;
+  color: var(--tf-color-gray-bootstrap-700);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1550,7 +1892,7 @@ onUnmounted(() => {
 }
 
 .no-data {
-  color: #adb5bd;
+  color: var(--tf-color-gray-bootstrap-500);
   font-style: italic;
 }
 
@@ -1565,18 +1907,20 @@ onUnmounted(() => {
 }
 
 .status-active {
-  background: #d4edda;
-  color: #155724;
+  background: var(--tf-status-success-bg);
+  color: var(--tf-status-success-color);
+  border: 1px solid var(--tf-status-success-border);
 }
 
 .status-inactive {
-  background: #f8d7da;
-  color: #721c24;
+  background: var(--tf-status-danger-bg);
+  color: var(--tf-status-danger-color);
+  border: 1px solid var(--tf-status-danger-border);
 }
 
 .time-info {
   font-size: 13px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1605,7 +1949,7 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   gap: 16px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
 }
 
 .empty-content i {
@@ -1615,7 +1959,7 @@ onUnmounted(() => {
 
 .empty-text h4 {
   margin: 0 0 8px 0;
-  color: #495057;
+  color: var(--tf-color-gray-bootstrap-700);
 }
 
 .empty-text p {
@@ -1630,11 +1974,11 @@ onUnmounted(() => {
   align-items: center;
   margin-top: 24px;
   padding-top: 20px;
-  border-top: 1px solid #e8ecef;
+  border-top: 1px solid var(--tf-color-border-cool);
 }
 
 .pagination-info {
-  color: #6c757d;
+  color: var(--tf-color-muted);
   font-size: 14px;
 }
 
@@ -1702,8 +2046,8 @@ onUnmounted(() => {
     padding: 0;
     font-size: 16px;
     font-weight: 600;
-    color: #374151;
-    border-bottom: 1px solid #e5e7eb;
+    color: var(--tf-color-neutral-700);
+    border-bottom: 1px solid var(--tf-color-neutral-200);
     padding-bottom: 8px;
   }
 }
@@ -1712,7 +2056,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   padding: 12px 0;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--tf-color-neutral-100);
 
   &:last-child {
     border-bottom: none;
@@ -1720,7 +2064,7 @@ onUnmounted(() => {
 
   .label {
     font-weight: 500;
-    color: #6b7280;
+    color: var(--tf-color-neutral-500);
     min-width: 100px;
     margin-right: 16px;
     font-size: 14px;
@@ -1728,7 +2072,7 @@ onUnmounted(() => {
 
   .value {
     flex: 1;
-    color: #1f2937;
+    color: var(--tf-color-neutral-800);
     font-weight: 500;
     font-size: 14px;
     word-break: break-word;
@@ -1743,22 +2087,22 @@ onUnmounted(() => {
 }
 
 .stat-item {
-  background: #f8fafc;
+  background: var(--tf-color-slate-50);
   padding: 16px;
   border-radius: 8px;
   text-align: center;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--tf-color-neutral-200);
 
   .stat-number {
     font-size: 24px;
     font-weight: 700;
-    color: #1f2937;
+    color: var(--tf-color-neutral-800);
     margin-bottom: 4px;
   }
 
   .stat-label {
     font-size: 12px;
-    color: #6b7280;
+    color: var(--tf-color-neutral-500);
     font-weight: 500;
     text-transform: uppercase;
     margin-bottom: 4px;
@@ -1766,7 +2110,7 @@ onUnmounted(() => {
 
   .stat-amount {
     font-size: 14px;
-    color: #059669;
+    color: var(--tf-color-emerald-600);
     font-weight: 600;
   }
 }
@@ -1778,7 +2122,7 @@ onUnmounted(() => {
   justify-content: center;
   gap: 12px;
   padding: 40px 0;
-  color: #6b7280;
+  color: var(--tf-color-neutral-500);
   font-size: 14px;
 
   i {
@@ -1793,7 +2137,7 @@ onUnmounted(() => {
 }
 
 .stat-card {
-  background: #f8f9fa;
+  background: var(--tf-color-surface-muted);
   padding: 20px;
   border-radius: 8px;
   text-align: center;
@@ -1802,18 +2146,18 @@ onUnmounted(() => {
 .stat-value {
   font-size: 24px;
   font-weight: bold;
-  color: #007bff;
+  color: var(--tf-color-blue-bootstrap);
   margin-bottom: 5px;
 }
 
 .stat-label {
-  color: #666;
+  color: var(--text-secondary);
   margin-bottom: 5px;
 }
 
 .stat-amount {
   font-size: 14px;
-  color: #28a745;
+  color: var(--success-color);
   font-weight: 500;
 }
 
@@ -1825,27 +2169,27 @@ onUnmounted(() => {
 }
 
 .account-type.payment {
-  background: #f8d7da;
-  color: #721c24;
+  background: var(--tf-color-danger-legacy);
+  color: var(--tf-color-danger-text-legacy);
 }
 
 .account-type.refund {
-  background: #d4edda;
-  color: #155724;
+  background: var(--tf-color-success-legacy);
+  color: var(--tf-color-success-text-legacy);
 }
 
 .account-type.adjust {
-  background: #fff3cd;
-  color: #856404;
+  background: var(--tf-color-warning-legacy);
+  color: var(--tf-color-warning-text-legacy);
 }
 
 .amount-negative {
-  color: #dc3545;
+  color: var(--danger-color);
   font-weight: 500;
 }
 
 .amount-positive {
-  color: #28a745;
+  color: var(--success-color);
   font-weight: 500;
 }
 
@@ -1854,7 +2198,7 @@ onUnmounted(() => {
 }
 
 .text-muted {
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .small {

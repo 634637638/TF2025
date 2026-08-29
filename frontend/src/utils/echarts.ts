@@ -1,7 +1,7 @@
 /**
  * ECharts 按需引入工具
  * 优化构建体积：仅引入使用的图表类型和组件
- * 从 1.1M 减少到约 300K
+ * 当前仅保留业务使用项，图表共享产物由约 706KB 降至约 582KB
  */
 import * as echarts from 'echarts/core'
 
@@ -19,13 +19,7 @@ import {
   TitleComponent,
   TooltipComponent,
   LegendComponent,
-  GridComponent,
-  DatasetComponent,
-  TransformComponent,
-  ToolboxComponent,
-  DataZoomComponent,
-  VisualMapComponent,
-  GraphicComponent
+  GridComponent
 } from 'echarts/components'
 
 // 按需引入渲染器
@@ -44,12 +38,6 @@ echarts.use([
   TooltipComponent,
   LegendComponent,
   GridComponent,
-  DatasetComponent,
-  TransformComponent,
-  ToolboxComponent,
-  DataZoomComponent,
-  VisualMapComponent,
-  GraphicComponent,
   // 渲染器
   CanvasRenderer
 ])

@@ -33,7 +33,7 @@ export const AUTH_STORAGE_KEYS = {
   /** 断开通知标记 (sessionStorage) */
   DISCONNECT_NOTIFIED: 'tf2025_disconnect_notified',
   /** 权限已加载标记 (sessionStorage) */
-  PERMISSIONS_LOADED: 'tf2025_permissions_loaded',
+  PERMISSIONS_LOADED: 'tf2025_permissions_loaded'
 } as const
 
 // ==================== H5 移动端相关 ====================
@@ -55,7 +55,7 @@ export const H5_STORAGE_KEYS = {
   /** 订单成功信息 (sessionStorage) */
   ORDER_SUCCESS: 'order_success',
   /** 用户默认地址 (localStorage) */
-  DEFAULT_ADDRESS: 'user_default_address',
+  DEFAULT_ADDRESS: 'user_default_address'
 } as const
 
 // ==================== 用户偏好设置 ====================
@@ -67,7 +67,7 @@ export const PREFERENCE_STORAGE_KEYS = {
   /** 菜单宽度配置 (localStorage) */
   MENU_WIDTH: 'tf2025_menu_width',
   /** 菜单折叠状态 (localStorage) */
-  MENU_COLLAPSED: 'tf2025_menu_collapsed',
+  MENU_COLLAPSED: 'tf2025_menu_collapsed'
 } as const
 
 // ==================== 安全相关 ====================
@@ -79,7 +79,7 @@ export const SECURITY_STORAGE_KEYS = {
   /** 屏幕锁定设置 (localStorage) */
   SCREEN_LOCK_SETTINGS: 'screenLockSettings',
   /** CSRF 令牌 (localStorage) */
-  CSRF_TOKEN: 'tf2025_csrf_token',
+  CSRF_TOKEN: 'tf2025_csrf_token'
 } as const
 
 // ==================== 缓存相关 ====================
@@ -91,7 +91,7 @@ export const CACHE_STORAGE_KEYS = {
   /** 权限缓存 (localStorage) */
   PERMISSIONS_CACHE: 'tf2025_permissions_cache',
   /** API 缓存 (localStorage) */
-  API_CACHE: 'tf2025_api_cache',
+  API_CACHE: 'tf2025_api_cache'
 } as const
 
 // ==================== 路由相关 ====================
@@ -99,13 +99,13 @@ export const ROUTER_STORAGE_KEYS = {
   /** 重定向冷却标记 (sessionStorage) */
   REDIRECT_COOLDOWN: 'tf2025_redirect_cooldown',
   /** 滚动位置 (sessionStorage) - 动态 key 前缀 */
-  SCROLL_POSITION_PREFIX: 'tf2025_scroll_',
+  SCROLL_POSITION_PREFIX: 'tf2025_scroll_'
 } as const
 
 // ==================== 临时/会话状态 ====================
 export const SESSION_STORAGE_KEYS = {
   /** 待审批通知已提醒 (sessionStorage) */
-  PENDING_APPROVAL_NOTIFIED: 'pendingApprovalNotified',
+  PENDING_APPROVAL_NOTIFIED: 'pendingApprovalNotified'
 } as const
 
 // ==================== 已废弃的键（需要清理） ====================
@@ -114,7 +114,7 @@ export const DEPRECATED_STORAGE_KEYS = [
   'token',          // 旧的令牌存储
   'refreshToken',   // 旧的刷新令牌
   'permissions',    // 旧的权限存储
-  'access_token',   // 旧的访问令牌
+  'access_token'   // 旧的访问令牌
 ] as const
 
 /**

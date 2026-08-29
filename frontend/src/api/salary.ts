@@ -40,7 +40,7 @@ export interface SalaryRecord {
 
 export interface SalaryFilters {
   page?: number
-  limit?: number
+  page_size?: number
   employee_id?: number
   status?: string
   period_start?: string

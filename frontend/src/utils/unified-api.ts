@@ -14,10 +14,13 @@ import { AUTH_STORAGE_KEYS, ROUTER_STORAGE_KEYS, SECURITY_STORAGE_KEYS } from '@
 import type { ApiResponse as GlobalApiResponse } from '@/types'
 import logger from '@/utils/logger'
 import { clearCache as clearPageCache } from '@/composables/usePageCache'
+import type { LoadingInstance } from './element-feedback'
 
 // API基础配置
 const DEFAULT_READ_TIMEOUT = 30000
 const DEFAULT_WRITE_TIMEOUT = 120000
+const TRANSIENT_READ_RETRY_LIMIT = 2
+const TRANSIENT_READ_RETRY_BASE_DELAY = 350
 
 const API_CONFIG = {
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
@@ -45,21 +48,24 @@ export interface RequestConfig extends AxiosRequestConfig {
     method?: string
     cacheGeneration?: number
   }
-  cachedResponse?: any
+  cachedResponse?: unknown
+  transientRetryCount?: number
 }
 
 // API响应接口 - 使用全局类型定义
-export type ApiResponse<T = any> = GlobalApiResponse<T>
+// 第三方/旧接口响应结构在运行时动态变化；以 JSON.parse 的运行时结果作为单一动态边界。
+type DynamicResponse = ReturnType<typeof JSON.parse>
+export type ApiResponse<T = DynamicResponse> = GlobalApiResponse<T>
 
 /**
  * 统一API管理器
  */
 class UnifiedApiManager {
   private instance: AxiosInstance
-  private loadingInstance: any = null
-  private loadingPromise: Promise<any> | null = null
+  private loadingInstance: LoadingInstance | null = null
+  private loadingPromise: Promise<void> | null = null
   private requestCount = 0
-  private cache = new Map<string, { data: any, timestamp: number, ttl: number }>()
+  private cache = new Map<string, { data: unknown, timestamp: number, ttl: number }>()
   private cacheGeneration = 0
   private refreshPromise: Promise<boolean> | null = null
   private csrfToken: string | null = null
@@ -104,6 +110,7 @@ class UnifiedApiManager {
   /**
    * 处理请求
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Axios interceptor config is adapter-owned and mutated in place.
   private async handleRequest(config: any): Promise<any> {
     const requestConfig = config as RequestConfig
 
@@ -147,7 +154,7 @@ class UnifiedApiManager {
   /**
    * 处理请求错误
    */
-  private handleRequestError(error: any): Promise<never> {
+  private handleRequestError(error: unknown): Promise<never> {
     logger.error('请求配置错误', error)
     this.hideLoading()
     return Promise.reject(error)
@@ -156,13 +163,13 @@ class UnifiedApiManager {
   /**
    * 处理响应
    */
-  private handleResponse(response: AxiosResponse): any {
+  private handleResponse(response: AxiosResponse): AxiosResponse {
     const requestConfig = response.config as RequestConfig
     const metadata = requestConfig.metadata
 
     // 如果是缓存响应，直接返回
     if (requestConfig.cachedResponse) {
-      return requestConfig.cachedResponse
+      return requestConfig.cachedResponse as AxiosResponse
     }
 
     // 计算请求耗时
@@ -204,13 +211,13 @@ class UnifiedApiManager {
       showElementSuccess(message)
     }
 
-    return response.data
+    return response.data as AxiosResponse
   }
 
   /**
    * 处理响应错误
    */
-  private async handleResponseError(error: any): Promise<any> {
+  private async handleResponseError(error: AxiosError): Promise<unknown> {
     const requestConfig = error.config as RequestConfig
     const metadata = requestConfig?.metadata
 
@@ -222,6 +229,11 @@ class UnifiedApiManager {
     // 对于被取消的请求，不记录错误日志
     if (error.message === 'canceled' || error.code === 'ERR_CANCELED') {
       throw error
+    }
+
+    const transientRecoveredResponse = await this.tryRecoverTransientReadError(error)
+    if (transientRecoveredResponse !== null) {
+      return transientRecoveredResponse
     }
 
     // 错误日志
@@ -271,9 +283,57 @@ class UnifiedApiManager {
     return Promise.reject(error)
   }
 
-  private async tryRecoverAuthError(error: AxiosError): Promise<any | null> {
+  /**
+   * 开发代理或后端短暂重启时可能返回空 500，或暂时没有响应。
+   * 仅重试幂等读取，避免任何写操作被重复提交。
+   */
+  private async tryRecoverTransientReadError(error: AxiosError): Promise<unknown | null> {
+    const requestConfig = error.config as RequestConfig | undefined
+    if (!requestConfig || String(requestConfig.method || 'get').toLowerCase() !== 'get') {
+      return null
+    }
+
+    if (requestConfig.signal?.aborted) {
+      return null
+    }
+
     const status = error.response?.status
-    const responseData = error.response?.data as any
+    const responseData = error.response?.data
+    const hasEmptyResponse = responseData === null || responseData === undefined || (
+      typeof responseData === 'string' && responseData.trim() === ''
+    )
+    const isEmptyProxyFailure = status === 500 && hasEmptyResponse
+    const isGatewayFailure = status !== null && status !== undefined && [502, 503, 504].includes(status)
+    const isNetworkFailure = !error.response && [
+      'ERR_NETWORK',
+      'ECONNABORTED',
+      'ECONNREFUSED',
+      'ETIMEDOUT'
+    ].includes(String(error.code || ''))
+
+    if (!isEmptyProxyFailure && !isGatewayFailure && !isNetworkFailure) {
+      return null
+    }
+
+    const retryCount = requestConfig.transientRetryCount || 0
+    if (retryCount >= TRANSIENT_READ_RETRY_LIMIT) {
+      return null
+    }
+
+    requestConfig.transientRetryCount = retryCount + 1
+    const delay = TRANSIENT_READ_RETRY_BASE_DELAY * (2 ** retryCount)
+    await new Promise(resolve => setTimeout(resolve, delay))
+
+    if (requestConfig.signal?.aborted) {
+      return null
+    }
+
+    return this.instance.request(requestConfig)
+  }
+
+  private async tryRecoverAuthError(error: AxiosError): Promise<unknown | null> {
+    const status = error.response?.status
+    const responseData = error.response?.data as Record<string, unknown> | undefined
     const requestConfig = (error.config || {}) as RequestConfig & { _retry?: boolean }
     const requestUrl = requestConfig.url || ''
     const tokenError = responseData?.code
@@ -300,16 +360,16 @@ class UnifiedApiManager {
     return this.instance(requestConfig)
   }
 
-  private async tryRecoverCSRFError(error: AxiosError): Promise<any | null> {
+  private async tryRecoverCSRFError(error: AxiosError): Promise<unknown | null> {
     const status = error.response?.status
-    const responseData = error.response?.data as any
+    const responseData = error.response?.data as Record<string, unknown> | undefined
     const requestConfig = (error.config || {}) as RequestConfig & { _csrfRetry?: boolean }
     const tokenError = responseData?.code
 
     if (
       status !== 403 ||
       requestConfig._csrfRetry ||
-      !['CSRF_TOKEN_MISSING', 'CSRF_TOKEN_INVALID'].includes(tokenError) ||
+      !['CSRF_TOKEN_MISSING', 'CSRF_TOKEN_INVALID'].includes(String(tokenError)) ||
       !this.shouldAttachCSRF(requestConfig)
     ) {
       return null
@@ -395,13 +455,13 @@ class UnifiedApiManager {
     }
   }
 
-  private readPersistedAuthData(): Record<string, any> | null {
+  private readPersistedAuthData(): Record<string, unknown> | null {
     try {
       const raw = storage.getAuth()
       if (!raw) {
         return null
       }
-      return raw as any
+      return raw as Record<string, unknown>
     } catch (error) {
       logger.warn('读取本地认证数据失败', error)
       return null
@@ -411,7 +471,7 @@ class UnifiedApiManager {
   /**
    * 记录API错误到日志系统
    */
-  private logApiError(error: AxiosError, metadata?: any): void {
+  private logApiError(error: AxiosError, metadata?: RequestConfig['metadata']): void {
     const status = error.response?.status
     const url = error.config?.url || ''
     const method = error.config?.method?.toUpperCase() || 'GET'
@@ -468,42 +528,42 @@ class UnifiedApiManager {
    */
   private getApiErrorMessage(error: AxiosError): string {
     const status = error.response?.status
-    const responseData = error.response?.data as any
+    const responseData = error.response?.data as Record<string, unknown> | undefined
 
     // 优先使用服务器返回的错误消息
     if (responseData?.message) {
-      return responseData.message
+      return String(responseData.message)
     }
 
     // 根据状态码返回默认消息
     if (status) {
       switch (status) {
-        case 400:
-          return '请求参数错误'
-        case 401:
-          return '未授权访问'
-        case 403:
-          return '权限不足'
-        case 404:
-          return '资源不存在'
-        case 408:
-          return '请求超时'
-        case 409:
-          return '请求冲突'
-        case 422:
-          return '数据验证失败'
-        case 429:
-          return '请求过于频繁'
-        case 500:
-          return '服务器内部错误'
-        case 502:
-          return '网关错误'
-        case 503:
-          return '服务不可用'
-        case 504:
-          return '网关超时'
-        default:
-          return `请求失败 (${status})`
+      case 400:
+        return '请求参数错误'
+      case 401:
+        return '未授权访问'
+      case 403:
+        return '权限不足'
+      case 404:
+        return '资源不存在'
+      case 408:
+        return '请求超时'
+      case 409:
+        return '请求冲突'
+      case 422:
+        return '数据验证失败'
+      case 429:
+        return '请求过于频繁'
+      case 500:
+        return '服务器内部错误'
+      case 502:
+        return '网关错误'
+      case 503:
+        return '服务不可用'
+      case 504:
+        return '网关超时'
+      default:
+        return `请求失败 (${status})`
       }
     }
 
@@ -526,7 +586,7 @@ class UnifiedApiManager {
   /**
    * 添加认证头信息
    */
-  private addAuthHeaders(config: any): void {
+  private addAuthHeaders(config: RequestConfig): void {
     const urlPath = config.url || ''
     const isH5AuthApi = urlPath.startsWith('/public/auth/')
     const isH5AuthAnonymousApi = isH5AuthApi && (
@@ -557,16 +617,16 @@ class UnifiedApiManager {
       language: navigator.language,
       screenResolution: `${screen.width}x${screen.height}`,
       timestamp: Date.now()
-    });
+    })
 
     // 添加权限映射转换头信息
     // 将前端的详细权限代码转换为后端期望的简单格式
-    const method = config.method?.toUpperCase() || 'GET';
+    const method = config.method?.toUpperCase() || 'GET'
 
     // 根据URL路径和HTTP方法确定需要的权限
-    const requiredPermission = this.convertPermissionForAPI(urlPath, method);
+    const requiredPermission = this.convertPermissionForAPI(urlPath, method)
     if (requiredPermission) {
-      config.headers['X-Required-Permission'] = requiredPermission;
+      config.headers['X-Required-Permission'] = requiredPermission
     }
   }
 
@@ -576,24 +636,24 @@ class UnifiedApiManager {
    */
   private convertPermissionForAPI(urlPath: string, method: string): string | null {
     // 从URL中提取模块名 - 支持带ID的路径如 customers/123 或 /api/customers/123
-    let normalizedPath = urlPath.replace(/^\/+/, ''); // 移除开头的斜杠
+    let normalizedPath = urlPath.replace(/^\/+/, '') // 移除开头的斜杠
 
     // 移除查询参数
-    const queryIndex = normalizedPath.indexOf('?');
+    const queryIndex = normalizedPath.indexOf('?')
     if (queryIndex !== -1) {
-      normalizedPath = normalizedPath.substring(0, queryIndex);
+      normalizedPath = normalizedPath.substring(0, queryIndex)
     }
 
     // 移除 /api 前缀（如果存在）
     if (normalizedPath.startsWith('api/')) {
-      normalizedPath = normalizedPath.substring(4); // 移除 'api/' 前缀
+      normalizedPath = normalizedPath.substring(4) // 移除 'api/' 前缀
     }
 
-    const pathParts = normalizedPath.split('/');
-    const module = pathParts[0]?.toLowerCase();
+    const pathParts = normalizedPath.split('/')
+    const module = pathParts[0]?.toLowerCase()
 
     if (!module) {
-      return null;
+      return null
     }
 
     // 豁免认证相关API和设置API的权限检查
@@ -608,106 +668,106 @@ class UnifiedApiManager {
     // brands, models, colors 提供基础数据，不需要特殊权限
     // database-sync 数据库同步，属于数据优化模块，豁免权限检查
     // system 系统设置（站点信息、品牌设置等），登录前需要访问（如Logo）
-    const authExemptPaths = ['auth', 'login', 'logout', 'register', 'refresh', 'permissions', 'permission-logs', 'settings', 'public', 'screen-lock', 'git', 'attendance', 'employees', 'salary', 'salary-records', 'salary-templates', 'options', 'stores', 'operators', 'subsidy', 'csrf', 'upload', 'brands', 'models', 'colors', 'database-sync', 'data-sync', 'system'];
+    const authExemptPaths = ['auth', 'login', 'logout', 'register', 'refresh', 'permissions', 'permission-logs', 'settings', 'public', 'screen-lock', 'git', 'attendance', 'employees', 'salary', 'salary-records', 'salary-templates', 'options', 'stores', 'operators', 'subsidy', 'csrf', 'upload', 'brands', 'models', 'colors', 'database-sync', 'data-sync', 'system']
     if (authExemptPaths.includes(module)) {
-      return null;
+      return null
     }
 
-    let action = '';
+    let action = ''
 
     // 特殊路径处理
-    const isCleanupPath = normalizedPath.includes('/cleanup');
-    const isSyncPath = normalizedPath.includes('/sync'); // 同步操作使用 edit 权限
+    const isCleanupPath = normalizedPath.includes('/cleanup')
+    const isSyncPath = normalizedPath.includes('/sync') // 同步操作使用 edit 权限
 
     // 根据HTTP方法确定操作类型
     switch (method) {
-      case 'GET':
-        action = 'view';
-        break;
-      case 'POST':
-        // cleanup 或 sync 操作使用 edit 权限
-        if (isCleanupPath || isSyncPath) {
-          action = 'edit';
-        } else {
-          action = 'create';
-        }
-        break;
-      case 'PUT':
-      case 'PATCH':
-        action = 'edit';
-        break;
-      case 'DELETE':
-        action = 'delete';
-        break;
-      default:
-        return null;
+    case 'GET':
+      action = 'view'
+      break
+    case 'POST':
+      // cleanup 或 sync 操作使用 edit 权限
+      if (isCleanupPath || isSyncPath) {
+        action = 'edit'
+      } else {
+        action = 'create'
+      }
+      break
+    case 'PUT':
+    case 'PATCH':
+      action = 'edit'
+      break
+    case 'DELETE':
+      action = 'delete'
+      break
+    default:
+      return null
     }
 
     // 特殊处理：data-import 模块使用 upload/execute 而不是 create
     if (module === 'data-import') {
       // 检查具体路径
       if (normalizedPath.includes('/upload')) {
-        action = 'upload';
+        action = 'upload'
       } else if (normalizedPath.includes('/import')) {
-        action = 'execute';
+        action = 'execute'
       } else if (normalizedPath.includes('/analyze')) {
-        action = 'upload'; // analyze 也使用 upload 权限
+        action = 'upload' // analyze 也使用 upload 权限
       }
     }
 
-  // 权限转换
-    const frontendPermission = PermissionMapper.toModulePermission(action, module);
-    const backendPermission = PermissionMapper.toBackendPermission(frontendPermission);
+    // 权限转换
+    const frontendPermission = PermissionMapper.toModulePermission(action, module)
+    const backendPermission = PermissionMapper.toBackendPermission(frontendPermission)
 
-    return backendPermission;
+    return backendPermission
   }
 
   /**
    * 处理权限错误
    */
   private handlePermissionError(error: AxiosError): void {
-    const urlPath = error.config?.url || '';
-    const method = error.config?.method?.toUpperCase() || 'GET';
+    const urlPath = error.config?.url || ''
+    const method = error.config?.method?.toUpperCase() || 'GET'
 
     // 只在用户主动操作时显示提示（避免页面初始化时的批量错误）
-    const isUserAction = method !== 'GET' || urlPath.includes('/export') || urlPath.includes('/delete');
+    const isUserAction = method !== 'GET' || urlPath.includes('/export') || urlPath.includes('/delete')
 
     if (isUserAction) {
       // 按需加载 Element Plus 消息组件，避免 API 入口提前拉起整包
-      const action = this.inferActionFromRequest(method, urlPath);
-      const actionName = this.getActionDisplayName(action);
+      const action = this.inferActionFromRequest(method, urlPath)
+      const actionName = this.getActionDisplayName(action)
       const message = action === 'view'
         ? '您没有访问此页面的权限'
-        : `您没有${actionName}权限`;
+        : `您没有${actionName}权限`
       showElementWarning({
         message,
         duration: 3000,
         showClose: true
-      });
+      })
     }
   }
 
   private inferActionFromRequest(method: string, urlPath: string): string {
-    const normalizedPath = urlPath.toLowerCase();
+    const normalizedPath = urlPath.toLowerCase()
 
-    if (normalizedPath.includes('/export')) return 'export';
-    if (normalizedPath.includes('/import')) return 'import';
-    if (normalizedPath.includes('/approve')) return 'approve';
-    if (normalizedPath.includes('/reject')) return 'reject';
-    if (normalizedPath.includes('/delete') || normalizedPath.includes('/remove')) return 'delete';
+    if (normalizedPath.includes('/export')) return 'export'
+    if (normalizedPath.includes('/import')) return 'import'
+    if (normalizedPath.includes('/approve')) return 'approve'
+    if (normalizedPath.includes('/reject')) return 'reject'
+    if (normalizedPath.includes('/delete') || normalizedPath.includes('/remove')) return 'delete'
 
     switch (method) {
-      case 'GET':
-        return 'view';
-      case 'POST':
-        return 'create';
-      case 'PUT':
-      case 'PATCH':
-        return 'edit';
-      case 'DELETE':
-        return 'delete';
-      default:
-        return '操作';
+    case 'GET':
+      return 'view'
+    case 'POST':
+      return 'create'
+    case 'PUT':
+    case 'PATCH':
+      return 'edit'
+    case 'DELETE':
+      return 'delete'
+    default:
+      return '操作'
     }
   }
 
@@ -717,9 +777,9 @@ class UnifiedApiManager {
   private getPermissionDisplayName(permissionCode: string): string {
     if (permissionCode.includes(':')) {
       // 使用PermissionMapper获取权限显示名称
-      return PermissionMapper.getPermissionDisplayName(permissionCode);
+      return PermissionMapper.getPermissionDisplayName(permissionCode)
     }
-    return permissionCode;
+    return permissionCode
   }
 
   /**
@@ -739,18 +799,18 @@ class UnifiedApiManager {
       'import': '导入',
       'approve': '审批',
       'reject': '拒绝'
-    };
-    return actionMap[action] || action;
+    }
+    return actionMap[action] || action
   }
 
   /**
    * 获取模块的友好显示名称
    */
   private getModuleDisplayName(urlPath: string): string {
-    const moduleMatch = urlPath.match(/^\/?([a-z]+)/i);
-    if (!moduleMatch) return '该模块';
+    const moduleMatch = urlPath.match(/^\/?([a-z]+)/i)
+    if (!moduleMatch) return '该模块'
 
-    const module = moduleMatch[1].toLowerCase();
+    const module = moduleMatch[1].toLowerCase()
     const moduleMap: Record<string, string> = {
       'customers': '客户管理',
       'employees': '员工管理',
@@ -773,14 +833,14 @@ class UnifiedApiManager {
       'roles': '角色管理',
       'menus': '菜单管理',
       'system': '系统管理'
-    };
-    return moduleMap[module] || '该模块';
+    }
+    return moduleMap[module] || '该模块'
   }
 
   /**
    * 添加CSRF防护头
    */
-  private async addCSRFHeaders(config: any): Promise<void> {
+  private async addCSRFHeaders(config: RequestConfig): Promise<void> {
     if (!this.shouldAttachCSRF(config)) {
       return
     }
@@ -800,7 +860,7 @@ class UnifiedApiManager {
     }
   }
 
-  private shouldAttachCSRF(config: any): boolean {
+  private shouldAttachCSRF(config: RequestConfig): boolean {
     const method = String(config.method || 'get').toUpperCase()
     if (['GET', 'HEAD', 'OPTIONS'].includes(method)) {
       return false
@@ -969,89 +1029,89 @@ class UnifiedApiManager {
     }
 
     switch (status) {
-      case 401:
-        const errorCode = (error.response?.data as any)?.code
+    case 401:
+      const errorCode = (error.response?.data as Record<string, unknown> | undefined)?.code
 
-        // TOKEN_EXPIRED 已经在 tryRecoverAuthError 中处理，这里跳过
-        if (errorCode === 'TOKEN_EXPIRED') {
-          return
-        }
+      // TOKEN_EXPIRED 已经在 tryRecoverAuthError 中处理，这里跳过
+      if (errorCode === 'TOKEN_EXPIRED') {
+        return
+      }
 
-        // 确定友好的错误提示
-        let logoutReason = '认证已失效'
-        let notificationTitle = '登录已过期'
-        let notificationMessage = '您的登录已过期，请重新登录'
+      // 确定友好的错误提示
+      let logoutReason = '认证已失效'
+      let notificationTitle = '登录已过期'
+      let notificationMessage = '您的登录已过期，请重新登录'
 
-        if (errorCode === 'TOKEN_REVOKED') {
-          logoutReason = '登录已失效，请重新登录'
-          notificationTitle = '登录已失效'
-          notificationMessage = '您的账号在其他地方登录，当前登录已失效'
-        } else if (errorCode === 'TOKEN_INVALID') {
-          logoutReason = '登录信息无效，请重新登录'
-          notificationTitle = '登录信息无效'
-          notificationMessage = '登录信息验证失败，请重新登录'
-        } else if (errorCode === 'TOKEN_MISSING') {
-          logoutReason = '未登录'
-          notificationTitle = '需要登录'
-          notificationMessage = '请先登录后再继续操作'
-        } else if (!errorCode) {
-          logoutReason = '登录状态校验失败，请重新登录'
-          notificationTitle = '登录状态异常'
-          notificationMessage = '登录状态验证失败，请重新登录'
-        }
+      if (errorCode === 'TOKEN_REVOKED') {
+        logoutReason = '登录已失效，请重新登录'
+        notificationTitle = '登录已失效'
+        notificationMessage = '您的账号在其他地方登录，当前登录已失效'
+      } else if (errorCode === 'TOKEN_INVALID') {
+        logoutReason = '登录信息无效，请重新登录'
+        notificationTitle = '登录信息无效'
+        notificationMessage = '登录信息验证失败，请重新登录'
+      } else if (errorCode === 'TOKEN_MISSING') {
+        logoutReason = '未登录'
+        notificationTitle = '需要登录'
+        notificationMessage = '请先登录后再继续操作'
+      } else if (!errorCode) {
+        logoutReason = '登录状态校验失败，请重新登录'
+        notificationTitle = '登录状态异常'
+        notificationMessage = '登录状态验证失败，请重新登录'
+      }
 
-        // 公开页面、H5页面和登录页不跳转
-        if (!isLoginPage && !isH5Page && !isPublicRoute && this.canRedirect()) {
-          this.markRedirected()
+      // 公开页面、H5页面和登录页不跳转
+      if (!isLoginPage && !isH5Page && !isPublicRoute && this.canRedirect()) {
+        this.markRedirected()
 
-          // 显示友好的通知
-          showElementNotification({
-            title: notificationTitle,
-            message: notificationMessage,
-            type: 'warning',
-            duration: 4000,
-            position: 'top-right'
-          })
+        // 显示友好的通知
+        showElementNotification({
+          title: notificationTitle,
+          message: notificationMessage,
+          type: 'warning',
+          duration: 4000,
+          position: 'top-right'
+        })
 
-          setBackendDisconnectedState(false)
-          clearPersistedAuthData()
-          window.dispatchEvent(new CustomEvent('tf2025:auth:logout', {
-            detail: { reason: logoutReason }
-          }))
+        setBackendDisconnectedState(false)
+        clearPersistedAuthData()
+        window.dispatchEvent(new CustomEvent('tf2025:auth:logout', {
+          detail: { reason: logoutReason }
+        }))
 
-          // 延迟跳转，让用户看到提示
-          setTimeout(() => {
-            window.location.href = '/login'
-          }, 1000)
-        }
-        break
-      case 403:
-        this.handlePermissionError(error)
-        break
-      case 404:
-        if (!isLoginPage) {
-          showElementError('请求的资源不存在')
-        }
-        break
-      case 422:
-        // 表单验证错误，不显示通用错误消息
-        break
-      case 429:
-        showElementError('请求过于频繁，请稍后再试')
-        break
-      case 500:
-        showElementError('服务器内部错误，请稍后再试')
-        break
-      case 502:
-        showElementError('服务器网关错误，请稍后再试')
-        break
-      case 503:
-        showElementError('服务暂时不可用，请稍后再试')
-        break
-      default:
-        if (status && status >= 500) {
-          showElementError('服务器错误，请稍后再试')
-        }
+        // 延迟跳转，让用户看到提示
+        setTimeout(() => {
+          window.location.href = '/login'
+        }, 1000)
+      }
+      break
+    case 403:
+      this.handlePermissionError(error)
+      break
+    case 404:
+      if (!isLoginPage) {
+        showElementError('请求的资源不存在')
+      }
+      break
+    case 422:
+      // 表单验证错误，不显示通用错误消息
+      break
+    case 429:
+      showElementError('请求过于频繁，请稍后再试')
+      break
+    case 500:
+      showElementError('服务器内部错误，请稍后再试')
+      break
+    case 502:
+      showElementError('服务器网关错误，请稍后再试')
+      break
+    case 503:
+      showElementError('服务暂时不可用，请稍后再试')
+      break
+    default:
+      if (status && status >= 500) {
+        showElementError('服务器错误，请稍后再试')
+      }
     }
   }
 
@@ -1063,8 +1123,8 @@ class UnifiedApiManager {
 
     // 从响应中获取错误消息
     if (error.response?.data) {
-      const data = error.response.data as any
-      message = data.message || data.error || message
+      const data = error.response.data as Record<string, unknown>
+      message = String(data.message || data.error || message)
 
       // 特殊处理认证恢复相关错误，不显示重复弹窗
       if (data.code === 'TOKEN_EXPIRED' || data.code === 'TOKEN_REVOKED') {
@@ -1130,7 +1190,7 @@ class UnifiedApiManager {
   /**
    * 生成缓存键
    */
-  private generateCacheKey(config: any): string {
+  private generateCacheKey(config: RequestConfig): string {
     const { method, url, params, data } = config
     return `${method?.toUpperCase() || 'GET'}:${url}:${JSON.stringify(params || {})}:${JSON.stringify(data || {})}`
   }
@@ -1157,21 +1217,21 @@ class UnifiedApiManager {
       return atob(padded)
     }
 
-    let token = null;
-    let tokenSource = '';
+    let token = null
+    let tokenSource = ''
 
     // 尝试从多个来源获取token，按优先级顺序
     // 1. sessionStorage access_token (认证存储)
-    token = storage.get<string>('access_token', 'session');
+    token = storage.get<string>('access_token', 'session')
     if (token) {
-      tokenSource = 'sessionStorage (access_token)';
+      tokenSource = 'sessionStorage (access_token)'
     }
 
     // 2. sessionStorage tf2025_token (兼容旧版本)
     if (!token) {
       token = storage.getToken()
       if (token) {
-        tokenSource = 'sessionStorage (tf2025_token)';
+        tokenSource = 'sessionStorage (tf2025_token)'
       }
     }
 
@@ -1180,9 +1240,10 @@ class UnifiedApiManager {
       try {
         const authData = storage.getAuth()
         if (authData) {
-          token = (authData as any).token || (authData as any).accessToken || null;
+          const persisted = authData as Record<string, unknown>
+          token = String(persisted.token || persisted.accessToken || '') || null
           if (token) {
-            tokenSource = 'localStorage (tf2025_auth)';
+            tokenSource = 'localStorage (tf2025_auth)'
           }
         }
       } catch (error) {
@@ -1196,27 +1257,27 @@ class UnifiedApiManager {
 
     // 验证token格式
     if (!token) {
-      return null;
+      return null
     }
 
     if (invalidTokenMarkers.has(String(token).trim().toLowerCase())) {
-      this.clearAuthData();
-      return null;
+      this.clearAuthData()
+      return null
     }
 
     // 验证JWT格式 (应该包含3个部分，用.分隔)
-    const parts = token.split('.');
+    const parts = token.split('.')
     if (parts.length !== 3) {
       logger.warn(`Token格式无效（包含${parts.length}个部分，应该为3个），来源: ${tokenSource}`)
-      this.clearAuthData();
-      return null;
+      this.clearAuthData()
+      return null
     }
 
     // 验证JWT格式的有效性（只验证header和payload部分）
     // 使用try-catch包裹，防止某些浏览器不支持atob
     try {
       // JWT的header和payload应该是base64编码的
-      const [header, payload] = parts;
+      const [header, payload] = parts
 
       // 检查浏览器是否支持atob
       if (typeof atob === 'function') {
@@ -1226,18 +1287,18 @@ class UnifiedApiManager {
       } else {
         // 降级处理：只检查不为空
         if (!header || !payload) {
-          throw new Error('JWT header或payload为空');
+          throw new Error('JWT header或payload为空')
         }
       }
 
       // signature部分不需要base64验证，它是加密签名
     } catch (error) {
       logger.warn(`JWT格式验证失败，清除认证数据 (来源: ${tokenSource})`, error instanceof Error ? error.message : error)
-      this.clearAuthData();
-      return null;
+      this.clearAuthData()
+      return null
     }
 
-    return token;
+    return token
   }
 
   /**
@@ -1255,7 +1316,7 @@ class UnifiedApiManager {
   /**
    * 记录性能数据
    */
-  private recordPerformance(metadata: any, duration: number, status: number): void {
+  private recordPerformance(metadata: NonNullable<RequestConfig['metadata']>, duration: number, status: number): void {
     if (window.__TF2025_PERFORMANCE__) {
       window.__TF2025_PERFORMANCE__.recordMetric('apiRequest', {
         requestId: metadata.requestId,
@@ -1271,42 +1332,42 @@ class UnifiedApiManager {
   /**
    * GET请求
    */
-  get<T = any>(url: string, config?: RequestConfig): Promise<ApiResponse<T>> {
+  get<T = DynamicResponse>(url: string, config?: RequestConfig): Promise<ApiResponse<T>> {
     return this.instance.get(url, config)
   }
 
   /**
    * POST请求
    */
-  post<T = any>(url: string, data?: any, config?: RequestConfig): Promise<ApiResponse<T>> {
+  post<T = DynamicResponse>(url: string, data?: unknown, config?: RequestConfig): Promise<ApiResponse<T>> {
     return this.instance.post(url, data, config)
   }
 
   /**
    * PUT请求
    */
-  put<T = any>(url: string, data?: any, config?: RequestConfig): Promise<ApiResponse<T>> {
+  put<T = DynamicResponse>(url: string, data?: unknown, config?: RequestConfig): Promise<ApiResponse<T>> {
     return this.instance.put(url, data, config)
   }
 
   /**
    * DELETE请求
    */
-  delete<T = any>(url: string, config?: RequestConfig): Promise<ApiResponse<T>> {
+  delete<T = DynamicResponse>(url: string, config?: RequestConfig): Promise<ApiResponse<T>> {
     return this.instance.delete(url, config)
   }
 
   /**
    * PATCH请求
    */
-  patch<T = any>(url: string, data?: any, config?: RequestConfig): Promise<ApiResponse<T>> {
+  patch<T = DynamicResponse>(url: string, data?: unknown, config?: RequestConfig): Promise<ApiResponse<T>> {
     return this.instance.patch(url, data, config)
   }
 
   /**
    * 上传文件
    */
-  upload<T = any>(url: string, formData: FormData, config?: RequestConfig): Promise<ApiResponse<T>> {
+  upload<T = DynamicResponse>(url: string, formData: FormData, config?: RequestConfig): Promise<ApiResponse<T>> {
     return this.instance.post(url, formData, {
       ...config,
       headers: {
@@ -1320,11 +1381,11 @@ class UnifiedApiManager {
    * 下载文件
    */
   download(url: string, filename?: string, config?: RequestConfig): Promise<void> {
-    return this.instance.get(url, {
+    return this.instance.get<Blob>(url, {
       ...config,
       responseType: 'blob'
-    }).then((response: any) => {
-      const blob = new Blob([response])
+    }).then((response: AxiosResponse<Blob>) => {
+      const blob = response.data
       const downloadUrl = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = downloadUrl

@@ -8,26 +8,43 @@
     destroy-on-close
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <div v-if="modelValue" class="modal-body">
-      <el-form v-if="editForm" label-width="100px" class="edit-form">
+    <div
+      v-if="modelValue"
+      class="modal-body"
+    >
+      <el-form
+        v-if="editForm"
+        label-width="100px"
+        class="edit-form"
+      >
         <section class="edit-section">
-          <div class="edit-section-title"><i class="fas fa-user"></i><span>客户信息</span></div>
+          <div class="edit-section-title">
+            <i class="fas fa-user" /><span>客户信息</span>
+          </div>
           <div class="form-row">
-            <el-form-item label="客户姓名">
+            <el-form-item
+              v-if="canViewField('customer_name')"
+              label="客户姓名"
+            >
               <el-input
                 v-model="editForm.customer_name"
                 placeholder="请输入客户姓名"
                 clearable
+                :disabled="!canEditField('customer_name')"
                 @input="editForm.customer_name = normalizePersonName(editForm.customer_name, 20)"
               />
             </el-form-item>
 
-            <el-form-item label="客户手机">
+            <el-form-item
+              v-if="canViewField('customer_phone')"
+              label="客户手机"
+            >
               <el-input
                 v-model="editForm.customer_phone"
                 placeholder="请输入客户手机号"
                 clearable
                 maxlength="11"
+                :disabled="!canEditField('customer_phone')"
                 @input="editForm.customer_phone = normalizePhoneDigits(editForm.customer_phone)"
               />
             </el-form-item>
@@ -45,9 +62,17 @@
         </section>
 
         <section class="edit-section">
-          <div class="edit-section-title"><i class="fas fa-mobile-screen-button"></i><span>设备信息</span></div>
-          <div class="form-row" v-if="canViewField('brand') || canViewField('model')">
-            <el-form-item v-if="canViewField('brand')" label="品牌">
+          <div class="edit-section-title">
+            <i class="fas fa-mobile-screen-button" /><span>设备信息</span>
+          </div>
+          <div
+            v-if="canViewField('brand') || canViewField('model')"
+            class="form-row"
+          >
+            <el-form-item
+              v-if="canViewField('brand')"
+              label="品牌"
+            >
               <el-select
                 v-model="editForm.phone_brand"
                 placeholder="请选择品牌"
@@ -65,7 +90,10 @@
               </el-select>
             </el-form-item>
 
-            <el-form-item v-if="canViewField('model')" label="型号">
+            <el-form-item
+              v-if="canViewField('model')"
+              label="型号"
+            >
               <el-select
                 v-model="editForm.phone_model"
                 placeholder="请选择型号"
@@ -83,8 +111,14 @@
             </el-form-item>
           </div>
 
-          <div class="form-row" v-if="canViewField('color') || canViewField('memory')">
-            <el-form-item v-if="canViewField('color')" label="颜色">
+          <div
+            v-if="canViewField('color') || canViewField('memory')"
+            class="form-row"
+          >
+            <el-form-item
+              v-if="canViewField('color')"
+              label="颜色"
+            >
               <el-select
                 v-model="editForm.phone_color"
                 placeholder="请选择颜色"
@@ -101,7 +135,10 @@
               </el-select>
             </el-form-item>
 
-            <el-form-item v-if="canViewField('memory')" label="内存">
+            <el-form-item
+              v-if="canViewField('memory')"
+              label="内存"
+            >
               <el-select
                 v-model="editForm.phone_memory"
                 placeholder="请选择内存"
@@ -119,22 +156,30 @@
             </el-form-item>
           </div>
 
-          <el-form-item label="序列号">
+          <el-form-item
+            v-if="canViewField('serial_number')"
+            label="序列号"
+          >
             <el-input
               v-model="editForm.serial_number"
               placeholder="请输入序列号"
               clearable
+              :disabled="!canEditField('serial_number')"
               @input="formatSerialNumber"
             />
           </el-form-item>
 
           <div class="form-row">
-            <el-form-item label="IMEI1">
+            <el-form-item
+              v-if="canViewField('imei1')"
+              label="IMEI1"
+            >
               <el-input
                 v-model="editForm.imei1"
                 placeholder="请输入IMEI1"
                 clearable
                 maxlength="15"
+                :disabled="!canEditField('imei1')"
                 @input="formatIMEI1"
               />
             </el-form-item>
@@ -155,9 +200,14 @@
         </section>
 
         <section class="edit-section">
-          <div class="edit-section-title"><i class="fas fa-receipt"></i><span>销售信息</span></div>
+          <div class="edit-section-title">
+            <i class="fas fa-receipt" /><span>销售信息</span>
+          </div>
           <div class="form-row">
-            <el-form-item v-if="canViewField('sale_price')" label="销售价格">
+            <el-form-item
+              v-if="canViewField('sale_price')"
+              label="销售价格"
+            >
               <el-input
                 v-model="editForm.sale_price"
                 type="number"
@@ -167,11 +217,16 @@
                 :disabled="!canEditField('sale_price')"
                 @blur="normalizeSalePrice"
               >
-                <template #prepend>¥</template>
+                <template #prepend>
+                  ¥
+                </template>
               </el-input>
             </el-form-item>
 
-            <el-form-item label="销售时间">
+            <el-form-item
+              v-if="canViewField('sale_time')"
+              label="销售时间"
+            >
               <el-date-picker
                 v-model="editForm.sale_time"
                 type="date"
@@ -180,16 +235,21 @@
                 value-format="YYYY-MM-DD"
                 class="form-input"
                 clearable
+                :disabled="!canEditField('sale_time')"
               />
             </el-form-item>
           </div>
 
-          <el-form-item label="销售店铺">
+          <el-form-item
+            v-if="canViewField('store_name')"
+            label="销售店铺"
+          >
             <el-select
               v-model="editForm.store_id"
               placeholder="请选择销售店铺"
               filterable
               clearable
+              :disabled="!canEditField('store_name')"
             >
               <el-option
                 v-for="store in stores"
@@ -199,17 +259,22 @@
               />
             </el-select>
             <div class="form-tip">
-              <i class="fas fa-info-circle"></i>
+              <i class="fas fa-info-circle" />
               修改销售店铺
             </div>
           </el-form-item>
         </section>
 
         <section class="edit-section">
-          <div class="edit-section-title"><i class="fas fa-clipboard-check"></i><span>国补处理</span></div>
-          <div class="form-row" v-if="canViewField('apply_time') || canViewField('arrival_time')">
+          <div class="edit-section-title">
+            <i class="fas fa-clipboard-check" /><span>国补处理</span>
+          </div>
+          <div
+            v-if="canViewField('apply_time') || canApprove || canViewField('arrival_time') || canArrival"
+            class="form-row"
+          >
             <el-form-item
-              v-if="canViewField('apply_time') && canEditField('apply_time')"
+              v-if="canApprove"
               label="提交时间"
             >
               <el-date-picker
@@ -224,7 +289,7 @@
             </el-form-item>
 
             <el-form-item
-              v-if="canViewField('arrival_time') && canEditField('arrival_time')"
+              v-if="canArrival"
               label="到账时间"
             >
               <el-date-picker
@@ -253,57 +318,83 @@
         </section>
 
         <section class="edit-section">
-          <div class="edit-section-title"><i class="fas fa-user-pen"></i><span>代办人信息</span></div>
+          <div class="edit-section-title">
+            <i class="fas fa-user-pen" /><span>代办人信息</span>
+          </div>
 
-          <el-form-item label="他人代办">
+          <el-form-item
+            v-if="canViewField('has_different_handler')"
+            label="他人代办"
+          >
             <el-switch
-              v-model="editForm.hasDifferentHandler"
+              v-model="editForm.has_different_handler"
               active-text="是"
               inactive-text="否"
+              :disabled="!canEditField('has_different_handler')"
             />
             <span class="form-item-tip">
-              {{ editForm.hasDifferentHandler ? '办理者信息' : '' }}
+              {{ editForm.has_different_handler ? '办理者信息' : '' }}
             </span>
           </el-form-item>
 
-          <template v-if="editForm.hasDifferentHandler">
+          <template v-if="canViewField('has_different_handler') && editForm.has_different_handler">
             <div class="form-row">
-              <el-form-item label="代办人姓名">
+              <el-form-item
+                v-if="canViewField('handler_name')"
+                label="代办人姓名"
+              >
                 <el-input
-                  v-model="editForm.handlerName"
+                  v-model="editForm.handler_name"
                   placeholder="请输入实际代办人姓名"
                   clearable
-                  @input="editForm.handlerName = normalizePersonName(editForm.handlerName, 20)"
+                  :disabled="!canEditField('handler_name')"
+                  @input="editForm.handler_name = normalizePersonName(editForm.handler_name, 20)"
                 />
               </el-form-item>
 
-              <el-form-item label="代办人手机">
+              <el-form-item
+                v-if="canViewField('handler_phone')"
+                label="代办人手机"
+              >
                 <el-input
-                  v-model="editForm.handlerPhone"
+                  v-model="editForm.handler_phone"
                   placeholder="请输入实际代办人手机号"
                   clearable
                   maxlength="11"
-                  @input="editForm.handlerPhone = normalizePhoneDigits(editForm.handlerPhone)"
+                  :disabled="!canEditField('handler_phone')"
+                  @input="editForm.handler_phone = normalizePhoneDigits(editForm.handler_phone)"
                 />
               </el-form-item>
             </div>
 
-            <el-form-item label="代办人身份证">
+            <el-form-item
+              v-if="canViewField('handler_idcard')"
+              label="代办人身份证"
+            >
               <el-input
-                v-model="editForm.handlerIdcard"
+                v-model="editForm.handler_idcard"
                 placeholder="请输入实际代办人身份证号"
                 clearable
                 maxlength="18"
-                @input="editForm.handlerIdcard = normalizeIdCard(editForm.handlerIdcard)"
+                :disabled="!canEditField('handler_idcard')"
+                @input="editForm.handler_idcard = normalizeIdCard(editForm.handler_idcard)"
               />
             </el-form-item>
           </template>
         </section>
 
-        <el-divider v-if="hasReadOnlyFields"></el-divider>
-        <div v-if="hasReadOnlyFields" class="readonly-fields">
-          <div class="readonly-title">以下信息为只读：</div>
-          <el-descriptions :column="1" border>
+        <el-divider v-if="hasReadOnlyFields" />
+        <div
+          v-if="hasReadOnlyFields"
+          class="readonly-fields"
+        >
+          <div class="readonly-title">
+            以下信息为只读：
+          </div>
+          <el-descriptions
+            :column="1"
+            border
+          >
             <el-descriptions-item
               v-if="canViewField('customer_idcard') && !canEditField('customer_idcard') && editForm.customer_idcard"
               label="客户身份证号"
@@ -317,13 +408,13 @@
               {{ editForm.imei2 || '-' }}
             </el-descriptions-item>
             <el-descriptions-item
-              v-if="canViewField('apply_time') && !canEditField('apply_time') && editForm.apply_time"
+              v-if="canViewField('apply_time') && !canApprove && editForm.apply_time"
               label="提交时间"
             >
               {{ formatDateTime(editForm.apply_time) }}
             </el-descriptions-item>
             <el-descriptions-item
-              v-if="canViewField('arrival_time') && !canEditField('arrival_time') && editForm.arrival_time"
+              v-if="canViewField('arrival_time') && !canArrival && editForm.arrival_time"
               label="到账时间"
             >
               {{ formatDateTime(editForm.arrival_time) }}
@@ -370,9 +461,16 @@
     </div>
 
     <template #footer>
-      <div v-if="modelValue" class="apply-dialog-footer">
-        <el-button type="default" :disabled="editing" @click="emit('update:modelValue', false)">
-          <i class="fas fa-times"></i>
+      <div
+        v-if="modelValue"
+        class="apply-dialog-footer"
+      >
+        <el-button
+          type="default"
+          :disabled="editing"
+          @click="emit('update:modelValue', false)"
+        >
+          <i class="fas fa-times" />
           <span>取消</span>
         </el-button>
         <el-button
@@ -380,9 +478,14 @@
           :disabled="editing"
           @click="submitEdit"
         >
-          <InlineLoading v-if="editing" text="保存中..." size="small" variant="inherit" />
+          <InlineLoading
+            v-if="editing"
+            text="保存中..."
+            size="small"
+            variant="inherit"
+          />
           <template v-else>
-            <i class="fas fa-save"></i>
+            <i class="fas fa-save" />
             <span>保存</span>
           </template>
         </el-button>
@@ -406,8 +509,10 @@ const props = defineProps<{
   modelValue: boolean
   item: any | null
   stores: any[]
-  canViewField: (field: string) => boolean
-  canEditField: (field: string) => boolean
+  canViewField: (_field: string) => boolean
+  canEditField: (_field: string) => boolean
+  canApprove: boolean
+  canArrival: boolean
 }>()
 
 const emit = defineEmits<{
@@ -441,6 +546,8 @@ const modelOptions = computed(() => {
 
 const canViewField = (field: string) => props.canViewField(field)
 const canEditField = (field: string) => props.canEditField(field)
+const canApprove = computed(() => props.canApprove)
+const canArrival = computed(() => props.canArrival)
 
 const hasReadOnlyFields = computed(() => {
   const allFields = [
@@ -515,10 +622,10 @@ const fillEditForm = (item: any) => {
     apply_time: item.apply_time || '',
     arrival_time: item.arrival_time || '',
     remarks: calculateRemarks(item),
-    hasDifferentHandler: item.hasDifferentHandler || false,
-    handlerName: normalizePersonName(item.handlerInfo?.handlerName || '', 20),
-    handlerPhone: normalizePhoneDigits(item.handlerInfo?.handlerPhone || ''),
-    handlerIdcard: normalizeIdCard(item.handlerInfo?.handlerIdcard || '')
+    has_different_handler: item.has_different_handler || false,
+    handler_name: normalizePersonName(item.handler_info?.handler_name || '', 20),
+    handler_phone: normalizePhoneDigits(item.handler_info?.handler_phone || ''),
+    handler_idcard: normalizeIdCard(item.handler_info?.handler_idcard || '')
   }
 }
 
@@ -565,12 +672,45 @@ const submitEdit = async () => {
     editForm.value.customer_name = normalizePersonName(editForm.value.customer_name || '', 20)
     editForm.value.customer_phone = normalizePhoneDigits(editForm.value.customer_phone || '')
     editForm.value.customer_idcard = normalizeIdCard(editForm.value.customer_idcard || '')
-    editForm.value.handlerName = normalizePersonName(editForm.value.handlerName || '', 20)
-    editForm.value.handlerPhone = normalizePhoneDigits(editForm.value.handlerPhone || '')
-    editForm.value.handlerIdcard = normalizeIdCard(editForm.value.handlerIdcard || '')
+    editForm.value.handler_name = normalizePersonName(editForm.value.handler_name || '', 20)
+    editForm.value.handler_phone = normalizePhoneDigits(editForm.value.handler_phone || '')
+    editForm.value.handler_idcard = normalizeIdCard(editForm.value.handler_idcard || '')
     normalizeSalePrice()
 
-    const response = await unifiedApi.put(`/subsidy/${props.item.id}`, editForm.value)
+    const payload: Record<string, unknown> = {}
+    const assignField = (permissionField: string, payloadField: string, value: unknown) => {
+      if (canViewField(permissionField) && canEditField(permissionField)) {
+        payload[payloadField] = value
+      }
+    }
+
+    assignField('customer_name', 'customer_name', editForm.value.customer_name)
+    assignField('customer_phone', 'customer_phone', editForm.value.customer_phone)
+    assignField('customer_idcard', 'customer_idcard', editForm.value.customer_idcard)
+    assignField('serial_number', 'serial_number', editForm.value.serial_number)
+    assignField('imei1', 'imei1', editForm.value.imei1)
+    assignField('imei2', 'imei2', editForm.value.imei2)
+    assignField('brand', 'phone_brand', editForm.value.phone_brand)
+    assignField('model', 'phone_model', editForm.value.phone_model)
+    assignField('color', 'phone_color', editForm.value.phone_color)
+    assignField('memory', 'phone_memory', editForm.value.phone_memory)
+    assignField('sale_price', 'sale_price', editForm.value.sale_price)
+    assignField('sale_time', 'sale_time', editForm.value.sale_time)
+    assignField('store_name', 'store_id', editForm.value.store_id)
+    assignField('remarks', 'remarks', editForm.value.remarks)
+    assignField('has_different_handler', 'has_different_handler', editForm.value.has_different_handler)
+    assignField('handler_name', 'handler_name', editForm.value.handler_name)
+    assignField('handler_phone', 'handler_phone', editForm.value.handler_phone)
+    assignField('handler_idcard', 'handler_idcard', editForm.value.handler_idcard)
+
+    if (canApprove.value) {
+      payload.apply_time = editForm.value.apply_time
+    }
+    if (canArrival.value) {
+      payload.arrival_time = editForm.value.arrival_time
+    }
+
+    const response = await unifiedApi.put(`/subsidy/${props.item.id}`, payload)
 
     if (response.success) {
       ElMessage.success('更新成功')
@@ -607,14 +747,14 @@ const submitEdit = async () => {
   gap: 7px;
   margin: 0 0 12px;
   padding-bottom: 8px;
-  border-bottom: 1px solid var(--tf-border-color, #e5e7eb);
-  color: var(--tf-text-primary, #1f2937);
+  border-bottom: 1px solid var(--tf-border-color, var(--tf-color-neutral-200));
+  color: var(--tf-text-primary, var(--tf-color-neutral-800));
   font-size: 14px;
   font-weight: 600;
 }
 
 .edit-section-title i {
-  color: var(--tf-color-primary, #2563eb);
+  color: var(--tf-color-primary, var(--tf-color-blue-600));
   font-size: 13px;
 }
 
@@ -646,7 +786,7 @@ const submitEdit = async () => {
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
 }
 
 .readonly-fields {
@@ -656,7 +796,7 @@ const submitEdit = async () => {
 .readonly-title {
   margin-bottom: 12px;
   font-size: 13px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
 }
 
 @media (max-width: 768px) {

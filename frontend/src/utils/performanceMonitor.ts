@@ -3,8 +3,43 @@
  * 提供核心Web指标和自定义性能指标的跟踪、分析和报告
  */
 
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { reactive, type App } from 'vue'
 import logger from '@/utils/logger'
+
+interface WebVitalEntry extends PerformanceEntry {
+  processingStart?: number
+  hadRecentInput?: boolean
+  value?: number
+}
+
+interface SlowResource {
+  name: string
+  duration: number
+  size: number
+  type: string
+}
+
+interface PerformanceReportPayload {
+  fcp: number
+  lcp: number
+  fid: number
+  cls: number
+  ttfb: number
+  domReady: number
+  loadComplete: number
+  tti: number
+  resourceCount: number
+  resourceSize: number
+  slowResources: SlowResource[]
+  apiLatency: Record<string, unknown>
+  errorRate: number
+  userSatisfaction: number
+  pageViews: number
+  longTaskCount: number
+  userAgent: string
+  url: string
+  timestamp: number
+}
 
 // 性能监控配置
 interface PerformanceConfig {
@@ -34,7 +69,7 @@ const WEB_VITALS_THRESHOLDS = {
   LCP: { good: 2500, needsImprovement: 4000 }, // Largest Contentful Paint
   FID: { good: 100, needsImprovement: 300 },  // First Input Delay
   CLS: { good: 0.1, needsImprovement: 0.25 }, // Cumulative Layout Shift
-  TTFB: { good: 800, needsImprovement: 1800 }, // Time to First Byte
+  TTFB: { good: 800, needsImprovement: 1800 } // Time to First Byte
 }
 
 /**
@@ -43,8 +78,9 @@ const WEB_VITALS_THRESHOLDS = {
 export class PerformanceMonitor {
   private config: PerformanceConfig
   private isMonitoring = false
-  private reports: any[] = []
+  private reports: PerformanceReportPayload[] = []
   private observers: PerformanceObserver[] = []
+  private autoReportTimer?: number
   private metrics = reactive({
     pageLoadTime: 0,
     domReadyTime: 0,
@@ -56,16 +92,16 @@ export class PerformanceMonitor {
     tti: 0,
     resourceCount: 0,
     resourceSize: 0,
-    slowResources: [],
+    slowResources: [] as SlowResource[],
     errorRate: 0,
     userSatisfaction: 100,
     pageViews: 0,
     longTaskCount: 0,
-    apiLatency: {},
+    apiLatency: {} as Record<string, unknown>,
     timestamp: Date.now()
   })
   private errorCount = 0
-  private longTasks: any[] = []
+  private longTasks: PerformanceEntry[] = []
 
   constructor(config: Partial<PerformanceConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config }
@@ -161,7 +197,7 @@ export class PerformanceMonitor {
    * 开始页面加载跟踪
    */
   private startPageLoadTracking() {
-    const navigation = performance.getEntriesByType('navigation')[0] as any
+    const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined
 
     if (navigation) {
       this.metrics.pageLoadTime = navigation.loadEventEnd - navigation.fetchStart
@@ -177,7 +213,7 @@ export class PerformanceMonitor {
     try {
       const observer = new PerformanceObserver((list) => {
         for (const entry of list.getEntries()) {
-          this.processWebVitalEntry(entry as any)
+          this.processWebVitalEntry(entry as WebVitalEntry)
         }
       })
 
@@ -205,36 +241,35 @@ export class PerformanceMonitor {
   /**
    * 处理Web Vitals条目
    */
-  private processWebVitalEntry(entry: any) {
+  private processWebVitalEntry(entry: WebVitalEntry) {
     switch (entry.entryType) {
-      case 'largest-contentful-paint':
-        this.metrics.lcp = entry.startTime
-        this.evaluateWebVital('LCP', entry.startTime)
-        break
+    case 'largest-contentful-paint':
+      this.metrics.lcp = entry.startTime
+      this.evaluateWebVital('LCP', entry.startTime)
+      break
 
-      case 'first-input':
-        if (entry.processingStart) {
-          const fid = entry.processingStart - entry.startTime
-          this.metrics.fid = fid
-          this.evaluateWebVital('FID', fid)
-        }
-        break
+    case 'first-input':
+      if (entry.processingStart) {
+        const fid = entry.processingStart - entry.startTime
+        this.metrics.fid = fid
+        this.evaluateWebVital('FID', fid)
+      }
+      break
 
-      case 'layout-shift':
-        if (!entry.hadRecentInput) {
-          this.metrics.cls = (this.metrics.cls || 0) + entry.value
-          this.evaluateWebVital('CLS', this.metrics.cls)
-        }
-        break
+    case 'layout-shift':
+      if (!entry.hadRecentInput) {
+        this.metrics.cls = (this.metrics.cls || 0) + (entry.value || 0)
+        this.evaluateWebVital('CLS', this.metrics.cls)
+      }
+      break
     }
   }
 
   /**
    * 评估Web Vitals质量
    */
-  private evaluateWebVital(name: string, value: number) {
-    const thresholds = (WEB_VITALS_THRESHOLDS as any)[name]
-    if (!thresholds) return
+  private evaluateWebVital(name: keyof typeof WEB_VITALS_THRESHOLDS, value: number) {
+    const thresholds = WEB_VITALS_THRESHOLDS[name]
 
     let rating: 'good' | 'needs-improvement' | 'poor' = 'good'
 
@@ -375,7 +410,9 @@ export class PerformanceMonitor {
    * 开始自动报告
    */
   private startAutoReporting() {
-    setInterval(() => {
+    if (!this.config.autoReport) return
+    this.stopAutoReporting()
+    this.autoReportTimer = window.setInterval(() => {
       if (this.isMonitoring && this.shouldReport()) {
         this.generateReport()
       }
@@ -386,7 +423,10 @@ export class PerformanceMonitor {
    * 停止自动报告
    */
   private stopAutoReporting() {
-    // 清理定时器
+    if (this.autoReportTimer) {
+      clearInterval(this.autoReportTimer)
+      this.autoReportTimer = undefined
+    }
   }
 
   /**
@@ -399,7 +439,7 @@ export class PerformanceMonitor {
   /**
    * 添加自定义指标
    */
-  private addCustomMetric(name: string, value: number, unit: string) {
+  private addCustomMetric(_name: string, _value: number, _unit: string) {
     // 实现自定义指标记录逻辑
   }
 
@@ -466,7 +506,7 @@ export class PerformanceMonitor {
   /**
    * 发送报告到服务器
    */
-  private async sendReport(report: any) {
+  private async sendReport(report: PerformanceReportPayload) {
     try {
       const response = await fetch('/api/performance/report', {
         method: 'POST',
@@ -565,7 +605,7 @@ export const performanceMonitor = new PerformanceMonitor()
 
 // Vue插件
 export const PerformancePlugin = {
-  install(app: any) {
+  install(app: App) {
     app.provide('performanceMonitor', performanceMonitor)
 
     if (window.__TF2025__) {

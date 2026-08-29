@@ -14,7 +14,6 @@ export interface Employee {
   name: string
   phone?: string
   email?: string
-  role: string
   status: number
   last_login?: string
   created_at?: string
@@ -23,8 +22,7 @@ export interface Employee {
   salary_template_id?: number
   salary_template_name?: string
   role_names?: string
-  role_ids?: string
-  roles?: string
+  role_ids: number[]
   store_id?: number
   store_name?: string
   position?: string
@@ -38,10 +36,9 @@ export interface EmployeeForm {
   name: string
   phone?: string
   email?: string
-  role: string
-  role_ids?: number[]
+  role_ids: number[]
   password?: string
-  confirmPassword?: string
+  confirm_password?: string
   store_id?: number
   hire_date?: string
   salary_template_id?: number
@@ -60,7 +57,6 @@ export type EmployeeStatus = 0 | 1 | 'active' | 'inactive' | 'pending'
 export interface EmployeeFilters {
   search?: string
   status?: string
-  role?: string
   store_id?: number
   start_date?: string
   end_date?: string
@@ -73,9 +69,11 @@ export interface EmployeeListResponse {
   employees: Employee[]
   pagination: {
     page: number
-    limit: number
+    page_size: number
     total: number
-    pages: number
+    total_pages: number
+    has_next: boolean
+    has_prev: boolean
   }
 }
 
@@ -114,9 +112,11 @@ export interface RoleListResponse {
   roles: Role[]
   pagination: {
     page: number
-    limit: number
+    page_size: number
     total: number
-    pages: number
+    total_pages: number
+    has_next: boolean
+    has_prev: boolean
   }
 }
 

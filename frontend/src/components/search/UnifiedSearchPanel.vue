@@ -1,19 +1,36 @@
 <template>
-  <div class="unified-search-panel" @click.capture="handlePanelClick">
-    <div class="unified-search-panel__form" :class="{ 'is-expanded': expanded }" @click.stop>
+  <div
+    class="unified-search-panel"
+    @click.capture="handlePanelClick"
+  >
+    <div
+      class="unified-search-panel__form"
+      :class="{ 'is-expanded': expanded }"
+      @click.stop
+    >
       <div class="unified-search-panel__main">
         <div class="unified-search-panel__primary">
           <slot name="primary" />
         </div>
 
-        <div class="unified-search-panel__actions" @click.stop>
+        <div
+          class="unified-search-panel__actions"
+          @click.stop
+        >
           <slot name="actions">
-            <el-button type="primary" @click="$emit('search')" :disabled="loading">
-              <i class="fas fa-search"></i>
+            <el-button
+              type="primary"
+              :disabled="loading"
+              @click="$emit('search')"
+            >
+              <i class="fas fa-search" />
               搜索
             </el-button>
-            <el-button type="default" @click="$emit('reset')">
-              <i class="fas fa-redo"></i>
+            <el-button
+              type="default"
+              @click="$emit('reset')"
+            >
+              <i class="fas fa-redo" />
               重置
             </el-button>
           </slot>
@@ -44,7 +61,7 @@ interface Emits {
 
 const emit = defineEmits<Emits>()
 
-const openPanel = () => {
+const _openPanel = () => {
   if (!props.expanded) {
     emit('update:expanded', true)
   }
@@ -69,11 +86,11 @@ const handlePanelClick = (event: MouseEvent) => {
 
 <style scoped lang="scss">
 .unified-search-panel {
-  background: linear-gradient(135deg, #f5f7fa 0%, #e4e9f2 100%);
+  background: var(--admin-search-panel-bg);
   border-radius: 12px;
   padding: 12px 16px;
   margin-bottom: 16px;
-  border: 1px solid #d1d9e6;
+  border: 1px solid var(--tf-color-border-input);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   cursor: pointer;
   user-select: none;

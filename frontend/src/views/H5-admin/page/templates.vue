@@ -6,490 +6,768 @@
     module-name="商城模板"
     permission-code="h5-templates:view"
   >
+    <div class="template-management-page">
+      <el-card
+        class="toolbar-card"
+        shadow="never"
+      >
+        <div class="toolbar search-toolbar">
+          <div class="search-panel">
+            <div class="search-panel-main">
+              <el-input
+                v-model="keyword"
+                placeholder="输入品牌、型号或颜色关键词"
+                clearable
+                class="search-input"
+                size="large"
+              >
+                <template #prefix>
+                  <i class="fas fa-search" />
+                </template>
+              </el-input>
 
-  <div class="template-management-page">
-    <el-card class="toolbar-card" shadow="never">
-      <div class="toolbar search-toolbar">
-        <div class="search-panel">
-          <div class="search-panel-main">
-            <el-input
-              v-model="keyword"
-              placeholder="输入品牌、型号或颜色关键词"
-              clearable
-              class="search-input"
-              size="large"
-            >
-              <template #prefix>
-                <i class="fas fa-search"></i>
-              </template>
-            </el-input>
-
-            <div class="search-panel-meta">
-              <span>当前共 {{ groupedTemplates.length }} 组母模板</span>
-              <span v-if="keyword">匹配 {{ filteredGroups.length }} 组结果</span>
+              <div class="search-panel-meta">
+                <span>当前共 {{ groupedTemplates.length }} 组母模板</span>
+                <span v-if="keyword">匹配 {{ filteredGroups.length }} 组结果</span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </el-card>
+      </el-card>
 
-    <el-card class="table-card" shadow="never">
-      <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
-
-      <template v-else>
-      <div v-if="keyword" class="sort-tip">
-        搜索结果仅用于筛选查看，清空搜索后可拖拽排序母模板。
-      </div>
-
-      <div v-if="filteredGroups.length > 0" class="group-table-header">
-        <div>商品</div>
-        <div class="center">颜色数</div>
-        <div class="center">启用</div>
-        <div class="center">在库</div>
-        <div class="center">排序参考</div>
-        <div class="center">操作</div>
-      </div>
-
-      <draggable
-        v-if="!keyword && groupedTemplates.length > 0"
-        v-model="groupedTemplates"
-        item-key="groupKey"
-        handle=".group-drag-handle"
-        :disabled="!canEdit"
-        class="group-list"
-        @end="handleGroupDragEnd"
+      <el-card
+        class="table-card"
+        shadow="never"
       >
-        <template #item="{ element: row }">
-          <div class="group-row">
-            <div class="group-main">
-              <div class="group-drag-handle" title="拖拽排序">
-                <i class="fas fa-grip-vertical"></i>
-              </div>
-              <div class="product-cell">
-                <img
-                  v-if="row.main_image && !isVideoMedia({ image_url: row.main_image, image_type: row.main_media_type })"
-                  :src="getImageUrl(row.main_image)"
-                  :alt="row.display_name"
-                  class="product-cover"
-                />
-                <video
-                  v-else-if="row.main_image"
-                  :src="getImageUrl(row.main_image)"
-                  class="product-cover"
-                  muted
-                  playsinline
-                  preload="metadata"
-                />
-                <div v-else class="product-cover placeholder">
-                  <i class="fas fa-mobile-alt"></i>
-                </div>
-                <div class="product-meta">
-                  <div class="product-title">{{ row.display_name }}</div>
-                  <div class="product-subtitle">品牌 {{ row.brand_name || '-' }} / 型号 {{ row.model_name || '-' }}</div>
-                  <div class="color-tags">
-                    <el-tag
-                      v-for="child in row.templates"
-                      :key="child.localKey"
-                      size="small"
-                      :type="child.is_active ? 'success' : 'info'"
+        <TableLoadingRow
+          v-if="loading"
+          mode="block"
+          text="加载中..."
+        />
+
+        <template v-else>
+          <div
+            v-if="keyword"
+            class="sort-tip"
+          >
+            搜索结果仅用于筛选查看，清空搜索后可拖拽排序母模板。
+          </div>
+
+          <div
+            v-if="filteredGroups.length > 0"
+            class="group-table-header"
+          >
+            <div v-if="canViewField('template.product_info')">
+              商品
+            </div>
+            <div
+              v-if="canViewField('template.color_count')"
+              class="center"
+            >
+              颜色数
+            </div>
+            <div
+              v-if="canViewField('template.active_count')"
+              class="center"
+            >
+              启用
+            </div>
+            <div
+              v-if="canViewField('template.stock_count')"
+              class="center"
+            >
+              在库
+            </div>
+            <div
+              v-if="canViewField('template.sort_order')"
+              class="center"
+            >
+              排序参考
+            </div>
+            <div
+              v-if="showActionColumn"
+              class="center"
+            >
+              操作
+            </div>
+          </div>
+
+          <draggable
+            v-if="!keyword && groupedTemplates.length > 0"
+            v-model="groupedTemplates"
+            item-key="groupKey"
+            handle=".group-drag-handle"
+            :disabled="!canEdit"
+            class="group-list"
+            @end="handleGroupDragEnd"
+          >
+            <template #item="{ element: row }">
+              <div class="group-row">
+                <div class="group-main">
+                  <div
+                    class="group-drag-handle"
+                    title="拖拽排序"
+                  >
+                    <i class="fas fa-grip-vertical" />
+                  </div>
+                  <div
+                    v-if="canViewField('template.product_info')"
+                    class="product-cell"
+                  >
+                    <img
+                      v-if="row.main_image && !isVideoMedia({ image_url: row.main_image, image_type: row.main_media_type })"
+                      :src="getImageUrl(row.main_image)"
+                      :alt="row.display_name"
+                      class="product-cover"
                     >
-                      {{ child.color_name || `颜色#${child.color_id}` }}
-                    </el-tag>
+                    <video
+                      v-else-if="row.main_image"
+                      :src="getImageUrl(row.main_image)"
+                      class="product-cover"
+                      muted
+                      playsinline
+                      preload="metadata"
+                    />
+                    <div
+                      v-else
+                      class="product-cover placeholder"
+                    >
+                      <i class="fas fa-mobile-alt" />
+                    </div>
+                    <div class="product-meta">
+                      <div class="product-title">
+                        {{ row.display_name }}
+                      </div>
+                      <div class="product-subtitle">
+                        品牌 {{ row.brand_name || '-' }} / 型号 {{ row.model_name || '-' }}
+                      </div>
+                      <div class="color-tags">
+                        <el-tag
+                          v-for="child in row.templates"
+                          :key="child.localKey"
+                          size="small"
+                          :type="child.is_active ? 'success' : 'info'"
+                        >
+                          {{ child.color_name || `颜色#${child.color_id}` }}
+                        </el-tag>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  v-if="canViewField('template.color_count')"
+                  class="group-stat center"
+                  data-label="颜色数"
+                >
+                  <strong>{{ row.templates.length }}</strong>
+                </div>
+                <div
+                  v-if="canViewField('template.active_count')"
+                  class="group-stat center"
+                  data-label="启用"
+                >
+                  {{ row.active_count }}/{{ row.templates.length }}
+                </div>
+                <div
+                  v-if="canViewField('template.stock_count')"
+                  class="group-stat center"
+                  data-label="在库"
+                >
+                  {{ row.total_stock }}
+                </div>
+                <div
+                  v-if="canViewField('template.sort_order')"
+                  class="group-stat center"
+                  data-label="排序"
+                >
+                  {{ row.sort_order }}
+                </div>
+                <div
+                  v-if="showActionColumn"
+                  class="group-actions center"
+                >
+                  <div class="action-buttons">
+                    <el-button
+                      v-if="canEdit"
+                      link
+                      type="primary"
+                      @click="openEditDialog(row)"
+                    >
+                      编辑
+                    </el-button>
+                    <el-button
+                      v-if="canDelete"
+                      link
+                      type="danger"
+                      @click="handleDeleteGroup(row)"
+                    >
+                      删除整组
+                    </el-button>
                   </div>
                 </div>
               </div>
-            </div>
+            </template>
+          </draggable>
 
-            <div class="group-stat center" data-label="颜色数"><strong>{{ row.templates.length }}</strong></div>
-            <div class="group-stat center" data-label="启用">{{ row.active_count }}/{{ row.templates.length }}</div>
-            <div class="group-stat center" data-label="在库">{{ row.total_stock }}</div>
-            <div class="group-stat center" data-label="排序">{{ row.sort_order }}</div>
-            <div class="group-actions center">
-              <div class="action-buttons">
-                <el-button v-if="canEdit" link type="primary" @click="openEditDialog(row)">编辑</el-button>
-                <el-button v-if="canDelete" link type="danger" @click="handleDeleteGroup(row)">删除整组</el-button>
-              </div>
-            </div>
-          </div>
-        </template>
-      </draggable>
-
-      <div v-else-if="filteredGroups.length > 0" class="group-list">
-        <div
-          v-for="row in filteredGroups"
-          :key="row.groupKey"
-          class="group-row"
-        >
-          <div class="group-main">
-            <div class="group-drag-handle disabled" title="清空搜索后可拖拽">
-              <i class="fas fa-grip-vertical"></i>
-            </div>
-            <div class="product-cell">
-              <img
-                v-if="row.main_image && !isVideoMedia({ image_url: row.main_image, image_type: row.main_media_type })"
-                :src="getImageUrl(row.main_image)"
-                :alt="row.display_name"
-                class="product-cover"
-              />
-              <video
-                v-else-if="row.main_image"
-                :src="getImageUrl(row.main_image)"
-                class="product-cover"
-                muted
-                playsinline
-                preload="metadata"
-              />
-              <div v-else class="product-cover placeholder">
-                <i class="fas fa-mobile-alt"></i>
-              </div>
-              <div class="product-meta">
-                <div class="product-title">{{ row.display_name }}</div>
-                <div class="product-subtitle">品牌 {{ row.brand_name || '-' }} / 型号 {{ row.model_name || '-' }}</div>
-                <div class="color-tags">
-                  <el-tag
-                    v-for="child in row.templates"
-                    :key="child.localKey"
-                    size="small"
-                    :type="child.is_active ? 'success' : 'info'"
+          <div
+            v-else-if="filteredGroups.length > 0"
+            class="group-list"
+          >
+            <div
+              v-for="row in filteredGroups"
+              :key="row.groupKey"
+              class="group-row"
+            >
+              <div class="group-main">
+                <div
+                  class="group-drag-handle disabled"
+                  title="清空搜索后可拖拽"
+                >
+                  <i class="fas fa-grip-vertical" />
+                </div>
+                <div
+                  v-if="canViewField('template.product_info')"
+                  class="product-cell"
+                >
+                  <img
+                    v-if="row.main_image && !isVideoMedia({ image_url: row.main_image, image_type: row.main_media_type })"
+                    :src="getImageUrl(row.main_image)"
+                    :alt="row.display_name"
+                    class="product-cover"
                   >
-                    {{ child.color_name || `颜色#${child.color_id}` }}
-                  </el-tag>
+                  <video
+                    v-else-if="row.main_image"
+                    :src="getImageUrl(row.main_image)"
+                    class="product-cover"
+                    muted
+                    playsinline
+                    preload="metadata"
+                  />
+                  <div
+                    v-else
+                    class="product-cover placeholder"
+                  >
+                    <i class="fas fa-mobile-alt" />
+                  </div>
+                  <div class="product-meta">
+                    <div class="product-title">
+                      {{ row.display_name }}
+                    </div>
+                    <div class="product-subtitle">
+                      品牌 {{ row.brand_name || '-' }} / 型号 {{ row.model_name || '-' }}
+                    </div>
+                    <div class="color-tags">
+                      <el-tag
+                        v-for="child in row.templates"
+                        :key="child.localKey"
+                        size="small"
+                        :type="child.is_active ? 'success' : 'info'"
+                      >
+                        {{ child.color_name || `颜色#${child.color_id}` }}
+                      </el-tag>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                v-if="canViewField('template.color_count')"
+                class="group-stat center"
+                data-label="颜色数"
+              >
+                <strong>{{ row.templates.length }}</strong>
+              </div>
+              <div
+                v-if="canViewField('template.active_count')"
+                class="group-stat center"
+                data-label="启用"
+              >
+                {{ row.active_count }}/{{ row.templates.length }}
+              </div>
+              <div
+                v-if="canViewField('template.stock_count')"
+                class="group-stat center"
+                data-label="在库"
+              >
+                {{ row.total_stock }}
+              </div>
+              <div
+                v-if="canViewField('template.sort_order')"
+                class="group-stat center"
+                data-label="排序"
+              >
+                {{ row.sort_order }}
+              </div>
+              <div
+                v-if="showActionColumn"
+                class="group-actions center"
+              >
+                <div class="action-buttons">
+                  <el-button
+                    v-if="canEdit"
+                    link
+                    type="primary"
+                    @click="openEditDialog(row)"
+                  >
+                    编辑
+                  </el-button>
+                  <el-button
+                    v-if="canDelete"
+                    link
+                    type="danger"
+                    @click="handleDeleteGroup(row)"
+                  >
+                    删除整组
+                  </el-button>
                 </div>
               </div>
             </div>
           </div>
 
-          <div class="group-stat center" data-label="颜色数"><strong>{{ row.templates.length }}</strong></div>
-          <div class="group-stat center" data-label="启用">{{ row.active_count }}/{{ row.templates.length }}</div>
-          <div class="group-stat center" data-label="在库">{{ row.total_stock }}</div>
-          <div class="group-stat center" data-label="排序">{{ row.sort_order }}</div>
-          <div class="group-actions center">
-            <div class="action-buttons">
-              <el-button v-if="canEdit" link type="primary" @click="openEditDialog(row)">编辑</el-button>
-              <el-button v-if="canDelete" link type="danger" @click="handleDeleteGroup(row)">删除整组</el-button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <el-empty v-if="filteredGroups.length === 0" description="暂无母模板">
-        <el-button v-if="canCreate" type="primary" @click="openCreateDialog">新增</el-button>
-      </el-empty>
-      </template>
-    </el-card>
-
-    <MobileDialog
-      v-model="showDialog"
-      :title="dialogTitle"
-      width="1240px"
-      dialog-class="template-dialog"
-      :show-default-footer="false"
-      destroy-on-close
-      @close="resetDialogState"
-    >
-      <div class="dialog-shell">
-        <div class="dialog-header-form">
-          <div class="header-form-item">
-            <span class="form-label">品牌</span>
-            <el-select
-              v-model="groupForm.brand_id"
-              placeholder="选择品牌"
-              filterable
-              :disabled="isEditMode"
-              @change="handleBrandChange"
+          <DataEmptyState
+            v-if="filteredGroups.length === 0"
+            description="暂无母模板"
+          >
+            <el-button
+              v-if="canCreate"
+              type="primary"
+              @click="openCreateDialog"
             >
-              <el-option
-                v-for="brand in brands"
-                :key="brand.id"
-                :label="brand.name"
-                :value="brand.id"
-              />
-            </el-select>
-          </div>
+              新增
+            </el-button>
+          </DataEmptyState>
+        </template>
+      </el-card>
 
-          <div class="header-form-item">
-            <span class="form-label">型号</span>
-            <el-select
-              v-model="groupForm.model_id"
-              placeholder="选择型号"
-              filterable
-              :disabled="isEditMode || !groupForm.brand_id"
+      <MobileDialog
+        v-model="showDialog"
+        :title="dialogTitle"
+        width="1240px"
+        dialog-class="template-dialog"
+        :show-default-footer="false"
+        destroy-on-close
+        @close="resetDialogState"
+      >
+        <div class="dialog-shell">
+          <div class="dialog-header-form">
+            <div
+              v-if="canViewField('template.brand_model')"
+              class="header-form-item"
             >
-              <el-option
-                v-for="model in availableModels"
-                :key="model.id"
-                :label="model.name"
-                :value="model.id"
-              />
-            </el-select>
-          </div>
-
-          <div class="header-form-summary" v-if="groupForm.brand_id && groupForm.model_id">
-            <span class="summary-title">{{ currentBrandName }} {{ currentModelName }}</span>
-            <span class="summary-tip">在弹窗里按颜色维护各自的子模板</span>
-          </div>
-        </div>
-
-        <div class="editor-layout">
-          <aside class="children-panel">
-            <div class="children-panel-header">
-              <div>
-                <h4>颜色子模板</h4>
-                <p>点击颜色切换编辑内容</p>
-              </div>
-            </div>
-
-            <div class="add-child-box">
+              <span class="form-label">品牌</span>
               <el-select
-                v-model="pendingColorId"
-                placeholder="新增颜色子模板"
+                v-model="groupForm.brand_id"
+                placeholder="选择品牌"
                 filterable
-                :disabled="!groupForm.brand_id || !groupForm.model_id"
+                :disabled="isEditMode"
+                @change="handleBrandChange"
               >
                 <el-option
-                  v-for="color in availableColors"
-                  :key="color.id"
-                  :label="color.name"
-                  :value="color.id"
+                  v-for="brand in brands"
+                  :key="brand.id"
+                  :label="brand.name"
+                  :value="brand.id"
                 />
               </el-select>
-              <el-button
-                type="primary"
-                :disabled="!canWriteDialog || !pendingColorId || !groupForm.brand_id || !groupForm.model_id"
-                @click="handleAddChild"
-              >
-                新增
-              </el-button>
             </div>
 
-            <div v-if="childDrafts.length > 0" class="child-list">
-              <button
-                v-for="child in childDrafts"
-                :key="child.localKey"
-                type="button"
-                class="child-item"
-                :class="{ active: child.localKey === selectedChildKey }"
-                @click="selectedChildKey = child.localKey"
+            <div
+              v-if="canViewField('template.brand_model')"
+              class="header-form-item"
+            >
+              <span class="form-label">型号</span>
+              <el-select
+                v-model="groupForm.model_id"
+                placeholder="选择型号"
+                filterable
+                :disabled="isEditMode || !groupForm.brand_id"
               >
-                <div class="child-item-top">
-                  <span class="child-name">{{ child.color_name || `颜色#${child.color_id}` }}</span>
-                  <el-tag v-if="child.isNew" type="warning" size="small">新建</el-tag>
-                </div>
-                <div class="child-item-meta">
-                  <span>{{ formatMemoryNames(child.memory_ids) || '未选内存' }}</span>
-                  <span>{{ child.is_active ? '启用' : '停用' }}</span>
-                </div>
-              </button>
+                <el-option
+                  v-for="model in availableModels"
+                  :key="model.id"
+                  :label="model.name"
+                  :value="model.id"
+                />
+              </el-select>
             </div>
 
-            <el-empty v-else description="先添加颜色子模板" :image-size="80" />
-          </aside>
+            <div
+              v-if="groupForm.brand_id && groupForm.model_id"
+              class="header-form-summary"
+            >
+              <span class="summary-title">{{ currentBrandName }} {{ currentModelName }}</span>
+              <span class="summary-tip">在弹窗里按颜色维护各自的子模板</span>
+            </div>
+          </div>
 
-          <section class="editor-panel">
-            <template v-if="currentChild">
-              <div class="editor-title-row">
+          <div class="editor-layout">
+            <aside class="children-panel">
+              <div class="children-panel-header">
                 <div>
-                  <h3>{{ currentBrandName }} {{ currentModelName }} · {{ currentChild.color_name || `颜色#${currentChild.color_id}` }}</h3>
-                  <p>当前颜色子模板独立保存，H5 仍按子模板 ID 读取图片和价格</p>
+                  <h4>颜色子模板</h4>
+                  <p>点击颜色切换编辑内容</p>
                 </div>
-                <el-button
-                  v-if="canDelete || canWriteDialog"
-                  type="danger"
-                  plain
-                  @click="handleRemoveChild(currentChild)"
+              </div>
+
+              <div class="add-child-box">
+                <el-select
+                  v-model="pendingColorId"
+                  placeholder="新增颜色子模板"
+                  filterable
+                  :disabled="!groupForm.brand_id || !groupForm.model_id"
                 >
-                  删除当前颜色
+                  <el-option
+                    v-for="color in availableColors"
+                    :key="color.id"
+                    :label="color.name"
+                    :value="color.id"
+                  />
+                </el-select>
+                <el-button
+                  type="primary"
+                  :disabled="!canWriteDialog || !pendingColorId || !groupForm.brand_id || !groupForm.model_id"
+                  @click="handleAddChild"
+                >
+                  新增
                 </el-button>
               </div>
 
-              <div class="editor-form-grid">
-                <div class="editor-block">
-                  <div class="block-title">基础信息</div>
-                  <el-form label-position="top" :disabled="!canWriteDialog">
-                    <el-form-item label="颜色">
-                      <el-input :model-value="currentChild.color_name || `颜色#${currentChild.color_id}`" disabled />
-                    </el-form-item>
-                    <el-form-item label="支持内存">
-                      <el-select
-                        v-model="currentChild.memory_ids"
-                        multiple
-                        filterable
-                        placeholder="选择可用内存"
-                        class="memory-select"
-                      >
-                        <el-option
-                          v-for="memory in memories"
-                          :key="memory.id"
-                          :label="memory.size"
-                          :value="memory.id"
-                        />
-                      </el-select>
-                    </el-form-item>
-                    <el-form-item label="商品描述">
-                      <el-input
-                        v-model="currentChild.description"
-                        type="textarea"
-                        :rows="5"
-                        placeholder="填写当前颜色的商品描述"
-                      />
-                    </el-form-item>
-                  </el-form>
-                </div>
-
-                <div class="editor-block">
-                  <div class="block-title">价格与状态</div>
-                  <el-form label-position="top">
-                    <el-form-item label="加价设置">
-                      <div class="markup-settings">
-                        <el-select v-model="currentChild.price_markup_type" class="markup-type-select">
-                          <el-option label="固定金额" value="fixed" />
-                          <el-option label="百分比" value="percentage" />
-                        </el-select>
-                        <div class="markup-row">
-                          <el-input-number
-                            :model-value="currentChild.price_markup_type === 'fixed' ? currentChild.price_markup : undefined"
-                            :disabled="currentChild.price_markup_type !== 'fixed'"
-                            :min="0"
-                            :precision="2"
-                            :step="100"
-                            class="markup-input"
-                            @update:model-value="handleFixedMarkupChange(currentChild, $event)"
-                          />
-                          <el-input-number
-                            :model-value="currentChild.price_markup_type === 'percentage' ? currentChild.price_markup : undefined"
-                            :disabled="currentChild.price_markup_type !== 'percentage'"
-                            :min="0"
-                            :max="100"
-                            :precision="2"
-                            :step="1"
-                            class="markup-input"
-                            @update:model-value="handlePercentageMarkupChange(currentChild, $event)"
-                          >
-                            <template #suffix>%</template>
-                          </el-input-number>
-                        </div>
-                      </div>
-                    </el-form-item>
-                    <el-form-item label="启用状态">
-                      <el-switch
-                        v-model="currentChild.is_active"
-                        active-text="启用"
-                        inactive-text="停用"
-                      />
-                    </el-form-item>
-                    <el-form-item label="排序">
-                      <el-input-number
-                        v-model="currentChild.sort_order"
-                        :min="0"
-                        :step="1"
-                        style="width: 100%"
-                      />
-                    </el-form-item>
-                    <div class="stock-line">
-                      当前在库：<strong>{{ currentChild.stock_count || 0 }}</strong>
-                    </div>
-                  </el-form>
-                </div>
-              </div>
-
-              <div class="editor-block image-block">
-                <div class="image-block-header">
-                  <div>
-                    <div class="block-title">图片 / 视频管理</div>
-                    <p>支持多选上传图片和视频，媒体仍按颜色子模板 ID 独立保存</p>
-                  </div>
-                  <el-upload
-                    :show-file-list="false"
-                    multiple
-                    :disabled="!currentChild.id"
-                    accept="image/*,video/mp4,video/webm,video/ogg,video/quicktime,.mov"
-                    :http-request="handleImageUpload"
-                    :before-upload="beforeImageUpload"
-                  >
-                    <el-button type="primary" :loading="imageUploading" :disabled="!currentChild.id || !canEdit">
-                      上传图片 / 视频
-                    </el-button>
-                  </el-upload>
-                </div>
-
-                <div v-if="!currentChild.id" class="unsaved-tip">
-                  请先保存该颜色子模板，再上传对应媒体文件。
-                </div>
-
-                <draggable
-                  v-if="currentChild.images.length > 0"
-                  :list="currentChild.images"
-                  item-key="id"
-                  class="image-grid"
-                  handle=".image-drag-handle"
-                  :disabled="!canEdit"
-                  @end="handleImageDragEnd(currentChild)"
+              <div
+                v-if="childDrafts.length > 0"
+                class="child-list"
+              >
+                <button
+                  v-for="child in childDrafts"
+                  :key="child.localKey"
+                  type="button"
+                  class="child-item"
+                  :class="{ active: child.localKey === selectedChildKey }"
+                  @click="selectedChildKey = child.localKey"
                 >
-                  <template #item="{ element: image, index }">
-                    <div class="image-card">
-                      <div class="image-drag-handle" title="拖拽排序">
-                        <i class="fas fa-grip-vertical"></i>
-                      </div>
-                      <img
-                        v-if="!isVideoMedia(image)"
-                        :src="getImageUrl(image.image_url)"
-                        :alt="`${currentChild.color_name}-${index}`"
-                      />
-                      <video
-                        v-else
-                        :src="getImageUrl(image.image_url)"
-                        controls
-                        playsinline
-                        preload="metadata"
-                      />
-                      <div class="image-card-body">
-                        <div class="image-card-meta">
-                          <el-tag v-if="image.is_primary" type="success" size="small">主图</el-tag>
-                          <el-tag v-if="isVideoMedia(image)" type="info" size="small">视频</el-tag>
-                          <span>拖拽排序</span>
-                        </div>
-                        <div class="image-card-actions">
-                          <el-tooltip v-if="!isVideoMedia(image) && canEdit" content="设为主图" placement="top">
-                            <button
-                              type="button"
-                              class="image-action-btn primary"
-                              :class="{ active: image.is_primary }"
-                              :disabled="image.is_primary"
-                              @click="handleSetPrimaryImage(currentChild, image)"
-                            >
-                              <i class="fas fa-star"></i>
-                            </button>
-                          </el-tooltip>
-                          <el-tooltip v-if="canDelete" content="删除图片" placement="top">
-                            <button
-                              type="button"
-                              class="image-action-btn danger"
-                              @click="handleDeleteImage(currentChild, image)"
-                            >
-                              <i class="fas fa-trash"></i>
-                            </button>
-                          </el-tooltip>
-                        </div>
-                      </div>
-                    </div>
-                  </template>
-                </draggable>
-
-                <el-empty v-else description="暂无媒体" :image-size="90" />
+                  <div class="child-item-top">
+                    <span class="child-name">{{ child.color_name || `颜色#${child.color_id}` }}</span>
+                    <el-tag
+                      v-if="child.isNew"
+                      type="warning"
+                      size="small"
+                    >
+                      新建
+                    </el-tag>
+                  </div>
+                  <div class="child-item-meta">
+                    <span>{{ formatMemoryNames(child.memory_ids) || '未选内存' }}</span>
+                    <span>{{ child.is_active ? '启用' : '停用' }}</span>
+                  </div>
+                </button>
               </div>
-            </template>
 
-            <el-empty v-else description="请选择或新增一个颜色子模板" :image-size="100" />
-          </section>
+              <DataEmptyState
+                v-else
+                description="先添加颜色子模板"
+                :image-size="80"
+              />
+            </aside>
+
+            <section class="editor-panel">
+              <template v-if="currentChild">
+                <div class="editor-title-row">
+                  <div>
+                    <h3>{{ currentBrandName }} {{ currentModelName }} · {{ currentChild.color_name || `颜色#${currentChild.color_id}` }}</h3>
+                    <p>当前颜色子模板独立保存，H5 仍按子模板 ID 读取图片和价格</p>
+                  </div>
+                  <el-button
+                    v-if="canDelete || canWriteDialog"
+                    type="danger"
+                    plain
+                    @click="handleRemoveChild(currentChild)"
+                  >
+                    删除当前颜色
+                  </el-button>
+                </div>
+
+                <div class="editor-form-grid">
+                  <div class="editor-block">
+                    <div class="block-title">
+                      基础信息
+                    </div>
+                    <el-form
+                      label-position="top"
+                      :disabled="!canWriteDialog"
+                    >
+                      <el-form-item
+                        v-if="canViewField('template.color')"
+                        label="颜色"
+                      >
+                        <el-input
+                          :model-value="currentChild.color_name || `颜色#${currentChild.color_id}`"
+                          disabled
+                        />
+                      </el-form-item>
+                      <el-form-item
+                        v-if="canViewField('template.memory')"
+                        label="支持内存"
+                      >
+                        <el-select
+                          v-model="currentChild.memory_ids"
+                          multiple
+                          filterable
+                          placeholder="选择可用内存"
+                          class="memory-select"
+                        >
+                          <el-option
+                            v-for="memory in memories"
+                            :key="memory.id"
+                            :label="memory.size"
+                            :value="memory.id"
+                          />
+                        </el-select>
+                      </el-form-item>
+                      <el-form-item
+                        v-if="canViewField('template.description')"
+                        label="商品描述"
+                      >
+                        <el-input
+                          v-model="currentChild.description"
+                          type="textarea"
+                          :rows="5"
+                          placeholder="填写当前颜色的商品描述"
+                        />
+                      </el-form-item>
+                    </el-form>
+                  </div>
+
+                  <div class="editor-block">
+                    <div class="block-title">
+                      价格与状态
+                    </div>
+                    <el-form label-position="top">
+                      <el-form-item
+                        v-if="canViewField('template.price_markup')"
+                        label="加价设置"
+                      >
+                        <div class="markup-settings">
+                          <el-select
+                            v-model="currentChild.price_markup_type"
+                            class="markup-type-select"
+                          >
+                            <el-option
+                              label="固定金额"
+                              value="fixed"
+                            />
+                            <el-option
+                              label="百分比"
+                              value="percentage"
+                            />
+                          </el-select>
+                          <div class="markup-row">
+                            <el-input-number
+                              :model-value="currentChild.price_markup_type === 'fixed' ? currentChild.price_markup : undefined"
+                              :disabled="currentChild.price_markup_type !== 'fixed'"
+                              :min="0"
+                              :precision="2"
+                              :step="100"
+                              class="markup-input"
+                              @update:model-value="handleFixedMarkupChange(currentChild, $event)"
+                            />
+                            <el-input-number
+                              :model-value="currentChild.price_markup_type === 'percentage' ? currentChild.price_markup : undefined"
+                              :disabled="currentChild.price_markup_type !== 'percentage'"
+                              :min="0"
+                              :max="100"
+                              :precision="2"
+                              :step="1"
+                              class="markup-input"
+                              @update:model-value="handlePercentageMarkupChange(currentChild, $event)"
+                            >
+                              <template #suffix>
+                                %
+                              </template>
+                            </el-input-number>
+                          </div>
+                        </div>
+                      </el-form-item>
+                      <el-form-item
+                        v-if="canViewField('template.is_active')"
+                        label="启用状态"
+                      >
+                        <el-switch
+                          v-model="currentChild.is_active"
+                          active-text="启用"
+                          inactive-text="停用"
+                        />
+                      </el-form-item>
+                      <el-form-item
+                        v-if="canViewField('template.sort_order')"
+                        label="排序"
+                      >
+                        <el-input-number
+                          v-model="currentChild.sort_order"
+                          :min="0"
+                          :step="1"
+                          style="width: 100%"
+                        />
+                      </el-form-item>
+                      <div class="stock-line">
+                        当前在库：<strong>{{ currentChild.stock_count || 0 }}</strong>
+                      </div>
+                    </el-form>
+                  </div>
+                </div>
+
+                <div
+                  v-if="canViewField('template.images') || canViewField('system_info.operations')"
+                  class="editor-block image-block"
+                >
+                  <div class="image-block-header">
+                    <div>
+                      <div class="block-title">
+                        图片 / 视频管理
+                      </div>
+                      <p>支持多选上传图片和视频，媒体仍按颜色子模板 ID 独立保存</p>
+                    </div>
+                    <el-upload
+                      :show-file-list="false"
+                      multiple
+                      :disabled="!currentChild.id"
+                      accept="image/*,video/mp4,video/webm,video/ogg,video/quicktime,.mov"
+                      :http-request="handleImageUpload"
+                      :before-upload="beforeImageUpload"
+                    >
+                      <el-button
+                        type="primary"
+                        :loading="imageUploading"
+                        :disabled="!currentChild.id || !canEdit"
+                      >
+                        上传图片 / 视频
+                      </el-button>
+                    </el-upload>
+                  </div>
+
+                  <div
+                    v-if="!currentChild.id"
+                    class="unsaved-tip"
+                  >
+                    请先保存该颜色子模板，再上传对应媒体文件。
+                  </div>
+
+                  <draggable
+                    v-if="currentChild.images.length > 0"
+                    :list="currentChild.images"
+                    item-key="id"
+                    class="image-grid"
+                    handle=".image-drag-handle"
+                    :disabled="!canEdit"
+                    @end="handleImageDragEnd(currentChild)"
+                  >
+                    <template #item="{ element: image, index }">
+                      <div class="image-card">
+                        <div
+                          class="image-drag-handle"
+                          title="拖拽排序"
+                        >
+                          <i class="fas fa-grip-vertical" />
+                        </div>
+                        <img
+                          v-if="canViewField('template.images') && !isVideoMedia(image)"
+                          :src="getImageUrl(image.image_url)"
+                          :alt="`${currentChild.color_name}-${index}`"
+                        >
+                        <video
+                          v-else-if="canViewField('template.images')"
+                          :src="getImageUrl(image.image_url)"
+                          controls
+                          playsinline
+                          preload="metadata"
+                        />
+                        <div class="image-card-body">
+                          <div class="image-card-meta">
+                            <el-tag
+                              v-if="image.is_primary && canViewField('template.images')"
+                              type="success"
+                              size="small"
+                            >
+                              主图
+                            </el-tag>
+                            <el-tag
+                              v-if="isVideoMedia(image)"
+                              type="info"
+                              size="small"
+                            >
+                              视频
+                            </el-tag>
+                            <span>拖拽排序</span>
+                          </div>
+                          <div class="image-card-actions">
+                            <el-tooltip
+                              v-if="!isVideoMedia(image) && canEdit"
+                              content="设为主图"
+                              placement="top"
+                            >
+                              <button
+                                type="button"
+                                class="image-action-btn primary"
+                                :class="{ active: image.is_primary }"
+                                :disabled="image.is_primary"
+                                @click="handleSetPrimaryImage(currentChild, image)"
+                              >
+                                <i class="fas fa-star" />
+                              </button>
+                            </el-tooltip>
+                            <el-tooltip
+                              v-if="canDelete"
+                              content="删除图片"
+                              placement="top"
+                            >
+                              <button
+                                type="button"
+                                class="image-action-btn danger"
+                                @click="handleDeleteImage(currentChild, image)"
+                              >
+                                <i class="fas fa-trash" />
+                              </button>
+                            </el-tooltip>
+                          </div>
+                        </div>
+                      </div>
+                    </template>
+                  </draggable>
+
+                  <DataEmptyState
+                    v-else
+                    description="暂无媒体"
+                    :image-size="90"
+                  />
+                </div>
+              </template>
+
+              <DataEmptyState
+                v-else
+                description="请选择或新增一个颜色子模板"
+                :image-size="100"
+              />
+            </section>
+          </div>
         </div>
-      </div>
 
-      <template #footer>
-        <el-button type="default" @click="showDialog = false">取消</el-button>
-        <el-button v-if="canWriteDialog" type="primary" :loading="saving" @click="handleSaveGroup">保存母模板</el-button>
-      </template>
-    </MobileDialog>
-  </div>
+        <template #footer>
+          <el-button
+            type="default"
+            @click="showDialog = false"
+          >
+            取消
+          </el-button>
+          <el-button
+            v-if="canWriteDialog"
+            type="primary"
+            :loading="saving"
+            @click="handleSaveGroup"
+          >
+            保存母模板
+          </el-button>
+        </template>
+      </MobileDialog>
+    </div>
   </PermissionGate>
 </template>
 
@@ -502,6 +780,7 @@ import draggable from 'vuedraggable'
 import { PermissionGate } from '@/components/base/index'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { usePagePermissions } from '@/composables/usePagePermissions'
+import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useLoadingState } from '@/composables'
 import { formatImageUrl } from '@/utils/format'
 import { createTempFileTracker, type TempFileTracker } from '@/utils/temp-file-cleaner'
@@ -548,16 +827,22 @@ interface TemplateGroup {
   main_media_type?: TemplateImage['image_type']
 }
 
-const router = useRouter()
+const _router = useRouter()
 const templatePermissions = usePagePermissions('h5-admin-templates')
 const { handleNoPermission } = templatePermissions
 const canView = computed(() => templatePermissions.canView.value)
 const canCreate = computed(() => templatePermissions.canCreate.value)
 const canEdit = computed(() => templatePermissions.canEdit.value)
 const canDelete = computed(() => templatePermissions.canDelete.value)
+const TEMPLATES_MODULE_KEY = 'h5_admin_templatesview'
+const canViewField = (fieldKey: string) => fieldPermissions.isFieldVisible(TEMPLATES_MODULE_KEY, fieldKey)
+const showActionColumn = computed(() => shouldShowActionColumn(
+  canViewField('system_info.operations'),
+  [canEdit.value, canDelete.value]
+))
 
 // 注入父组件提供的注册方法
-const registerHeaderActions = inject<(actions: HeaderAction[]) => void>('registerHeaderActions')
+const registerHeaderActions = inject<(_actions: HeaderAction[]) => void>('registerHeaderActions')
 const clearHeaderActions = inject<() => void>('clearHeaderActions')
 
 const { loading } = useLoadingState(true)
@@ -1137,7 +1422,7 @@ const handleSaveGroup = async () => {
   saving.value = true
   try {
     for (const child of childDrafts.value) {
-      const payload: NewTemplate = {
+      const payload: Record<string, unknown> = {
         brand_id: groupForm.value.brand_id as number,
         model_id: groupForm.value.model_id as number,
         color_id: child.color_id,
@@ -1150,10 +1435,28 @@ const handleSaveGroup = async () => {
         sort_order: Number(child.sort_order || 0)
       }
 
+      const templateFieldMap: Record<string, string> = {
+        brand_id: 'template.brand_model',
+        model_id: 'template.brand_model',
+        color_id: 'template.color',
+        memory_ids: 'template.memory',
+        template_name: 'template.brand_model',
+        description: 'template.description',
+        price_markup: 'template.price_markup',
+        price_markup_type: 'template.price_markup',
+        is_active: 'template.is_active',
+        sort_order: 'template.sort_order'
+      }
+      Object.entries(templateFieldMap).forEach(([key, fieldKey]) => {
+        if (!canViewField(fieldKey)) {
+          delete payload[key]
+        }
+      })
+
       if (child.id) {
-        await updateTemplate(child.id, payload)
+        await updateTemplate(child.id, payload as unknown as NewTemplate)
       } else {
-        await createTemplate(payload)
+        await createTemplate(payload as unknown as NewTemplate)
       }
     }
 
@@ -1373,6 +1676,7 @@ watch(canCreate, () => {
 })
 
 onMounted(() => {
+  void fieldPermissions.init()
   void initializePageData()
   registerPageHeaderActions()
 })
@@ -1407,8 +1711,8 @@ onUnmounted(() => {
   margin-bottom: 12px;
   padding: 10px 12px;
   border-radius: 12px;
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--tf-color-blue-tailwind-50);
+  color: var(--tf-color-blue-700);
   font-size: 13px;
 }
 
@@ -1417,7 +1721,7 @@ onUnmounted(() => {
   grid-template-columns: minmax(0, 1.8fr) 90px 110px 110px 120px 220px;
   gap: 12px;
   padding: 0 16px 12px;
-  color: #6b7280;
+  color: var(--tf-color-neutral-500);
   font-size: 13px;
   font-weight: 600;
 }
@@ -1434,9 +1738,9 @@ onUnmounted(() => {
   gap: 12px;
   align-items: center;
   padding: 16px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--tf-color-neutral-200);
   border-radius: 18px;
-  background: #fff;
+  background: var(--color-bg-white);
 }
 
 .group-main {
@@ -1453,8 +1757,8 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #eef2ff;
-  color: #4f46e5;
+  background: var(--tf-color-indigo-50);
+  color: var(--tf-color-indigo-600);
   cursor: grab;
   flex-shrink: 0;
 }
@@ -1464,14 +1768,14 @@ onUnmounted(() => {
 }
 
 .group-drag-handle.disabled {
-  background: #f3f4f6;
-  color: #9ca3af;
+  background: var(--tf-color-neutral-100);
+  color: var(--tf-color-neutral-400);
   cursor: not-allowed;
 }
 
 .group-stat,
 .group-actions {
-  color: #111827;
+  color: var(--tf-color-neutral-900);
 }
 
 .center {
@@ -1508,7 +1812,7 @@ onUnmounted(() => {
   flex-wrap: wrap;
   gap: 12px;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--tf-color-neutral-500);
 }
 
 .product-cell {
@@ -1523,14 +1827,14 @@ onUnmounted(() => {
   border-radius: 14px;
   object-fit: cover;
   flex-shrink: 0;
-  background: #f3f4f6;
+  background: var(--tf-color-neutral-100);
 }
 
 .product-cover.placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #9ca3af;
+  color: var(--tf-color-neutral-400);
   font-size: 22px;
 }
 
@@ -1541,13 +1845,13 @@ onUnmounted(() => {
 .product-title {
   font-size: 15px;
   font-weight: 700;
-  color: #111827;
+  color: var(--tf-color-neutral-900);
   margin-bottom: 4px;
 }
 
 .product-subtitle {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--tf-color-neutral-500);
   margin-bottom: 8px;
 }
 
@@ -1582,7 +1886,7 @@ onUnmounted(() => {
 .form-label {
   font-size: 13px;
   font-weight: 600;
-  color: #374151;
+  color: var(--tf-color-neutral-700);
 }
 
 .header-form-summary {
@@ -1591,18 +1895,18 @@ onUnmounted(() => {
   gap: 6px;
   padding: 12px 16px;
   border-radius: 14px;
-  background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+  background: linear-gradient(135deg, var(--tf-color-slate-50) 0%, var(--tf-color-indigo-50) 100%);
 }
 
 .summary-title {
   font-size: 16px;
   font-weight: 700;
-  color: #111827;
+  color: var(--tf-color-neutral-900);
 }
 
 .summary-tip {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--tf-color-neutral-500);
 }
 
 .editor-layout {
@@ -1612,23 +1916,23 @@ onUnmounted(() => {
 }
 
 .children-panel {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--tf-color-neutral-200);
   border-radius: 18px;
   padding: 16px;
-  background: #fafafa;
+  background: var(--tf-color-neutral-25);
   min-height: 540px;
 }
 
 .children-panel-header h4 {
   margin: 0;
   font-size: 15px;
-  color: #111827;
+  color: var(--tf-color-neutral-900);
 }
 
 .children-panel-header p {
   margin: 6px 0 0;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--tf-color-neutral-500);
 }
 
 .add-child-box {
@@ -1646,18 +1950,18 @@ onUnmounted(() => {
 
 .child-item {
   width: 100%;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--tf-color-neutral-200);
   border-radius: 14px;
   padding: 12px;
   text-align: left;
-  background: #fff;
+  background: var(--color-bg-white);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .child-item:hover,
 .child-item.active {
-  border-color: #2563eb;
+  border-color: var(--tf-color-blue-600);
   box-shadow: 0 10px 24px rgba(37, 99, 235, 0.12);
 }
 
@@ -1672,7 +1976,7 @@ onUnmounted(() => {
 .child-name {
   font-size: 14px;
   font-weight: 700;
-  color: #111827;
+  color: var(--tf-color-neutral-900);
 }
 
 .child-item-meta {
@@ -1680,14 +1984,14 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 4px;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--tf-color-neutral-500);
 }
 
 .editor-panel {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--tf-color-neutral-200);
   border-radius: 18px;
   padding: 18px;
-  background: #fff;
+  background: var(--color-bg-white);
   min-height: 540px;
 }
 
@@ -1702,12 +2006,12 @@ onUnmounted(() => {
 .editor-title-row h3 {
   margin: 0 0 6px;
   font-size: 18px;
-  color: #111827;
+  color: var(--tf-color-neutral-900);
 }
 
 .editor-title-row p {
   margin: 0;
-  color: #6b7280;
+  color: var(--tf-color-neutral-500);
   font-size: 13px;
 }
 
@@ -1719,10 +2023,10 @@ onUnmounted(() => {
 }
 
 .editor-block {
-  border: 1px solid #eef2f7;
+  border: 1px solid var(--tf-color-surface-cool);
   border-radius: 16px;
   padding: 16px;
-  background: #fbfdff;
+  background: var(--tf-color-surface-blue-alt);
 }
 
 .markup-settings {
@@ -1745,13 +2049,13 @@ onUnmounted(() => {
 .block-title {
   font-size: 15px;
   font-weight: 700;
-  color: #111827;
+  color: var(--tf-color-neutral-900);
   margin-bottom: 14px;
 }
 
 .stock-line {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--tf-color-neutral-500);
 }
 
 .image-block-header {
@@ -1765,15 +2069,15 @@ onUnmounted(() => {
 .image-block-header p {
   margin: 6px 0 0;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--tf-color-neutral-500);
 }
 
 .unsaved-tip {
   margin-bottom: 16px;
   padding: 10px 12px;
   border-radius: 12px;
-  background: #fff7ed;
-  color: #c2410c;
+  background: var(--tf-color-orange-50);
+  color: var(--tf-color-orange-tailwind-700);
   font-size: 13px;
 }
 
@@ -1785,10 +2089,10 @@ onUnmounted(() => {
 
 .image-card {
   position: relative;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--tf-color-neutral-200);
   border-radius: 16px;
   overflow: hidden;
-  background: #fff;
+  background: var(--color-bg-white);
 }
 
 .image-drag-handle {
@@ -1803,7 +2107,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   background: rgba(17, 24, 39, 0.65);
-  color: #fff;
+  color: var(--color-bg-white);
   cursor: grab;
 }
 
@@ -1817,7 +2121,7 @@ onUnmounted(() => {
   height: 180px;
   object-fit: cover;
   display: block;
-  background: #f3f4f6;
+  background: var(--tf-color-neutral-100);
 }
 
 .image-card-body {
@@ -1831,7 +2135,7 @@ onUnmounted(() => {
   align-items: center;
   margin-bottom: 8px;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--tf-color-neutral-500);
 }
 
 .image-card-actions {
@@ -2037,8 +2341,8 @@ onUnmounted(() => {
     gap: 3px;
     padding: 8px 6px;
     border-radius: 12px;
-    background: #f8fafc;
-    color: #0f172a;
+    background: var(--tf-color-slate-50);
+    color: var(--tf-color-slate-900);
     font-size: 13px;
     font-weight: 800;
     line-height: 1.2;
@@ -2047,7 +2351,7 @@ onUnmounted(() => {
 
   .group-stat::before {
     content: attr(data-label);
-    color: #64748b;
+    color: var(--tf-color-slate-500);
     font-size: 10px;
     font-weight: 700;
   }
@@ -2272,7 +2576,7 @@ onUnmounted(() => {
 
   :deep(.template-dialog .el-form-item__label) {
     margin-bottom: 6px;
-    color: #334155;
+    color: var(--tf-color-slate-700);
     font-size: 12px;
     font-weight: 700;
   }

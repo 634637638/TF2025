@@ -53,7 +53,7 @@
 
 :where(.pagination-container, .pagination-wrapper, .table-pagination, .pagination-section) :where(.el-pager li.is-active) {
   background: var(--el-color-primary);
-  color: #fff;
+  color: var(--color-bg-white);
 }
 
 :where(.pagination-container, .pagination-wrapper, .table-pagination, .pagination-section) :where(.el-pagination__total),

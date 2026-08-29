@@ -1,14 +1,14 @@
-const log = require('../utils/log');
+const log = require('../utils/log')
 /**
  * 产品控制器
  * 处理所有产品相关的HTTP请求
  */
-const ProductService = require('../services/product.service');
-const ApiResponse = require('../utils/response');
+const ProductService = require('../services/product.service')
+const ApiResponse = require('../utils/response')
 
 class ProductController {
   constructor() {
-    this.productService = new ProductService();
+    this.productService = new ProductService()
   }
 
   /**
@@ -16,11 +16,11 @@ class ProductController {
    */
   async testProducts(req, res) {
     try {
-      const result = await this.productService.testProducts();
-      ApiResponse.success(res, result.message, result.data);
+      const result = await this.productService.testProducts()
+      ApiResponse.success(res, result.message, result.data)
     } catch (error) {
-      log.error('测试产品模块失败:', error);
-      ApiResponse.serverError(res, '测试产品模块失败', error);
+      log.error('测试产品模块失败:', error)
+      ApiResponse.serverError(res, '测试产品模块失败', error)
     }
   }
 
@@ -29,22 +29,22 @@ class ProductController {
    */
   async getModels(req, res) {
     try {
-      const { brandId } = req.query;
+      const { brandId } = req.query
 
       const filters = {
         brandId
-      };
+      }
 
-      const result = await this.productService.getModels(filters);
+      const result = await this.productService.getModels(filters)
 
       if (result.success) {
-        ApiResponse.success(res, result.message, result.data);
+        ApiResponse.success(res, result.message, result.data)
       } else {
-        ApiResponse.error(res, result.message, 400, result.code);
+        ApiResponse.error(res, result.message, 400, result.code)
       }
     } catch (error) {
-      log.error('获取型号列表失败:', error);
-      ApiResponse.serverError(res, '获取型号列表失败', error);
+      log.error('获取型号列表失败:', error)
+      ApiResponse.serverError(res, '获取型号列表失败', error)
     }
   }
 
@@ -53,16 +53,16 @@ class ProductController {
    */
   async getColors(req, res) {
     try {
-      const result = await this.productService.getColors();
+      const result = await this.productService.getColors()
 
       if (result.success) {
-        ApiResponse.success(res, result.message, result.data);
+        ApiResponse.success(res, result.message, result.data)
       } else {
-        ApiResponse.error(res, result.message, 400, result.code);
+        ApiResponse.error(res, result.message, 400, result.code)
       }
     } catch (error) {
-      log.error('获取颜色列表失败:', error);
-      ApiResponse.serverError(res, '获取颜色列表失败', error);
+      log.error('获取颜色列表失败:', error)
+      ApiResponse.serverError(res, '获取颜色列表失败', error)
     }
   }
 
@@ -71,16 +71,16 @@ class ProductController {
    */
   async getMemories(req, res) {
     try {
-      const result = await this.productService.getMemories();
+      const result = await this.productService.getMemories()
 
       if (result.success) {
-        ApiResponse.success(res, result.message, result.data);
+        ApiResponse.success(res, result.message, result.data)
       } else {
-        ApiResponse.error(res, result.message, 400, result.code);
+        ApiResponse.error(res, result.message, 400, result.code)
       }
     } catch (error) {
-      log.error('获取内存规格列表失败:', error);
-      ApiResponse.serverError(res, '获取内存规格列表失败', error);
+      log.error('获取内存规格列表失败:', error)
+      ApiResponse.serverError(res, '获取内存规格列表失败', error)
     }
   }
 
@@ -96,7 +96,7 @@ class ProductController {
         store_id,
         is_new,
         search
-      } = req.query;
+      } = req.query
 
       const filters = {
         page,
@@ -105,9 +105,9 @@ class ProductController {
         store_id,
         is_new,
         search
-      };
+      }
 
-      const result = await this.productService.getInStockPhones(filters);
+      const result = await this.productService.getInStockPhones(filters)
 
       if (result.success) {
         ApiResponse.paginated(
@@ -115,13 +115,13 @@ class ProductController {
           result.message,
           result.data.phones,
           result.data.pagination
-        );
+        )
       } else {
-        ApiResponse.error(res, result.message, 400, result.code);
+        ApiResponse.error(res, result.message, 400, result.code)
       }
     } catch (error) {
-      log.error('获取在库手机列表失败:', error);
-      ApiResponse.serverError(res, '获取在库手机列表失败', error);
+      log.error('获取在库手机列表失败:', error)
+      ApiResponse.serverError(res, '获取在库手机列表失败', error)
     }
   }
 
@@ -130,22 +130,22 @@ class ProductController {
    */
   async getPhoneById(req, res) {
     try {
-      const { id } = req.params;
+      const { id } = req.params
 
-      const result = await this.productService.getPhoneById(id);
+      const result = await this.productService.getPhoneById(id)
 
       if (result.success) {
-        ApiResponse.success(res, result.message, result.data);
+        ApiResponse.success(res, result.message, result.data)
       } else {
         if (result.code === 'NOT_FOUND') {
-          ApiResponse.notFound(res, result.message);
+          ApiResponse.notFound(res, result.message)
         } else {
-          ApiResponse.error(res, result.message, 400, result.code);
+          ApiResponse.error(res, result.message, 400, result.code)
         }
       }
     } catch (error) {
-      log.error('获取手机详情失败:', error);
-      ApiResponse.serverError(res, '获取手机详情失败', error);
+      log.error('获取手机详情失败:', error)
+      ApiResponse.serverError(res, '获取手机详情失败', error)
     }
   }
 
@@ -154,25 +154,41 @@ class ProductController {
    */
   async updatePhone(req, res) {
     try {
-      const { id } = req.params;
-      const phoneData = req.body;
+      const { id } = req.params
+      const {
+        Inventorytime,
+        salestime,
+        sale_date: legacySaleDate,
+        purchase_price: legacyPurchasePrice,
+        purchase_unit_price: legacyPurchaseUnitPrice,
+        cost_price: legacyCostPrice,
+        stock_in_date: legacyStockInDate,
+        created_at: legacyCreatedAt,
+        ...canonicalBody
+      } = req.body
+      const phoneData = {
+        ...canonicalBody,
+        purchase_cost: canonicalBody.purchase_cost ?? legacyPurchasePrice ?? legacyPurchaseUnitPrice ?? legacyCostPrice,
+        inventory_time: canonicalBody.inventory_time ?? Inventorytime ?? legacyStockInDate ?? legacyCreatedAt,
+        sale_time: canonicalBody.sale_time ?? salestime ?? legacySaleDate
+      }
 
-      const result = await this.productService.updatePhone(id, phoneData);
+      const result = await this.productService.updatePhone(id, phoneData)
 
       if (result.success) {
-        ApiResponse.success(res, result.message, result.data);
+        ApiResponse.success(res, result.message, result.data)
       } else {
         if (result.code === 'NOT_FOUND') {
-          ApiResponse.notFound(res, result.message);
+          ApiResponse.notFound(res, result.message)
         } else if (result.code === 'VALIDATION_ERROR') {
-          ApiResponse.validationError(res, result.message);
+          ApiResponse.validationError(res, result.message)
         } else {
-          ApiResponse.error(res, result.message, 400, result.code);
+          ApiResponse.error(res, result.message, 400, result.code)
         }
       }
     } catch (error) {
-      log.error('更新手机信息失败:', error);
-      ApiResponse.serverError(res, '更新手机信息失败', error);
+      log.error('更新手机信息失败:', error)
+      ApiResponse.serverError(res, '更新手机信息失败', error)
     }
   }
 
@@ -181,22 +197,22 @@ class ProductController {
    */
   async deletePhone(req, res) {
     try {
-      const { id } = req.params;
+      const { id } = req.params
 
-      const result = await this.productService.deletePhone(id);
+      const result = await this.productService.deletePhone(id)
 
       if (result.success) {
-        ApiResponse.success(res, result.message, result.data);
+        ApiResponse.success(res, result.message, result.data)
       } else {
         if (result.code === 'NOT_FOUND') {
-          ApiResponse.notFound(res, result.message);
+          ApiResponse.notFound(res, result.message)
         } else {
-          ApiResponse.error(res, result.message, 400, result.code);
+          ApiResponse.error(res, result.message, 400, result.code)
         }
       }
     } catch (error) {
-      log.error('删除手机记录失败:', error);
-      ApiResponse.serverError(res, '删除手机记录失败', error);
+      log.error('删除手机记录失败:', error)
+      ApiResponse.serverError(res, '删除手机记录失败', error)
     }
   }
 
@@ -205,18 +221,18 @@ class ProductController {
    */
   async getModelSuggestions(req, res) {
     try {
-      const { keyword } = req.query;
+      const { keyword } = req.query
 
-      const result = await this.productService.getModelSuggestions(keyword);
+      const result = await this.productService.getModelSuggestions(keyword)
 
       if (result.success) {
-        ApiResponse.success(res, result.message, result.data);
+        ApiResponse.success(res, result.message, result.data)
       } else {
-        ApiResponse.error(res, result.message, 400, result.code);
+        ApiResponse.error(res, result.message, 400, result.code)
       }
     } catch (error) {
-      log.error('获取型号建议失败:', error);
-      ApiResponse.serverError(res, '获取型号建议失败', error);
+      log.error('获取型号建议失败:', error)
+      ApiResponse.serverError(res, '获取型号建议失败', error)
     }
   }
 
@@ -225,18 +241,18 @@ class ProductController {
    */
   async getProductStats(req, res) {
     try {
-      const result = await this.productService.getProductStats();
+      const result = await this.productService.getProductStats()
 
       if (result.success) {
-        ApiResponse.success(res, result.message, result.data);
+        ApiResponse.success(res, result.message, result.data)
       } else {
-        ApiResponse.error(res, result.message, 400, result.code);
+        ApiResponse.error(res, result.message, 400, result.code)
       }
     } catch (error) {
-      log.error('获取产品统计信息失败:', error);
-      ApiResponse.serverError(res, '获取产品统计信息失败', error);
+      log.error('获取产品统计信息失败:', error)
+      ApiResponse.serverError(res, '获取产品统计信息失败', error)
     }
   }
 }
 
-module.exports = ProductController;
+module.exports = ProductController

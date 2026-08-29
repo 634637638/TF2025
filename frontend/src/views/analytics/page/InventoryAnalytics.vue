@@ -1,39 +1,77 @@
 <template>
   <div class="inventory-analytics">
-    <el-row :gutter="16" class="overview-cards">
-      <el-col v-if="canViewInventoryField('total_products')" :xs="24" :sm="12" :lg="6">
-        <el-card class="insight-card insight-card--primary" shadow="hover">
+    <el-row
+      :gutter="16"
+      class="overview-cards"
+    >
+      <el-col
+        v-if="canViewInventoryField('total_products')"
+        :xs="24"
+        :sm="12"
+        :lg="6"
+      >
+        <el-card
+          class="insight-card insight-card--primary"
+          shadow="hover"
+        >
           <div class="insight-card__header">
             <div class="insight-card__icon">
               <Box />
             </div>
-            <el-tag round effect="dark" type="primary">
-              健康 {{ inventoryData.inventoryHealth.score }}
+            <el-tag
+              round
+              effect="dark"
+              type="primary"
+            >
+              健康 {{ inventoryData.inventory_health?.score ?? 0 }}
             </el-tag>
           </div>
-          <div class="insight-card__label">在库总数</div>
-          <div class="insight-card__value">{{ formatNumber(inventoryData.totalProducts) }}</div>
-          <div class="insight-card__meta">当前可售设备总量</div>
+          <div class="insight-card__label">
+            在库总数
+          </div>
+          <div class="insight-card__value">
+            {{ formatNumber(inventoryData.total_products) }}
+          </div>
+          <div class="insight-card__meta">
+            当前可售设备总量
+          </div>
           <div class="insight-card__footer">
             <span>健康等级 {{ healthLevelText }}</span>
-            <span>周转 {{ formatDecimal(inventoryData.stockTurnover) }}</span>
+            <span>周转 {{ formatDecimal(inventoryData.stock_turnover) }}</span>
           </div>
         </el-card>
       </el-col>
 
-      <el-col v-if="canViewInventoryField('total_value')" :xs="24" :sm="12" :lg="6">
-        <el-card class="insight-card insight-card--success" shadow="hover">
+      <el-col
+        v-if="canViewInventoryField('total_value')"
+        :xs="24"
+        :sm="12"
+        :lg="6"
+      >
+        <el-card
+          class="insight-card insight-card--success"
+          shadow="hover"
+        >
           <div class="insight-card__header">
             <div class="insight-card__icon">
               <Money />
             </div>
-            <el-tag round type="success">单台均值 ¥{{ formatNumber(averageUnitCost) }}</el-tag>
+            <el-tag
+              round
+              type="success"
+            >
+              单台均值 ¥{{ formatNumber(averageUnitCost) }}
+            </el-tag>
           </div>
-          <div class="insight-card__label">在库价值</div>
+          <div class="insight-card__label">
+            在库价值
+          </div>
           <div class="insight-card__value insight-card__value--currency">
-            ¥{{ formatNumber(inventoryData.totalValue) }}
+            ¥{{ formatNumber(inventoryData.total_value) }}
           </div>
-          <div class="insight-card__meta">按在库成本实时汇总</div>
+          <div class="insight-card__meta">
+            按在库成本实时汇总
+          </div>
           <div class="insight-card__footer">
             <span>近10台成交 ¥{{ formatNumber(recentSalesSummary.totalSales) }}</span>
             <span>最近门店 {{ recentSalesSummary.latestStore }}</span>
@@ -41,8 +79,17 @@
         </el-card>
       </el-col>
 
-      <el-col v-if="canViewInventoryField('warning_summary')" :xs="24" :sm="12" :lg="6">
-        <el-card class="insight-card insight-card--warning clickable" shadow="hover" @click="showLowStockDialog = true">
+      <el-col
+        v-if="canViewInventoryField('warning_summary')"
+        :xs="24"
+        :sm="12"
+        :lg="6"
+      >
+        <el-card
+          class="insight-card insight-card--warning clickable"
+          shadow="hover"
+          @click="showLowStockDialog = true"
+        >
           <div class="insight-card__header">
             <div class="insight-card__icon">
               <Warning />
@@ -54,9 +101,15 @@
               {{ warningSummary.criticalCount > 0 ? '存在售罄' : '按预警配置' }}
             </el-tag>
           </div>
-          <div class="insight-card__label">库存预警</div>
-          <div class="insight-card__value">{{ formatNumber(warningSummary.total) }}</div>
-          <div class="insight-card__meta">统一取自系统预警配置</div>
+          <div class="insight-card__label">
+            库存预警
+          </div>
+          <div class="insight-card__value">
+            {{ formatNumber(warningSummary.total) }}
+          </div>
+          <div class="insight-card__meta">
+            统一取自系统预警配置
+          </div>
           <div class="insight-card__footer">
             <span>售罄 {{ formatNumber(warningSummary.criticalCount) }}</span>
             <span>缺口 {{ formatNumber(warningSummary.shortageUnits) }} 台</span>
@@ -64,17 +117,36 @@
         </el-card>
       </el-col>
 
-      <el-col v-if="canViewInventoryField('supplier_count')" :xs="24" :sm="12" :lg="6">
-        <el-card class="insight-card insight-card--supplier" shadow="hover">
+      <el-col
+        v-if="canViewInventoryField('supplier_count')"
+        :xs="24"
+        :sm="12"
+        :lg="6"
+      >
+        <el-card
+          class="insight-card insight-card--supplier"
+          shadow="hover"
+        >
           <div class="insight-card__header">
             <div class="insight-card__icon">
               <ShoppingCart />
             </div>
-            <el-tag round type="info">均分 {{ formatDecimal(supplierQualityAverage) }}</el-tag>
+            <el-tag
+              round
+              type="info"
+            >
+              均分 {{ formatDecimal(supplierQualityAverage) }}
+            </el-tag>
           </div>
-          <div class="insight-card__label">有货供应商</div>
-          <div class="insight-card__value">{{ formatNumber(supplierCount) }}</div>
-          <div class="insight-card__meta">仍有现货可供补货的供应商</div>
+          <div class="insight-card__label">
+            有货供应商
+          </div>
+          <div class="insight-card__value">
+            {{ formatNumber(supplierCount) }}
+          </div>
+          <div class="insight-card__meta">
+            仍有现货可供补货的供应商
+          </div>
           <div class="insight-card__footer">
             <span>TOP {{ topSupplierName }}</span>
             <span>覆盖价值 ¥{{ formatNumber(topSupplierValue) }}</span>
@@ -92,55 +164,116 @@
       dialog-class="inventory-low-stock-dialog"
       :show-default-footer="false"
     >
-      <el-table class="data-table" :data="loading ? [] : filteredLowStockItems" stripe :table-layout="'auto'">
+      <el-table
+        class="data-table"
+        :data="loading ? [] : filteredLowStockItems"
+        stripe
+        :table-layout="'auto'"
+      >
         <template #empty>
-          <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
-          <el-empty v-else description="暂无库存预警商品" />
+          <TableLoadingRow
+            v-if="loading"
+            mode="block"
+            text="加载中..."
+          />
+          <DataEmptyState
+            v-else
+            description="暂无库存预警商品"
+          />
         </template>
 
-        <el-table-column prop="brand" label="品牌" width="120" />
-        <el-table-column prop="model" label="型号" min-width="220" />
-        <el-table-column prop="color" label="颜色" width="100" />
-        <el-table-column prop="currentStock" label="当前库存" width="100" align="center">
+        <el-table-column
+          prop="brand"
+          label="品牌"
+          width="120"
+        />
+        <el-table-column
+          prop="model"
+          label="型号"
+          min-width="220"
+        />
+        <el-table-column
+          prop="color"
+          label="颜色"
+          width="100"
+        />
+        <el-table-column
+          prop="current_stock"
+          label="当前库存"
+          width="100"
+          align="center"
+        >
           <template #default="scope">
-            <el-tag :type="scope.row.currentStock === 0 ? 'danger' : 'warning'" size="small">
-              {{ scope.row.currentStock }}台
+            <el-tag
+              :type="scope.row.current_stock === 0 ? 'danger' : 'warning'"
+              size="small"
+            >
+              {{ scope.row.current_stock }}台
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="reorderPoint" label="预警库存" width="110" align="center" />
-        <el-table-column prop="unitCost" label="成本价" width="120" align="right">
+        <el-table-column
+          prop="reorder_point"
+          label="预警库存"
+          width="110"
+          align="center"
+        />
+        <el-table-column
+          prop="unit_cost"
+          label="成本价"
+          width="120"
+          align="right"
+        >
           <template #default="scope">
-            ¥{{ formatNumber(scope.row.unitCost) }}
+            ¥{{ formatNumber(scope.row.unit_cost) }}
           </template>
         </el-table-column>
-        <el-table-column prop="totalValue" label="库存价值" width="120" align="right">
+        <el-table-column
+          prop="total_value"
+          label="库存价值"
+          width="120"
+          align="right"
+        >
           <template #default="scope">
-            ¥{{ formatNumber(scope.row.totalValue) }}
+            ¥{{ formatNumber(scope.row.total_value) }}
           </template>
         </el-table-column>
-        <el-table-column prop="lastSaleDate" label="最近销售" width="140">
+        <el-table-column
+          prop="last_sale_time"
+          label="最近销售"
+          width="140"
+        >
           <template #default="scope">
-            {{ scope.row.lastSaleDate ? formatDate(scope.row.lastSaleDate) : '-' }}
+            {{ scope.row.last_sale_time ? formatDate(scope.row.last_sale_time) : '-' }}
           </template>
         </el-table-column>
       </el-table>
 
       <template #footer>
         <div class="dialog-footer">
-          <el-button @click="showLowStockDialog = false">关闭</el-button>
+          <el-button @click="showLowStockDialog = false">
+            关闭
+          </el-button>
         </div>
       </template>
     </MobileDialog>
 
-    <el-row v-if="canViewInventoryField('recent_sales_table')" :gutter="16" class="mt-16">
+    <el-row
+      v-if="canViewInventoryField('recent_sales_table')"
+      :gutter="16"
+      class="mt-16"
+    >
       <el-col :span="24">
         <el-card class="panel-card recent-sales-card">
           <template #header>
             <div class="panel-header">
               <div>
-                <div class="panel-title">最近销售的10个型号</div>
-                <div class="panel-subtitle">按最新销售时间倒序展示，便于快速判断热销流向</div>
+                <div class="panel-title">
+                  最近销售的10个型号
+                </div>
+                <div class="panel-subtitle">
+                  按最新销售时间倒序展示，便于快速判断热销流向
+                </div>
               </div>
               <div class="panel-metrics">
                 <span class="metric-chip">实时更新</span>
@@ -149,85 +282,196 @@
               </div>
             </div>
           </template>
-          <el-table class="data-table" :data="loading ? [] : recentSoldModels" stripe :table-layout="'auto'">
+          <el-table
+            class="data-table"
+            :data="loading ? [] : recentSoldModels"
+            stripe
+            :table-layout="'auto'"
+          >
             <template #empty>
-              <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
-              <el-empty v-else description="暂无最近销售记录" />
+              <TableLoadingRow
+                v-if="loading"
+                mode="block"
+                text="加载中..."
+              />
+              <DataEmptyState
+                v-else
+                description="暂无最近销售记录"
+              />
             </template>
 
-            <el-table-column prop="brand" label="品牌" min-width="120" />
-            <el-table-column prop="model" label="型号" min-width="180" />
-            <el-table-column prop="color" label="颜色" min-width="100" />
-            <el-table-column prop="salePrice" label="销售价" min-width="120" align="right">
+            <el-table-column
+              prop="brand"
+              label="品牌"
+              min-width="120"
+            />
+            <el-table-column
+              prop="model"
+              label="型号"
+              min-width="180"
+            />
+            <el-table-column
+              prop="color"
+              label="颜色"
+              min-width="100"
+            />
+            <el-table-column
+              prop="sale_price"
+              label="销售价"
+              min-width="120"
+              align="right"
+            >
               <template #default="scope">
-                ¥{{ formatNumber(scope.row.salePrice) }}
+                ¥{{ formatNumber(scope.row.sale_price) }}
               </template>
             </el-table-column>
-            <el-table-column prop="saleDate" label="销售时间" min-width="180" />
-            <el-table-column prop="store" label="销售门店" min-width="120" />
+            <el-table-column
+              prop="sale_time"
+              label="销售时间"
+              min-width="180"
+            />
+            <el-table-column
+              prop="store"
+              label="销售门店"
+              min-width="120"
+            />
           </el-table>
         </el-card>
       </el-col>
     </el-row>
 
-    <el-row v-if="showInventoryChartsRow" :gutter="16" class="charts-section">
-      <el-col v-if="canViewInventoryField('category_distribution_chart')" :xs="24" :lg="12">
+    <el-row
+      v-if="showInventoryChartsRow"
+      :gutter="16"
+      class="charts-section"
+    >
+      <el-col
+        v-if="canViewInventoryField('category_distribution_chart')"
+        :xs="24"
+        :lg="12"
+      >
         <el-card class="panel-card chart-card">
           <template #header>
             <div class="panel-header">
               <div>
-                <div class="panel-title">分类库存分析</div>
-                <div class="panel-subtitle">聚焦品牌价值分布与库存沉淀情况</div>
+                <div class="panel-title">
+                  分类库存分析
+                </div>
+                <div class="panel-subtitle">
+                  聚焦品牌价值分布与库存沉淀情况
+                </div>
               </div>
-              <el-button size="small" @click="toggleCategoryChartType">
+              <el-button
+                size="small"
+                @click="toggleCategoryChartType"
+              >
                 切换{{ categoryChartType === 'bar' ? '饼图' : '柱状图' }}
               </el-button>
             </div>
           </template>
           <div class="chart-container">
-            <div ref="categoryChartRef" class="chart"></div>
+            <div
+              ref="categoryChartRef"
+              class="chart"
+            />
           </div>
         </el-card>
       </el-col>
 
-      <el-col v-if="canViewInventoryField('turnover_trend_chart')" :xs="24" :lg="12">
+      <el-col
+        v-if="canViewInventoryField('turnover_trend_chart')"
+        :xs="24"
+        :lg="12"
+      >
         <el-card class="panel-card chart-card">
           <template #header>
             <div class="panel-header">
               <div>
-                <div class="panel-title">库存周转趋势</div>
-                <div class="panel-subtitle">对比目标周转率，观察补货与出货节奏</div>
+                <div class="panel-title">
+                  库存周转趋势
+                </div>
+                <div class="panel-subtitle">
+                  对比目标周转率，观察补货与出货节奏
+                </div>
               </div>
-              <el-select v-model="turnoverPeriod" size="small" class="period-select">
-                <el-option label="近30天" value="30d" />
-                <el-option label="近90天" value="90d" />
-                <el-option label="近180天" value="180d" />
+              <el-select
+                v-model="turnoverPeriod"
+                size="small"
+                class="period-select"
+              >
+                <el-option
+                  label="近30天"
+                  value="30d"
+                />
+                <el-option
+                  label="近90天"
+                  value="90d"
+                />
+                <el-option
+                  label="近180天"
+                  value="180d"
+                />
               </el-select>
             </div>
           </template>
           <div class="chart-container">
-            <div ref="turnoverChartRef" class="chart"></div>
+            <div
+              ref="turnoverChartRef"
+              class="chart"
+            />
           </div>
         </el-card>
       </el-col>
     </el-row>
 
-    <el-row v-if="showInventoryTableRow" :gutter="16" class="table-section admin-panel admin-table-panel">
-      <el-col v-if="canViewInventoryField('low_stock_table')" :xs="24" :lg="14" class="stretch-col">
+    <el-row
+      v-if="showInventoryTableRow"
+      :gutter="16"
+      class="table-section admin-panel admin-table-panel"
+    >
+      <el-col
+        v-if="canViewInventoryField('low_stock_table')"
+        :xs="24"
+        :lg="14"
+        class="stretch-col"
+      >
         <el-card class="panel-card table-card low-stock-card admin-panel admin-table-panel">
           <template #header>
             <div class="panel-header">
               <div>
-                <div class="panel-title">库存预警</div>
-                <div class="panel-subtitle">完全使用系统预警配置中的动态阈值进行判断</div>
+                <div class="panel-title">
+                  库存预警
+                </div>
+                <div class="panel-subtitle">
+                  完全使用系统预警配置中的动态阈值进行判断
+                </div>
               </div>
               <el-space wrap>
-                <el-select v-model="alertLevel" placeholder="预警级别" size="small" clearable class="alert-select">
-                  <el-option label="全部" value="" />
-                  <el-option label="严重" value="critical" />
-                  <el-option label="警告" value="warning" />
+                <el-select
+                  v-model="alertLevel"
+                  placeholder="预警级别"
+                  size="small"
+                  clearable
+                  class="alert-select"
+                >
+                  <el-option
+                    label="全部"
+                    value=""
+                  />
+                  <el-option
+                    label="严重"
+                    value="critical"
+                  />
+                  <el-option
+                    label="警告"
+                    value="warning"
+                  />
                 </el-select>
-                <el-button type="success" size="small" @click="exportLowStock">
+                <el-button
+                  type="success"
+                  size="small"
+                  @click="exportLowStock"
+                >
                   导出
                 </el-button>
               </el-space>
@@ -253,19 +497,35 @@
             </div>
           </div>
 
-          <el-table class="data-table"
+          <el-table
+            class="data-table"
             :data="loading ? [] : filteredLowStockItems"
             stripe
             style="width: 100%"
             :table-layout="'auto'"
           >
             <template #empty>
-              <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
-              <el-empty v-else description="暂无库存预警商品" />
+              <TableLoadingRow
+                v-if="loading"
+                mode="block"
+                text="加载中..."
+              />
+              <DataEmptyState
+                v-else
+                description="暂无库存预警商品"
+              />
             </template>
 
-            <el-table-column type="index" label="#" width="50" />
-            <el-table-column prop="name" label="产品名称" min-width="220">
+            <el-table-column
+              type="index"
+              label="#"
+              width="50"
+            />
+            <el-table-column
+              prop="name"
+              label="产品名称"
+              min-width="220"
+            >
               <template #default="{ row }">
                 <div class="product-name">
                   <span class="brand">{{ row.brand }}</span>
@@ -274,37 +534,76 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column prop="currentStock" label="当前库存" width="100" align="center">
+            <el-table-column
+              prop="current_stock"
+              label="当前库存"
+              width="100"
+              align="center"
+            >
               <template #default="{ row }">
-                <el-tag :type="getStockTagType(row.currentStock, row.reorderPoint)" size="small">
-                  {{ row.currentStock }}
+                <el-tag
+                  :type="getStockTagType(row.current_stock, row.reorder_point)"
+                  size="small"
+                >
+                  {{ row.current_stock }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="reorderPoint" label="预警库存" width="100" align="center" />
-            <el-table-column prop="unitCost" label="单价" width="110" align="right">
+            <el-table-column
+              prop="reorder_point"
+              label="预警库存"
+              width="100"
+              align="center"
+            />
+            <el-table-column
+              prop="unit_cost"
+              label="单价"
+              width="110"
+              align="right"
+            >
               <template #default="{ row }">
-                ¥{{ formatNumber(row.unitCost) }}
+                ¥{{ formatNumber(row.unit_cost) }}
               </template>
             </el-table-column>
-            <el-table-column prop="totalValue" label="总值" width="120" align="right">
+            <el-table-column
+              prop="total_value"
+              label="总值"
+              width="120"
+              align="right"
+            >
               <template #default="{ row }">
-                ¥{{ formatNumber(row.totalValue) }}
+                ¥{{ formatNumber(row.total_value) }}
               </template>
             </el-table-column>
-            <el-table-column label="状态" width="100" align="center">
+            <el-table-column
+              label="状态"
+              width="100"
+              align="center"
+            >
               <template #default="{ row }">
-                <el-tag :type="getStockStatusTagType(row.stockStatus)" size="small">
-                  {{ getStockStatusText(row.stockStatus) }}
+                <el-tag
+                  :type="getStockStatusTagType(row.stock_status)"
+                  size="small"
+                >
+                  {{ getStockStatusText(row.stock_status) }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="操作" :width="$getActionColumnWidth(1)" align="center" class-name="actions-column">
+            <el-table-column
+              label="操作"
+              :width="$getActionColumnWidth(1)"
+              align="center"
+              class-name="actions-column"
+            >
               <template #default="{ row }">
                 <div class="action-buttons">
-                <el-button size="small" type="primary" @click.stop="handleReplenish(row)">
-                  补货
-                </el-button>
+                  <el-button
+                    size="small"
+                    type="primary"
+                    @click.stop="handleReplenish(row)"
+                  >
+                    补货
+                  </el-button>
                 </div>
               </template>
             </el-table-column>
@@ -312,15 +611,27 @@
         </el-card>
       </el-col>
 
-      <el-col v-if="canViewInventoryField('supplier_count')" :xs="24" :lg="10" class="stretch-col">
+      <el-col
+        v-if="canViewInventoryField('supplier_count')"
+        :xs="24"
+        :lg="10"
+        class="stretch-col"
+      >
         <el-card class="panel-card supplier-card">
           <template #header>
             <div class="panel-header">
               <div>
-                <div class="panel-title">供应商分析</div>
-                <div class="panel-subtitle">结合库存价值、商品数量与质量评分观察供应商稳定性</div>
+                <div class="panel-title">
+                  供应商分析
+                </div>
+                <div class="panel-subtitle">
+                  结合库存价值、商品数量与质量评分观察供应商稳定性
+                </div>
               </div>
-              <el-button size="small" @click="toggleSupplierChartType">
+              <el-button
+                size="small"
+                @click="toggleSupplierChartType"
+              >
                 切换{{ supplierChartType === 'bar' ? '雷达图' : '柱状图' }}
               </el-button>
             </div>
@@ -338,7 +649,10 @@
           </div>
 
           <div class="supplier-chart-container">
-            <div ref="supplierChartRef" class="chart"></div>
+            <div
+              ref="supplierChartRef"
+              class="chart"
+            />
           </div>
 
           <div class="supplier-highlights">
@@ -348,21 +662,27 @@
               class="supplier-highlight"
             >
               <div>
-                <div class="supplier-highlight__name">{{ supplier.name }}</div>
+                <div class="supplier-highlight__name">
+                  {{ supplier.name }}
+                </div>
                 <div class="supplier-highlight__meta">
-                  {{ formatNumber(supplier.totalProducts) }} 台 · 质量 {{ formatDecimal(supplier.qualityScore) }}
+                  {{ formatNumber(supplier.total_products) }} 台 · 质量 {{ formatDecimal(supplier.quality_score) }}
                 </div>
               </div>
-              <div class="supplier-highlight__value">¥{{ formatNumber(supplier.totalValue) }}</div>
+              <div class="supplier-highlight__value">
+                ¥{{ formatNumber(supplier.total_value) }}
+              </div>
             </div>
-            <div v-if="supplierHighlights.length === 0" class="supplier-empty">
+            <div
+              v-if="supplierHighlights.length === 0"
+              class="supplier-empty"
+            >
               暂无供应商分析数据
             </div>
           </div>
         </el-card>
       </el-col>
     </el-row>
-
   </div>
 </template>
 
@@ -379,9 +699,13 @@ import { useLoadingState } from '@/composables'
 import { useCachedRequest, DEFAULT_CACHE_TTL } from '@/composables/usePageCache'
 import { useImportExport } from '@/composables/useImportExport'
 import { analyticsService } from '@/api/analytics'
-import { unifiedApi } from '@/utils/unified-api'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
-import type { InventoryAnalytics } from '@/types/analytics'
+import type {
+  InventoryAnalytics,
+  InventoryLowStockItem,
+  InventoryRecentSoldItem,
+  InventoryTurnoverPoint
+} from '@/types/analytics'
 import type { InventoryAnalyticsProps, LoadingChangeEmits } from '@/types/component'
 import { useAnalyticsFieldVisibility } from './useAnalyticsFieldVisibility'
 import echarts, { ECharts } from '@/utils/echarts'
@@ -400,26 +724,26 @@ const props = withDefaults(defineProps<InventoryAnalyticsProps>(), {
 
 const emit = defineEmits<LoadingChangeEmits>()
 
-const { success, error, warning } = useNotification()
+const { success: _success, error, warning } = useNotification()
 const { canViewField: canViewInventoryField, canViewAnyField: canViewAnyInventoryField } = useAnalyticsFieldVisibility('inventory')
 const { exportTextFile, buildDateFilename } = useImportExport()
 
 // 响应式数据
 const inventoryData = ref<InventoryAnalytics>({
-  totalProducts: 0,
-  totalValue: 0,
-  lowStockItems: 0,
-  outOfStockItems: 0,
-  overstockItems: 0,
-  stockTurnover: 0,
-  inventoryHealth: {
+  total_products: 0,
+  total_value: 0,
+  low_stock_items: 0,
+  out_of_stock_items: 0,
+  overstock_items: 0,
+  stock_turnover: 0,
+  inventory_health: {
     score: 0,
     level: 'good',
     issues: [],
     recommendations: []
   },
-  categoryAnalysis: [],
-  supplierAnalysis: []
+  category_analysis: [],
+  supplier_analysis: []
 })
 
 const showInventoryChartsRow = computed(() => canViewAnyInventoryField(['category_distribution_chart', 'turnover_trend_chart']))
@@ -428,12 +752,12 @@ const showInventoryTableRow = computed(() => canViewAnyInventoryField(['low_stoc
 const { loading } = useLoadingState()
 const categoryChartType = ref<'bar' | 'pie'>('bar')
 const supplierChartType = ref<'bar' | 'radar'>('bar')
-const turnoverPeriod = ref('30d')
+const turnoverPeriod = ref<'30d' | '90d' | '180d'>('30d')
 const alertLevel = ref('')
 
 // 低库存数据
-const lowStockItems = ref<any[]>([])
-const turnoverTrendData = ref<any[]>([])
+const lowStockItems = ref<InventoryLowStockItem[]>([])
+const turnoverTrendData = ref<InventoryTurnoverPoint[]>([])
 
 // 弹窗控制
 const showLowStockDialog = ref(false)
@@ -442,7 +766,7 @@ const showLowStockDialog = ref(false)
 const supplierCount = ref(0)
 
 // 最近销售的型号
-const recentSoldModels = ref<any[]>([])
+const recentSoldModels = ref<InventoryRecentSoldItem[]>([])
 
 // 图表引用
 const categoryChartRef = ref<HTMLElement>()
@@ -465,12 +789,12 @@ const healthLevelText = computed(() => {
     critical: '紧急'
   }
 
-  return textMap[inventoryData.value.inventoryHealth?.level || 'good'] || '良好'
+  return textMap[inventoryData.value.inventory_health?.level || 'good'] || '良好'
 })
 
 const averageUnitCost = computed(() => {
-  if (!inventoryData.value.totalProducts) return 0
-  return inventoryData.value.totalValue / inventoryData.value.totalProducts
+  if (!inventoryData.value.total_products) return 0
+  return inventoryData.value.total_value / inventoryData.value.total_products
 })
 
 const filteredLowStockItems = computed(() => {
@@ -479,11 +803,11 @@ const filteredLowStockItems = computed(() => {
   }
 
   if (alertLevel.value === 'critical') {
-    return lowStockItems.value.filter((item) => item.stockStatus === 'out_of_stock')
+    return lowStockItems.value.filter((item) => item.stock_status === 'out_of_stock')
   }
 
   if (alertLevel.value === 'warning') {
-    return lowStockItems.value.filter((item) => item.stockStatus === 'low_stock')
+    return lowStockItems.value.filter((item) => item.stock_status === 'low_stock')
   }
 
   return lowStockItems.value
@@ -491,18 +815,18 @@ const filteredLowStockItems = computed(() => {
 
 const warningSummary = computed(() => {
   return lowStockItems.value.reduce((summary, item) => {
-    const currentStock = Number(item.currentStock) || 0
-    const reorderPoint = Number(item.reorderPoint) || 0
+    const currentStock = Number(item.current_stock) || 0
+    const reorderPoint = Number(item.reorder_point) || 0
     const shortage = Math.max(reorderPoint - currentStock, 0)
-    const unitCost = Number(item.unitCost) || 0
+    const unitCost = Number(item.unit_cost) || 0
 
     summary.total += 1
     summary.shortageUnits += shortage
     summary.replenishmentValue += shortage * unitCost
 
-    if (item.stockStatus === 'out_of_stock') {
+    if (item.stock_status === 'out_of_stock') {
       summary.criticalCount += 1
-    } else if (item.stockStatus === 'low_stock') {
+    } else if (item.stock_status === 'low_stock') {
       summary.warningCount += 1
     }
 
@@ -517,33 +841,33 @@ const warningSummary = computed(() => {
 })
 
 const recentSalesSummary = computed(() => {
-  const totalSales = recentSoldModels.value.reduce((sum, item) => sum + (Number(item.salePrice) || 0), 0)
+  const totalSales = recentSoldModels.value.reduce((sum, item) => sum + (Number(item.sale_price) || 0), 0)
   const latestRecord = recentSoldModels.value[0]
 
   return {
     totalSales,
     latestStore: latestRecord?.store || '暂无',
-    latestSaleDate: latestRecord?.saleDate || '暂无记录'
+    latestSaleDate: latestRecord?.sale_time || '暂无记录'
   }
 })
 
 const supplierHighlights = computed(() => {
-  return [...(inventoryData.value?.supplierAnalysis || [])]
-    .sort((a, b) => (Number(b.totalValue) || 0) - (Number(a.totalValue) || 0))
+  return [...(inventoryData.value?.supplier_analysis || [])]
+    .sort((a, b) => (Number(b.total_value) || 0) - (Number(a.total_value) || 0))
     .slice(0, 3)
 })
 
 const topSupplierName = computed(() => supplierHighlights.value[0]?.name || '暂无')
 
 const topSupplierValue = computed(() => {
-  return Number(supplierHighlights.value[0]?.totalValue) || 0
+  return Number(supplierHighlights.value[0]?.total_value) || 0
 })
 
 const supplierQualityAverage = computed(() => {
-  const supplierList = inventoryData.value?.supplierAnalysis || []
+  const supplierList = inventoryData.value?.supplier_analysis || []
   if (supplierList.length === 0) return 0
 
-  const total = supplierList.reduce((sum, item) => sum + (Number(item.qualityScore) || 0), 0)
+  const total = supplierList.reduce((sum, item) => sum + (Number(item.quality_score) || 0), 0)
   return total / supplierList.length
 })
 
@@ -554,8 +878,28 @@ const CACHE_KEYS = {
   inventory: (params: any) => `/analytics/inventory:${JSON.stringify(params)}`,
   lowStock: (params: any) => `/analytics/inventory/low-stock:${JSON.stringify(params)}`,
   turnover: (params: any) => `/analytics/inventory/turnover:${JSON.stringify(params)}`,
-  supplierStats: '/analytics/inventory/supplier-stats',
-  recentSold: '/analytics/inventory/recent-sold'
+  supplierStats: (params: InventoryFilterParams) => `/analytics/inventory/supplier-stats:${JSON.stringify(params)}`,
+  recentSold: (params: InventoryFilterParams) => `/analytics/inventory/recent-sold:${JSON.stringify(params)}`
+}
+
+type InventoryFilterParams = {
+  store_id?: number
+  supplier_id?: number
+}
+
+const buildInventoryFilters = (): InventoryFilterParams => {
+  const filters: InventoryFilterParams = {}
+  const storeId = Number(props.storeId)
+  const supplierId = Number(props.supplierId)
+
+  if (Number.isSafeInteger(storeId) && storeId > 0) {
+    filters.store_id = storeId
+  }
+  if (Number.isSafeInteger(supplierId) && supplierId > 0) {
+    filters.supplier_id = supplierId
+  }
+
+  return filters
 }
 
 const loadInventoryData = async (showLoadingState = true) => {
@@ -565,31 +909,17 @@ const loadInventoryData = async (showLoadingState = true) => {
       emit('loading-change', true)
     }
 
-    // 获取库存数据
-    const params: any = {}
-
-    // 使用父组件传递的检索参数
-    if (props.startDate) {
-      params.startDate = props.startDate
-    }
-    if (props.endDate) {
-      params.endDate = props.endDate
-    }
-    if (props.storeId) {
-      params.storeId = props.storeId
-    }
-    if (props.supplierId) {
-      params.supplierId = props.supplierId
-    }
+    // 库存快照和预警接口按门店/供应商筛选；日期筛选不适用于当前库存快照。
+    const params = buildInventoryFilters()
 
     const cacheKeyInventory = CACHE_KEYS.inventory(params)
-    const cacheKeyLowStock = CACHE_KEYS.lowStock({ ...params, limit: 200 })
+    const cacheKeyLowStock = CACHE_KEYS.lowStock({ ...params, page_size: 200 })
     const cacheKeyTurnover = CACHE_KEYS.turnover({ period: turnoverPeriod.value, ...params })
 
     // 并行获取数据（使用缓存）
     const [inventoryResponse, lowStockDetailResponse, turnoverResponse] = await Promise.all([
       useCachedRequest(cacheKeyInventory, () => analyticsService.getInventoryAnalytics(params), DEFAULT_CACHE_TTL.STATIC),
-      useCachedRequest(cacheKeyLowStock, () => analyticsService.getLowStockItems({ ...params, limit: 200 }), DEFAULT_CACHE_TTL.DYNAMIC),
+      useCachedRequest(cacheKeyLowStock, () => analyticsService.getLowStockItems({ ...params, page_size: 200 }), DEFAULT_CACHE_TTL.DYNAMIC),
       useCachedRequest(cacheKeyTurnover, () => analyticsService.getInventoryTurnover({ period: turnoverPeriod.value, ...params }), DEFAULT_CACHE_TTL.DYNAMIC)
     ])
 
@@ -603,10 +933,10 @@ const loadInventoryData = async (showLoadingState = true) => {
     }
 
     // 计算供应商数量（有货的供应商）
-    await calculateSupplierCount()
+    await calculateSupplierCount(params)
 
     // 获取最近销售的10个型号
-    await loadRecentSoldModels()
+    await loadRecentSoldModels(params)
 
     // 获取周转率数据
     if (turnoverResponse.success) {
@@ -630,15 +960,13 @@ defineExpose({
 })
 
 // 计算有货的供应商数量
-const calculateSupplierCount = async () => {
+const calculateSupplierCount = async (filters: InventoryFilterParams = buildInventoryFilters()) => {
   try {
-    const params: any = {}
-
     // 查询有库存的商品，按供应商分组统计
-    const response = await useCachedRequest(CACHE_KEYS.supplierStats, () =>
-      unifiedApi.get('/analytics/inventory/supplier-stats', { params }), DEFAULT_CACHE_TTL.STATIC)
+    const response = await useCachedRequest(CACHE_KEYS.supplierStats(filters), () =>
+      analyticsService.getInventorySupplierStats(filters), DEFAULT_CACHE_TTL.STATIC)
     if (response.success && response.data) {
-      supplierCount.value = response.data.supplierCount || 0
+      supplierCount.value = Number(response.data.supplier_count) || 0
     } else {
       supplierCount.value = 0
     }
@@ -649,12 +977,12 @@ const calculateSupplierCount = async () => {
 }
 
 // 加载最近销售的型号
-const loadRecentSoldModels = async () => {
+const loadRecentSoldModels = async (filters: InventoryFilterParams = buildInventoryFilters()) => {
   try {
-    const params: any = { limit: 10 }
+    const params = { ...filters, page_size: 10 }
 
-    const response = await useCachedRequest(CACHE_KEYS.recentSold, () =>
-      unifiedApi.get('/analytics/inventory/recent-sold', { params }), DEFAULT_CACHE_TTL.DYNAMIC)
+    const response = await useCachedRequest(CACHE_KEYS.recentSold(filters), () =>
+      analyticsService.getRecentSoldInventory(params), DEFAULT_CACHE_TTL.DYNAMIC)
     if (response.success && response.data) {
       recentSoldModels.value = response.data || []
     }
@@ -709,8 +1037,8 @@ const getStockStatusText = (status?: string) => {
 }
 
 const handleReplenish = (row: any) => {
-  // 处理补货逻辑
-  success(`已为 ${row.brand} ${row.model} 创建补货提醒`)
+  // 当前页面没有写入补货单的后端接口，不能提示虚假的“创建成功”。
+  warning(`请在库存管理中为 ${row.brand} ${row.model} 创建补货单`)
 }
 
 const exportLowStock = () => {
@@ -742,11 +1070,11 @@ const generateLowStockCSV = () => {
       item.brand,
       item.model,
       item.color,
-      item.currentStock,
-      item.reorderPoint,
-      item.unitCost,
-      item.totalValue,
-      getStockStatusText(item.stockStatus)
+      item.current_stock,
+      item.reorder_point,
+      item.unit_cost,
+      item.total_value,
+      getStockStatusText(item.stock_status)
     ]))
   )
 }
@@ -789,12 +1117,12 @@ const initCharts = () => {
 const updateCategoryChart = () => {
   if (!categoryChart) return
 
-  if (!inventoryData.value?.categoryAnalysis) return
+  if (!inventoryData.value?.category_analysis) return
 
-  const data = (inventoryData.value.categoryAnalysis || []).map(item => ({
+  const data = (inventoryData.value.category_analysis || []).map(item => ({
     name: item.category,
-    value: item.totalValue || 0,
-    turnoverRate: item.turnoverRate || 0
+    value: item.total_value || 0,
+    turnover_rate: item.turnover_rate || 0
   }))
 
   const option: any = {
@@ -802,7 +1130,7 @@ const updateCategoryChart = () => {
     tooltip: {
       trigger: 'item',
       formatter: (params: any) => {
-        return `${params.name}<br/>库存价值: ¥${formatNumber(params.value)}<br/>周转率: ${formatDecimal(params.data.turnoverRate)}`
+        return `${params.name}<br/>库存价值: ¥${formatNumber(params.value)}<br/>周转率: ${formatDecimal(params.data.turnover_rate)}`
       }
     },
     grid: {
@@ -883,8 +1211,8 @@ const updateTurnoverChart = () => {
 
   // 使用实际的周转率趋势数据
   const periods = turnoverTrendData.value.map(item => item.date)
-  const turnoverData = turnoverTrendData.value.map(item => item.actualTurnover)
-  const targetData = turnoverTrendData.value.map(item => item.targetTurnover)
+  const turnoverData = turnoverTrendData.value.map(item => item.actual_turnover)
+  const targetData = turnoverTrendData.value.map(item => item.target_turnover)
 
   const option: any = {
     color: ['#205781', '#F6B17A'],
@@ -960,7 +1288,7 @@ const updateSupplierChart = () => {
   if (!supplierChart) return
 
   // 使用实际的供应商分析数据
-  const supplierData = inventoryData.value?.supplierAnalysis || []
+  const supplierData = inventoryData.value?.supplier_analysis || []
 
   const option: any = {
     color: ['#4F959D', '#F6B17A', '#98D2C0', '#205781'],
@@ -1004,7 +1332,7 @@ const updateSupplierChart = () => {
       name: '库存价值',
       type: 'bar',
       data: supplierData.map((item: any) => ({
-        value: item.totalValue,
+        value: item.total_value,
         itemStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
             { offset: 0, color: '#F6B17A' },
@@ -1015,9 +1343,9 @@ const updateSupplierChart = () => {
       }))
     }]
   } else {
-    const maxValue = Math.max(...supplierData.map((item: any) => Number(item.totalValue) || 0), 1)
-    const maxProducts = Math.max(...supplierData.map((item: any) => Number(item.totalProducts) || 0), 1)
-    const maxQuality = Math.max(...supplierData.map((item: any) => Number(item.qualityScore) || 0), 100)
+    const maxValue = Math.max(...supplierData.map(item => Number(item.total_value) || 0), 1)
+    const maxProducts = Math.max(...supplierData.map(item => Number(item.total_products) || 0), 1)
+    const maxQuality = Math.max(...supplierData.map(item => Number(item.quality_score) || 0), 100)
 
     option.radar = {
       indicator: [
@@ -1030,11 +1358,11 @@ const updateSupplierChart = () => {
     option.series = [{
       name: '供应商表现',
       type: 'radar',
-      data: supplierData.map((item: any) => ({
+      data: supplierData.map(item => ({
         value: [
-          item.totalValue,
-          item.totalProducts,
-          item.qualityScore
+          item.total_value,
+          item.total_products,
+          item.quality_score
         ],
         name: item.name
       })),
@@ -1147,7 +1475,7 @@ onBeforeUnmount(() => {
     border-radius: 20px;
     background:
       radial-gradient(circle at top right, rgba(255, 255, 255, 0.42), transparent 38%),
-      linear-gradient(180deg, #ffffff 0%, #f9fbfd 100%);
+      linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-surface-neutral) 100%);
     box-shadow: 0 14px 36px rgba(22, 34, 55, 0.08);
     transition: transform 0.25s ease, box-shadow 0.25s ease;
 
@@ -1172,25 +1500,25 @@ onBeforeUnmount(() => {
   .insight-card--primary {
     background:
       radial-gradient(circle at top right, rgba(79, 149, 157, 0.16), transparent 38%),
-      linear-gradient(180deg, #ffffff 0%, #f4f8fb 100%);
+      linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-surface-cool-soft) 100%);
   }
 
   .insight-card--success {
     background:
       radial-gradient(circle at top right, rgba(152, 210, 192, 0.25), transparent 42%),
-      linear-gradient(180deg, #ffffff 0%, #f6fbf9 100%);
+      linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-surface-gray) 100%);
   }
 
   .insight-card--warning {
     background:
       radial-gradient(circle at top right, rgba(246, 177, 122, 0.22), transparent 42%),
-      linear-gradient(180deg, #ffffff 0%, #fff9f4 100%);
+      linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-amber-surface) 100%);
   }
 
   .insight-card--supplier {
     background:
       radial-gradient(circle at top right, rgba(79, 149, 157, 0.14), transparent 42%),
-      linear-gradient(180deg, #ffffff 0%, #f7fbfc 100%);
+      linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-surface-gray) 100%);
   }
 
   .insight-card__header,
@@ -1220,27 +1548,27 @@ onBeforeUnmount(() => {
     width: 52px;
     height: 52px;
     border-radius: 16px;
-    color: #fff;
+    color: var(--color-bg-white);
     font-size: 24px;
     background: linear-gradient(135deg, var(--inventory-primary), var(--inventory-secondary));
     box-shadow: 0 12px 22px rgba(32, 87, 129, 0.2);
   }
 
   .insight-card--success .insight-card__icon {
-    background: linear-gradient(135deg, #45a26b, #78c4a7);
+    background: linear-gradient(135deg, var(--tf-color-inventory-chart-green), var(--tf-color-inventory-chart-mint));
   }
 
   .insight-card--warning .insight-card__icon {
-    background: linear-gradient(135deg, #d98324, #f6b17a);
+    background: linear-gradient(135deg, var(--tf-color-orange-legacy), var(--tf-color-amber-muted));
   }
 
   .insight-card--supplier .insight-card__icon {
-    background: linear-gradient(135deg, #496989, #4f959d);
+    background: linear-gradient(135deg, var(--tf-color-slate-500), var(--tf-color-inventory-chart-cyan));
   }
 
   .insight-card__label {
     margin-top: 22px;
-    color: #5c6773;
+    color: var(--color-text-regular);
     font-size: 14px;
     letter-spacing: 0.02em;
   }
@@ -1250,7 +1578,7 @@ onBeforeUnmount(() => {
     font-size: 34px;
     line-height: 1;
     font-weight: 700;
-    color: #17212b;
+    color: var(--tf-color-slate-deep);
   }
 
   .insight-card__value--currency {
@@ -1259,7 +1587,7 @@ onBeforeUnmount(() => {
 
   .insight-card__meta {
     margin-top: 10px;
-    color: #7f8a96;
+    color: var(--tf-color-gray-ui-muted);
     font-size: 13px;
   }
 
@@ -1268,7 +1596,7 @@ onBeforeUnmount(() => {
     padding-top: 14px;
     border-top: 1px solid rgba(32, 87, 129, 0.08);
     font-size: 12px;
-    color: #54606d;
+    color: var(--color-text-regular);
   }
 
   .panel-card {
@@ -1276,18 +1604,18 @@ onBeforeUnmount(() => {
     border: 1px solid rgba(32, 87, 129, 0.08);
     border-radius: 20px;
     box-shadow: 0 12px 30px rgba(18, 38, 63, 0.06);
-    background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+    background: linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-surface-cool-alt) 100%);
   }
 
   .panel-title {
     font-size: 17px;
     font-weight: 700;
-    color: #17212b;
+    color: var(--tf-color-slate-deep);
   }
 
   .panel-subtitle {
     margin-top: 6px;
-    color: #7f8a96;
+    color: var(--tf-color-gray-ui-muted);
     font-size: 13px;
     line-height: 1.5;
   }
@@ -1302,8 +1630,8 @@ onBeforeUnmount(() => {
   .metric-chip {
     padding: 6px 10px;
     border-radius: 999px;
-    background: #f3f7fb;
-    color: #4f5f70;
+    background: var(--tf-color-surface-cool-soft);
+    color: var(--tf-color-gray-chakra-600);
     font-size: 12px;
     border: 1px solid rgba(32, 87, 129, 0.08);
   }
@@ -1337,19 +1665,19 @@ onBeforeUnmount(() => {
   .warning-stat {
     padding: 14px 16px;
     border-radius: 16px;
-    background: linear-gradient(180deg, #f7fafc 0%, #eef4f8 100%);
+    background: linear-gradient(180deg, var(--tf-color-surface-gray) 0%, var(--tf-color-surface-cool-blue) 100%);
     border: 1px solid rgba(32, 87, 129, 0.08);
   }
 
   .warning-stat__label {
     display: block;
     margin-bottom: 6px;
-    color: #7b8793;
+    color: var(--tf-color-gray-ui-600);
     font-size: 12px;
   }
 
   .warning-stat__value {
-    color: #17212b;
+    color: var(--tf-color-slate-deep);
     font-size: 20px;
     font-weight: 700;
   }
@@ -1370,17 +1698,17 @@ onBeforeUnmount(() => {
     gap: 4px;
 
     .brand {
-      color: #17212b;
+      color: var(--tf-color-slate-deep);
       font-weight: 700;
     }
 
     .model {
-      color: #56616d;
+      color: var(--color-text-regular);
       font-size: 13px;
     }
 
     .color {
-      color: #8a94a0;
+      color: var(--tf-color-gray-ui-500);
       font-size: 12px;
     }
   }
@@ -1400,19 +1728,19 @@ onBeforeUnmount(() => {
   .supplier-summary__item {
     padding: 12px 14px;
     border-radius: 14px;
-    background: linear-gradient(180deg, #f4f8fb 0%, #eef4f8 100%);
+    background: linear-gradient(180deg, var(--tf-color-surface-cool-soft) 0%, var(--tf-color-surface-cool-blue) 100%);
     border: 1px solid rgba(32, 87, 129, 0.08);
 
     span {
       display: block;
       margin-bottom: 6px;
       font-size: 12px;
-      color: #7b8793;
+      color: var(--tf-color-gray-ui-600);
     }
 
     strong {
       font-size: 22px;
-      color: #17212b;
+      color: var(--tf-color-slate-deep);
       font-weight: 700;
     }
   }
@@ -1427,18 +1755,18 @@ onBeforeUnmount(() => {
   .supplier-highlight {
     padding: 12px 14px;
     border-radius: 14px;
-    background: #f7fafc;
+    background: var(--tf-color-surface-gray);
     border: 1px solid rgba(32, 87, 129, 0.08);
   }
 
   .supplier-highlight__name {
-    color: #17212b;
+    color: var(--tf-color-slate-deep);
     font-weight: 700;
   }
 
   .supplier-highlight__meta {
     margin-top: 6px;
-    color: #7f8a96;
+    color: var(--tf-color-gray-ui-muted);
     font-size: 12px;
   }
 
@@ -1452,7 +1780,7 @@ onBeforeUnmount(() => {
   .supplier-empty {
     padding: 20px 12px;
     text-align: center;
-    color: #8a94a0;
+    color: var(--tf-color-gray-ui-500);
     font-size: 13px;
   }
 

@@ -1,9 +1,16 @@
-const BaseRepository = require('./base.repository');
-const log = require('../utils/log');
+const BaseRepository = require('./base.repository')
+const log = require('../utils/log')
+
+const CUSTOMER_SELECT_FIELDS = `
+  id, name, phone, email, customer_type, vip_level, gender, birthday,
+  id_card, address, city, province, balance, points, wechat, qq, apple_id,
+  member_number, status, remarks, blacklist, total_spent, last_purchase_date,
+  register_date, created_at, updated_at
+`
 
 class CustomerRepository extends BaseRepository {
   constructor() {
-    super('customers');
+    super('customers')
   }
 
   /**
@@ -26,7 +33,7 @@ class CustomerRepository extends BaseRepository {
         apple_id,
         status = 1,
         remarks
-      } = customerData;
+      } = customerData
 
       // 确保所有undefined值转换为null
       const data = {
@@ -42,18 +49,18 @@ class CustomerRepository extends BaseRepository {
         apple_id: apple_id || null,
         status: status || 1,
         remarks: remarks || null
-      };
+      }
 
-      log.debug(`创建客户参数 [${this.tableName}]:`, data);
+      log.debug(`创建客户参数 [${this.tableName}]:`, data)
 
       // 使用BaseRepository的create方法
-      const result = await this.create(data);
+      const result = await this.create(data)
 
-      log.info(`创建客户成功 [${this.tableName}]，ID: ${result.id}`);
-      return result;
+      log.info(`创建客户成功 [${this.tableName}]，ID: ${result.id}`)
+      return result
     } catch (error) {
-      log.error('创建客户失败:', error);
-      throw error;
+      log.error('创建客户失败:', error)
+      throw error
     }
   }
 
@@ -64,27 +71,27 @@ class CustomerRepository extends BaseRepository {
    */
   async findCustomerByPhone(phone) {
     try {
-      log.debug(`开始查询客户 [${this.tableName}]，手机号: ${phone}`);
+      log.debug(`开始查询客户 [${this.tableName}]，手机号: ${phone}`)
 
       // 使用BaseRepository的executeQuery方法
       const records = await this.executeQuery(
-        `SELECT * FROM ${this.tableName} WHERE phone = ? AND status = 1`,
+        `SELECT ${CUSTOMER_SELECT_FIELDS} FROM ${this.tableName} WHERE phone = ? AND status = 1`,
         [phone]
-      );
+      )
 
       // 安全地访问 records.length
-      const recordCount = (records && Array.isArray(records)) ? records.length : 0;
-      log.info(`客户查询成功 [${this.tableName}]，找到 ${recordCount} 条记录`);
+      const recordCount = (records && Array.isArray(records)) ? records.length : 0
+      log.info(`客户查询成功 [${this.tableName}]，找到 ${recordCount} 条记录`)
 
       if (recordCount > 0) {
         // 删除调试日志
 
       }
 
-      return (recordCount > 0) ? records[0] : null;
+      return (recordCount > 0) ? records[0] : null
     } catch (error) {
-      log.error('根据手机号查找客户失败:', error);
-      throw error;
+      log.error('根据手机号查找客户失败:', error)
+      throw error
     }
   }
 
@@ -95,32 +102,32 @@ class CustomerRepository extends BaseRepository {
    */
   async findCustomerById(id) {
     try {
-      log.debug(`根据ID查找客户 [${this.tableName}]，ID: ${id}`);
-      const query = `SELECT * FROM ${this.tableName} WHERE id = ? AND status = 1`;
-      const records = await this.executeQuery(query, [id]);
+      log.debug(`根据ID查找客户 [${this.tableName}]，ID: ${id}`)
+      const query = `SELECT ${CUSTOMER_SELECT_FIELDS} FROM ${this.tableName} WHERE id = ? AND status = 1`
+      const records = await this.executeQuery(query, [id])
 
       // 删除调试日志
       if (!records) {
-        log.warn(`查询返回 null`);
-        return null;
+        log.warn('查询返回 null')
+        return null
       }
 
       if (!Array.isArray(records)) {
-        log.warn(`查询返回非数组结果:`, records);
+        log.warn('查询返回非数组结果:', records)
         // 尝试将单个对象转换为数组
-        return typeof records === 'object' ? records : null;
+        return typeof records === 'object' ? records : null
       }
 
       if (records.length === 0) {
-        log.warn(`未找到客户，ID: ${id}`);
-        return null;
+        log.warn(`未找到客户，ID: ${id}`)
+        return null
       }
 
       // 删除调试日志
-      return records[0];
+      return records[0]
     } catch (error) {
-      log.error('根据ID查找客户失败:', error);
-      throw error;
+      log.error('根据ID查找客户失败:', error)
+      throw error
     }
   }
 
@@ -135,26 +142,28 @@ class CustomerRepository extends BaseRepository {
         name,
         phone,
         page = 1,
-        limit = 20
-      } = filters;
+        page_size = 20
+      } = filters
 
-      const offset = (page - 1) * limit;
+      const pageNumber = Math.max(1, parseInt(page, 10) || 1)
+      const pageSize = Math.min(100, Math.max(1, parseInt(page_size, 10) || 20))
+      const offset = (pageNumber - 1) * pageSize
 
       // 构建查询条件
-      const conditions = ['status = 1'];
-      const params = [];
+      const conditions = ['status = 1']
+      const params = []
 
       if (name) {
-        conditions.push('name LIKE ?');
-        params.push(`%${name}%`);
+        conditions.push('name LIKE ?')
+        params.push(`%${name}%`)
       }
 
       if (phone) {
-        conditions.push('phone LIKE ?');
-        params.push(`%${phone}%`);
+        conditions.push('phone LIKE ?')
+        params.push(`%${phone}%`)
       }
 
-      const whereClause = `WHERE ${conditions.join(' AND ')}`;
+      const whereClause = `WHERE ${conditions.join(' AND ')}`
 
       // 查询数据
       const query = `
@@ -165,34 +174,34 @@ class CustomerRepository extends BaseRepository {
         ${whereClause}
         ORDER BY created_at DESC
         LIMIT ? OFFSET ?
-      `;
+      `
 
-      const dataParams = [...params, parseInt(limit), parseInt(offset)];
-      const records = await this.executeQuery(query, dataParams);
+      const dataParams = [...params, pageSize, parseInt(offset)]
+      const records = await this.executeQuery(query, dataParams)
 
       // 查询总数
       const countQuery = `
         SELECT COUNT(*) as total
         FROM ${this.tableName}
         ${whereClause}
-      `;
-      const [countResult] = await this.executeQuery(countQuery, params);
-      const total = countResult.total;
+      `
+      const [countResult] = await this.executeQuery(countQuery, params)
+      const total = countResult.total
 
       return {
         records,
         pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
+          page: pageNumber,
+          page_size: pageSize,
           total,
-          totalPages: Math.ceil(total / limit),
-          hasNext: page * limit < total,
-          hasPrev: page > 1
+          total_pages: Math.ceil(total / pageSize),
+          has_next: pageNumber * pageSize < total,
+          has_prev: pageNumber > 1
         }
-      };
+      }
     } catch (error) {
-      log.error('获取客户列表失败:', error);
-      throw error;
+      log.error('获取客户列表失败:', error)
+      throw error
     }
   }
 
@@ -217,7 +226,7 @@ class CustomerRepository extends BaseRepository {
         apple_id,
         status,
         remarks
-      } = customerData;
+      } = customerData
 
       const query = `
         UPDATE ${this.tableName} SET
@@ -225,19 +234,19 @@ class CustomerRepository extends BaseRepository {
           balance = ?, points = ?, wechat = ?, qq = ?, apple_id = ?,
           status = ?, remarks = ?, updated_at = NOW()
         WHERE id = ?
-      `;
+      `
 
       const params = [
         name, phone, id_card, address, member_number,
         balance, points, wechat, qq, apple_id,
         status, remarks, id
-      ];
+      ]
 
-      const result = await this.executeQuery(query, params);
-      return result.affectedRows > 0;
+      const result = await this.executeQuery(query, params)
+      return result.affectedRows > 0
     } catch (error) {
-      log.error('更新客户信息失败:', error);
-      throw error;
+      log.error('更新客户信息失败:', error)
+      throw error
     }
   }
 
@@ -248,12 +257,12 @@ class CustomerRepository extends BaseRepository {
    */
   async deleteCustomer(id) {
     try {
-      const query = `UPDATE ${this.tableName} SET status = 0, updated_at = NOW() WHERE id = ?`;
-      const result = await this.executeQuery(query, [id]);
-      return result.affectedRows > 0;
+      const query = `UPDATE ${this.tableName} SET status = 0, updated_at = NOW() WHERE id = ?`
+      const result = await this.executeQuery(query, [id])
+      return result.affectedRows > 0
     } catch (error) {
-      log.error('删除客户失败:', error);
-      throw error;
+      log.error('删除客户失败:', error)
+      throw error
     }
   }
 
@@ -269,12 +278,12 @@ class CustomerRepository extends BaseRepository {
         UPDATE ${this.tableName}
         SET points = points + ?, updated_at = NOW()
         WHERE id = ?
-      `;
-      const result = await this.executeQuery(query, [points, id]);
-      return result.affectedRows > 0;
+      `
+      const result = await this.executeQuery(query, [points, id])
+      return result.affectedRows > 0
     } catch (error) {
-      log.error('更新客户积分失败:', error);
-      throw error;
+      log.error('更新客户积分失败:', error)
+      throw error
     }
   }
 
@@ -290,12 +299,12 @@ class CustomerRepository extends BaseRepository {
         UPDATE ${this.tableName}
         SET balance = ?, updated_at = NOW()
         WHERE id = ?
-      `;
-      const result = await this.executeQuery(query, [balance, id]);
-      return result.affectedRows > 0;
+      `
+      const result = await this.executeQuery(query, [balance, id])
+      return result.affectedRows > 0
     } catch (error) {
-      log.error('更新客户余额失败:', error);
-      throw error;
+      log.error('更新客户余额失败:', error)
+      throw error
     }
   }
 
@@ -311,12 +320,12 @@ class CustomerRepository extends BaseRepository {
         UPDATE ${this.tableName}
         SET apple_id = ?, updated_at = NOW()
         WHERE id = ?
-      `;
-      const result = await this.executeQuery(query, [appleId, id]);
-      return result.affectedRows > 0;
+      `
+      const result = await this.executeQuery(query, [appleId, id])
+      return result.affectedRows > 0
     } catch (error) {
-      log.error('更新客户Apple ID失败:', error);
-      throw error;
+      log.error('更新客户Apple ID失败:', error)
+      throw error
     }
   }
 
@@ -326,7 +335,7 @@ class CustomerRepository extends BaseRepository {
    * @returns {Object|null} 客户信息
    */
   async findByPhone(phone) {
-    return await this.findCustomerByPhone(phone);
+    return await this.findCustomerByPhone(phone)
   }
 
   /**
@@ -336,10 +345,11 @@ class CustomerRepository extends BaseRepository {
    */
   async searchCustomers(options = {}) {
     try {
-      const { search, limit = 10 } = options;
+      const { search, page_size = 10 } = options
+      const pageSize = Math.min(100, Math.max(1, parseInt(page_size, 10) || 10))
 
       if (!search || search.trim().length < 2) {
-        return { records: [] };
+        return { records: [] }
       }
 
       const query = `
@@ -357,18 +367,18 @@ class CustomerRepository extends BaseRepository {
         )
         ORDER BY created_at DESC
         LIMIT ?
-      `;
+      `
 
-      const searchPattern = `%${search.trim()}%`;
+      const searchPattern = `%${search.trim()}%`
       const records = await this.executeQuery(query, [
         searchPattern, searchPattern, searchPattern, searchPattern, searchPattern,
-        parseInt(limit)
-      ]);
+        pageSize
+      ])
 
-      return { records: records || [] };
+      return { records: records || [] }
     } catch (error) {
-      log.error('搜索客户失败:', error);
-      throw error;
+      log.error('搜索客户失败:', error)
+      throw error
     }
   }
 
@@ -382,8 +392,10 @@ class CustomerRepository extends BaseRepository {
     try {
       const {
         page = 1,
-        limit = 10
-      } = options;
+        page_size = 10,
+        sort_by = 'id',
+        sort_order = 'desc'
+      } = options
 
       const {
         customer_type,
@@ -392,89 +404,106 @@ class CustomerRepository extends BaseRepository {
         city,
         province,
         status,
-        search
-      } = filters;
+        search,
+        register_date_start,
+        register_date_end
+      } = filters
 
-      const offset = (parseInt(page) - 1) * parseInt(limit);
+      const pageNumber = Math.max(1, parseInt(page, 10) || 1)
+      const pageSize = Math.min(100, Math.max(1, parseInt(page_size, 10) || 10))
+      const offset = (pageNumber - 1) * pageSize
 
       // 构建查询条件
-      const conditions = [];
-      const params = [];
+      const conditions = []
+      const params = []
 
       // 默认只显示有效客户，除非明确指定了状态
       if (status !== undefined && status !== '' && status !== null) {
-        conditions.push('status = ?');
-        params.push(parseInt(status) === 0 ? 0 : 1); // 确保只有 0 或 1 两个值
+        conditions.push('status = ?')
+        params.push(parseInt(status) === 0 ? 0 : 1) // 确保只有 0 或 1 两个值
       } else {
-        conditions.push('status = ?');
-        params.push(1);
+        conditions.push('status = ?')
+        params.push(1)
       }
 
       if (customer_type) {
-        conditions.push('customer_type = ?');
-        params.push(customer_type);
+        conditions.push('customer_type = ?')
+        params.push(customer_type)
       }
 
       if (vip_level) {
-        conditions.push('vip_level = ?');
-        params.push(vip_level);
+        conditions.push('vip_level = ?')
+        params.push(vip_level)
       }
 
       if (gender) {
-        conditions.push('gender = ?');
-        params.push(gender);
+        conditions.push('gender = ?')
+        params.push(gender)
       }
 
       if (city) {
-        conditions.push('city LIKE ?');
-        params.push(`%${city}%`);
+        conditions.push('city LIKE ?')
+        params.push(`%${city}%`)
       }
 
       if (province) {
-        conditions.push('province LIKE ?');
-        params.push(`%${province}%`);
+        conditions.push('province LIKE ?')
+        params.push(`%${province}%`)
+      }
+
+      if (register_date_start) {
+        conditions.push('register_date >= ?')
+        params.push(`${register_date_start} 00:00:00`)
+      }
+
+      if (register_date_end) {
+        conditions.push('register_date <= ?')
+        params.push(`${register_date_end} 23:59:59`)
       }
 
       if (search) {
-        conditions.push('(name LIKE ? OR phone LIKE ? OR email LIKE ? OR id_card LIKE ?)');
-        const searchPattern = `%${search}%`;
-        params.push(searchPattern, searchPattern, searchPattern, searchPattern);
+        conditions.push('(name LIKE ? OR phone LIKE ? OR email LIKE ? OR id_card LIKE ?)')
+        const searchPattern = `%${search}%`
+        params.push(searchPattern, searchPattern, searchPattern, searchPattern)
       }
 
-      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
 
       // 查询数据 - 简化和修复查询逻辑
-      const finalLimit = parseInt(limit) || 10;
-      const finalOffset = parseInt(offset) || 0;
+      const finalPageSize = pageSize
+      const finalOffset = parseInt(offset) || 0
+      const sortableFields = new Set(['id', 'name', 'created_at', 'register_date', 'last_purchase_date'])
+      const orderField = sortableFields.has(sort_by) ? sort_by : 'id'
+      const orderDirection = String(sort_order).toLowerCase() === 'asc' ? 'ASC' : 'DESC'
 
-      let query = `
+      const query = `
         SELECT
           id, name, phone, email, customer_type, vip_level, gender, birthday,
           city, province, balance, points, wechat, qq, apple_id, member_number,
           id_card, address, status, remarks, blacklist, total_spent, last_purchase_date,
           register_date, created_at, updated_at
         FROM ${this.tableName}
-        WHERE status = 1
-        ORDER BY id DESC
+        ${whereClause}
+        ORDER BY ${orderField} ${orderDirection}
         LIMIT ? OFFSET ?
-      `;
+      `
 
-      log.debug('客户查询调试信息:');
-      log.debug('  query:', query);
-      log.debug('  limit:', finalLimit, 'offset:', finalOffset);
+      log.debug('客户查询调试信息:')
+      log.debug('  query:', query)
+      log.debug('  page_size:', finalPageSize, 'offset:', finalOffset)
 
-      let records;
+      let records
       try {
         // 使用参数化查询确保安全性
-        records = await this.executeQuery(query, [finalLimit, finalOffset]);
+        records = await this.executeQuery(query, [...params, finalPageSize, finalOffset])
         // 确保 records 是数组
         if (!Array.isArray(records)) {
-          log.warn('查询返回非数组结果，转换为数组:', records);
-          records = records ? [records] : [];
+          log.warn('查询返回非数组结果，转换为数组:', records)
+          records = records ? [records] : []
         }
-        log.success('客户查询成功，记录数:', records.length);
+        log.success('客户查询成功，记录数:', records.length)
       } catch (error) {
-        log.fail('查询失败，尝试简化查询:', error.message);
+        log.fail('查询失败，尝试简化查询:', error.message)
 
         // 备用方案：简化查询
         const simpleQuery = `
@@ -483,18 +512,18 @@ class CustomerRepository extends BaseRepository {
                  id_card, address, status, remarks, blacklist, total_spent, last_purchase_date,
                  register_date, created_at, updated_at
           FROM ${this.tableName}
-          WHERE status = 1
-          ORDER BY id DESC
+          ${whereClause}
+          ORDER BY ${orderField} ${orderDirection}
           LIMIT ? OFFSET ?
-        `;
+        `
 
-        records = await this.executeQuery(simpleQuery, [finalLimit, finalOffset]);
+        records = await this.executeQuery(simpleQuery, [...params, finalPageSize, finalOffset])
         // 确保 records 是数组
         if (!Array.isArray(records)) {
-          log.warn('简化查询返回非数组结果，转换为数组:', records);
-          records = records ? [records] : [];
+          log.warn('简化查询返回非数组结果，转换为数组:', records)
+          records = records ? [records] : []
         }
-        log.success('简化查询成功，记录数:', records.length);
+        log.success('简化查询成功，记录数:', records.length)
       }
 
       // 查询总数
@@ -502,24 +531,26 @@ class CustomerRepository extends BaseRepository {
         SELECT COUNT(*) as total
         FROM ${this.tableName}
         ${whereClause}
-      `;
-      const [countResult] = await this.executeQuery(countQuery, params);
-      const total = countResult.total;
+      `
+      const [countResult] = await this.executeQuery(countQuery, params)
+      const total = countResult.total
 
       return {
         records: records || [],
         pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
+          page: pageNumber,
+          page_size: pageSize,
           total,
-          pages: Math.ceil(total / limit)
+          total_pages: Math.ceil(total / pageSize),
+          has_next: pageNumber * pageSize < total,
+          has_prev: pageNumber > 1
         }
-      };
+      }
     } catch (error) {
-      log.error('获取客户列表失败:', error);
-      throw error;
+      log.error('获取客户列表失败:', error)
+      throw error
     }
   }
 }
 
-module.exports = CustomerRepository;
+module.exports = CustomerRepository

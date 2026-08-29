@@ -11,25 +11,42 @@ import { unifiedApi } from '@/utils/unified-api'
 // 为了向后兼容，保留 publicApi 别名
 export const publicApi = unifiedApi
 
-const unwrapData = <T>(response: any): T => {
-  if (response && typeof response === 'object' && 'data' in response) {
-    return response.data as T
+type ApiRecord = Record<string, unknown>
+
+const asRecord = (value: unknown): ApiRecord | null => (
+  value !== null && typeof value === 'object' ? value as ApiRecord : null
+)
+
+const unwrapData = <T>(response: unknown): T => {
+  const record = asRecord(response)
+  if (record && 'data' in record) {
+    return record.data as T
   }
   return response as T
 }
 
-const unwrapPaginated = <T>(response: any): {
+const unwrapPaginated = <T>(response: unknown): {
   data: T[]
   page: number
-  limit: number
+  page_size: number
+  total_pages: number
+  has_next: boolean
+  has_prev: boolean
   total: number
 } => {
-  const pagination = response?.pagination || {}
+  const record = asRecord(response) || {}
+  const pagination = asRecord(record.pagination) || {}
+  const page_size = Number(pagination.page_size ?? record.page_size ?? 20)
+  const total = Number(pagination.total ?? record.total ?? 0)
+  const page = Number(pagination.page ?? record.page ?? 1)
   return {
-    data: Array.isArray(response?.data) ? response.data as T[] : [],
-    page: Number(pagination.page ?? response?.page ?? 1),
-    limit: Number(pagination.limit ?? response?.limit ?? 20),
-    total: Number(pagination.total ?? response?.total ?? 0)
+    data: Array.isArray(record.data) ? record.data as T[] : [],
+    page,
+    page_size,
+    total_pages: Number(pagination.total_pages ?? record.total_pages ?? Math.ceil(total / page_size)),
+    has_next: Boolean(pagination.has_next ?? record.has_next ?? page * page_size < total),
+    has_prev: Boolean(pagination.has_prev ?? record.has_prev ?? page > 1),
+    total
   }
 }
 
@@ -115,6 +132,19 @@ export interface OrderData {
   cartId?: string
 }
 
+export interface PublicOrder {
+  total_amount?: number | string
+  [key: string]: unknown
+}
+
+export interface ProductImage {
+  id?: number
+  image_url?: string
+  image_type?: string
+  is_primary?: boolean
+  sort_order?: number
+}
+
 export interface ShopConfig {
   shop_name: string
   shop_logo: string
@@ -163,7 +193,7 @@ export function getActiveBanners() {
 
 interface ProductListParams {
   page?: number
-  limit?: number
+  page_size?: number
   brand_id?: number
   model_id?: number
   color_id?: number
@@ -181,7 +211,8 @@ export function getProducts(params?: ProductListParams) {
   return publicApi.get<{
     data: Product[]
     page: number
-    limit: number
+    page_size: number
+    total_pages: number
     total: number
   }>('/public/products', { params }).then((response) => unwrapPaginated<Product>(response))
 }
@@ -197,17 +228,18 @@ export function getProductDetail(id: number) {
  * 获取商品图片
  */
 export function getProductImages(id: number) {
-  return publicApi.get<any[]>(`/public/products/${id}/images`).then((response) => unwrapData<any[]>(response))
+  return publicApi.get<ProductImage[]>(`/public/products/${id}/images`).then((response) => unwrapData<ProductImage[]>(response))
 }
 
 /**
  * 搜索商品
  */
-export function searchProducts(keyword: string, params?: { page?: number; limit?: number }) {
+export function searchProducts(keyword: string, params?: { page?: number; page_size?: number }) {
   return publicApi.get<{
     data: Product[]
     page: number
-    limit: number
+    page_size: number
+    total_pages: number
     total: number
   }>(`/public/products/search/${encodeURIComponent(keyword)}`, { params }).then((response) => unwrapPaginated<Product>(response))
 }
@@ -234,15 +266,15 @@ export function addToCart(cartId: string, phoneId: number, quantity: number = 1)
 /**
  * 更新购物车商品数量
  */
-export function updateCartItem(id: number, quantity: number) {
-  return publicApi.put(`/public/cart/${id}`, { quantity })
+export function updateCartItem(cartId: string, id: number, quantity: number) {
+  return publicApi.put(`/public/cart/${id}`, { cartId, quantity })
 }
 
 /**
  * 删除购物车商品
  */
-export function removeFromCart(id: number) {
-  return publicApi.delete(`/public/cart/${id}`)
+export function removeFromCart(cartId: string, id: number) {
+  return publicApi.delete(`/public/cart/${id}`, { params: { cartId } })
 }
 
 /**
@@ -261,6 +293,7 @@ interface CreateOrderResult {
   orderNumber: string
   totalAmount: number
   status: string
+  accessToken: string
 }
 
 /**
@@ -268,39 +301,46 @@ interface CreateOrderResult {
  */
 export function createOrder(orderData: OrderData) {
   return publicApi.post<CreateOrderResult>('/public/orders/create', orderData)
+    .then((response) => unwrapData<CreateOrderResult>(response))
 }
 
 /**
  * 根据订单号查询订单
  */
-export function getOrderByNumber(orderNumber: string) {
-  return publicApi.get<any>(`/public/orders/${orderNumber}`).then((response) => unwrapData<any>(response))
+export function getOrderByNumber(orderNumber: string, accessToken?: string) {
+  return publicApi.get<PublicOrder>(`/public/orders/${orderNumber}`, {
+    headers: accessToken ? { 'X-Order-Access-Token': accessToken } : undefined
+  }).then((response) => unwrapData<PublicOrder>(response))
 }
 
 /**
  * 用户确认支付
  */
-export function confirmPayment(orderNumber: string) {
-  return publicApi.post<any>(`/public/orders/${orderNumber}/confirm-payment`)
+export function confirmPayment(orderNumber: string, accessToken: string) {
+  return publicApi.post<unknown>(`/public/orders/${orderNumber}/confirm-payment`, { access_token: accessToken })
 }
 
 /**
  * 取消订单
  */
-export function cancelOrder(orderId: number, reason?: string) {
-  return publicApi.put(`/public/orders/${orderId}/cancel`, { reason })
+export function cancelOrder(orderId: number, accessToken: string, reason?: string) {
+  return publicApi.put(`/public/orders/${orderId}/cancel`, { reason, access_token: accessToken })
 }
 
 /**
  * 根据手机号查询订单列表
  */
-export function getOrdersByPhone(phone: string, params?: { page?: number; limit?: number }) {
+export function getOrdersByPhone(customer_phone: string, params?: { page?: number; page_size?: number; customer_name?: string }) {
   return publicApi.get<{
-    data: any[]
+    data: PublicOrder[]
     page: number
-    limit: number
+    page_size: number
     total: number
-  }>(`/public/orders/phone/${phone}`, { params })
+    total_pages: number
+    has_next: boolean
+    has_prev: boolean
+  }>(`/public/orders/phone/${customer_phone}`, { params })
+    .then((response) => unwrapPaginated<PublicOrder>(response))
 }
 
 /**
@@ -352,7 +392,7 @@ export interface AggregatedProduct {
  */
 interface AggregatedProductsParams {
   page?: number
-  limit?: number
+  page_size?: number
   brand_id?: number
   model_id?: number
   color_id?: number
@@ -367,7 +407,8 @@ export function getAggregatedProducts(params?: AggregatedProductsParams) {
   return publicApi.get<{
     data: AggregatedProduct[]
     page: number
-    limit: number
+    page_size: number
+    total_pages: number
     total: number
   }>('/public/products/aggregate', { params }).then((response) => unwrapPaginated<AggregatedProduct>(response))
 }

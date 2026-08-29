@@ -12,21 +12,21 @@
  * @returns {number} 验证后的数字
  */
 function validateNumber(value, defaultValue = 0, min = 0, max = Number.MAX_SAFE_INTEGER) {
-  const num = parseInt(value, 10);
+  const num = parseInt(value, 10)
 
   if (isNaN(num)) {
-    return defaultValue;
+    return defaultValue
   }
 
   if (num < min) {
-    return min;
+    return min
   }
 
   if (num > max) {
-    return max;
+    return max
   }
 
-  return num;
+  return num
 }
 
 /**
@@ -38,21 +38,21 @@ function validateNumber(value, defaultValue = 0, min = 0, max = Number.MAX_SAFE_
  */
 function validateString(value, defaultValue = '', maxLength = 255) {
   if (typeof value !== 'string') {
-    return defaultValue;
+    return defaultValue
   }
 
   // 移除潜在的恶意字符
-  let cleaned = value.trim();
+  let cleaned = value.trim()
 
   // 移除控制字符（除了换行、回车、制表符）
-  cleaned = cleaned.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+  cleaned = cleaned.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
 
   // 限制长度
   if (cleaned.length > maxLength) {
-    cleaned = cleaned.substring(0, maxLength);
+    cleaned = cleaned.substring(0, maxLength)
   }
 
-  return cleaned;
+  return cleaned
 }
 
 /**
@@ -63,13 +63,13 @@ function validateString(value, defaultValue = '', maxLength = 255) {
  * @returns {string} 验证后的排序字段
  */
 function validateSortField(field, allowedFields = [], defaultField = 'id') {
-  const cleanField = validateString(field, defaultField);
+  const cleanField = validateString(field, defaultField)
 
   if (!allowedFields.includes(cleanField)) {
-    return defaultField;
+    return defaultField
   }
 
-  return cleanField;
+  return cleanField
 }
 
 /**
@@ -79,13 +79,13 @@ function validateSortField(field, allowedFields = [], defaultField = 'id') {
  * @returns {string} 验证后的排序方向
  */
 function validateSortDirection(direction, defaultDirection = 'ASC') {
-  const cleanDirection = validateString(direction, defaultDirection).toUpperCase();
+  const cleanDirection = validateString(direction, defaultDirection).toUpperCase()
 
   if (cleanDirection !== 'ASC' && cleanDirection !== 'DESC') {
-    return defaultDirection;
+    return defaultDirection
   }
 
-  return cleanDirection;
+  return cleanDirection
 }
 
 /**
@@ -96,15 +96,15 @@ function validateSortDirection(direction, defaultDirection = 'ASC') {
  * @returns {Object} 验证后的分页参数 {page, limit, offset}
  */
 function validatePagination(page = 1, limit = 10, maxLimit = 100) {
-  const validatedPage = validateNumber(page, 1, 1);
-  const validatedLimit = validateNumber(limit, 10, 1, maxLimit);
-  const offset = (validatedPage - 1) * validatedLimit;
+  const validatedPage = validateNumber(page, 1, 1)
+  const validatedLimit = validateNumber(limit, 10, 1, maxLimit)
+  const offset = (validatedPage - 1) * validatedLimit
 
   return {
     page: validatedPage,
     limit: validatedLimit,
     offset: offset
-  };
+  }
 }
 
 /**
@@ -113,9 +113,9 @@ function validatePagination(page = 1, limit = 10, maxLimit = 100) {
  * @returns {boolean} 是否有效
  */
 function isValidEmail(email) {
-  const cleanEmail = validateString(email);
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(cleanEmail);
+  const cleanEmail = validateString(email)
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  return emailRegex.test(cleanEmail)
 }
 
 /**
@@ -124,9 +124,9 @@ function isValidEmail(email) {
  * @returns {boolean} 是否有效
  */
 function isValidPhone(phone) {
-  const cleanPhone = validateString(phone).replace(/[-\s]/g, '');
-  const phoneRegex = /^\d{10,15}$/;
-  return phoneRegex.test(cleanPhone);
+  const cleanPhone = validateString(phone).replace(/[-\s]/g, '')
+  const phoneRegex = /^\d{10,15}$/
+  return phoneRegex.test(cleanPhone)
 }
 
 /**
@@ -135,10 +135,10 @@ function isValidPhone(phone) {
  * @returns {boolean} 是否有效
  */
 function isValidUsername(username) {
-  const cleanUsername = validateString(username);
+  const cleanUsername = validateString(username)
   // 用户名只允许字母、数字、下划线，3-20个字符
-  const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
-  return usernameRegex.test(cleanUsername);
+  const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/
+  return usernameRegex.test(cleanUsername)
 }
 
 /**
@@ -148,7 +148,7 @@ function isValidUsername(username) {
  */
 function detectSqlInjection(input) {
   if (typeof input !== 'string') {
-    return false;
+    return false
   }
 
   const suspiciousPatterns = [
@@ -158,9 +158,9 @@ function detectSqlInjection(input) {
     /(\b(OR|AND)\s+['"][\w\s]+['"]\s*=\s*['"][\w\s]+['"])/i,
     /(\b(OR|AND)\s+TRUE|FALSE\b)/i,
     /(1\s*=\s*1|1\s*=\s*1\s*--)/
-  ];
+  ]
 
-  return suspiciousPatterns.some(pattern => pattern.test(input));
+  return suspiciousPatterns.some(pattern => pattern.test(input))
 }
 
 /**
@@ -170,7 +170,7 @@ function detectSqlInjection(input) {
  */
 function detectXss(input) {
   if (typeof input !== 'string') {
-    return false;
+    return false
   }
 
   const suspiciousPatterns = [
@@ -179,9 +179,9 @@ function detectXss(input) {
     /javascript:/gi,
     /on\w+\s*=/gi,
     /<[^>]*>/g
-  ];
+  ]
 
-  return suspiciousPatterns.some(pattern => pattern.test(input));
+  return suspiciousPatterns.some(pattern => pattern.test(input))
 }
 
 /**
@@ -191,19 +191,19 @@ function detectXss(input) {
  */
 function sanitizeHtml(html) {
   if (typeof html !== 'string') {
-    return '';
+    return ''
   }
 
   // 移除脚本标签
-  let cleaned = html.replace(/<script[^>]*>.*?<\/script>/gi, '');
+  let cleaned = html.replace(/<script[^>]*>.*?<\/script>/gi, '')
 
   // 移除危险的HTML属性
-  cleaned = cleaned.replace(/on\w+\s*=\s*["'][^"']*["']/gi, '');
+  cleaned = cleaned.replace(/on\w+\s*=\s*["'][^"']*["']/gi, '')
 
   // 移除javascript:协议
-  cleaned = cleaned.replace(/javascript:/gi, '');
+  cleaned = cleaned.replace(/javascript:/gi, '')
 
-  return cleaned;
+  return cleaned
 }
 
 /**
@@ -213,37 +213,37 @@ function sanitizeHtml(html) {
  * @returns {Object} 安全的参数对象
  */
 function createSafeParams(params, requiredParams = []) {
-  const safeParams = {};
+  const safeParams = {}
 
   // 验证必需参数
   for (const param of requiredParams) {
     if (!(param in params)) {
-      throw new Error(`缺少必需参数: ${param}`);
+      throw new Error(`缺少必需参数: ${param}`)
     }
   }
 
   // 清理所有参数
   for (const [key, value] of Object.entries(params)) {
     if (value === null || value === undefined) {
-      safeParams[key] = null;
+      safeParams[key] = null
     } else if (typeof value === 'string') {
       // 检测SQL注入
       if (detectSqlInjection(value)) {
-        throw new Error(`参数 ${key} 包含潜在的SQL注入内容`);
+        throw new Error(`参数 ${key} 包含潜在的SQL注入内容`)
       }
-      safeParams[key] = value;
+      safeParams[key] = value
     } else if (typeof value === 'number') {
-      safeParams[key] = validateNumber(value);
+      safeParams[key] = validateNumber(value)
     } else if (Array.isArray(value)) {
       safeParams[key] = value.map(item =>
         typeof item === 'string' ? validateString(item) : item
-      );
+      )
     } else {
-      safeParams[key] = value;
+      safeParams[key] = value
     }
   }
 
-  return safeParams;
+  return safeParams
 }
 
 module.exports = {
@@ -259,4 +259,4 @@ module.exports = {
   detectXss,
   sanitizeHtml,
   createSafeParams
-};
+}

@@ -1,11 +1,11 @@
-const BaseService = require('./base.service');
-const UserRepository = require('../repositories/user.repository');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const { getDatabase } = require('../config/database');
-const { hasGlobalAdminRole, getRoleHierarchyFromDB } = require('./accessControl.service');
-const { hasColumn } = require('./schemaInspector.service');
-const log = require('../utils/log');
+const BaseService = require('./base.service')
+const UserRepository = require('../repositories/user.repository')
+const bcrypt = require('bcryptjs')
+const jwt = require('jsonwebtoken')
+const { getDatabase } = require('../config/database')
+const { _hasGlobalAdminRole, _getRoleHierarchyFromDB } = require('./accessControl.service')
+const { hasColumn } = require('./schemaInspector.service')
+const log = require('../utils/log')
 
 /**
  * 认证Service类
@@ -13,8 +13,8 @@ const log = require('../utils/log');
  */
 class AuthService extends BaseService {
   constructor() {
-    super(new UserRepository());
-    this.userRepository = new UserRepository();
+    super(new UserRepository())
+    this.userRepository = new UserRepository()
   }
 
   /**
@@ -28,44 +28,44 @@ class AuthService extends BaseService {
     try {
       // 验证输入
       if (!username || !password) {
-        return this.errorResponse('用户名和密码不能为空');
+        return this.errorResponse('用户名和密码不能为空')
       }
 
       // 查找用户
-      const user = await this.userRepository.findByUsername(username);
+      const user = await this.userRepository.findByUsername(username)
       if (!user) {
-        return this.errorResponse('用户名或密码错误');
+        return this.errorResponse('用户名或密码错误')
       }
 
       // 验证密码
-      const isPasswordValid = await this.validatePassword(password, user.password);
+      const isPasswordValid = await this.validatePassword(password, user.password)
       if (!isPasswordValid) {
-        return this.errorResponse('用户名或密码错误');
+        return this.errorResponse('用户名或密码错误')
       }
 
       // 检查用户状态
-      const isActiveUser = user.status === 1 || user.status === 'active';
+      const isActiveUser = user.status === 1 || user.status === 'active'
       if (!isActiveUser) {
-        return this.errorResponse('账户已被禁用，请联系管理员');
+        return this.errorResponse('账户已被禁用，请联系管理员')
       }
 
       // 获取用户完整信息（合并查询减少数据库往返）
-      const userFullInfo = await this.getUserFullInfo(user.id);
-      const { operatorInfo, userStores } = userFullInfo;
+      const userFullInfo = await this.getUserFullInfo(user.id)
+      const { operatorInfo, userStores } = userFullInfo
 
       // 获取用户的主门店ID（用于数据权限过滤）
       const primaryStoreId = userStores.length > 0
         ? (userStores.find(s => s.is_primary)?.store_id || userStores[0].store_id)
-        : null;
+        : null
 
       // 提取所有门店ID数组
-      const storeIds = userStores.map(s => s.store_id);
+      const storeIds = userStores.map(s => s.store_id)
 
       // 获取用户角色层级（从数据库查询）
-      const userMaxHierarchy = await this.getUserMaxHierarchy(user.id);
+      const userMaxHierarchy = await this.getUserMaxHierarchy(user.id)
 
       // 检查是否为全局管理员（从数据库动态判断）
-      const isGlobalAdmin = userMaxHierarchy >= 80;
+      const isGlobalAdmin = userMaxHierarchy >= 80
 
       // 扩展用户对象，包含门店信息和层级
       const userWithStores = {
@@ -73,20 +73,20 @@ class AuthService extends BaseService {
         store_id: primaryStoreId,
         store_ids: storeIds,
         maxHierarchy: userMaxHierarchy
-      };
+      }
 
       // 生成JWT令牌（包含门店信息和层级）
-      const tokens = this.generateTokens(userWithStores, isGlobalAdmin);
+      const tokens = this.generateTokens(userWithStores, isGlobalAdmin)
 
       // 更新最后登录时间
-      await this.updateLastLogin(user.id);
+      await this.updateLastLogin(user.id)
 
       // 记录登录日志
       this.logOperation('login', {
         userId: user.id,
         username: user.username,
         clientInfo
-      });
+      })
 
       // 返回用户信息和令牌
       const userData = {
@@ -99,15 +99,15 @@ class AuthService extends BaseService {
         stores: userStores, // 门店详细信息
         status: user.status,
         operatorInfo: operatorInfo || null
-      };
+      }
 
       return this.successResponse('登录成功', {
         user: userData,
         ...tokens
-      });
+      })
     } catch (error) {
-      log.error('登录失败:', error);
-      return this.errorResponse('登录失败', error.message);
+      log.error('登录失败:', error)
+      return this.errorResponse('登录失败', error.message)
     }
   }
 
@@ -118,34 +118,34 @@ class AuthService extends BaseService {
    */
   async register(userData) {
     try {
-      const { username, password, role, store_id } = userData;
+      const { username, password, role, store_id } = userData
 
       // 验证必填字段
-      this.validateRequiredFields(userData, ['username', 'password', 'role']);
+      this.validateRequiredFields(userData, ['username', 'password', 'role'])
 
       // 验证用户名格式
       if (username.length < 3 || username.length > 20) {
-        return this.errorResponse('用户名长度必须在3-20个字符之间');
+        return this.errorResponse('用户名长度必须在3-20个字符之间')
       }
 
       // 验证密码强度
       if (password.length < 6) {
-        return this.errorResponse('密码长度不能少于6个字符');
+        return this.errorResponse('密码长度不能少于6个字符')
       }
 
       // 验证角色
       if (!LEGACY_USER_ROLE_CODES.includes(role)) {
-        return this.errorResponse('无效的用户角色');
+        return this.errorResponse('无效的用户角色')
       }
 
       // 检查用户名是否已存在
-      const existingUser = await this.userRepository.findByUsername(username);
+      const existingUser = await this.userRepository.findByUsername(username)
       if (existingUser) {
-        return this.errorResponse('用户名已存在');
+        return this.errorResponse('用户名已存在')
       }
 
       // 加密密码
-      const hashedPassword = await this.hashPassword(password);
+      const hashedPassword = await this.hashPassword(password)
 
       // 创建用户
       const newUserData = {
@@ -154,15 +154,15 @@ class AuthService extends BaseService {
         role,
         store_id: store_id || null,
         status: 'active'
-      };
+      }
 
-      const result = await this.userRepository.createUser(newUserData);
+      const result = await this.userRepository.createUser(newUserData)
 
       this.logOperation('register', {
         userId: result.id,
         username,
         role
-      });
+      })
 
       // 返回用户信息（不包含密码）
       const userResponse = {
@@ -171,11 +171,11 @@ class AuthService extends BaseService {
         role,
         store_id: store_id || null,
         status: 'active'
-      };
+      }
 
-      return this.successResponse('注册成功', userResponse);
+      return this.successResponse('注册成功', userResponse)
     } catch (error) {
-      return this.handleValidationError(error);
+      return this.handleValidationError(error)
     }
   }
 
@@ -187,38 +187,38 @@ class AuthService extends BaseService {
   async refreshToken(refreshToken) {
     try {
       if (!refreshToken) {
-        return this.errorResponse('刷新令牌不能为空');
+        return this.errorResponse('刷新令牌不能为空')
       }
 
       // 验证刷新令牌
       const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET, {
         issuer: 'tf2025-backend',
         audience: 'tf2025-users'
-      });
+      })
       if (decoded.type !== 'refresh') {
-        return this.errorResponse('无效的刷新令牌');
+        return this.errorResponse('无效的刷新令牌')
       }
 
       // 查找用户
-      const user = await this.userRepository.findById(decoded.sub);
-      const isActiveUser = user && (user.status === 1 || user.status === 'active');
+      const user = await this.userRepository.findById(decoded.sub)
+      const isActiveUser = user && (user.status === 1 || user.status === 'active')
       if (!isActiveUser) {
-        return this.errorResponse('用户不存在或已被禁用');
+        return this.errorResponse('用户不存在或已被禁用')
       }
 
       // 生成新的令牌
-      const tokens = this.generateTokens(user);
+      const tokens = this.generateTokens(user)
 
-      return this.successResponse('令牌刷新成功', tokens);
+      return this.successResponse('令牌刷新成功', tokens)
     } catch (error) {
       if (error.name === 'TokenExpiredError') {
-        return this.errorResponse('刷新令牌已过期，请重新登录');
+        return this.errorResponse('刷新令牌已过期，请重新登录')
       }
       if (error.name === 'JsonWebTokenError') {
-        return this.errorResponse('无效的刷新令牌');
+        return this.errorResponse('无效的刷新令牌')
       }
-      log.error('刷新令牌失败:', error);
-      return this.errorResponse('令牌刷新失败', error.message);
+      log.error('刷新令牌失败:', error)
+      return this.errorResponse('令牌刷新失败', error.message)
     }
   }
 
@@ -237,12 +237,12 @@ class AuthService extends BaseService {
       this.logOperation('logout', {
         userId: user.id,
         username: user.username
-      }, user);
+      }, user)
 
-      return this.successResponse('登出成功');
+      return this.successResponse('登出成功')
     } catch (error) {
-      log.error('登出失败:', error);
-      return this.errorResponse('登出失败', error.message);
+      log.error('登出失败:', error)
+      return this.errorResponse('登出失败', error.message)
     }
   }
 
@@ -257,36 +257,36 @@ class AuthService extends BaseService {
     try {
       // 验证输入
       if (!oldPassword || !newPassword) {
-        return this.errorResponse('旧密码和新密码不能为空');
+        return this.errorResponse('旧密码和新密码不能为空')
       }
 
       if (newPassword.length < 6) {
-        return this.errorResponse('新密码长度不能少于6个字符');
+        return this.errorResponse('新密码长度不能少于6个字符')
       }
 
       // 获取用户信息
-      const user = await this.userRepository.findById(userId);
+      const user = await this.userRepository.findById(userId)
       if (!user) {
-        return this.errorResponse('用户不存在');
+        return this.errorResponse('用户不存在')
       }
 
       // 验证旧密码
-      const isOldPasswordValid = await this.validatePassword(oldPassword, user.password);
+      const isOldPasswordValid = await this.validatePassword(oldPassword, user.password)
       if (!isOldPasswordValid) {
-        return this.errorResponse('旧密码错误');
+        return this.errorResponse('旧密码错误')
       }
 
       // 加密新密码
-      const hashedNewPassword = await this.hashPassword(newPassword);
+      const hashedNewPassword = await this.hashPassword(newPassword)
 
       // 更新密码
-      await this.userRepository.update(userId, { password: hashedNewPassword });
+      await this.userRepository.update(userId, { password: hashedNewPassword })
 
-      this.logOperation('changePassword', { userId });
+      this.logOperation('changePassword', { userId })
 
-      return this.successResponse('密码修改成功');
+      return this.successResponse('密码修改成功')
     } catch (error) {
-      return this.handleDatabaseError(error);
+      return this.handleDatabaseError(error)
     }
   }
 
@@ -297,17 +297,17 @@ class AuthService extends BaseService {
    */
   async getUserInfo(userId) {
     try {
-      const user = await this.userRepository.findUserDetailsById(userId);
+      const user = await this.userRepository.findUserDetailsById(userId)
       if (!user) {
-        return this.errorResponse('用户不存在');
+        return this.errorResponse('用户不存在')
       }
 
       // 不返回密码字段
-      const { password, ...userInfo } = user;
+      const { password, ...userInfo } = user
 
-      return this.successResponse('获取用户信息成功', userInfo);
+      return this.successResponse('获取用户信息成功', userInfo)
     } catch (error) {
-      return this.handleDatabaseError(error);
+      return this.handleDatabaseError(error)
     }
   }
 
@@ -320,19 +320,19 @@ class AuthService extends BaseService {
   async updateUserInfo(userId, updateData) {
     try {
       // 不允许更新密码字段
-      const { password, ...validUpdateData } = updateData;
+      const { password, ...validUpdateData } = updateData
 
       if (Object.keys(validUpdateData).length === 0) {
-        return this.errorResponse('没有有效的更新字段');
+        return this.errorResponse('没有有效的更新字段')
       }
 
-      const result = await this.userRepository.update(userId, validUpdateData);
+      const result = await this.userRepository.update(userId, validUpdateData)
 
-      this.logOperation('updateUserInfo', { userId, data: validUpdateData });
+      this.logOperation('updateUserInfo', { userId, data: validUpdateData })
 
-      return this.successResponse('用户信息更新成功', result.data);
+      return this.successResponse('用户信息更新成功', result.data)
     } catch (error) {
-      return this.handleDatabaseError(error);
+      return this.handleDatabaseError(error)
     }
   }
 
@@ -344,14 +344,14 @@ class AuthService extends BaseService {
    */
   validateRole(user, requiredRoles) {
     if (!user || !user.role) {
-      return false;
+      return false
     }
 
     if (typeof requiredRoles === 'string') {
-      requiredRoles = [requiredRoles];
+      requiredRoles = [requiredRoles]
     }
 
-    return requiredRoles.includes(user.role);
+    return requiredRoles.includes(user.role)
   }
 
   /**
@@ -362,10 +362,10 @@ class AuthService extends BaseService {
    */
   async validatePassword(plainPassword, hashedPassword) {
     try {
-      return await bcrypt.compare(plainPassword, hashedPassword);
+      return await bcrypt.compare(plainPassword, hashedPassword)
     } catch (error) {
-      log.error('密码验证失败:', error);
-      return false;
+      log.error('密码验证失败:', error)
+      return false
     }
   }
 
@@ -376,11 +376,11 @@ class AuthService extends BaseService {
    */
   async hashPassword(plainPassword) {
     try {
-      const saltRounds = 10;
-      return await bcrypt.hash(plainPassword, saltRounds);
+      const saltRounds = 10
+      return await bcrypt.hash(plainPassword, saltRounds)
     } catch (error) {
-      log.error('密码加密失败:', error);
-      throw new Error('密码加密失败');
+      log.error('密码加密失败:', error)
+      throw new Error('密码加密失败')
     }
   }
 
@@ -398,25 +398,25 @@ class AuthService extends BaseService {
       role: user.role,
       store_id: user.store_id,  // 主门店ID
       store_ids: user.store_ids || []  // 所有关联门店ID数组
-    };
+    }
 
     // 根据用户层级动态设置Token过期时间（使用数据库配置）
-    const userHierarchy = user.maxHierarchy || 0;
+    const userHierarchy = user.maxHierarchy || 0
 
-    let tokenExpiry;
+    let tokenExpiry
     if (isGlobalAdmin || userHierarchy >= 80) {
-      tokenExpiry = process.env.JWT_ACCESS_EXPIRES_ADMIN || '30d'; // 管理员30天
+      tokenExpiry = process.env.JWT_ACCESS_EXPIRES_ADMIN || '30d' // 管理员30天
     } else if (userHierarchy >= 70) {
-      tokenExpiry = process.env.JWT_ACCESS_EXPIRES_LONG || '7d';  // 管理者7天
+      tokenExpiry = process.env.JWT_ACCESS_EXPIRES_LONG || '7d'  // 管理者7天
     } else {
-      tokenExpiry = process.env.JWT_ACCESS_EXPIRES_SHORT || '2h';  // 普通用户2小时
+      tokenExpiry = process.env.JWT_ACCESS_EXPIRES_SHORT || '2h'  // 普通用户2小时
     }
 
     const accessToken = jwt.sign(payload, process.env.JWT_SECRET, {
       expiresIn: tokenExpiry,
       issuer: 'tf2025-backend',
       audience: 'tf2025-users'
-    });
+    })
 
     const refreshToken = jwt.sign(
       { sub: user.id, type: 'refresh' },
@@ -426,17 +426,17 @@ class AuthService extends BaseService {
         issuer: 'tf2025-backend',
         audience: 'tf2025-users'
       }
-    );
+    )
 
     // 计算实际的过期时间（秒）
-    const expiresInSeconds = this.calculateExpirationInSeconds(tokenExpiry);
+    const expiresInSeconds = this.calculateExpirationInSeconds(tokenExpiry)
 
     return {
       accessToken,
       refreshToken,
       expiresIn: expiresInSeconds,
       tokenExpiry // 添加调试信息
-    };
+    }
   }
 
   /**
@@ -450,17 +450,17 @@ class AuthService extends BaseService {
       'm': 60,
       'h': 60 * 60,
       'd': 60 * 60 * 24
-    };
-
-    const match = expiry.match(/^(\d+)([smhd])$/);
-    if (!match) {
-      // 如果没有匹配，默认返回7天的秒数
-      return 7 * 24 * 60 * 60;
     }
 
-    const value = parseInt(match[1]);
-    const unit = match[2];
-    return value * (units[unit] || 1);
+    const match = expiry.match(/^(\d+)([smhd])$/)
+    if (!match) {
+      // 如果没有匹配，默认返回7天的秒数
+      return 7 * 24 * 60 * 60
+    }
+
+    const value = parseInt(match[1])
+    const unit = match[2]
+    return value * (units[unit] || 1)
   }
 
   /**
@@ -470,9 +470,9 @@ class AuthService extends BaseService {
    */
   async updateLastLogin(userId) {
     try {
-      await this.userRepository.update(userId, { updated_at: new Date() });
+      await this.userRepository.update(userId, { updated_at: new Date() })
     } catch (error) {
-      log.error('更新最后登录时间失败:', error);
+      log.error('更新最后登录时间失败:', error)
       // 不抛出错误，因为这不是关键操作
     }
   }
@@ -484,10 +484,10 @@ class AuthService extends BaseService {
    */
   async getUserStats(filters = {}) {
     try {
-      const stats = await this.userRepository.getUserStats(filters);
-      return this.successResponse('获取用户统计信息成功', stats);
+      const stats = await this.userRepository.getUserStats(filters)
+      return this.successResponse('获取用户统计信息成功', stats)
     } catch (error) {
-      return this.handleDatabaseError(error);
+      return this.handleDatabaseError(error)
     }
   }
 
@@ -500,27 +500,27 @@ class AuthService extends BaseService {
   async checkUsernameAvailability(username, excludeUserId = null) {
     try {
       if (!username || username.length < 3) {
-        return this.errorResponse('用户名长度不能少于3个字符');
+        return this.errorResponse('用户名长度不能少于3个字符')
       }
 
-      let user;
+      let user
       if (excludeUserId) {
         user = await this.userRepository.executeQuery(
           'SELECT id FROM users WHERE username = ? AND id != ? AND status != "deleted"',
           [username, excludeUserId]
-        );
+        )
       } else {
-        user = await this.userRepository.findByUsername(username);
+        user = await this.userRepository.findByUsername(username)
       }
 
-      const isAvailable = !user || (Array.isArray(user) && user.length === 0);
+      const isAvailable = !user || (Array.isArray(user) && user.length === 0)
 
       return this.successResponse('检查完成', {
         username,
         available: isAvailable
-      });
+      })
     } catch (error) {
-      return this.handleDatabaseError(error);
+      return this.handleDatabaseError(error)
     }
   }
 
@@ -532,8 +532,8 @@ class AuthService extends BaseService {
    */
   async getUserFullInfo(userId) {
     try {
-      const { getDatabase } = require('../config/database');
-      const connection = getDatabase();
+      const { getDatabase } = require('../config/database')
+      const connection = getDatabase()
 
       // 并行执行两个查询（操作员信息和门店信息）
       const [operatorInfoResult, userStoresResult] = await Promise.all([
@@ -545,10 +545,10 @@ class AuthService extends BaseService {
               SELECT COUNT(*) as count
               FROM information_schema.tables
               WHERE table_schema = DATABASE() AND table_name = 'user_operator_assignments'
-            `);
+            `)
 
             if (tables[0].count === 0) {
-              return null;
+              return null
             }
 
             const [rows] = await connection.execute(`
@@ -563,12 +563,12 @@ class AuthService extends BaseService {
               WHERE uoa.user_id = ? AND uoa.status = 'active'
               ORDER BY uoa.assigned_at DESC
               LIMIT 1
-            `, [userId]);
+            `, [userId])
 
-            return rows.length > 0 ? rows[0] : null;
+            return rows.length > 0 ? rows[0] : null
           } catch (error) {
-            log.error('获取操作员信息失败:', error);
-            return null;
+            log.error('获取操作员信息失败:', error)
+            return null
           }
         })(),
         // 查询2：获取门店列表
@@ -583,23 +583,23 @@ class AuthService extends BaseService {
               INNER JOIN stores s ON us.store_id = s.id
               WHERE us.user_id = ?
               ORDER BY us.is_primary DESC, us.assigned_at ASC
-            `, [userId]);
+            `, [userId])
 
-            return rows || [];
+            return rows || []
           } catch (error) {
-            log.error('获取门店信息失败:', error);
-            return [];
+            log.error('获取门店信息失败:', error)
+            return []
           }
         })()
-      ]);
+      ])
 
       return {
         operatorInfo: operatorInfoResult || null,
         userStores: userStoresResult || []
-      };
+      }
     } catch (error) {
-      log.error('获取用户完整信息失败:', error);
-      return { operatorInfo: null, userStores: [] };
+      log.error('获取用户完整信息失败:', error)
+      return { operatorInfo: null, userStores: [] }
     }
   }
 
@@ -610,9 +610,9 @@ class AuthService extends BaseService {
    */
   async getUserMaxHierarchy(userId) {
     try {
-      const connection = getDatabase();
-      const hasHierarchyLevel = await hasColumn('roles', 'hierarchy_level', connection);
-      const hierarchyExpr = hasHierarchyLevel ? 'COALESCE(r.hierarchy_level, 0)' : '0';
+      const connection = getDatabase()
+      const hasHierarchyLevel = await hasColumn('roles', 'hierarchy_level', connection)
+      const hierarchyExpr = hasHierarchyLevel ? 'COALESCE(r.hierarchy_level, 0)' : '0'
 
       const [rows] = await connection.execute(`
         SELECT MAX(${hierarchyExpr}) as max_hierarchy
@@ -622,12 +622,12 @@ class AuthService extends BaseService {
           AND ur.status = 'active'
           AND r.is_active = 1
           AND (ur.expires_at IS NULL OR ur.expires_at > NOW())
-      `, [userId]);
+      `, [userId])
 
-      return rows[0]?.max_hierarchy || 0;
+      return rows[0]?.max_hierarchy || 0
     } catch (error) {
-      log.error('获取用户角色层级失败:', error);
-      return 0;
+      log.error('获取用户角色层级失败:', error)
+      return 0
     }
   }
 
@@ -638,8 +638,8 @@ class AuthService extends BaseService {
    */
   async getUserStoresInfo(userId) {
     try {
-      const { getDatabase } = require('../config/database');
-      const connection = getDatabase();
+      const { getDatabase } = require('../config/database')
+      const connection = getDatabase()
 
       const [rows] = await connection.execute(`
         SELECT
@@ -650,12 +650,12 @@ class AuthService extends BaseService {
         INNER JOIN stores s ON us.store_id = s.id
         WHERE us.user_id = ?
         ORDER BY us.is_primary DESC, us.assigned_at ASC
-      `, [userId]);
+      `, [userId])
 
-      return rows;
+      return rows
     } catch (error) {
-      log.error('获取用户门店信息失败:', error);
-      return [];
+      log.error('获取用户门店信息失败:', error)
+      return []
     }
   }
 
@@ -666,19 +666,19 @@ class AuthService extends BaseService {
    */
   async getUserOperatorInfo(userId) {
     try {
-      const { getDatabase } = require('../config/database');
-      const connection = getDatabase();
+      const { getDatabase } = require('../config/database')
+      const connection = getDatabase()
 
       // 先检查表是否存在
       const [tables] = await connection.execute(`
         SELECT COUNT(*) as count
         FROM information_schema.tables
         WHERE table_schema = DATABASE() AND table_name = 'user_operator_assignments'
-      `);
+      `)
 
       // 如果表不存在，返回 null
       if (tables[0].count === 0) {
-        return null;
+        return null
       }
 
       const [rows] = await connection.execute(`
@@ -693,14 +693,14 @@ class AuthService extends BaseService {
         WHERE uoa.user_id = ? AND uoa.status = 'active'
         ORDER BY uoa.assigned_at DESC
         LIMIT 1
-      `, [userId]);
+      `, [userId])
 
-      return rows.length > 0 ? rows[0] : null;
+      return rows.length > 0 ? rows[0] : null
     } catch (error) {
-      log.error('获取用户操作员信息失败:', error);
-      return null;
+      log.error('获取用户操作员信息失败:', error)
+      return null
     }
   }
 }
 
-module.exports = AuthService;
+module.exports = AuthService

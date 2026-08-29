@@ -3,7 +3,7 @@
  * 在权限不足时显示友好的提示消息
  */
 
-import type { Directive, DirectiveBinding } from 'vue'
+import type { App, Directive, DirectiveBinding } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { showViewDenied, showEditDenied, showDeleteDenied, showCreateDenied } from '@/utils/permissionToastSimple'
 import logger from '@/utils/logger'
@@ -62,17 +62,17 @@ function applyPermissionTipState(el: PermissionTipElement, options: PermissionTi
         e.stopPropagation()
 
         switch (action) {
-          case 'create':
-            showCreateDenied(moduleName, permission)
-            break
-          case 'edit':
-            showEditDenied(moduleName, permission)
-            break
-          case 'delete':
-            showDeleteDenied(moduleName, permission)
-            break
-          default:
-            showViewDenied(moduleName, permission)
+        case 'create':
+          showCreateDenied(moduleName, permission)
+          break
+        case 'edit':
+          showEditDenied(moduleName, permission)
+          break
+        case 'delete':
+          showDeleteDenied(moduleName, permission)
+          break
+        default:
+          showViewDenied(moduleName, permission)
         }
       }
 
@@ -158,7 +158,7 @@ export const vPermissionTip: Directive<HTMLElement, PermissionTipBinding | strin
 /**
  * 注册权限提示指令
  */
-export function setupPermissionTipDirective(app: any) {
+export function setupPermissionTipDirective(app: App) {
   app.directive('permission-tip', vPermissionTip)
 }
 

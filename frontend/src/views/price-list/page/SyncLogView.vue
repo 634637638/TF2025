@@ -6,356 +6,627 @@
     module-name="同步日志"
     permission-code="price-list:view"
   >
-
-  <div class="sync-log-view admin-page admin-page-content">
-    <PageHeader title="同步日志">
-      <template #actions>
-        <el-button v-if="canDelete" type="danger" @click="handleClearLogs" :loading="clearLoading">
-          <i class="fas fa-trash"></i>
-          清空日志
-        </el-button>
-        <el-button type="primary" @click="fetchLogs">
-          <i class="fas fa-refresh"></i>
-          刷新
-        </el-button>
-        <el-button @click="router.back()">
-          <i class="fas fa-arrow-left"></i>
-          返回
-        </el-button>
-      </template>
-    </PageHeader>
-
-    <!-- 统计卡片 -->
-    <div v-if="showStatsCards" class="stats-cards">
-      <div v-if="canViewSyncLogField('stats_success_count')" class="stat-card">
-        <div class="stat-icon success">
-          <i class="fas fa-check-circle"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ stats.successCount }}</div>
-          <div class="stat-label">成功次数</div>
-        </div>
-      </div>
-      <div v-if="canViewSyncLogField('stats_fail_count')" class="stat-card">
-        <div class="stat-icon error">
-          <i class="fas fa-times-circle"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ stats.failCount }}</div>
-          <div class="stat-label">失败次数</div>
-        </div>
-      </div>
-      <div v-if="canViewSyncLogField('stats_total_records')" class="stat-card">
-        <div class="stat-icon info">
-          <i class="fas fa-database"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ stats.totalRecords }}</div>
-          <div class="stat-label">同步总记录</div>
-        </div>
-      </div>
-      <div v-if="canViewSyncLogField('stats_avg_duration')" class="stat-card">
-        <div class="stat-icon warning">
-          <i class="fas fa-clock"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ stats.avgDuration }}s</div>
-          <div class="stat-label">平均耗时</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 日志列表 -->
-    <el-card class="table-card admin-panel admin-table-panel">
-      <div v-if="isMobile" class="table-responsive">
-        <div v-if="loading" class="table-loading">
-          <SectionLoading text="加载同步日志中..." size="large" />
-        </div>
-
-        <table v-else class="data-table sync-log-mobile-table">
-          <thead>
-            <tr>
-              <th>开始时间</th>
-              <th>状态</th>
-              <th>成功</th>
-              <th>失败</th>
-              <th>耗时</th>
-              <th>配置</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-if="!logList.length">
-              <td colspan="6" class="text-center py-8">
-                <div class="empty-state mobile-empty-state">
-                  <i class="fas fa-history"></i>
-                  <p>暂无同步日志</p>
-                </div>
-              </td>
-            </tr>
-            <template v-for="row in logList" :key="row.id">
-              <tr
-                class="data-row"
-                @click="handleMobileRowTap(row.id)"
-                @dblclick="toggleMobileActions(row.id)"
-              >
-                <td>{{ formatDateTime(row.start_time) }}</td>
-                <td>
-                  <el-tag v-if="row.status === 'success'" type="success" size="small">成功</el-tag>
-                  <el-tag v-else-if="row.status === 'failed'" type="danger" size="small">失败</el-tag>
-                  <el-tag v-else-if="row.status === 'running'" type="warning" size="small">进行中</el-tag>
-                  <el-tag v-else type="info" size="small">{{ row.status }}</el-tag>
-                </td>
-                <td>{{ row.success_count ?? '-' }}</td>
-                <td>{{ row.failed_count ?? '-' }}</td>
-                <td>{{ row.duration ? `${row.duration}秒` : '-' }}</td>
-                <td>{{ row.config_name || '-' }}</td>
-              </tr>
-              <tr
-                v-if="mobileActionRowId === row.id"
-                class="mobile-action-row"
-              >
-                <td colspan="6">
-                  <div class="mobile-row-actions">
-                    <el-button
-                      type="primary"
-                      size="small"
-                      @click.stop="handleViewDetail(row)"
-                    >
-                      详情
-                    </el-button>
-                    <el-button
-                      v-if="canDelete"
-                      type="danger"
-                      size="small"
-                      @click.stop="handleDeleteLog(row)"
-                    >
-                      删除
-                    </el-button>
-                  </div>
-                </td>
-              </tr>
-            </template>
-          </tbody>
-        </table>
-      </div>
-
-      <el-table class="data-table"
-        v-else
-        :data="loading ? [] : logList"
-        stripe
-        border
-        style="width: 100%"
-        @row-dblclick="handleViewDetail"
-      >
-        <template #empty>
-          <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
-          <el-empty v-else description="暂无同步日志" />
+    <div class="sync-log-view admin-page admin-page-content">
+      <PageHeader title="同步日志">
+        <template #actions>
+          <el-button
+            v-if="canDelete"
+            type="danger"
+            :loading="clearLoading"
+            @click="handleClearLogs"
+          >
+            <i class="fas fa-trash" />
+            清空日志
+          </el-button>
+          <el-button
+            type="primary"
+            @click="fetchLogs"
+          >
+            <i class="fas fa-refresh" />
+            刷新
+          </el-button>
+          <el-button @click="router.back()">
+            <i class="fas fa-arrow-left" />
+            返回
+          </el-button>
         </template>
+      </PageHeader>
 
-        <el-table-column type="index" label="序号" width="80" align="center" />
-        <el-table-column prop="start_time" label="开始时间" min-width="160">
-          <template #default="{ row }">
-            {{ formatDateTime(row.start_time) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="end_time" label="结束时间" min-width="160">
-          <template #default="{ row }">
-            {{ row.end_time ? formatDateTime(row.end_time) : '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="duration" label="耗时" min-width="80" align="center">
-          <template #default="{ row }">
-            <span v-if="row.duration">{{ row.duration }}秒</span>
-            <span v-else class="text-gray">-</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="status" label="状态" min-width="90" align="center">
-          <template #default="{ row }">
-            <el-tag v-if="row.status === 'success'" type="success" size="small">成功</el-tag>
-            <el-tag v-else-if="row.status === 'failed'" type="danger" size="small">失败</el-tag>
-            <el-tag v-else-if="row.status === 'running'" type="warning" size="small">进行中</el-tag>
-            <el-tag v-else type="info" size="small">{{ row.status }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="total_count" label="总数" min-width="70" align="center">
-          <template #default="{ row }">
-            {{ row.total_count || '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="success_count" label="成功" min-width="70" align="center">
-          <template #default="{ row }">
-            <span v-if="row.success_count !== null" class="text-success">{{ row.success_count }}</span>
-            <span v-else class="text-gray">-</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="failed_count" label="失败" min-width="70" align="center">
-          <template #default="{ row }">
-            <span v-if="row.failed_count !== null && row.failed_count > 0" class="text-error text-bold">{{ row.failed_count }}</span>
-            <span v-else-if="row.failed_count !== null" class="text-success">0</span>
-            <span v-else class="text-gray">-</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="error_message" label="错误信息" min-width="200" class-name="complete-text-column wrapped-text-column">
-          <template #default="{ row }">
-            <span
-              v-if="getLogErrorSummary(row)"
-              :class="row.failed_count > 0 || row.status === 'failed' ? 'text-error' : 'text-gray'"
-            >
-              {{ getLogErrorSummary(row) }}
-            </span>
-            <span v-else class="text-gray">-</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="config_name" label="配置" min-width="120" class-name="complete-text-column">
-          <template #default="{ row }">
-            {{ row.config_name || '-' }}
-          </template>
-        </el-table-column>
-            <el-table-column label="操作" :width="$getActionColumnWidth(1 + Number(canDelete))" align="center" class-name="actions-column">
-          <template #default="{ row }">
-            <div class="action-buttons">
-            <el-button
-              link
-              type="primary"
-              size="small"
-              @click.stop="handleViewDetail(row)"
-            >
-              详情
-            </el-button>
-            <el-button
-              v-if="canDelete"
-              link
-              type="danger"
-              size="small"
-              @click.stop="handleDeleteLog(row)"
-            >
-              删除
-            </el-button>
-            </div>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <div class="pagination-container">
-        <Pagination
-          v-model:current="pagination.page"
-          v-model:page-size="pagination.limit"
-          :page-sizes="[10, 20, 50, 100]"
-          :total="pagination.total"
-          :show-range="true"
-          @change="handlePaginationChange"
-        />
-      </div>
-    </el-card>
-
-    <!-- 详情对话框 -->
-    <MobileDialog
-      v-model="showDetailDialog"
-      title="同步详情"
-      width="800px"
-      dialog-class="price-sync-log-detail-dialog"
-      :show-default-footer="false"
-    >
-      <div v-if="currentLog" class="log-detail">
-        <!-- 状态横幅 -->
-        <div class="detail-banner" :class="`banner-${currentLog.status}`">
-          <i v-if="currentLog.status === 'success'" class="fas fa-check-circle"></i>
-          <i v-else-if="currentLog.status === 'failed'" class="fas fa-times-circle"></i>
-          <InlineLoading v-else size="small" variant="inherit" />
-          <span class="banner-text">
-            {{ currentLog.status === 'success' ? '同步成功' : currentLog.status === 'failed' ? '同步失败' : '同步中...' }}
-          </span>
-        </div>
-
-        <el-descriptions :column="2" border class="detail-descriptions">
-          <el-descriptions-item label="开始时间">
-            {{ formatDateTime(currentLog.start_time) }}
-          </el-descriptions-item>
-          <el-descriptions-item label="结束时间">
-            {{ currentLog.end_time ? formatDateTime(currentLog.end_time) : '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="执行时长">
-            <span v-if="currentLog.duration">{{ currentLog.duration }}秒</span>
-            <span v-else class="text-gray">-</span>
-          </el-descriptions-item>
-          <el-descriptions-item label="配置名称">
-            {{ currentLog.config_name || '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="处理总数">
-            <span class="stat-number">{{ currentLog.total_count || 0 }}</span>
-          </el-descriptions-item>
-          <el-descriptions-item label="成功数量">
-            <span class="stat-number success">{{ currentLog.success_count || 0 }}</span>
-          </el-descriptions-item>
-          <el-descriptions-item label="失败数量">
-            <span class="stat-number" :class="currentLog.failed_count > 0 ? 'error' : 'success'">{{ currentLog.failed_count || 0 }}</span>
-          </el-descriptions-item>
-          <el-descriptions-item label="成功率">
-            <span class="stat-number" :class="getSuccessRateClass(currentLog)">
-              {{ getSuccessRate(currentLog) }}%
-            </span>
-          </el-descriptions-item>
-          <el-descriptions-item label="错误信息" :span="2" v-if="currentLog.error_message">
-            <div class="error-message-box">
-              <i class="fas fa-exclamation-triangle"></i>
-              {{ currentLog.error_message }}
-            </div>
-          </el-descriptions-item>
-          <el-descriptions-item label="提示说明" :span="2" v-else>
-            <div class="info-message-box">
-              <i class="fas fa-info-circle"></i>
-              <span v-if="currentLog.status === 'success'">同步完成，所有数据已成功更新</span>
-              <span v-else-if="currentLog.status === 'failed'">同步失败，请检查错误信息或联系管理员</span>
-              <span v-else>同步正在执行中，请稍候...</span>
-            </div>
-          </el-descriptions-item>
-        </el-descriptions>
-
-        <!-- 详情数据 -->
-        <div v-if="currentLog.sync_details" class="detail-section">
-          <div class="detail-section-title">
-            <i class="fas fa-code"></i>
-            同步详情数据
+      <!-- 统计卡片 -->
+      <div
+        v-if="showStatsCards"
+        class="stats-cards"
+      >
+        <div
+          v-if="canViewSyncLogField('stats_success_count')"
+          class="stat-card"
+        >
+          <div class="stat-icon success">
+            <i class="fas fa-check-circle" />
           </div>
-          <pre class="json-detail">{{ formatJson(currentLog.sync_details) }}</pre>
-        </div>
-
-        <!-- 成功列表 -->
-        <div v-if="parsedSyncDetails?.items?.success?.length > 0" class="detail-section">
-          <div class="detail-section-title success">
-            <i class="fas fa-check-circle"></i>
-            成功列表 ({{ parsedSyncDetails.items.success.length }})
+          <div class="stat-content">
+            <div class="stat-value">
+              {{ stats.successCount }}
+            </div>
+            <div class="stat-label">
+              成功次数
+            </div>
           </div>
-          <el-table class="data-table" :data="parsedSyncDetails.items.success" stripe border size="small" max-height="300">
-            <el-table-column prop="brand" label="品牌" width="80" />
-            <el-table-column prop="model" label="型号" width="120" />
-            <el-table-column prop="color" label="颜色" width="80" />
-            <el-table-column prop="memory" label="内存" width="80" />
-            <el-table-column prop="price" label="价格" width="80">
-              <template #default="{ row }">
-                ¥{{ row.price }}
-              </template>
-            </el-table-column>
-          </el-table>
         </div>
-
-        <!-- 失败列表 -->
-        <div v-if="parsedSyncDetails?.items?.failed?.length > 0" class="detail-section">
-          <div class="detail-section-title failed">
-            <i class="fas fa-times-circle"></i>
-            失败列表 ({{ parsedSyncDetails.items.failed.length }})
+        <div
+          v-if="canViewSyncLogField('stats_fail_count')"
+          class="stat-card"
+        >
+          <div class="stat-icon error">
+            <i class="fas fa-times-circle" />
           </div>
-          <el-table class="data-table" :data="parsedSyncDetails.items.failed" stripe border size="small" max-height="300">
-            <el-table-column prop="brand" label="品牌" width="80" />
-            <el-table-column prop="model" label="型号" width="120" />
-            <el-table-column prop="color" label="颜色" width="80" />
-            <el-table-column prop="memory" label="内存" width="80" />
-            <el-table-column prop="error" label="错误原因" min-width="150" class-name="complete-text-column wrapped-text-column" />
-          </el-table>
+          <div class="stat-content">
+            <div class="stat-value">
+              {{ stats.failCount }}
+            </div>
+            <div class="stat-label">
+              失败次数
+            </div>
+          </div>
+        </div>
+        <div
+          v-if="canViewSyncLogField('stats_total_records')"
+          class="stat-card"
+        >
+          <div class="stat-icon info">
+            <i class="fas fa-database" />
+          </div>
+          <div class="stat-content">
+            <div class="stat-value">
+              {{ stats.totalRecords }}
+            </div>
+            <div class="stat-label">
+              同步总记录
+            </div>
+          </div>
+        </div>
+        <div
+          v-if="canViewSyncLogField('stats_avg_duration')"
+          class="stat-card"
+        >
+          <div class="stat-icon warning">
+            <i class="fas fa-clock" />
+          </div>
+          <div class="stat-content">
+            <div class="stat-value">
+              {{ stats.avgDuration }}s
+            </div>
+            <div class="stat-label">
+              平均耗时
+            </div>
+          </div>
         </div>
       </div>
-    </MobileDialog>
-  </div>
+
+      <!-- 日志列表 -->
+      <el-card class="table-card admin-panel admin-table-panel">
+        <div
+          v-if="isMobile"
+          class="table-responsive"
+        >
+          <div
+            v-if="loading"
+            class="table-loading"
+          >
+            <SectionLoading
+              text="加载同步日志中..."
+              size="large"
+            />
+          </div>
+
+          <div
+            v-else
+            class="sync-log-mobile-list"
+          >
+            <DataEmptyState
+              v-if="!logList.length"
+              size="compact"
+              description="暂无同步日志"
+            />
+            <article
+              v-for="row in logList"
+              :key="row.id"
+              class="sync-log-mobile-item"
+            >
+              <button
+                type="button"
+                class="sync-log-mobile-summary"
+                @click="handleMobileRowTap(row.id)"
+              >
+                <span class="sync-log-mobile-time">{{ formatDateTime(row.start_time) }}</span>
+                <el-tag
+                  v-if="row.status === 'success'"
+                  type="success"
+                  size="small"
+                >
+                  成功
+                </el-tag>
+                <el-tag
+                  v-else-if="row.status === 'failed'"
+                  type="danger"
+                  size="small"
+                >
+                  失败
+                </el-tag>
+                <el-tag
+                  v-else-if="row.status === 'running'"
+                  type="warning"
+                  size="small"
+                >
+                  进行中
+                </el-tag>
+                <el-tag
+                  v-else
+                  type="info"
+                  size="small"
+                >
+                  {{ row.status }}
+                </el-tag>
+                <span class="sync-log-mobile-config">{{ row.config_name || '-' }}</span>
+                <i
+                  class="fas"
+                  :class="mobileActionRowId === row.id ? 'fa-chevron-up' : 'fa-chevron-down'"
+                />
+              </button>
+              <div class="sync-log-mobile-meta">
+                <span>成功 {{ row.success_count ?? '-' }}</span>
+                <span>失败 {{ row.failed_count ?? '-' }}</span>
+                <span>耗时 {{ row.duration ? `${row.duration}秒` : '-' }}</span>
+              </div>
+              <div
+                v-if="mobileActionRowId === row.id"
+                class="mobile-row-actions"
+              >
+                <el-button
+                  type="primary"
+                  size="small"
+                  @click.stop="handleViewDetail(row)"
+                >
+                  详情
+                </el-button>
+                <el-button
+                  v-if="canDelete"
+                  type="danger"
+                  size="small"
+                  @click.stop="handleDeleteLog(row)"
+                >
+                  删除
+                </el-button>
+              </div>
+            </article>
+          </div>
+        </div>
+
+        <el-table
+          v-else
+          class="data-table"
+          :data="loading ? [] : logList"
+          stripe
+          border
+          style="width: 100%"
+          @row-dblclick="handleViewDetail"
+        >
+          <template #empty>
+            <TableLoadingRow
+              v-if="loading"
+              mode="block"
+              text="加载中..."
+            />
+            <DataEmptyState
+              v-else
+              description="暂无同步日志"
+            />
+          </template>
+
+          <el-table-column
+            type="index"
+            label="序号"
+            width="80"
+            align="center"
+          />
+          <el-table-column
+            prop="start_time"
+            label="开始时间"
+            min-width="160"
+          >
+            <template #default="{ row }">
+              {{ formatDateTime(row.start_time) }}
+            </template>
+          </el-table-column>
+          <el-table-column
+            prop="end_time"
+            label="结束时间"
+            min-width="160"
+          >
+            <template #default="{ row }">
+              {{ row.end_time ? formatDateTime(row.end_time) : '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column
+            prop="duration"
+            label="耗时"
+            min-width="80"
+            align="center"
+          >
+            <template #default="{ row }">
+              <span v-if="row.duration">{{ row.duration }}秒</span>
+              <span
+                v-else
+                class="text-gray"
+              >-</span>
+            </template>
+          </el-table-column>
+          <el-table-column
+            prop="status"
+            label="状态"
+            min-width="90"
+            align="center"
+          >
+            <template #default="{ row }">
+              <el-tag
+                v-if="row.status === 'success'"
+                type="success"
+                size="small"
+              >
+                成功
+              </el-tag>
+              <el-tag
+                v-else-if="row.status === 'failed'"
+                type="danger"
+                size="small"
+              >
+                失败
+              </el-tag>
+              <el-tag
+                v-else-if="row.status === 'running'"
+                type="warning"
+                size="small"
+              >
+                进行中
+              </el-tag>
+              <el-tag
+                v-else
+                type="info"
+                size="small"
+              >
+                {{ row.status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column
+            prop="total_count"
+            label="总数"
+            min-width="70"
+            align="center"
+          >
+            <template #default="{ row }">
+              {{ row.total_count || '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column
+            prop="success_count"
+            label="成功"
+            min-width="70"
+            align="center"
+          >
+            <template #default="{ row }">
+              <span
+                v-if="row.success_count !== null"
+                class="text-success"
+              >{{ row.success_count }}</span>
+              <span
+                v-else
+                class="text-gray"
+              >-</span>
+            </template>
+          </el-table-column>
+          <el-table-column
+            prop="failed_count"
+            label="失败"
+            min-width="70"
+            align="center"
+          >
+            <template #default="{ row }">
+              <span
+                v-if="row.failed_count !== null && row.failed_count > 0"
+                class="text-error text-bold"
+              >{{ row.failed_count }}</span>
+              <span
+                v-else-if="row.failed_count !== null"
+                class="text-success"
+              >0</span>
+              <span
+                v-else
+                class="text-gray"
+              >-</span>
+            </template>
+          </el-table-column>
+          <el-table-column
+            prop="error_message"
+            label="错误信息"
+            min-width="200"
+            class-name="complete-text-column wrapped-text-column"
+          >
+            <template #default="{ row }">
+              <span
+                v-if="getLogErrorSummary(row)"
+                :class="row.failed_count > 0 || row.status === 'failed' ? 'text-error' : 'text-gray'"
+              >
+                {{ getLogErrorSummary(row) }}
+              </span>
+              <span
+                v-else
+                class="text-gray"
+              >-</span>
+            </template>
+          </el-table-column>
+          <el-table-column
+            prop="config_name"
+            label="配置"
+            min-width="120"
+            class-name="complete-text-column"
+          >
+            <template #default="{ row }">
+              {{ row.config_name || '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column
+            v-if="showSyncLogActionField"
+            label="操作"
+            :width="$getActionColumnWidth(1 + Number(canDelete))"
+            align="center"
+            class-name="actions-column"
+          >
+            <template #default="{ row }">
+              <div class="action-buttons">
+                <el-button
+                  link
+                  type="primary"
+                  size="small"
+                  @click.stop="handleViewDetail(row)"
+                >
+                  详情
+                </el-button>
+                <el-button
+                  v-if="canDelete"
+                  link
+                  type="danger"
+                  size="small"
+                  @click.stop="handleDeleteLog(row)"
+                >
+                  删除
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <div class="pagination-container">
+          <Pagination
+            v-model:current="pagination.page"
+            v-model:page-size="pagination.limit"
+            :page-sizes="[10, 20, 50, 100]"
+            :total="pagination.total"
+            :show-range="true"
+            @change="handlePaginationChange"
+          />
+        </div>
+      </el-card>
+
+      <!-- 详情对话框 -->
+      <MobileDialog
+        v-model="showDetailDialog"
+        title="同步详情"
+        width="800px"
+        dialog-class="price-sync-log-detail-dialog"
+        :show-default-footer="false"
+      >
+        <div
+          v-if="currentLog"
+          class="log-detail"
+        >
+          <!-- 状态横幅 -->
+          <div
+            class="detail-banner"
+            :class="`banner-${currentLog.status}`"
+          >
+            <i
+              v-if="currentLog.status === 'success'"
+              class="fas fa-check-circle"
+            />
+            <i
+              v-else-if="currentLog.status === 'failed'"
+              class="fas fa-times-circle"
+            />
+            <InlineLoading
+              v-else
+              size="small"
+              variant="inherit"
+            />
+            <span class="banner-text">
+              {{ currentLog.status === 'success' ? '同步成功' : currentLog.status === 'failed' ? '同步失败' : '同步中...' }}
+            </span>
+          </div>
+
+          <el-descriptions
+            :column="2"
+            border
+            class="detail-descriptions"
+          >
+            <el-descriptions-item label="开始时间">
+              {{ formatDateTime(currentLog.start_time) }}
+            </el-descriptions-item>
+            <el-descriptions-item label="结束时间">
+              {{ currentLog.end_time ? formatDateTime(currentLog.end_time) : '-' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="执行时长">
+              <span v-if="currentLog.duration">{{ currentLog.duration }}秒</span>
+              <span
+                v-else
+                class="text-gray"
+              >-</span>
+            </el-descriptions-item>
+            <el-descriptions-item label="配置名称">
+              {{ currentLog.config_name || '-' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="处理总数">
+              <span class="stat-number">{{ currentLog.total_count || 0 }}</span>
+            </el-descriptions-item>
+            <el-descriptions-item label="成功数量">
+              <span class="stat-number success">{{ currentLog.success_count || 0 }}</span>
+            </el-descriptions-item>
+            <el-descriptions-item label="失败数量">
+              <span
+                class="stat-number"
+                :class="currentLog.failed_count > 0 ? 'error' : 'success'"
+              >{{ currentLog.failed_count || 0 }}</span>
+            </el-descriptions-item>
+            <el-descriptions-item label="成功率">
+              <span
+                class="stat-number"
+                :class="getSuccessRateClass(currentLog)"
+              >
+                {{ getSuccessRate(currentLog) }}%
+              </span>
+            </el-descriptions-item>
+            <el-descriptions-item
+              v-if="currentLog.error_message"
+              label="错误信息"
+              :span="2"
+            >
+              <div class="error-message-box">
+                <i class="fas fa-exclamation-triangle" />
+                {{ currentLog.error_message }}
+              </div>
+            </el-descriptions-item>
+            <el-descriptions-item
+              v-else
+              label="提示说明"
+              :span="2"
+            >
+              <div class="info-message-box">
+                <i class="fas fa-info-circle" />
+                <span v-if="currentLog.status === 'success'">同步完成，所有数据已成功更新</span>
+                <span v-else-if="currentLog.status === 'failed'">同步失败，请检查错误信息或联系管理员</span>
+                <span v-else>同步正在执行中，请稍候...</span>
+              </div>
+            </el-descriptions-item>
+          </el-descriptions>
+
+          <!-- 详情数据 -->
+          <div
+            v-if="currentLog.sync_details"
+            class="detail-section"
+          >
+            <div class="detail-section-title">
+              <i class="fas fa-code" />
+              同步详情数据
+            </div>
+            <pre class="json-detail">{{ formatJson(currentLog.sync_details) }}</pre>
+          </div>
+
+          <!-- 成功列表 -->
+          <div
+            v-if="parsedSyncDetails?.items?.success?.length > 0"
+            class="detail-section"
+          >
+            <div class="detail-section-title success">
+              <i class="fas fa-check-circle" />
+              成功列表 ({{ parsedSyncDetails.items.success.length }})
+            </div>
+            <el-table
+              class="data-table"
+              :data="parsedSyncDetails.items.success"
+              stripe
+              border
+              size="small"
+              max-height="300"
+            >
+              <el-table-column
+                prop="brand"
+                label="品牌"
+                width="80"
+              />
+              <el-table-column
+                prop="model"
+                label="型号"
+                width="120"
+              />
+              <el-table-column
+                prop="color"
+                label="颜色"
+                width="80"
+              />
+              <el-table-column
+                prop="memory"
+                label="内存"
+                width="80"
+              />
+              <el-table-column
+                prop="price"
+                label="价格"
+                width="80"
+              >
+                <template #default="{ row }">
+                  ¥{{ row.price }}
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+
+          <!-- 失败列表 -->
+          <div
+            v-if="parsedSyncDetails?.items?.failed?.length > 0"
+            class="detail-section"
+          >
+            <div class="detail-section-title failed">
+              <i class="fas fa-times-circle" />
+              失败列表 ({{ parsedSyncDetails.items.failed.length }})
+            </div>
+            <el-table
+              class="data-table"
+              :data="parsedSyncDetails.items.failed"
+              stripe
+              border
+              size="small"
+              max-height="300"
+            >
+              <el-table-column
+                prop="brand"
+                label="品牌"
+                width="80"
+              />
+              <el-table-column
+                prop="model"
+                label="型号"
+                width="120"
+              />
+              <el-table-column
+                prop="color"
+                label="颜色"
+                width="80"
+              />
+              <el-table-column
+                prop="memory"
+                label="内存"
+                width="80"
+              />
+              <el-table-column
+                prop="error"
+                label="错误原因"
+                min-width="150"
+                class-name="complete-text-column wrapped-text-column"
+              />
+            </el-table>
+          </div>
+        </div>
+      </MobileDialog>
+    </div>
   </PermissionGate>
 </template>
 
@@ -366,7 +637,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { getSyncLogs, deleteSyncLog, clearSyncLogs } from '@/api/price-list'
 import { usePagination } from '@/composables'
 import { usePagePermissions } from '@/composables/usePagePermissions'
-import { fieldPermissions } from '@/composables/useFieldPermissions'
+import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useLoadingState } from '@/composables'
 import { PageHeader, PermissionGate } from '@/components/base'
 import Pagination from '@/components/Pagination.vue'
@@ -395,6 +666,10 @@ const showStatsCards = computed(() => (
   canViewSyncLogField('stats_fail_count') ||
   canViewSyncLogField('stats_total_records') ||
   canViewSyncLogField('stats_avg_duration')
+))
+const showSyncLogActionField = computed(() => shouldShowActionColumn(
+  canViewSyncLogField('actions'),
+  [canDelete.value]
 ))
 
 // 使用统一分页 composable
@@ -792,23 +1067,23 @@ onUnmounted(() => {
       font-size: 24px;
 
       &.success {
-        background: #f0f9ff;
-        color: #67c23a;
+        background: var(--tf-color-blue-50);
+        color: var(--color-success);
       }
 
       &.error {
-        background: #fef0f0;
-        color: #f56c6c;
+        background: var(--tf-color-danger-surface-element);
+        color: var(--color-danger);
       }
 
       &.info {
-        background: #f4f4f5;
-        color: #909399;
+        background: var(--tf-color-zinc-100);
+        color: var(--color-info);
       }
 
       &.warning {
-        background: #fdf6ec;
-        color: #e6a23c;
+        background: var(--tf-color-warning-surface-element);
+        color: var(--color-warning);
       }
     }
 
@@ -818,14 +1093,14 @@ onUnmounted(() => {
       .stat-value {
         font-size: 24px;
         font-weight: 600;
-        color: #303133;
+        color: var(--color-text-primary);
         line-height: 1;
         margin-bottom: 4px;
       }
 
       .stat-label {
         font-size: 12px;
-        color: #909399;
+        color: var(--color-info);
       }
     }
   }
@@ -842,9 +1117,9 @@ onUnmounted(() => {
 .sync-log-mobile-table {
   table-layout: fixed;
   border-collapse: collapse;
-  border: 1px solid #dbe2ea;
+  border: 1px solid var(--tf-color-border-slate);
   border-radius: 0;
-  background: #ffffff;
+  background: var(--color-bg-white);
 
   th,
   td {
@@ -852,21 +1127,21 @@ onUnmounted(() => {
     text-align: center;
     vertical-align: middle;
     word-break: break-word;
-    border: 1px solid #dbe2ea;
+    border: 1px solid var(--tf-color-border-slate);
   }
 
   th {
     font-size: 11px;
     font-weight: 700;
-    color: #475569;
-    background: #f5f7fa;
+    color: var(--tf-color-slate-600);
+    background: var(--tf-color-surface);
   }
 
   td {
     font-size: 13px;
     font-weight: 600;
-    color: #334155;
-    background: #ffffff;
+    color: var(--tf-color-slate-700);
+    background: var(--color-bg-white);
   }
 }
 
@@ -876,15 +1151,15 @@ onUnmounted(() => {
 }
 
 .text-gray {
-  color: #909399;
+  color: var(--color-info);
 }
 
 .text-success {
-  color: #67c23a;
+  color: var(--color-success);
 }
 
 .text-error {
-  color: #f56c6c;
+  color: var(--color-danger);
 }
 
 // 日志详情
@@ -901,18 +1176,18 @@ onUnmounted(() => {
     font-weight: 600;
 
     &.banner-success {
-      background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-      color: #155724;
+      background: linear-gradient(135deg, var(--tf-color-success-legacy) 0%, var(--tf-color-success-border-legacy) 100%);
+      color: var(--tf-color-success-text-legacy);
     }
 
     &.banner-failed {
-      background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
-      color: #721c24;
+      background: linear-gradient(135deg, var(--tf-color-danger-legacy) 0%, var(--tf-color-danger-border-legacy) 100%);
+      color: var(--tf-color-danger-text-legacy);
     }
 
     &.banner-running {
-      background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%);
-      color: #856404;
+      background: linear-gradient(135deg, var(--tf-color-warning-legacy) 0%, var(--tf-color-yellow-bootstrap-light) 100%);
+      color: var(--tf-color-warning-text-legacy);
     }
 
     i {
@@ -926,15 +1201,15 @@ onUnmounted(() => {
       font-weight: 600;
 
       &.success {
-        color: #67c23a;
+        color: var(--color-success);
       }
 
       &.error {
-        color: #f56c6c;
+        color: var(--color-danger);
       }
 
       &.warning {
-        color: #e6a23c;
+        color: var(--color-warning);
       }
     }
 
@@ -943,9 +1218,9 @@ onUnmounted(() => {
       align-items: center;
       gap: 8px;
       padding: 12px;
-      background: #fef0f0;
+      background: var(--tf-color-danger-surface-element);
       border-radius: 4px;
-      color: #f56c6c;
+      color: var(--color-danger);
 
       i {
         font-size: 16px;
@@ -957,9 +1232,9 @@ onUnmounted(() => {
       align-items: center;
       gap: 8px;
       padding: 12px;
-      background: #f4f4f5;
+      background: var(--tf-color-zinc-100);
       border-radius: 4px;
-      color: #606266;
+      color: var(--color-text-regular);
 
       i {
         font-size: 16px;
@@ -975,10 +1250,10 @@ onUnmounted(() => {
       align-items: center;
       gap: 8px;
       padding: 12px 16px;
-      background: #f5f7fa;
+      background: var(--tf-color-surface);
       border-radius: 4px;
       font-weight: 600;
-      color: #303133;
+      color: var(--color-text-primary);
       margin-bottom: 12px;
     }
   }
@@ -986,6 +1261,60 @@ onUnmounted(() => {
 
 .text-bold {
   font-weight: 600;
+}
+
+.sync-log-mobile-list {
+  display: grid;
+  gap: 8px;
+}
+
+.sync-log-mobile-item {
+  overflow: hidden;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  background: var(--el-bg-color);
+}
+
+.sync-log-mobile-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) auto minmax(0, 1fr) auto;
+  align-items: center;
+  width: 100%;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--el-text-color-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.sync-log-mobile-time,
+.sync-log-mobile-config {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sync-log-mobile-config {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+}
+
+.sync-log-mobile-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  padding: 0 12px 10px;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+}
+
+.sync-log-mobile-item .mobile-row-actions {
+  display: flex;
+  padding: 8px 12px 10px;
+  border-top: 1px solid var(--el-border-color-lighter);
 }
 
 @media (max-width: 768px) {
@@ -1056,16 +1385,13 @@ onUnmounted(() => {
 }
 
 @media (max-width: 480px) {
-  .sync-log-mobile-table {
-    th,
-    td {
-      padding: 10px 4px;
-      font-size: 12px;
-    }
+  .sync-log-mobile-summary {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
 
-    th {
-      font-size: 10px;
-    }
+  .sync-log-mobile-config {
+    grid-column: 1 / -1;
+    grid-row: 2;
   }
 
   .stats-cards {

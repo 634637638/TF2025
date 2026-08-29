@@ -1,14 +1,19 @@
 <template>
   <div class="permission-settings-page">
-    <div v-if="!ctx.selectedRoleForPermission" class="dialog-no-permissions">
-      <i class="fas fa-user-tag"></i>
+    <div
+      v-if="!ctx.selectedRoleForPermission"
+      class="dialog-no-permissions"
+    >
+      <i class="fas fa-user-tag" />
       <p>请先从角色管理中选择一个角色</p>
     </div>
 
     <template v-else>
       <div class="permission-role-summary">
         <div>
-          <div class="permission-role-summary__label">当前角色</div>
+          <div class="permission-role-summary__label">
+            当前角色
+          </div>
           <div class="permission-role-summary__content">
             <strong>{{ ctx.selectedRoleForPermission.name }}</strong>
             <code v-if="ctx.selectedRoleForPermission.code">{{ ctx.selectedRoleForPermission.code }}</code>
@@ -20,49 +25,58 @@
         </div>
       </div>
 
-      <SectionLoading v-if="ctx.loadingPermissionDialog" text="加载中..." />
+      <SectionLoading
+        v-if="ctx.loadingPermissionDialog"
+        text="加载中..."
+      />
 
       <template v-else>
-        <div v-if="ctx.permissionDialogMatrix.length > 0" class="permission-toolbar">
+        <div
+          v-if="ctx.permissionDialogMatrix.length > 0"
+          class="permission-toolbar"
+        >
           <el-button
             size="small"
             type="success"
-            @click="ctx.selectAllDialogPermissions(true)"
             :disabled="ctx.savingDialogPermissions"
+            @click="ctx.selectAllDialogPermissions(true)"
           >
-            <i class="fas fa-check-double"></i>
+            <i class="fas fa-check-double" />
             全开页面权限
           </el-button>
           <el-button
             size="small"
             type="warning"
-            @click="ctx.selectAllDialogPermissions(false)"
             :disabled="ctx.savingDialogPermissions"
+            @click="ctx.selectAllDialogPermissions(false)"
           >
-            <i class="fas fa-times"></i>
+            <i class="fas fa-times" />
             清空页面权限
           </el-button>
           <el-button
             size="small"
             type="info"
-            @click="ctx.toggleAllDialogMenuPermissions(true)"
             :disabled="ctx.savingDialogPermissions"
+            @click="ctx.toggleAllDialogMenuPermissions(true)"
           >
-            <i class="fas fa-eye"></i>
+            <i class="fas fa-eye" />
             显示所有菜单
           </el-button>
           <el-button
             size="small"
             type="info"
-            @click="ctx.toggleAllDialogMenuPermissions(false)"
             :disabled="ctx.savingDialogPermissions"
+            @click="ctx.toggleAllDialogMenuPermissions(false)"
           >
-            <i class="fas fa-eye-slash"></i>
+            <i class="fas fa-eye-slash" />
             隐藏所有菜单
           </el-button>
         </div>
 
-        <div v-if="ctx.permissionDialogMatrix.length > 0" class="permission-group-list">
+        <div
+          v-if="ctx.permissionDialogMatrix.length > 0"
+          class="permission-group-list"
+        >
           <section
             v-for="group in groupedPermissionModules"
             :key="group.key"
@@ -72,11 +86,13 @@
               <div class="permission-group__title">
                 <span class="group-tag">{{ group.standalone ? '独立页面' : '母子页面' }}</span>
                 <h3>
-                  <i :class="group.parent.icon"></i>
+                  <i :class="group.parent.icon" />
                   {{ group.title }}
                 </h3>
               </div>
-              <p class="permission-group__description">{{ group.description }}</p>
+              <p class="permission-group__description">
+                {{ group.description }}
+              </p>
             </div>
 
             <div class="permission-module-stack">
@@ -86,7 +102,9 @@
               >
                 <div class="permission-module-card__header">
                   <div class="permission-module-card__inline">
-                    <div class="permission-module-card__title">{{ group.parent.name }}</div>
+                    <div class="permission-module-card__title">
+                      {{ group.parent.name }}
+                    </div>
                     <span class="page-type-badge">{{ group.standalone ? '页面' : '母模块' }}</span>
                     <span
                       class="module-status-badge"
@@ -97,7 +115,9 @@
                     <div class="permission-module-card__summary">
                       {{ getEnabledSummary(group.parent) }}
                     </div>
-                    <div class="permission-module-card__key">{{ group.parent.module_key }}</div>
+                    <div class="permission-module-card__key">
+                      {{ group.parent.module_key }}
+                    </div>
                   </div>
                 </div>
 
@@ -111,7 +131,7 @@
                   >
                     <span class="permission-switch__main">
                       <span class="permission-switch__icon">
-                        <i :class="ctx.isDialogMenuPermissionSelected(group.parent.module_key) ? 'fas fa-eye' : 'fas fa-eye-slash'"></i>
+                        <i :class="ctx.isDialogMenuPermissionSelected(group.parent.module_key) ? 'fas fa-eye' : 'fas fa-eye-slash'" />
                       </span>
                       <span class="permission-switch__text">
                         <span class="permission-switch__label">菜单查看</span>
@@ -119,7 +139,7 @@
                     </span>
                     <span class="permission-switch__control">
                       <span class="permission-switch__track">
-                        <span class="permission-switch__thumb"></span>
+                        <span class="permission-switch__thumb" />
                       </span>
                     </span>
                   </button>
@@ -135,7 +155,7 @@
                   >
                     <span class="permission-switch__main">
                       <span class="permission-switch__icon">
-                        <i :class="ctx.getPermissionIcon(getPermissionType(permission))"></i>
+                        <i :class="ctx.getPermissionIcon(getPermissionType(permission))" />
                       </span>
                       <span class="permission-switch__text">
                         <span class="permission-switch__label">
@@ -145,14 +165,17 @@
                     </span>
                     <span class="permission-switch__control">
                       <span class="permission-switch__track">
-                        <span class="permission-switch__thumb"></span>
+                        <span class="permission-switch__thumb" />
                       </span>
                     </span>
                   </button>
                 </div>
               </article>
 
-              <div v-if="group.children.length > 0" class="permission-children">
+              <div
+                v-if="group.children.length > 0"
+                class="permission-children"
+              >
                 <article
                   v-for="child in group.children"
                   :key="child.module_key"
@@ -161,7 +184,9 @@
                 >
                   <div class="permission-module-card__header">
                     <div class="permission-module-card__inline">
-                      <div class="permission-module-card__title">{{ child.name }}</div>
+                      <div class="permission-module-card__title">
+                        {{ child.name }}
+                      </div>
                       <span class="page-type-badge child">子模块</span>
                       <span
                         class="module-status-badge"
@@ -172,7 +197,9 @@
                       <div class="permission-module-card__summary">
                         {{ getEnabledSummary(child) }}
                       </div>
-                      <div class="permission-module-card__key">{{ child.module_key }}</div>
+                      <div class="permission-module-card__key">
+                        {{ child.module_key }}
+                      </div>
                     </div>
                   </div>
 
@@ -186,7 +213,7 @@
                     >
                       <span class="permission-switch__main">
                         <span class="permission-switch__icon">
-                          <i :class="ctx.isDialogMenuPermissionSelected(child.module_key) ? 'fas fa-eye' : 'fas fa-eye-slash'"></i>
+                          <i :class="ctx.isDialogMenuPermissionSelected(child.module_key) ? 'fas fa-eye' : 'fas fa-eye-slash'" />
                         </span>
                         <span class="permission-switch__text">
                           <span class="permission-switch__label">菜单查看</span>
@@ -194,7 +221,7 @@
                       </span>
                       <span class="permission-switch__control">
                         <span class="permission-switch__track">
-                          <span class="permission-switch__thumb"></span>
+                          <span class="permission-switch__thumb" />
                         </span>
                       </span>
                     </button>
@@ -210,7 +237,7 @@
                     >
                       <span class="permission-switch__main">
                         <span class="permission-switch__icon">
-                          <i :class="ctx.getPermissionIcon(getPermissionType(permission))"></i>
+                          <i :class="ctx.getPermissionIcon(getPermissionType(permission))" />
                         </span>
                         <span class="permission-switch__text">
                           <span class="permission-switch__label">
@@ -220,13 +247,16 @@
                       </span>
                       <span class="permission-switch__control">
                         <span class="permission-switch__track">
-                          <span class="permission-switch__thumb"></span>
+                          <span class="permission-switch__thumb" />
                         </span>
                       </span>
                     </button>
                   </div>
 
-                  <div v-if="child.permissions.length === 0" class="permission-empty">
+                  <div
+                    v-if="child.permissions.length === 0"
+                    class="permission-empty"
+                  >
                     当前子模块还没有可分配的动作权限
                   </div>
                 </article>
@@ -236,18 +266,24 @@
 
           <div class="permission-page-footer">
             <div class="permission-hint">
-              <i class="fas fa-info-circle"></i>
+              <i class="fas fa-info-circle" />
               主页面控制主入口，子页面控制 Tab/个人页等细分功能，当前勾选会立即保存。
             </div>
-            <el-button type="primary" @click="ctx.closePermissionDialog('roles')">
-              <i class="fas fa-arrow-left"></i>
+            <el-button
+              type="primary"
+              @click="ctx.closePermissionDialog('roles')"
+            >
+              <i class="fas fa-arrow-left" />
               返回角色管理
             </el-button>
           </div>
         </div>
 
-        <div v-else class="dialog-no-permissions">
-          <i class="fas fa-inbox"></i>
+        <div
+          v-else
+          class="dialog-no-permissions"
+        >
+          <i class="fas fa-inbox" />
           <p>暂无模块权限数据</p>
           <small>请先在模块管理中同步系统模块</small>
         </div>
@@ -471,13 +507,13 @@ const totalModuleCount = computed(() =>
   gap: 12px;
   padding: 14px 16px;
   border-radius: 14px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--tf-color-slate-50);
+  border: 1px solid var(--tf-color-slate-200);
 }
 
 .permission-role-summary__label {
   font-size: 12px;
-  color: #64748b;
+  color: var(--tf-color-slate-500);
 }
 
 .permission-role-summary__content {
@@ -490,14 +526,14 @@ const totalModuleCount = computed(() =>
 
 .permission-role-summary__content strong {
   font-size: 16px;
-  color: #0f172a;
+  color: var(--tf-color-slate-900);
 }
 
 .permission-role-summary__content code {
   padding: 3px 8px;
   border-radius: 999px;
-  background: #e2e8f0;
-  color: #475569;
+  background: var(--tf-color-slate-200);
+  color: var(--tf-color-slate-600);
   font-size: 12px;
 }
 
@@ -505,7 +541,7 @@ const totalModuleCount = computed(() =>
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
-  color: #475569;
+  color: var(--tf-color-slate-600);
   font-size: 13px;
   font-weight: 600;
 }
@@ -516,8 +552,8 @@ const totalModuleCount = computed(() =>
   flex-wrap: wrap;
   padding: 12px 14px;
   border-radius: 14px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--color-bg-white);
+  border: 1px solid var(--tf-color-slate-200);
 }
 
 .permission-group-list {
@@ -528,8 +564,8 @@ const totalModuleCount = computed(() =>
 .permission-group {
   padding: 14px;
   border-radius: 14px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--color-bg-white);
+  border: 1px solid var(--tf-color-slate-200);
 }
 
 .permission-group__header {
@@ -550,7 +586,7 @@ const totalModuleCount = computed(() =>
   align-items: center;
   gap: 8px;
   font-size: 18px;
-  color: #0f172a;
+  color: var(--tf-color-slate-900);
 }
 
 .group-tag {
@@ -558,15 +594,15 @@ const totalModuleCount = computed(() =>
   align-items: center;
   padding: 4px 10px;
   border-radius: 999px;
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--tf-color-blue-tailwind-50);
+  color: var(--tf-color-blue-700);
   font-size: 11px;
   font-weight: 700;
 }
 
 .permission-group__description {
   margin: 0;
-  color: #64748b;
+  color: var(--tf-color-slate-500);
   line-height: 1.6;
 }
 
@@ -579,44 +615,44 @@ const totalModuleCount = computed(() =>
   display: grid;
   gap: 12px;
   padding-left: 18px;
-  border-left: 2px dashed #d8b4fe;
+  border-left: 2px dashed var(--tf-color-purple-300);
 }
 
 .permission-module-card {
   padding: 14px;
   border-radius: 14px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--tf-color-slate-50);
+  border: 1px solid var(--tf-color-slate-200);
   transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .permission-module-card--parent {
-  background: linear-gradient(180deg, #faf5ff 0%, #f5f3ff 100%);
-  border-color: #d8b4fe;
+  background: linear-gradient(180deg, var(--tf-color-purple-50-alt) 0%, var(--tf-color-indigo-surface-alt) 100%);
+  border-color: var(--tf-color-purple-300);
 }
 
 .permission-module-card--child {
-  background: #fbfdff;
+  background: var(--tf-color-surface-blue-alt);
 }
 
 .permission-module-card.is-enabled {
-  border-color: #86efac;
-  background: #f0fdf4;
+  border-color: var(--tf-color-green-300);
+  background: var(--tf-color-green-50);
 }
 
 .permission-module-card.is-partial {
-  border-color: #fcd34d;
-  background: #fffbeb;
+  border-color: var(--tf-color-amber-300);
+  background: var(--tf-color-amber-50);
 }
 
 .permission-module-card.is-disabled {
-  border-color: #e2e8f0;
-  background: #f8fafc;
+  border-color: var(--tf-color-slate-200);
+  background: var(--tf-color-slate-50);
 }
 
 .permission-module-card.is-hidden {
-  border-color: #cbd5f5;
-  background: #f8faff;
+  border-color: var(--tf-color-indigo-200);
+  background: var(--tf-color-surface-blue);
 }
 
 .permission-module-card__header {
@@ -634,13 +670,13 @@ const totalModuleCount = computed(() =>
 .permission-module-card__title {
   font-size: 15px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--tf-color-slate-900);
 }
 
 .permission-module-card__summary {
   font-size: 12px;
   font-weight: 600;
-  color: #64748b;
+  color: var(--tf-color-slate-500);
   white-space: nowrap;
 }
 
@@ -649,7 +685,7 @@ const totalModuleCount = computed(() =>
   padding: 4px 10px;
   border-radius: 999px;
   background: rgba(226, 232, 240, 0.9);
-  color: #475569;
+  color: var(--tf-color-slate-600);
   font-size: 12px;
 }
 
@@ -657,15 +693,15 @@ const totalModuleCount = computed(() =>
   width: fit-content;
   padding: 3px 8px;
   border-radius: 999px;
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: var(--tf-color-blue-tailwind-100);
+  color: var(--tf-color-blue-700);
   font-size: 11px;
   font-weight: 700;
 }
 
 .page-type-badge.child {
-  background: #ecfeff;
-  color: #0f766e;
+  background: var(--tf-color-cyan-50);
+  color: var(--tf-color-teal-700);
 }
 
 .module-status-badge {
@@ -680,27 +716,27 @@ const totalModuleCount = computed(() =>
 }
 
 .module-status-badge.is-enabled {
-  color: #166534;
-  background: #dcfce7;
-  border-color: #86efac;
+  color: var(--tf-status-success-color);
+  background: var(--tf-status-success-bg);
+  border-color: var(--tf-status-success-border);
 }
 
 .module-status-badge.is-partial {
-  color: #a16207;
-  background: #fef3c7;
-  border-color: #fcd34d;
+  color: var(--tf-status-warning-color);
+  background: var(--tf-status-warning-bg);
+  border-color: var(--tf-status-warning-border);
 }
 
 .module-status-badge.is-disabled {
-  color: #475569;
-  background: #e2e8f0;
-  border-color: #cbd5e1;
+  color: var(--tf-status-neutral-color);
+  background: var(--tf-status-neutral-bg);
+  border-color: var(--tf-status-neutral-border);
 }
 
 .module-status-badge.is-hidden {
-  color: #4338ca;
-  background: #e0e7ff;
-  border-color: #c7d2fe;
+  color: var(--tf-status-danger-color);
+  background: var(--tf-status-danger-bg);
+  border-color: var(--tf-status-danger-border);
 }
 
 .permission-switch-grid {
@@ -723,14 +759,14 @@ const totalModuleCount = computed(() =>
   padding: 8px 10px;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.88);
-  border: 1px solid #dbe3ee;
+  border: 1px solid var(--tf-color-border-blue-alt);
   cursor: pointer;
   text-align: left;
   transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .permission-switch:hover {
-  border-color: #a78bfa;
+  border-color: var(--tf-color-violet-400);
   box-shadow: 0 8px 18px rgba(139, 92, 246, 0.08);
 }
 
@@ -742,7 +778,7 @@ const totalModuleCount = computed(() =>
 }
 
 .permission-switch.checked {
-  border-color: #8b5cf6;
+  border-color: var(--tf-color-violet-500);
   background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(124, 58, 237, 0.14) 100%);
   box-shadow: 0 10px 22px rgba(139, 92, 246, 0.12);
 }
@@ -762,15 +798,15 @@ const totalModuleCount = computed(() =>
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  background: #ede9fe;
-  color: #6d28d9;
+  background: var(--tf-color-violet-100);
+  color: var(--tf-color-violet-700);
   flex-shrink: 0;
   font-size: 12px;
 }
 
 .permission-switch.checked .permission-switch__icon {
-  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-  color: #fff;
+  background: linear-gradient(135deg, var(--tf-color-violet-500) 0%, var(--tf-color-violet-600) 100%);
+  color: var(--color-bg-white);
 }
 
 .permission-switch__text {
@@ -783,7 +819,7 @@ const totalModuleCount = computed(() =>
 .permission-switch__label {
   font-size: 12px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--tf-color-slate-900);
   line-height: 1.2;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -791,7 +827,7 @@ const totalModuleCount = computed(() =>
 }
 
 .permission-switch.checked .permission-switch__label {
-  color: #5b21b6;
+  color: var(--tf-color-violet-800);
 }
 
 .permission-switch__control {
@@ -805,12 +841,12 @@ const totalModuleCount = computed(() =>
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
-  background: #cbd5e1;
+  background: var(--tf-color-slate-300);
   transition: background-color 0.2s ease;
 }
 
 .permission-switch.checked .permission-switch__track {
-  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  background: linear-gradient(135deg, var(--tf-color-violet-500) 0%, var(--tf-color-violet-600) 100%);
 }
 
 .permission-switch__thumb {
@@ -819,7 +855,7 @@ const totalModuleCount = computed(() =>
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--color-bg-white);
   box-shadow: 0 2px 6px rgba(15, 23, 42, 0.16);
   transition: transform 0.2s ease;
 }
@@ -829,7 +865,7 @@ const totalModuleCount = computed(() =>
 }
 
 .permission-empty {
-  color: #64748b;
+  color: var(--tf-color-slate-500);
   font-size: 13px;
   padding: 4px 0;
 }
@@ -844,7 +880,7 @@ const totalModuleCount = computed(() =>
 }
 
 .permission-hint {
-  color: #64748b;
+  color: var(--tf-color-slate-500);
   font-size: 13px;
 }
 

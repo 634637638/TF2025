@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, readonly } from 'vue'
-import type { MessageItem, MessageType } from '@/types'
+import type { MessageItem } from '@/types'
 
 type MessageOptions = Partial<Omit<MessageItem, 'id' | 'timestamp' | 'type' | 'message'>>
 

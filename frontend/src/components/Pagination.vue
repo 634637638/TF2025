@@ -10,10 +10,16 @@
   >
     <!-- 分页信息 -->
     <div class="tf-pagination__info">
-      <span v-if="effectiveShowTotal" class="tf-pagination__total">
+      <span
+        v-if="effectiveShowTotal"
+        class="tf-pagination__total"
+      >
         共 {{ total }} 条记录
       </span>
-      <span v-if="effectiveShowRange && total > 0" class="tf-pagination__range">
+      <span
+        v-if="effectiveShowRange && total > 0"
+        class="tf-pagination__range"
+      >
         当前第 {{ startIndex }} - {{ endIndex }} 条
       </span>
     </div>
@@ -21,7 +27,10 @@
     <!-- 分页器 -->
     <div class="tf-pagination__controls">
       <!-- 页面大小选择 -->
-      <div v-if="effectiveShowPageSizes" class="tf-pagination__sizes">
+      <div
+        v-if="effectiveShowPageSizes"
+        class="tf-pagination__sizes"
+      >
         <span class="tf-pagination__sizes-text">每页显示</span>
         <el-select
           v-model="currentPageSize"
@@ -29,10 +38,10 @@
           @change="handleSizeChange"
         >
           <el-option
-            v-for="size in pageSizes"
-            :key="size"
-            :label="size"
-            :value="size"
+            v-for="pageSizeOption in pageSizes"
+            :key="pageSizeOption"
+            :label="pageSizeOption"
+            :value="pageSizeOption"
           />
         </el-select>
         <span class="tf-pagination__sizes-text">条</span>
@@ -46,7 +55,7 @@
           :disabled="currentPage <= 1 || disabled"
           @click="handlePrevClick"
         >
-          <i class="fas fa-chevron-left"></i>
+          <i class="fas fa-chevron-left" />
           上一页
         </button>
 
@@ -74,12 +83,15 @@
           @click="handleNextClick"
         >
           下一页
-          <i class="fas fa-chevron-right"></i>
+          <i class="fas fa-chevron-right" />
         </button>
       </div>
 
       <!-- 快速跳转 -->
-      <div v-if="effectiveShowQuickJumper && totalPages > 1" class="tf-pagination__jumper">
+      <div
+        v-if="effectiveShowQuickJumper && totalPages > 1"
+        class="tf-pagination__jumper"
+      >
         <span class="tf-pagination__jumper-text">跳至</span>
         <el-input-number
           v-model="jumpPage"
@@ -383,7 +395,7 @@ watch(() => props.total, () => {
     &.is-current {
       background: var(--el-color-primary);
       border-color: var(--el-color-primary);
-      color: #fff;
+      color: var(--color-bg-white);
     }
 
     &.is-ellipsis {

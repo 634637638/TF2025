@@ -1,6 +1,5 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { storage } from '@/services/storage'
-import { PREFERENCE_STORAGE_KEYS } from '@/constants/storage'
 import { logger } from '@/utils/logger'
 
 export type ThemeMode = 'light' | 'dark' | 'auto'
@@ -116,15 +115,15 @@ export function useTheme() {
   // 更新主题
   const updateTheme = () => {
     switch (mode.value) {
-      case 'dark':
-        isDark.value = true
-        break
-      case 'light':
-        isDark.value = false
-        break
-      case 'auto':
-        isDark.value = isSystemDark.value
-        break
+    case 'dark':
+      isDark.value = true
+      break
+    case 'light':
+      isDark.value = false
+      break
+    case 'auto':
+      isDark.value = isSystemDark.value
+      break
     }
 
     applyThemeToDOM()
@@ -168,15 +167,15 @@ export function useTheme() {
   // 切换主题
   const toggleTheme = () => {
     switch (mode.value) {
-      case 'light':
-        mode.value = 'dark'
-        break
-      case 'dark':
-        mode.value = 'light'
-        break
-      case 'auto':
-        mode.value = isDark.value ? 'light' : 'dark'
-        break
+    case 'light':
+      mode.value = 'dark'
+      break
+    case 'dark':
+      mode.value = 'light'
+      break
+    case 'auto':
+      mode.value = isDark.value ? 'light' : 'dark'
+      break
     }
   }
 

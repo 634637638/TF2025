@@ -7,226 +7,488 @@
       module-name="型号管理"
       permission-code="models:view"
     >
-    <!-- 页面头部 - 使用公共组件 -->
-    <PageHeader
-      icon="fas fa-mobile-alt"
-      title="型号管理"
-    >
-      <template #actions>
-        <el-button
-          v-if="canCreate"
-          type="primary"
-          @click="handleCreateModel"
-        >
-          <i class="fas fa-plus"></i>
-          <span>新增</span>
-        </el-button>
-        <el-button type="info" @click="handleRefresh" :disabled="refreshing">
-          <InlineLoading v-if="refreshing" text="刷新中..." size="small" variant="inherit" />
-          <template v-else>
-            <i class="fas fa-sync-alt"></i>
-            <span>刷新</span>
-          </template>
-        </el-button>
-      </template>
-    </PageHeader>
-
-    <div class="content admin-page-content">
-
-    <!-- 统计卡片 -->
-    <div v-if="showStatsCards" class="stats-cards">
-      <div v-if="canViewField('stats_total_models')" class="stat-card">
-        <div class="stat-icon">
-          <i class="fas fa-mobile-alt"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ pagination.total }}</div>
-          <div class="stat-label">型号总数</div>
-        </div>
-      </div>
-      <div v-if="canViewField('stats_active_models')" class="stat-card">
-        <div class="stat-icon active">
-          <i class="fas fa-check-circle"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ models.filter(m => m.status === 1 || m.is_active === true).length }}</div>
-          <div class="stat-label">启用型号</div>
-        </div>
-      </div>
-      <div v-if="canViewField('stats_inactive_models')" class="stat-card">
-        <div class="stat-icon inactive">
-          <i class="fas fa-pause-circle"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ models.filter(m => m.status === 0 || m.is_active === false).length }}</div>
-          <div class="stat-label">禁用型号</div>
-        </div>
-      </div>
-      <div v-if="canViewField('stats_related_brands')" class="stat-card">
-        <div class="stat-icon">
-          <i class="fas fa-cog"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ brands.length }}</div>
-          <div class="stat-label">关联品牌</div>
-        </div>
-      </div>
-    </div>
-
-    <UnifiedSearchPanel
-      v-model:expanded="searchExpanded"
-      :loading="tableLoading"
-      @search="searchModels"
-      @reset="resetSearch"
-    >
-      <template #primary>
-        <el-input
-          v-if="canViewField('name')"
-          v-model="searchForm.name"
-          placeholder="搜索关键词"
-          clearable
-          @keyup.enter="searchModels"
-          @click.stop
-        >
-          <template #prefix>
-            <i class="fas fa-search"></i>
-          </template>
-        </el-input>
-      </template>
-
-      <div v-if="canViewField('brand_name')" class="form-group filter-item" data-field="brand_id">
-        <el-select
-          v-model="searchForm.brand_id"
-          placeholder="品牌"
-          filterable
-          clearable
-          @change="searchModels"
-        >
-          <el-option
-            v-for="brand in brands"
-            :key="brand.id"
-            :label="brand.name"
-            :value="brand.id"
-          />
-        </el-select>
-      </div>
-
-      <div v-if="canViewField('status')" class="form-group filter-item" data-field="status">
-        <el-select
-          v-model="searchForm.status"
-          placeholder="状态"
-          clearable
-          @change="searchModels"
-        >
-          <el-option label="启用" value="1" />
-          <el-option label="禁用" value="0" />
-        </el-select>
-      </div>
-    </UnifiedSearchPanel>
-
-    <!-- 数据表格区域 -->
-    <div class="table-section admin-panel admin-table-panel">
-      <div class="section-title">
-        <i class="fas fa-list"></i>
-        型号列表
-        <span class="record-count">共 {{ pagination.total }} 条记录</span>
-      </div>
-
-      <div class="table-responsive">
-        <el-table ref="modelsTableRef" :data="tableLoading ? [] : models" border stripe class="data-table devices-table base-data-table models-data-table" table-layout="fixed" :fit="true" :row-key="getModelRowKey" :expand-row-keys="isMobile && mobileActionRowId ? [mobileActionRowId] : []" @row-click="(row) => handleMobileRowTap(row.id)">
-          <template #empty><TableLoadingRow v-if="tableLoading" mode="block" text="加载型号列表..." /><div v-else class="empty-state"><i class="fas fa-inbox"></i><p>暂无型号数据</p><el-button size="small" type="info" @click="loadModels()">重新加载</el-button></div></template>
-          <el-table-column v-if="showSortField" width="44" align="center" class-name="drag-handle-cell"><template #default><div class="drag-handle" :class="{ disabled: !canEdit }"><i class="fas fa-grip-vertical"></i></div></template></el-table-column>
-          <el-table-column v-if="showSortOrderField" label="排序" width="70" align="center"><template #default="{ row, $index }"><input v-model.number="row.sort_order" type="number" class="sort-order-input" :disabled="!canEdit" min="0" max="9999" @change="handleSortOrderChange($index, row.sort_order)" /></template></el-table-column>
-          <el-table-column v-if="canViewField('id')" label="序号" width="70" align="center"><template #default="{ row }"><span class="id-badge">{{ getModelIndexInBrand(row) }}</span></template></el-table-column>
-          <el-table-column v-if="showBrandField" label="品牌" min-width="110" align="center"><template #default="{ row }">{{ getBrandName(row) }}</template></el-table-column>
-          <el-table-column v-if="canViewField('name')" prop="name" label="型号" min-width="130" align="center" />
-          <el-table-column v-if="canViewField('status')" label="状态" min-width="84" align="center"><template #default="{ row }"><span :class="['status-badge', (row.status === 1 || row.is_active === true) ? 'status-active' : 'status-inactive']"><i :class="(row.status === 1 || row.is_active === true) ? 'fas fa-check' : 'fas fa-times'"></i>{{ (row.status === 1 || row.is_active === true) ? '启用' : '禁用' }}</span></template></el-table-column>
-          <el-table-column v-if="showCreatedAtField" label="创建时间" min-width="156" align="center"><template #default="{ row }"><div class="time-info"><i class="fas fa-clock"></i>{{ formatDate(row.created_at) }}</div></template></el-table-column>
-          <el-table-column v-if="showActionField" label="操作" :width="$getActionColumnWidth(Number(canEdit) + Number(canDelete))" align="center" class-name="actions-column"><template #default="{ row }"><div class="action-buttons"><el-button v-if="canEdit" v-permission="'models:edit'" type="primary" size="small" @click.stop="editModel(row)"><i class="fas fa-edit"></i><span>编辑</span></el-button><el-button v-if="canDelete" v-permission="'models:delete'" type="danger" size="small" @click.stop="deleteModel(row)"><i class="fas fa-trash"></i><span>删除</span></el-button></div></template></el-table-column>
-          <el-table-column v-if="isMobile && (canEdit || canDelete)" type="expand" width="1" class-name="mobile-expand-column" label-class-name="mobile-expand-header"><template #default="{ row }"><div class="mobile-row-actions"><el-button v-if="canEdit" v-permission="'models:edit'" type="primary" size="small" @click.stop="editModel(row)"><i class="fas fa-edit"></i><span>编辑</span></el-button><el-button v-if="canDelete" v-permission="'models:delete'" type="danger" size="small" @click.stop="deleteModel(row)"><i class="fas fa-trash"></i><span>删除</span></el-button></div></template></el-table-column>
-        </el-table>
-      </div>
-
-      <!-- 分页组件 -->
-      <Pagination
-        v-if="pagination.total > 0"
-        v-model:current="pagination.page"
-        v-model:page-size="pagination.limit"
-        :total="pagination.total"
-        :page-sizes="[10, 20, 50, 100]"
-        :show-total="true"
-        :show-range="true"
-        :show-page-sizes="true"
-        :show-quick-jumper="true"
-        @change="handlePaginationChange"
-      />
-    </div>
-
-    <!-- 创建/编辑模态框 -->
-    <MobileDialog
-      v-model="dialogVisible"
-      :title="isEditMode ? '编辑型号' : '新增型号'"
-      width="500px"
-      dialog-class="models-form-dialog crud-dialog-sm"
-      :close-on-click-modal="false"
-      @close="attemptCloseModal"
-      :show-default-footer="false"
-    >
-      <el-form :model="formData" label-width="80px" class="models-dialog-form">
-        <el-form-item v-if="canViewField('brand_name')" label="品牌" required>
-          <el-select
-            v-model="formData.brand_id"
-            placeholder="请选择品牌"
-            clearable
-            filterable
-            style="width: 100%"
-            :disabled="!canEditField('brand_name')"
+      <!-- 页面头部 - 使用公共组件 -->
+      <PageHeader
+        icon="fas fa-mobile-alt"
+        title="型号管理"
+      >
+        <template #actions>
+          <el-button
+            v-if="canCreate"
+            type="primary"
+            @click="handleCreateModel"
           >
-            <el-option
-              v-for="brand in brands"
-              :key="brand.id"
-              :label="brand.name"
-              :value="brand.id"
+            <i class="fas fa-plus" />
+            <span>新增</span>
+          </el-button>
+          <el-button
+            type="info"
+            :disabled="refreshing"
+            @click="handleRefresh"
+          >
+            <InlineLoading
+              v-if="refreshing"
+              text="刷新中..."
+              size="small"
+              variant="inherit"
             />
-          </el-select>
-        </el-form-item>
-        <el-form-item v-if="canViewField('name')" label="型号名称" required>
-          <el-input
-            v-model="formData.name"
-            placeholder="请输入型号名称"
-            clearable
-            maxlength="50"
-            show-word-limit
-            :disabled="!canEditField('name')"
+            <template v-else>
+              <i class="fas fa-sync-alt" />
+              <span>刷新</span>
+            </template>
+          </el-button>
+        </template>
+      </PageHeader>
+
+      <div class="content admin-page-content">
+        <!-- 统计卡片 -->
+        <div
+          v-if="showStatsCards"
+          class="stats-cards"
+        >
+          <div
+            v-if="canViewField('stats_total_models')"
+            class="stat-card"
+          >
+            <div class="stat-icon">
+              <i class="fas fa-mobile-alt" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">
+                {{ pagination.total }}
+              </div>
+              <div class="stat-label">
+                型号总数
+              </div>
+            </div>
+          </div>
+          <div
+            v-if="canViewField('stats_active_models')"
+            class="stat-card"
+          >
+            <div class="stat-icon active">
+              <i class="fas fa-check-circle" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">
+                {{ models.filter(m => m.status === 1).length }}
+              </div>
+              <div class="stat-label">
+                启用型号
+              </div>
+            </div>
+          </div>
+          <div
+            v-if="canViewField('stats_inactive_models')"
+            class="stat-card"
+          >
+            <div class="stat-icon inactive">
+              <i class="fas fa-pause-circle" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">
+                {{ models.filter(m => m.status === 0).length }}
+              </div>
+              <div class="stat-label">
+                禁用型号
+              </div>
+            </div>
+          </div>
+          <div
+            v-if="canViewField('stats_related_brands')"
+            class="stat-card"
+          >
+            <div class="stat-icon">
+              <i class="fas fa-cog" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">
+                {{ brands.length }}
+              </div>
+              <div class="stat-label">
+                关联品牌
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <UnifiedSearchPanel
+          v-model:expanded="searchExpanded"
+          :loading="tableLoading"
+          @search="searchModels"
+          @reset="resetSearch"
+        >
+          <template #primary>
+            <el-input
+              v-if="canViewField('name')"
+              v-model="searchForm.name"
+              placeholder="搜索关键词"
+              clearable
+              @keyup.enter="searchModels"
+              @click.stop
+            >
+              <template #prefix>
+                <i class="fas fa-search" />
+              </template>
+            </el-input>
+          </template>
+
+          <div
+            v-if="canViewField('brand_name')"
+            class="form-group filter-item"
+            data-field="brand_id"
+          >
+            <el-select
+              v-model="searchForm.brand_id"
+              placeholder="品牌"
+              filterable
+              clearable
+              @change="searchModels"
+            >
+              <el-option
+                v-for="brand in brands"
+                :key="brand.id"
+                :label="brand.name"
+                :value="brand.id"
+              />
+            </el-select>
+          </div>
+
+          <div
+            v-if="canViewField('status')"
+            class="form-group filter-item"
+            data-field="status"
+          >
+            <el-select
+              v-model="searchForm.status"
+              placeholder="状态"
+              clearable
+              @change="searchModels"
+            >
+              <el-option
+                label="启用"
+                value="1"
+              />
+              <el-option
+                label="禁用"
+                value="0"
+              />
+            </el-select>
+          </div>
+        </UnifiedSearchPanel>
+
+        <!-- 数据表格区域 -->
+        <div class="table-section admin-panel admin-table-panel">
+          <div class="section-title">
+            <i class="fas fa-list" />
+            型号列表
+            <span class="record-count">共 {{ pagination.total }} 条记录</span>
+          </div>
+
+          <div class="table-responsive">
+            <el-table
+              ref="modelsTableRef"
+              :data="tableLoading ? [] : models"
+              border
+              stripe
+              class="data-table devices-table base-data-table models-data-table"
+              table-layout="fixed"
+              :fit="true"
+              :row-key="getModelRowKey"
+              :expand-row-keys="isMobile && mobileActionRowId ? [mobileActionRowId] : []"
+              @row-click="(row) => handleMobileRowTap(row.id)"
+            >
+              <template #empty>
+                <TableLoadingRow
+                  v-if="tableLoading"
+                  mode="block"
+                  text="加载型号列表..."
+                />
+                <DataEmptyState
+                  v-else
+                  description="暂无型号数据"
+                >
+                  <el-button
+                    size="small"
+                    type="info"
+                    @click="loadModels()"
+                  >
+                    重新加载
+                  </el-button>
+                </DataEmptyState>
+              </template>
+              <el-table-column
+                v-if="showSortField"
+                width="44"
+                align="center"
+                class-name="drag-handle-cell"
+              >
+                <template #default>
+                  <div
+                    class="drag-handle"
+                    :class="{ disabled: !canEdit }"
+                  >
+                    <i class="fas fa-grip-vertical" />
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="showSortOrderField"
+                label="排序"
+                width="70"
+                align="center"
+              >
+                <template #default="{ row, $index }">
+                  <input
+                    v-model.number="row.sort_order"
+                    type="number"
+                    class="sort-order-input"
+                    :disabled="!canEdit"
+                    min="0"
+                    max="9999"
+                    @change="handleSortOrderChange($index, row.sort_order)"
+                  >
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="canViewField('id')"
+                label="序号"
+                width="70"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <span class="id-badge">{{ getModelIndexInBrand(row) }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="showBrandField"
+                label="品牌"
+                min-width="110"
+                align="center"
+              >
+                <template #default="{ row }">
+                  {{ getBrandName(row) }}
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="canViewField('name')"
+                prop="name"
+                label="型号"
+                min-width="130"
+                align="center"
+              />
+              <el-table-column
+                v-if="canViewField('status')"
+                label="状态"
+                min-width="84"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <span :class="['status-badge', row.status === 1 ? 'status-active' : 'status-inactive']"><i :class="row.status === 1 ? 'fas fa-check' : 'fas fa-times'" />{{ row.status === 1 ? '启用' : '禁用' }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="showCreatedAtField"
+                label="创建时间"
+                min-width="156"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <div class="time-info">
+                    <i class="fas fa-clock" />{{ formatDate(row.created_at) }}
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="showUpdatedAtField"
+                label="更新时间"
+                min-width="156"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <div class="time-info">
+                    <i class="fas fa-clock" />{{ formatDate(row.updated_at) }}
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="showActionField"
+                label="操作"
+                :width="$getActionColumnWidth(Number(canEdit) + Number(canDelete))"
+                align="center"
+                class-name="actions-column"
+              >
+                <template #default="{ row }">
+                  <div class="action-buttons">
+                    <el-button
+                      v-if="canEdit"
+                      v-permission="'models:edit'"
+                      type="primary"
+                      size="small"
+                      @click.stop="editModel(row)"
+                    >
+                      <i class="fas fa-edit" /><span>编辑</span>
+                    </el-button><el-button
+                      v-if="canDelete"
+                      v-permission="'models:delete'"
+                      type="danger"
+                      size="small"
+                      @click.stop="deleteModel(row)"
+                    >
+                      <i class="fas fa-trash" /><span>删除</span>
+                    </el-button>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="isMobile && (canEdit || canDelete)"
+                type="expand"
+                width="1"
+                class-name="mobile-expand-column"
+                label-class-name="mobile-expand-header"
+              >
+                <template #default="{ row }">
+                  <div class="mobile-row-actions">
+                    <el-button
+                      v-if="canEdit"
+                      v-permission="'models:edit'"
+                      type="primary"
+                      size="small"
+                      @click.stop="editModel(row)"
+                    >
+                      <i class="fas fa-edit" /><span>编辑</span>
+                    </el-button><el-button
+                      v-if="canDelete"
+                      v-permission="'models:delete'"
+                      type="danger"
+                      size="small"
+                      @click.stop="deleteModel(row)"
+                    >
+                      <i class="fas fa-trash" /><span>删除</span>
+                    </el-button>
+                  </div>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+
+          <!-- 分页组件 -->
+          <Pagination
+            v-if="pagination.total > 0"
+            v-model:current="pagination.page"
+            v-model:page-size="pagination.page_size"
+            :total="pagination.total"
+            :page-sizes="[10, 20, 50, 100]"
+            :show-total="true"
+            :show-range="true"
+            :show-page-sizes="true"
+            :show-quick-jumper="true"
+            @change="handlePaginationChange"
           />
-        </el-form-item>
-        <el-form-item v-if="canViewField('sort_order')" label="排序">
-          <el-input-number
-            v-model="formData.sort_order"
-            :min="0"
-            :max="9999"
-            placeholder="请输入排序值，数字越小越靠前"
-            controls-position="right"
-            style="width: 100%"
-            :disabled="!canEditField('sort_order')"
-          />
-        </el-form-item>
-        <el-form-item v-if="canViewField('status')" label="状态">
-          <el-radio-group v-model="formData.status" :disabled="!canEditField('status')">
-            <el-radio :value="1">启用</el-radio>
-            <el-radio :value="0">禁用</el-radio>
-          </el-radio-group>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button type="default" @click="attemptCloseModal">取消</el-button>
-        <el-button type="primary" @click="submitForm" :disabled="submitting" :loading="submitting">
-          <span v-if="submitting">{{ isEditMode ? '更新中...' : '创建中...' }}</span>
-          <template v-else>{{ isEditMode ? '更新' : '创建' }}</template>
-        </el-button>
-      </template>
-    </MobileDialog>
-    </div>
+        </div>
+
+        <!-- 创建/编辑模态框 -->
+        <MobileDialog
+          v-model="dialogVisible"
+          :title="isEditMode ? '编辑型号' : '新增型号'"
+          width="500px"
+          dialog-class="models-form-dialog crud-dialog-sm"
+          :close-on-click-modal="false"
+          :show-default-footer="false"
+          @close="attemptCloseModal"
+        >
+          <el-form
+            :model="formData"
+            label-width="80px"
+            class="models-dialog-form"
+          >
+            <el-form-item
+              v-if="canViewField('brand_name')"
+              label="品牌"
+              required
+            >
+              <el-select
+                v-model="formData.brand_id"
+                placeholder="请选择品牌"
+                clearable
+                filterable
+                style="width: 100%"
+                :disabled="!canEditField('brand_name')"
+              >
+                <el-option
+                  v-for="brand in brands"
+                  :key="brand.id"
+                  :label="brand.name"
+                  :value="brand.id"
+                />
+              </el-select>
+            </el-form-item>
+            <el-form-item
+              v-if="canViewField('name')"
+              label="型号名称"
+              required
+            >
+              <el-input
+                v-model="formData.name"
+                placeholder="请输入型号名称"
+                clearable
+                maxlength="50"
+                show-word-limit
+                :disabled="!canEditField('name')"
+              />
+            </el-form-item>
+            <el-form-item
+              v-if="canViewField('sort_order')"
+              label="排序"
+            >
+              <el-input-number
+                v-model="formData.sort_order"
+                :min="0"
+                :max="9999"
+                placeholder="请输入排序值，数字越小越靠前"
+                controls-position="right"
+                style="width: 100%"
+                :disabled="!canEditField('sort_order')"
+              />
+            </el-form-item>
+            <el-form-item
+              v-if="canViewField('status')"
+              label="状态"
+            >
+              <el-radio-group
+                v-model="formData.status"
+                :disabled="!canEditField('status')"
+              >
+                <el-radio :value="1">
+                  启用
+                </el-radio>
+                <el-radio :value="0">
+                  禁用
+                </el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-form>
+          <template #footer>
+            <el-button
+              type="default"
+              @click="attemptCloseModal"
+            >
+              取消
+            </el-button>
+            <el-button
+              type="primary"
+              :disabled="submitting"
+              :loading="submitting"
+              @click="submitForm"
+            >
+              <span v-if="submitting">{{ isEditMode ? '更新中...' : '创建中...' }}</span>
+              <template v-else>
+                {{ isEditMode ? '更新' : '创建' }}
+              </template>
+            </el-button>
+          </template>
+        </MobileDialog>
+      </div>
     </PermissionGate>
   </div>
 </template>
@@ -240,7 +502,7 @@ import { extractResponseData } from '@/utils/api-response'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useRefreshData } from '@/composables/useRefreshData'
-import { fieldPermissions } from '@/composables/useFieldPermissions'
+import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import Pagination from '../../components/Pagination.vue'
 import InlineLoading from '@/components/InlineLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
@@ -255,9 +517,9 @@ import { sortOptionsByOrder } from '@/utils/option-sort'
 import { useElementTableSortable } from '@/composables/useElementTableSortable'
 import type { Brand, Model } from '@/types'
 
-const router = useRouter()
+const _router = useRouter()
 // 使用统一的 composable
-const { success, error, warning, info, handleApiError, confirm } = useNotification()
+const { success, error, warning, info: _info, handleApiError: _handleApiError, confirm } = useNotification()
 const { canView, canCreate, canEdit, canDelete } = usePagePermissions('models')
 const { showViewDenied, showEditDenied, showDeleteDenied, showCreateDenied } = usePermissionToast()
 const { refreshing, refresh } = useRefreshData()
@@ -300,8 +562,11 @@ const canEditField = (fieldName: string) => {
 
 const showSortField = computed(() => canViewField('sort_order') && !isMobile.value)
 const showSortOrderField = computed(() => canViewField('sort_order') && !isMobile.value)
-const showActionField = computed(() => canViewField('actions') && (canEdit.value || canDelete.value) && !isMobile.value)
+const showActionField = computed(() => (
+  shouldShowActionColumn(canViewField('actions'), [canEdit.value, canDelete.value]) && !isMobile.value
+))
 const showCreatedAtField = computed(() => canViewField('created_at') && !isMobile.value)
+const showUpdatedAtField = computed(() => canViewField('updated_at') && !isMobile.value)
 const showBrandField = computed(() => canViewField('brand_name'))
 const showStatsCards = computed(() => (
   canViewField('stats_total_models') ||
@@ -367,9 +632,11 @@ const formData = ref({
 // 分页数据
 const pagination = ref({
   page: 1,
-  limit: 100,
+  page_size: 100,
   total: 0,
-  pages: 0
+  total_pages: 0,
+  has_next: false,
+  has_prev: false
 })
 
 // 模态框显示状态
@@ -429,8 +696,7 @@ const getBrandName = (model: Model): string => {
 
 const loadBrands = async () => {
   try {
-    // 传递limit=100获取所有品牌（后端最大限制）
-    const response = await unifiedApi.get('/brands?limit=100')
+    const response = await unifiedApi.get('/brands?page_size=100')
 
     if (response.success) {
       // 使用统一的数据提取方法
@@ -445,7 +711,7 @@ const loadBrands = async () => {
   }
 }
 
-const loadModels = async (bustCache = false, silentError = false, _showLoadingState = true) => {
+const loadModels = async (_bustCache = false, silentError = false, _showLoadingState = true) => {
   if (!canView.value) {
     if (!silentError) {
       showViewDenied('型号管理', 'models:view')
@@ -462,9 +728,9 @@ const loadModels = async (bustCache = false, silentError = false, _showLoadingSt
   try {
     const params: any = {
       page: pagination.value.page,
-      limit: pagination.value.limit,
-      sortBy: 'sort_order',
-      sortOrder: 'asc'
+      page_size: pagination.value.page_size,
+      sort_by: 'sort_order',
+      sort_order: 'asc'
     }
 
     // 添加搜索参数
@@ -487,16 +753,27 @@ const loadModels = async (bustCache = false, silentError = false, _showLoadingSt
     if (response.success) {
       models.value = sortOptionsByOrder(response.data.models || [])
       // 确保 total 是数字类型
-      const paginationData = response.data.pagination || { page: 1, limit: 10, total: 0, pages: 0 }
+      const paginationData = response.data.pagination || {
+        page: 1,
+        page_size: 10,
+        total: 0,
+        total_pages: 0,
+        has_next: false,
+        has_prev: false
+      }
       pagination.value = {
-        ...paginationData,
-        total: Number(paginationData.total) || 0
+        page: Number(paginationData.page) || 1,
+        page_size: Number(paginationData.page_size) || pagination.value.page_size,
+        total: Number(paginationData.total) || 0,
+        total_pages: Number(paginationData.total_pages) || 0,
+        has_next: Boolean(paginationData.has_next),
+        has_prev: Boolean(paginationData.has_prev)
       }
 
     } else {
       logger.error('API返回失败:', response.message)
       models.value = []
-      pagination.value = { page: 1, limit: 10, total: 0, pages: 0 }
+      pagination.value = { page: 1, page_size: 10, total: 0, total_pages: 0, has_next: false, has_prev: false }
       if (!silentError) {
         error(response.message || '获取型号列表失败')
       }
@@ -508,7 +785,7 @@ const loadModels = async (bustCache = false, silentError = false, _showLoadingSt
 
     logger.error('获取型号列表失败:', err)
     models.value = []
-    pagination.value = { page: 1, limit: 10, total: 0, pages: 0 }
+    pagination.value = { page: 1, page_size: 10, total: 0, total_pages: 0, has_next: false, has_prev: false }
 
     // 静默模式不显示错误提示
     if (silentError) {
@@ -551,14 +828,14 @@ const resetSearch = () => {
   loadModels()
 }
 
-const changePage = (page: number) => {
+const _changePage = (page: number) => {
   pagination.value.page = page
   loadModels()
 }
 
 const handlePaginationChange = (page, pageSize) => {
-  const oldPageSize = pagination.value.limit
-  pagination.value.limit = pageSize
+  const oldPageSize = pagination.value.page_size
+  pagination.value.page_size = pageSize
   pagination.value.page = pageSize !== oldPageSize ? 1 : page
   loadModels()
 }
@@ -779,7 +1056,7 @@ const hasUnsavedChanges = (): boolean => {
 
   // 检查是否有任何非空字段的更改
   const currentForm = formData.value
-  const initialForm = {
+  const _initialForm = {
     brand_id: null as number | null,
     name: '',
     status: 1,
@@ -911,7 +1188,7 @@ const saveSortOrder = async () => {
 // 手动修改排序值
 const handleSortOrderChange = async (index: number, value: number) => {
   const model = models.value[index]
-  const oldSortOrder = model.sort_order
+  const _oldSortOrder = model.sort_order
   const newSortOrder = value
 
   // 更新该型号的排序值
@@ -984,7 +1261,7 @@ onMounted(async () => {
 <style scoped>
 .models-view {
   padding: 24px;
-  background: #f5f7fa;
+  background: var(--tf-color-surface);
   min-height: 100vh;
 }
 
@@ -1005,7 +1282,7 @@ onMounted(async () => {
   gap: 16px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.08);
   transition: all 0.3s ease;
-  border: 1px solid #e8ecef;
+  border: 1px solid var(--tf-color-border-cool);
 }
 
 .stat-card:hover {
@@ -1021,16 +1298,16 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   font-size: 20px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand));
   color: white;
 }
 
 .stat-icon.active {
-  background: linear-gradient(135deg, #28a745, #20c997);
+  background: linear-gradient(135deg, var(--success-color), var(--tf-color-teal-500));
 }
 
 .stat-icon.inactive {
-  background: linear-gradient(135deg, #dc3545, #fd7e14);
+  background: linear-gradient(135deg, var(--danger-color), var(--tf-color-orange-bootstrap));
 }
 
 .stat-content {
@@ -1040,13 +1317,13 @@ onMounted(async () => {
 .stat-value {
   font-size: 24px;
   font-weight: 700;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
   margin-bottom: 4px;
 }
 
 .stat-label {
   font-size: 14px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
   font-weight: 500;
 }
 
@@ -1056,20 +1333,20 @@ onMounted(async () => {
   gap: 8px;
   font-size: 16px;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
   margin-bottom: 20px;
   padding-bottom: 12px;
-  border-bottom: 2px solid #f8f9fa;
+  border-bottom: 2px solid var(--tf-color-surface-muted);
 }
 
 .section-title i {
-  color: #667eea;
+  color: var(--tf-color-indigo-brand);
 }
 
 .record-count {
   margin-left: auto;
   font-size: 14px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
   font-weight: 400;
 }
 
@@ -1084,7 +1361,7 @@ onMounted(async () => {
   border-radius: 12px;
   padding: 24px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-  border: 1px solid #e8ecef;
+  border: 1px solid var(--tf-color-border-cool);
 }
 
 .table-responsive {
@@ -1101,14 +1378,14 @@ onMounted(async () => {
 }
 
 .table th {
-  background: linear-gradient(135deg, #495057 0%, #343a40 100%);
+  background: linear-gradient(135deg, var(--tf-color-gray-bootstrap-700) 0%, var(--tf-color-gray-bootstrap-800) 100%);
   color: white;
   padding: 12px 10px;
   text-align: center;
   font-weight: 600;
   font-size: 14px;
-  border-right: 1px solid #dee2e6;
-  border-bottom: 2px solid #dee2e6;
+  border-right: 1px solid var(--tf-color-border-subtle);
+  border-bottom: 2px solid var(--tf-color-border-subtle);
   position: relative;
   white-space: nowrap;
 }
@@ -1120,11 +1397,11 @@ onMounted(async () => {
 .table td {
   padding: 6px 6px;
   font-size: 14px;
-  border-right: 1px solid #e9ecef;
-  border-bottom: 1px solid #e9ecef;
+  border-right: 1px solid var(--tf-color-border-muted);
+  border-bottom: 1px solid var(--tf-color-border-muted);
   vertical-align: middle;
   text-align: center;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
   font-weight: 500;
 }
 
@@ -1138,27 +1415,27 @@ onMounted(async () => {
 }
 
 .table tbody tr:nth-child(even) {
-  background: #f8f9fa;
+  background: var(--tf-color-surface-muted);
 }
 
 .table tbody tr:hover {
-  background: #e3f2fd;
+  background: var(--tf-color-blue-100);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .table tbody tr:hover td {
-  border-bottom-color: #dee2e6;
+  border-bottom-color: var(--tf-color-border-subtle);
 }
 
 .table tbody tr.is-dragging {
   opacity: 0.5;
-  background: #eff6ff !important;
+  background: var(--tf-color-blue-tailwind-50) !important;
 }
 
 .table tbody tr.is-drag-over {
-  background: #f0f9ff !important;
-  border-top: 2px solid #3b82f6;
+  background: var(--tf-color-blue-50) !important;
+  border-top: 2px solid var(--tf-color-blue-500);
 }
 
 /* 拖拽手柄 */
@@ -1170,7 +1447,7 @@ onMounted(async () => {
 }
 
 .drag-handle {
-  color: #9ca3af;
+  color: var(--tf-color-neutral-400);
   font-size: 16px;
   cursor: grab;
   display: inline-flex;
@@ -1183,8 +1460,8 @@ onMounted(async () => {
 }
 
 .drag-handle:hover {
-  color: #3b82f6;
-  background: #eff6ff;
+  color: var(--tf-color-blue-500);
+  background: var(--tf-color-blue-tailwind-50);
 }
 
 .drag-handle:active {
@@ -1198,7 +1475,7 @@ onMounted(async () => {
 }
 
 .drag-handle.disabled:hover {
-  color: #9ca3af;
+  color: var(--tf-color-neutral-400);
   background: transparent;
 }
 
@@ -1207,7 +1484,7 @@ onMounted(async () => {
   width: 50px;
   height: 28px;
   padding: 0 6px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--tf-color-neutral-300);
   border-radius: 6px;
   font-size: 13px;
   font-weight: 600;
@@ -1217,23 +1494,23 @@ onMounted(async () => {
 }
 
 .sort-order-input:focus:not(:disabled) {
-  border-color: #3b82f6;
+  border-color: var(--tf-color-blue-500);
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
 .sort-order-input:hover:not(:disabled) {
-  border-color: #9ca3af;
+  border-color: var(--tf-color-neutral-400);
 }
 
 .sort-order-input:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  background-color: #f3f4f6;
+  background-color: var(--tf-color-neutral-100);
 }
 
 /* 表格内容样式 */
 .id-badge {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand));
   color: white;
   padding: 4px 8px;
   border-radius: 6px;
@@ -1259,16 +1536,16 @@ onMounted(async () => {
 
 .brand-name {
   font-size: 14px;
-  color: #333;
-  background: #f8f9fa;
+  color: var(--text-primary);
+  background: var(--tf-color-surface-muted);
   padding: 4px 8px;
   border-radius: 4px;
   display: inline-block;
 }
 
 .warning-badge {
-  background: #ffc107;
-  color: #212529;
+  background: var(--warning-color);
+  color: var(--tf-color-gray-bootstrap-900);
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 10px;
@@ -1286,18 +1563,20 @@ onMounted(async () => {
 }
 
 .status-active {
-  background: #d4edda;
-  color: #155724;
+  background: var(--tf-status-success-bg);
+  color: var(--tf-status-success-color);
+  border: 1px solid var(--tf-status-success-border);
 }
 
 .status-inactive {
-  background: #f8d7da;
-  color: #721c24;
+  background: var(--tf-status-danger-bg);
+  color: var(--tf-status-danger-color);
+  border: 1px solid var(--tf-status-danger-border);
 }
 
 .time-info {
   font-size: 13px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1325,7 +1604,7 @@ onMounted(async () => {
   flex-direction: column;
   align-items: center;
   gap: 16px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
 }
 
 .empty-content i {
@@ -1335,7 +1614,7 @@ onMounted(async () => {
 
 .empty-text h4 {
   margin: 0 0 8px 0;
-  color: #495057;
+  color: var(--tf-color-gray-bootstrap-700);
 }
 
 .empty-text p {
@@ -1345,7 +1624,7 @@ onMounted(async () => {
 
 
 .required {
-  color: #dc3545;
+  color: var(--danger-color);
 }
 
 /* 响应式设计 */
@@ -1502,7 +1781,7 @@ onMounted(async () => {
     margin-right: 0;
     min-height: 40px;
     padding: 0 12px;
-    border: 1px solid #dbe3ef;
+    border: 1px solid var(--tf-color-border-blue);
     border-radius: 12px;
     display: inline-flex;
     align-items: center;
@@ -1538,7 +1817,7 @@ onMounted(async () => {
 
   .mobile-action-row td {
     padding: 6px 4px 10px !important;
-    background: linear-gradient(180deg, #f8fbff 0%, #f4f7ff 100%);
+    background: linear-gradient(180deg, var(--tf-color-surface-blue) 0%, var(--tf-color-indigo-surface-alt) 100%);
     border-top: none !important;
   }
 

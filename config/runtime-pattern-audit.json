@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "allowedVHtmlProducers": [
+    "safeSvg",
+    "highlightText",
+    "getMatchSnippet",
+    "renderRichText"
+  ],
+  "permanentIntervalFiles": [
+    "frontend/src/composables/useNotification.ts",
+    "frontend/src/utils/csrf.ts"
+  ]
+}

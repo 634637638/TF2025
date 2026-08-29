@@ -2,17 +2,17 @@
  * 供应商付款路由
  * 定义付款相关API端点
  */
-const express = require('express');
-const router = express.Router();
-const paymentController = require('../controllers/payment.controller');
-const { body, query, validationResult } = require('express-validator');
-const { unifiedAuth, requirePermission } = require('../middleware/unified-auth');
+const express = require('express')
+const router = express.Router()
+const paymentController = require('../controllers/payment.controller')
+const { body, query, validationResult } = require('express-validator')
+const { unifiedAuth, requirePermission } = require('../middleware/unified-auth')
 
 /**
  * 验证请求参数的中间件
  */
 const validateRequest = (req, res, next) => {
-  const errors = validationResult(req);
+  const errors = validationResult(req)
   if (!errors.isEmpty()) {
     return res.status(400).json({
       success: false,
@@ -21,12 +21,12 @@ const validateRequest = (req, res, next) => {
         message: '参数验证失败',
         details: errors.array()
       }
-    });
+    })
   }
-  next();
-};
+  next()
+}
 
-router.use(unifiedAuth);
+router.use(unifiedAuth)
 
 /**
  * @route   POST /api/payments
@@ -43,7 +43,7 @@ router.post('/',
   ],
   validateRequest,
   paymentController.createPayment
-);
+)
 
 /**
  * @route   PUT /api/payments/:id/approve
@@ -58,7 +58,7 @@ router.put('/:id/approve',
   ],
   validateRequest,
   paymentController.approvePayment
-);
+)
 
 /**
  * @route   PUT /api/payments/:id/confirm
@@ -75,7 +75,7 @@ router.put('/:id/confirm',
   ],
   validateRequest,
   paymentController.confirmPayment
-);
+)
 
 /**
  * @route   PUT /api/payments/:id/cancel
@@ -90,7 +90,7 @@ router.put('/:id/cancel',
   ],
   validateRequest,
   paymentController.cancelPayment
-);
+)
 
 /**
  * @route   GET /api/payments
@@ -110,7 +110,7 @@ router.get('/',
   ],
   validateRequest,
   paymentController.getPayments
-);
+)
 
 /**
  * @route   GET /api/payments/statistics
@@ -121,7 +121,7 @@ router.get('/',
 router.get('/statistics',
   requirePermission('supplier-payments:view'),
   paymentController.getPaymentStatistics
-);
+)
 
 /**
  * @route   GET /api/payments/export
@@ -132,7 +132,7 @@ router.get('/statistics',
 router.get('/export',
   requirePermission('supplier-payments:export'),
   paymentController.exportPayments
-);
+)
 
 /**
  * @route   GET /api/payments/supplier/:supplier_id
@@ -143,7 +143,7 @@ router.get('/export',
 router.get('/supplier/:supplier_id',
   requirePermission('supplier-payments:view'),
   paymentController.getSupplierPaymentHistory
-);
+)
 
 /**
  * @route   GET /api/payments/:id
@@ -154,6 +154,6 @@ router.get('/supplier/:supplier_id',
 router.get('/:id',
   requirePermission('supplier-payments:view'),
   paymentController.getPaymentById
-);
+)
 
-module.exports = router;
+module.exports = router

@@ -2,11 +2,11 @@
  * 基础Service类
  * 提供通用的业务逻辑方法
  */
-const log = require('../utils/log');
+const log = require('../utils/log')
 
 class BaseService {
   constructor(repository) {
-    this.repository = repository;
+    this.repository = repository
   }
 
   /**
@@ -18,10 +18,10 @@ class BaseService {
   validateRequiredFields(data, requiredFields) {
     const missingFields = requiredFields.filter(field =>
       data[field] === undefined || data[field] === null || data[field] === ''
-    );
+    )
 
     if (missingFields.length > 0) {
-      throw new Error(`缺少必填字段: ${missingFields.join(', ')}`);
+      throw new Error(`缺少必填字段: ${missingFields.join(', ')}`)
     }
   }
 
@@ -37,17 +37,17 @@ class BaseService {
     const response = {
       success,
       message
-    };
+    }
 
     if (data !== null) {
-      response.data = data;
+      response.data = data
     }
 
     if (meta !== null) {
-      response.meta = meta;
+      response.meta = meta
     }
 
-    return response;
+    return response
   }
 
   /**
@@ -58,7 +58,7 @@ class BaseService {
    * @returns {Object} 成功响应对象
    */
   successResponse(message = '操作成功', data = null, meta = null) {
-    return this.formatResponse(true, message, data, meta);
+    return this.formatResponse(true, message, data, meta)
   }
 
   /**
@@ -68,11 +68,11 @@ class BaseService {
    * @returns {Object} 错误响应对象
    */
   errorResponse(message = '操作失败', error = null) {
-    const response = this.formatResponse(false, message);
+    const response = this.formatResponse(false, message)
     if (error) {
-      response.error = error;
+      response.error = error
     }
-    return response;
+    return response
   }
 
   /**
@@ -82,11 +82,11 @@ class BaseService {
    * @throws {Error} 如果ID无效
    */
   validateId(id) {
-    const numId = parseInt(id, 10);
+    const numId = parseInt(id, 10)
     if (isNaN(numId) || numId <= 0) {
-      throw new Error('无效的ID');
+      throw new Error('无效的ID')
     }
-    return numId;
+    return numId
   }
 
   /**
@@ -96,10 +96,10 @@ class BaseService {
    * @returns {Object} 验证后的分页参数
    */
   validatePaginationParams(page = 1, limit = 10) {
-    const validPage = Math.max(1, parseInt(page, 10) || 1);
-    const validLimit = Math.min(100, Math.max(1, parseInt(limit, 10) || 10));
+    const validPage = Math.max(1, parseInt(page, 10) || 1)
+    const validLimit = Math.min(100, Math.max(1, parseInt(limit, 10) || 10))
 
-    return { page: validPage, limit: validLimit };
+    return { page: validPage, limit: validLimit }
   }
 
   /**
@@ -108,26 +108,26 @@ class BaseService {
    * @returns {Object} 格式化的错误响应
    */
   handleDatabaseError(error) {
-    log.error('数据库操作失败', error);
+    log.error('数据库操作失败', error)
 
     // 处理常见的数据库错误
     if (error.code === 'ER_DUP_ENTRY') {
-      return this.errorResponse('数据已存在，请检查唯一性约束');
+      return this.errorResponse('数据已存在，请检查唯一性约束')
     }
 
     if (error.code === 'ER_NO_REFERENCED_ROW_2') {
-      return this.errorResponse('引用的数据不存在');
+      return this.errorResponse('引用的数据不存在')
     }
 
     if (error.code === 'ER_ROW_IS_REFERENCED_2') {
-      return this.errorResponse('无法删除，该数据被其他记录引用');
+      return this.errorResponse('无法删除，该数据被其他记录引用')
     }
 
     if (error.message.includes('数据库连接池为空')) {
-      return this.errorResponse('数据库连接失败，请稍后重试');
+      return this.errorResponse('数据库连接失败，请稍后重试')
     }
 
-    return this.errorResponse('数据库操作失败', error.message);
+    return this.errorResponse('数据库操作失败', error.message)
   }
 
   /**
@@ -136,8 +136,8 @@ class BaseService {
    * @returns {Object} 格式化的错误响应
    */
   handleValidationError(error) {
-    log.error('数据验证失败', error);
-    return this.errorResponse('数据验证失败', error.message);
+    log.error('数据验证失败', error)
+    return this.errorResponse('数据验证失败', error.message)
   }
 
   /**
@@ -152,9 +152,9 @@ class BaseService {
       action,
       data: JSON.stringify(data),
       user: user ? { id: user.id, username: user.username } : null
-    };
+    }
 
-    log.info('操作日志', logEntry);
+    log.info('操作日志', logEntry)
 
     // 这里可以扩展为写入数据库或日志文件
     // 例如: this.logger.info(logEntry);
@@ -167,10 +167,10 @@ class BaseService {
    */
   async checkResourceExists(id) {
     try {
-      return await this.repository.exists(id);
+      return await this.repository.exists(id)
     } catch (error) {
-      log.error('检查资源是否存在失败', error);
-      return false;
+      log.error('检查资源是否存在失败', error)
+      return false
     }
   }
 
@@ -182,16 +182,16 @@ class BaseService {
    */
   async getById(id, options = {}) {
     try {
-      const validId = this.validateId(id);
-      const resource = await this.repository.findById(validId, options);
+      const validId = this.validateId(id)
+      const resource = await this.repository.findById(validId, options)
 
       if (!resource) {
-        return this.errorResponse('资源不存在');
+        return this.errorResponse('资源不存在')
       }
 
-      return this.successResponse('获取成功', resource);
+      return this.successResponse('获取成功', resource)
     } catch (error) {
-      return this.handleDatabaseError(error);
+      return this.handleDatabaseError(error)
     }
   }
 
@@ -201,12 +201,12 @@ class BaseService {
    * @param {Object} options - 查询选项
    * @returns {Promise<Object>} 查询结果
    */
-  async getAll(filters = {}, options = {}) {
+  async getAll(_filters = {}, options = {}) {
     try {
-      const resources = await this.repository.findAll(options);
-      return this.successResponse('获取成功', resources);
+      const resources = await this.repository.findAll(options)
+      return this.successResponse('获取成功', resources)
     } catch (error) {
-      return this.handleDatabaseError(error);
+      return this.handleDatabaseError(error)
     }
   }
 
@@ -220,16 +220,16 @@ class BaseService {
    */
   async getPaginated(page = 1, limit = 10, filters = {}, options = {}) {
     try {
-      const { page: validPage, limit: validLimit } = this.validatePaginationParams(page, limit);
+      const { page: validPage, limit: validLimit } = this.validatePaginationParams(page, limit)
 
       const result = await this.repository.paginate(validPage, validLimit, {
         ...options,
         ...filters
-      });
+      })
 
-      return this.successResponse('获取成功', result.data, result.pagination);
+      return this.successResponse('获取成功', result.data, result.pagination)
     } catch (error) {
-      return this.handleDatabaseError(error);
+      return this.handleDatabaseError(error)
     }
   }
 
@@ -244,19 +244,19 @@ class BaseService {
     try {
       // 验证必填字段
       if (requiredFields.length > 0) {
-        this.validateRequiredFields(data, requiredFields);
+        this.validateRequiredFields(data, requiredFields)
       }
 
-      const result = await this.repository.create(data);
+      const result = await this.repository.create(data)
 
-      this.logOperation('create', { id: result.id, data }, user);
+      this.logOperation('create', { id: result.id, data }, user)
 
-      return this.successResponse('创建成功', result.data);
+      return this.successResponse('创建成功', result.data)
     } catch (error) {
       if (error.message.includes('必填字段') || error.message.includes('已存在')) {
-        return this.handleValidationError(error);
+        return this.handleValidationError(error)
       }
-      return this.handleDatabaseError(error);
+      return this.handleDatabaseError(error)
     }
   }
 
@@ -269,20 +269,20 @@ class BaseService {
    */
   async update(id, data, user = null) {
     try {
-      const validId = this.validateId(id);
+      const validId = this.validateId(id)
 
       // 检查资源是否存在
       if (!(await this.checkResourceExists(validId))) {
-        return this.errorResponse('资源不存在');
+        return this.errorResponse('资源不存在')
       }
 
-      const result = await this.repository.update(validId, data);
+      const result = await this.repository.update(validId, data)
 
-      this.logOperation('update', { id: validId, data }, user);
+      this.logOperation('update', { id: validId, data }, user)
 
-      return this.successResponse('更新成功', result.data);
+      return this.successResponse('更新成功', result.data)
     } catch (error) {
-      return this.handleDatabaseError(error);
+      return this.handleDatabaseError(error)
     }
   }
 
@@ -294,23 +294,23 @@ class BaseService {
    */
   async delete(id, user = null) {
     try {
-      const validId = this.validateId(id);
+      const validId = this.validateId(id)
 
       // 检查资源是否存在
       if (!(await this.checkResourceExists(validId))) {
-        return this.errorResponse('资源不存在');
+        return this.errorResponse('资源不存在')
       }
 
-      const result = await this.repository.delete(validId);
+      const _result = await this.repository.delete(validId)
 
-      this.logOperation('delete', { id: validId }, user);
+      this.logOperation('delete', { id: validId }, user)
 
-      return this.successResponse('删除成功', { deletedId: validId });
+      return this.successResponse('删除成功', { deletedId: validId })
     } catch (error) {
       if (error.message.includes('被其他记录引用')) {
-        return this.errorResponse('无法删除，该资源被其他记录引用');
+        return this.errorResponse('无法删除，该资源被其他记录引用')
       }
-      return this.handleDatabaseError(error);
+      return this.handleDatabaseError(error)
     }
   }
 
@@ -323,20 +323,20 @@ class BaseService {
   async deleteMany(ids, user = null) {
     try {
       if (!Array.isArray(ids) || ids.length === 0) {
-        return this.errorResponse('请提供要删除的ID列表');
+        return this.errorResponse('请提供要删除的ID列表')
       }
 
-      const validIds = ids.map(id => this.validateId(id));
-      const result = await this.repository.deleteMany(validIds);
+      const validIds = ids.map(id => this.validateId(id))
+      const result = await this.repository.deleteMany(validIds)
 
-      this.logOperation('deleteMany', { ids: validIds }, user);
+      this.logOperation('deleteMany', { ids: validIds }, user)
 
       return this.successResponse('批量删除成功', {
         deletedCount: result.affectedRows,
         deletedIds: validIds
-      });
+      })
     } catch (error) {
-      return this.handleDatabaseError(error);
+      return this.handleDatabaseError(error)
     }
   }
 
@@ -347,12 +347,12 @@ class BaseService {
    */
   async getStats(filters = {}) {
     try {
-      const stats = await this.repository.count(filters);
-      return this.successResponse('获取统计信息成功', { total: stats });
+      const stats = await this.repository.count(filters)
+      return this.successResponse('获取统计信息成功', { total: stats })
     } catch (error) {
-      return this.handleDatabaseError(error);
+      return this.handleDatabaseError(error)
     }
   }
 }
 
-module.exports = BaseService;
+module.exports = BaseService

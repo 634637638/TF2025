@@ -1,0 +1,226 @@
+.inventory-detail-modal .el-dialog__body {
+  padding: 20px;
+}
+
+.inventory-detail-modal .inventory-detail-content {
+  padding: 8px 0;
+}
+
+.inventory-detail-modal .detail-summary-cards {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.inventory-detail-modal .summary-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 8px;
+  border: 1px solid var(--admin-table-panel-border);
+  border-radius: var(--admin-panel-radius);
+  background: var(--admin-data-table-bg);
+  box-shadow: var(--tf-button-shadow);
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.inventory-detail-modal .summary-card:hover {
+  box-shadow: var(--tf-button-shadow-hover);
+  transform: translateY(-2px);
+}
+
+.inventory-detail-modal .summary-card.highlight {
+  border-color: var(--tf-button-primary-border);
+  background: var(--tf-button-primary-bg);
+}
+
+.inventory-detail-modal .summary-card.days-green {
+  border-color: var(--tf-button-success-border);
+  background: var(--tf-button-success-bg);
+}
+
+.inventory-detail-modal .summary-card.days-yellow {
+  border-color: var(--tf-button-warning-border);
+  background: var(--tf-button-warning-bg);
+}
+
+.inventory-detail-modal .summary-card.days-red {
+  border-color: var(--tf-button-danger-border);
+  background: var(--tf-button-danger-bg);
+}
+
+.inventory-detail-modal .summary-card .card-label {
+  margin-bottom: 4px;
+  color: var(--admin-record-count-color);
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.inventory-detail-modal .summary-card .card-value {
+  color: var(--admin-data-table-cell-color);
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.inventory-detail-modal .summary-card.highlight :is(.card-label, .card-value),
+.inventory-detail-modal .summary-card.days-green :is(.card-label, .card-value),
+.inventory-detail-modal .summary-card.days-yellow :is(.card-label, .card-value),
+.inventory-detail-modal .summary-card.days-red :is(.card-label, .card-value) {
+  color: var(--tf-button-on-color);
+}
+
+.inventory-detail-modal .badge {
+  display: inline-flex;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.inventory-detail-modal .badge-new {
+  background: var(--tf-button-success-soft-bg);
+  color: var(--tf-button-success-soft-color);
+}
+
+.inventory-detail-modal .badge-used {
+  background: var(--tf-button-warning-soft-bg);
+  color: var(--tf-button-warning-soft-color);
+}
+
+.inventory-detail-modal .detail-table-wrapper {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.inventory-detail-modal .detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding: 0 4px;
+}
+
+.inventory-detail-modal .detail-header h4 {
+  margin: 0;
+  color: var(--tf-color-heading);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.inventory-detail-modal .record-count {
+  padding: 6px 14px;
+  border-radius: 12px;
+  background: var(--tf-color-surface-muted);
+  color: var(--tf-color-muted);
+  font-size: 14px;
+}
+
+.inventory-detail-modal .priority-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--tf-button-danger-bg);
+  color: var(--tf-button-on-color);
+  font-size: 11px;
+}
+
+.inventory-detail-modal .priority-badge i {
+  font-size: 10px;
+}
+
+.inventory-detail-modal .priority-rank {
+  display: inline-block;
+  min-width: 24px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: var(--tf-button-neutral-hover-bg);
+  color: var(--tf-button-tool-color);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.inventory-detail-modal .priority-row > td {
+  background: var(--tf-button-danger-soft-bg);
+  font-weight: 600;
+}
+
+.inventory-detail-modal .days-badge {
+  display: inline-flex;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.inventory-detail-modal .days-normal {
+  background: var(--tf-button-success-soft-bg);
+  color: var(--tf-button-success-soft-color);
+}
+
+.inventory-detail-modal .days-caution {
+  background: var(--tf-button-warning-soft-bg);
+  color: var(--tf-button-warning-soft-color);
+}
+
+.inventory-detail-modal .days-warning {
+  background: var(--tf-button-warning-soft-hover-bg);
+  color: var(--tf-button-warning-soft-hover-color);
+}
+
+.inventory-detail-modal .days-critical {
+  background: var(--tf-button-danger-soft-bg);
+  color: var(--tf-button-danger-soft-color);
+}
+
+@media (max-width: 1024px) and (min-width: 769px) {
+  .inventory-detail-modal .detail-summary-cards {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+}
+
+@media (max-width: 768px) {
+  .inventory-detail-modal .detail-summary-cards {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .inventory-detail-modal .summary-card {
+    padding: 8px 4px;
+  }
+
+  .inventory-detail-modal .summary-card .card-label {
+    font-size: 10px;
+  }
+
+  .inventory-detail-modal .summary-card .card-value {
+    font-size: 13px;
+  }
+
+  .inventory-detail-modal .detail-table-wrapper {
+    padding: 12px;
+  }
+
+  .inventory-detail-modal .detail-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .inventory-detail-modal .detail-summary-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

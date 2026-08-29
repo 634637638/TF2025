@@ -1,18 +1,35 @@
 <template>
   <Teleport to="body">
-    <transition name="mobile-dialog-sheet-fade" @after-leave="handleMobileAfterLeave">
+    <transition
+      name="mobile-dialog-sheet-fade"
+      @after-leave="handleMobileAfterLeave"
+    >
       <div
         v-if="activeUseMobileSheet && mobileSheetMounted"
         v-show="dialogVisible"
         :class="overlayClasses"
         @click.self="handleOverlayClick"
       >
-        <div :class="sheetDialogClasses" :style="sheetDialogStyle" role="dialog" aria-modal="true">
-          <div v-if="showSheetHeader" class="el-dialog__header mobile-dialog-sheet-header">
-            <div v-if="$slots.header" class="mobile-dialog-header mobile-dialog-sheet-header-content">
-              <slot name="header"></slot>
+        <div
+          :class="sheetDialogClasses"
+          :style="sheetDialogStyle"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            v-if="showSheetHeader"
+            class="el-dialog__header mobile-dialog-sheet-header"
+          >
+            <div
+              v-if="$slots.header"
+              class="mobile-dialog-header mobile-dialog-sheet-header-content"
+            >
+              <slot name="header" />
             </div>
-            <div v-else class="mobile-dialog-sheet-title-wrap">
+            <div
+              v-else
+              class="mobile-dialog-sheet-title-wrap"
+            >
               <span class="el-dialog__title mobile-dialog-sheet-title">{{ title }}</span>
             </div>
 
@@ -24,8 +41,14 @@
               @click="handleSheetClose"
             >
               <i class="el-dialog__close el-icon">
-                <svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
-                  <path fill="currentColor" d="M764.288 214.656a42.624 42.624 0 0 1 60.224 60.288L572.16 527.104l252.352 252.224a42.624 42.624 0 1 1-60.224 60.288L512 587.392 259.648 839.616a42.624 42.624 0 1 1-60.224-60.288l252.352-252.224L199.424 274.944a42.624 42.624 0 0 1 60.224-60.288L512 466.88z" />
+                <svg
+                  viewBox="0 0 1024 1024"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    fill="currentColor"
+                    d="M764.288 214.656a42.624 42.624 0 0 1 60.224 60.288L572.16 527.104l252.352 252.224a42.624 42.624 0 1 1-60.224 60.288L512 587.392 259.648 839.616a42.624 42.624 0 1 1-60.224-60.288l252.352-252.224L199.424 274.944a42.624 42.624 0 0 1 60.224-60.288L512 466.88z"
+                  />
                 </svg>
               </i>
             </button>
@@ -34,29 +57,38 @@
           <div class="el-dialog__body mobile-dialog-sheet-body">
             <slot>
               <div class="dialog-content">
-                <slot name="content"></slot>
+                <slot name="content" />
               </div>
             </slot>
           </div>
 
-          <div v-if="$slots.footer || showDefaultFooter" class="el-dialog__footer mobile-dialog-sheet-footer">
-            <div v-if="$slots.footer" class="mobile-dialog-footer">
-              <slot name="footer"></slot>
+          <div
+            v-if="$slots.footer || showDefaultFooter"
+            class="el-dialog__footer mobile-dialog-sheet-footer"
+          >
+            <div
+              v-if="$slots.footer"
+              class="mobile-dialog-footer"
+            >
+              <slot name="footer" />
             </div>
-            <div v-else-if="showDefaultFooter" class="default-footer">
+            <div
+              v-else-if="showDefaultFooter"
+              class="default-footer"
+            >
               <el-button
                 v-if="showCancelButton"
-                @click="handleCancel"
                 size="large"
                 :disabled="loading"
+                @click="handleCancel"
               >
                 {{ cancelText }}
               </el-button>
               <el-button
                 type="primary"
-                @click="handleConfirm"
                 size="large"
                 :loading="loading"
+                @click="handleConfirm"
               >
                 {{ confirmText }}
               </el-button>
@@ -83,42 +115,54 @@
     :modal-class="computedModalClass"
     :class="[computedDialogClass, { 'is-mobile': isMobile, 'is-tablet': isTablet, 'is-auto-height': props.autoHeight }]"
     :style="desktopDialogStyle"
+    v-bind="$attrs"
     @open="handleOpen"
     @opened="handleOpened"
     @close="handleClose"
     @closed="handleClosed"
-    v-bind="$attrs"
   >
     <slot>
       <div class="dialog-content">
-        <slot name="content"></slot>
+        <slot name="content" />
       </div>
     </slot>
 
-    <template #header v-if="$slots.header">
+    <template
+      v-if="$slots.header"
+      #header
+    >
       <div class="mobile-dialog-header">
-        <slot name="header"></slot>
+        <slot name="header" />
       </div>
     </template>
 
-    <template v-if="$slots.footer || showDefaultFooter" #footer>
-      <div v-if="$slots.footer" class="mobile-dialog-footer">
-        <slot name="footer"></slot>
+    <template
+      v-if="$slots.footer || showDefaultFooter"
+      #footer
+    >
+      <div
+        v-if="$slots.footer"
+        class="mobile-dialog-footer"
+      >
+        <slot name="footer" />
       </div>
-      <div v-else-if="showDefaultFooter" class="default-footer">
+      <div
+        v-else-if="showDefaultFooter"
+        class="default-footer"
+      >
         <el-button
           v-if="showCancelButton"
-          @click="handleCancel"
           :size="isMobile ? 'large' : 'default'"
           :disabled="loading"
+          @click="handleCancel"
         >
           {{ cancelText }}
         </el-button>
         <el-button
           type="primary"
-          @click="handleConfirm"
           :size="isMobile ? 'large' : 'default'"
           :loading="loading"
+          @click="handleConfirm"
         >
           {{ confirmText }}
         </el-button>
@@ -182,7 +226,7 @@ const props = withDefaults(defineProps<Props>(), {
   tabletBreakpoint: 1024
 })
 
-const attrs = useAttrs()
+const _attrs = useAttrs()
 const slots = useSlots()
 
 interface Emits extends UpdateModelValueEmits, ConfirmEmits, CancelEmits, CloseEmits {
@@ -496,7 +540,7 @@ onUnmounted(() => {
   flex-direction: column;
   border-radius: 24px;
   overflow: hidden;
-  background: #ffffff;
+  background: var(--color-bg-white);
   box-shadow: 0 24px 48px rgba(15, 23, 42, 0.22);
 }
 
@@ -520,7 +564,7 @@ onUnmounted(() => {
 }
 
 .mobile-dialog-sheet-title {
-  color: #ffffff;
+  color: var(--color-bg-white);
   font-size: 16px;
   font-weight: 700;
   line-height: 1.35;
@@ -539,7 +583,7 @@ onUnmounted(() => {
   border: 0;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.18);
-  color: #ffffff;
+  color: var(--color-bg-white);
 }
 
 .mobile-dialog-sheet-close .el-icon,
@@ -555,12 +599,12 @@ onUnmounted(() => {
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  background: #ffffff;
+  background: var(--color-bg-white);
 }
 
 .mobile-dialog-sheet-footer {
   padding: var(--mobile-dialog-footer-padding, 0 4px 4px);
-  background: #ffffff;
+  background: var(--color-bg-white);
 }
 
 .mobile-dialog-sheet-footer :deep(.el-button) {

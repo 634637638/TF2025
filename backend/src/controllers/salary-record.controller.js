@@ -1,11 +1,11 @@
-const SalaryRecordService = require('../services/salary-record.service');
-const ApiResponse = require('../utils/response');
-const log = require('../utils/log');
+const SalaryRecordService = require('../services/salary-record.service')
+const ApiResponse = require('../utils/response')
+const log = require('../utils/log')
 const {
   getSalaryAccessScope,
   resolveScopedTargetId,
   canAccessScopedTarget
-} = require('../services/accessControl.service');
+} = require('../services/accessControl.service')
 
 /**
  * 工资记录控制器
@@ -15,11 +15,11 @@ class SalaryRecordController {
    * 获取当前用户ID
    */
   getUserId(req) {
-    return req.user?.id || req.user?.userId || req.user?.sub;
+    return req.user?.id || req.user?.userId || req.user?.sub
   }
 
   async getSalaryScope(userId) {
-    return getSalaryAccessScope(userId);
+    return getSalaryAccessScope(userId)
   }
 
   /**
@@ -30,36 +30,41 @@ class SalaryRecordController {
    */
   async getSalaryRecords(req, res) {
     try {
-      const { page, limit, employee_id, status, period_start, period_end } = req.query;
-      const userId = this.getUserId(req);
+      const { page, page_size, employee_id, status, period_start, period_end } = req.query
+      const userId = this.getUserId(req)
 
-      const scopeInfo = await this.getSalaryScope(userId);
+      const scopeInfo = await this.getSalaryScope(userId)
 
-      const filters = {};
+      const filters = {}
 
-      const scopedEmployeeId = resolveScopedTargetId(scopeInfo, userId, employee_id);
+      const scopedEmployeeId = resolveScopedTargetId(scopeInfo, userId, employee_id)
       if (scopedEmployeeId !== null) {
-        filters.employee_id = scopedEmployeeId;
+        filters.employee_id = scopedEmployeeId
       }
 
       if (scopeInfo.isAdmin) {
         // 全量查看权限：可以查看所有员工，也可以通过 employee_id 过滤
-        if (status) filters.status = status;
+        if (status) filters.status = status
       } else {
         // 仅本人视角下，未发放工资不可见
-        filters.status = 'paid';
+        filters.status = 'paid'
       }
 
-      if (period_start) filters.period_start = period_start;
-      if (period_end) filters.period_end = period_end;
+      if (period_start) filters.period_start = period_start
+      if (period_end) filters.period_end = period_end
 
-      const options = { page: parseInt(page) || 1, limit: parseInt(limit) || 20 };
+      const pageValue = Number.parseInt(String(page || 1), 10)
+      const pageSizeValue = Number.parseInt(String(page_size ?? 20), 10)
+      const options = {
+        page: Number.isSafeInteger(pageValue) ? Math.max(1, pageValue) : 1,
+        page_size: Number.isSafeInteger(pageSizeValue) ? Math.min(100, Math.max(1, pageSizeValue)) : 20
+      }
 
-      const result = await SalaryRecordService.getSalaryRecords(filters, options);
-      ApiResponse.success(res, '获取工资记录列表成功', result, 200);
+      const result = await SalaryRecordService.getSalaryRecords(filters, options)
+      ApiResponse.success(res, '获取工资记录列表成功', result, 200)
     } catch (error) {
-      log.error('获取工资记录列表失败:', error);
-      ApiResponse.error(res, error.message, 500);
+      log.error('获取工资记录列表失败:', error)
+      ApiResponse.error(res, error.message, 500)
     }
   }
 
@@ -71,8 +76,8 @@ class SalaryRecordController {
     req.query = {
       ...req.query,
       employee_id: this.getUserId(req)
-    };
-    return this.getSalaryRecords(req, res);
+    }
+    return this.getSalaryRecords(req, res)
   }
 
   /**
@@ -80,29 +85,29 @@ class SalaryRecordController {
    */
   async getSalaryRecordById(req, res) {
     try {
-      const { id } = req.params;
-      const userId = this.getUserId(req);
-      const scopeInfo = await this.getSalaryScope(userId);
-      const result = await SalaryRecordService.getSalaryRecordById(id);
+      const { id } = req.params
+      const userId = this.getUserId(req)
+      const scopeInfo = await this.getSalaryScope(userId)
+      const result = await SalaryRecordService.getSalaryRecordById(id)
 
       if (!result) {
-        return ApiResponse.error(res, '工资记录不存在', 404);
+        return ApiResponse.error(res, '工资记录不存在', 404)
       }
 
       if (!canAccessScopedTarget(scopeInfo, userId, result.employee_id)) {
-        return ApiResponse.forbidden(res, '无权限查看其他员工工资');
+        return ApiResponse.forbidden(res, '无权限查看其他员工工资')
       }
 
       if (!scopeInfo.isAdmin) {
         if (result.status !== 'paid') {
-          return ApiResponse.forbidden(res, '工资尚未发放，暂不可查看');
+          return ApiResponse.forbidden(res, '工资尚未发放，暂不可查看')
         }
       }
 
-      ApiResponse.success(res, '获取工资记录详情成功', result, 200);
+      ApiResponse.success(res, '获取工资记录详情成功', result, 200)
     } catch (error) {
-      log.error('获取工资记录详情失败:', error);
-      ApiResponse.error(res, error.message, 500);
+      log.error('获取工资记录详情失败:', error)
+      ApiResponse.error(res, error.message, 500)
     }
   }
 
@@ -111,12 +116,12 @@ class SalaryRecordController {
    */
   async createSalaryRecord(req, res) {
     try {
-      const userId = req.user.id;
-      const result = await SalaryRecordService.createSalaryRecord(req.body, userId);
-      ApiResponse.success(res, '创建工资记录成功', result, 201);
+      const userId = req.user.id
+      const result = await SalaryRecordService.createSalaryRecord(req.body, userId)
+      ApiResponse.success(res, '创建工资记录成功', result, 201)
     } catch (error) {
-      log.error('创建工资记录失败:', error);
-      ApiResponse.error(res, error.message, 500);
+      log.error('创建工资记录失败:', error)
+      ApiResponse.error(res, error.message, 500)
     }
   }
 
@@ -125,12 +130,12 @@ class SalaryRecordController {
    */
   async updateSalaryRecord(req, res) {
     try {
-      const { id } = req.params;
-      const result = await SalaryRecordService.updateSalaryRecord(id, req.body);
-      ApiResponse.success(res, '更新工资记录成功', result, 200);
+      const { id } = req.params
+      const result = await SalaryRecordService.updateSalaryRecord(id, req.body)
+      ApiResponse.success(res, '更新工资记录成功', result, 200)
     } catch (error) {
-      log.error('更新工资记录失败:', error);
-      ApiResponse.error(res, error.message, 500);
+      log.error('更新工资记录失败:', error)
+      ApiResponse.error(res, error.message, 500)
     }
   }
 
@@ -139,12 +144,12 @@ class SalaryRecordController {
    */
   async deleteSalaryRecord(req, res) {
     try {
-      const { id } = req.params;
-      await SalaryRecordService.deleteSalaryRecord(id);
-      ApiResponse.success(res, '删除工资记录成功', null, 200);
+      const { id } = req.params
+      await SalaryRecordService.deleteSalaryRecord(id)
+      ApiResponse.success(res, '删除工资记录成功', null, 200)
     } catch (error) {
-      log.error('删除工资记录失败:', error);
-      ApiResponse.error(res, error.message, 500);
+      log.error('删除工资记录失败:', error)
+      ApiResponse.error(res, error.message, 500)
     }
   }
 
@@ -153,18 +158,18 @@ class SalaryRecordController {
    */
   async calculateSalary(req, res) {
     try {
-      const { employee_id, period_start, period_end } = req.body;
+      const { employee_id, period_start, period_end } = req.body
 
       const result = await SalaryRecordService.calculateSalary(
         employee_id,
         period_start,
         period_end
-      );
+      )
 
-      ApiResponse.success(res, '计算工资成功', result, 200);
+      ApiResponse.success(res, '计算工资成功', result, 200)
     } catch (error) {
-      log.error('计算工资失败:', error);
-      ApiResponse.error(res, error.message, 500);
+      log.error('计算工资失败:', error)
+      ApiResponse.error(res, error.message, 500)
     }
   }
 
@@ -173,12 +178,12 @@ class SalaryRecordController {
    */
   async saveCalculatedSalary(req, res) {
     try {
-      const userId = req.user.id;
-      const result = await SalaryRecordService.saveCalculatedSalary(req.body, userId);
-      ApiResponse.success(res, '保存工资记录成功', result, 201);
+      const userId = req.user.id
+      const result = await SalaryRecordService.saveCalculatedSalary(req.body, userId)
+      ApiResponse.success(res, '保存工资记录成功', result, 201)
     } catch (error) {
-      log.error('保存工资记录失败:', error);
-      ApiResponse.error(res, error.message, 500);
+      log.error('保存工资记录失败:', error)
+      ApiResponse.error(res, error.message, 500)
     }
   }
 
@@ -187,18 +192,18 @@ class SalaryRecordController {
    */
   async batchCalculateSalaries(req, res) {
     try {
-      const { employee_ids, period_start, period_end } = req.body;
+      const { employee_ids, period_start, period_end } = req.body
 
       const results = await SalaryRecordService.batchCalculateSalaries(
         employee_ids,
         period_start,
         period_end
-      );
+      )
 
-      ApiResponse.success(res, '批量计算工资完成', results, 200);
+      ApiResponse.success(res, '批量计算工资完成', results, 200)
     } catch (error) {
-      log.error('批量计算工资失败:', error);
-      ApiResponse.error(res, error.message, 500);
+      log.error('批量计算工资失败:', error)
+      ApiResponse.error(res, error.message, 500)
     }
   }
 
@@ -207,14 +212,14 @@ class SalaryRecordController {
    */
   async approveSalaryRecord(req, res) {
     try {
-      const { id } = req.params;
-      const approverId = req.user.id;
+      const { id } = req.params
+      const approverId = req.user.id
 
-      await SalaryRecordService.approveSalaryRecord(id, approverId);
-      ApiResponse.success(res, '审批工资记录成功', null, 200);
+      await SalaryRecordService.approveSalaryRecord(id, approverId)
+      ApiResponse.success(res, '审批工资记录成功', null, 200)
     } catch (error) {
-      log.error('审批工资记录失败:', error);
-      ApiResponse.error(res, error.message, 500);
+      log.error('审批工资记录失败:', error)
+      ApiResponse.error(res, error.message, 500)
     }
   }
 
@@ -223,13 +228,13 @@ class SalaryRecordController {
    */
   async markAsPaid(req, res) {
     try {
-      const { id } = req.params;
-      const { payment_method } = req.body;
-      const updatedRecord = await SalaryRecordService.markAsPaid(id, { payment_method });
-      ApiResponse.success(res, '工资发放成功', updatedRecord, 200);
+      const { id } = req.params
+      const { payment_method } = req.body
+      const updatedRecord = await SalaryRecordService.markAsPaid(id, { payment_method })
+      ApiResponse.success(res, '工资发放成功', updatedRecord, 200)
     } catch (error) {
-      log.error('标记工资发放失败:', error);
-      ApiResponse.error(res, error.message, 500);
+      log.error('标记工资发放失败:', error)
+      ApiResponse.error(res, error.message, 500)
     }
   }
 
@@ -238,24 +243,24 @@ class SalaryRecordController {
    */
   async getSalaryStats(req, res) {
     try {
-      const userId = this.getUserId(req);
-      const scopeInfo = await this.getSalaryScope(userId);
+      const userId = this.getUserId(req)
+      const scopeInfo = await this.getSalaryScope(userId)
       if (!scopeInfo.isAdmin) {
-        return ApiResponse.forbidden(res, '无权限查看工资统计');
+        return ApiResponse.forbidden(res, '无权限查看工资统计')
       }
 
-      const { period_start, period_end, status } = req.query;
+      const { period_start, period_end, status } = req.query
 
-      const filters = {};
-      if (period_start) filters.period_start = period_start;
-      if (period_end) filters.period_end = period_end;
-      if (status) filters.status = status;
+      const filters = {}
+      if (period_start) filters.period_start = period_start
+      if (period_end) filters.period_end = period_end
+      if (status) filters.status = status
 
-      const result = await SalaryRecordService.getSalaryStats(filters);
-      ApiResponse.success(res, '获取工资统计成功', result, 200);
+      const result = await SalaryRecordService.getSalaryStats(filters)
+      ApiResponse.success(res, '获取工资统计成功', result, 200)
     } catch (error) {
-      log.error('获取工资统计失败:', error);
-      ApiResponse.error(res, error.message, 500);
+      log.error('获取工资统计失败:', error)
+      ApiResponse.error(res, error.message, 500)
     }
   }
 
@@ -265,24 +270,24 @@ class SalaryRecordController {
    */
   async getEmployeesSalesData(req, res) {
     try {
-      const userId = this.getUserId(req);
-      const { isAdmin } = await this.getSalaryScope(userId);
+      const userId = this.getUserId(req)
+      const { isAdmin } = await this.getSalaryScope(userId)
       if (!isAdmin) {
-        return ApiResponse.forbidden(res, '无权限查看员工销售数据');
+        return ApiResponse.forbidden(res, '无权限查看员工销售数据')
       }
 
-      const { period_start, period_end } = req.query;
+      const { period_start, period_end } = req.query
 
       if (!period_start || !period_end) {
-        return ApiResponse.error(res, '请提供时间范围（period_start 和 period_end）', 400);
+        return ApiResponse.error(res, '请提供时间范围（period_start 和 period_end）', 400)
       }
 
-      const result = await SalaryRecordService.getEmployeesSalesData(period_start, period_end);
+      const result = await SalaryRecordService.getEmployeesSalesData(period_start, period_end)
 
-      ApiResponse.success(res, '获取员工销售数据成功', result, 200);
+      ApiResponse.success(res, '获取员工销售数据成功', result, 200)
     } catch (error) {
-      log.error('获取员工销售数据失败:', error);
-      ApiResponse.error(res, error.message, 500);
+      log.error('获取员工销售数据失败:', error)
+      ApiResponse.error(res, error.message, 500)
     }
   }
 
@@ -293,29 +298,29 @@ class SalaryRecordController {
    */
   async getEmployeeSalesDetails(req, res) {
     try {
-      const userId = this.getUserId(req);
-      const scopeInfo = await this.getSalaryScope(userId);
+      const userId = this.getUserId(req)
+      const scopeInfo = await this.getSalaryScope(userId)
 
-      const { employee_id, period_start, period_end } = req.query;
+      const { employee_id, period_start, period_end } = req.query
 
       if (!employee_id || !period_start || !period_end) {
-        return ApiResponse.error(res, '请提供员工ID和时间范围（employee_id, period_start, period_end）', 400);
+        return ApiResponse.error(res, '请提供员工ID和时间范围（employee_id, period_start, period_end）', 400)
       }
 
       // 检查权限：无全量查看权限时，只能查看自己的销售明细
       if (!canAccessScopedTarget(scopeInfo, userId, employee_id)) {
-        return ApiResponse.forbidden(res, '无权限查看其他员工的销售明细');
+        return ApiResponse.forbidden(res, '无权限查看其他员工的销售明细')
       }
 
       const result = await SalaryRecordService.getEmployeeSalesDetails(
         parseInt(resolveScopedTargetId(scopeInfo, userId, employee_id), 10),
         period_start,
         period_end
-      );
-      ApiResponse.success(res, '获取员工销售明细成功', result, 200);
+      )
+      ApiResponse.success(res, '获取员工销售明细成功', result, 200)
     } catch (error) {
-      log.error('获取员工销售明细失败:', error);
-      ApiResponse.error(res, error.message, 500);
+      log.error('获取员工销售明细失败:', error)
+      ApiResponse.error(res, error.message, 500)
     }
   }
 
@@ -324,24 +329,24 @@ class SalaryRecordController {
    */
   async bulkRecalculateByPeriod(req, res) {
     try {
-      const userId = this.getUserId(req);
-      const { isAdmin } = await this.getSalaryScope(userId);
+      const userId = this.getUserId(req)
+      const { isAdmin } = await this.getSalaryScope(userId)
       if (!isAdmin) {
-        return ApiResponse.forbidden(res, '无权限批量重算工资');
+        return ApiResponse.forbidden(res, '无权限批量重算工资')
       }
 
-      const { period_start, period_end } = req.body;
+      const { period_start, period_end } = req.body
       if (!period_start || !period_end) {
-        return ApiResponse.error(res, '请提供时间范围（period_start 和 period_end）', 400);
+        return ApiResponse.error(res, '请提供时间范围（period_start 和 period_end）', 400)
       }
 
-      const result = await SalaryRecordService.bulkRecalculateByPeriod(period_start, period_end, userId);
-      ApiResponse.success(res, '批量重算工资完成', result, 200);
+      const result = await SalaryRecordService.bulkRecalculateByPeriod(period_start, period_end, userId)
+      ApiResponse.success(res, '批量重算工资完成', result, 200)
     } catch (error) {
-      log.error('批量重算工资失败:', error);
-      ApiResponse.error(res, error.message, 500);
+      log.error('批量重算工资失败:', error)
+      ApiResponse.error(res, error.message, 500)
     }
   }
 }
 
-module.exports = new SalaryRecordController();
+module.exports = new SalaryRecordController()

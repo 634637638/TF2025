@@ -6,7 +6,7 @@
     :show-close="true"
     :show-default-footer="false"
     :close-on-click-modal="props.closeOnClickModal !== false"
-    @update:modelValue="emit('update:visible', $event)"
+    @update:model-value="emit('update:visible', $event)"
     @closed="resetForm"
   >
     <template #header>
@@ -21,69 +21,82 @@
     </template>
 
     <div class="wholesale-modal-body">
-          <el-form :model="formData" :rules="formRules" ref="formRef" label-width="100px">
-            <WholesalePartySection
-              :mode="mode"
-              :form-data="formData"
-              :stores="stores"
-              :users="users"
-              :selected-supplier-name="selectedSupplierName"
-              :show-customer-search="showCustomerSearch"
-              :customer-search-results="customerSearchResults"
-              :customer-searching="customerSearching"
-              :selected-customer="selectedCustomer"
-              :customer-name-editing="customerNameEditing"
-              :customer-creating="customerCreating"
-              :handle-phone-input="handlePhoneInput"
-              :handle-phone-focus="handlePhoneFocus"
-              :handle-phone-blur="handlePhoneBlur"
-              :handle-customer-name-input="handleCustomerNameInput"
-              :enable-customer-name-edit="enableCustomerNameEdit"
-              :handle-customer-name-touch-end="handleCustomerNameTouchEnd"
-              :handle-customer-name-blur="handleCustomerNameBlur"
-              :save-customer-name-edit="saveCustomerNameEdit"
-              :clear-selected-customer="clearSelectedCustomer"
-              :customer-name-input-ref="customerNameInputRef"
-              :select-customer="selectCustomer"
-              :auto-create-customer="autoCreateCustomer"
-              :handle-payment-method-change="handlePaymentMethodChange"
-              :handle-payment-channel-change="handlePaymentChannelChange"
-            />
+      <el-form
+        ref="formRef"
+        :model="formData"
+        :rules="formRules"
+        label-width="100px"
+      >
+        <WholesalePartySection
+          :mode="mode"
+          :form-data="formData"
+          :stores="stores"
+          :users="users"
+          :selected-supplier-name="selectedSupplierName"
+          :show-customer-search="showCustomerSearch"
+          :customer-search-results="customerSearchResults"
+          :customer-searching="customerSearching"
+          :selected-customer="selectedCustomer"
+          :customer-name-editing="customerNameEditing"
+          :customer-creating="customerCreating"
+          :handle-phone-input="handlePhoneInput"
+          :handle-phone-focus="handlePhoneFocus"
+          :handle-phone-blur="handlePhoneBlur"
+          :handle-customer-name-input="handleCustomerNameInput"
+          :enable-customer-name-edit="enableCustomerNameEdit"
+          :handle-customer-name-touch-end="handleCustomerNameTouchEnd"
+          :handle-customer-name-blur="handleCustomerNameBlur"
+          :save-customer-name-edit="saveCustomerNameEdit"
+          :clear-selected-customer="clearSelectedCustomer"
+          :customer-name-input-ref="customerNameInputRef"
+          :select-customer="selectCustomer"
+          :auto-create-customer="autoCreateCustomer"
+          :handle-payment-method-change="handlePaymentMethodChange"
+          :handle-payment-channel-change="handlePaymentChannelChange"
+        />
 
-            <WholesalePhoneSummarySection
-              :mode="mode"
-              :phone-count="phoneCount"
-              :phones="displayPhones"
-              :total-cost="totalCost"
-              :total-wholesale-price="totalWholesalePrice"
-              :format-price="formatPrice"
-              :format-date="formatDate"
-              :handle-cost-change="handleCostChange"
-            />
+        <WholesalePhoneSummarySection
+          :mode="mode"
+          :phone-count="phoneCount"
+          :phones="displayPhones"
+          :total-cost="totalCost"
+          :total-wholesale-price="totalWholesalePrice"
+          :format-price="formatPrice"
+          :format-date="formatDate"
+          :handle-cost-change="handleCostChange"
+        />
 
-            <!-- 通用：备注 -->
-            <div class="form-section">
-              <h4 class="section-title">
-                <i class="fas fa-comment"></i>
-                备注信息
-              </h4>
-              <el-form-item label="备注" prop="remarks">
-                <el-input
-                  v-model="formData.remarks"
-                  type="textarea"
-                  :rows="3"
-                  placeholder="请输入备注信息"
-                  maxlength="200"
-                  show-word-limit
-                />
-              </el-form-item>
-            </div>
-          </el-form>
+        <!-- 通用：备注 -->
+        <div class="form-section">
+          <h4 class="section-title">
+            <i class="fas fa-comment" />
+            备注信息
+          </h4>
+          <el-form-item
+            label="备注"
+            prop="remarks"
+          >
+            <el-input
+              v-model="formData.remarks"
+              type="textarea"
+              :rows="3"
+              placeholder="请输入备注信息"
+              maxlength="200"
+              show-word-limit
+            />
+          </el-form-item>
+        </div>
+      </el-form>
     </div>
 
     <template #footer>
       <div class="wholesale-modal-footer">
-        <el-button type="default" @click="handleClose">取消</el-button>
+        <el-button
+          type="default"
+          @click="handleClose"
+        >
+          取消
+        </el-button>
         <el-button
           type="primary"
           :loading="submitting"
@@ -145,8 +158,8 @@ interface Props extends VisibleProps {
 }
 
 interface Emits {
-  (e: 'update:visible', value: boolean): void
-  (e: 'success', data: { success_count: number; total_count: number; message: string }): void
+  (_e: 'update:visible', _value: boolean): void
+  (_e: 'success', _data: { success_count: number; total_count: number; message: string }): void
 }
 
 const props = defineProps<Props>()
@@ -174,27 +187,24 @@ const customerNameLastTapAt = ref(0)
 // 表单数据
 const formData = ref<WholesaleFormData>(createWholesaleFormData())
 
-// 表单验证规则 - 划拨模式下客户信息可选，批发模式下必填
+// 销售记录要求客户关联；批发和代划拨都必须提供客户信息。
 const formRules = computed(() => {
   const rules: FormRules = {
     supplier_id: [
       ValidationRules.required('请选择供应商')
     ],
-    sale_date: [
+    sale_time: [
       ValidationRules.required('请选择销售时间')
     ]
   }
 
-  // 批发模式下客户信息必填
-  if (props.mode === 'wholesale') {
-    rules.customer_phone = [
-      ValidationRules.required('请输入手机号码'),
-      ValidationRules.phone()
-    ]
-    rules.customer_name = [
-      ValidationRules.required('请输入客户姓名')
-    ]
-  }
+  rules.customer_phone = [
+    ValidationRules.required('请输入手机号码'),
+    ValidationRules.phone()
+  ]
+  rules.customer_name = [
+    ValidationRules.required('请输入客户姓名')
+  ]
 
   return rules
 })
@@ -266,15 +276,14 @@ const phoneCount = computed(() => props.phoneIds?.length || 0)
 
 const totalCost = computed(() => {
   return displayPhones.value.reduce((sum, phone) => {
-    // 划拨模式使用 editCost（已设置为0），批发模式使用 editCost 或原始价格
-    return sum + (phone.editCost || 0)
+    return sum + (phone.purchase_cost ?? 0)
   }, 0)
 })
 
 // 计算总批发价
 const totalWholesalePrice = computed(() => {
   return displayPhones.value.reduce((sum, phone) => {
-    return sum + (phone.wholesalePrice || 0)
+    return sum + (phone.wholesale_price ?? 0)
   }, 0)
 })
 
@@ -720,7 +729,7 @@ watch(() => props.visible, async (newVal) => {
   overflow: hidden;
   border: 1px solid rgba(124, 58, 237, 0.12);
   box-shadow: 0 28px 72px rgba(15, 23, 42, 0.24);
-  background: #ffffff !important;
+  background: var(--color-bg-white) !important;
 }
 
 .wholesale-form-dialog .el-dialog__header {
@@ -731,12 +740,12 @@ watch(() => props.visible, async (newVal) => {
 
 .wholesale-form-dialog .el-dialog__body {
   padding: 0 !important;
-  background: #ffffff !important;
+  background: var(--color-bg-white) !important;
 }
 
 .wholesale-form-dialog .el-dialog__footer {
   padding: 0 !important;
-  background: #ffffff !important;
+  background: var(--color-bg-white) !important;
 }
 
 .wholesale-form-dialog.mobile-dialog-sheet-panel {
@@ -747,7 +756,7 @@ watch(() => props.visible, async (newVal) => {
 .wholesale-form-dialog .mobile-dialog-sheet-header {
   min-height: calc(62px + env(safe-area-inset-top));
   padding: calc(10px + env(safe-area-inset-top)) 14px 10px 14px !important;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%) !important;
 }
 
 .wholesale-form-dialog .mobile-dialog-sheet-header-content {
@@ -756,7 +765,7 @@ watch(() => props.visible, async (newVal) => {
 
 .wholesale-form-dialog .mobile-dialog-sheet-body,
 .wholesale-form-dialog .mobile-dialog-sheet-footer {
-  background: #ffffff !important;
+  background: var(--color-bg-white) !important;
 }
 
 @media (max-width: 767px) {
@@ -817,7 +826,7 @@ watch(() => props.visible, async (newVal) => {
 .form-section {
   margin-bottom: 24px;
   padding-bottom: 24px;
-  border-bottom: 1px solid #f0f2f5;
+  border-bottom: 1px solid var(--tf-color-surface-ant);
 
   &:last-of-type {
     border-bottom: none;
@@ -833,7 +842,7 @@ watch(() => props.visible, async (newVal) => {
   margin: 0 0 16px;
   font-size: 14px;
   font-weight: 600;
-  color: #667eea;
+  color: var(--tf-color-indigo-brand);
 }
 
 .section-title i {
@@ -848,7 +857,7 @@ watch(() => props.visible, async (newVal) => {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  background: #ffffff;
+  background: var(--color-bg-white);
   box-shadow: none;
   backdrop-filter: none;
 }

@@ -1,9 +1,9 @@
-const { getDatabase } = require('../config/database');
-const log = require('../utils/log');
+const { getDatabase } = require('../config/database')
+const log = require('../utils/log')
 
 class OperatorAssignmentService {
   constructor() {
-    this.pool = getDatabase();
+    this.pool = getDatabase()
   }
 
   /**
@@ -19,12 +19,12 @@ class OperatorAssignmentService {
         FROM operators
         WHERE status = ? AND group_name IS NOT NULL AND group_name != ''
         ORDER BY group_name
-      `, ['active']);
+      `, ['active'])
 
-      return rows;
+      return rows
     } catch (error) {
-      log.error('获取角色分组失败:', error);
-      throw error;
+      log.error('获取角色分组失败:', error)
+      throw error
     }
   }
 
@@ -33,17 +33,17 @@ class OperatorAssignmentService {
    */
   async createOperatorGroup(groupData) {
     try {
-      const { group_name, description } = groupData;
+      const { group_name, description } = groupData
 
       const [result] = await this.pool.execute(
         'INSERT INTO operators (name, real_name, group_name, role, description, status) VALUES (?, ?, ?, ?, ?, ?)',
         [group_name, group_name, group_name, 'group_role', description || '', 'active']
-      );
+      )
 
-      return { id: result.insertId, group_name, description };
+      return { id: result.insertId, group_name, description }
     } catch (error) {
-      log.error('创建角色分组失败:', error);
-      throw error;
+      log.error('创建角色分组失败:', error)
+      throw error
     }
   }
 
@@ -52,17 +52,17 @@ class OperatorAssignmentService {
    */
   async updateOperatorGroup(id, groupData) {
     try {
-      const { group_name, description } = groupData;
+      const { group_name, description } = groupData
 
       await this.pool.execute(
         'UPDATE operators SET name = ?, real_name = ?, group_name = ?, description = ? WHERE id = ?',
         [group_name, group_name, group_name, description || '', id]
-      );
+      )
 
-      return { id, group_name, description };
+      return { id, group_name, description }
     } catch (error) {
-      log.error('更新角色分组失败:', error);
-      throw error;
+      log.error('更新角色分组失败:', error)
+      throw error
     }
   }
 
@@ -71,11 +71,11 @@ class OperatorAssignmentService {
    */
   async deleteOperatorGroup(id) {
     try {
-      await this.pool.execute('DELETE FROM operators WHERE id = ?', [id]);
-      return true;
+      await this.pool.execute('DELETE FROM operators WHERE id = ?', [id])
+      return true
     } catch (error) {
-      log.error('删除角色分组失败:', error);
-      throw error;
+      log.error('删除角色分组失败:', error)
+      throw error
     }
   }
 
@@ -103,12 +103,12 @@ class OperatorAssignmentService {
         LEFT JOIN operators o ON uoa.operator_id = o.id
         WHERE uoa.status = 'active'
         ORDER BY uoa.assigned_at DESC
-      `);
+      `)
 
-      return rows;
+      return rows
     } catch (error) {
-      log.error('获取用户操作员分配失败:', error);
-      throw error;
+      log.error('获取用户操作员分配失败:', error)
+      throw error
     }
   }
 
@@ -116,39 +116,39 @@ class OperatorAssignmentService {
    * 分配用户到操作员角色
    */
   async assignUserToOperator(assignmentData) {
-    const { user_id, operator_id, group_name, assigned_by } = assignmentData;
+    const { user_id, operator_id, group_name, assigned_by } = assignmentData
 
-    const connection = await this.pool.getConnection();
+    const connection = await this.pool.getConnection()
     try {
-      await connection.beginTransaction();
+      await connection.beginTransaction()
 
       // 检查用户是否存在
       const [userCheck] = await connection.execute(
         'SELECT id, username, name FROM users WHERE id = ?',
         [user_id]
-      );
+      )
 
       if (userCheck.length === 0) {
-        throw new Error('用户不存在');
+        throw new Error('用户不存在')
       }
 
       // 检查是否已经分配过
       const [existingAssignment] = await connection.execute(
         'SELECT id FROM user_operator_assignments WHERE user_id = ? AND operator_id = ? AND status = "active"',
         [user_id, operator_id]
-      );
+      )
 
       if (existingAssignment.length > 0) {
-        throw new Error('用户已分配到该操作员角色');
+        throw new Error('用户已分配到该操作员角色')
       }
 
       // 创建新的分配记录
       const [result] = await connection.execute(`
         INSERT INTO user_operator_assignments (user_id, operator_id, group_name, assigned_by, status)
         VALUES (?, ?, ?, ?, 'active')
-      `, [user_id, operator_id, group_name, assigned_by]);
+      `, [user_id, operator_id, group_name, assigned_by])
 
-      await connection.commit();
+      await connection.commit()
 
       return {
         id: result.insertId,
@@ -157,14 +157,14 @@ class OperatorAssignmentService {
         group_name,
         assigned_by,
         status: 'active'
-      };
+      }
 
     } catch (error) {
-      await connection.rollback();
-      log.error('分配用户操作员失败:', error);
-      throw error;
+      await connection.rollback()
+      log.error('分配用户操作员失败:', error)
+      throw error
     } finally {
-      connection.release();
+      connection.release()
     }
   }
 
@@ -173,40 +173,40 @@ class OperatorAssignmentService {
    */
   async removeUserOperatorAssignment(assignmentId) {
     try {
-      const connection = await this.pool.getConnection();
+      const connection = await this.pool.getConnection()
 
       try {
-        await connection.beginTransaction();
+        await connection.beginTransaction()
 
         // 获取分配信息用于验证
         const [assignment] = await connection.execute(
           'SELECT id FROM user_operator_assignments WHERE id = ?',
           [assignmentId]
-        );
+        )
 
         if (assignment.length === 0) {
-          throw new Error('分配记录不存在');
+          throw new Error('分配记录不存在')
         }
 
         // 更新分配状态
         await connection.execute(
           'UPDATE user_operator_assignments SET status = "inactive" WHERE id = ?',
           [assignmentId]
-        );
+        )
 
-        await connection.commit();
-        return true;
+        await connection.commit()
+        return true
 
       } catch (error) {
-        await connection.rollback();
-        throw error;
+        await connection.rollback()
+        throw error
       } finally {
-        connection.release();
+        connection.release()
       }
 
     } catch (error) {
-      log.error('移除用户操作员分配失败:', error);
-      throw error;
+      log.error('移除用户操作员分配失败:', error)
+      throw error
     }
   }
 
@@ -225,12 +225,12 @@ class OperatorAssignmentService {
         WHERE uoa.user_id = ? AND uoa.status = 'active'
         ORDER BY uoa.assigned_at DESC
         LIMIT 1
-      `, [userId]);
+      `, [userId])
 
-      return rows[0] || null;
+      return rows[0] || null
     } catch (error) {
-      log.error('获取用户操作员信息失败:', error);
-      throw error;
+      log.error('获取用户操作员信息失败:', error)
+      throw error
     }
   }
 
@@ -252,12 +252,12 @@ class OperatorAssignmentService {
         LEFT JOIN user_operator_assignments uoa ON u.id = uoa.user_id AND uoa.status = 'active'
         WHERE u.status = 1
         ORDER BY u.username
-      `);
+      `)
 
-      return rows;
+      return rows
     } catch (error) {
-      log.error('获取可分配用户失败:', error);
-      throw error;
+      log.error('获取可分配用户失败:', error)
+      throw error
     }
   }
 
@@ -273,12 +273,12 @@ class OperatorAssignmentService {
         FROM operators o
         WHERE o.status = 'active'
         ORDER BY o.name
-      `);
+      `)
 
-      return rows;
+      return rows
     } catch (error) {
-      log.error('获取可分配操作员失败:', error);
-      throw error;
+      log.error('获取可分配操作员失败:', error)
+      throw error
     }
   }
 
@@ -304,12 +304,12 @@ class OperatorAssignmentService {
         INNER JOIN operators o ON uoa.operator_id = o.id
         WHERE uoa.group_name = ? AND uoa.status = 'active' AND u.status = 1
         ORDER BY u.username
-      `, [groupName]);
+      `, [groupName])
 
-      return rows;
+      return rows
     } catch (error) {
-      log.error('获取角色分组用户失败:', error);
-      throw error;
+      log.error('获取角色分组用户失败:', error)
+      throw error
     }
   }
 
@@ -317,43 +317,43 @@ class OperatorAssignmentService {
    * 修改用户角色分配
    */
   async updateUserRoleAssignment(assignmentId, updateData) {
-    const { new_group_name, new_operator_id, assigned_by } = updateData;
+    const { new_group_name, new_operator_id, assigned_by } = updateData
 
-    const connection = await this.pool.getConnection();
+    const connection = await this.pool.getConnection()
     try {
-      await connection.beginTransaction();
+      await connection.beginTransaction()
 
       // 验证分配记录是否存在
       const [existingAssignment] = await connection.execute(
         'SELECT id FROM user_operator_assignments WHERE id = ? AND status = "active"',
         [assignmentId]
-      );
+      )
 
       if (existingAssignment.length === 0) {
-        throw new Error('分配记录不存在或已失效');
+        throw new Error('分配记录不存在或已失效')
       }
 
       // 获取当前分配信息
       const [currentAssignment] = await connection.execute(
         'SELECT user_id, operator_id, group_name FROM user_operator_assignments WHERE id = ?',
         [assignmentId]
-      );
+      )
 
-      const { user_id, operator_id, group_name } = currentAssignment[0];
+      const { user_id, operator_id, group_name } = currentAssignment[0]
 
       // 如果角色没有变化，直接返回
       if (group_name === new_group_name && operator_id === new_operator_id) {
-        await connection.rollback();
-        return currentAssignment[0];
+        await connection.rollback()
+        return currentAssignment[0]
       }
 
       // 更新分配记录
       await connection.execute(
         'UPDATE user_operator_assignments SET operator_id = ?, group_name = ?, assigned_by = ?, assigned_at = CURRENT_TIMESTAMP WHERE id = ?',
         [new_operator_id, new_group_name, assigned_by, assignmentId]
-      );
+      )
 
-      await connection.commit();
+      await connection.commit()
 
       return {
         id: assignmentId,
@@ -362,16 +362,16 @@ class OperatorAssignmentService {
         group_name: new_group_name,
         assigned_by,
         assigned_at: new Date()
-      };
+      }
 
     } catch (error) {
-      await connection.rollback();
-      log.error('修改用户角色分配失败:', error);
-      throw error;
+      await connection.rollback()
+      log.error('修改用户角色分配失败:', error)
+      throw error
     } finally {
-      connection.release();
+      connection.release()
     }
   }
 }
 
-module.exports = OperatorAssignmentService;
+module.exports = OperatorAssignmentService

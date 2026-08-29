@@ -6,7 +6,7 @@ export interface StockInPhoneItem {
   memory?: number | string
   serial_number?: string
   imei?: string
-  purchase_price?: number
+  purchase_cost?: number
   is_published?: number
   supplier_id?: number | string
   store_id?: number | string
@@ -20,7 +20,7 @@ export interface StockInFormModel {
   id?: string
   supplier_id: string
   store_id: string | number
-  stock_in_date: string
+  inventory_time: string
   operator_name: string
   product_status: string
   remarks: string

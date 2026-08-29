@@ -1,148 +1,186 @@
-const express = require('express');
-const path = require('path');
-const config = require('./config');
-const { connectToDatabase, getDatabase, isConnected } = require('./config/database');
-const errorHandler = require('./middleware/error-handler');
-const log = require('./utils/log');
-const { getUploadsRoot } = require('./utils/upload-paths');
+const express = require('express')
+const config = require('./config')
+const { connectToDatabase, getDatabase, isConnected } = require('./config/database')
+const errorHandler = require('./middleware/error-handler')
+const log = require('./utils/log')
+const { getUploadsRoot } = require('./utils/upload-paths')
+const { ensureRentalSchema } = require('./utils/rental-schema')
+const { ensureSupplierPaymentSchema } = require('./utils/supplier-payment-schema')
+const { refreshExpiredRentalStatuses } = require('./services/rental-status.service')
+const { ensureRateLimitLogTable } = require('./middleware/rate-limit')
 
 // 导入路由
-const routes = require('./routes');
+const routes = require('./routes')
 
 // 导入中间件配置
-const { setupSecurityMiddleware, setupBasicMiddleware, setupRoutes } = require('./middleware');
+const {
+  setupSecurityMiddleware,
+  setupBasicMiddleware,
+  setupBodyDependentSecurityMiddleware,
+  setupRoutes
+} = require('./middleware')
 
-const app = express();
-const PORT = config.server.port;
-const HOST = process.env.HOST || '127.0.0.1';
-const APP_ENV = config.server.env || process.env.NODE_ENV || 'development';
-const IS_PRODUCTION = APP_ENV === 'production';
-const SLOW_REQUEST_THRESHOLD_MS = Number(process.env.SLOW_REQUEST_THRESHOLD_MS || 800);
+const app = express()
+const PORT = config.server.port
+const HOST = process.env.HOST || '127.0.0.1'
+const APP_ENV = config.server.env || process.env.NODE_ENV || 'development'
+const IS_PRODUCTION = APP_ENV === 'production'
+const SLOW_REQUEST_THRESHOLD_MS = Number(process.env.SLOW_REQUEST_THRESHOLD_MS || 800)
 
-const formatBeijingTime = () => new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
+const formatBeijingTime = () => new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
 
 const redactSensitiveQuery = (requestUrl = '') => {
   try {
-    const url = new URL(requestUrl, 'http://localhost');
+    const url = new URL(requestUrl, 'http://localhost')
     for (const key of ['token', 'access_token', 'refresh_token']) {
       if (url.searchParams.has(key)) {
-        url.searchParams.set(key, '[REDACTED]');
+        url.searchParams.set(key, '[REDACTED]')
       }
     }
-    return `${url.pathname}${url.search}`;
+    return `${url.pathname}${url.search}`
   } catch {
-    return String(requestUrl).replace(/([?&](?:token|access_token|refresh_token)=)[^&]*/gi, '$1[REDACTED]');
+    return String(requestUrl).replace(/([?&](?:token|access_token|refresh_token)=)[^&]*/gi, '$1[REDACTED]')
   }
-};
+}
 
 const requestLogger = (req, res, next) => {
-  const startedAt = process.hrtime.bigint();
+  const startedAt = process.hrtime.bigint()
   res.on('finish', () => {
-    const durationMs = Number(process.hrtime.bigint() - startedAt) / 1e6;
+    const durationMs = Number(process.hrtime.bigint() - startedAt) / 1e6
     if (durationMs >= SLOW_REQUEST_THRESHOLD_MS) {
       log.warn('慢请求', {
         method: req.method,
         url: redactSensitiveQuery(req.originalUrl),
         status: res.statusCode,
         durationMs: Math.round(durationMs)
-      });
+      })
     }
-  });
+  })
 
   if (!IS_PRODUCTION) {
-    log.debug(`🌐 [${formatBeijingTime()}] ${req.method} ${redactSensitiveQuery(req.originalUrl)}`);
+    log.debug(`🌐 [${formatBeijingTime()}] ${req.method} ${redactSensitiveQuery(req.originalUrl)}`)
   }
-  next();
-};
+  next()
+}
 
 const uploadStaticMiddleware = (req, res, next) => {
   try {
-    req.url = decodeURIComponent(req.url);
+    req.url = decodeURIComponent(req.url)
   } catch (error) {
-    log.error('URL 解码失败:', error);
+    log.error('URL 解码失败:', error)
   }
 
-  if (req.path.startsWith('/subsidy/') || req.path.startsWith('/shared/')) {
+  if (req.path.startsWith('/subsidy/') || req.path.startsWith('/shared/') || req.path.startsWith('/rentals/')) {
     return res.status(404).json({
       success: false,
       message: '资源不存在'
-    });
+    })
   }
 
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin')
 
-  next();
-};
+  next()
+}
 
 /**
  * 应用程序初始化
  */
 async function initializeApp() {
   try {
+    let databaseConnected = false
     // 连接数据库（允许失败，HTTP 服务仍可以降级启动）
     try {
-      const connected = await connectToDatabase();
+      const connected = await connectToDatabase()
+      databaseConnected = connected
       if (connected) {
-        log.success('数据库连接成功');
+        log.success('数据库连接成功')
       } else {
-        log.warn('数据库连接失败，服务器将以降级模式启动');
-        log.warn('业务接口和后台任务将在数据库恢复前不可用');
+        log.warn('数据库连接失败，服务器将以降级模式启动')
+        log.warn('业务接口和后台任务将在数据库恢复前不可用')
+      }
+
+      if (databaseConnected) {
+        try {
+          await ensureRateLimitLogTable(getDatabase())
+        } catch (rateLimitError) {
+          log.warn('限流日志表启动检查失败:', rateLimitError.message)
+        }
+
+        try {
+          await ensureRentalSchema()
+          await refreshExpiredRentalStatuses()
+          const rentalStatusTimer = setInterval(() => {
+            refreshExpiredRentalStatuses().catch(error => log.warn('租赁逾期状态刷新失败:', error.message))
+          }, 15 * 60 * 1000)
+          rentalStatusTimer.unref?.()
+        } catch (rentalError) {
+          log.warn('租赁模块启动检查失败:', rentalError.message)
+        }
+
+        try {
+          await ensureSupplierPaymentSchema()
+        } catch (supplierPaymentError) {
+          log.warn('供应商打款字段启动检查失败:', supplierPaymentError.message)
+        }
       }
     } catch (dbError) {
-      log.warn('数据库连接失败，服务器将以降级模式启动');
-      log.warn('某些功能可能无法正常使用');
-      log.warn('错误:', dbError.message);
+      log.warn('数据库连接失败，服务器将以降级模式启动')
+      log.warn('某些功能可能无法正常使用')
+      log.warn('错误:', dbError.message)
       // 不要退出，继续启动服务器
     }
 
-    // 设置安全中间件
-    setupSecurityMiddleware(app);
-    log.success('安全中间件配置完成');
+    // 先设置代理信任，安全中间件和限流才能读取真实客户端 IP。
+    app.set('trust proxy', 1)
 
-    // 设置基础中间件
-    setupBasicMiddleware(app);
-    log.success('基础中间件配置完成');
+    // 安全头、CORS 与全局限流必须在请求体解析前执行。
+    setupSecurityMiddleware(app)
+    log.success('安全中间件配置完成')
+
+    setupBasicMiddleware(app)
+    setupBodyDependentSecurityMiddleware(app)
+    log.success('基础中间件和登录限制配置完成')
 
     // 添加全局请求日志中间件
-    app.use(requestLogger);
+    app.use(requestLogger)
 
     // 设置静态文件服务
     // 优先使用 UPLOAD_PATH；未配置时统一回退到 backend/uploads
-    const uploadsPath = getUploadsRoot();
+    const uploadsPath = getUploadsRoot()
 
     // 添加 URL 解码中间件和 CORS 头，处理中文文件名和跨域访问
-    app.use('/uploads', uploadStaticMiddleware);
+    app.use('/uploads', uploadStaticMiddleware)
 
-    app.use('/uploads', express.static(uploadsPath));
-    log.success('静态文件服务配置完成:', uploadsPath);
+    app.use('/uploads', express.static(uploadsPath))
+    log.success('静态文件服务配置完成:', uploadsPath)
 
     // 将数据库连接池添加到 app 实例
     try {
-      const db = getDatabase();
-      app.set('db', db);
-      log.success('数据库连接池已添加到 app 实例');
+      const db = getDatabase()
+      app.set('db', db)
+      log.success('数据库连接池已添加到 app 实例')
     } catch (error) {
-      log.warn('无法添加数据库连接池到 app 实例:', error.message);
+      log.warn('无法添加数据库连接池到 app 实例:', error.message)
     }
 
     // 设置路由
-    setupRoutes(app, routes);
-    log.success('路由配置完成');
+    setupRoutes(app, routes)
+    log.success('路由配置完成')
 
     // 错误处理中间件（必须最后设置）
-    app.use(errorHandler);
-    log.success('错误处理中间件配置完成');
+    app.use(errorHandler)
+    log.success('错误处理中间件配置完成')
 
     // 初始化字段权限表（如果不存在）
     // await initFieldTables(); // 暂时注释掉，避免启动错误
 
-    return app;
+    return app
   } catch (error) {
-    log.error('应用程序初始化失败:', error);
-    process.exit(1);
+    log.error('应用程序初始化失败:', error)
+    process.exit(1)
   }
 }
 
@@ -151,70 +189,70 @@ async function initializeApp() {
  */
 async function startServer() {
   try {
-    log.start('服务器启动中...');
-    log.info('启动时间:', formatBeijingTime());
+    log.start('服务器启动中...')
+    log.info('启动时间:', formatBeijingTime())
 
-    const app = await initializeApp();
+    const app = await initializeApp()
 
     const server = app.listen(PORT, HOST, () => {
-      log.success('服务器启动成功');
-      log.info('端口:', PORT);
-      log.info('绑定地址:', HOST);
-      log.info('环境:', APP_ENV);
-      log.info('启动时间:', formatBeijingTime());
-      log.success('服务运行正常，等待请求...');
-    });
+      log.success('服务器启动成功')
+      log.info('端口:', PORT)
+      log.info('绑定地址:', HOST)
+      log.info('环境:', APP_ENV)
+      log.info('启动时间:', formatBeijingTime())
+      log.success('服务运行正常，等待请求...')
+    })
 
     // 设置服务器超时，避免长时间挂起的请求
     // 备份操作可能需要较长时间（特别是上传文件较大时），设置为10分钟
-    server.setTimeout(600000); // 10分钟
-    server.keepAliveTimeout = 65000; // 65秒
-    server.headersTimeout = 66000; // 略长于 keepAliveTimeout
+    server.setTimeout(600000) // 10分钟
+    server.keepAliveTimeout = 65000 // 65秒
+    server.headersTimeout = 66000 // 略长于 keepAliveTimeout
 
-    const databaseReady = isConnected();
+    const databaseReady = isConnected()
 
     // 启动价格自动同步调度器
-    let priceScheduler = null;
+    let priceScheduler = null
     try {
       if (!databaseReady) {
-        log.warn('数据库未连接，跳过价格同步调度器启动');
+        log.warn('数据库未连接，跳过价格同步调度器启动')
       } else {
-      priceScheduler = require('./scripts/price-sync-scheduler');
-      // 初始化调度器并启动定时任务
-      priceScheduler.init().catch(err => {
-        log.warn('价格同步调度器初始化失败:', err.message);
-      });
+        priceScheduler = require('./scripts/price-sync-scheduler')
+        // 初始化调度器并启动定时任务
+        priceScheduler.init().catch(err => {
+          log.warn('价格同步调度器初始化失败:', err.message)
+        })
       }
     } catch (error) {
-      log.warn('价格同步调度器启动失败:', error.message);
+      log.warn('价格同步调度器启动失败:', error.message)
     }
 
     // 启动订单过期检查定时任务
-    let orderExpireChecker = null;
+    let orderExpireChecker = null
     try {
       if (!databaseReady) {
-        log.warn('数据库未连接，跳过订单过期检查任务启动');
+        log.warn('数据库未连接，跳过订单过期检查任务启动')
       } else {
-      orderExpireChecker = require('./scripts/order-expire-checker');
-      // 初始化并启动定时任务
-      orderExpireChecker.init().catch(err => {
-        log.warn('订单过期检查定时任务初始化失败:', err.message);
-      });
+        orderExpireChecker = require('./scripts/order-expire-checker')
+        // 初始化并启动定时任务
+        orderExpireChecker.init().catch(err => {
+          log.warn('订单过期检查定时任务初始化失败:', err.message)
+        })
       }
     } catch (error) {
-      log.warn('订单过期检查定时任务启动失败:', error.message);
+      log.warn('订单过期检查定时任务启动失败:', error.message)
     }
 
     // 优雅关闭处理（传入调度器实例和服务器实例）
-    setupGracefulShutdown(server, priceScheduler, orderExpireChecker);
+    setupGracefulShutdown(server, priceScheduler, orderExpireChecker)
 
   } catch (error) {
-    log.error('服务器启动失败:', error);
-    log.error('错误堆栈:', error.stack);
+    log.error('服务器启动失败:', error)
+    log.error('错误堆栈:', error.stack)
     // 延迟退出，给 PM2 时间记录日志
     setTimeout(() => {
-      process.exit(1);
-    }, 1000);
+      process.exit(1)
+    }, 1000)
   }
 }
 
@@ -223,78 +261,78 @@ async function startServer() {
  */
 function setupGracefulShutdown(server, priceScheduler, orderExpireChecker) {
   const gracefulShutdown = (signal) => {
-    log.info(`接收到 ${signal} 信号，开始优雅关闭...`);
+    log.info(`接收到 ${signal} 信号，开始优雅关闭...`)
 
     // 停止接受新连接
     server.close(async () => {
-      log.success('HTTP 服务器已关闭');
+      log.success('HTTP 服务器已关闭')
 
       // 停止价格同步调度器
       if (priceScheduler && typeof priceScheduler.cleanup === 'function') {
         try {
-          await priceScheduler.cleanup();
-          log.success('价格同步调度器已停止');
+          await priceScheduler.cleanup()
+          log.success('价格同步调度器已停止')
         } catch (error) {
-          log.error('停止价格同步调度器失败:', error.message);
+          log.error('停止价格同步调度器失败:', error.message)
         }
       }
 
       // 停止订单过期检查定时任务
       if (orderExpireChecker && typeof orderExpireChecker.cleanup === 'function') {
         try {
-          await orderExpireChecker.cleanup();
-          log.success('订单过期检查定时任务已停止');
+          await orderExpireChecker.cleanup()
+          log.success('订单过期检查定时任务已停止')
         } catch (error) {
-          log.error('停止订单过期检查定时任务失败:', error.message);
+          log.error('停止订单过期检查定时任务失败:', error.message)
         }
       }
 
       // 关闭数据库连接
       try {
-        const { closeDatabase } = require('./config/database');
-        await closeDatabase();
-        log.success('数据库连接已关闭');
+        const { closeDatabase } = require('./config/database')
+        await closeDatabase()
+        log.success('数据库连接已关闭')
       } catch (error) {
-        log.error('关闭数据库连接失败:', error.message);
+        log.error('关闭数据库连接失败:', error.message)
       }
 
-      log.success('服务器已优雅关闭');
-      process.exit(0);
-    });
+      log.success('服务器已优雅关闭')
+      process.exit(0)
+    })
 
     // 如果10秒后还没关闭，强制退出
     setTimeout(() => {
-      log.error('强制关闭服务器（超时）');
-      process.exit(1);
-    }, 10000);
-  };
+      log.error('强制关闭服务器（超时）')
+      process.exit(1)
+    }, 10000)
+  }
 
-  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'))
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'))
 }
 
 // 未捕获的异常处理
 process.on('uncaughtException', (error) => {
-  log.error('未捕获的异常:', error);
-  log.error('异常堆栈:', error.stack);
+  log.error('未捕获的异常:', error)
+  log.error('异常堆栈:', error.stack)
   // 记录错误但不立即退出，给 PM2 时间来处理
   // 如果是生产环境，让 PM2 决定是否重启
   setTimeout(() => {
-    process.exit(1);
-  }, 1000);
-});
+    process.exit(1)
+  }, 1000)
+})
 
 process.on('unhandledRejection', (reason, promise) => {
-  log.error('未处理的Promise拒绝:', reason);
-  log.error('Promise:', promise);
+  log.error('未处理的Promise拒绝:', reason)
+  log.error('Promise:', promise)
   // 记录错误但不立即退出，避免频繁重启
   // 只在严重错误时退出
   if (reason instanceof Error && reason.code === 'ECONNREFUSED') {
     setTimeout(() => {
-      process.exit(1);
-    }, 1000);
+      process.exit(1)
+    }, 1000)
   }
-});
+})
 
 // 初始化字段权限表（已禁用，文件不存在）
 // async function initFieldTables() {
@@ -309,7 +347,7 @@ process.on('unhandledRejection', (reason, promise) => {
 
 // 启动服务器
 if (require.main === module) {
-  startServer();
+  startServer()
 }
 
-module.exports = { initializeApp, startServer };
+module.exports = { initializeApp, startServer }

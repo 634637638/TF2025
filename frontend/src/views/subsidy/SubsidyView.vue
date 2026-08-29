@@ -27,18 +27,23 @@
             type="primary"
             @click="openApplyDialog"
           >
-            <i class="fas fa-plus"></i>
+            <i class="fas fa-plus" />
             <span>新增</span>
           </el-button>
           <el-button
             type="info"
-            @click="handleRefresh"
             :disabled="refreshing"
             title="刷新数据"
+            @click="handleRefresh"
           >
-            <InlineLoading v-if="refreshing" text="刷新中..." size="small" variant="inherit" />
+            <InlineLoading
+              v-if="refreshing"
+              text="刷新中..."
+              size="small"
+              variant="inherit"
+            />
             <template v-else>
-              <i class="fas fa-sync-alt"></i>
+              <i class="fas fa-sync-alt" />
               <span>刷新</span>
             </template>
           </el-button>
@@ -46,192 +51,321 @@
       </PageHeader>
 
       <div class="content admin-page-content">
-      <!-- 统计卡片 -->
-    <div v-if="showStatsCards" class="stats-cards">
-      <div v-if="canViewField('stats_total_and_handler')" class="stat-card total-card">
-        <div class="stat-card__glow"></div>
-        <div class="stat-card__head stat-card__head--with-progress">
-          <div class="stat-card__icon">
-            <i class="fas fa-layer-group"></i>
-          </div>
-          <div class="stat-card__head-copy">
-            <div class="stat-card__eyebrow">办理</div>
-            <div class="stat-card__title">总单数</div>
-          </div>
-          <div class="stat-card__head-progress" aria-hidden="true">
-            <div class="stat-card__head-progress-fill" :style="{ width: `${handlerRate}%` }"></div>
-          </div>
-          <div class="stat-card__badge">代办 {{ stats.handler_count || 0 }}</div>
-        </div>
-        <div class="stat-card__body-row">
-          <div class="stat-card__value-row">
-            <div class="stat-card__value">{{ stats.total_count || 0 }}</div>
-            <div class="stat-card__value-unit">单</div>
-          </div>
-          <div class="stat-progress stat-progress--mobile-only">
-            <div class="stat-progress__track">
-              <div class="stat-progress__fill" :style="{ width: `${handlerRate}%` }"></div>
-            </div>
-            <div class="stat-progress__meta">
-              <span>代办 {{ handlerRate }}%</span>
-              <span>共 {{ stats.total_count || 0 }} 单</span>
-            </div>
-          </div>
-          <div class="stat-card__facts">
-            <div class="stat-fact"><span>待审</span><strong>{{ stats.pending_count || 0 }}</strong></div>
-            <div class="stat-fact"><span>代办</span><strong>{{ stats.handler_count || 0 }}</strong></div>
-          </div>
-        </div>
-      </div>
-      <div v-if="canViewField('stats_approval_progress')" class="stat-card approval-card">
-        <div class="stat-card__glow"></div>
-        <div class="stat-card__head stat-card__head--with-progress">
-          <div class="stat-card__icon">
-            <i class="fas fa-stamp"></i>
-          </div>
-          <div class="stat-card__head-copy">
-            <div class="stat-card__eyebrow">审批</div>
-            <div class="stat-card__title">已审批</div>
-          </div>
-          <div class="stat-card__head-progress" aria-hidden="true">
-            <div class="stat-card__head-progress-fill" :style="{ width: `${approvalRate}%` }"></div>
-          </div>
-          <div class="stat-card__badge">{{ approvalRate }}%</div>
-        </div>
-        <div class="stat-card__body-row">
-          <div class="stat-card__value-row">
-            <div class="stat-card__value">{{ stats.completed_count || 0 }}</div>
-            <div class="stat-card__value-unit">单</div>
-          </div>
-          <div class="stat-progress stat-progress--mobile-only">
-            <div class="stat-progress__track">
-              <div class="stat-progress__fill" :style="{ width: `${approvalRate}%` }"></div>
-            </div>
-            <div class="stat-progress__meta">
-              <span>完成 {{ approvalRate }}%</span>
-              <span>待 {{ stats.pending_count || 0 }}</span>
-            </div>
-          </div>
-          <div class="stat-card__facts">
-            <div class="stat-fact"><span>已审</span><strong>{{ stats.completed_count || 0 }}</strong></div>
-            <div class="stat-fact"><span>待审</span><strong>{{ stats.pending_count || 0 }}</strong></div>
-          </div>
-        </div>
-      </div>
-      <div v-if="canViewField('stats_amount_progress')" class="stat-card amount-card">
-        <div class="stat-card__glow"></div>
-        <div class="stat-card__head stat-card__head--with-progress">
-          <div class="stat-card__icon">
-            <i class="fas fa-wallet"></i>
-          </div>
-          <div class="stat-card__head-copy">
-            <div class="stat-card__eyebrow">到账</div>
-            <div class="stat-card__title">已到账</div>
-          </div>
-          <div class="stat-card__head-progress" aria-hidden="true">
-            <div class="stat-card__head-progress-fill" :style="{ width: `${arrivalRate}%` }"></div>
-          </div>
-          <div class="stat-card__badge">{{ arrivalRate }}%</div>
-        </div>
-        <div class="stat-card__body-row">
-          <div class="stat-card__value-row stat-card__value-row--money">
-            <div class="stat-card__value">¥{{ formatAmount(stats.total_arrived_amount || 0) }}</div>
-          </div>
-          <div class="stat-progress stat-progress--mobile-only">
-            <div class="stat-progress__track">
-              <div class="stat-progress__fill" :style="{ width: `${arrivalRate}%` }"></div>
-            </div>
-            <div class="stat-progress__meta">
-              <span>到账 {{ arrivalRate }}%</span>
-              <span>待 ¥{{ formatAmount(pendingArrivalAmount) }}</span>
-            </div>
-          </div>
-          <div class="stat-card__facts stat-card__facts--money">
-            <div class="stat-fact"><span>应到</span><strong>¥{{ formatAmount(stats.total_subsidy_amount || 0) }}</strong></div>
-            <div class="stat-fact"><span>待到</span><strong>¥{{ formatAmount(pendingArrivalAmount) }}</strong></div>
-          </div>
-        </div>
-      </div>
-      <div v-if="canViewField('stats_store_overview')" class="stat-card handler-card">
-        <div class="stat-card__glow"></div>
-        <div class="stat-card__head stat-card__head--with-progress">
-          <div class="stat-card__icon">
-            <i class="fas fa-store"></i>
-          </div>
-          <div class="stat-card__head-copy">
-            <div class="stat-card__eyebrow">店铺</div>
-            <div class="stat-card__title">参与店铺</div>
-          </div>
-          <div class="stat-card__head-progress" aria-hidden="true">
-            <div class="stat-card__head-progress-fill" :style="{ width: `${topStoreRate}%` }"></div>
-          </div>
-          <div class="stat-card__badge">TOP</div>
-        </div>
-        <div class="stat-card__body-row">
-          <div class="stat-card__value-row">
-            <div class="stat-card__value">{{ stats.store_stats?.length || 0 }}</div>
-            <div class="stat-card__value-unit">家</div>
-          </div>
-          <div class="stat-progress stat-progress--mobile-only">
-            <div class="stat-progress__track">
-              <div class="stat-progress__fill" :style="{ width: `${topStoreRate}%` }"></div>
-            </div>
-            <div class="stat-progress__meta">
-              <span>TOP店铺 {{ topStoreRate }}%</span>
-              <span>共 {{ stats.store_stats?.length || 0 }} 家</span>
-            </div>
-          </div>
-          <div class="store-pill-list store-pill-list--compact">
-            <template v-if="stats.store_stats && stats.store_stats.length > 0">
-            <div v-for="store in topStores.slice(0, 2)" :key="store.store_id" class="store-pill">
-              <span class="store-pill__name">{{ store.store_name || '未知店铺' }}</span>
-              <strong class="store-pill__value">{{ store.total_count || 0 }}单</strong>
-            </div>
-            </template>
-            <div v-else class="store-pill store-pill--empty">
-              <span class="store-pill__name">暂无店铺数据</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-      <UnifiedSearchPanel
-        v-model:expanded="searchExpanded"
-        :loading="loading"
-        @search="handleSearch"
-        @reset="resetFilters"
-      >
-        <template #primary>
-          <el-input
-            v-model="filters.search"
-            placeholder="姓名/手机/身份证/品牌/型号/颜色/内存/IMEI/序列号"
-            clearable
-            @input="debounceSearch"
-            @keyup.enter="handleSearch"
-            @click.stop
+        <!-- 统计卡片 -->
+        <div
+          v-if="showStatsCards"
+          class="stats-cards"
+        >
+          <div
+            v-if="canViewField('stats_total_and_handler')"
+            class="stat-card total-card"
           >
-            <template #prefix>
-              <i class="fas fa-search"></i>
-            </template>
-          </el-input>
-        </template>
+            <div class="stat-card__glow" />
+            <div class="stat-card__head stat-card__head--with-progress">
+              <div class="stat-card__icon">
+                <i class="fas fa-layer-group" />
+              </div>
+              <div class="stat-card__head-copy">
+                <div class="stat-card__eyebrow">
+                  办理
+                </div>
+                <div class="stat-card__title">
+                  总单数
+                </div>
+              </div>
+              <div
+                class="stat-card__head-progress"
+                aria-hidden="true"
+              >
+                <div
+                  class="stat-card__head-progress-fill"
+                  :style="{ width: `${handlerRate}%` }"
+                />
+              </div>
+              <div class="stat-card__badge">
+                代办 {{ stats.handler_count || 0 }}
+              </div>
+            </div>
+            <div class="stat-card__body-row">
+              <div class="stat-card__value-row">
+                <div class="stat-card__value">
+                  {{ stats.total_count || 0 }}
+                </div>
+                <div class="stat-card__value-unit">
+                  单
+                </div>
+              </div>
+              <div class="stat-progress stat-progress--mobile-only">
+                <div class="stat-progress__track">
+                  <div
+                    class="stat-progress__fill"
+                    :style="{ width: `${handlerRate}%` }"
+                  />
+                </div>
+                <div class="stat-progress__meta">
+                  <span>代办 {{ handlerRate }}%</span>
+                  <span>共 {{ stats.total_count || 0 }} 单</span>
+                </div>
+              </div>
+              <div class="stat-card__facts">
+                <div class="stat-fact">
+                  <span>待审</span><strong>{{ stats.pending_count || 0 }}</strong>
+                </div>
+                <div class="stat-fact">
+                  <span>代办</span><strong>{{ stats.handler_count || 0 }}</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div
+            v-if="canViewField('stats_approval_progress')"
+            class="stat-card approval-card"
+          >
+            <div class="stat-card__glow" />
+            <div class="stat-card__head stat-card__head--with-progress">
+              <div class="stat-card__icon">
+                <i class="fas fa-stamp" />
+              </div>
+              <div class="stat-card__head-copy">
+                <div class="stat-card__eyebrow">
+                  审批
+                </div>
+                <div class="stat-card__title">
+                  已审批
+                </div>
+              </div>
+              <div
+                class="stat-card__head-progress"
+                aria-hidden="true"
+              >
+                <div
+                  class="stat-card__head-progress-fill"
+                  :style="{ width: `${approvalRate}%` }"
+                />
+              </div>
+              <div class="stat-card__badge">
+                {{ approvalRate }}%
+              </div>
+            </div>
+            <div class="stat-card__body-row">
+              <div class="stat-card__value-row">
+                <div class="stat-card__value">
+                  {{ stats.completed_count || 0 }}
+                </div>
+                <div class="stat-card__value-unit">
+                  单
+                </div>
+              </div>
+              <div class="stat-progress stat-progress--mobile-only">
+                <div class="stat-progress__track">
+                  <div
+                    class="stat-progress__fill"
+                    :style="{ width: `${approvalRate}%` }"
+                  />
+                </div>
+                <div class="stat-progress__meta">
+                  <span>完成 {{ approvalRate }}%</span>
+                  <span>待 {{ stats.pending_count || 0 }}</span>
+                </div>
+              </div>
+              <div class="stat-card__facts">
+                <div class="stat-fact">
+                  <span>已审</span><strong>{{ stats.completed_count || 0 }}</strong>
+                </div>
+                <div class="stat-fact">
+                  <span>待审</span><strong>{{ stats.pending_count || 0 }}</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div
+            v-if="canViewField('stats_amount_progress')"
+            class="stat-card amount-card"
+          >
+            <div class="stat-card__glow" />
+            <div class="stat-card__head stat-card__head--with-progress">
+              <div class="stat-card__icon">
+                <i class="fas fa-wallet" />
+              </div>
+              <div class="stat-card__head-copy">
+                <div class="stat-card__eyebrow">
+                  到账
+                </div>
+                <div class="stat-card__title">
+                  已到账
+                </div>
+              </div>
+              <div
+                class="stat-card__head-progress"
+                aria-hidden="true"
+              >
+                <div
+                  class="stat-card__head-progress-fill"
+                  :style="{ width: `${arrivalRate}%` }"
+                />
+              </div>
+              <div class="stat-card__badge">
+                {{ arrivalRate }}%
+              </div>
+            </div>
+            <div class="stat-card__body-row">
+              <div class="stat-card__value-row stat-card__value-row--money">
+                <div class="stat-card__value">
+                  ¥{{ formatAmount(stats.total_arrived_amount || 0) }}
+                </div>
+              </div>
+              <div class="stat-progress stat-progress--mobile-only">
+                <div class="stat-progress__track">
+                  <div
+                    class="stat-progress__fill"
+                    :style="{ width: `${arrivalRate}%` }"
+                  />
+                </div>
+                <div class="stat-progress__meta">
+                  <span>到账 {{ arrivalRate }}%</span>
+                  <span>待 ¥{{ formatAmount(pendingArrivalAmount) }}</span>
+                </div>
+              </div>
+              <div class="stat-card__facts stat-card__facts--money">
+                <div class="stat-fact">
+                  <span>应到</span><strong>¥{{ formatAmount(stats.total_subsidy_amount || 0) }}</strong>
+                </div>
+                <div class="stat-fact">
+                  <span>待到</span><strong>¥{{ formatAmount(pendingArrivalAmount) }}</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div
+            v-if="canViewField('stats_store_overview')"
+            class="stat-card handler-card"
+          >
+            <div class="stat-card__glow" />
+            <div class="stat-card__head stat-card__head--with-progress">
+              <div class="stat-card__icon">
+                <i class="fas fa-store" />
+              </div>
+              <div class="stat-card__head-copy">
+                <div class="stat-card__eyebrow">
+                  店铺
+                </div>
+                <div class="stat-card__title">
+                  参与店铺
+                </div>
+              </div>
+              <div
+                class="stat-card__head-progress"
+                aria-hidden="true"
+              >
+                <div
+                  class="stat-card__head-progress-fill"
+                  :style="{ width: `${topStoreRate}%` }"
+                />
+              </div>
+              <div class="stat-card__badge">
+                TOP
+              </div>
+            </div>
+            <div class="stat-card__body-row">
+              <div class="stat-card__value-row">
+                <div class="stat-card__value">
+                  {{ stats.store_stats?.length || 0 }}
+                </div>
+                <div class="stat-card__value-unit">
+                  家
+                </div>
+              </div>
+              <div class="stat-progress stat-progress--mobile-only">
+                <div class="stat-progress__track">
+                  <div
+                    class="stat-progress__fill"
+                    :style="{ width: `${topStoreRate}%` }"
+                  />
+                </div>
+                <div class="stat-progress__meta">
+                  <span>TOP店铺 {{ topStoreRate }}%</span>
+                  <span>共 {{ stats.store_stats?.length || 0 }} 家</span>
+                </div>
+              </div>
+              <div class="store-pill-list store-pill-list--compact">
+                <template v-if="stats.store_stats && stats.store_stats.length > 0">
+                  <div
+                    v-for="store in topStores.slice(0, 2)"
+                    :key="store.store_id"
+                    class="store-pill"
+                  >
+                    <span class="store-pill__name">{{ store.store_name || '未知店铺' }}</span>
+                    <strong class="store-pill__value">{{ store.total_count || 0 }}单</strong>
+                  </div>
+                </template>
+                <div
+                  v-else
+                  class="store-pill store-pill--empty"
+                >
+                  <span class="store-pill__name">暂无店铺数据</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
-        <div class="form-group filter-item" data-field="status">
+        <UnifiedSearchPanel
+          v-model:expanded="searchExpanded"
+          :loading="loading"
+          @search="handleSearch"
+          @reset="resetFilters"
+        >
+          <template #primary>
+            <el-input
+              v-if="searchableFieldLabels.length > 0"
+              v-model="filters.search"
+              :placeholder="searchPlaceholder"
+              clearable
+              @input="debounceSearch"
+              @keyup.enter="handleSearch"
+              @click.stop
+            >
+              <template #prefix>
+                <i class="fas fa-search" />
+              </template>
+            </el-input>
+          </template>
+
+          <div
+            v-if="canViewField('status')"
+            class="form-group filter-item"
+            data-field="status"
+          >
             <el-select
               v-model="filters.status"
               placeholder="状态"
               clearable
               @change="handleSearch"
             >
-              <el-option label="未审批" value="pending" />
-              <el-option label="已审批" value="completed" />
-              <el-option label="未到账" value="unarrived" />
-              <el-option label="已到账" value="approved" />
+              <el-option
+                label="未审批"
+                value="pending"
+              />
+              <el-option
+                label="已审批"
+                value="completed"
+              />
+              <el-option
+                label="未到账"
+                value="unarrived"
+              />
+              <el-option
+                label="已到账"
+                value="approved"
+              />
             </el-select>
-        </div>
+          </div>
 
-        <div class="form-group filter-item" data-field="store">
+          <div
+            v-if="canViewField('store_name')"
+            class="form-group filter-item"
+            data-field="store_name"
+          >
             <el-select
               v-model="filters.store_id"
               placeholder="店铺"
@@ -246,9 +380,13 @@
                 :value="store.id"
               />
             </el-select>
-        </div>
+          </div>
 
-        <div class="form-group filter-item" data-field="saleDate">
+          <div
+            v-if="canViewField('sale_time')"
+            class="form-group filter-item"
+            data-field="sale_time"
+          >
             <el-date-picker
               v-model="saleDateRange"
               type="daterange"
@@ -260,9 +398,13 @@
               clearable
               @change="handleSaleDateChange"
             />
-        </div>
+          </div>
 
-        <div class="form-group filter-item" data-field="submitDate">
+          <div
+            v-if="canViewField('apply_time')"
+            class="form-group filter-item"
+            data-field="apply_time"
+          >
             <el-date-picker
               v-model="submitDateRange"
               type="daterange"
@@ -277,7 +419,11 @@
           </div>
 
           <!-- 到账时间 -->
-          <div class="form-group filter-item" data-field="arriveDate">
+          <div
+            v-if="canViewField('arrival_time')"
+            class="form-group filter-item"
+            data-field="arrival_time"
+          >
             <el-date-picker
               v-model="arriveDateRange"
               type="daterange"
@@ -289,179 +435,225 @@
               clearable
               @change="handleArriveDateChange"
             />
-        </div>
-      </UnifiedSearchPanel>
-
-      <SubsidyListSection
-        :loading="loading"
-        :subsidy-list="subsidyList"
-        :display-list="displayList"
-        :table-columns="tableColumns"
-        :field-visibility="fieldVisibility"
-        :is-mobile="isMobile"
-        :selected-items="selectedItems"
-        :pinned-items="pinnedItems"
-        :subsidy-pagination="subsidyPagination"
-        :can-approve="canApprove"
-        :can-edit="canEdit"
-        :can-delete="canDelete"
-        :can-show-actions="canShowActions"
-        :can-view-customer-idcard="canViewCustomerIdcard"
-        :select-all="selectAll"
-        :is-indeterminate="isIndeterminate"
-        @select-all="handleSelectAll"
-        @select-item="({ id, checked }) => handleSelectItem(id, checked)"
-        @row-double-click="handleRowDoubleClick"
-        @pin-selected-items="pinSelectedItems"
-        @clear-pinned-items="clearPinnedItems"
-        @open-batch-dialog="openBatchDialog"
-        @clear-selection="clearSelection"
-        @open-photo-manage="openPhotoManageDialog"
-        @audit="handleAudit"
-        @confirm-arrival="handleConfirmArrival"
-        @edit="handleEdit"
-        @delete="handleDelete"
-        @page-change="handlePageChange"
-        @page-size-change="handlePageSizeChange"
-      />
-    </div>
-
-    <!-- 批量修改时间对话框 -->
-    <MobileDialog
-      v-model="showBatchDialog"
-      title="批量修改时间"
-      width="560px"
-      dialog-class="subsidy-dialog subsidy-batch-dialog"
-      :show-default-footer="false"
-      destroy-on-close
-    >
-      <div v-if="showBatchDialog" class="modal-body">
-        <div class="batch-info-summary">
-          <i class="fas fa-thumbtack"></i>
-          <span>将对 <strong>{{ selectedItems.length }}</strong> 条选中记录进行修改</span>
-        </div>
-
-        <el-form class="batch-form">
-          <div class="batch-form-grid">
-            <div class="batch-form-inline-item">
-              <span class="batch-form-label">审批时间</span>
-              <el-date-picker
-                v-model="batchForm.apply_time"
-                type="date"
-                placeholder="请选择"
-                format="YYYY-MM-DD"
-                value-format="YYYY-MM-DD"
-                clearable
-                class="batch-date-picker"
-              />
-            </div>
-
-            <div class="batch-form-inline-item">
-              <span class="batch-form-label">到账时间</span>
-              <el-date-picker
-                v-model="batchForm.arrival_time"
-                type="date"
-                placeholder="请选择"
-                format="YYYY-MM-DD"
-                value-format="YYYY-MM-DD"
-                clearable
-                class="batch-date-picker"
-              />
-            </div>
           </div>
-        </el-form>
+        </UnifiedSearchPanel>
 
-        <div v-if="selectedItems.length > 0" class="pinned-items-preview">
-          <div class="preview-header">
-            <i class="fas fa-list"></i>
-            <span>将修改的记录预览</span>
-          </div>
-          <div class="preview-list">
-            <div v-for="item in selectedPreviewItems" :key="item.id" class="preview-item">
-              <span class="item-name">{{ item.customer_name }}</span>
-              <span class="item-phone">{{ item.customer_phone }}</span>
-              <span class="item-model">{{ item.phone_model }}</span>
-            </div>
-            <div v-if="selectedItems.length > 5" class="preview-more">
-              还有 {{ selectedItems.length - 5 }} 条记录...
-            </div>
-          </div>
-        </div>
+        <SubsidyListSection
+          :loading="loading"
+          :subsidy-list="subsidyList"
+          :display-list="displayList"
+          :table-columns="tableColumns"
+          :field-visibility="fieldVisibility"
+          :is-mobile="isMobile"
+          :selected-items="selectedItems"
+          :pinned-items="pinnedItems"
+          :subsidy-pagination="subsidyPagination"
+          :can-approve="canApprove"
+          :can-arrival="canArrival"
+          :can-upload="canUpload"
+          :can-edit="canEdit"
+          :can-delete="canDelete"
+          :can-show-actions="canShowActions"
+          :can-view-customer-idcard="canViewCustomerIdcard"
+          :select-all="selectAll"
+          :is-indeterminate="isIndeterminate"
+          @select-all="handleSelectAll"
+          @select-item="({ id, checked }) => handleSelectItem(id, checked)"
+          @row-double-click="handleRowDoubleClick"
+          @pin-selected-items="pinSelectedItems"
+          @clear-pinned-items="clearPinnedItems"
+          @open-batch-dialog="openBatchDialog"
+          @clear-selection="clearSelection"
+          @open-photo-manage="openPhotoManageDialog"
+          @audit="handleAudit"
+          @confirm-arrival="handleConfirmArrival"
+          @edit="handleEdit"
+          @delete="handleDelete"
+          @page-change="handlePageChange"
+          @page-size-change="handlePageSizeChange"
+        />
       </div>
 
-      <template #footer>
-        <div v-if="showBatchDialog" class="modal-footer">
-          <el-button type="default" @click="closeBatchDialog">
-            <i class="fas fa-times"></i>
-            取消
-          </el-button>
-          <el-button
-            type="primary"
-            @click="submitBatchUpdate"
-            :disabled="batchUpdating || (!batchForm.apply_time && !batchForm.arrival_time)"
+      <!-- 批量修改时间对话框 -->
+      <MobileDialog
+        v-model="showBatchDialog"
+        title="批量修改时间"
+        width="560px"
+        dialog-class="subsidy-dialog subsidy-batch-dialog"
+        :show-default-footer="false"
+        destroy-on-close
+      >
+        <div
+          v-if="showBatchDialog"
+          class="modal-body"
+        >
+          <div class="batch-info-summary">
+            <i class="fas fa-thumbtack" />
+            <span>将对 <strong>{{ selectedItems.length }}</strong> 条选中记录进行修改</span>
+          </div>
+
+          <el-form class="batch-form">
+            <div class="batch-form-grid">
+              <div
+                v-if="canApprove"
+                class="batch-form-inline-item"
+              >
+                <span class="batch-form-label">审批时间</span>
+                <el-date-picker
+                  v-model="batchForm.apply_time"
+                  type="date"
+                  placeholder="请选择"
+                  format="YYYY-MM-DD"
+                  value-format="YYYY-MM-DD"
+                  clearable
+                  class="batch-date-picker"
+                />
+              </div>
+
+              <div
+                v-if="canArrival"
+                class="batch-form-inline-item"
+              >
+                <span class="batch-form-label">到账时间</span>
+                <el-date-picker
+                  v-model="batchForm.arrival_time"
+                  type="date"
+                  placeholder="请选择"
+                  format="YYYY-MM-DD"
+                  value-format="YYYY-MM-DD"
+                  clearable
+                  class="batch-date-picker"
+                />
+              </div>
+            </div>
+          </el-form>
+
+          <div
+            v-if="selectedItems.length > 0"
+            class="pinned-items-preview"
           >
-            <InlineLoading v-if="batchUpdating" text="修改中..." size="small" variant="inherit" />
-            <template v-else>
-              <i class="fas fa-save"></i>
-              <span>确认修改 ({{ selectedItems.length }}条)</span>
-            </template>
-          </el-button>
+            <div class="preview-header">
+              <i class="fas fa-list" />
+              <span>将修改的记录预览</span>
+            </div>
+            <div class="preview-list">
+              <div
+                v-for="item in selectedPreviewItems"
+                :key="item.id"
+                class="preview-item"
+              >
+                <span
+                  v-if="fieldVisibility.customer_name"
+                  class="item-name"
+                >{{ item.customer_name }}</span>
+                <span
+                  v-if="fieldVisibility.customer_phone"
+                  class="item-phone"
+                >{{ item.customer_phone }}</span>
+                <span
+                  v-if="fieldVisibility.model"
+                  class="item-model"
+                >{{ item.phone_model }}</span>
+              </div>
+              <div
+                v-if="selectedItems.length > 5"
+                class="preview-more"
+              >
+                还有 {{ selectedItems.length - 5 }} 条记录...
+              </div>
+            </div>
+          </div>
         </div>
-      </template>
-    </MobileDialog>
 
-    <SubsidyApplyDialog
-      v-if="showApplyDialog"
-      v-model="showApplyDialog"
-      :is-mobile="isMobile"
-      @submitted="handleApplySubmitted"
-    />
+        <template #footer>
+          <div
+            v-if="showBatchDialog"
+            class="modal-footer"
+          >
+            <el-button
+              type="default"
+              @click="closeBatchDialog"
+            >
+              <i class="fas fa-times" />
+              取消
+            </el-button>
+            <el-button
+              type="primary"
+              :disabled="batchUpdating || (!batchForm.apply_time && !batchForm.arrival_time)"
+              @click="submitBatchUpdate"
+            >
+              <InlineLoading
+                v-if="batchUpdating"
+                text="修改中..."
+                size="small"
+                variant="inherit"
+              />
+              <template v-else>
+                <i class="fas fa-save" />
+                <span>确认修改 ({{ selectedItems.length }}条)</span>
+              </template>
+            </el-button>
+          </div>
+        </template>
+      </MobileDialog>
 
-    <SubsidyEditDialog
-      v-if="showEditDialog && currentEditItem"
-      v-model="showEditDialog"
-      :item="currentEditItem"
-      :stores="stores"
-      :can-view-field="canViewField"
-      :can-edit-field="canEditField"
-      @updated="handleEditSubmitted"
-    />
+      <SubsidyApplyDialog
+        v-if="showApplyDialog"
+        v-model="showApplyDialog"
+        :is-mobile="isMobile"
+        :can-upload="canUpload"
+        :can-view-field="canViewField"
+        @submitted="handleApplySubmitted"
+      />
 
-    <SubsidyDetailDialog
-      v-if="showDetailDialog && currentDetailItem"
-      v-model="showDetailDialog"
-      :item="currentDetailItem"
-      :can-view-customer-idcard="canViewField('customer_idcard')"
-    />
+      <SubsidyEditDialog
+        v-if="showEditDialog && currentEditItem"
+        v-model="showEditDialog"
+        :item="currentEditItem"
+        :stores="stores"
+        :can-view-field="canViewField"
+        :can-edit-field="canEditField"
+        :can-approve="canApprove"
+        :can-arrival="canArrival"
+        @updated="handleEditSubmitted"
+      />
 
-    <SubsidyPhotoManageDialog
-      v-if="showPhotoPreviewDialog && currentManagingItem"
-      v-model="showPhotoPreviewDialog"
-      :item="currentManagingItem"
-      @saved="handlePhotoSaved"
-    />
+      <SubsidyDetailDialog
+        v-if="showDetailDialog && currentDetailItem"
+        v-model="showDetailDialog"
+        :item="currentDetailItem"
+        :field-visibility="fieldVisibility"
+      />
+
+      <SubsidyPhotoManageDialog
+        v-if="showPhotoPreviewDialog && currentManagingItem"
+        v-model="showPhotoPreviewDialog"
+        :item="currentManagingItem"
+        :can-upload="canUpload"
+        @saved="handlePhotoSaved"
+      />
     </PermissionGate>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted, defineAsyncComponent, shallowRef, watch } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
-import { unifiedApi } from '@/utils/unified-api';
-import { sortOptionsByOrder } from '@/utils/option-sort';
-import { fieldPermissions } from '@/composables/useFieldPermissions';
-import { usePagePermissions } from '@/composables/usePagePermissions';
-import { useRefreshData } from '@/composables/useRefreshData';
-import { useLoadingState } from '@/composables';
-import { useImportExport } from '@/composables/useImportExport';
-import { useCachedRequest, DEFAULT_CACHE_TTL } from '@/composables/usePageCache';
-import { TimeUtil, TIME_FORMATS } from '@/utils/time';
-import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue';
-import ImportExportActions from '@/components/business/ImportExportActions.vue';
-import InlineLoading from '@/components/InlineLoading.vue';
-import { PageHeader, PermissionGate } from '@/components/base';
-import { normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/utils/security';
-import { logger } from '@/utils/logger';
+import { ref, reactive, computed, onMounted, onUnmounted, defineAsyncComponent, shallowRef, watch } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { unifiedApi } from '@/utils/unified-api'
+import { sortOptionsByOrder } from '@/utils/option-sort'
+import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
+import { usePagePermissions } from '@/composables/usePagePermissions'
+import { useRefreshData } from '@/composables/useRefreshData'
+import { useLoadingState } from '@/composables'
+import { useImportExport } from '@/composables/useImportExport'
+import { useCachedRequest, DEFAULT_CACHE_TTL } from '@/composables/usePageCache'
+import { TimeUtil, TIME_FORMATS } from '@/utils/time'
+import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
+import ImportExportActions from '@/components/business/ImportExportActions.vue'
+import InlineLoading from '@/components/InlineLoading.vue'
+import { PageHeader, PermissionGate } from '@/components/base'
+import { normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
+import { logger } from '@/utils/logger'
 const SubsidyApplyDialog = defineAsyncComponent(() => import('./components/SubsidyApplyDialog.vue'))
 const SubsidyEditDialog = defineAsyncComponent(() => import('./components/SubsidyEditDialog.vue'))
 const SubsidyDetailDialog = defineAsyncComponent(() => import('./components/SubsidyDetailDialog.vue'))
@@ -475,13 +667,16 @@ const {
   canEdit,
   canDelete,
   canApprove,
+  canArrival,
+  canUpload,
   canExport,
   handleNoPermission
-} = usePagePermissions('subsidy');
-const { refreshing, refreshData } = useRefreshData();
+} = usePagePermissions('subsidy')
+const { refreshing, refreshData } = useRefreshData()
 
 // 字段权限（使用全局composable）
-const { isFieldVisible, isFieldEditable, init: initFieldPermissions } = fieldPermissions;
+const { isFieldVisible, isFieldEditable, init: initFieldPermissions } = fieldPermissions
+const SUBSIDY_FIELD_MODULE_KEY = 'subsidy_subsidyview'
 
 // 字段ID映射表 - 映射简单字段名到完整字段ID
 const fieldIdMap: Record<string, string> = {
@@ -503,6 +698,8 @@ const fieldIdMap: Record<string, string> = {
   // 价格信息
   'sale_price': 'price_info.sale_price',
   'subsidy_amount': 'price_info.subsidy_amount',
+  'subsidy_rate': 'price_info.subsidy_rate',
+  'subsidy_calc_price': 'price_info.subsidy_calc_price',
   // 时间信息
   'apply_time': 'time_info.apply_time',
   'arrival_time': 'time_info.arrival_time',
@@ -511,27 +708,34 @@ const fieldIdMap: Record<string, string> = {
   // 其他信息
   'remarks': 'other_info.remarks',
   // 店铺和时间（使用通用格式）
-  'store_name': 'store_name',
-  'sale_time': 'sale_time',
-  'serial_number': 'serial_number'
-};
+  'store_name': 'store_info.store_name',
+  'salesman_name': 'sales_info.salesman_name',
+  'sale_time': 'time_info.sale_time',
+  'serial_number': 'device_info.serial_number',
+  'actions': 'system_info.operations',
+  'subsidy_photos': 'subsidy_info.subsidy_photos',
+  'has_different_handler': 'handler_info.has_different_handler',
+  'handler_name': 'handler_info.handler_name',
+  'handler_phone': 'handler_info.handler_phone',
+  'handler_idcard': 'handler_info.handler_idcard'
+}
 
 // 检查字段是否可见
 const canViewField = (fieldName: string): boolean => {
-  const fullFieldId = fieldIdMap[fieldName] || fieldName;
-  return isFieldVisible('subsidy', fullFieldId);
-};
+  const fullFieldId = fieldIdMap[fieldName] || fieldName
+  return isFieldVisible(SUBSIDY_FIELD_MODULE_KEY, fullFieldId)
+}
 
 // 检查字段是否可编辑
 const canEditField = (fieldName: string): boolean => {
-  const fullFieldId = fieldIdMap[fieldName] || fieldName;
+  const fullFieldId = fieldIdMap[fieldName] || fieldName
 
   if (canCreate.value || canEdit.value) {
-    return canViewField(fieldName);
+    return canViewField(fieldName)
   }
 
-  return isFieldEditable('subsidy', fullFieldId);
-};
+  return isFieldEditable(SUBSIDY_FIELD_MODULE_KEY, fullFieldId)
+}
 
 const showStatsCards = computed(() => {
   return [
@@ -539,91 +743,126 @@ const showStatsCards = computed(() => {
     'stats_approval_progress',
     'stats_amount_progress',
     'stats_store_overview'
-  ].some(field => canViewField(field));
-});
+  ].some(field => canViewField(field))
+})
 
 const fieldVisibility = computed(() => ({
-  storeName: isFieldVisible('subsidy', 'store_name'),
-  saleTime: isFieldVisible('subsidy', 'sale_time'),
-  customerName: isFieldVisible('subsidy', 'customer_info.customer_name'),
-  customerPhone: isFieldVisible('subsidy', 'customer_info.customer_phone'),
-  customerIdcard: isFieldVisible('subsidy', 'customer_info.customer_idcard'),
-  brand: isFieldVisible('subsidy', 'device_info.brand'),
-  model: isFieldVisible('subsidy', 'device_info.model'),
-  color: isFieldVisible('subsidy', 'device_info.color'),
-  memory: isFieldVisible('subsidy', 'device_info.memory'),
-  serialNumber: isFieldVisible('subsidy', 'serial_number'),
-  imei1: isFieldVisible('subsidy', 'device_info.imei1'),
-  imei2: isFieldVisible('subsidy', 'device_info.imei2'),
-  salePrice: isFieldVisible('subsidy', 'price_info.sale_price'),
-  subsidyAmount: isFieldVisible('subsidy', 'price_info.subsidy_amount'),
-  remarks: isFieldVisible('subsidy', 'other_info.remarks'),
-  applyTime: isFieldVisible('subsidy', 'time_info.apply_time'),
-  arrivalTime: isFieldVisible('subsidy', 'time_info.arrival_time')
-}));
+  store_name: canViewField('store_name'),
+  salesman_name: canViewField('salesman_name'),
+  sale_time: canViewField('sale_time'),
+  customer_name: canViewField('customer_name'),
+  customer_phone: canViewField('customer_phone'),
+  customer_idcard: canViewField('customer_idcard'),
+  brand: canViewField('brand'),
+  model: canViewField('model'),
+  color: canViewField('color'),
+  memory: canViewField('memory'),
+  serial_number: canViewField('serial_number'),
+  imei1: canViewField('imei1'),
+  imei2: canViewField('imei2'),
+  sale_price: canViewField('sale_price'),
+  subsidy_amount: canViewField('subsidy_amount'),
+  subsidy_rate: canViewField('subsidy_rate'),
+  subsidy_calc_price: canViewField('subsidy_calc_price'),
+  remarks: canViewField('remarks'),
+  apply_time: canViewField('apply_time'),
+  arrival_time: canViewField('arrival_time'),
+  subsidy_photos: canViewField('subsidy_photos'),
+  has_different_handler: canViewField('has_different_handler'),
+  handler_name: canViewField('handler_name'),
+  handler_phone: canViewField('handler_phone'),
+  handler_idcard: canViewField('handler_idcard')
+}))
 
-const canShowActions = computed(() => canEdit.value || canDelete.value);
-const canViewCustomerIdcard = computed(() => fieldVisibility.value.customerIdcard && canViewField('customer_idcard'));
+const canShowActions = computed(() => shouldShowActionColumn(
+  canViewField('actions'),
+  [canEdit.value, canDelete.value]
+))
+const canViewCustomerIdcard = computed(() => fieldVisibility.value.customer_idcard)
+const searchableFields = [
+  { request_key: 'customer_name', field_key: 'customer_name', label: '姓名' },
+  { request_key: 'customer_phone', field_key: 'customer_phone', label: '手机' },
+  { request_key: 'customer_idcard', field_key: 'customer_idcard', label: '身份证' },
+  { request_key: 'brand', field_key: 'brand', label: '品牌' },
+  { request_key: 'model', field_key: 'model', label: '型号' },
+  { request_key: 'color', field_key: 'color', label: '颜色' },
+  { request_key: 'memory', field_key: 'memory', label: '内存' },
+  { request_key: 'imei1', field_key: 'imei1', label: 'IMEI1' },
+  { request_key: 'imei2', field_key: 'imei2', label: 'IMEI2' },
+  { request_key: 'serial_number', field_key: 'serial_number', label: '序列号' }
+]
+const searchableFieldLabels = computed(() => (
+  searchableFields.filter(field => canViewField(field.field_key)).map(field => field.label)
+))
+const searchPlaceholder = computed(() => searchableFieldLabels.value.join('/'))
 
 // 表格列配置（参考综合查询页面实现）
 const tableColumns = computed(() => {
   return [
-    { key: 'store_name', label: '店铺', visible: fieldVisibility.value.storeName },
-    { key: 'sale_time', label: '销售日期', visible: fieldVisibility.value.saleTime },
-    { key: 'customer_name', label: '姓名', visible: fieldVisibility.value.customerName },
-    { key: 'customer_phone', label: '手机', visible: fieldVisibility.value.customerPhone },
-    { key: 'customer_idcard', label: '身份证', visible: fieldVisibility.value.customerIdcard },
+    { key: 'store_name', label: '店铺', visible: fieldVisibility.value.store_name },
+    { key: 'sale_time', label: '销售日期', visible: fieldVisibility.value.sale_time },
+    { key: 'customer_name', label: '姓名', visible: fieldVisibility.value.customer_name },
+    { key: 'customer_phone', label: '手机', visible: fieldVisibility.value.customer_phone },
+    { key: 'customer_idcard', label: '身份证', visible: fieldVisibility.value.customer_idcard },
     { key: 'brand', label: '品牌', visible: fieldVisibility.value.brand },
     { key: 'model', label: '型号', visible: fieldVisibility.value.model },
     { key: 'color', label: '颜色', visible: fieldVisibility.value.color },
     { key: 'memory', label: '内存', visible: fieldVisibility.value.memory },
-    { key: 'serial_number', label: '序列号', visible: fieldVisibility.value.serialNumber },
+    { key: 'serial_number', label: '序列号', visible: fieldVisibility.value.serial_number },
     { key: 'imei1', label: 'IMEI1', visible: fieldVisibility.value.imei1 },
     { key: 'imei2', label: 'IMEI2', visible: fieldVisibility.value.imei2 },
-    { key: 'sale_price', label: '销售价', visible: fieldVisibility.value.salePrice },
-    { key: 'subsidy_amount', label: '国补后价', visible: fieldVisibility.value.subsidyAmount },
+    { key: 'sale_price', label: '销售价', visible: fieldVisibility.value.sale_price },
+    { key: 'subsidy_amount', label: '国补后价', visible: fieldVisibility.value.subsidy_amount },
     { key: 'remarks', label: '备注', visible: fieldVisibility.value.remarks },
-    { key: 'subsidy_photos', label: '国补照片', visible: true },
-    { key: 'apply_time', label: '国补提交', visible: fieldVisibility.value.applyTime },
-    { key: 'arrival_time', label: '国补到账', visible: fieldVisibility.value.arrivalTime },
+    { key: 'subsidy_photos', label: '国补照片', visible: fieldVisibility.value.subsidy_photos || canUpload.value },
+    {
+      key: 'apply_time',
+      label: '国补提交',
+      visible: shouldShowActionColumn(fieldVisibility.value.apply_time, [canApprove.value])
+    },
+    {
+      key: 'arrival_time',
+      label: '国补到账',
+      visible: shouldShowActionColumn(fieldVisibility.value.arrival_time, [canArrival.value])
+    },
     { key: 'actions', label: '操作', visible: canShowActions.value }
-  ].filter(col => col.visible);
-});
+  ].filter(col => col.visible)
+})
 
 // 响应式数据
-const { loading } = useLoadingState();
-const { exportFile, buildDateFilename } = useImportExport();
-const subsidyList = ref<any[]>([]);
-const exportingSubsidy = ref(false);
-const pinnedItems = ref<any[]>([]); // 固定在顶部的选中项
-const selectedItems = ref<number[]>([]); // 批量选中的ID列表
-const showBatchDialog = ref(false); // 批量操作对话框
+const { loading } = useLoadingState()
+const { exportFile, buildDateFilename } = useImportExport()
+const subsidyList = ref<any[]>([])
+const exportingSubsidy = ref(false)
+const pinnedItems = ref<any[]>([]) // 固定在顶部的选中项
+const selectedItems = ref<number[]>([]) // 批量选中的ID列表
+const showBatchDialog = ref(false) // 批量操作对话框
 const batchForm = reactive({
   apply_time: '',
   arrival_time: ''
-}); // 批量修改表单
+}) // 批量修改表单
 
-const showPhotoPreviewDialog = ref(false);
-const currentManagingItem = shallowRef<any>(null); // 当前正在管理照片的记录
+const showPhotoPreviewDialog = ref(false)
+const currentManagingItem = shallowRef<any>(null) // 当前正在管理照片的记录
 
-const selectedItemIdSet = computed(() => new Set(selectedItems.value));
-const pinnedItemIdSet = computed(() => new Set(pinnedItems.value.map(item => item.id)));
+const selectedItemIdSet = computed(() => new Set(selectedItems.value))
+const pinnedItemIdSet = computed(() => new Set(pinnedItems.value.map(item => item.id)))
 
-const isSelectedItem = (id: number) => selectedItemIdSet.value.has(id);
-const isPinnedItem = (id: number) => pinnedItemIdSet.value.has(id);
+const _isSelectedItem = (id: number) => selectedItemIdSet.value.has(id)
+const _isPinnedItem = (id: number) => pinnedItemIdSet.value.has(id)
 
 // 计算属性：合并后的显示列表（固定项 + 普通列表）
 const displayList = computed(() => {
   // 去重：从普通列表中移除已固定的项
-  const remainingItems = subsidyList.value.filter(item => !pinnedItemIdSet.value.has(item.id));
-  return [...pinnedItems.value, ...remainingItems];
-});
+  const remainingItems = subsidyList.value.filter(item => !pinnedItemIdSet.value.has(item.id))
+  return [...pinnedItems.value, ...remainingItems]
+})
 
 // 批量修改预览（选中项，含置顶项）
 const selectedPreviewItems = computed(() => {
-  if (selectedItems.value.length === 0) return [];
-  return displayList.value.filter(item => selectedItemIdSet.value.has(item.id)).slice(0, 5);
-});
+  if (selectedItems.value.length === 0) return []
+  return displayList.value.filter(item => selectedItemIdSet.value.has(item.id)).slice(0, 5)
+})
 const stats = ref({
   total_count: 0,
   pending_count: 0,
@@ -638,7 +877,7 @@ const stats = ref({
     count: number;
     total_count: number;
   }>
-});
+})
 
 const approvalRate = computed(() => {
   const total = Number(stats.value.total_count || 0)
@@ -690,20 +929,20 @@ const filters = reactive({
   submit_date_end: '',
   arrive_date_start: '',
   arrive_date_end: ''
-});
+})
 
 // 店铺列表
-const stores = ref<any[]>([]);
+const stores = ref<any[]>([])
 
 // 日期范围变量
-const saleDateRange = ref<[string, string] | null>(null);
-const submitDateRange = ref<[string, string] | null>(null);
-const arriveDateRange = ref<[string, string] | null>(null);
+const saleDateRange = ref<[string, string] | null>(null)
+const submitDateRange = ref<[string, string] | null>(null)
+const arriveDateRange = ref<[string, string] | null>(null)
 
 // 判断是否为移动端
 const isMobile = computed(() => {
-  return window.innerWidth <= 768;
-});
+  return window.innerWidth <= 768
+})
 
 // 搜索展开状态 - 统一管理
 const searchExpanded = ref(false)
@@ -763,63 +1002,63 @@ const debounceSearch = () => {
 // 处理行双击事件
 const handleRowDoubleClick = (item: any) => {
   // 移动端和PC端都打开详情模态框
-  handleViewDetail(item);
-};
+  handleViewDetail(item)
+}
 
 interface SubsidyPagination {
-  current: number
-  pageSize: number
+  page: number
+  page_size: number
   total: number
-  totalPages: number
+  total_pages: number
 }
 
 const subsidyPagination: SubsidyPagination = reactive({
-  current: 1,
-  pageSize: 20,
+  page: 1,
+  page_size: 20,
   total: 0,
-  totalPages: 0
-});
+  total_pages: 0
+})
 
 // 对话框状态
-const showApplyDialog = ref(false);
-const showDetailDialog = ref(false);
-const showEditDialog = ref(false);
-const currentDetailItem = shallowRef<any>(null);
-const currentEditItem = shallowRef<any>(null);
+const showApplyDialog = ref(false)
+const showDetailDialog = ref(false)
+const showEditDialog = ref(false)
+const currentDetailItem = shallowRef<any>(null)
+const currentEditItem = shallowRef<any>(null)
 
 // 批量操作相关
-const batchUpdating = ref(false);
+const batchUpdating = ref(false)
 
-const currentDisplayIds = computed(() => displayList.value.map(item => item.id));
+const currentDisplayIds = computed(() => displayList.value.map(item => item.id))
 
 // 表头选择状态只反映当前展示记录，已选择的其他页面记录继续保留。
 const selectAll = computed(() => {
   return currentDisplayIds.value.length > 0
-    && currentDisplayIds.value.every(id => selectedItemIdSet.value.has(id));
-});
+    && currentDisplayIds.value.every(id => selectedItemIdSet.value.has(id))
+})
 
 // 计算属性：半选状态
 const isIndeterminate = computed(() => {
-  const selectedCount = currentDisplayIds.value.filter(id => selectedItemIdSet.value.has(id)).length;
-  return selectedCount > 0 && selectedCount < currentDisplayIds.value.length;
-});
+  const selectedCount = currentDisplayIds.value.filter(id => selectedItemIdSet.value.has(id)).length
+  return selectedCount > 0 && selectedCount < currentDisplayIds.value.length
+})
 
-const normalizeHandlerInfo = (handlerInfo?: Record<string, any> | null) => {
-  if (!handlerInfo || typeof handlerInfo !== 'object') {
-    return null;
+const normalizeHandlerInfo = (handler_info?: Record<string, any> | null) => {
+  if (!handler_info || typeof handler_info !== 'object') {
+    return null
   }
 
   return {
-    ...handlerInfo,
-    handlerName: normalizePersonName(handlerInfo.handlerName || '', 20),
-    handlerPhone: normalizePhoneDigits(handlerInfo.handlerPhone || ''),
-    handlerIdcard: normalizeIdCard(handlerInfo.handlerIdcard || '')
-  };
-};
+    ...handler_info,
+    handler_name: normalizePersonName(handler_info.handler_name || '', 20),
+    handler_phone: normalizePhoneDigits(handler_info.handler_phone || ''),
+    handler_idcard: normalizeIdCard(handler_info.handler_idcard || '')
+  }
+}
 
 const normalizeSubsidyRecord = (item?: Record<string, any> | null) => {
   if (!item || typeof item !== 'object') {
-    return item;
+    return item
   }
 
   return {
@@ -827,53 +1066,46 @@ const normalizeSubsidyRecord = (item?: Record<string, any> | null) => {
     customer_name: normalizePersonName(item.customer_name || '', 20),
     customer_phone: normalizePhoneDigits(item.customer_phone || ''),
     customer_idcard: normalizeIdCard(item.customer_idcard || ''),
-    handlerInfo: normalizeHandlerInfo(item.handlerInfo)
-  };
-};
+    handler_info: normalizeHandlerInfo(item.handler_info)
+  }
+}
 
 const buildQueryParams = (includePagination: boolean) => {
-  const params: any = {};
+  const params: any = {}
 
   if (includePagination) {
-    params.page = subsidyPagination.current;
-    params.limit = subsidyPagination.pageSize;
-    params.sort_by = 'sale_time';
-    params.sort_order = 'desc';
+    params.page = subsidyPagination.page
+    params.page_size = subsidyPagination.page_size
+    params.sort_by = 'sale_time'
+    params.sort_order = 'desc'
   }
 
-  if (filters.status) params.status = filters.status;
+  if (filters.status) params.status = filters.status
 
-  // 搜索关键词支持多个字段
   if (filters.search) {
-    // 同时搜索客户电话、客户姓名、身份证、品牌、型号、颜色、内存、序列号、IMEI1、IMEI2
-    params.customer_phone = filters.search;
-    params.customer_name = filters.search;
-    params.customer_idcard = filters.search;  // 身份证
-    params.brand = filters.search;             // 品牌
-    params.model = filters.search;             // 型号
-    params.color = filters.search;             // 颜色
-    params.memory = filters.search;            // 内存
-    params.imei1 = filters.search;             // IMEI1
-    params.imei2 = filters.search;             // IMEI2
-    params.serial_number = filters.search;     // 序列号
+    searchableFields.forEach((field) => {
+      if (canViewField(field.field_key)) {
+        params[field.request_key] = filters.search
+      }
+    })
   }
 
-  if (filters.store_id) params.store_id = filters.store_id;
+  if (filters.store_id) params.store_id = filters.store_id
 
   // 销售时间筛选
-  if (filters.sale_date_start) params.start_date = filters.sale_date_start;
-  if (filters.sale_date_end) params.end_date = filters.sale_date_end;
+  if (filters.sale_date_start) params.start_date = filters.sale_date_start
+  if (filters.sale_date_end) params.end_date = filters.sale_date_end
 
   // 提交时间筛选
-  if (filters.submit_date_start) params.apply_start_date = filters.submit_date_start;
-  if (filters.submit_date_end) params.apply_end_date = filters.submit_date_end;
+  if (filters.submit_date_start) params.apply_start_date = filters.submit_date_start
+  if (filters.submit_date_end) params.apply_end_date = filters.submit_date_end
 
   // 到账时间筛选
-  if (filters.arrive_date_start) params.arrival_start_date = filters.arrive_date_start;
-  if (filters.arrive_date_end) params.arrival_end_date = filters.arrive_date_end;
+  if (filters.arrive_date_start) params.arrival_start_date = filters.arrive_date_start
+  if (filters.arrive_date_end) params.arrival_end_date = filters.arrive_date_end
 
-  return params;
-};
+  return params
+}
 
 const handleExportSubsidy = async () => {
   await exportFile({
@@ -884,99 +1116,98 @@ const handleExportSubsidy = async () => {
     loading: exportingSubsidy,
     onNoPermission: () => handleNoPermission('export'),
     successMessage: '国补数据导出成功'
-  });
-};
+  })
+}
 
 // 获取国补列表
 const fetchSubsidyList = async (options: FetchRequestOptions = {}) => {
-  const shouldSetLoading = options.setLoading !== false;
+  const shouldSetLoading = options.setLoading !== false
   try {
     if (shouldSetLoading) {
-      loading.value = true;
+      loading.value = true
     }
 
-    const params = buildQueryParams(true);
+    const params = buildQueryParams(true)
 
     const response = await unifiedApi.get('/subsidy', {
       params,
       signal: options.signal
-    });
+    })
 
     if (isStaleRequest(options.requestSeq)) {
-      return;
+      return
     }
 
     if (response.success) {
       subsidyList.value = Array.isArray(response.data)
         ? response.data.map(item => normalizeSubsidyRecord(item))
-        : [];
-      // 兼容两种字段名：page/current 和 limit/pageSize
-      subsidyPagination.current = Number(response.pagination?.current || response.pagination?.page) || 1;
-      subsidyPagination.pageSize = Number(response.pagination?.pageSize || response.pagination?.limit) || 20;
-      subsidyPagination.total = Number(response.pagination?.total) || 0;
-      subsidyPagination.totalPages = Number(response.pagination?.totalPages || response.pagination?.pages) || 0;
+        : []
+      subsidyPagination.page = Number(response.pagination?.page) || 1
+      subsidyPagination.page_size = Number(response.pagination?.page_size) || 20
+      subsidyPagination.total = Number(response.pagination?.total) || 0
+      subsidyPagination.total_pages = Number(response.pagination?.total_pages) || 0
     } else {
-      ElMessage.error(response.message || '获取国补列表失败');
+      ElMessage.error(response.message || '获取国补列表失败')
     }
   } catch (error: any) {
     if (isCanceledRequest(error)) {
-      return;
+      return
     }
-    logger.error('获取国补列表失败:', error);
-    ElMessage.error('获取国补列表失败');
+    logger.error('获取国补列表失败:', error)
+    ElMessage.error('获取国补列表失败')
   } finally {
     if (shouldSetLoading && !isStaleRequest(options.requestSeq)) {
-      loading.value = false;
+      loading.value = false
     }
   }
-};
+}
 
 // 获取统计数据
 const fetchStats = async (options: FetchRequestOptions = {}) => {
   try {
     if (!showStatsCards.value) {
-      return;
+      return
     }
 
     const params = {
       ...buildQueryParams(false),
       include_store_stats: canViewField('stats_store_overview') ? '1' : '0'
-    };
+    }
     const response = await unifiedApi.get('/subsidy/stats/summary', {
       params,
       signal: options.signal
-    });
+    })
 
     if (isStaleRequest(options.requestSeq)) {
-      return;
+      return
     }
 
     if (response.success) {
-      stats.value = response.data;
+      stats.value = response.data
     }
   } catch (error: any) {
     if (isCanceledRequest(error)) {
-      return;
+      return
     }
-    logger.error('获取统计数据失败:', error);
+    logger.error('获取统计数据失败:', error)
   }
-};
+}
 
 const fetchLatestSubsidyList = async () => {
-  const requestSeq = ++subsidyRequestSeq;
-  abortListRequest();
-  listAbortController = new AbortController();
-  const currentListController = listAbortController;
+  const requestSeq = ++subsidyRequestSeq
+  abortListRequest()
+  listAbortController = new AbortController()
+  const currentListController = listAbortController
 
   await fetchSubsidyList({
     signal: currentListController.signal,
     requestSeq
-  });
+  })
 
   if (requestSeq === subsidyRequestSeq && listAbortController === currentListController) {
-    listAbortController = null;
+    listAbortController = null
   }
-};
+}
 
 const scheduleStatsFetch = (requestSeq: number) => {
   clearStatsRefreshTimer()
@@ -1008,77 +1239,101 @@ const scheduleStatsFetch = (requestSeq: number) => {
 }
 
 const fetchLatestSubsidyData = async (resetPage = false, setLoading = true) => {
-  const requestSeq = ++subsidyRequestSeq;
+  const requestSeq = ++subsidyRequestSeq
 
   if (resetPage) {
-    subsidyPagination.current = 1;
+    subsidyPagination.page = 1
   }
 
-  abortListRequest();
-  abortStatsRequest();
+  abortListRequest()
+  abortStatsRequest()
   clearStatsRefreshTimer()
-  listAbortController = new AbortController();
-  const currentListController = listAbortController;
+  listAbortController = new AbortController()
+  const currentListController = listAbortController
   await fetchSubsidyList({
     signal: currentListController.signal,
     requestSeq,
     setLoading
-  });
+  })
 
   if (requestSeq === subsidyRequestSeq) {
     if (listAbortController === currentListController) {
-      listAbortController = null;
+      listAbortController = null
     }
     scheduleStatsFetch(requestSeq)
   }
-};
+}
 
 // 打开申请对话框
 const openApplyDialog = () => {
   if (!canCreate.value) {
-    handleNoPermission('create');
-    return;
+    handleNoPermission('create')
+    return
   }
 
-  showApplyDialog.value = true;
-};
+  showApplyDialog.value = true
+}
 const handleApplySubmitted = async () => {
   await fetchLatestSubsidyData()
-};
+}
 
 const handleViewDetail = (item: any) => {
   currentDetailItem.value = item
   showDetailDialog.value = true
-};
+}
 
 const handleEdit = (item: any) => {
   if (!canEdit.value) {
-    handleNoPermission('edit');
-    return;
+    handleNoPermission('edit')
+    return
   }
 
-  currentEditItem.value = item;
-  showEditDialog.value = true;
-};
+  currentEditItem.value = item
+  showEditDialog.value = true
+}
 
 const handleEditSubmitted = async () => {
   await fetchLatestSubsidyData()
-};
+}
 
-const openPhotoManageDialog = (item: any) => {
-  currentManagingItem.value = item;
-  showPhotoPreviewDialog.value = true;
-};
+const openPhotoManageDialog = async (item: any) => {
+  if (!fieldVisibility.value.subsidy_photos && !canUpload.value) {
+    return
+  }
+
+  if (canUpload.value) {
+    try {
+      const response = await unifiedApi.get(`/subsidy/${item.id}/photos`)
+      if (!response.success) {
+        ElMessage.error(response.message || '读取国补照片失败')
+        return
+      }
+      currentManagingItem.value = {
+        ...item,
+        subsidy_photos: Array.isArray(response.data?.subsidy_photos)
+          ? response.data.subsidy_photos
+          : []
+      }
+    } catch (error) {
+      logger.error('读取国补照片失败:', error)
+      ElMessage.error('读取国补照片失败')
+      return
+    }
+  } else {
+    currentManagingItem.value = item
+  }
+  showPhotoPreviewDialog.value = true
+}
 
 const handlePhotoSaved = async () => {
-  await fetchLatestSubsidyList();
-};
+  await fetchLatestSubsidyList()
+}
 
 // 删除国补记录
 const handleDelete = async (item: any) => {
   if (!canDelete.value) {
-    handleNoPermission('delete');
-    return;
+    handleNoPermission('delete')
+    return
   }
 
   try {
@@ -1090,116 +1345,126 @@ const handleDelete = async (item: any) => {
         cancelButtonText: '取消',
         type: 'warning'
       }
-    );
+    )
 
-    const response = await unifiedApi.delete(`/subsidy/${item.id}`);
+    const response = await unifiedApi.delete(`/subsidy/${item.id}`)
 
     if (response.success) {
-      ElMessage.success('删除成功');
-      await fetchLatestSubsidyData();
+      ElMessage.success('删除成功')
+      await fetchLatestSubsidyData()
     } else {
-      ElMessage.error(response.message || '删除失败');
+      ElMessage.error(response.message || '删除失败')
     }
   } catch (error: any) {
     if (error !== 'cancel') {
-      logger.error('删除失败:', error);
-      ElMessage.error('删除失败');
+      logger.error('删除失败:', error)
+      ElMessage.error('删除失败')
     }
   }
-};
+}
 
-const getTodayDateStr = () => TimeUtil.nowFormatted(TIME_FORMATS.DATE);
+const getTodayDateStr = () => TimeUtil.nowFormatted(TIME_FORMATS.DATE)
+const getActionRecordDescription = (item: any) => {
+  const parts: string[] = []
+  if (fieldVisibility.value.customer_name && item?.customer_name) {
+    parts.push(`客户：${item.customer_name}`)
+  }
+  if (fieldVisibility.value.subsidy_amount && item?.subsidy_amount !== null && item?.subsidy_amount !== undefined) {
+    parts.push(`补贴金额：¥${Number(item.subsidy_amount).toFixed(2)}`)
+  }
+  return parts.length > 0 ? `（${parts.join('，')}）` : ''
+}
 
 // 审批国补申请（记录审批时间）
 const handleAudit = async (item: any) => {
   if (!canApprove.value) {
-    handleNoPermission('approve');
-    return;
+    handleNoPermission('approve')
+    return
   }
 
   try {
     await ElMessageBox.confirm(
-      `确定审批该国补申请吗？客户：${item.customer_name}，金额：¥${item.subsidy_amount?.toFixed(2)}`,
+      `确定审批该国补申请吗？${getActionRecordDescription(item)}`,
       '审批确认',
       {
         confirmButtonText: '确定审批',
         cancelButtonText: '取消',
         type: 'info'
       }
-    );
+    )
 
-    const response = await unifiedApi.put(`/subsidy/${item.id}/audit`);
+    const response = await unifiedApi.put(`/subsidy/${item.id}/audit`)
 
     if (response.success) {
-      item.apply_time = getTodayDateStr();
-      ElMessage.success('审批成功');
-      await fetchLatestSubsidyData();
+      item.apply_time = getTodayDateStr()
+      ElMessage.success('审批成功')
+      await fetchLatestSubsidyData()
     } else {
-      ElMessage.error(response.message || '审批失败');
+      ElMessage.error(response.message || '审批失败')
     }
   } catch (error: any) {
     if (error !== 'cancel') {
-      logger.error('审批失败:', error);
-      ElMessage.error('审批失败');
+      logger.error('审批失败:', error)
+      ElMessage.error('审批失败')
     }
   }
-};
+}
 
 // 批量选择相关函数
 const handleSelectItem = (id: number, checked: boolean) => {
   if (checked) {
     if (!selectedItems.value.includes(id)) {
-      selectedItems.value = [...selectedItems.value, id];
+      selectedItems.value = [...selectedItems.value, id]
     }
-    return;
+    return
   }
-  selectedItems.value = selectedItems.value.filter(itemId => itemId !== id);
-};
+  selectedItems.value = selectedItems.value.filter(itemId => itemId !== id)
+}
 
 const handleSelectAll = (value: boolean) => {
-  const currentIds = new Set(currentDisplayIds.value);
+  const currentIds = new Set(currentDisplayIds.value)
 
   if (value) {
-    selectedItems.value = [...new Set([...selectedItems.value, ...currentDisplayIds.value])];
-    return;
+    selectedItems.value = [...new Set([...selectedItems.value, ...currentDisplayIds.value])]
+    return
   }
 
-  selectedItems.value = selectedItems.value.filter(id => !currentIds.has(id));
-};
+  selectedItems.value = selectedItems.value.filter(id => !currentIds.has(id))
+}
 
 const clearSelection = () => {
-  selectedItems.value = [];
-};
+  selectedItems.value = []
+}
 
 // 固定选中项到顶部
 const pinSelectedItems = () => {
   if (selectedItems.value.length === 0) {
-    ElMessage.warning('请先选择要固定的记录');
-    return;
+    ElMessage.warning('请先选择要固定的记录')
+    return
   }
 
   // 从 subsidyList 中找到选中的项
   const itemsToPin = subsidyList.value.filter(item =>
     selectedItems.value.includes(item.id)
-  );
+  )
 
   // 检查是否已经固定过（避免重复）
-  const pinnedIds = new Set(pinnedItems.value.map(p => p.id));
-  const newItems = itemsToPin.filter(item => !pinnedIds.has(item.id));
+  const pinnedIds = new Set(pinnedItems.value.map(p => p.id))
+  const newItems = itemsToPin.filter(item => !pinnedIds.has(item.id))
 
   if (newItems.length === 0) {
-    ElMessage.info('这些记录已经固定了');
-    return;
+    ElMessage.info('这些记录已经固定了')
+    return
   }
 
   // 添加到固定列表
-  pinnedItems.value.push(...newItems);
+  pinnedItems.value.push(...newItems)
 
-  ElMessage.success(`已固定 ${newItems.length} 条记录到顶部`);
+  ElMessage.success(`已固定 ${newItems.length} 条记录到顶部`)
 
   // 清空当前选择
-  selectedItems.value = [];
-};
+  selectedItems.value = []
+}
 
 // 清除固定项
 const clearPinnedItems = async () => {
@@ -1212,38 +1477,50 @@ const clearPinnedItems = async () => {
         cancelButtonText: '取消',
         type: 'warning'
       }
-    );
+    )
 
-    pinnedItems.value = [];
-    ElMessage.success('已清除所有固定项');
+    pinnedItems.value = []
+    ElMessage.success('已清除所有固定项')
   } catch {
     // 用户取消
   }
-};
+}
 
 // 批量修改对话框
 const openBatchDialog = () => {
-  batchForm.apply_time = '';
-  batchForm.arrival_time = '';
-  showBatchDialog.value = true;
-};
+  if (!canApprove.value && !canArrival.value) {
+    handleNoPermission('approve')
+    return
+  }
+  batchForm.apply_time = ''
+  batchForm.arrival_time = ''
+  showBatchDialog.value = true
+}
 
 const closeBatchDialog = () => {
-  batchForm.apply_time = '';
-  batchForm.arrival_time = '';
-  showBatchDialog.value = false;
-};
+  batchForm.apply_time = ''
+  batchForm.arrival_time = ''
+  showBatchDialog.value = false
+}
 
 // 提交批量修改
 const submitBatchUpdate = async () => {
+  if (batchForm.apply_time && !canApprove.value) {
+    handleNoPermission('approve')
+    return
+  }
+  if (batchForm.arrival_time && !canArrival.value) {
+    handleNoPermission('arrival')
+    return
+  }
   if (!batchForm.apply_time && !batchForm.arrival_time) {
-    ElMessage.warning('请至少选择一个字段进行修改');
-    return;
+    ElMessage.warning('请至少选择一个字段进行修改')
+    return
   }
 
   if (selectedItems.value.length === 0) {
-    ElMessage.warning('没有选中项可修改');
-    return;
+    ElMessage.warning('没有选中项可修改')
+    return
   }
 
   try {
@@ -1255,154 +1532,154 @@ const submitBatchUpdate = async () => {
         cancelButtonText: '取消',
         type: 'warning'
       }
-    );
+    )
 
-    batchUpdating.value = true;
+    batchUpdating.value = true
 
-    const updateData: any = {};
+    const updateData: any = {}
     if (batchForm.apply_time) {
-      updateData.apply_time = batchForm.apply_time;
+      updateData.apply_time = batchForm.apply_time
     }
     if (batchForm.arrival_time) {
-      updateData.arrival_time = batchForm.arrival_time;
+      updateData.arrival_time = batchForm.arrival_time
     }
 
     // 并发更新所有固定的记录
     const updatePromises = selectedItems.value.map(id =>
       unifiedApi.put(`/subsidy/${id}`, updateData)
-    );
+    )
 
-    const results = await Promise.allSettled(updatePromises);
-    const successIds: number[] = [];
+    const results = await Promise.allSettled(updatePromises)
+    const successIds: number[] = []
     results.forEach((result, index) => {
       if (result.status === 'fulfilled' && (result.value as any).success) {
-        successIds.push(selectedItems.value[index]);
+        successIds.push(selectedItems.value[index])
       }
-    });
-    const successCount = successIds.length;
-    const failCount = results.length - successCount;
+    })
+    const successCount = successIds.length
+    const failCount = results.length - successCount
 
     if (successCount > 0) {
       const updateLocalList = (list: any[]) => {
-        const idSet = new Set(successIds);
+        const idSet = new Set(successIds)
         list.forEach(item => {
-          if (!idSet.has(item.id)) return;
-          if (batchForm.apply_time) item.apply_time = batchForm.apply_time;
-          if (batchForm.arrival_time) item.arrival_time = batchForm.arrival_time;
-        });
-      };
-      updateLocalList(subsidyList.value);
-      updateLocalList(pinnedItems.value);
-      ElMessage.success(`成功修改 ${successCount} 条记录${failCount > 0 ? `，失败 ${failCount} 条` : ''}`);
-      await fetchLatestSubsidyData();
-      closeBatchDialog();
-      selectedItems.value = [];
+          if (!idSet.has(item.id)) return
+          if (batchForm.apply_time) item.apply_time = batchForm.apply_time
+          if (batchForm.arrival_time) item.arrival_time = batchForm.arrival_time
+        })
+      }
+      updateLocalList(subsidyList.value)
+      updateLocalList(pinnedItems.value)
+      ElMessage.success(`成功修改 ${successCount} 条记录${failCount > 0 ? `，失败 ${failCount} 条` : ''}`)
+      await fetchLatestSubsidyData()
+      closeBatchDialog()
+      selectedItems.value = []
     } else {
-      ElMessage.error('批量修改失败');
+      ElMessage.error('批量修改失败')
     }
   } catch (error: any) {
     if (error !== 'cancel') {
-      logger.error('批量修改失败:', error);
-      ElMessage.error('批量修改失败');
+      logger.error('批量修改失败:', error)
+      ElMessage.error('批量修改失败')
     }
   } finally {
-    batchUpdating.value = false;
+    batchUpdating.value = false
   }
-};
+}
 
 // 确认到账
 const handleConfirmArrival = async (item: any) => {
-  if (!canEdit.value) {
-    handleNoPermission('edit');
-    return;
+  if (!canArrival.value) {
+    handleNoPermission('arrival')
+    return
   }
 
   try {
     await ElMessageBox.confirm(
-      `确定该国补款项已到账吗？金额: ¥${item.subsidy_amount?.toFixed(2)}`,
+      `确定该国补款项已到账吗？${getActionRecordDescription(item)}`,
       '确认到账',
       {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
       }
-    );
+    )
 
-    const response = await unifiedApi.put(`/subsidy/${item.id}/confirm-arrival`);
+    const response = await unifiedApi.put(`/subsidy/${item.id}/confirm-arrival`)
 
     if (response.success) {
-      item.arrival_time = getTodayDateStr();
-      ElMessage.success('确认到账成功');
-      await fetchLatestSubsidyData();
+      item.arrival_time = getTodayDateStr()
+      ElMessage.success('确认到账成功')
+      await fetchLatestSubsidyData()
     } else {
-      ElMessage.error(response.message || '确认失败');
+      ElMessage.error(response.message || '确认失败')
     }
   } catch (error: any) {
     if (error !== 'cancel') {
-      logger.error('确认到账失败:', error);
-      ElMessage.error('确认到账失败');
+      logger.error('确认到账失败:', error)
+      ElMessage.error('确认到账失败')
     }
   }
-};
+}
 
 // 搜索
 const handleSearch = () => {
-  fetchLatestSubsidyData(true);
-};
+  fetchLatestSubsidyData(true)
+}
 
 // 销售日期范围变化
 const handleSaleDateChange = (value: [string, string] | null) => {
   if (value && value.length === 2) {
-    filters.sale_date_start = value[0];
-    filters.sale_date_end = value[1];
+    filters.sale_date_start = value[0]
+    filters.sale_date_end = value[1]
   } else {
-    filters.sale_date_start = '';
-    filters.sale_date_end = '';
+    filters.sale_date_start = ''
+    filters.sale_date_end = ''
   }
-  handleSearch();
-};
+  handleSearch()
+}
 
 // 提交日期范围变化
 const handleSubmitDateChange = (value: [string, string] | null) => {
   if (value && value.length === 2) {
-    filters.submit_date_start = value[0];
-    filters.submit_date_end = value[1];
+    filters.submit_date_start = value[0]
+    filters.submit_date_end = value[1]
   } else {
-    filters.submit_date_start = '';
-    filters.submit_date_end = '';
+    filters.submit_date_start = ''
+    filters.submit_date_end = ''
   }
-  handleSearch();
-};
+  handleSearch()
+}
 
 // 到账日期范围变化
 const handleArriveDateChange = (value: [string, string] | null) => {
   if (value && value.length === 2) {
-    filters.arrive_date_start = value[0];
-    filters.arrive_date_end = value[1];
+    filters.arrive_date_start = value[0]
+    filters.arrive_date_end = value[1]
   } else {
-    filters.arrive_date_start = '';
-    filters.arrive_date_end = '';
+    filters.arrive_date_start = ''
+    filters.arrive_date_end = ''
   }
-  handleSearch();
-};
+  handleSearch()
+}
 
 // 重置筛选
 const resetFilters = () => {
-  filters.search = '';
-  filters.status = '';
-  filters.store_id = '';
-  filters.sale_date_start = '';
-  filters.sale_date_end = '';
-  filters.submit_date_start = '';
-  filters.submit_date_end = '';
-  filters.arrive_date_start = '';
-  filters.arrive_date_end = '';
+  filters.search = ''
+  filters.status = ''
+  filters.store_id = ''
+  filters.sale_date_start = ''
+  filters.sale_date_end = ''
+  filters.submit_date_start = ''
+  filters.submit_date_end = ''
+  filters.arrive_date_start = ''
+  filters.arrive_date_end = ''
   // 重置日期范围选择器
-  saleDateRange.value = null;
-  submitDateRange.value = null;
-  arriveDateRange.value = null;
-  handleSearch();
-};
+  saleDateRange.value = null
+  submitDateRange.value = null
+  arriveDateRange.value = null
+  handleSearch()
+}
 
 // 刷新数据
 // 刷新数据 - 使用统一的 composable
@@ -1416,34 +1693,34 @@ const handleRefresh = () => {
       errorMessage: '刷新失败，请重试'
     }
   )
-};
+}
 
 // 翻页
 const handlePageChange = (page: number) => {
-  subsidyPagination.current = page;
-  fetchLatestSubsidyList();
-};
+  subsidyPagination.page = page
+  fetchLatestSubsidyList()
+}
 
 // 每页数量变化
-const handlePageSizeChange = (pageSize: number) => {
-  subsidyPagination.pageSize = pageSize;
-  subsidyPagination.current = 1; // 重置到第一页
-  fetchLatestSubsidyList();
-};
+const handlePageSizeChange = (page_size: number) => {
+  subsidyPagination.page_size = page_size
+  subsidyPagination.page = 1 // 重置到第一页
+  fetchLatestSubsidyList()
+}
 
 // 格式化金额（移除不必要的.00后缀）
 const formatAmount = (amount: number): string => {
-  const formatted = amount.toFixed(2);
+  const formatted = amount.toFixed(2)
   // 如果是整数，移除.00
   if (formatted.endsWith('.00')) {
-    return formatted.slice(0, -3);
+    return formatted.slice(0, -3)
   }
   // 如果小数点后最后一位是0，只保留一位小数
   if (formatted.endsWith('0')) {
-    return formatted.slice(0, -1);
+    return formatted.slice(0, -1)
   }
-  return formatted;
-};
+  return formatted
+}
 
 // 缓存键
 const CACHE_KEYS = {
@@ -1458,80 +1735,80 @@ const fetchStores = async () => {
       unifiedApi.get('/stores', { params: { all: true } }), DEFAULT_CACHE_TTL.STATIC)
     if (response.success && response.data) {
       // 当 all=true 时，API 直接返回数组
-      const storeOptions = Array.isArray(response.data) ? response.data : (response.data.stores || response.data || []);
-      stores.value = sortOptionsByOrder(storeOptions);
+      const storeOptions = Array.isArray(response.data) ? response.data : (response.data.stores || response.data || [])
+      stores.value = sortOptionsByOrder(storeOptions)
     } else {
-      stores.value = [];
+      stores.value = []
     }
   } catch (error) {
-    logger.error('获取店铺列表失败:', error);
-    stores.value = [];
+    logger.error('获取店铺列表失败:', error)
+    stores.value = []
   }
-};
+}
 
 const initPageData = async () => {
-  // 首屏优先列表，再异步补统计，减少主线程和网络抢占。
+  // 字段权限必须先于业务数据，避免受限字段在首屏短暂出现。
+  await initFieldPermissions()
   await Promise.allSettled([
-    initFieldPermissions(),
     fetchStores(),
     fetchLatestSubsidyList()
-  ]);
+  ])
 
   scheduleStatsFetch(subsidyRequestSeq)
-};
+}
 
 watch(showDetailDialog, (visible) => {
   if (!visible) {
-    currentDetailItem.value = null;
+    currentDetailItem.value = null
   }
-});
+})
 
 watch(showEditDialog, (visible) => {
   if (!visible) {
-    currentEditItem.value = null;
+    currentEditItem.value = null
   }
-});
+})
 
 watch(showPhotoPreviewDialog, (visible) => {
   if (!visible) {
-    currentManagingItem.value = null;
+    currentManagingItem.value = null
   }
-});
+})
 
 // 生命周期
 onMounted(async () => {
   if (!canView.value) {
-    return;
+    return
   }
 
-  await initPageData();
-});
+  await initPageData()
+})
 
 onUnmounted(() => {
   if (debounceSearchTimeoutId) {
-    clearTimeout(debounceSearchTimeoutId);
+    clearTimeout(debounceSearchTimeoutId)
   }
 
-  abortListRequest();
-  abortStatsRequest();
+  abortListRequest()
+  abortStatsRequest()
   clearStatsRefreshTimer()
-});
+})
 </script>
 
 <style lang="scss" scoped>
 .subsidy-view {
   min-height: 100vh;
-  background: var(--bg-color, #f5f7fa);
+  background: var(--bg-color, var(--tf-color-surface));
 }
 
 .content {
   .stats-cards {
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-    gap: 12px !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
 
     @media (max-width: 768px) {
-      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-      gap: 8px !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
     }
 
     .stat-card {
@@ -1548,8 +1825,8 @@ onUnmounted(() => {
       transition: all 0.3s ease;
       border: 1px solid rgba(148, 163, 184, 0.18);
       overflow: hidden;
-      min-height: 118px !important;
-      padding: 15px !important;
+      min-height: 118px;
+      padding: 15px;
       gap: 12px;
       justify-content: flex-start;
 
@@ -1652,7 +1929,7 @@ onUnmounted(() => {
         border: 1px solid rgba(226, 232, 240, 0.9);
         border-radius: 8px;
         background: rgba(248, 250, 252, 0.88);
-        color: #64748b;
+        color: var(--tf-color-slate-500);
         font-size: 10px;
         line-height: 1.15;
       }
@@ -1660,7 +1937,7 @@ onUnmounted(() => {
       .stat-fact strong {
         min-width: 0;
         overflow: hidden;
-        color: #0f172a;
+        color: var(--tf-color-slate-900);
         font-size: 12px;
         font-weight: 800;
         text-overflow: ellipsis;
@@ -1689,14 +1966,14 @@ onUnmounted(() => {
         font-weight: 700;
         letter-spacing: 0.08em;
         text-transform: uppercase;
-        color: color-mix(in srgb, var(--card-accent) 74%, #334155 26%);
+        color: color-mix(in srgb, var(--card-accent) 74%, var(--tf-color-slate-700) 26%);
         margin-bottom: 2px;
       }
 
       .stat-card__title {
         font-size: 14px;
         font-weight: 700;
-        color: #0f172a;
+        color: var(--tf-color-slate-900);
       }
 
       .stat-card__badge {
@@ -1705,7 +1982,7 @@ onUnmounted(() => {
         border-radius: 999px;
         font-size: 10px;
         font-weight: 700;
-        color: color-mix(in srgb, var(--card-accent) 78%, #1e293b 22%);
+        color: color-mix(in srgb, var(--card-accent) 78%, var(--tf-color-slate-800) 22%);
         background: color-mix(in srgb, var(--card-accent) 12%, white 88%);
         border: 1px solid color-mix(in srgb, var(--card-accent) 16%, white 84%);
       }
@@ -1727,14 +2004,14 @@ onUnmounted(() => {
         line-height: 1;
         font-weight: 800;
         letter-spacing: -0.04em;
-        color: #020617;
+        color: var(--tf-color-slate-950);
         word-break: break-word;
       }
 
       .stat-card__value-unit {
         font-size: 12px;
         font-weight: 700;
-        color: #64748b;
+        color: var(--tf-color-slate-500);
         padding-bottom: 4px;
       }
 
@@ -1758,7 +2035,7 @@ onUnmounted(() => {
       .stat-metric__label {
         display: block;
         font-size: 11px;
-        color: #64748b;
+        color: var(--tf-color-slate-500);
         margin-bottom: 4px;
       }
 
@@ -1766,7 +2043,7 @@ onUnmounted(() => {
         display: block;
         font-size: 14px;
         font-weight: 800;
-        color: #0f172a;
+        color: var(--tf-color-slate-900);
         line-height: 1.2;
         word-break: break-word;
       }
@@ -1801,7 +2078,7 @@ onUnmounted(() => {
         flex-wrap: wrap;
         gap: 6px;
         font-size: 10px;
-        color: #64748b;
+        color: var(--tf-color-slate-500);
       }
 
       .store-pill-list {
@@ -1841,7 +2118,7 @@ onUnmounted(() => {
         min-width: 0;
         font-size: 12px;
         font-weight: 600;
-        color: #334155;
+        color: var(--tf-color-slate-700);
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -1851,14 +2128,14 @@ onUnmounted(() => {
         flex-shrink: 0;
         font-size: 12px;
         font-weight: 800;
-        color: color-mix(in srgb, var(--card-accent) 74%, #0f172a 26%);
+        color: color-mix(in srgb, var(--card-accent) 74%, var(--tf-color-slate-900) 26%);
       }
 
       @media (max-width: 768px) {
-        min-height: 112px !important;
-        padding: 10px !important;
+        min-height: 112px;
+        padding: 10px;
         gap: 8px;
-        flex-direction: column !important;
+        flex-direction: column;
 
         .stat-card__body-row {
           grid-template-columns: 1fr;
@@ -1969,15 +2246,15 @@ onUnmounted(() => {
   /* Element Plus 组件样式覆盖 */
   :deep(.el-input__wrapper) {
     border-radius: 8px;
-    box-shadow: 0 0 0 1px #dee2e6 inset;
+    box-shadow: 0 0 0 1px var(--tf-color-border-subtle) inset;
     transition: all 0.2s;
 
     &:hover {
-      box-shadow: 0 0 0 1px #667eea inset;
+      box-shadow: 0 0 0 1px var(--tf-color-indigo-brand) inset;
     }
 
     &.is-focus {
-      box-shadow: 0 0 0 1px #667eea inset;
+      box-shadow: 0 0 0 1px var(--tf-color-indigo-brand) inset;
     }
   }
 
@@ -2006,7 +2283,7 @@ onUnmounted(() => {
     .section-title {
       font-size: 1.125rem;
       font-weight: 600;
-      color: #2c3e50;
+      color: var(--tf-color-heading);
       margin-bottom: 16px;
       display: flex;
       align-items: center;
@@ -2016,7 +2293,7 @@ onUnmounted(() => {
         margin-left: auto;
         font-size: 0.875rem;
         font-weight: 400;
-        color: #6c757d;
+        color: var(--tf-color-muted);
       }
     }
 
@@ -2032,14 +2309,14 @@ onUnmounted(() => {
 
         thead {
           th {
-            background: linear-gradient(135deg, #495057 0%, #343a40 100%);
+            background: linear-gradient(135deg, var(--tf-color-gray-bootstrap-700) 0%, var(--tf-color-gray-bootstrap-800) 100%);
             color: white;
             padding: 12px 10px;
             text-align: center;
             font-weight: 600;
             font-size: 14px;
-            border-right: 1px solid #dee2e6;
-            border-bottom: 2px solid #dee2e6;
+            border-right: 1px solid var(--tf-color-border-subtle);
+            border-bottom: 2px solid var(--tf-color-border-subtle);
             white-space: nowrap;
             position: relative;
 
@@ -2079,26 +2356,26 @@ onUnmounted(() => {
             }
 
             &:nth-child(even) {
-              background: #f8f9fa;
+              background: var(--tf-color-surface-muted);
             }
 
             &:hover {
-              background: #e3f2fd !important;
+              background: var(--tf-color-blue-100) !important;
               transform: translateY(-1px);
               box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
               z-index: 1;
             }
 
             &:hover td {
-              border-bottom-color: #dee2e6;
+              border-bottom-color: var(--tf-color-border-subtle);
             }
 
             td {
               padding: 6px 6px;
-              border-right: 1px solid #e9ecef;
-              border-bottom: 1px solid #e9ecef;
+              border-right: 1px solid var(--tf-color-border-muted);
+              border-bottom: 1px solid var(--tf-color-border-muted);
               font-size: 14px;
-              color: #2c3e50;
+              color: var(--tf-color-heading);
               font-weight: 500;
               transition: all 0.2s ease;
               text-align: center;
@@ -2128,7 +2405,7 @@ onUnmounted(() => {
         {
           font-size: 13px !important;
           font-weight: 500 !important;
-          color: #1f2937 !important;
+          color: var(--tf-color-neutral-800) !important;
           background: rgba(40, 167, 69, 0.05) !important;
           font-family: inherit !important;
         }
@@ -2151,7 +2428,7 @@ onUnmounted(() => {
         td:nth-child(15)  /* 国补后价 */
         {
           font-weight: 700;
-          color: #dc3545;
+          color: var(--danger-color);
           text-align: right;
           background: rgba(220, 53, 69, 0.03);
         }
@@ -2167,7 +2444,7 @@ onUnmounted(() => {
         {
           background: rgba(102, 126, 234, 0.02);
           font-weight: 500;
-          color: #1f2937;
+          color: var(--tf-color-neutral-800);
         }
 
         tbody tr:hover td:nth-child(16),
@@ -2193,9 +2470,9 @@ onUnmounted(() => {
           }
 
           &.approval-time {
-            background: linear-gradient(135deg, #28a745, #20c997);
+            background: linear-gradient(135deg, var(--success-color), var(--tf-color-teal-500));
             color: white;
-            border-color: #28a745;
+            border-color: var(--success-color);
 
             &:hover {
               transform: translateY(-1px);
@@ -2204,9 +2481,9 @@ onUnmounted(() => {
           }
 
           &.arrival-time {
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: linear-gradient(135deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand));
             color: white;
-            border-color: #667eea;
+            border-color: var(--tf-color-indigo-brand);
 
             &:hover {
               transform: translateY(-1px);
@@ -2221,13 +2498,13 @@ onUnmounted(() => {
       .empty-state {
         padding: 60px 20px;
         text-align: center;
-        color: #6c757d;
+        color: var(--tf-color-muted);
 
         .loading-spinner {
           width: 48px;
           height: 48px;
-          border: 4px solid #e9ecef;
-          border-top-color: #667eea;
+          border: 4px solid var(--tf-color-border-muted);
+          border-top-color: var(--tf-color-indigo-brand);
           border-radius: 50%;
           animation: spin 1s linear infinite;
           margin: 0 auto 20px;
@@ -2236,7 +2513,7 @@ onUnmounted(() => {
         i {
           font-size: 4rem;
           margin-bottom: 20px;
-          color: #dee2e6;
+          color: var(--tf-color-border-subtle);
         }
 
         p {
@@ -2255,7 +2532,7 @@ onUnmounted(() => {
 
       .page-info {
         font-size: 14px;
-        color: #495057;
+        color: var(--tf-color-gray-bootstrap-700);
         font-weight: 500;
       }
     }
@@ -2270,12 +2547,12 @@ onUnmounted(() => {
     h3 {
       font-size: 1.25rem;
       font-weight: 600;
-      color: #2c3e50;
+      color: var(--tf-color-heading);
       margin-bottom: 8px;
     }
 
     .step-hint {
-      color: #6c757d;
+      color: var(--tf-color-muted);
       margin-bottom: 24px;
       font-size: 0.95rem;
     }
@@ -2290,14 +2567,14 @@ onUnmounted(() => {
         flex: 1;
         min-width: 0;
         padding: 14px 18px;
-        border: 1px solid #dee2e6;
+        border: 1px solid var(--tf-color-border-subtle);
         border-radius: 8px;
         font-size: 16px;
         transition: all 0.2s;
 
         &:focus {
           outline: none;
-          border-color: #667eea;
+          border-color: var(--tf-color-indigo-brand);
           box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
       }
@@ -2310,38 +2587,38 @@ onUnmounted(() => {
       .search-input-lg {
         width: 100%;
         padding: 14px 18px;
-        border: 2px solid #dee2e6;
+        border: 2px solid var(--tf-color-border-subtle);
         border-radius: 8px;
         font-size: 16px;
         transition: all 0.2s;
 
         &:focus {
           outline: none;
-          border-color: #667eea;
+          border-color: var(--tf-color-indigo-brand);
           box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
         &::placeholder {
-          color: #adb5bd;
+          color: var(--tf-color-gray-bootstrap-500);
         }
       }
     }
 
     // 设备列表
     .device-list {
-      border: 1px solid #dee2e6;
+      border: 1px solid var(--tf-color-border-subtle);
       border-radius: 12px;
       overflow: hidden;
 
       .device-list-header {
-        background: #f8f9fa;
+        background: var(--tf-color-surface-muted);
         padding: 14px 20px;
-        border-bottom: 1px solid #dee2e6;
+        border-bottom: 1px solid var(--tf-color-border-subtle);
 
         h4 {
           font-size: 1rem;
           font-weight: 600;
-          color: #2c3e50;
+          color: var(--tf-color-heading);
           margin: 0;
         }
       }
@@ -2352,7 +2629,7 @@ onUnmounted(() => {
 
         .device-item {
           padding: 16px 20px;
-          border-bottom: 1px solid #e9ecef;
+          border-bottom: 1px solid var(--tf-color-border-muted);
           cursor: pointer;
           transition: all 0.2s;
           display: flex;
@@ -2365,12 +2642,12 @@ onUnmounted(() => {
           }
 
           &:hover {
-            background: #f8f9fa;
+            background: var(--tf-color-surface-muted);
           }
 
           &.selected {
-            background: #e7f3ff;
-            border-left: 4px solid #667eea;
+            background: var(--tf-color-blue-pale);
+            border-left: 4px solid var(--tf-color-indigo-brand);
           }
 
           .device-main {
@@ -2380,13 +2657,13 @@ onUnmounted(() => {
             .device-model {
               font-size: 1rem;
               font-weight: 600;
-              color: #2c3e50;
+              color: var(--tf-color-heading);
               margin-bottom: 6px;
             }
 
             .device-specs {
               font-size: 0.875rem;
-              color: #6c757d;
+              color: var(--tf-color-muted);
               margin-bottom: 8px;
             }
 
@@ -2394,7 +2671,7 @@ onUnmounted(() => {
               display: flex;
               gap: 16px;
               font-size: 0.75rem;
-              color: #adb5bd;
+              color: var(--tf-color-gray-bootstrap-500);
               flex-wrap: wrap;
 
               span {
@@ -2414,10 +2691,10 @@ onUnmounted(() => {
               display: flex;
               gap: 16px;
               font-size: 0.8125rem;
-              color: #667eea;
+              color: var(--tf-color-indigo-brand);
               margin-top: 4px;
               padding-top: 8px;
-              border-top: 1px solid #e9ecef;
+              border-top: 1px solid var(--tf-color-border-muted);
               flex-wrap: wrap;
 
               span {
@@ -2440,7 +2717,7 @@ onUnmounted(() => {
             .device-price {
               font-size: 1.25rem;
               font-weight: 700;
-              color: #2c3e50;
+              color: var(--tf-color-heading);
               margin-bottom: 8px;
             }
 
@@ -2452,13 +2729,15 @@ onUnmounted(() => {
               font-weight: 500;
 
               &.eligible {
-                background: #d1fae5;
-                color: #10b981;
+                background: var(--tf-status-success-bg);
+                color: var(--tf-status-success-color);
+                border: 1px solid var(--tf-status-success-border);
               }
 
               &.not-eligible {
-                background: #fee2e2;
-                color: #ef4444;
+                background: var(--tf-status-danger-bg);
+                color: var(--tf-status-danger-color);
+                border: 1px solid var(--tf-status-danger-border);
               }
             }
           }
@@ -2467,11 +2746,11 @@ onUnmounted(() => {
 
       .device-selected-actions {
         padding: 16px 20px;
-        border-top: 1px solid #dee2e6;
+        border-top: 1px solid var(--tf-color-border-subtle);
         display: flex;
         justify-content: flex-end;
         gap: 12px;
-        background: #f8f9fa;
+        background: var(--tf-color-surface-muted);
       }
     }
 
@@ -2479,12 +2758,12 @@ onUnmounted(() => {
     .empty-devices {
       padding: 60px 20px;
       text-align: center;
-      color: #6c757d;
+      color: var(--tf-color-muted);
 
       i {
         font-size: 3rem;
         margin-bottom: 16px;
-        color: #dee2e6;
+        color: var(--tf-color-border-subtle);
       }
 
       p {
@@ -2498,7 +2777,7 @@ onUnmounted(() => {
     h3 {
       font-size: 1.25rem;
       font-weight: 600;
-      color: #2c3e50;
+      color: var(--tf-color-heading);
       margin-bottom: 20px;
     }
 
@@ -2507,16 +2786,16 @@ onUnmounted(() => {
 
       .info-group {
         margin-bottom: 20px;
-        background: #f8f9fa;
+        background: var(--tf-color-surface-muted);
         border-radius: 12px;
         padding: 16px;
-        border: 1px solid #e9ecef;
+        border: 1px solid var(--tf-color-border-muted);
         min-width: 0;
 
         h4 {
           font-size: 0.95rem;
           font-weight: 600;
-          color: #495057;
+          color: var(--tf-color-gray-bootstrap-700);
           margin-bottom: 12px;
           text-transform: uppercase;
           letter-spacing: 0.5px;
@@ -2525,7 +2804,7 @@ onUnmounted(() => {
         .info-row {
           display: flex;
           padding: 10px 0;
-          border-bottom: 1px solid #e9ecef;
+          border-bottom: 1px solid var(--tf-color-border-muted);
           gap: 12px;
           min-width: 0;
 
@@ -2535,7 +2814,7 @@ onUnmounted(() => {
 
           .info-label {
             width: 100px;
-            color: #6c757d;
+            color: var(--tf-color-muted);
             font-size: 14px;
             font-weight: 500;
             flex-shrink: 0;
@@ -2544,7 +2823,7 @@ onUnmounted(() => {
           .info-value {
             flex: 1;
             min-width: 0;
-            color: #2c3e50;
+            color: var(--tf-color-heading);
             font-size: 14px;
             font-weight: 500;
             word-break: break-word;
@@ -2553,19 +2832,19 @@ onUnmounted(() => {
               width: 100%;
               max-width: 300px;
               padding: 6px 12px;
-              border: 1px solid #dee2e6;
+              border: 1px solid var(--tf-color-border-subtle);
               border-radius: 6px;
               font-size: 14px;
               transition: all 0.2s;
 
               &.has-value {
-                background: #f0fdf4;
-                border-color: #86efac;
+                background: var(--tf-color-green-50);
+                border-color: var(--tf-color-green-300);
               }
 
               &:focus {
                 outline: none;
-                border-color: #667eea;
+                border-color: var(--tf-color-indigo-brand);
                 box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
               }
             }
@@ -2573,8 +2852,8 @@ onUnmounted(() => {
             .idcard-hint {
               margin-left: 12px;
               padding: 4px 10px;
-              background: #d1fae5;
-              color: #065f46;
+              background: var(--tf-color-emerald-100);
+              color: var(--tf-color-emerald-800);
               border-radius: 4px;
               font-size: 12px;
               display: inline-flex;
@@ -2587,8 +2866,8 @@ onUnmounted(() => {
               }
 
               &.modified {
-                background: #fef3c7;
-                color: #92400e;
+                background: var(--tf-color-amber-100);
+                color: var(--tf-color-amber-800);
 
                 &::before {
                   content: '✎';
@@ -2597,18 +2876,18 @@ onUnmounted(() => {
             }
 
             &.subsidy-amount-highlight {
-              color: #10b981;
+              color: var(--tf-color-emerald-500);
               font-weight: 700;
               font-size: 1.5rem;
             }
 
             .discount-amount {
-              color: #f97316;
+              color: var(--tf-color-orange-tailwind-500);
               font-weight: 600;
             }
 
             .final-price {
-              color: #ef4444;
+              color: var(--tf-color-red-500);
               font-weight: 700;
               font-size: 1.2rem;
             }
@@ -2618,7 +2897,7 @@ onUnmounted(() => {
         .info-row-inline {
           display: flex;
           padding: 10px 0;
-          border-bottom: 1px solid #e9ecef;
+          border-bottom: 1px solid var(--tf-color-border-muted);
           gap: 24px;
 
           .inline-item {
@@ -2627,33 +2906,33 @@ onUnmounted(() => {
             gap: 8px;
 
             .info-label {
-              color: #6c757d;
+              color: var(--tf-color-muted);
               font-size: 14px;
               font-weight: 500;
               white-space: nowrap;
             }
 
             .info-value {
-              color: #2c3e50;
+              color: var(--tf-color-heading);
               font-size: 14px;
               font-weight: 500;
 
               .form-input-inline {
                 padding: 6px 12px;
-                border: 1px solid #dee2e6;
+                border: 1px solid var(--tf-color-border-subtle);
                 border-radius: 6px;
                 font-size: 14px;
                 transition: all 0.2s;
                 min-width: 200px;
 
                 &.has-value {
-                  background: #f0fdf4;
-                  border-color: #86efac;
+                  background: var(--tf-color-green-50);
+                  border-color: var(--tf-color-green-300);
                 }
 
                 &:focus {
                   outline: none;
-                  border-color: #667eea;
+                  border-color: var(--tf-color-indigo-brand);
                   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
                 }
               }
@@ -2694,15 +2973,15 @@ onUnmounted(() => {
         }
 
         &.highlight {
-          background: linear-gradient(135deg, #d1fae5, #a7f3d0);
-          border-color: #6ee7b7;
+          background: linear-gradient(135deg, var(--tf-color-emerald-100), var(--tf-color-emerald-200));
+          border-color: var(--tf-color-emerald-300);
         }
 
         .existing-subsidy-warning {
           margin-top: 12px;
           padding: 12px;
-          background: #fff3cd;
-          color: #f59e0b;
+          background: var(--tf-color-warning-legacy);
+          color: var(--tf-color-amber-500);
           border-radius: 8px;
           display: flex;
           align-items: center;
@@ -2714,8 +2993,8 @@ onUnmounted(() => {
         .subsidy-warning {
           margin-top: 12px;
           padding: 12px;
-          background: #fee2e2;
-          color: #ef4444;
+          background: var(--tf-color-red-100);
+          color: var(--tf-color-red-500);
           border-radius: 8px;
           display: flex;
           align-items: center;
@@ -2727,15 +3006,15 @@ onUnmounted(() => {
             .price-diff-hint {
               margin-left: 8px;
               font-size: 12px;
-              color: #f59e0b;
+              color: var(--tf-color-amber-500);
               font-weight: 500;
               word-break: break-word;
             }
 
         // 实际办理人信息区块样式
         &.handler-info-section {
-          background: #fffbeb;
-          border-color: #fde68a;
+          background: var(--tf-color-amber-50);
+          border-color: var(--tf-color-amber-200);
 
           .handler-info-header {
             display: flex;
@@ -2754,21 +3033,21 @@ onUnmounted(() => {
               cursor: pointer;
               user-select: none;
               font-size: 14px;
-              color: #495057;
+              color: var(--tf-color-gray-bootstrap-700);
               padding: 8px 12px;
-              background: #ffffff;
+              background: var(--color-bg-white);
               border-radius: 6px;
               transition: background 0.2s;
 
               &:hover {
-                background: #fef3c7;
+                background: var(--tf-color-amber-100);
               }
 
               input[type="checkbox"] {
                 width: 18px;
                 height: 18px;
                 cursor: pointer;
-                accent-color: #f59e0b;
+                accent-color: var(--tf-color-amber-500);
               }
 
               span {
@@ -2783,21 +3062,21 @@ onUnmounted(() => {
 
           .handler-info-placeholder {
             padding: 16px;
-            background: #ffffff;
+            background: var(--color-bg-white);
             border-radius: 8px;
             text-align: center;
 
             p {
               margin: 0;
               font-size: 14px;
-              color: #6c757d;
+              color: var(--tf-color-muted);
               display: flex;
               align-items: center;
               justify-content: center;
               gap: 8px;
 
               i {
-                color: #3b82f6;
+                color: var(--tf-color-blue-500);
                 font-size: 16px;
               }
             }
@@ -2807,7 +3086,7 @@ onUnmounted(() => {
             &.required {
               &::after {
                 content: '*';
-                color: #ef4444;
+                color: var(--tf-color-red-500);
                 margin-left: 4px;
                 font-weight: bold;
               }
@@ -2823,14 +3102,14 @@ onUnmounted(() => {
           display: block;
           font-size: 14px;
           font-weight: 600;
-          color: #495057;
+          color: var(--tf-color-gray-bootstrap-700);
           margin-bottom: 8px;
         }
 
         .form-textarea {
           width: 100%;
           padding: 10px 14px;
-          border: 1px solid #dee2e6;
+          border: 1px solid var(--tf-color-border-subtle);
           border-radius: 8px;
           font-size: 14px;
           resize: vertical;
@@ -2839,7 +3118,7 @@ onUnmounted(() => {
 
           &:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--tf-color-indigo-brand);
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
           }
         }
@@ -2851,7 +3130,7 @@ onUnmounted(() => {
       justify-content: flex-end;
       gap: 12px;
       padding-top: 20px;
-      border-top: 1px solid #dee2e6;
+      border-top: 1px solid var(--tf-color-border-subtle);
       margin-top: 20px;
     }
   }
@@ -2869,10 +3148,10 @@ onUnmounted(() => {
     h4 {
       font-size: 0.95rem;
       font-weight: 600;
-      color: #495057;
+      color: var(--tf-color-gray-bootstrap-700);
       margin-bottom: 12px;
       padding-bottom: 8px;
-      border-bottom: 2px solid #e9ecef;
+      border-bottom: 2px solid var(--tf-color-border-muted);
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
@@ -2883,7 +3162,7 @@ onUnmounted(() => {
 
       .detail-label {
         width: 120px;
-        color: #6c757d;
+        color: var(--tf-color-muted);
         font-size: 14px;
         font-weight: 500;
         flex-shrink: 0;
@@ -2891,12 +3170,12 @@ onUnmounted(() => {
 
       .detail-value {
         flex: 1;
-        color: #2c3e50;
+        color: var(--tf-color-heading);
         font-size: 14px;
         font-weight: 500;
 
         &.subsidy-highlight {
-          color: #10b981;
+          color: var(--tf-color-emerald-500);
           font-weight: 700;
           font-size: 1.25rem;
         }
@@ -2909,44 +3188,48 @@ onUnmounted(() => {
           font-weight: 600;
 
           &.status-pending {
-            background: #fff3cd;
-            color: #f59e0b;
+            background: var(--tf-status-warning-bg);
+            color: var(--tf-status-warning-color);
+            border: 1px solid var(--tf-status-warning-border);
           }
 
           &.status-approved {
-            background: #dbeafe;
-            color: #3b82f6;
+            background: var(--tf-status-success-bg);
+            color: var(--tf-status-success-color);
+            border: 1px solid var(--tf-status-success-border);
           }
 
           &.status-rejected {
-            background: #fee2e2;
-            color: #ef4444;
+            background: var(--tf-status-danger-bg);
+            color: var(--tf-status-danger-color);
+            border: 1px solid var(--tf-status-danger-border);
           }
 
           &.status-completed {
-            background: #d1fae5;
-            color: #10b981;
+            background: var(--tf-status-success-bg);
+            color: var(--tf-status-success-color);
+            border: 1px solid var(--tf-status-success-border);
           }
         }
       }
     }
 
     .detail-remarks {
-      color: #495057;
+      color: var(--tf-color-gray-bootstrap-700);
       font-size: 14px;
       line-height: 1.7;
       margin: 0;
       white-space: pre-wrap;
-      background: #f8f9fa;
+      background: var(--tf-color-surface-muted);
       padding: 14px;
       border-radius: 8px;
     }
 
     &.highlight {
-      background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+      background: linear-gradient(135deg, var(--tf-color-emerald-100), var(--tf-color-emerald-200));
       padding: 16px;
       border-radius: 12px;
-      border: 1px solid #6ee7b7;
+      border: 1px solid var(--tf-color-emerald-300);
     }
 
     // 客户信息区块(支持点击切换)
@@ -2970,11 +3253,11 @@ onUnmounted(() => {
           .toggle-hint {
             font-size: 12px;
             font-weight: 500;
-            color: #6c757d;
-            background: #f8f9fa;
+            color: var(--tf-color-muted);
+            background: var(--tf-color-surface-muted);
             padding: 4px 10px;
             border-radius: 12px;
-            border: 1px solid #dee2e6;
+            border: 1px solid var(--tf-color-border-subtle);
             transition: all 0.2s;
           }
         }
@@ -2984,38 +3267,38 @@ onUnmounted(() => {
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 
           .toggle-hint {
-            background: #e9ecef;
-            border-color: #adb5bd;
+            background: var(--tf-color-border-muted);
+            border-color: var(--tf-color-gray-bootstrap-500);
           }
         }
       }
 
       // 显示办理人信息时的样式(黄色背景)
       &.showing-handler {
-        background: linear-gradient(135deg, #fef3c7, #fde68a) !important;
+        background: linear-gradient(135deg, var(--tf-color-amber-100), var(--tf-color-amber-200)) !important;
         padding: 16px;
         border-radius: 12px;
-        border: 2px solid #fbbf24;
+        border: 2px solid var(--tf-color-amber-400);
         box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
 
         h4 {
-          color: #92400e !important;
-          border-bottom-color: #fcd34d !important;
+          color: var(--tf-color-amber-800) !important;
+          border-bottom-color: var(--tf-color-amber-300) !important;
 
           .toggle-hint {
-            background: #fff7ed;
-            border-color: #fbbf24;
-            color: #92400e;
+            background: var(--tf-color-orange-50);
+            border-color: var(--tf-color-amber-400);
+            color: var(--tf-color-amber-800);
           }
         }
 
         .detail-label {
-          color: #78350f;
+          color: var(--tf-color-amber-900);
           font-weight: 600;
         }
 
         .detail-value {
-          color: #92400e;
+          color: var(--tf-color-amber-800);
           font-weight: 600;
         }
       }
@@ -3023,30 +3306,30 @@ onUnmounted(() => {
 
     // 实际办理人信息高亮样式(旧版保留,未使用)
     &.handler-info-highlight {
-      background: linear-gradient(135deg, #fef3c7, #fde68a);
+      background: linear-gradient(135deg, var(--tf-color-amber-100), var(--tf-color-amber-200));
       padding: 16px;
       border-radius: 12px;
-      border: 1px solid #fbbf24;
+      border: 1px solid var(--tf-color-amber-400);
 
       h4 {
-        color: #92400e;
-        border-bottom-color: #fcd34d;
+        color: var(--tf-color-amber-800);
+        border-bottom-color: var(--tf-color-amber-300);
         display: flex;
         align-items: center;
         gap: 8px;
 
         i {
-          color: #f59e0b;
+          color: var(--tf-color-amber-500);
         }
       }
 
       .detail-label {
-        color: #78350f;
+        color: var(--tf-color-amber-900);
         font-weight: 600;
       }
 
       .detail-value {
-        color: #92400e;
+        color: var(--tf-color-amber-800);
         font-weight: 600;
       }
     }
@@ -3057,18 +3340,18 @@ onUnmounted(() => {
 .approve-content {
   p {
     font-size: 16px;
-    color: #495057;
+    color: var(--tf-color-gray-bootstrap-700);
     margin-bottom: 16px;
   }
 
   .approve-info {
     padding: 16px;
-    background: #f8f9fa;
+    background: var(--tf-color-surface-muted);
     border-radius: 8px;
     font-size: 15px;
 
     strong {
-      color: #10b981;
+      color: var(--tf-color-emerald-500);
       font-size: 1.5rem;
     }
   }
@@ -3094,22 +3377,22 @@ onUnmounted(() => {
 
   :deep(.el-form-item__label) {
     font-weight: 600;
-    color: #303133;
+    color: var(--color-text-primary);
     font-size: 14px;
   }
 
   :deep(.el-input__wrapper) {
     border-radius: 8px;
-    box-shadow: 0 0 0 1px #dcdfe6 inset;
+    box-shadow: 0 0 0 1px var(--color-border) inset;
     transition: all 0.2s;
     padding: 8px 12px;
 
     &:hover {
-      box-shadow: 0 0 0 1px #c0c4cc inset;
+      box-shadow: 0 0 0 1px var(--color-text-placeholder) inset;
     }
 
     &.is-focus {
-      box-shadow: 0 0 0 1px #667eea inset;
+      box-shadow: 0 0 0 1px var(--tf-color-indigo-brand) inset;
     }
   }
 
@@ -3124,7 +3407,7 @@ onUnmounted(() => {
     transition: all 0.2s;
 
     &:focus {
-      border-color: #667eea;
+      border-color: var(--tf-color-indigo-brand);
     }
   }
 
@@ -3212,14 +3495,14 @@ onUnmounted(() => {
   .readonly-fields {
     margin-top: 20px;
     padding: 16px;
-    background: #f8f9fa;
+    background: var(--tf-color-surface-muted);
     border-radius: 8px;
-    border: 1px solid #dee2e6;
+    border: 1px solid var(--tf-color-border-subtle);
 
     .readonly-title {
       font-size: 13px;
       font-weight: 600;
-      color: #6c757d;
+      color: var(--tf-color-muted);
       margin-bottom: 12px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -3240,11 +3523,11 @@ onUnmounted(() => {
 
         .el-descriptions__label {
           font-weight: 500;
-          color: #495057;
+          color: var(--tf-color-gray-bootstrap-700);
         }
 
         .el-descriptions__content {
-          color: #212529;
+          color: var(--tf-color-gray-bootstrap-900);
         }
       }
     }
@@ -3302,7 +3585,7 @@ onUnmounted(() => {
       left: 0;
       right: 0;
       height: 3px;
-      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(90deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
     }
 
     &:active {
@@ -3325,11 +3608,11 @@ onUnmounted(() => {
         margin-bottom: 8px;
         font-size: 12px;
         font-weight: 700;
-        color: #1a1a1a;
+        color: var(--tf-color-neutral-950);
 
         i {
           font-size: 14px;
-          color: #667eea;
+          color: var(--tf-color-indigo-brand);
         }
       }
 
@@ -3354,7 +3637,7 @@ onUnmounted(() => {
 
           .item-label {
             font-size: 10px;
-            color: #8e8e93;
+            color: var(--tf-color-gray-ios);
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -3362,13 +3645,13 @@ onUnmounted(() => {
 
           .item-value {
             font-size: 13px;
-            color: #1c1c1e;
+            color: var(--tf-color-neutral-ios);
             font-weight: 600;
             word-break: break-all;
             line-height: 1.3;
 
             &.clickable-text {
-              color: #667eea;
+              color: var(--tf-color-indigo-brand);
               cursor: pointer;
               position: relative;
 
@@ -3383,7 +3666,7 @@ onUnmounted(() => {
 
               /* 有办理人但显示购买者 - 蓝色 */
               &.has-handler-but-showing-purchaser {
-                color: #1976d2;
+                color: var(--tf-color-blue-material-700);
                 background: linear-gradient(135deg, rgba(25, 118, 210, 0.08), rgba(25, 118, 210, 0.12));
                 padding: 3px 8px;
                 border-radius: 6px;
@@ -3392,7 +3675,7 @@ onUnmounted(() => {
 
               /* 显示办理人 - 橙色 */
               &.showing-handler {
-                color: #f57c00;
+                color: var(--tf-color-orange-material-700);
                 background: linear-gradient(135deg, rgba(245, 124, 0, 0.08), rgba(245, 124, 0, 0.12));
                 padding: 3px 8px;
                 border-radius: 6px;
@@ -3405,12 +3688,12 @@ onUnmounted(() => {
             }
 
             &.price-highlight {
-              color: #ff3b30;
+              color: var(--tf-color-red-material);
               font-size: 14px;
             }
 
             &.subsidy-amount {
-              color: #34c759;
+              color: var(--tf-color-green-ios);
               font-size: 14px;
             }
 
@@ -3425,12 +3708,12 @@ onUnmounted(() => {
               box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 
               &.approval-time {
-                background: linear-gradient(135deg, #667eea, #764ba2);
+                background: linear-gradient(135deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand));
                 color: white;
               }
 
               &.arrival-time {
-                background: linear-gradient(135deg, #34c759, #30d158);
+                background: linear-gradient(135deg, var(--tf-color-green-ios), var(--tf-color-green-ios));
                 color: white;
               }
 
@@ -3465,7 +3748,7 @@ onUnmounted(() => {
           font-size: 10px;
 
           .info-label {
-            color: #8e8e93;
+            color: var(--tf-color-gray-ios);
             font-weight: 600;
             font-size: 9px;
             min-width: 24px;
@@ -3478,7 +3761,7 @@ onUnmounted(() => {
           }
 
           .info-value {
-            color: #1c1c1e;
+            color: var(--tf-color-neutral-ios);
             font-weight: 600;
             word-break: keep-all;
             white-space: nowrap;
@@ -3486,7 +3769,7 @@ onUnmounted(() => {
             flex-shrink: 0;
 
             &.clickable-text {
-              color: #667eea;
+              color: var(--tf-color-indigo-brand);
               cursor: pointer;
             }
 
@@ -3498,7 +3781,7 @@ onUnmounted(() => {
 
               /* 有办理人但显示购买者 - 蓝色 */
               &.has-handler-but-showing-purchaser {
-                color: #1976d2;
+                color: var(--tf-color-blue-material-700);
                 background: linear-gradient(135deg, rgba(25, 118, 210, 0.08), rgba(25, 118, 210, 0.12));
                 padding: 3px 8px;
                 border-radius: 6px;
@@ -3507,7 +3790,7 @@ onUnmounted(() => {
 
               /* 显示办理人 - 橙色 */
               &.showing-handler {
-                color: #f57c00;
+                color: var(--tf-color-orange-material-700);
                 background: linear-gradient(135deg, rgba(245, 124, 0, 0.08), rgba(245, 124, 0, 0.12));
                 padding: 3px 8px;
                 border-radius: 6px;
@@ -3529,7 +3812,7 @@ onUnmounted(() => {
           font-size: 11px;
 
           .info-label {
-            color: #8e8e93;
+            color: var(--tf-color-gray-ios);
             font-weight: 600;
             font-size: 10px;
             min-width: 32px;
@@ -3537,14 +3820,14 @@ onUnmounted(() => {
           }
 
           .info-value {
-            color: #1c1c1e;
+            color: var(--tf-color-neutral-ios);
             font-weight: 600;
             flex: 1;
             word-break: keep-all;
             font-size: 11px;
 
             &.clickable-text {
-              color: #667eea;
+              color: var(--tf-color-indigo-brand);
               cursor: pointer;
             }
           }
@@ -3656,11 +3939,11 @@ onUnmounted(() => {
   }
 
   .device-item {
-    flex-direction: column !important;
-    align-items: flex-start !important;
+    flex-direction: column;
+    align-items: flex-start;
 
     .device-meta {
-      text-align: left !important;
+      text-align: left;
       width: 100%;
       margin-top: 12px;
       display: flex;
@@ -3671,7 +3954,7 @@ onUnmounted(() => {
 
   .confirm-actions,
   .device-selected-actions {
-    flex-direction: column !important;
+    flex-direction: column;
 
   }
 }
@@ -3688,7 +3971,7 @@ onUnmounted(() => {
   }
 
   .search-row {
-    flex-direction: column !important;
+    flex-direction: column;
 
     .search-input-group,
     .filter-select {
@@ -3704,13 +3987,13 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   min-height: 400px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
 
   .loading-spinner {
     width: 48px;
     height: 48px;
-    border: 4px solid #e9ecef;
-    border-top-color: #667eea;
+    border: 4px solid var(--tf-color-border-muted);
+    border-top-color: var(--tf-color-indigo-brand);
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin-bottom: 16px;
@@ -3725,7 +4008,7 @@ onUnmounted(() => {
 // 新增样式：可点击文本和二维码提示
 .clickable-text {
   cursor: pointer;
-  color: #667eea !important;
+  color: var(--tf-color-indigo-brand);
   text-decoration: none;
   transition: all 0.2s;
   padding: 2px 4px;
@@ -3733,12 +4016,12 @@ onUnmounted(() => {
   display: inline-block;
 
   &:hover {
-    background: #e0e7ff !important;
-    color: #5a67d8 !important;
+    background: var(--tf-color-indigo-100);
+    color: var(--tf-color-indigo-legacy);
   }
 
   &:active {
-    background: #c7d2fe !important;
+    background: var(--tf-color-indigo-200);
   }
 
   // 客户信息切换样式
@@ -3751,27 +4034,27 @@ onUnmounted(() => {
 
     // 有实际办理人但显示原始购买者信息时的样式（默认状态）
     &.has-handler-but-showing-purchaser {
-      background: linear-gradient(135deg, #dbeafe, #bfdbfe) !important;
-      color: #1e40af !important;
+      background: linear-gradient(135deg, var(--tf-color-blue-tailwind-100), var(--tf-color-blue-tailwind-200));
+      color: var(--tf-color-blue-tailwind-800);
       font-weight: 500;
-      border: 1px solid #3b82f6;
+      border: 1px solid var(--tf-color-blue-500);
       box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
 
       &:hover {
-        background: linear-gradient(135deg, #bfdbfe, #93c5fd) !important;
+        background: linear-gradient(135deg, var(--tf-color-blue-tailwind-200), var(--tf-color-blue-tailwind-300));
       }
     }
 
     // 显示办理人信息时的样式（切换后状态）
     &.showing-handler {
-      background: linear-gradient(135deg, #fef3c7, #fde68a) !important;
-      color: #92400e !important;
+      background: linear-gradient(135deg, var(--tf-color-amber-100), var(--tf-color-amber-200));
+      color: var(--tf-color-amber-800);
       font-weight: 600;
-      border: 1px solid #fbbf24;
+      border: 1px solid var(--tf-color-amber-400);
       box-shadow: 0 2px 4px rgba(251, 191, 36, 0.2);
 
       &:hover {
-        background: linear-gradient(135deg, #fde68a, #fcd34d) !important;
+        background: linear-gradient(135deg, var(--tf-color-amber-200), var(--tf-color-amber-300));
       }
     }
   }
@@ -3790,22 +4073,22 @@ onUnmounted(() => {
     border-radius: 10px;
     font-weight: 500;
     white-space: nowrap;
-    background-color: #3b82f6;
+    background-color: var(--tf-color-blue-500);
     color: white;
 
     &.showing-handler {
-      background-color: #f59e0b;
+      background-color: var(--tf-color-amber-500);
       color: white;
     }
   }
 }
 
 .text-muted {
-  color: #adb5bd !important;
+  color: var(--tf-color-gray-bootstrap-500) !important;
 }
 
 .remarks-display {
-  color: #6c757d;
+  color: var(--tf-color-muted);
   font-size: 12px;
   max-width: 200px;
   overflow: hidden;
@@ -3817,8 +4100,8 @@ onUnmounted(() => {
 .remarks-tag {
   display: inline-block;
   padding: 2px 10px;
-  background-color: #ffc107;
-  color: #fff;
+  background-color: var(--warning-color);
+  color: var(--color-bg-white);
   font-size: 12px;
   border-radius: 4px;
   cursor: pointer;
@@ -3827,12 +4110,12 @@ onUnmounted(() => {
 }
 
 .remarks-tag:hover {
-  background-color: #ffca2c;
+  background-color: var(--tf-color-yellow-bootstrap);
   transform: scale(1.05);
 }
 
 .remarks-icon {
-  color: #ffc107;
+  color: var(--warning-color);
   cursor: pointer;
   font-size: 16px;
   transition: all 0.2s;
@@ -3841,7 +4124,7 @@ onUnmounted(() => {
 }
 
 .remarks-icon:hover {
-  color: #ffca2c;
+  color: var(--tf-color-yellow-bootstrap);
   background-color: rgba(255, 193, 7, 0.1);
   transform: scale(1.1);
 }
@@ -3893,12 +4176,12 @@ onUnmounted(() => {
   border-radius: 8px;
   overflow: hidden;
   cursor: pointer;
-  border: 2px solid #e0e0e0;
+  border: 2px solid var(--tf-color-gray-material-300);
   transition: all 0.3s;
 
   &:hover {
     transform: scale(1.1);
-    border-color: #667eea;
+    border-color: var(--tf-color-indigo-brand);
     box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 
     .remove-photo {
@@ -3919,7 +4202,7 @@ onUnmounted(() => {
     width: 18px;
     height: 18px;
     background: rgba(220, 53, 69, 0.9);
-    color: #fff;
+    color: var(--color-bg-white);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -3930,7 +4213,7 @@ onUnmounted(() => {
     cursor: pointer;
 
     &:hover {
-      background: #dc3545;
+      background: var(--danger-color);
     }
   }
 }
@@ -3943,7 +4226,7 @@ onUnmounted(() => {
     justify-content: center;
     gap: 4px;
     padding: 6px 12px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
     border-radius: 8px;
     cursor: pointer;
     position: relative;
@@ -3957,24 +4240,24 @@ onUnmounted(() => {
     }
 
     .photo-icon {
-      color: #fff;
+      color: var(--color-bg-white);
       font-size: 16px;
     }
 
     .photo-icon-empty {
-      color: #fff;
+      color: var(--color-bg-white);
       font-size: 14px;
       opacity: 0.8;
     }
 
     .upload-hint {
-      color: #fff;
+      color: var(--color-bg-white);
       font-size: 12px;
       font-weight: 500;
     }
 
     .photo-count {
-      color: #fff;
+      color: var(--color-bg-white);
       font-size: 12px;
       font-weight: 600;
       background: rgba(255, 255, 255, 0.2);
@@ -3992,7 +4275,7 @@ onUnmounted(() => {
       align-items: center;
       gap: 12px;
       padding: 16px;
-      background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+      background: linear-gradient(135deg, var(--tf-color-surface) 0%, var(--tf-color-border-cool-alt) 100%);
       border-radius: 8px;
       margin-bottom: 20px;
 
@@ -4012,7 +4295,7 @@ onUnmounted(() => {
       }
 
       .upload-tip {
-        color: #666;
+        color: var(--text-secondary);
         font-size: 13px;
       }
     }
@@ -4023,7 +4306,7 @@ onUnmounted(() => {
         justify-content: space-between;
         align-items: center;
         padding: 12px 16px;
-        background: #f8f9fa;
+        background: var(--tf-color-surface-muted);
         border-radius: 8px;
         margin-bottom: 16px;
 
@@ -4033,7 +4316,7 @@ onUnmounted(() => {
           gap: 16px;
 
           .selected-count {
-            color: #409eff;
+            color: var(--color-primary);
             font-size: 14px;
             font-weight: 500;
           }
@@ -4063,7 +4346,7 @@ onUnmounted(() => {
           cursor: pointer;
 
           &.selected {
-            border-color: #409eff;
+            border-color: var(--color-primary);
             box-shadow: 0 4px 16px rgba(64, 158, 255, 0.3);
           }
 
@@ -4175,7 +4458,7 @@ onUnmounted(() => {
             pointer-events: none;
 
             i {
-              color: #409eff;
+              color: var(--color-primary);
               font-size: 48px;
               filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
             }
@@ -4186,12 +4469,12 @@ onUnmounted(() => {
       .photo-count-info {
         text-align: center;
         padding: 16px 0;
-        color: #666;
+        color: var(--text-secondary);
         font-size: 14px;
 
         i {
           margin-right: 6px;
-          color: #409eff;
+          color: var(--color-primary);
         }
       }
     }
@@ -4202,7 +4485,7 @@ onUnmounted(() => {
       align-items: center;
       justify-content: center;
       padding: 60px 20px;
-      color: #999;
+      color: var(--text-muted);
 
       i {
         font-size: 64px;
@@ -4233,7 +4516,7 @@ onUnmounted(() => {
       align-items: center;
       justify-content: center;
       min-height: 500px;
-      background: #f5f5f5;
+      background: var(--tf-color-surface-soft);
       border-radius: 8px;
       padding: 20px;
 
@@ -4441,7 +4724,7 @@ onUnmounted(() => {
 .qrcode-tooltip {
   position: fixed;
   background: white;
-  border: 1px solid #dee2e6;
+  border: 1px solid var(--tf-color-border-subtle);
   border-radius: 8px;
   padding: 16px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -4452,25 +4735,25 @@ onUnmounted(() => {
 
   .qrcode-title {
     font-weight: 600;
-    color: #495057;
+    color: var(--tf-color-gray-bootstrap-700);
     margin-bottom: 8px;
     font-size: 14px;
   }
 
   .qrcode-value {
     font-size: 12px;
-    color: #6c757d;
+    color: var(--tf-color-muted);
     margin-bottom: 12px;
     word-break: break-all;
     padding: 8px;
-    background: #f8f9fa;
+    background: var(--tf-color-surface-muted);
     border-radius: 4px;
   }
 
   canvas {
     display: block;
     margin: 0 auto;
-    border: 1px solid #dee2e6;
+    border: 1px solid var(--tf-color-border-subtle);
     border-radius: 4px;
   }
 }
@@ -4590,7 +4873,7 @@ onUnmounted(() => {
 
 .modal-footer {
   padding: 0;
-  border-top: 1px solid #dee2e6 !important;
+  border-top: 1px solid var(--tf-color-border-subtle) !important;
   display: flex !important;
   gap: 12px !important;
   justify-content: flex-end !important;
@@ -4603,7 +4886,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
   border-radius: 8px;
   margin-bottom: 16px;
   animation: slideDown 0.3s ease-out;
@@ -4647,10 +4930,10 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   padding: 12px 16px;
-  background: #f0f9ff;
-  border: 1px solid #bae6fd;
+  background: var(--tf-color-blue-50);
+  border: 1px solid var(--tf-color-blue-ant-100);
   border-radius: 8px;
-  color: #0369a1;
+  color: var(--tf-color-sky-700);
   font-size: 14px;
   margin-bottom: 12px;
 
@@ -4659,7 +4942,7 @@ onUnmounted(() => {
   }
 
   strong {
-    color: #0c4a6e;
+    color: var(--tf-color-cyan-legacy-text);
     font-weight: 600;
   }
 }
@@ -4780,16 +5063,16 @@ onUnmounted(() => {
 }
 
 .pinned-row {
-  background-color: #fffbeb !important;
-  border-left: 3px solid #f59e0b;
+  background-color: var(--tf-color-amber-50) !important;
+  border-left: 3px solid var(--tf-color-amber-500);
 
   &:hover {
-    background-color: #fef3c7 !important;
+    background-color: var(--tf-color-amber-100) !important;
   }
 }
 
 .pinned-card {
-  background-color: #fffbeb;
-  border-left: 3px solid #f59e0b;
+  background-color: var(--tf-color-amber-50);
+  border-left: 3px solid var(--tf-color-amber-500);
 }
 </style>

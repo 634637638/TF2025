@@ -1,7 +1,7 @@
-const SystemSettingsRepository = require('../repositories/system-settings.repository');
-const log = require('../utils/log');
+const SystemSettingsRepository = require('../repositories/system-settings.repository')
+const log = require('../utils/log')
 
-const SettingsRepository = new SystemSettingsRepository();
+const SettingsRepository = new SystemSettingsRepository()
 
 class SystemSettingsService {
   /**
@@ -9,10 +9,10 @@ class SystemSettingsService {
    */
   async getAllSettings() {
     try {
-      return await SettingsRepository.getAllSettings();
+      return await SettingsRepository.getAllSettings()
     } catch (error) {
-      log.error('获取所有配置失败:', error);
-      throw error;
+      log.error('获取所有配置失败:', error)
+      throw error
     }
   }
 
@@ -21,10 +21,10 @@ class SystemSettingsService {
    */
   async getSettingsByCategory(category) {
     try {
-      return await SettingsRepository.getSettingsByCategory(category);
+      return await SettingsRepository.getSettingsByCategory(category)
     } catch (error) {
-      log.error('获取配置失败:', error);
-      throw error;
+      log.error('获取配置失败:', error)
+      throw error
     }
   }
 
@@ -33,22 +33,22 @@ class SystemSettingsService {
    */
   async getSettingByKey(settingKey) {
     try {
-      const setting = await SettingsRepository.getSettingByKey(settingKey);
+      const setting = await SettingsRepository.getSettingByKey(settingKey)
       if (!setting) {
-        return null;
+        return null
       }
 
       // 根据类型转换值
-      const value = this.parseSettingValue(setting.value, setting.type);
+      const value = this.parseSettingValue(setting.value, setting.type)
       return {
         key: setting.key_name,
         value: value,
         type: setting.type,
         description: setting.description
-      };
+      }
     } catch (error) {
-      log.error('获取配置失败:', error);
-      throw error;
+      log.error('获取配置失败:', error)
+      throw error
     }
   }
 
@@ -57,10 +57,10 @@ class SystemSettingsService {
    */
   async updateSetting(settingKey, settingValue, settingType) {
     try {
-      return await SettingsRepository.upsertSetting(settingKey, settingValue, settingType);
+      return await SettingsRepository.upsertSetting(settingKey, settingValue, settingType)
     } catch (error) {
-      log.error('更新配置失败:', error);
-      throw error;
+      log.error('更新配置失败:', error)
+      throw error
     }
   }
 
@@ -69,19 +69,19 @@ class SystemSettingsService {
    */
   async batchUpdateSettings(settings) {
     try {
-      const results = [];
+      const results = []
       for (const setting of settings) {
         const result = await SettingsRepository.upsertSetting(
           setting.key,
           setting.value,
           setting.type || 'string'
-        );
-        results.push(result);
+        )
+        results.push(result)
       }
-      return results;
+      return results
     } catch (error) {
-      log.error('批量更新配置失败:', error);
-      throw error;
+      log.error('批量更新配置失败:', error)
+      throw error
     }
   }
 
@@ -90,10 +90,10 @@ class SystemSettingsService {
    */
   async deleteSetting(settingKey) {
     try {
-      return await SettingsRepository.deleteSetting(settingKey);
+      return await SettingsRepository.deleteSetting(settingKey)
     } catch (error) {
-      log.error('删除配置失败:', error);
-      throw error;
+      log.error('删除配置失败:', error)
+      throw error
     }
   }
 
@@ -102,11 +102,11 @@ class SystemSettingsService {
    */
   async getMonthlyLeaveDays() {
     try {
-      const setting = await this.getSettingByKey('monthly_leave_days');
-      return setting ? parseInt(setting.value) || 2 : 2;
+      const setting = await this.getSettingByKey('monthly_leave_days')
+      return setting ? parseInt(setting.value) || 2 : 2
     } catch (error) {
-      log.error('获取每月休假天数失败:', error);
-      return 2; // 默认2天
+      log.error('获取每月休假天数失败:', error)
+      return 2 // 默认2天
     }
   }
 
@@ -115,46 +115,46 @@ class SystemSettingsService {
    */
   parseSettingValue(value, type) {
     switch (type) {
-      case 'number':
-        return parseFloat(value);
-      case 'boolean':
-        return value === 'true' || value === '1';
-      case 'json':
-        try {
-          return JSON.parse(value);
-        } catch (e) {
-          // 旧版 settings.value 使用 TEXT 保存大体量中文词库时可能被截断。
-          // 尽量闭合未完成的字符串/数组/对象，让已有前缀词库仍可读取；
-          // 字段升级为 LONGTEXT 后，新保存的数据会走正常 JSON.parse。
-          if (typeof value === 'string') {
-            try {
-              let inString = false;
-              let escaped = false;
-              const stack = [];
-              for (const char of value) {
-                if (inString) {
-                  if (escaped) escaped = false;
-                  else if (char === '\\') escaped = true;
-                  else if (char === '"') inString = false;
-                  continue;
-                }
-                if (char === '"') inString = true;
-                else if (char === '{' || char === '[') stack.push(char);
-                else if (char === '}' && stack.at(-1) === '{') stack.pop();
-                else if (char === ']' && stack.at(-1) === '[') stack.pop();
+    case 'number':
+      return parseFloat(value)
+    case 'boolean':
+      return value === 'true' || value === '1'
+    case 'json':
+      try {
+        return JSON.parse(value)
+      } catch (e) {
+        // 旧版 settings.value 使用 TEXT 保存大体量中文词库时可能被截断。
+        // 尽量闭合未完成的字符串/数组/对象，让已有前缀词库仍可读取；
+        // 字段升级为 LONGTEXT 后，新保存的数据会走正常 JSON.parse。
+        if (typeof value === 'string') {
+          try {
+            let inString = false
+            let escaped = false
+            const stack = []
+            for (const char of value) {
+              if (inString) {
+                if (escaped) escaped = false
+                else if (char === '\\') escaped = true
+                else if (char === '"') inString = false
+                continue
               }
-              const repaired = `${value}${inString ? '"' : ''}${stack.reverse().map(char => char === '{' ? '}' : ']').join('')}`;
-              return JSON.parse(repaired);
-            } catch {
-              return value;
+              if (char === '"') inString = true
+              else if (char === '{' || char === '[') stack.push(char)
+              else if (char === '}' && stack.at(-1) === '{') stack.pop()
+              else if (char === ']' && stack.at(-1) === '[') stack.pop()
             }
+            const repaired = `${value}${inString ? '"' : ''}${stack.reverse().map(char => char === '{' ? '}' : ']').join('')}`
+            return JSON.parse(repaired)
+          } catch {
+            return value
           }
-          return value;
         }
-      default:
-        return value;
+        return value
+      }
+    default:
+      return value
     }
   }
 }
 
-module.exports = new SystemSettingsService();
+module.exports = new SystemSettingsService()

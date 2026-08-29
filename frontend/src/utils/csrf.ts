@@ -86,14 +86,14 @@ const csrfState: CSRFState = {
  * 生成随机字符串
  */
 function generateRandomString(length: number): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-  let result = ''
-
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length))
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+  const values = new Uint32Array(length)
+  const randomSource = globalThis.crypto
+  if (!randomSource?.getRandomValues) {
+    throw new Error('当前环境不支持安全随机数，无法生成 CSRF 令牌')
   }
-
-  return result
+  randomSource.getRandomValues(values)
+  return Array.from(values, value => alphabet[value % alphabet.length]).join('')
 }
 
 /**
@@ -201,7 +201,7 @@ function setCookie(value: string, maxAge: number): void {
   document.cookie = [
     `${CSRF_CONFIG.COOKIE_NAME}=${encodeURIComponent(value)}`,
     `Max-Age=${maxAge}`,
-    `Path=/`,
+    'Path=/',
     `SameSite=${sameSite}`,
     secure ? 'Secure' : ''
   ].filter(Boolean).join('; ')
@@ -238,7 +238,7 @@ function isBlocked(): boolean {
 /**
  * 生成新的 Token
  */
-function generateToken(): CSRFToken {
+function _generateToken(): CSRFToken {
   const timestamp = Date.now()
   const value = generateRandomString(CSRF_CONFIG.TOKEN_LENGTH)
   const signature = generateSignature(value, timestamp)
@@ -295,12 +295,11 @@ async function verifyToken(token: CSRFToken): Promise<boolean> {
     })
 
     // 后端返回 success: true 表示验证成功
-    const payload = (response as any)?.data && typeof (response as any).data === 'object'
-      ? (response as any).data
-      : response as any
+    const payload = extractResponseData<{ success?: boolean }>(response)
     return payload?.success === true
-  } catch (error: any) {
-    logger.warn('CSRF Token服务端验证失败:', error.message || error)
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : error
+    logger.warn('CSRF Token服务端验证失败:', message)
     return false
   }
 }

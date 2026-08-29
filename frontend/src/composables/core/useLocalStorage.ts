@@ -12,7 +12,7 @@ import { logger } from '@/utils/logger'
 /**
  * 存储选项
  */
-export interface UseStorageOptions<T = any> {
+export interface UseStorageOptions<T = unknown> {
   /** 默认值 */
   defaultValue?: T
   /** 存储类型 */
@@ -24,23 +24,15 @@ export interface UseStorageOptions<T = any> {
 }
 
 /**
- * 默认选项
- */
-const defaultOptions: UseStorageOptions = {
-  type: 'local',
-  syncAcrossTabs: true
-}
-
-/**
  * 使用本地存储（响应式）
  * @param key 存储键
  * @param options 选项
  */
-export function useLocalStorage<T = any>(
+export function useLocalStorage<T = unknown>(
   key: StorageKey | string,
   options: UseStorageOptions<T> = {}
 ): Ref<T | null> {
-  const { defaultValue = null, type = 'local', syncAcrossTabs = true, onError } = { ...defaultOptions, ...options }
+  const { defaultValue = null, type = 'local', syncAcrossTabs = true, onError } = options
 
   // 创建响应式引用
   const storedValue = ref<T | null>(defaultValue) as Ref<T | null>
@@ -102,7 +94,7 @@ export function useLocalStorage<T = any>(
  * @param key 存储键
  * @param options 选项
  */
-export function useSessionStorage<T = any>(
+export function useSessionStorage<T = unknown>(
   key: StorageKey | string,
   options: UseStorageOptions<T> = {}
 ): Ref<T | null> {

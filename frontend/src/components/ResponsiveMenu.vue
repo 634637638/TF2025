@@ -1,5 +1,8 @@
 <template>
-  <div class="responsive-menu" :class="{ 'is-mobile': isMobile }">
+  <div
+    class="responsive-menu"
+    :class="{ 'is-mobile': isMobile }"
+  >
     <!-- 移动端侧滑菜单 -->
     <MobileSlideMenu
       v-if="isMobile"
@@ -16,7 +19,10 @@
 
     
     <!-- 桌面端菜单 -->
-    <div v-else class="desktop-menu">
+    <div
+      v-else
+      class="desktop-menu"
+    >
       <SimpleSidebar
         :collapsed="sidebarCollapsed"
         @menu-click="handleMenuClick"
@@ -25,16 +31,16 @@
 
     <!-- 移动端菜单按钮（汉堡菜单） -->
     <button
-      type="button"
       v-if="isMobile && showMenuButton"
+      type="button"
       class="mobile-menu-button"
-      @click.stop.prevent="handleMenuButtonClick"
       :class="{ 'is-active': isSlideMenuOpen }"
       aria-label="菜单"
+      @click.stop.prevent="handleMenuButtonClick"
     >
-      <span class="menu-line"></span>
-      <span class="menu-line"></span>
-      <span class="menu-line"></span>
+      <span class="menu-line" />
+      <span class="menu-line" />
+      <span class="menu-line" />
     </button>
   </div>
 </template>
@@ -163,7 +169,7 @@ defineExpose({
   z-index: 3200;
   width: 40px;
   height: 40px;
-  background: var(--primary-color, #667eea);
+  background: var(--primary-color, var(--tf-color-indigo-brand));
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -178,7 +184,7 @@ defineExpose({
   -webkit-tap-highlight-color: transparent;
 
   &:hover {
-    background: var(--primary-dark, #5a6fd8);
+    background: var(--primary-dark, var(--tf-color-primary-legacy-dark));
     transform: scale(1.05);
   }
 
@@ -187,7 +193,7 @@ defineExpose({
   }
 
   &.is-active {
-    background: var(--danger-color, #dc3545);
+    background: var(--danger-color, var(--danger-color));
 
     .menu-line {
       &:nth-child(1) {
@@ -272,14 +278,14 @@ defineExpose({
 // 暗色模式
 :global(body.dark) {
   .mobile-menu-button {
-    background: var(--primary-color, #667eea);
+    background: var(--primary-color, var(--tf-color-indigo-brand));
 
     &:hover {
-      background: var(--primary-dark, #5a6fd8);
+      background: var(--primary-dark, var(--tf-color-primary-legacy-dark));
     }
 
     &.is-active {
-      background: var(--danger-color, #e53e3e);
+      background: var(--danger-color, var(--tf-color-red-500));
     }
   }
 }

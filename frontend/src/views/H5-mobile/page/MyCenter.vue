@@ -7,106 +7,172 @@
     <!-- 用户信息卡片 -->
     <div class="user-card">
       <div class="user-avatar">
-        <img v-if="user && user.avatar" :src="user.avatar" :alt="user.name" />
-        <i v-else class="fas fa-user-circle"></i>
+        <img
+          v-if="user && user.avatar"
+          :src="formatImageUrl(user.avatar)"
+          :alt="user.name"
+        >
+        <i
+          v-else
+          class="fas fa-user-circle"
+        />
       </div>
       <div class="user-info">
-        <div v-if="user" class="user-details-row">
+        <div
+          v-if="user"
+          class="user-details-row"
+        >
           <span class="user-name">{{ user.name }}</span>
           <span class="user-phone">{{ formatPhone(user.phone) }}</span>
-          <span v-if="user.member_number" class="member-number">会员号: {{ user.member_number }}</span>
+          <span
+            v-if="user.member_number"
+            class="member-number"
+          >会员号: {{ user.member_number }}</span>
         </div>
-        <h2 v-else class="user-title">欢迎来到商城</h2>
-        <p v-if="!user" class="user-desc">登录后查看您的订单和账户信息</p>
+        <h2
+          v-else
+          class="user-title"
+        >
+          欢迎来到商城
+        </h2>
+        <p
+          v-if="!user"
+          class="user-desc"
+        >
+          登录后查看您的订单和账户信息
+        </p>
       </div>
-      <el-button v-if="user" link @click="handleLogout" class="logout-btn">
-        <i class="fas fa-sign-out-alt"></i>
+      <el-button
+        v-if="user"
+        link
+        class="logout-btn"
+        @click="handleLogout"
+      >
+        <i class="fas fa-sign-out-alt" />
       </el-button>
     </div>
 
     <!-- 功能网格 -->
     <div class="function-grid">
       <!-- 我的订单 -->
-      <div class="grid-item" @click="navigateTo('/m/order-query')">
+      <div
+        class="grid-item"
+        @click="navigateTo('/m/order-query')"
+      >
         <div class="grid-icon bg-orange">
-          <i class="fas fa-receipt"></i>
+          <i class="fas fa-receipt" />
         </div>
         <span class="grid-label">我的订单</span>
       </div>
 
       <!-- 待支付 -->
-      <div class="grid-item" @click="navigateTo('/m/order-query')">
+      <div
+        class="grid-item"
+        @click="navigateTo('/m/order-query')"
+      >
         <div class="grid-icon bg-blue">
-          <i class="fas fa-clock"></i>
+          <i class="fas fa-clock" />
         </div>
         <span class="grid-label">待支付</span>
       </div>
 
       <!-- 已发货 -->
-      <div class="grid-item" @click="navigateTo('/m/order-query')">
+      <div
+        class="grid-item"
+        @click="navigateTo('/m/order-query')"
+      >
         <div class="grid-icon bg-green">
-          <i class="fas fa-shipping-fast"></i>
+          <i class="fas fa-shipping-fast" />
         </div>
         <span class="grid-label">已发货</span>
       </div>
 
       <!-- 已完成 -->
-      <div class="grid-item" @click="navigateTo('/m/order-query')">
+      <div
+        class="grid-item"
+        @click="navigateTo('/m/order-query')"
+      >
         <div class="grid-icon bg-gray">
-          <i class="fas fa-check-circle"></i>
+          <i class="fas fa-check-circle" />
         </div>
         <span class="grid-label">已完成</span>
       </div>
 
       <!-- 购买记录（登录后显示） -->
-      <div v-if="user" class="grid-item" @click="showPurchaseRecords">
+      <div
+        v-if="user"
+        class="grid-item"
+        @click="showPurchaseRecords"
+      >
         <div class="grid-icon bg-deep-orange">
-          <i class="fas fa-history"></i>
+          <i class="fas fa-history" />
         </div>
         <span class="grid-label">购买记录</span>
       </div>
 
       <!-- 个人资料（登录后显示） -->
-      <div v-if="user" class="grid-item" @click="showProfileEdit">
+      <div
+        v-if="user"
+        class="grid-item"
+        @click="showProfileEdit"
+      >
         <div class="grid-icon bg-purple">
-          <i class="fas fa-user-edit"></i>
+          <i class="fas fa-user-edit" />
         </div>
         <span class="grid-label">个人资料</span>
       </div>
 
       <!-- 店铺信息 -->
-      <div class="grid-item" @click="showShopInfo">
+      <div
+        class="grid-item"
+        @click="showShopInfo"
+      >
         <div class="grid-icon bg-blue">
-          <i class="fas fa-store"></i>
+          <i class="fas fa-store" />
         </div>
         <span class="grid-label">店铺信息</span>
       </div>
 
       <!-- 返回首页 -->
-      <div class="grid-item" @click="goHome">
+      <div
+        class="grid-item"
+        @click="goHome"
+      >
         <div class="grid-icon bg-blue-grey">
-          <i class="fas fa-home"></i>
+          <i class="fas fa-home" />
         </div>
         <span class="grid-label">返回首页</span>
       </div>
     </div>
 
     <!-- 登录/注册按钮区域（未登录时显示） -->
-    <div v-if="!user" class="auth-buttons-row">
-      <div class="auth-btn login-btn" @click="goToLogin">
-        <i class="fas fa-sign-in-alt"></i>
+    <div
+      v-if="!user"
+      class="auth-buttons-row"
+    >
+      <div
+        class="auth-btn login-btn"
+        @click="goToLogin"
+      >
+        <i class="fas fa-sign-in-alt" />
         <span>登录</span>
       </div>
-      <div class="auth-btn register-btn" @click="goToRegister">
-        <i class="fas fa-user-plus"></i>
+      <div
+        class="auth-btn register-btn"
+        @click="goToRegister"
+      >
+        <i class="fas fa-user-plus" />
         <span>注册</span>
       </div>
     </div>
 
     <!-- 悬浮客服按钮 -->
-    <div class="floating-service" @click="showServiceDialog">
+    <div
+      class="floating-service"
+      @click="showServiceDialog"
+    >
       <div class="service-icon">
-        <i class="fas fa-headset"></i>
+        <i class="fas fa-headset" />
       </div>
       <span class="service-text">客服</span>
     </div>
@@ -123,52 +189,87 @@
       <div class="service-info">
         <!-- 一行显示两个选项 -->
         <div class="service-row">
-          <div v-if="shopConfig.shop_phone" class="service-item phone-item" @click="callPhone">
+          <div
+            v-if="shopConfig.shop_phone"
+            class="service-item phone-item"
+            @click="callPhone"
+          >
             <div class="service-icon phone-icon">
-              <i class="fas fa-phone"></i>
+              <i class="fas fa-phone" />
             </div>
             <div class="service-content">
-              <div class="service-label">拨打</div>
-              <div class="service-value">{{ shopConfig.shop_phone }}</div>
+              <div class="service-label">
+                拨打
+              </div>
+              <div class="service-value">
+                {{ shopConfig.shop_phone }}
+              </div>
             </div>
           </div>
 
-          <div v-if="shopConfig.wechat_id" class="service-item wechat-item" @click="copyWechat">
+          <div
+            v-if="shopConfig.wechat_id"
+            class="service-item wechat-item"
+            @click="copyWechat"
+          >
             <div class="service-icon wechat-icon">
-              <i class="fab fa-weixin"></i>
+              <i class="fab fa-weixin" />
             </div>
             <div class="service-content">
-              <div class="service-label">加微信</div>
-              <div class="service-value">{{ shopConfig.wechat_id }}</div>
+              <div class="service-label">
+                加微信
+              </div>
+              <div class="service-value">
+                {{ shopConfig.wechat_id }}
+              </div>
             </div>
           </div>
         </div>
 
         <!-- 只有一个选项时居中显示 -->
-        <div v-if="shopConfig.shop_phone && !shopConfig.wechat_id" class="service-single" @click="callPhone">
+        <div
+          v-if="shopConfig.shop_phone && !shopConfig.wechat_id"
+          class="service-single"
+          @click="callPhone"
+        >
           <div class="info-icon phone-icon">
-            <i class="fas fa-phone"></i>
+            <i class="fas fa-phone" />
           </div>
           <div class="info-content">
-            <div class="info-label">客服电话</div>
-            <div class="info-value">{{ shopConfig.shop_phone }}</div>
+            <div class="info-label">
+              客服电话
+            </div>
+            <div class="info-value">
+              {{ shopConfig.shop_phone }}
+            </div>
           </div>
-          <i class="fas fa-chevron-right info-arrow"></i>
+          <i class="fas fa-chevron-right info-arrow" />
         </div>
 
-        <div v-if="!shopConfig.shop_phone && shopConfig.wechat_id" class="service-single" @click="copyWechat">
+        <div
+          v-if="!shopConfig.shop_phone && shopConfig.wechat_id"
+          class="service-single"
+          @click="copyWechat"
+        >
           <div class="info-icon wechat-icon">
-            <i class="fab fa-weixin"></i>
+            <i class="fab fa-weixin" />
           </div>
           <div class="info-content">
-            <div class="info-label">微信号</div>
-            <div class="info-value">{{ shopConfig.wechat_id }}</div>
+            <div class="info-label">
+              微信号
+            </div>
+            <div class="info-value">
+              {{ shopConfig.wechat_id }}
+            </div>
           </div>
-          <i class="fas fa-chevron-right info-arrow"></i>
+          <i class="fas fa-chevron-right info-arrow" />
         </div>
 
-        <div v-if="!shopConfig.shop_phone && !shopConfig.wechat_id" class="no-service">
-          <i class="fas fa-info-circle"></i>
+        <div
+          v-if="!shopConfig.shop_phone && !shopConfig.wechat_id"
+          class="no-service"
+        >
+          <i class="fas fa-info-circle" />
           <p>暂无客服联系方式</p>
         </div>
       </div>
@@ -183,21 +284,36 @@
       :show-default-footer="false"
     >
       <div class="shop-info">
-        <div v-if="shopConfig.shop_name" class="info-row">
+        <div
+          v-if="shopConfig.shop_name"
+          class="info-row"
+        >
           <span class="label">店铺名称</span>
           <span class="value">{{ shopConfig.shop_name }}</span>
         </div>
-        <div v-if="shopConfig.shop_address" class="info-row">
+        <div
+          v-if="shopConfig.shop_address"
+          class="info-row"
+        >
           <span class="label">店铺地址</span>
           <span class="value">{{ shopConfig.shop_address }}</span>
         </div>
-        <div v-if="shopConfig.shop_phone" class="info-row">
+        <div
+          v-if="shopConfig.shop_phone"
+          class="info-row"
+        >
           <span class="label">联系电话</span>
-          <a :href="`tel:${shopConfig.shop_phone}`" class="value phone-value">
+          <a
+            :href="`tel:${shopConfig.shop_phone}`"
+            class="value phone-value"
+          >
             {{ shopConfig.shop_phone }}
           </a>
         </div>
-        <div v-if="shopConfig.shop_hours" class="info-row">
+        <div
+          v-if="shopConfig.shop_hours"
+          class="info-row"
+        >
           <span class="label">营业时间</span>
           <span class="value">{{ shopConfig.shop_hours }}</span>
         </div>
@@ -213,28 +329,46 @@
       :show-default-footer="false"
     >
       <div class="purchase-records">
-        <SectionLoading v-if="loadingPurchase" text="加载中..." />
+        <SectionLoading
+          v-if="loadingPurchase"
+          text="加载中..."
+        />
 
-        <div v-else-if="purchaseRecords.length > 0" class="records-list">
-          <div v-for="record in purchaseRecords" :key="record.id" class="record-item">
+        <div
+          v-else-if="purchaseRecords.length > 0"
+          class="records-list"
+        >
+          <div
+            v-for="record in purchaseRecords"
+            :key="record.id"
+            class="record-item"
+          >
             <div class="record-header">
-              <span class="invoice-number">{{ record.invoice_number || '无发票号' }}</span>
-              <span class="sale-date">{{ formatDate(record.sale_date) }}</span>
+              <span class="invoice-number">{{ record.invoice_number || '-' }}</span>
+              <span class="sale-date">{{ formatDate(record.sale_time) }}</span>
             </div>
             <div class="record-content">
-              <div class="product-name">{{ record.product_name || '未知商品' }}</div>
+              <div class="product-name">
+                {{ record.product_name || '-' }}
+              </div>
               <div class="record-details">
-                <span v-if="record.imei" class="imei">IMEI: {{ record.imei }}</span>
-                <span class="store">{{ record.store_name || '未知店铺' }}</span>
+                <span
+                  v-if="record.imei"
+                  class="imei"
+                >IMEI: {{ record.imei }}</span>
+                <span class="store">{{ record.store_name || '-' }}</span>
               </div>
             </div>
             <div class="record-footer">
-              <span class="price">¥{{ parseFloat(record.sale_price).toFixed(2) }}</span>
+              <span class="price">{{ formatSalePrice(record.sale_price) }}</span>
               <span class="payment-method">{{ getPaymentText(record.payment_method) }}</span>
             </div>
           </div>
         </div>
-        <el-empty v-else description="暂无购买记录" />
+        <DataEmptyState
+          v-else
+          description="暂无购买记录"
+        />
       </div>
     </MobileDialog>
 
@@ -247,30 +381,93 @@
       dialog-class="my-center-profile-dialog"
       :show-default-footer="false"
     >
-      <el-form ref="profileFormRef" :model="profileForm" :rules="profileFormRules" label-position="top" size="default">
-        <el-form-item label="姓名" prop="name">
-          <el-input v-model="profileForm.name" placeholder="请输入您的姓名" @input="handleProfileNameInput" />
+      <el-form
+        ref="profileFormRef"
+        :model="profileForm"
+        :rules="profileFormRules"
+        label-position="top"
+        size="default"
+      >
+        <el-form-item
+          label="姓名"
+          prop="name"
+        >
+          <el-input
+            v-model="profileForm.name"
+            placeholder="请输入您的姓名"
+            @input="handleProfileNameInput"
+          />
         </el-form-item>
-        <el-form-item label="联系电话" prop="phone">
-          <el-input v-model="profileForm.phone" placeholder="请输入手机号码" maxlength="11" disabled />
-          <div class="form-tip">手机号不可修改，如需更换请联系客服</div>
+        <el-form-item
+          label="联系电话"
+          prop="phone"
+        >
+          <el-input
+            v-model="profileForm.phone"
+            placeholder="请输入手机号码"
+            maxlength="11"
+            disabled
+          />
+          <div class="form-tip">
+            手机号不可修改，如需更换请联系客服
+          </div>
         </el-form-item>
-        <el-form-item label="身份证号" prop="idCard">
-          <el-input v-model="profileForm.idCard" placeholder="请输入身份证号（选填）" maxlength="18" @input="handleProfileIdCardInput" />
-          <div class="form-tip">身份证号用于实名认证，选填</div>
+        <el-form-item
+          label="身份证号"
+          prop="idCard"
+        >
+          <el-input
+            v-model="profileForm.idCard"
+            placeholder="请输入身份证号（选填）"
+            maxlength="18"
+            @input="handleProfileIdCardInput"
+          />
+          <div class="form-tip">
+            身份证号用于实名认证，选填
+          </div>
         </el-form-item>
-        <el-form-item label="Apple ID" prop="appleId">
-          <el-input v-model="profileForm.appleId" placeholder="请输入Apple ID（选填）" @input="handleProfileAppleIdInput" />
-          <div class="form-tip">Apple ID支持手机号或邮箱，选填</div>
+        <el-form-item
+          label="Apple ID"
+          prop="appleId"
+        >
+          <el-input
+            v-model="profileForm.appleId"
+            placeholder="请输入Apple ID（选填）"
+            @input="handleProfileAppleIdInput"
+          />
+          <div class="form-tip">
+            Apple ID支持手机号或邮箱，选填
+          </div>
         </el-form-item>
-        <el-form-item label="收货地址" prop="address">
-          <el-input v-model="profileForm.address" type="textarea" placeholder="请输入详细收货地址" :rows="2" />
+        <el-form-item
+          label="收货地址"
+          prop="address"
+        >
+          <el-input
+            v-model="profileForm.address"
+            type="textarea"
+            placeholder="请输入详细收货地址"
+            :rows="2"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
         <div class="tf-dialog-actions">
-          <el-button type="default" class="flex-1" @click="profileVisible = false">取消</el-button>
-          <el-button type="primary" class="flex-1" @click="saveProfile" :loading="savingProfile">保存</el-button>
+          <el-button
+            type="default"
+            class="flex-1"
+            @click="profileVisible = false"
+          >
+            取消
+          </el-button>
+          <el-button
+            type="primary"
+            class="flex-1"
+            :loading="savingProfile"
+            @click="saveProfile"
+          >
+            保存
+          </el-button>
         </div>
       </template>
     </MobileDialog>
@@ -283,10 +480,11 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, FormInstance } from 'element-plus'
 import { ValidationRules } from '@/composables'
 import { getPublicConfig } from '@/api/shop-public'
-import { tokenManager, userManager, getUserSales, logout as authLogout, updateProfile, getUserProfile, type AuthUser } from '@/api/auth'
+import { userManager, getUserSales, logout as authLogout, updateProfile, getUserProfile, type AuthUser, type H5CustomerSale } from '@/api/auth'
 import { storage } from '@/services/storage'
 import { H5_STORAGE_KEYS } from '@/constants/storage'
 import { normalizeAppleId, normalizeIdCard, normalizePersonName } from '@/utils/security'
+import { formatImageUrl } from '@/utils/format'
 import { logger } from '@/utils/logger'
 import SectionLoading from '@/components/SectionLoading.vue'
 const router = useRouter()
@@ -297,7 +495,7 @@ const purchaseVisible = ref(false)
 const profileVisible = ref(false)
 const loadingPurchase = ref(false)
 const savingProfile = ref(false)
-const purchaseRecords = ref<any[]>([])
+const purchaseRecords = ref<H5CustomerSale[]>([])
 const currentUser = ref<AuthUser | null>(userManager.getUser())
 
 // 个人资料表单
@@ -400,13 +598,18 @@ const handleProfileAppleIdInput = (value: string) => {
 }
 
 // 格式化日期
-const formatDate = (date: string) => {
+const formatDate = (date: string | null) => {
   if (!date) return ''
   return new Date(date).toLocaleDateString('zh-CN')
 }
 
+const formatSalePrice = (price: number | null) => (
+  price === null || price === undefined || !Number.isFinite(price) ? '-' : `¥${price.toFixed(2)}`
+)
+
 // 获取支付方式文本
-const getPaymentText = (method: string) => {
+const getPaymentText = (method: string | null) => {
+  if (!method) return '-'
   const texts: Record<string, string> = {
     cash: '现金',
     wechat: '微信',
@@ -450,7 +653,7 @@ const copyWechat = () => {
 }
 
 // 联系客服（旧方法，保留用于兼容）
-const contactService = () => {
+const _contactService = () => {
   showServiceDialog()
 }
 
@@ -470,8 +673,7 @@ const showPurchaseRecords = async () => {
   loadingPurchase.value = true
 
   try {
-    const response: any = await getUserSales()
-    purchaseRecords.value = response || []
+    purchaseRecords.value = await getUserSales()
   } catch (error: any) {
     logger.error('获取购买记录失败:', error)
     ElMessage.error(error.message || '获取购买记录失败')
@@ -564,7 +766,7 @@ onMounted(() => {
 <style scoped lang="scss">
 .my-center-page {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: var(--tf-color-surface-soft);
   padding-bottom: 80px;
 }
 
@@ -577,8 +779,8 @@ onMounted(() => {
 
 // 用户卡片
 .user-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #fff;
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
+  color: var(--color-bg-white);
   padding: 16px;
   display: flex;
   align-items: center;
@@ -642,7 +844,7 @@ onMounted(() => {
 
       .member-number {
         font-size: 11px;
-        color: #fff;
+        color: var(--color-bg-white);
         background: rgba(255, 255, 255, 0.25);
         padding: 2px 6px;
         border-radius: 3px;
@@ -665,7 +867,7 @@ onMounted(() => {
 
 // 区块
 .section {
-  background: #fff;
+  background: var(--color-bg-white);
   margin: 12px;
   padding: 16px;
   border-radius: 12px;
@@ -680,20 +882,20 @@ onMounted(() => {
     .section-title {
       font-size: 16px;
       font-weight: 500;
-      color: #333;
+      color: var(--text-primary);
       margin: 0;
       display: flex;
       align-items: center;
       gap: 8px;
 
       i {
-        color: #ff6b00;
+        color: var(--tf-color-accent-orange);
       }
     }
 
     .section-more {
       font-size: 13px;
-      color: #999;
+      color: var(--text-muted);
       display: flex;
       align-items: center;
       gap: 4px;
@@ -707,14 +909,14 @@ onMounted(() => {
   .section-title {
     font-size: 16px;
     font-weight: 500;
-    color: #333;
+    color: var(--text-primary);
     margin: 0 0 16px;
     display: flex;
     align-items: center;
     gap: 8px;
 
     i {
-      color: #ff6b00;
+      color: var(--tf-color-accent-orange);
     }
   }
 }
@@ -770,7 +972,7 @@ onMounted(() => {
   grid-template-columns: repeat(4, 1fr);
   gap: 12px;
   padding: 16px;
-  background: #fff;
+  background: var(--color-bg-white);
   margin: 12px;
   border-radius: 12px;
 
@@ -785,7 +987,7 @@ onMounted(() => {
     border-radius: 8px;
 
     &:active {
-      background: #f8f8f8;
+      background: var(--tf-color-surface-neutral-alt);
       transform: scale(0.98);
     }
 
@@ -796,7 +998,7 @@ onMounted(() => {
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #fff;
+      color: var(--color-bg-white);
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 
       i {
@@ -806,7 +1008,7 @@ onMounted(() => {
 
     .grid-label {
       font-size: 13px;
-      color: #333;
+      color: var(--text-primary);
       text-align: center;
     }
   }
@@ -824,24 +1026,24 @@ onMounted(() => {
     align-items: center;
     gap: 8px;
     padding: 16px 8px;
-    background: #f8f9fa;
+    background: var(--tf-color-surface-muted);
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.3s;
 
     &:active {
-      background: #e8e8e8;
+      background: var(--tf-color-gray-ant-300);
       transform: scale(0.98);
     }
 
     i {
       font-size: 24px;
-      color: #666;
+      color: var(--text-secondary);
     }
 
     span {
       font-size: 12px;
-      color: #666;
+      color: var(--text-secondary);
     }
   }
 }
@@ -852,7 +1054,7 @@ onMounted(() => {
     display: flex;
     align-items: center;
     padding: 16px 0;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid var(--tf-color-gray-200);
     cursor: pointer;
     transition: background 0.3s;
 
@@ -861,7 +1063,7 @@ onMounted(() => {
     }
 
     &:active {
-      background: #f8f8f8;
+      background: var(--tf-color-surface-neutral-alt);
     }
 
     .item-icon {
@@ -871,18 +1073,18 @@ onMounted(() => {
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #fff;
+      color: var(--color-bg-white);
       margin-right: 12px;
     }
 
     .item-name {
       flex: 1;
       font-size: 15px;
-      color: #333;
+      color: var(--text-primary);
     }
 
     .item-arrow {
-      color: #ddd;
+      color: var(--tf-color-gray-300-alt);
       font-size: 14px;
     }
   }
@@ -902,13 +1104,13 @@ onMounted(() => {
       align-items: center;
       gap: 8px;
       padding: 16px;
-      background: #f8f9fa;
+      background: var(--tf-color-surface-muted);
       border-radius: 8px;
       cursor: pointer;
       transition: all 0.3s;
 
       &:active {
-        background: #e9ecef;
+        background: var(--tf-color-border-muted);
         transform: scale(0.98);
       }
 
@@ -919,14 +1121,14 @@ onMounted(() => {
         display: flex;
         align-items: center;
         justify-content: center;
-        color: #fff;
+        color: var(--color-bg-white);
 
         &.phone-icon {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
         }
 
         &.wechat-icon {
-          background: linear-gradient(135deg, #00c853 0%, #00e676 100%);
+          background: linear-gradient(135deg, var(--tf-color-accent-green) 0%, var(--tf-color-green-accent) 100%);
         }
 
         i {
@@ -939,14 +1141,14 @@ onMounted(() => {
 
         .service-label {
           font-size: 12px;
-          color: #666;
+          color: var(--text-secondary);
           margin-bottom: 4px;
         }
 
         .service-value {
           font-size: 14px;
           font-weight: 500;
-          color: #333;
+          color: var(--text-primary);
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
@@ -962,13 +1164,13 @@ onMounted(() => {
     align-items: center;
     gap: 12px;
     padding: 16px;
-    background: #f8f9fa;
+    background: var(--tf-color-surface-muted);
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.3s;
 
     &:active {
-      background: #e9ecef;
+      background: var(--tf-color-border-muted);
       transform: scale(0.98);
     }
 
@@ -979,15 +1181,15 @@ onMounted(() => {
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #fff;
+      color: var(--color-bg-white);
       flex-shrink: 0;
 
       &.phone-icon {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
       }
 
       &.wechat-icon {
-        background: linear-gradient(135deg, #00c853 0%, #00e676 100%);
+        background: linear-gradient(135deg, var(--tf-color-accent-green) 0%, var(--tf-color-green-accent) 100%);
       }
 
       i {
@@ -1001,14 +1203,14 @@ onMounted(() => {
 
       .info-label {
         font-size: 12px;
-        color: #666;
+        color: var(--text-secondary);
         margin-bottom: 4px;
       }
 
       .info-value {
         font-size: 15px;
         font-weight: 500;
-        color: #333;
+        color: var(--text-primary);
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -1016,7 +1218,7 @@ onMounted(() => {
     }
 
     .info-arrow {
-      color: #ddd;
+      color: var(--tf-color-gray-300-alt);
       font-size: 14px;
       flex-shrink: 0;
     }
@@ -1027,7 +1229,7 @@ onMounted(() => {
     align-items: center;
     gap: 12px;
     padding: 16px;
-    background: #f8f9fa;
+    background: var(--tf-color-surface-muted);
     border-radius: 8px;
     margin-bottom: 12px;
     cursor: pointer;
@@ -1038,7 +1240,7 @@ onMounted(() => {
     }
 
     &:active {
-      background: #e9ecef;
+      background: var(--tf-color-border-muted);
       transform: scale(0.98);
     }
 
@@ -1049,15 +1251,15 @@ onMounted(() => {
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #fff;
+      color: var(--color-bg-white);
       flex-shrink: 0;
 
       &.phone-icon {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
       }
 
       &.wechat-icon {
-        background: linear-gradient(135deg, #00c853 0%, #00e676 100%);
+        background: linear-gradient(135deg, var(--tf-color-accent-green) 0%, var(--tf-color-green-accent) 100%);
       }
 
       i {
@@ -1071,14 +1273,14 @@ onMounted(() => {
 
       .info-label {
         font-size: 12px;
-        color: #666;
+        color: var(--text-secondary);
         margin-bottom: 4px;
       }
 
       .info-value {
         font-size: 15px;
         font-weight: 500;
-        color: #333;
+        color: var(--text-primary);
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -1086,7 +1288,7 @@ onMounted(() => {
     }
 
     .info-arrow {
-      color: #ddd;
+      color: var(--tf-color-gray-300-alt);
       font-size: 14px;
       flex-shrink: 0;
     }
@@ -1095,7 +1297,7 @@ onMounted(() => {
   .no-service {
     text-align: center;
     padding: 32px 16px;
-    color: #999;
+    color: var(--text-muted);
 
     i {
       font-size: 40px;
@@ -1136,12 +1338,12 @@ onMounted(() => {
     width: 56px;
     height: 56px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #00c853 0%, #00e676 100%);
+    background: linear-gradient(135deg, var(--tf-color-accent-green) 0%, var(--tf-color-green-accent) 100%);
     box-shadow: 0 4px 16px rgba(0, 200, 83, 0.4);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
+    color: var(--color-bg-white);
 
     i {
       font-size: 24px;
@@ -1150,7 +1352,7 @@ onMounted(() => {
 
   .service-text {
     font-size: 12px;
-    color: #00c853;
+    color: var(--tf-color-accent-green);
     font-weight: 500;
     background: rgba(255, 255, 255, 0.9);
     padding: 2px 8px;
@@ -1166,27 +1368,27 @@ onMounted(() => {
     flex-direction: column;
     gap: 8px;
     padding: 12px 0;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid var(--tf-color-gray-200);
 
     &:last-child {
       border-bottom: none;
     }
 
     i {
-      color: #409eff;
+      color: var(--color-primary);
       margin-right: 8px;
     }
 
     span {
       font-size: 14px;
-      color: #333;
+      color: var(--text-primary);
       display: flex;
       align-items: center;
       font-weight: 500;
     }
 
     .phone-link {
-      color: #409eff;
+      color: var(--color-primary);
       text-decoration: none;
       font-size: 16px;
     }
@@ -1194,7 +1396,7 @@ onMounted(() => {
     .address-text,
     .hours-text {
       font-size: 14px;
-      color: #666;
+      color: var(--text-secondary);
       line-height: 1.6;
       margin: 0;
     }
@@ -1207,7 +1409,7 @@ onMounted(() => {
     display: flex;
     justify-content: space-between;
     padding: 12px 0;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid var(--tf-color-gray-200);
 
     &:last-child {
       border-bottom: none;
@@ -1215,16 +1417,16 @@ onMounted(() => {
 
     .label {
       font-size: 14px;
-      color: #666;
+      color: var(--text-secondary);
     }
 
     .value {
       font-size: 14px;
-      color: #333;
+      color: var(--text-primary);
       text-align: right;
 
       &.phone-value {
-        color: #409eff;
+        color: var(--color-primary);
       }
     }
   }
@@ -1237,7 +1439,7 @@ onMounted(() => {
 
   .records-list {
     .record-item {
-      background: #f8f9fa;
+      background: var(--tf-color-surface-muted);
       border-radius: 8px;
       padding: 12px;
       margin-bottom: 12px;
@@ -1251,12 +1453,12 @@ onMounted(() => {
         .invoice-number {
           font-size: 13px;
           font-weight: 500;
-          color: #333;
+          color: var(--text-primary);
         }
 
         .sale-date {
           font-size: 12px;
-          color: #999;
+          color: var(--text-muted);
         }
       }
 
@@ -1266,7 +1468,7 @@ onMounted(() => {
         .product-name {
           font-size: 15px;
           font-weight: 500;
-          color: #333;
+          color: var(--text-primary);
           margin-bottom: 4px;
         }
 
@@ -1274,10 +1476,10 @@ onMounted(() => {
           display: flex;
           gap: 12px;
           font-size: 12px;
-          color: #666;
+          color: var(--text-secondary);
 
           .imei {
-            color: #999;
+            color: var(--text-muted);
           }
         }
       }
@@ -1287,18 +1489,18 @@ onMounted(() => {
         justify-content: space-between;
         align-items: center;
         padding-top: 8px;
-        border-top: 1px solid #e9ecef;
+        border-top: 1px solid var(--tf-color-border-muted);
 
         .price {
           font-size: 18px;
           font-weight: 500;
-          color: #ff1744;
+          color: var(--tf-color-accent-pink);
         }
 
         .payment-method {
           font-size: 12px;
-          color: #666;
-          background: #e9ecef;
+          color: var(--text-secondary);
+          background: var(--tf-color-border-muted);
           padding: 2px 8px;
           border-radius: 4px;
         }
@@ -1310,7 +1512,7 @@ onMounted(() => {
 // 个人资料表单样式
 .form-tip {
   font-size: 12px;
-  color: #999;
+  color: var(--text-muted);
   margin-top: 4px;
 }
 </style>

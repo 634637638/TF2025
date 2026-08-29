@@ -9,7 +9,7 @@
  * - 模块权限自动解析
  */
 
-import permissionCapabilities from '../../../config/module-permission-capabilities.json'
+import permissionCapabilities from '../../../backend/src/config/module-permission-capabilities.json'
 
 /**
  * 模块权限配置接口
@@ -17,6 +17,10 @@ import permissionCapabilities from '../../../config/module-permission-capabiliti
 export interface ModulePermissionConfig {
   name: string
   permissions: Record<string, string>
+}
+
+interface PermissionObjectEntry {
+  permissions?: string[]
 }
 
 /**
@@ -579,7 +583,7 @@ export const PermissionUtils = {
    * @returns 是否具有权限
    */
   hasPermission(
-    userPermissions: string[] | Record<string, any>,
+    userPermissions: string[] | Record<string, PermissionObjectEntry>,
     requiredPermission: string,
     currentModule?: string
   ): boolean {
@@ -606,7 +610,7 @@ export const PermissionUtils = {
    * @returns 是否具有权限
    */
   hasPermissionFromObject(
-    permissionObject: Record<string, any>,
+    permissionObject: Record<string, PermissionObjectEntry>,
     normalizedRequired: string,
     _currentModule?: string
   ): boolean {
@@ -647,7 +651,7 @@ export const PermissionUtils = {
     userPermissions: string[],
     requiredPermissions: string[],
     currentModule?: string,
-    requireAll: boolean = false
+    _requireAll: boolean = false
   ): Record<string, boolean> {
     const results: Record<string, boolean> = {}
 

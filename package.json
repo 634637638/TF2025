@@ -15,9 +15,21 @@
     "start:fixed": "node scripts/fix-ports.js",
     "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
     "stop": "node scripts/stop-ports.js",
-    "check-ports": "node scripts/check-ports.js"
+    "check-ports": "node scripts/check-ports.js",
+    "lint": "eslint frontend/src backend/src",
+    "lint:check": "eslint frontend/src backend/src --quiet",
+    "lint:frontend": "eslint frontend/src",
+    "lint:backend": "eslint backend/src",
+    "lint:summary": "node scripts/lint-summary.mjs",
+    "lint:strict": "eslint frontend/src backend/src --max-warnings 0"
   },
   "devDependencies": {
-    "concurrently": "^10.0.3"
+    "@eslint/js": "^9.39.5",
+    "@typescript-eslint/eslint-plugin": "^8.68.0",
+    "@typescript-eslint/parser": "^8.68.0",
+    "concurrently": "^10.0.3",
+    "eslint": "^9.39.5",
+    "eslint-plugin-unused-imports": "^4.4.1",
+    "eslint-plugin-vue": "^10.10.0"
   }
 }

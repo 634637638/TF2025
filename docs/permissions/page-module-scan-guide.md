@@ -133,7 +133,7 @@ src/views/<module>/page/<ComponentName>Card.vue
 1. 在 `src/views/<module>/` 或 `src/views/<module>/page/` 新建页面文件。
 2. 文件名使用 `*View.vue` 或 `*Page.vue`。
 3. 在 [frontend/src/router/index.ts](/Users/imac/Desktop/webtset/TF2025/frontend/src/router/index.ts) 中注册路由。
-4. 在 `config/module-permission-capabilities.json` 登记稳定模块键和真实动作。
+4. 在 `backend/src/config/module-permission-capabilities.json` 登记稳定模块键和真实动作。
 5. 页面内部接入 `usePagePermissions(...)`，后端接口接入相同动作的 `requirePermission(...)`。
 6. 执行 `cd frontend && npm run check:permissions`，再执行模块扫描或模块同步。
 7. 在权限管理中为角色分配：

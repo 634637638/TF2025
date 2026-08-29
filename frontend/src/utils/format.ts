@@ -330,7 +330,7 @@ export const formatBoolean = (
  * @param separator 分隔符，默认为'、'
  * @returns 格式化后的文本
  */
-export const formatArray = (array: any[], separator: string = '、'): string => {
+export const formatArray = (array: unknown[], separator: string = '、'): string => {
   if (!Array.isArray(array) || array.length === 0) {
     return '-'
   }
@@ -346,7 +346,7 @@ export const formatArray = (array: any[], separator: string = '、'): string => 
  * @returns 格式化后的文本
  */
 export const formatObject = (
-  obj: Record<string, any>,
+  obj: Record<string, unknown>,
   separator: string = '，',
   keyValueSeparator: string = '：'
 ): string => {
@@ -388,10 +388,10 @@ export const formatTextLength = (
  * @param params 参数对象
  * @returns 格式化后的URL参数字符串
  */
-export const formatUrlParams = (params: Record<string, any>): string => {
+export const formatUrlParams = (params: Record<string, unknown>): string => {
   return Object.entries(params)
     .filter(([_, value]) => value !== null && value !== undefined && value !== '')
-    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
     .join('&')
 }
 
@@ -448,8 +448,17 @@ export const formatColor = (color: string): string => {
  * 2. 生产环境：优先使用相对路径，通过前端 Nginx 代理到后端
  * 3. 如果前端 Nginx 未配置代理，则直接使用后端 URL（仅 HTTP 页面）
  */
+const IMAGE_FILE_PATTERN = /\.(png|jpe?g|gif|webp|bmp|svg|avif)(?:[?#].*)?$/i
 const KNOWN_IMAGE_PREFIXES = ['/uploads/', '/upload/', '/images/', '/static/', '/assets/', '/api/subsidy/files/', '/api/shared/files/']
 const PROTECTED_FILE_PREFIXES = ['/api/subsidy/files/', '/api/shared/files/']
+const FRONTEND_ROUTE_PATTERNS = [
+  /^\/m(?:[/?#]|$)/,
+  /^\/login(?:[/?#]|$)/,
+  /^\/register(?:[/?#]|$)/,
+  /^\/forgot-password(?:[/?#]|$)/,
+  /^\/price-query(?:[/?#]|$)/,
+  /^\/sales-price-display(?:[/?#]|$)/
+]
 
 const getAbsoluteEnvUrl = (value: string | undefined): string => {
   if (typeof value !== 'string') {
@@ -480,6 +489,38 @@ const extractKnownImagePath = (input: string): string => {
 
   return ''
 }
+
+export const isKnownImagePath = (path: string | null | undefined): boolean => {
+  if (typeof path !== 'string') return false
+  const normalizedValue = path.trim()
+  if (!normalizedValue) return false
+
+  try {
+    const url = new URL(normalizedValue)
+    return KNOWN_IMAGE_PREFIXES.some((prefix) => url.pathname.startsWith(prefix))
+  } catch {
+    const normalizedPath = normalizedValue.startsWith('/') ? normalizedValue : `/${normalizedValue}`
+    return KNOWN_IMAGE_PREFIXES.some((prefix) => normalizedPath.startsWith(prefix))
+  }
+}
+
+export const isFrontendRoutePath = (path: string | null | undefined): boolean => {
+  if (typeof path !== 'string') return false
+  const normalizedValue = path.trim()
+  if (!normalizedValue) return false
+
+  try {
+    const url = new URL(normalizedValue)
+    return FRONTEND_ROUTE_PATTERNS.some((pattern) => pattern.test(url.pathname))
+  } catch {
+    const normalizedPath = normalizedValue.startsWith('/') ? normalizedValue : `/${normalizedValue}`
+    return FRONTEND_ROUTE_PATTERNS.some((pattern) => pattern.test(normalizedPath))
+  }
+}
+
+export const isImageFilePath = (path: string | null | undefined): boolean => (
+  typeof path === 'string' && IMAGE_FILE_PATTERN.test(path.trim())
+)
 
 export const formatImageUrl = (path: string | null | undefined): string => {
   if (typeof path !== 'string') {
@@ -552,6 +593,32 @@ export const formatImageUrl = (path: string | null | undefined): string => {
   }
 }
 
+export const formatSafeImageUrl = (path: string | null | undefined): string => {
+  if (typeof path !== 'string') return ''
+
+  const normalizedValue = path.trim()
+  if (!normalizedValue) return ''
+
+  if (normalizedValue.startsWith('data:') || normalizedValue.startsWith('blob:')) {
+    return formatImageUrl(normalizedValue)
+  }
+
+  const isKnownPath = isKnownImagePath(normalizedValue)
+  if (!isKnownPath && isFrontendRoutePath(normalizedValue)) {
+    return ''
+  }
+
+  if (normalizedValue.startsWith('http://') || normalizedValue.startsWith('https://')) {
+    return formatImageUrl(normalizedValue)
+  }
+
+  if (!isKnownPath && !isImageFilePath(normalizedValue)) {
+    return ''
+  }
+
+  return formatImageUrl(normalizedValue)
+}
+
 export const getBackendOrigin = (): string => {
   const backendUrl = getAbsoluteEnvUrl(import.meta.env.VITE_BACKEND_URL)
   if (backendUrl) {
@@ -614,7 +681,7 @@ const BRAND_COLORS: Record<string, string> = {
   '谷歌': '#4285f4',
   'Google': '#4285f4',
   '诺基亚': '#124189',
-  'Nokia': '#124189',
+  'Nokia': '#124189'
 }
 
 // 获取品牌对应的背景色
@@ -660,7 +727,7 @@ export const generateProductPlaceholder = (options: ProductPlaceholderOptions = 
   const brandInitial = brand ? brand.charAt(0).toUpperCase() : '?'
 
   // 型号显示（横向布局用12字符，垂直布局用6字符）
-  const modelDisplay = model ? model.substring(0, 12) : ''
+  const _modelDisplay = model ? model.substring(0, 12) : ''
 
   // 组合显示文本
   const mainText = brand || '商品'
@@ -798,5 +865,9 @@ export default {
   parseUrlParams,
   formatColor,
   formatImageUrl,
+  formatSafeImageUrl,
+  isKnownImagePath,
+  isFrontendRoutePath,
+  isImageFilePath,
   generateProductPlaceholder
 }

@@ -1,26 +1,27 @@
 import type { Supplier, Store } from '@/types/system'
-import type { ModelValueProps, User } from '@/types'
+import type { Brand, Color, MemoryOption, Model, ModelValueProps, User } from '@/types'
 
 export interface QuickSaleProps extends ModelValueProps {
   options: {
     suppliers: Supplier[]
     stores: Store[]
-    brands: string[]
-    colors: string[]
-    memories: string[]
+    brands: Brand[]
+    models: Model[]
+    colors: Color[]
+    memories: MemoryOption[]
     users: User[]
   }
   initialData?: {
-    brand_id?: string
-    model_id?: string
-    color_id?: string
-    memory_id?: string
+    brand_id?: number
+    model_id?: number
+    color_id?: number
+    memory_id?: number
     is_new?: string | number | boolean
     imei?: string
     serial_number?: string
     supplier_id?: number | null
     store_id?: number | null
-    purchase_price?: number | null
+    purchase_cost?: number | null
     sale_price?: number | null
   } | null
 }
@@ -34,30 +35,26 @@ export interface CustomerOption {
   vip_level: string
 }
 
-export interface BrandModelOption {
-  name: string
-  status?: number
-  sort_order?: number
-}
+export type BrandModelOption = Model
 
 export interface QuickSaleFormState {
-  brand_id: string
-  model_id: string
-  color_id: string
-  memory_id: string
+  brand_id: number | null
+  model_id: number | null
+  color_id: number | null
+  memory_id: number | null
   is_new: string
   imei: string
   serial_number: string
   supplier_id: number | null
   store_id: number | null
-  purchase_price: number | null
+  purchase_cost: number | null
   sale_price: number | null
   customer_name: string
   customer_phone: string
   apple_id: string
-  stock_in_date: string
-  stock_in_operator_id: number | null
-  sale_date: string
+  inventory_time: string
+  purchase_operator_id: number | null
+  sale_time: string
   sale_operator_id: number | null
   payment_method: string
   payment_channel: string
@@ -65,4 +62,4 @@ export interface QuickSaleFormState {
   remarks: string
 }
 
-export type PriceField = 'purchase_price' | 'sale_price'
+export type PriceField = 'purchase_cost' | 'sale_price'

@@ -8,448 +8,518 @@
       module-name="综合查询"
       permission-code="query:view"
     >
-
-    <!-- 有权限时显示内容 -->
-    <div class="view-content admin-page-content">
-      <!-- 页面头部 - 使用公共组件 + 滚动动画 -->
-      <div data-aos="fade-down" data-aos-duration="600">
-        <PageHeader
-          icon="fas fa-search"
-          title="综合查询"
-        >
-          <template #actions>
-            <el-button
-              @click="openQuickSaleModal"
-              type="warning"
-              title="快速出库"
-              v-if="canCreate"
-            >
-              <i class="fas fa-bolt"></i>
-              <span class="btn-text-desktop">快速出库</span>
-              <span class="btn-text-mobile">出库</span>
-            </el-button>
-            <ImportExportActions
-              :can-export="canExport"
-              :export-loading="exporting"
-              :export-disabled="loading || exporting"
-              :export-plain="true"
-              export-label="导出Excel"
-              export-title="导出 Excel"
-              @export="exportToExcel"
-            />
-            <el-button
-              @click="goToStockIn"
-              type="primary"
-              title="快捷入库"
-            >
-              <i class="fas fa-plus-circle"></i>
-              <span class="btn-text-desktop">采购入库</span>
-              <span class="btn-text-mobile">入库</span>
-            </el-button>
-            <el-button
-              @click="goToSales"
-              type="success"
-              title="快捷销售"
-            >
-              <i class="fas fa-shopping-cart"></i>
-              <span class="btn-text-desktop">销售出库</span>
-              <span class="btn-text-mobile">库存</span>
-            </el-button>
-            <el-button
-              @click="handleRefresh"
-              type="info"
-              :disabled="refreshing"
-            >
-              <InlineLoading v-if="refreshing" text="刷新中..." size="small" variant="inherit" />
-              <template v-else>
-                <i class="fas fa-sync-alt"></i>
-                <span>刷新</span>
-              </template>
-            </el-button>
-          </template>
-        </PageHeader>
-      </div>
-
-      <div class="content admin-page-content">
-        <!-- 统计卡片 + 滚动动画 -->
-      <div v-show="showStatsCards" class="stats-cards">
+      <!-- 有权限时显示内容 -->
+      <div class="view-content admin-page-content">
+        <!-- 页面头部 - 使用公共组件 + 滚动动画 -->
         <div
-          v-for="(stat, index) in visibleStatsConfig"
-          :key="index"
-          :data-aos="'fade-up'"
-          :data-aos-delay="index * 100"
-          :data-stat-key="stat.key"
-          class="stat-card"
+          data-aos="fade-down"
+          data-aos-duration="600"
         >
-          <div class="stat-icon" :class="stat.iconClass">
-            <i :class="stat.icon"></i>
-          </div>
-          <div class="stat-content">
-            <div class="stat-value">{{ statistics[stat.key] || 0 }}</div>
-            <div class="stat-label">{{ stat.label }}</div>
-          </div>
-        </div>
-      </div>
-
-      <UnifiedSearchPanel
-        data-aos="fade-up"
-        data-aos-delay="400"
-        v-model:expanded="searchExpanded"
-        :loading="loading"
-        @search="triggerLoadQueryData"
-        @reset="resetFilters"
-      >
-        <template #primary>
-          <el-input
-            v-model="filters.search_term"
-            placeholder="搜索关键词"
-            clearable
-            @input="debounceLoadQueryData"
-            @keyup.enter="triggerLoadQueryData"
-            @click.stop
+          <PageHeader
+            icon="fas fa-search"
+            title="综合查询"
           >
-            <template #prefix>
-              <i class="fas fa-search"></i>
+            <template #actions>
+              <el-button
+                v-if="canCreate"
+                type="warning"
+                title="快速出库"
+                @click="openQuickSaleModal"
+              >
+                <i class="fas fa-bolt" />
+                <span class="btn-text-desktop">快速出库</span>
+                <span class="btn-text-mobile">出库</span>
+              </el-button>
+              <ImportExportActions
+                :can-export="canExport"
+                :export-loading="exporting"
+                :export-disabled="loading || exporting"
+                :export-plain="true"
+                export-label="导出Excel"
+                export-title="导出 Excel"
+                @export="exportToExcel"
+              />
+              <el-button
+                type="primary"
+                title="快捷入库"
+                @click="goToStockIn"
+              >
+                <i class="fas fa-plus-circle" />
+                <span class="btn-text-desktop">采购入库</span>
+                <span class="btn-text-mobile">入库</span>
+              </el-button>
+              <el-button
+                type="success"
+                title="快捷销售"
+                @click="goToSales"
+              >
+                <i class="fas fa-shopping-cart" />
+                <span class="btn-text-desktop">销售出库</span>
+                <span class="btn-text-mobile">库存</span>
+              </el-button>
+              <el-button
+                type="info"
+                :disabled="refreshing"
+                @click="handleRefresh"
+              >
+                <InlineLoading
+                  v-if="refreshing"
+                  text="刷新中..."
+                  size="small"
+                  variant="inherit"
+                />
+                <template v-else>
+                  <i class="fas fa-sync-alt" />
+                  <span>刷新</span>
+                </template>
+              </el-button>
             </template>
-          </el-input>
-        </template>
-
-        <!-- 供应商 -->
-        <div class="form-group filter-item" data-field="supplier">
-            <el-select
-              v-model="filters.supplier_id"
-              placeholder="供应商"
-              @change="triggerLoadQueryData"
-              filterable
-              clearable
-            >
-              <el-option
-                v-for="supplier in options.suppliers"
-                :key="supplier.id"
-                :label="supplier.name"
-                :value="supplier.id"
-              />
-            </el-select>
+          </PageHeader>
         </div>
 
-        <!-- 店铺 -->
-        <div class="form-group filter-item" data-field="store">
-            <el-select
-              v-model="filters.store_id"
-              placeholder="店铺"
-              @change="triggerLoadQueryData"
-              filterable
-              clearable
-            >
-              <el-option
-                v-for="store in options.stores"
-                :key="store.id"
-                :label="store.name"
-                :value="store.id"
-              />
-            </el-select>
-        </div>
-
-        <!-- 品牌 -->
-        <div class="form-group filter-item" data-field="brand">
-            <el-select
-              v-model="filters.brand"
-              placeholder="品牌"
-              @change="handleFilterBrandChange"
-              filterable
-              clearable
-            >
-              <el-option
-                v-for="brand in options.brands"
-                :key="brand"
-                :label="brand"
-                :value="brand"
-              />
-            </el-select>
-        </div>
-
-        <!-- 型号 -->
-        <div class="form-group filter-item" data-field="model">
-            <el-select
-              v-model="filters.model"
-              placeholder="型号"
-              @change="triggerLoadQueryData"
-              filterable
-              clearable
-              :disabled="!filters.brand && options.models.length === 0"
-            >
-              <el-option
-                v-for="model in options.models"
-                :key="model.id"
-                :label="model.name"
-                :value="model.name"
-              />
-            </el-select>
-        </div>
-
-        <!-- 颜色 -->
-        <div class="form-group filter-item" data-field="color">
-            <el-select
-              v-model="filters.color"
-              placeholder="颜色"
-              @change="triggerLoadQueryData"
-              filterable
-              clearable
-            >
-              <el-option
-                v-for="color in options.colors"
-                :key="color"
-                :label="color"
-                :value="color"
-              />
-            </el-select>
-        </div>
-
-        <!-- 内存 -->
-        <div class="form-group filter-item" data-field="memory">
-            <el-select
-              v-model="filters.memory"
-              placeholder="内存"
-              @change="triggerLoadQueryData"
-              filterable
-              clearable
-            >
-              <el-option
-                v-for="memory in options.memories"
-                :key="memory"
-                :label="memory"
-                :value="memory"
-              />
-            </el-select>
-        </div>
-
-        <!-- 状态 -->
-        <div class="form-group filter-item" data-field="status">
-            <el-select
-              v-model="filters.status"
-              placeholder="状态"
-              @change="triggerLoadQueryData"
-              clearable
-            >
-              <el-option
-                v-for="status in options.statuses"
-                :key="status.value"
-                :label="status.label"
-                :value="status.value"
-              />
-            </el-select>
-        </div>
-
-        <!-- 机况 -->
-        <div class="form-group filter-item" data-field="condition">
-            <el-select
-              v-model="filters.is_new"
-              placeholder="机况"
-              @change="triggerLoadQueryData"
-              filterable
-              clearable
-            >
-              <el-option
-                v-for="condition in options.conditions"
-                :key="condition.value"
-                :label="condition.label"
-                :value="condition.value"
-              />
-            </el-select>
-        </div>
-
-        <!-- 销售员 -->
-        <div class="form-group filter-item" data-field="operator">
-            <el-select
-              v-model="filters.sale_operator_id"
-              placeholder="销售员"
-              @change="triggerLoadQueryData"
-              filterable
-              clearable
-            >
-              <el-option
-                v-for="user in options.users"
-                :key="user.id"
-                :label="user.name"
-                :value="user.id"
-              />
-            </el-select>
-        </div>
-
-        <!-- 开始日期 -->
-        <div class="form-group filter-item" data-field="start_date">
-            <el-date-picker
-              v-model="filters.start_date"
-              type="date"
-              placeholder="开始日期"
-              format="YYYY-MM-DD"
-              value-format="YYYY-MM-DD"
-              @change="triggerLoadQueryData"
-              clearable
-              style="width: 140px"
-            />
-        </div>
-
-        <!-- 结束日期 -->
-        <div class="form-group filter-item" data-field="end_date">
-            <el-date-picker
-              v-model="filters.end_date"
-              type="date"
-              placeholder="结束日期"
-              format="YYYY-MM-DD"
-              value-format="YYYY-MM-DD"
-              @change="triggerLoadQueryData"
-              clearable
-              style="width: 140px"
-            />
-        </div>
-      </UnifiedSearchPanel>
-
-      <!-- 数据表格区域 -->
-    <div class="table-section admin-panel admin-table-panel">
-        <div class="section-title">
-          <i class="fas fa-list"></i>
-          综合销售列表
-          <span class="record-count">共 {{ pagination.total }} 条记录</span>
-        </div>
-
-        <div class="table-responsive">
-          <el-table
-            :data="loading ? [] : queryData"
-            border
-            stripe
-            class="data-table devices-table"
-            table-layout="fixed"
-            :fit="true"
-            :row-key="getQueryRowKey"
-            :row-class-name="getQueryRowClassName"
-            @row-click="handleRowTap"
-            @row-dblclick="handleRowDoubleClick"
+        <div class="content admin-page-content">
+          <!-- 统计卡片 + 滚动动画 -->
+          <div
+            v-show="showStatsCards"
+            class="stats-cards"
           >
-            <el-table-column
-              v-for="column in tableColumns"
-              :key="column.key"
-              :label="column.label"
-              :min-width="getQueryColumnMinWidth(column)"
-              :width="getQueryActionColumnWidth(column)"
-              align="center"
-              :class-name="getQueryColumnClass(column)"
+            <div
+              v-for="(stat, index) in visibleStatsConfig"
+              :key="index"
+              :data-aos="'fade-up'"
+              :data-aos-delay="index * 100"
+              :data-stat-key="stat.key"
+              class="stat-card"
             >
-              <template #default="{ row }">
-                <span v-if="column.key === 'basic_info.serial_number'" class="serial-imei-cell">
-                  {{ getCellValue(row, column) }}
-                </span>
-
-                <span v-else-if="column.key === 'basic_info.imei'" class="serial-imei-cell">
-                  {{ getCellValue(row, column) }}
-                </span>
-
-                <span
-                  v-else-if="column.key === 'basic_info.is_new'"
-                  :class="{ 'clickable-cell': Number(row.基本信息?.is_new) === 0 }"
-                  @dblclick.stop="handleConditionDoubleClick(row)"
-                >
-                  <span :class="['condition-badge', Number(row.基本信息?.is_new) === 1 ? 'new' : 'used']">
-                    {{ getCellValue(row, column) }}
-                  </span>
-                  <i v-if="Number(row.基本信息?.is_new) === 0 && row.基本信息?.has_images" class="fas fa-images image-hint"></i>
-                </span>
-
-                <span
-                  v-else-if="column.key === 'basic_info.status'"
-                  class="status-cell clickable-cell"
-                  @dblclick.stop="handleCellDoubleClick(row, column)"
-                >
-                  <span :class="['status-badge', getStatusBadgeClass(row.基本信息?.status_code)]">
-                    {{ getCellValue(row, column) }}
-                  </span>
-                </span>
-
-                <div v-else-if="column.key === 'system_info.operations'" class="actions-cell">
-                  <div class="action-buttons">
-                    <el-button
-                      v-if="canEdit"
-                      class="table-action table-action--edit"
-                      @click.stop="openEditModal(row)"
-                      type="primary"
-                      size="small"
-                      title="编辑"
-                    >
-                      <i class="fas fa-edit"></i>
-                      编辑
-                    </el-button>
-                    <el-button
-                      v-if="canDelete"
-                      class="table-action table-action--delete"
-                      @click.stop="deleteItem(row)"
-                      type="danger"
-                      size="small"
-                      title="删除"
-                    >
-                      <i class="fas fa-trash"></i>
-                      删除
-                    </el-button>
-                    <el-button
-                      v-if="canReturnToStock"
-                      class="table-action table-action--warning"
-                      @click.stop="confirmReturnToStock(row)"
-                      type="warning"
-                      size="small"
-                      title="退库"
-                    >
-                      <i class="fas fa-undo-alt"></i>
-                      退库
-                    </el-button>
-                  </div>
-                </div>
-
-                <span
-                  v-else-if="column.key === 'other_info.remarks'"
-                  class="remark-cell"
-                  @dblclick="handleRemarkDoubleClick($event, row)"
-                >
-                  {{ getCellValue(row, column) }}
-                </span>
-
-                <span v-else-if="column.key === 'basic_info.purchase_price' || column.key === 'basic_info.sale_price'" class="price-cell">
-                  {{ getCellValue(row, column) }}
-                </span>
-
-                <span v-else>
-                  {{ getCellValue(row, column) }}
-                </span>
-              </template>
-
-            </el-table-column>
-
-            <template #empty>
-              <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
-              <div v-else class="empty-cell">
-                <i class="fas fa-inbox"></i>
-                <span>暂无数据</span>
+              <div
+                class="stat-icon"
+                :class="stat.iconClass"
+              >
+                <i :class="stat.icon" />
               </div>
+              <div class="stat-content">
+                <div class="stat-value">
+                  {{ statistics[stat.key] || 0 }}
+                </div>
+                <div class="stat-label">
+                  {{ stat.label }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <UnifiedSearchPanel
+            v-model:expanded="searchExpanded"
+            data-aos="fade-up"
+            data-aos-delay="400"
+            :loading="loading"
+            @search="triggerLoadQueryData"
+            @reset="resetFilters"
+          >
+            <template #primary>
+              <el-input
+                v-model="filters.search_term"
+                placeholder="搜索关键词"
+                clearable
+                @input="debounceLoadQueryData"
+                @keyup.enter="triggerLoadQueryData"
+                @click.stop
+              >
+                <template #prefix>
+                  <i class="fas fa-search" />
+                </template>
+              </el-input>
             </template>
-          </el-table>
+
+            <!-- 供应商 -->
+            <div
+              class="form-group filter-item"
+              data-field="supplier"
+            >
+              <el-select
+                v-model="filters.supplier_id"
+                placeholder="供应商"
+                filterable
+                clearable
+                @change="triggerLoadQueryData"
+              >
+                <el-option
+                  v-for="supplier in options.suppliers"
+                  :key="supplier.id"
+                  :label="supplier.name"
+                  :value="supplier.id"
+                />
+              </el-select>
+            </div>
+
+            <!-- 店铺 -->
+            <div
+              class="form-group filter-item"
+              data-field="store"
+            >
+              <el-select
+                v-model="filters.store_id"
+                placeholder="店铺"
+                filterable
+                clearable
+                @change="triggerLoadQueryData"
+              >
+                <el-option
+                  v-for="store in options.stores"
+                  :key="store.id"
+                  :label="store.name"
+                  :value="store.id"
+                />
+              </el-select>
+            </div>
+
+            <!-- 品牌 -->
+            <div
+              class="form-group filter-item"
+              data-field="brand"
+            >
+              <el-select
+                v-model="filters.brand"
+                placeholder="品牌"
+                filterable
+                clearable
+                @change="handleFilterBrandChange"
+              >
+                <el-option
+                  v-for="brand in options.brands"
+                  :key="brand"
+                  :label="brand"
+                  :value="brand"
+                />
+              </el-select>
+            </div>
+
+            <!-- 型号 -->
+            <div
+              class="form-group filter-item"
+              data-field="model"
+            >
+              <el-select
+                v-model="filters.model"
+                placeholder="型号"
+                filterable
+                clearable
+                :disabled="!filters.brand && options.models.length === 0"
+                @change="triggerLoadQueryData"
+              >
+                <el-option
+                  v-for="model in options.models"
+                  :key="model.id"
+                  :label="model.name"
+                  :value="model.name"
+                />
+              </el-select>
+            </div>
+
+            <!-- 颜色 -->
+            <div
+              class="form-group filter-item"
+              data-field="color"
+            >
+              <el-select
+                v-model="filters.color"
+                placeholder="颜色"
+                filterable
+                clearable
+                @change="triggerLoadQueryData"
+              >
+                <el-option
+                  v-for="color in options.colors"
+                  :key="color"
+                  :label="color"
+                  :value="color"
+                />
+              </el-select>
+            </div>
+
+            <!-- 内存 -->
+            <div
+              class="form-group filter-item"
+              data-field="memory"
+            >
+              <el-select
+                v-model="filters.memory"
+                placeholder="内存"
+                filterable
+                clearable
+                @change="triggerLoadQueryData"
+              >
+                <el-option
+                  v-for="memory in options.memories"
+                  :key="memory"
+                  :label="memory"
+                  :value="memory"
+                />
+              </el-select>
+            </div>
+
+            <!-- 状态 -->
+            <div
+              class="form-group filter-item"
+              data-field="status"
+            >
+              <el-select
+                v-model="filters.status"
+                placeholder="状态"
+                clearable
+                @change="triggerLoadQueryData"
+              >
+                <el-option
+                  v-for="status in options.statuses"
+                  :key="status.value"
+                  :label="status.label"
+                  :value="status.value"
+                />
+              </el-select>
+            </div>
+
+            <!-- 机况 -->
+            <div
+              class="form-group filter-item"
+              data-field="condition"
+            >
+              <el-select
+                v-model="filters.is_new"
+                placeholder="机况"
+                filterable
+                clearable
+                @change="triggerLoadQueryData"
+              >
+                <el-option
+                  v-for="condition in options.conditions"
+                  :key="condition.value"
+                  :label="condition.label"
+                  :value="condition.value"
+                />
+              </el-select>
+            </div>
+
+            <!-- 销售员 -->
+            <div
+              class="form-group filter-item"
+              data-field="operator"
+            >
+              <el-select
+                v-model="filters.sale_operator_id"
+                placeholder="销售员"
+                filterable
+                clearable
+                @change="triggerLoadQueryData"
+              >
+                <el-option
+                  v-for="user in options.users"
+                  :key="user.id"
+                  :label="user.name"
+                  :value="user.id"
+                />
+              </el-select>
+            </div>
+
+            <!-- 开始日期 -->
+            <div
+              class="form-group filter-item"
+              data-field="start_date"
+            >
+              <el-date-picker
+                v-model="filters.start_date"
+                type="date"
+                placeholder="开始日期"
+                format="YYYY-MM-DD"
+                value-format="YYYY-MM-DD"
+                clearable
+                style="width: 140px"
+                @change="triggerLoadQueryData"
+              />
+            </div>
+
+            <!-- 结束日期 -->
+            <div
+              class="form-group filter-item"
+              data-field="end_date"
+            >
+              <el-date-picker
+                v-model="filters.end_date"
+                type="date"
+                placeholder="结束日期"
+                format="YYYY-MM-DD"
+                value-format="YYYY-MM-DD"
+                clearable
+                style="width: 140px"
+                @change="triggerLoadQueryData"
+              />
+            </div>
+          </UnifiedSearchPanel>
+
+          <!-- 数据表格区域 -->
+          <div class="table-section admin-panel admin-table-panel">
+            <div class="section-title">
+              <i class="fas fa-list" />
+              综合销售列表
+              <span class="record-count">共 {{ pagination.total }} 条记录</span>
+            </div>
+
+            <div class="table-responsive">
+              <el-table
+                :data="loading ? [] : queryData"
+                border
+                stripe
+                class="data-table devices-table"
+                table-layout="fixed"
+                :fit="true"
+                :row-key="getQueryRowKey"
+                :row-class-name="getQueryRowClassName"
+                @row-click="handleRowTap"
+                @row-dblclick="handleRowDoubleClick"
+              >
+                <el-table-column
+                  v-for="column in tableColumns"
+                  :key="column.key"
+                  :label="column.label"
+                  :min-width="getQueryColumnMinWidth(column)"
+                  :width="getQueryActionColumnWidth(column)"
+                  align="center"
+                  :class-name="getQueryColumnClass(column)"
+                >
+                  <template #default="{ row }">
+                    <span
+                      v-if="column.key === 'basic_info.serial_number'"
+                      class="serial-imei-cell"
+                    >
+                      {{ getCellValue(row, column) }}
+                    </span>
+
+                    <span
+                      v-else-if="column.key === 'basic_info.imei'"
+                      class="serial-imei-cell"
+                    >
+                      {{ getCellValue(row, column) }}
+                    </span>
+
+                    <span
+                      v-else-if="column.key === 'basic_info.is_new'"
+                      :class="{ 'clickable-cell': Number(row.基本信息?.is_new) === 0 }"
+                      @dblclick.stop="handleConditionDoubleClick(row)"
+                    >
+                      <span :class="['condition-badge', Number(row.基本信息?.is_new) === 1 ? 'new' : 'used']">
+                        {{ getCellValue(row, column) }}
+                      </span>
+                      <i
+                        v-if="Number(row.基本信息?.is_new) === 0 && row.基本信息?.has_images"
+                        class="fas fa-images image-hint"
+                      />
+                    </span>
+
+                    <span
+                      v-else-if="column.key === 'basic_info.status'"
+                      class="status-cell clickable-cell"
+                      @dblclick.stop="handleCellDoubleClick(row, column)"
+                    >
+                      <span :class="['status-badge', getStatusBadgeClass(row.基本信息?.status_code)]">
+                        {{ getCellValue(row, column) }}
+                      </span>
+                    </span>
+
+                    <div
+                      v-else-if="column.key === 'system_info.operations'"
+                      class="actions-cell"
+                    >
+                      <div class="action-buttons">
+                        <el-button
+                          v-if="canEdit"
+                          class="table-action table-action--edit"
+                          type="primary"
+                          size="small"
+                          title="编辑"
+                          @click.stop="openEditModal(row)"
+                        >
+                          <i class="fas fa-edit" />
+                          编辑
+                        </el-button>
+                        <el-button
+                          v-if="canDelete"
+                          class="table-action table-action--delete"
+                          type="danger"
+                          size="small"
+                          title="删除"
+                          @click.stop="deleteItem(row)"
+                        >
+                          <i class="fas fa-trash" />
+                          删除
+                        </el-button>
+                        <el-button
+                          v-if="canReturnToStock"
+                          class="table-action table-action--warning"
+                          type="warning"
+                          size="small"
+                          title="退库"
+                          @click.stop="confirmReturnToStock(row)"
+                        >
+                          <i class="fas fa-undo-alt" />
+                          退库
+                        </el-button>
+                      </div>
+                    </div>
+
+                    <span
+                      v-else-if="column.key === 'other_info.remarks'"
+                      class="remark-cell"
+                      @dblclick="handleRemarkDoubleClick($event, row)"
+                    >
+                      {{ getCellValue(row, column) }}
+                    </span>
+
+                    <span
+                      v-else-if="column.key === 'basic_info.purchase_cost' || column.key === 'basic_info.sale_price'"
+                      class="price-cell"
+                    >
+                      {{ getCellValue(row, column) }}
+                    </span>
+
+                    <span v-else>
+                      {{ getCellValue(row, column) }}
+                    </span>
+                  </template>
+                </el-table-column>
+
+                <template #empty>
+                  <TableLoadingRow
+                    v-if="loading"
+                    mode="block"
+                    text="加载中..."
+                  />
+                  <div
+                    v-else
+                    class="empty-cell"
+                  >
+                    <i class="fas fa-inbox" />
+                    <span>暂无数据</span>
+                  </div>
+                </template>
+              </el-table>
+            </div>
+
+            <!-- 分页组件 -->
+            <Pagination
+              v-if="pagination.total > 0"
+              v-model:current="pagination.page"
+              :page-size="pagination.page_size"
+              :total="pagination.total"
+              :page-sizes="[20, 50, 100, 200]"
+              :show-total="true"
+              :show-range="true"
+              :show-page-sizes="true"
+              :show-quick-jumper="true"
+              :disabled="loading"
+              @change="handlePaginationChange"
+            />
+          </div>
         </div>
-
-        <!-- 分页组件 -->
-        <Pagination
-          v-if="pagination.total > 0"
-          v-model:current="pagination.page"
-          v-model:page-size="pagination.limit"
-          :total="pagination.total"
-          :page-sizes="[20, 50, 100, 200]"
-          :show-total="true"
-          :show-range="true"
-          :show-page-sizes="true"
-          :show-quick-jumper="true"
-          :disabled="loading"
-          @change="handlePaginationChange"
-        />
       </div>
-    </div>
-
-    </div>
     </PermissionGate>
 
     <!-- 快速出库模态框 -->
@@ -518,12 +588,18 @@
           <p>{{ selectedPhoneInfo?.color }} | {{ selectedPhoneInfo?.memory }} | IMEI: {{ selectedPhoneInfo?.imei }}</p>
         </div>
 
-        <div v-if="loadingImages" class="loading-images">
+        <div
+          v-if="loadingImages"
+          class="loading-images"
+        >
           <InlineLoading text="加载图片中..." />
         </div>
 
-        <div v-else-if="productImages.length === 0" class="no-images">
-          <i class="fas fa-image"></i>
+        <div
+          v-else-if="productImages.length === 0"
+          class="no-images"
+        >
+          <i class="fas fa-image" />
           <p>暂无图片，点击下方"上传图片"按钮添加</p>
         </div>
 
@@ -533,11 +609,14 @@
             :animation="200"
             handle=".drag-handle"
             item-key="id"
-            @end="handleImageDragEnd"
             class="images-grid"
+            @end="handleImageDragEnd"
           >
             <template #item="{ element: image, index }">
-              <div class="image-item" @click="previewImage(image)">
+              <div
+                class="image-item"
+                @click="previewImage(image)"
+              >
                 <Image
                   :src="image.image_url"
                   :alt="`图片 ${index + 1}`"
@@ -551,11 +630,14 @@
                 />
                 <!-- 拖拽手柄 -->
                 <div class="drag-handle">
-                  <i class="fas fa-grip-vertical"></i>
+                  <i class="fas fa-grip-vertical" />
                 </div>
                 <!-- 主图标记 -->
-                <div v-if="image.is_primary" class="primary-badge">
-                  <i class="fas fa-star"></i>
+                <div
+                  v-if="image.is_primary"
+                  class="primary-badge"
+                >
+                  <i class="fas fa-star" />
                   主图
                 </div>
                 <!-- 右上角删除按钮 -->
@@ -566,11 +648,15 @@
                   class="image-delete-btn"
                   @click.stop="deleteSingleImage(image)"
                 >
-                  <i class="fas fa-trash"></i>
+                  <i class="fas fa-trash" />
                 </el-button>
                 <!-- 设置主图按钮 -->
-                <div v-if="!image.is_primary" class="set-primary-btn" @click="setPrimaryImage(image)">
-                  <i class="fas fa-star"></i>
+                <div
+                  v-if="!image.is_primary"
+                  class="set-primary-btn"
+                  @click="setPrimaryImage(image)"
+                >
+                  <i class="fas fa-star" />
                 </div>
               </div>
             </template>
@@ -587,25 +673,27 @@
             multiple
             style="display: none"
             @change="handleUploadImage"
-          />
-          <el-button @click="handleCloseImageModal">关闭</el-button>
+          >
+          <el-button @click="handleCloseImageModal">
+            关闭
+          </el-button>
           <el-button
             v-if="productImages.length > 0"
             type="danger"
             plain
-            @click="deleteAllImages"
             :disabled="loadingImages || uploadingImage"
+            @click="deleteAllImages"
           >
-            <i class="fas fa-trash-alt"></i>
+            <i class="fas fa-trash-alt" />
             删除全部
           </el-button>
           <el-button
             type="primary"
-            @click="($refs.imageUploadInput as HTMLInputElement).click()"
             :loading="uploadingImage"
             :disabled="loadingImages"
+            @click="($refs.imageUploadInput as HTMLInputElement).click()"
           >
-            <i class="fas fa-upload"></i>
+            <i class="fas fa-upload" />
             上传图片
           </el-button>
         </div>
@@ -614,7 +702,11 @@
 
     <!-- 大图预览 - 用 teleport 移到 body -->
     <teleport to="body">
-      <div v-if="showImageViewer" class="image-viewer-mask" @click.self="closeImageViewer">
+      <div
+        v-if="showImageViewer"
+        class="image-viewer-mask"
+        @click.self="closeImageViewer"
+      >
         <div @click.stop>
           <el-image-viewer
             :url-list="imageViewerUrls"
@@ -639,7 +731,6 @@ import { usePagination } from '@/composables/index'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useRefreshData } from '@/composables/useRefreshData'
 import { useLoadingState } from '@/composables'
-import { useCachedRequest, DEFAULT_CACHE_TTL } from '@/composables/usePageCache'
 import unifiedApi from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import { formatImageUrl } from '@/utils/format'
@@ -673,10 +764,10 @@ const QueryDetailDialog = defineAsyncComponent(() => import('@/components/query/
 const ReturnStockModal = defineAsyncComponent(() => import('@/components/query/ReturnStockModal.vue'))
 
 // 字段权限相关
-import { fieldPermissions } from '../../composables/useFieldPermissions'
+import { fieldPermissions, shouldShowActionColumn } from '../../composables/useFieldPermissions'
 // 时间处理工具
 import { TimeUtil, TIME_FORMATS } from '../../utils/time'
-import type { QueryItem, ReturnDeviceInfo, QueryStatistics as Statistics, QueryOptions as Options } from '@/types'
+import type { Brand, Color, MemoryOption, Model, QueryItem, ReturnDeviceInfo, QueryStatistics as Statistics, QueryOptions as Options } from '@/types'
 
 // 使用 stores 和 composables
 const router = useRouter()
@@ -737,31 +828,6 @@ const { loading: uploadingImage } = useLoadingState()
 // 临时文件跟踪器
 let tempFileTracker: TempFileTracker | null = null
 
-// 计算选中项的汇总
-const selectedTotalAmount = computed(() => {
-  return selectedItems.value.reduce((sum, item) => {
-    const price = item.价格信息?.sale_price || 0
-    return sum + (Number(price) || 0)
-  }, 0)
-})
-
-const selectedTotalProfit = computed(() => {
-  return selectedItems.value.reduce((sum, item) => {
-    const purchasePrice = Number(item.价格信息?.purchase_price) || 0
-    const salePrice = Number(item.价格信息?.sale_price) || 0
-    return sum + (salePrice - purchasePrice)
-  }, 0)
-})
-
-// 格式化选中统计价格
-const formatSelectedPrice = (price: number) => {
-  if (!price || isNaN(price)) return '0.00'
-  return price.toLocaleString('zh-CN', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  })
-}
-
 // 退库功能相关状态
 const showReturnModal = ref(false)
 const selectedReturnDevice = ref<ReturnDeviceInfo | null>(null)
@@ -821,7 +887,7 @@ const handleRowTap = (item: QueryItem, _column: unknown, event: MouseEvent) => {
 }
 
 // 添加窗口大小监听
-watch(() => windowWidth.value, (newWidth) => {
+watch(() => windowWidth.value, () => {
   // 可以在这里添加额外的响应式逻辑
 })
 
@@ -896,10 +962,10 @@ let latestQueryRequestId = 0
 const editModalOptions = reactive({
   suppliers: [] as any[],
   stores: [] as any[],
-  brands: [] as string[],
-  models: [] as string[],
-  colors: [] as string[],
-  memories: [] as string[],
+  brands: [] as Brand[],
+  models: [] as Model[],
+  colors: [] as Color[],
+  memories: [] as MemoryOption[],
   users: [] as any[]
 })
 const editModalOptionsLoaded = ref(false)
@@ -910,7 +976,7 @@ const employeesPromise = ref<Promise<any[]> | null>(null)
 // 筛选条件
 const filters = reactive({
   page: 1,
-  limit: 100,
+  page_size: 100,
   supplier_id: '',
   store_id: '',
   brand: '',
@@ -927,59 +993,20 @@ const filters = reactive({
 
 // 分页信息
 const paginationData = usePagination({
-  limit: 100
+  page_size: 100
 })
 
 const pagination = computed(() => ({
   page: paginationData.page.value,
-  limit: paginationData.limit.value,
+  page_size: paginationData.page_size.value,
   total: paginationData.total.value,
-  totalPages: paginationData.totalPages.value
+  total_pages: Math.ceil(paginationData.total.value / paginationData.page_size.value) || 0
 }))
 
 // 解构出需要的属性和方法
 const { setTotal, goToPage } = paginationData
 
 // ==================== 数据排序辅助函数 ====================
-
-// 品牌排序权重（苹果优先）
-const getBrandOrderWeight = (brand: string): number => {
-  if (!brand) return 999
-  // 移除 emoji 和特殊字符，只保留字母和中文
-  const brandClean = brand.replace(/[^\u4e00-\u9fa5a-zA-Z]/g, '').toLowerCase().trim()
-
-  // 苹果品牌优先（包含中文"苹果"或英文 Apple、iPhone、iPad、AirPods 等关键词）
-  if (brandClean.includes('苹果') || brandClean.includes('apple') || brandClean.includes('iphone') || brandClean.includes('ipad') || brandClean.includes('airpods')) {
-    return 0
-  }
-
-  // 其他品牌返回一个大数字，确保在苹果之后
-  return 1000
-}
-
-// 从型号名称中提取系列号（如 iPhone 14 Pro -> 14）
-const extractSeriesNumber = (model: string): number => {
-  if (!model) return 0
-  const match = model.match(/\d+/)
-  return match ? parseInt(match[0]) : 0
-}
-
-// 内存排序权重（转换为统一的数字进行比较）
-const getMemoryOrderWeight = (memory: string): number => {
-  if (!memory) return 999
-  const size = memory.toUpperCase().replace(/[^0-9A-Z]/g, '')
-
-  if (size.includes('TB')) {
-    const tb = parseInt(size) || 0
-    return tb * 1000
-  } else if (size.includes('GB') || size.includes('G')) {
-    const gb = parseInt(size) || 0
-    return gb
-  }
-
-  const num = parseInt(size) || 0
-  return num
-}
 
 // 对查询数据进行排序（接收映射后的数据）
 const sortQueryData = (data: any[]): any[] => {
@@ -991,9 +1018,9 @@ const isGroupedQueryItem = (item: any): item is QueryItem => {
   return Boolean(
     item &&
     typeof item === 'object' &&
-    item.基本信息 &&
-    item.价格信息 &&
-    item.时间信息
+    (item.基本信息 || item.basic_info) &&
+    (item.价格信息 || item.price_info) &&
+    (item.时间信息 || item.time_info)
   )
 }
 
@@ -1006,49 +1033,76 @@ const normalizeCustomerInfo = (customerInfo?: Partial<QueryItem['客户信息']>
 
 const normalizeQueryItem = (item: any): QueryItem => {
   if (isGroupedQueryItem(item)) {
-    const purchasePrice = Number(item.价格信息?.purchase_price || 0)
-    const salePrice = Number(item.价格信息?.sale_price || 0)
-    const isNew = item.基本信息?.is_new
-
-    return {
-      ...item,
-      基本信息: {
-        ...item.基本信息,
-        condition_type: item.基本信息?.condition_type || (isNew === 1 ? '全新' : '二手')
-      },
-      供应商信息: {
-        ...(item.供应商信息 || {}),
-        supplier_id: item.供应商信息?.supplier_id ?? null
-      },
-      店铺信息: {
-        ...(item.店铺信息 || {}),
-        store_id: item.店铺信息?.store_id ?? null,
-        // 确保 store_name 不为 null 或空字符串
-        store_name: item.店铺信息?.store_name || null
-      },
+    const rawGrouped: any = item
+    const rawPriceInfo = rawGrouped.价格信息 || rawGrouped.price_info || {}
+    const rawTimeInfo = rawGrouped.时间信息 || rawGrouped.time_info || {}
+    const canonicalPriceInfo = rawPriceInfo
+    const canonicalTimeInfo = rawTimeInfo
+    const groupedItem = {
+      基本信息: rawGrouped.基本信息 || rawGrouped.basic_info,
+      供应商信息: rawGrouped.供应商信息 || rawGrouped.supplier_info,
+      店铺信息: rawGrouped.店铺信息 || rawGrouped.store_info,
       价格信息: {
-        ...(item.价格信息 || {}),
-        purchase_price: purchasePrice,
-        sale_price: salePrice,
-        profit: item.价格信息?.profit ?? (salePrice - purchasePrice)
+        ...canonicalPriceInfo,
+        purchase_cost: rawPriceInfo.purchase_cost
       },
       时间信息: {
-        ...(item.时间信息 || {}),
-        // 确保 salestime 不为空字符串
-        salestime: item.时间信息?.salestime || null
+        ...canonicalTimeInfo,
+        inventory_time: rawTimeInfo.inventory_time,
+        sale_time: rawTimeInfo.sale_time
       },
-      客户信息: normalizeCustomerInfo(item.客户信息),
+      客户信息: rawGrouped.客户信息 || rawGrouped.customer_info,
+      操作员信息: rawGrouped.操作员信息 || rawGrouped.operator_info,
+      销售信息: rawGrouped.销售信息 || rawGrouped.sale_info
+    }
+    const purchasePrice = groupedItem.价格信息?.purchase_cost === null || groupedItem.价格信息?.purchase_cost === undefined
+      ? null
+      : Number(groupedItem.价格信息.purchase_cost)
+    const salePrice = groupedItem.价格信息?.sale_price === null || groupedItem.价格信息?.sale_price === undefined
+      ? null
+      : Number(groupedItem.价格信息.sale_price)
+    const isNew = groupedItem.基本信息?.is_new
+
+    return {
+      ...groupedItem,
+      基本信息: {
+        ...groupedItem.基本信息,
+        condition_type: groupedItem.基本信息?.condition_type || (isNew === 1 ? '全新' : '二手')
+      },
+      供应商信息: {
+        ...(groupedItem.供应商信息 || {}),
+        supplier_id: groupedItem.供应商信息?.supplier_id ?? null
+      },
+      店铺信息: {
+        ...(groupedItem.店铺信息 || {}),
+        store_id: groupedItem.店铺信息?.store_id ?? null,
+        // 确保 store_name 不为 null 或空字符串
+        store_name: groupedItem.店铺信息?.store_name || null
+      },
+      价格信息: {
+        ...(groupedItem.价格信息 || {}),
+        purchase_cost: purchasePrice,
+        sale_price: salePrice,
+        profit: groupedItem.价格信息?.profit ?? (
+          salePrice === null || purchasePrice === null ? null : salePrice - purchasePrice
+        )
+      },
+      时间信息: {
+        ...(groupedItem.时间信息 || {}),
+        sale_time: groupedItem.时间信息?.sale_time || null
+      },
+      客户信息: normalizeCustomerInfo(groupedItem.客户信息),
       操作员信息: {
-        ...(item.操作员信息 || {}),
-        operator_id: item.操作员信息?.operator_id ?? item.操作员信息?.sale_operator_id ?? null,
-        sale_operator_id: item.操作员信息?.sale_operator_id ?? item.操作员信息?.operator_id ?? null,
-        inventory_operator_id: item.操作员信息?.inventory_operator_id ?? null
+        ...(groupedItem.操作员信息 || {}),
+        operator_id: groupedItem.操作员信息?.operator_id ?? groupedItem.操作员信息?.sale_operator_id ?? null,
+        sale_operator_id: groupedItem.操作员信息?.sale_operator_id ?? groupedItem.操作员信息?.operator_id ?? null,
+        inventory_operator_id: groupedItem.操作员信息?.inventory_operator_id ?? null
       }
     }
   }
 
-  const purchasePrice = Number(item.purchase_price || 0)
-  const salePrice = Number(item.sale_price || 0)
+  const purchasePrice = item.purchase_cost === null || item.purchase_cost === undefined ? null : Number(item.purchase_cost)
+  const salePrice = item.sale_price === null || item.sale_price === undefined ? null : Number(item.sale_price)
   const rawStatusCode = item.status_code || item.status || ''
 
   return {
@@ -1074,7 +1128,7 @@ const normalizeQueryItem = (item: any): QueryItem => {
       payment_channel: item.payment_channel || '',
       invoice_number: item.invoice_number || '',
       sale_remarks: item.sale_remarks || '',
-      sale_date: item.sale_date || item.sales_sale_date || ''
+      sale_time: item.sale_time || ''
     },
     供应商信息: {
       supplier_id: item.supplier_id ?? null,
@@ -1088,13 +1142,13 @@ const normalizeQueryItem = (item: any): QueryItem => {
       store_address: item.store_address
     },
     价格信息: {
-      purchase_price: purchasePrice,
+      purchase_cost: purchasePrice,
       sale_price: salePrice,
-      profit: salePrice - purchasePrice
+      profit: salePrice === null || purchasePrice === null ? null : salePrice - purchasePrice
     },
     时间信息: {
-      Inventorytime: item.Inventorytime || item.inventorytime || item.created_at,
-      salestime: item.phones_salestime || item.salestime || item.sales_sale_date,
+      inventory_time: item.inventory_time || item.created_at,
+      sale_time: item.sale_time,
       created_at: item.created_at
     },
     客户信息: normalizeCustomerInfo({
@@ -1226,11 +1280,6 @@ const debounceLoadQueryData = () => {
 
 const triggerLoadQueryData = () => {
   void loadQueryData()
-}
-
-// 获取状态标签
-const getStatusLabel = (status: string) => {
-  return getPhoneStatusLabel(status)
 }
 
 // 加载查询数据
@@ -1500,14 +1549,14 @@ const loadQueryOptions = async () => {
     logger.error('加载查询选项失败:', error)
     handleApiError(error, '加载查询选项失败')
 
-    // 设置默认选项，确保页面可以正常显示
+    // 数据源不可用时保持空选项，避免把固定示例数据误当成数据库数据。
     options.value = {
       suppliers: [],
       stores: [],
-      brands: ['Apple', '华为', '小米', 'OPPO', 'vivo', '三星', '荣耀'],
+      brands: [],
       models: [],
-      colors: ['黑色', '白色', '红色', '蓝色'],
-      memories: ['64GB', '128GB', '256GB', '512GB'],
+      colors: [],
+      memories: [],
       users: [], // 销售员选项
       statuses: PHONE_STATUS_OPTIONS,
       conditions: [
@@ -1532,7 +1581,7 @@ const loadSalesUsers = async () => {
 
   try {
     employeesPromise.value = (async () => {
-      const usersRes = await unifiedApi.get('/users/employees?limit=10000')
+      const usersRes = await unifiedApi.get('/users/employees?page_size=10000')
       return usersRes.success && usersRes.data?.employees ? sortOptionsByOrder(usersRes.data.employees) : []
     })()
 
@@ -1550,7 +1599,7 @@ const loadEditModalOptions = async () => {
   if (editModalOptionsLoaded.value) return
   editModalOptionsLoading.value = true
   try {
-    // 并行调用API，传递大的 limit 参数获取所有数据
+    // 并行调用 API，使用规范 page_size 获取基础选项。
     const [
       suppliersRes,
       storesRes,
@@ -1560,13 +1609,13 @@ const loadEditModalOptions = async () => {
       memoriesRes,
       usersRes
     ] = await Promise.all([
-      unifiedApi.get('/suppliers?limit=10000'),
-      unifiedApi.get('/stores?all=true&limit=10000'),
-      unifiedApi.get('/brands?status=1&limit=10000'),
-      unifiedApi.get('/models?limit=10000'),
-      unifiedApi.get('/colors?limit=10000'),
-      unifiedApi.get('/memories?limit=10000'),
-      unifiedApi.get('/users/employees?limit=10000')
+      unifiedApi.get('/suppliers?page_size=10000'),
+      unifiedApi.get('/stores?all=true&page_size=10000'),
+      unifiedApi.get('/brands?status=1&page_size=10000'),
+      unifiedApi.get('/models?page_size=10000'),
+      unifiedApi.get('/colors?page_size=10000'),
+      unifiedApi.get('/memories?page_size=10000'),
+      unifiedApi.get('/users/employees?page_size=10000')
     ])
 
     // 更新编辑模态框选项 - 按 sort_order 排序，相同时按 id 排序确保一致性
@@ -1580,32 +1629,28 @@ const loadEditModalOptions = async () => {
 
     // 品牌按 sort_order 排序，相同时按 id 排序
     if (brandsRes.success) {
-      editModalOptions.brands = sortOptionsByOrder(extractResponseData<any[]>(brandsRes))
-        .map((brand: any) => brand.name)
+      editModalOptions.brands = sortOptionsByOrder(extractResponseData<Brand[]>(brandsRes))
     } else {
       editModalOptions.brands = []
     }
 
     // 型号按 sort_order 排序，相同时按 id 排序
     if (modelsRes.success) {
-      editModalOptions.models = sortOptionsByOrder(extractResponseData<any[]>(modelsRes))
-        .map((model: any) => model.name)
+      editModalOptions.models = sortOptionsByOrder(extractResponseData<Model[]>(modelsRes))
     } else {
       editModalOptions.models = []
     }
 
     // 颜色按 sort_order 排序，相同时按 id 排序
     if (colorsRes.success) {
-      editModalOptions.colors = sortOptionsByOrder(extractResponseData<any[]>(colorsRes))
-        .map((color: any) => color.name)
+      editModalOptions.colors = sortOptionsByOrder(extractResponseData<Color[]>(colorsRes))
     } else {
       editModalOptions.colors = []
     }
 
     // 内存按 sort_order 排序，相同时按 id 排序确保一致性
     if (memoriesRes.success) {
-      editModalOptions.memories = sortOptionsByOrder(extractResponseData<any[]>(memoriesRes), { labelKeys: ['size', 'capacity', 'name'] })
-        .map((memory: any) => memory.size || memory.capacity || memory.name)
+      editModalOptions.memories = sortOptionsByOrder(extractResponseData<MemoryOption[]>(memoriesRes), { labelKeys: ['size', 'capacity', 'name'] })
     } else {
       editModalOptions.memories = []
     }
@@ -1617,14 +1662,14 @@ const loadEditModalOptions = async () => {
       options.value.users = editModalOptions.users
     }
   } catch (error) {
-    // 设置默认选项以防加载失败
     editModalOptions.suppliers = []
     editModalOptions.stores = []
-    editModalOptions.brands = ['Apple', '华为', '小米', 'OPPO', 'vivo', '三星', 'OnePlus']
+    editModalOptions.brands = []
     editModalOptions.models = []
-    editModalOptions.colors = ['黑色', '白色', '红色', '蓝色', '金色', '银色', '绿色', '紫色']
-    editModalOptions.memories = ['64GB', '128GB', '256GB', '512GB', '1TB']
+    editModalOptions.colors = []
+    editModalOptions.memories = []
     editModalOptions.users = []
+    handleApiError(error, '加载快速出库选项失败')
   } finally {
     editModalOptionsLoading.value = false
   }
@@ -1697,7 +1742,7 @@ const handleEditSuccess = async () => {
 const handlePaginationChange = (page: number, pageSize: number) => {
   goToPage(page)
   filters.page = page
-  filters.limit = pageSize
+  filters.page_size = pageSize
   loadQueryData()
 }
 
@@ -1728,7 +1773,7 @@ const handleFilterBrandChange = () => {
 const resetFilters = () => {
   Object.assign(filters, {
     page: 1,
-    limit: 100,
+    page_size: 100,
     supplier_id: '',
     store_id: '',
     brand: '',
@@ -1765,7 +1810,7 @@ const formatDate = (dateString?: string) => {
 }
 
 // 格式化价格 - 始终显示价格，包括 0
-const formatPrice = (price?: number) => {
+const formatPrice = (price?: number | null) => {
   if (price === null || price === undefined) return '-'
   return `¥${Math.floor(price)}`
 }
@@ -1845,7 +1890,7 @@ const handleUploadImage = async (event: Event) => {
       formData.append('image', file)
       formData.append('phone_id', selectedPhoneId.value.toString())
 
-      const response = await unifiedApi.post('/shop/upload-phone-image', formData, {
+      await unifiedApi.post('/shop/upload-phone-image', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -1926,8 +1971,8 @@ const handleImageDragEnd = async () => {
   if (!selectedPhoneId.value || productImages.value.length === 0) return
 
   try {
-    const imageIds = productImages.value.map(img => img.id)
-    await unifiedApi.put(`/shop/products/${selectedPhoneId.value}/images/reorder`, { imageIds })
+    const image_ids = productImages.value.map(img => img.id)
+    await unifiedApi.put(`/shop/products/${selectedPhoneId.value}/images/reorder`, { image_ids })
   } catch (error) {
     logger.error('保存图片排序失败:', error)
     ElMessage.error('保存排序失败')
@@ -1983,49 +2028,49 @@ const getCellValue = (item: QueryItem, column: any) => {
   const { key } = column
 
   switch (key) {
-    case 'supplier_info.supplier_name':
-      return item.供应商信息?.supplier_name || '-'
-    case 'store_info.store_name':
-      return item.店铺信息?.store_name || '-'
-    case 'time_info.Inventorytime':
-      return formatDate(item.时间信息?.Inventorytime)
-    case 'time_info.salestime':
-      return formatDate(item.时间信息?.salestime)
-    case 'basic_info.brand':
-      return item.基本信息?.brand || '-'
-    case 'basic_info.model':
-      return item.基本信息?.model || '-'
-    case 'basic_info.color':
-      return item.基本信息?.color || '-'
-    case 'basic_info.memory':
-      return item.基本信息?.memory || '-'
-    case 'basic_info.purchase_price':
-      return formatPrice(item.价格信息?.purchase_price)
-    case 'basic_info.sale_price':
-      return formatPrice(item.价格信息?.sale_price)
-    case 'customer_info.customer_name':
-      return item.客户信息?.customer_name || '-'
-    case 'customer_info.customer_phone':
-      return item.客户信息?.customer_phone || '-'
-    case 'basic_info.serial_number':
-      return item.基本信息?.serial_number || '-'
-    case 'basic_info.imei':
-      return item.基本信息?.imei || '-'
-    case 'other_info.remarks':
-      // 优先显示手机备注，如果没有则显示销售备注
-      return item.基本信息?.remarks || (item as any).销售信息?.sale_remarks || '-'
-    case 'customer_info.apple_id':
-      return item.客户信息?.apple_id || '-'
-    case 'operator_info.inventory_operator':
-      return item.操作员信息?.inventory_operator_name || '-'
-    case 'operator_info.sale_operator':
-      return item.操作员信息?.sale_operator_name || '-'
-    case 'basic_info.is_new':
-      return Number(item.基本信息?.is_new) === 1 ? '全新' : '二手'
-    case 'basic_info.status':
-      return getStatusText(item.基本信息?.status)
-    default:
-      return '-'
+  case 'supplier_info.supplier_name':
+    return item.供应商信息?.supplier_name || '-'
+  case 'store_info.store_name':
+    return item.店铺信息?.store_name || '-'
+  case 'time_info.inventory_time':
+    return formatDate(item.时间信息?.inventory_time)
+  case 'time_info.sale_time':
+    return formatDate(item.时间信息?.sale_time)
+  case 'basic_info.brand':
+    return item.基本信息?.brand || '-'
+  case 'basic_info.model':
+    return item.基本信息?.model || '-'
+  case 'basic_info.color':
+    return item.基本信息?.color || '-'
+  case 'basic_info.memory':
+    return item.基本信息?.memory || '-'
+  case 'basic_info.purchase_cost':
+    return formatPrice(item.价格信息?.purchase_cost)
+  case 'basic_info.sale_price':
+    return formatPrice(item.价格信息?.sale_price)
+  case 'customer_info.customer_name':
+    return item.客户信息?.customer_name || '-'
+  case 'customer_info.customer_phone':
+    return item.客户信息?.customer_phone || '-'
+  case 'basic_info.serial_number':
+    return item.基本信息?.serial_number || '-'
+  case 'basic_info.imei':
+    return item.基本信息?.imei || '-'
+  case 'other_info.remarks':
+    // 优先显示手机备注，如果没有则显示销售备注
+    return item.基本信息?.remarks || (item as any).销售信息?.sale_remarks || '-'
+  case 'customer_info.apple_id':
+    return item.客户信息?.apple_id || '-'
+  case 'operator_info.inventory_operator':
+    return item.操作员信息?.inventory_operator_name || '-'
+  case 'operator_info.sale_operator':
+    return item.操作员信息?.sale_operator_name || '-'
+  case 'basic_info.is_new':
+    return Number(item.基本信息?.is_new) === 1 ? '全新' : '二手'
+  case 'basic_info.status':
+    return getStatusText(item.基本信息?.status)
+  default:
+    return '-'
   }
 }
 
@@ -2112,36 +2157,6 @@ const handleQuickSaleSuccess = async () => {
 
 // ============ 多选相关方法 ============
 
-// 检查项目是否被选中
-const isItemSelected = (item: QueryItem) => {
-  return selectedItems.value.some(selected => selected.基本信息?.phone_id === item.基本信息?.phone_id)
-}
-
-// 处理单个项目选择
-const handleItemSelect = (item: QueryItem, checked: boolean) => {
-  if (checked) {
-    if (!isItemSelected(item)) {
-      selectedItems.value.push(item)
-    }
-  } else {
-    const index = selectedItems.value.findIndex(selected => selected.基本信息?.phone_id === item.基本信息?.phone_id)
-    if (index > -1) {
-      selectedItems.value.splice(index, 1)
-    }
-  }
-  updateSelectAllState()
-}
-
-// 处理全选
-const handleSelectAll = (checked: boolean) => {
-  if (checked) {
-    selectedItems.value = [...queryData.value]
-  } else {
-    selectedItems.value = []
-  }
-  updateSelectAllState()
-}
-
 // 更新全选状态
 const updateSelectAllState = () => {
   if (selectedItems.value.length === 0) {
@@ -2154,13 +2169,6 @@ const updateSelectAllState = () => {
     selectAll.value = false
     isIndeterminate.value = true
   }
-}
-
-// 清除选择
-const clearSelection = () => {
-  selectedItems.value = []
-  selectAll.value = false
-  isIndeterminate.value = false
 }
 
 // ============ 销售单相关方法 ============
@@ -2178,7 +2186,7 @@ const closeDetailModal = () => {
 }
 
 // 双击单元格打开销售单（PC端）
-const handleCellDoubleClick = (item: QueryItem, column: any) => {
+const handleCellDoubleClick = (item: QueryItem, _column: unknown) => {
   // 只在PC端（>1024px）响应双击
   if (windowWidth.value > 1024) {
     openReceiptForItem(item)
@@ -2262,13 +2270,13 @@ const openReceiptForItem = (item: QueryItem) => {
     memory: basicInfo.memory || '',
     imei: basicInfo.imei || '',
     serialNumber: basicInfo.serial_number || '',
-    purchasePrice: priceInfo.purchase_price || 0,
+    purchasePrice: priceInfo.purchase_cost || 0,
     salePrice: priceInfo.sale_price || 0,
     // 正确处理 is_new 字段：0=二手，1=全新，undefined 默认为全新
     isNew: basicInfo.is_new !== undefined ? basicInfo.is_new : 1,
-    purchaseDate: timeInfo.Inventorytime || '',
+    purchaseDate: timeInfo.inventory_time || '',
     // 销售日期用于多商品时单独显示 - 确保不为空字符串
-    saleDate: timeInfo.salestime && timeInfo.salestime.trim() !== '' ? timeInfo.salestime : undefined,
+    saleDate: timeInfo.sale_time && timeInfo.sale_time.trim() !== '' ? timeInfo.sale_time : undefined,
     // 店铺名称 - 单个商品也需要显示 - 确保不为空字符串或'-'
     storeName: storeInfo.store_name && storeInfo.store_name.trim() !== '' && storeInfo.store_name !== '-' ? storeInfo.store_name : undefined
   }]
@@ -2280,14 +2288,14 @@ const openReceiptForItem = (item: QueryItem) => {
   receiptNumber.value = saleInfo.invoice_number || ''
 
   // 销售时间从"时间信息"对象中获取
-  receiptSaleDate.value = timeInfo.salestime || ''
-  receiptPurchaseDate.value = timeInfo.Inventorytime || ''
+  receiptSaleDate.value = timeInfo.sale_time || ''
+  receiptPurchaseDate.value = timeInfo.inventory_time || ''
 
   showReceipt.value = true
 }
 
 // 为选中项打开销售单
-const openSelectedReceipt = () => {
+const _openSelectedReceipt = () => {
   if (selectedItems.value.length === 0) return
 
   // 获取第一个选中项的状态作为单据类型
@@ -2308,8 +2316,6 @@ const openSelectedReceipt = () => {
   const supplierInfo = firstItem.供应商信息 || {} as QueryItem['供应商信息']
   const storeInfo = firstItem.店铺信息 || {} as QueryItem['店铺信息']
   const operatorInfo = firstItem.操作员信息 || {} as QueryItem['操作员信息']
-  const saleInfo = firstItem.销售信息 || {} as QueryItem['销售信息']
-
   receiptCustomerName.value = normalizePersonName(customerInfo.customer_name || '', 20)
   receiptCustomerPhone.value = normalizePhoneDigits(customerInfo.customer_phone || '')
   receiptSupplierName.value = supplierInfo.supplier_name || ''
@@ -2339,8 +2345,8 @@ const openSelectedReceipt = () => {
 
   // 销售时间从"时间信息"对象中获取（使用第一个选中项的时间信息）
   const timeInfo = firstItem.时间信息 || {} as QueryItem['时间信息']
-  receiptSaleDate.value = timeInfo.salestime || ''
-  receiptPurchaseDate.value = timeInfo.Inventorytime || ''
+  receiptSaleDate.value = timeInfo.sale_time || ''
+  receiptPurchaseDate.value = timeInfo.inventory_time || ''
 
   // 构建商品列表
   receiptItems.value = selectedItems.value.map(item => {
@@ -2348,8 +2354,6 @@ const openSelectedReceipt = () => {
     const price = item.价格信息 || {} as QueryItem['价格信息']
     const timeInfo = item.时间信息 || {} as QueryItem['时间信息']
     const storeInfo = item.店铺信息 || {} as QueryItem['店铺信息']
-    const saleInfo = item.销售信息 || {} as QueryItem['销售信息']
-
     return {
       phone_id: basic.phone_id,
       brand: basic.brand || '',
@@ -2358,14 +2362,13 @@ const openSelectedReceipt = () => {
       memory: basic.memory || '',
       imei: basic.imei || '',
       serialNumber: basic.serial_number || '',
-      purchasePrice: price.purchase_price || 0,
+      purchasePrice: price.purchase_cost || 0,
       salePrice: price.sale_price || 0,
       // 正确处理 is_new 字段：0=二手，1=全新，undefined 默认为全新
       isNew: basic.is_new !== undefined ? basic.is_new : 1,
-      // 入库日期：从时间信息对象的 Inventorytime 字段获取
-      purchaseDate: timeInfo.Inventorytime || '',
+      purchaseDate: timeInfo.inventory_time || '',
       // 销售日期：多商品时每个商品单独显示 - 确保不为空字符串
-      saleDate: timeInfo.salestime && timeInfo.salestime.trim() !== '' ? timeInfo.salestime : undefined,
+      saleDate: timeInfo.sale_time && timeInfo.sale_time.trim() !== '' ? timeInfo.sale_time : undefined,
       // 店铺名称 - 多商品时每个商品单独显示 - 确保不为空字符串或'-'
       storeName: storeInfo.store_name && storeInfo.store_name.trim() !== '' && storeInfo.store_name !== '-' ? storeInfo.store_name : undefined
     }
@@ -2431,13 +2434,13 @@ const handleAddItemToReceipt = (item: any) => {
     memory: item.memory || item.memory_size || '',
     imei: item.imei || '',
     serialNumber: item.serial_number || '',
-    purchasePrice: Number(item.purchase_price || item.purchase_cost || 0),
+    purchasePrice: Number(item.purchase_cost || 0),
     salePrice: Number(item.sale_price || item.price || 0),
     // 正确处理 is_new 字段：0=二手，1=全新，undefined 默认为全新
     isNew: item.is_new !== undefined ? item.is_new : 1,
-    purchaseDate: item.inventory_time || item.Inventorytime || '',
+    purchaseDate: item.inventory_time || '',
     // 添加销售时间和店铺信息 - 确保不为空字符串
-    saleDate: item.salestime && item.salestime.trim() !== '' ? item.salestime : undefined,
+    saleDate: item.sale_time ? item.sale_time.trim() || undefined : undefined,
     storeName: item.store_name && item.store_name.trim() !== '' && item.store_name !== '-' ? item.store_name : undefined
   }
 
@@ -2499,13 +2502,13 @@ const tableColumns = computed(() => {
   const allColumns = [
     { key: 'supplier_info.supplier_name', label: '供应商', field: '供应商信息', prop: 'supplier_name' },
     { key: 'store_info.store_name', label: '店铺', field: '店铺信息', prop: 'store_name' },
-    { key: 'time_info.Inventorytime', label: '入库时间', field: '时间信息', prop: 'Inventorytime' },
-    { key: 'time_info.salestime', label: '销售时间', field: '时间信息', prop: 'salestime' },
+    { key: 'time_info.inventory_time', label: '入库时间', field: '时间信息', prop: 'inventory_time' },
+    { key: 'time_info.sale_time', label: '销售时间', field: '时间信息', prop: 'sale_time' },
     { key: 'basic_info.brand', label: '品牌', field: '基本信息', prop: 'brand' },
     { key: 'basic_info.model', label: '型号', field: '基本信息', prop: 'model' },
     { key: 'basic_info.color', label: '颜色', field: '基本信息', prop: 'color' },
     { key: 'basic_info.memory', label: '内存', field: '基本信息', prop: 'memory' },
-    { key: 'basic_info.purchase_price', label: '入库价格', field: '基本信息', prop: 'purchase_price' },
+    { key: 'basic_info.purchase_cost', label: '入库价格', field: '价格信息', prop: 'purchase_cost' },
     { key: 'basic_info.sale_price', label: '销售价格', field: '基本信息', prop: 'sale_price' },
     { key: 'customer_info.customer_name', label: '客户姓名', field: '客户信息', prop: 'customer_name' },
     { key: 'customer_info.customer_phone', label: '手机号', field: '客户信息', prop: 'customer_phone' },
@@ -2550,7 +2553,7 @@ const tableColumns = computed(() => {
       'basic_info.color',
       'basic_info.memory',
       'basic_info.is_new',
-      'basic_info.purchase_price',
+      'basic_info.purchase_cost',
       'basic_info.sale_price',
       'customer_info.customer_name',
       'basic_info.status'
@@ -2567,8 +2570,9 @@ const tableColumns = computed(() => {
 
   // PC端返回所有有权限的列
   const filteredColumns = allColumns.filter(column => (
-    shouldShowField(column.key)
-    && (column.key !== 'system_info.operations' || hasVisibleQueryActions.value)
+    column.key === 'system_info.operations'
+      ? shouldShowActionColumn(shouldShowField(column.key), [hasVisibleQueryActions.value])
+      : shouldShowField(column.key)
   ))
   return filteredColumns
 })
@@ -2576,13 +2580,13 @@ const tableColumns = computed(() => {
 const queryColumnWidths: Record<string, number> = {
   'supplier_info.supplier_name': 84,
   'store_info.store_name': 64,
-  'time_info.Inventorytime': 88,
-  'time_info.salestime': 88,
+  'time_info.inventory_time': 88,
+  'time_info.sale_time': 88,
   'basic_info.brand': 48,
   'basic_info.model': 74,
   'basic_info.color': 48,
   'basic_info.memory': 64,
-  'basic_info.purchase_price': 68,
+  'basic_info.purchase_cost': 68,
   'basic_info.sale_price': 68,
   'customer_info.customer_name': 72,
   'customer_info.customer_phone': 108,
@@ -2660,7 +2664,7 @@ const getQueryColumnClass = (column: any) => {
     return 'identifier-column serial-imei-column'
   }
 
-  if (column.key === 'basic_info.purchase_price' || column.key === 'basic_info.sale_price') {
+  if (column.key === 'basic_info.purchase_cost' || column.key === 'basic_info.sale_price') {
     return 'complete-text-column price-column'
   }
 
@@ -2750,7 +2754,7 @@ onUnmounted(() => {
 /* 本地样式 */
 .query-view {
   padding: 24px;
-  background: #f5f7fa;
+  background: var(--tf-color-surface);
   min-height: 100vh;
 }
 
@@ -2768,7 +2772,7 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
   border-radius: 8px;
   padding: 12px 20px;
   margin-bottom: 16px;
@@ -2798,11 +2802,11 @@ onUnmounted(() => {
 }
 
 .summary-info .amount {
-  color: #ffd700;
+  color: var(--tf-color-gold);
 }
 
 .summary-info .profit {
-  color: #67c23a;
+  color: var(--color-success);
 }
 
 .summary-actions {
@@ -2813,7 +2817,7 @@ onUnmounted(() => {
 /* 复选框列样式 */
 .checkbox-column {
   width: 50px;
-  text-align: center !important;
+  text-align: center;
 }
 
 .checkbox-column :deep(.el-checkbox) {
@@ -2829,7 +2833,7 @@ onUnmounted(() => {
   display: block;
   margin-bottom: 4px;
   font-size: 12px;
-  color: #606266;
+  color: var(--color-text-regular);
   font-weight: 500;
 }
 
@@ -2848,7 +2852,7 @@ onUnmounted(() => {
   background: white;
   box-shadow: 0 2px 12px rgba(0,0,0,0.08);
   transition: all 0.3s ease;
-  border: 1px solid #e8ecef;
+  border: 1px solid var(--tf-color-border-cool);
 }
 
 .stat-card:hover {
@@ -2868,23 +2872,23 @@ onUnmounted(() => {
 }
 
 .stat-icon {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand));
 }
 
 .stat-icon.in-stock {
-  background: linear-gradient(135deg, #28a745, #20c997);
+  background: linear-gradient(135deg, var(--success-color), var(--tf-color-teal-500));
 }
 
 .stat-icon.sold {
-  background: linear-gradient(135deg, #ffc107, #fd7e14);
+  background: linear-gradient(135deg, var(--warning-color), var(--tf-color-orange-bootstrap));
 }
 
 .stat-icon.new {
-  background: linear-gradient(135deg, #28a745, #20c997);
+  background: linear-gradient(135deg, var(--success-color), var(--tf-color-teal-500));
 }
 
 .stat-icon.used {
-  background: linear-gradient(135deg, #fd7e14, #dc3545);
+  background: linear-gradient(135deg, var(--tf-color-orange-bootstrap), var(--danger-color));
 }
 
 .stat-content {
@@ -2894,13 +2898,13 @@ onUnmounted(() => {
 .stat-value {
   font-size: 24px;
   font-weight: 700;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
   margin-bottom: 4px;
 }
 
 .stat-label {
   font-size: 14px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
   font-weight: 500;
 }
 
@@ -2936,107 +2940,115 @@ onUnmounted(() => {
 
 .condition-badge.new {
   background: rgba(40, 167, 69, 0.1);
-  color: #28a745;
+  color: var(--success-color);
 }
 
 .condition-badge.used {
   background: rgba(253, 126, 20, 0.1);
-  color: #fd7e14;
+  color: var(--tf-color-orange-bootstrap);
 }
 
 .status-badge {
   display: inline-flex;
   align-items: center;
-  padding: 5px 12px !important;
-  border-radius: 12px !important;
-  font-size: 12px !important;
-  font-weight: 700 !important;
+  padding: 5px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
   letter-spacing: 0.3px;
-  color: #ffffff !important;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* 在库 - 绿色 */
+/* 可售 - 绿色 */
 .status-badge.in-stock {
-  background: #6c757d !important;
-  color: #ffffff !important;
+  background: var(--tf-status-sale-available-bg);
+  color: var(--tf-status-sale-available-color);
+  border-color: var(--tf-status-sale-available-border);
 }
 
 /* 已售 - 绿色 */
 .status-badge.sold {
-  background: #28a745 !important;
-  color: #ffffff !important;
+  background: var(--tf-status-sold-bg);
+  color: var(--tf-status-sold-color);
+  border-color: var(--tf-status-sold-border);
 }
 
-/* 批发 - 紫蓝色 */
+/* 调货 - 蓝色 */
 .status-badge.peer-transfer {
-  background: #667eea !important;
-  color: #ffffff !important;
+  background: var(--tf-status-transfer-bg);
+  color: var(--tf-status-transfer-color);
+  border-color: var(--tf-status-transfer-border);
 }
 
 /* 划拨 - 紫色 */
 .status-badge.supplier-proxy {
-  background: #764ba2 !important;
-  color: #ffffff !important;
+  background: var(--tf-status-allocation-bg);
+  color: var(--tf-status-allocation-color);
+  border-color: var(--tf-status-allocation-border);
 }
 
 /* 预定 - 青色 */
 .status-badge.reserved {
-  background: #17a2b8 !important;
-  color: #ffffff !important;
+  background: var(--tf-status-reserved-bg);
+  color: var(--tf-status-reserved-color);
+  border-color: var(--tf-status-reserved-border);
 }
 
-/* 维修 - 黄色 */
+/* 维修 - 橙色 */
 .status-badge.repair {
-  background: #f59e0b !important;
-  color: #ffffff !important;
+  background: var(--tf-status-repair-bg);
+  color: var(--tf-status-repair-color);
+  border-color: var(--tf-status-repair-border);
 }
 
 /* 丢失 - 红色 */
 .status-badge.lost {
-  background: #dc3545 !important;
-  color: #ffffff !important;
+  background: var(--tf-status-lost-bg);
+  color: var(--tf-status-lost-color);
+  border-color: var(--tf-status-lost-border);
 }
 
 .status-badge.returned {
-  background: rgba(108, 117, 125, 0.1);
-  color: #6c757d;
+  background: var(--tf-status-returned-bg);
+  color: var(--tf-status-returned-color);
+  border-color: var(--tf-status-returned-border);
 }
 
 .status-badge.damaged {
-  background: rgba(220, 53, 69, 0.15);
-  color: #dc3545;
+  background: var(--tf-status-damaged-bg);
+  color: var(--tf-status-damaged-color);
+  border-color: var(--tf-status-damaged-border);
 }
 
 .price-cell {
   font-weight: 600;
-  color: #e74c3c;
+  color: var(--tf-color-red-legacy);
 }
 
 /* 序列号和IMEI列统一样式 - 灰色、斜体 */
 .serial-imei-cell {
   font-weight: 500;
-  color: #6c757d;
+  color: var(--tf-color-muted);
   font-style: italic;
 }
 
 .positive {
-  color: #28a745;
+  color: var(--success-color);
 }
 
 .negative {
-  color: #dc3545;
+  color: var(--danger-color);
 }
 
 .zero {
-  color: #6c757d;
+  color: var(--tf-color-muted);
 }
 
 .loading-cell,
 .empty-cell {
   text-align: center;
   padding: 40px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
 }
 
 .loading-cell {
@@ -3053,11 +3065,11 @@ onUnmounted(() => {
   align-items: center;
   margin-top: 24px;
   padding-top: 20px;
-  border-top: 1px solid #e8ecef;
+  border-top: 1px solid var(--tf-color-border-cool);
 }
 
 .pagination-info {
-  color: #6c757d;
+  color: var(--tf-color-muted);
   font-size: 14px;
 }
 
@@ -3078,7 +3090,7 @@ onUnmounted(() => {
   display: block;
   margin-bottom: 6px;
   font-weight: 500;
-  color: #333;
+  color: var(--text-primary);
   font-size: 14px;
 }
 
@@ -3090,14 +3102,14 @@ onUnmounted(() => {
 .return-form .form-label.required::after,
 .form-label.required::after {
   content: " *";
-  color: #f56565;
+  color: var(--tf-color-red-chakra);
 }
 
 .return-form .form-control,
 .form-control {
   width: 100%;
   padding: 10px 14px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--tf-color-slate-200);
   border-radius: 8px;
   font-size: 14px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -3107,7 +3119,7 @@ onUnmounted(() => {
 .return-form .form-control:focus,
 .form-control:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: var(--tf-color-indigo-brand);
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
@@ -3144,7 +3156,7 @@ textarea.form-control {
 .input-icon {
   position: absolute;
   left: 12px;
-  color: #718096;
+  color: var(--tf-color-gray-chakra-500);
   font-size: 14px;
   z-index: 2;
   pointer-events: none;
@@ -3152,17 +3164,17 @@ textarea.form-control {
 
 /* 设备信息区域样式 - 表格设计 */
 .device-info-section {
-  background: #ffffff;
+  background: var(--color-bg-white);
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 24px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--tf-color-neutral-200);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .device-info-section .section-title {
   font-weight: 600;
-  color: #374151;
+  color: var(--tf-color-neutral-700);
   margin-bottom: 16px;
   display: flex;
   align-items: center;
@@ -3171,7 +3183,7 @@ textarea.form-control {
 }
 
 .device-info-section .section-title i {
-  color: #6366f1;
+  color: var(--tf-color-indigo-500);
   font-size: 16px;
 }
 
@@ -3183,7 +3195,7 @@ textarea.form-control {
 }
 
 .device-info-table tbody tr {
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--tf-color-neutral-100);
   transition: background-color 0.15s ease;
 }
 
@@ -3192,21 +3204,21 @@ textarea.form-control {
 }
 
 .device-info-table tbody tr:hover {
-  background-color: #f9fafb;
+  background-color: var(--tf-color-neutral-50);
 }
 
 .device-info-table tbody tr.highlight-row {
-  background-color: #f8fafc;
+  background-color: var(--tf-color-slate-50);
   font-weight: 500;
 }
 
 .device-info-table tbody tr.highlight-row:hover {
-  background-color: #f1f5f9;
+  background-color: var(--tf-color-slate-100);
 }
 
 .device-info-table .label-cell {
   padding: 12px 16px;
-  color: #6b7280;
+  color: var(--tf-color-neutral-500);
   font-weight: 500;
   width: 15%;
   white-space: nowrap;
@@ -3214,14 +3226,14 @@ textarea.form-control {
 
 .device-info-table .value-cell {
   padding: 12px 16px;
-  color: #111827;
+  color: var(--tf-color-neutral-900);
   font-weight: 600;
   width: 35%;
 }
 
 .device-info-table .imei-code {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #ffffff;
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
+  color: var(--color-bg-white);
   padding: 4px 10px;
   border-radius: 4px;
   font-family: 'Monaco', 'Menlo', 'SF Mono', monospace;
@@ -3241,13 +3253,13 @@ textarea.form-control {
 }
 
 .badge-new {
-  background: #d1fae5;
-  color: #065f46;
+  background: var(--tf-color-emerald-100);
+  color: var(--tf-color-emerald-800);
 }
 
 .badge-used {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--tf-color-amber-100);
+  color: var(--tf-color-amber-800);
 }
 
 /* 退库信息区域样式 */
@@ -3256,19 +3268,19 @@ textarea.form-control {
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 24px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--tf-color-slate-200);
 }
 
 .return-info-section .section-title {
   font-weight: 600;
-  color: #4a5568;
+  color: var(--tf-color-gray-chakra-600);
   margin-bottom: 20px;
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 16px;
   padding-bottom: 10px;
-  border-bottom: 2px solid #f093fb;
+  border-bottom: 2px solid var(--tf-color-pink-gradient);
 }
 
 /* 表单按钮组样式 */
@@ -3277,7 +3289,7 @@ textarea.form-control {
   gap: 12px;
   justify-content: flex-end;
   padding-top: 20px;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--tf-color-slate-200);
   margin-top: 20px;
 }
 
@@ -3307,7 +3319,7 @@ textarea.form-control {
 }
 
 .device-info-table tbody tr {
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--tf-color-neutral-100);
   transition: background-color 0.15s ease;
 }
 
@@ -3316,21 +3328,21 @@ textarea.form-control {
 }
 
 .device-info-table tbody tr:hover {
-  background-color: #f9fafb;
+  background-color: var(--tf-color-neutral-50);
 }
 
 .device-info-table tbody tr.highlight-row {
-  background-color: #f8fafc;
+  background-color: var(--tf-color-slate-50);
   font-weight: 500;
 }
 
 .device-info-table tbody tr.highlight-row:hover {
-  background-color: #f1f5f9;
+  background-color: var(--tf-color-slate-100);
 }
 
 .device-info-table .label-cell {
   padding: 12px 16px;
-  color: #6b7280;
+  color: var(--tf-color-neutral-500);
   font-weight: 500;
   width: 15%;
   white-space: nowrap;
@@ -3338,14 +3350,14 @@ textarea.form-control {
 
 .device-info-table .value-cell {
   padding: 12px 16px;
-  color: #111827;
+  color: var(--tf-color-neutral-900);
   font-weight: 600;
   width: 35%;
 }
 
 .device-info-table .imei-code {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #ffffff;
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
+  color: var(--color-bg-white);
   padding: 4px 10px;
   border-radius: 4px;
   font-family: 'Monaco', 'Menlo', 'SF Mono', monospace;
@@ -3365,13 +3377,13 @@ textarea.form-control {
 }
 
 .badge-new {
-  background: #d1fae5;
-  color: #065f46;
+  background: var(--tf-color-emerald-100);
+  color: var(--tf-color-emerald-800);
 }
 
 .badge-used {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--tf-color-amber-100);
+  color: var(--tf-color-amber-800);
 }
 
 /* 移动端适配 */
@@ -3386,7 +3398,7 @@ textarea.form-control {
 
   .device-info-table tbody tr {
     display: block;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid var(--tf-color-neutral-200);
     padding: 12px 0;
   }
 
@@ -3398,12 +3410,12 @@ textarea.form-control {
   }
 
   .device-info-table .label-cell {
-    color: #9ca3af;
+    color: var(--tf-color-neutral-400);
     font-size: 12px;
   }
 
   .device-info-table .value-cell {
-    color: #111827;
+    color: var(--tf-color-neutral-900);
     font-weight: 600;
   }
 
@@ -3424,16 +3436,16 @@ textarea.form-control {
 
 .modal-footer {
   padding: 20px 24px;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--tf-color-slate-200);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #f8fafc;
+  background: var(--tf-color-slate-50);
   border-radius: 0 0 12px 12px;
 }
 
 .modal-footer .warning-text {
-  color: #718096;
+  color: var(--tf-color-gray-chakra-500);
   font-size: 13px;
   display: flex;
   align-items: center;
@@ -3441,7 +3453,7 @@ textarea.form-control {
 }
 
 .modal-footer .warning-text i {
-  color: #f59e0b;
+  color: var(--tf-color-amber-500);
 }
 
 
@@ -3499,7 +3511,7 @@ textarea.form-control {
 .edit-form textarea.form-control {
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid #dcdfe6;
+  border: 1px solid var(--color-border);
   border-radius: 4px;
   font-size: 14px;
 }
@@ -3507,7 +3519,7 @@ textarea.form-control {
 .edit-form input.form-control:focus,
 .edit-form select.form-control:focus,
 .edit-form textarea.form-control:focus {
-  border-color: #409eff;
+  border-color: var(--color-primary);
   outline: none;
 }
 
@@ -3617,15 +3629,15 @@ textarea.form-control {
 
 /* 快速出库模态框样式 */
 .quick-sale-info {
-  background: #fff3cd;
-  border: 1px solid #ffc107;
+  background: var(--tf-color-warning-legacy);
+  border: 1px solid var(--warning-color);
   border-radius: 8px;
   padding: 12px 16px;
   margin-bottom: 20px;
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #856404;
+  color: var(--tf-color-warning-text-legacy);
   font-size: 14px;
 }
 
@@ -3641,7 +3653,7 @@ textarea.form-control {
   }
 
   .data-row:hover {
-    background-color: #f5f7fa;
+    background-color: var(--tf-color-surface);
   }
 }
 
@@ -3652,7 +3664,7 @@ textarea.form-control {
   }
 
   .clickable-cell:hover {
-    background-color: #f0f9ff;
+    background-color: var(--tf-color-blue-50);
   }
 
   /* 确保状态徽章不会阻止事件 */
@@ -3772,7 +3784,7 @@ textarea.form-control {
 .image-hint {
   margin-left: 4px;
   font-size: 12px;
-  color: #409eff;
+  color: var(--color-primary);
   opacity: 0.7;
 }
 
@@ -3781,7 +3793,7 @@ textarea.form-control {
   transition: background-color 0.2s;
 
   &:hover {
-    background-color: #f5f7fa;
+    background-color: var(--tf-color-surface);
   }
 }
 
@@ -3792,13 +3804,13 @@ textarea.form-control {
 
     h3 {
       font-size: 18px;
-      color: #333;
+      color: var(--text-primary);
       margin-bottom: 4px;
     }
 
     p {
       font-size: 14px;
-      color: #999;
+      color: var(--text-muted);
     }
   }
 
@@ -3815,7 +3827,7 @@ textarea.form-control {
     aspect-ratio: 1;
     border-radius: 8px;
     overflow: hidden;
-    background: #f5f5f5;
+    background: var(--tf-color-surface-soft);
     cursor: pointer;
     transition: transform 0.2s;
 
@@ -3833,8 +3845,8 @@ textarea.form-control {
       position: absolute;
       top: 8px;
       left: 8px;
-      background: linear-gradient(135deg, #ff6b00 0%, #ff8c00 100%);
-      color: #fff;
+      background: linear-gradient(135deg, var(--tf-color-accent-orange) 0%, var(--tf-color-orange-dark) 100%);
+      color: var(--color-bg-white);
       padding: 4px 8px;
       border-radius: 4px;
       font-size: 12px;

@@ -10,6 +10,39 @@ import { storage } from '@/services/storage'
 import { PREFERENCE_STORAGE_KEYS } from '@/constants/storage'
 import type { AppLanguage, DeviceInfo, SystemInfo, ThemeMode } from '@/types'
 
+interface AppPreferences {
+  theme?: ThemeMode
+  primaryColor?: string
+  customColors?: Record<string, string>
+  fontSize?: number
+  borderRadius?: number
+  language?: AppLanguage
+  timezone?: string
+  dateFormat?: string
+  timeFormat?: string
+  currency?: string
+  sidebarCollapsed?: boolean
+  sidebarWidth?: number
+  notificationsEnabled?: boolean
+  soundEnabled?: boolean
+  vibrationEnabled?: boolean
+  autoRefreshEnabled?: boolean
+  autoRefreshInterval?: number
+  recentlyVisited?: string[]
+  favorites?: string[]
+  searchHistory?: string[]
+}
+
+interface NetworkInformationLike {
+  effectiveType?: string
+}
+
+interface BatteryManagerLike {
+  level: number
+  charging: boolean
+  addEventListener: (type: 'levelchange' | 'chargingchange', listener: () => void) => void
+}
+
 export const useAppStore = defineStore('app', () => {
   // =========== 主题相关 ===========
   const theme = ref<ThemeMode>('light')
@@ -116,7 +149,7 @@ export const useAppStore = defineStore('app', () => {
   const autoRefreshInterval = ref<number>(30000) // 30秒
 
   // =========== 用户偏好设置 ===========
-  const userPreferences = ref<Record<string, any>>({})
+  const userPreferences = ref<AppPreferences>({})
   const recentlyVisited = ref<string[]>([])
   const favorites = ref<string[]>([])
   const searchHistory = ref<string[]>([])
@@ -312,7 +345,7 @@ export const useAppStore = defineStore('app', () => {
   }
 
   // =========== 用户偏好方法 ===========
-  const saveUserPreference = (key: string, value: any): void => {
+  const saveUserPreference = <K extends keyof AppPreferences>(key: K, value: AppPreferences[K]): void => {
     try {
       userPreferences.value[key] = value
       storage.setPreferences(userPreferences.value)
@@ -323,9 +356,9 @@ export const useAppStore = defineStore('app', () => {
 
   const loadUserPreferences = (): void => {
     try {
-      const saved = storage.getPreferences()
+      const saved = storage.getPreferences<AppPreferences>()
       if (saved) {
-        userPreferences.value = saved as any
+        userPreferences.value = saved
         applyUserPreferences()
       }
     } catch (error) {
@@ -466,7 +499,8 @@ export const useAppStore = defineStore('app', () => {
     networkStatus.value = navigator.onLine ? 'online' : 'offline'
 
     if ('connection' in navigator) {
-      const connection = (navigator as any).connection
+      const connection = (navigator as Navigator & { connection?: NetworkInformationLike }).connection
+      if (!connection) return
       networkType.value = connection.effectiveType || 'unknown'
     }
   }
@@ -474,7 +508,9 @@ export const useAppStore = defineStore('app', () => {
   const updateBatteryInfo = async (): Promise<void> => {
     if ('getBattery' in navigator) {
       try {
-        const battery = await (navigator as any).getBattery()
+        const battery = await (navigator as Navigator & {
+          getBattery: () => Promise<BatteryManagerLike>
+        }).getBattery()
         batteryLevel.value = Math.round(battery.level * 100)
         isCharging.value = battery.charging
 

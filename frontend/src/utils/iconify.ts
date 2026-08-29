@@ -3,6 +3,16 @@
  * 用于确保 Iconify JS 已加载并可用
  */
 
+interface IconifyApi {
+  scan?: () => unknown
+  loadIcon?: (name: string | null) => unknown
+}
+
+const getIconify = (): IconifyApi | undefined => {
+  if (typeof window === 'undefined') return undefined
+  return (window as Window & { Iconify?: IconifyApi }).Iconify
+}
+
 /**
  * 等待 Iconify 加载完成
  * @param timeout 超时时间（毫秒），默认 5000ms
@@ -11,7 +21,7 @@
 export function waitForIconify(timeout = 5000): Promise<boolean> {
   return new Promise((resolve) => {
     // 检查是否已经加载
-    if (typeof window !== 'undefined' && (window as any).Iconify) {
+    if (getIconify()) {
       resolve(true)
       return
     }
@@ -30,7 +40,7 @@ export function waitForIconify(timeout = 5000): Promise<boolean> {
       }
 
       // 检查是否已加载
-      if (typeof window !== 'undefined' && (window as any).Iconify) {
+      if (getIconify()) {
         clearInterval(timer)
         resolve(true)
       }
@@ -42,7 +52,7 @@ export function waitForIconify(timeout = 5000): Promise<boolean> {
  * 检查 Iconify 是否可用
  */
 export function isIconifyReady(): boolean {
-  return typeof window !== 'undefined' && typeof (window as any).Iconify !== 'undefined'
+  return Boolean(getIconify())
 }
 
 /**
@@ -51,7 +61,8 @@ export function isIconifyReady(): boolean {
  */
 export function refreshIconifyIcons() {
   if (isIconifyReady()) {
-    const Iconify = (window as any).Iconify
+    const Iconify = getIconify()
+    if (!Iconify) return 0
 
     // 扫描并渲染所有图标
     const scanned = Iconify.scan()
@@ -86,7 +97,7 @@ export function preloadIcons(iconNames: string[]) {
   if (isIconifyReady()) {
     iconNames.forEach((iconName) => {
       try {
-        (window as any).Iconify.loadIcon(iconName)
+        getIconify()?.loadIcon?.(iconName)
       } catch (error) {
         // 静默处理
       }

@@ -1,28 +1,28 @@
-const cors = require('cors');
-const log = require('../utils/log');
-const { DEFAULT_CORS_ORIGINS } = require('../config/constants');
+const cors = require('cors')
+const log = require('../utils/log')
+const { DEFAULT_CORS_ORIGINS } = require('../config/constants')
 
-const allowedOrigins = DEFAULT_CORS_ORIGINS;
+const allowedOrigins = DEFAULT_CORS_ORIGINS
 
 // CORS配置选项
 const corsOptions = {
   origin: (origin, callback) => {
     // 允许没有origin的请求（如移动应用、Postman等）
     if (!origin) {
-      return callback(null, true);
+      return callback(null, true)
     }
 
     // 如果配置了 '*' ，允许所有域名
     if (allowedOrigins.includes('*')) {
-      return callback(null, true);
+      return callback(null, true)
     }
 
     // 检查origin是否在允许列表中
     if (allowedOrigins.includes(origin)) {
-      callback(null, true);
+      callback(null, true)
     } else {
-      log.warn(`CORS阻止的请求来源: ${origin}`);
-      callback(new Error('不被CORS策略允许'));
+      log.warn(`CORS阻止的请求来源: ${origin}`)
+      callback(new Error('不被CORS策略允许'))
     }
   },
 
@@ -64,32 +64,32 @@ const corsOptions = {
 
   // 传递CORS错误给错误处理中间件
   passErrorToNext: false
-};
+}
 
 // 开发环境的宽松CORS配置
 const developmentCorsOptions = {
   ...corsOptions,
   origin: true, // 开发环境允许所有来源
   credentials: true
-};
+}
 
 // 根据环境选择CORS配置
 const corsMiddleware = process.env.NODE_ENV === 'production'
   ? cors(corsOptions)
-  : cors(developmentCorsOptions);
+  : cors(developmentCorsOptions)
 
 // 日志记录中间件
 const corsLogger = (req, res, next) => {
-  const origin = req.headers.origin;
+  const origin = req.headers.origin
   if (origin) {
-    log.debug(`CORS请求 - 来源: ${origin}, 方法: ${req.method}, 路径: ${req.path}`);
+    log.debug(`CORS请求 - 来源: ${origin}, 方法: ${req.method}, 路径: ${req.path}`)
   }
-  next();
-};
+  next()
+}
 
 module.exports = {
   corsMiddleware,
   corsLogger,
   corsOptions,
   allowedOrigins
-};
+}

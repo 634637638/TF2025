@@ -2,43 +2,75 @@
   <div class="comprehensive-warnings">
     <!-- 预警概览卡片 -->
     <div class="warnings-overview">
-      <div class="overview-card" @click="showWarningDetail('phones')" :class="{ active: activeTab === 'phones' }">
+      <div
+        class="overview-card"
+        :class="{ active: activeTab === 'phones' }"
+        @click="showWarningDetail('phones')"
+      >
         <div class="card-icon phone">
-          <i class="fas fa-mobile-alt"></i>
+          <i class="fas fa-mobile-alt" />
         </div>
         <div class="card-content">
-          <div class="card-value">{{ warningsData.phones?.count || 0 }}</div>
-          <div class="card-label">手机预警</div>
+          <div class="card-value">
+            {{ warningsData.phones?.count || 0 }}
+          </div>
+          <div class="card-label">
+            手机预警
+          </div>
         </div>
       </div>
 
-      <div class="overview-card" @click="showWarningDetail('accessories')" :class="{ active: activeTab === 'accessories' }">
+      <div
+        class="overview-card"
+        :class="{ active: activeTab === 'accessories' }"
+        @click="showWarningDetail('accessories')"
+      >
         <div class="card-icon accessory">
-          <i class="fas fa-cube"></i>
+          <i class="fas fa-cube" />
         </div>
         <div class="card-content">
-          <div class="card-value">{{ warningsData.accessories?.count || 0 }}</div>
-          <div class="card-label">配件预警</div>
+          <div class="card-value">
+            {{ warningsData.accessories?.count || 0 }}
+          </div>
+          <div class="card-label">
+            配件预警
+          </div>
         </div>
       </div>
 
-      <div class="overview-card" @click="showWarningDetail('sales')" :class="{ active: activeTab === 'sales' }">
+      <div
+        class="overview-card"
+        :class="{ active: activeTab === 'sales' }"
+        @click="showWarningDetail('sales')"
+      >
         <div class="card-icon sales">
-          <i class="fas fa-chart-line"></i>
+          <i class="fas fa-chart-line" />
         </div>
         <div class="card-content">
-          <div class="card-value">{{ salesStatus }}</div>
-          <div class="card-label">销售预警</div>
+          <div class="card-value">
+            {{ salesStatus }}
+          </div>
+          <div class="card-label">
+            销售预警
+          </div>
         </div>
       </div>
 
-      <div class="overview-card" @click="showWarningDetail('purchases')" :class="{ active: activeTab === 'purchases' }">
+      <div
+        class="overview-card"
+        :class="{ active: activeTab === 'purchases' }"
+        @click="showWarningDetail('purchases')"
+      >
         <div class="card-icon purchase">
-          <i class="fas fa-truck"></i>
+          <i class="fas fa-truck" />
         </div>
         <div class="card-content">
-          <div class="card-value">{{ warningsData.purchases?.noRecent?.length || 0 }}</div>
-          <div class="card-label">待入库</div>
+          <div class="card-value">
+            {{ warningsData.purchases?.no_recent?.length || 0 }}
+          </div>
+          <div class="card-label">
+            待入库
+          </div>
         </div>
       </div>
     </div>
@@ -46,32 +78,78 @@
     <!-- 预警详情 -->
     <div class="warning-detail">
       <!-- 手机库存预警 -->
-      <div v-show="activeTab === 'phones'" class="detail-section">
+      <div
+        v-show="activeTab === 'phones'"
+        class="detail-section"
+      >
         <div class="section-header">
           <h4>
-            <i class="fas fa-mobile-alt"></i>
+            <i class="fas fa-mobile-alt" />
             手机库存预警详情
           </h4>
           <div class="header-actions">
-            <el-tag size="small" type="info">自定义阈值</el-tag>
-            <el-button type="primary" link size="small" @click="goToWarningConfig">
-              <i class="fas fa-cog"></i>
+            <el-tag
+              size="small"
+              type="info"
+            >
+              自定义阈值
+            </el-tag>
+            <el-button
+              type="primary"
+              link
+              size="small"
+              @click="goToWarningConfig"
+            >
+              <i class="fas fa-cog" />
               配置预警
             </el-button>
           </div>
         </div>
 
-        <el-table :data="phoneWarnings" stripe max-height="400">
-          <el-table-column prop="brand_name" label="品牌" min-width="80" />
-          <el-table-column prop="model_name" label="型号" min-width="120" />
-          <el-table-column prop="color_name" label="颜色" min-width="80" />
-          <el-table-column prop="memory_name" label="内存" min-width="80" />
-          <el-table-column prop="warning_threshold" label="预警阈值" min-width="80" align="center">
+        <el-table
+          :data="phoneWarnings"
+          class="data-table compact-fit-table"
+          stripe
+          border
+          max-height="400"
+          :fit="true"
+        >
+          <el-table-column
+            prop="brand_name"
+            label="品牌"
+            min-width="80"
+          />
+          <el-table-column
+            prop="model_name"
+            label="型号"
+            min-width="120"
+          />
+          <el-table-column
+            prop="color_name"
+            label="颜色"
+            min-width="80"
+          />
+          <el-table-column
+            prop="memory_name"
+            label="内存"
+            min-width="80"
+          />
+          <el-table-column
+            prop="warning_threshold"
+            label="预警阈值"
+            min-width="80"
+            align="center"
+          >
             <template #default="{ row }">
               <span class="warning-threshold-text">{{ row.warning_threshold || 3 }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="stock_count" label="库存" min-width="70" align="center">
+          <el-table-column
+            prop="stock_count"
+            label="库存"
+            min-width="70"
+            align="center"
+          >
             <template #default="{ row }">
               <span
                 v-if="getStockDisplayText(row.stock_count, row.warning_threshold) === '缺货'"
@@ -79,68 +157,150 @@
               >
                 缺货
               </span>
-              <el-tag v-else :type="getStockTagType(row.stock_count, row.warning_threshold)" size="small">
+              <el-tag
+                v-else
+                :type="getStockTagType(row.stock_count, row.warning_threshold)"
+                size="small"
+              >
                 {{ getStockDisplayText(row.stock_count, row.warning_threshold) }}
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="new_count" label="全新" min-width="60" align="center" />
-          <el-table-column prop="used_count" label="二手" min-width="60" align="center" />
-          <el-table-column label="操作" min-width="80" fixed="right">
+          <el-table-column
+            prop="new_count"
+            label="全新"
+            min-width="60"
+            align="center"
+          />
+          <el-table-column
+            prop="used_count"
+            label="二手"
+            min-width="60"
+            align="center"
+          />
+          <el-table-column
+            label="操作"
+            :width="$getActionColumnWidth(['查看'])"
+            align="center"
+            class-name="actions-column"
+          >
             <template #default="{ row }">
-              <el-button type="primary" link size="small" @click="viewPhoneDetail(row)">
-                查看
-              </el-button>
+              <div class="action-buttons table-actions">
+                <el-button
+                  type="primary"
+                  link
+                  size="small"
+                  @click.stop="viewPhoneDetail(row)"
+                >
+                  查看
+                </el-button>
+              </div>
             </template>
           </el-table-column>
         </el-table>
 
-        <el-empty v-if="!phoneWarnings.length" description="暂无手机库存预警" />
+        <DataEmptyState
+          v-if="!phoneWarnings.length"
+          description="暂无手机库存预警"
+        />
       </div>
 
       <!-- 配件库存预警 -->
-      <div v-show="activeTab === 'accessories'" class="detail-section">
+      <div
+        v-show="activeTab === 'accessories'"
+        class="detail-section"
+      >
         <div class="section-header">
           <h4>
-            <i class="fas fa-cube"></i>
+            <i class="fas fa-cube" />
             配件库存预警详情
           </h4>
         </div>
 
-        <el-table :data="warningsData.accessories?.warnings || []" stripe max-height="400">
-          <el-table-column prop="name" label="配件名称" />
-          <el-table-column prop="stock" label="当前库存" width="100" align="center">
+        <el-table
+          :data="warningsData.accessories?.warnings || []"
+          class="data-table compact-fit-table"
+          stripe
+          border
+          max-height="400"
+          :fit="true"
+        >
+          <el-table-column
+            prop="name"
+            label="配件名称"
+            min-width="180"
+            class-name="complete-text-column"
+          />
+          <el-table-column
+            prop="stock"
+            label="当前库存"
+            width="100"
+            align="center"
+          >
             <template #default="{ row }">
-              <el-tag :type="getStockTagType(row.stock)" size="small">
+              <el-tag
+                :type="getStockTagType(row.stock)"
+                size="small"
+              >
                 {{ row.stock }}
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="min_stock" label="最低库存" width="100" align="center" />
-          <el-table-column prop="status" label="状态" width="100">
+          <el-table-column
+            prop="min_stock"
+            label="最低库存"
+            width="100"
+            align="center"
+          />
+          <el-table-column
+            prop="status"
+            label="状态"
+            width="100"
+          >
             <template #default="{ row }">
-              <el-tag :type="row.status === '已缺货' ? 'danger' : 'warning'" size="small">
+              <el-tag
+                :type="row.status === '已缺货' ? 'danger' : 'warning'"
+                size="small"
+              >
                 {{ row.status }}
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="80" fixed="right">
-            <template #default="{ row }">
-              <el-button type="primary" link size="small" @click="goToAccessories">
-                查看
-              </el-button>
+          <el-table-column
+            label="操作"
+            :width="$getActionColumnWidth(['查看'])"
+            align="center"
+            class-name="actions-column"
+          >
+            <template #default>
+              <div class="action-buttons table-actions">
+                <el-button
+                  type="primary"
+                  link
+                  size="small"
+                  @click.stop="goToAccessories"
+                >
+                  查看
+                </el-button>
+              </div>
             </template>
           </el-table-column>
         </el-table>
 
-        <el-empty v-if="!warningsData.accessories?.warnings?.length" description="暂无配件库存预警" />
+        <DataEmptyState
+          v-if="!warningsData.accessories?.warnings?.length"
+          description="暂无配件库存预警"
+        />
       </div>
 
       <!-- 销售预警 -->
-      <div v-show="activeTab === 'sales'" class="detail-section">
+      <div
+        v-show="activeTab === 'sales'"
+        class="detail-section"
+      >
         <div class="section-header">
           <h4>
-            <i class="fas fa-chart-line"></i>
+            <i class="fas fa-chart-line" />
             销售预警分析
           </h4>
         </div>
@@ -164,13 +324,16 @@
           </div>
           <div class="summary-item">
             <span class="label">日均销售</span>
-            <span class="value">{{ warningsData.sales?.avgDailySales || 0 }} 台</span>
+            <span class="value">{{ warningsData.sales?.avg_daily_sales || 0 }} 台</span>
           </div>
           <div class="summary-item">
             <span class="label">销售趋势</span>
-            <span class="value" :class="{ below: warningsData.sales?.isBelowAverage }">
-              <i :class="warningsData.sales?.isBelowAverage ? 'fas fa-arrow-down' : 'fas fa-arrow-up'"></i>
-              {{ warningsData.sales?.isBelowAverage ? '低于平均' : '正常' }}
+            <span
+              class="value"
+              :class="{ below: warningsData.sales?.is_below_average }"
+            >
+              <i :class="warningsData.sales?.is_below_average ? 'fas fa-arrow-down' : 'fas fa-arrow-up'" />
+              {{ warningsData.sales?.is_below_average ? '低于平均' : '正常' }}
             </span>
           </div>
         </div>
@@ -179,10 +342,17 @@
         <div class="sales-trend">
           <h5>近7天销售趋势</h5>
           <div class="trend-list">
-            <div v-for="(item, index) in warningsData.sales?.trend || []" :key="index" class="trend-item">
-              <span class="trend-date">{{ formatDate(item.sale_date) }}</span>
+            <div
+              v-for="(item, index) in warningsData.sales?.trend || []"
+              :key="index"
+              class="trend-item"
+            >
+              <span class="trend-date">{{ formatDate(item.sale_time) }}</span>
               <div class="trend-bar">
-                <div class="bar-fill" :style="{ width: getTrendWidth(item.sales_count) + '%' }"></div>
+                <div
+                  class="bar-fill"
+                  :style="{ width: getTrendWidth(item.sales_count) + '%' }"
+                />
               </div>
               <span class="trend-count">{{ item.sales_count }} 台</span>
               <span class="trend-amount">¥{{ formatNumber(item.total_amount) }}</span>
@@ -191,7 +361,10 @@
         </div>
 
         <!-- 销售提示 -->
-        <div v-if="warningsData.sales?.today?.sales_count === 0" class="sales-alert">
+        <div
+          v-if="warningsData.sales?.today?.sales_count === 0"
+          class="sales-alert"
+        >
           <el-alert
             title="今日暂无销售记录"
             type="info"
@@ -204,7 +377,10 @@
           </el-alert>
         </div>
 
-        <div v-else-if="warningsData.sales?.isBelowAverage" class="sales-alert">
+        <div
+          v-else-if="warningsData.sales?.is_below_average"
+          class="sales-alert"
+        >
           <el-alert
             title="销售低于平均水平"
             type="warning"
@@ -212,12 +388,15 @@
             show-icon
           >
             <template #default>
-              今日销售（{{ warningsData.sales?.today?.sales_count || 0 }} 台）低于 7 日平均水平（{{ warningsData.sales?.avgDailySales || 0 }} 台），建议加强推广
+              今日销售（{{ warningsData.sales?.today?.sales_count || 0 }} 台）低于 7 日平均水平（{{ warningsData.sales?.avg_daily_sales || 0 }} 台），建议加强推广
             </template>
           </el-alert>
         </div>
 
-        <div v-else class="sales-alert">
+        <div
+          v-else
+          class="sales-alert"
+        >
           <el-alert
             title="销售状况良好"
             type="success"
@@ -230,14 +409,20 @@
           </el-alert>
         </div>
 
-        <el-empty v-if="!warningsData.sales?.trend?.length && !warningsData.sales?.today?.sales_count" description="暂无销售数据" />
+        <DataEmptyState
+          v-if="!warningsData.sales?.trend?.length && !warningsData.sales?.today?.sales_count"
+          description="暂无销售数据"
+        />
       </div>
 
       <!-- 入库预警 -->
-      <div v-show="activeTab === 'purchases'" class="detail-section">
+      <div
+        v-show="activeTab === 'purchases'"
+        class="detail-section"
+      >
         <div class="section-header">
           <h4>
-            <i class="fas fa-truck"></i>
+            <i class="fas fa-truck" />
             入库预警详情
           </h4>
         </div>
@@ -255,30 +440,69 @@
           </el-alert>
         </div>
 
-        <el-table :data="warningsData.purchases?.noRecent || []" stripe max-height="400">
-          <el-table-column prop="supplier_name" label="供应商名称" />
-          <el-table-column prop="last_purchase_date" label="最后入库日期" width="120">
+        <el-table
+          :data="warningsData.purchases?.no_recent || []"
+          class="data-table compact-fit-table"
+          stripe
+          border
+          max-height="400"
+          :fit="true"
+        >
+          <el-table-column
+            prop="supplier_name"
+            label="供应商名称"
+            min-width="180"
+            class-name="complete-text-column"
+          />
+          <el-table-column
+            prop="last_inventory_time"
+            label="最后入库日期"
+            width="120"
+          >
             <template #default="{ row }">
-              {{ row.last_purchase_date || '无记录' }}
+              {{ row.last_inventory_time || '无记录' }}
             </template>
           </el-table-column>
-          <el-table-column prop="days_since_purchase" label="未入库天数" width="110" align="center">
+          <el-table-column
+            prop="days_since_purchase"
+            label="未入库天数"
+            width="110"
+            align="center"
+          >
             <template #default="{ row }">
-              <el-tag :type="getDaysTagType(row.days_since_purchase)" size="small">
+              <el-tag
+                :type="getDaysTagType(row.days_since_purchase)"
+                size="small"
+              >
                 {{ row.days_since_purchase }} 天
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="80" fixed="right">
-            <template #default="{ row }">
-              <el-button type="primary" link size="small" @click="goToSuppliers">
-                查看
-              </el-button>
+          <el-table-column
+            label="操作"
+            :width="$getActionColumnWidth(['查看'])"
+            align="center"
+            class-name="actions-column"
+          >
+            <template #default>
+              <div class="action-buttons table-actions">
+                <el-button
+                  type="primary"
+                  link
+                  size="small"
+                  @click.stop="goToSuppliers"
+                >
+                  查看
+                </el-button>
+              </div>
             </template>
           </el-table-column>
         </el-table>
 
-        <el-empty v-if="!warningsData.purchases?.noRecent?.length" description="所有供应商入库正常" />
+        <DataEmptyState
+          v-if="!warningsData.purchases?.no_recent?.length"
+          description="所有供应商入库正常"
+        />
       </div>
     </div>
   </div>
@@ -301,14 +525,14 @@ const activeTab = ref('phones')
 const warningsData = ref<any>({
   phones: { warnings: [], count: 0, threshold: 3 },
   accessories: { warnings: [], count: 0 },
-  sales: { today: {}, trend: [], avgDailySales: 0, isBelowAverage: false },
-  purchases: { recent: [], noRecent: [] }
+  sales: { today: {}, trend: [], avg_daily_sales: 0, is_below_average: false },
+  purchases: { recent: [], no_recent: [] }
 })
 let warningTimer: ReturnType<typeof setInterval> | null = null
 
 // 计算属性
 const salesStatus = computed(() => {
-  if (warningsData.value.sales?.isBelowAverage) {
+  if (warningsData.value.sales?.is_below_average) {
     return '偏低'
   }
   return '正常'
@@ -332,8 +556,8 @@ const resetWarnings = () => {
   warningsData.value = {
     phones: { warnings: [], count: 0, threshold: 3 },
     accessories: { warnings: [], count: 0 },
-    sales: { today: {}, trend: [], avgDailySales: 0, isBelowAverage: false },
-    purchases: { recent: [], noRecent: [] }
+    sales: { today: {}, trend: [], avg_daily_sales: 0, is_below_average: false },
+    purchases: { recent: [], no_recent: [] }
   }
 }
 
@@ -347,14 +571,14 @@ const fetchWarnings = async () => {
   loading.value = true
   try {
     const response = await unifiedApi.get('/dashboard/warnings/comprehensive', {
-      params: { phoneThreshold: 3, limit: 20 }
+      params: { phone_threshold: 3, page_size: 20 }
     })
 
     if (response.success) {
       warningsData.value = {
         accessories: { warnings: [], count: 0 },
-        sales: { today: {}, trend: [], avgDailySales: 0, isBelowAverage: false },
-        purchases: { recent: [], noRecent: [] },
+        sales: { today: {}, trend: [], avg_daily_sales: 0, is_below_average: false },
+        purchases: { recent: [], no_recent: [] },
         ...response.data
       }
     }
@@ -481,7 +705,7 @@ onUnmounted(() => {
     grid-template-columns: repeat(4, 1fr);
     gap: 15px;
     padding: 20px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
 
     .overview-card {
       background: rgba(255, 255, 255, 0.15);
@@ -516,19 +740,19 @@ onUnmounted(() => {
         color: white;
 
         &.phone {
-          background: linear-gradient(135deg, #3498db, #2980b9);
+          background: linear-gradient(135deg, var(--tf-color-blue-legacy), var(--tf-color-blue-flat-dark));
         }
 
         &.accessory {
-          background: linear-gradient(135deg, #e67e22, #d35400);
+          background: linear-gradient(135deg, var(--tf-color-orange-legacy), var(--tf-color-orange-flat-dark));
         }
 
         &.sales {
-          background: linear-gradient(135deg, #2ecc71, #27ae60);
+          background: linear-gradient(135deg, var(--tf-color-green-flat), var(--tf-color-green-legacy));
         }
 
         &.purchase {
-          background: linear-gradient(135deg, #9b59b6, #8e44ad);
+          background: linear-gradient(135deg, var(--tf-color-purple-flat), var(--tf-color-purple-flat-dark));
         }
       }
 
@@ -554,7 +778,7 @@ onUnmounted(() => {
     padding: 20px;
 
     .out-of-stock-text {
-      color: #d92d20;
+      color: var(--tf-color-red-600);
       font-size: 15px;
       font-weight: 700;
       letter-spacing: 0.5px;
@@ -567,11 +791,11 @@ onUnmounted(() => {
       min-width: 28px;
       padding: 2px 10px;
       border-radius: 999px;
-      background: #fff4e5;
-      color: #b54708;
+      background: var(--tf-color-orange-ant-surface);
+      color: var(--tf-color-amber-700);
       font-size: 13px;
       font-weight: 700;
-      border: 1px solid #f7b267;
+      border: 1px solid var(--tf-color-amber-muted);
     }
 
     .detail-section {
@@ -591,13 +815,13 @@ onUnmounted(() => {
         h4 {
           margin: 0;
           font-size: 16px;
-          color: #2c3e50;
+          color: var(--tf-color-heading);
           display: flex;
           align-items: center;
           gap: 8px;
 
           i {
-            color: #3498db;
+            color: var(--tf-color-blue-legacy);
           }
         }
 
@@ -615,7 +839,7 @@ onUnmounted(() => {
         margin-bottom: 20px;
 
         .summary-item {
-          background: #f8f9fa;
+          background: var(--tf-color-surface-muted);
           padding: 18px;
           border-radius: 10px;
           text-align: center;
@@ -629,7 +853,7 @@ onUnmounted(() => {
           .label {
             display: block;
             font-size: 12px;
-            color: #7f8c8d;
+            color: var(--tf-color-gray-cool-500);
             margin-bottom: 8px;
             font-weight: 500;
           }
@@ -637,14 +861,14 @@ onUnmounted(() => {
           .value {
             font-size: 20px;
             font-weight: 700;
-            color: #2c3e50;
+            color: var(--tf-color-heading);
 
             &.profit {
-              color: #27ae60;
+              color: var(--tf-color-green-legacy);
             }
 
             &.below {
-              color: #e74c3c;
+              color: var(--tf-color-red-legacy);
             }
 
             i {
@@ -660,10 +884,10 @@ onUnmounted(() => {
 
         h5 {
           font-size: 15px;
-          color: #34495e;
+          color: var(--tf-color-slate-legacy);
           margin-bottom: 15px;
           padding-bottom: 10px;
-          border-bottom: 2px solid #ecf0f1;
+          border-bottom: 2px solid var(--tf-color-gray-flat-200);
         }
 
         .trend-list {
@@ -676,19 +900,19 @@ onUnmounted(() => {
             align-items: center;
             gap: 12px;
             padding: 10px;
-            background: #fff;
+            background: var(--color-bg-white);
             border-radius: 8px;
-            border: 1px solid #ecf0f1;
+            border: 1px solid var(--tf-color-gray-flat-200);
             transition: all 0.2s ease;
 
             &:hover {
-              border-color: #3498db;
+              border-color: var(--tf-color-blue-legacy);
               box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
             }
 
             .trend-date {
               font-size: 12px;
-              color: #7f8c8d;
+              color: var(--tf-color-gray-cool-500);
               width: 55px;
               text-align: right;
               font-weight: 500;
@@ -697,14 +921,14 @@ onUnmounted(() => {
             .trend-bar {
               flex: 1;
               height: 28px;
-              background: #ecf0f1;
+              background: var(--tf-color-gray-flat-200);
               border-radius: 6px;
               overflow: hidden;
               position: relative;
 
               .bar-fill {
                 height: 100%;
-                background: linear-gradient(90deg, #3498db, #2980b9);
+                background: linear-gradient(90deg, var(--tf-color-blue-legacy), var(--tf-color-blue-flat-dark));
                 border-radius: 6px;
                 transition: width 0.5s ease;
                 position: relative;
@@ -723,14 +947,14 @@ onUnmounted(() => {
 
             .trend-count {
               font-size: 13px;
-              color: #2c3e50;
+              color: var(--tf-color-heading);
               width: 50px;
               font-weight: 600;
             }
 
             .trend-amount {
               font-size: 11px;
-              color: #7f8c8d;
+              color: var(--tf-color-gray-cool-500);
               width: 70px;
             }
           }

@@ -135,11 +135,12 @@
                 <el-skeleton :rows="5" animated />
               </div>
               <div v-else-if="errorMessage" class="table-error">
-                <el-empty description="加载失败" :image-size="200">
-                  <el-button type="primary" @click="handleRefresh">
-                    重试
-                  </el-button>
-                </el-empty>
+                <DataEmptyState
+                  state="error"
+                  description="加载失败，请重试"
+                  action-text="重试"
+                  @action="handleRefresh"
+                />
               </div>
               <div v-else>
                 <!-- 实际表格内容 -->

@@ -10,208 +10,340 @@
     module-name="轮播图管理"
     permission-code="h5-banners:view"
   >
-
-  <div class="banner-management-page">
-    <!-- 加载状态 -->
-    <div v-if="loading" class="loading-state">
-      <SectionLoading text="加载轮播图中..." size="large" />
-    </div>
-
-    <!-- 轮播图列表 -->
-    <div v-else class="banner-list">
-      <draggable
-        v-model="banners"
-        :animation="200"
-        handle=".drag-handle"
-        item-key="id"
-        :disabled="!canEdit"
-        @end="handleDragEnd"
+    <div class="banner-management-page">
+      <!-- 加载状态 -->
+      <div
+        v-if="loading"
+        class="loading-state"
       >
-        <template #item="{ element: banner }">
-          <div class="banner-item" :class="{ inactive: banner.status === 'inactive' }">
-            <div class="drag-handle">
-              <i class="fas fa-grip-vertical"></i>
-            </div>
-            <div class="banner-image">
-              <!-- 显示多张图片或单张图片 -->
-              <div v-if="banner.images && banner.images.length > 1" class="banner-images-multi">
-                <img
-                  v-for="(imgUrl, idx) in banner.images.slice(0, 3)"
-                  :key="idx"
-                  :src="getBannerImageUrl(imgUrl)"
-                  :alt="`${banner.title}-${idx}`"
-                  class="multi-image"
-                />
-                <span v-if="banner.images.length > 3" class="more-images">
-                  +{{ banner.images.length - 3 }}
-                </span>
-              </div>
-              <img v-else :src="getBannerImageUrl(banner.image_url)" :alt="banner.title" />
-            </div>
-            <div class="banner-info">
-              <h4 class="banner-title">{{ banner.title || '未命名' }}</h4>
-              <p class="banner-meta">
-                <span v-if="banner.images && banner.images.length > 1" class="image-count">
-                  <i class="fas fa-images"></i>
-                  {{ banner.images.length }}张图片
-                </span>
-                <span v-if="banner.link_type !== 'none'">
-                  <i class="fas fa-link"></i>
-                  {{ getLinkTypeText(banner.link_type) }}
-                </span>
-                <span v-if="banner.start_time || banner.end_time">
-                  <i class="fas fa-clock"></i>
-                  {{ formatTimeRange(banner) }}
-                </span>
-              </p>
-            </div>
-            <div class="banner-status">
-              <el-switch
-                v-model="banner.status"
-                active-value="active"
-                inactive-value="inactive"
-                :disabled="!canEdit"
-                @change="handleStatusChange(banner)"
-              />
-            </div>
-            <div class="banner-actions">
-              <el-button v-if="canEdit" plain type="primary" size="small" @click="handleEdit(banner)" class="btn-sm">
-                <i class="fas fa-edit mr-1"></i>编辑
-              </el-button>
-              <el-button v-if="canDelete" plain type="danger" size="small" @click="handleDelete(banner)" class="btn-sm">
-                <i class="fas fa-trash mr-1"></i>删除
-              </el-button>
-            </div>
-          </div>
-        </template>
-      </draggable>
+        <SectionLoading
+          text="加载轮播图中..."
+          size="large"
+        />
+      </div>
 
-      <!-- 空状态 -->
-      <el-empty v-if="banners.length === 0" description="暂无轮播图">
-        <el-button v-if="canCreate" type="primary" @click="handleAdd">新增</el-button>
-      </el-empty>
-    </div>
-
-    <!-- 编辑弹窗 -->
-    <MobileDialog
-      v-model="showDialog"
-      :title="dialogTitle"
-      width="600px"
-      dialog-class="banner-dialog"
-      :show-default-footer="false"
-      @close="handleDialogClose"
-    >
-      <el-form
-        ref="formRef"
-        :model="form"
-        :rules="formRules"
-        label-width="100px"
-        :disabled="!canSaveCurrentBanner"
-        class="banner-form"
+      <!-- 轮播图列表 -->
+      <div
+        v-else
+        class="banner-list"
       >
-        <el-form-item label="标题" prop="title">
-          <el-input v-model="form.title" placeholder="请输入标题" />
-        </el-form-item>
-        <el-form-item label="轮播图片" prop="image_url" required>
-          <div class="banner-images-container">
+        <draggable
+          v-model="banners"
+          :animation="200"
+          handle=".drag-handle"
+          item-key="id"
+          :disabled="!canEdit"
+          @end="handleDragEnd"
+        >
+          <template #item="{ element: banner }">
             <div
-              v-for="(img, index) in bannerImages"
-              :key="index"
-              class="banner-image-item"
+              class="banner-item"
+              :class="{ inactive: banner.status === 'inactive' }"
             >
-              <img :src="getImageUrl(img)" :alt="`轮播图${index + 1}`" />
-              <div class="image-actions">
-                <span class="image-index">{{ index + 1 }}</span>
+              <div class="drag-handle">
+                <i class="fas fa-grip-vertical" />
+              </div>
+              <div
+                v-if="canViewField('banner.image')"
+                class="banner-image"
+              >
+                <!-- 显示多张图片或单张图片 -->
                 <div
-                  @click="removeImage(index)"
-                  class="image-delete-btn"
-                  @mouseenter="($event.currentTarget as HTMLElement).style.background = 'rgb(245, 108, 108)'"
-                  @mouseleave="($event.currentTarget as HTMLElement).style.background = 'rgba(245, 108, 108, 0.9)'"
+                  v-if="banner.images && banner.images.length > 1"
+                  class="banner-images-multi"
                 >
-                  <i class="fas fa-times" style="font-size: 12px; color: white;"></i>
+                  <img
+                    v-for="(imgUrl, idx) in banner.images.slice(0, 3)"
+                    :key="idx"
+                    :src="getBannerImageUrl(imgUrl)"
+                    :alt="`${banner.title}-${idx}`"
+                    class="multi-image"
+                  >
+                  <span
+                    v-if="banner.images.length > 3"
+                    class="more-images"
+                  >
+                    +{{ banner.images.length - 3 }}
+                  </span>
+                </div>
+                <img
+                  v-else
+                  :src="getBannerImageUrl(banner.image_url)"
+                  :alt="banner.title"
+                >
+              </div>
+              <div class="banner-info">
+                <h4
+                  v-if="canViewField('banner.title')"
+                  class="banner-title"
+                >
+                  {{ banner.title || '未命名' }}
+                </h4>
+                <p class="banner-meta">
+                  <span
+                    v-if="canViewField('banner.image') && banner.images && banner.images.length > 1"
+                    class="image-count"
+                  >
+                    <i class="fas fa-images" />
+                    {{ banner.images.length }}张图片
+                  </span>
+                  <span v-if="canViewField('banner.link_type') && banner.link_type !== 'none'">
+                    <i class="fas fa-link" />
+                    {{ getLinkTypeText(banner.link_type) }}
+                  </span>
+                  <span v-if="canViewField('banner.display_time') && (banner.start_time || banner.end_time)">
+                    <i class="fas fa-clock" />
+                    {{ formatTimeRange(banner) }}
+                  </span>
+                </p>
+              </div>
+              <div
+                v-if="canViewField('banner.status')"
+                class="banner-status"
+              >
+                <el-switch
+                  v-model="banner.status"
+                  active-value="active"
+                  inactive-value="inactive"
+                  :disabled="!canEdit"
+                  @change="handleStatusChange(banner)"
+                />
+              </div>
+              <div
+                v-if="showActionColumn"
+                class="banner-actions"
+              >
+                <el-button
+                  v-if="canEdit"
+                  plain
+                  type="primary"
+                  size="small"
+                  class="btn-sm"
+                  @click="handleEdit(banner)"
+                >
+                  <i class="fas fa-edit mr-1" />编辑
+                </el-button>
+                <el-button
+                  v-if="canDelete"
+                  plain
+                  type="danger"
+                  size="small"
+                  class="btn-sm"
+                  @click="handleDelete(banner)"
+                >
+                  <i class="fas fa-trash mr-1" />删除
+                </el-button>
+              </div>
+            </div>
+          </template>
+        </draggable>
+
+        <!-- 空状态 -->
+        <DataEmptyState
+          v-if="banners.length === 0"
+          description="暂无轮播图"
+        >
+          <el-button
+            v-if="canCreate"
+            type="primary"
+            @click="handleAdd"
+          >
+            新增
+          </el-button>
+        </DataEmptyState>
+      </div>
+
+      <!-- 编辑弹窗 -->
+      <MobileDialog
+        v-model="showDialog"
+        :title="dialogTitle"
+        width="600px"
+        dialog-class="banner-dialog"
+        :show-default-footer="false"
+        @close="handleDialogClose"
+      >
+        <el-form
+          ref="formRef"
+          :model="form"
+          :rules="formRules"
+          label-width="100px"
+          :disabled="!canSaveCurrentBanner"
+          class="banner-form"
+        >
+          <el-form-item
+            v-if="canViewField('banner.title')"
+            label="标题"
+            prop="title"
+          >
+            <el-input
+              v-model="form.title"
+              placeholder="请输入标题"
+            />
+          </el-form-item>
+          <el-form-item
+            v-if="canViewField('banner.image')"
+            label="轮播图片"
+            prop="image_url"
+            required
+          >
+            <div class="banner-images-container">
+              <div
+                v-for="(img, index) in bannerImages"
+                :key="index"
+                class="banner-image-item"
+              >
+                <img
+                  :src="getImageUrl(img)"
+                  :alt="`轮播图${index + 1}`"
+                >
+                <div class="image-actions">
+                  <span class="image-index">{{ index + 1 }}</span>
+                  <div
+                    class="image-delete-btn"
+                    @click="removeImage(index)"
+                    @mouseenter="($event.currentTarget as HTMLElement).style.background = 'rgb(245, 108, 108)'"
+                    @mouseleave="($event.currentTarget as HTMLElement).style.background = 'rgba(245, 108, 108, 0.9)'"
+                  >
+                    <i
+                      class="fas fa-times"
+                      style="font-size: 12px; color: white;"
+                    />
+                  </div>
                 </div>
               </div>
+              <el-upload
+                :action="uploadAction"
+                :headers="uploadHeaders"
+                :show-file-list="false"
+                :on-success="handleBannerUploadSuccess"
+                :on-error="handleUploadError"
+                :before-upload="beforeUpload"
+                name="files"
+                :multiple="true"
+                :limit="10"
+                accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,application/pdf"
+                :auto-upload="true"
+                :disabled="!canSaveCurrentBanner"
+                class="banner-upload-trigger"
+              >
+                <div class="upload-placeholder">
+                  <i class="fas fa-plus" />
+                  <span>添加图片</span>
+                </div>
+              </el-upload>
             </div>
-            <el-upload
-              :action="uploadAction"
-              :headers="uploadHeaders"
-              :show-file-list="false"
-              :on-success="handleBannerUploadSuccess"
-              :on-error="handleUploadError"
-              :before-upload="beforeUpload"
-              name="files"
-              :multiple="true"
-              :limit="10"
-              accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,application/pdf"
-              :auto-upload="true"
-              :disabled="!canSaveCurrentBanner"
-              class="banner-upload-trigger"
+            <template #tip>
+              <span class="tip-text">建议尺寸：750x400px，支持JPG、PNG、PDF格式，可一次选择多张图片（最多10张）。PDF文件会自动转换为图片</span>
+            </template>
+          </el-form-item>
+          <el-form-item
+            v-if="canViewField('banner.link_type')"
+            label="跳转类型"
+          >
+            <el-select
+              v-model="form.link_type"
+              placeholder="请选择跳转类型"
             >
-              <div class="upload-placeholder">
-                <i class="fas fa-plus"></i>
-                <span>添加图片</span>
-              </div>
-            </el-upload>
-          </div>
-          <template #tip>
-            <span class="tip-text">建议尺寸：750x400px，支持JPG、PNG、PDF格式，可一次选择多张图片（最多10张）。PDF文件会自动转换为图片</span>
-          </template>
-        </el-form-item>
-        <el-form-item label="跳转类型">
-          <el-select v-model="form.link_type" placeholder="请选择跳转类型">
-            <el-option label="不跳转" value="none" />
-            <el-option label="商品分类" value="category" />
-            <el-option label="外部链接" value="external" />
-          </el-select>
-        </el-form-item>
-        <el-form-item v-if="form.link_type !== 'none'" label="跳转链接">
-          <el-input v-model="form.link_url" placeholder="请输入跳转链接" />
-          <template #tip>
-            <span class="tip-text">
-              分类：/products?brand_id=1 或 /products?is_new=false<br>
-              外部：完整的URL地址
-            </span>
-          </template>
-        </el-form-item>
-        <el-form-item label="排序">
-          <el-input-number v-model="form.sort_order" :min="0" />
-        </el-form-item>
-        <el-form-item label="轮播间隔">
-          <el-input-number v-model="form.interval" :min="500" :max="10000" :step="500" />
-          <template #tip>
-            <span class="tip-text">每张图片显示时间（毫秒），默认3000ms（3秒）</span>
-          </template>
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-switch
-            v-model="form.status"
-            active-value="active"
-            inactive-value="inactive"
-            active-text="启用"
-            inactive-text="停用"
-          />
-        </el-form-item>
-        <el-form-item label="展示时间">
-          <el-date-picker
-            v-model="timeRange"
-            type="datetimerange"
-            range-separator="至"
-            start-placeholder="开始时间"
-            end-placeholder="结束时间"
-            value-format="YYYY-MM-DD HH:mm:ss"
-          />
-          <template #tip>
-            <span class="tip-text">留空表示永久展示</span>
-          </template>
-        </el-form-item>
-      </el-form>
+              <el-option
+                label="不跳转"
+                value="none"
+              />
+              <el-option
+                label="商品分类"
+                value="category"
+              />
+              <el-option
+                label="外部链接"
+                value="external"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item
+            v-if="canViewField('banner.link_url') && form.link_type !== 'none'"
+            label="跳转链接"
+          >
+            <el-input
+              v-model="form.link_url"
+              placeholder="请输入跳转链接"
+            />
+            <template #tip>
+              <span class="tip-text">
+                分类：/products?brand_id=1 或 /products?is_new=false<br>
+                外部：完整的URL地址
+              </span>
+            </template>
+          </el-form-item>
+          <el-form-item
+            v-if="canViewField('banner.sort_order')"
+            label="排序"
+          >
+            <el-input-number
+              v-model="form.sort_order"
+              :min="0"
+            />
+          </el-form-item>
+          <el-form-item
+            v-if="canViewField('banner.interval')"
+            label="轮播间隔"
+          >
+            <el-input-number
+              v-model="form.interval"
+              :min="500"
+              :max="10000"
+              :step="500"
+            />
+            <template #tip>
+              <span class="tip-text">每张图片显示时间（毫秒），默认3000ms（3秒）</span>
+            </template>
+          </el-form-item>
+          <el-form-item
+            v-if="canViewField('banner.status')"
+            label="状态"
+          >
+            <el-switch
+              v-model="form.status"
+              active-value="active"
+              inactive-value="inactive"
+              active-text="启用"
+              inactive-text="停用"
+            />
+          </el-form-item>
+          <el-form-item
+            v-if="canViewField('banner.display_time')"
+            label="展示时间"
+          >
+            <el-date-picker
+              v-model="timeRange"
+              type="datetimerange"
+              range-separator="至"
+              start-placeholder="开始时间"
+              end-placeholder="结束时间"
+              value-format="YYYY-MM-DD HH:mm:ss"
+            />
+            <template #tip>
+              <span class="tip-text">留空表示永久展示</span>
+            </template>
+          </el-form-item>
+        </el-form>
 
-      <template #footer>
-        <el-button type="default" @click="handleCancelDialog">取消</el-button>
-        <el-button v-if="canSaveCurrentBanner" type="primary" :loading="saving" @click="handleSave">确定</el-button>
-      </template>
-    </MobileDialog>
-  </div>
+        <template #footer>
+          <el-button
+            type="default"
+            @click="handleCancelDialog"
+          >
+            取消
+          </el-button>
+          <el-button
+            v-if="canSaveCurrentBanner"
+            type="primary"
+            :loading="saving"
+            @click="handleSave"
+          >
+            确定
+          </el-button>
+        </template>
+      </MobileDialog>
+    </div>
   </PermissionGate>
 </template>
 
@@ -228,11 +360,12 @@ import { PermissionGate } from '@/components/base/index'
 import { useAuthStore } from '@/stores/auth'
 import { formatImageUrl } from '@/utils/format'
 import { usePagePermissions } from '@/composables/usePagePermissions'
+import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { deleteTempFiles } from '@/utils/temp-file-cleaner'
 import type { ShopBanner } from '@/api/shop'
 import { logger } from '@/utils/logger'
 import type { HeaderAction } from '@/types'
-const router = useRouter()
+const _router = useRouter()
 const authStore = useAuthStore()
 const bannerPermissions = usePagePermissions('h5-admin-banners')
 const { handleNoPermission } = bannerPermissions
@@ -240,9 +373,15 @@ const canView = computed(() => bannerPermissions.canView.value)
 const canCreate = computed(() => bannerPermissions.canCreate.value)
 const canEdit = computed(() => bannerPermissions.canEdit.value)
 const canDelete = computed(() => bannerPermissions.canDelete.value)
+const BANNERS_MODULE_KEY = 'h5_admin_bannersview'
+const canViewField = (fieldKey: string) => fieldPermissions.isFieldVisible(BANNERS_MODULE_KEY, fieldKey)
+const showActionColumn = computed(() => shouldShowActionColumn(
+  canViewField('system_info.operations'),
+  [canEdit.value, canDelete.value]
+))
 
 // 注入父组件提供的注册方法
-const registerHeaderActions = inject<(actions: HeaderAction[]) => void>('registerHeaderActions')
+const registerHeaderActions = inject<(_actions: HeaderAction[]) => void>('registerHeaderActions')
 const clearHeaderActions = inject<() => void>('clearHeaderActions')
 
 // 上传配置
@@ -285,7 +424,7 @@ const getBannerImageUrl = (url: string): string => {
 }
 
 // 上传成功回调 - 支持多图，立即预览
-const handleBannerUploadSuccess = (response: any, file: any, uploadFiles: any) => {
+const handleBannerUploadSuccess = (response: any, _file: any, _uploadFiles: any) => {
   if (!canSaveCurrentBanner.value) {
     handleNoPermission(dialogMode.value === 'add' ? 'create' : 'edit')
     return
@@ -336,7 +475,7 @@ const handleBannerUploadSuccess = (response: any, file: any, uploadFiles: any) =
 }
 
 // 上传错误处理
-const handleUploadError = (error: any, file: any, uploadFiles: any) => {
+const handleUploadError = (error: any, file: any, _uploadFiles: any) => {
   logger.error('[上传失败] 错误信息:', error)
   logger.error('[上传失败] 文件信息:', file)
 
@@ -617,11 +756,30 @@ const handleSave = async () => {
       form.value.end_time = undefined
     }
 
+    const payload = { ...form.value } as Record<string, unknown>
+    const fieldPayloadMap: Record<string, string> = {
+      title: 'banner.title',
+      image_url: 'banner.image',
+      images: 'banner.image',
+      link_type: 'banner.link_type',
+      link_url: 'banner.link_url',
+      sort_order: 'banner.sort_order',
+      interval: 'banner.interval',
+      status: 'banner.status',
+      start_time: 'banner.display_time',
+      end_time: 'banner.display_time'
+    }
+    Object.entries(fieldPayloadMap).forEach(([key, fieldKey]) => {
+      if (!canViewField(fieldKey)) {
+        delete payload[key]
+      }
+    })
+
     if (dialogMode.value === 'add') {
-      await createBanner(form.value)
+      await createBanner(payload as unknown as ShopBanner)
       ElMessage.success('创建成功')
     } else {
-      await updateBanner(form.value.id!, form.value)
+      await updateBanner(form.value.id!, payload as unknown as ShopBanner)
       ElMessage.success('更新成功')
     }
 
@@ -788,6 +946,7 @@ watch(canCreate, () => {
 })
 
 onMounted(() => {
+  void fieldPermissions.init()
   void initializePageData()
   registerPageHeaderActions()
 })
@@ -827,7 +986,7 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
     gap: 16px;
-    background: #fff;
+    background: var(--color-bg-white);
     border-radius: 8px;
     padding: 16px;
     margin-bottom: 12px;
@@ -840,7 +999,7 @@ onUnmounted(() => {
 
     .drag-handle {
       cursor: move;
-      color: #999;
+      color: var(--text-muted);
       font-size: 18px;
       padding: 8px;
     }
@@ -850,7 +1009,7 @@ onUnmounted(() => {
       height: 64px;
       border-radius: 6px;
       overflow: hidden;
-      background: #f5f5f5;
+      background: var(--tf-color-surface-soft);
       flex-shrink: 0;
       position: relative;
 
@@ -884,7 +1043,7 @@ onUnmounted(() => {
           align-items: center;
           justify-content: center;
           background: rgba(0, 0, 0, 0.5);
-          color: #fff;
+          color: var(--color-bg-white);
           font-size: 12px;
           font-weight: 500;
         }
@@ -898,7 +1057,7 @@ onUnmounted(() => {
       .banner-title {
         font-size: 15px;
         font-weight: 500;
-        color: #333;
+        color: var(--text-primary);
         margin: 0 0 4px;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -907,7 +1066,7 @@ onUnmounted(() => {
 
       .banner-meta {
         font-size: 13px;
-        color: #999;
+        color: var(--text-muted);
         margin: 0;
 
         span {
@@ -942,7 +1101,7 @@ onUnmounted(() => {
 // 提示文本
 .tip-text {
   font-size: 12px;
-  color: #999;
+  color: var(--text-muted);
   line-height: 1.5;
   display: block;
   margin-top: 4px;
@@ -963,8 +1122,8 @@ onUnmounted(() => {
   height: 80px;
   border-radius: 6px;
   overflow: hidden;
-  border: 1px solid #e0e0e0;
-  background: #f5f5f5;
+  border: 1px solid var(--tf-color-gray-material-300);
+  background: var(--tf-color-surface-soft);
 
   img {
     width: 100%;
@@ -996,7 +1155,7 @@ onUnmounted(() => {
     top: 4px;
     left: 4px;
     background: rgba(255, 107, 0, 0.9);
-    color: #fff;
+    color: var(--color-bg-white);
     font-size: 11px;
     padding: 2px 6px;
     border-radius: 4px;
@@ -1016,15 +1175,15 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px dashed #d9d9d9;
+    border: 1px dashed var(--tf-color-gray-ant-400);
     border-radius: 6px;
     cursor: pointer;
     transition: all 0.3s;
-    background: #fafafa;
+    background: var(--tf-color-neutral-25);
 
     &:hover {
-      border-color: #ff6b00;
-      background: #fff5f0;
+      border-color: var(--tf-color-accent-orange);
+      background: var(--tf-color-orange-surface);
     }
   }
 
@@ -1037,12 +1196,12 @@ onUnmounted(() => {
 
     i {
       font-size: 20px;
-      color: #8c939d;
+      color: var(--tf-color-gray-element);
     }
 
     span {
       font-size: 12px;
-      color: #999;
+      color: var(--text-muted);
     }
   }
 }
@@ -1124,7 +1283,7 @@ onUnmounted(() => {
             padding: 3px 6px;
             border-radius: 999px;
             background: rgba(248, 250, 252, 0.95);
-            color: #64748b;
+            color: var(--tf-color-slate-500);
           }
         }
       }
@@ -1187,7 +1346,7 @@ onUnmounted(() => {
     height: auto;
     margin-bottom: 8px;
     padding: 0 !important;
-    color: #334155;
+    color: var(--tf-color-slate-700);
     font-size: 13px;
     font-weight: 700;
     line-height: 1.4;

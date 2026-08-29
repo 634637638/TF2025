@@ -2,7 +2,7 @@
  * 配置：在扫描时排除的系统模块
  * 这些模块通常是系统内部使用的，不需要进行字段权限管理
  */
-const log = require('../utils/log');
+const log = require('../utils/log')
 
 const EXCLUDE_MODULE_PATTERNS = [
   // 系统模块前缀
@@ -15,7 +15,7 @@ const EXCLUDE_MODULE_PATTERNS = [
   'demo_',
   // 特殊的权限视图
   'brands_brandsviewwithfieldpermission'
-];
+]
 
 /**
  * 检查模块是否应该被排除（不扫描）
@@ -26,11 +26,11 @@ function shouldExcludeModule(moduleKey) {
   return EXCLUDE_MODULE_PATTERNS.some(pattern => {
     // 支持前缀匹配
     if (pattern.endsWith('_')) {
-      return moduleKey.startsWith(pattern);
+      return moduleKey.startsWith(pattern)
     }
     // 精确匹配
-    return moduleKey === pattern;
-  });
+    return moduleKey === pattern
+  })
 }
 
 /**
@@ -39,23 +39,23 @@ function shouldExcludeModule(moduleKey) {
  * @returns {Object} 过滤后的模块配置
  */
 function filterModuleConfigs(moduleConfigs) {
-  const filtered = {};
+  const filtered = {}
 
   for (const [moduleKey, config] of Object.entries(moduleConfigs)) {
     // 跳过系统模块
     if (shouldExcludeModule(moduleKey)) {
-      log.debug(`跳过系统模块: ${moduleKey}`);
-      continue;
+      log.debug(`跳过系统模块: ${moduleKey}`)
+      continue
     }
 
-    filtered[moduleKey] = config;
+    filtered[moduleKey] = config
   }
 
-  return filtered;
+  return filtered
 }
 
 module.exports = {
   EXCLUDE_MODULE_PATTERNS,
   shouldExcludeModule,
   filterModuleConfigs
-};
+}

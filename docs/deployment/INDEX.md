@@ -2,6 +2,9 @@
 
 本目录包含 TF2025 项目的部署相关文档。
 
+> 注意：权限能力清单已包含在 `backend/src/config/module-permission-capabilities.json`。
+> 部署时上传完整 `backend/`，不再需要额外上传项目根目录 `config`。
+
 ## 文档列表
 
 - [云端部署指南](CLOUD_DEPLOYMENT_GUIDE.md) - 完整的云端服务器部署教程
@@ -30,8 +33,11 @@ cd backend
 cp .env.example .env.production
 nano .env.production  # 编辑配置
 
-# 5. 启动后端
+# 5. 检查后端运行时资源并启动
 npm install -g pm2
+cd backend
+npm run check:runtime-assets
+cd ..
 pm2 start backend/server.js --name tf2025-backend
 
 # 6. 构建前端

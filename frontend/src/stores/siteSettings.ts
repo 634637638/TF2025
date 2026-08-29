@@ -7,7 +7,6 @@ import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { unifiedApi } from '@/utils/unified-api'
 import { buildLogoUrl } from '@/utils/logoUtils'
-import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
 
 interface SiteSettings {
@@ -33,6 +32,8 @@ interface UpdateSiteSettingsResult {
 }
 
 const DEFAULT_FAVICON = '/favicon.ico'
+// 首屏 HTML 使用同一个稳定标题，避免站点设置异步加载期间显示内部配置提示。
+const DEFAULT_SITE_TITLE = '腾飞数码管理系统'
 let appliedFaviconHref = ''
 let appliedFaviconType = ''
 
@@ -84,12 +85,14 @@ const getFaviconMimeType = (iconUrl: string): string => {
   return 'image/x-icon'
 }
 
-const syncDocumentBranding = (siteName?: string, logoUrl?: string) => {
+const syncDocumentBranding = (siteName?: string, logoUrl?: string, syncTitle = true) => {
   if (typeof document === 'undefined') return
 
-  const normalizedTitle = siteName?.trim() || '腾飞数码管理系统'
-  if (document.title !== normalizedTitle) {
-    document.title = normalizedTitle
+  if (syncTitle) {
+    const normalizedTitle = siteName?.trim() || DEFAULT_SITE_TITLE
+    if (document.title !== normalizedTitle) {
+      document.title = normalizedTitle
+    }
   }
 
   const normalizedLogo = logoUrl ? buildLogoUrl(logoUrl) : ''
@@ -119,16 +122,16 @@ export const useSiteSettingsStore = defineStore('siteSettings', () => {
   // 状态
   const settings = ref<SiteSettings>({
     logoUrl: '',
-    siteName: '腾飞数码管理系统',
-    siteSubtitle: '专业的手机销售管理解决方案',
-    siteDomain: 'www.tf2025.com',
-    icpNumber: '京ICP备12345678号',
-    companyName: '腾飞数码科技有限公司',
-    contactPhone: '400-123-4567',
-    contactEmail: 'service@tf2025.com',
-    companyAddress: '北京市朝阳区建国路88号SOHO现代城A座2808室'
-    ,publicPriceContacts: '饶先生|132-0790-3333\n刘女士|132-0790-3335\n三小店|156-7907-9373\n广场店|156-0790-9320'
-    ,publicPriceWatermark: '腾飞数码 132-0790-3333'
+    siteName: '',
+    siteSubtitle: '',
+    siteDomain: '',
+    icpNumber: '',
+    companyName: '',
+    contactPhone: '',
+    contactEmail: '',
+    companyAddress: ''
+    ,publicPriceContacts: ''
+    ,publicPriceWatermark: ''
     ,publicPriceWatermarkEnabled: '1'
     ,publicPriceWatermarkTimeEnabled: '1'
     ,publicPriceWatermarkColor: '#6b7280'
@@ -136,11 +139,13 @@ export const useSiteSettingsStore = defineStore('siteSettings', () => {
 
   const isLoading = ref(false)
   const lastUpdated = ref<Date | null>(null)
+  // 站点设置完成首次请求前，不要用空值覆盖 index.html 的首屏标题。
+  const isInitialized = ref(false)
   let loadPromise: Promise<void> | null = null
 
   // 计算属性
   const displayName = computed(() => {
-    return settings.value.siteName || '腾飞数码管理系统'
+    return settings.value.siteName || DEFAULT_SITE_TITLE
   })
 
   const hasLogo = computed(() => {
@@ -164,32 +169,35 @@ export const useSiteSettingsStore = defineStore('siteSettings', () => {
     }
 
     loadPromise = (async () => {
-    try {
-      isLoading.value = true
+      try {
+        isLoading.value = true
 
-      const response = await unifiedApi.get('/system/site-settings', {
-        showLoading: false,
-        showError: false,
-        // 强制刷新用于公开报价页和设置页保存后的回读，不能命中旧的3秒GET缓存。
-        useCache: !forceReload,
-        ...(forceReload ? { params: { _t: Date.now() } } : {})
-      })
+        const response = await unifiedApi.get('/system/site-settings', {
+          showLoading: false,
+          showError: false,
+          // 强制刷新用于公开报价页和设置页保存后的回读，不能命中旧的3秒GET缓存。
+          useCache: !forceReload,
+          ...(forceReload ? { params: { _t: Date.now() } } : {})
+        })
 
-      if (response.success && response.data) {
+        if (response.success && response.data) {
         // 更新设置
-        Object.assign(settings.value, response.data)
-        lastUpdated.value = new Date()
+          Object.assign(settings.value, response.data)
+          lastUpdated.value = new Date()
 
-        // 触发设置更新事件
-        window.dispatchEvent(new CustomEvent('tf2025:site-settings-updated', {
-          detail: { settings: settings.value }
-        }))
+          // 触发设置更新事件
+          window.dispatchEvent(new CustomEvent('tf2025:site-settings-updated', {
+            detail: { settings: settings.value }
+          }))
+        }
+      } catch (error) {
+        logger.warn('加载站点设置失败，当前页面不会使用公开报价联系人或水印兜底:', error)
+      } finally {
+        isLoading.value = false
+        isInitialized.value = true
+        // 成功时使用接口返回的名称，失败时使用稳定的产品默认标题。
+        syncDocumentBranding(settings.value.siteName, settings.value.logoUrl)
       }
-    } catch (error) {
-      // 加载站点设置失败，使用默认设置
-    } finally {
-      isLoading.value = false
-    }
     })().finally(() => {
       loadPromise = null
     })
@@ -252,23 +260,23 @@ export const useSiteSettingsStore = defineStore('siteSettings', () => {
   const resetSettings = () => {
     const defaultSettings: SiteSettings = {
       logoUrl: '',
-      siteName: '腾飞数码管理系统',
-      siteSubtitle: '专业的手机销售管理解决方案',
-      siteDomain: 'www.tf2025.com',
-      icpNumber: '京ICP备12345678号',
-      companyName: '腾飞数码科技有限公司',
-      contactPhone: '400-123-4567',
-      contactEmail: 'service@tf2025.com',
-      companyAddress: '北京市朝阳区建国路88号SOHO现代城A座2808室'
-      ,publicPriceContacts: '饶先生|132-0790-3333\n刘女士|132-0790-3335\n三小店|156-7907-9373\n广场店|156-0790-9320'
-      ,publicPriceWatermark: '腾飞数码 132-0790-3333'
+      siteName: '',
+      siteSubtitle: '',
+      siteDomain: '',
+      icpNumber: '',
+      companyName: '',
+      contactPhone: '',
+      contactEmail: '',
+      companyAddress: ''
+      ,publicPriceContacts: ''
+      ,publicPriceWatermark: ''
       ,publicPriceWatermarkEnabled: '1'
       ,publicPriceWatermarkTimeEnabled: '1'
       ,publicPriceWatermarkColor: '#6b7280'
     }
 
     Object.assign(settings.value, defaultSettings)
-    // 标题将由watch监听器自动更新
+    syncDocumentBranding(settings.value.siteName, settings.value.logoUrl)
 
     // 触发设置重置事件
     window.dispatchEvent(new CustomEvent('tf2025:site-settings-reset', {
@@ -281,7 +289,7 @@ export const useSiteSettingsStore = defineStore('siteSettings', () => {
     () => [settings.value.siteName, settings.value.logoUrl] as const,
     ([newName, newLogo], previousValue) => {
       const previousLogo = previousValue?.[1]
-      syncDocumentBranding(newName, newLogo)
+      syncDocumentBranding(newName, newLogo, isInitialized.value)
 
       if (newLogo !== previousLogo) {
         window.dispatchEvent(new CustomEvent('tf2025:site-logo-updated', {

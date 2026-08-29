@@ -6,6 +6,19 @@
 import type { App, Directive, DirectiveBinding } from 'vue'
 import { installPermissionDirective } from './permission'
 
+type DirectiveHandler = (...args: unknown[]) => unknown
+
+interface DirectiveElement extends HTMLElement {
+  _copyHandler?: EventListener
+  _debounceHandler?: EventListener
+  _throttleHandler?: EventListener
+  _longPressCleanup?: () => void
+  _infiniteScrollObserver?: IntersectionObserver
+  _lazyPlaceholder?: HTMLElement
+  _numberHandler?: EventListener
+  _rippleHandler?: EventListener
+}
+
 // 加载指令
 export const vTFLoading: Directive = {
   mounted(el: HTMLElement, binding: DirectiveBinding<boolean>) {
@@ -43,13 +56,13 @@ export const vCopy: Directive = {
     }
 
     el.addEventListener('click', clickHandler)
-    ;(el as any)._copyHandler = clickHandler
+    ;(el as DirectiveElement)._copyHandler = clickHandler
   },
   updated(el: HTMLElement, binding: DirectiveBinding<string>) {
     el.title = `点击复制: ${binding.value}`
   },
   unmounted(el: HTMLElement) {
-    const handler = (el as any)._copyHandler
+    const handler = (el as DirectiveElement)._copyHandler
     if (handler) {
       el.removeEventListener('click', handler)
     }
@@ -59,7 +72,7 @@ export const vCopy: Directive = {
 // 防抖指令
 export const vDebounce: Directive = {
   mounted(el: HTMLElement, binding: DirectiveBinding<{
-    fn: Function
+    fn: DirectiveHandler
     delay?: number
     immediate?: boolean
   }>) {
@@ -89,10 +102,10 @@ export const vDebounce: Directive = {
     }
 
     el.addEventListener('click', handler)
-    ;(el as any)._debounceHandler = handler
+    ;(el as DirectiveElement)._debounceHandler = handler
   },
   unmounted(el: HTMLElement) {
-    const handler = (el as any)._debounceHandler
+    const handler = (el as DirectiveElement)._debounceHandler
     if (handler) {
       el.removeEventListener('click', handler)
     }
@@ -102,7 +115,7 @@ export const vDebounce: Directive = {
 // 节流指令
 export const vThrottle: Directive = {
   mounted(el: HTMLElement, binding: DirectiveBinding<{
-    fn: Function
+    fn: DirectiveHandler
     delay?: number
   }>) {
     let lastCall = 0
@@ -118,10 +131,10 @@ export const vThrottle: Directive = {
     }
 
     el.addEventListener('click', handler)
-    ;(el as any)._throttleHandler = handler
+    ;(el as DirectiveElement)._throttleHandler = handler
   },
   unmounted(el: HTMLElement) {
-    const handler = (el as any)._throttleHandler
+    const handler = (el as DirectiveElement)._throttleHandler
     if (handler) {
       el.removeEventListener('click', handler)
     }
@@ -131,7 +144,7 @@ export const vThrottle: Directive = {
 // 长按指令
 export const vLongPress: Directive = {
   mounted(el: HTMLElement, binding: DirectiveBinding<{
-    fn: Function
+    fn: DirectiveHandler
     delay?: number
   }>) {
     let timeout: ReturnType<typeof setTimeout>
@@ -160,7 +173,7 @@ export const vLongPress: Directive = {
     el.addEventListener('mouseup', cancel)
     el.addEventListener('mouseleave', cancel)
 
-    ;(el as any)._longPressCleanup = () => {
+    ;(el as DirectiveElement)._longPressCleanup = () => {
       el.removeEventListener('touchstart', start)
       el.removeEventListener('touchend', cancel)
       el.removeEventListener('touchmove', cancel)
@@ -170,7 +183,7 @@ export const vLongPress: Directive = {
     }
   },
   unmounted(el: HTMLElement) {
-    const cleanup = (el as any)._longPressCleanup
+    const cleanup = (el as DirectiveElement)._longPressCleanup
     if (cleanup) {
       cleanup()
     }
@@ -180,7 +193,7 @@ export const vLongPress: Directive = {
 // 无限滚动指令
 export const vInfiniteScroll: Directive = {
   mounted(el: HTMLElement, binding: DirectiveBinding<{
-    fn: Function
+    fn: DirectiveHandler
     distance?: number
     disabled?: boolean
   }>) {
@@ -202,15 +215,15 @@ export const vInfiniteScroll: Directive = {
     )
 
     observer.observe(el)
-    ;(el as any)._infiniteScrollObserver = observer
+    ;(el as DirectiveElement)._infiniteScrollObserver = observer
   },
   updated(el: HTMLElement, binding: DirectiveBinding<{
-    fn: Function
+    fn: DirectiveHandler
     distance?: number
     disabled?: boolean
   }>) {
     const { disabled } = binding.value
-    const observer = (el as any)._infiniteScrollObserver
+    const observer = (el as DirectiveElement)._infiniteScrollObserver
 
     if (observer) {
       if (disabled) {
@@ -221,7 +234,7 @@ export const vInfiniteScroll: Directive = {
     }
   },
   unmounted(el: HTMLElement) {
-    const observer = (el as any)._infiniteScrollObserver
+    const observer = (el as DirectiveElement)._infiniteScrollObserver
     if (observer) {
       observer.disconnect()
     }
@@ -259,10 +272,10 @@ export const vLazy: Directive = {
     }
 
     img.src = src
-    ;(el as any)._lazyPlaceholder = placeholder
+    ;(el as DirectiveElement)._lazyPlaceholder = placeholder
   },
   unmounted(el: HTMLImageElement) {
-    const placeholder = (el as any)._lazyPlaceholder
+    const placeholder = (el as DirectiveElement)._lazyPlaceholder
     if (placeholder && placeholder.parentNode) {
       placeholder.remove()
     }
@@ -299,10 +312,10 @@ export const vNumber: Directive = {
     }
 
     el.addEventListener('keydown', handler)
-    ;(el as any)._numberHandler = handler
+    ;(el as DirectiveElement)._numberHandler = handler
   },
   unmounted(el: HTMLInputElement) {
-    const handler = (el as any)._numberHandler
+    const handler = (el as DirectiveElement)._numberHandler
     if (handler) {
       el.removeEventListener('keydown', handler)
     }
@@ -353,11 +366,11 @@ export const vMobileOptimize: Directive = {
 
     if (isMobileDevice()) {
       el.addEventListener('click', addRippleEffect)
-      ;(el as any)._rippleHandler = addRippleEffect
+      ;(el as DirectiveElement)._rippleHandler = addRippleEffect
     }
   },
   unmounted(el: HTMLElement) {
-    const handler = (el as any)._rippleHandler
+    const handler = (el as DirectiveElement)._rippleHandler
     if (handler) {
       el.removeEventListener('click', handler)
     }

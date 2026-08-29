@@ -125,7 +125,7 @@ export const useSearchHighlight = () => {
     }
 
     const pattern = new RegExp(`(${escapeRegExp(escapedKeyword)})`, 'gi')
-    const highlighted = snippet.replace(pattern, `<span class="highlight">$1</span>`)
+    const highlighted = snippet.replace(pattern, '<span class="highlight">$1</span>')
 
     // 使用 DOMPurify 净化
     return DOMPurify.sanitize(highlighted, {

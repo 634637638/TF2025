@@ -1,10 +1,12 @@
 <template>
   <div class="user-info">
     <div class="user-avatar">
-      <i class="fas fa-user"></i>
+      <i class="fas fa-user" />
     </div>
     <div class="user-details">
-      <div class="user-name">{{ currentUser.name }}</div>
+      <div class="user-name">
+        {{ currentUser.name }}
+      </div>
       <div class="user-meta">
         <span class="user-id">工号: {{ currentUser.employeeId }}</span>
         <span class="user-position">{{ currentUser.position }}</span>

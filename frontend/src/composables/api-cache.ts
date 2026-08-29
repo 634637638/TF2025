@@ -3,7 +3,7 @@
  * 提供智能缓存、请求去重、离线支持等功能
  */
 
-import { ref, computed, watch } from 'vue'
+import { ref, getCurrentScope, onScopeDispose } from 'vue'
 import type { AxiosRequestConfig, AxiosResponse } from 'axios'
 import { storage } from '@/services/storage'
 import { CACHE_STORAGE_KEYS } from '@/constants/storage'
@@ -18,7 +18,7 @@ export interface CacheConfig {
 }
 
 export interface RequestCacheEntry {
-  data: any
+  data: unknown
   timestamp: number
   ttl: number
   hits: number
@@ -26,14 +26,26 @@ export interface RequestCacheEntry {
   backgroundRefresh?: boolean
 }
 
-export interface PendingRequest {
-  promise: Promise<any>
+export interface PendingRequest<T = unknown> {
+  promise: Promise<T>
   timestamp: number
   timeoutId?: number
 }
 
 export interface RequestQueue {
   [key: string]: PendingRequest[]
+}
+
+interface OfflineQueueItem {
+  config: AxiosRequestConfig
+  resolve: (value: unknown) => void
+  reject: (reason?: unknown) => void
+  timestamp: number
+}
+
+interface PersistedOfflineRequest {
+  config: AxiosRequestConfig
+  timestamp: number
 }
 
 // ============ 智能缓存管理器 ============
@@ -81,7 +93,7 @@ export class SmartCacheManager {
   }
 
   // 获取缓存
-  get(key: string): any {
+  get<T = unknown>(key: string): T | null {
     const entry = this.cache.get(key)
 
     if (!entry) {
@@ -114,11 +126,11 @@ export class SmartCacheManager {
       }
     }
 
-    return entry.data
+    return entry.data as T
   }
 
   // 设置缓存
-  set(key: string, data: any, customTtl?: number): void {
+  set(key: string, data: unknown, customTtl?: number): void {
     const now = Date.now()
     const ttl = customTtl || this.config.ttl
 
@@ -160,15 +172,15 @@ export class SmartCacheManager {
     const entries = Array.from(this.cache.entries())
 
     switch (this.config.strategy) {
-      case 'lru':
-        entries.sort(([, a], [, b]) => a.lastAccessed - b.lastAccessed)
-        break
-      case 'lfu':
-        entries.sort(([, a], [, b]) => a.hits - b.hits)
-        break
-      case 'fifo':
-        entries.sort(([, a], [, b]) => a.timestamp - b.timestamp)
-        break
+    case 'lru':
+      entries.sort(([, a], [, b]) => a.lastAccessed - b.lastAccessed)
+      break
+    case 'lfu':
+      entries.sort(([, a], [, b]) => a.hits - b.hits)
+      break
+    case 'fifo':
+      entries.sort(([, a], [, b]) => a.timestamp - b.timestamp)
+      break
     }
 
     for (let i = 0; i < evictCount && i < entries.length; i++) {
@@ -278,7 +290,7 @@ export class RequestDeduplicator {
   }
 
   // 添加待处理请求
-  addRequest(key: string, promise: Promise<any>): Promise<any> {
+  addRequest<T>(key: string, promise: Promise<T>): Promise<T> {
     // 清理超时的请求
     this.cleanup()
 
@@ -292,7 +304,7 @@ export class RequestDeduplicator {
 
     // 如果已有相同请求，返回现有的promise
     if (this.pendingRequests.has(key)) {
-      return this.pendingRequests.get(key)!.promise
+      return this.pendingRequests.get(key)!.promise as Promise<T>
     }
 
     this.pendingRequests.set(key, pending)
@@ -306,9 +318,9 @@ export class RequestDeduplicator {
   }
 
   // 获取待处理请求
-  getPendingRequest(key: string): PendingRequest | undefined {
+  getPendingRequest<T = unknown>(key: string): PendingRequest<T> | undefined {
     this.cleanup()
-    return this.pendingRequests.get(key)
+    return this.pendingRequests.get(key) as PendingRequest<T> | undefined
   }
 
   // 清理超时的请求
@@ -340,18 +352,17 @@ export class RequestDeduplicator {
 // ============ 离线支持管理器 ============
 export class OfflineManager {
   private isOnline = navigator.onLine
-  private offlineQueue: Array<{
-    config: AxiosRequestConfig
-    resolve: (value: any) => void
-    reject: (reason: any) => void
-    timestamp: number
-  }> = []
+  private offlineQueue: OfflineQueueItem[] = []
   private maxQueueSize = 50
+  private readonly onlineHandler = () => this.handleOnline()
+  private readonly offlineHandler = () => this.handleOffline()
+  private readonly requestExecutor?: (config: AxiosRequestConfig) => Promise<unknown>
 
-  constructor() {
+  constructor(requestExecutor?: (config: AxiosRequestConfig) => Promise<unknown>) {
+    this.requestExecutor = requestExecutor
     // 监听网络状态变化
-    window.addEventListener('online', this.handleOnline.bind(this))
-    window.addEventListener('offline', this.handleOffline.bind(this))
+    window.addEventListener('online', this.onlineHandler)
+    window.addEventListener('offline', this.offlineHandler)
 
     // 恢复离线队列
     this.restoreOfflineQueue()
@@ -371,15 +382,15 @@ export class OfflineManager {
   }
 
   private handleOffline(): void {
-    this.isOnline = true
+    this.isOnline = false
 
     // 触发离线事件
     window.dispatchEvent(new CustomEvent('tf2025:offline'))
   }
 
   // 添加请求到离线队列
-  addToQueue(config: AxiosRequestConfig): Promise<any> {
-    return new Promise((resolve, reject) => {
+  addToQueue<T = unknown>(config: AxiosRequestConfig): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
       // 限制队列大小
       if (this.offlineQueue.length >= this.maxQueueSize) {
         reject(new Error('离线队列已满，请稍后再试'))
@@ -388,7 +399,7 @@ export class OfflineManager {
 
       this.offlineQueue.push({
         config,
-        resolve,
+        resolve: (value) => resolve(value as T),
         reject,
         timestamp: Date.now()
       })
@@ -409,11 +420,14 @@ export class OfflineManager {
     // 批量处理请求
     for (const request of requests) {
       try {
-        // 这里需要重新发起请求
         window.dispatchEvent(new CustomEvent('tf2025:retry-request', {
           detail: { config: request.config }
         }))
-        request.resolve(null) // 临时resolve，实际应该等待请求完成
+        if (!this.requestExecutor) {
+          throw new Error('离线请求缺少重试执行器，未执行写入操作')
+        }
+        const response = await this.requestExecutor(request.config)
+        request.resolve(response)
       } catch (error) {
         request.reject(error)
       }
@@ -424,7 +438,7 @@ export class OfflineManager {
   private saveOfflineQueue(): void {
     try {
       const data = {
-        queue: this.offlineQueue.slice(0, 20), // 只保存前20个
+        queue: this.offlineQueue.slice(0, 20).map(({ config, timestamp }) => ({ config, timestamp })),
         timestamp: Date.now()
       }
       storage.set(CACHE_STORAGE_KEYS.API_CACHE, data, 'local')
@@ -436,13 +450,19 @@ export class OfflineManager {
   // 恢复离线队列
   private restoreOfflineQueue(): void {
     try {
-      const data = storage.get<{ queue: any[]; timestamp: number }>(CACHE_STORAGE_KEYS.API_CACHE, 'local')
-      if (data) {
+      const data = storage.get<{ queue: PersistedOfflineRequest[]; timestamp: number }>(CACHE_STORAGE_KEYS.API_CACHE, 'local')
+      if (data && Array.isArray(data.queue)) {
         const now = Date.now()
 
         this.offlineQueue = data.queue.filter(
-          (item: any) => now - item.timestamp < 24 * 60 * 60 * 1000
-        )
+          (item) => now - item.timestamp < 24 * 60 * 60 * 1000
+        ).map((item) => ({
+          config: item.config,
+          timestamp: item.timestamp,
+          // 页面已卸载，恢复的请求没有原始 Promise；执行结果仍不能伪装成成功。
+          resolve: () => undefined,
+          reject: () => undefined
+        }))
       }
     } catch (error) {
       // 静默处理
@@ -474,8 +494,8 @@ export class OfflineManager {
 
   // 销毁离线管理器
   destroy(): void {
-    window.removeEventListener('online', this.handleOnline)
-    window.removeEventListener('offline', this.handleOffline)
+    window.removeEventListener('online', this.onlineHandler)
+    window.removeEventListener('offline', this.offlineHandler)
   }
 }
 
@@ -485,17 +505,47 @@ export function useOptimizedApi(cacheConfig?: Partial<CacheConfig>) {
   const error = ref<string | null>(null)
   const cacheManager = new SmartCacheManager(cacheConfig)
   const deduplicator = new RequestDeduplicator()
-  const offlineManager = new OfflineManager()
+  const refreshConfigs = new Map<string, AxiosRequestConfig>()
+  const executeRequest = async <T>(config: AxiosRequestConfig): Promise<AxiosResponse<T>> => {
+    const response = await window.fetch((config.baseURL || '') + (config.url || ''), {
+      method: config.method || 'GET',
+      headers: config.headers as HeadersInit,
+      body: config.data ? JSON.stringify(config.data) : undefined
+    })
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    }
+    return {
+      data: await response.json(),
+      status: response.status,
+      statusText: response.statusText,
+      headers: {},
+      config,
+      request: {}
+    } as AxiosResponse<T>
+  }
+  const offlineManager = new OfflineManager(executeRequest)
+
+  if (getCurrentScope()) {
+    onScopeDispose(() => {
+      cacheManager.destroy()
+      deduplicator.clear()
+      offlineManager.destroy()
+      window.removeEventListener('tf2025:cache:refresh-key', refreshHandler)
+      window.removeEventListener('tf2025:cache:refresh', refreshAllHandler)
+    })
+  }
 
   // 优化后的请求方法
   const optimizedRequest = async <T>(
     config: AxiosRequestConfig
   ): Promise<AxiosResponse<T>> => {
     const cacheKey = cacheManager.generateKey(config)
+    refreshConfigs.set(cacheKey, config)
 
     // 对于GET请求，优先使用缓存
     if (config.method?.toLowerCase() === 'get') {
-      const cachedData = cacheManager.get(cacheKey)
+      const cachedData = cacheManager.get<T>(cacheKey)
       if (cachedData) {
         return {
           data: cachedData,
@@ -510,14 +560,14 @@ export function useOptimizedApi(cacheConfig?: Partial<CacheConfig>) {
 
     // 检查重复请求
     if (deduplicator.hasPendingRequest(cacheKey)) {
-      return deduplicator.getPendingRequest(cacheKey)!.promise
+      return deduplicator.getPendingRequest<AxiosResponse<T>>(cacheKey)!.promise
     }
 
     // 检查网络状态
     if (!offlineManager.checkOnlineStatus()) {
       // 对于GET请求，尝试返回缓存数据
       if (config.method?.toLowerCase() === 'get') {
-        const cachedData = cacheManager.get(cacheKey)
+        const cachedData = cacheManager.get<T>(cacheKey)
         if (cachedData) {
           return {
             data: cachedData,
@@ -532,7 +582,7 @@ export function useOptimizedApi(cacheConfig?: Partial<CacheConfig>) {
 
       // 其他请求添加到离线队列
       if (config.method?.toLowerCase() !== 'get') {
-        return offlineManager.addToQueue(config)
+        return offlineManager.addToQueue<AxiosResponse<T>>(config)
       }
 
       throw new Error('网络连接不可用，且无可用缓存')
@@ -544,38 +594,22 @@ export function useOptimizedApi(cacheConfig?: Partial<CacheConfig>) {
 
     try {
       // 创建请求promise
-      const requestPromise = window.fetch(config.baseURL! + config.url, {
-        method: config.method || 'GET',
-        headers: config.headers as HeadersInit,
-        body: config.data ? JSON.stringify(config.data) : undefined
-      }).then(async response => {
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-        }
-        return response.json()
-      })
+      const requestPromise = executeRequest<T>(config)
 
       // 添加去重管理
       deduplicator.addRequest(cacheKey, requestPromise)
 
-      const data = await requestPromise
+      const response = await requestPromise
 
       // 缓存GET请求的响应
       if (config.method?.toLowerCase() === 'get') {
-        cacheManager.set(cacheKey, data)
+        cacheManager.set(cacheKey, response.data)
       }
 
-      return {
-        data,
-        status: 200,
-        statusText: 'OK',
-        headers: {},
-        config,
-        request: {}
-      } as AxiosResponse<T>
+      return response
 
-    } catch (err: any) {
-      error.value = err.message || '请求失败'
+    } catch (err: unknown) {
+      error.value = err instanceof Error ? err.message : '请求失败'
       throw err
     } finally {
       loading.value = false
@@ -616,18 +650,22 @@ export function useOptimizedApi(cacheConfig?: Partial<CacheConfig>) {
     error: error.value
   })
 
-  // 监听后台刷新事件
-  watch(() => {}, () => {
-    window.addEventListener('tf2025:cache:refresh-key', async (event: any) => {
-      const { key } = event.detail
-      try {
-        // 从缓存键解析原始请求配置
-        // 这里需要更复杂的逻辑来还原请求配置
-      } catch (error) {
-        // 静默处理
-      }
-    })
-  })
+  // 后台刷新事件必须真正重新请求，不能只发事件后丢弃。
+  const refreshHandler = (event: Event) => {
+    const key = (event as CustomEvent<{ key?: string }>).detail?.key
+    const config = key ? refreshConfigs.get(key) : undefined
+    if (config) {
+      optimizedRequest(config).catch(refreshError => {
+        error.value = refreshError instanceof Error ? refreshError.message : '后台刷新失败'
+      })
+    }
+  }
+  const refreshAllHandler = (event: Event) => {
+    const keys = (event as CustomEvent<{ keys?: string[] }>).detail?.keys || []
+    keys.forEach(key => refreshHandler(new CustomEvent('tf2025:cache:refresh-key', { detail: { key } })))
+  }
+  window.addEventListener('tf2025:cache:refresh-key', refreshHandler)
+  window.addEventListener('tf2025:cache:refresh', refreshAllHandler)
 
   return {
     loading,

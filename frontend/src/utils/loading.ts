@@ -3,7 +3,7 @@
  * 提供统一的加载状态管理、进度跟踪、队列管理等功能
  */
 
-import { ref, reactive, computed, nextTick, type App, inject } from 'vue'
+import { computed, type App, inject } from 'vue'
 import { showElementLoading, type LoadingInstance } from '@/utils/element-feedback'
 
 /**
@@ -464,7 +464,7 @@ export class GlobalLoadingManager {
   /**
    * 触发全局事件
    */
-  private emitGlobalEvent(event: string, data: any): void {
+  private emitGlobalEvent(event: string, data: unknown): void {
     if (window.__TF2025__?.eventBus) {
       window.__TF2025__.eventBus.emit(event, data)
     }
@@ -633,7 +633,7 @@ export class GlobalLoadingManager {
           })
 
           const batchResults = await Promise.allSettled(batchPromises)
-          batchResults.forEach((result, index) => {
+          batchResults.forEach((result, _index) => {
             if (result.status === 'fulfilled') {
               results.push(result.value)
             } else {

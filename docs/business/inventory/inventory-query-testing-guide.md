@@ -195,27 +195,16 @@ http://localhost:5176/price-query
 
 ## 开发备注
 
-### 本地存储键名
-```javascript
-localStorage.setItem('screenLockSettings', JSON.stringify({
-  backgroundType: 'default',
-  imageUrl: '',
-  videoUrl: '',
-  title: '屏幕已锁定',
-  message: '请输入密码解锁',
-  inventoryQueryPassword: 'your-password' // 查询密码
-}))
-```
+### 密码存储
+在库查询用户由系统设置页的多密码管理统一维护，密码经 bcrypt 加密后保存在 `query_users` 表中。屏幕锁设置和浏览器本地存储均不保存或返回查询密码明文。
 
 ### 验证流程
 ```
 用户输入密码
     ↓
-检查 localStorage 配置密码
-    ↓ (无配置或失败)
-尝试后端 API 验证
-    ↓ (404)
-默认密码 123456 兜底
+调用后端密码验证 API
+    ↓
+匹配 `query_users` 中启用的加密密码
     ↓
 验证成功，启用双击功能
 ```

@@ -3,15 +3,15 @@
  * 功能：管理首页推荐区域和商品
  */
 
-const db = require('../config/database');
+const db = require('../config/database')
 
 class HomeSectionService {
   normalizeCount(value, fallback = 0) {
-    const normalized = Number(value);
+    const normalized = Number(value)
     if (!Number.isFinite(normalized)) {
-      return fallback;
+      return fallback
     }
-    return Math.max(0, Math.floor(normalized));
+    return Math.max(0, Math.floor(normalized))
   }
 
   /**
@@ -26,35 +26,31 @@ class HomeSectionService {
         s.section_type,
         s.icon,
         s.product_limit,
-        s.fill_count,
         s.sort_order
       FROM H5_home_sections s
       WHERE s.is_enabled = TRUE
       ORDER BY s.sort_order ASC
-    `;
-    const [sections] = await db.getDatabase().query(query);
+    `
+    const [sections] = await db.getDatabase().query(query)
 
     // 为每个区域获取商品
     for (const section of sections) {
       section.products = await this.getSectionProducts(
         section.id,
-        section.product_limit,
-        section.fill_count
-      );
+        section.product_limit
+      )
     }
 
-    return sections;
+    return sections
   }
 
   /**
-   * 获取指定区域的商品（支持自动补齐）
+   * 获取指定区域的商品
    * @param {number} sectionId - 推荐区域ID
    * @param {number} productLimit - 最大显示数量
-   * @param {number} fillCount - 自动补齐阈值（0表示不补齐）
    */
-  async getSectionProducts(sectionId, productLimit = 10, fillCount = 0) {
-    const normalizedProductLimit = this.normalizeCount(productLimit, 10);
-    const normalizedFillCount = this.normalizeCount(fillCount, 0);
+  async getSectionProducts(sectionId, productLimit = 10) {
+    const normalizedProductLimit = this.normalizeCount(productLimit, 10)
 
     // 1. 获取已配置的推荐商品
     const query = `
@@ -148,237 +144,13 @@ class HomeSectionService {
         AND (h5.is_published = 1 OR h5.is_published IS NULL)
 
       ORDER BY sort_order ASC, main_image DESC
-    `;
+    `
 
-    const [products] = await db.getDatabase().query(query, [sectionId, sectionId]);
+    const [products] = await db.getDatabase().query(query, [sectionId, sectionId])
 
-    // 2. 根据用户需求处理商品显示逻辑
-    const availableCount = products.length;
-
-    let finalProducts = [];
-
-    if (normalizedProductLimit === 0) {
-      return [];
-    }
-
-    if (availableCount >= normalizedProductLimit) {
-      finalProducts = products.slice(0, normalizedProductLimit);
-    } else if (normalizedFillCount > 0 && availableCount < normalizedFillCount) {
-      const needCount = Math.min(normalizedFillCount, normalizedProductLimit) - availableCount;
-      const fillProducts = await this.getRandomStockProducts(sectionId, needCount, products);
-      finalProducts = [...products, ...fillProducts];
-    } else {
-      finalProducts = products;
-    }
-
-    return finalProducts;
-  }
-
-  /**
-   * 从在库商品中随机选择商品补齐（保持商品类型一致）
-   * @param {number} sectionId - 推荐区域ID
-   * @param {number} limit - 需要补齐的数量
-   * @param {Array} existingProducts - 已存在的商品
-   */
-  async getRandomStockProducts(sectionId, limit, existingProducts = []) {
-    const normalizedLimit = this.normalizeCount(limit, 0);
-    if (normalizedLimit <= 0) {
-      return [];
-    }
-
-    // 获取已存在的商品ID，避免重复
-    const existingTemplateIds = existingProducts
-      .filter(p => p.product_type === 'new' && p.template_id)
-      .map(p => p.template_id);
-
-    const existingPhoneIds = existingProducts
-      .filter(p => p.product_type === 'used' && p.phone_id)
-      .map(p => p.phone_id);
-
-    // 分析已选商品的类型比例
-    const newCount = existingProducts.filter(p => p.product_type === 'new').length;
-    const usedCount = existingProducts.filter(p => p.product_type === 'used').length;
-    const totalCount = existingProducts.length;
-
-    let randomProducts = [];
-    let newProducts = [];
-    let usedProducts = [];
-
-    if (newCount > 0 && usedCount === 0) {
-      newProducts = await this.getRandomNewProducts(normalizedLimit, existingTemplateIds);
-    }
-    else if (usedCount > 0 && newCount === 0) {
-      usedProducts = await this.getRandomUsedProducts(normalizedLimit, existingPhoneIds);
-    }
-    else {
-      let newFillCount;
-      let usedFillCount;
-
-      if (totalCount === 0) {
-        newFillCount = Math.ceil(normalizedLimit / 2);
-        usedFillCount = normalizedLimit - newFillCount;
-      } else {
-        const newRatio = newCount / totalCount;
-        const usedRatio = usedCount / totalCount;
-
-        newFillCount = Math.ceil(normalizedLimit * newRatio);
-        usedFillCount = Math.ceil(normalizedLimit * usedRatio);
-      }
-
-      if (newFillCount + usedFillCount < normalizedLimit) {
-        newFillCount += normalizedLimit - (newFillCount + usedFillCount);
-      }
-
-      newProducts = await this.getRandomNewProducts(newFillCount, existingTemplateIds);
-      usedProducts = await this.getRandomUsedProducts(usedFillCount, existingPhoneIds);
-    }
-
-    randomProducts = [...newProducts, ...usedProducts];
-
-    if (randomProducts.length < normalizedLimit) {
-      const remaining = normalizedLimit - randomProducts.length;
-      const fetchedTemplateIds = newProducts
-        .filter(product => product.template_id)
-        .map(product => product.template_id);
-
-      const extraNewProducts = await this.getRandomNewProducts(
-        remaining,
-        [...existingTemplateIds, ...fetchedTemplateIds]
-      );
-      randomProducts = [...randomProducts, ...extraNewProducts];
-    }
-
-    if (randomProducts.length < normalizedLimit) {
-      const remaining = normalizedLimit - randomProducts.length;
-      const fetchedPhoneIds = randomProducts
-        .filter(product => product.product_type === 'used' && product.phone_id)
-        .map(product => product.phone_id);
-
-      const extraUsedProducts = await this.getRandomUsedProducts(
-        remaining,
-        [...existingPhoneIds, ...fetchedPhoneIds]
-      );
-      randomProducts = [...randomProducts, ...extraUsedProducts];
-    }
-
-    randomProducts = randomProducts.slice(0, normalizedLimit);
-    return randomProducts;
-  }
-
-  /**
-   * 获取随机全新机模板
-   */
-  async getRandomNewProducts(limit, existingTemplateIds = []) {
-    const normalizedLimit = this.normalizeCount(limit, 0);
-    if (normalizedLimit <= 0) {
-      return [];
-    }
-
-    const query = `
-      SELECT DISTINCT
-        t.id as template_id,
-        NULL as phone_id,
-        t.brand_id,
-        b.name as brand_name,
-        t.model_id,
-        m.name as model_name,
-        t.color_id,
-        c.name as color_name,
-        t.template_name,
-        (SELECT image_url FROM H5_newimages WHERE template_id = t.id AND is_primary = 1 LIMIT 1) as main_image,
-        (SELECT MIN(pl.retail_price)
-         FROM price_list pl
-         WHERE pl.brand_id = t.brand_id AND pl.model_id = t.model_id AND pl.color_id = t.color_id
-           AND pl.retail_price IS NOT NULL AND pl.retail_price > 0
-        ) as min_price,
-        (SELECT COUNT(*) FROM phones p2
-         LEFT JOIN H5_product h5_1 ON p2.id = h5_1.phone_id
-         WHERE p2.brand_id = t.brand_id AND p2.model_id = t.model_id AND p2.color_id = t.color_id
-           AND p2.is_new = 1 AND p2.status = 'in_stock'
-           AND (h5_1.is_published = 1 OR h5_1.is_published IS NULL)) as stock_count,
-        (SELECT p3.id FROM phones p3
-         LEFT JOIN H5_product h5_2 ON p3.id = h5_2.phone_id
-         WHERE p3.brand_id = t.brand_id AND p3.model_id = t.model_id AND p3.color_id = t.color_id
-           AND p3.is_new = 1 AND p3.status = 'in_stock'
-           AND (h5_2.is_published = 1 OR h5_2.is_published IS NULL)
-         ORDER BY p3.id ASC LIMIT 1
-        ) as first_phone_id,
-        (SELECT mem.size
-         FROM phones p4
-         LEFT JOIN memories mem ON p4.memory_id = mem.id
-         LEFT JOIN H5_product h5_3 ON p4.id = h5_3.phone_id
-         WHERE p4.brand_id = t.brand_id AND p4.model_id = t.model_id AND p4.color_id = t.color_id
-           AND p4.is_new = 1 AND p4.status = 'in_stock'
-           AND (h5_3.is_published = 1 OR h5_3.is_published IS NULL)
-         ORDER BY p4.id ASC LIMIT 1
-        ) as memory_name,
-        NULL as quality_grade,
-        NULL as condition_grade,
-        1 as is_new,
-        'new' as product_type,
-        9999 as sort_order
-      FROM H5_newtemplates t
-      INNER JOIN brands b ON t.brand_id = b.id
-      INNER JOIN models m ON t.model_id = m.id
-      INNER JOIN colors c ON t.color_id = c.id
-      WHERE t.is_active = TRUE AND t.is_published = 1
-        AND t.id NOT IN (${existingTemplateIds.length > 0 ? existingTemplateIds.map(() => '?').join(',') : '0'})
-      ORDER BY RAND()
-      LIMIT ?
-    `;
-
-    const params = [...existingTemplateIds, normalizedLimit];
-    const [products] = await db.getDatabase().query(query, params);
-    return products;
-  }
-
-  /**
-   * 获取随机二手机
-   */
-  async getRandomUsedProducts(limit, existingPhoneIds = []) {
-    const normalizedLimit = this.normalizeCount(limit, 0);
-    if (normalizedLimit <= 0) {
-      return [];
-    }
-
-    const query = `
-      SELECT
-        NULL as template_id,
-        p.id as phone_id,
-        p.brand_id,
-        b.name as brand_name,
-        p.model_id,
-        m.name as model_name,
-        p.color_id,
-        c.name as color_name,
-        NULL as template_name,
-        (SELECT image_url FROM H5_images WHERE phone_id = p.id AND is_primary = 1 LIMIT 1) as main_image,
-        h5.sale_price as min_price,
-        1 as stock_count,
-        p.id as first_phone_id,
-        mem.size as memory_name,
-        p.quality_grade,
-        h5.condition_grade,
-        0 as is_new,
-        'used' as product_type,
-        9999 as sort_order
-      FROM phones p
-      LEFT JOIN H5_product h5 ON p.id = h5.phone_id
-      LEFT JOIN brands b ON p.brand_id = b.id
-      LEFT JOIN models m ON p.model_id = m.id
-      LEFT JOIN colors c ON p.color_id = c.id
-      LEFT JOIN memories mem ON p.memory_id = mem.id
-      WHERE p.status = 'in_stock'
-        AND p.is_new = 0
-        AND (h5.is_published = 1 OR h5.is_published IS NULL)
-        AND p.id NOT IN (${existingPhoneIds.length > 0 ? existingPhoneIds.map(() => '?').join(',') : '0'})
-      ORDER BY RAND()
-      LIMIT ?
-    `;
-
-    const params = [...existingPhoneIds, normalizedLimit];
-    const [products] = await db.getDatabase().query(query, params);
-    return products;
+    // 只展示后台明确配置的商品；缺少配置时保持真实空结果。
+    if (normalizedProductLimit === 0) return []
+    return products.slice(0, normalizedProductLimit)
   }
 
   /**
@@ -387,56 +159,80 @@ class HomeSectionService {
   async getAllSections() {
     const query = `
       SELECT
-        s.*,
+        s.id,
+        s.section_key,
+        s.section_name,
+        s.section_type,
+        s.icon,
+        s.is_enabled,
+        s.sort_order,
+        s.product_limit,
         (SELECT COUNT(*) FROM H5_home_section_products WHERE section_id = s.id) as product_count
       FROM H5_home_sections s
       ORDER BY s.sort_order ASC
-    `;
-    const [sections] = await db.getDatabase().query(query);
-    return sections;
+    `
+    const [sections] = await db.getDatabase().query(query)
+    return sections
   }
 
   /**
    * 创建推荐区域
    */
   async createSection(data) {
-    const { section_key, section_name, section_type, icon, is_enabled, sort_order, product_limit, fill_count, auto_fill } = data;
+    const { section_key, section_name, section_type, icon, is_enabled, sort_order, product_limit } = data
     const query = `
       INSERT INTO H5_home_sections
-      (section_key, section_name, section_type, icon, is_enabled, sort_order, product_limit, fill_count, auto_fill)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
+      (section_key, section_name, section_type, icon, is_enabled, sort_order, product_limit)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `
     const [result] = await db.getDatabase().query(query, [
       section_key, section_name, section_type || 'products', icon || 'fas fa-list',
-      is_enabled !== false, sort_order || 0, product_limit || 10, fill_count || 0, auto_fill || false
-    ]);
-    return { id: result.insertId, ...data };
+      is_enabled !== false, sort_order || 0, product_limit || 10
+    ])
+    return {
+      id: result.insertId,
+      section_key,
+      section_name,
+      section_type: section_type || 'products',
+      icon: icon || 'fas fa-list',
+      is_enabled: is_enabled !== false,
+      sort_order: sort_order || 0,
+      product_limit: product_limit || 10
+    }
   }
 
   /**
    * 更新推荐区域
    */
   async updateSection(id, data) {
-    const { section_name, section_type, icon, is_enabled, sort_order, product_limit, fill_count, auto_fill } = data;
+    const { section_name, section_type, icon, is_enabled, sort_order, product_limit } = data
     const query = `
       UPDATE H5_home_sections
-      SET section_name = ?, section_type = ?, icon = ?, is_enabled = ?, sort_order = ?, product_limit = ?, fill_count = ?, auto_fill = ?
+      SET section_name = ?, section_type = ?, icon = ?, is_enabled = ?, sort_order = ?, product_limit = ?
       WHERE id = ?
-    `;
+    `
     await db.getDatabase().query(query, [
       section_name, section_type || 'products', icon || 'fas fa-list',
-      is_enabled !== false, sort_order || 0, product_limit || 10, fill_count || 0, auto_fill || false,
+      is_enabled !== false, sort_order || 0, product_limit || 10,
       id
-    ]);
-    return { id, ...data };
+    ])
+    return {
+      id,
+      section_name,
+      section_type: section_type || 'products',
+      icon: icon || 'fas fa-list',
+      is_enabled: is_enabled !== false,
+      sort_order: sort_order || 0,
+      product_limit: product_limit || 10
+    }
   }
 
   /**
    * 删除推荐区域
    */
   async deleteSection(id) {
-    const query = 'DELETE FROM H5_home_sections WHERE id = ?';
-    await db.getDatabase().query(query, [id]);
+    const query = 'DELETE FROM H5_home_sections WHERE id = ?'
+    await db.getDatabase().query(query, [id])
   }
 
   /**
@@ -491,9 +287,9 @@ class HomeSectionService {
       LEFT JOIN memories mem ON p.memory_id = mem.id
       WHERE sp.section_id = ?
       ORDER BY sp.sort_order ASC
-    `;
-    const [products] = await db.getDatabase().query(query, [sectionId]);
-    return products;
+    `
+    const [products] = await db.getDatabase().query(query, [sectionId])
+    return products
   }
 
   /**
@@ -504,23 +300,23 @@ class HomeSectionService {
       INSERT INTO H5_home_section_products (section_id, phone_id, template_id, sort_order)
       VALUES (?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE sort_order = VALUES(sort_order)
-    `;
-    await db.getDatabase().query(query, [sectionId, phone_id || null, template_id || null, sort_order || 0]);
+    `
+    await db.getDatabase().query(query, [sectionId, phone_id || null, template_id || null, sort_order || 0])
   }
 
   /**
    * 批量添加商品到推荐区域
    */
   async addProductsToSection(sectionId, products) {
-    const values = products.map(p => [sectionId, p.phone_id || null, p.template_id || null, p.sort_order || 0]);
-    const query = `
+    const values = products.map(p => [sectionId, p.phone_id || null, p.template_id || null, p.sort_order || 0])
+    const _query = `
       INSERT INTO H5_home_section_products (section_id, phone_id, template_id, sort_order)
       VALUES ?
       ON DUPLICATE KEY UPDATE sort_order = VALUES(sort_order)
-    `;
+    `
     // 批量插入
     for (const value of values) {
-      await this.addProductToSection(sectionId, { phone_id: value[1], template_id: value[2], sort_order: value[3] });
+      await this.addProductToSection(sectionId, { phone_id: value[1], template_id: value[2], sort_order: value[3] })
     }
   }
 
@@ -528,35 +324,35 @@ class HomeSectionService {
    * 移除推荐商品
    */
   async removeProductFromSection(id) {
-    const query = 'DELETE FROM H5_home_section_products WHERE id = ?';
-    await db.getDatabase().query(query, [id]);
+    const query = 'DELETE FROM H5_home_section_products WHERE id = ?'
+    await db.getDatabase().query(query, [id])
   }
 
   /**
    * 更新推荐商品排序
    */
   async updateProductSort(id, sort_order) {
-    const query = 'UPDATE H5_home_section_products SET sort_order = ? WHERE id = ?';
-    await db.getDatabase().query(query, [sort_order, id]);
+    const query = 'UPDATE H5_home_section_products SET sort_order = ? WHERE id = ?'
+    await db.getDatabase().query(query, [sort_order, id])
   }
 
   /**
    * 清空推荐区域的所有商品
    */
   async clearSectionProducts(sectionId) {
-    const query = 'DELETE FROM H5_home_section_products WHERE section_id = ?';
-    await db.getDatabase().query(query, [sectionId]);
+    const query = 'DELETE FROM H5_home_section_products WHERE section_id = ?'
+    await db.getDatabase().query(query, [sectionId])
   }
 
   /**
    * 搜索可添加的商品
    */
   async searchProducts(keyword, type = 'all') {
-    let query = '';
-    let params = [];
+    let query = ''
+    let params = []
 
     // 如果没有关键词，返回所有商品（限制数量）
-    const searchKeyword = keyword && keyword.trim() ? keyword.trim() : '';
+    const searchKeyword = keyword && keyword.trim() ? keyword.trim() : ''
 
     if (type === 'new' || type === 'all') {
       // 搜索全新机模板
@@ -587,11 +383,11 @@ class HomeSectionService {
         LEFT JOIN models m ON t.model_id = m.id
         LEFT JOIN colors c ON t.color_id = c.id
         WHERE t.is_active = TRUE
-      `;
-      params = [];
+      `
+      params = []
       if (searchKeyword) {
-        query += ` AND (b.name LIKE ? OR m.name LIKE ? OR t.template_name LIKE ?)`;
-        params = [`%${searchKeyword}%`, `%${searchKeyword}%`, `%${searchKeyword}%`];
+        query += ' AND (b.name LIKE ? OR m.name LIKE ? OR t.template_name LIKE ?)'
+        params = [`%${searchKeyword}%`, `%${searchKeyword}%`, `%${searchKeyword}%`]
       }
     }
 
@@ -622,27 +418,27 @@ class HomeSectionService {
         LEFT JOIN colors c ON p.color_id = c.id
         LEFT JOIN memories mem ON p.memory_id = mem.id
         WHERE p.status = 'in_stock' AND p.is_new = 0
-      `;
-      let usedParams = [];
+      `
+      let usedParams = []
       if (searchKeyword) {
-        usedQuery += ` AND (b.name LIKE ? OR m.name LIKE ? OR p.imei LIKE ?)`;
-        usedParams = [`%${searchKeyword}%`, `%${searchKeyword}%`, `%${searchKeyword}%`];
+        usedQuery += ' AND (b.name LIKE ? OR m.name LIKE ? OR p.imei LIKE ?)'
+        usedParams = [`%${searchKeyword}%`, `%${searchKeyword}%`, `%${searchKeyword}%`]
       }
 
       if (type === 'all') {
-        query += ` UNION ALL ` + usedQuery;
-        params = [...params, ...usedParams];
+        query += ' UNION ALL ' + usedQuery
+        params = [...params, ...usedParams]
       } else {
-        query = usedQuery;
-        params = usedParams;
+        query = usedQuery
+        params = usedParams
       }
     }
 
-    query += ` ORDER BY display_text ASC LIMIT 100`;
+    query += ' ORDER BY display_text ASC LIMIT 100'
 
-    const [products] = await db.getDatabase().query(query, params);
-    return products;
+    const [products] = await db.getDatabase().query(query, params)
+    return products
   }
 }
 
-module.exports = new HomeSectionService();
+module.exports = new HomeSectionService()

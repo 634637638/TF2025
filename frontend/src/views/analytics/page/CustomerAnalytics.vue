@@ -1,17 +1,36 @@
 <template>
   <div class="customer-analytics">
     <!-- 客户概览卡片 -->
-    <el-row v-if="canViewCustomerField('overview_stats')" :gutter="24" class="overview-cards">
-      <el-col :xs="12" :sm="6" v-for="card in overviewCards" :key="card.title">
-        <el-card class="overview-card" :class="card.type">
+    <el-row
+      v-if="canViewCustomerField('overview_stats')"
+      :gutter="24"
+      class="overview-cards"
+    >
+      <el-col
+        v-for="card in overviewCards"
+        :key="card.title"
+        :xs="12"
+        :sm="6"
+      >
+        <el-card
+          class="overview-card"
+          :class="card.type"
+        >
           <div class="card-content">
             <div class="card-icon">
               <el-icon><component :is="card.icon" /></el-icon>
             </div>
             <div class="card-info">
-              <div class="card-title">{{ card.title }}</div>
-              <div class="card-value">{{ card.value }}</div>
-              <div class="card-trend" :class="card.trend">
+              <div class="card-title">
+                {{ card.title }}
+              </div>
+              <div class="card-value">
+                {{ card.value }}
+              </div>
+              <div
+                class="card-trend"
+                :class="card.trend"
+              >
                 <el-icon><ArrowUp v-if="card.trend === 'up'" /><ArrowDown v-else /></el-icon>
                 {{ card.change }}
               </div>
@@ -22,26 +41,50 @@
     </el-row>
 
     <!-- 图表区域 -->
-    <el-row v-if="showCustomerPrimaryCharts" :gutter="24" class="chart-section">
+    <el-row
+      v-if="showCustomerPrimaryCharts"
+      :gutter="24"
+      class="chart-section"
+    >
       <!-- 客户增长趋势 -->
-      <el-col v-if="canViewCustomerField('growth_chart')" :xs="24" :lg="12">
+      <el-col
+        v-if="canViewCustomerField('growth_chart')"
+        :xs="24"
+        :lg="12"
+      >
         <el-card class="chart-card">
           <template #header>
             <div class="card-header">
               <span>客户增长趋势</span>
-              <el-radio-group v-model="growthPeriod" size="small">
-                <el-radio-button value="7d">7天</el-radio-button>
-                <el-radio-button value="30d">30天</el-radio-button>
-                <el-radio-button value="90d">90天</el-radio-button>
+              <el-radio-group
+                v-model="growthPeriod"
+                size="small"
+              >
+                <el-radio-button value="7d">
+                  7天
+                </el-radio-button>
+                <el-radio-button value="30d">
+                  30天
+                </el-radio-button>
+                <el-radio-button value="90d">
+                  90天
+                </el-radio-button>
               </el-radio-group>
             </div>
           </template>
-          <div ref="growthChartRef" class="chart-container"></div>
+          <div
+            ref="growthChartRef"
+            class="chart-container"
+          />
         </el-card>
       </el-col>
 
       <!-- 客户细分 -->
-      <el-col v-if="canViewCustomerField('segment_chart')" :xs="24" :lg="12">
+      <el-col
+        v-if="canViewCustomerField('segment_chart')"
+        :xs="24"
+        :lg="12"
+      >
         <el-card class="chart-card">
           <template #header>
             <div class="card-header">
@@ -51,46 +94,88 @@
               </el-tooltip>
             </div>
           </template>
-          <div ref="segmentChartRef" class="chart-container"></div>
+          <div
+            ref="segmentChartRef"
+            class="chart-container"
+          />
         </el-card>
       </el-col>
     </el-row>
 
-    <el-row v-if="showCustomerSecondaryCharts" :gutter="24" class="chart-section">
+    <el-row
+      v-if="showCustomerSecondaryCharts"
+      :gutter="24"
+      class="chart-section"
+    >
       <!-- 留存率分析 -->
-      <el-col v-if="canViewCustomerField('retention_chart')" :xs="24" :lg="16">
+      <el-col
+        v-if="canViewCustomerField('retention_chart')"
+        :xs="24"
+        :lg="16"
+      >
         <el-card class="chart-card">
           <template #header>
             <div class="card-header">
               <span>客户留存率分析</span>
-              <el-select v-model="retentionCohort" size="small" style="width: 120px">
-                <el-option label="按注册月" value="monthly" />
-                <el-option label="按注册季" value="quarterly" />
-                <el-option label="按注册年" value="yearly" />
+              <el-select
+                v-model="retentionCohort"
+                size="small"
+                style="width: 120px"
+              >
+                <el-option
+                  label="按注册月"
+                  value="monthly"
+                />
+                <el-option
+                  label="按注册季"
+                  value="quarterly"
+                />
+                <el-option
+                  label="按注册年"
+                  value="yearly"
+                />
               </el-select>
             </div>
           </template>
-          <div ref="retentionChartRef" class="chart-container"></div>
+          <div
+            ref="retentionChartRef"
+            class="chart-container"
+          />
         </el-card>
       </el-col>
 
       <!-- 客户活跃度 -->
-      <el-col v-if="canViewCustomerField('activity_chart')" :xs="24" :lg="8">
+      <el-col
+        v-if="canViewCustomerField('activity_chart')"
+        :xs="24"
+        :lg="8"
+      >
         <el-card class="chart-card">
           <template #header>
             <div class="card-header">
               <span>客户活跃度分布</span>
             </div>
           </template>
-          <div ref="activityChartRef" class="chart-container"></div>
+          <div
+            ref="activityChartRef"
+            class="chart-container"
+          />
         </el-card>
       </el-col>
     </el-row>
 
     <!-- 客户列表和分析 -->
-    <el-row v-if="showCustomerTableSection" :gutter="24" class="table-section admin-panel admin-table-panel">
+    <el-row
+      v-if="showCustomerTableSection"
+      :gutter="24"
+      class="table-section admin-panel admin-table-panel"
+    >
       <!-- 高价值客户 -->
-      <el-col v-if="canViewCustomerField('customer_list')" :xs="24" :lg="14">
+      <el-col
+        v-if="canViewCustomerField('customer_list')"
+        :xs="24"
+        :lg="14"
+      >
         <el-card>
           <template #header>
             <div class="card-header">
@@ -104,7 +189,11 @@
                   clearable
                   style="width: 200px"
                 />
-                <el-button type="success" size="small" @click="exportCustomers">
+                <el-button
+                  type="success"
+                  size="small"
+                  @click="exportCustomers"
+                >
                   <el-icon><Download /></el-icon>
                   导出
                 </el-button>
@@ -112,47 +201,89 @@
             </div>
           </template>
 
-          <el-table class="data-table"
+          <el-table
+            class="data-table"
             :data="customerLoading ? [] : filteredCustomers"
             stripe
             :max-height="400"
           >
             <template #empty>
-              <TableLoadingRow v-if="customerLoading" mode="block" text="加载中..." />
-              <el-empty v-else description="暂无客户数据" />
+              <TableLoadingRow
+                v-if="customerLoading"
+                mode="block"
+                text="加载中..."
+              />
+              <DataEmptyState
+                v-else
+                description="暂无客户数据"
+              />
             </template>
 
-            <el-table-column prop="name" label="客户姓名" min-width="100" />
-            <el-table-column prop="phone" label="手机号" width="120" />
-            <el-table-column prop="segment" label="客户细分" width="100">
+            <el-table-column
+              prop="name"
+              label="客户姓名"
+              min-width="100"
+            />
+            <el-table-column
+              prop="phone"
+              label="手机号"
+              width="120"
+            />
+            <el-table-column
+              prop="segment"
+              label="客户细分"
+              width="100"
+            >
               <template #default="{ row }">
-                <el-tag :type="getSegmentTagType(row.segment)" size="small">
+                <el-tag
+                  :type="getSegmentTagType(row.segment)"
+                  size="small"
+                >
                   {{ getSegmentText(row.segment) }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="orders_count" label="订单数" width="80" align="right" />
-            <el-table-column prop="total_amount" label="消费金额" width="110" align="right">
+            <el-table-column
+              prop="orders_count"
+              label="订单数"
+              width="80"
+              align="right"
+            />
+            <el-table-column
+              prop="total_amount"
+              label="消费金额"
+              width="110"
+              align="right"
+            >
               <template #default="{ row }">
                 ¥{{ formatMoney(row.total_amount) }}
               </template>
             </el-table-column>
-            <el-table-column prop="last_order_date" label="最后消费" width="110">
+            <el-table-column
+              prop="last_order_date"
+              label="最后消费"
+              width="110"
+            >
               <template #default="{ row }">
                 {{ formatDate(row.last_order_date) }}
               </template>
             </el-table-column>
-            <el-table-column v-if="canViewCustomerField('customer_detail')" label="操作" :width="$getActionColumnWidth(['查看详情'])" class-name="actions-column">
+            <el-table-column
+              v-if="canViewCustomerField('customer_detail')"
+              label="操作"
+              :width="$getActionColumnWidth(['查看详情'])"
+              class-name="actions-column"
+            >
               <template #default="{ row }">
                 <div class="action-buttons">
-                <el-button
-                  type="primary"
-                  size="small"
-                  link
-                  @click.stop="viewCustomerDetail(row)"
-                >
-                  查看详情
-                </el-button>
+                  <el-button
+                    type="primary"
+                    size="small"
+                    link
+                    @click.stop="viewCustomerDetail(row)"
+                  >
+                    查看详情
+                  </el-button>
                 </div>
               </template>
             </el-table-column>
@@ -172,12 +303,20 @@
       </el-col>
 
       <!-- 客户洞察 -->
-      <el-col v-if="canViewCustomerField('behavior_insights')" :xs="24" :lg="10">
+      <el-col
+        v-if="canViewCustomerField('behavior_insights')"
+        :xs="24"
+        :lg="10"
+      >
         <el-card>
           <template #header>
             <div class="card-header">
               <span>客户行为洞察</span>
-              <el-button link size="small" @click="refreshInsights">
+              <el-button
+                link
+                size="small"
+                @click="refreshInsights"
+              >
                 <el-icon><Refresh /></el-icon>
                 刷新
               </el-button>
@@ -185,17 +324,29 @@
           </template>
 
           <div class="insights-list">
-            <div v-for="insight in customerInsights" :key="insight.id" class="insight-item">
+            <div
+              v-for="insight in customerInsights"
+              :key="insight.id"
+              class="insight-item"
+            >
               <div class="insight-header">
-                <el-icon class="insight-icon" :class="insight.type">
+                <el-icon
+                  class="insight-icon"
+                  :class="insight.type"
+                >
                   <component :is="insight.icon" />
                 </el-icon>
                 <span class="insight-title">{{ insight.title }}</span>
               </div>
-              <div class="insight-content">{{ insight.content }}</div>
+              <div class="insight-content">
+                {{ insight.content }}
+              </div>
               <div class="insight-footer">
-                <span class="insight-impact" :class="insight.impact">
-                  {{ insight.impactText }}
+                <span
+                  class="insight-impact"
+                  :class="insight.impact"
+                >
+                  {{ insight.impact_text }}
                 </span>
                 <span class="insight-date">{{ formatDate(insight.date) }}</span>
               </div>
@@ -215,21 +366,42 @@
       dialog-class="customer-detail-dialog"
       :show-default-footer="false"
     >
-      <div v-if="selectedCustomer" class="customer-detail">
+      <div
+        v-if="selectedCustomer"
+        class="customer-detail"
+      >
         <!-- 基本信息 -->
-        <el-descriptions :column="2" border class="customer-info">
-          <el-descriptions-item label="客户姓名">{{ selectedCustomer.name }}</el-descriptions-item>
-          <el-descriptions-item label="手机号">{{ selectedCustomer.phone }}</el-descriptions-item>
+        <el-descriptions
+          :column="2"
+          border
+          class="customer-info"
+        >
+          <el-descriptions-item label="客户姓名">
+            {{ selectedCustomer.name }}
+          </el-descriptions-item>
+          <el-descriptions-item label="手机号">
+            {{ selectedCustomer.phone }}
+          </el-descriptions-item>
           <el-descriptions-item label="客户细分">
             <el-tag :type="getSegmentTagType(selectedCustomer.segment)">
               {{ getSegmentText(selectedCustomer.segment) }}
             </el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="注册时间">{{ formatDate(selectedCustomer.created_at) }}</el-descriptions-item>
-          <el-descriptions-item label="总订单数">{{ selectedCustomer.orders_count }}</el-descriptions-item>
-          <el-descriptions-item label="总消费金额">¥{{ formatMoney(selectedCustomer.total_amount) }}</el-descriptions-item>
-          <el-descriptions-item label="平均客单价">¥{{ formatMoney(selectedCustomer.avg_order_value) }}</el-descriptions-item>
-          <el-descriptions-item label="最后消费">{{ formatDate(selectedCustomer.last_order_date) }}</el-descriptions-item>
+          <el-descriptions-item label="注册时间">
+            {{ formatDate(selectedCustomer.created_at) }}
+          </el-descriptions-item>
+          <el-descriptions-item label="总订单数">
+            {{ selectedCustomer.orders_count }}
+          </el-descriptions-item>
+          <el-descriptions-item label="总消费金额">
+            ¥{{ formatMoney(selectedCustomer.total_amount) }}
+          </el-descriptions-item>
+          <el-descriptions-item label="平均客单价">
+            ¥{{ formatMoney(selectedCustomer.avg_order_value) }}
+          </el-descriptions-item>
+          <el-descriptions-item label="最后消费">
+            {{ formatDate(selectedCustomer.last_order_date) }}
+          </el-descriptions-item>
         </el-descriptions>
 
         <!-- 消费趋势图 -->
@@ -237,7 +409,10 @@
           <template #header>
             <span>消费趋势分析</span>
           </template>
-          <div ref="customerTrendChartRef" class="chart-container"></div>
+          <div
+            ref="customerTrendChartRef"
+            class="chart-container"
+          />
         </el-card>
 
         <!-- 商品偏好 -->
@@ -245,7 +420,10 @@
           <template #header>
             <span>商品偏好分析</span>
           </template>
-          <div ref="customerPreferenceChartRef" class="chart-container"></div>
+          <div
+            ref="customerPreferenceChartRef"
+            class="chart-container"
+          />
         </el-card>
       </div>
     </MobileDialog>
@@ -253,7 +431,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onUnmounted, nextTick, markRaw, watch } from 'vue';
+import { ref, computed, onUnmounted, nextTick, markRaw, watch } from 'vue'
 import { useNotification } from '@/composables/useNotification'
 import { useLoadingState } from '@/composables'
 import { useCachedRequest, DEFAULT_CACHE_TTL } from '@/composables/usePageCache'
@@ -261,27 +439,22 @@ import { useImportExport } from '@/composables/useImportExport'
 import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { buildCsvContent } from '@/utils/csv-export'
-const { success, error: showError, info, warning } = useNotification()
+const { success: _success, error: showError, info, warning } = useNotification()
 import {
   User,
-  ShoppingBag,
   TrendCharts,
   Star,
   ArrowUp,
   ArrowDown,
   InfoFilled,
-  Search,
   Download,
-  Refresh,
-  Warning,
-  CircleCheck
-} from '@element-plus/icons-vue';
+  Refresh
+} from '@element-plus/icons-vue'
 import echarts, { ECharts } from '@/utils/echarts'
 import { analyticsService } from '@/api/analytics'
-import type { CustomerAnalytics, CustomerSegment, CustomerInsight, CustomerDetail } from '@/types/analytics';
+import type { CustomerSegment, CustomerInsight, CustomerDetail } from '@/types/analytics'
 import type { CustomerAnalyticsProps } from '@/types/component'
 import { useAnalyticsFieldVisibility } from './useAnalyticsFieldVisibility'
-import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
 
 const props = withDefaults(defineProps<CustomerAnalyticsProps>(), {
@@ -298,14 +471,14 @@ const { canViewField: canViewCustomerField, canViewAnyField: canViewAnyCustomerF
 const { exportTextFile, buildDateFilename } = useImportExport()
 
 // 响应式数据
-const { loading } = useLoadingState();
-const { loading: customerLoading } = useLoadingState();
-const growthPeriod = ref<'30d' | '7d' | '90d'>('30d');
-const retentionCohort = ref<'monthly' | 'quarterly' | 'yearly'>('monthly');
-const customerSearch = ref('');
-const customerPage = ref(1);
-const customerPageSize = ref(20);
-const customerTotal = ref(0);
+const { loading } = useLoadingState()
+const { loading: customerLoading } = useLoadingState()
+const growthPeriod = ref<'30d' | '7d' | '90d'>('30d')
+const retentionCohort = ref<'monthly' | 'quarterly' | 'yearly'>('monthly')
+const customerSearch = ref('')
+const customerPage = ref(1)
+const customerPageSize = ref(20)
+const customerTotal = ref(0)
 
 // 概览数据
 const overviewCards = ref([
@@ -341,13 +514,13 @@ const overviewCards = ref([
     type: 'danger',
     icon: markRaw(Star)
   }
-]);
+])
 
 // 客户数据
-const customers = ref<CustomerDetail[]>([]);
-const customerInsights = ref<CustomerInsight[]>([]);
-const customerDetailVisible = ref(false);
-const selectedCustomer = ref<CustomerDetail | null>(null);
+const customers = ref<CustomerDetail[]>([])
+const customerInsights = ref<CustomerInsight[]>([])
+const customerDetailVisible = ref(false)
+const selectedCustomer = ref<CustomerDetail | null>(null)
 
 // 图表实例
 const charts = ref<{
@@ -357,7 +530,7 @@ const charts = ref<{
   activity?: ECharts;
   customerTrend?: ECharts;
   customerPreference?: ECharts;
-}>({});
+}>({})
 
 // 图表初始化标记
 let chartsInitialized = false
@@ -397,17 +570,17 @@ const disposeAllCharts = () => {
 // 保存 resize 处理函数引用，用于后续移除
 const handleResize = () => {
   Object.values(charts.value).forEach(chart => {
-    chart?.resize();
-  });
-};
+    chart?.resize()
+  })
+}
 
 // 图表引用
-const growthChartRef = ref<HTMLElement>();
-const segmentChartRef = ref<HTMLElement>();
-const retentionChartRef = ref<HTMLElement>();
-const activityChartRef = ref<HTMLElement>();
-const customerTrendChartRef = ref<HTMLElement>();
-const customerPreferenceChartRef = ref<HTMLElement>();
+const growthChartRef = ref<HTMLElement>()
+const segmentChartRef = ref<HTMLElement>()
+const retentionChartRef = ref<HTMLElement>()
+const activityChartRef = ref<HTMLElement>()
+const customerTrendChartRef = ref<HTMLElement>()
+const customerPreferenceChartRef = ref<HTMLElement>()
 
 // 图表初始化重试计数器
 const chartInitRetries = ref({
@@ -417,19 +590,19 @@ const chartInitRetries = ref({
   activity: 0,
   customerTrend: 0,
   customerPreference: 0
-});
-const MAX_RETRY = 5; // 最大重试次数（减少避免过多警告）
+})
+const MAX_RETRY = 5 // 最大重试次数（减少避免过多警告）
 
 // 计算属性
 const filteredCustomers = computed(() => {
-  if (!customerSearch.value) return customers.value;
+  if (!customerSearch.value) return customers.value
 
-  const search = customerSearch.value.toLowerCase();
+  const search = customerSearch.value.toLowerCase()
   return customers.value.filter(customer =>
-    customer.name.toLowerCase().includes(search) ||
-    customer.phone.includes(search)
-  );
-});
+    String(customer.name || '').toLowerCase().includes(search) ||
+    String(customer.phone || '').includes(search)
+  )
+})
 
 const showCustomerPrimaryCharts = computed(() => canViewAnyCustomerField(['growth_chart', 'segment_chart']))
 const showCustomerSecondaryCharts = computed(() => canViewAnyCustomerField(['retention_chart', 'activity_chart']))
@@ -440,12 +613,12 @@ const formatMoney = (amount: number): string => {
   return (amount / 100).toLocaleString('zh-CN', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
-  });
-};
+  })
+}
 
 const formatDate = (date: string): string => {
-  return new Date(date).toLocaleDateString('zh-CN');
-};
+  return new Date(date).toLocaleDateString('zh-CN')
+}
 
 const getSegmentTagType = (segment: string): 'success' | 'warning' | 'info' | 'primary' | 'danger' => {
   const types: Record<string, 'success' | 'warning' | 'info' | 'primary' | 'danger'> = {
@@ -453,9 +626,9 @@ const getSegmentTagType = (segment: string): 'success' | 'warning' | 'info' | 'p
     'potential': 'warning',
     'at-risk': 'info',
     'lost': 'info'
-  };
-  return types[segment] || 'info';
-};
+  }
+  return types[segment] || 'info'
+}
 
 const getSegmentText = (segment: string): string => {
   const texts: Record<string, string> = {
@@ -463,14 +636,14 @@ const getSegmentText = (segment: string): string => {
     'potential': '潜力客户',
     'at-risk': '流失风险',
     'lost': '已流失'
-  };
-  return texts[segment] || segment;
-};
+  }
+  return texts[segment] || segment
+}
 
 // 缓存键
 const CACHE_KEYS = {
   customerOverview: (params: any) => `/analytics/customers:${JSON.stringify(params)}`,
-  customerList: (page: number, pageSize: number, search: string) => `/analytics/customers/high-value:${page}:${pageSize}:${search}`,
+  customerList: (params: Record<string, unknown>) => `/analytics/customers/high-value:${JSON.stringify(params)}`,
   customerGrowth: (period: string) => `/analytics/customers/growth:${period}`,
   customerSegments: '/analytics/customers/segments',
   customerRetention: (cohort: string) => `/analytics/customers/retention:${cohort}`,
@@ -480,140 +653,170 @@ const CACHE_KEYS = {
 const loadOverview = async (showLoadingState = true) => {
   try {
     if (showLoadingState) {
-      loading.value = true;
+      loading.value = true
     }
 
     // 构建查询参数
-    const params: any = { period: growthPeriod.value };
+    const params: {
+      period: '30d' | '7d' | '90d'
+      start_date?: string
+      end_date?: string
+      store_id?: number
+    } = { period: growthPeriod.value }
 
     // 使用父组件传递的检索参数
     if (props.startDate) {
-      params.startDate = props.startDate
+      params.start_date = props.startDate
     }
     if (props.endDate) {
-      params.endDate = props.endDate
+      params.end_date = props.endDate
     }
     if (props.storeId) {
-      params.storeId = props.storeId
+      const storeId = Number(props.storeId)
+      if (Number.isSafeInteger(storeId) && storeId > 0) {
+        params.store_id = storeId
+      }
     }
 
     const cacheKey = CACHE_KEYS.customerOverview(params)
-    const response = await useCachedRequest(cacheKey, () => analyticsService.getCustomerAnalytics(params), DEFAULT_CACHE_TTL.STATIC);
-    const data: any = response?.data || {
-      totalCustomers: 0,
-      customersGrowth: 0,
-      newCustomers: 0,
-      newCustomersGrowth: 0,
-      activeCustomers: 0,
-      activeCustomersGrowth: 0,
-      highValueCustomers: 0,
-      highValueCustomersGrowth: 0,
+    const response = await useCachedRequest(cacheKey, () => analyticsService.getCustomerAnalytics(params), DEFAULT_CACHE_TTL.STATIC)
+    const data = response?.data || {
+      total_customers: 0,
+      customers_growth: 0,
+      new_customers: 0,
+      last_month_new_customers: 0,
+      new_customers_growth: 0,
+      active_customers: 0,
+      active_customers_growth: 0,
+      high_value_customers: 0,
+      high_value_customers_growth: 0,
+      customer_segments: [],
       insights: []
-    };
+    }
 
     // 更新概览卡片
     overviewCards.value = [
       {
         title: '总客户数',
-        value: (data.totalCustomers || 0).toLocaleString('zh-CN'),
-        change: `${(data.customersGrowth || 0) > 0 ? '+' : ''}${data.customersGrowth || 0}%`,
-        trend: (data.customersGrowth || 0) > 0 ? 'up' : 'down',
+        value: (data.total_customers || 0).toLocaleString('zh-CN'),
+        change: `${(data.customers_growth || 0) > 0 ? '+' : ''}${data.customers_growth || 0}%`,
+        trend: (data.customers_growth || 0) > 0 ? 'up' : 'down',
         type: 'primary',
         icon: User
       },
       {
         title: '新增客户',
-        value: (data.newCustomers || 0).toLocaleString('zh-CN'),
-        change: `${(data.newCustomersGrowth || 0) > 0 ? '+' : ''}${data.newCustomersGrowth || 0}%`,
-        trend: (data.newCustomersGrowth || 0) > 0 ? 'up' : 'down',
+        value: (data.new_customers || 0).toLocaleString('zh-CN'),
+        change: `${(data.new_customers_growth || 0) > 0 ? '+' : ''}${data.new_customers_growth || 0}%`,
+        trend: (data.new_customers_growth || 0) > 0 ? 'up' : 'down',
         type: 'success',
         icon: User
       },
       {
         title: '活跃客户',
-        value: (data.activeCustomers || 0).toLocaleString('zh-CN'),
-        change: `${(data.activeCustomersGrowth || 0) > 0 ? '+' : ''}${data.activeCustomersGrowth || 0}%`,
-        trend: (data.activeCustomersGrowth || 0) > 0 ? 'up' : 'down',
+        value: (data.active_customers || 0).toLocaleString('zh-CN'),
+        change: `${(data.active_customers_growth || 0) > 0 ? '+' : ''}${data.active_customers_growth || 0}%`,
+        trend: (data.active_customers_growth || 0) > 0 ? 'up' : 'down',
         type: 'warning',
         icon: TrendCharts
       },
       {
         title: '高价值客户',
-        value: (data.highValueCustomers || 0).toLocaleString('zh-CN'),
-        change: `${(data.highValueCustomersGrowth || 0) > 0 ? '+' : ''}${data.highValueCustomersGrowth || 0}%`,
-        trend: (data.highValueCustomersGrowth || 0) > 0 ? 'up' : 'down',
+        value: (data.high_value_customers || 0).toLocaleString('zh-CN'),
+        change: `${(data.high_value_customers_growth || 0) > 0 ? '+' : ''}${data.high_value_customers_growth || 0}%`,
+        trend: (data.high_value_customers_growth || 0) > 0 ? 'up' : 'down',
         type: 'danger',
         icon: Star
       }
-    ];
+    ]
 
     // 更新客户洞察
-    customerInsights.value = data.insights || [];
+    customerInsights.value = (data.insights || []).map((insight, index) => ({
+      ...insight,
+      id: insight.id || `customer-insight-${index}`,
+      date: insight.date || new Date().toISOString(),
+      impact_text: insight.impact_text || ''
+    }))
 
   } catch (err) {
-    logger.error('加载客户概览失败:', err);
-    logger.error('错误详情:', err.response?.data || err.message);
-    showError('加载客户概览失败');
+    logger.error('加载客户概览失败:', err)
+    logger.error('错误详情:', err.response?.data || err.message)
+    showError('加载客户概览失败')
   } finally {
     if (showLoadingState) {
-      loading.value = false;
+      loading.value = false
     }
   }
-};
+}
 
 const loadCustomers = async (showLoadingState = true) => {
   try {
     if (showLoadingState) {
-      customerLoading.value = true;
+      customerLoading.value = true
     }
-    const cacheKey = CACHE_KEYS.customerList(customerPage.value, customerPageSize.value, customerSearch.value)
-    const response = await useCachedRequest(cacheKey, () => analyticsService.getHighValueCustomers({
+    const customerParams: {
+      page: number
+      page_size: number
+      search_term: string
+      start_date?: string
+      end_date?: string
+      store_id?: number
+    } = {
       page: customerPage.value,
-      pageSize: customerPageSize.value,
-      search: customerSearch.value
-    }), DEFAULT_CACHE_TTL.STATIC);
+      page_size: customerPageSize.value,
+      search_term: customerSearch.value
+    }
+    if (props.startDate) customerParams.start_date = props.startDate
+    if (props.endDate) customerParams.end_date = props.endDate
+    if (props.storeId) {
+      const storeId = Number(props.storeId)
+      if (Number.isSafeInteger(storeId) && storeId > 0) customerParams.store_id = storeId
+    }
 
-    customers.value = response.data;
-    customerTotal.value = Number(response.pagination.total) || 0;
+    const cacheKey = CACHE_KEYS.customerList(customerParams)
+    const response = await useCachedRequest(cacheKey, () => analyticsService.getHighValueCustomers(customerParams), DEFAULT_CACHE_TTL.STATIC)
+
+    customers.value = Array.isArray(response.data) ? response.data : []
+    customerTotal.value = Number(response.pagination?.total) || 0
   } catch (err) {
-    logger.error('加载客户列表失败:', err);
-    showError('加载客户列表失败');
+    logger.error('加载客户列表失败:', err)
+    showError('加载客户列表失败')
   } finally {
     if (showLoadingState) {
-      customerLoading.value = false;
+      customerLoading.value = false
     }
   }
-};
+}
 
 const handleCustomerPageChange = () => loadCustomers()
 
 const initGrowthChart = async () => {
-  if (!growthChartRef.value) return;
+  if (!growthChartRef.value) return
 
   // 检查 DOM 尺寸是否有效
-  const rect = growthChartRef.value.getBoundingClientRect();
+  const rect = growthChartRef.value.getBoundingClientRect()
   if (rect.width === 0 || rect.height === 0) {
     if (chartInitRetries.value.growth < MAX_RETRY) {
-      chartInitRetries.value.growth++;
-      setTimeout(() => initGrowthChart(), 200);
+      chartInitRetries.value.growth++
+      setTimeout(() => initGrowthChart(), 200)
     }
-    return;
+    return
   }
 
   try {
-    const chart = createOrReuseChart('growth', growthChartRef.value);
+    const chart = createOrReuseChart('growth', growthChartRef.value)
     if (!chart) return
 
     const cacheKey = CACHE_KEYS.customerGrowth(growthPeriod.value)
-    const response = await useCachedRequest(cacheKey, () => analyticsService.getCustomerGrowth({ period: growthPeriod.value }), DEFAULT_CACHE_TTL.DYNAMIC);
-    const data = response?.data || { labels: [], values: [] };
+    const response = await useCachedRequest(cacheKey, () => analyticsService.getCustomerGrowth({ period: growthPeriod.value }), DEFAULT_CACHE_TTL.DYNAMIC)
+    const data = response?.data || { labels: [], values: [] }
 
     const option = {
       tooltip: {
         trigger: 'axis',
         formatter: (params: any) => {
-          const param = params[0];
-          return `${param.name}<br/>新增客户: ${param.value}`;
+          const param = params[0]
+          return `${param.name}<br/>新增客户: ${param.value}`
         }
       },
       grid: {
@@ -652,38 +855,38 @@ const initGrowthChart = async () => {
           }
         }
       }]
-    };
+    }
 
-    chart.setOption(option);
+    chart.setOption(option)
     // 确保图表正确渲染
-    setTimeout(() => chart.resize(), 100);
+    setTimeout(() => chart.resize(), 100)
   } catch (err) {
-    logger.error('加载客户增长数据失败:', err);
+    logger.error('加载客户增长数据失败:', err)
   }
-};
+}
 
 const initSegmentChart = async () => {
-  if (!segmentChartRef.value) return;
+  if (!segmentChartRef.value) return
 
   // 检查 DOM 尺寸是否有效
-  const rect = segmentChartRef.value.getBoundingClientRect();
+  const rect = segmentChartRef.value.getBoundingClientRect()
   if (rect.width === 0 || rect.height === 0) {
     if (chartInitRetries.value.segment < MAX_RETRY) {
-      chartInitRetries.value.segment++;
-      setTimeout(() => initSegmentChart(), 200);
+      chartInitRetries.value.segment++
+      setTimeout(() => initSegmentChart(), 200)
     }
-    return;
+    return
   }
 
   try {
-    const chart = createOrReuseChart('segment', segmentChartRef.value);
+    const chart = createOrReuseChart('segment', segmentChartRef.value)
     if (!chart) return
 
-    const response = await useCachedRequest(CACHE_KEYS.customerSegments, () => analyticsService.getCustomerSegments(), DEFAULT_CACHE_TTL.STATIC);
-    const data = response.data || response;
+    const response = await useCachedRequest(CACHE_KEYS.customerSegments, () => analyticsService.getCustomerSegments(), DEFAULT_CACHE_TTL.STATIC)
+    const data = response.data || response
 
     if (!Array.isArray(data)) {
-      return;
+      return
     }
 
     const option = {
@@ -714,82 +917,60 @@ const initSegmentChart = async () => {
           }
         }
       }]
-    };
+    }
 
-    chart.setOption(option);
+    chart.setOption(option)
   } catch (err) {
-    logger.error('加载客户细分数据失败:', err);
+    logger.error('加载客户细分数据失败:', err)
   }
-};
+}
 
 const initRetentionChart = async () => {
-  if (!retentionChartRef.value) return;
+  if (!retentionChartRef.value) return
 
   // 检查 DOM 尺寸是否有效
-  const rect = retentionChartRef.value.getBoundingClientRect();
+  const rect = retentionChartRef.value.getBoundingClientRect()
   if (rect.width === 0 || rect.height === 0) {
     if (chartInitRetries.value.retention < MAX_RETRY) {
-      chartInitRetries.value.retention++;
-      setTimeout(() => initRetentionChart(), 200);
+      chartInitRetries.value.retention++
+      setTimeout(() => initRetentionChart(), 200)
     }
-    return;
+    return
   }
 
   try {
-    const chart = createOrReuseChart('retention', retentionChartRef.value);
+    const chart = createOrReuseChart('retention', retentionChartRef.value)
     if (!chart) return
 
     const cacheKey = CACHE_KEYS.customerRetention(retentionCohort.value)
-    const response = await useCachedRequest(cacheKey, () => analyticsService.getCustomerRetention({ cohort: retentionCohort.value }), DEFAULT_CACHE_TTL.DYNAMIC);
+    const response = await useCachedRequest(cacheKey, () => analyticsService.getCustomerRetention({ cohort: retentionCohort.value }), DEFAULT_CACHE_TTL.DYNAMIC)
 
     // 处理响应数据
-    let data;
+    let data
     if (response?.data) {
-      data = response.data;
+      data = response.data
     } else if ((response as any)?.periods && (response as any)?.cohorts) {
       // 如果 response 本身就有 periods 和 cohorts 属性（某些情况下的响应格式）
-      data = response as any;
+      data = response as any
     } else {
-      data = response;
+      data = response
     }
 
     // 验证数据结构
     if (!data || !Array.isArray(data.periods) || !Array.isArray(data.cohorts)) {
-      const mockData = generateMockRetentionData();
-      setRetentionChartOption(chart, mockData);
-      return;
+      setRetentionChartOption(chart, { periods: [], cohorts: [] })
+      return
     }
 
-    setRetentionChartOption(chart, data);
+    setRetentionChartOption(chart, data)
   } catch (err) {
-    logger.error('加载留存率数据失败:', err);
-    // 使用模拟数据
-    const mockData = generateMockRetentionData();
+    logger.error('加载留存率数据失败:', err)
     if (charts.value.retention) {
-      setRetentionChartOption(charts.value.retention, mockData);
+      setRetentionChartOption(charts.value.retention, { periods: [], cohorts: [] })
     }
   }
-};
+}
 
-const generateMockRetentionData = () => {
-  const cohorts = [];
-  const periods = ['第1月', '第2月', '第3月', '第4月', '第5月', '第6月'];
-  const now = TimeUtil.now();
-
-  for (let i = 5; i >= 0; i--) {
-    const cohortName = `${now.subtract(i, 'month').month() + 1}月`;
-    const cohortData = [100];
-    for (let j = 1; j < 6; j++) {
-      cohortData.push(Math.max(10, 100 - j * 15 - Math.random() * 10));
-    }
-    cohorts.push({
-      cohort: cohortName,
-      data: cohortData
-    });
-  }
-
-  return { cohorts, periods };
-};
 
 const setRetentionChartOption = (chart: any, data: any) => {
   const option = {
@@ -799,11 +980,11 @@ const setRetentionChartOption = (chart: any, data: any) => {
         type: 'shadow'
       },
       formatter: (params: any) => {
-        let result = `${params[0].name}<br/>`;
+        let result = `${params[0].name}<br/>`
         params.forEach((param: any) => {
-          result += `${param.seriesName}: ${param.value}%<br/>`;
-        });
-        return result;
+          result += `${param.seriesName}: ${param.value}%<br/>`
+        })
+        return result
       }
     },
     legend: {
@@ -829,30 +1010,30 @@ const setRetentionChartOption = (chart: any, data: any) => {
         color: getRetentionColor(index)
       }
     }))
-  };
+  }
 
-  chart.setOption(option);
-};
+  chart.setOption(option)
+}
 
 const initActivityChart = async () => {
-  if (!activityChartRef.value) return;
+  if (!activityChartRef.value) return
 
   // 检查 DOM 尺寸是否有效
-  const rect = activityChartRef.value.getBoundingClientRect();
+  const rect = activityChartRef.value.getBoundingClientRect()
   if (rect.width === 0 || rect.height === 0) {
     if (chartInitRetries.value.activity < MAX_RETRY) {
-      chartInitRetries.value.activity++;
-      setTimeout(() => initActivityChart(), 200);
+      chartInitRetries.value.activity++
+      setTimeout(() => initActivityChart(), 200)
     }
-    return;
+    return
   }
 
   try {
-    const chart = createOrReuseChart('activity', activityChartRef.value);
+    const chart = createOrReuseChart('activity', activityChartRef.value)
     if (!chart) return
 
-    const response = await useCachedRequest(CACHE_KEYS.customerActivity, () => analyticsService.getCustomerActivity(), DEFAULT_CACHE_TTL.STATIC);
-    const data = response?.data || { activeRate: 0.5 };
+    const response = await useCachedRequest(CACHE_KEYS.customerActivity, () => analyticsService.getCustomerActivity(), DEFAULT_CACHE_TTL.STATIC)
+    const data = response?.data || { active_rate: 0 }
 
     const option = {
       tooltip: {
@@ -904,7 +1085,7 @@ const initActivityChart = async () => {
           fontSize: 20,
           distance: -60,
           formatter: function(value: number) {
-            return ((value || 0) * 100).toFixed(0) + '%';
+            return ((value || 0) * 100).toFixed(0) + '%'
           }
         },
         title: {
@@ -916,22 +1097,22 @@ const initActivityChart = async () => {
           offsetCenter: [0, '0%'],
           valueAnimation: true,
           formatter: function(value: number) {
-            return Math.round(value * 100) + '%';
+            return Math.round(value * 100) + '%'
           },
           color: 'inherit'
         },
         data: [{
-          value: data.activeRate,
+          value: Number(data.active_rate) || 0,
           name: '活跃率'
         }]
       }]
-    };
+    }
 
-    chart.setOption(option);
+    chart.setOption(option)
   } catch (err) {
-    logger.error('加载活跃度数据失败:', err);
+    logger.error('加载活跃度数据失败:', err)
   }
-};
+}
 
 const getSegmentColor = (segment: string): string => {
   const colors: Record<string, string> = {
@@ -939,66 +1120,76 @@ const getSegmentColor = (segment: string): string => {
     'potential': '#E6A23C',
     'at-risk': '#909399',
     'lost': '#C0C4CC'
-  };
-  return colors[segment] || '#409EFF';
-};
+  }
+  return colors[segment] || '#409EFF'
+}
 
 const getRetentionColor = (index: number): string => {
-  const colors = ['#5470C6', '#91CC75', '#FAC858', '#EE6666', '#73C0DE'];
-  return colors[index % colors.length];
-};
+  const colors = ['#5470C6', '#91CC75', '#FAC858', '#EE6666', '#73C0DE']
+  return colors[index % colors.length]
+}
 
 const viewCustomerDetail = async (customer: CustomerDetail) => {
   try {
-    selectedCustomer.value = customer;
-    customerDetailVisible.value = true;
+    selectedCustomer.value = customer
+    customerDetailVisible.value = true
 
     // 等待对话框打开后初始化图表，需要多次 nextTick 确保 DOM 完全渲染
-    await nextTick();
+    await nextTick()
     setTimeout(async () => {
-      await nextTick();
+      await nextTick()
       if (customerTrendChartRef.value && customerPreferenceChartRef.value) {
-        initCustomerDetailCharts();
+        initCustomerDetailCharts()
       }
-    }, 100);
+    }, 100)
   } catch (err) {
-    logger.error('加载客户详情失败:', err);
-    showError('加载客户详情失败');
+    logger.error('加载客户详情失败:', err)
+    showError('加载客户详情失败')
   }
-};
+}
 
 const initCustomerDetailCharts = async () => {
   if (!selectedCustomer.value || !customerTrendChartRef.value || !customerPreferenceChartRef.value) {
-    return;
+    return
   }
 
   // 检查 DOM 元素是否已正确渲染
-  const trendRect = customerTrendChartRef.value.getBoundingClientRect();
-  const preferenceRect = customerPreferenceChartRef.value.getBoundingClientRect();
+  const trendRect = customerTrendChartRef.value.getBoundingClientRect()
+  const _preferenceRect = customerPreferenceChartRef.value.getBoundingClientRect()
 
   if (trendRect.width === 0 || trendRect.height === 0) {
-    setTimeout(() => initCustomerDetailCharts(), 200);
-    return;
+    setTimeout(() => initCustomerDetailCharts(), 200)
+    return
+  }
+
+  let detailData: {
+    trends: Array<{ period: string; amount: number }>
+    preferences: Array<{ name: string; value: number }>
+  } = { trends: [], preferences: [] }
+  try {
+    const response = await analyticsService.getCustomerDetail(selectedCustomer.value.id)
+    detailData = response?.data || detailData
+  } catch (error) {
+    logger.error('加载客户详情图表数据失败:', error)
   }
 
   // 初始化消费趋势图
-  const trendChart = createOrReuseChart('customerTrend', customerTrendChartRef.value);
+  const trendChart = createOrReuseChart('customerTrend', customerTrendChartRef.value)
   if (!trendChart) return
 
-  // 模拟客户消费趋势数据
   const trendOption = {
     tooltip: {
       trigger: 'axis'
     },
     xAxis: {
       type: 'category',
-      data: ['1月', '2月', '3月', '4月', '5月', '6月']
+      data: detailData.trends.map(item => item.period)
     },
     yAxis: {
       type: 'value'
     },
     series: [{
-      data: [2000, 3500, 2800, 4200, 3800, 4500],
+      data: detailData.trends.map(item => Number(item.amount || 0) / 100),
       type: 'line',
       smooth: true,
       itemStyle: {
@@ -1019,11 +1210,11 @@ const initCustomerDetailCharts = async () => {
         }
       }
     }]
-  };
-  trendChart.setOption(trendOption);
+  }
+  trendChart.setOption(trendOption)
 
   // 初始化商品偏好图
-  const preferenceChart = createOrReuseChart('customerPreference', customerPreferenceChartRef.value);
+  const preferenceChart = createOrReuseChart('customerPreference', customerPreferenceChartRef.value)
   if (!preferenceChart) return
 
   const preferenceOption = {
@@ -1033,22 +1224,16 @@ const initCustomerDetailCharts = async () => {
     series: [{
       type: 'pie',
       radius: '60%',
-      data: [
-        { value: 35, name: 'iPhone' },
-        { value: 25, name: 'iPad' },
-        { value: 20, name: 'Mac' },
-        { value: 15, name: '配件' },
-        { value: 5, name: '其他' }
-      ]
+      data: detailData.preferences
     }]
-  };
-  preferenceChart.setOption(preferenceOption);
-};
+  }
+  preferenceChart.setOption(preferenceOption)
+}
 
 const refreshInsights = async () => {
-  info('正在刷新客户洞察...');
-  await loadOverview();
-};
+  info('正在刷新客户洞察...')
+  await loadOverview()
+}
 
 const exportCustomers = () => {
   try {
@@ -1128,27 +1313,27 @@ watch(customerDetailVisible, (visible) => {
 onUnmounted(() => {
   disposeAllCharts()
   // 移除 resize 事件监听器
-  window.removeEventListener('resize', handleResize);
-});
+  window.removeEventListener('resize', handleResize)
+})
 
 // 监听周期变化
 const handlePeriodChange = () => {
-  loadOverview();
-  initGrowthChart();
-};
+  loadOverview()
+  initGrowthChart()
+}
 
 const handleCohortChange = () => {
-  initRetentionChart();
-};
+  initRetentionChart()
+}
 
 // 监听周期和队列变化
 watch(growthPeriod, () => {
-  handlePeriodChange();
-});
+  handlePeriodChange()
+})
 
 watch(retentionCohort, () => {
-  handleCohortChange();
-});
+  handleCohortChange()
+})
 
 const refreshCharts = async () => {
   await Promise.all([
@@ -1171,11 +1356,11 @@ defineExpose({
     await refreshCharts()
   },
   refresh: () => {
-    loadOverview();
-    loadCustomers();
-    refreshCharts();
+    loadOverview()
+    loadCustomers()
+    refreshCharts()
   }
-});
+})
 </script>
 
 <style lang="scss" scoped>
@@ -1207,14 +1392,14 @@ defineExpose({
 
           .card-title {
             font-size: 14px;
-            color: #909399;
+            color: var(--color-info);
             margin-bottom: 4px;
           }
 
           .card-value {
             font-size: 24px;
             font-weight: bold;
-            color: #303133;
+            color: var(--color-text-primary);
             margin-bottom: 4px;
           }
 
@@ -1225,30 +1410,30 @@ defineExpose({
             gap: 2px;
 
             &.up {
-              color: #67C23A;
+              color: var(--color-success);
             }
 
             &.down {
-              color: #F56C6C;
+              color: var(--color-danger);
             }
           }
         }
       }
 
       &.primary .card-icon {
-        background: linear-gradient(135deg, #409EFF, #66b1ff);
+        background: linear-gradient(135deg, var(--color-primary), var(--tf-color-blue-element-light));
       }
 
       &.success .card-icon {
-        background: linear-gradient(135deg, #67C23A, #85ce61);
+        background: linear-gradient(135deg, var(--color-success), var(--tf-color-green-element-light));
       }
 
       &.warning .card-icon {
-        background: linear-gradient(135deg, #E6A23C, #ebb563);
+        background: linear-gradient(135deg, var(--color-warning), var(--tf-color-amber-muted));
       }
 
       &.danger .card-icon {
-        background: linear-gradient(135deg, #F56C6C, #f78989);
+        background: linear-gradient(135deg, var(--color-danger), var(--tf-color-red-element-light));
       }
     }
   }
@@ -1296,7 +1481,7 @@ defineExpose({
 
     .insight-item {
       padding: 16px;
-      border-bottom: 1px solid #EBEEF5;
+      border-bottom: 1px solid var(--color-border-light);
 
       &:last-child {
         border-bottom: none;
@@ -1312,30 +1497,30 @@ defineExpose({
           font-size: 18px;
 
           &.success {
-            color: #67C23A;
+            color: var(--color-success);
           }
 
           &.warning {
-            color: #E6A23C;
+            color: var(--color-warning);
           }
 
           &.danger {
-            color: #F56C6C;
+            color: var(--color-danger);
           }
 
           &.info {
-            color: #409EFF;
+            color: var(--color-primary);
           }
         }
 
         .insight-title {
           font-weight: 500;
-          color: #303133;
+          color: var(--color-text-primary);
         }
       }
 
       .insight-content {
-        color: #606266;
+        color: var(--color-text-regular);
         font-size: 14px;
         line-height: 1.5;
         margin-bottom: 8px;
@@ -1352,23 +1537,23 @@ defineExpose({
           border-radius: 12px;
 
           &.high {
-            background: #FEF0F0;
-            color: #F56C6C;
+            background: var(--tf-color-danger-surface-element);
+            color: var(--color-danger);
           }
 
           &.medium {
-            background: #FDF6EC;
-            color: #E6A23C;
+            background: var(--tf-color-warning-surface-element);
+            color: var(--color-warning);
           }
 
           &.low {
-            background: #F0F9FF;
-            color: #409EFF;
+            background: var(--tf-color-blue-50);
+            color: var(--color-primary);
           }
         }
 
         .insight-date {
-          color: #909399;
+          color: var(--color-info);
         }
       }
     }
@@ -1429,7 +1614,7 @@ defineExpose({
         align-items: stretch;
 
         .el-input {
-          width: 100% !important;
+          width: 100%;
         }
       }
     }

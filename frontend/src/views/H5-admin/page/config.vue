@@ -10,237 +10,393 @@
     module-name="商城配置"
     permission-code="h5-config:view"
   >
-
-  <div class="shop-config-page">
-    <!-- 加载状态 -->
-    <div v-if="loading" class="loading-state">
-      <SectionLoading text="加载商城配置中..." size="large" />
-    </div>
-
-    <!-- 配置表单 -->
-    <div v-else class="config-content">
-      <!-- 基本信息 -->
-      <div class="config-section">
-        <h3 class="section-title">基本信息</h3>
-        <el-form class="config-form" label-width="120px" :disabled="!canEdit">
-          <el-form-item label="店铺名称">
-            <el-input v-model="configs.shop_name" placeholder="请输入店铺名称" />
-          </el-form-item>
-          <el-form-item label="店铺副标题">
-            <el-input v-model="configs.shop_subtitle" placeholder="请输入店铺副标题" />
-          </el-form-item>
-          <el-form-item label="店铺Logo">
-            <div class="image-upload-wrapper">
-              <el-upload
-                :action="uploadAction"
-                :headers="uploadHeaders"
-                :show-file-list="false"
-                :on-success="(res) => handleUploadSuccess(res, 'shop_logo')"
-                :before-upload="beforeUpload"
-                :disabled="!canEdit"
-                name="files"
-                accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                list-type="picture-card"
-              >
-                <img v-if="configs.shop_logo" :src="getImagePreviewUrl(configs.shop_logo)" class="uploaded-image" />
-                <i v-else class="fas fa-plus"></i>
-              </el-upload>
-              <el-button
-                v-if="configs.shop_logo && canEdit"
-                plain
-                type="danger"
-                size="small"
-                @click="handleDeleteImage('shop_logo')"
-                class="delete-image-btn btn-sm"
-              >
-                <i class="fas fa-trash mr-1"></i>删除
-              </el-button>
-            </div>
-          </el-form-item>
-        </el-form>
+    <div class="shop-config-page">
+      <!-- 加载状态 -->
+      <div
+        v-if="loading"
+        class="loading-state"
+      >
+        <SectionLoading
+          text="加载商城配置中..."
+          size="large"
+        />
       </div>
 
-      <!-- 联系方式 -->
-      <div class="config-section">
-        <h3 class="section-title">联系方式</h3>
-        <el-form class="config-form" label-width="120px" :disabled="!canEdit">
-          <el-form-item label="联系电话">
-            <el-input v-model="configs.shop_phone" placeholder="请输入联系电话" />
-          </el-form-item>
-          <el-form-item label="微信号">
-            <el-input v-model="configs.wechat_id" placeholder="请输入微信号" />
-            <template #tip>
-              <span class="tip-text">用户点击后将自动跳转到微信添加好友</span>
-            </template>
-          </el-form-item>
-          <el-form-item label="店铺地址">
-            <el-input v-model="configs.shop_address" type="textarea" :rows="2" placeholder="请输入店铺地址" />
-          </el-form-item>
-          <el-form-item label="地图位置">
-            <div class="map-location-row">
-              <div class="map-coordinate-inputs">
-                <el-input v-model="configs.map_latitude" placeholder="纬度 (如: 22.5431)" class="mb-2" />
-                <el-input v-model="configs.map_longitude" placeholder="经度 (如: 114.0579)" />
+      <!-- 配置表单 -->
+      <div
+        v-else
+        class="config-content"
+      >
+        <!-- 基本信息 -->
+        <div class="config-section">
+          <h3 class="section-title">
+            基本信息
+          </h3>
+          <el-form
+            class="config-form"
+            label-width="120px"
+            :disabled="!canEdit"
+          >
+            <el-form-item
+              v-if="canViewField('shop.shop_name')"
+              label="店铺名称"
+            >
+              <el-input
+                v-model="configs.shop_name"
+                placeholder="请输入店铺名称"
+              />
+            </el-form-item>
+            <el-form-item
+              v-if="canViewField('shop.shop_subtitle')"
+              label="店铺副标题"
+            >
+              <el-input
+                v-model="configs.shop_subtitle"
+                placeholder="请输入店铺副标题"
+              />
+            </el-form-item>
+            <el-form-item
+              v-if="canViewField('shop.shop_logo')"
+              label="店铺Logo"
+            >
+              <div class="image-upload-wrapper">
+                <el-upload
+                  :action="uploadAction"
+                  :headers="uploadHeaders"
+                  :show-file-list="false"
+                  :on-success="(res) => handleUploadSuccess(res, 'shop_logo')"
+                  :before-upload="beforeUpload"
+                  :disabled="!canEdit"
+                  name="files"
+                  accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                  list-type="picture-card"
+                >
+                  <img
+                    v-if="configs.shop_logo"
+                    :src="getImagePreviewUrl(configs.shop_logo)"
+                    class="uploaded-image"
+                  >
+                  <i
+                    v-else
+                    class="fas fa-plus"
+                  />
+                </el-upload>
+                <el-button
+                  v-if="configs.shop_logo && canEdit && canViewField('system_info.operations')"
+                  plain
+                  type="danger"
+                  size="small"
+                  class="delete-image-btn btn-sm"
+                  @click="handleDeleteImage('shop_logo')"
+                >
+                  <i class="fas fa-trash mr-1" />删除
+                </el-button>
               </div>
-              <el-button plain type="primary" :disabled="!canEdit" @click="openMapPicker" class="btn-sm">选择位置</el-button>
-            </div>
-            <template #tip>
-              <span class="tip-text">在地图上选择店铺位置，前台点击地图图标可查看</span>
-            </template>
-          </el-form-item>
-          <el-form-item label="营业时间">
-            <el-input v-model="configs.shop_hours" placeholder="如：09:00-21:00" />
-          </el-form-item>
-        </el-form>
-      </div>
-
-      <!-- 支付方式 -->
-      <div class="config-section">
-        <h3 class="section-title">支付方式</h3>
-        <el-form class="config-form" label-width="120px" :disabled="!canEdit">
-          <el-form-item label="微信收款码">
-            <div class="image-upload-wrapper">
-              <el-upload
-                :action="uploadAction"
-                :headers="uploadHeaders"
-                :show-file-list="false"
-                :on-success="(res) => handleUploadSuccess(res, 'wechat_qrcode')"
-                :before-upload="beforeUpload"
-                :disabled="!canEdit"
-                name="files"
-                accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                list-type="picture-card"
-              >
-                <img v-if="configs.wechat_qrcode" :src="getImagePreviewUrl(configs.wechat_qrcode)" class="uploaded-image" />
-                <i v-else class="fas fa-plus"></i>
-              </el-upload>
-              <el-button
-                v-if="configs.wechat_qrcode && canEdit"
-                plain
-                type="danger"
-                size="small"
-                @click="handleDeleteImage('wechat_qrcode')"
-                class="delete-image-btn btn-sm"
-              >
-                <i class="fas fa-trash mr-1"></i>删除
-              </el-button>
-            </div>
-            <template #tip>
-              <span class="tip-text">用户支付时将显示此二维码</span>
-            </template>
-          </el-form-item>
-          <el-form-item label="支付宝收款码">
-            <div class="image-upload-wrapper">
-              <el-upload
-                :action="uploadAction"
-                :headers="uploadHeaders"
-                :show-file-list="false"
-                :on-success="(res) => handleUploadSuccess(res, 'alipay_qrcode')"
-                :before-upload="beforeUpload"
-                :disabled="!canEdit"
-                name="files"
-                accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                list-type="picture-card"
-              >
-                <img v-if="configs.alipay_qrcode" :src="getImagePreviewUrl(configs.alipay_qrcode)" class="uploaded-image" />
-                <i v-else class="fas fa-plus"></i>
-              </el-upload>
-              <el-button
-                v-if="configs.alipay_qrcode && canEdit"
-                plain
-                type="danger"
-                size="small"
-                @click="handleDeleteImage('alipay_qrcode')"
-                class="delete-image-btn btn-sm"
-              >
-                <i class="fas fa-trash mr-1"></i>删除
-              </el-button>
-            </div>
-            <template #tip>
-              <span class="tip-text">用户支付时将显示此二维码</span>
-            </template>
-          </el-form-item>
-          <el-form-item label="银行转账信息">
-            <el-input
-              v-model="configs.bank_info"
-              type="textarea"
-              :rows="3"
-              placeholder="请输入银行账号、开户行等信息"
-            />
-            <template #tip>
-              <span class="tip-text">支持换行，将原样显示给用户</span>
-            </template>
-          </el-form-item>
-        </el-form>
-      </div>
-
-      <!-- 功能开关 -->
-      <div class="config-section">
-        <h3 class="section-title">功能设置</h3>
-        <el-form class="config-form" label-width="120px" :disabled="!canEdit">
-          <el-form-item label="启用轮播图">
-            <el-switch v-model="configs.banner_enabled" />
-            <template #tip>
-              <span class="tip-text">关闭后首页将不显示轮播图</span>
-            </template>
-          </el-form-item>
-          <el-form-item label="启用购物车">
-            <el-switch v-model="configs.cart_enabled" />
-            <template #tip>
-              <span class="tip-text">关闭后用户只能直接购买，无法使用购物车</span>
-            </template>
-          </el-form-item>
-          <el-form-item label="启用直接购买">
-            <el-switch v-model="configs.direct_buy_enabled" />
-            <template #tip>
-              <span class="tip-text">关闭后用户只能通过购物车下单</span>
-            </template>
-          </el-form-item>
-        </el-form>
-      </div>
-
-      <!-- 保存按钮 -->
-      <div class="actions">
-        <el-button v-if="canEdit" :loading="saving" plain type="primary" size="default" @click="handleSave" class="btn-sm">
-          <i class="fas fa-save mr-1"></i>保存
-        </el-button>
-      </div>
-    </div>
-
-    <!-- 地图选择对话框 -->
-    <MobileDialog
-      v-model="showMapDialog"
-      title="选择地图位置"
-      width="900px"
-      :close-on-click-modal="false"
-      dialog-class="shop-config-map-dialog"
-      :show-default-footer="false"
-    >
-      <div class="map-picker-container">
-        <div class="map-instructions">
-          <h4>操作说明：</h4>
-          <ul>
-            <li>🖱️ 在地图上点击选择店铺位置</li>
-            <li>📍 拖动红色标记可以微调位置</li>
-            <li>🔍 滚轮可以缩放地图</li>
-            <li>✅ 选择好后点击"确定"保存</li>
-          </ul>
-          <div class="current-location">
-            <strong>当前选中位置：</strong>
-            <span v-if="selectedLocation.lat">
-              纬度: {{ selectedLocation.lat }}, 经度: {{ selectedLocation.lng }}
-            </span>
-            <span v-else>请点击地图选择位置</span>
-          </div>
+            </el-form-item>
+          </el-form>
         </div>
-        <div id="map-container" class="map-frame"></div>
+
+        <!-- 联系方式 -->
+        <div class="config-section">
+          <h3 class="section-title">
+            联系方式
+          </h3>
+          <el-form
+            class="config-form"
+            label-width="120px"
+            :disabled="!canEdit"
+          >
+            <el-form-item
+              v-if="canViewField('contact.shop_phone')"
+              label="联系电话"
+            >
+              <el-input
+                v-model="configs.shop_phone"
+                placeholder="请输入联系电话"
+              />
+            </el-form-item>
+            <el-form-item
+              v-if="canViewField('contact.wechat_id')"
+              label="微信号"
+            >
+              <el-input
+                v-model="configs.wechat_id"
+                placeholder="请输入微信号"
+              />
+              <template #tip>
+                <span class="tip-text">用户点击后将自动跳转到微信添加好友</span>
+              </template>
+            </el-form-item>
+            <el-form-item
+              v-if="canViewField('contact.shop_address')"
+              label="店铺地址"
+            >
+              <el-input
+                v-model="configs.shop_address"
+                type="textarea"
+                :rows="2"
+                placeholder="请输入店铺地址"
+              />
+            </el-form-item>
+            <el-form-item
+              v-if="canViewField('contact.map_location')"
+              label="地图位置"
+            >
+              <div class="map-location-row">
+                <div class="map-coordinate-inputs">
+                  <el-input
+                    v-model="configs.map_latitude"
+                    placeholder="纬度 (如: 22.5431)"
+                    class="mb-2"
+                  />
+                  <el-input
+                    v-model="configs.map_longitude"
+                    placeholder="经度 (如: 114.0579)"
+                  />
+                </div>
+                <el-button
+                  v-if="canViewField('system_info.operations')"
+                  plain
+                  type="primary"
+                  :disabled="!canEdit"
+                  class="btn-sm"
+                  @click="openMapPicker"
+                >
+                  选择位置
+                </el-button>
+              </div>
+              <template #tip>
+                <span class="tip-text">在地图上选择店铺位置，前台点击地图图标可查看</span>
+              </template>
+            </el-form-item>
+            <el-form-item
+              v-if="canViewField('contact.shop_hours')"
+              label="营业时间"
+            >
+              <el-input
+                v-model="configs.shop_hours"
+                placeholder="如：09:00-21:00"
+              />
+            </el-form-item>
+          </el-form>
+        </div>
+
+        <!-- 支付方式 -->
+        <div class="config-section">
+          <h3 class="section-title">
+            支付方式
+          </h3>
+          <el-form
+            class="config-form"
+            label-width="120px"
+            :disabled="!canEdit"
+          >
+            <el-form-item
+              v-if="canViewField('payment.wechat_qrcode')"
+              label="微信收款码"
+            >
+              <div class="image-upload-wrapper">
+                <el-upload
+                  :action="uploadAction"
+                  :headers="uploadHeaders"
+                  :show-file-list="false"
+                  :on-success="(res) => handleUploadSuccess(res, 'wechat_qrcode')"
+                  :before-upload="beforeUpload"
+                  :disabled="!canEdit"
+                  name="files"
+                  accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                  list-type="picture-card"
+                >
+                  <img
+                    v-if="configs.wechat_qrcode"
+                    :src="getImagePreviewUrl(configs.wechat_qrcode)"
+                    class="uploaded-image"
+                  >
+                  <i
+                    v-else
+                    class="fas fa-plus"
+                  />
+                </el-upload>
+                <el-button
+                  v-if="configs.wechat_qrcode && canEdit && canViewField('system_info.operations')"
+                  plain
+                  type="danger"
+                  size="small"
+                  class="delete-image-btn btn-sm"
+                  @click="handleDeleteImage('wechat_qrcode')"
+                >
+                  <i class="fas fa-trash mr-1" />删除
+                </el-button>
+              </div>
+              <template #tip>
+                <span class="tip-text">用户支付时将显示此二维码</span>
+              </template>
+            </el-form-item>
+            <el-form-item
+              v-if="canViewField('payment.alipay_qrcode')"
+              label="支付宝收款码"
+            >
+              <div class="image-upload-wrapper">
+                <el-upload
+                  :action="uploadAction"
+                  :headers="uploadHeaders"
+                  :show-file-list="false"
+                  :on-success="(res) => handleUploadSuccess(res, 'alipay_qrcode')"
+                  :before-upload="beforeUpload"
+                  :disabled="!canEdit"
+                  name="files"
+                  accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                  list-type="picture-card"
+                >
+                  <img
+                    v-if="configs.alipay_qrcode"
+                    :src="getImagePreviewUrl(configs.alipay_qrcode)"
+                    class="uploaded-image"
+                  >
+                  <i
+                    v-else
+                    class="fas fa-plus"
+                  />
+                </el-upload>
+                <el-button
+                  v-if="configs.alipay_qrcode && canEdit && canViewField('system_info.operations')"
+                  plain
+                  type="danger"
+                  size="small"
+                  class="delete-image-btn btn-sm"
+                  @click="handleDeleteImage('alipay_qrcode')"
+                >
+                  <i class="fas fa-trash mr-1" />删除
+                </el-button>
+              </div>
+              <template #tip>
+                <span class="tip-text">用户支付时将显示此二维码</span>
+              </template>
+            </el-form-item>
+            <el-form-item
+              v-if="canViewField('payment.bank_info')"
+              label="银行转账信息"
+            >
+              <el-input
+                v-model="configs.bank_info"
+                type="textarea"
+                :rows="3"
+                placeholder="请输入银行账号、开户行等信息"
+              />
+              <template #tip>
+                <span class="tip-text">支持换行，将原样显示给用户</span>
+              </template>
+            </el-form-item>
+          </el-form>
+        </div>
+
+        <!-- 功能开关 -->
+        <div class="config-section">
+          <h3 class="section-title">
+            功能设置
+          </h3>
+          <el-form
+            class="config-form"
+            label-width="120px"
+            :disabled="!canEdit"
+          >
+            <el-form-item
+              v-if="canViewField('features.banner_enabled')"
+              label="启用轮播图"
+            >
+              <el-switch v-model="configs.banner_enabled" />
+              <template #tip>
+                <span class="tip-text">关闭后首页将不显示轮播图</span>
+              </template>
+            </el-form-item>
+            <el-form-item
+              v-if="canViewField('features.cart_enabled')"
+              label="启用购物车"
+            >
+              <el-switch v-model="configs.cart_enabled" />
+              <template #tip>
+                <span class="tip-text">关闭后用户只能直接购买，无法使用购物车</span>
+              </template>
+            </el-form-item>
+            <el-form-item
+              v-if="canViewField('features.direct_buy_enabled')"
+              label="启用直接购买"
+            >
+              <el-switch v-model="configs.direct_buy_enabled" />
+              <template #tip>
+                <span class="tip-text">关闭后用户只能通过购物车下单</span>
+              </template>
+            </el-form-item>
+          </el-form>
+        </div>
+
+        <!-- 保存按钮 -->
+        <div class="actions">
+          <el-button
+            v-if="canEdit && canViewField('system_info.operations')"
+            :loading="saving"
+            plain
+            type="primary"
+            size="default"
+            class="btn-sm"
+            @click="handleSave"
+          >
+            <i class="fas fa-save mr-1" />保存
+          </el-button>
+        </div>
       </div>
-      <template #footer>
-        <el-button @click="cancelMapLocation" class="btn-sm">取消</el-button>
-        <el-button v-if="canEdit" plain type="primary" @click="confirmMapLocation" class="btn-sm">确定</el-button>
-      </template>
-    </MobileDialog>
-  </div>
+
+      <!-- 地图选择对话框 -->
+      <MobileDialog
+        v-if="canViewField('system_info.operations')"
+        v-model="showMapDialog"
+        title="选择地图位置"
+        width="900px"
+        :close-on-click-modal="false"
+        dialog-class="shop-config-map-dialog"
+        :show-default-footer="false"
+      >
+        <div class="map-picker-container">
+          <div class="map-instructions">
+            <h4>操作说明：</h4>
+            <ul>
+              <li>🖱️ 在地图上点击选择店铺位置</li>
+              <li>📍 拖动红色标记可以微调位置</li>
+              <li>🔍 滚轮可以缩放地图</li>
+              <li>✅ 选择好后点击"确定"保存</li>
+            </ul>
+            <div class="current-location">
+              <strong>当前选中位置：</strong>
+              <span v-if="selectedLocation.lat">
+                纬度: {{ selectedLocation.lat }}, 经度: {{ selectedLocation.lng }}
+              </span>
+              <span v-else>请点击地图选择位置</span>
+            </div>
+          </div>
+          <div
+            id="map-container"
+            class="map-frame"
+          />
+        </div>
+        <template #footer>
+          <el-button
+            class="btn-sm"
+            @click="cancelMapLocation"
+          >
+            取消
+          </el-button>
+          <el-button
+            v-if="canEdit"
+            plain
+            type="primary"
+            class="btn-sm"
+            @click="confirmMapLocation"
+          >
+            确定
+          </el-button>
+        </template>
+      </MobileDialog>
+    </div>
   </PermissionGate>
 </template>
 
@@ -254,21 +410,25 @@ import SectionLoading from '@/components/SectionLoading.vue'
 import { PermissionGate } from '@/components/base/index'
 import { useAuthStore } from '@/stores/auth'
 import { usePagePermissions } from '@/composables/usePagePermissions'
+import { fieldPermissions } from '@/composables/useFieldPermissions'
 import { formatImageUrl } from '@/utils/format'
+import { unifiedApi } from '@/utils/unified-api'
 import { deleteTempFiles } from '@/utils/temp-file-cleaner'
 import { logger } from '@/utils/logger'
 import { buildTencentMapScriptUrl, ensureTencentMapKey } from '@/utils/tencent-map'
 import type { HeaderAction } from '@/types'
 
-const router = useRouter()
+const _router = useRouter()
 const authStore = useAuthStore()
 const configPermissions = usePagePermissions('h5-admin-config')
 const { handleNoPermission } = configPermissions
 const canView = computed(() => configPermissions.canView.value)
 const canEdit = computed(() => configPermissions.canEdit.value)
+const CONFIG_MODULE_KEY = 'h5_admin_configview'
+const canViewField = (fieldKey: string) => fieldPermissions.isFieldVisible(CONFIG_MODULE_KEY, fieldKey)
 
 // 注入父组件提供的注册方法
-const registerHeaderActions = inject<(actions: HeaderAction[]) => void>('registerHeaderActions')
+const registerHeaderActions = inject<(_actions: HeaderAction[]) => void>('registerHeaderActions')
 const clearHeaderActions = inject<() => void>('clearHeaderActions')
 
 const ensureEditPermission = () => {
@@ -355,14 +515,7 @@ const deleteSavedImage = async (imageUrl: string) => {
     return
   }
 
-  await fetch(`${import.meta.env.VITE_API_BASE_URL || '/api'}/shop/delete-image`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${authStore.token}`
-    },
-    body: JSON.stringify({ image_url: imageUrl })
-  })
+  await unifiedApi.post('/shop/delete-image', { image_url: imageUrl }, { showError: false })
 }
 
 const syncOriginalImageConfigs = () => {
@@ -375,6 +528,14 @@ const syncOriginalImageConfigs = () => {
 
 // 上传成功回调
 const handleUploadSuccess = async (response: any, field: string) => {
+  const fieldMap: Record<string, string> = {
+    shop_logo: 'shop.shop_logo',
+    wechat_qrcode: 'payment.wechat_qrcode',
+    alipay_qrcode: 'payment.alipay_qrcode'
+  }
+  if (!canViewField(fieldMap[field] || field)) {
+    return
+  }
   if (!ensureEditPermission()) {
     return
   }
@@ -428,6 +589,14 @@ const beforeUpload = (file: File) => {
 
 // 删除图片
 const handleDeleteImage = async (field: string) => {
+  const fieldMap: Record<string, string> = {
+    shop_logo: 'shop.shop_logo',
+    wechat_qrcode: 'payment.wechat_qrcode',
+    alipay_qrcode: 'payment.alipay_qrcode'
+  }
+  if (!canViewField(fieldMap[field] || field)) {
+    return
+  }
   if (!ensureEditPermission()) {
     return
   }
@@ -509,10 +678,26 @@ const handleSave = async () => {
       .filter(({ oldUrl, newUrl }) => Boolean(oldUrl) && oldUrl !== newUrl)
 
     // 转换为更新格式
-    const configArray = Object.entries(configs.value).map(([key, value]) => ({
-      key,
-      value: String(value)
-    }))
+    const configFieldMap: Record<string, string> = {
+      shop_name: 'shop.shop_name',
+      shop_subtitle: 'shop.shop_subtitle',
+      shop_logo: 'shop.shop_logo',
+      shop_phone: 'contact.shop_phone',
+      wechat_id: 'contact.wechat_id',
+      shop_address: 'contact.shop_address',
+      map_latitude: 'contact.map_location',
+      map_longitude: 'contact.map_location',
+      shop_hours: 'contact.shop_hours',
+      wechat_qrcode: 'payment.wechat_qrcode',
+      alipay_qrcode: 'payment.alipay_qrcode',
+      bank_info: 'payment.bank_info',
+      banner_enabled: 'features.banner_enabled',
+      cart_enabled: 'features.cart_enabled',
+      direct_buy_enabled: 'features.direct_buy_enabled'
+    }
+    const configArray = Object.entries(configs.value)
+      .filter(([key]) => canViewField(configFieldMap[key] || key))
+      .map(([key, value]) => ({ key, value: String(value) }))
 
     await batchUpdateConfigs(configArray)
 
@@ -659,7 +844,7 @@ const initMap = () => {
   }
 }
 
-const handleMapLocationSelect = (location: any) => {
+const _handleMapLocationSelect = (location: any) => {
   selectedLocation.value = location
 }
 
@@ -724,6 +909,7 @@ watch(canEdit, () => {
 })
 
 onMounted(() => {
+  void fieldPermissions.init()
   void initializePageData()
   registerPageHeaderActions()
 })
@@ -762,7 +948,7 @@ onUnmounted(() => {
 
 // 配置区块
 .config-section {
-  background: #fff;
+  background: var(--color-bg-white);
   border-radius: 8px;
   padding: 24px;
   margin-bottom: 16px;
@@ -772,16 +958,16 @@ onUnmounted(() => {
   .section-title {
     font-size: 18px;
     font-weight: 500;
-    color: #333;
+    color: var(--text-primary);
     margin: 0 0 20px;
     padding-left: 12px;
-    border-left: 3px solid #ff6b00;
+    border-left: 3px solid var(--tf-color-accent-orange);
   }
 
   :deep(.el-form-item__tip) {
     .tip-text {
       font-size: 12px;
-      color: #999;
+      color: var(--text-muted);
     }
   }
 
@@ -804,7 +990,7 @@ onUnmounted(() => {
 
       i {
         font-size: 28px;
-        color: #8c939d;
+        color: var(--tf-color-gray-element);
       }
     }
 
@@ -826,7 +1012,7 @@ onUnmounted(() => {
 
     i {
       font-size: 28px;
-      color: #8c939d;
+      color: var(--tf-color-gray-element);
     }
   }
 }
@@ -860,13 +1046,13 @@ onUnmounted(() => {
   .map-instructions {
     margin-bottom: 16px;
     padding: 16px;
-    background: #f5f7fa;
+    background: var(--tf-color-surface);
     border-radius: 8px;
 
     h4 {
       margin: 0 0 12px;
       font-size: 14px;
-      color: #333;
+      color: var(--text-primary);
     }
 
     ul {
@@ -876,26 +1062,26 @@ onUnmounted(() => {
       li {
         margin-bottom: 4px;
         font-size: 13px;
-        color: #666;
+        color: var(--text-secondary);
       }
     }
 
     .current-location {
       padding: 8px 12px;
-      background: #fff;
+      background: var(--color-bg-white);
       border-radius: 4px;
       font-size: 13px;
-      color: #333;
+      color: var(--text-primary);
 
       strong {
-        color: #ff6b00;
+        color: var(--tf-color-accent-orange);
       }
     }
   }
 
   .map-frame {
     height: 400px;
-    border: 1px solid #e4e7ed;
+    border: 1px solid var(--tf-color-border-element);
     border-radius: 8px;
     overflow: hidden;
   }
@@ -947,7 +1133,7 @@ onUnmounted(() => {
     height: auto;
     margin-bottom: 7px;
     padding: 0 !important;
-    color: #334155;
+    color: var(--tf-color-slate-700);
     font-size: 13px;
     font-weight: 700;
     line-height: 1.4;
@@ -1049,7 +1235,7 @@ onUnmounted(() => {
     z-index: 2;
     margin: 0 -2px;
     padding: 10px 0 calc(10px + env(safe-area-inset-bottom));
-    background: linear-gradient(180deg, rgba(245, 247, 250, 0), rgba(245, 247, 250, 0.96) 34%, #f5f7fa);
+    background: linear-gradient(180deg, rgba(245, 247, 250, 0), rgba(245, 247, 250, 0.96) 34%, var(--tf-color-surface));
 
     .el-button {
       width: 100%;

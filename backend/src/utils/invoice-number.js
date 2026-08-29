@@ -11,13 +11,35 @@
  * @param {Date|string} saleDate - 销售日期 (可选，默认使用当前时间)
  * @returns {Promise<string>} 单据编号
  */
+let sequenceTableReady
+
+const ensureSequenceTable = async (connection) => {
+  if (!sequenceTableReady) {
+    sequenceTableReady = connection.execute(`
+      CREATE TABLE IF NOT EXISTS invoice_sequences (
+        sequence_date CHAR(8) NOT NULL,
+        type_suffix VARCHAR(4) NOT NULL,
+        current_sequence INT UNSIGNED NOT NULL DEFAULT 0,
+        PRIMARY KEY (sequence_date, type_suffix)
+      ) ENGINE=InnoDB
+    `).catch(error => {
+      sequenceTableReady = null
+      throw error
+    })
+  }
+  await sequenceTableReady
+}
+
 async function generateInvoiceNumber(saleType = 'retail', connection, saleDate) {
+  if (!connection) {
+    throw new Error('生成单据编号需要数据库连接')
+  }
   // 如果没有提供销售日期，使用当前时间（向后兼容）
-  const dateObj = saleDate ? (saleDate instanceof Date ? saleDate : new Date(saleDate)) : new Date();
-  const year = dateObj.getFullYear();
-  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-  const day = String(dateObj.getDate()).padStart(2, '0');
-  const dateStr = `${year}${month}${day}`;
+  const dateObj = saleDate ? (saleDate instanceof Date ? saleDate : new Date(saleDate)) : new Date()
+  const year = dateObj.getFullYear()
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0')
+  const day = String(dateObj.getDate()).padStart(2, '0')
+  const dateStr = `${year}${month}${day}`
 
   // 根据销售类型确定后缀
   const typeSuffixMap = {
@@ -26,31 +48,39 @@ async function generateInvoiceNumber(saleType = 'retail', connection, saleDate) 
     'supplier_proxy': 'HB',   // 供应商划拨
     'batch_item': 'XS',       // 批量销售项
     'wholesale': 'PF'         // 批发
-  };
-  const typeSuffix = typeSuffixMap[saleType] || 'XS';
+  }
+  const typeSuffix = typeSuffixMap[saleType] || 'XS'
 
-  // 查询该日期该类型的最大序号
-  const prefixPattern = `${dateStr}%${typeSuffix}`;
-  const [rows] = await connection.execute(
-    `SELECT invoice_number FROM sales WHERE invoice_number LIKE ? ORDER BY id DESC LIMIT 1`,
+  await ensureSequenceTable(connection)
+  const prefixPattern = `${dateStr}%${typeSuffix}`
+
+  // 首次使用时从历史销售记录读取最大序号。初始化和递增分开执行，避免
+  // INSERT ... SELECT 在并发首次写入同一主键时产生死锁。
+  const [[historyRow]] = await connection.execute(
+    `SELECT COALESCE(MAX(CAST(SUBSTRING(invoice_number, 9, 4) AS UNSIGNED)), 0) AS sequence
+     FROM sales WHERE invoice_number LIKE ?`,
     [prefixPattern]
-  );
-
-  let sequence = 1;
-  if (rows.length > 0 && rows[0].invoice_number) {
-    // 从现有单据号提取序号 (日期后面的4位数字)
-    const currentInvoiceNumber = rows[0].invoice_number;
-    const currentSequenceStr = currentInvoiceNumber.substring(8, 12);
-    const currentSequence = parseInt(currentSequenceStr, 10);
-    if (!isNaN(currentSequence)) {
-      sequence = currentSequence + 1;
-    }
+  )
+  const historySequence = Number(historyRow?.sequence) || 0
+  await connection.execute(
+    `INSERT INTO invoice_sequences (sequence_date, type_suffix, current_sequence)
+     VALUES (?, ?, ?)
+     ON DUPLICATE KEY UPDATE current_sequence = GREATEST(current_sequence, VALUES(current_sequence))`,
+    [dateStr, typeSuffix, historySequence]
+  )
+  await connection.execute(
+    `UPDATE invoice_sequences
+     SET current_sequence = LAST_INSERT_ID(current_sequence + 1)
+     WHERE sequence_date = ? AND type_suffix = ?`,
+    [dateStr, typeSuffix]
+  )
+  const [[sequenceRow]] = await connection.execute('SELECT LAST_INSERT_ID() AS sequence')
+  const sequence = Number(sequenceRow?.sequence)
+  if (!Number.isSafeInteger(sequence) || sequence <= 0) {
+    throw new Error('生成单据序号失败')
   }
 
-  // 格式化序号为4位数字
-  const sequenceStr = String(sequence).padStart(4, '0');
-
-  return `${dateStr}${sequenceStr}${typeSuffix}`;
+  return `${dateStr}${String(sequence).padStart(4, '0')}${typeSuffix}`
 }
 
 /**
@@ -61,11 +91,11 @@ async function generateInvoiceNumber(saleType = 'retail', connection, saleDate) 
  * @returns {string} 单据编号
  */
 function generateInvoiceNumberForDate(date, sequence, saleType = 'retail') {
-  const targetDate = date instanceof Date ? date : new Date(date);
-  const year = targetDate.getFullYear();
-  const month = String(targetDate.getMonth() + 1).padStart(2, '0');
-  const day = String(targetDate.getDate()).padStart(2, '0');
-  const dateStr = `${year}${month}${day}`;
+  const targetDate = date instanceof Date ? date : new Date(date)
+  const year = targetDate.getFullYear()
+  const month = String(targetDate.getMonth() + 1).padStart(2, '0')
+  const day = String(targetDate.getDate()).padStart(2, '0')
+  const dateStr = `${year}${month}${day}`
 
   const typeSuffixMap = {
     'retail': 'XS',
@@ -73,12 +103,12 @@ function generateInvoiceNumberForDate(date, sequence, saleType = 'retail') {
     'supplier_proxy': 'HB',
     'batch_item': 'XS',
     'wholesale': 'PF'
-  };
-  const typeSuffix = typeSuffixMap[saleType] || 'XS';
+  }
+  const typeSuffix = typeSuffixMap[saleType] || 'XS'
 
-  const sequenceStr = String(sequence).padStart(4, '0');
+  const sequenceStr = String(sequence).padStart(4, '0')
 
-  return `${dateStr}${sequenceStr}${typeSuffix}`;
+  return `${dateStr}${sequenceStr}${typeSuffix}`
 }
 
 /**
@@ -88,34 +118,34 @@ function generateInvoiceNumberForDate(date, sequence, saleType = 'retail') {
  */
 function parseInvoiceNumber(invoiceNumber) {
   if (!invoiceNumber || invoiceNumber.length < 13) {
-    return null;
+    return null
   }
 
-  const dateStr = invoiceNumber.substring(0, 8);
-  const sequenceStr = invoiceNumber.substring(8, 12);
-  const typeSuffix = invoiceNumber.substring(12);
+  const dateStr = invoiceNumber.substring(0, 8)
+  const sequenceStr = invoiceNumber.substring(8, 12)
+  const typeSuffix = invoiceNumber.substring(12)
 
-  const year = dateStr.substring(0, 4);
-  const month = dateStr.substring(4, 6);
-  const day = dateStr.substring(6, 8);
+  const year = dateStr.substring(0, 4)
+  const month = dateStr.substring(4, 6)
+  const day = dateStr.substring(6, 8)
 
   const typeMap = {
     'XS': 'retail',
     'DH': 'peer_transfer',
     'HB': 'supplier_proxy',
     'PF': 'wholesale'
-  };
+  }
 
   return {
     date: `${year}-${month}-${day}`,
     sequence: parseInt(sequenceStr, 10),
     saleType: typeMap[typeSuffix] || 'retail',
     typeSuffix: typeSuffix
-  };
+  }
 }
 
 module.exports = {
   generateInvoiceNumber,
   generateInvoiceNumberForDate,
   parseInvoiceNumber
-};
+}

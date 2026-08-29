@@ -1,12 +1,12 @@
-const QueryService = require('../services/query.service');
-const ApiResponse = require('../utils/response');
-const dataMaskingService = require('../services/dataMaskingService');
-const { PAGINATION } = require('../config/constants');
-const log = require('../utils/log');
+const QueryService = require('../services/query.service')
+const ApiResponse = require('../utils/response')
+const dataMaskingService = require('../services/dataMaskingService')
+const { PAGINATION } = require('../config/constants')
+const log = require('../utils/log')
 
 class QueryController {
   constructor() {
-    this.queryService = new QueryService();
+    this.queryService = new QueryService()
   }
 
   /**
@@ -15,19 +15,19 @@ class QueryController {
   async getComprehensiveQuery(req, res) {
     try {
       // 验证查询参数
-      await this.queryService.validateQueryFilters(req.query);
+      await this.queryService.validateQueryFilters(req.query)
 
       // 获取用户关联的门店ID（用于数据权限过滤）
-      const userStoreId = req.user?.store_id || null;
-      const userStoreIds = req.user?.store_ids || [];
+      const userStoreId = req.user?.store_id || null
+      const userStoreIds = req.user?.store_ids || []
 
-      const result = await this.queryService.getComprehensiveQuery(req.query, userStoreId, userStoreIds);
+      const result = await this.queryService.getComprehensiveQuery(req.query, userStoreId, userStoreIds)
 
       // 根据用户权限过滤敏感数据
       if (result.data && result.data.length > 0) {
-        const userId = req.user?.id || req.user?.userId;
+        const userId = req.user?.id || req.user?.userId
         if (userId) {
-          result.data = await dataMaskingService.maskDataList(result.data, userId, 'query_queryview');
+          result.data = await dataMaskingService.maskDataList(result.data, userId, 'query_queryview')
         }
       }
 
@@ -36,10 +36,10 @@ class QueryController {
         result.message,
         result.data,
         result.pagination
-      );
+      )
     } catch (error) {
-      log.error('QueryController: 综合查询失败:', error);
-      return ApiResponse.error(res, error.message || '综合查询失败', 400);
+      log.error('QueryController: 综合查询失败:', error)
+      return ApiResponse.serverError(res, '综合查询失败', error)
     }
   }
 
@@ -49,15 +49,15 @@ class QueryController {
   async getStatistics(req, res) {
     try {
       // 获取用户关联的门店ID（用于数据权限过滤）
-      const userStoreId = req.user?.store_id || null;
-      const userStoreIds = req.user?.store_ids || [];
+      const userStoreId = req.user?.store_id || null
+      const userStoreIds = req.user?.store_ids || []
 
-      const result = await this.queryService.getStatistics(req.query, userStoreId, userStoreIds);
+      const result = await this.queryService.getStatistics(req.query, userStoreId, userStoreIds)
 
-      return ApiResponse.success(res, result.message, result.data);
+      return ApiResponse.success(res, result.message, result.data)
     } catch (error) {
-      log.error('QueryController: 统计查询失败:', error);
-      return ApiResponse.error(res, error.message || '统计查询失败', 400);
+      log.error('QueryController: 统计查询失败:', error)
+      return ApiResponse.serverError(res, '统计查询失败', error)
     }
   }
 
@@ -66,7 +66,7 @@ class QueryController {
    */
   async getReturnGoodsRecords(req, res) {
     try {
-      const result = await this.queryService.getReturnGoodsRecords(req.query);
+      const result = await this.queryService.getReturnGoodsRecords(req.query)
 
       return ApiResponse.paginated(
         res,
@@ -76,32 +76,32 @@ class QueryController {
           ...result.pagination,
           stats: result.stats
         }
-      );
+      )
     } catch (error) {
-      log.error('QueryController: 退库记录查询失败:', error);
-      return ApiResponse.error(res, error.message || '退库记录查询失败', 400);
+      log.error('QueryController: 退库记录查询失败:', error)
+      return ApiResponse.serverError(res, '退库记录查询失败', error)
     }
   }
 
   async updateReturnGoodsRecord(req, res) {
     try {
-      const { id } = req.params;
-      const result = await this.queryService.updateReturnGoodsRecord(id, req.body);
-      return ApiResponse.success(res, result.message, result.data);
+      const { id } = req.params
+      const result = await this.queryService.updateReturnGoodsRecord(id, req.body)
+      return ApiResponse.success(res, result.message, result.data)
     } catch (error) {
-      log.error('QueryController: 退库记录更新失败:', error);
-      return ApiResponse.error(res, error.message || '退库记录更新失败', 400);
+      log.error('QueryController: 退库记录更新失败:', error)
+      return ApiResponse.serverError(res, '退库记录更新失败', error)
     }
   }
 
   async deleteReturnGoodsRecord(req, res) {
     try {
-      const { id } = req.params;
-      const result = await this.queryService.deleteReturnGoodsRecord(id);
-      return ApiResponse.success(res, result.message, result.data);
+      const { id } = req.params
+      const result = await this.queryService.deleteReturnGoodsRecord(id)
+      return ApiResponse.success(res, result.message, result.data)
     } catch (error) {
-      log.error('QueryController: 退库记录删除失败:', error);
-      return ApiResponse.error(res, error.message || '退库记录删除失败', 400);
+      log.error('QueryController: 退库记录删除失败:', error)
+      return ApiResponse.serverError(res, '退库记录删除失败', error)
     }
   }
 
@@ -111,20 +111,20 @@ class QueryController {
    */
   async returnToStock(req, res) {
     try {
-      const { id } = req.params;
-      const operatorId = req.user.id; // 从JWT token中获取操作员ID
-      const returnInfo = req.body; // 获取退库信息
+      const { id } = req.params
+      const operatorId = req.user.id // 从JWT token中获取操作员ID
+      const returnInfo = req.body // 获取退库信息
 
       if (!id) {
-        return ApiResponse.error(res, '手机ID不能为空', 400);
+        return ApiResponse.error(res, '手机ID不能为空', 400)
       }
 
-      const result = await this.queryService.returnToStock(id, operatorId, returnInfo);
+      const result = await this.queryService.returnToStock(id, operatorId, returnInfo)
 
-      return ApiResponse.success(res, result.message, result.data);
+      return ApiResponse.success(res, result.message, result.data)
     } catch (error) {
-      log.error('QueryController: 退库操作失败:', error);
-      return ApiResponse.error(res, error.message || '退库操作失败', 400);
+      log.error('QueryController: 退库操作失败:', error)
+      return ApiResponse.serverError(res, '退库操作失败', error)
     }
   }
 
@@ -133,18 +133,18 @@ class QueryController {
    */
   async deletePhoneRecord(req, res) {
     try {
-      const { id } = req.params;
+      const { id } = req.params
 
       if (!id) {
-        return ApiResponse.error(res, '手机ID不能为空', 400);
+        return ApiResponse.error(res, '手机ID不能为空', 400)
       }
 
-      const result = await this.queryService.deletePhoneRecord(id);
+      const result = await this.queryService.deletePhoneRecord(id)
 
-      return ApiResponse.success(res, result.message, result.data);
+      return ApiResponse.success(res, result.message, result.data)
     } catch (error) {
-      log.error('QueryController: 删除手机记录失败:', error);
-      return ApiResponse.error(res, error.message || '删除手机记录失败', 400);
+      log.error('QueryController: 删除手机记录失败:', error)
+      return ApiResponse.serverError(res, '删除手机记录失败', error)
     }
   }
 
@@ -154,36 +154,36 @@ class QueryController {
   async exportToExcel(req, res) {
     try {
       // 验证查询参数
-      await this.queryService.validateQueryFilters(req.query);
+      await this.queryService.validateQueryFilters(req.query)
 
-      const userStoreId = req.user?.store_id || null;
-      const userStoreIds = req.user?.store_ids || [];
+      const userStoreId = req.user?.store_id || null
+      const userStoreIds = req.user?.store_ids || []
       const result = await this.queryService.getComprehensiveQuery(
-        { ...req.query, page: PAGINATION.DEFAULT_PAGE, limit: PAGINATION.DEFAULT_LIMIT },
+        { ...req.query, page: PAGINATION.DEFAULT_PAGE, page_size: PAGINATION.DEFAULT_LIMIT },
         userStoreId,
         userStoreIds
-      );
+      )
 
-      let exportData = result.data || [];
-      const userId = req.user?.id || req.user?.userId;
+      let exportData = result.data || []
+      const userId = req.user?.id || req.user?.userId
 
       if (exportData.length > 0 && userId) {
-        exportData = await dataMaskingService.maskDataList(exportData, userId, 'query_queryview');
+        exportData = await dataMaskingService.maskDataList(exportData, userId, 'query_queryview')
       }
 
-      const exportFile = this.queryService.buildExcelExport(exportData);
+      const exportFile = this.queryService.buildExcelExport(exportData)
 
-      res.setHeader('Content-Type', exportFile.mimeType);
+      res.setHeader('Content-Type', exportFile.mimeType)
       res.setHeader(
         'Content-Disposition',
         `attachment; filename*=UTF-8''${encodeURIComponent(exportFile.filename)}`
-      );
-      res.setHeader('X-Export-Total', String(exportFile.total));
+      )
+      res.setHeader('X-Export-Total', String(exportFile.total))
 
-      return res.send(exportFile.buffer);
+      return res.send(exportFile.buffer)
     } catch (error) {
-      log.error('QueryController: 导出Excel失败:', error);
-      return ApiResponse.error(res, error.message || '导出Excel失败', 400);
+      log.error('QueryController: 导出Excel失败:', error)
+      return ApiResponse.serverError(res, '导出Excel失败', error)
     }
   }
 
@@ -193,7 +193,7 @@ class QueryController {
   async getQueryOptions(req, res) {
     try {
       // 从数据库获取各种选项数据
-      const optionsData = await this.queryService.getQueryOptions();
+      const optionsData = await this.queryService.getQueryOptions()
 
       const options = {
         suppliers: optionsData.suppliers || [], // 从suppliers表获取
@@ -221,19 +221,19 @@ class QueryController {
         ],
         sort_fields: [
           { value: 'created_at', label: '创建时间' },
-          { value: 'purchase_date', label: '入库时间' },
-          { value: 'sale_date', label: '销售时间' },
+          { value: 'inventory_time', label: '入库时间' },
+          { value: 'sale_time', label: '销售时间' },
           { value: 'brand', label: '品牌' },
           { value: 'model', label: '型号' },
-          { value: 'price', label: '销售价格' },
-          { value: 'purchase_unit_price', label: '入库价格' }
+          { value: 'sale_price', label: '销售价格' },
+          { value: 'purchase_cost', label: '入库价格' }
         ]
-      };
+      }
 
-      return ApiResponse.success(res, '获取查询选项成功', options);
+      return ApiResponse.success(res, '获取查询选项成功', options)
     } catch (error) {
-      log.error('QueryController: 获取查询选项失败:', error);
-      return ApiResponse.error(res, error.message || '获取查询选项失败', 500);
+      log.error('QueryController: 获取查询选项失败:', error)
+      return ApiResponse.serverError(res, '获取查询选项失败', error)
     }
   }
 
@@ -242,32 +242,32 @@ class QueryController {
    */
   async batchOperations(req, res) {
     try {
-      const { operation, phone_ids } = req.body;
+      const { operation, phone_ids } = req.body
 
       if (!operation || !phone_ids || !Array.isArray(phone_ids)) {
-        return ApiResponse.error(res, '操作类型和手机ID列表不能为空', 400);
+        return ApiResponse.error(res, '操作类型和手机ID列表不能为空', 400)
       }
 
-      const results = [];
+      const results = []
 
       switch (operation) {
-        case 'delete':
-          for (const phoneId of phone_ids) {
-            try {
-              const result = await this.queryService.deletePhoneRecord(phoneId);
-              results.push({ phone_id: phoneId, success: true, message: result.message });
-            } catch (error) {
-              results.push({ phone_id: phoneId, success: false, message: error.message });
-            }
+      case 'delete':
+        for (const phoneId of phone_ids) {
+          try {
+            const result = await this.queryService.deletePhoneRecord(phoneId)
+            results.push({ phone_id: phoneId, success: true, message: result.message })
+          } catch (error) {
+            results.push({ phone_id: phoneId, success: false, message: '操作失败' })
           }
-          break;
+        }
+        break
 
-        default:
-          return ApiResponse.error(res, '不支持的操作类型', 400);
+      default:
+        return ApiResponse.error(res, '不支持的操作类型', 400)
       }
 
-      const successCount = results.filter(r => r.success).length;
-      const totalCount = results.length;
+      const successCount = results.filter(r => r.success).length
+      const totalCount = results.length
 
       return ApiResponse.success(res, `批量操作完成，成功 ${successCount}/${totalCount} 项`, {
         results,
@@ -276,10 +276,10 @@ class QueryController {
           success: successCount,
           failed: totalCount - successCount
         }
-      });
+      })
     } catch (error) {
-      log.error('QueryController: 批量操作失败:', error);
-      return ApiResponse.error(res, error.message || '批量操作失败', 400);
+      log.error('QueryController: 批量操作失败:', error)
+      return ApiResponse.serverError(res, '批量操作失败', error)
     }
   }
 
@@ -288,30 +288,30 @@ class QueryController {
    */
   async getPhoneDetail(req, res) {
     try {
-      const { id } = req.params;
+      const { id } = req.params
 
       if (!id) {
-        return ApiResponse.error(res, '手机ID不能为空', 400);
+        return ApiResponse.error(res, '手机ID不能为空', 400)
       }
 
       // 使用综合查询获取单个手机详情
-      const userStoreId = req.user?.store_id || null;
-      const userStoreIds = req.user?.store_ids || [];
+      const userStoreId = req.user?.store_id || null
+      const userStoreIds = req.user?.store_ids || []
       const result = await this.queryService.getComprehensiveQuery({
         phone_id: id,
-        limit: 1
-      }, userStoreId, userStoreIds);
+        page_size: 1
+      }, userStoreId, userStoreIds)
 
       if (result.data.length === 0) {
-        return ApiResponse.error(res, '手机记录不存在', 404);
+        return ApiResponse.error(res, '手机记录不存在', 404)
       }
 
-      return ApiResponse.success(res, '获取手机详情成功', result.data[0]);
+      return ApiResponse.success(res, '获取手机详情成功', result.data[0])
     } catch (error) {
-      log.error('QueryController: 获取手机详情失败:', error);
-      return ApiResponse.error(res, error.message || '获取手机详情失败', 500);
+      log.error('QueryController: 获取手机详情失败:', error)
+      return ApiResponse.serverError(res, '获取手机详情失败', error)
     }
   }
 }
 
-module.exports = QueryController;
+module.exports = QueryController

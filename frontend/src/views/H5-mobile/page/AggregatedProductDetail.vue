@@ -3,7 +3,10 @@
   功能：按品牌+型号+颜色聚合展示，支持内存选择、店铺选择、购买
 -->
 <template>
-  <div class="aggregated-product-page" v-if="!loading && productData">
+  <div
+    v-if="!loading && productData"
+    class="aggregated-product-page"
+  >
     <!-- 商品图片轮播 -->
     <div class="product-gallery-card">
       <Swiper
@@ -12,35 +15,65 @@
         :autoplay="{ delay: 3000, disableOnInteraction: false } as any"
         class="product-swiper"
       >
-        <SwiperSlide v-for="(image, index) in productImages" :key="index">
+        <SwiperSlide
+          v-for="(image, index) in productImages"
+          :key="index"
+        >
           <div class="swiper-image-wrapper">
-            <img :src="getImageUrl(image)" :alt="`${productData.brand_name} ${productData.model_name}`" />
+            <img
+              :src="getImageUrl(image)"
+              :alt="`${productData.brand_name} ${productData.model_name}`"
+            >
           </div>
         </SwiperSlide>
       </Swiper>
       <div class="gallery-tags">
-        <span v-if="!productData.is_new" class="tag-used">二手</span>
-        <span v-else class="tag-new">全新</span>
+        <span
+          v-if="!productData.is_new"
+          class="tag-used"
+        >二手</span>
+        <span
+          v-else
+          class="tag-new"
+        >全新</span>
       </div>
     </div>
 
     <!-- 商品基本信息卡片 -->
     <div class="info-card">
-      <h1 class="product-title">{{ productData.brand_name }} {{ productData.model_name }} {{ productData.color_name }}</h1>
+      <h1 class="product-title">
+        {{ productData.brand_name }} {{ productData.model_name }} {{ productData.color_name }}
+      </h1>
     </div>
 
     <!-- 价格卡片 -->
-    <div v-if="displayMinPrice" class="price-card">
-      <div class="price-label">销售价</div>
+    <div
+      v-if="displayMinPrice"
+      class="price-card"
+    >
+      <div class="price-label">
+        销售价
+      </div>
       <div class="price-values">
         <span class="price-symbol">¥</span>
         <span class="price-value">{{ displayMinPrice }}</span>
-        <span v-if="displayMaxPrice && displayMaxPrice !== displayMinPrice" class="price-separator">~</span>
-        <span v-if="displayMaxPrice && displayMaxPrice !== displayMinPrice" class="price-value">{{ displayMaxPrice }}</span>
+        <span
+          v-if="displayMaxPrice && displayMaxPrice !== displayMinPrice"
+          class="price-separator"
+        >~</span>
+        <span
+          v-if="displayMaxPrice && displayMaxPrice !== displayMinPrice"
+          class="price-value"
+        >{{ displayMaxPrice }}</span>
       </div>
     </div>
-    <div v-else class="price-card price-inquire">
-      <div class="price-label">销售价</div>
+    <div
+      v-else
+      class="price-card price-inquire"
+    >
+      <div class="price-label">
+        销售价
+      </div>
       <div class="price-values">
         <span class="price-value inquire">电询</span>
       </div>
@@ -50,7 +83,7 @@
     <div class="spec-card">
       <div class="card-header">
         <h3 class="card-title">
-          <i class="fas fa-memory"></i>
+          <i class="fas fa-memory" />
           选择内存规格
         </h3>
         <span class="required-mark">必选</span>
@@ -71,17 +104,23 @@
             <span class="memory-price">¥{{ memory.price }}</span>
           </div>
           <div class="memory-check">
-            <i v-if="selectedMemory?.id === memory.id" class="fas fa-check"></i>
+            <i
+              v-if="selectedMemory?.id === memory.id"
+              class="fas fa-check"
+            />
           </div>
         </div>
       </div>
     </div>
 
     <!-- 店铺选择卡片 -->
-    <div v-if="stockDistribution" class="store-card">
+    <div
+      v-if="stockDistribution"
+      class="store-card"
+    >
       <div class="card-header">
         <h3 class="card-title">
-          <i class="fas fa-store"></i>
+          <i class="fas fa-store" />
           选择店铺
         </h3>
         <span class="required-mark">必选</span>
@@ -96,18 +135,32 @@
         >
           <div class="store-content">
             <div class="store-header-info">
-              <h4 class="store-name">{{ store.store_name }}</h4>
+              <h4 class="store-name">
+                {{ store.store_name }}
+              </h4>
               <div class="store-check-indicator">
-                <i v-if="selectedStore?.store_id === store.store_id" class="fas fa-check-circle"></i>
-                <i v-else class="far fa-circle"></i>
+                <i
+                  v-if="selectedStore?.store_id === store.store_id"
+                  class="fas fa-check-circle"
+                />
+                <i
+                  v-else
+                  class="far fa-circle"
+                />
               </div>
             </div>
-            <p v-if="store.store_address" class="store-address">
-              <i class="fas fa-map-marker-alt"></i>
+            <p
+              v-if="store.store_address"
+              class="store-address"
+            >
+              <i class="fas fa-map-marker-alt" />
               {{ store.store_address }}
             </p>
-            <p v-if="store.store_phone" class="store-phone">
-              <i class="fas fa-phone"></i>
+            <p
+              v-if="store.store_phone"
+              class="store-phone"
+            >
+              <i class="fas fa-phone" />
               {{ store.store_phone }}
             </p>
           </div>
@@ -119,7 +172,7 @@
     <div class="detail-card">
       <div class="card-header">
         <h3 class="card-title">
-          <i class="fas fa-info-circle"></i>
+          <i class="fas fa-info-circle" />
           商品详情
         </h3>
       </div>
@@ -147,19 +200,23 @@
           </div>
         </div>
         <div class="warranty-info">
-          <i class="fas fa-shield-alt"></i>
+          <i class="fas fa-shield-alt" />
           <span>{{ productData.is_new ? '全新机保修1年，人为损坏不保修' : '二手机保修1月，人为损坏不保修' }}</span>
         </div>
       </div>
     </div>
 
     <!-- 底部安全间距 -->
-    <div class="bottom-spacer"></div>
+    <div class="bottom-spacer" />
 
     <!-- 底部操作栏 -->
     <div class="bottom-bar">
-      <a v-if="config.shop_phone" :href="`tel:${config.shop_phone}`" class="service-btn">
-        <i class="fas fa-headset"></i>
+      <a
+        v-if="config.shop_phone"
+        :href="`tel:${config.shop_phone}`"
+        class="service-btn"
+      >
+        <i class="fas fa-headset" />
         <span>客服</span>
       </a>
 
@@ -168,33 +225,39 @@
         <el-button
           v-if="config.cart_enabled && canAddToCart"
           class="cart-btn"
-          @click="addToCart"
           :disabled="!canPurchase"
+          @click="addToCart"
         >
-          <i class="fas fa-cart-plus"></i>
+          <i class="fas fa-cart-plus" />
           加入购物车
         </el-button>
         <el-button
           type="primary"
           class="buy-btn"
           :class="{ 'full-width': !config.cart_enabled || !canAddToCart }"
-          @click="buyNow"
           :disabled="!canPurchase"
+          @click="buyNow"
         >
           立即购买
         </el-button>
       </template>
 
       <!-- 购买禁用提示 -->
-      <div v-else class="purchase-disabled">
-        <i class="fas fa-ban"></i>
+      <div
+        v-else
+        class="purchase-disabled"
+      >
+        <i class="fas fa-ban" />
         <span>商品暂停销售</span>
       </div>
     </div>
   </div>
 
   <!-- 加载状态 -->
-  <SectionLoading v-else text="加载中..." />
+  <SectionLoading
+    v-else
+    text="加载中..."
+  />
 </template>
 
 <script setup lang="ts">
@@ -379,7 +442,7 @@ const loadProductByTemplateId = async (templateId: number, sequence = loadSequen
       color_id: templateData.color_id,
       is_new: true,
       page: 1,
-      limit: 1
+      page_size: 1
     })
     if (sequence !== loadSequence.value) {
       return
@@ -497,7 +560,7 @@ const loadProductByQuery = async (brandId: number, modelId: number, colorId: num
       color_id: colorId,
       is_new: isNew,
       page: 1,
-      limit: 1
+      page_size: 1
     })
     if (sequence !== loadSequence.value) {
       return
@@ -637,7 +700,7 @@ watch(routeProductKey, () => {
 <style scoped lang="scss">
 .aggregated-product-page {
   min-height: 100vh;
-  background: linear-gradient(180deg, #f8f9fa 0%, #f5f5f5 100%);
+  background: linear-gradient(180deg, var(--tf-color-surface-muted) 0%, var(--tf-color-surface-soft) 100%);
   padding-bottom: calc(80px + env(safe-area-inset-bottom));
 }
 
@@ -647,16 +710,16 @@ watch(routeProductKey, () => {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background: #f5f5f5;
+  background: var(--tf-color-surface-soft);
 
   .el-icon {
     font-size: 48px;
-    color: #667eea;
+    color: var(--tf-color-indigo-brand);
     margin-bottom: 16px;
   }
 
   p {
-    color: #999;
+    color: var(--text-muted);
     font-size: 14px;
   }
 }
@@ -665,7 +728,7 @@ watch(routeProductKey, () => {
 .product-gallery-card {
   position: relative;
   width: 100%;
-  background: #fff;
+  background: var(--color-bg-white);
   border-radius: 0 0 16px 16px;
   overflow: hidden;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
@@ -692,7 +755,7 @@ watch(routeProductKey, () => {
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #f8f9fa;
+      background: var(--tf-color-surface-muted);
 
       img {
         width: 100%;
@@ -706,7 +769,7 @@ watch(routeProductKey, () => {
       background: rgba(0, 0, 0, 0.3);
       padding: 4px 12px;
       border-radius: 12px;
-      color: #fff;
+      color: var(--color-bg-white);
       font-size: 12px;
       font-weight: 500;
     }
@@ -725,16 +788,16 @@ watch(routeProductKey, () => {
       border-radius: 6px;
       font-size: 12px;
       font-weight: 600;
-      color: #fff;
+      color: var(--color-bg-white);
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     }
 
     .tag-used {
-      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+      background: linear-gradient(135deg, var(--tf-color-coral) 0%, var(--tf-color-red-gradient) 100%);
     }
 
     .tag-new {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
     }
   }
 }
@@ -744,7 +807,7 @@ watch(routeProductKey, () => {
 .spec-card,
 .store-card,
 .detail-card {
-  background: #fff;
+  background: var(--color-bg-white);
   margin: 12px;
   padding: 16px;
   border-radius: 12px;
@@ -753,19 +816,19 @@ watch(routeProductKey, () => {
 
 // ========== 价格卡片 ==========
 .price-card {
-  background: linear-gradient(135deg, #fff5f5 0%, #fff 100%);
+  background: linear-gradient(135deg, var(--tf-color-red-surface) 0%, var(--color-bg-white) 100%);
   margin: 12px;
   padding: 20px 16px;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  border-left: 4px solid #ff4757;
+  border-left: 4px solid var(--tf-color-red-coral);
   display: flex;
   align-items: baseline;
   gap: 12px;
 
   .price-label {
     font-size: 14px;
-    color: #999;
+    color: var(--text-muted);
     font-weight: 500;
   }
 
@@ -777,30 +840,30 @@ watch(routeProductKey, () => {
     .price-symbol {
       font-size: 20px;
       font-weight: 600;
-      color: #ff4757;
+      color: var(--tf-color-red-coral);
     }
 
     .price-value {
       font-size: 36px;
       font-weight: 700;
-      color: #ff4757;
+      color: var(--tf-color-red-coral);
       line-height: 1;
     }
 
     .price-separator {
       font-size: 18px;
-      color: #999;
+      color: var(--text-muted);
       margin: 0 2px;
     }
   }
 
   &.price-inquire {
-    background: linear-gradient(135deg, #fffbf0 0%, #fff 100%);
-    border-left-color: #ff9800;
+    background: linear-gradient(135deg, var(--tf-color-amber-surface) 0%, var(--color-bg-white) 100%);
+    border-left-color: var(--tf-color-orange-material-500);
 
     .price-value.inquire {
       font-size: 24px;
-      color: #ff9800;
+      color: var(--tf-color-orange-material-500);
     }
   }
 }
@@ -810,7 +873,7 @@ watch(routeProductKey, () => {
   .product-title {
     font-size: 20px;
     font-weight: 700;
-    color: #1a1a1a;
+    color: var(--tf-color-neutral-950);
     margin: 0;
     line-height: 1.4;
     word-break: break-word;
@@ -824,7 +887,7 @@ watch(routeProductKey, () => {
   justify-content: space-between;
   margin-bottom: 16px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--tf-color-gray-200);
 
   .card-title {
     display: flex;
@@ -832,17 +895,17 @@ watch(routeProductKey, () => {
     gap: 8px;
     font-size: 16px;
     font-weight: 600;
-    color: #1a1a1a;
+    color: var(--tf-color-neutral-950);
     margin: 0;
 
     i {
-      color: #667eea;
+      color: var(--tf-color-indigo-brand);
     }
   }
 
   .required-mark {
     font-size: 12px;
-    color: #ff4757;
+    color: var(--tf-color-red-coral);
     font-weight: 500;
   }
 }
@@ -857,8 +920,8 @@ watch(routeProductKey, () => {
     .memory-option {
       position: relative;
       padding: 10px 8px;
-      background: #f8f9fa;
-      border: 1px solid #e0e0e0;
+      background: var(--tf-color-surface-muted);
+      border: 1px solid var(--tf-color-gray-material-300);
       border-radius: 6px;
       cursor: pointer;
       transition: all 0.2s ease;
@@ -876,13 +939,13 @@ watch(routeProductKey, () => {
         .memory-name {
           font-size: 13px;
           font-weight: 500;
-          color: #333;
+          color: var(--text-primary);
         }
 
         .memory-price {
           font-size: 16px;
           font-weight: 700;
-          color: #ff4757;
+          color: var(--tf-color-red-coral);
         }
       }
 
@@ -893,7 +956,7 @@ watch(routeProductKey, () => {
         width: 16px;
         height: 16px;
         border-radius: 50%;
-        background: #e0e0e0;
+        background: var(--tf-color-gray-material-300);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -901,16 +964,16 @@ watch(routeProductKey, () => {
 
         i {
           font-size: 10px;
-          color: #fff;
+          color: var(--color-bg-white);
         }
       }
 
       &.active {
-        background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
-        border-color: #667eea;
+        background: linear-gradient(135deg, var(--tf-color-indigo-brand-alpha) 0%, var(--tf-color-purple-brand-alpha) 100%);
+        border-color: var(--tf-color-indigo-brand);
 
         .memory-check {
-          background: #667eea;
+          background: var(--tf-color-indigo-brand);
         }
       }
 
@@ -919,7 +982,7 @@ watch(routeProductKey, () => {
         cursor: not-allowed;
 
         .memory-price {
-          color: #999;
+          color: var(--text-muted);
         }
       }
     }
@@ -935,7 +998,7 @@ watch(routeProductKey, () => {
 
     .store-option {
       padding: 16px;
-      background: #f8f9fa;
+      background: var(--tf-color-surface-muted);
       border: 2px solid transparent;
       border-radius: 8px;
       cursor: pointer;
@@ -955,18 +1018,18 @@ watch(routeProductKey, () => {
           .store-name {
             font-size: 15px;
             font-weight: 600;
-            color: #1a1a1a;
+            color: var(--tf-color-neutral-950);
             margin: 0;
           }
 
           .store-check-indicator {
             i {
               font-size: 20px;
-              color: #e0e0e0;
+              color: var(--tf-color-gray-material-300);
               transition: all 0.3s ease;
 
               &.fa-check-circle {
-                color: #667eea;
+                color: var(--tf-color-indigo-brand);
               }
             }
           }
@@ -975,7 +1038,7 @@ watch(routeProductKey, () => {
         .store-address,
         .store-phone {
           font-size: 13px;
-          color: #666;
+          color: var(--text-secondary);
           margin: 4px 0;
           display: flex;
           align-items: center;
@@ -983,14 +1046,14 @@ watch(routeProductKey, () => {
 
           i {
             font-size: 12px;
-            color: #999;
+            color: var(--text-muted);
           }
         }
       }
 
       &.active {
-        background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
-        border-color: #667eea;
+        background: linear-gradient(135deg, var(--tf-color-indigo-brand-alpha) 0%, var(--tf-color-purple-brand-alpha) 100%);
+        border-color: var(--tf-color-indigo-brand);
       }
     }
   }
@@ -1010,24 +1073,24 @@ watch(routeProductKey, () => {
         flex-direction: column;
         gap: 4px;
         padding: 12px;
-        background: #f8f9fa;
+        background: var(--tf-color-surface-muted);
         border-radius: 8px;
 
         .detail-label {
           font-size: 12px;
-          color: #999;
+          color: var(--text-muted);
         }
 
         .detail-value {
           font-size: 14px;
           font-weight: 500;
-          color: #1a1a1a;
+          color: var(--tf-color-neutral-950);
 
           .tag-new-mini {
             display: inline-block;
             padding: 2px 8px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #fff;
+            background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
+            color: var(--color-bg-white);
             border-radius: 4px;
             font-size: 12px;
           }
@@ -1035,8 +1098,8 @@ watch(routeProductKey, () => {
           .tag-used-mini {
             display: inline-block;
             padding: 2px 8px;
-            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
-            color: #fff;
+            background: linear-gradient(135deg, var(--tf-color-coral) 0%, var(--tf-color-red-gradient) 100%);
+            color: var(--color-bg-white);
             border-radius: 4px;
             font-size: 12px;
           }
@@ -1049,10 +1112,10 @@ watch(routeProductKey, () => {
       align-items: center;
       gap: 8px;
       padding: 12px;
-      background: #fff8e1;
+      background: var(--tf-color-amber-material-50);
       border-radius: 8px;
       font-size: 13px;
-      color: #ff9800;
+      color: var(--tf-color-orange-material-500);
 
       i {
         font-size: 16px;
@@ -1077,7 +1140,7 @@ watch(routeProductKey, () => {
   gap: 8px;
   padding: 12px 16px;
   padding-bottom: calc(12px + env(safe-area-inset-bottom));
-  background: #fff;
+  background: var(--color-bg-white);
   box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
   z-index: 200;
 
@@ -1163,8 +1226,8 @@ watch(routeProductKey, () => {
     justify-content: center;
     gap: 8px;
     height: 44px;
-    background: #f5f5f5;
-    color: #999;
+    background: var(--tf-color-surface-soft);
+    color: var(--text-muted);
     font-size: 14px;
     border-radius: 22px;
     padding: 0 20px;

@@ -59,32 +59,9 @@ export default defineConfig({
               id.includes('/vue/') ||
               id.includes('/pinia/') ||
               id.includes('/vue-router/') ||
-              id.includes('/@vue/') ||
-              id.includes('/element-plus/') ||
-              id.includes('/@element-plus/') ||
-              id.includes('/@element-plus/icons-vue/')
+              id.includes('/@vue/')
             ) {
-              return 'vue-vendor';
-            }
-
-            if (id.includes('echarts')) {
-              return 'echarts-core';
-            }
-
-            if (id.includes('/html2canvas/')) {
-              return 'html2canvas';
-            }
-
-            if (id.includes('/@zxing/')) {
-              return 'zxing';
-            }
-
-            if (id.includes('/heic2any/')) {
-              return 'image-convert';
-            }
-
-            if (id.includes('/pdfjs-dist/')) {
-              return 'pdf';
+              return 'vue-core';
             }
 
             // H5 交互与动效库交给 Rollup 自动拆分；强制合并容易和 vue-vendor 形成循环 chunk。

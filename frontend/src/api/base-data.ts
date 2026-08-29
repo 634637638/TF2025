@@ -7,24 +7,31 @@
  */
 import { unifiedApi } from '@/utils/unified-api'
 
-const pickArray = <T>(payload: any, keys: string[] = []): T[] => {
+type UnknownRecord = Record<string, unknown>
+
+const asRecord = (value: unknown): UnknownRecord | null => (
+  value !== null && typeof value === 'object' ? value as UnknownRecord : null
+)
+
+const pickArray = <T>(payload: unknown, keys: string[] = []): T[] => {
   if (Array.isArray(payload)) {
     return payload as T[]
   }
 
+  const record = asRecord(payload)
   for (const key of keys) {
-    const value = payload?.[key]
+    const value = record?.[key]
     if (Array.isArray(value)) {
       return value as T[]
     }
   }
 
-  if (Array.isArray(payload?.data)) {
-    return payload.data as T[]
+  if (Array.isArray(record?.data)) {
+    return record.data as T[]
   }
 
-  if (Array.isArray(payload?.records)) {
-    return payload.records as T[]
+  if (Array.isArray(record?.records)) {
+    return record.records as T[]
   }
 
   return []
@@ -49,7 +56,7 @@ export async function getPublicBrands(includeEmpty = false) {
  * 获取型号列表（公开）
  */
 export async function getPublicModels(brandId?: number, includeEmpty?: boolean) {
-  const params: Record<string, any> = {}
+  const params: Record<string, unknown> = {}
   if (brandId) params.brand_id = brandId
   if (includeEmpty) params.include_empty = 'true'
   const response = await unifiedApi.get('/public/models', {
@@ -73,10 +80,10 @@ export async function getPublicColors(includeEmpty?: boolean) {
  */
 export async function getPublicMemories() {
   const response = await unifiedApi.get('/public/memories')
-  return pickArray<any>(response, ['memories']).map((item) => ({
-    id: Number(item?.id),
-    size: String(item?.size || item?.name || item?.memory || '').trim(),
-    sort_order: item?.sort_order
+  return pickArray<UnknownRecord>(response, ['memories']).map((item) => ({
+    id: Number(item.id),
+    size: String(item.size || item.name || item.memory || '').trim(),
+    sort_order: item.sort_order
   })) as Memory[]
 }
 
@@ -87,11 +94,12 @@ export async function getPublicMarketingLexicon() {
   const response = await unifiedApi.get('/public/marketing/lexicon')
   // unifiedApi 返回的是 { success, message, data: { ...词库 } }，
   // 这里必须读取内层 data，否则公开页会误用内置的少量默认词句。
-  const envelope = response as any
-  const payload = envelope?.data?.data && typeof envelope.data.data === 'object'
-    ? envelope.data.data
-    : envelope?.data && typeof envelope.data === 'object' && !Array.isArray(envelope.data)
-      ? envelope.data
+  const envelope = asRecord(response)
+  const envelopeData = asRecord(envelope?.data)
+  const payload = envelopeData?.data && typeof envelopeData.data === 'object'
+    ? envelopeData.data as UnknownRecord
+    : envelopeData && !Array.isArray(envelopeData)
+      ? envelopeData
       : envelope
 
   return {
@@ -207,12 +215,12 @@ export interface BaseDataParams {
  */
 export function getBrands(scope: 'public' | 'admin' | 'warning' = 'public') {
   switch (scope) {
-    case 'admin':
-      return getAdminBrands()
-    case 'warning':
-      return getWarningBrands()
-    default:
-      return getPublicBrands()
+  case 'admin':
+    return getAdminBrands()
+  case 'warning':
+    return getWarningBrands()
+  default:
+    return getPublicBrands()
   }
 }
 
@@ -223,12 +231,12 @@ export function getBrands(scope: 'public' | 'admin' | 'warning' = 'public') {
  */
 export function getModels(brandId?: number, scope: 'public' | 'admin' | 'warning' = 'public') {
   switch (scope) {
-    case 'admin':
-      return getAdminModels(brandId)
-    case 'warning':
-      return getWarningModels(brandId!)
-    default:
-      return getPublicModels(brandId)
+  case 'admin':
+    return getAdminModels(brandId)
+  case 'warning':
+    return getWarningModels(brandId!)
+  default:
+    return getPublicModels(brandId)
   }
 }
 
@@ -238,12 +246,12 @@ export function getModels(brandId?: number, scope: 'public' | 'admin' | 'warning
  */
 export function getColors(scope: 'public' | 'admin' | 'warning' = 'public') {
   switch (scope) {
-    case 'admin':
-      return getAdminColors()
-    case 'warning':
-      return getWarningColors()
-    default:
-      return getPublicColors()
+  case 'admin':
+    return getAdminColors()
+  case 'warning':
+    return getWarningColors()
+  default:
+    return getPublicColors()
   }
 }
 
@@ -253,12 +261,12 @@ export function getColors(scope: 'public' | 'admin' | 'warning' = 'public') {
  */
 export function getMemories(scope: 'public' | 'admin' | 'warning' = 'public') {
   switch (scope) {
-    case 'admin':
-      return getAdminMemories()
-    case 'warning':
-      return getWarningMemories()
-    default:
-      return getPublicMemories()
+  case 'admin':
+    return getAdminMemories()
+  case 'warning':
+    return getWarningMemories()
+  default:
+    return getPublicMemories()
   }
 }
 

@@ -5,7 +5,11 @@
       <div class="user-info">
         <div>{{ user.name }}</div>
         <div>{{ userRoleText }}</div>
-        <button @click="refreshUserInfo" class="refresh-user-btn" title="刷新用户信息">
+        <button
+          class="refresh-user-btn"
+          title="刷新用户信息"
+          @click="refreshUserInfo"
+        >
           <el-icon><Refresh /></el-icon>
         </button>
       </div>
@@ -22,21 +26,41 @@
         active-text-color="#409EFF"
         class="sidebar-menu"
       >
-        <template v-for="menu in menuList" :key="menu.id">
+        <template
+          v-for="menu in menuList"
+          :key="menu.id"
+        >
           <!-- 有子菜单的情况 -->
-          <el-sub-menu v-if="menu.children && menu.children.length > 0" :index="String(menu.path || menu.url)">
+          <el-sub-menu
+            v-if="menu.children && menu.children.length > 0"
+            :index="String(menu.path || menu.url)"
+          >
             <template #title>
               <span class="menu-title-wrapper">
-                <IconRenderer :icon="menu.icon" :svg="menu.icon_svg" class-name="menu-icon" />
+                <IconRenderer
+                  :icon="menu.icon"
+                  :svg="menu.icon_svg"
+                  class-name="menu-icon"
+                />
                 <span class="menu-text">{{ menu.title || menu.name }}</span>
               </span>
             </template>
-            <template v-for="child in menu.children" :key="child.id">
+            <template
+              v-for="child in menu.children"
+              :key="child.id"
+            >
               <!-- 三级菜单（如果有） -->
-              <el-sub-menu v-if="child.children && child.children.length > 0" :index="String(child.path || child.url)">
+              <el-sub-menu
+                v-if="child.children && child.children.length > 0"
+                :index="String(child.path || child.url)"
+              >
                 <template #title>
                   <span class="menu-title-wrapper">
-                    <IconRenderer :icon="child.icon" :svg="child.icon_svg" class-name="menu-icon" />
+                    <IconRenderer
+                      :icon="child.icon"
+                      :svg="child.icon_svg"
+                      class-name="menu-icon"
+                    />
                     <span class="menu-text">{{ child.title || child.name }}</span>
                   </span>
                 </template>
@@ -47,7 +71,11 @@
                   :route="{ path: grandchild.path || grandchild.url }"
                 >
                   <span class="menu-title-wrapper">
-                    <IconRenderer :icon="grandchild.icon" :svg="grandchild.icon_svg" class-name="menu-icon" />
+                    <IconRenderer
+                      :icon="grandchild.icon"
+                      :svg="grandchild.icon_svg"
+                      class-name="menu-icon"
+                    />
                     <span class="menu-text">{{ grandchild.title || grandchild.name }}</span>
                   </span>
                 </el-menu-item>
@@ -59,7 +87,11 @@
                 :route="{ path: child.path || child.url }"
               >
                 <span class="menu-title-wrapper">
-                  <IconRenderer :icon="child.icon" :svg="child.icon_svg" class-name="menu-icon" />
+                  <IconRenderer
+                    :icon="child.icon"
+                    :svg="child.icon_svg"
+                    class-name="menu-icon"
+                  />
                   <span class="menu-text">{{ child.title || child.name }}</span>
                 </span>
               </el-menu-item>
@@ -72,14 +104,17 @@
             :route="{ path: menu.path || menu.url }"
           >
             <span class="menu-title-wrapper">
-              <IconRenderer :icon="menu.icon" :svg="menu.icon_svg" class-name="menu-icon" />
+              <IconRenderer
+                :icon="menu.icon"
+                :svg="menu.icon_svg"
+                class-name="menu-icon"
+              />
               <span class="menu-text">{{ menu.title || menu.name }}</span>
             </span>
           </el-menu-item>
         </template>
       </el-menu>
     </div>
-
   </div>
 </template>
 
@@ -96,7 +131,7 @@ import { logger } from '@/utils/logger'
 import IconRenderer from '@/components/IconRenderer.vue'
 
 // Props
-const props = defineProps({
+const _props = defineProps({
   collapsed: {
     type: Boolean,
     default: false
@@ -104,7 +139,7 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['menu-click'])
+const _emit = defineEmits(['menu-click'])
 
 // Route
 const route = useRoute()
@@ -219,7 +254,7 @@ watch(
 let authStoreWatchTimer = null
 watch(
   () => [authStore.user, authStore.permissions, authStore.isAuthenticated],
-  ([newUser, newPermissions, isAuthenticated]) => {
+  ([newUser, _newPermissions, isAuthenticated]) => {
     // 只有在已认证且用户信息存在时才刷新菜单
     if (isAuthenticated && newUser) {
       // 清除之前的定时器
@@ -243,7 +278,7 @@ onMounted(async () => {
   await loadUserMenus()
 
   // 监听全局权限更新事件
-  const handlePermissionsUpdate = async (event) => {
+  const handlePermissionsUpdate = async (_event) => {
     // 刷新用户信息和权限
     await authStore.fetchUserInfo()
     // 重新加载菜单
@@ -270,13 +305,13 @@ defineExpose({
   height: 100%;
   display: flex;
   flex-direction: column;
-  background-color: #304156;
-  color: #bfcbd9;
+  background-color: var(--tf-color-slate-700);
+  color: var(--tf-color-border-gradient);
 }
 
 .sidebar-header {
   padding: 12px 12px;
-  border-bottom: 1px solid #434a5a;
+  border-bottom: 1px solid var(--tf-color-slate-ui);
   flex-shrink: 0;
 }
 
@@ -284,7 +319,7 @@ defineExpose({
   margin: 0 0 8px 0;
   font-size: 16px;
   font-weight: 600;
-  color: #fff;
+  color: var(--color-bg-white);
   text-align: center;
 }
 
@@ -301,7 +336,7 @@ defineExpose({
 
 .user-info div:last-child {
   margin-bottom: 0;
-  color: #909399;
+  color: var(--color-info);
   font-size: 12px;
 }
 
@@ -369,7 +404,7 @@ defineExpose({
   padding-left: 10px !important;
   padding-right: 10px !important;
   margin: 0 !important;
-  border-bottom: 1px solid #434a5a !important;
+  border-bottom: 1px solid var(--tf-color-slate-ui) !important;
   list-style: none !important;
 }
 
@@ -389,27 +424,27 @@ defineExpose({
 }
 
 .sidebar-menu :deep(.el-menu-item.is-active) {
-  background-color: #409EFF !important;
-  color: #fff !important;
+  background-color: var(--color-primary) !important;
+  color: var(--color-bg-white) !important;
 }
 
 .sidebar-menu :deep(.el-menu-item:hover),
 .sidebar-menu :deep(.el-sub-menu__title:hover) {
-  background-color: #434a5a !important;
-  color: #409EFF !important;
+  background-color: var(--tf-color-slate-ui) !important;
+  color: var(--color-primary) !important;
 }
 
 .sidebar-menu :deep(.el-sub-menu .el-menu-item) {
-  background-color: #263445 !important;
+  background-color: var(--tf-color-slate-sidebar) !important;
   min-width: 100%;
 }
 
 .sidebar-menu :deep(.el-sub-menu .el-menu-item.is-active) {
-  background-color: #409EFF !important;
+  background-color: var(--color-primary) !important;
 }
 
 .sidebar-menu :deep(.el-sub-menu .el-menu-item:hover) {
-  background-color: #434a5a !important;
+  background-color: var(--tf-color-slate-ui) !important;
 }
 
 .sidebar-menu :deep(.el-menu-item.is-active::before) {
@@ -419,7 +454,7 @@ defineExpose({
   top: 0;
   bottom: 0;
   width: 4px;
-  background-color: #409EFF;
+  background-color: var(--color-primary);
 }
 
 
@@ -450,16 +485,16 @@ defineExpose({
 }
 
 .menu-container::-webkit-scrollbar-track {
-  background: #263445;
+  background: var(--tf-color-slate-sidebar);
 }
 
 .menu-container::-webkit-scrollbar-thumb {
-  background: #434a5a;
+  background: var(--tf-color-slate-ui);
   border-radius: 3px;
 }
 
 .menu-container::-webkit-scrollbar-thumb:hover {
-  background: #5a6978;
+  background: var(--color-text-regular);
 }
 
 /* Iconify 图标样式 */

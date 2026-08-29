@@ -13,7 +13,10 @@
       :rules="formRules"
       label-width="100px"
     >
-      <el-form-item label="客户姓名" prop="name">
+      <el-form-item
+        label="客户姓名"
+        prop="name"
+      >
         <el-input
           :model-value="form.values.name"
           placeholder="请输入客户姓名"
@@ -21,7 +24,10 @@
           @blur="validate()"
         />
       </el-form-item>
-      <el-form-item label="联系电话" prop="phone">
+      <el-form-item
+        label="联系电话"
+        prop="phone"
+      >
         <el-input
           :model-value="form.values.phone"
           placeholder="请输入联系电话"
@@ -39,8 +45,17 @@
       </el-form-item>
     </el-form>
     <template #footer>
-      <el-button type="default" @click="dialogVisible = false">取消</el-button>
-      <el-button type="primary" :loading="submitting" @click="handleSubmit">
+      <el-button
+        type="default"
+        @click="dialogVisible = false"
+      >
+        取消
+      </el-button>
+      <el-button
+        type="primary"
+        :loading="submitting"
+        @click="handleSubmit"
+      >
         确定
       </el-button>
     </template>

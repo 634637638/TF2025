@@ -8,7 +8,7 @@ type MessageBoxOptions = {
   cancelButtonText?: string
   customClass?: string | string[]
   appendTo?: HTMLElement
-  [key: string]: any
+  [key: string]: unknown
 }
 
 type ConfirmSemantic = {
@@ -239,7 +239,11 @@ export const enhanceGlobalMessageBox = async () => {
 
   ElMessageBox.confirm = ((message: unknown, title?: unknown, options?: MessageBoxOptions) => {
     const normalized = normalizeConfirmConfig(message, title, options)
-    return originalConfirm(normalized.message as any, normalized.title as any, normalized.options as any)
+    return originalConfirm(
+      normalized.message as Parameters<typeof originalConfirm>[0],
+      normalized.title as Parameters<typeof originalConfirm>[1],
+      normalized.options as Parameters<typeof originalConfirm>[2]
+    )
   }) as typeof ElMessageBox.confirm
 
   isEnhanced = true

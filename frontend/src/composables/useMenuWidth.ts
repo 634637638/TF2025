@@ -209,68 +209,68 @@ export function useMenuWidth(options: MenuWidthOptions = {}) {
     }
 
     sharedLoadMenuWidthsPromise = (async () => {
-    isLoading.value = true
-    try {
+      isLoading.value = true
+      try {
       // 首先尝试从 API 加载
-      const apiWidths = await loadMenuWidthFromAPI()
+        const apiWidths = await loadMenuWidthFromAPI()
 
-      if (apiWidths) {
+        if (apiWidths) {
         // API 加载成功，更新配置和本地存储
-        config.value = {
-          desktop: apiWidths.pc,
-          large: apiWidths.pc,
-          mobile: apiWidths.mobile,
-          tablet: apiWidths.mobile
+          config.value = {
+            desktop: apiWidths.pc,
+            large: apiWidths.pc,
+            mobile: apiWidths.mobile,
+            tablet: apiWidths.mobile
+          }
+
+          // 保存到本地存储
+          if (useStorage) {
+            storage.set(storageKey, config.value, 'local')
+          }
+
+          updateWidth()
+          return apiWidths
         }
 
-        // 保存到本地存储
+        // API 加载失败，尝试从本地存储加载
         if (useStorage) {
-          storage.set(storageKey, config.value, 'local')
-        }
-
-        updateWidth()
-        return apiWidths
-      }
-
-      // API 加载失败，尝试从本地存储加载
-      if (useStorage) {
-        const savedConfig = storage.get<MenuWidthConfig>(storageKey, 'local')
-        if (savedConfig) {
-          try {
-            config.value = { ...config.value, ...savedConfig }
-            updateWidth()
-            return {
-              pc: savedConfig.desktop || defaultConfig.desktop,
-              mobile: savedConfig.mobile || defaultConfig.mobile
-            }
-          } catch (parseError) {
+          const savedConfig = storage.get<MenuWidthConfig>(storageKey, 'local')
+          if (savedConfig) {
+            try {
+              config.value = { ...config.value, ...savedConfig }
+              updateWidth()
+              return {
+                pc: savedConfig.desktop || defaultConfig.desktop,
+                mobile: savedConfig.mobile || defaultConfig.mobile
+              }
+            } catch (parseError) {
             // 静默处理
             // 清除无效数据
-            storage.remove(storageKey, 'local')
+              storage.remove(storageKey, 'local')
+            }
           }
         }
-      }
 
-      // 如果没有本地配置，使用默认配置
-      config.value = { ...defaultConfig }
-      updateWidth()
+        // 如果没有本地配置，使用默认配置
+        config.value = { ...defaultConfig }
+        updateWidth()
 
-      return {
-        pc: defaultConfig.desktop,
-        mobile: defaultConfig.mobile
+        return {
+          pc: defaultConfig.desktop,
+          mobile: defaultConfig.mobile
+        }
+      } catch (error) {
+        logger.error('加载菜单宽度失败:', error)
+        // 确保始终有默认值
+        config.value = { ...defaultConfig }
+        updateWidth()
+        return {
+          pc: defaultConfig.desktop,
+          mobile: defaultConfig.mobile
+        }
+      } finally {
+        isLoading.value = false
       }
-    } catch (error) {
-      logger.error('加载菜单宽度失败:', error)
-      // 确保始终有默认值
-      config.value = { ...defaultConfig }
-      updateWidth()
-      return {
-        pc: defaultConfig.desktop,
-        mobile: defaultConfig.mobile
-      }
-    } finally {
-      isLoading.value = false
-    }
     })().finally(() => {
       sharedLoadMenuWidthsPromise = null
     })

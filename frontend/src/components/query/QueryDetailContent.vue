@@ -1,5 +1,8 @@
 <template>
-  <div v-if="detailItem" class="query-detail-content">
+  <div
+    v-if="detailItem"
+    class="query-detail-content"
+  >
     <div class="device-card-inline">
       <div class="device-card-main">
         <div class="device-meta-row">
@@ -20,11 +23,11 @@
     <div class="price-row">
       <div class="price-item">
         <span class="price-label">入库价格</span>
-        <span class="price-value green">¥{{ fieldPermissions.isFieldVisible('query_queryview', 'basic_info.purchase_price') ? (detailItem.价格信息?.purchase_price || '0') : '-' }}</span>
+        <span class="price-value green">{{ fieldPermissions.isFieldVisible('query_queryview', 'basic_info.purchase_cost') ? formatPrice(detailItem.价格信息?.purchase_cost) : '-' }}</span>
       </div>
       <div class="price-item">
         <span class="price-label">销售价格</span>
-        <span class="price-value highlight">¥{{ fieldPermissions.isFieldVisible('query_queryview', 'basic_info.sale_price') ? (detailItem.价格信息?.sale_price || '0') : '-' }}</span>
+        <span class="price-value highlight">{{ fieldPermissions.isFieldVisible('query_queryview', 'basic_info.sale_price') ? formatPrice(detailItem.价格信息?.sale_price) : '-' }}</span>
       </div>
     </div>
 
@@ -61,11 +64,11 @@
       </div>
       <div class="info-item">
         <span class="info-item-label">入库时间</span>
-        <span class="info-item-value">{{ fieldPermissions.isFieldVisible('query_queryview', 'time_info.Inventorytime') ? formatDate(detailItem.时间信息?.Inventorytime) : '-' }}</span>
+        <span class="info-item-value">{{ fieldPermissions.isFieldVisible('query_queryview', 'time_info.inventory_time') ? formatDate(detailItem.时间信息?.inventory_time) : '-' }}</span>
       </div>
       <div class="info-item">
         <span class="info-item-label">销售时间</span>
-        <span class="info-item-value">{{ fieldPermissions.isFieldVisible('query_queryview', 'time_info.salestime') ? formatDate(detailItem.时间信息?.salestime) : '-' }}</span>
+        <span class="info-item-value">{{ fieldPermissions.isFieldVisible('query_queryview', 'time_info.sale_time') ? formatDate(detailItem.时间信息?.sale_time) : '-' }}</span>
       </div>
     </div>
 
@@ -97,7 +100,7 @@
         size="small"
         @click="$emit('edit')"
       >
-        <i class="fas fa-edit"></i>
+        <i class="fas fa-edit" />
         编辑
       </el-button>
       <el-button
@@ -106,7 +109,7 @@
         size="small"
         @click="$emit('delete')"
       >
-        <i class="fas fa-trash"></i>
+        <i class="fas fa-trash" />
         删除
       </el-button>
       <el-button
@@ -115,7 +118,7 @@
         size="small"
         @click="$emit('return')"
       >
-        <i class="fas fa-undo-alt"></i>
+        <i class="fas fa-undo-alt" />
         退库
       </el-button>
     </div>
@@ -125,6 +128,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
+import { getPhoneStatusClass } from '@/constants/phoneStatuses'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import type { QueryItem } from '@/types'
 
@@ -165,17 +169,10 @@ const formatDate = (dateString?: string) => {
   return TimeUtil.format(dateString, TIME_FORMATS.DATE)
 }
 
+const formatPrice = (price?: number | null) => price === null || price === undefined ? '-' : `¥${price}`
+
 const getStatusBadgeClass = (status?: string) => {
-  const classMap: Record<string, string> = {
-    in_stock: 'in-stock',
-    sold: 'sold',
-    peer_transfer: 'peer-transfer',
-    supplier_proxy: 'supplier-proxy',
-    reserved: 'reserved',
-    repair: 'repair',
-    lost: 'lost'
-  }
-  return status ? classMap[status] || '' : ''
+  return getPhoneStatusClass(status)
 }
 </script>
 
@@ -187,10 +184,10 @@ const getStatusBadgeClass = (status?: string) => {
 }
 
 .device-card-inline {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
   border-radius: 16px;
   padding: 14px 16px;
-  color: #fff;
+  color: var(--color-bg-white);
   box-shadow: 0 10px 24px rgba(102, 126, 234, 0.22);
 }
 
@@ -244,8 +241,6 @@ const getStatusBadgeClass = (status?: string) => {
   align-items: center;
   min-height: 28px;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.22);
-  color: #fff;
   padding: 4px 10px;
   border-radius: 12px;
   font-size: 12px;
@@ -254,49 +249,61 @@ const getStatusBadgeClass = (status?: string) => {
   flex-shrink: 0;
 }
 
+.condition-badge {
+  background: rgba(255, 255, 255, 0.22);
+  color: var(--color-bg-white);
+}
+
 .condition-badge.new {
-  background: #28a745;
-  color: #ffffff;
+  background: var(--success-color);
+  color: var(--color-bg-white);
 }
 
 .condition-badge.used {
-  background: #f59e0b;
-  color: #ffffff;
+  background: var(--tf-color-amber-500);
+  color: var(--color-bg-white);
 }
 
 .status-badge.in-stock {
-  background: #6c757d;
-  color: #ffffff;
+  background: var(--tf-status-sale-available-bg);
+  color: var(--tf-status-sale-available-color);
+  border-color: var(--tf-status-sale-available-border);
 }
 
 .status-badge.sold {
-  background: #28a745;
-  color: #ffffff;
+  background: var(--tf-status-sold-bg);
+  color: var(--tf-status-sold-color);
+  border-color: var(--tf-status-sold-border);
 }
 
 .status-badge.peer-transfer {
-  background: #667eea;
-  color: #ffffff;
+  background: var(--tf-status-transfer-bg);
+  color: var(--tf-status-transfer-color);
+  border-color: var(--tf-status-transfer-border);
 }
 
 .status-badge.supplier-proxy {
-  background: #764ba2;
-  color: #ffffff;
+  background: var(--tf-status-allocation-bg);
+  color: var(--tf-status-allocation-color);
+  border-color: var(--tf-status-allocation-border);
 }
 
 .status-badge.reserved {
-  background: #17a2b8;
-  color: #ffffff;
+  background: var(--tf-status-reserved-bg);
+  color: var(--tf-status-reserved-color);
+  border-color: var(--tf-status-reserved-border);
 }
 
 .status-badge.repair {
-  background: #f59e0b;
-  color: #ffffff;
+  background: var(--tf-status-repair-bg);
+  color: var(--tf-status-repair-color);
+  border-color: var(--tf-status-repair-border);
 }
 
 .status-badge.lost {
-  background: #dc3545;
-  color: #ffffff;
+  background: var(--tf-status-lost-bg);
+  color: var(--tf-status-lost-color);
+  border-color: var(--tf-status-lost-border);
 }
 
 .price-row,
@@ -313,7 +320,7 @@ const getStatusBadgeClass = (status?: string) => {
 .code-item,
 .operator-item,
 .info-item {
-  background: #f8f9fc;
+  background: var(--tf-color-surface-cool-page);
   border-radius: 14px;
   padding: 12px 14px;
 }
@@ -333,21 +340,21 @@ const getStatusBadgeClass = (status?: string) => {
 .apple-id-label,
 .remark-label {
   font-size: 12px;
-  color: #909399;
+  color: var(--color-info);
 }
 
 .price-value {
   font-size: 18px;
   font-weight: 700;
-  color: #606266;
+  color: var(--color-text-regular);
 }
 
 .price-value.highlight {
-  color: #f56c6c;
+  color: var(--color-danger);
 }
 
 .price-value.green {
-  color: #67c23a;
+  color: var(--color-success);
 }
 
 .customer-item,
@@ -362,7 +369,7 @@ const getStatusBadgeClass = (status?: string) => {
   flex: 1;
   font-size: 15px;
   font-weight: 600;
-  color: #303133;
+  color: var(--color-text-primary);
   min-width: 0;
 }
 
@@ -375,7 +382,7 @@ const getStatusBadgeClass = (status?: string) => {
 .code-value {
   font-size: 12px;
   font-family: 'Courier New', monospace;
-  color: #303133;
+  color: var(--color-text-primary);
   line-height: 1.45;
   word-break: break-all;
 }
@@ -388,14 +395,14 @@ const getStatusBadgeClass = (status?: string) => {
 
 .info-item-value {
   font-size: 13px;
-  color: #303133;
+  color: var(--color-text-primary);
   font-weight: 600;
   word-break: break-word;
 }
 
 .apple-id-row {
-  background: linear-gradient(135deg, #f5f7fa 0%, #e8eaf0 100%);
-  border: 1px solid #e6e8ef;
+  background: linear-gradient(135deg, var(--tf-color-surface) 0%, var(--tf-color-border-cool) 100%);
+  border: 1px solid var(--tf-color-border-neutral);
   border-radius: 14px;
   padding: 12px 14px;
   display: flex;
@@ -406,28 +413,28 @@ const getStatusBadgeClass = (status?: string) => {
 
 .apple-id-value {
   font-size: 13px;
-  color: #303133;
+  color: var(--color-text-primary);
   font-weight: 600;
   text-align: right;
   word-break: break-all;
 }
 
 .remark-row {
-  background: #fff8e8;
-  border-left: 4px solid #e6a23c;
+  background: var(--tf-color-orange-ant-surface);
+  border-left: 4px solid var(--color-warning);
   border-radius: 14px;
   padding: 12px 14px;
 }
 
 .remark-label {
   display: block;
-  color: #d89018;
+  color: var(--tf-color-goldenrod);
   margin-bottom: 6px;
 }
 
 .remark-value {
   font-size: 13px;
-  color: #606266;
+  color: var(--color-text-regular);
   line-height: 1.6;
   word-break: break-word;
 }

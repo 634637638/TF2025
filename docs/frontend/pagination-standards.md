@@ -274,16 +274,12 @@ watch(() => props.current, (newPage) => {
 
       <!-- 空状态 -->
       <template #empty>
-        <el-empty
+        <DataEmptyState
           :description="emptyDescription"
           :image="emptyImage"
         >
-          <slot name="empty">
-            <el-button type="primary" @click="handleRefresh">
-              刷新数据
-            </el-button>
-          </slot>
-        </el-empty>
+          <slot name="empty" />
+        </DataEmptyState>
       </template>
     </el-table>
 

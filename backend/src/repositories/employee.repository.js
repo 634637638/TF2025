@@ -2,13 +2,13 @@
  * 员工数据访问层
  * 封装所有数据库操作
  */
-const { executeQuery } = require('../config/database');
-const BaseRepository = require('./base.repository');
-const { LEGACY_USER_ROLE_SQL_LIST } = require('../services/accessControl.service');
+const { _executeQuery } = require('../config/database')
+const BaseRepository = require('./base.repository')
+const { LEGACY_USER_ROLE_SQL_LIST } = require('../services/accessControl.service')
 
 class EmployeeRepository extends BaseRepository {
   constructor() {
-    super('users'); // 员工数据存储在users表中
+    super('users') // 员工数据存储在users表中
   }
 
   /**
@@ -22,43 +22,43 @@ class EmployeeRepository extends BaseRepository {
       role,
       status,
       store_id
-    } = filters;
+    } = filters
 
-    const validLimit = Math.min(Math.max(parseInt(limit) || 10, 1), 100);
-    const validPage = Math.max(parseInt(page) || 1, 1);
-    const offset = (validPage - 1) * validLimit;
+    const validLimit = Math.min(Math.max(parseInt(limit) || 10, 1), 100)
+    const validPage = Math.max(parseInt(page) || 1, 1)
+    const offset = (validPage - 1) * validLimit
 
     // 构建查询条件
-    const whereConditions = [];
-    const params = [];
+    const whereConditions = []
+    const params = []
 
     // 筛选员工角色
-    whereConditions.push(`(u.role IN (${LEGACY_USER_ROLE_SQL_LIST}))`);
+    whereConditions.push(`(u.role IN (${LEGACY_USER_ROLE_SQL_LIST}))`)
 
     if (name) {
-      whereConditions.push('(u.name LIKE ? OR u.username LIKE ?)');
-      params.push(`%${name}%`, `%${name}%`);
+      whereConditions.push('(u.name LIKE ? OR u.username LIKE ?)')
+      params.push(`%${name}%`, `%${name}%`)
     }
 
     if (role) {
-      whereConditions.push('u.role = ?');
-      params.push(role);
+      whereConditions.push('u.role = ?')
+      params.push(role)
     }
 
     if (status !== undefined) {
-      whereConditions.push('u.status = ?');
-      params.push(parseInt(status));
+      whereConditions.push('u.status = ?')
+      params.push(parseInt(status))
     }
 
     if (store_id) {
-      whereConditions.push('u.store_id = ?');
-      params.push(parseInt(store_id));
+      whereConditions.push('u.store_id = ?')
+      params.push(parseInt(store_id))
     }
 
-    const whereClause = whereConditions.join(' AND ');
+    const whereClause = whereConditions.join(' AND ')
 
     // 排序
-    const orderBy = options.orderBy || 'u.created_at DESC';
+    const orderBy = options.orderBy || 'u.created_at DESC'
 
     // 查询数据
     const dataQuery = `
@@ -102,9 +102,9 @@ class EmployeeRepository extends BaseRepository {
       WHERE ${whereClause}
       ORDER BY ${orderBy}
       LIMIT ${validLimit} OFFSET ${offset}
-    `;
+    `
 
-    const [employees] = await this.executeQuery(dataQuery, params);
+    const [employees] = await this.executeQuery(dataQuery, params)
 
     // 格式化数据
     const formattedEmployees = employees.map(row => ({
@@ -128,15 +128,15 @@ class EmployeeRepository extends BaseRepository {
         total_sales_amount: parseFloat(row.total_sales_amount) || 0,
         inventory_operations: parseInt(row.inventory_operations) || 0
       }
-    }));
+    }))
 
     // 查询总数
     const countQuery = `
       SELECT COUNT(*) as total FROM users u
       WHERE ${whereClause}
-    `;
-    const [countResult] = await this.executeQuery(countQuery, params);
-    const total = countResult[0].total;
+    `
+    const [countResult] = await this.executeQuery(countQuery, params)
+    const total = countResult[0].total
 
     return {
       employees: formattedEmployees,
@@ -148,7 +148,7 @@ class EmployeeRepository extends BaseRepository {
         hasNextPage: validPage < Math.ceil(total / validLimit),
         hasPrevPage: validPage > 1
       }
-    };
+    }
   }
 
   /**
@@ -171,14 +171,14 @@ class EmployeeRepository extends BaseRepository {
       LEFT JOIN stores s ON u.store_id = s.id
       LEFT JOIN salary_templates st ON u.salary_template_id = st.id
       WHERE u.id = ? AND u.role IN (${LEGACY_USER_ROLE_SQL_LIST})
-    `;
-    const [employees] = await this.executeQuery(employeeQuery, [id]);
+    `
+    const [employees] = await this.executeQuery(employeeQuery, [id])
 
     if (employees.length === 0) {
-      return null;
+      return null
     }
 
-    const employee = employees[0];
+    const employee = employees[0]
 
     // 获取员工工作统计
     const [salesStats] = await this.executeQuery(`
@@ -189,7 +189,7 @@ class EmployeeRepository extends BaseRepository {
         SUM(CASE WHEN type = 'used' THEN 1 ELSE 0 END) as used_sales
       FROM sales
       WHERE operator_id = ?
-    `, [id]);
+    `, [id])
 
     const [inventoryStats] = await this.executeQuery(`
       SELECT
@@ -198,7 +198,7 @@ class EmployeeRepository extends BaseRepository {
         SUM(CASE WHEN operation_type = 'out' THEN 1 ELSE 0 END) as out_operations
       FROM inventory_logs
       WHERE operator_id = ?
-    `, [id]);
+    `, [id])
 
     return {
       id: parseInt(employee.id),
@@ -237,7 +237,7 @@ class EmployeeRepository extends BaseRepository {
           out_operations: parseInt(inventoryStats[0].out_operations) || 0
         }
       }
-    };
+    }
   }
 
   /**
@@ -255,14 +255,14 @@ class EmployeeRepository extends BaseRepository {
       store_id,
       salary_template_id,
       hire_date
-    } = employeeData;
+    } = employeeData
 
     const query = `
       INSERT INTO users (
         username, password, name, phone, email, role, status, store_id,
         salary_template_id, hire_date, created_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-    `;
+    `
 
     const params = [
       username,
@@ -275,10 +275,10 @@ class EmployeeRepository extends BaseRepository {
       store_id ? parseInt(store_id) : null,
       salary_template_id ? parseInt(salary_template_id) : null,
       hire_date || null
-    ];
+    ]
 
-    const [result] = await this.executeQuery(query, params);
-    return result.insertId;
+    const [result] = await this.executeQuery(query, params)
+    return result.insertId
   }
 
   /**
@@ -296,9 +296,9 @@ class EmployeeRepository extends BaseRepository {
       store_id,
       salary_template_id,
       hire_date
-    } = employeeData;
+    } = employeeData
 
-    let query, params;
+    let query, params
 
     if (password) {
       // 更新密码
@@ -308,7 +308,7 @@ class EmployeeRepository extends BaseRepository {
           role = ?, status = ?, store_id = ?, salary_template_id = ?,
           hire_date = ?, updated_at = NOW()
         WHERE id = ? AND role IN (${LEGACY_USER_ROLE_SQL_LIST})
-      `;
+      `
       params = [
         username,
         password,
@@ -321,7 +321,7 @@ class EmployeeRepository extends BaseRepository {
         salary_template_id ? parseInt(salary_template_id) : null,
         hire_date || null,
         parseInt(id)
-      ];
+      ]
     } else {
       // 不更新密码
       query = `
@@ -329,7 +329,7 @@ class EmployeeRepository extends BaseRepository {
           username = ?, name = ?, phone = ?, email = ?, role = ?, status = ?,
           store_id = ?, salary_template_id = ?, hire_date = ?, updated_at = NOW()
         WHERE id = ? AND role IN (${LEGACY_USER_ROLE_SQL_LIST})
-      `;
+      `
       params = [
         username,
         name,
@@ -341,11 +341,11 @@ class EmployeeRepository extends BaseRepository {
         salary_template_id ? parseInt(salary_template_id) : null,
         hire_date || null,
         parseInt(id)
-      ];
+      ]
     }
 
-    const [result] = await this.executeQuery(query, params);
-    return result.affectedRows > 0;
+    const [result] = await this.executeQuery(query, params)
+    return result.affectedRows > 0
   }
 
   /**
@@ -356,11 +356,11 @@ class EmployeeRepository extends BaseRepository {
     const [salesCount] = await this.executeQuery(
       'SELECT COUNT(*) as count FROM sales WHERE operator_id = ?',
       [id]
-    );
+    )
     const [inventoryCount] = await this.executeQuery(
       'SELECT COUNT(*) as count FROM inventory_logs WHERE operator_id = ?',
       [id]
-    );
+    )
 
     if (salesCount[0].count > 0 || inventoryCount[0].count > 0) {
       return {
@@ -368,71 +368,71 @@ class EmployeeRepository extends BaseRepository {
         reason: `该员工还有关联的销售记录(${salesCount[0].count}条)或库存记录(${inventoryCount[0].count}条)，无法删除`,
         salesCount: salesCount[0].count,
         inventoryCount: inventoryCount[0].count
-      };
+      }
     }
 
     const [result] = await this.executeQuery(
       `DELETE FROM users WHERE id = ? AND role IN (${LEGACY_USER_ROLE_SQL_LIST})`,
       [id]
-    );
+    )
 
     return {
       canDelete: true,
       deleted: result.affectedRows > 0
-    };
+    }
   }
 
   /**
    * 批量更新员工状态
    */
   async batchUpdateStatus(ids, status) {
-    const placeholders = ids.map(() => '?').join(',');
+    const placeholders = ids.map(() => '?').join(',')
     const query = `
       UPDATE users
       SET status = ?, updated_at = NOW()
       WHERE id IN (${placeholders}) AND role IN (${LEGACY_USER_ROLE_SQL_LIST})
-    `;
+    `
 
-    const params = [parseInt(status), ...ids.map(id => parseInt(id))];
-    const [result] = await this.executeQuery(query, params);
-    return result.affectedRows;
+    const params = [parseInt(status), ...ids.map(id => parseInt(id))]
+    const [result] = await this.executeQuery(query, params)
+    return result.affectedRows
   }
 
   /**
    * 搜索员工
    */
   async searchEmployees(keyword, filters = {}) {
-    const { page = 1, limit = 20, role, status, store_id } = filters;
-    const validLimit = Math.min(Math.max(parseInt(limit) || 20, 1), 100);
-    const validPage = Math.max(parseInt(page) || 1, 1);
-    const offset = (validPage - 1) * validLimit;
+    const { page = 1, limit = 20, role, status, store_id } = filters
+    const validLimit = Math.min(Math.max(parseInt(limit) || 20, 1), 100)
+    const validPage = Math.max(parseInt(page) || 1, 1)
+    const offset = (validPage - 1) * validLimit
 
     const whereConditions = [
       `(u.role IN (${LEGACY_USER_ROLE_SQL_LIST}))`,
       '(u.name LIKE ? OR u.username LIKE ? OR u.phone LIKE ?)'
-    ];
+    ]
     const params = [
       `%${keyword}%`,
       `%${keyword}%`,
       `%${keyword}%`
-    ];
+    ]
 
     if (role) {
-      whereConditions.push('u.role = ?');
-      params.push(role);
+      whereConditions.push('u.role = ?')
+      params.push(role)
     }
 
     if (status !== undefined) {
-      whereConditions.push('u.status = ?');
-      params.push(parseInt(status));
+      whereConditions.push('u.status = ?')
+      params.push(parseInt(status))
     }
 
     if (store_id) {
-      whereConditions.push('u.store_id = ?');
-      params.push(parseInt(store_id));
+      whereConditions.push('u.store_id = ?')
+      params.push(parseInt(store_id))
     }
 
-    const whereClause = whereConditions.join(' AND ');
+    const whereClause = whereConditions.join(' AND ')
 
     const query = `
       SELECT
@@ -445,17 +445,17 @@ class EmployeeRepository extends BaseRepository {
       WHERE ${whereClause}
       ORDER BY u.created_at DESC
       LIMIT ${validLimit} OFFSET ${offset}
-    `;
+    `
 
-    const [employees] = await this.executeQuery(query, params);
+    const [employees] = await this.executeQuery(query, params)
 
     // 查询总数
     const countQuery = `
       SELECT COUNT(*) as total FROM users u
       WHERE ${whereClause}
-    `;
-    const [countResult] = await this.executeQuery(countQuery, params);
-    const total = countResult[0].total;
+    `
+    const [countResult] = await this.executeQuery(countQuery, params)
+    const total = countResult[0].total
 
     return {
       employees: employees.map(row => ({
@@ -479,7 +479,7 @@ class EmployeeRepository extends BaseRepository {
         hasNextPage: validPage < Math.ceil(total / validLimit),
         hasPrevPage: validPage > 1
       }
-    };
+    }
   }
 
   /**
@@ -489,16 +489,16 @@ class EmployeeRepository extends BaseRepository {
     let query = `
       SELECT id FROM users
       WHERE username = ? AND role IN (${LEGACY_USER_ROLE_SQL_LIST})
-    `;
-    let params = [username];
+    `
+    const params = [username]
 
     if (excludeId) {
-      query += ' AND id != ?';
-      params.push(parseInt(excludeId));
+      query += ' AND id != ?'
+      params.push(parseInt(excludeId))
     }
 
-    const [result] = await this.executeQuery(query, params);
-    return result.length === 0;
+    const [result] = await this.executeQuery(query, params)
+    return result.length === 0
   }
 
   /**
@@ -515,7 +515,7 @@ class EmployeeRepository extends BaseRepository {
         COUNT(CASE WHEN role = 'employee' THEN 1 END) as employee_count
       FROM users
       WHERE role IN (${LEGACY_USER_ROLE_SQL_LIST})
-    `);
+    `)
 
     const [storeStats] = await this.executeQuery(`
       SELECT
@@ -526,7 +526,7 @@ class EmployeeRepository extends BaseRepository {
       LEFT JOIN users u ON s.id = u.store_id AND u.status = 1 AND u.role IN (${LEGACY_USER_ROLE_SQL_LIST})
       GROUP BY s.id, s.name
       ORDER BY employee_count DESC
-    `);
+    `)
 
     return {
       total_employees: parseInt(totalStats[0].total_employees) || 0,
@@ -540,7 +540,7 @@ class EmployeeRepository extends BaseRepository {
         store_name: String(row.store_name || '').trim(),
         employee_count: parseInt(row.employee_count) || 0
       }))
-    };
+    }
   }
 
   /**
@@ -553,36 +553,36 @@ class EmployeeRepository extends BaseRepository {
       FROM users
       WHERE status = 1 AND role IN (${LEGACY_USER_ROLE_SQL_LIST})
       ORDER BY name
-    `;
+    `
 
-    const [employees] = await this.executeQuery(query);
+    const [employees] = await this.executeQuery(query)
     return employees.map(row => ({
       id: parseInt(row.id),
       username: String(row.username || '').trim(),
       name: String(row.name || '').trim(),
       role: String(row.role || '').trim(),
       store_id: row.store_id ? parseInt(row.store_id) : null
-    }));
+    }))
   }
 
   /**
    * 获取员工排行榜
    */
   async getEmployeeRanking(filters = {}) {
-    const { type = 'sales', period = 'month', limit = 10 } = filters;
+    const { type = 'sales', period = 'month', limit = 10 } = filters
 
-    let dateFilter = '';
-    const params = [];
+    let dateFilter = ''
+    const params = []
 
     if (period === 'today') {
-      dateFilter = 'AND DATE(s.created_at) = CURDATE()';
+      dateFilter = 'AND DATE(s.created_at) = CURDATE()'
     } else if (period === 'week') {
-      dateFilter = 'AND s.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)';
+      dateFilter = 'AND s.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)'
     } else if (period === 'month') {
-      dateFilter = 'AND s.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)';
+      dateFilter = 'AND s.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)'
     }
 
-    let query = '';
+    let query = ''
     if (type === 'sales') {
       query = `
         SELECT
@@ -599,7 +599,7 @@ class EmployeeRepository extends BaseRepository {
         HAVING total_sales > 0
         ORDER BY total_amount DESC
         LIMIT ?
-      `;
+      `
     } else if (type === 'inventory') {
       query = `
         SELECT
@@ -614,11 +614,11 @@ class EmployeeRepository extends BaseRepository {
         HAVING total_operations > 0
         ORDER BY total_operations DESC
         LIMIT ?
-      `;
+      `
     }
 
-    params.push(parseInt(limit));
-    const [results] = await this.executeQuery(query, params);
+    params.push(parseInt(limit))
+    const [results] = await this.executeQuery(query, params)
 
     return results.map(row => ({
       employee_id: parseInt(row.id),
@@ -629,41 +629,41 @@ class EmployeeRepository extends BaseRepository {
       avg_amount: row.avg_amount ? parseFloat(row.avg_amount) : 0,
       total_operations: row.total_operations ? parseInt(row.total_operations) : 0,
       rank: 0 // 将在业务逻辑层设置
-    }));
+    }))
   }
 
   /**
    * 导出员工数据
    */
   async exportEmployees(filters = {}) {
-    const { name, role, status, store_id } = filters;
+    const { name, role, status, store_id } = filters
 
     const whereConditions = [
       `(u.role IN (${LEGACY_USER_ROLE_SQL_LIST}))`
-    ];
-    const params = [];
+    ]
+    const params = []
 
     if (name) {
-      whereConditions.push('(u.name LIKE ? OR u.username LIKE ?)');
-      params.push(`%${name}%`, `%${name}%`);
+      whereConditions.push('(u.name LIKE ? OR u.username LIKE ?)')
+      params.push(`%${name}%`, `%${name}%`)
     }
 
     if (role) {
-      whereConditions.push('u.role = ?');
-      params.push(role);
+      whereConditions.push('u.role = ?')
+      params.push(role)
     }
 
     if (status !== undefined) {
-      whereConditions.push('u.status = ?');
-      params.push(parseInt(status));
+      whereConditions.push('u.status = ?')
+      params.push(parseInt(status))
     }
 
     if (store_id) {
-      whereConditions.push('u.store_id = ?');
-      params.push(parseInt(store_id));
+      whereConditions.push('u.store_id = ?')
+      params.push(parseInt(store_id))
     }
 
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : ''
 
     const query = `
       SELECT
@@ -693,9 +693,9 @@ class EmployeeRepository extends BaseRepository {
       ) sales ON u.id = sales.operator_id
       ${whereClause}
       ORDER BY u.created_at DESC
-    `;
+    `
 
-    const [employees] = await this.executeQuery(query, params);
+    const [employees] = await this.executeQuery(query, params)
 
     return employees.map(row => ({
       ID: parseInt(row.id),
@@ -711,8 +711,8 @@ class EmployeeRepository extends BaseRepository {
       总销售金额: parseFloat(row.total_sales_amount) || 0,
       最后登录: row.last_login ? new Date(row.last_login).toLocaleString() : '',
       创建时间: row.created_at ? new Date(row.created_at).toLocaleString() : ''
-    }));
+    }))
   }
 }
 
-module.exports = EmployeeRepository;
+module.exports = EmployeeRepository

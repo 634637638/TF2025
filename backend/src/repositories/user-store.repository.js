@@ -1,5 +1,5 @@
-const { getDatabase, isConnected } = require('../config/database');
-const log = require('../utils/log');
+const { getDatabase, isConnected } = require('../config/database')
+const log = require('../utils/log')
 
 /**
  * 用户-门店关联 Repository
@@ -7,7 +7,7 @@ const log = require('../utils/log');
  */
 class UserStoreRepository {
   constructor() {
-    this.tableName = 'user_stores';
+    this.tableName = 'user_stores'
   }
 
   /**
@@ -18,10 +18,10 @@ class UserStoreRepository {
   async getUserStores(userId) {
     try {
       if (!isConnected()) {
-        throw new Error('数据库未连接');
+        throw new Error('数据库未连接')
       }
 
-      const pool = getDatabase();
+      const pool = getDatabase()
       const [rows] = await pool.execute(`
         SELECT
           us.id,
@@ -39,12 +39,12 @@ class UserStoreRepository {
         LEFT JOIN users u ON s.manager_id = u.id
         WHERE us.user_id = ?
         ORDER BY us.is_primary DESC, us.assigned_at DESC
-      `, [userId]);
+      `, [userId])
 
-      return rows;
+      return rows
     } catch (error) {
-      log.error('获取用户门店列表失败:', error);
-      throw error;
+      log.error('获取用户门店列表失败:', error)
+      throw error
     }
   }
 
@@ -56,10 +56,10 @@ class UserStoreRepository {
   async getStoreUsers(storeId) {
     try {
       if (!isConnected()) {
-        throw new Error('数据库未连接');
+        throw new Error('数据库未连接')
       }
 
-      const pool = getDatabase();
+      const pool = getDatabase()
       const [rows] = await pool.execute(`
         SELECT
           us.id,
@@ -75,12 +75,12 @@ class UserStoreRepository {
         INNER JOIN users u ON us.user_id = u.id
         WHERE us.store_id = ?
         ORDER BY us.is_primary DESC, u.username ASC
-      `, [storeId]);
+      `, [storeId])
 
-      return rows;
+      return rows
     } catch (error) {
-      log.error('获取门店用户列表失败:', error);
-      throw error;
+      log.error('获取门店用户列表失败:', error)
+      throw error
     }
   }
 
@@ -95,13 +95,13 @@ class UserStoreRepository {
   async assignStoresToUser(userId, storeIds, assignedBy, isPrimary = 0) {
     try {
       if (!isConnected()) {
-        throw new Error('数据库未连接');
+        throw new Error('数据库未连接')
       }
 
-      const pool = getDatabase();
+      const pool = getDatabase()
 
       // 转换为数组
-      const storeIdArray = Array.isArray(storeIds) ? storeIds : [storeIds];
+      const storeIdArray = Array.isArray(storeIds) ? storeIds : [storeIds]
 
       // 删除用户现有的所有门店关联（如果要完全替换）
       // await pool.execute('DELETE FROM user_stores WHERE user_id = ?', [userId]);
@@ -112,23 +112,23 @@ class UserStoreRepository {
         storeId,
         isPrimary && index === 0 ? 1 : 0,
         assignedBy
-      ]);
-      const placeholders = values.map(() => '(?, ?, ?, ?)').join(', ');
-      const flatValues = values.flat();
+      ])
+      const placeholders = values.map(() => '(?, ?, ?, ?)').join(', ')
+      const flatValues = values.flat()
 
       await pool.execute(`
         INSERT IGNORE INTO ${this.tableName}
         (user_id, store_id, is_primary, assigned_by)
         VALUES ${placeholders}
-      `, flatValues);
+      `, flatValues)
 
       return {
         success: true,
         message: `成功为用户关联 ${storeIdArray.length} 个门店`
-      };
+      }
     } catch (error) {
-      log.error('关联用户门店失败:', error);
-      throw error;
+      log.error('关联用户门店失败:', error)
+      throw error
     }
   }
 
@@ -143,32 +143,32 @@ class UserStoreRepository {
   async assignUsersToStore(storeId, userIds, assignedBy, isPrimary = 0) {
     try {
       if (!isConnected()) {
-        throw new Error('数据库未连接');
+        throw new Error('数据库未连接')
       }
 
-      const pool = getDatabase();
+      const pool = getDatabase()
 
       // 转换为数组
-      const userIdArray = Array.isArray(userIds) ? userIds : [userIds];
+      const userIdArray = Array.isArray(userIds) ? userIds : [userIds]
 
       // 批量插入新的关联
-      const values = userIdArray.map(userId => [userId, storeId, isPrimary, assignedBy]);
-      const placeholders = values.map(() => '(?, ?, ?, ?)').join(', ');
-      const flatValues = values.flat();
+      const values = userIdArray.map(userId => [userId, storeId, isPrimary, assignedBy])
+      const placeholders = values.map(() => '(?, ?, ?, ?)').join(', ')
+      const flatValues = values.flat()
 
       await pool.execute(`
         INSERT IGNORE INTO ${this.tableName}
         (user_id, store_id, is_primary, assigned_by)
         VALUES ${placeholders}
-      `, flatValues);
+      `, flatValues)
 
       return {
         success: true,
         message: `成功为门店关联 ${userIdArray.length} 个用户`
-      };
+      }
     } catch (error) {
-      log.error('关联门店用户失败:', error);
-      throw error;
+      log.error('关联门店用户失败:', error)
+      throw error
     }
   }
 
@@ -181,22 +181,22 @@ class UserStoreRepository {
   async removeUserStore(userId, storeId) {
     try {
       if (!isConnected()) {
-        throw new Error('数据库未连接');
+        throw new Error('数据库未连接')
       }
 
-      const pool = getDatabase();
+      const pool = getDatabase()
       await pool.execute(
         'DELETE FROM user_stores WHERE user_id = ? AND store_id = ?',
         [userId, storeId]
-      );
+      )
 
       return {
         success: true,
         message: '成功移除用户门店关联'
-      };
+      }
     } catch (error) {
-      log.error('移除用户门店关联失败:', error);
-      throw error;
+      log.error('移除用户门店关联失败:', error)
+      throw error
     }
   }
 
@@ -208,23 +208,23 @@ class UserStoreRepository {
   async removeAllUserStores(userId) {
     try {
       if (!isConnected()) {
-        throw new Error('数据库未连接');
+        throw new Error('数据库未连接')
       }
 
-      const pool = getDatabase();
+      const pool = getDatabase()
       const [result] = await pool.execute(
         'DELETE FROM user_stores WHERE user_id = ?',
         [userId]
-      );
+      )
 
       return {
         success: true,
         message: `成功移除用户的 ${result.affectedRows} 个门店关联`,
         affectedRows: result.affectedRows
-      };
+      }
     } catch (error) {
-      log.error('移除用户所有门店关联失败:', error);
-      throw error;
+      log.error('移除用户所有门店关联失败:', error)
+      throw error
     }
   }
 
@@ -237,44 +237,44 @@ class UserStoreRepository {
   async setPrimaryStore(userId, storeId) {
     try {
       if (!isConnected()) {
-        throw new Error('数据库未连接');
+        throw new Error('数据库未连接')
       }
 
-      const pool = getDatabase();
+      const pool = getDatabase()
 
       // 先取消该用户的所有主门店标记
       await pool.execute(
         'UPDATE user_stores SET is_primary = 0 WHERE user_id = ?',
         [userId]
-      );
+      )
 
       // 检查用户是否已关联该门店
       const [existing] = await pool.execute(
         'SELECT id FROM user_stores WHERE user_id = ? AND store_id = ?',
         [userId, storeId]
-      );
+      )
 
       if (existing.length === 0) {
         // 如果未关联，先创建关联
         await pool.execute(
           'INSERT INTO user_stores (user_id, store_id, is_primary) VALUES (?, ?, 1)',
           [userId, storeId]
-        );
+        )
       } else {
         // 如果已关联，更新为主门店
         await pool.execute(
           'UPDATE user_stores SET is_primary = 1 WHERE user_id = ? AND store_id = ?',
           [userId, storeId]
-        );
+        )
       }
 
       return {
         success: true,
         message: '成功设置用户的主门店'
-      };
+      }
     } catch (error) {
-      log.error('设置用户主门店失败:', error);
-      throw error;
+      log.error('设置用户主门店失败:', error)
+      throw error
     }
   }
 
@@ -286,10 +286,10 @@ class UserStoreRepository {
   async getUserPrimaryStore(userId) {
     try {
       if (!isConnected()) {
-        throw new Error('数据库未连接');
+        throw new Error('数据库未连接')
       }
 
-      const pool = getDatabase();
+      const pool = getDatabase()
       const [rows] = await pool.execute(`
         SELECT
           s.id,
@@ -303,12 +303,12 @@ class UserStoreRepository {
         LEFT JOIN users u ON s.manager_id = u.id
         WHERE us.user_id = ? AND us.is_primary = 1
         LIMIT 1
-      `, [userId]);
+      `, [userId])
 
-      return rows.length > 0 ? rows[0] : null;
+      return rows.length > 0 ? rows[0] : null
     } catch (error) {
-      log.error('获取用户主门店失败:', error);
-      throw error;
+      log.error('获取用户主门店失败:', error)
+      throw error
     }
   }
 
@@ -319,13 +319,13 @@ class UserStoreRepository {
    */
   async hasUserStores(userId) {
     try {
-      const stores = await this.getUserStores(userId);
-      return stores.length > 0;
+      const stores = await this.getUserStores(userId)
+      return stores.length > 0
     } catch (error) {
-      log.error('检查用户门店关联失败:', error);
-      return false;
+      log.error('检查用户门店关联失败:', error)
+      return false
     }
   }
 }
 
-module.exports = UserStoreRepository;
+module.exports = UserStoreRepository

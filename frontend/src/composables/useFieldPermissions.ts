@@ -4,10 +4,24 @@ import { unifiedApi as api } from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import { logger } from '@/utils/logger'
 
+interface ModuleFieldPermissions {
+  hidden_fields: string[]
+  editable_fields: string[]
+}
+
+interface FieldPermissionsResponse {
+  field_permissions?: Record<string, Partial<ModuleFieldPermissions>>
+}
+
+export const shouldShowActionColumn = (
+  fieldVisible: boolean,
+  actionPermissions: readonly boolean[]
+) => fieldVisible || actionPermissions.some(Boolean)
+
 export function useFieldPermissions() {
   const authStore = useAuthStore()
   const loading = ref(false)
-  const permissions = ref<Record<string, any>>({})
+  const permissions = ref<Record<string, ModuleFieldPermissions>>({})
 
   const getNormalizedModuleKeys = (moduleKey: string) => {
     const normalizedKeys = new Set<string>()
@@ -38,19 +52,36 @@ export function useFieldPermissions() {
 
   const mergeModuleFieldPermissions = (moduleKey: string) => {
     const merged = {
-      hiddenFields: new Set<string>(),
-      editableFields: new Set<string>()
+      hidden_fields: new Set<string>(),
+      editable_fields: new Set<string>()
     }
 
-    getNormalizedModuleKeys(moduleKey).forEach((key) => {
-      const modulePerms = permissions.value[key] || {}
-      ;(modulePerms.hiddenFields || []).forEach((field: string) => merged.hiddenFields.add(field))
-      ;(modulePerms.editableFields || []).forEach((field: string) => merged.editableFields.add(field))
+    const moduleKeyVariants = getNormalizedModuleKeys(moduleKey)
+    let matchedPermissions = moduleKeyVariants
+      .map(key => permissions.value[key])
+      .filter((modulePerms): modulePerms is ModuleFieldPermissions => Boolean(modulePerms))
+
+    // Some callers still use a short page key (for example `subsidy`) while
+    // the permission API returns the registered key (`subsidy_subsidyview`).
+    // Only use reverse alias matching when no direct variant was found, so a
+    // specific child page cannot accidentally inherit a sibling page's rules.
+    if (matchedPermissions.length === 0) {
+      const requestedVariants = new Set(moduleKeyVariants)
+      matchedPermissions = Object.entries(permissions.value)
+        .filter(([configuredKey]) => (
+          getNormalizedModuleKeys(configuredKey).some(key => requestedVariants.has(key))
+        ))
+        .map(([, modulePerms]) => modulePerms)
+    }
+
+    matchedPermissions.forEach((modulePerms) => {
+      modulePerms.hidden_fields.forEach((field) => merged.hidden_fields.add(field))
+      modulePerms.editable_fields.forEach((field) => merged.editable_fields.add(field))
     })
 
     return {
-      hiddenFields: Array.from(merged.hiddenFields),
-      editableFields: Array.from(merged.editableFields)
+      hidden_fields: Array.from(merged.hidden_fields),
+      editable_fields: Array.from(merged.editable_fields)
     }
   }
 
@@ -59,33 +90,9 @@ export function useFieldPermissions() {
     return mergeModuleFieldPermissions(moduleKey)
   }
 
-  // 标准化模块 key 的辅助函数
-  const normalizeModuleKey = (key: string): string[] => {
-    return getNormalizedModuleKeys(key)
-  }
-
   // 检查字段是否可见
   const isFieldVisible = (moduleKey: string, fieldKey: string) => {
-    // 直接访问 permissions.value 以确保响应式
-    const currentPermissions = permissions.value || {}
-
-    // 尝试所有可能的模块 key 变体
-    const moduleKeyVariants = normalizeModuleKey(moduleKey)
-
-    // 收集所有变体的隐藏字段
-    const allHiddenFields = new Set<string>()
-    for (const variant of moduleKeyVariants) {
-      const modulePerms = currentPermissions[variant] || { hiddenFields: [] }
-      const hiddenFields = modulePerms.hiddenFields || []
-      hiddenFields.forEach(field => allHiddenFields.add(field))
-    }
-
-    const hiddenFieldsArray = Array.from(allHiddenFields)
-
-    // 检查字段是否在隐藏列表中
-    const result = !hiddenFieldsArray.includes(fieldKey)
-
-    return result
+    return !mergeModuleFieldPermissions(moduleKey).hidden_fields.includes(fieldKey)
   }
 
   // 检查字段是否可编辑
@@ -96,7 +103,7 @@ export function useFieldPermissions() {
 
     // 获取模块的字段权限配置
     const modulePerms = mergeModuleFieldPermissions(moduleKey)
-    const editableFields = modulePerms.editableFields || []
+    const editable_fields = modulePerms.editable_fields || []
 
     // 支持多种格式匹配：
     // 1. 完整字段 ID：customer_info.customer_idcard（直接使用 fieldKey）
@@ -104,9 +111,9 @@ export function useFieldPermissions() {
     // 3. 模块.字段 ID：subsidy.customer_info.customer_idcard（完整格式）
 
     // 检查字段是否在可编辑列表中
-    return editableFields.includes(fieldKey) ||
-           editableFields.includes(fieldKey.split('.').pop() || '') ||
-           editableFields.includes(`${moduleKey}.${fieldKey}`)
+    return editable_fields.includes(fieldKey) ||
+           editable_fields.includes(fieldKey.split('.').pop() || '') ||
+           editable_fields.includes(`${moduleKey}.${fieldKey}`)
   }
 
   // 检查模块权限
@@ -126,19 +133,18 @@ export function useFieldPermissions() {
       const response = await api.get('/permissions/user-field-permissions')
 
       if (response.success) {
-        // 处理后端返回的数据结构，提取 fieldPermissions
+        // 处理后端返回的数据结构，提取 field_permissions
         // unifiedApi 已解包一层，直接从 response 取 data
-        const responseData = extractResponseData<any>(response)
-        const rawPermissions = responseData.fieldPermissions || {}
-        const processedPermissions: Record<string, any> = {}
+        const responseData = extractResponseData<FieldPermissionsResponse>(response)
+        const rawPermissions = responseData.field_permissions || {}
+        const processedPermissions: Record<string, ModuleFieldPermissions> = {}
 
-        // 后端返回的结构: { subsidy: { moduleKey: "subsidy", hiddenFields: [...], editableFields: [...], roleSources: [...] } }
-        // 需要转换为: { subsidy: { hiddenFields: [...], editableFields: [...] } }
+        // 后端返回的结构: { subsidy: { module_key: "subsidy", hidden_fields: [...], editable_fields: [...], role_sources: [...] } }
         Object.keys(rawPermissions).forEach(key => {
           const modulePerm = rawPermissions[key]
           processedPermissions[key] = {
-            hiddenFields: modulePerm.hiddenFields || [],
-            editableFields: modulePerm.editableFields || []
+            hidden_fields: modulePerm.hidden_fields || [],
+            editable_fields: modulePerm.editable_fields || []
           }
         })
 
@@ -165,7 +171,7 @@ export function useFieldPermissions() {
   // 过滤字段列表
   const filterFieldsByPermission = (
     moduleKey: string,
-    fields: Array<{ key: string; [key: string]: any }>
+    fields: Array<{ key: string; [key: string]: unknown }>
   ) => {
     return fields.filter(field => isFieldVisible(moduleKey, field.key))
   }
@@ -173,16 +179,16 @@ export function useFieldPermissions() {
   // 获取特定模块的隐藏字段列表
   const getHiddenFields = (moduleKey: string) => {
     const modulePerms = getModuleFieldPermissions(moduleKey)
-    return modulePerms.hiddenFields || []
+    return modulePerms.hidden_fields || []
   }
 
   // 生成表格列的显示控制对象
   const generateColumnVisibility = (moduleKey: string, columns: Array<string>) => {
-    const hiddenFields = getHiddenFields(moduleKey)
+    const hidden_fields = getHiddenFields(moduleKey)
     const visibility: Record<string, boolean> = {}
 
     columns.forEach(column => {
-      visibility[column] = !hiddenFields.includes(column)
+      visibility[column] = !hidden_fields.includes(column)
     })
 
     return visibility

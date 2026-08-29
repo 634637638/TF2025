@@ -48,7 +48,7 @@ export interface VisibleProps {
 /**
  * 模态框基础 Props
  */
-export interface ModalProps extends VisibleProps {}
+export type ModalProps = VisibleProps
 
 /**
  * 基础 modelValue 弹窗 Props
@@ -152,21 +152,21 @@ export interface ClearEmits {
  * 搜索筛选值更新事件
  */
 export interface UpdateFilterValuesEmits {
-  'update:filterValues': [value: Record<string, any>]
+  'update:filterValues': [value: Record<string, unknown>]
 }
 
 /**
  * 搜索提交事件
  */
 export interface SearchSubmitEmits {
-  search: [query: string, filters: Record<string, any>]
+  search: [query: string, filters: Record<string, unknown>]
 }
 
 /**
  * 筛选变化事件
  */
 export interface FilterChangeEmits {
-  'filter-change': [key: string, value: any]
+  'filter-change': [key: string, value: unknown]
 }
 
 /**

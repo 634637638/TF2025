@@ -1,68 +1,68 @@
 /**
  * 工资记录服务
  */
-const SalaryRecordRepository = require('../repositories/salary-record.repository');
-const SalaryCalculatorService = require('./salary-calculator.service');
-const { getDatabase } = require('../config/database');
-const log = require('../utils/log');
-const { getMonthDateRange } = require('../utils/time');
+const SalaryRecordRepository = require('../repositories/salary-record.repository')
+const SalaryCalculatorService = require('./salary-calculator.service')
+const { getDatabase } = require('../config/database')
+const log = require('../utils/log')
+const { getMonthDateRange } = require('../utils/time')
 const {
   buildLeaveExclusionRules,
   shouldExcludeSaleByLeave
-} = require('../utils/leave-sales-filter');
+} = require('../utils/leave-sales-filter')
 
 class SalaryRecordService {
   constructor() {
-    this.repository = new SalaryRecordRepository();
-    this.calculator = SalaryCalculatorService;
+    this.repository = new SalaryRecordRepository()
+    this.calculator = SalaryCalculatorService
   }
 
   async getSalaryRecords(filters, options) {
     try {
-      return await this.repository.getSalaryRecordsWithPagination(filters, options);
+      return await this.repository.getSalaryRecordsWithPagination(filters, options)
     } catch (error) {
-      throw error;
+      throw error
     }
   }
 
   async getSalaryRecordById(id) {
     try {
-      return await this.repository.getSalaryRecordById(id);
+      return await this.repository.getSalaryRecordById(id)
     } catch (error) {
-      throw error;
+      throw error
     }
   }
 
   async createSalaryRecord(data, userId) {
     try {
-      data.created_by = userId;
-      return await this.repository.createSalaryRecord(data);
+      data.created_by = userId
+      return await this.repository.createSalaryRecord(data)
     } catch (error) {
-      throw error;
+      throw error
     }
   }
 
   async updateSalaryRecord(id, data) {
     try {
-      return await this.repository.updateSalaryRecord(id, data);
+      return await this.repository.updateSalaryRecord(id, data)
     } catch (error) {
-      throw error;
+      throw error
     }
   }
 
   async deleteSalaryRecord(id) {
     try {
-      return await this.repository.deleteSalaryRecord(id);
+      return await this.repository.deleteSalaryRecord(id)
     } catch (error) {
-      throw error;
+      throw error
     }
   }
 
   async calculateSalary(employeeId, periodStart, periodEnd) {
     try {
-      return await this.calculator.calculateSalary(employeeId, periodStart, periodEnd);
+      return await this.calculator.calculateSalary(employeeId, periodStart, periodEnd)
     } catch (error) {
-      throw error;
+      throw error
     }
   }
 
@@ -72,75 +72,75 @@ class SalaryRecordService {
    */
   async saveCalculatedSalary(salaryData, userId) {
     try {
-      const { employee_id, period_start, period_end } = salaryData;
+      const { employee_id, period_start, period_end } = salaryData
       if (!employee_id || !period_start || !period_end) {
-        throw new Error('请提供员工ID和工资周期');
+        throw new Error('请提供员工ID和工资周期')
       }
 
-      const calculated = await this.calculator.calculateSalary(employee_id, period_start, period_end);
-      const existing = await this.repository.getRecordByEmployeePeriod(employee_id, period_start, period_end);
+      const calculated = await this.calculator.calculateSalary(employee_id, period_start, period_end)
+      const existing = await this.repository.getRecordByEmployeePeriod(employee_id, period_start, period_end)
       const merged = this.mergeCalculatedSalaryState(calculated, existing, userId, {
         status: salaryData.status,
         payment_method: salaryData.payment_method,
         paid_at: salaryData.paid_at
-      });
+      })
 
-      return await this.repository.upsertSalaryRecord(merged);
+      return await this.repository.upsertSalaryRecord(merged)
     } catch (error) {
-      throw error;
+      throw error
     }
   }
 
   mergeCalculatedSalaryState(calculated, existing, operatorId, overrides = {}) {
-    const allowedStatuses = new Set(['draft', 'pending', 'approved', 'paid']);
-    const nextStatus = allowedStatuses.has(overrides.status) ? overrides.status : null;
-    const merged = { ...calculated };
+    const allowedStatuses = new Set(['draft', 'pending', 'approved', 'paid'])
+    const nextStatus = allowedStatuses.has(overrides.status) ? overrides.status : null
+    const merged = { ...calculated }
 
     if (existing) {
       merged.status = existing.status === 'paid'
         ? 'paid'
-        : (nextStatus || existing.status || calculated.status);
+        : (nextStatus || existing.status || calculated.status)
       merged.payment_method = overrides.payment_method !== undefined
         ? overrides.payment_method
-        : (existing.payment_method || null);
+        : (existing.payment_method || null)
       merged.paid_at = overrides.paid_at !== undefined
         ? overrides.paid_at
-        : (existing.paid_at || null);
-      merged.created_by = existing.created_by || operatorId;
-      return merged;
+        : (existing.paid_at || null)
+      merged.created_by = existing.created_by || operatorId
+      return merged
     }
 
-    merged.status = nextStatus || calculated.status;
-    merged.payment_method = overrides.payment_method || null;
-    merged.paid_at = overrides.paid_at || null;
-    merged.created_by = operatorId;
-    return merged;
+    merged.status = nextStatus || calculated.status
+    merged.payment_method = overrides.payment_method || null
+    merged.paid_at = overrides.paid_at || null
+    merged.created_by = operatorId
+    return merged
   }
 
   async recalculateExistingSalaryForPeriod(employeeId, periodStart, periodEnd, operatorId) {
-    const existing = await this.repository.getRecordByEmployeePeriod(employeeId, periodStart, periodEnd);
+    const existing = await this.repository.getRecordByEmployeePeriod(employeeId, periodStart, periodEnd)
     if (!existing) {
-      return null;
+      return null
     }
 
-    const calculated = await this.calculator.calculateSalary(employeeId, periodStart, periodEnd);
-    const merged = this.mergeCalculatedSalaryState(calculated, existing, operatorId);
-    return await this.repository.upsertSalaryRecord(merged);
+    const calculated = await this.calculator.calculateSalary(employeeId, periodStart, periodEnd)
+    const merged = this.mergeCalculatedSalaryState(calculated, existing, operatorId)
+    return await this.repository.upsertSalaryRecord(merged)
   }
 
   async recalculateExistingSalaryForAttendanceRecord(attendanceRecord, operatorId) {
     if (!attendanceRecord || !attendanceRecord.employee_id || !attendanceRecord.record_date) {
-      return null;
+      return null
     }
 
-    const salaryAffectingTypes = new Set(['leave', 'monthly_leave', 'overtime', 'absent']);
+    const salaryAffectingTypes = new Set(['leave', 'monthly_leave', 'overtime', 'absent'])
     if (!salaryAffectingTypes.has(attendanceRecord.record_type)) {
-      return null;
+      return null
     }
 
-    const period = getMonthDateRange(attendanceRecord.record_date);
+    const period = getMonthDateRange(attendanceRecord.record_date)
     if (!period) {
-      return null;
+      return null
     }
 
     return await this.recalculateExistingSalaryForPeriod(
@@ -148,22 +148,22 @@ class SalaryRecordService {
       period.period_start,
       period.period_end,
       operatorId
-    );
+    )
   }
 
   async batchCalculateSalaries(employeeIds, periodStart, periodEnd) {
     try {
-      return await this.calculator.batchCalculateSalary(employeeIds, periodStart, periodEnd);
+      return await this.calculator.batchCalculateSalary(employeeIds, periodStart, periodEnd)
     } catch (error) {
-      throw error;
+      throw error
     }
   }
 
   async approveSalaryRecord(id, approverId) {
     try {
-      return await this.repository.approveSalaryRecord(id, approverId);
+      return await this.repository.approveSalaryRecord(id, approverId)
     } catch (error) {
-      throw error;
+      throw error
     }
   }
 
@@ -174,33 +174,33 @@ class SalaryRecordService {
    */
   async markAsPaid(id, options = {}) {
     try {
-      return await this.repository.markAsPaid(id, options);
+      return await this.repository.markAsPaid(id, options)
     } catch (error) {
-      throw error;
+      throw error
     }
   }
 
   async getSalaryStats(filters) {
     try {
-      return await this.repository.getSalaryStats(filters);
+      return await this.repository.getSalaryStats(filters)
     } catch (error) {
-      throw error;
+      throw error
     }
   }
 
   async checkExistingRecord(employeeId, periodStart, periodEnd) {
     try {
-      return await this.repository.checkExistingRecord(employeeId, periodStart, periodEnd);
+      return await this.repository.checkExistingRecord(employeeId, periodStart, periodEnd)
     } catch (error) {
-      throw error;
+      throw error
     }
   }
 
   async getRecentRecordsByEmployee(employeeId, limit = 6) {
     try {
-      return await this.repository.getRecentRecordsByEmployee(employeeId, limit);
+      return await this.repository.getRecentRecordsByEmployee(employeeId, limit)
     } catch (error) {
-      throw error;
+      throw error
     }
   }
 
@@ -208,44 +208,44 @@ class SalaryRecordService {
    * 批量重算某月工资（覆盖旧记录）
    */
   async bulkRecalculateByPeriod(periodStart, periodEnd, operatorId) {
-    const db = getDatabase();
-    const conn = await db.getConnection();
+    const db = getDatabase()
+    const conn = await db.getConnection()
 
     try {
       const [employees] = await conn.execute(
-        `SELECT id FROM users WHERE status = 1 AND salary_template_id IS NOT NULL`
-      );
+        'SELECT id FROM users WHERE status = 1 AND salary_template_id IS NOT NULL'
+      )
 
       const results = {
         total: employees.length,
         recalculated: 0,
         errors: []
-      };
+      }
 
       for (const emp of employees) {
         try {
-          const calculated = await this.calculator.calculateSalary(emp.id, periodStart, periodEnd);
-          const existing = await this.repository.getRecordByEmployeePeriod(emp.id, periodStart, periodEnd);
+          const calculated = await this.calculator.calculateSalary(emp.id, periodStart, periodEnd)
+          const existing = await this.repository.getRecordByEmployeePeriod(emp.id, periodStart, periodEnd)
 
           if (existing) {
-            calculated.status = existing.status || calculated.status;
-            calculated.payment_method = existing.payment_method || calculated.payment_method || null;
-            calculated.paid_at = existing.paid_at || calculated.paid_at || null;
-            calculated.created_by = existing.created_by || operatorId;
+            calculated.status = existing.status || calculated.status
+            calculated.payment_method = existing.payment_method || calculated.payment_method || null
+            calculated.paid_at = existing.paid_at || calculated.paid_at || null
+            calculated.created_by = existing.created_by || operatorId
           } else {
-            calculated.created_by = operatorId;
+            calculated.created_by = operatorId
           }
 
-          await this.repository.upsertSalaryRecord(calculated);
-          results.recalculated += 1;
+          await this.repository.upsertSalaryRecord(calculated)
+          results.recalculated += 1
         } catch (error) {
-          results.errors.push({ employee_id: emp.id, message: error.message });
+          results.errors.push({ employee_id: emp.id, message: error.message })
         }
       }
 
-      return results;
+      return results
     } finally {
-      conn.release();
+      conn.release()
     }
   }
 
@@ -255,8 +255,8 @@ class SalaryRecordService {
    * 排除请假日期的销售数据（与工资计算逻辑保持一致）
    */
   async getEmployeesSalesData(periodStart, periodEnd) {
-    const db = getDatabase();
-    const conn = await db.getConnection();
+    const db = getDatabase()
+    const conn = await db.getConnection()
 
     try {
       // 首先获取所有员工在周期内的请假记录
@@ -266,22 +266,22 @@ class SalaryRecordService {
         WHERE record_date BETWEEN ? AND ?
           AND status = 'approved'
           AND record_type = 'leave'
-      `;
-      const [leaveRows] = await conn.execute(leaveQuery, [periodStart, periodEnd]);
+      `
+      const [leaveRows] = await conn.execute(leaveQuery, [periodStart, periodEnd])
 
       // 构建每个员工的请假过滤规则
-      const employeeLeaveRows = new Map();
+      const employeeLeaveRows = new Map()
       leaveRows.forEach(row => {
-        const employeeId = row.employee_id;
+        const employeeId = row.employee_id
         if (!employeeLeaveRows.has(employeeId)) {
-          employeeLeaveRows.set(employeeId, []);
+          employeeLeaveRows.set(employeeId, [])
         }
-        employeeLeaveRows.get(employeeId).push(row);
-      });
-      const employeeLeaveRules = new Map();
+        employeeLeaveRows.get(employeeId).push(row)
+      })
+      const employeeLeaveRules = new Map()
       employeeLeaveRows.forEach((rows, employeeId) => {
-        employeeLeaveRules.set(employeeId, buildLeaveExclusionRules(rows));
-      });
+        employeeLeaveRules.set(employeeId, buildLeaveExclusionRules(rows))
+      })
 
       // 查询所有员工在指定时间段内的销售记录（不聚合，便于过滤请假日期）
       const query = `
@@ -293,11 +293,11 @@ class SalaryRecordService {
           p.is_new,
           p.sale_price,
           p.purchase_cost,
-          p.salestime
+          p.sale_time
         FROM users u
         INNER JOIN phones p ON u.id = p.sale_operator_id
-          AND p.salestime IS NOT NULL
-          AND DATE(p.salestime) BETWEEN ? AND ?
+          AND p.sale_time IS NOT NULL
+          AND DATE(p.sale_time) BETWEEN ? AND ?
           AND p.status = 'sold'
         LEFT JOIN (
           SELECT s.phone_id, s.sale_type
@@ -310,21 +310,21 @@ class SalaryRecordService {
         ) latest_sale ON p.id = latest_sale.phone_id
         WHERE u.status = 1
           AND (latest_sale.sale_type IS NULL OR latest_sale.sale_type NOT IN ('wholesale', 'supplier_proxy', 'peer_transfer'))
-        ORDER BY u.id, p.is_new DESC, p.salestime DESC
-      `;
+        ORDER BY u.id, p.is_new DESC, p.sale_time DESC
+      `
 
-      const [rows] = await conn.execute(query, [periodStart, periodEnd]);
+      const [rows] = await conn.execute(query, [periodStart, periodEnd])
 
       // 调试：记录查询结果
-      log.debug(`[工资发放] 查询 ${periodStart} ~ ${periodEnd} 的销售数据：`);
-      log.debug(`  - 原始查询结果数: ${rows.length}`);
+      log.debug(`[工资发放] 查询 ${periodStart} ~ ${periodEnd} 的销售数据：`)
+      log.debug(`  - 原始查询结果数: ${rows.length}`)
 
       // 获取所有涉及员工的模板信息（用于过滤无提成的销售）
-      const employeeIds = [...new Set(rows.map(r => r.employee_id))];
+      const employeeIds = [...new Set(rows.map(r => r.employee_id))]
 
       // 如果没有员工数据，直接返回空结果
       if (employeeIds.length === 0) {
-        return {};
+        return {}
       }
 
       const templatesQuery = `
@@ -332,52 +332,52 @@ class SalaryRecordService {
         FROM users u
         LEFT JOIN salary_templates st ON u.salary_template_id = st.id
         WHERE u.id IN (${employeeIds.map(() => '?').join(',')})
-      `;
-      const [templates] = await conn.execute(templatesQuery, employeeIds);
+      `
+      const [templates] = await conn.execute(templatesQuery, employeeIds)
 
       // 构建员工模板信息映射
-      const employeeTemplates = new Map();
+      const employeeTemplates = new Map()
       templates.forEach(t => {
-        employeeTemplates.set(t.employee_id, t);
-      });
+        employeeTemplates.set(t.employee_id, t)
+      })
 
       // 按员工统计销售数据，排除请假日期的销售
-      const result = {};
+      const result = {}
       rows.forEach(row => {
-        const empId = row.employee_id;
-        const leaveRules = employeeLeaveRules.get(empId);
+        const empId = row.employee_id
+        const leaveRules = employeeLeaveRules.get(empId)
 
         // 如果该员工有请假记录，且销售日期在请假期间，则跳过
-        if (leaveRules && shouldExcludeSaleByLeave(row.salestime, leaveRules)) {
-          return; // 跳过请假日期的销售
+        if (leaveRules && shouldExcludeSaleByLeave(row.sale_time, leaveRules)) {
+          return // 跳过请假日期的销售
         }
 
         // 获取该员工的模板信息
-        const template = employeeTemplates.get(empId);
+        const template = employeeTemplates.get(empId)
         if (!template) {
-          return; // 没有模板，跳过（不应该发生）
+          return // 没有模板，跳过（不应该发生）
         }
 
         // 检查该销售是否有提成
-        const commissionType = template.commission_type || 'fixed';
-        const isNew = row.is_new === 1;
-        const newRate = parseFloat(template.commission_new_fixed || template.commission_fixed || 0);
-        const usedRate = parseFloat(template.commission_used_fixed || 0);
-        const commissionPercentage = parseFloat(template.commission_percentage || 0);
+        const commissionType = template.commission_type || 'fixed'
+        const isNew = row.is_new === 1
+        const newRate = parseFloat(template.commission_new_fixed || template.commission_fixed || 0)
+        const usedRate = parseFloat(template.commission_used_fixed || 0)
+        const commissionPercentage = parseFloat(template.commission_percentage || 0)
 
         // 判断该员工是否有提成配置
-        let hasCommissionConfig = false;
+        let hasCommissionConfig = false
         if (commissionType === 'fixed') {
-          hasCommissionConfig = (newRate > 0 || usedRate > 0);
+          hasCommissionConfig = (newRate > 0 || usedRate > 0)
         } else if (commissionType === 'percentage') {
-          hasCommissionConfig = (commissionPercentage > 0);
+          hasCommissionConfig = (commissionPercentage > 0)
         }
 
         // 如果有提成配置，则只统计有提成的销售
         if (hasCommissionConfig) {
           if (commissionType === 'fixed') {
-            if (isNew && newRate <= 0) return;  // 全新机没有提成
-            if (!isNew && usedRate <= 0) return;  // 二手机没有提成
+            if (isNew && newRate <= 0) return  // 全新机没有提成
+            if (!isNew && usedRate <= 0) return  // 二手机没有提成
           }
           // percentage 模式不过滤，因为所有销售都有利润提成
         }
@@ -396,39 +396,39 @@ class SalaryRecordService {
             used_count: 0,
             used_amount: 0,
             used_profit: 0
-          };
+          }
         }
 
-        const salePrice = parseFloat(row.sale_price) || 0;
-        const purchaseCost = parseFloat(row.purchase_cost) || 0;
-        const profit = salePrice - purchaseCost;
+        const salePrice = parseFloat(row.sale_price) || 0
+        const purchaseCost = parseFloat(row.purchase_cost) || 0
+        const profit = salePrice - purchaseCost
         // isNew 已在上面声明，此处无需重复声明
 
         // 累加统计数据
-        result[empId].sales_count += 1;
-        result[empId].sales_amount += salePrice;
-        result[empId].total_profit += profit;
+        result[empId].sales_count += 1
+        result[empId].sales_amount += salePrice
+        result[empId].total_profit += profit
 
         if (isNew) {
-          result[empId].new_count += 1;
-          result[empId].new_amount += salePrice;
-          result[empId].new_profit += profit;
+          result[empId].new_count += 1
+          result[empId].new_amount += salePrice
+          result[empId].new_profit += profit
         } else {
-          result[empId].used_count += 1;
-          result[empId].used_amount += salePrice;
-          result[empId].used_profit += profit;
+          result[empId].used_count += 1
+          result[empId].used_amount += salePrice
+          result[empId].used_profit += profit
         }
-      });
+      })
 
       // 调试：输出每个员工的销售统计
-      log.debug('  - 过滤后员工销售统计：');
+      log.debug('  - 过滤后员工销售统计：')
       Object.values(result).forEach(emp => {
-        log.debug(`    员工 ${emp.employee_id} (${emp.name}): ${emp.sales_count}台`);
-      });
+        log.debug(`    员工 ${emp.employee_id} (${emp.name}): ${emp.sales_count}台`)
+      })
 
-      return result;
+      return result
     } finally {
-      conn.release();
+      conn.release()
     }
   }
 
@@ -439,8 +439,8 @@ class SalaryRecordService {
    * 只返回实际有提成的销售
    */
   async getEmployeeSalesDetails(employeeId, periodStart, periodEnd) {
-    const db = getDatabase();
-    const conn = await db.getConnection();
+    const db = getDatabase()
+    const conn = await db.getConnection()
 
     try {
       // 首先获取该员工在周期内的请假记录
@@ -451,10 +451,10 @@ class SalaryRecordService {
           AND record_date BETWEEN ? AND ?
           AND status = 'approved'
           AND record_type = 'leave'
-      `;
-      const [leaveRows] = await conn.execute(leaveQuery, [employeeId, periodStart, periodEnd]);
+      `
+      const [leaveRows] = await conn.execute(leaveQuery, [employeeId, periodStart, periodEnd])
 
-      const leaveRules = buildLeaveExclusionRules(leaveRows);
+      const leaveRules = buildLeaveExclusionRules(leaveRows)
 
       // 获取该员工的模板信息（用于过滤无提成的销售）
       const templateQuery = `
@@ -462,9 +462,9 @@ class SalaryRecordService {
         FROM users u
         LEFT JOIN salary_templates st ON u.salary_template_id = st.id
         WHERE u.id = ?
-      `;
-      const [templates] = await conn.execute(templateQuery, [employeeId]);
-      const template = templates[0];
+      `
+      const [templates] = await conn.execute(templateQuery, [employeeId])
+      const template = templates[0]
 
       // 查询指定员工在指定时间段内的销售明细（通过JOIN获取brand/model/color名称）
       const query = `
@@ -478,7 +478,7 @@ class SalaryRecordService {
           mem.size as memory,
           p.purchase_cost,
           p.sale_price,
-          p.salestime,
+          p.sale_time as sale_time,
           p.status,
           p.is_new,
           cust.name as customer_name,
@@ -499,48 +499,48 @@ class SalaryRecordService {
         ) latest_sale ON p.id = latest_sale.phone_id
         LEFT JOIN customers cust ON latest_sale.customer_id = cust.id
         WHERE p.sale_operator_id = ?
-          AND p.salestime IS NOT NULL
-          AND DATE(p.salestime) BETWEEN ? AND ?
+          AND p.sale_time IS NOT NULL
+          AND DATE(p.sale_time) BETWEEN ? AND ?
           AND p.status = 'sold'
           AND (latest_sale.sale_type IS NULL OR latest_sale.sale_type NOT IN ('wholesale', 'supplier_proxy', 'peer_transfer'))
-        ORDER BY p.is_new DESC, p.salestime DESC
-      `;
+        ORDER BY p.is_new DESC, p.sale_time DESC
+      `
 
-      const [rows] = await conn.execute(query, [employeeId, periodStart, periodEnd]);
+      const [rows] = await conn.execute(query, [employeeId, periodStart, periodEnd])
 
       // 过滤掉请假日期的销售记录和没有提成的销售
       const filteredRows = rows.filter(row => {
         // 排除请假日期的销售
-        if (shouldExcludeSaleByLeave(row.salestime, leaveRules)) return false;
+        if (shouldExcludeSaleByLeave(row.sale_time, leaveRules)) return false
 
         // 排除没有提成的销售（如果模板存在）
         if (template) {
-          const commissionType = template.commission_type || 'fixed';
-          const isNew = row.is_new === 1;
-          const newRate = parseFloat(template.commission_new_fixed || template.commission_fixed || 0);
-          const usedRate = parseFloat(template.commission_used_fixed || 0);
-          const commissionPercentage = parseFloat(template.commission_percentage || 0);
+          const commissionType = template.commission_type || 'fixed'
+          const isNew = row.is_new === 1
+          const newRate = parseFloat(template.commission_new_fixed || template.commission_fixed || 0)
+          const usedRate = parseFloat(template.commission_used_fixed || 0)
+          const commissionPercentage = parseFloat(template.commission_percentage || 0)
 
           // 判断该员工是否有提成配置
-          let hasCommissionConfig = false;
+          let hasCommissionConfig = false
           if (commissionType === 'fixed') {
-            hasCommissionConfig = (newRate > 0 || usedRate > 0);
+            hasCommissionConfig = (newRate > 0 || usedRate > 0)
           } else if (commissionType === 'percentage') {
-            hasCommissionConfig = (commissionPercentage > 0);
+            hasCommissionConfig = (commissionPercentage > 0)
           }
 
           // 如果有提成配置，则只返回有提成的销售
           if (hasCommissionConfig) {
             if (commissionType === 'fixed') {
-              if (isNew && newRate <= 0) return false;  // 全新机没有提成
-              if (!isNew && usedRate <= 0) return false;  // 二手机没有提成
+              if (isNew && newRate <= 0) return false  // 全新机没有提成
+              if (!isNew && usedRate <= 0) return false  // 二手机没有提成
             }
             // percentage 模式不过滤，因为所有销售都有利润提成
           }
         }
 
-        return true;
-      });
+        return true
+      })
 
       // 格式化返回数据
       return filteredRows.map(row => ({
@@ -558,15 +558,15 @@ class SalaryRecordService {
         purchase_cost: parseFloat(row.purchase_cost) || 0,
         sale_price: parseFloat(row.sale_price) || 0,
         profit: (parseFloat(row.sale_price) || 0) - (parseFloat(row.purchase_cost) || 0),
-        salestime: row.salestime,
-        sale_time: row.salestime,
+        sale_time: row.sale_time,
+        sale_time: row.sale_time,
         customer_name: row.customer_name || '-',
         customer_phone: row.customer_phone || '-'
-      }));
+      }))
     } finally {
-      conn.release();
+      conn.release()
     }
   }
 }
 
-module.exports = new SalaryRecordService();
+module.exports = new SalaryRecordService()

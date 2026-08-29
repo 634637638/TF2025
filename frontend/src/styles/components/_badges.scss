@@ -1,0 +1,280 @@
+/* Shared semantic status tokens. Pages must use these tokens instead of owning colors. */
+:root {
+  --tf-status-success-bg: var(--tf-button-success-soft-bg);
+  --tf-status-success-border: var(--tf-button-success-soft-border);
+  --tf-status-success-color: var(--tf-button-success-soft-color);
+  --tf-status-success-hover-bg: var(--tf-button-success-soft-hover-bg);
+  --tf-status-success-hover-border: var(--tf-button-success-soft-hover-border);
+  --tf-status-success-hover-color: var(--tf-button-success-soft-hover-color);
+
+  --tf-status-warning-bg: var(--tf-button-warning-soft-bg);
+  --tf-status-warning-border: var(--tf-button-warning-soft-border);
+  --tf-status-warning-color: var(--tf-button-warning-soft-color);
+  --tf-status-warning-hover-bg: var(--tf-button-warning-soft-hover-bg);
+  --tf-status-warning-hover-border: var(--tf-button-warning-soft-hover-border);
+  --tf-status-warning-hover-color: var(--tf-button-warning-soft-hover-color);
+
+  --tf-status-danger-bg: var(--tf-button-danger-soft-bg);
+  --tf-status-danger-border: var(--tf-button-danger-soft-border);
+  --tf-status-danger-color: var(--tf-button-danger-soft-color);
+  --tf-status-danger-hover-bg: var(--tf-button-danger-soft-hover-bg);
+  --tf-status-danger-hover-border: var(--tf-button-danger-soft-hover-border);
+  --tf-status-danger-hover-color: var(--tf-button-danger-soft-hover-color);
+
+  --tf-status-info-bg: var(--tf-button-view-soft-bg);
+  --tf-status-info-border: var(--tf-button-view-soft-border);
+  --tf-status-info-color: var(--tf-button-view-soft-color);
+  --tf-status-info-hover-bg: var(--tf-button-view-soft-hover-bg);
+  --tf-status-info-hover-border: var(--tf-button-view-soft-hover-border);
+  --tf-status-info-hover-color: var(--tf-button-view-soft-hover-color);
+
+  --tf-status-primary-bg: var(--tf-button-primary-soft-bg);
+  --tf-status-primary-border: var(--tf-button-primary-soft-border);
+  --tf-status-primary-color: var(--tf-button-primary-soft-color);
+  --tf-status-primary-hover-bg: var(--tf-button-primary-soft-hover-bg);
+  --tf-status-primary-hover-border: var(--tf-button-primary-soft-hover-border);
+  --tf-status-primary-hover-color: var(--tf-button-primary-soft-hover-color);
+
+  --tf-status-neutral-bg: var(--tf-color-surface-muted);
+  --tf-status-neutral-border: var(--tf-color-border-subtle);
+  --tf-status-neutral-color: var(--tf-color-muted);
+  --tf-status-neutral-hover-bg: var(--tf-color-surface);
+  --tf-status-neutral-hover-border: var(--tf-button-neutral-hover-border);
+  --tf-status-neutral-hover-color: var(--tf-button-neutral-hover-color);
+
+  /* Business statuses intentionally use distinct palettes for quick scanning. */
+  --tf-status-sale-available-bg: var(--tf-button-success-soft-bg);
+  --tf-status-sale-available-border: var(--tf-button-success-soft-border);
+  --tf-status-sale-available-color: var(--tf-button-success-soft-color);
+  --tf-status-sold-bg: var(--tf-color-emerald-50);
+  --tf-status-sold-border: var(--tf-color-emerald-200);
+  --tf-status-sold-color: var(--tf-color-emerald-700);
+  --tf-status-allocation-bg: var(--tf-button-transfer-soft-bg);
+  --tf-status-allocation-border: var(--tf-button-transfer-soft-border);
+  --tf-status-allocation-color: var(--tf-button-transfer-soft-color);
+  --tf-status-transfer-bg: var(--tf-button-primary-soft-bg);
+  --tf-status-transfer-border: var(--tf-button-primary-soft-border);
+  --tf-status-transfer-color: var(--tf-button-primary-soft-color);
+  --tf-status-reserved-bg: var(--tf-button-view-soft-bg);
+  --tf-status-reserved-border: var(--tf-button-view-soft-border);
+  --tf-status-reserved-color: var(--tf-button-view-soft-color);
+  --tf-status-repair-bg: var(--tf-button-warning-soft-bg);
+  --tf-status-repair-border: var(--tf-button-warning-soft-border);
+  --tf-status-repair-color: var(--tf-button-warning-soft-color);
+  --tf-status-rented-bg: var(--tf-button-manage-soft-bg);
+  --tf-status-rented-border: var(--tf-button-manage-soft-border);
+  --tf-status-rented-color: var(--tf-button-manage-soft-color);
+  --tf-status-lost-bg: var(--tf-button-danger-soft-bg);
+  --tf-status-lost-border: var(--tf-button-danger-soft-border);
+  --tf-status-lost-color: var(--tf-button-danger-soft-color);
+  --tf-status-returned-bg: var(--tf-button-export-soft-bg);
+  --tf-status-returned-border: var(--tf-button-export-soft-border);
+  --tf-status-returned-color: var(--tf-button-export-soft-color);
+  --tf-status-damaged-bg: var(--tf-color-rose-50);
+  --tf-status-damaged-border: var(--tf-color-rose-200);
+  --tf-status-damaged-color: var(--tf-color-rose-700);
+  --tf-status-available-bg: var(--tf-color-teal-50);
+  --tf-status-available-border: var(--tf-color-teal-300);
+  --tf-status-available-color: var(--tf-color-teal-700);
+}
+
+/* Shared product condition and inventory status badges. */
+.condition-badge,
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.condition-badge {
+  padding: 4px 8px;
+}
+
+.condition-badge.new,
+.condition-badge.condition-new {
+  background: var(--tf-button-success-soft-bg);
+  color: var(--tf-button-success-soft-color);
+  border: 1px solid var(--tf-button-success-soft-border);
+}
+
+.condition-badge.used,
+.condition-badge.condition-used {
+  background: var(--tf-button-warning-soft-bg);
+  color: var(--tf-button-warning-soft-color);
+  border: 1px solid var(--tf-button-warning-soft-border);
+}
+
+.status-badge {
+  padding: 5px 12px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  background: var(--tf-status-neutral-bg);
+  color: var(--tf-status-neutral-color);
+  border: 1px solid var(--tf-status-neutral-border);
+}
+
+/* Common aliases remain supported while every alias resolves to one semantic palette. */
+.status-badge.in-stock,
+.status-badge.status-in_stock,
+.status-badge.status-stock {
+  background: var(--tf-status-sale-available-bg);
+  color: var(--tf-status-sale-available-color);
+  border-color: var(--tf-status-sale-available-border);
+}
+
+.status-badge.available {
+  background: var(--tf-status-available-bg);
+  color: var(--tf-status-available-color);
+  border-color: var(--tf-status-available-border);
+}
+
+.status-badge.status-active,
+.status-badge.active,
+.status-badge.status-enabled,
+.status-badge.status-success,
+.status-badge.success,
+.status-badge.status-completed,
+.status-badge.status-paid,
+.status-badge.status-approved,
+.status-badge.visible,
+.status-badge.store-status-bound {
+  background: var(--tf-status-success-bg);
+  color: var(--tf-status-success-color);
+  border-color: var(--tf-status-success-border);
+}
+
+.status-badge.status-disabled,
+.status-badge.status-inactive,
+.status-badge.inactive,
+.status-badge.is-disabled,
+.status-badge.is-hidden {
+  background: var(--tf-status-neutral-bg);
+  color: var(--tf-status-neutral-color);
+  border-color: var(--tf-status-neutral-border);
+}
+
+.status-badge.sold,
+.status-badge.status-sold {
+  background: var(--tf-status-sold-bg);
+  color: var(--tf-status-sold-color);
+  border-color: var(--tf-status-sold-border);
+}
+
+.status-badge.supplier-proxy {
+  background: var(--tf-status-allocation-bg);
+  color: var(--tf-status-allocation-color);
+  border-color: var(--tf-status-allocation-border);
+}
+
+.status-badge.peer-transfer {
+  background: var(--tf-status-transfer-bg);
+  color: var(--tf-status-transfer-color);
+  border-color: var(--tf-status-transfer-border);
+}
+
+.status-badge.reserved {
+  background: var(--tf-status-reserved-bg);
+  color: var(--tf-status-reserved-color);
+  border-color: var(--tf-status-reserved-border);
+}
+
+.status-badge.rented {
+  background: var(--tf-status-rented-bg);
+  color: var(--tf-status-rented-color);
+  border-color: var(--tf-status-rented-border);
+}
+
+.status-badge.repair,
+.status-badge.status-repair,
+.status-badge.status-pending,
+.status-badge.status-warning,
+.status-badge.is-partial {
+  background: var(--tf-status-repair-bg);
+  color: var(--tf-status-repair-color);
+  border-color: var(--tf-status-repair-border);
+}
+
+.status-badge.lost,
+.status-badge.status-lost {
+  background: var(--tf-status-lost-bg);
+  color: var(--tf-status-lost-color);
+  border-color: var(--tf-status-lost-border);
+}
+
+.status-badge.returned {
+  background: var(--tf-status-returned-bg);
+  color: var(--tf-status-returned-color);
+  border-color: var(--tf-status-returned-border);
+}
+
+.status-badge.damaged,
+.status-badge.status-damaged {
+  background: var(--tf-status-damaged-bg);
+  color: var(--tf-status-damaged-color);
+  border-color: var(--tf-status-damaged-border);
+}
+
+.status-badge.status-processing,
+.status-badge.status-unbound {
+  background: var(--tf-status-info-bg);
+  color: var(--tf-status-info-color);
+  border-color: var(--tf-status-info-border);
+}
+
+.status-badge.status-danger,
+.status-badge.status-error,
+.status-badge.error,
+.status-badge.status-unpaid,
+.status-badge.status-rejected,
+.status-badge.status-cancelled,
+.status-badge.hidden,
+.status-badge.not-eligible {
+  background: var(--tf-status-danger-bg);
+  color: var(--tf-status-danger-color);
+  border-color: var(--tf-status-danger-border);
+}
+
+.status-badge.status-primary,
+.status-badge.status-info {
+  background: var(--tf-status-primary-bg);
+  color: var(--tf-status-primary-color);
+  border-color: var(--tf-status-primary-border);
+}
+
+.status-badge:hover {
+  border-color: var(--tf-status-neutral-hover-border);
+}
+
+/* Element Plus tags use the same semantic palette as native status badges. */
+.el-tag.el-tag--success {
+  --el-tag-bg-color: var(--tf-status-success-bg);
+  --el-tag-border-color: var(--tf-status-success-border);
+  --el-tag-text-color: var(--tf-status-success-color);
+}
+
+.el-tag.el-tag--warning {
+  --el-tag-bg-color: var(--tf-status-warning-bg);
+  --el-tag-border-color: var(--tf-status-warning-border);
+  --el-tag-text-color: var(--tf-status-warning-color);
+}
+
+.el-tag.el-tag--danger {
+  --el-tag-bg-color: var(--tf-status-danger-bg);
+  --el-tag-border-color: var(--tf-status-danger-border);
+  --el-tag-text-color: var(--tf-status-danger-color);
+}
+
+.el-tag.el-tag--info {
+  --el-tag-bg-color: var(--tf-status-info-bg);
+  --el-tag-border-color: var(--tf-status-info-border);
+  --el-tag-text-color: var(--tf-status-info-color);
+}
+
+.el-tag.el-tag--primary {
+  --el-tag-bg-color: var(--tf-status-primary-bg);
+  --el-tag-border-color: var(--tf-status-primary-border);
+  --el-tag-text-color: var(--tf-status-primary-color);
+}

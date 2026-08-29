@@ -5,562 +5,969 @@
       module-name="员工管理"
       permission-code="employee:view"
     >
-    <!-- 页面头部 - 使用公共组件 -->
-    <PageHeader
-      icon="fas fa-users"
-      title="员工管理"
-    >
-      <template #actions>
-        <el-button
-          v-if="canCreate"
-          type="primary"
-          @click="openAddEmployee"
-          :icon="Plus"
-        >
-          新增
-        </el-button>
-        <ImportExportActions
-          :can-export="canExport"
-          :export-loading="exporting"
-          :export-disabled="loading || exporting"
-          @export="handleExport"
-        />
-        <el-button type="info" @click="handleRefresh" :disabled="refreshing">
-          <InlineLoading v-if="refreshing" text="刷新中..." size="small" variant="inherit" />
-          <template v-else>
-            <el-icon><Refresh /></el-icon>
-            刷新
-          </template>
-        </el-button>
-      </template>
-    </PageHeader>
-
-    <div class="content admin-page-content">
-    <!-- 统计卡片 -->
-    <div v-if="showStatsCards" class="stats-cards">
-      <div v-if="canViewField('stats_total_employees')" class="stat-card">
-        <div class="stat-icon">
-          <i class="fas fa-users"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ employees.length }}</div>
-          <div class="stat-label">员工总数</div>
-        </div>
-      </div>
-      <div v-if="canViewField('stats_active_employees')" class="stat-card">
-        <div class="stat-icon active">
-          <i class="fas fa-check-circle"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ activeEmployees }}</div>
-          <div class="stat-label">在职员工</div>
-        </div>
-      </div>
-      <div v-if="canViewField('stats_inactive_employees')" class="stat-card">
-        <div class="stat-icon inactive">
-          <i class="fas fa-pause-circle"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ inactiveEmployees }}</div>
-          <div class="stat-label">离职员工</div>
-        </div>
-      </div>
-      <div v-if="canViewField('stats_phone_completion')" class="stat-card">
-        <div class="stat-icon">
-          <i class="fas fa-phone"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ employeesWithPhone }}</div>
-          <div class="stat-label">已留电话</div>
-        </div>
-      </div>
-    </div>
-
-    <UnifiedSearchPanel
-      v-model:expanded="searchExpanded"
-      :loading="loading"
-      @search="handleSearch"
-      @reset="resetFilters"
-    >
-      <template #primary>
-        <el-input
-          v-if="showSearchKeyword"
-          v-model="searchQuery"
-          placeholder="搜索关键词"
-          clearable
-          @keyup.enter="handleSearch"
-          @click.stop
-        >
-          <template #prefix>
-            <i class="fas fa-search"></i>
-          </template>
-        </el-input>
-      </template>
-
-      <div v-if="canViewField('status')" class="form-group filter-item" data-field="status">
-        <el-select
-          v-model="statusFilter"
-          placeholder="状态"
-          clearable
-          @change="handleSearch"
-        >
-          <el-option label="在职" value="1" />
-          <el-option label="离职" value="0" />
-        </el-select>
-      </div>
-    </UnifiedSearchPanel>
-
-    <!-- 员工管理区域 -->
-    <div class="table-section admin-panel admin-table-panel">
-      <div class="section-title">
-        <i class="fas fa-list"></i>
-        员工列表
-        <span class="record-count">共 {{ filteredEmployees.length }} 条记录</span>
-      </div>
-
-      <div class="table-responsive">
-        <el-table
-          ref="employeesTableRef"
-          :data="loading ? [] : paginatedEmployees"
-          border
-          stripe
-          class="data-table devices-table base-data-table employees-data-table"
-          table-layout="fixed"
-          :fit="true"
-          :row-key="getEmployeeRowKey"
-          :row-class-name="getEmployeeRowClass"
-          :expand-row-keys="isMobile && mobileActionRowId ? [mobileActionRowId] : []"
-          @row-click="(row) => handleMobileRowTap(row.id)"
-        >
-          <template #empty>
-            <TableLoadingRow v-if="loading" mode="block" text="加载员工列表..." />
-            <div v-else class="empty-state"><i class="fas fa-inbox"></i><p>暂无员工数据</p><el-button size="small" type="info" @click="loadEmployees()">重新加载</el-button></div>
-          </template>
-          <el-table-column v-if="showIdColumn" label="ID" width="70" align="center"><template #default="{ row }"><span class="id-badge">{{ getEmployeeIndex(row.id) }}</span></template></el-table-column>
-          <el-table-column v-if="canViewField('name')" prop="name" label="姓名" :min-width="isMobile ? 72 : 110" align="center"><template #default="{ row }"><strong>{{ row.name || '未命名' }}</strong></template></el-table-column>
-          <el-table-column v-if="canViewField('username')" prop="username" label="工号" :min-width="isMobile ? 76 : 110" align="center" />
-          <el-table-column v-if="showRoleColumn" label="角色" :min-width="isMobile ? 102 : 130" align="center"><template #default="{ row }"><span :class="['role-badge', getRoleBadgeClass(row)]"><i :class="getRoleIcon(row)"></i>{{ getRoleDisplayName(row) }}</span></template></el-table-column>
-          <el-table-column v-if="showPhoneColumn" label="电话" min-width="132" align="center"><template #default="{ row }"><span v-if="row.phone" class="phone-number"><i class="fas fa-phone"></i>{{ row.phone }}</span><span v-else class="no-data">-</span></template></el-table-column>
-          <el-table-column v-if="showEmailColumn" label="邮箱" min-width="190" align="center" class-name="complete-text-column"><template #default="{ row }"><span v-if="row.email" class="phone-number"><i class="fas fa-envelope"></i>{{ row.email }}</span><span v-else class="no-data">-</span></template></el-table-column>
-          <el-table-column v-if="showStatusColumn" label="状态" :min-width="isMobile ? 72 : 84" align="center"><template #default="{ row }"><span :class="['status-badge', isEmployeeActive(row.status) ? 'status-active' : 'status-inactive']"><i :class="isEmployeeActive(row.status) ? 'fas fa-circle' : 'fas fa-user-slash'"></i>{{ isEmployeeActive(row.status) ? '在职' : '离职' }}</span></template></el-table-column>
-          <el-table-column v-if="showLastLoginColumn" label="最后登录" min-width="156" align="center"><template #default="{ row }"><div class="time-info"><i class="fas fa-clock"></i><span v-if="row.last_login">{{ formatDate(row.last_login) }}</span><span v-else class="no-data">从未登录</span></div></template></el-table-column>
-          <el-table-column v-if="showCreatedAtColumn" label="创建时间" min-width="126" align="center"><template #default="{ row }"><div class="time-info"><i class="fas fa-clock"></i>{{ formatDate(row.created_at, false) }}</div></template></el-table-column>
-          <el-table-column v-if="showHireDateColumn" label="入职时间" min-width="126" align="center"><template #default="{ row }"><div class="time-info"><i class="fas fa-user-clock"></i><span v-if="row.hire_date">{{ formatDate(row.hire_date, false) }}</span><span v-else class="no-data">未设置</span></div></template></el-table-column>
-          <el-table-column v-if="showActionField" label="操作" :width="$getActionColumnWidth((Number(canEdit) * 2) + Number(canDelete))" align="center" class-name="actions-column"><template #default="{ row }"><div class="action-buttons"><el-button v-if="canEdit" v-permission="'employee:edit'" type="primary" size="small" :icon="Edit" @click.stop="editEmployee(row)">编辑</el-button><el-button v-if="canEdit && isEmployeeActive(row.status)" v-permission="'employee:edit'" type="warning" size="small" :icon="UserFilled" @click.stop="toggleStatus(row)">离职</el-button><el-button v-else-if="canEdit" v-permission="'employee:edit'" type="info" size="small" :icon="CircleCheck" @click.stop="toggleStatus(row)">恢复</el-button><el-button v-if="canDelete" v-permission="'employee:delete'" type="danger" size="small" :icon="Delete" @click.stop="deleteEmployee(row)">删除</el-button></div></template></el-table-column>
-          <el-table-column v-if="isMobile && (canEdit || canDelete)" type="expand" width="1" class-name="mobile-expand-column" label-class-name="mobile-expand-header"><template #default="{ row }"><div class="mobile-row-actions"><el-button v-if="canEdit" v-permission="'employee:edit'" type="primary" size="small" @click.stop="editEmployee(row)"><i class="fas fa-edit"></i><span>编辑</span></el-button><el-button v-if="canEdit && isEmployeeActive(row.status)" v-permission="'employee:edit'" type="warning" size="small" @click.stop="toggleStatus(row)"><i class="fas fa-user-slash"></i><span>离职</span></el-button><el-button v-else-if="canEdit" v-permission="'employee:edit'" type="info" size="small" @click.stop="toggleStatus(row)"><i class="fas fa-rotate-left"></i><span>恢复</span></el-button><el-button v-if="canDelete" v-permission="'employee:delete'" type="danger" size="small" @click.stop="deleteEmployee(row)"><i class="fas fa-trash"></i><span>删除</span></el-button></div></template></el-table-column>
-        </el-table>
-      </div>
-
-      <!-- 分页组件 -->
-      <Pagination
-        v-if="filteredEmployees.length > 0"
-        v-model:current="currentPage"
-        v-model:page-size="pageSize"
-        :total="filteredEmployees.length"
-        :page-sizes="[10, 20, 50, 100]"
-        :show-total="true"
-        :show-range="true"
-        :show-page-sizes="true"
-        :show-quick-jumper="true"
-        :disabled="loading"
-        @change="handlePaginationChange"
-      />
-    </div>
-
-  
-    <!-- 添加/编辑员工模态框 -->
-    <MobileDialog
-      v-model="dialogVisible"
-      :title="isEditMode ? '编辑员工' : '新增员工'"
-      width="700px"
-      dialog-class="employees-form-dialog"
-      :close-on-click-modal="false"
-      @close="attemptCloseModal"
-      :show-default-footer="false"
-    >
-      <el-form :model="employeeForm" label-width="100px">
-        <el-row :gutter="20">
-          <el-col v-if="canViewField('name')" :span="12">
-            <el-form-item label="姓名" required>
-              <el-input
-                v-model="employeeForm.name"
-                placeholder="请输入员工姓名"
-                clearable
-                maxlength="50"
-                show-word-limit
-                :disabled="!canEditField('name')"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col v-if="canViewField('username')" :span="12">
-            <el-form-item label="用户名" required>
-              <el-input
-                v-model="employeeForm.username"
-                placeholder="请输入用户名"
-                clearable
-                maxlength="50"
-                show-word-limit
-                :disabled="!canEditField('username')"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-row :gutter="20">
-          <el-col v-if="canViewField('phone')" :span="12">
-            <el-form-item label="手机号">
-              <el-input
-                v-model="employeeForm.phone"
-                placeholder="请输入手机号"
-                clearable
-                maxlength="11"
-                show-word-limit
-                :disabled="!canEditField('phone')"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col v-if="canViewField('email')" :span="12">
-            <el-form-item label="邮箱">
-              <el-input
-                v-model="employeeForm.email"
-                placeholder="请输入邮箱地址"
-                clearable
-                maxlength="100"
-                show-word-limit
-                :disabled="!canEditField('email')"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-form-item v-if="canViewField('role') || canViewField('role_ids')" label="角色" required>
-          <el-checkbox-group v-model="employeeForm.role_ids" :disabled="!canEditField('role_ids')">
-            <template v-if="loadingRoles">
-              <div class="loading-roles">
-                <InlineLoading text="正在加载角色..." />
-              </div>
-            </template>
-            <template v-else-if="roles.length === 0">
-              <el-empty description="暂无可用角色" :image-size="60" />
-            </template>
-            <template v-else>
-              <el-checkbox
-                v-for="role in roles"
-                :key="role.id"
-                :label="role.id"
-                :value="role.id"
-              >
-                <div class="role-checkbox-content">
-                  <span class="role-checkbox-name">{{ role.name }}</span>
-                </div>
-              </el-checkbox>
-            </template>
-          </el-checkbox-group>
-        </el-form-item>
-
-        <el-form-item v-if="canViewField('status')" label="状态">
-          <el-radio-group v-model="employeeForm.status" :disabled="!canEditField('status')">
-            <el-radio :value="1">
-              在职
-            </el-radio>
-            <el-radio :value="0">
-              离职
-            </el-radio>
-          </el-radio-group>
-        </el-form-item>
-
-        <el-form-item v-if="canViewField('hire_date')" label="入职时间">
-          <el-date-picker
-            v-model="employeeForm.hire_date"
-            type="date"
-            placeholder="请选择入职时间"
-            format="YYYY-MM-DD"
-            value-format="YYYY-MM-DD"
-            style="width: 100%"
-            :disabled="!canEditField('hire_date')"
+      <!-- 页面头部 - 使用公共组件 -->
+      <PageHeader
+        icon="fas fa-users"
+        title="员工管理"
+      >
+        <template #actions>
+          <el-button
+            v-if="canCreate"
+            type="primary"
+            :icon="Plus"
+            @click="openAddEmployee"
+          >
+            新增
+          </el-button>
+          <ImportExportActions
+            :can-export="canExport"
+            :export-loading="exporting"
+            :export-disabled="loading || exporting"
+            @export="handleExport"
           />
-        </el-form-item>
-
-        <!-- 新增员工时的密码设置 -->
-        <template v-if="showAddModal">
-          <el-row :gutter="20">
-            <el-col :span="12">
-              <el-form-item label="初始密码" required>
-                <el-input
-                  v-model="employeeForm.password"
-                  type="password"
-                  placeholder="请输入初始密码"
-                  clearable
-                  show-password
-                  maxlength="50"
-                />
-              </el-form-item>
-            </el-col>
-            <el-col :span="12">
-              <el-form-item label="确认密码" required>
-                <el-input
-                  v-model="employeeForm.confirmPassword"
-                  type="password"
-                  placeholder="请再次输入密码"
-                  clearable
-                  show-password
-                  maxlength="50"
-                />
-              </el-form-item>
-            </el-col>
-          </el-row>
+          <el-button
+            type="info"
+            :disabled="refreshing"
+            @click="handleRefresh"
+          >
+            <InlineLoading
+              v-if="refreshing"
+              text="刷新中..."
+              size="small"
+              variant="inherit"
+            />
+            <template v-else>
+              <el-icon><Refresh /></el-icon>
+              刷新
+            </template>
+          </el-button>
         </template>
+      </PageHeader>
 
-        <!-- 编辑员工时的密码修改区域 -->
-        <template v-if="showEditModal">
-          <el-divider content-position="left">
-            <el-icon><Key /></el-icon>
-            密码管理
-            <el-button
-              type="primary"
-              link
-              @click="togglePasswordSection"
-              style="margin-left: 10px"
+      <div class="content admin-page-content">
+        <!-- 统计卡片 -->
+        <div
+          v-if="showStatsCards"
+          class="stats-cards"
+        >
+          <div
+            v-if="canViewField('stats_total_employees')"
+            class="stat-card"
+          >
+            <div class="stat-icon">
+              <i class="fas fa-users" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">
+                {{ employees.length }}
+              </div>
+              <div class="stat-label">
+                员工总数
+              </div>
+            </div>
+          </div>
+          <div
+            v-if="canViewField('stats_active_employees')"
+            class="stat-card"
+          >
+            <div class="stat-icon active">
+              <i class="fas fa-check-circle" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">
+                {{ activeEmployees }}
+              </div>
+              <div class="stat-label">
+                在职员工
+              </div>
+            </div>
+          </div>
+          <div
+            v-if="canViewField('stats_inactive_employees')"
+            class="stat-card"
+          >
+            <div class="stat-icon inactive">
+              <i class="fas fa-pause-circle" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">
+                {{ inactiveEmployees }}
+              </div>
+              <div class="stat-label">
+                离职员工
+              </div>
+            </div>
+          </div>
+          <div
+            v-if="canViewField('stats_phone_completion')"
+            class="stat-card"
+          >
+            <div class="stat-icon">
+              <i class="fas fa-phone" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">
+                {{ employeesWithPhone }}
+              </div>
+              <div class="stat-label">
+                已留电话
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <UnifiedSearchPanel
+          v-model:expanded="searchExpanded"
+          :loading="loading"
+          @search="handleSearch"
+          @reset="resetFilters"
+        >
+          <template #primary>
+            <el-input
+              v-if="showSearchKeyword"
+              v-model="searchQuery"
+              placeholder="搜索关键词"
+              clearable
+              @keyup.enter="handleSearch"
+              @click.stop
             >
-              <el-icon><component :is="showPasswordFields ? ArrowUp : ArrowDown" /></el-icon>
-              {{ showPasswordFields ? '收起' : '展开' }}密码修改
-            </el-button>
-          </el-divider>
+              <template #prefix>
+                <i class="fas fa-search" />
+              </template>
+            </el-input>
+          </template>
 
-          <div v-if="showPasswordFields">
+          <div
+            v-if="canViewField('status')"
+            class="form-group filter-item"
+            data-field="status"
+          >
+            <el-select
+              v-model="statusFilter"
+              placeholder="状态"
+              clearable
+              @change="handleSearch"
+            >
+              <el-option
+                label="在职"
+                value="1"
+              />
+              <el-option
+                label="离职"
+                value="0"
+              />
+            </el-select>
+          </div>
+        </UnifiedSearchPanel>
+
+        <!-- 员工管理区域 -->
+        <div class="table-section admin-panel admin-table-panel">
+          <div class="section-title">
+            <i class="fas fa-list" />
+            员工列表
+            <span class="record-count">共 {{ filteredEmployees.length }} 条记录</span>
+          </div>
+
+          <div class="table-responsive">
+            <el-table
+              ref="employeesTableRef"
+              :data="loading ? [] : paginatedEmployees"
+              border
+              stripe
+              class="data-table devices-table base-data-table employees-data-table"
+              table-layout="fixed"
+              :fit="true"
+              :row-key="getEmployeeRowKey"
+              :row-class-name="getEmployeeRowClass"
+              :expand-row-keys="isMobile && mobileActionRowId ? [mobileActionRowId] : []"
+              @row-click="(row) => handleMobileRowTap(row.id)"
+            >
+              <template #empty>
+                <TableLoadingRow
+                  v-if="loading"
+                  mode="block"
+                  text="加载员工列表..."
+                />
+                <DataEmptyState
+                  v-else
+                  description="暂无员工数据"
+                >
+                  <el-button
+                    size="small"
+                    type="info"
+                    @click="loadEmployees()"
+                  >
+                    重新加载
+                  </el-button>
+                </DataEmptyState>
+              </template>
+              <el-table-column
+                v-if="showIdColumn"
+                label="ID"
+                width="70"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <span class="id-badge">{{ getEmployeeIndex(row.id) }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="canViewField('name')"
+                prop="name"
+                label="姓名"
+                :min-width="isMobile ? 72 : 110"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <strong>{{ row.name || '未命名' }}</strong>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="canViewField('username')"
+                prop="username"
+                label="工号"
+                :min-width="isMobile ? 76 : 110"
+                align="center"
+              />
+              <el-table-column
+                v-if="showRoleColumn"
+                label="角色"
+                :min-width="isMobile ? 102 : 130"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <span :class="['role-badge', getRoleBadgeClass(row)]"><i :class="getRoleIcon(row)" />{{ getRoleDisplayName(row) }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="showPhoneColumn"
+                label="电话"
+                min-width="132"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <span
+                    v-if="row.phone"
+                    class="phone-number"
+                  ><i class="fas fa-phone" />{{ row.phone }}</span><span
+                    v-else
+                    class="no-data"
+                  >-</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="showEmailColumn"
+                label="邮箱"
+                min-width="190"
+                align="center"
+                class-name="complete-text-column"
+              >
+                <template #default="{ row }">
+                  <span
+                    v-if="row.email"
+                    class="phone-number"
+                  ><i class="fas fa-envelope" />{{ row.email }}</span><span
+                    v-else
+                    class="no-data"
+                  >-</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="showStatusColumn"
+                label="状态"
+                :min-width="isMobile ? 72 : 84"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <span :class="['status-badge', isEmployeeActive(row.status) ? 'status-active' : 'status-inactive']"><i :class="isEmployeeActive(row.status) ? 'fas fa-circle' : 'fas fa-user-slash'" />{{ isEmployeeActive(row.status) ? '在职' : '离职' }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="showLastLoginColumn"
+                label="最后登录"
+                min-width="156"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <div class="time-info">
+                    <i class="fas fa-clock" /><span v-if="row.last_login">{{ formatDate(row.last_login) }}</span><span
+                      v-else
+                      class="no-data"
+                    >从未登录</span>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="showCreatedAtColumn"
+                label="创建时间"
+                min-width="126"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <div class="time-info">
+                    <i class="fas fa-clock" />{{ formatDate(row.created_at, false) }}
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="showHireDateColumn"
+                label="入职时间"
+                min-width="126"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <div class="time-info">
+                    <i class="fas fa-user-clock" /><span v-if="row.hire_date">{{ formatDate(row.hire_date, false) }}</span><span
+                      v-else
+                      class="no-data"
+                    >未设置</span>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="showActionField"
+                label="操作"
+                :width="$getActionColumnWidth((Number(canEdit) * 2) + Number(canDelete))"
+                align="center"
+                class-name="actions-column"
+              >
+                <template #default="{ row }">
+                  <div class="action-buttons">
+                    <el-button
+                      v-if="canEdit"
+                      v-permission="'employee:edit'"
+                      type="primary"
+                      size="small"
+                      :icon="Edit"
+                      @click.stop="editEmployee(row)"
+                    >
+                      编辑
+                    </el-button><el-button
+                      v-if="canEdit && isEmployeeActive(row.status)"
+                      v-permission="'employee:edit'"
+                      type="warning"
+                      size="small"
+                      :icon="UserFilled"
+                      @click.stop="toggleStatus(row)"
+                    >
+                      离职
+                    </el-button><el-button
+                      v-else-if="canEdit"
+                      v-permission="'employee:edit'"
+                      type="info"
+                      size="small"
+                      :icon="CircleCheck"
+                      @click.stop="toggleStatus(row)"
+                    >
+                      恢复
+                    </el-button><el-button
+                      v-if="canDelete"
+                      v-permission="'employee:delete'"
+                      type="danger"
+                      size="small"
+                      :icon="Delete"
+                      @click.stop="deleteEmployee(row)"
+                    >
+                      删除
+                    </el-button>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="isMobile && (canEdit || canDelete)"
+                type="expand"
+                width="1"
+                class-name="mobile-expand-column"
+                label-class-name="mobile-expand-header"
+              >
+                <template #default="{ row }">
+                  <div class="mobile-row-actions">
+                    <el-button
+                      v-if="canEdit"
+                      v-permission="'employee:edit'"
+                      type="primary"
+                      size="small"
+                      @click.stop="editEmployee(row)"
+                    >
+                      <i class="fas fa-edit" /><span>编辑</span>
+                    </el-button><el-button
+                      v-if="canEdit && isEmployeeActive(row.status)"
+                      v-permission="'employee:edit'"
+                      type="warning"
+                      size="small"
+                      @click.stop="toggleStatus(row)"
+                    >
+                      <i class="fas fa-user-slash" /><span>离职</span>
+                    </el-button><el-button
+                      v-else-if="canEdit"
+                      v-permission="'employee:edit'"
+                      type="info"
+                      size="small"
+                      @click.stop="toggleStatus(row)"
+                    >
+                      <i class="fas fa-rotate-left" /><span>恢复</span>
+                    </el-button><el-button
+                      v-if="canDelete"
+                      v-permission="'employee:delete'"
+                      type="danger"
+                      size="small"
+                      @click.stop="deleteEmployee(row)"
+                    >
+                      <i class="fas fa-trash" /><span>删除</span>
+                    </el-button>
+                  </div>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+
+          <!-- 分页组件 -->
+          <Pagination
+            v-if="filteredEmployees.length > 0"
+            v-model:current="page"
+            v-model:page-size="page_size"
+            :total="filteredEmployees.length"
+            :page-sizes="[10, 20, 50, 100]"
+            :show-total="true"
+            :show-range="true"
+            :show-page-sizes="true"
+            :show-quick-jumper="true"
+            :disabled="loading"
+            @change="handlePaginationChange"
+          />
+        </div>
+
+
+        <!-- 添加/编辑员工模态框 -->
+        <MobileDialog
+          v-model="dialogVisible"
+          :title="isEditMode ? '编辑员工' : '新增员工'"
+          width="700px"
+          dialog-class="employees-form-dialog"
+          :close-on-click-modal="false"
+          :show-default-footer="false"
+          @close="attemptCloseModal"
+        >
+          <el-form
+            :model="employeeForm"
+            label-width="100px"
+          >
             <el-row :gutter="20">
-              <el-col :span="12">
-                <el-form-item label="新密码">
+              <el-col
+                v-if="canViewField('name')"
+                :span="12"
+              >
+                <el-form-item
+                  label="姓名"
+                  required
+                >
                   <el-input
-                    v-model="employeeForm.password"
-                    type="password"
-                    placeholder="留空表示不修改密码"
+                    v-model="employeeForm.name"
+                    placeholder="请输入员工姓名"
                     clearable
-                    show-password
                     maxlength="50"
+                    show-word-limit
+                    :disabled="!canEditField('name')"
                   />
-                  <div class="form-help">如需修改密码请输入新密码，否则留空</div>
                 </el-form-item>
               </el-col>
-              <el-col :span="12">
-                <el-form-item label="确认新密码">
+              <el-col
+                v-if="canViewField('username')"
+                :span="12"
+              >
+                <el-form-item
+                  label="用户名"
+                  required
+                >
                   <el-input
-                    v-model="employeeForm.confirmPassword"
-                    type="password"
-                    placeholder="请再次输入新密码"
+                    v-model="employeeForm.username"
+                    placeholder="请输入用户名"
                     clearable
-                    show-password
                     maxlength="50"
+                    show-word-limit
+                    :disabled="!canEditField('username')"
                   />
-                  <div v-if="employeeForm.password && !employeeForm.confirmPassword" class="form-help">
-                    请确认新密码
-                  </div>
-                  <div v-if="employeeForm.password && employeeForm.confirmPassword && employeeForm.password !== employeeForm.confirmPassword" class="form-help error">
-                    ⚠️ 两次输入的密码不一致
-                  </div>
                 </el-form-item>
               </el-col>
             </el-row>
 
-            <!-- 密码操作按钮 -->
-            <div class="password-actions">
-              <el-button
-                type="warning"
-                size="small"
-                @click="resetToDefaultPassword"
-                :disabled="passwordResetting"
+            <el-row :gutter="20">
+              <el-col
+                v-if="canViewField('phone')"
+                :span="12"
               >
-                <InlineLoading v-if="passwordResetting" text="重置中..." size="small" variant="inherit" />
-                <template v-else>
-                  <el-icon><RefreshLeft /></el-icon>
-                  重置为随机密码
+                <el-form-item label="手机号">
+                  <el-input
+                    v-model="employeeForm.phone"
+                    placeholder="请输入手机号"
+                    clearable
+                    maxlength="11"
+                    show-word-limit
+                    :disabled="!canEditField('phone')"
+                  />
+                </el-form-item>
+              </el-col>
+              <el-col
+                v-if="canViewField('email')"
+                :span="12"
+              >
+                <el-form-item label="邮箱">
+                  <el-input
+                    v-model="employeeForm.email"
+                    placeholder="请输入邮箱地址"
+                    clearable
+                    maxlength="100"
+                    show-word-limit
+                    :disabled="!canEditField('email')"
+                  />
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <el-form-item
+              v-if="canViewField('role') || canViewField('role_ids')"
+              label="角色"
+              required
+            >
+              <el-checkbox-group
+                v-model="employeeForm.role_ids"
+                :disabled="!canEditField('role_ids')"
+              >
+                <template v-if="loadingRoles">
+                  <div class="loading-roles">
+                    <InlineLoading text="正在加载角色..." />
+                  </div>
                 </template>
-              </el-button>
-              <el-button
-                type="info"
-                size="small"
-                @click="generateRandomPassword"
-                :icon="RefreshRight"
+                <template v-else-if="roles.length === 0">
+                  <DataEmptyState
+                    description="暂无可用角色"
+                    :image-size="60"
+                  />
+                </template>
+                <template v-else>
+                  <el-checkbox
+                    v-for="role in roles"
+                    :key="role.id"
+                    :label="role.id"
+                    :value="role.id"
+                  >
+                    <div class="role-checkbox-content">
+                      <span class="role-checkbox-name">{{ role.name }}</span>
+                    </div>
+                  </el-checkbox>
+                </template>
+              </el-checkbox-group>
+            </el-form-item>
+
+            <el-form-item
+              v-if="canViewField('status')"
+              label="状态"
+            >
+              <el-radio-group
+                v-model="employeeForm.status"
+                :disabled="!canEditField('status')"
               >
-                生成随机密码
-              </el-button>
-              <el-button
+                <el-radio :value="1">
+                  在职
+                </el-radio>
+                <el-radio :value="0">
+                  离职
+                </el-radio>
+              </el-radio-group>
+            </el-form-item>
+
+            <el-form-item
+              v-if="canViewField('hire_date')"
+              label="入职时间"
+            >
+              <el-date-picker
+                v-model="employeeForm.hire_date"
+                type="date"
+                placeholder="请选择入职时间"
+                format="YYYY-MM-DD"
+                value-format="YYYY-MM-DD"
+                style="width: 100%"
+                :disabled="!canEditField('hire_date')"
+              />
+            </el-form-item>
+
+            <!-- 新增员工时的密码设置 -->
+            <template v-if="showAddModal">
+              <el-row :gutter="20">
+                <el-col :span="12">
+                  <el-form-item
+                    label="初始密码"
+                    required
+                  >
+                    <el-input
+                      v-model="employeeForm.password"
+                      type="password"
+                      placeholder="请输入初始密码"
+                      clearable
+                      show-password
+                      maxlength="50"
+                    />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item
+                    label="确认密码"
+                    required
+                  >
+                    <el-input
+                      v-model="employeeForm.confirm_password"
+                      type="password"
+                      placeholder="请再次输入密码"
+                      clearable
+                      show-password
+                      maxlength="50"
+                    />
+                  </el-form-item>
+                </el-col>
+              </el-row>
+            </template>
+
+            <!-- 编辑员工时的密码修改区域 -->
+            <template v-if="showEditModal">
+              <el-divider content-position="left">
+                <el-icon><Key /></el-icon>
+                密码管理
+                <el-button
+                  type="primary"
+                  link
+                  style="margin-left: 10px"
+                  @click="togglePasswordSection"
+                >
+                  <el-icon><component :is="showPasswordFields ? ArrowUp : ArrowDown" /></el-icon>
+                  {{ showPasswordFields ? '收起' : '展开' }}密码修改
+                </el-button>
+              </el-divider>
+
+              <div v-if="showPasswordFields">
+                <el-row :gutter="20">
+                  <el-col :span="12">
+                    <el-form-item label="新密码">
+                      <el-input
+                        v-model="employeeForm.password"
+                        type="password"
+                        placeholder="留空表示不修改密码"
+                        clearable
+                        show-password
+                        maxlength="50"
+                      />
+                      <div class="form-help">
+                        如需修改密码请输入新密码，否则留空
+                      </div>
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="12">
+                    <el-form-item label="确认新密码">
+                      <el-input
+                        v-model="employeeForm.confirm_password"
+                        type="password"
+                        placeholder="请再次输入新密码"
+                        clearable
+                        show-password
+                        maxlength="50"
+                      />
+                      <div
+                        v-if="employeeForm.password && !employeeForm.confirm_password"
+                        class="form-help"
+                      >
+                        请确认新密码
+                      </div>
+                      <div
+                        v-if="employeeForm.password && employeeForm.confirm_password && employeeForm.password !== employeeForm.confirm_password"
+                        class="form-help error"
+                      >
+                        ⚠️ 两次输入的密码不一致
+                      </div>
+                    </el-form-item>
+                  </el-col>
+                </el-row>
+
+                <!-- 密码操作按钮 -->
+                <div class="password-actions">
+                  <el-button
+                    type="warning"
+                    size="small"
+                    :disabled="passwordResetting"
+                    @click="resetToDefaultPassword"
+                  >
+                    <InlineLoading
+                      v-if="passwordResetting"
+                      text="重置中..."
+                      size="small"
+                      variant="inherit"
+                    />
+                    <template v-else>
+                      <el-icon><RefreshLeft /></el-icon>
+                      重置为随机密码
+                    </template>
+                  </el-button>
+                  <el-button
+                    type="info"
+                    size="small"
+                    :icon="RefreshRight"
+                    @click="generateRandomPassword"
+                  >
+                    生成随机密码
+                  </el-button>
+                  <el-button
+                    size="small"
+                    :icon="Close"
+                    @click="clearPasswordFields"
+                  >
+                    取消密码修改
+                  </el-button>
+                </div>
+              </div>
+            </template>
+          </el-form>
+
+          <template #footer>
+            <el-button
+              type="default"
+              :icon="Close"
+              @click="attemptCloseModal"
+            >
+              取消
+            </el-button>
+            <el-button
+              type="primary"
+              :disabled="submitting"
+              @click="saveEmployee"
+            >
+              <InlineLoading
+                v-if="submitting"
+                :text="isEditMode ? '保存中...' : '添加中...'"
                 size="small"
-                @click="clearPasswordFields"
-                :icon="Close"
+                variant="inherit"
+              />
+              <template v-else>
+                <el-icon><component :is="isEditMode ? Check : Plus" /></el-icon>
+                {{ isEditMode ? '保存' : '添加' }}
+              </template>
+            </el-button>
+          </template>
+        </MobileDialog>
+
+        <!-- 薪资详情模态框 -->
+        <MobileDialog
+          v-model="showSalaryModal"
+          :title="`${selectedEmployee?.name} - 薪资详情`"
+          width="600px"
+          dialog-class="employees-salary-dialog"
+          :show-default-footer="false"
+        >
+          <div
+            v-if="employeeSalary"
+            class="salary-info"
+          >
+            <el-descriptions
+              :column="3"
+              border
+            >
+              <el-descriptions-item label="基本工资">
+                <span class="amount">¥{{ employeeSalary.base_salary || 0 }}</span>
+              </el-descriptions-item>
+              <el-descriptions-item label="提成比例">
+                {{ employeeSalary.commission_new || 0 }}% / {{ employeeSalary.commission_used || 0 }}%
+              </el-descriptions-item>
+              <el-descriptions-item label="利润提成">
+                {{ employeeSalary.commission_profit_percentage || 0 }}%
+              </el-descriptions-item>
+            </el-descriptions>
+
+            <el-divider content-position="left">
+              详细配置
+            </el-divider>
+
+            <el-descriptions
+              :column="2"
+              border
+            >
+              <el-descriptions-item label="加班费率">
+                ¥{{ employeeSalary.overtime_rate || 0 }}/小时
+              </el-descriptions-item>
+              <el-descriptions-item label="缺勤扣除">
+                ¥{{ employeeSalary.deduction_absent || 0 }}/天
+              </el-descriptions-item>
+              <el-descriptions-item label="全勤奖金">
+                ¥{{ employeeSalary.bonus_attendance || 0 }}
+              </el-descriptions-item>
+              <el-descriptions-item
+                v-if="canViewField('salary_template_name')"
+                label="薪资模板"
               >
-                取消密码修改
+                {{ employeeSalary.salary_template_name || '未设置' }}
+              </el-descriptions-item>
+            </el-descriptions>
+          </div>
+          <DataEmptyState
+            v-else
+            description="该员工暂未配置薪资信息"
+          />
+        </MobileDialog>
+
+        <!-- 角色管理模态框 -->
+        <MobileDialog
+          v-model="showRoleManagement"
+          title="角色管理"
+          width="800px"
+          dialog-class="employees-role-management-dialog"
+          :show-default-footer="false"
+        >
+          <div class="role-management-section">
+            <div class="section-header">
+              <h4>
+                <el-icon><PriceTag /></el-icon>
+                角色列表
+              </h4>
+              <el-button
+                type="primary"
+                size="small"
+                :icon="Plus"
+                @click="openAddRoleModal"
+              >
+                新增
               </el-button>
             </div>
-          </div>
-        </template>
 
-      </el-form>
-
-      <template #footer>
-        <el-button type="default" @click="attemptCloseModal" :icon="Close">取消</el-button>
-        <el-button type="primary" @click="saveEmployee" :disabled="submitting">
-          <InlineLoading v-if="submitting" :text="isEditMode ? '保存中...' : '添加中...'" size="small" variant="inherit" />
-          <template v-else>
-            <el-icon><component :is="isEditMode ? Check : Plus" /></el-icon>
-            {{ isEditMode ? '保存' : '添加' }}
-          </template>
-        </el-button>
-      </template>
-    </MobileDialog>
-
-    <!-- 薪资详情模态框 -->
-    <MobileDialog
-      v-model="showSalaryModal"
-      :title="`${selectedEmployee?.name} - 薪资详情`"
-      width="600px"
-      dialog-class="employees-salary-dialog"
-      :show-default-footer="false"
-    >
-      <div v-if="employeeSalary" class="salary-info">
-        <el-descriptions :column="3" border>
-          <el-descriptions-item label="基本工资">
-            <span class="amount">¥{{ employeeSalary.base_salary || 0 }}</span>
-          </el-descriptions-item>
-          <el-descriptions-item label="提成比例">
-            {{ employeeSalary.commission_new || 0 }}% / {{ employeeSalary.commission_used || 0 }}%
-          </el-descriptions-item>
-          <el-descriptions-item label="利润提成">
-            {{ employeeSalary.commission_profit_percentage || 0 }}%
-          </el-descriptions-item>
-        </el-descriptions>
-
-        <el-divider content-position="left">详细配置</el-divider>
-
-        <el-descriptions :column="2" border>
-          <el-descriptions-item label="加班费率">
-            ¥{{ employeeSalary.overtime_rate || 0 }}/小时
-          </el-descriptions-item>
-          <el-descriptions-item label="缺勤扣除">
-            ¥{{ employeeSalary.deduction_absent || 0 }}/天
-          </el-descriptions-item>
-          <el-descriptions-item label="全勤奖金">
-            ¥{{ employeeSalary.bonus_attendance || 0 }}
-          </el-descriptions-item>
-          <el-descriptions-item v-if="canViewField('salary_template_name')" label="薪资模板">
-            {{ employeeSalary.salary_template_name || '未设置' }}
-          </el-descriptions-item>
-        </el-descriptions>
-      </div>
-      <el-empty v-else description="该员工暂未配置薪资信息" />
-    </MobileDialog>
-
-    <!-- 角色管理模态框 -->
-    <MobileDialog
-      v-model="showRoleManagement"
-      title="角色管理"
-      width="800px"
-      dialog-class="employees-role-management-dialog"
-      :show-default-footer="false"
-    >
-      <div class="role-management-section">
-        <div class="section-header">
-          <h4>
-            <el-icon><PriceTag /></el-icon>
-            角色列表
-          </h4>
-          <el-button type="primary" size="small" @click="openAddRoleModal" :icon="Plus">
-            新增
-          </el-button>
-        </div>
-
-        <div class="roles-list">
-          <TableLoadingRow v-if="loadingRoles" mode="block" text="加载中..." />
-          <div v-else-if="roles.length === 0" class="empty-content">
-            <el-empty description="暂无角色，请点击上方新增角色按钮添加" />
-          </div>
-          <div v-else class="roles-grid">
-            <el-card v-for="role in roles" :key="role.id" class="role-card" shadow="hover">
-              <template #header>
-                <div class="role-header">
-                  <h5>{{ role.name }}</h5>
-                  <div class="role-actions">
-                    <el-button size="small" type="primary" @click="editRole(role)" :icon="Edit" />
-                    <el-button
-                      size="small"
-                      type="danger"
-                      @click="deleteRole(role)"
-                      :disabled="role.user_count > 0"
-                      :title="role.user_count > 0 ? '该角色仍有用户使用，无法删除' : '删除角色'"
-                      :icon="Delete"
-                    />
+            <div class="roles-list">
+              <TableLoadingRow
+                v-if="loadingRoles"
+                mode="block"
+                text="加载中..."
+              />
+              <DataEmptyState
+                v-else-if="roles.length === 0"
+                size="compact"
+                description="暂无角色，请点击上方新增角色按钮添加"
+              />
+              <div
+                v-else
+                class="roles-grid"
+              >
+                <el-card
+                  v-for="role in roles"
+                  :key="role.id"
+                  class="role-card"
+                  shadow="hover"
+                >
+                  <template #header>
+                    <div class="role-header">
+                      <h5>{{ role.name }}</h5>
+                      <div class="role-actions">
+                        <el-button
+                          size="small"
+                          type="primary"
+                          :icon="Edit"
+                          @click="editRole(role)"
+                        />
+                        <el-button
+                          size="small"
+                          type="danger"
+                          :disabled="role.user_count > 0"
+                          :title="role.user_count > 0 ? '该角色仍有用户使用，无法删除' : '删除角色'"
+                          :icon="Delete"
+                          @click="deleteRole(role)"
+                        />
+                      </div>
+                    </div>
+                  </template>
+                  <div class="role-description">
+                    {{ role.description || '暂无描述' }}
                   </div>
-                </div>
-              </template>
-              <div class="role-description">
-                {{ role.description || '暂无描述' }}
+                  <div class="role-stats">
+                    <el-tag size="small">
+                      {{ role.user_count }} 个用户
+                    </el-tag>
+                    <span class="create-time">创建于 {{ formatDate(role.created_at) }}</span>
+                  </div>
+                </el-card>
               </div>
-              <div class="role-stats">
-                <el-tag size="small">{{ role.user_count }} 个用户</el-tag>
-                <span class="create-time">创建于 {{ formatDate(role.created_at) }}</span>
-              </div>
-            </el-card>
+            </div>
           </div>
-        </div>
-      </div>
-    </MobileDialog>
+        </MobileDialog>
 
   
-    <!-- 添加/编辑角色模态框 -->
-    <MobileDialog
-      v-model="roleDialogVisible"
-      :title="showAddRoleModal ? '添加角色' : '编辑角色'"
-      width="500px"
-      dialog-class="employees-role-form-dialog"
-      :close-on-click-modal="false"
-      @close="closeRoleModal"
-      :show-default-footer="false"
-    >
-      <el-form :model="roleForm" label-width="100px">
-        <el-form-item label="角色名称" required>
-          <el-input
-            v-model="roleForm.name"
-            placeholder="请输入角色名称"
-            clearable
-            maxlength="50"
-            show-word-limit
-            @input="roleFormError = ''"
-          />
-          <el-alert
-            v-if="roleFormError"
-            :title="roleFormError"
-            type="error"
-            :closable="false"
-            show-icon
-            style="margin-top: 5px"
-          />
-        </el-form-item>
+        <!-- 添加/编辑角色模态框 -->
+        <MobileDialog
+          v-model="roleDialogVisible"
+          :title="showAddRoleModal ? '添加角色' : '编辑角色'"
+          width="500px"
+          dialog-class="employees-role-form-dialog"
+          :close-on-click-modal="false"
+          :show-default-footer="false"
+          @close="closeRoleModal"
+        >
+          <el-form
+            :model="roleForm"
+            label-width="100px"
+          >
+            <el-form-item
+              label="角色名称"
+              required
+            >
+              <el-input
+                v-model="roleForm.name"
+                placeholder="请输入角色名称"
+                clearable
+                maxlength="50"
+                show-word-limit
+                @input="roleFormError = ''"
+              />
+              <el-alert
+                v-if="roleFormError"
+                :title="roleFormError"
+                type="error"
+                :closable="false"
+                show-icon
+                style="margin-top: 5px"
+              />
+            </el-form-item>
 
-        <el-form-item label="角色描述">
-          <el-input
-            v-model="roleForm.description"
-            type="textarea"
-            placeholder="请输入角色描述"
-            :rows="3"
-            clearable
-            maxlength="200"
-            show-word-limit
-          />
-        </el-form-item>
-      </el-form>
+            <el-form-item label="角色描述">
+              <el-input
+                v-model="roleForm.description"
+                type="textarea"
+                placeholder="请输入角色描述"
+                :rows="3"
+                clearable
+                maxlength="200"
+                show-word-limit
+              />
+            </el-form-item>
+          </el-form>
 
-      <template #footer>
-        <el-button type="default" @click="closeRoleModal" :icon="Close">取消</el-button>
-        <el-button type="primary" @click="saveRole" :disabled="savingRole">
-          <InlineLoading v-if="savingRole" :text="showAddRoleModal ? '添加中...' : '保存中...'" size="small" variant="inherit" />
-          <template v-else>
-            <el-icon><Check /></el-icon>
-            {{ showAddRoleModal ? '添加' : '保存' }}
+          <template #footer>
+            <el-button
+              type="default"
+              :icon="Close"
+              @click="closeRoleModal"
+            >
+              取消
+            </el-button>
+            <el-button
+              type="primary"
+              :disabled="savingRole"
+              @click="saveRole"
+            >
+              <InlineLoading
+                v-if="savingRole"
+                :text="showAddRoleModal ? '添加中...' : '保存中...'"
+                size="small"
+                variant="inherit"
+              />
+              <template v-else>
+                <el-icon><Check /></el-icon>
+                {{ showAddRoleModal ? '添加' : '保存' }}
+              </template>
+            </el-button>
           </template>
-        </el-button>
-      </template>
-    </MobileDialog>
-    </div>
+        </MobileDialog>
+      </div>
     </PermissionGate>
   </div>
 </template>
@@ -576,14 +983,12 @@ import { useImportExport } from '@/composables/useImportExport'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useRefreshData } from '@/composables/useRefreshData'
 import { useCachedRequest, DEFAULT_CACHE_TTL } from '@/composables/usePageCache'
-import { fieldPermissions } from '@/composables/useFieldPermissions'
+import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useAuthStore } from '@/stores/auth'
-import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
 import type { Employee, EmployeeForm, Role } from '@/types/employee'
 import Pagination from '../../components/Pagination.vue'
 import InlineLoading from '@/components/InlineLoading.vue'
-import SectionLoading from '@/components/SectionLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
@@ -591,17 +996,12 @@ import { PageHeader, PermissionGate } from '@/components/base'
 import { useMobile } from '@/composables/mobile'
 import {
   Plus,
-  Download,
   Refresh,
-  ArrowLeft,
-  HomeFilled,
   Key,
-  Search,
   RefreshRight,
   Edit,
   UserFilled,
   CircleCheck,
-  CircleClose,
   Delete,
   ArrowUp,
   ArrowDown,
@@ -614,7 +1014,7 @@ import {
 // 权限和路由
 const router = useRouter()
 // 使用统一的 composable
-const { success, error, warning, info, handleApiError, confirm } = useNotification()
+const { success, error, warning, info: _info, handleApiError, confirm: _confirm } = useNotification()
 const { canView, canCreate, canEdit, canDelete, canExport } = usePagePermissions('employees')
 const { refreshing, refresh } = useRefreshData()
 const authStore = useAuthStore()
@@ -641,9 +1041,8 @@ const searchExpanded = ref(false)
 const { loading: passwordResetting } = useLoadingState()
 const searchQuery = ref('')
 const statusFilter = ref('')
-const roleFilter = ref('')
-const currentPage = ref(1)
-const pageSize = ref(10)
+const page = ref(1)
+const page_size = ref(10)
 
 const employeeFieldMap: Record<string, string> = {
   stats_total_employees: 'stats.total_employees',
@@ -695,7 +1094,9 @@ const showStatusColumn = computed(() => canViewField('status'))
 const showLastLoginColumn = computed(() => canViewField('last_login') && !isMobile.value)
 const showCreatedAtColumn = computed(() => canViewField('created_at') && !isMobile.value)
 const showHireDateColumn = computed(() => canViewField('hire_date') && !isMobile.value)
-const showActionField = computed(() => canViewField('actions') && (canEdit.value || canDelete.value) && !isMobile.value)
+const showActionField = computed(() => (
+  shouldShowActionColumn(canViewField('actions'), [canEdit.value, canDelete.value]) && !isMobile.value
+))
 const showStatsCards = computed(() => (
   canViewField('stats_total_employees') ||
   canViewField('stats_active_employees') ||
@@ -758,11 +1159,10 @@ const employeeForm = ref<EmployeeForm>({
   name: '',
   phone: '',
   email: '',
-  role: '',
   role_ids: [],
   status: 1,
   password: '',
-  confirmPassword: '',
+  confirm_password: '',
   hire_date: ''
 })
 
@@ -815,31 +1215,23 @@ const filteredEmployees = computed(() => {
     filtered = filtered.filter(emp => emp.status === parseInt(statusFilter.value))
   }
 
-  if (roleFilter.value !== '') {
-    filtered = filtered.filter(emp => emp.role === roleFilter.value)
-  }
-
   return filtered
 })
 
-const totalPages = computed(() => {
-  return Math.ceil(filteredEmployees.value.length / pageSize.value)
-})
-
 const paginatedEmployees = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  const end = start + pageSize.value
+  const start = (page.value - 1) * page_size.value
+  const end = start + page_size.value
   return filteredEmployees.value.slice(start, end)
 })
 
-const handlePaginationChange = (page, pageSizeValue) => {
-  currentPage.value = page
-  pageSize.value = pageSizeValue
+const handlePaginationChange = (current_page, page_size_value) => {
+  page.value = current_page
+  page_size.value = page_size_value
   // 本地分页不需要重新加载数据
 }
 
 // 统计计算属性
-const totalEmployees = computed(() => employees.value.length)
+const _totalEmployees = computed(() => employees.value.length)
 const activeEmployees = computed(() => employees.value.filter(e => e.status === 1).length)
 const inactiveEmployees = computed(() => employees.value.filter(e => e.status === 0).length)
 const employeesWithPhone = computed(() => employees.value.filter(e => e.phone).length)
@@ -856,7 +1248,7 @@ const loadEmployees = async (bustCache: boolean = false, silentError: boolean = 
     loading.value = true
   }
   try {
-    const params: any = {}
+    const params: any = { page: 1, page_size: 100 }
     if (bustCache) {
       params._t = Date.now()
     }
@@ -892,14 +1284,13 @@ const handleRefresh = async () => {
 }
 
 const handleSearch = () => {
-  currentPage.value = 1
+  page.value = 1
 }
 
 const resetFilters = () => {
   searchQuery.value = ''
   statusFilter.value = ''
-  roleFilter.value = ''
-  currentPage.value = 1
+  page.value = 1
 }
 
 const openAddEmployee = async () => {
@@ -923,11 +1314,10 @@ const openAddEmployee = async () => {
     name: '',
     phone: '',
     email: '',
-    role: '',
     role_ids: [],
     status: 1,
     password: '',
-    confirmPassword: '',
+    confirm_password: '',
     hire_date: ''
   }
   showAddModal.value = true
@@ -951,22 +1341,15 @@ const editEmployee = async (employee: Employee) => {
     return
   }
 
-  // 解析 role_ids 获取所有角色 ID
-  let roleIds: number[] = []
-  if (employee.role_ids) {
-    roleIds = employee.role_ids.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id))
-  }
-
   employeeForm.value = {
     username: employee.username,
     name: employee.name,
     phone: employee.phone || '',
     email: employee.email || '',
-    role: employee.role,
-    role_ids: roleIds,
+    role_ids: employee.role_ids,
     status: employee.status,
     password: '',
-    confirmPassword: '',
+    confirm_password: '',
     hire_date: employee.hire_date ? employee.hire_date.split('T')[0] : (employee.created_at ? employee.created_at.split('T')[0] : '')
   }
 
@@ -990,14 +1373,14 @@ const saveEmployee = async () => {
   }
 
   // 验证密码
-  if (showAddModal.value && employeeForm.value.password !== employeeForm.value.confirmPassword) {
+  if (showAddModal.value && employeeForm.value.password !== employeeForm.value.confirm_password) {
     error('两次输入的密码不一致')
     return
   }
 
   // 编辑模式下验证密码（如果填写了密码）
   if (showEditModal.value && employeeForm.value.password) {
-    if (employeeForm.value.password !== employeeForm.value.confirmPassword) {
+    if (employeeForm.value.password !== employeeForm.value.confirm_password) {
       error('两次输入的密码不一致')
       return
     }
@@ -1016,7 +1399,6 @@ const saveEmployee = async () => {
       name: employeeForm.value.name,
       phone: employeeForm.value.phone || null,
       email: employeeForm.value.email || null,
-      role: employeeForm.value.role,
       role_ids: employeeForm.value.role_ids,
       status: employeeForm.value.status,
       hire_date: employeeForm.value.hire_date || null
@@ -1066,7 +1448,7 @@ const saveEmployee = async () => {
   }
 }
 
-const hasUnsavedChanges = (): boolean => {
+const _hasUnsavedChanges = (): boolean => {
   if (!showAddModal.value && !showEditModal.value) return false
 
   const currentForm = employeeForm.value
@@ -1076,7 +1458,7 @@ const hasUnsavedChanges = (): boolean => {
       currentForm.name !== selectedEmployee.value.name ||
       currentForm.phone !== selectedEmployee.value.phone ||
       currentForm.email !== selectedEmployee.value.email ||
-      currentForm.role !== selectedEmployee.value.role ||
+      JSON.stringify(currentForm.role_ids) !== JSON.stringify(selectedEmployee.value.role_ids) ||
       currentForm.status !== selectedEmployee.value.status
     )
   }
@@ -1087,9 +1469,8 @@ const hasUnsavedChanges = (): boolean => {
     currentForm.name !== '' ||
     currentForm.phone !== '' ||
     currentForm.email !== '' ||
-    currentForm.role !== '' ||
     currentForm.password !== '' ||
-    currentForm.confirmPassword !== ''
+    currentForm.confirm_password !== ''
   )
 }
 
@@ -1107,10 +1488,10 @@ const closeModal = () => {
     name: '',
     phone: '',
     email: '',
-    role: '',
+    role_ids: [],
     status: 1,
     password: '',
-    confirmPassword: '',
+    confirm_password: '',
     hire_date: ''
   }
 }
@@ -1121,13 +1502,13 @@ const togglePasswordSection = () => {
   if (!showPasswordFields.value) {
     // 收起时清空密码字段
     employeeForm.value.password = ''
-    employeeForm.value.confirmPassword = ''
+    employeeForm.value.confirm_password = ''
   }
 }
 
 const clearPasswordFields = () => {
   employeeForm.value.password = ''
-  employeeForm.value.confirmPassword = ''
+  employeeForm.value.confirm_password = ''
   showPasswordFields.value = false
 }
 
@@ -1152,7 +1533,7 @@ const resetToDefaultPassword = async () => {
   passwordResetting.value = true
   try {
     employeeForm.value.password = generatedPassword
-    employeeForm.value.confirmPassword = generatedPassword
+    employeeForm.value.confirm_password = generatedPassword
     showPasswordFields.value = true
 
     // 直接调用保存
@@ -1169,7 +1550,7 @@ const resetToDefaultPassword = async () => {
 const generateRandomPassword = () => {
   const password = generateSecurePassword()
   employeeForm.value.password = password
-  employeeForm.value.confirmPassword = password
+  employeeForm.value.confirm_password = password
   showPasswordFields.value = true
 
   // 显示生成的密码
@@ -1178,9 +1559,11 @@ const generateRandomPassword = () => {
 
 const generateSecurePassword = () => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*'
+  const randomValues = new Uint32Array(12)
+  window.crypto.getRandomValues(randomValues)
   let password = ''
-  for (let i = 0; i < 12; i++) {
-    password += chars.charAt(Math.floor(Math.random() * chars.length))
+  for (const value of randomValues) {
+    password += chars.charAt(value % chars.length)
   }
 
   return password
@@ -1255,7 +1638,7 @@ const deleteEmployee = async (employee: Employee) => {
 const getEmployeeIndex = (employeeId: number) => {
   // 根据员工在当前页的顺序计算序号（降序显示）
   const currentIndex = paginatedEmployees.value.findIndex(emp => emp.id === employeeId)
-  const globalIndex = (currentPage.value - 1) * pageSize.value + currentIndex
+  const globalIndex = (page.value - 1) * page_size.value + currentIndex
   return filteredEmployees.value.length - globalIndex
 }
 
@@ -1324,14 +1707,6 @@ const getRoleDisplayName = (employee: Employee) => {
   // 优先显示自定义角色名称
   if (employee.role_names && employee.role_names !== '未分配角色' && employee.role_names !== '未分配') {
     return employee.role_names
-  }
-  // 其次显示 roles 字段
-  if (employee.roles && employee.roles !== '未分配角色' && employee.roles !== '未分配') {
-    return employee.roles
-  }
-  // 最后显示后端返回的主角色/角色编码
-  if (employee.role && employee.role !== '未分配角色' && employee.role !== '未分配') {
-    return employee.role
   }
   return '未分配角色'
 }
@@ -1544,7 +1919,7 @@ onMounted(async () => {
 <style scoped>
 .employees-view {
   padding: 24px;
-  background: #f5f7fa;
+  background: var(--tf-color-surface);
   min-height: 100vh;
 }
 
@@ -1565,7 +1940,7 @@ onMounted(async () => {
   gap: 16px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.08);
   transition: all 0.3s ease;
-  border: 1px solid #e8ecef;
+  border: 1px solid var(--tf-color-border-cool);
 }
 
 .stat-card:hover {
@@ -1581,16 +1956,16 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   font-size: 20px;
-  background: linear-gradient(135deg, #5948c3, #764ba2);
+  background: linear-gradient(135deg, var(--tf-color-purple-bootstrap), var(--tf-color-purple-brand));
   color: white;
 }
 
 .stat-icon.active {
-  background: linear-gradient(135deg, #28a745, #20c997);
+  background: linear-gradient(135deg, var(--success-color), var(--tf-color-teal-500));
 }
 
 .stat-icon.inactive {
-  background: linear-gradient(135deg, #dc3545, #fd7e14);
+  background: linear-gradient(135deg, var(--danger-color), var(--tf-color-orange-bootstrap));
 }
 
 .stat-content {
@@ -1600,13 +1975,13 @@ onMounted(async () => {
 .stat-value {
   font-size: 24px;
   font-weight: 700;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
   margin-bottom: 4px;
 }
 
 .stat-label {
   font-size: 14px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
   font-weight: 500;
 }
 
@@ -1627,20 +2002,20 @@ onMounted(async () => {
   gap: 8px;
   font-size: 16px;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
   margin-bottom: 20px;
   padding-bottom: 12px;
-  border-bottom: 2px solid #f8f9fa;
+  border-bottom: 2px solid var(--tf-color-surface-muted);
 }
 
 .section-title i {
-  color: #667eea;
+  color: var(--tf-color-indigo-brand);
 }
 
 .record-count {
   margin-left: auto;
   font-size: 14px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
   font-weight: 400;
 }
 
@@ -1650,7 +2025,7 @@ onMounted(async () => {
   padding: 24px;
   margin-bottom: 24px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-  border: 1px solid #e8ecef;
+  border: 1px solid var(--tf-color-border-cool);
 }
 
 /* 表格区域样式 */
@@ -1668,14 +2043,14 @@ onMounted(async () => {
 }
 
 .table th {
-  background: linear-gradient(135deg, #495057 0%, #343a40 100%);
+  background: linear-gradient(135deg, var(--tf-color-gray-bootstrap-700) 0%, var(--tf-color-gray-bootstrap-800) 100%);
   color: white;
   padding: 12px 10px;
   text-align: center;
   font-weight: 600;
   font-size: 14px;
-  border-right: 1px solid #dee2e6;
-  border-bottom: 2px solid #dee2e6;
+  border-right: 1px solid var(--tf-color-border-subtle);
+  border-bottom: 2px solid var(--tf-color-border-subtle);
   white-space: nowrap;
   position: relative;
   letter-spacing: 0.5px;
@@ -1697,11 +2072,11 @@ onMounted(async () => {
 .table td {
   padding: 6px 6px;
   font-size: 14px;
-  border-right: 1px solid #e9ecef;
-  border-bottom: 1px solid #e9ecef;
+  border-right: 1px solid var(--tf-color-border-muted);
+  border-bottom: 1px solid var(--tf-color-border-muted);
   vertical-align: middle;
   text-align: center;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
   font-weight: 500;
 }
 
@@ -1715,22 +2090,22 @@ onMounted(async () => {
 }
 
 .table tbody tr:nth-child(even):not(.status-active-row):not(.status-inactive-row) {
-  background: #f8f9fa;
+  background: var(--tf-color-surface-muted);
 }
 
 .table tbody tr:hover:not(.status-active-row):not(.status-inactive-row) {
-  background: #e3f2fd;
+  background: var(--tf-color-blue-100);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .table tbody tr:hover td {
-  border-bottom-color: #dee2e6;
+  border-bottom-color: var(--tf-color-border-subtle);
 }
 
 /* 表格内容样式 */
 .id-badge {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand));
   color: white;
   padding: 4px 8px;
   border-radius: 6px;
@@ -1756,25 +2131,25 @@ onMounted(async () => {
 
 .employee-name strong {
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
 }
 
 .employee-code {
   font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
   font-size: 13px;
   font-weight: 600;
-  color: #495057;
+  color: var(--tf-color-gray-bootstrap-700);
   letter-spacing: 0.8px;
-  background: #f8f9fa;
+  background: var(--tf-color-surface-muted);
   padding: 6px 12px;
   border-radius: 4px;
-  border: 1px solid #e9ecef;
+  border: 1px solid var(--tf-color-border-muted);
   display: inline-block;
 }
 
 .employee-role {
   font-size: 12px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
   display: flex;
   align-items: center;
   gap: 4px;
@@ -1790,7 +2165,7 @@ onMounted(async () => {
 
 .system-role {
   font-size: 12px;
-  color: #495057;
+  color: var(--tf-color-gray-bootstrap-700);
   display: flex;
   align-items: center;
   gap: 4px;
@@ -1820,63 +2195,63 @@ onMounted(async () => {
 
 /* 管理员 - 橙红色渐变 */
 .role-badge-admin {
-  background: linear-gradient(135deg, #ff6b35, #f7931e);
+  background: linear-gradient(135deg, var(--tf-color-orange-coral), var(--tf-color-orange-ant));
   color: white;
-  border-color: #e55a2b;
+  border-color: var(--tf-color-red-legacy);
   box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3);
 }
 
 /* 销售员 - 蓝绿色渐变 */
 .role-badge-sales {
-  background: linear-gradient(135deg, #00b894, #00cec9);
+  background: linear-gradient(135deg, var(--tf-color-green-mint), var(--tf-color-cyan-mint));
   color: white;
-  border-color: #00a885;
+  border-color: var(--tf-color-green-mint);
   box-shadow: 0 2px 8px rgba(0, 184, 148, 0.3);
 }
 
 /* 采购员 - 紫色渐变 */
 .role-badge-purchase {
-  background: linear-gradient(135deg, #9b59b6, #8e44ad);
+  background: linear-gradient(135deg, var(--tf-color-purple-flat), var(--tf-color-purple-flat-dark));
   color: white;
-  border-color: #7d3c98;
+  border-color: var(--tf-color-purple-brand);
   box-shadow: 0 2px 8px rgba(155, 89, 182, 0.3);
 }
 
 /* 财务 - 金黄色渐变 */
 .role-badge-finance {
-  background: linear-gradient(135deg, #f39c12, #e67e22);
+  background: linear-gradient(135deg, var(--tf-color-amber-legacy), var(--tf-color-orange-legacy));
   color: white;
-  border-color: #d68910;
+  border-color: var(--tf-color-amber-600);
   box-shadow: 0 2px 8px rgba(243, 156, 18, 0.3);
 }
 
 /* 仓管 - 青色渐变 */
 .role-badge-warehouse {
-  background: linear-gradient(135deg, #1abc9c, #16a085);
+  background: linear-gradient(135deg, var(--tf-color-teal-tailwind-500), var(--tf-color-transfer-chart-teal));
   color: white;
-  border-color: #138d75;
+  border-color: var(--tf-color-emerald-600);
   box-shadow: 0 2px 8px rgba(26, 188, 156, 0.3);
 }
 
 /* 维修 - 灰蓝色渐变 */
 .role-badge-repair {
-  background: linear-gradient(135deg, #607d8b, #546e7a);
+  background: linear-gradient(135deg, var(--tf-color-gray-blue), var(--tf-color-slate-500));
   color: white;
-  border-color: #455a64;
+  border-color: var(--tf-color-slate-600);
   box-shadow: 0 2px 8px rgba(96, 125, 139, 0.3);
 }
 
 /* 默认员工 - 蓝紫色渐变 */
 .role-badge-default {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand));
   color: white;
-  border-color: #5a6fd8;
+  border-color: var(--tf-color-primary-legacy-dark);
   box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
 
 .custom-roles {
   font-size: 11px;
-  color: #6f42c1;
+  color: var(--tf-color-purple-bootstrap);
   display: flex;
   align-items: center;
   gap: 4px;
@@ -1890,13 +2265,13 @@ onMounted(async () => {
 
 .employee-username {
   font-size: 12px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
   margin-top: 2px;
 }
 
 .warning-badge {
-  background: #ffc107;
-  color: #212529;
+  background: var(--warning-color);
+  color: var(--tf-color-gray-bootstrap-900);
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 10px;
@@ -1912,7 +2287,7 @@ onMounted(async () => {
 
 .phone-number {
   font-size: 14px;
-  color: #495057;
+  color: var(--tf-color-gray-bootstrap-700);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1922,7 +2297,7 @@ onMounted(async () => {
 }
 
 .no-data {
-  color: #adb5bd;
+  color: var(--tf-color-gray-bootstrap-500);
   font-style: italic;
 }
 
@@ -1943,13 +2318,13 @@ onMounted(async () => {
 
 .status-active {
   background: rgba(40, 167, 69, 0.15);
-  color: #28a745;
+  color: var(--success-color);
   border: 1px solid rgba(40, 167, 69, 0.4);
 }
 
 .status-inactive {
   background: rgba(220, 53, 69, 0.15);
-  color: #dc3545;
+  color: var(--danger-color);
   border: 1px solid rgba(220, 53, 69, 0.4);
 }
 
@@ -1957,17 +2332,17 @@ onMounted(async () => {
 .status-active-row {
   background-color: white !important;
   transition: background-color 0.3s ease;
-  border-left: 4px solid #28a745;
+  border-left: 4px solid var(--success-color);
 }
 
 .status-active-row:hover {
-  background-color: #f8f9fa !important;
+  background-color: var(--tf-color-surface-muted) !important;
 }
 
 .status-inactive-row {
   background-color: rgba(220, 53, 69, 0.1) !important;
   transition: background-color 0.3s ease;
-  border-left: 4px solid #dc3545;
+  border-left: 4px solid var(--danger-color);
 }
 
 .status-inactive-row:hover {
@@ -1976,7 +2351,7 @@ onMounted(async () => {
 
 .time-info {
   font-size: 13px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1987,35 +2362,35 @@ onMounted(async () => {
 
 /* 最后登录时间 - 蓝色 */
 .time-info.last-login {
-  color: #0066cc;
+  color: var(--tf-color-blue-corporate);
   background: rgba(0, 102, 204, 0.08);
   font-weight: 500;
 }
 
 .time-info.last-login i {
-  color: #0066cc;
+  color: var(--tf-color-blue-corporate);
 }
 
 /* 创建时间 - 绿色 */
 .time-info.created-time {
-  color: #28a745;
+  color: var(--success-color);
   background: rgba(40, 167, 69, 0.08);
   font-weight: 500;
 }
 
 .time-info.created-time i {
-  color: #28a745;
+  color: var(--success-color);
 }
 
 /* 入职时间 - 紫色 */
 .time-info.hire-date {
-  color: #6f42c1;
+  color: var(--tf-color-purple-bootstrap);
   background: rgba(111, 66, 193, 0.08);
   font-weight: 500;
 }
 
 .time-info.hire-date i {
-  color: #6f42c1;
+  color: var(--tf-color-purple-bootstrap);
 }
 
 /* 空状态样式 */
@@ -2029,7 +2404,7 @@ onMounted(async () => {
   flex-direction: column;
   align-items: center;
   gap: 16px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
 }
 
 .empty-content i {
@@ -2039,7 +2414,7 @@ onMounted(async () => {
 
 .empty-text h4 {
   margin: 0 0 8px 0;
-  color: #495057;
+  color: var(--tf-color-gray-bootstrap-700);
 }
 
 .empty-text p {
@@ -2050,13 +2425,13 @@ onMounted(async () => {
 /* 注意：不再使用的通用按钮样式已删除，改用 el-button */
 
 /* 自定义状态按钮样式 */
-.btn[style*="#ff6b35"]:hover {
+.btn[style*="var(--tf-color-orange-coral)"]:hover {
   background: var(--tf-button-neutral-hover-bg) !important;
   transform: translateY(-1px);
   box-shadow: var(--tf-button-shadow-hover);
 }
 
-.btn[style*="#6c757d"]:hover {
+.btn[style*="var(--tf-color-muted)"]:hover {
   background: var(--tf-button-neutral-hover-bg) !important;
   transform: translateY(-1px);
   box-shadow: var(--tf-button-shadow-hover);
@@ -2082,9 +2457,9 @@ onMounted(async () => {
 .password-section {
   margin: 20px 0;
   padding: 20px;
-  border: 2px dashed #dee2e6;
+  border: 2px dashed var(--tf-color-border-subtle);
   border-radius: 8px;
-  background: #f8f9fa;
+  background: var(--tf-color-surface-muted);
 }
 
 .section-header {
@@ -2093,12 +2468,12 @@ onMounted(async () => {
   align-items: center;
   margin-bottom: 20px;
   padding-bottom: 15px;
-  border-bottom: 1px solid #dee2e6;
+  border-bottom: 1px solid var(--tf-color-border-subtle);
 }
 
 .section-header h4 {
   margin: 0;
-  color: #495057;
+  color: var(--tf-color-gray-bootstrap-700);
   font-size: 16px;
   font-weight: 600;
   display: flex;
@@ -2107,7 +2482,7 @@ onMounted(async () => {
 }
 
 .section-header h4 i {
-  color: #ffc107;
+  color: var(--warning-color);
   font-size: 18px;
 }
 
@@ -2117,13 +2492,13 @@ onMounted(async () => {
 
 .form-help {
   font-size: 12px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
   margin-top: 4px;
   display: block;
 }
 
 .form-help.error {
-  color: #dc3545;
+  color: var(--danger-color);
   font-weight: 500;
 }
 
@@ -2132,14 +2507,14 @@ onMounted(async () => {
   gap: 10px;
   margin-top: 20px;
   padding-top: 15px;
-  border-top: 1px solid #dee2e6;
+  border-top: 1px solid var(--tf-color-border-subtle);
   justify-content: center;
   flex-wrap: wrap;
 }
 
 /* 密码输入框特殊样式 */
 .password-fields input[type="password"] {
-  border: 2px solid #ced4da;
+  border: 2px solid var(--tf-color-gray-bootstrap-300);
   border-radius: 6px;
   padding: 12px 16px;
   font-size: 14px;
@@ -2148,13 +2523,13 @@ onMounted(async () => {
 }
 
 .password-fields input[type="password"]:focus {
-  border-color: #ffc107;
+  border-color: var(--warning-color);
   box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.1);
   outline: none;
 }
 
 .password-fields input[type="password"]::placeholder {
-  color: #adb5bd;
+  color: var(--tf-color-gray-bootstrap-500);
   font-style: italic;
 }
 
@@ -2173,29 +2548,29 @@ onMounted(async () => {
 .form-group label {
   margin-bottom: 5px;
   font-weight: 500;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
 }
 
 .form-group input,
 .form-group select {
   padding: 10px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--tf-color-gray-300-alt);
   border-radius: 5px;
   font-size: 14px;
 }
 
 .form-group input:disabled {
-  background: #f8f9fa;
-  color: #6c757d;
+  background: var(--tf-color-surface-muted);
+  color: var(--tf-color-muted);
 }
 
 .error-message {
   margin-top: 5px;
   padding: 8px 12px;
-  background-color: #fee;
-  border: 1px solid #fcc;
+  background-color: var(--tf-color-red-surface-light);
+  border: 1px solid var(--tf-color-red-pastel);
   border-radius: 4px;
-  color: #c33;
+  color: var(--tf-color-red-material-800);
   font-size: 13px;
   display: flex;
   align-items: center;
@@ -2212,7 +2587,7 @@ onMounted(async () => {
   gap: 10px;
   margin-top: 20px;
   padding-top: 20px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--tf-color-gray-200-alt);
 }
 
 .salary-info {
@@ -2229,26 +2604,26 @@ onMounted(async () => {
 .overview-item {
   text-align: center;
   padding: 20px;
-  background: #f8f9fa;
+  background: var(--tf-color-surface-muted);
   border-radius: 8px;
 }
 
 .overview-item label {
   display: block;
   font-size: 14px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
   margin-bottom: 8px;
 }
 
 .overview-item .amount {
   font-size: 24px;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
 }
 
 .salary-details h4 {
   margin-bottom: 15px;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
 }
 
 .detail-grid {
@@ -2261,24 +2636,24 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   padding: 10px;
-  background: #f8f9fa;
+  background: var(--tf-color-surface-muted);
   border-radius: 5px;
 }
 
 .detail-item label {
   font-weight: 500;
-  color: #495057;
+  color: var(--tf-color-gray-bootstrap-700);
 }
 
 .detail-item span {
-  color: #2c3e50;
+  color: var(--tf-color-heading);
   font-weight: 600;
 }
 
 .no-salary-info {
   text-align: center;
   padding: 40px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
 }
 
 .no-salary-info i {
@@ -2298,12 +2673,12 @@ onMounted(async () => {
   align-items: center;
   margin-bottom: 20px;
   padding-bottom: 15px;
-  border-bottom: 1px solid #dee2e6;
+  border-bottom: 1px solid var(--tf-color-border-subtle);
 }
 
 .section-header h4 {
   margin: 0;
-  color: #495057;
+  color: var(--tf-color-gray-bootstrap-700);
   font-size: 16px;
   font-weight: 600;
   display: flex;
@@ -2312,7 +2687,7 @@ onMounted(async () => {
 }
 
 .section-header h4 i {
-  color: #17a2b8;
+  color: var(--info-color);
   font-size: 18px;
 }
 
@@ -2324,8 +2699,8 @@ onMounted(async () => {
 }
 
 .role-card {
-  background: #f8f9fa;
-  border: 1px solid #dee2e6;
+  background: var(--tf-color-surface-muted);
+  border: 1px solid var(--tf-color-border-subtle);
   border-radius: 8px;
   padding: 20px;
   transition: all 0.3s ease;
@@ -2345,7 +2720,7 @@ onMounted(async () => {
 
 .role-header h5 {
   margin: 0;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
   font-size: 16px;
   font-weight: 600;
 }
@@ -2356,7 +2731,7 @@ onMounted(async () => {
 }
 
 .role-description {
-  color: #6c757d;
+  color: var(--tf-color-muted);
   font-size: 14px;
   margin-bottom: 15px;
   line-height: 1.4;
@@ -2367,11 +2742,11 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: center;
   font-size: 12px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
 }
 
 .user-count {
-  background: #17a2b8;
+  background: var(--info-color);
   color: white;
   padding: 2px 8px;
   border-radius: 12px;
@@ -2389,7 +2764,7 @@ onMounted(async () => {
 
 .current-roles h4, .available-roles h4 {
   margin-bottom: 15px;
-  color: #495057;
+  color: var(--tf-color-gray-bootstrap-700);
   font-size: 14px;
   font-weight: 600;
 }
@@ -2397,11 +2772,11 @@ onMounted(async () => {
 .no-roles {
   text-align: center;
   padding: 20px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
   font-style: italic;
-  background: #f8f9fa;
+  background: var(--tf-color-surface-muted);
   border-radius: 8px;
-  border: 1px dashed #dee2e6;
+  border: 1px dashed var(--tf-color-border-subtle);
 }
 
 .no-roles i {
@@ -2420,7 +2795,7 @@ onMounted(async () => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: #6f42c1;
+  background: var(--tf-color-purple-bootstrap);
   color: white;
   padding: 6px 12px;
   border-radius: 20px;
@@ -2459,15 +2834,15 @@ onMounted(async () => {
   gap: 12px;
   cursor: pointer;
   padding: 12px;
-  border: 1px solid #dee2e6;
+  border: 1px solid var(--tf-color-border-subtle);
   border-radius: 8px;
   transition: all 0.3s ease;
   background: white;
 }
 
 .role-checkbox:hover {
-  border-color: #6f42c1;
-  background: #f8f9ff;
+  border-color: var(--tf-color-purple-bootstrap);
+  background: var(--tf-color-surface-indigo-pale);
 }
 
 .role-checkbox input[type="checkbox"] {
@@ -2483,12 +2858,12 @@ onMounted(async () => {
 
 .role-info strong {
   display: block;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
   margin-bottom: 4px;
 }
 
 .role-info small {
-  color: #6c757d;
+  color: var(--tf-color-muted);
   font-size: 12px;
   line-height: 1.3;
 }
@@ -2499,7 +2874,7 @@ onMounted(async () => {
   gap: 12px;
   margin-top: 20px;
   padding-top: 20px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--tf-color-gray-200-alt);
 }
 
 /* 响应式设计 */
@@ -2574,9 +2949,9 @@ onMounted(async () => {
   max-height: 200px;
   overflow-y: auto;
   padding: 10px;
-  border: 1px solid #e9ecef;
+  border: 1px solid var(--tf-color-border-muted);
   border-radius: 4px;
-  background: #f8f9fa;
+  background: var(--tf-color-surface-muted);
 }
 
 .role-checkbox {
@@ -2590,7 +2965,7 @@ onMounted(async () => {
 }
 
 .role-checkbox:hover {
-  background: #e9ecef;
+  background: var(--tf-color-border-muted);
 }
 
 .role-checkbox input[type="checkbox"] {
@@ -2606,12 +2981,12 @@ onMounted(async () => {
 
 .role-info strong {
   display: block;
-  color: #333;
+  color: var(--text-primary);
   margin-bottom: 2px;
 }
 
 .role-info small {
-  color: #6c757d;
+  color: var(--tf-color-muted);
   font-size: 12px;
 }
 
@@ -2620,7 +2995,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   padding: 20px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
 }
 
 .no-roles i {
@@ -2655,15 +3030,15 @@ onMounted(async () => {
 }
 
 .status-btn.active {
-  border-color: var(--tf-button-success-soft-hover-border);
-  background: var(--tf-button-success-hover-bg);
-  color: var(--tf-button-on-color);
+  border-color: var(--tf-status-success-border);
+  background: var(--tf-status-success-bg);
+  color: var(--tf-status-success-color);
 }
 
 .status-btn.inactive {
-  border-color: var(--tf-button-danger-soft-border);
-  background: var(--tf-button-danger-bg);
-  color: var(--tf-button-on-color);
+  border-color: var(--tf-status-danger-border);
+  background: var(--tf-status-danger-bg);
+  color: var(--tf-status-danger-color);
 }
 
 .status-btn i {
@@ -2732,12 +3107,12 @@ onMounted(async () => {
     margin-right: 0;
     min-height: 40px;
     padding: 0;
-    border: 1px solid #dbe3ef;
+    border: 1px solid var(--tf-color-border-blue);
     border-radius: 12px;
     display: flex;
     align-items: stretch;
     overflow: hidden;
-    background: #f8fbff;
+    background: var(--tf-color-surface-blue);
   }
 
   .employees-form-dialog .el-checkbox__label {
@@ -2752,7 +3127,7 @@ onMounted(async () => {
     display: flex;
     align-items: center;
     border-radius: 12px;
-    background: linear-gradient(180deg, #ffffff 0%, #f6f9fc 100%);
+    background: linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-surface-gray) 100%);
   }
 
   .employees-form-dialog .role-checkbox-name {
@@ -2760,7 +3135,7 @@ onMounted(async () => {
     align-items: center;
     font-size: 13px;
     font-weight: 600;
-    color: #1f2937;
+    color: var(--tf-color-neutral-800);
   }
 
   .employees-form-dialog .el-radio-group {
@@ -2773,7 +3148,7 @@ onMounted(async () => {
     margin-right: 0;
     min-height: 40px;
     padding: 0 12px;
-    border: 1px solid #dbe3ef;
+    border: 1px solid var(--tf-color-border-blue);
     border-radius: 12px;
     display: inline-flex;
     align-items: center;

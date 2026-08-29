@@ -1,5 +1,5 @@
-const BaseRepository = require('./base.repository');
-const log = require('../utils/log');
+const BaseRepository = require('./base.repository')
+const log = require('../utils/log')
 
 /**
  * 销售订单仓库类
@@ -7,7 +7,7 @@ const log = require('../utils/log');
  */
 class SalesOrderRepository extends BaseRepository {
   constructor() {
-    super('sales_orders');
+    super('sales_orders')
   }
 
   /**
@@ -18,7 +18,7 @@ class SalesOrderRepository extends BaseRepository {
   async createOrder(orderData) {
     try {
       // 生成订单号
-      const orderNo = this.generateOrderNumber();
+      const orderNo = this.generateOrderNumber()
 
       const data = {
         ...orderData,
@@ -26,17 +26,17 @@ class SalesOrderRepository extends BaseRepository {
         order_status: orderData.order_status || 'draft',
         created_at: new Date(),
         updated_at: new Date()
-      };
+      }
 
-      log.debug(`创建销售订单参数 [${this.tableName}]:`, data);
+      log.debug(`创建销售订单参数 [${this.tableName}]:`, data)
 
-      const result = await this.create(data);
+      const result = await this.create(data)
 
-      log.info(`创建销售订单成功 [${this.tableName}]，ID: ${result.id}`);
-      return result;
+      log.info(`创建销售订单成功 [${this.tableName}]，ID: ${result.id}`)
+      return result
     } catch (error) {
-      log.error('创建销售订单失败:', error);
-      throw error;
+      log.error('创建销售订单失败:', error)
+      throw error
     }
   }
 
@@ -45,12 +45,12 @@ class SalesOrderRepository extends BaseRepository {
    * @returns {string} 订单号
    */
   generateOrderNumber() {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const timestamp = Date.now().toString().slice(-6);
-    return `SO${year}${month}${day}${timestamp}`;
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const day = String(now.getDate()).padStart(2, '0')
+    const timestamp = Date.now().toString().slice(-6)
+    return `SO${year}${month}${day}${timestamp}`
   }
 
   /**
@@ -60,25 +60,25 @@ class SalesOrderRepository extends BaseRepository {
    */
   async addOrderItem(itemData) {
     try {
-      const orderItemsRepo = require('./sales-order-item.repository');
-      const orderItems = new orderItemsRepo();
+      const orderItemsRepo = require('./sales-order-item.repository')
+      const orderItems = new orderItemsRepo()
 
       const data = {
         ...itemData,
         item_status: 'confirmed',
         created_at: new Date(),
         updated_at: new Date()
-      };
+      }
 
-      log.debug(`添加订单项 [sales_order_items]:`, data);
+      log.debug('添加订单项 [sales_order_items]:', data)
 
-      const result = await orderItems.create(data);
+      const result = await orderItems.create(data)
 
-      log.info(`添加订单项成功 [sales_order_items]，ID: ${result.id}`);
-      return result;
+      log.info(`添加订单项成功 [sales_order_items]，ID: ${result.id}`)
+      return result
     } catch (error) {
-      log.error('添加订单项失败:', error);
-      throw error;
+      log.error('添加订单项失败:', error)
+      throw error
     }
   }
 
@@ -92,15 +92,15 @@ class SalesOrderRepository extends BaseRepository {
       const records = await this.executeQuery(
         `SELECT * FROM ${this.tableName} WHERE order_no = ?`,
         [orderNo]
-      );
+      )
 
       if (records && records.length > 0) {
-        return records[0];
+        return records[0]
       }
-      return null;
+      return null
     } catch (error) {
-      log.error('根据订单号查找订单失败:', error);
-      throw error;
+      log.error('根据订单号查找订单失败:', error)
+      throw error
     }
   }
 
@@ -112,25 +112,25 @@ class SalesOrderRepository extends BaseRepository {
   async findByIdWithItems(id) {
     try {
       // 查找订单基本信息
-      const order = await this.findById(id);
+      const order = await this.findById(id)
       if (!order) {
-        return null;
+        return null
       }
 
       // 查找订单项
-      const orderItemsRepo = require('./sales-order-item.repository');
-      const orderItems = new orderItemsRepo();
+      const orderItemsRepo = require('./sales-order-item.repository')
+      const orderItems = new orderItemsRepo()
 
-      const items = await orderItems.findByOrderId(id);
+      const items = await orderItems.findByOrderId(id)
 
       // 合并订单和订单项信息
       return {
         ...order,
         items: items || []
-      };
+      }
     } catch (error) {
-      log.error('查找订单详情失败:', error);
-      throw error;
+      log.error('查找订单详情失败:', error)
+      throw error
     }
   }
 
@@ -148,28 +148,28 @@ class SalesOrderRepository extends BaseRepository {
         status,
         startDate,
         endDate
-      } = options;
+      } = options
 
-      const offset = (page - 1) * limit;
-      const conditions = ['customer_id = ?'];
-      const params = [customerId];
+      const offset = (page - 1) * limit
+      const conditions = ['customer_id = ?']
+      const params = [customerId]
 
       if (status) {
-        conditions.push('order_status = ?');
-        params.push(status);
+        conditions.push('order_status = ?')
+        params.push(status)
       }
 
       if (startDate) {
-        conditions.push('order_date >= ?');
-        params.push(startDate);
+        conditions.push('order_date >= ?')
+        params.push(startDate)
       }
 
       if (endDate) {
-        conditions.push('order_date <= ?');
-        params.push(endDate);
+        conditions.push('order_date <= ?')
+        params.push(endDate)
       }
 
-      const whereClause = `WHERE ${conditions.join(' AND ')}`;
+      const whereClause = `WHERE ${conditions.join(' AND ')}`
 
       // 查询数据
       const query = `
@@ -177,18 +177,18 @@ class SalesOrderRepository extends BaseRepository {
         ${whereClause}
         ORDER BY created_at DESC
         LIMIT ? OFFSET ?
-      `;
+      `
 
-      const dataParams = [...params, parseInt(limit), parseInt(offset)];
-      const records = await this.executeQuery(query, dataParams);
+      const dataParams = [...params, parseInt(limit), parseInt(offset)]
+      const records = await this.executeQuery(query, dataParams)
 
       // 查询总数
       const countQuery = `
         SELECT COUNT(*) as total FROM ${this.tableName}
         ${whereClause}
-      `;
-      const [countResult] = await this.executeQuery(countQuery, params);
-      const total = countResult.total;
+      `
+      const [countResult] = await this.executeQuery(countQuery, params)
+      const total = countResult.total
 
       return {
         records,
@@ -200,10 +200,10 @@ class SalesOrderRepository extends BaseRepository {
           hasNext: page * limit < total,
           hasPrev: page > 1
         }
-      };
+      }
     } catch (error) {
-      log.error('获取客户订单列表失败:', error);
-      throw error;
+      log.error('获取客户订单列表失败:', error)
+      throw error
     }
   }
 
@@ -218,17 +218,17 @@ class SalesOrderRepository extends BaseRepository {
       const updateData = {
         order_status: status,
         updated_at: new Date()
-      };
-
-      if (status === 'completed') {
-        updateData.completed_date = new Date();
       }
 
-      const result = await this.update(id, updateData);
-      return result.affectedRows > 0;
+      if (status === 'completed') {
+        updateData.completed_date = new Date()
+      }
+
+      const result = await this.update(id, updateData)
+      return result.affectedRows > 0
     } catch (error) {
-      log.error('更新订单状态失败:', error);
-      throw error;
+      log.error('更新订单状态失败:', error)
+      throw error
     }
   }
 
@@ -245,13 +245,13 @@ class SalesOrderRepository extends BaseRepository {
         payment_status: paymentStatus,
         paid_amount: paidAmount,
         updated_at: new Date()
-      };
+      }
 
-      const result = await this.update(id, updateData);
-      return result.affectedRows > 0;
+      const result = await this.update(id, updateData)
+      return result.affectedRows > 0
     } catch (error) {
-      log.error('更新支付状态失败:', error);
-      throw error;
+      log.error('更新支付状态失败:', error)
+      throw error
     }
   }
 
@@ -264,11 +264,11 @@ class SalesOrderRepository extends BaseRepository {
   async cancelOrder(id, reason = '') {
     try {
       // 使用连接池获取单个连接，确保事务在同一连接上执行
-      const pool = this.getConnection();
-      const connection = await pool.getConnection();
+      const pool = this.getConnection()
+      const connection = await pool.getConnection()
 
       try {
-        await connection.beginTransaction();
+        await connection.beginTransaction()
 
         // 更新订单状态
         await connection.execute(
@@ -277,7 +277,7 @@ class SalesOrderRepository extends BaseRepository {
                updated_at = NOW()
            WHERE id = ?`,
           [id]
-        );
+        )
 
         // 更新所有订单项状态为已取消
         await connection.execute(
@@ -288,22 +288,22 @@ class SalesOrderRepository extends BaseRepository {
                updated_at = NOW()
            WHERE order_id = ?`,
           [reason, id]
-        );
+        )
 
         // 提交事务
-        await connection.commit();
+        await connection.commit()
 
-        log.info(`取消订单成功 [${this.tableName}]，ID: ${id}`);
-        return true;
+        log.info(`取消订单成功 [${this.tableName}]，ID: ${id}`)
+        return true
       } catch (error) {
-        await connection.rollback();
-        throw error;
+        await connection.rollback()
+        throw error
       } finally {
-        connection.release();
+        connection.release()
       }
     } catch (error) {
-      log.error('取消订单失败:', error);
-      throw error;
+      log.error('取消订单失败:', error)
+      throw error
     }
   }
 
@@ -315,23 +315,23 @@ class SalesOrderRepository extends BaseRepository {
   async completeOrder(id) {
     try {
       // 使用连接池获取单个连接，确保事务在同一连接上执行
-      const pool = this.getConnection();
-      const connection = await pool.getConnection();
+      const pool = this.getConnection()
+      const connection = await pool.getConnection()
 
       try {
-        await connection.beginTransaction();
+        await connection.beginTransaction()
 
         // 获取订单信息
         const [orderResult] = await connection.execute(
           `SELECT * FROM ${this.tableName} WHERE id = ?`,
           [id]
-        );
+        )
 
         if (!orderResult || orderResult.length === 0) {
-          throw new Error('订单不存在');
+          throw new Error('订单不存在')
         }
 
-        const order = orderResult[0];
+        const order = orderResult[0]
 
         // 更新订单状态
         await connection.execute(
@@ -341,7 +341,7 @@ class SalesOrderRepository extends BaseRepository {
                updated_at = NOW()
            WHERE id = ?`,
           [id]
-        );
+        )
 
         // 更新支付状态为已付清
         await connection.execute(
@@ -351,7 +351,7 @@ class SalesOrderRepository extends BaseRepository {
                updated_at = NOW()
            WHERE id = ?`,
           [order.final_amount, id]
-        );
+        )
 
         // 更新所有订单项状态为已交付
         await connection.execute(
@@ -361,22 +361,22 @@ class SalesOrderRepository extends BaseRepository {
                updated_at = NOW()
            WHERE order_id = ?`,
           [id]
-        );
+        )
 
         // 提交事务
-        await connection.commit();
+        await connection.commit()
 
-        log.info(`完成订单成功 [${this.tableName}]，ID: ${id}`);
-        return true;
+        log.info(`完成订单成功 [${this.tableName}]，ID: ${id}`)
+        return true
       } catch (error) {
-        await connection.rollback();
-        throw error;
+        await connection.rollback()
+        throw error
       } finally {
-        connection.release();
+        connection.release()
       }
     } catch (error) {
-      log.error('完成订单失败:', error);
-      throw error;
+      log.error('完成订单失败:', error)
+      throw error
     }
   }
 
@@ -393,37 +393,37 @@ class SalesOrderRepository extends BaseRepository {
         storeId,
         operatorId,
         status
-      } = filters;
+      } = filters
 
-      const conditions = [];
-      const params = [];
+      const conditions = []
+      const params = []
 
       if (startDate) {
-        conditions.push('order_date >= ?');
-        params.push(startDate);
+        conditions.push('order_date >= ?')
+        params.push(startDate)
       }
 
       if (endDate) {
-        conditions.push('order_date <= ?');
-        params.push(endDate);
+        conditions.push('order_date <= ?')
+        params.push(endDate)
       }
 
       if (storeId) {
-        conditions.push('store_id = ?');
-        params.push(storeId);
+        conditions.push('store_id = ?')
+        params.push(storeId)
       }
 
       if (operatorId) {
-        conditions.push('operator_id = ?');
-        params.push(operatorId);
+        conditions.push('operator_id = ?')
+        params.push(operatorId)
       }
 
       if (status) {
-        conditions.push('order_status = ?');
-        params.push(status);
+        conditions.push('order_status = ?')
+        params.push(status)
       }
 
-      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
 
       const statsQuery = `
         SELECT
@@ -436,13 +436,13 @@ class SalesOrderRepository extends BaseRepository {
           COUNT(CASE WHEN payment_status = 'paid' THEN 1 END) as paid_orders
         FROM ${this.tableName}
         ${whereClause}
-      `;
+      `
 
-      const result = await this.executeQuery(statsQuery, params);
-      return result[0];
+      const result = await this.executeQuery(statsQuery, params)
+      return result[0]
     } catch (error) {
-      log.error('获取订单统计失败:', error);
-      throw error;
+      log.error('获取订单统计失败:', error)
+      throw error
     }
   }
 
@@ -453,18 +453,18 @@ class SalesOrderRepository extends BaseRepository {
    */
   async batchCreateOrders(ordersList) {
     try {
-      const results = [];
+      const results = []
 
       // 使用连接池获取单个连接，确保事务在同一连接上执行
-      const pool = this.getConnection();
-      const connection = await pool.getConnection();
+      const pool = this.getConnection()
+      const connection = await pool.getConnection()
 
       try {
-        await connection.beginTransaction();
+        await connection.beginTransaction()
 
         for (const orderData of ordersList) {
           // 生成订单号
-          const orderNo = this.generateOrderNumber();
+          const orderNo = this.generateOrderNumber()
 
           const data = {
             ...orderData,
@@ -472,38 +472,38 @@ class SalesOrderRepository extends BaseRepository {
             order_status: orderData.order_status || 'draft',
             created_at: new Date(),
             updated_at: new Date()
-          };
+          }
 
-          log.debug(`批量创建销售订单参数 [${this.tableName}]:`, data);
+          log.debug(`批量创建销售订单参数 [${this.tableName}]:`, data)
 
           // 使用 connection 执行插入
-          const keys = Object.keys(data);
-          const values = Object.values(data);
-          const placeholders = keys.map(() => '?').join(', ');
-          const sql = `INSERT INTO ${this.tableName} (${keys.join(', ')}) VALUES (${placeholders})`;
-          const [result] = await connection.execute(sql, values);
+          const keys = Object.keys(data)
+          const values = Object.values(data)
+          const placeholders = keys.map(() => '?').join(', ')
+          const sql = `INSERT INTO ${this.tableName} (${keys.join(', ')}) VALUES (${placeholders})`
+          const [result] = await connection.execute(sql, values)
 
           results.push({
             id: result.insertId,
             affectedRows: result.affectedRows,
             order_no: orderNo
-          });
+          })
         }
 
         // 提交事务
-        await connection.commit();
+        await connection.commit()
 
-        log.info(`批量创建销售订单成功 [${this.tableName}]，数量: ${results.length}`);
-        return results;
+        log.info(`批量创建销售订单成功 [${this.tableName}]，数量: ${results.length}`)
+        return results
       } catch (error) {
-        await connection.rollback();
-        throw error;
+        await connection.rollback()
+        throw error
       } finally {
-        connection.release();
+        connection.release()
       }
     } catch (error) {
-      log.error('批量创建销售订单失败:', error);
-      throw error;
+      log.error('批量创建销售订单失败:', error)
+      throw error
     }
   }
 
@@ -521,23 +521,23 @@ class SalesOrderRepository extends BaseRepository {
         limit = 20,
         status,
         customerId
-      } = options;
+      } = options
 
-      const offset = (page - 1) * limit;
-      const conditions = ['order_date >= ? AND order_date <= ?'];
-      const params = [startDate, endDate];
+      const offset = (page - 1) * limit
+      const conditions = ['order_date >= ? AND order_date <= ?']
+      const params = [startDate, endDate]
 
       if (status) {
-        conditions.push('order_status = ?');
-        params.push(status);
+        conditions.push('order_status = ?')
+        params.push(status)
       }
 
       if (customerId) {
-        conditions.push('customer_id = ?');
-        params.push(customerId);
+        conditions.push('customer_id = ?')
+        params.push(customerId)
       }
 
-      const whereClause = `WHERE ${conditions.join(' AND ')}`;
+      const whereClause = `WHERE ${conditions.join(' AND ')}`
 
       // 查询数据
       const query = `
@@ -545,18 +545,18 @@ class SalesOrderRepository extends BaseRepository {
         ${whereClause}
         ORDER BY order_date DESC, created_at DESC
         LIMIT ? OFFSET ?
-      `;
+      `
 
-      const dataParams = [...params, parseInt(limit), parseInt(offset)];
-      const records = await this.executeQuery(query, dataParams);
+      const dataParams = [...params, parseInt(limit), parseInt(offset)]
+      const records = await this.executeQuery(query, dataParams)
 
       // 查询总数
       const countQuery = `
         SELECT COUNT(*) as total FROM ${this.tableName}
         ${whereClause}
-      `;
-      const [countResult] = await this.executeQuery(countQuery, params);
-      const total = countResult.total;
+      `
+      const [countResult] = await this.executeQuery(countQuery, params)
+      const total = countResult.total
 
       return {
         records,
@@ -568,10 +568,10 @@ class SalesOrderRepository extends BaseRepository {
           hasNext: page * limit < total,
           hasPrev: page > 1
         }
-      };
+      }
     } catch (error) {
-      log.error('根据日期范围获取订单失败:', error);
-      throw error;
+      log.error('根据日期范围获取订单失败:', error)
+      throw error
     }
   }
 
@@ -586,13 +586,13 @@ class SalesOrderRepository extends BaseRepository {
       const updateData = {
         ...deliveryData,
         updated_at: new Date()
-      };
+      }
 
-      const result = await this.update(id, updateData);
-      return result.affectedRows > 0;
+      const result = await this.update(id, updateData)
+      return result.affectedRows > 0
     } catch (error) {
-      log.error('更新订单配送信息失败:', error);
-      throw error;
+      log.error('更新订单配送信息失败:', error)
+      throw error
     }
   }
 
@@ -608,42 +608,42 @@ class SalesOrderRepository extends BaseRepository {
         customerId,
         status,
         operatorId
-      } = filters;
+      } = filters
 
-      const conditions = [];
-      const params = [];
+      const conditions = []
+      const params = []
 
       if (customerId) {
-        conditions.push('customer_id = ?');
-        params.push(customerId);
+        conditions.push('customer_id = ?')
+        params.push(customerId)
       }
 
       if (status) {
-        conditions.push('order_status = ?');
-        params.push(status);
+        conditions.push('order_status = ?')
+        params.push(status)
       }
 
       if (operatorId) {
-        conditions.push('operator_id = ?');
-        params.push(operatorId);
+        conditions.push('operator_id = ?')
+        params.push(operatorId)
       }
 
-      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
 
       const query = `
         SELECT * FROM ${this.tableName}
         ${whereClause}
         ORDER BY created_at DESC
         LIMIT ?
-      `;
+      `
 
-      const records = await this.executeQuery(query, [...params, parseInt(limit)]);
-      return records;
+      const records = await this.executeQuery(query, [...params, parseInt(limit)])
+      return records
     } catch (error) {
-      log.error('获取最近订单失败:', error);
-      throw error;
+      log.error('获取最近订单失败:', error)
+      throw error
     }
   }
 }
 
-module.exports = SalesOrderRepository;
+module.exports = SalesOrderRepository

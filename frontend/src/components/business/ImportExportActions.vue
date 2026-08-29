@@ -9,7 +9,7 @@
     :title="importTitle"
     @click="emit('import')"
   >
-    <i :class="importIconClass"></i>
+    <i :class="importIconClass" />
     <span>{{ importLoading ? importLoadingLabel : importLabel }}</span>
   </el-button>
 
@@ -23,7 +23,7 @@
     :title="exportTitle"
     @click="emit('export')"
   >
-    <i :class="exportIconClass"></i>
+    <i :class="exportIconClass" />
     <span>{{ exportLoading ? exportLoadingLabel : exportLabel }}</span>
   </el-button>
 </template>
@@ -54,8 +54,8 @@ interface Props {
 }
 
 interface Emits {
-  (event: 'import'): void
-  (event: 'export'): void
+  (_event: 'import'): void
+  (_event: 'export'): void
 }
 
 withDefaults(defineProps<Props>(), {

@@ -1,21 +1,33 @@
 <template>
   <div class="transfer-analytics">
     <!-- 划拨批发概览卡片 -->
-    <el-row v-if="showTransferOverviewCards" :gutter="16" class="overview-cards">
+    <el-row
+      v-if="showTransferOverviewCards"
+      :gutter="16"
+      class="overview-cards"
+    >
       <!-- 批发数量 -->
-      <el-col v-if="canViewTransferField('wholesale_count')" :xs="12" :sm="6">
+      <el-col
+        v-if="canViewTransferField('wholesale_count')"
+        :xs="12"
+        :sm="6"
+      >
         <el-card class="overview-card">
           <div class="card-content">
             <div class="card-icon wholesale">
-              <i class="fas fa-shopping-cart"></i>
+              <i class="fas fa-shopping-cart" />
             </div>
             <div class="card-info">
-              <div class="card-title">批发数量</div>
-              <div class="card-value">{{ allocationData.wholesaleCount || 0 }}</div>
+              <div class="card-title">
+                批发数量
+              </div>
+              <div class="card-value">
+                {{ allocationData.wholesaleCount || 0 }}
+              </div>
               <div class="card-compare">
                 <span class="compare-label">上月: {{ lastMonthData.wholesaleCount || 0 }}</span>
                 <span :class="getChangeClass(allocationData.wholesaleCount, lastMonthData.wholesaleCount)">
-                  <i :class="getTrendIcon(allocationData.wholesaleCount, lastMonthData.wholesaleCount)"></i>
+                  <i :class="getTrendIcon(allocationData.wholesaleCount, lastMonthData.wholesaleCount)" />
                   {{ calculateChange(allocationData.wholesaleCount, lastMonthData.wholesaleCount) }}%
                 </span>
               </div>
@@ -25,19 +37,27 @@
       </el-col>
 
       <!-- 批发利润 -->
-      <el-col v-if="canViewTransferField('wholesale_profit')" :xs="12" :sm="6">
+      <el-col
+        v-if="canViewTransferField('wholesale_profit')"
+        :xs="12"
+        :sm="6"
+      >
         <el-card class="overview-card">
           <div class="card-content">
             <div class="card-icon wholesale-profit">
-              <i class="fas fa-chart-line"></i>
+              <i class="fas fa-chart-line" />
             </div>
             <div class="card-info">
-              <div class="card-title">批发利润</div>
-              <div class="card-value">{{ formatAmount(allocationData.wholesaleProfit || 0) }}</div>
+              <div class="card-title">
+                批发利润
+              </div>
+              <div class="card-value">
+                {{ formatAmount(allocationData.wholesaleProfit || 0) }}
+              </div>
               <div class="card-compare">
                 <span class="compare-label">上月: {{ formatAmount(lastMonthData.wholesaleProfit || 0) }}</span>
                 <span :class="getChangeClass(allocationData.wholesaleProfit, lastMonthData.wholesaleProfit)">
-                  <i :class="getTrendIcon(allocationData.wholesaleProfit, lastMonthData.wholesaleProfit)"></i>
+                  <i :class="getTrendIcon(allocationData.wholesaleProfit, lastMonthData.wholesaleProfit)" />
                   {{ calculateChange(allocationData.wholesaleProfit, lastMonthData.wholesaleProfit) }}%
                 </span>
               </div>
@@ -47,19 +67,27 @@
       </el-col>
 
       <!-- 划拨数量 -->
-      <el-col v-if="canViewTransferField('allocation_count')" :xs="12" :sm="6">
+      <el-col
+        v-if="canViewTransferField('allocation_count')"
+        :xs="12"
+        :sm="6"
+      >
         <el-card class="overview-card">
           <div class="card-content">
             <div class="card-icon allocation">
-              <i class="fas fa-share-alt"></i>
+              <i class="fas fa-share-alt" />
             </div>
             <div class="card-info">
-              <div class="card-title">划拨数量</div>
-              <div class="card-value">{{ allocationData.allocationCount || 0 }}</div>
+              <div class="card-title">
+                划拨数量
+              </div>
+              <div class="card-value">
+                {{ allocationData.allocationCount || 0 }}
+              </div>
               <div class="card-compare">
                 <span class="compare-label">上月: {{ lastMonthData.allocationCount || 0 }}</span>
                 <span :class="getChangeClass(allocationData.allocationCount, lastMonthData.allocationCount)">
-                  <i :class="getTrendIcon(allocationData.allocationCount, lastMonthData.allocationCount)"></i>
+                  <i :class="getTrendIcon(allocationData.allocationCount, lastMonthData.allocationCount)" />
                   {{ calculateChange(allocationData.allocationCount, lastMonthData.allocationCount) }}%
                 </span>
               </div>
@@ -69,19 +97,27 @@
       </el-col>
 
       <!-- 划拨金额 -->
-      <el-col v-if="canViewTransferField('allocation_amount')" :xs="12" :sm="6">
+      <el-col
+        v-if="canViewTransferField('allocation_amount')"
+        :xs="12"
+        :sm="6"
+      >
         <el-card class="overview-card">
           <div class="card-content">
             <div class="card-icon allocation-amount">
-              <i class="fas fa-coins"></i>
+              <i class="fas fa-coins" />
             </div>
             <div class="card-info">
-              <div class="card-title">划拨金额</div>
-              <div class="card-value">{{ formatAmount(allocationData.allocationAmount || 0) }}</div>
+              <div class="card-title">
+                划拨金额
+              </div>
+              <div class="card-value">
+                {{ formatAmount(allocationData.allocationAmount || 0) }}
+              </div>
               <div class="card-compare">
                 <span class="compare-label">上月: {{ formatAmount(lastMonthData.allocationAmount || 0) }}</span>
                 <span :class="getChangeClass(allocationData.allocationAmount, lastMonthData.allocationAmount)">
-                  <i :class="getTrendIcon(allocationData.allocationAmount, lastMonthData.allocationAmount)"></i>
+                  <i :class="getTrendIcon(allocationData.allocationAmount, lastMonthData.allocationAmount)" />
                   {{ calculateChange(allocationData.allocationAmount, lastMonthData.allocationAmount) }}%
                 </span>
               </div>
@@ -92,7 +128,11 @@
     </el-row>
 
     <!-- 图表区域 -->
-    <el-row v-if="canViewTransferField('trend_chart')" :gutter="16" class="charts-section">
+    <el-row
+      v-if="canViewTransferField('trend_chart')"
+      :gutter="16"
+      class="charts-section"
+    >
       <!-- 调货趋势 - 本月数据 -->
       <el-col :span="24">
         <el-card class="chart-card">
@@ -106,53 +146,97 @@
                   placeholder="选择月份"
                   format="YYYY年MM月"
                   value-format="YYYY-MM"
-                  @change="handleMonthChange"
                   class="w-32"
+                  @change="handleMonthChange"
                 />
               </div>
-              <el-tag type="info" size="small">{{ monthRangeText }}</el-tag>
+              <el-tag
+                type="info"
+                size="small"
+              >
+                {{ monthRangeText }}
+              </el-tag>
             </div>
           </template>
           <div class="chart-container large">
-            <div ref="trendChartRef" class="chart"></div>
+            <div
+              ref="trendChartRef"
+              class="chart"
+            />
           </div>
         </el-card>
       </el-col>
     </el-row>
 
-    <el-row v-if="showTransferRankingCharts" :gutter="16" class="charts-section">
+    <el-row
+      v-if="showTransferRankingCharts"
+      :gutter="16"
+      class="charts-section"
+    >
       <!-- 批发产品排行 TOP10 -->
-      <el-col v-if="canViewTransferField('wholesale_rank_chart')" :xs="24" :sm="24" :md="12" :lg="12">
+      <el-col
+        v-if="canViewTransferField('wholesale_rank_chart')"
+        :xs="24"
+        :sm="24"
+        :md="12"
+        :lg="12"
+      >
         <el-card class="chart-card">
           <template #header>
             <div class="card-header">
               <h3>批发机型排行 TOP10</h3>
-              <el-tag type="primary" size="small">{{ displayMonthText }}</el-tag>
+              <el-tag
+                type="primary"
+                size="small"
+              >
+                {{ displayMonthText }}
+              </el-tag>
             </div>
           </template>
           <div class="chart-container">
-            <div ref="wholesaleProductRankRef" class="chart"></div>
+            <div
+              ref="wholesaleProductRankRef"
+              class="chart"
+            />
           </div>
         </el-card>
       </el-col>
 
       <!-- 划拨产品排行 TOP10 -->
-      <el-col v-if="canViewTransferField('allocation_rank_chart')" :xs="24" :sm="24" :md="12" :lg="12">
+      <el-col
+        v-if="canViewTransferField('allocation_rank_chart')"
+        :xs="24"
+        :sm="24"
+        :md="12"
+        :lg="12"
+      >
         <el-card class="chart-card">
           <template #header>
             <div class="card-header">
               <h3>划拨机型排行 TOP10</h3>
-              <el-tag type="success" size="small">{{ displayMonthText }}</el-tag>
+              <el-tag
+                type="success"
+                size="small"
+              >
+                {{ displayMonthText }}
+              </el-tag>
             </div>
           </template>
           <div class="chart-container">
-            <div ref="allocationProductRankRef" class="chart"></div>
+            <div
+              ref="allocationProductRankRef"
+              class="chart"
+            />
           </div>
         </el-card>
       </el-col>
     </el-row>
 
-    <el-row v-if="canViewTransferField('store_distribution_chart')" :gutter="16" class="charts-section">
+    <el-row
+      v-if="canViewTransferField('store_distribution_chart')"
+      :gutter="16"
+      class="charts-section"
+    >
       <!-- 店铺分布 -->
       <el-col :span="24">
         <el-card class="chart-card">
@@ -162,71 +246,166 @@
             </div>
           </template>
           <div class="chart-container">
-            <div ref="storeDistributionRef" class="chart"></div>
+            <div
+              ref="storeDistributionRef"
+              class="chart"
+            />
           </div>
         </el-card>
       </el-col>
     </el-row>
 
     <!-- 数据表格区域 -->
-    <el-row v-if="canViewTransferField('operation_records_table')" :gutter="16" class="table-section admin-panel admin-table-panel">
+    <el-row
+      v-if="canViewTransferField('operation_records_table')"
+      :gutter="16"
+      class="table-section admin-panel admin-table-panel"
+    >
       <el-col :span="24">
         <el-card class="table-card admin-panel admin-table-panel">
           <template #header>
             <div class="card-header">
               <h3>最近操作记录</h3>
               <el-space>
-                <el-select v-model="typeFilter" placeholder="筛选类型" size="small" clearable class="w-28">
-                  <el-option label="全部类型" value="" />
-                  <el-option label="批发" value="wholesale" />
-                  <el-option label="划拨" value="allocation" />
+                <el-select
+                  v-model="typeFilter"
+                  placeholder="筛选类型"
+                  size="small"
+                  clearable
+                  class="w-28"
+                >
+                  <el-option
+                    label="全部类型"
+                    value=""
+                  />
+                  <el-option
+                    label="批发"
+                    value="wholesale"
+                  />
+                  <el-option
+                    label="划拨"
+                    value="allocation"
+                  />
                 </el-select>
-                <el-button type="success" size="small" @click="exportData">
+                <el-button
+                  type="success"
+                  size="small"
+                  @click="exportData"
+                >
                   导出
                 </el-button>
               </el-space>
             </div>
           </template>
-          <el-table :data="loading ? [] : displayRecords" stripe class="data-table w-full" max-height="400">
+          <el-table
+            :data="loading ? [] : displayRecords"
+            stripe
+            class="data-table w-full"
+            max-height="400"
+          >
             <template #empty>
-              <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
-              <el-empty v-else description="暂无操作记录" />
+              <TableLoadingRow
+                v-if="loading"
+                mode="block"
+                text="加载中..."
+              />
+              <DataEmptyState
+                v-else
+                description="暂无操作记录"
+              />
             </template>
 
-            <el-table-column prop="order_no" label="单号" width="120" />
-            <el-table-column prop="type" label="类型" width="80">
+            <el-table-column
+              prop="order_no"
+              label="单号"
+              width="120"
+            />
+            <el-table-column
+              prop="type"
+              label="类型"
+              width="80"
+            >
               <template #default="{ row }">
-                <el-tag :type="getTypeTagType(row.type)" size="small">
+                <el-tag
+                  :type="getTypeTagType(row.type)"
+                  size="small"
+                >
                   {{ getTypeLabel(row.type) }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="supplier_name" label="供应商" width="120" />
-            <el-table-column prop="from_store_name" label="店铺" width="100" />
-            <el-table-column prop="brand_name" label="品牌" width="100" />
-            <el-table-column prop="model_name" label="型号" width="150" />
-            <el-table-column prop="to_store_name" label="客户" width="120" />
-            <el-table-column prop="amount" label="金额" width="100" align="right">
+            <el-table-column
+              prop="supplier_name"
+              label="供应商"
+              width="120"
+            />
+            <el-table-column
+              prop="from_store_name"
+              label="店铺"
+              width="100"
+            />
+            <el-table-column
+              prop="brand_name"
+              label="品牌"
+              width="100"
+            />
+            <el-table-column
+              prop="model_name"
+              label="型号"
+              width="150"
+            />
+            <el-table-column
+              prop="to_store_name"
+              label="客户"
+              width="120"
+            />
+            <el-table-column
+              prop="amount"
+              label="金额"
+              width="100"
+              align="right"
+            >
               <template #default="{ row }">
                 {{ row.amount ? `¥${row.amount.toLocaleString('zh-CN')}` : '-' }}
               </template>
             </el-table-column>
-            <el-table-column prop="profit" label="利润" width="100" align="right">
+            <el-table-column
+              prop="profit"
+              label="利润"
+              width="100"
+              align="right"
+            >
               <template #default="{ row }">
                 <span :class="getProfitClass(row.profit)">
                   {{ row.profit !== null && row.profit !== undefined ? `¥${row.profit.toLocaleString('zh-CN')}` : '-' }}
                 </span>
               </template>
             </el-table-column>
-            <el-table-column prop="status" label="状态" width="80" align="center">
+            <el-table-column
+              prop="status"
+              label="状态"
+              width="80"
+              align="center"
+            >
               <template #default="{ row }">
-                <el-tag :type="getStatusTagType(row.status)" size="small">
+                <el-tag
+                  :type="getStatusTagType(row.status)"
+                  size="small"
+                >
                   {{ getStatusLabel(row.status) }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="created_at" label="时间" width="140" />
-            <el-table-column prop="operator_name" label="操作人" width="100" />
+            <el-table-column
+              prop="created_at"
+              label="时间"
+              width="140"
+            />
+            <el-table-column
+              prop="operator_name"
+              label="操作人"
+              width="100"
+            />
           </el-table>
         </el-card>
       </el-col>
@@ -236,7 +415,6 @@
 
 <script setup lang="ts">
 import { ref, computed, onBeforeUnmount, watch, nextTick } from 'vue'
-import { Minus } from '@element-plus/icons-vue'
 import { useNotification } from '@/composables/useNotification'
 import { useLoadingState } from '@/composables'
 import { useImportExport } from '@/composables/useImportExport'
@@ -261,7 +439,7 @@ const props = withDefaults(defineProps<TransferAnalyticsProps>(), {
 
 const emit = defineEmits<LoadingChangeEmits>()
 
-const { success, error, warning } = useNotification()
+const { success: _success, error, warning } = useNotification()
 const { canViewField: canViewTransferField, canViewAnyField: canViewAnyTransferField } = useAnalyticsFieldVisibility('transfer')
 const { exportTextFile, buildDateFilename } = useImportExport()
 
@@ -364,7 +542,7 @@ const rawData = ref({
 })
 
 // 计算属性
-const totalAmount = computed(() => {
+const _totalAmount = computed(() => {
   return (allocationData.value.allocationAmount || 0) + (allocationData.value.wholesaleAmount || 0)
 })
 
@@ -482,25 +660,28 @@ const loadData = async (showLoadingState = true) => {
 
     // 构建本月查询参数
     const currentParams: any = {
-      startDate: currentRange.start,
-      endDate: currentRange.end
+      start_date: currentRange.start,
+      end_date: currentRange.end
     }
 
     // 使用父组件传递的检索参数（覆盖默认的月份范围）
     if (props.startDate) {
-      currentParams.startDate = props.startDate
+      currentParams.start_date = props.startDate
     }
     if (props.endDate) {
-      currentParams.endDate = props.endDate
+      currentParams.end_date = props.endDate
     }
     if (props.storeId) {
-      currentParams.storeId = props.storeId
+      currentParams.store_id = props.storeId
     }
 
     // 构建上月查询参数
     const lastParams: any = {
-      startDate: lastRange.start,
-      endDate: lastRange.end
+      start_date: lastRange.start,
+      end_date: lastRange.end
+    }
+    if (props.storeId) {
+      lastParams.store_id = props.storeId
     }
 
     // 并行获取本月和上月数据
@@ -513,47 +694,47 @@ const loadData = async (showLoadingState = true) => {
     if (currentResponse.success && currentResponse.data) {
       const data = currentResponse.data
 
-      transferData.value = data.transfer || {
-        transferCount: 0,
-        inboundCount: 0,
-        outboundCount: 0,
-        pendingCount: 0,
-        transferGrowth: 0
+      transferData.value = {
+        transferCount: data.transfer?.transfer_count || 0,
+        inboundCount: data.transfer?.inbound_count || 0,
+        outboundCount: data.transfer?.outbound_count || 0,
+        pendingCount: data.transfer?.pending_count || 0,
+        transferGrowth: data.transfer?.transfer_growth || 0
       }
 
-      allocationData.value = data.allocation || {
-        allocationCount: 0,
-        wholesaleCount: 0,
-        allocationAmount: 0,
-        wholesaleAmount: 0,
-        wholesaleProfit: 0,
-        allocationGrowth: 0,
-        wholesaleGrowth: 0
+      allocationData.value = {
+        allocationCount: data.allocation?.allocation_count || 0,
+        wholesaleCount: data.allocation?.wholesale_count || 0,
+        allocationAmount: data.allocation?.allocation_amount || 0,
+        wholesaleAmount: data.allocation?.wholesale_amount || 0,
+        wholesaleProfit: data.allocation?.wholesale_profit || 0,
+        allocationGrowth: data.allocation?.allocation_growth || 0,
+        wholesaleGrowth: data.allocation?.wholesale_growth || 0
       }
 
       // 保存原始数据
       rawData.value = {
         trends: data.trends || [],
-        wholesaleProductRanks: data.wholesaleProductRanks || [],
-        allocationProductRanks: data.allocationProductRanks || [],
-        storeDistribution: data.storeDistribution || [],
+        wholesaleProductRanks: data.wholesale_product_ranks || [],
+        allocationProductRanks: data.allocation_product_ranks || [],
+        storeDistribution: data.store_distribution || [],
         records: data.records || []
       }
 
       // 更新月度范围
-      if (data.monthRange) {
-        monthRange.value = data.monthRange
+      if (data.month_range) {
+        monthRange.value = data.month_range
       }
     }
 
     // 处理上月数据
     if (lastResponse.success && lastResponse.data && lastResponse.data.allocation) {
       lastMonthData.value = {
-        allocationCount: lastResponse.data.allocation.allocationCount || 0,
-        wholesaleCount: lastResponse.data.allocation.wholesaleCount || 0,
-        allocationAmount: lastResponse.data.allocation.allocationAmount || 0,
-        wholesaleAmount: lastResponse.data.allocation.wholesaleAmount || 0,
-        wholesaleProfit: lastResponse.data.allocation.wholesaleProfit || 0
+        allocationCount: lastResponse.data.allocation.allocation_count || 0,
+        wholesaleCount: lastResponse.data.allocation.wholesale_count || 0,
+        allocationAmount: lastResponse.data.allocation.allocation_amount || 0,
+        wholesaleAmount: lastResponse.data.allocation.wholesale_amount || 0,
+        wholesaleProfit: lastResponse.data.allocation.wholesale_profit || 0
       }
     }
 
@@ -570,7 +751,7 @@ const loadData = async (showLoadingState = true) => {
 }
 
 // 月份变化处理
-const handleMonthChange = (value: string) => {
+const handleMonthChange = (_value: string) => {
   loadData()
 }
 
@@ -1022,7 +1203,7 @@ onBeforeUnmount(() => {
 
           .filter-label {
             font-size: 14px;
-            color: #606266;
+            color: var(--color-text-regular);
             font-weight: 500;
           }
         }
@@ -1055,35 +1236,35 @@ onBeforeUnmount(() => {
       color: white;
 
       &.transfer {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
       }
 
       &.inbound {
-        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        background: linear-gradient(135deg, var(--tf-color-transfer-chart-teal) 0%, var(--tf-color-green-gradient) 100%);
       }
 
       &.outbound {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        background: linear-gradient(135deg, var(--tf-color-pink-gradient) 0%, var(--tf-color-coral-gradient) 100%);
       }
 
       &.pending {
-        background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        background: linear-gradient(135deg, var(--tf-color-pink-legacy) 0%, var(--tf-color-yellow-bright) 100%);
       }
 
       &.allocation {
-        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        background: linear-gradient(135deg, var(--tf-color-sky-gradient) 0%, var(--tf-color-cyan-gradient) 100%);
       }
 
       &.allocation-amount {
-        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        background: linear-gradient(135deg, var(--tf-color-cyan-200) 0%, var(--tf-color-danger-legacy) 100%);
       }
 
       &.wholesale {
-        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        background: linear-gradient(135deg, var(--tf-color-green-gradient) 0%, var(--tf-color-teal-gradient) 100%);
       }
 
       &.wholesale-profit {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        background: linear-gradient(135deg, var(--tf-color-pink-gradient) 0%, var(--tf-color-coral-gradient) 100%);
       }
     }
 

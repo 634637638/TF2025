@@ -37,7 +37,6 @@
         <el-input
           v-if="field.type === 'input' || field.type === 'text' || field.type === 'password'"
           :model-value="getInputValue(field)"
-          @update:model-value="setFieldValue(field, $event)"
           :type="field.type || 'text'"
           :placeholder="field.placeholder || `请输入${field.label}`"
           :disabled="field.disabled"
@@ -50,6 +49,7 @@
           :rows="field.rows"
           :autosize="field.autosize"
           resize="none"
+          @update:model-value="setFieldValue(field, $event)"
           @blur="handleFieldBlur(field)"
           @focus="handleFieldFocus(field)"
         />
@@ -58,7 +58,6 @@
         <el-input-number
           v-else-if="field.type === 'number'"
           :model-value="getNumberValue(field)"
-          @update:model-value="setFieldValue(field, $event)"
           :placeholder="field.placeholder || `请输入${field.label}`"
           :disabled="field.disabled"
           :min="field.min"
@@ -67,13 +66,13 @@
           :precision="field.precision"
           :controls-position="getControlsPosition(field)"
           style="width: 100%"
+          @update:model-value="setFieldValue(field, $event)"
         />
 
         <!-- 选择器 -->
         <el-select
           v-else-if="field.type === 'select'"
           :model-value="getSelectValue(field)"
-          @update:model-value="setFieldValue(field, $event)"
           :placeholder="field.placeholder || `请选择${field.label}`"
           :disabled="field.disabled"
           :clearable="field.clearable !== false"
@@ -83,6 +82,7 @@
           :remote-method="field.remoteMethod"
           :loading="field.loading"
           style="width: 100%"
+          @update:model-value="setFieldValue(field, $event)"
         >
           <el-option
             v-for="(option, optionIndex) in field.options"
@@ -97,7 +97,6 @@
         <el-date-picker
           v-else-if="field.type === 'date'"
           :model-value="getDateValue(field)"
-          @update:model-value="setFieldValue(field, $event)"
           :type="getDatePickerType(field)"
           :placeholder="field.placeholder || `请选择${field.label}`"
           :disabled="field.disabled"
@@ -105,13 +104,13 @@
           :format="field.format"
           :value-format="field.valueFormat"
           style="width: 100%"
+          @update:model-value="setFieldValue(field, $event)"
         />
 
         <!-- 日期时间选择器 -->
         <el-date-picker
           v-else-if="field.type === 'datetime'"
           :model-value="getDateValue(field)"
-          @update:model-value="setFieldValue(field, $event)"
           type="datetime"
           :placeholder="field.placeholder || `请选择${field.label}`"
           :disabled="field.disabled"
@@ -119,40 +118,41 @@
           :format="field.format || 'YYYY-MM-DD HH:mm:ss'"
           :value-format="field.valueFormat || 'YYYY-MM-DD HH:mm:ss'"
           style="width: 100%"
+          @update:model-value="setFieldValue(field, $event)"
         />
 
         <!-- 时间选择器 -->
         <el-time-picker
           v-else-if="field.type === 'time'"
           :model-value="getDateValue(field)"
-          @update:model-value="setFieldValue(field, $event)"
           :placeholder="field.placeholder || `请选择${field.label}`"
           :disabled="field.disabled"
           :clearable="field.clearable !== false"
           :format="field.format"
           :value-format="field.valueFormat"
           style="width: 100%"
+          @update:model-value="setFieldValue(field, $event)"
         />
 
         <!-- 开关 -->
         <el-switch
           v-else-if="field.type === 'switch'"
           :model-value="getSwitchValue(field)"
-          @update:model-value="setFieldValue(field, $event)"
           :disabled="field.disabled"
           :active-text="field.activeText"
           :inactive-text="field.inactiveText"
           :active-value="field.activeValue !== undefined ? field.activeValue : true"
           :inactive-value="field.inactiveValue !== undefined ? field.inactiveValue : false"
+          @update:model-value="setFieldValue(field, $event)"
         />
 
         <!-- 单选框组 -->
         <el-radio-group
           v-else-if="field.type === 'radio'"
           :model-value="getRadioValue(field)"
-          @update:model-value="setFieldValue(field, $event)"
           :disabled="field.disabled"
           :direction="isMobile ? 'vertical' : 'horizontal'"
+          @update:model-value="setFieldValue(field, $event)"
         >
           <el-radio
             v-for="(option, optionIndex) in field.options"
@@ -168,9 +168,9 @@
         <el-checkbox-group
           v-else-if="field.type === 'checkbox'"
           :model-value="getCheckboxValue(field)"
-          @update:model-value="setFieldValue(field, $event)"
           :disabled="field.disabled"
           :direction="isMobile ? 'vertical' : 'horizontal'"
+          @update:model-value="setFieldValue(field, $event)"
         >
           <el-checkbox
             v-for="(option, optionIndex) in field.options"
@@ -186,35 +186,35 @@
         <el-slider
           v-else-if="field.type === 'slider'"
           :model-value="getSliderValue(field)"
-          @update:model-value="setFieldValue(field, $event)"
           :disabled="field.disabled"
           :min="field.min || 0"
           :max="field.max || 100"
           :step="field.step || 1"
           :show-input="field.showInput"
           :range="field.range"
+          @update:model-value="setFieldValue(field, $event)"
         />
 
         <!-- 评分 -->
         <el-rate
           v-else-if="field.type === 'rate'"
           :model-value="getNumberValue(field)"
-          @update:model-value="setFieldValue(field, $event)"
           :disabled="field.disabled"
           :max="field.max || 5"
           :allow-half="field.allowHalf"
           :show-text="field.showText"
           :texts="field.texts"
+          @update:model-value="setFieldValue(field, $event)"
         />
 
         <!-- 颜色选择器 -->
         <el-color-picker
           v-else-if="field.type === 'color'"
           :model-value="getColorValue(field)"
-          @update:model-value="setFieldValue(field, $event)"
           :disabled="field.disabled"
           :show-alpha="field.showAlpha"
           :predefine="field.predefine"
+          @update:model-value="setFieldValue(field, $event)"
         />
 
         <!-- 上传 -->
@@ -243,7 +243,10 @@
           >
             {{ field.uploadText || '上传文件' }}
           </el-button>
-          <div v-else class="upload-trigger">
+          <div
+            v-else
+            class="upload-trigger"
+          >
             <el-icon><Plus /></el-icon>
           </div>
         </el-upload>
@@ -270,7 +273,10 @@
     </div>
 
     <!-- 表单操作按钮 -->
-    <div class="form-actions" :class="getActionsClass()">
+    <div
+      class="form-actions"
+      :class="getActionsClass()"
+    >
       <slot name="actions">
         <el-button
           v-if="showCancel"
@@ -293,7 +299,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { useMobile } from '@/composables/mobile'
 import type { FormInstance, FormRules, UploadFile, UploadFiles } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
@@ -361,7 +367,7 @@ interface FormField {
   multiple?: boolean
   filterable?: boolean
   remote?: boolean
-  remoteMethod?: (query: string) => void
+  remoteMethod?: (_query: string) => void
   loading?: boolean
 
   // 日期选择器特有
@@ -415,7 +421,7 @@ interface FormField {
 }
 
 interface Props {
-  modelValue: FormModelValue
+  modelValue?: FormModelValue
   fields: FormField[]
   rules?: FormRules
   loading?: boolean

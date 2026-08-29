@@ -7,194 +7,436 @@
       module-name="品牌管理"
       permission-code="brands:view"
     >
-    <!-- 页面头部 - 使用公共组件 -->
-    <PageHeader
-      icon="fas fa-tags"
-      title="品牌管理"
-    >
-      <template #actions>
-        <el-button
-          v-if="canCreate"
-          type="primary"
-          @click="handleCreateBrand"
+      <!-- 页面头部 - 使用公共组件 -->
+      <PageHeader
+        icon="fas fa-tags"
+        title="品牌管理"
+      >
+        <template #actions>
+          <el-button
+            v-if="canCreate"
+            type="primary"
+            @click="handleCreateBrand"
+          >
+            <i class="fas fa-plus" />
+            <span>新增</span>
+          </el-button>
+          <el-button
+            type="info"
+            :disabled="refreshing"
+            @click="handleRefresh"
+          >
+            <InlineLoading
+              v-if="refreshing"
+              text="刷新中..."
+              size="small"
+              variant="inherit"
+            />
+            <template v-else>
+              <i class="fas fa-sync-alt" />
+              <span>刷新</span>
+            </template>
+          </el-button>
+        </template>
+      </PageHeader>
+
+      <div class="content admin-page-content">
+        <!-- 统计卡片 -->
+        <div
+          v-if="showStatsCards"
+          class="stats-cards"
         >
-          <i class="fas fa-plus"></i>
-          <span>新增</span>
-        </el-button>
-        <el-button type="info" @click="handleRefresh" :disabled="refreshing">
-          <InlineLoading v-if="refreshing" text="刷新中..." size="small" variant="inherit" />
-          <template v-else>
-            <i class="fas fa-sync-alt"></i>
-            <span>刷新</span>
-          </template>
-        </el-button>
-      </template>
-    </PageHeader>
+          <div
+            v-if="canViewField('stats_total_brands')"
+            class="stat-card"
+          >
+            <div class="stat-icon">
+              <i class="fas fa-tags" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">
+                {{ stats.total }}
+              </div>
+              <div class="stat-label">
+                品牌总数
+              </div>
+            </div>
+          </div>
+          <div
+            v-if="canViewField('stats_active_brands')"
+            class="stat-card"
+          >
+            <div class="stat-icon active">
+              <i class="fas fa-check-circle" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">
+                {{ stats.active }}
+              </div>
+              <div class="stat-label">
+                启用品牌
+              </div>
+            </div>
+          </div>
+          <div
+            v-if="canViewField('stats_inactive_brands')"
+            class="stat-card"
+          >
+            <div class="stat-icon inactive">
+              <i class="fas fa-pause-circle" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">
+                {{ stats.inactive }}
+              </div>
+              <div class="stat-label">
+                禁用品牌
+              </div>
+            </div>
+          </div>
+          <div
+            v-if="canViewField('stats_related_phones')"
+            class="stat-card"
+          >
+            <div class="stat-icon">
+              <i class="fas fa-mobile-alt" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">
+                {{ stats.relatedPhones }}
+              </div>
+              <div class="stat-label">
+                相关手机
+              </div>
+            </div>
+          </div>
+        </div>
 
-    <div class="content admin-page-content">
-
-    <!-- 统计卡片 -->
-    <div v-if="showStatsCards" class="stats-cards">
-      <div v-if="canViewField('stats_total_brands')" class="stat-card">
-        <div class="stat-icon">
-          <i class="fas fa-tags"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ pagination.total }}</div>
-          <div class="stat-label">品牌总数</div>
-        </div>
-      </div>
-      <div v-if="canViewField('stats_active_brands')" class="stat-card">
-        <div class="stat-icon active">
-          <i class="fas fa-check-circle"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ brands.filter(b => b.status === 1).length }}</div>
-          <div class="stat-label">启用品牌</div>
-        </div>
-      </div>
-      <div v-if="canViewField('stats_inactive_brands')" class="stat-card">
-        <div class="stat-icon inactive">
-          <i class="fas fa-pause-circle"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ brands.filter(b => b.status === 0).length }}</div>
-          <div class="stat-label">禁用品牌</div>
-        </div>
-      </div>
-      <div v-if="canViewField('stats_related_phones')" class="stat-card">
-        <div class="stat-icon">
-          <i class="fas fa-mobile-alt"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ getPhoneCount() }}</div>
-          <div class="stat-label">相关手机</div>
-        </div>
-      </div>
-    </div>
-
-    <UnifiedSearchPanel
-      v-model:expanded="searchExpanded"
-      :loading="tableLoading"
-      @search="searchBrands"
-      @reset="resetSearch"
-    >
-      <template #primary>
-        <el-input
-          v-if="canViewField('name')"
-          v-model="searchForm.name"
-          placeholder="搜索品牌名称"
-          clearable
-          @keyup.enter="searchBrands"
-          @click.stop
+        <UnifiedSearchPanel
+          v-model:expanded="searchExpanded"
+          :loading="tableLoading"
+          @search="searchBrands"
+          @reset="resetSearch"
         >
-          <template #prefix>
-            <i class="fas fa-search"></i>
+          <template #primary>
+            <el-input
+              v-if="canViewField('name')"
+              v-model="searchForm.name"
+              placeholder="搜索品牌名称"
+              clearable
+              @keyup.enter="searchBrands"
+              @click.stop
+            >
+              <template #prefix>
+                <i class="fas fa-search" />
+              </template>
+            </el-input>
           </template>
-        </el-input>
-      </template>
 
-      <div v-if="canViewField('status')" class="form-group filter-item" data-field="status">
-        <el-select
-          v-model="searchForm.status"
-          placeholder="状态"
-          clearable
-          @change="searchBrands"
-        >
-          <el-option label="启用" value="1" />
-          <el-option label="禁用" value="0" />
-        </el-select>
-      </div>
-    </UnifiedSearchPanel>
+          <div
+            v-if="canViewField('status')"
+            class="form-group filter-item"
+            data-field="status"
+          >
+            <el-select
+              v-model="searchForm.status"
+              placeholder="状态"
+              clearable
+              @change="searchBrands"
+            >
+              <el-option
+                label="启用"
+                value="1"
+              />
+              <el-option
+                label="禁用"
+                value="0"
+              />
+            </el-select>
+          </div>
+        </UnifiedSearchPanel>
 
-    <!-- 数据表格区域 -->
-    <div class="table-section admin-panel admin-table-panel">
-      <div class="section-title">
-        <i class="fas fa-list"></i>
-        品牌列表
-        <span class="record-count">共 {{ pagination.total }} 条记录</span>
-      </div>
-      
-      <div class="table-responsive">
-        <el-table ref="brandsTableRef" :data="tableLoading ? [] : brands" border stripe class="data-table devices-table base-data-table brands-data-table" table-layout="fixed" :fit="true" :row-key="getBrandRowKey" :expand-row-keys="isMobile && mobileActionRowId ? [mobileActionRowId] : []" @row-click="(row) => handleMobileRowTap(row.id)">
-          <template #empty>
-            <TableLoadingRow v-if="tableLoading" mode="block" text="加载品牌列表..." />
-            <div v-else class="empty-state"><i class="fas fa-inbox"></i><p>暂无品牌数据</p><el-button size="small" type="info" @click="loadBrands()">重新加载</el-button></div>
-          </template>
-          <el-table-column v-if="showSortField" width="44" align="center" class-name="drag-handle-cell"><template #default><div class="drag-handle" :class="{ disabled: !canEdit }"><i class="fas fa-grip-vertical"></i></div></template></el-table-column>
-          <el-table-column v-if="showSortOrderField" label="排序" width="70" align="center"><template #default="{ row, $index }"><input v-model.number="row.sort_order" type="number" class="sort-order-input" :disabled="!canEdit" min="0" max="9999" @change="handleSortOrderChange($index, row.sort_order)" /></template></el-table-column>
-          <el-table-column v-if="canViewField('id')" label="序号" width="70" align="center"><template #default="{ $index }"><span class="id-badge">{{ $index + 1 }}</span></template></el-table-column>
-          <el-table-column v-if="canViewField('name')" prop="name" label="品牌名称" min-width="130" align="center" />
-          <el-table-column v-if="canViewField('status')" label="状态" min-width="84" align="center"><template #default="{ row }"><span :class="['status-badge', row.status ? 'status-active' : 'status-inactive']"><i :class="row.status ? 'fas fa-check' : 'fas fa-times'"></i>{{ row.status ? '启用' : '禁用' }}</span></template></el-table-column>
-          <el-table-column v-if="showCreatedAtField" label="创建时间" min-width="156" align="center"><template #default="{ row }"><div class="time-info"><i class="fas fa-clock"></i>{{ formatDate(row.created_at) }}</div></template></el-table-column>
-          <el-table-column v-if="showActionField" label="操作" :width="$getActionColumnWidth(Number(canEdit) + Number(canDelete))" align="center" class-name="actions-column"><template #default="{ row }"><div class="action-buttons"><el-button v-if="canEdit" v-permission="'brands:edit'" type="primary" size="small" @click.stop="editBrand(row)"><i class="fas fa-edit"></i><span>编辑</span></el-button><el-button v-if="canDelete" v-permission="'brands:delete'" type="danger" size="small" @click.stop="deleteBrand(row)"><i class="fas fa-trash"></i><span>删除</span></el-button></div></template></el-table-column>
-          <el-table-column v-if="isMobile && (canEdit || canDelete)" type="expand" width="1" class-name="mobile-expand-column" label-class-name="mobile-expand-header"><template #default="{ row }"><div class="mobile-row-actions"><el-button v-if="canEdit" v-permission="'brands:edit'" type="primary" size="small" @click.stop="editBrand(row)"><i class="fas fa-edit"></i><span>编辑</span></el-button><el-button v-if="canDelete" v-permission="'brands:delete'" type="danger" size="small" @click.stop="deleteBrand(row)"><i class="fas fa-trash"></i><span>删除</span></el-button></div></template></el-table-column>
-        </el-table>
-      </div>
+        <!-- 数据表格区域 -->
+        <div class="table-section admin-panel admin-table-panel">
+          <div class="section-title">
+            <i class="fas fa-list" />
+            品牌列表
+            <span class="record-count">共 {{ pagination.total }} 条记录</span>
+          </div>
 
-      <!-- 分页组件 -->
-      <Pagination
-        v-if="pagination.total > 0"
-        v-model:current="pagination.page"
-        v-model:page-size="pagination.limit"
-        :total="pagination.total"
-        :page-sizes="[10, 20, 50, 100]"
-        :show-total="true"
-        :show-range="true"
-        :show-page-sizes="true"
-        :show-quick-jumper="true"
-        @change="handlePaginationChange"
-      />
-    </div>
+          <div class="table-responsive">
+            <el-table
+              ref="brandsTableRef"
+              :data="tableLoading ? [] : brands"
+              border
+              stripe
+              class="data-table devices-table base-data-table brands-data-table"
+              table-layout="fixed"
+              :fit="true"
+              :row-key="getBrandRowKey"
+              :expand-row-keys="isMobile && mobileActionRowId ? [mobileActionRowId] : []"
+              @row-click="(row) => handleMobileRowTap(row.id)"
+            >
+              <template #empty>
+                <TableLoadingRow
+                  v-if="tableLoading"
+                  mode="block"
+                  text="加载品牌列表..."
+                />
+                <DataEmptyState
+                  v-else
+                  description="暂无品牌数据"
+                >
+                  <el-button
+                    size="small"
+                    type="info"
+                    @click="loadBrands()"
+                  >
+                    重新加载
+                  </el-button>
+                </DataEmptyState>
+              </template>
+              <el-table-column
+                v-if="showSortField"
+                width="44"
+                align="center"
+                class-name="drag-handle-cell"
+              >
+                <template #default>
+                  <div
+                    class="drag-handle"
+                    :class="{ disabled: !canEdit }"
+                  >
+                    <i class="fas fa-grip-vertical" />
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="showSortOrderField"
+                label="排序"
+                width="70"
+                align="center"
+              >
+                <template #default="{ row, $index }">
+                  <input
+                    v-model.number="row.sort_order"
+                    type="number"
+                    class="sort-order-input"
+                    :disabled="!canEdit"
+                    min="0"
+                    max="9999"
+                    @change="handleSortOrderChange($index, row.sort_order)"
+                  >
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="canViewField('id')"
+                label="序号"
+                width="70"
+                align="center"
+              >
+                <template #default="{ $index }">
+                  <span class="id-badge">{{ $index + 1 }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="canViewField('name')"
+                prop="name"
+                label="品牌名称"
+                min-width="130"
+                align="center"
+              />
+              <el-table-column
+                v-if="canViewField('status')"
+                label="状态"
+                min-width="84"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <span :class="['status-badge', row.status ? 'status-active' : 'status-inactive']"><i :class="row.status ? 'fas fa-check' : 'fas fa-times'" />{{ row.status ? '启用' : '禁用' }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="showCreatedAtField"
+                label="创建时间"
+                min-width="156"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <div class="time-info">
+                    <i class="fas fa-clock" />{{ formatDate(row.created_at) }}
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="showUpdatedAtField"
+                label="更新时间"
+                min-width="156"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <div class="time-info">
+                    <i class="fas fa-clock" />{{ formatDate(row.updated_at) }}
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="showActionField"
+                label="操作"
+                :width="$getActionColumnWidth(Number(canEdit) + Number(canDelete))"
+                align="center"
+                class-name="actions-column"
+              >
+                <template #default="{ row }">
+                  <div class="action-buttons">
+                    <el-button
+                      v-if="canEdit"
+                      v-permission="'brands:edit'"
+                      type="primary"
+                      size="small"
+                      @click.stop="editBrand(row)"
+                    >
+                      <i class="fas fa-edit" /><span>编辑</span>
+                    </el-button><el-button
+                      v-if="canDelete"
+                      v-permission="'brands:delete'"
+                      type="danger"
+                      size="small"
+                      @click.stop="deleteBrand(row)"
+                    >
+                      <i class="fas fa-trash" /><span>删除</span>
+                    </el-button>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="isMobile && (canEdit || canDelete)"
+                type="expand"
+                width="1"
+                class-name="mobile-expand-column"
+                label-class-name="mobile-expand-header"
+              >
+                <template #default="{ row }">
+                  <div class="mobile-row-actions">
+                    <el-button
+                      v-if="canEdit"
+                      v-permission="'brands:edit'"
+                      type="primary"
+                      size="small"
+                      @click.stop="editBrand(row)"
+                    >
+                      <i class="fas fa-edit" /><span>编辑</span>
+                    </el-button><el-button
+                      v-if="canDelete"
+                      v-permission="'brands:delete'"
+                      type="danger"
+                      size="small"
+                      @click.stop="deleteBrand(row)"
+                    >
+                      <i class="fas fa-trash" /><span>删除</span>
+                    </el-button>
+                  </div>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
 
-    <!-- 创建/编辑模态框 -->
-    <MobileDialog
-      v-model="dialogVisible"
-      :title="isEditMode ? '编辑品牌' : '新增品牌'"
-      width="500px"
-      dialog-class="brands-form-dialog crud-dialog-sm"
-      :close-on-click-modal="false"
-      @close="attemptCloseModal"
-      :show-default-footer="false"
-    >
-      <el-form :model="formData" label-width="80px" class="brands-dialog-form">
-        <el-form-item v-if="canViewField('name')" label="品牌名称" required>
-          <el-input
-            v-model="formData.name"
-            placeholder="请输入品牌名称"
-            clearable
-            maxlength="50"
-            show-word-limit
-            :disabled="!canEditField('name')"
+          <!-- 分页组件 -->
+          <Pagination
+            v-if="pagination.total > 0"
+            v-model:current="pagination.page"
+            v-model:page-size="pagination.page_size"
+            :total="pagination.total"
+            :page-sizes="[10, 20, 50, 100]"
+            :show-total="true"
+            :show-range="true"
+            :show-page-sizes="true"
+            :show-quick-jumper="true"
+            @change="handlePaginationChange"
           />
-        </el-form-item>
-        <el-form-item v-if="canViewField('sort_order')" label="排序">
-          <el-input-number
-            v-model="formData.sort_order"
-            :min="0"
-            :max="9999"
-            placeholder="请输入排序值，数字越小越靠前"
-            controls-position="right"
-            style="width: 100%"
-            :disabled="!canEditField('sort_order')"
-          />
-        </el-form-item>
-        <el-form-item v-if="canViewField('status')" label="状态">
-          <el-radio-group v-model="formData.status" :disabled="!canEditField('status')">
-            <el-radio :value="1">启用</el-radio>
-            <el-radio :value="0">禁用</el-radio>
-          </el-radio-group>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button type="default" @click="attemptCloseModal">取消</el-button>
-        <el-button type="primary" @click="submitForm" :disabled="submitting" :loading="submitting">
-          <span v-if="submitting">{{ isEditMode ? '更新中...' : '创建中...' }}</span>
-          <template v-else>{{ isEditMode ? '更新' : '创建' }}</template>
-        </el-button>
-      </template>
-    </MobileDialog>
-    </div>
+        </div>
+
+        <!-- 创建/编辑模态框 -->
+        <MobileDialog
+          v-model="dialogVisible"
+          :title="isEditMode ? '编辑品牌' : '新增品牌'"
+          width="500px"
+          dialog-class="brands-form-dialog crud-dialog-sm"
+          :close-on-click-modal="false"
+          :show-default-footer="false"
+          @close="attemptCloseModal"
+        >
+          <el-form
+            :model="formData"
+            label-width="80px"
+            class="brands-dialog-form"
+          >
+            <el-form-item
+              v-if="canViewField('name')"
+              label="品牌名称"
+              required
+            >
+              <el-input
+                v-model="formData.name"
+                placeholder="请输入品牌名称"
+                clearable
+                maxlength="50"
+                show-word-limit
+                :disabled="!canEditField('name')"
+              />
+            </el-form-item>
+            <el-form-item
+              v-if="canViewField('sort_order')"
+              label="排序"
+            >
+              <el-input-number
+                v-model="formData.sort_order"
+                :min="0"
+                :max="9999"
+                placeholder="请输入排序值，数字越小越靠前"
+                controls-position="right"
+                style="width: 100%"
+                :disabled="!canEditField('sort_order')"
+              />
+            </el-form-item>
+            <el-form-item
+              v-if="canViewField('status')"
+              label="状态"
+            >
+              <el-radio-group
+                v-model="formData.status"
+                :disabled="!canEditField('status')"
+              >
+                <el-radio :value="1">
+                  启用
+                </el-radio>
+                <el-radio :value="0">
+                  禁用
+                </el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-form>
+          <template #footer>
+            <el-button
+              type="default"
+              @click="attemptCloseModal"
+            >
+              取消
+            </el-button>
+            <el-button
+              type="primary"
+              :disabled="submitting"
+              :loading="submitting"
+              @click="submitForm"
+            >
+              <span v-if="submitting">{{ isEditMode ? '更新中...' : '创建中...' }}</span>
+              <template v-else>
+                {{ isEditMode ? '更新' : '创建' }}
+              </template>
+            </el-button>
+          </template>
+        </MobileDialog>
+      </div>
     </PermissionGate>
   </div>
 </template>
@@ -208,7 +450,7 @@ import { extractResponseData } from '@/utils/api-response'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useRefreshData } from '@/composables/useRefreshData'
-import { fieldPermissions } from '@/composables/useFieldPermissions'
+import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useAuthStore } from '@/stores/auth'
 import { normalizePermissionList } from '@/utils/permissionList'
 import Pagination from '../../components/Pagination.vue'
@@ -225,12 +467,12 @@ import { logger } from '@/utils/logger'
 import type { Brand } from '@/types'
 
 // 获取路由实例和store
-const router = useRouter()
+const _router = useRouter()
 
 // 使用统一的 composable
-const { success, error, warning, info, handleApiError, confirm, loading: showLoading } = useNotification()
+const { success, error, warning, info: _info, handleApiError, confirm, loading: showLoading } = useNotification()
 const { canView, canCreate, canEdit, canDelete } = usePagePermissions('brands')
-const { showViewDenied, showEditDenied, showDeleteDenied, showCreateDenied } = usePermissionToast()
+const { showViewDenied: _showViewDenied, showEditDenied, showDeleteDenied, showCreateDenied } = usePermissionToast()
 const { refreshing, refreshData: refresh } = useRefreshData()
 const authStore = useAuthStore()
 const { isMobile } = useMobile()
@@ -238,7 +480,7 @@ const { init: initFieldPermissions } = fieldPermissions
 const brandListRequest = useLatestRequest()
 
 // 获取用户权限列表用于显示
-const currentUserPermissions = computed(() => {
+const _currentUserPermissions = computed(() => {
   return normalizePermissionList(authStore.permissions)
 })
 
@@ -275,8 +517,11 @@ const canEditField = (fieldName: string) => {
 
 const showSortField = computed(() => canViewField('sort_order') && !isMobile.value)
 const showSortOrderField = computed(() => canViewField('sort_order') && !isMobile.value)
-const showActionField = computed(() => canViewField('actions') && (canEdit.value || canDelete.value) && !isMobile.value)
+const showActionField = computed(() => (
+  shouldShowActionColumn(canViewField('actions'), [canEdit.value, canDelete.value]) && !isMobile.value
+))
 const showCreatedAtField = computed(() => canViewField('created_at') && !isMobile.value)
+const showUpdatedAtField = computed(() => canViewField('updated_at') && !isMobile.value)
 const showStatsCards = computed(() => (
   canViewField('stats_total_brands') ||
   canViewField('stats_active_brands') ||
@@ -330,6 +575,7 @@ const tableLoading = ref(true)
 const submitting = ref(false)
 const savingOrder = ref(false)
 const brands = ref<Brand[]>([])
+const stats = ref({ total: 0, active: 0, inactive: 0, relatedPhones: 0 })
 const getBrandRowKey = (brand: Brand) => String(brand.id)
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
@@ -351,9 +597,11 @@ const formData = ref({
 // 分页数据
 const pagination = ref({
   page: 1,
-  limit: 100,
+  page_size: 100,
   total: 0,
-  pages: 0
+  total_pages: 0,
+  has_next: false,
+  has_prev: false
 })
 
 // 方法
@@ -376,7 +624,7 @@ const loadBrands = async (bustCache = false, silentError = false, _showLoadingSt
   try {
     const params: any = {
       page: pagination.value.page,
-      limit: pagination.value.limit
+      page_size: pagination.value.page_size
     }
 
     // 添加搜索参数
@@ -406,15 +654,25 @@ const loadBrands = async (bustCache = false, silentError = false, _showLoadingSt
       const sortedData = brandData.sort((a: Brand, b: Brand) => (a.sort_order || 0) - (b.sort_order || 0))
       brands.value = sortedData
       // 确保 total 是数字类型
-      const apiPagination = response.pagination || { page: 1, limit: 10, total: 0, pages: 0 }
+      const apiPagination = response.pagination || {
+        page: 1,
+        page_size: 10,
+        total: 0,
+        total_pages: 0,
+        has_next: false,
+        has_prev: false
+      }
       pagination.value = {
-        ...apiPagination,
+        page: Number(apiPagination.page) || 1,
+        page_size: Number(apiPagination.page_size) || pagination.value.page_size,
         total: Number(apiPagination.total) || 0,
-        pages: Number(apiPagination.pages) || 0
+        total_pages: Number(apiPagination.total_pages) || 0,
+        has_next: Boolean(apiPagination.has_next),
+        has_prev: Boolean(apiPagination.has_prev)
       }
     } else {
       brands.value = []
-      pagination.value = { page: 1, limit: 10, total: 0, pages: 0 }
+      pagination.value = { page: 1, page_size: 10, total: 0, total_pages: 0, has_next: false, has_prev: false }
       if (!silentError) {
         error(`获取品牌列表失败: ${response.message || '未知错误'}`)
       }
@@ -426,7 +684,7 @@ const loadBrands = async (bustCache = false, silentError = false, _showLoadingSt
 
     logger.error('获取品牌列表失败:', err)
     brands.value = []
-    pagination.value = { page: 1, limit: 10, total: 0, pages: 0 }
+    pagination.value = { page: 1, page_size: 10, total: 0, total_pages: 0, has_next: false, has_prev: false }
 
     // 使用统一的错误处理
     if (!silentError) {
@@ -454,15 +712,15 @@ const resetSearch = () => {
   loadBrands(true) // 重置时破坏缓存
 }
 
-const changePage = (page: number) => {
+const _changePage = (page: number) => {
   pagination.value.page = page
   loadBrands()
 }
 
 // 新的分页变化处理方法
 const handlePaginationChange = (page: number, pageSize: number) => {
-  const oldPageSize = pagination.value.limit
-  pagination.value.limit = pageSize
+  const oldPageSize = pagination.value.page_size
+  pagination.value.page_size = pageSize
   pagination.value.page = pageSize !== oldPageSize ? 1 : page
   loadBrands()
 }
@@ -665,7 +923,7 @@ const hasUnsavedChanges = (): boolean => {
 
   // 检查是否有任何非空字段的更改
   const currentForm = formData.value
-  const initialForm = {
+  const _initialForm = {
     name: '',
     status: 1,
     sort_order: 0
@@ -728,9 +986,22 @@ const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleString('zh-CN')
 }
 
-const getPhoneCount = () => {
-  // 简单估算相关手机数量，实际项目中应该从API获取
-  return Math.floor(Math.random() * 100) + 20
+const loadStats = async () => {
+  try {
+    const response = await unifiedApi.get('/brands/stats/overview')
+    if (response.success) {
+      const data = response.data || {}
+      stats.value = {
+        total: Number(data.total) || 0,
+        active: Number(data.active) || 0,
+        inactive: Number(data.inactive) || 0,
+        relatedPhones: Number(data.related_phones) || 0
+      }
+    }
+  } catch (error) {
+    logger.error('获取品牌统计失败:', error)
+    stats.value = { total: 0, active: 0, inactive: 0, relatedPhones: 0 }
+  }
 }
 
 // 保存排序到服务器
@@ -802,14 +1073,14 @@ onMounted(async () => {
   }
 
   await initFieldPermissions()
-  loadBrands()
+  await Promise.all([loadBrands(), loadStats()])
 })
 </script>
 
 <style scoped>
 .brands-view {
   padding: 24px;
-  background: #f5f7fa;
+  background: var(--tf-color-surface);
   min-height: 100vh;
   width: 100%;
   max-width: 100%;
@@ -842,7 +1113,7 @@ onMounted(async () => {
   gap: 16px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.08);
   transition: all 0.3s ease;
-  border: 1px solid #e8ecef;
+  border: 1px solid var(--tf-color-border-cool);
 }
 
 .stat-card:hover {
@@ -858,16 +1129,16 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   font-size: 20px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand));
   color: white;
 }
 
 .stat-icon.active {
-  background: linear-gradient(135deg, #28a745, #20c997);
+  background: linear-gradient(135deg, var(--success-color), var(--tf-color-teal-500));
 }
 
 .stat-icon.inactive {
-  background: linear-gradient(135deg, #dc3545, #fd7e14);
+  background: linear-gradient(135deg, var(--danger-color), var(--tf-color-orange-bootstrap));
 }
 
 .stat-content {
@@ -877,13 +1148,13 @@ onMounted(async () => {
 .stat-value {
   font-size: 24px;
   font-weight: 700;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
   margin-bottom: 4px;
 }
 
 .stat-label {
   font-size: 14px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
   font-weight: 500;
 }
 
@@ -949,27 +1220,27 @@ onMounted(async () => {
   gap: 8px;
   font-size: 16px;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
   margin-bottom: 20px;
   padding-bottom: 12px;
-  border-bottom: 2px solid #f8f9fa;
+  border-bottom: 2px solid var(--tf-color-surface-muted);
 }
 
 .section-title i {
-  color: #667eea;
+  color: var(--tf-color-indigo-brand);
 }
 
 .record-count {
   margin-left: auto;
   font-size: 14px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
   font-weight: 400;
 }
 
 /* 警告徽章样式 */
 .warning-badge {
-  background: #fff3cd;
-  color: #856404;
+  background: var(--tf-color-warning-legacy);
+  color: var(--tf-color-warning-text-legacy);
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 10px;
@@ -985,7 +1256,7 @@ onMounted(async () => {
   padding: 24px;
   margin-bottom: 24px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-  border: 1px solid #e8ecef;
+  border: 1px solid var(--tf-color-border-cool);
 }
 
 .brands-dialog-form :deep(.el-form-item:last-child) {
@@ -1007,7 +1278,7 @@ onMounted(async () => {
 .form-label {
   font-size: 14px;
   font-weight: 500;
-  color: #495057;
+  color: var(--tf-color-gray-bootstrap-700);
 }
 
 .input-group {
@@ -1019,7 +1290,7 @@ onMounted(async () => {
   left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  color: #6c757d;
+  color: var(--tf-color-muted);
   font-size: 14px;
   z-index: 1;
 }
@@ -1027,16 +1298,16 @@ onMounted(async () => {
 .form-control {
   width: 100%;
   padding: 10px 12px 10px 36px;
-  border: 2px solid #e8ecef;
+  border: 2px solid var(--tf-color-border-cool);
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.3s ease;
-  background: #f8f9fa;
+  background: var(--tf-color-surface-muted);
 }
 
 .form-control:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: var(--tf-color-indigo-brand);
   background: white;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
@@ -1046,7 +1317,7 @@ onMounted(async () => {
 }
 
 .form-help small {
-  color: #6c757d;
+  color: var(--tf-color-muted);
   font-size: 12px;
 }
 
@@ -1072,14 +1343,14 @@ onMounted(async () => {
 }
 
 .table th {
-  background: linear-gradient(135deg, #495057 0%, #343a40 100%);
+  background: linear-gradient(135deg, var(--tf-color-gray-bootstrap-700) 0%, var(--tf-color-gray-bootstrap-800) 100%);
   color: white;
   padding: 12px 10px;
   text-align: center;
   font-weight: 600;
   font-size: 14px;
-  border-right: 1px solid #dee2e6;
-  border-bottom: 2px solid #dee2e6;
+  border-right: 1px solid var(--tf-color-border-subtle);
+  border-bottom: 2px solid var(--tf-color-border-subtle);
   position: relative;
   white-space: nowrap;
 }
@@ -1090,11 +1361,11 @@ onMounted(async () => {
 
 .table td {
   padding: 6px 6px;
-  border-right: 1px solid #e9ecef;
-  border-bottom: 1px solid #e9ecef;
+  border-right: 1px solid var(--tf-color-border-muted);
+  border-bottom: 1px solid var(--tf-color-border-muted);
   vertical-align: middle;
   font-size: 14px;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
   font-weight: 500;
   text-align: center;
   position: relative;
@@ -1110,27 +1381,27 @@ onMounted(async () => {
 }
 
 .table tbody tr:nth-child(even) {
-  background: #f8f9fa;
+  background: var(--tf-color-surface-muted);
 }
 
 .table tbody tr:hover {
-  background: #e3f2fd;
+  background: var(--tf-color-blue-100);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .table tbody tr:hover td {
-  border-bottom-color: #dee2e6;
+  border-bottom-color: var(--tf-color-border-subtle);
 }
 
 .table tbody tr.is-dragging {
   opacity: 0.5;
-  background: #eff6ff !important;
+  background: var(--tf-color-blue-tailwind-50) !important;
 }
 
 .table tbody tr.is-drag-over {
-  background: #f0f9ff !important;
-  border-top: 2px solid #3b82f6;
+  background: var(--tf-color-blue-50) !important;
+  border-top: 2px solid var(--tf-color-blue-500);
 }
 
 /* 拖拽手柄 */
@@ -1142,7 +1413,7 @@ onMounted(async () => {
 }
 
 .drag-handle {
-  color: #9ca3af;
+  color: var(--tf-color-neutral-400);
   font-size: 16px;
   cursor: grab;
   display: inline-flex;
@@ -1155,8 +1426,8 @@ onMounted(async () => {
 }
 
 .drag-handle:hover {
-  color: #3b82f6;
-  background: #eff6ff;
+  color: var(--tf-color-blue-500);
+  background: var(--tf-color-blue-tailwind-50);
 }
 
 .drag-handle:active {
@@ -1170,7 +1441,7 @@ onMounted(async () => {
 }
 
 .drag-handle.disabled:hover {
-  color: #9ca3af;
+  color: var(--tf-color-neutral-400);
   background: transparent;
 }
 
@@ -1179,7 +1450,7 @@ onMounted(async () => {
   width: 50px;
   height: 28px;
   padding: 0 6px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--tf-color-neutral-300);
   border-radius: 6px;
   font-size: 13px;
   font-weight: 600;
@@ -1189,23 +1460,23 @@ onMounted(async () => {
 }
 
 .sort-order-input:focus:not(:disabled) {
-  border-color: #3b82f6;
+  border-color: var(--tf-color-blue-500);
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
 .sort-order-input:hover:not(:disabled) {
-  border-color: #9ca3af;
+  border-color: var(--tf-color-neutral-400);
 }
 
 .sort-order-input:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  background-color: #f3f4f6;
+  background-color: var(--tf-color-neutral-100);
 }
 
 /* 表格内容样式 */
 .id-badge {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand));
   color: white;
   padding: 4px 8px;
   border-radius: 6px;
@@ -1240,13 +1511,15 @@ onMounted(async () => {
 }
 
 .status-active {
-  background: #d4edda;
-  color: #155724;
+  background: var(--tf-status-success-bg);
+  color: var(--tf-status-success-color);
+  border: 1px solid var(--tf-status-success-border);
 }
 
 .status-inactive {
-  background: #f8d7da;
-  color: #721c24;
+  background: var(--tf-status-danger-bg);
+  color: var(--tf-status-danger-color);
+  border: 1px solid var(--tf-status-danger-border);
 }
 
 .sort-order {
@@ -1255,8 +1528,8 @@ onMounted(async () => {
 }
 
 .sort-badge {
-  background: #e9ecef;
-  color: #495057;
+  background: var(--tf-color-border-muted);
+  color: var(--tf-color-gray-bootstrap-700);
   padding: 4px 8px;
   border-radius: 6px;
   font-size: 12px;
@@ -1266,7 +1539,7 @@ onMounted(async () => {
 
 .time-info {
   font-size: 13px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1275,7 +1548,7 @@ onMounted(async () => {
 }
 
 .required {
-  color: #dc3545;
+  color: var(--danger-color);
 }
 
 .empty-row td {
@@ -1288,7 +1561,7 @@ onMounted(async () => {
   flex-direction: column;
   align-items: center;
   gap: 16px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
 }
 
 .empty-content i {
@@ -1298,7 +1571,7 @@ onMounted(async () => {
 
 .empty-text h4 {
   margin: 0 0 8px 0;
-  color: #495057;
+  color: var(--tf-color-gray-bootstrap-700);
 }
 
 .empty-text p {
@@ -1313,11 +1586,11 @@ onMounted(async () => {
   align-items: center;
   margin-top: 24px;
   padding-top: 20px;
-  border-top: 1px solid #e8ecef;
+  border-top: 1px solid var(--tf-color-border-cool);
 }
 
 .pagination-info {
-  color: #6c757d;
+  color: var(--tf-color-muted);
   font-size: 14px;
 }
 
@@ -1344,13 +1617,13 @@ onMounted(async () => {
   justify-content: center;
 }
 .no-permission-text {
-  color: #999;
+  color: var(--text-muted);
   font-size: 12px;
   font-style: italic;
   padding: 6px 10px;
-  background: #f5f5f5;
+  background: var(--tf-color-surface-soft);
   border-radius: 4px;
-  border: 1px dashed #ddd;
+  border: 1px dashed var(--tf-color-gray-300-alt);
 }
 
 /* 响应式设计 */
@@ -1399,7 +1672,7 @@ onMounted(async () => {
 }
 
 .pagination-info {
-  color: #6c757d;
+  color: var(--tf-color-muted);
   font-size: 14px;
 }
 
@@ -1574,7 +1847,7 @@ onMounted(async () => {
     margin-right: 0;
     min-height: 40px;
     padding: 0 12px;
-    border: 1px solid #dbe3ef;
+    border: 1px solid var(--tf-color-border-blue);
     border-radius: 12px;
     display: inline-flex;
     align-items: center;
@@ -1656,12 +1929,12 @@ onMounted(async () => {
   }
 
   .table th {
-    background-color: #000;
-    color: #fff;
+    background-color: var(--tf-color-black);
+    color: var(--color-bg-white);
   }
 
   .table tr:nth-child(even) {
-    background-color: #f0f0f0;
+    background-color: var(--tf-color-gray-200);
   }
 }
 

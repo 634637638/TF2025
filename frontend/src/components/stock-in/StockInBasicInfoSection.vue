@@ -1,11 +1,16 @@
 <template>
   <section class="stock-in-section stock-in-basic-info">
     <header class="stock-in-section__header">
-      <h3 class="stock-in-section__title">入库信息</h3>
+      <h3 class="stock-in-section__title">
+        入库信息
+      </h3>
     </header>
 
     <div class="stock-in-section__body basic-info-grid">
-      <el-form-item label="供应商" prop="supplier_id">
+      <el-form-item
+        label="供应商"
+        prop="supplier_id"
+      >
         <el-select
           v-model="formData.supplier_id"
           placeholder="请选择供应商"
@@ -24,7 +29,10 @@
         </el-select>
       </el-form-item>
 
-      <el-form-item label="入库店铺" prop="store_id">
+      <el-form-item
+        label="入库店铺"
+        prop="store_id"
+      >
         <el-select
           v-model="formData.store_id"
           placeholder="请选择店铺"
@@ -43,9 +51,12 @@
         </el-select>
       </el-form-item>
 
-      <el-form-item label="入库日期" prop="stock_in_date">
+      <el-form-item
+        label="入库日期"
+        prop="inventory_time"
+      >
         <el-date-picker
-          v-model="formData.stock_in_date"
+          v-model="formData.inventory_time"
           type="date"
           placeholder="请选择入库日期"
           format="YYYY-MM-DD"
@@ -55,20 +66,35 @@
         />
       </el-form-item>
 
-      <el-form-item label="商品状态" prop="product_status">
+      <el-form-item
+        label="商品状态"
+        prop="product_status"
+      >
         <el-select
           v-model="formData.product_status"
           placeholder="请选择商品状态"
           teleported
           popper-class="tf2025-form-popper"
         >
-          <el-option label="全新" value="全新" />
-          <el-option label="二手" value="二手" />
+          <el-option
+            label="全新"
+            value="全新"
+          />
+          <el-option
+            label="二手"
+            value="二手"
+          />
         </el-select>
       </el-form-item>
 
-      <el-form-item label="入库员" class="operator-field">
-        <el-input :model-value="formData.operator_name" readonly />
+      <el-form-item
+        label="入库员"
+        class="operator-field"
+      >
+        <el-input
+          :model-value="formData.operator_name"
+          readonly
+        />
       </el-form-item>
     </div>
   </section>
@@ -83,8 +109,8 @@ interface Props {
   formData: StockInFormModel
   suppliers: Supplier[]
   stores: Store[]
-  handleSupplierFilter: (query: string) => boolean
-  handleStoreFilter: (query: string) => boolean
+  handleSupplierFilter: (_query: string) => boolean
+  handleStoreFilter: (_query: string) => boolean
 }
 
 defineProps<Props>()

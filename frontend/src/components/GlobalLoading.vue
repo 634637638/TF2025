@@ -1,15 +1,27 @@
 <template>
   <Teleport to="body">
     <Transition name="loading">
-      <div v-if="showGlobalLoading" class="global-loading">
+      <div
+        v-if="showGlobalLoading"
+        v-bind="$attrs"
+        class="global-loading"
+      >
         <div class="loading-backdrop">
           <div class="loading-content">
-            <div class="global-loading-ring" :class="`global-loading-ring--${size}`" aria-hidden="true">
+            <div
+              class="global-loading-ring"
+              :class="`global-loading-ring--${size}`"
+              aria-hidden="true"
+            >
               <InlineLoading :size="size" />
             </div>
             <div class="loading-copy">
-              <div class="loading-title">{{ loadingStore.loadingText || '正在加载' }}</div>
-              <div class="loading-subtitle">正在为你准备页面内容</div>
+              <div class="loading-title">
+                {{ loadingStore.loadingText || '正在加载' }}
+              </div>
+              <div class="loading-subtitle">
+                正在为你准备页面内容
+              </div>
             </div>
           </div>
         </div>
@@ -28,6 +40,7 @@ export default defineComponent({
   components: {
     InlineLoading
   },
+  inheritAttrs: false,
   props: {
     size: {
       type: String,
@@ -35,7 +48,7 @@ export default defineComponent({
       validator: (value) => ['small', 'medium', 'large'].includes(value)
     }
   },
-  setup(props) {
+  setup(_props) {
     const loadingStore = useLoadingStore()
     const showGlobalLoading = ref(false)
     let showTimer = null
@@ -69,7 +82,6 @@ export default defineComponent({
 
     return {
       loadingStore,
-      size: props.size,
       showGlobalLoading
     }
   }
@@ -210,7 +222,7 @@ export default defineComponent({
 
 .loading-title {
   font-size: 15px;
-  color: #0f172a;
+  color: var(--tf-color-slate-900);
   font-weight: 800;
   letter-spacing: 0.04em;
 }
@@ -218,7 +230,7 @@ export default defineComponent({
 .loading-subtitle {
   margin-top: 6px;
   font-size: 12px;
-  color: #64748b;
+  color: var(--tf-color-slate-500);
   font-weight: 600;
   letter-spacing: 0.02em;
 }

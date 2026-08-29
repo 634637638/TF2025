@@ -2,8 +2,11 @@
   <div class="data-import-tab">
     <!-- 操作按钮 -->
     <div class="action-bar">
-      <el-button type="info" @click="getImportHistory">
-        <i class="fas fa-history"></i>
+      <el-button
+        type="info"
+        @click="getImportHistory"
+      >
+        <i class="fas fa-history" />
         <span>导入历史</span>
       </el-button>
     </div>
@@ -11,61 +14,103 @@
     <!-- 导入向导 -->
     <div class="import-wizard">
       <!-- 步骤1：上传文件 -->
-      <div v-if="currentStep === 1" class="wizard-step upload-step">
+      <div
+        v-if="currentStep === 1"
+        class="wizard-step upload-step"
+      >
         <div class="step-header">
           <h2>步骤 1: 上传Excel文件</h2>
           <p>请选择包含销售记录的Excel文件（.xls 或 .xlsx）</p>
         </div>
 
-        <div class="upload-area" @click="handleUploadClick" @dragover.prevent @drop.prevent="handleFileDrop">
+        <div
+          class="upload-area"
+          @click="handleUploadClick"
+          @dragover.prevent
+          @drop.prevent="handleFileDrop"
+        >
           <input
             ref="fileInput"
             type="file"
             accept=".xls,.xlsx"
             style="display: none"
             @change="handleFileSelect"
-          />
+          >
           <div class="upload-content">
-            <i class="fas fa-cloud-upload-alt"></i>
-            <p class="upload-text">点击或拖拽文件到此处上传</p>
-            <p class="upload-hint">支持 .xls 和 .xlsx 格式，文件大小不超过 50MB</p>
+            <i class="fas fa-cloud-upload-alt" />
+            <p class="upload-text">
+              点击或拖拽文件到此处上传
+            </p>
+            <p class="upload-hint">
+              支持 .xls 和 .xlsx 格式，文件大小不超过 10MB
+            </p>
           </div>
         </div>
 
-        <div v-if="uploadedFile" class="file-info">
+        <div
+          v-if="uploadedFile"
+          class="file-info"
+        >
           <div class="file-item">
-            <i class="fas fa-file-excel"></i>
+            <i class="fas fa-file-excel" />
             <div class="file-details">
               <span class="file-name">{{ uploadedFile.name }}</span>
               <span class="file-size">{{ formatFileSize(uploadedFile.size) }}</span>
             </div>
-            <el-button type="danger" size="small" @click="clearFile">
-              <i class="fas fa-times"></i>
+            <el-button
+              type="danger"
+              size="small"
+              @click="clearFile"
+            >
+              <i class="fas fa-times" />
             </el-button>
           </div>
         </div>
 
         <!-- 上传进度 -->
-        <div v-if="uploading" class="upload-progress">
-          <el-progress :percentage="uploadProgress" :stroke-width="20" />
-          <p class="progress-text">{{ uploadProgressText }}</p>
+        <div
+          v-if="uploading"
+          class="upload-progress"
+        >
+          <el-progress
+            :percentage="uploadProgress"
+            :stroke-width="20"
+          />
+          <p class="progress-text">
+            {{ uploadProgressText }}
+          </p>
         </div>
 
         <!-- 分析进度 -->
-        <div v-if="analyzing" class="analysis-progress">
-          <el-progress :percentage="analyzeProgress" :stroke-width="20" status="success" />
-          <p class="progress-text">{{ analyzeProgressText }}</p>
+        <div
+          v-if="analyzing"
+          class="analysis-progress"
+        >
+          <el-progress
+            :percentage="analyzeProgress"
+            :indeterminate="analyzing"
+            :stroke-width="20"
+            status="success"
+          />
+          <p class="progress-text">
+            {{ analyzeProgressText }}
+          </p>
         </div>
 
         <div class="step-actions">
           <el-button
             type="primary"
-            @click="analyzeFile"
             :disabled="!uploadedFile || uploading || analyzing"
+            @click="analyzeFile"
           >
-            <InlineLoading v-if="uploading || analyzing" text="处理中..." size="small" variant="inherit" />
+            <InlineLoading
+              v-if="uploading || analyzing"
+              text="处理中..."
+              size="small"
+              variant="inherit"
+            />
             <template v-else>
-              <i class="fas fa-search"></i>
+              <i class="fas fa-search" />
               <span>分析数据</span>
             </template>
           </el-button>
@@ -73,7 +118,10 @@
       </div>
 
       <!-- 步骤2：选择导入策略 -->
-      <div v-if="currentStep === 2 && analysisResult" class="wizard-step strategy-step">
+      <div
+        v-if="currentStep === 2 && analysisResult"
+        class="wizard-step strategy-step"
+      >
         <div class="step-header">
           <h2>步骤 2: 选择导入策略</h2>
           <p>根据数据分析结果，选择合适的导入策略</p>
@@ -88,65 +136,89 @@
             </div>
             <div class="summary-item success">
               <span class="label">新记录:</span>
-              <span class="value">{{ analysisResult.newRecords }}</span>
+              <span class="value">{{ analysisResult.new_records }}</span>
             </div>
             <div class="summary-item warning">
               <span class="label">重复记录:</span>
-              <span class="value">{{ analysisResult.duplicateRecords }}</span>
+              <span class="value">{{ analysisResult.duplicate_records }}</span>
             </div>
           </div>
 
           <!-- 数据统计详情 -->
-          <div v-if="analysisResult.summary && Object.keys(analysisResult.summary).length > 0" class="data-summary">
+          <div
+            v-if="analysisResult.summary && Object.keys(analysisResult.summary).length > 0"
+            class="data-summary"
+          >
             <h3>
-              <i class="fas fa-chart-bar"></i>
+              <i class="fas fa-chart-bar" />
               数据统计
             </h3>
             <div class="summary-grid">
-              <div v-if="analysisResult.summary.brands" class="summary-stat">
-                <i class="fas fa-tag"></i>
+              <div
+                v-if="analysisResult.summary.brands"
+                class="summary-stat"
+              >
+                <i class="fas fa-tag" />
                 <div class="stat-content">
                   <span class="stat-value">{{ analysisResult.summary.brands }}</span>
                   <span class="stat-label">品牌</span>
                 </div>
               </div>
-              <div v-if="analysisResult.summary.models" class="summary-stat">
-                <i class="fas fa-mobile-alt"></i>
+              <div
+                v-if="analysisResult.summary.models"
+                class="summary-stat"
+              >
+                <i class="fas fa-mobile-alt" />
                 <div class="stat-content">
                   <span class="stat-value">{{ analysisResult.summary.models }}</span>
                   <span class="stat-label">型号</span>
                 </div>
               </div>
-              <div v-if="analysisResult.summary.colors" class="summary-stat">
-                <i class="fas fa-palette"></i>
+              <div
+                v-if="analysisResult.summary.colors"
+                class="summary-stat"
+              >
+                <i class="fas fa-palette" />
                 <div class="stat-content">
                   <span class="stat-value">{{ analysisResult.summary.colors }}</span>
                   <span class="stat-label">颜色</span>
                 </div>
               </div>
-              <div v-if="analysisResult.summary.memories" class="summary-stat">
-                <i class="fas fa-memory"></i>
+              <div
+                v-if="analysisResult.summary.memories"
+                class="summary-stat"
+              >
+                <i class="fas fa-memory" />
                 <div class="stat-content">
                   <span class="stat-value">{{ analysisResult.summary.memories }}</span>
                   <span class="stat-label">内存</span>
                 </div>
               </div>
-              <div v-if="analysisResult.summary.suppliers" class="summary-stat">
-                <i class="fas fa-truck"></i>
+              <div
+                v-if="analysisResult.summary.suppliers"
+                class="summary-stat"
+              >
+                <i class="fas fa-truck" />
                 <div class="stat-content">
                   <span class="stat-value">{{ analysisResult.summary.suppliers }}</span>
                   <span class="stat-label">供应商</span>
                 </div>
               </div>
-              <div v-if="analysisResult.summary.stores" class="summary-stat">
-                <i class="fas fa-store"></i>
+              <div
+                v-if="analysisResult.summary.stores"
+                class="summary-stat"
+              >
+                <i class="fas fa-store" />
                 <div class="stat-content">
                   <span class="stat-value">{{ analysisResult.summary.stores }}</span>
                   <span class="stat-label">店铺</span>
                 </div>
               </div>
-              <div v-if="analysisResult.summary.customers" class="summary-stat">
-                <i class="fas fa-users"></i>
+              <div
+                v-if="analysisResult.summary.customers"
+                class="summary-stat"
+              >
+                <i class="fas fa-users" />
                 <div class="stat-content">
                   <span class="stat-value">{{ analysisResult.summary.customers }}</span>
                   <span class="stat-label">客户</span>
@@ -155,14 +227,17 @@
             </div>
           </div>
 
-          <div v-if="analysisResult.duplicates.length > 0" class="duplicates-preview">
+          <div
+            v-if="analysisResult.duplicates.length > 0"
+            class="duplicates-preview"
+          >
             <h3>
-              <i class="fas fa-exclamation-triangle"></i>
+              <i class="fas fa-exclamation-triangle" />
               差异数据预览 ({{ analysisResult.duplicates.length }} 条有变化)
             </h3>
             <p>以下数据与云端存在差异，只显示有变化的字段：</p>
             <div class="smart-tip">
-              <i class="fas fa-lightbulb"></i>
+              <i class="fas fa-lightbulb" />
               <span>智能导入逻辑：</span>
               <ul>
                 <li>📦→✨ 库存→销售：以本地为准完整更新（包括品牌、型号、颜色等所有字段）</li>
@@ -176,30 +251,43 @@
                 v-for="(dup, index) in analysisResult.duplicates"
                 :key="index"
                 class="duplicate-item expanded"
-                :class="{ 'dup-sold': dup.existingRecord?.hasSale, 'dup-stock': !dup.existingRecord?.hasSale }"
+                :class="{ 'dup-sold': dup.existing_record?.has_sale, 'dup-stock': !dup.existing_record?.has_sale }"
               >
                 <div class="duplicate-header">
-                  <span class="dup-imei">{{ dup.imei || dup.compositeKey.split('|')[2] || '未知' }}</span>
-                  <span class="dup-row">Excel 第 {{ dup.rowIndex }} 行</span>
-                  <span class="dup-cloud-status" :class="dup.existingRecord?.hasSale ? 'status-sold' : 'status-stock'">
-                    {{ dup.existingRecord?.hasSale ? '云端: 已售' : '云端: 库存' }}
+                  <span class="dup-imei">{{ dup.imei || dup.composite_key?.split('|')[2] || '未知' }}</span>
+                  <span class="dup-row">Excel 第 {{ dup.row_index }} 行</span>
+                  <span
+                    class="dup-cloud-status"
+                    :class="dup.existing_record?.has_sale ? 'status-sold' : 'status-stock'"
+                  >
+                    {{ dup.existing_record?.has_sale ? '云端: 已售' : '云端: 库存' }}
                   </span>
                 </div>
 
                 <!-- 显示有差异的字段 -->
-                <div v-if="dup.differences && Object.keys(dup.differences).length > 0" class="duplicate-details diff-details">
-                  <div v-for="(diff, field) in dup.differences" :key="field" class="detail-row diff-row">
+                <div
+                  v-if="dup.differences && Object.keys(dup.differences).length > 0"
+                  class="duplicate-details diff-details"
+                >
+                  <div
+                    v-for="(diff, field) in dup.differences"
+                    :key="field"
+                    class="detail-row diff-row"
+                  >
                     <span class="detail-label">{{ field }}:</span>
                     <span class="detail-value diff-value">
                       <span class="cloud-value">{{ diff.cloud || '-' }}</span>
-                      <i class="fas fa-arrow-right diff-arrow"></i>
+                      <i class="fas fa-arrow-right diff-arrow" />
                       <span class="excel-value">{{ diff.excel || '-' }}</span>
                     </span>
                   </div>
                 </div>
 
                 <!-- 如果没有差异但云端已售，显示基本信息 -->
-                <div v-else class="duplicate-details">
+                <div
+                  v-else
+                  class="duplicate-details"
+                >
                   <div class="detail-row">
                     <span class="detail-label">品牌:</span>
                     <span class="detail-value">{{ dup.data['品牌'] || '-' }}</span>
@@ -239,14 +327,20 @@
             @click="selectedStrategy = strategy.key"
           >
             <div class="strategy-icon">
-              <i :class="strategy.icon"></i>
+              <i :class="strategy.icon" />
             </div>
             <div class="strategy-content">
               <h3>{{ strategy.label }}</h3>
               <p>{{ strategy.description }}</p>
-              <ul v-if="strategy.effects" class="strategy-effects">
-                <li v-for="(effect, index) in strategy.effects" :key="index">
-                  <i class="fas fa-check"></i>
+              <ul
+                v-if="strategy.effects"
+                class="strategy-effects"
+              >
+                <li
+                  v-for="(effect, index) in strategy.effects"
+                  :key="index"
+                >
+                  <i class="fas fa-check" />
                   {{ effect }}
                 </li>
               </ul>
@@ -255,18 +349,26 @@
         </div>
 
         <div class="step-actions">
-          <el-button type="info" @click="currentStep = 1">
-            <i class="fas fa-arrow-left"></i>
+          <el-button
+            type="info"
+            @click="currentStep = 1"
+          >
+            <i class="fas fa-arrow-left" />
             <span>上一步</span>
           </el-button>
           <el-button
             type="primary"
-            @click="startImport"
             :disabled="!selectedStrategy || importing"
+            @click="startImport"
           >
-            <InlineLoading v-if="importing" text="导入中..." size="small" variant="inherit" />
+            <InlineLoading
+              v-if="importing"
+              text="导入中..."
+              size="small"
+              variant="inherit"
+            />
             <template v-else>
-              <i class="fas fa-play"></i>
+              <i class="fas fa-play" />
               <span>开始导入</span>
             </template>
           </el-button>
@@ -274,7 +376,10 @@
       </div>
 
       <!-- 步骤3：导入进度 -->
-      <div v-if="currentStep === 3" class="wizard-step progress-step">
+      <div
+        v-if="currentStep === 3"
+        class="wizard-step progress-step"
+      >
         <div class="step-header">
           <h2>步骤 3: 导入中...</h2>
           <p>请稍候，正在导入数据</p>
@@ -286,13 +391,18 @@
             :status="importStatus"
             :stroke-width="20"
           />
-          <p class="progress-message">{{ importMessage }}</p>
+          <p class="progress-message">
+            {{ importMessage }}
+          </p>
 
-          <div v-if="importResult" class="import-result">
+          <div
+            v-if="importResult"
+            class="import-result"
+          >
             <div class="result-stats">
               <div class="stat-item">
                 <span class="label">总记录数:</span>
-                <span class="value">{{ importResult.total }}</span>
+                <span class="value">{{ importResult.total_records }}</span>
               </div>
               <div class="stat-item success">
                 <span class="label">已处理:</span>
@@ -310,9 +420,12 @@
                 <span class="label">已跳过:</span>
                 <span class="value">{{ importResult.skipped }}</span>
               </div>
-              <div class="stat-item danger" v-if="importResult.errors > 0">
+              <div
+                v-if="importResult.error_count > 0"
+                class="stat-item danger"
+              >
                 <span class="label">错误:</span>
-                <span class="value">{{ importResult.errors }}</span>
+                <span class="value">{{ importResult.error_count }}</span>
               </div>
             </div>
           </div>
@@ -324,7 +437,7 @@
             type="primary"
             @click="resetWizard"
           >
-            <i class="fas fa-check"></i>
+            <i class="fas fa-check" />
             <span>完成</span>
           </el-button>
           <el-button
@@ -332,7 +445,7 @@
             type="danger"
             @click="resetWizard"
           >
-            <i class="fas fa-redo"></i>
+            <i class="fas fa-redo" />
             <span>重新导入</span>
           </el-button>
         </div>
@@ -349,33 +462,52 @@
       :show-default-footer="false"
     >
       <div class="history-content">
-        <div v-if="importHistory.length === 0" class="empty-history">
-          <i class="fas fa-inbox"></i>
+        <div
+          v-if="importHistory.length === 0"
+          class="empty-history"
+        >
+          <i class="fas fa-inbox" />
           <p>暂无导入历史</p>
         </div>
-        <el-table v-else :data="importHistory" stripe class="data-table history-table">
-          <el-table-column prop="created_at" label="导入时间" width="170">
+        <el-table
+          v-else
+          :data="importHistory"
+          stripe
+          class="data-table history-table"
+        >
+          <el-table-column
+            prop="start_time"
+            label="导入时间"
+            width="170"
+          >
             <template #default="{ row }">
               <div class="timestamp-cell">
-                <i class="far fa-clock"></i>
-                {{ formatDateTime(row.start_time || row.created_at) }}
+                <i class="far fa-clock" />
+                {{ formatDateTime(row.start_time) }}
               </div>
             </template>
           </el-table-column>
-          <el-table-column prop="user_name" label="操作人" width="100">
+          <el-table-column
+            prop="user_name"
+            label="操作人"
+            width="100"
+          >
             <template #default="{ row }">
               <div class="user-cell">
-                <i class="fas fa-user"></i>
+                <i class="fas fa-user" />
                 {{ row.user_name || row.user || '未知' }}
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="数据统计" width="280">
+          <el-table-column
+            label="数据统计"
+            width="280"
+          >
             <template #default="{ row }">
               <div class="stats-cell">
                 <div class="stat-item">
                   <span class="stat-label">总:</span>
-                  <span class="stat-value stat-total">{{ row.total_records || row.total }}</span>
+                  <span class="stat-value stat-total">{{ row.total_records }}</span>
                 </div>
                 <div class="stat-item">
                   <span class="stat-label">新:</span>
@@ -389,61 +521,138 @@
                   <span class="stat-label">跳:</span>
                   <span class="stat-value stat-skipped">{{ row.skipped }}</span>
                 </div>
-                <div v-if="row.error_count > 0" class="stat-item">
+                <div
+                  v-if="row.error_count > 0"
+                  class="stat-item"
+                >
                   <span class="stat-label">错:</span>
                   <span class="stat-value stat-errors">{{ row.error_count }}</span>
                 </div>
               </div>
             </template>
           </el-table-column>
-          <el-table-column prop="strategy" label="策略" width="100">
+          <el-table-column
+            prop="strategy"
+            label="策略"
+            width="100"
+          >
             <template #default="{ row }">
-              <el-tag :type="getStrategyTagType(row.strategy)" size="small">
+              <el-tag
+                :type="getStrategyTagType(row.strategy)"
+                size="small"
+              >
                 {{ getStrategyLabel(row.strategy) }}
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="状态" width="80">
+          <el-table-column
+            label="状态"
+            width="80"
+          >
             <template #default="{ row }">
-              <el-tag :type="getStatusTagType(row.status)" size="small">
+              <el-tag
+                :type="getStatusTagType(row.status)"
+                size="small"
+              >
                 {{ getStatusLabel(row.status, row.error_count) }}
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" :width="$getActionColumnWidth(1)" class-name="actions-column">
+          <el-table-column
+            v-if="showActionColumn"
+            label="操作"
+            :width="$getActionColumnWidth(1)"
+            class-name="actions-column"
+          >
             <template #default="{ row }">
               <div class="action-buttons">
-              <el-button
-                type="danger"
-                size="small"
-                :icon="Delete"
-                @click.stop="handleDeleteHistory(row)"
-                link
-              >
-                删除
-              </el-button>
+                <el-button
+                  v-if="canDelete"
+                  type="danger"
+                  size="small"
+                  :icon="Delete"
+                  link
+                  @click.stop="handleDeleteHistory(row)"
+                >
+                  删除
+                </el-button>
               </div>
             </template>
           </el-table-column>
         </el-table>
       </div>
       <template #footer>
-        <el-button type="default" @click="showHistoryDialog = false">关闭</el-button>
+        <el-button
+          type="default"
+          @click="showHistoryDialog = false"
+        >
+          关闭
+        </el-button>
       </template>
     </MobileDialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete } from '@element-plus/icons-vue'
 import { dataImportApi } from '@/api/data-optimization'
 import { usePagePermissions } from '@/composables/usePagePermissions'
+import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import InlineLoading from '@/components/InlineLoading.vue'
 import { logger } from '@/utils/logger'
 
+let importProgressTimer: ReturnType<typeof setInterval> | null = null
+
+const clearImportProgressTimer = () => {
+  if (importProgressTimer) {
+    clearInterval(importProgressTimer)
+    importProgressTimer = null
+  }
+}
+
+interface ImportHistoryRecord {
+  import_id: string
+  user_id?: number | null
+  user_name?: string
+  strategy?: string
+  file_name?: string | null
+  total_records: number
+  processed?: number
+  imported: number
+  updated: number
+  skipped: number
+  error_count: number
+  status: string
+  error_message?: string | null
+  start_time?: string | null
+  end_time?: string | null
+  duration_ms?: number | null
+  created_at?: string | null
+  updated_at?: string | null
+}
+
+interface AnalysisResult {
+  total: number
+  new_records: number
+  duplicate_records: number
+  summary: Record<string, number>
+  duplicates: Array<{
+    row_index: number
+    imei?: string
+    composite_key?: string
+    data: Record<string, unknown>
+    existing_record?: { has_sale?: boolean }
+    differences?: Record<string, { cloud?: string; excel?: string }>
+  }>
+}
+
 const { canView, canCreate, canDelete, handleNoPermission } = usePagePermissions('data-optimization')
+const showActionColumn = computed(() => shouldShowActionColumn(
+  fieldPermissions.isFieldVisible('data_optimization_dataimporttab', 'system_info.operations'),
+  [canDelete.value]
+))
 
 const ensureViewPermission = () => {
   if (canView.value) {
@@ -478,14 +687,14 @@ const uploadProgress = ref(0)
 const uploadProgressText = ref('')
 const analyzeProgress = ref(0)
 const analyzeProgressText = ref('')
-const analysisResult = ref<any>(null)
+const analysisResult = ref<AnalysisResult | null>(null)
 const importing = ref(false)
 const importProgress = ref(0)
-const importStatus = ref<any>('')
+const importStatus = ref<'' | 'success' | 'exception'>('')
 const importMessage = ref('')
-const importResult = ref<any>(null)
+const importResult = ref<ImportHistoryRecord | null>(null)
 const showHistoryDialog = ref(false)
-const importHistory = ref<any[]>([])
+const importHistory = ref<ImportHistoryRecord[]>([])
 
 const strategies: { key: ImportStrategy; label: string; icon: string; description: string; effects?: string[]; recommended?: boolean }[] = [
   {
@@ -629,7 +838,7 @@ const analyzeFile = async () => {
     uploadProgress.value = 100
     uploadProgressText.value = '文件上传成功！'
 
-    const filePath = uploadResponse.data.filePath
+    const fileToken = uploadResponse.data.file_token
 
     // 短暂延迟显示上传完成
     await new Promise(resolve => setTimeout(resolve, 500))
@@ -640,17 +849,8 @@ const analyzeFile = async () => {
     analyzeProgress.value = 0
     analyzeProgressText.value = '正在分析数据...'
 
-    // 模拟分析进度（因为后端是阻塞的）
-    const progressInterval = setInterval(() => {
-      if (analyzeProgress.value < 90) {
-        analyzeProgress.value += 5
-        analyzeProgressText.value = `正在分析数据... ${analyzeProgress.value}%`
-      }
-    }, 100)
+    const analyzeResponse = await dataImportApi.analyzeData(fileToken)
 
-    const analyzeResponse = await dataImportApi.analyzeData(filePath)
-
-    clearInterval(progressInterval)
     analyzeProgress.value = 100
     analyzeProgressText.value = '数据分析完成！'
 
@@ -726,21 +926,18 @@ const startImport = async () => {
 
   try {
     const uploadResponse = await dataImportApi.uploadFile(uploadedFile.value)
-    const filePath = uploadResponse.data.filePath
+    const fileToken = uploadResponse.data.file_token
 
     const importOptions = {
-      strategy: selectedStrategy.value,
-      importId: Date.now()
+      strategy: selectedStrategy.value
     }
 
-    // 构建完整的请求体
-    const requestBody = { filePath, options: importOptions }
+    const importResponse = await dataImportApi.importData(fileToken, importOptions)
 
-    const importResponse = await dataImportApi.importData(filePath, importOptions)
+    const importId = importResponse.data.import_id
 
-    const importId = importResponse.data.importId
-
-    const checkProgress = setInterval(async () => {
+    clearImportProgressTimer()
+    importProgressTimer = setInterval(async () => {
       try {
         const progressResponse = await dataImportApi.getProgress(importId)
         const progress = progressResponse.data
@@ -751,7 +948,7 @@ const startImport = async () => {
         importMessage.value = progress.message || '导入中...'
 
         if (progress.status === 'completed') {
-          clearInterval(checkProgress)
+          clearImportProgressTimer()
           importStatus.value = 'success'
           importMessage.value = '导入完成'
 
@@ -767,7 +964,7 @@ const startImport = async () => {
 
           ElMessage.success('数据导入成功！')
         } else if (progress.status === 'failed') {
-          clearInterval(checkProgress)
+          clearImportProgressTimer()
           importStatus.value = 'exception'
           importMessage.value = '导入失败: ' + (progress.message || '未知错误')
           ElMessage.error(importMessage.value)
@@ -775,14 +972,14 @@ const startImport = async () => {
       } catch (error: any) {
         // 检查是否是 404 错误（任务不存在）
         if (error.response?.status === 404) {
-          clearInterval(checkProgress)
+          clearImportProgressTimer()
 
           // 尝试从导入历史中获取结果
           try {
             const history = await dataImportApi.getHistory()
             if (history.data.length > 0) {
               // 检查是否有匹配的导入任务
-              const recentTask = history.data.find((h: any) => h.importId == importId)
+              const recentTask = history.data.find((h: ImportHistoryRecord) => String(h.import_id) === String(importId))
               if (recentTask) {
                 importResult.value = recentTask
                 importStatus.value = 'success'
@@ -804,13 +1001,14 @@ const startImport = async () => {
             ElMessage.error('无法确认导入状态，请检查导入历史')
           }
         } else {
-          clearInterval(checkProgress)
+          clearImportProgressTimer()
           importStatus.value = 'exception'
           importMessage.value = '获取进度失败'
         }
       }
     }, 1000)
   } catch (error: any) {
+    clearImportProgressTimer()
     logger.error('❌ 导入过程出错:', error)
     logger.error('错误详情:', error.response?.data)
     importStatus.value = 'exception'
@@ -820,6 +1018,10 @@ const startImport = async () => {
     importing.value = false
   }
 }
+
+onUnmounted(() => {
+  clearImportProgressTimer()
+})
 
 const resetWizard = () => {
   if (!ensureCreatePermission()) {
@@ -929,7 +1131,7 @@ const handleDeleteHistory = async (row: any) => {
 
   try {
     await ElMessageBox.confirm(
-      `确定要删除这条导入历史记录吗？\n\n文件名: ${row.file_name}\n导入时间: ${formatDateTime(row.start_time || row.created_at)}`,
+      `确定要删除这条导入历史记录吗？\n\n文件名: ${row.file_name}\n导入时间: ${formatDateTime(row.start_time)}`,
       '删除确认',
       {
         confirmButtonText: '确定删除',
@@ -979,13 +1181,13 @@ const handleDeleteHistory = async (row: any) => {
         h2 {
           font-size: 20px;
           font-weight: 600;
-          color: #303133;
+          color: var(--color-text-primary);
           margin: 0 0 8px 0;
         }
 
         p {
           font-size: 14px;
-          color: #909399;
+          color: var(--color-info);
           margin: 0;
         }
       }
@@ -1000,7 +1202,7 @@ const handleDeleteHistory = async (row: any) => {
 
     .upload-step {
       .upload-area {
-        border: 2px dashed #dcdfe6;
+        border: 2px dashed var(--color-border);
         border-radius: 8px;
         padding: 60px 20px;
         text-align: center;
@@ -1008,26 +1210,26 @@ const handleDeleteHistory = async (row: any) => {
         transition: all 0.3s;
 
         &:hover {
-          border-color: #409eff;
-          background: #f5f7fa;
+          border-color: var(--color-primary);
+          background: var(--tf-color-surface);
         }
 
         .upload-content {
           i {
             font-size: 64px;
-            color: #409eff;
+            color: var(--color-primary);
             margin-bottom: 16px;
           }
 
           .upload-text {
             font-size: 16px;
-            color: #303133;
+            color: var(--color-text-primary);
             margin-bottom: 8px;
           }
 
           .upload-hint {
             font-size: 14px;
-            color: #909399;
+            color: var(--color-info);
             margin: 0;
           }
         }
@@ -1041,12 +1243,12 @@ const handleDeleteHistory = async (row: any) => {
           align-items: center;
           gap: 12px;
           padding: 12px;
-          background: #f5f7fa;
+          background: var(--tf-color-surface);
           border-radius: 4px;
 
           i {
             font-size: 24px;
-            color: #67c23a;
+            color: var(--color-success);
           }
 
           .file-details {
@@ -1056,12 +1258,12 @@ const handleDeleteHistory = async (row: any) => {
 
             .file-name {
               font-weight: 600;
-              color: #303133;
+              color: var(--color-text-primary);
             }
 
             .file-size {
               font-size: 12px;
-              color: #909399;
+              color: var(--color-info);
             }
           }
         }
@@ -1071,15 +1273,15 @@ const handleDeleteHistory = async (row: any) => {
       .upload-progress {
         margin: 20px 0;
         padding: 20px;
-        background: #f0f9ff;
+        background: var(--tf-color-blue-50);
         border-radius: 8px;
-        border: 1px solid #bfdbfe;
+        border: 1px solid var(--tf-color-blue-tailwind-200);
 
         .progress-text {
           text-align: center;
           margin-top: 12px;
           font-size: 14px;
-          color: #1976d2;
+          color: var(--tf-color-blue-material-700);
           font-weight: 500;
         }
       }
@@ -1088,15 +1290,15 @@ const handleDeleteHistory = async (row: any) => {
       .analysis-progress {
         margin: 20px 0;
         padding: 20px;
-        background: #f0fdf4;
+        background: var(--tf-color-green-50);
         border-radius: 8px;
-        border: 1px solid #bbf7d0;
+        border: 1px solid var(--tf-color-green-200);
 
         .progress-text {
           text-align: center;
           margin-top: 12px;
           font-size: 14px;
-          color: #15803d;
+          color: var(--tf-color-green-700);
           font-weight: 500;
         }
       }
@@ -1104,7 +1306,7 @@ const handleDeleteHistory = async (row: any) => {
 
     .strategy-step {
       .analysis-result {
-        background: #f5f7fa;
+        background: var(--tf-color-surface);
         border-radius: 8px;
         padding: 20px;
         margin-bottom: 24px;
@@ -1120,7 +1322,7 @@ const handleDeleteHistory = async (row: any) => {
             .label {
               display: block;
               font-size: 14px;
-              color: #909399;
+              color: var(--color-info);
               margin-bottom: 8px;
             }
 
@@ -1128,15 +1330,15 @@ const handleDeleteHistory = async (row: any) => {
               display: block;
               font-size: 24px;
               font-weight: 600;
-              color: #303133;
+              color: var(--color-text-primary);
             }
 
             &.success .value {
-              color: #67c23a;
+              color: var(--color-success);
             }
 
             &.warning .value {
-              color: #e6a23c;
+              color: var(--color-warning);
             }
           }
         }
@@ -1148,7 +1350,7 @@ const handleDeleteHistory = async (row: any) => {
           h3 {
             font-size: 16px;
             font-weight: 600;
-            color: #303133;
+            color: var(--color-text-primary);
             margin: 0 0 16px 0;
             display: flex;
             align-items: center;
@@ -1167,11 +1369,11 @@ const handleDeleteHistory = async (row: any) => {
               padding: 16px;
               background: white;
               border-radius: 8px;
-              border: 1px solid #e4e7ed;
+              border: 1px solid var(--tf-color-border-element);
 
               i {
                 font-size: 24px;
-                color: #409eff;
+                color: var(--color-primary);
                 width: 32px;
                 text-align: center;
               }
@@ -1183,13 +1385,13 @@ const handleDeleteHistory = async (row: any) => {
                 .stat-value {
                   font-size: 20px;
                   font-weight: 600;
-                  color: #303133;
+                  color: var(--color-text-primary);
                   line-height: 1.2;
                 }
 
                 .stat-label {
                   font-size: 12px;
-                  color: #909399;
+                  color: var(--color-info);
                   margin-top: 4px;
                 }
               }
@@ -1201,7 +1403,7 @@ const handleDeleteHistory = async (row: any) => {
           h3 {
             font-size: 16px;
             font-weight: 600;
-            color: #e6a23c;
+            color: var(--color-warning);
             margin: 0 0 8px 0;
             display: flex;
             align-items: center;
@@ -1210,14 +1412,14 @@ const handleDeleteHistory = async (row: any) => {
 
           p {
             font-size: 14px;
-            color: #606266;
+            color: var(--color-text-regular);
             margin: 0 0 12px 0;
           }
 
           // 智能提示
           .smart-tip {
-            background: linear-gradient(135deg, #e8f5e9 0%, #fff3e0 100%);
-            border-left: 4px solid #9c27b0;
+            background: linear-gradient(135deg, var(--tf-color-surface-green) 0%, var(--tf-color-orange-material-50) 100%);
+            border-left: 4px solid var(--tf-color-purple-material);
             border-radius: 8px;
             padding: 12px 16px;
             margin-bottom: 16px;
@@ -1226,14 +1428,14 @@ const handleDeleteHistory = async (row: any) => {
             gap: 10px;
 
             i {
-              color: #9c27b0;
+              color: var(--tf-color-purple-material);
               font-size: 16px;
               margin-top: 2px;
             }
 
             span {
               font-weight: 600;
-              color: #9c27b0;
+              color: var(--tf-color-purple-material);
             }
 
             ul {
@@ -1243,7 +1445,7 @@ const handleDeleteHistory = async (row: any) => {
 
               li {
                 font-size: 13px;
-                color: #606266;
+                color: var(--color-text-regular);
                 margin-bottom: 4px;
                 line-height: 1.6;
               }
@@ -1256,7 +1458,7 @@ const handleDeleteHistory = async (row: any) => {
             padding: 16px;
             max-height: 500px;
             overflow-y: auto;
-            border: 1px solid #ffebee;
+            border: 1px solid var(--tf-color-red-50);
 
             &.scrollable {
               overflow-y: auto;
@@ -1266,16 +1468,16 @@ const handleDeleteHistory = async (row: any) => {
               }
 
               &::-webkit-scrollbar-track {
-                background: #f1f1f1;
+                background: var(--tf-color-gray-100);
                 border-radius: 4px;
               }
 
               &::-webkit-scrollbar-thumb {
-                background: #c1c1c1;
+                background: var(--tf-color-gray-300);
                 border-radius: 4px;
 
                 &:hover {
-                  background: #a8a8a8;
+                  background: var(--tf-color-gray-400);
                 }
               }
             }
@@ -1284,28 +1486,28 @@ const handleDeleteHistory = async (row: any) => {
               padding: 12px;
               margin-bottom: 12px;
               border-radius: 6px;
-              background: #fff8f0;
-              border: 1px solid #ffe0b2;
+              background: var(--tf-color-orange-surface);
+              border: 1px solid var(--tf-color-orange-material-100);
               transition: all 0.2s;
 
               // 云端已售状态
               &.dup-sold {
-                background: #e8f5e9;
-                border-color: #a5d6a7;
+                background: var(--tf-color-surface-green);
+                border-color: var(--tf-color-green-material-200);
 
                 .dup-imei {
-                  color: #2e7d32 !important;
+                  color: var(--tf-color-green-material-800) !important;
                 }
 
                 .duplicate-header {
-                  border-bottom-color: #a5d6a7 !important;
+                  border-bottom-color: var(--tf-color-green-material-200) !important;
                 }
               }
 
               // 云端库存状态
               &.dup-stock {
-                background: #fff8f0;
-                border-color: #ffe0b2;
+                background: var(--tf-color-orange-surface);
+                border-color: var(--tf-color-orange-material-100);
               }
 
               &:last-child {
@@ -1313,8 +1515,8 @@ const handleDeleteHistory = async (row: any) => {
               }
 
               &:hover {
-                background: #fff3e0;
-                border-color: #ffcc80;
+                background: var(--tf-color-orange-material-50);
+                border-color: var(--tf-color-amber-pastel-dark);
               }
 
               &.expanded {
@@ -1325,19 +1527,19 @@ const handleDeleteHistory = async (row: any) => {
                   gap: 8px;
                   margin-bottom: 12px;
                   padding-bottom: 8px;
-                  border-bottom: 1px solid #ffe0b2;
+                  border-bottom: 1px solid var(--tf-color-orange-material-100);
 
                   .dup-imei {
                     font-weight: 600;
-                    color: #e65100;
+                    color: var(--tf-color-orange-material-900);
                     font-size: 15px;
                     font-family: 'Courier New', monospace;
                   }
 
                   .dup-row {
                     font-size: 12px;
-                    color: #ff9800;
-                    background: #fff3e0;
+                    color: var(--tf-color-orange-material-500);
+                    background: var(--tf-color-orange-material-50);
                     padding: 4px 8px;
                     border-radius: 4px;
                     font-weight: 500;
@@ -1350,13 +1552,15 @@ const handleDeleteHistory = async (row: any) => {
                     font-weight: 600;
 
                     &.status-sold {
-                      background: #c8e6c9;
-                      color: #2e7d32;
+                      background: var(--tf-status-neutral-bg);
+                      color: var(--tf-status-neutral-color);
+                      border: 1px solid var(--tf-status-neutral-border);
                     }
 
                     &.status-stock {
-                      background: #ffe0b2;
-                      color: #e65100;
+                      background: var(--tf-status-success-bg);
+                      color: var(--tf-status-success-color);
+                      border: 1px solid var(--tf-status-success-border);
                     }
                   }
                 }
@@ -1373,14 +1577,14 @@ const handleDeleteHistory = async (row: any) => {
 
                     .detail-label {
                       font-size: 12px;
-                      color: #909399;
+                      color: var(--color-info);
                       font-weight: 500;
                       min-width: 60px;
                     }
 
                     .detail-value {
                       font-size: 13px;
-                      color: #303133;
+                      color: var(--color-text-primary);
                       font-weight: 500;
                       word-break: break-all;
                     }
@@ -1392,14 +1596,14 @@ const handleDeleteHistory = async (row: any) => {
                     gap: 8px;
 
                     .diff-row {
-                      background: #fff9e6;
+                      background: var(--tf-color-warning-pale);
                       padding: 8px 12px;
                       border-radius: 4px;
-                      border-left: 3px solid #ffc107;
+                      border-left: 3px solid var(--warning-color);
 
                       .detail-label {
                         font-weight: 600;
-                        color: #f57c00;
+                        color: var(--tf-color-orange-material-700);
                         min-width: 70px;
                       }
 
@@ -1409,18 +1613,18 @@ const handleDeleteHistory = async (row: any) => {
                         gap: 12px;
 
                         .cloud-value {
-                          color: #9e9e9e;
+                          color: var(--tf-color-gray-material-500);
                           text-decoration: line-through;
                           font-size: 12px;
                         }
 
                         .diff-arrow {
-                          color: #ffc107;
+                          color: var(--warning-color);
                           font-size: 12px;
                         }
 
                         .excel-value {
-                          color: #2e7d32;
+                          color: var(--tf-color-green-material-800);
                           font-weight: 600;
                           font-size: 13px;
                         }
@@ -1432,19 +1636,19 @@ const handleDeleteHistory = async (row: any) => {
 
               .dup-imei {
                 font-weight: 600;
-                color: #303133;
+                color: var(--color-text-primary);
               }
 
               .dup-info {
                 font-size: 12px;
-                color: #909399;
+                color: var(--color-info);
               }
             }
 
             .more-duplicates {
               text-align: center;
               padding: 8px;
-              color: #909399;
+              color: var(--color-info);
               font-size: 14px;
             }
           }
@@ -1458,26 +1662,26 @@ const handleDeleteHistory = async (row: any) => {
         margin-bottom: 24px;
 
         .strategy-card {
-          border: 2px solid #ebeef5;
+          border: 2px solid var(--color-border-light);
           border-radius: 8px;
           padding: 20px;
           cursor: pointer;
           transition: all 0.3s;
 
           &:hover {
-            border-color: #409eff;
+            border-color: var(--color-primary);
             transform: translateY(-2px);
           }
 
           &.selected {
-            border-color: #409eff;
-            background: #ecf5ff;
+            border-color: var(--color-primary);
+            background: var(--tf-color-primary-surface-element);
           }
 
           // 智能导入策略的特殊样式
           &.strategy-smart {
-            border-color: #9c27b0;
-            background: linear-gradient(135deg, #f3e5f5 0%, #fff8e1 100%);
+            border-color: var(--tf-color-purple-material);
+            background: linear-gradient(135deg, var(--tf-color-purple-50) 0%, var(--tf-color-amber-material-50) 100%);
             position: relative;
             overflow: hidden;
 
@@ -1486,7 +1690,7 @@ const handleDeleteHistory = async (row: any) => {
               position: absolute;
               top: 8px;
               right: 8px;
-              background: linear-gradient(135deg, #9c27b0 0%, #ff9800 100%);
+              background: linear-gradient(135deg, var(--tf-color-purple-material) 0%, var(--tf-color-orange-material-500) 100%);
               color: white;
               font-size: 10px;
               padding: 2px 8px;
@@ -1495,18 +1699,18 @@ const handleDeleteHistory = async (row: any) => {
             }
 
             &:hover {
-              border-color: #ba68c8;
+              border-color: var(--tf-color-purple-material-300);
               box-shadow: 0 4px 20px rgba(156, 39, 176, 0.3);
             }
 
             &.selected {
-              border-color: #9c27b0;
-              background: linear-gradient(135deg, #e1bee7 0%, #ffe082 100%);
+              border-color: var(--tf-color-purple-material);
+              background: linear-gradient(135deg, var(--tf-color-violet-border-soft) 0%, var(--tf-color-amber-200) 100%);
               box-shadow: 0 4px 20px rgba(156, 39, 176, 0.4);
             }
 
             .strategy-icon {
-              background: linear-gradient(135deg, #9c27b0 0%, #ff9800 100%);
+              background: linear-gradient(135deg, var(--tf-color-purple-material) 0%, var(--tf-color-orange-material-500) 100%);
               -webkit-background-clip: text;
               -webkit-text-fill-color: transparent;
               background-clip: text;
@@ -1515,57 +1719,57 @@ const handleDeleteHistory = async (row: any) => {
 
           // 完全替换策略的特殊样式
           &.strategy-replace_all {
-            border-color: #f56c6c;
+            border-color: var(--color-danger);
 
             &:hover {
-              border-color: #f78989;
+              border-color: var(--tf-color-red-element-light);
             }
 
             &.selected {
-              border-color: #f56c6c;
-              background: #fef0f0;
+              border-color: var(--color-danger);
+              background: var(--tf-color-danger-surface-element);
             }
 
             .strategy-icon {
-              color: #f56c6c;
+              color: var(--color-danger);
             }
           }
 
           // 覆盖重复策略的特殊样式
           &.strategy-overwrite {
             &:hover {
-              border-color: #e6a23c;
+              border-color: var(--color-warning);
             }
 
             &.selected {
-              border-color: #e6a23c;
-              background: #fdf6ec;
+              border-color: var(--color-warning);
+              background: var(--tf-color-warning-surface-element);
             }
 
             .strategy-icon {
-              color: #e6a23c;
+              color: var(--color-warning);
             }
           }
 
           // 合并重复策略的特殊样式
           &.strategy-merge {
             &:hover {
-              border-color: #67c23a;
+              border-color: var(--color-success);
             }
 
             &.selected {
-              border-color: #67c23a;
-              background: #f0f9ff;
+              border-color: var(--color-success);
+              background: var(--tf-color-blue-50);
             }
 
             .strategy-icon {
-              color: #67c23a;
+              color: var(--color-success);
             }
           }
 
           .strategy-icon {
             font-size: 32px;
-            color: #409eff;
+            color: var(--color-primary);
             margin-bottom: 12px;
           }
 
@@ -1573,13 +1777,13 @@ const handleDeleteHistory = async (row: any) => {
             h3 {
               font-size: 18px;
               font-weight: 600;
-              color: #303133;
+              color: var(--color-text-primary);
               margin: 0 0 8px 0;
             }
 
             p {
               font-size: 14px;
-              color: #606266;
+              color: var(--color-text-regular);
               margin: 0 0 12px 0;
             }
 
@@ -1590,14 +1794,14 @@ const handleDeleteHistory = async (row: any) => {
 
               li {
                 font-size: 12px;
-                color: #909399;
+                color: var(--color-info);
                 margin-bottom: 4px;
                 display: flex;
                 align-items: center;
                 gap: 6px;
 
                 i {
-                  color: #67c23a;
+                  color: var(--color-success);
                 }
               }
             }
@@ -1612,12 +1816,12 @@ const handleDeleteHistory = async (row: any) => {
 
         .progress-message {
           font-size: 16px;
-          color: #606266;
+          color: var(--color-text-regular);
           margin: 20px 0;
         }
 
         .import-result {
-          background: #f5f7fa;
+          background: var(--tf-color-surface);
           border-radius: 8px;
           padding: 20px;
           margin-top: 20px;
@@ -1633,7 +1837,7 @@ const handleDeleteHistory = async (row: any) => {
               .label {
                 display: block;
                 font-size: 14px;
-                color: #909399;
+                color: var(--color-info);
                 margin-bottom: 8px;
               }
 
@@ -1644,23 +1848,23 @@ const handleDeleteHistory = async (row: any) => {
               }
 
               &.success .value {
-                color: #67c23a;
+                color: var(--color-success);
               }
 
               &.primary .value {
-                color: #409eff;
+                color: var(--color-primary);
               }
 
               &.info .value {
-                color: #909399;
+                color: var(--color-info);
               }
 
               &.warning .value {
-                color: #e6a23c;
+                color: var(--color-warning);
               }
 
               &.danger .value {
-                color: #f56c6c;
+                color: var(--color-danger);
               }
             }
           }
@@ -1675,7 +1879,7 @@ const handleDeleteHistory = async (row: any) => {
   .empty-history {
     text-align: center;
     padding: 60px 20px;
-    color: #909399;
+    color: var(--color-info);
 
     i {
       font-size: 64px;
@@ -1697,7 +1901,7 @@ const handleDeleteHistory = async (row: any) => {
       font-size: 13px;
 
       i {
-        color: #909399;
+        color: var(--color-info);
       }
     }
 
@@ -1708,7 +1912,7 @@ const handleDeleteHistory = async (row: any) => {
       font-size: 13px;
 
       i {
-        color: #409eff;
+        color: var(--color-primary);
       }
     }
 
@@ -1725,7 +1929,7 @@ const handleDeleteHistory = async (row: any) => {
         font-size: 12px;
 
         .stat-label {
-          color: #909399;
+          color: var(--color-info);
         }
 
         .stat-value {
@@ -1734,28 +1938,28 @@ const handleDeleteHistory = async (row: any) => {
           border-radius: 3px;
 
           &.stat-total {
-            background: #f0f2f5;
-            color: #606266;
+            background: var(--tf-color-surface-ant);
+            color: var(--color-text-regular);
           }
 
           &.stat-imported {
-            background: #f0f9ff;
-            color: #409eff;
+            background: var(--tf-color-blue-50);
+            color: var(--color-primary);
           }
 
           &.stat-updated {
-            background: #fff7e6;
-            color: #e6a23c;
+            background: var(--tf-color-orange-ant-surface);
+            color: var(--color-warning);
           }
 
           &.stat-skipped {
-            background: #f4f4f5;
-            color: #909399;
+            background: var(--tf-color-zinc-100);
+            color: var(--color-info);
           }
 
           &.stat-errors {
-            background: #fef0f0;
-            color: #f56c6c;
+            background: var(--tf-color-danger-surface-element);
+            color: var(--color-danger);
           }
         }
       }

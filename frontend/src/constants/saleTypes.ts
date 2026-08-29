@@ -1,6 +1,6 @@
 import { getPhoneStatusLabel, normalizePhoneStatus, type PhoneStatusOption } from './phoneStatuses'
 
-export interface SaleTypeOption extends PhoneStatusOption {}
+export type SaleTypeOption = PhoneStatusOption
 
 export const SALE_TYPE_OPTIONS: SaleTypeOption[] = [
   { value: 'sold', label: '已售' },

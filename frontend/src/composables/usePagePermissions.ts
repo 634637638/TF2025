@@ -85,6 +85,8 @@ export const usePagePermissions = (module: string) => {
       export: '导出',
       import: '导入',
       approve: '审批',
+      arrival: '到账',
+      upload: '图片上传',
       manage: '管理',
       sync: '同步',
       match: '匹配',
@@ -110,6 +112,8 @@ export const usePagePermissions = (module: string) => {
   const canExport = computed(() => hasPermission('export'))
   const canImport = computed(() => hasPermission('import'))
   const canApprove = computed(() => hasPermission('approve'))
+  const canArrival = computed(() => hasPermission('arrival'))
+  const canUpload = computed(() => hasPermission('upload'))
   const canManage = computed(() => hasPermission('manage'))
   const canSync = computed(() => hasPermission('sync'))
   const canMatch = computed(() => hasPermission('match'))
@@ -196,6 +200,8 @@ export const usePagePermissions = (module: string) => {
     canExport,
     canImport,
     canApprove,
+    canArrival,
+    canUpload,
     canManage,
     canSync,
     canMatch,
@@ -216,13 +222,15 @@ export interface PermissionConfig {
     export?: boolean
     import?: boolean
     approve?: boolean
+    arrival?: boolean
+    upload?: boolean
     manage?: boolean
   }
 }
 
 // 批量权限检查
 export const useBatchPermissions = (configs: PermissionConfig[]) => {
-  const authStore = useAuthStore()
+  const _authStore = useAuthStore()
 
   const results = configs.map(config => {
     const modulePermissions = usePagePermissions(config.module)
@@ -238,6 +246,8 @@ export const useBatchPermissions = (configs: PermissionConfig[]) => {
         export: config.permissions.export ? modulePermissions.canExport.value : true,
         import: config.permissions.import ? modulePermissions.canImport.value : true,
         approve: config.permissions.approve ? modulePermissions.canApprove.value : true,
+        arrival: config.permissions.arrival ? modulePermissions.canArrival.value : true,
+        upload: config.permissions.upload ? modulePermissions.canUpload.value : true,
         manage: config.permissions.manage ? modulePermissions.canManage.value : true
       }
     }

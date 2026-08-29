@@ -1,0 +1,259 @@
+.sales-grid-view {
+  padding: 12px;
+}
+
+.empty-state {
+  padding: 60px 20px;
+  color: var(--tf-color-muted);
+  text-align: center;
+}
+
+.empty-state i {
+  display: block;
+  margin-bottom: 16px;
+  font-size: 48px;
+  opacity: 0.5;
+}
+
+.empty-state h3 {
+  margin: 0 0 8px;
+  color: var(--tf-color-gray-bootstrap-700);
+  font-size: 18px;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.grid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 16px;
+  width: 100%;
+}
+
+.device-card {
+  overflow: hidden;
+  border: 1px solid var(--tf-color-border-muted);
+  border-radius: var(--admin-panel-radius);
+  background: var(--tf-color-surface);
+  box-shadow: var(--tf-button-shadow);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.device-card:hover {
+  border-color: var(--tf-button-success-border);
+  box-shadow: var(--tf-button-shadow-hover);
+  transform: translateY(-4px);
+}
+
+.card-image {
+  position: relative;
+  height: 200px;
+  overflow: hidden;
+}
+
+.card-image :deep(img) {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.card-badges {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  max-width: 100%;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.badge-new {
+  background: var(--tf-button-success-bg);
+  color: var(--tf-button-success-color);
+}
+
+.badge-used {
+  background: var(--tf-button-warning-bg);
+  color: var(--tf-button-warning-color);
+}
+
+.badge-brand {
+  background: var(--tf-button-primary-bg);
+  color: var(--tf-button-primary-color);
+}
+
+.card-content {
+  padding: 16px 20px;
+}
+
+.device-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.device-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  color: var(--tf-color-heading);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.device-title-meta {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.title-memory {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--tf-color-surface-blue-soft);
+  color: var(--tf-color-blue-600);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.title-price {
+  color: var(--tf-color-orange-legacy);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.device-specs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.spec-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.spec-row-supplier-store,
+.spec-row-imei-time {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(108px, 0.95fr);
+  align-items: center;
+}
+
+.spec-row-supplier-store {
+  grid-template-columns: minmax(0, 1.6fr) minmax(108px, 0.9fr);
+}
+
+.spec-item {
+  display: flex;
+  flex: 1;
+  justify-content: flex-start;
+  gap: 4px;
+  min-width: 0;
+  font-size: 13px;
+}
+
+.spec-label {
+  flex-shrink: 0;
+  color: var(--tf-color-muted);
+  font-weight: 500;
+}
+
+.spec-value {
+  overflow: hidden;
+  min-width: 0;
+  color: var(--tf-color-gray-bootstrap-700);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 4px;
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--tf-color-gray-200);
+}
+
+@media (max-width: 768px) {
+  .sales-grid-view {
+    padding: 12px 0;
+  }
+
+  .grid-container {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .device-card {
+    border-radius: 8px;
+  }
+
+  .card-badges {
+    top: 8px;
+    right: 8px;
+    gap: 4px;
+  }
+
+  .card-badges .badge {
+    padding: 2px 6px;
+    font-size: 10px;
+  }
+
+  .card-content {
+    padding: 12px 14px;
+  }
+
+  .card-actions {
+    padding: 8px 0 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .sales-grid-view {
+    padding: 8px 0;
+  }
+
+  .card-content {
+    padding: 12px;
+  }
+}
+
+@media (max-width: 375px) {
+  .sales-grid-view {
+    padding: 6px 0;
+  }
+
+  .card-image {
+    height: 188px;
+  }
+
+  .card-content {
+    padding: 10px 12px;
+  }
+}

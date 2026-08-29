@@ -81,10 +81,15 @@
 
         <section class="stock-in-section stock-in-remarks">
           <header class="stock-in-section__header">
-            <h3 class="stock-in-section__title">备注信息</h3>
+            <h3 class="stock-in-section__title">
+              备注信息
+            </h3>
           </header>
           <div class="stock-in-section__body">
-            <el-form-item label="备注" prop="remarks">
+            <el-form-item
+              label="备注"
+              prop="remarks"
+            >
               <el-input
                 v-model="stockInForm.remarks"
                 type="textarea"
@@ -100,8 +105,14 @@
 
     <template #footer>
       <div class="tf-dialog-actions">
-        <el-button @click="handleDialogClose">取消</el-button>
-        <el-button type="primary" :loading="submitting" @click="handleSubmit">
+        <el-button @click="handleDialogClose">
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          :loading="submitting"
+          @click="handleSubmit"
+        >
           {{ mode === 'create' ? '提交入库' : '更新入库' }}
         </el-button>
       </div>
@@ -114,8 +125,8 @@
       v-model:visible="optimizedScannerVisible"
       :scan-type="currentScanType"
       :phone="scannerPhone"
-      :showROIDisplay="true"
-      :enableAndroidOptimization="true"
+      :show-r-o-i-display="true"
+      :enable-android-optimization="true"
       @success="handleScanSuccess"
       @manual="handleScanManual"
       @cancel="handleScanCancel"
@@ -147,21 +158,28 @@
     </el-form>
     <template #footer>
       <div class="tf-dialog-actions">
-        <el-button @click="showBatchCountDialog = false">取消</el-button>
-        <el-button type="primary" @click="confirmBatchAdd">确定添加</el-button>
+        <el-button @click="showBatchCountDialog = false">
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          @click="confirmBatchAdd"
+        >
+          确定添加
+        </el-button>
       </div>
     </template>
   </MobileDialog>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, reactive, computed, watch, defineAsyncComponent } from 'vue'
 import { unifiedApi } from '@/utils/unified-api'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { ValidationRules } from '@/composables'
 import { useAuthStore } from '@/stores/auth'
-import OptimizedScanner from './OptimizedScanner.vue'
+const OptimizedScanner = defineAsyncComponent(() => import('./OptimizedScanner.vue'))
 import StockInBasicInfoSection from './stock-in/StockInBasicInfoSection.vue'
 import StockInPhoneListSection from './stock-in/StockInPhoneListSection.vue'
 import {
@@ -235,7 +253,7 @@ const submitting = ref(false)
 const stockInForm = reactive<StockInForm>({
   supplier_id: '',
   store_id: '',
-  stock_in_date: TimeUtil.nowFormatted(TIME_FORMATS.DATE),
+  inventory_time: TimeUtil.nowFormatted(TIME_FORMATS.DATE),
   operator_name: authStore.user?.name || authStore.user?.username || '',
   product_status: '全新',
   remarks: '',
@@ -291,7 +309,7 @@ const formRules = {
   store_id: [
     ValidationRules.required('请选择入库店铺')
   ],
-  stock_in_date: [
+  inventory_time: [
     ValidationRules.required('请选择入库日期')
   ],
   product_status: [
@@ -446,7 +464,7 @@ const getFilteredColorsForPhone = (phoneIndex: number) => {
 // 获取指定手机项的过滤后内存列表
 const getFilteredMemoriesForPhone = (phoneIndex: number) => {
   const searchQuery = memorySearchQueries.value.get(phoneIndex) || ''
-  return filterByQuery(memories.value, searchQuery, (memory) => (memory.name || memory.capacity || '').toString())
+  return filterByQuery(memories.value, searchQuery, (memory) => (memory.size || memory.name || memory.capacity || '').toString())
 }
 
 // 获取过滤后的供应商列表
@@ -598,7 +616,7 @@ const formatPriceValue = (value: number | string | undefined): string => {
 
 const updatePurchasePrice = (phone: PhoneItem, value: string) => {
   const normalized = normalizePriceInput(value)
-  phone.purchase_price = normalized ? parsePriceValue(normalized) : undefined
+  phone.purchase_cost = normalized ? parsePriceValue(normalized) : undefined
 }
 
 // 关闭对话框

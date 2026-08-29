@@ -198,31 +198,23 @@ export interface HomeSectionListResponse {
  */
 export interface SoldProduct {
   id: number
-  product_name: string
-  brand_name: string
-  model_name: string
-  color_name?: string
-  memory_name?: string
-  imei?: string
-  quality_grade?: string
-  selling_price: number
-  sale_price?: number
-  sale_date: string
-  customer_name: string
-  customer_phone?: string
-  store_id: number
-  store_name: string
-  operator_id: number
-  operator_name: string
-  status: 'normal' | 'returned' | 'exchanged'
-  return_date?: string
-  return_reason?: string
-  warranty_expired_date?: string
-  is_under_warranty: boolean
-  remark?: string
-  images?: string[]
-  created_at: string
-  updated_at: string
+  imei: string | null
+  brand: string | null
+  model: string | null
+  color: string | null
+  memory: string | null
+  sale_time: string | null
+  image_count: number
+}
+
+export interface SoldProductImage {
+  id: number
+  phone_id: number
+  image_url: string
+  image_type: string
+  is_primary: boolean
+  sort_order: number
+  uploaded_by: number | null
 }
 
 /**
@@ -230,32 +222,14 @@ export interface SoldProduct {
  */
 export interface SoldProductFilters {
   search?: string
-  brand_id?: number
-  model_id?: number
-  store_id?: number
-  status?: 'normal' | 'returned' | 'exchanged'
-  start_date?: string
-  end_date?: string
-  warranty_status?: 'valid' | 'expired'
+  page?: number
+  page_size?: number
 }
 
 /**
  * 已售商品列表响应
  */
-export interface SoldProductListResponse {
-  products: SoldProduct[]
-  pagination: {
-    page: number
-    limit: number
-    total: number
-    pages: number
-  }
-  stats?: {
-    total_count: number
-    returned_count: number
-    total_amount: number
-  }
-}
+export type SoldProductListResponse = SoldProduct[]
 
 // ==================== H5订单类型 ====================
 

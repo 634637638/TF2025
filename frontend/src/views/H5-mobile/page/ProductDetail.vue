@@ -4,11 +4,20 @@
 -->
 <template>
   <div class="product-detail-page">
-    <div v-if="loading" class="loading-state">
-      <SectionLoading text="加载商品详情中..." size="large" />
+    <div
+      v-if="loading"
+      class="loading-state"
+    >
+      <SectionLoading
+        text="加载商品详情中..."
+        size="large"
+      />
     </div>
 
-    <div v-else-if="product" class="detail-content">
+    <div
+      v-else-if="product"
+      class="detail-content"
+    >
       <!-- 图片/视频轮播 -->
       <div class="image-swiper-section">
         <swiper
@@ -18,18 +27,41 @@
           class="image-swiper"
           @slide-change="handleSlideChange"
         >
-          <swiper-slide v-for="(image, index) in product.images" :key="index">
+          <swiper-slide
+            v-for="(image, index) in product.images"
+            :key="index"
+          >
             <div class="swiper-zoom-container">
-              <video v-if="image.image_type === 'video'" :src="getImageUrl(image.image_url)" controls playsinline autoplay muted class="media-item" />
-              <Image v-else :src="image.image_url" :alt="`${product.brand_name} ${product.model_name} 图片${index + 1}`" mode="eager" class="media-item" />
+              <video
+                v-if="image.image_type === 'video'"
+                :src="getImageUrl(image.image_url)"
+                controls
+                playsinline
+                autoplay
+                muted
+                class="media-item"
+              />
+              <Image
+                v-else
+                :src="image.image_url"
+                :alt="`${product.brand_name} ${product.model_name} 图片${index + 1}`"
+                mode="eager"
+                class="media-item"
+              />
             </div>
             <!-- 视频标记 -->
-            <div v-if="image.image_type === 'video'" class="media-video-label">
-              <i class="fas fa-video"></i> 验机视频
+            <div
+              v-if="image.image_type === 'video'"
+              class="media-video-label"
+            >
+              <i class="fas fa-video" /> 验机视频
             </div>
           </swiper-slide>
         </swiper>
-        <div v-if="product.images && product.images.length > 0" class="image-count">
+        <div
+          v-if="product.images && product.images.length > 0"
+          class="image-count"
+        >
           {{ currentImageIndex + 1 }} / {{ product.images.length }}
         </div>
       </div>
@@ -38,13 +70,28 @@
       <div class="price-section">
         <div class="price-row">
           <span class="price-label">销售价</span>
-          <span v-if="displaySalePrice !== null" class="price">¥{{ displaySalePrice }}</span>
-          <span v-else class="price inquire">电询</span>
-          <span v-if="!product.is_new" class="tag-used">二手</span>
+          <span
+            v-if="displaySalePrice !== null"
+            class="price"
+          >¥{{ displaySalePrice }}</span>
+          <span
+            v-else
+            class="price inquire"
+          >电询</span>
+          <span
+            v-if="!product.is_new"
+            class="tag-used"
+          >二手</span>
         </div>
         <h1 class="product-title">
-          <template v-for="(item, index) in productTitleItems" :key="`${item}-${index}`">
-            <span v-if="index > 0" class="title-separator">|</span>
+          <template
+            v-for="(item, index) in productTitleItems"
+            :key="`${item}-${index}`"
+          >
+            <span
+              v-if="index > 0"
+              class="title-separator"
+            >|</span>
             <span class="title-item">{{ item }}</span>
           </template>
         </h1>
@@ -52,30 +99,46 @@
 
       <!-- 规格信息 -->
       <div class="specs-section">
-        <h3 class="section-title">📱 机器参数</h3>
+        <h3 class="section-title">
+          📱 机器参数
+        </h3>
         <div class="specs-grid">
           <div
             v-for="spec in machineSpecItems"
             :key="spec.label"
             class="spec-card"
           >
-            <div class="spec-card-title">{{ spec.label }}</div>
-            <div class="spec-card-value">{{ spec.value }}</div>
+            <div class="spec-card-title">
+              {{ spec.label }}
+            </div>
+            <div class="spec-card-value">
+              {{ spec.value }}
+            </div>
           </div>
         </div>
       </div>
 
       <!-- 商家描述（备注） -->
-      <div v-if="product.remarks" class="merchant-description-section">
-        <h3 class="section-title">💬 商家描述</h3>
+      <div
+        v-if="product.remarks"
+        class="merchant-description-section"
+      >
+        <h3 class="section-title">
+          💬 商家描述
+        </h3>
         <div class="description-content">
           <p>{{ product.remarks }}</p>
         </div>
       </div>
 
       <!-- 验机报告 -->
-      <div v-if="hasInspectionReport" class="inspection-section">
-        <h3 class="section-title">📊 验机报告</h3>
+      <div
+        v-if="hasInspectionReport"
+        class="inspection-section"
+      >
+        <h3 class="section-title">
+          📊 验机报告
+        </h3>
         <div class="inspection-content">
           <div class="inspection-grid">
             <div
@@ -83,22 +146,33 @@
               :key="item.label"
               class="inspection-item"
             >
-              <i :class="item.icon"></i>
+              <i :class="item.icon" />
               <div class="item-content">
                 <span class="item-label">{{ item.label }}</span>
-                <span class="item-value" :class="item.className">{{ item.value }}</span>
+                <span
+                  class="item-value"
+                  :class="item.className"
+                >{{ item.value }}</span>
               </div>
             </div>
           </div>
         </div>
       </div>
       <!-- 默认验机报告（无验机信息时显示） -->
-      <div v-else-if="!product.is_new" class="inspection-section">
-        <h3 class="section-title">📊 验机报告</h3>
+      <div
+        v-else-if="!product.is_new"
+        class="inspection-section"
+      >
+        <h3 class="section-title">
+          📊 验机报告
+        </h3>
         <div class="inspection-content">
-          <div v-if="displayConditionText" class="inspection-grid">
+          <div
+            v-if="displayConditionText"
+            class="inspection-grid"
+          >
             <div class="inspection-item">
-              <i class="fas fa-star"></i>
+              <i class="fas fa-star" />
               <div class="item-content">
                 <span class="item-label">成色</span>
                 <span class="item-value condition-grade">{{ displayConditionText }}</span>
@@ -113,32 +187,57 @@
 
       <!-- 商品详情 -->
       <div class="detail-section">
-        <h3 class="section-title">📝 商品详情</h3>
+        <h3 class="section-title">
+          📝 商品详情
+        </h3>
         <div class="detail-content-inner">
-          <p v-if="product.is_new">保修说明：全新机保修1年，人为损坏不保修</p>
-          <p v-else>保修说明：二手机保修1月，人为损坏不保修</p>
-          <p v-if="product.store_address">门店地址：{{ product.store_address }}</p>
-          <p v-if="product.store_phone">联系电话：<a :href="`tel:${product.store_phone}`">{{ product.store_phone }}</a></p>
+          <p v-if="product.is_new">
+            保修说明：全新机保修1年，人为损坏不保修
+          </p>
+          <p v-else>
+            保修说明：二手机保修1月，人为损坏不保修
+          </p>
+          <p v-if="product.store_address">
+            门店地址：{{ product.store_address }}
+          </p>
+          <p v-if="product.store_phone">
+            联系电话：<a :href="`tel:${product.store_phone}`">{{ product.store_phone }}</a>
+          </p>
         </div>
       </div>
     </div>
 
     <!-- 底部操作栏 -->
-    <div v-if="product" class="bottom-bar">
+    <div
+      v-if="product"
+      class="bottom-bar"
+    >
       <!-- 购买按钮组 - 根据direct_buy_enabled控制显示 -->
       <template v-if="config.direct_buy_enabled">
-        <el-button v-if="config.cart_enabled" class="cart-btn" @click="handleAddToCart">
-          <i class="fas fa-cart-plus"></i>
+        <el-button
+          v-if="config.cart_enabled"
+          class="cart-btn"
+          @click="handleAddToCart"
+        >
+          <i class="fas fa-cart-plus" />
           加入购物车
         </el-button>
-        <el-button type="primary" class="buy-btn" @click="handleBuyNow" :class="{ 'full-width': !config.cart_enabled }">
+        <el-button
+          type="primary"
+          class="buy-btn"
+          :class="{ 'full-width': !config.cart_enabled }"
+          @click="handleBuyNow"
+        >
           立即购买
         </el-button>
       </template>
 
       <!-- 购买禁用提示 -->
-      <div v-else class="purchase-disabled">
-        <i class="fas fa-ban"></i>
+      <div
+        v-else
+        class="purchase-disabled"
+      >
+        <i class="fas fa-ban" />
         <span>商品暂停销售</span>
       </div>
     </div>
@@ -152,8 +251,14 @@
       dialog-class="memory-dialog"
       :show-default-footer="false"
     >
-      <SectionLoading v-if="loadingMemories" text="加载中..." />
-      <div v-else-if="memoryOptions.length > 0" class="memory-options">
+      <SectionLoading
+        v-if="loadingMemories"
+        text="加载中..."
+      />
+      <div
+        v-else-if="memoryOptions.length > 0"
+        class="memory-options"
+      >
         <div
           v-for="option in memoryOptions"
           :key="option.phone_id"
@@ -167,15 +272,30 @@
           </div>
           <div class="memory-store">
             <span class="store-name">{{ option.store_name }}</span>
-            <span v-if="option.quality_grade" class="quality-grade">{{ option.quality_grade }}成</span>
+            <span
+              v-if="option.quality_grade"
+              class="quality-grade"
+            >{{ option.quality_grade }}成</span>
           </div>
         </div>
       </div>
-      <el-empty v-else description="暂无其他规格" />
+      <DataEmptyState
+        v-else
+        description="暂无其他规格"
+      />
 
       <template #footer>
-        <el-button type="default" @click="showMemoryDialog = false">取消</el-button>
-        <el-button type="primary" @click="confirmMemorySelection" :disabled="!selectedPhone">
+        <el-button
+          type="default"
+          @click="showMemoryDialog = false"
+        >
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          :disabled="!selectedPhone"
+          @click="confirmMemorySelection"
+        >
           确认选择
         </el-button>
       </template>
@@ -587,7 +707,7 @@ const loadMemoryOptions = async () => {
       // color_id: product.value.color_id,  // 移除这个字段，因为类型定义中没有
       is_new: product.value.is_new === 1,
       page: 1,
-      limit: 100
+      page_size: 100
     })
 
     // 过滤出当前商品并添加选中标记
@@ -701,12 +821,12 @@ const executeBuyNow = (phoneId: number) => {
 }
 
 // 添加到购物车（保留原方法供兼容）
-const addToCart = async () => {
+const _addToCart = async () => {
   handleAddToCart()
 }
 
 // 立即购买（保留原方法供兼容）
-const buyNow = () => {
+const _buyNow = () => {
   handleBuyNow()
 }
 
@@ -728,7 +848,7 @@ onMounted(() => {
 <style scoped lang="scss">
 .product-detail-page {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: var(--tf-color-surface-soft);
   padding-bottom: 60px;
 }
 
@@ -740,7 +860,7 @@ onMounted(() => {
 // 图片/视频轮播
 .image-swiper-section {
   position: relative;
-  background: #000;
+  background: var(--tf-color-black);
 
   .image-swiper {
     height: 375px;
@@ -756,7 +876,7 @@ onMounted(() => {
       top: 12px;
       left: 12px;
       background: rgba(255, 107, 0, 0.9);
-      color: #fff;
+      color: var(--color-bg-white);
       padding: 6px 12px;
       border-radius: 20px;
       font-size: 13px;
@@ -779,14 +899,14 @@ onMounted(() => {
     bottom: 12px;
     right: 12px;
     background: rgba(0, 0, 0, 0.5);
-    color: #fff;
+    color: var(--color-bg-white);
     padding: 4px 8px;
     border-radius: 4px;
     font-size: 12px;
   }
 
   :deep(.swiper-pagination-fraction) {
-    color: #fff;
+    color: var(--color-bg-white);
     font-size: 14px;
     bottom: 12px;
     left: 12px;
@@ -797,7 +917,7 @@ onMounted(() => {
 
 // 价格区域
 .price-section {
-  background: #fff;
+  background: var(--color-bg-white);
   padding: 16px;
   margin-bottom: 12px;
 
@@ -809,24 +929,24 @@ onMounted(() => {
 
     .price-label {
       font-size: 14px;
-      color: #999;
+      color: var(--text-muted);
       font-weight: 500;
     }
 
     .price {
       font-size: 24px;
       font-weight: 500;
-      color: #ff1744;
+      color: var(--tf-color-accent-pink);
 
       &.inquire {
         font-size: 18px;
-        color: #ff9800;
+        color: var(--tf-color-orange-material-500);
       }
     }
 
     .tag-used {
-      background: #ff6b00;
-      color: #fff;
+      background: var(--tf-color-accent-orange);
+      color: var(--color-bg-white);
       font-size: 12px;
       padding: 2px 6px;
       border-radius: 4px;
@@ -836,14 +956,14 @@ onMounted(() => {
   .product-title {
     font-size: clamp(13px, 4.5vw, 18px);
     font-weight: 600;
-    color: #333;
+    color: var(--text-primary);
     margin: 0;
     display: flex;
     align-items: center;
     flex-wrap: nowrap;
     white-space: nowrap;
     line-height: 1.3;
-    background: linear-gradient(135deg, #f5f7fa 0%, #e8eaf6 100%);
+    background: linear-gradient(135deg, var(--tf-color-surface) 0%, var(--tf-color-border-form) 100%);
     padding: 12px 16px;
     border-radius: 8px;
 
@@ -854,7 +974,7 @@ onMounted(() => {
 
     .title-separator {
       margin: 0 4px;
-      color: #999;
+      color: var(--text-muted);
       opacity: 0.8;
       flex-shrink: 0;
     }
@@ -862,14 +982,14 @@ onMounted(() => {
 
   .product-subtitle {
     font-size: 14px;
-    color: #999;
+    color: var(--text-muted);
     margin: 0;
   }
 }
 
 // 规格信息
 .specs-section {
-  background: #fff;
+  background: var(--color-bg-white);
   padding: 16px;
   margin-bottom: 8px;
 
@@ -880,8 +1000,8 @@ onMounted(() => {
   }
 
   .spec-card {
-    background: #f9fafb;
-    border: 1px solid #e5e7eb;
+    background: var(--tf-color-neutral-50);
+    border: 1px solid var(--tf-color-neutral-200);
     border-radius: 8px;
     padding: 12px;
     display: flex;
@@ -890,31 +1010,31 @@ onMounted(() => {
 
     .spec-card-title {
       font-size: 12px;
-      color: #6b7280;
+      color: var(--tf-color-neutral-500);
       font-weight: 500;
     }
 
     .spec-card-value {
       font-size: 14px;
-      color: #333;
+      color: var(--text-primary);
     }
   }
 }
 
 // 商家描述
 .merchant-description-section {
-  background: #fff;
+  background: var(--color-bg-white);
   padding: 16px;
   margin-bottom: 8px;
 
   .description-content {
     font-size: 14px;
-    color: #333;
+    color: var(--text-primary);
     line-height: 1.8;
-    background: #fff7e6;
+    background: var(--tf-color-orange-ant-surface);
     padding: 12px;
     border-radius: 8px;
-    border-left: 4px solid #ff6b00;
+    border-left: 4px solid var(--tf-color-accent-orange);
 
     p {
       margin: 0;
@@ -926,7 +1046,7 @@ onMounted(() => {
 
 // 验机报告
 .inspection-section {
-  background: #fff;
+  background: var(--color-bg-white);
   padding: 16px;
   margin-bottom: 8px;
 
@@ -943,10 +1063,10 @@ onMounted(() => {
       gap: 8px;
       padding: 8px 0;
       font-size: 13px;
-      color: #333;
+      color: var(--text-primary);
 
       i {
-        color: #00c853;
+        color: var(--tf-color-accent-green);
         font-size: 16px;
         flex-shrink: 0;
       }
@@ -958,12 +1078,12 @@ onMounted(() => {
         flex: 1;
 
         .item-label {
-          color: #999;
+          color: var(--text-muted);
           font-size: 12px;
         }
 
         .item-value {
-          color: #333;
+          color: var(--text-primary);
           font-size: 13px;
         }
       }
@@ -973,14 +1093,14 @@ onMounted(() => {
       margin-top: 8px;
       padding: 12px;
       border-radius: 8px;
-      background: #fff7e6;
-      color: #8c5a00;
+      background: var(--tf-color-orange-ant-surface);
+      color: var(--tf-color-warning-text-legacy);
       font-size: 13px;
       line-height: 1.6;
     }
 
     :deep(.condition-grade) {
-      color: #ff6b00;
+      color: var(--tf-color-accent-orange);
       font-weight: 600;
     }
   }
@@ -988,20 +1108,20 @@ onMounted(() => {
 
 // 商品详情
 .detail-section {
-  background: #fff;
+  background: var(--color-bg-white);
   padding: 16px;
   margin-bottom: 8px;
 
   .detail-content-inner {
     font-size: 14px;
-    color: #666;
+    color: var(--text-secondary);
     line-height: 1.8;
 
     p {
       margin: 8px 0;
 
       a {
-        color: #ff6b00;
+        color: var(--tf-color-accent-orange);
         text-decoration: none;
       }
     }
@@ -1012,7 +1132,7 @@ onMounted(() => {
 .section-title {
   font-size: 16px;
   font-weight: 500;
-  color: #333;
+  color: var(--text-primary);
   margin: 0 0 12px;
 }
 
@@ -1027,8 +1147,8 @@ onMounted(() => {
   gap: 8px;
   padding: 8px 16px;
   padding-bottom: calc(8px + env(safe-area-inset-bottom));
-  background: #fff;
-  border-top: 1px solid #eee;
+  background: var(--color-bg-white);
+  border-top: 1px solid var(--tf-color-gray-200-alt);
   z-index: 200;
 
   .cart-btn,
@@ -1065,8 +1185,8 @@ onMounted(() => {
     justify-content: center;
     gap: 8px;
     height: 44px;
-    background: #f5f5f5;
-    color: #999;
+    background: var(--tf-color-surface-soft);
+    color: var(--text-muted);
     font-size: 14px;
     border-radius: 22px;
     padding: 0 20px;
@@ -1089,11 +1209,11 @@ onMounted(() => {
 
     .el-icon {
       font-size: 32px;
-      color: #ff6b00;
+      color: var(--tf-color-accent-orange);
     }
 
     span {
-      color: #666;
+      color: var(--text-secondary);
       font-size: 14px;
     }
   }
@@ -1104,7 +1224,7 @@ onMounted(() => {
 
     .memory-option {
       padding: 16px;
-      border: 2px solid #e0e0e0;
+      border: 2px solid var(--tf-color-gray-material-300);
       border-radius: 12px;
       margin-bottom: 12px;
       cursor: pointer;
@@ -1115,12 +1235,12 @@ onMounted(() => {
       }
 
       &:hover {
-        border-color: #ff6b00;
+        border-color: var(--tf-color-accent-orange);
         background: rgba(255, 107, 0, 0.05);
       }
 
       &.selected {
-        border-color: #ff6b00;
+        border-color: var(--tf-color-accent-orange);
         background: rgba(255, 107, 0, 0.1);
       }
 
@@ -1133,13 +1253,13 @@ onMounted(() => {
         .memory-name {
           font-size: 16px;
           font-weight: 600;
-          color: #333;
+          color: var(--text-primary);
         }
 
         .memory-price {
           font-size: 18px;
           font-weight: 600;
-          color: #ff1744;
+          color: var(--tf-color-accent-pink);
         }
       }
 
@@ -1150,11 +1270,11 @@ onMounted(() => {
         font-size: 13px;
 
         .store-name {
-          color: #666;
+          color: var(--text-secondary);
         }
 
         .quality-grade {
-          color: #00c853;
+          color: var(--tf-color-accent-green);
           background: rgba(0, 200, 83, 0.1);
           padding: 2px 6px;
           border-radius: 4px;

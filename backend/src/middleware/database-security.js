@@ -9,8 +9,8 @@ const {
   validateSortDirection,
   detectSqlInjection,
   createSafeParams
-} = require('../utils/securityUtils');
-const log = require('../utils/log');
+} = require('../utils/securityUtils')
+const log = require('../utils/log')
 
 /**
  * 验证查询参数中间件
@@ -22,51 +22,53 @@ function validateQueryParams(options = {}) {
     defaultSortField = 'id',
     defaultSortDirection = 'DESC',
     maxLimit = 100,
-    defaultLimit = 10
-  } = options;
+    _defaultLimit = 10
+  } = options
 
   return (req, res, next) => {
     try {
       // 验证分页参数
+      const rawPageSize = req.query.page_size ?? req.query.limit
       const pagination = validatePagination(
         req.query.page,
-        req.query.limit,
+        rawPageSize,
         maxLimit
-      );
+      )
 
       // 验证排序参数
       const sortField = validateSortField(
-        req.query.sort || req.query.sortBy,
+        req.query.sort || req.query.sort_by || req.query.sortBy,
         allowedSortFields,
         defaultSortField
-      );
+      )
 
       const sortDirection = validateSortDirection(
-        req.query.order || req.query.sortOrder,
+        req.query.order || req.query.sort_order || req.query.sortOrder,
         defaultSortDirection
-      );
+      )
 
       // 将验证后的参数附加到request对象
       req.validatedQuery = {
         ...req.query,
         page: pagination.page,
         limit: pagination.limit,
+        page_size: pagination.limit,
         offset: pagination.offset,
         sort: sortField,
         order: sortDirection
-      };
+      }
 
-      next();
+      next()
     } catch (error) {
-      log.error('查询参数验证失败:', error);
+      log.error('查询参数验证失败:', error)
       return res.status(400).json({
         success: false,
         message: '无效的查询参数',
         code: 'INVALID_QUERY_PARAMS',
         details: error.message
-      });
+      })
     }
-  };
+  }
 }
 
 /**
@@ -78,30 +80,30 @@ function validateBodyParams(options = {}) {
     requiredParams = [],
     optionalParams = [],
     strict = false // 是否严格模式（不允许额外参数）
-  } = options;
+  } = options
 
   return (req, res, next) => {
     try {
       // 检查必需参数
-      const missingParams = requiredParams.filter(param => !(param in req.body));
+      const missingParams = requiredParams.filter(param => !(param in req.body))
       if (missingParams.length > 0) {
         return res.status(400).json({
           success: false,
           message: '缺少必需参数',
           code: 'MISSING_REQUIRED_PARAMS',
           details: missingParams
-        });
+        })
       }
 
       // 创建安全的参数对象
-      const safeParams = createSafeParams(req.body, requiredParams);
+      const safeParams = createSafeParams(req.body, requiredParams)
 
       // 如果是严格模式，检查是否有额外参数
       if (strict) {
-        const allowedParams = [...requiredParams, ...optionalParams];
+        const allowedParams = [...requiredParams, ...optionalParams]
         const extraParams = Object.keys(req.body).filter(
           key => !allowedParams.includes(key)
-        );
+        )
 
         if (extraParams.length > 0) {
           return res.status(400).json({
@@ -109,24 +111,24 @@ function validateBodyParams(options = {}) {
             message: '包含不允许的参数',
             code: 'EXTRA_PARAMS_NOT_ALLOWED',
             details: extraParams
-          });
+          })
         }
       }
 
       // 将安全参数附加到request对象
-      req.safeBody = safeParams;
+      req.safeBody = safeParams
 
-      next();
+      next()
     } catch (error) {
-      log.error('请求体参数验证失败:', error);
+      log.error('请求体参数验证失败:', error)
       return res.status(400).json({
         success: false,
         message: '无效的请求参数',
         code: 'INVALID_BODY_PARAMS',
         details: error.message
-      });
+      })
     }
-  };
+  }
 }
 
 /**
@@ -138,36 +140,36 @@ function detectSqlInjectionMiddleware() {
     const checkValue = (value, path = '') => {
       if (typeof value === 'string') {
         if (detectSqlInjection(value)) {
-          throw new Error(`检测到潜在的SQL注入攻击: ${path}`);
+          throw new Error(`检测到潜在的SQL注入攻击: ${path}`)
         }
       } else if (typeof value === 'object' && value !== null) {
         for (const [key, val] of Object.entries(value)) {
-          checkValue(val, path ? `${path}.${key}` : key);
+          checkValue(val, path ? `${path}.${key}` : key)
         }
       }
-    };
+    }
 
     try {
       // 检查查询参数
-      checkValue(req.query, 'query');
+      checkValue(req.query, 'query')
 
       // 检查请求体
-      checkValue(req.body, 'body');
+      checkValue(req.body, 'body')
 
       // 检查路径参数
-      checkValue(req.params, 'params');
+      checkValue(req.params, 'params')
 
-      next();
+      next()
     } catch (error) {
-      log.error('SQL注入检测:', error.message);
+      log.error('SQL注入检测:', error.message)
       return res.status(403).json({
         success: false,
         message: '请求包含不安全的内容',
         code: 'SECURITY_VIOLATION',
         details: error.message
-      });
+      })
     }
-  };
+  }
 }
 
 /**
@@ -176,18 +178,18 @@ function detectSqlInjectionMiddleware() {
  */
 class SafeQueryBuilder {
   constructor(baseQuery) {
-    this.query = baseQuery || '';
-    this.params = [];
-    this.whereConditions = [];
+    this.query = baseQuery || ''
+    this.params = []
+    this.whereConditions = []
   }
 
   /**
    * 添加WHERE条件
    */
   where(condition, ...params) {
-    this.whereConditions.push(condition);
-    this.params.push(...params);
-    return this;
+    this.whereConditions.push(condition)
+    this.params.push(...params)
+    return this
   }
 
   /**
@@ -195,10 +197,10 @@ class SafeQueryBuilder {
    */
   whereIf(condition, value, ...params) {
     if (value !== undefined && value !== null && value !== '') {
-      this.whereConditions.push(condition);
-      this.params.push(...params);
+      this.whereConditions.push(condition)
+      this.params.push(...params)
     }
-    return this;
+    return this
   }
 
   /**
@@ -206,10 +208,10 @@ class SafeQueryBuilder {
    */
   whereLike(field, value) {
     if (value && typeof value === 'string') {
-      this.whereConditions.push(`${field} LIKE ?`);
-      this.params.push(`%${value}%`);
+      this.whereConditions.push(`${field} LIKE ?`)
+      this.params.push(`%${value}%`)
     }
-    return this;
+    return this
   }
 
   /**
@@ -217,11 +219,11 @@ class SafeQueryBuilder {
    */
   whereIn(field, values) {
     if (Array.isArray(values) && values.length > 0) {
-      const placeholders = values.map(() => '?').join(', ');
-      this.whereConditions.push(`${field} IN (${placeholders})`);
-      this.params.push(...values);
+      const placeholders = values.map(() => '?').join(', ')
+      this.whereConditions.push(`${field} IN (${placeholders})`)
+      this.params.push(...values)
     }
-    return this;
+    return this
   }
 
   /**
@@ -229,43 +231,43 @@ class SafeQueryBuilder {
    */
   orderBy(field, direction = 'ASC') {
     // 验证排序字段和方向
-    const safeField = field.replace(/[^a-zA-Z0-9_.]/g, '');
-    const safeDirection = direction.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+    const safeField = field.replace(/[^a-zA-Z0-9_.]/g, '')
+    const safeDirection = direction.toUpperCase() === 'DESC' ? 'DESC' : 'ASC'
 
-    this.query += ` ORDER BY ${safeField} ${safeDirection}`;
-    return this;
+    this.query += ` ORDER BY ${safeField} ${safeDirection}`
+    return this
   }
 
   /**
    * 添加LIMIT和OFFSET
    */
   limit(limit, offset = 0) {
-    this.query += ` LIMIT ? OFFSET ?`;
-    this.params.push(parseInt(limit) || 10, parseInt(offset) || 0);
-    return this;
+    this.query += ' LIMIT ? OFFSET ?'
+    this.params.push(parseInt(limit) || 10, parseInt(offset) || 0)
+    return this
   }
 
   /**
    * 构建最终查询
    */
   build() {
-    let finalQuery = this.query;
+    let finalQuery = this.query
 
     if (this.whereConditions.length > 0) {
-      finalQuery += ` WHERE ${this.whereConditions.join(' AND ')}`;
+      finalQuery += ` WHERE ${this.whereConditions.join(' AND ')}`
     }
 
     return {
       query: finalQuery,
       params: this.params
-    };
+    }
   }
 
   /**
    * 获取查询字符串（不包含参数）
    */
   toString() {
-    return this.query;
+    return this.query
   }
 }
 
@@ -273,7 +275,7 @@ class SafeQueryBuilder {
  * 创建安全的查询构建器
  */
 function createSafeQuery(baseQuery) {
-  return new SafeQueryBuilder(baseQuery);
+  return new SafeQueryBuilder(baseQuery)
 }
 
 /**
@@ -285,11 +287,11 @@ function safeExecuteQuery(pool, query, params = []) {
     try {
       // 验证查询和参数
       if (typeof query !== 'string') {
-        throw new Error('查询必须是字符串');
+        throw new Error('查询必须是字符串')
       }
 
       if (!Array.isArray(params)) {
-        throw new Error('参数必须是数组');
+        throw new Error('参数必须是数组')
       }
 
       // 检测查询中的潜在注入
@@ -297,27 +299,27 @@ function safeExecuteQuery(pool, query, params = []) {
         /(\b(DROP|DELETE|UPDATE|INSERT)\s+\w+)/gi,
         /(--|\/\*|\*\/)/g,
         /(\b(UNION|EXEC|SCRIPT)\b)/gi
-      ];
+      ]
 
       for (const pattern of suspiciousPatterns) {
         if (pattern.test(query)) {
-          throw new Error('查询包含可疑内容');
+          throw new Error('查询包含可疑内容')
         }
       }
 
       // 执行查询
       pool.execute(query, params)
         .then(([results, fields]) => {
-          resolve({ results, fields });
+          resolve({ results, fields })
         })
         .catch(error => {
-          log.error('数据库查询失败:', error);
-          reject(error);
-        });
+          log.error('数据库查询失败:', error)
+          reject(error)
+        })
     } catch (error) {
-      reject(error);
+      reject(error)
     }
-  });
+  })
 }
 
 module.exports = {
@@ -327,4 +329,4 @@ module.exports = {
   SafeQueryBuilder,
   createSafeQuery,
   safeExecuteQuery
-};
+}

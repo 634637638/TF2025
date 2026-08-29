@@ -1,7 +1,16 @@
 <template>
-  <span class="inline-loading" :class="[`inline-loading--${size}`, `inline-loading--${variant}`]">
-    <span class="inline-loading__spinner" aria-hidden="true"></span>
-    <span v-if="text" class="inline-loading__text">{{ text }}</span>
+  <span
+    class="inline-loading"
+    :class="[`inline-loading--${size}`, `inline-loading--${variant}`]"
+  >
+    <span
+      class="inline-loading__spinner"
+      aria-hidden="true"
+    />
+    <span
+      v-if="text"
+      class="inline-loading__text"
+    >{{ text }}</span>
   </span>
 </template>
 
@@ -25,7 +34,7 @@ withDefaults(defineProps<Props>(), {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  color: var(--tf-loading-color, #2563eb);
+  color: var(--tf-loading-color, var(--tf-color-blue-600));
   font-weight: 600;
   letter-spacing: 0;
   vertical-align: middle;
@@ -41,8 +50,8 @@ withDefaults(defineProps<Props>(), {
   height: 18px;
   border-radius: 50%;
   border: 2px solid var(--tf-loading-ring-track, rgba(37, 99, 235, 0.18));
-  border-top-color: var(--tf-loading-ring-primary, #2563eb);
-  border-right-color: var(--tf-loading-ring-secondary, #38bdf8);
+  border-top-color: var(--tf-loading-ring-primary, var(--tf-color-blue-600));
+  border-right-color: var(--tf-loading-ring-secondary, var(--tf-color-sky-400));
   box-sizing: border-box;
   animation: tf-loading-spin var(--tf-loading-speed, 0.72s) linear infinite;
 }

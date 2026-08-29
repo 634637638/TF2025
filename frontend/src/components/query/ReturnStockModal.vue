@@ -13,18 +13,28 @@
   >
     <template #footer>
       <div class="return-dialog-footer">
-        <el-button @click="handleCancel" :disabled="submitting">
+        <el-button
+          :disabled="submitting"
+          @click="handleCancel"
+        >
           取消
         </el-button>
-        <el-button type="primary" :loading="submitting" @click="handleSubmit">
+        <el-button
+          type="primary"
+          :loading="submitting"
+          @click="handleSubmit"
+        >
           确认退库
         </el-button>
       </div>
     </template>
 
-    <div v-if="deviceInfo" class="device-info-card">
+    <div
+      v-if="deviceInfo"
+      class="device-info-card"
+    >
       <div class="info-title">
-        <i class="fas fa-mobile-alt"></i>
+        <i class="fas fa-mobile-alt" />
         设备信息
       </div>
       <div class="info-grid">
@@ -74,29 +84,56 @@
     >
       <div class="form-section">
         <div class="section-title">
-          <i class="fas fa-undo-alt"></i>
+          <i class="fas fa-undo-alt" />
           退库信息
         </div>
 
         <div class="form-grid">
-          <el-form-item label="退库原因" prop="return_reason">
+          <el-form-item
+            label="退库原因"
+            prop="return_reason"
+          >
             <el-select
               v-model="formData.return_reason"
               placeholder="请选择退库原因"
               teleported
               popper-class="tf2025-form-popper"
             >
-              <el-option label="客户退货" value="客户退货" />
-              <el-option label="质量问题" value="质量问题" />
-              <el-option label="性能不达标" value="性能不达标" />
-              <el-option label="外观瑕疵" value="外观瑕疵" />
-              <el-option label="功能故障" value="功能故障" />
-              <el-option label="配件缺失" value="配件缺失" />
-              <el-option label="其他原因" value="其他原因" />
+              <el-option
+                label="客户退货"
+                value="客户退货"
+              />
+              <el-option
+                label="质量问题"
+                value="质量问题"
+              />
+              <el-option
+                label="性能不达标"
+                value="性能不达标"
+              />
+              <el-option
+                label="外观瑕疵"
+                value="外观瑕疵"
+              />
+              <el-option
+                label="功能故障"
+                value="功能故障"
+              />
+              <el-option
+                label="配件缺失"
+                value="配件缺失"
+              />
+              <el-option
+                label="其他原因"
+                value="其他原因"
+              />
             </el-select>
           </el-form-item>
 
-          <el-form-item label="退库时间" prop="return_date">
+          <el-form-item
+            label="退库时间"
+            prop="return_date"
+          >
             <el-date-picker
               v-model="formData.return_date"
               type="datetime"
@@ -109,30 +146,57 @@
             />
           </el-form-item>
 
-          <el-form-item label="退库类型" prop="return_type">
+          <el-form-item
+            label="退库类型"
+            prop="return_type"
+          >
             <el-select
               v-model="formData.return_type"
               placeholder="请选择退库类型"
               teleported
               popper-class="tf2025-form-popper"
             >
-              <el-option label="整单退库" value="整单退库" />
-              <el-option label="部分退库" value="部分退库" />
-              <el-option label="换货" value="换货" />
+              <el-option
+                label="整单退库"
+                value="整单退库"
+              />
+              <el-option
+                label="部分退库"
+                value="部分退库"
+              />
+              <el-option
+                label="换货"
+                value="换货"
+              />
             </el-select>
           </el-form-item>
 
-          <el-form-item label="处理方式" prop="handle_method">
+          <el-form-item
+            label="处理方式"
+            prop="handle_method"
+          >
             <el-select
               v-model="formData.handle_method"
               placeholder="请选择处理方式"
               teleported
               popper-class="tf2025-form-popper"
             >
-              <el-option label="重新入库" value="重新入库" />
-              <el-option label="返厂维修" value="返厂维修" />
-              <el-option label="供应商退换" value="供应商退换" />
-              <el-option label="报废处理" value="报废处理" />
+              <el-option
+                label="重新入库"
+                value="重新入库"
+              />
+              <el-option
+                label="返厂维修"
+                value="返厂维修"
+              />
+              <el-option
+                label="供应商退换"
+                value="供应商退换"
+              />
+              <el-option
+                label="报废处理"
+                value="报废处理"
+              />
             </el-select>
           </el-form-item>
 
@@ -155,15 +219,33 @@
               teleported
               popper-class="tf2025-form-popper"
             >
-              <el-option label="现金退款" value="现金退款" />
-              <el-option label="原路退回" value="原路退回" />
-              <el-option label="银行转账" value="银行转账" />
-              <el-option label="支付宝" value="支付宝" />
-              <el-option label="微信支付" value="微信支付" />
+              <el-option
+                label="现金退款"
+                value="现金退款"
+              />
+              <el-option
+                label="原路退回"
+                value="原路退回"
+              />
+              <el-option
+                label="银行转账"
+                value="银行转账"
+              />
+              <el-option
+                label="支付宝"
+                value="支付宝"
+              />
+              <el-option
+                label="微信支付"
+                value="微信支付"
+              />
             </el-select>
           </el-form-item>
 
-          <el-form-item class="full-width" label="备注">
+          <el-form-item
+            class="full-width"
+            label="备注"
+          >
             <el-input
               v-model="formData.remarks"
               type="textarea"
@@ -178,7 +260,7 @@
     </el-form>
 
     <div class="return-warning">
-      <i class="fas fa-exclamation-triangle"></i>
+      <i class="fas fa-exclamation-triangle" />
       <div class="warning-content">
         <strong>操作提示：</strong>
         退库后将删除对应销售记录，设备状态恢复为“在库”。
@@ -200,7 +282,7 @@ import { logger } from '@/utils/logger'
 import type { ModelValueProps, ReturnDeviceInfo as DeviceInfo, SuccessEmits, UpdateModelValueEmits } from '@/types'
 
 interface Props extends ModelValueProps {
-  deviceInfo: DeviceInfo | null
+  deviceInfo?: DeviceInfo | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -319,7 +401,7 @@ watch(
 :global(.query-return-stock-dialog .mobile-dialog-sheet-header) {
   min-height: calc(72px + env(safe-area-inset-top));
   padding: calc(12px + env(safe-area-inset-top)) 56px 12px 16px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%) !important;
 }
 
 :global(.query-return-stock-dialog .mobile-dialog-sheet-title) {
@@ -337,12 +419,12 @@ watch(
 
 :global(.query-return-stock-dialog .mobile-dialog-sheet-body),
 :global(.query-return-stock-dialog .mobile-dialog-sheet-footer) {
-  background: #ffffff;
+  background: var(--color-bg-white);
 }
 
 .device-info-card {
-  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
-  border: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, var(--tf-color-slate-50) 0%, var(--color-bg-white) 100%);
+  border: 1px solid var(--tf-color-slate-200);
   border-radius: 14px;
   padding: 18px;
   margin-bottom: 20px;
@@ -354,11 +436,11 @@ watch(
   gap: 8px;
   font-size: 14px;
   font-weight: 700;
-  color: #334155;
+  color: var(--tf-color-slate-700);
   margin-bottom: 14px;
 
   i {
-    color: #2563eb;
+    color: var(--tf-color-blue-600);
   }
 }
 
@@ -383,13 +465,13 @@ watch(
   flex-shrink: 0;
   min-width: 52px;
   font-size: 12px;
-  color: #64748b;
+  color: var(--tf-color-slate-500);
   font-weight: 600;
 }
 
 .value {
   min-width: 0;
-  color: #0f172a;
+  color: var(--tf-color-slate-900);
   font-size: 13px;
   font-weight: 600;
   word-break: break-all;
@@ -399,7 +481,7 @@ watch(
   }
 
   &.imei {
-    color: #2563eb;
+    color: var(--tf-color-blue-600);
   }
 }
 
@@ -414,13 +496,13 @@ watch(
   font-weight: 700;
 
   &.new {
-    background: #dcfce7;
-    color: #166534;
+    background: var(--tf-color-green-100);
+    color: var(--tf-color-success-text-strong);
   }
 
   &.used {
-    background: #fef3c7;
-    color: #92400e;
+    background: var(--tf-color-amber-100);
+    color: var(--tf-color-amber-800);
   }
 }
 
@@ -438,11 +520,11 @@ watch(
   gap: 8px;
   font-size: 16px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--tf-color-slate-900);
   margin-bottom: 16px;
 
   i {
-    color: #f59e0b;
+    color: var(--tf-color-amber-500);
   }
 }
 
@@ -460,10 +542,10 @@ watch(
   display: flex;
   gap: 12px;
   padding: 14px 16px;
-  background: linear-gradient(135deg, #fff7ed 0%, #fff1f2 100%);
-  border: 1px solid #fed7aa;
+  background: linear-gradient(135deg, var(--tf-color-orange-50) 0%, var(--tf-color-rose-50) 100%);
+  border: 1px solid var(--tf-color-orange-tailwind-200);
   border-radius: 12px;
-  color: #c2410c;
+  color: var(--tf-color-orange-tailwind-700);
   font-size: 13px;
   margin-top: 8px;
 

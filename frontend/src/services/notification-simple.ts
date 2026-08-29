@@ -135,7 +135,7 @@ class SimpleNotificationService {
       customClass: options.customClass || DEFAULT_MESSAGE_CLASS,
       zIndex: options.zIndex || DEFAULT_MESSAGE_Z_INDEX,
       appendTo: document.body
-    } as any)
+    })
   }
 
   /**
@@ -150,7 +150,7 @@ class SimpleNotificationService {
       customClass: options.customClass || DEFAULT_MESSAGE_CLASS,
       zIndex: options.zIndex || DEFAULT_MESSAGE_Z_INDEX,
       appendTo: document.body
-    } as any)
+    })
   }
 
   /**
@@ -165,7 +165,7 @@ class SimpleNotificationService {
       customClass: options.customClass || DEFAULT_MESSAGE_CLASS,
       zIndex: options.zIndex || DEFAULT_MESSAGE_Z_INDEX,
       appendTo: document.body
-    } as any)
+    })
   }
 
   /**
@@ -181,7 +181,7 @@ class SimpleNotificationService {
       customClass: options.customClass || DEFAULT_MESSAGE_CLASS,
       zIndex: options.zIndex || DEFAULT_MESSAGE_Z_INDEX,
       appendTo: document.body
-    } as any)
+    })
   }
 
   /**
@@ -191,9 +191,9 @@ class SimpleNotificationService {
     showElementNotification({
       title: options.title,
       message: options.message,
-      type: options.type as any,
+      type: options.type,
       duration: options.duration || this.defaultConfig.duration,
-      position: options.position as any || (this.defaultConfig.position as any),
+      position: options.position || this.defaultConfig.position,
       showClose: options.showClose ?? this.defaultConfig.showClose,
       customClass: options.customClass || DEFAULT_MESSAGE_CLASS,
       zIndex: options.zIndex || DEFAULT_MESSAGE_Z_INDEX
@@ -307,51 +307,56 @@ class SimpleNotificationService {
   /**
    * 处理API错误的专用方法
    */
-  public handleApiError(error: any, defaultMessage: string = '操作失败'): void {
+  public handleApiError(error: unknown, defaultMessage: string = '操作失败'): void {
     logger.error('API Error:', error)
+
+    const apiError = error as {
+      message?: string
+      response?: { status?: number; data?: { message?: string; errors?: string[] } }
+    }
 
     let message = defaultMessage
 
     // 解析错误响应
-    if (error?.response?.data?.message) {
-      message = error.response.data.message
-    } else if (error?.response?.data?.errors?.length > 0) {
-      message = error.response.data.errors.join('; ')
-    } else if (error?.message) {
-      message = error.message
+    if (apiError.response?.data?.message) {
+      message = apiError.response.data.message
+    } else if (apiError.response?.data?.errors && apiError.response.data.errors.length > 0) {
+      message = apiError.response.data.errors.join('; ')
+    } else if (apiError.message) {
+      message = apiError.message
     }
 
     // 根据HTTP状态码调整消息
-    if (error?.response?.status) {
-      switch (error.response.status) {
-        case 400:
-          message = error?.response?.data?.message || '请求参数错误'
-          break
-        case 401:
-          message = '登录已过期，请重新登录'
-          break
-        case 403:
-          message = '权限不足，无法执行此操作'
-          break
-        case 404:
-          message = '请求的资源不存在'
-          break
-        case 409:
-          // 409 Conflict - 直接使用后端返回的冲突消息
-          message = error?.response?.data?.message || message
-          break
-        case 422:
-          message = '数据验证失败：' + message
-          break
-        case 500:
-          message = '服务器内部错误，请稍后重试'
-          break
-        case 502:
-          message = '网关错误，请稍后重试'
-          break
-        case 503:
-          message = '服务暂时不可用，请稍后重试'
-          break
+    if (apiError.response?.status) {
+      switch (apiError.response.status) {
+      case 400:
+        message = apiError.response.data?.message || '请求参数错误'
+        break
+      case 401:
+        message = '登录已过期，请重新登录'
+        break
+      case 403:
+        message = '权限不足，无法执行此操作'
+        break
+      case 404:
+        message = '请求的资源不存在'
+        break
+      case 409:
+        // 409 Conflict - 直接使用后端返回的冲突消息
+        message = apiError.response.data?.message || message
+        break
+      case 422:
+        message = '数据验证失败：' + message
+        break
+      case 500:
+        message = '服务器内部错误，请稍后重试'
+        break
+      case 502:
+        message = '网关错误，请稍后重试'
+        break
+      case 503:
+        message = '服务暂时不可用，请稍后重试'
+        break
       }
     }
 
@@ -361,8 +366,8 @@ class SimpleNotificationService {
   /**
    * 处理API成功响应的专用方法
    */
-  public handleApiSuccess(response: any, defaultMessage: string = '操作成功'): void {
-    const message = response?.message || defaultMessage
+  public handleApiSuccess(response: unknown, defaultMessage: string = '操作成功'): void {
+    const message = (response as { message?: string })?.message || defaultMessage
     this.success(message, { title: '操作成功' })
   }
 

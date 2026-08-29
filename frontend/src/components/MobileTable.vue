@@ -1,18 +1,30 @@
 <template>
-  <div ref="containerRef" class="mobile-table">
+  <div
+    ref="containerRef"
+    class="mobile-table"
+  >
     <!-- 桌面端表格 -->
-    <div v-if="!isMobile" class="mobile-table__desktop">
+    <div
+      v-if="!isMobile"
+      class="mobile-table__desktop"
+    >
       <el-table
         ref="desktopTableRef"
         :data="loading ? [] : data"
         :stripe="stripe"
         :border="border"
         :size="size"
+        class="data-table compact-fit-table"
+        :fit="true"
         @selection-change="handleSelectionChange"
       >
         <template #empty>
-          <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
-          <el-empty
+          <TableLoadingRow
+            v-if="loading"
+            mode="block"
+            text="加载中..."
+          />
+          <DataEmptyState
             v-else
             :image="emptyImage"
             :description="emptyDescription"
@@ -30,10 +42,15 @@
           :min-width="column.minWidth"
           :sortable="column.sortable"
           :align="column.align || 'left'"
-          :show-overflow-tooltip="column.showOverflowTooltip !== false"
         >
-          <template #default="{ row }" v-if="column.slot">
-            <slot :name="column.slot" :row="row" />
+          <template
+            v-if="column.slot"
+            #default="{ row }"
+          >
+            <slot
+              :name="column.slot"
+              :row="row"
+            />
           </template>
         </el-table-column>
 
@@ -41,9 +58,9 @@
         <el-table-column
           v-if="actions && actions.length > 0"
           label="操作"
-          :width="actionWidth || 150"
-          fixed="right"
+          :width="actionWidth || $getActionColumnWidth(actions.map(action => action.label))"
           align="center"
+          class-name="actions-column"
         >
           <template #default="{ row, $index }">
             <div class="mobile-table__actions">
@@ -54,7 +71,7 @@
                 :size="action.size || 'small'"
                 :icon="action.icon"
                 :disabled="action.disabled ? action.disabled(row) : false"
-                @click="handleAction(action, row, $index)"
+                @click.stop="handleAction(action, row, $index)"
               >
                 {{ action.label }}
               </el-button>
@@ -65,10 +82,19 @@
     </div>
 
     <!-- 移动端卡片式表格 -->
-    <div v-else class="mobile-table__mobile">
-      <SectionLoading v-if="loading" text="加载中..." />
+    <div
+      v-else
+      class="mobile-table__mobile"
+    >
+      <SectionLoading
+        v-if="loading"
+        text="加载中..."
+      />
 
-      <div v-else class="mobile-table__card-list">
+      <div
+        v-else
+        class="mobile-table__card-list"
+      >
         <div
           v-for="(row, index) in data"
           :key="getRowKey(row, index)"
@@ -78,10 +104,20 @@
           @click="handleCardClick(row)"
         >
           <!-- 卡片头部 -->
-          <div v-if="showCardHeader" class="mobile-table__card-header">
-            <slot name="card-header" :row="row">
-              <h4 class="mobile-table__card-title">{{ getCardTitle(row) }}</h4>
-              <div class="mobile-table__card-subtitle">{{ getCardSubtitle(row) }}</div>
+          <div
+            v-if="showCardHeader"
+            class="mobile-table__card-header"
+          >
+            <slot
+              name="card-header"
+              :row="row"
+            >
+              <h4 class="mobile-table__card-title">
+                {{ getCardTitle(row) }}
+              </h4>
+              <div class="mobile-table__card-subtitle">
+                {{ getCardSubtitle(row) }}
+              </div>
             </slot>
           </div>
 
@@ -89,20 +125,29 @@
           <div class="mobile-table__card-body">
             <div
               v-for="column in getMobileColumns()"
+              v-show="!column.mobileHidden"
               :key="column.prop"
               class="mobile-table__card-field"
-              v-show="!column.mobileHidden"
             >
-              <div class="mobile-table__field-label">{{ column.label }}</div>
+              <div class="mobile-table__field-label">
+                {{ column.label }}
+              </div>
               <div class="mobile-table__field-value">
-                <slot v-if="column.slot" :name="column.slot" :row="row" />
+                <slot
+                  v-if="column.slot"
+                  :name="column.slot"
+                  :row="row"
+                />
                 <span v-else>{{ formatFieldValue(row[column.prop], row, column) }}</span>
               </div>
             </div>
           </div>
 
           <!-- 卡片底部操作 -->
-          <div v-if="actions && actions.length > 0" class="mobile-table__card-actions">
+          <div
+            v-if="actions && actions.length > 0"
+            class="mobile-table__card-actions"
+          >
             <el-button
               v-for="action in getMobileActions()"
               :key="action.key"
@@ -110,8 +155,8 @@
               :size="action.size || 'small'"
               :icon="action.icon"
               :disabled="action.disabled ? action.disabled(row) : false"
-              @click.stop="handleAction(action, row, index)"
               class="mobile-table__mobile-action-btn"
+              @click.stop="handleAction(action, row, index)"
             >
               {{ action.label }}
             </el-button>
@@ -120,9 +165,12 @@
       </div>
 
       <!-- 空状态 -->
-      <div v-if="!loading && (!data || data.length === 0)" class="mobile-table__empty">
+      <div
+        v-if="!loading && (!data || data.length === 0)"
+        class="mobile-table__empty"
+      >
         <slot name="empty">
-          <el-empty
+          <DataEmptyState
             :image="emptyImage"
             :description="emptyDescription"
             :image-size="emptyImageSize"
@@ -134,7 +182,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, type Component } from 'vue'
+import { ref, type Component } from 'vue'
 import SectionLoading from '@/components/SectionLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import type { TableAction, TableColumn } from '@/types/component'
@@ -147,7 +195,7 @@ interface MobileTableColumn extends TableColumn {
   showOverflowTooltip?: boolean
   slot?: string
   mobileHidden?: boolean
-  mobileFormatter?: (value: unknown, row: TableRow) => string
+  mobileFormatter?: (_value: unknown, _row: TableRow) => string
 }
 
 interface MobileTableAction extends TableAction<TableRow> {
@@ -164,7 +212,7 @@ interface Props {
   size?: 'large' | 'default' | 'small'
   actions?: MobileTableAction[]
   actionWidth?: string | number
-  rowKey?: string | ((row: TableRow) => RowKey)
+  rowKey?: string | ((_row: TableRow) => RowKey)
   showCardHeader?: boolean
   emptyDescription?: string
   emptyImage?: string
@@ -180,8 +228,11 @@ const props = withDefaults(defineProps<Props>(), {
   border: false,
   size: 'default',
   actions: () => [],
+  actionWidth: undefined,
+  rowKey: undefined,
   showCardHeader: true,
   emptyDescription: '暂无数据',
+  emptyImage: '',
   emptyImageSize: 120,
   titleField: 'id',
   subtitleField: '',
@@ -199,7 +250,7 @@ const emit = defineEmits<Emits>()
 // 使用移动端检测
 const { isMobile } = useMobile()
 const containerRef = ref<HTMLElement | null>(null)
-const desktopTableRef = ref<{ setCurrentRow?: (row?: TableRow) => void } | null>(null)
+const desktopTableRef = ref<{ setCurrentRow?: (_row?: TableRow) => void } | null>(null)
 
 // 选中的行
 const selectedRows = ref<TableRow[]>([])

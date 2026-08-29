@@ -4,37 +4,61 @@
 -->
 <template>
   <div class="order-detail-page">
-    <div v-if="loading" class="loading-state">
-      <SectionLoading text="加载订单详情中..." size="large" />
+    <div
+      v-if="loading"
+      class="loading-state"
+    >
+      <SectionLoading
+        text="加载订单详情中..."
+        size="large"
+      />
     </div>
 
-    <div v-else-if="orderData" class="order-content">
+    <div
+      v-else-if="orderData"
+      class="order-content"
+    >
       <!-- 订单状态 -->
       <div class="status-card">
         <div class="status-icon">
-          <i :class="getStatusIcon(orderData.status)"></i>
+          <i :class="getStatusIcon(orderData.status)" />
         </div>
-        <h2 class="status-title">{{ getStatusText(orderData.status) }}</h2>
-        <p v-if="orderData.status === 'pending' && remainingTime > 0" class="status-tip">
+        <h2 class="status-title">
+          {{ getStatusText(orderData.status) }}
+        </h2>
+        <p
+          v-if="orderData.status === 'pending' && remainingTime > 0"
+          class="status-tip"
+        >
           请在 <span class="countdown">{{ formatTime(remainingTime) }}</span> 内完成支付
         </p>
-        <p v-else-if="orderData.status === 'pending'" class="status-tip expired">
+        <p
+          v-else-if="orderData.status === 'pending'"
+          class="status-tip expired"
+        >
           订单已过期，无法支付
         </p>
-        <p v-else-if="orderData.status === 'pending'" class="status-tip">请尽快完成支付</p>
-        <p v-else-if="orderData.status === 'paid'" class="status-tip warning">
-          <i class="fas fa-info-circle"></i>
+        <p
+          v-else-if="orderData.status === 'paid'"
+          class="status-tip warning"
+        >
+          <i class="fas fa-info-circle" />
           您的订单正在审核中，请耐心等待后台确认
         </p>
-        <p v-else-if="orderData.status === 'confirmed'" class="status-tip success">
-          <i class="fas fa-check-circle"></i>
+        <p
+          v-else-if="orderData.status === 'confirmed'"
+          class="status-tip success"
+        >
+          <i class="fas fa-check-circle" />
           订单已确认，我们会尽快为您发货
         </p>
       </div>
 
       <!-- 订单信息 -->
       <div class="section">
-        <h3 class="section-title">订单信息</h3>
+        <h3 class="section-title">
+          订单信息
+        </h3>
         <div class="info-list">
           <div class="info-item">
             <span class="label">订单号</span>
@@ -53,7 +77,9 @@
 
       <!-- 收货信息 -->
       <div class="section">
-        <h3 class="section-title">收货信息</h3>
+        <h3 class="section-title">
+          收货信息
+        </h3>
         <div class="info-list">
           <div class="info-item">
             <span class="label">联系人</span>
@@ -63,7 +89,10 @@
             <span class="label">联系电话</span>
             <span class="value">{{ orderData.customer_phone }}</span>
           </div>
-          <div v-if="orderData.customer_address" class="info-item">
+          <div
+            v-if="orderData.customer_address"
+            class="info-item"
+          >
             <span class="label">收货地址</span>
             <span class="value">{{ orderData.customer_address }}</span>
           </div>
@@ -72,15 +101,29 @@
 
       <!-- 商品列表 -->
       <div class="section">
-        <h3 class="section-title">商品信息</h3>
+        <h3 class="section-title">
+          商品信息
+        </h3>
         <div class="order-items">
-          <div v-for="item in orderData.items" :key="item.id" class="order-item">
+          <div
+            v-for="item in orderData.items"
+            :key="item.id"
+            class="order-item"
+          >
             <div class="item-image">
-              <Image :src="item.image_url" :alt="item.product_name" mode="lazy" />
+              <Image
+                :src="item.image_url"
+                :alt="item.product_name"
+                mode="lazy"
+              />
             </div>
             <div class="item-info">
-              <h4 class="item-name">{{ item.product_name }}</h4>
-              <p class="item-specs">{{ item.specs }}</p>
+              <h4 class="item-name">
+                {{ item.product_name }}
+              </h4>
+              <p class="item-specs">
+                {{ item.specs }}
+              </p>
               <div class="item-footer">
                 <span class="item-price">¥{{ parseFloat(item.sale_price).toFixed(2) }}</span>
                 <span class="item-quantity">x{{ item.quantity }}</span>
@@ -107,19 +150,29 @@
       </div>
 
       <!-- 备注 -->
-      <div v-if="orderData.remarks" class="section">
-        <h3 class="section-title">备注信息</h3>
-        <p class="remarks">{{ orderData.remarks }}</p>
+      <div
+        v-if="orderData.remarks"
+        class="section"
+      >
+        <h3 class="section-title">
+          备注信息
+        </h3>
+        <p class="remarks">
+          {{ orderData.remarks }}
+        </p>
       </div>
     </div>
 
     <!-- 底部操作栏 -->
-    <div v-if="orderData" class="bottom-bar">
+    <div
+      v-if="orderData"
+      class="bottom-bar"
+    >
       <el-button
         v-if="orderData.status === 'pending' && !isOrderExpired"
         class="action-btn cancel-btn"
-        @click="handleCancelOrder"
         :loading="cancelling"
+        @click="handleCancelOrder"
       >
         取消订单
       </el-button>
@@ -131,7 +184,10 @@
       >
         立即支付
       </el-button>
-      <el-button class="action-btn back-btn" @click="goBack">
+      <el-button
+        class="action-btn back-btn"
+        @click="goBack"
+      >
         {{ orderData.status === 'pending' && !isOrderExpired ? '返回' : '关闭' }}
       </el-button>
     </div>
@@ -167,14 +223,17 @@
               @click="selectPaymentMethod('wechat')"
             >
               <div class="payment-icon wechat">
-                <i class="fab fa-weixin"></i>
+                <i class="fab fa-weixin" />
               </div>
               <div class="payment-info">
                 <span class="payment-name">微信支付</span>
                 <span class="payment-desc">推荐使用微信支付</span>
               </div>
               <div class="payment-check">
-                <i v-if="selectedPaymentMethod === 'wechat'" class="fas fa-check-circle"></i>
+                <i
+                  v-if="selectedPaymentMethod === 'wechat'"
+                  class="fas fa-check-circle"
+                />
               </div>
             </div>
 
@@ -186,14 +245,17 @@
               @click="selectPaymentMethod('alipay')"
             >
               <div class="payment-icon alipay">
-                <i class="fab fa-alipay"></i>
+                <i class="fab fa-alipay" />
               </div>
               <div class="payment-info">
                 <span class="payment-name">支付宝</span>
                 <span class="payment-desc">支付宝安全支付</span>
               </div>
               <div class="payment-check">
-                <i v-if="selectedPaymentMethod === 'alipay'" class="fas fa-check-circle"></i>
+                <i
+                  v-if="selectedPaymentMethod === 'alipay'"
+                  class="fas fa-check-circle"
+                />
               </div>
             </div>
 
@@ -205,14 +267,17 @@
               @click="selectPaymentMethod('bank')"
             >
               <div class="payment-icon bank">
-                <i class="fas fa-university"></i>
+                <i class="fas fa-university" />
               </div>
               <div class="payment-info">
                 <span class="payment-name">银行转账</span>
                 <span class="payment-desc">银行柜台转账</span>
               </div>
               <div class="payment-check">
-                <i v-if="selectedPaymentMethod === 'bank'" class="fas fa-check-circle"></i>
+                <i
+                  v-if="selectedPaymentMethod === 'bank'"
+                  class="fas fa-check-circle"
+                />
               </div>
             </div>
 
@@ -223,14 +288,17 @@
               @click="selectPaymentMethod('pickup')"
             >
               <div class="payment-icon pickup">
-                <i class="fas fa-store"></i>
+                <i class="fas fa-store" />
               </div>
               <div class="payment-info">
                 <span class="payment-name">到店自提</span>
                 <span class="payment-desc">到店支付，方便快捷</span>
               </div>
               <div class="payment-check">
-                <i v-if="selectedPaymentMethod === 'pickup'" class="fas fa-check-circle"></i>
+                <i
+                  v-if="selectedPaymentMethod === 'pickup'"
+                  class="fas fa-check-circle"
+                />
               </div>
             </div>
           </div>
@@ -239,77 +307,136 @@
         <!-- 步骤2：显示支付二维码或信息 -->
         <template v-else-if="paymentStep === 'pay'">
           <!-- 微信支付二维码 -->
-          <div v-if="selectedPaymentMethod === 'wechat'" class="payment-qrcode">
+          <div
+            v-if="selectedPaymentMethod === 'wechat'"
+            class="payment-qrcode"
+          >
             <div class="qrcode-header">
-              <i class="fab fa-weixin" style="color: #09bb07;"></i>
+              <i
+                class="fab fa-weixin"
+                style="color: #09bb07;"
+              />
               <span>微信扫码支付</span>
             </div>
             <div class="qrcode-box">
-              <img :src="shopConfig.wechat_qrcode" alt="微信支付二维码" />
+              <img
+                :src="formatImageUrl(shopConfig.wechat_qrcode)"
+                alt="微信支付二维码"
+              >
             </div>
-            <p class="payment-tip">请使用微信扫一扫，扫描二维码完成支付</p>
+            <p class="payment-tip">
+              请使用微信扫一扫，扫描二维码完成支付
+            </p>
           </div>
 
           <!-- 支付宝二维码 -->
-          <div v-else-if="selectedPaymentMethod === 'alipay'" class="payment-qrcode">
+          <div
+            v-else-if="selectedPaymentMethod === 'alipay'"
+            class="payment-qrcode"
+          >
             <div class="qrcode-header">
-              <i class="fab fa-alipay" style="color: #1677ff;"></i>
+              <i
+                class="fab fa-alipay"
+                style="color: #1677ff;"
+              />
               <span>支付宝扫码支付</span>
             </div>
             <div class="qrcode-box">
-              <img :src="shopConfig.alipay_qrcode" alt="支付宝二维码" />
+              <img
+                :src="formatImageUrl(shopConfig.alipay_qrcode)"
+                alt="支付宝二维码"
+              >
             </div>
-            <p class="payment-tip">请使用支付宝扫一扫，扫描二维码完成支付</p>
+            <p class="payment-tip">
+              请使用支付宝扫一扫，扫描二维码完成支付
+            </p>
           </div>
 
           <!-- 银行转账信息 -->
-          <div v-else-if="selectedPaymentMethod === 'bank'" class="bank-transfer">
+          <div
+            v-else-if="selectedPaymentMethod === 'bank'"
+            class="bank-transfer"
+          >
             <div class="bank-header">
-              <i class="fas fa-university" style="color: #ff6b00;"></i>
+              <i
+                class="fas fa-university"
+                style="color: #ff6b00;"
+              />
               <span>银行转账</span>
             </div>
             <div class="bank-info">
-              <p style="white-space: pre-line;">{{ shopConfig.bank_info }}</p>
+              <p style="white-space: pre-line;">
+                {{ shopConfig.bank_info }}
+              </p>
             </div>
           </div>
 
           <!-- 到店自提信息 -->
-          <div v-else-if="selectedPaymentMethod === 'pickup'" class="pickup-info">
+          <div
+            v-else-if="selectedPaymentMethod === 'pickup'"
+            class="pickup-info"
+          >
             <div class="pickup-header">
-              <i class="fas fa-store" style="color: #00c853;"></i>
+              <i
+                class="fas fa-store"
+                style="color: #00c853;"
+              />
               <span>到店自提</span>
             </div>
             <div class="pickup-details">
               <p v-if="shopConfig.shop_address">
-                <i class="fas fa-map-marker-alt"></i> {{ shopConfig.shop_address }}
+                <i class="fas fa-map-marker-alt" /> {{ shopConfig.shop_address }}
               </p>
               <p v-if="shopConfig.shop_phone">
-                <i class="fas fa-phone"></i> {{ shopConfig.shop_phone }}
+                <i class="fas fa-phone" /> {{ shopConfig.shop_phone }}
               </p>
               <p v-if="shopConfig.shop_hours">
-                <i class="fas fa-clock"></i> {{ shopConfig.shop_hours }}
+                <i class="fas fa-clock" /> {{ shopConfig.shop_hours }}
               </p>
             </div>
-            <p class="payment-tip">请到店出示订单号，完成支付</p>
+            <p class="payment-tip">
+              请到店出示订单号，完成支付
+            </p>
           </div>
         </template>
       </div>
 
       <template #footer>
-        <div v-if="paymentStep === 'select'" class="dialog-footer">
-          <el-button type="default" @click="showPaymentDialog = false">取消</el-button>
+        <div
+          v-if="paymentStep === 'select'"
+          class="dialog-footer"
+        >
+          <el-button
+            type="default"
+            @click="showPaymentDialog = false"
+          >
+            取消
+          </el-button>
           <el-button
             type="primary"
-            @click="confirmPaymentMethod"
             :disabled="!selectedPaymentMethod"
             size="large"
+            @click="confirmPaymentMethod"
           >
             下一步
           </el-button>
         </div>
-        <div v-else class="dialog-footer">
-          <el-button type="default" @click="backToSelect" size="large">返回</el-button>
-          <el-button type="success" @click="completePayment" size="large">
+        <div
+          v-else
+          class="dialog-footer"
+        >
+          <el-button
+            type="default"
+            size="large"
+            @click="backToSelect"
+          >
+            返回
+          </el-button>
+          <el-button
+            type="success"
+            size="large"
+            @click="completePayment"
+          >
             我已完成支付
           </el-button>
         </div>
@@ -323,14 +450,18 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getOrderByNumber, getPublicConfig, cancelOrder, confirmPayment } from '@/api/shop-public'
-import { TimeUtil, TIME_FORMATS } from '@/utils/time'
+import { TimeUtil } from '@/utils/time'
 import Image from '@/components/Image.vue'
 import SectionLoading from '@/components/SectionLoading.vue'
+import { formatImageUrl } from '@/utils/format'
 import { logger } from '@/utils/logger'
+import { storage } from '@/services/storage'
+import { H5_STORAGE_KEYS } from '@/constants/storage'
 const router = useRouter()
 const route = useRoute()
 
 const orderData = ref<any>(null)
+const orderAccessToken = ref('')
 const loading = ref(true)
 const shopConfig = ref<any>({})
 const cancelling = ref(false)
@@ -362,7 +493,11 @@ const loadOrder = async () => {
 
   try {
     loading.value = true
-    const data = await getOrderByNumber(orderNumber as string)
+    const storedOrder = storage.get<{ orderNumber: string; accessToken?: string }>(H5_STORAGE_KEYS.ORDER_SUCCESS, 'session')
+    orderAccessToken.value = storedOrder?.orderNumber === String(orderNumber)
+      ? String(storedOrder.accessToken || '')
+      : ''
+    const data = await getOrderByNumber(orderNumber as string, orderAccessToken.value)
     orderData.value = data
   } catch (error: any) {
     logger.error('获取订单详情失败:', error)
@@ -524,7 +659,7 @@ const completePayment = async () => {
     })
 
     // 调用确认支付API
-    await confirmPayment(orderData.value.order_number)
+    await confirmPayment(orderData.value.order_number, orderAccessToken.value)
 
     loading.close()
     ElMessage.success('支付确认成功！订单已提交审核，请耐心等待后台确认')
@@ -553,7 +688,7 @@ const handleCancelOrder = async () => {
     )
 
     cancelling.value = true
-    await cancelOrder(orderData.value.id, '用户主动取消')
+    await cancelOrder(orderData.value.id, orderAccessToken.value, '用户主动取消')
     ElMessage.success('订单已取消')
 
     // 重新加载订单信息
@@ -584,7 +719,7 @@ onUnmounted(() => {
 <style scoped lang="scss">
 .order-detail-page {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: var(--tf-color-surface-soft);
   padding-bottom: 60px;
 }
 
@@ -594,8 +729,8 @@ onUnmounted(() => {
 
 // 订单状态卡片
 .status-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #fff;
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
+  color: var(--color-bg-white);
   text-align: center;
   padding: 32px 16px;
 
@@ -620,7 +755,7 @@ onUnmounted(() => {
     .countdown {
       font-weight: 600;
       font-size: 16px;
-      color: #fff;
+      color: var(--color-bg-white);
       background: rgba(255, 255, 255, 0.2);
       padding: 2px 8px;
       border-radius: 4px;
@@ -628,14 +763,14 @@ onUnmounted(() => {
     }
 
     &.expired {
-      color: #ffcccc;
+      color: var(--tf-color-red-pastel);
     }
   }
 }
 
 // 通用区块
 .section {
-  background: #fff;
+  background: var(--color-bg-white);
   margin: 12px;
   padding: 16px;
   border-radius: 8px;
@@ -643,7 +778,7 @@ onUnmounted(() => {
   .section-title {
     font-size: 16px;
     font-weight: 500;
-    color: #333;
+    color: var(--text-primary);
     margin: 0 0 12px;
   }
 }
@@ -657,12 +792,12 @@ onUnmounted(() => {
 
     .label {
       font-size: 14px;
-      color: #666;
+      color: var(--text-secondary);
     }
 
     .value {
       font-size: 14px;
-      color: #333;
+      color: var(--text-primary);
       text-align: right;
     }
   }
@@ -673,7 +808,7 @@ onUnmounted(() => {
   .order-item {
     display: flex;
     padding: 12px 0;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid var(--tf-color-gray-200);
 
     &:last-child {
       border-bottom: none;
@@ -684,7 +819,7 @@ onUnmounted(() => {
       height: 80px;
       border-radius: 8px;
       overflow: hidden;
-      background: #f5f5f5;
+      background: var(--tf-color-surface-soft);
       flex-shrink: 0;
 
       img {
@@ -704,13 +839,13 @@ onUnmounted(() => {
       .item-name {
         font-size: 14px;
         font-weight: 500;
-        color: #333;
+        color: var(--text-primary);
         margin: 0;
       }
 
       .item-specs {
         font-size: 12px;
-        color: #999;
+        color: var(--text-muted);
         margin: 4px 0;
       }
 
@@ -722,12 +857,12 @@ onUnmounted(() => {
         .item-price {
           font-size: 16px;
           font-weight: 500;
-          color: #ff1744;
+          color: var(--tf-color-accent-pink);
         }
 
         .item-quantity {
           font-size: 14px;
-          color: #666;
+          color: var(--text-secondary);
         }
       }
     }
@@ -743,14 +878,14 @@ onUnmounted(() => {
     font-size: 14px;
 
     &.total {
-      border-top: 1px solid #f0f0f0;
+      border-top: 1px solid var(--tf-color-gray-200);
       padding-top: 12px;
       margin-top: 4px;
       font-size: 16px;
       font-weight: 500;
 
       .total-amount {
-        color: #ff1744;
+        color: var(--tf-color-accent-pink);
         font-size: 20px;
       }
     }
@@ -760,7 +895,7 @@ onUnmounted(() => {
 // 备注
 .remarks {
   font-size: 14px;
-  color: #666;
+  color: var(--text-secondary);
   line-height: 1.6;
   margin: 0;
   white-space: pre-line;
@@ -776,8 +911,8 @@ onUnmounted(() => {
   gap: 10px;
   padding: 12px 16px;
   padding-bottom: calc(12px + env(safe-area-inset-bottom));
-  background: #fff;
-  border-top: 1px solid #eee;
+  background: var(--color-bg-white);
+  border-top: 1px solid var(--tf-color-gray-200-alt);
   box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
   z-index: 200;
 
@@ -861,19 +996,19 @@ onUnmounted(() => {
     justify-content: space-between;
     align-items: center;
     padding: 16px;
-    background: linear-gradient(135deg, #fff5f5 0%, #ffe8e8 100%);
+    background: linear-gradient(135deg, var(--tf-color-red-surface) 0%, var(--tf-color-red-pastel-light) 100%);
     border-radius: 12px;
     margin-bottom: 20px;
 
     .label {
       font-size: 14px;
-      color: #666;
+      color: var(--text-secondary);
     }
 
     .amount {
       font-size: 24px;
       font-weight: 600;
-      color: #ff4757;
+      color: var(--tf-color-red-coral);
     }
   }
 
@@ -887,8 +1022,8 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
     padding: 16px;
-    background: #fff;
-    border: 2px solid #f0f0f0;
+    background: var(--color-bg-white);
+    border: 2px solid var(--tf-color-gray-200);
     border-radius: 12px;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -898,17 +1033,17 @@ onUnmounted(() => {
     }
 
     &.active {
-      border-color: #ff6b6b;
-      background: linear-gradient(135deg, #fff5f5 0%, #ffe8e8 100%);
+      border-color: var(--tf-color-coral);
+      background: linear-gradient(135deg, var(--tf-color-red-surface) 0%, var(--tf-color-red-pastel-light) 100%);
 
       .payment-icon {
-        background: #ff6b6b;
-        color: #fff;
+        background: var(--tf-color-coral);
+        color: var(--color-bg-white);
       }
 
       .payment-check {
         i {
-          color: #ff6b6b;
+          color: var(--tf-color-coral);
         }
       }
     }
@@ -919,19 +1054,19 @@ onUnmounted(() => {
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #f5f5f5;
+      background: var(--tf-color-surface-soft);
       border-radius: 10px;
       margin-right: 12px;
       font-size: 20px;
-      color: #666;
+      color: var(--text-secondary);
       transition: all 0.3s ease;
 
       &.wechat {
-        color: #09bb07;
+        color: var(--tf-color-wechat-legacy);
       }
 
       &.alipay {
-        color: #1677ff;
+        color: var(--tf-color-blue-bootstrap);
       }
     }
 
@@ -944,19 +1079,19 @@ onUnmounted(() => {
       .payment-name {
         font-size: 15px;
         font-weight: 500;
-        color: #333;
+        color: var(--text-primary);
       }
 
       .payment-desc {
         font-size: 12px;
-        color: #999;
+        color: var(--text-muted);
       }
     }
 
     .payment-check {
       i {
         font-size: 20px;
-        color: #ddd;
+        color: var(--tf-color-gray-300-alt);
         transition: all 0.3s ease;
       }
     }
@@ -998,7 +1133,7 @@ onUnmounted(() => {
     gap: 8px;
     font-size: 18px;
     font-weight: 600;
-    color: #333;
+    color: var(--text-primary);
     margin-bottom: 20px;
   }
 
@@ -1007,7 +1142,7 @@ onUnmounted(() => {
     justify-content: center;
     align-items: center;
     padding: 20px;
-    background: #f8f9fa;
+    background: var(--tf-color-surface-muted);
     border-radius: 12px;
     margin-bottom: 16px;
 
@@ -1020,7 +1155,7 @@ onUnmounted(() => {
 
   .payment-tip {
     font-size: 14px;
-    color: #666;
+    color: var(--text-secondary);
     margin: 0;
   }
 }
@@ -1036,18 +1171,18 @@ onUnmounted(() => {
     gap: 8px;
     font-size: 18px;
     font-weight: 600;
-    color: #333;
+    color: var(--text-primary);
     margin-bottom: 20px;
   }
 
   .bank-info {
-    background: #f8f9fa;
+    background: var(--tf-color-surface-muted);
     padding: 20px;
     border-radius: 12px;
 
     p {
       font-size: 14px;
-      color: #333;
+      color: var(--text-primary);
       line-height: 1.8;
       margin: 0;
     }
@@ -1065,12 +1200,12 @@ onUnmounted(() => {
     gap: 8px;
     font-size: 18px;
     font-weight: 600;
-    color: #333;
+    color: var(--text-primary);
     margin-bottom: 20px;
   }
 
   .pickup-details {
-    background: #f8f9fa;
+    background: var(--tf-color-surface-muted);
     padding: 20px;
     border-radius: 12px;
     margin-bottom: 16px;
@@ -1080,12 +1215,12 @@ onUnmounted(() => {
       align-items: center;
       gap: 12px;
       font-size: 14px;
-      color: #333;
+      color: var(--text-primary);
       line-height: 2;
       margin: 0;
 
       i {
-        color: #ff6b00;
+        color: var(--tf-color-accent-orange);
         font-size: 16px;
         width: 20px;
         text-align: center;
@@ -1096,7 +1231,7 @@ onUnmounted(() => {
   .payment-tip {
     text-align: center;
     font-size: 14px;
-    color: #666;
+    color: var(--text-secondary);
     margin: 0;
   }
 }

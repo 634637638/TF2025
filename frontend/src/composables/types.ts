@@ -4,7 +4,6 @@
  */
 
 import type { Ref, ComputedRef } from 'vue'
-import type { Router } from 'vue-router'
 
 // 从全局类型导入重复定义
 export type {
@@ -17,19 +16,19 @@ export type {
 /**
  * 通用异步状态
  */
-export interface AsyncState<T = any> {
+export interface AsyncState<T = unknown> {
   data: Ref<T | null>
   loading: Ref<boolean>
   error: Ref<string | null>
   success: Ref<boolean>
-  execute: (...args: any[]) => Promise<T | null>
+  execute: (...args: never[]) => Promise<T | null>
   reset: () => void
 }
 
 /**
  * 列表状态
  */
-export interface ListState<T = any> {
+export interface ListState<T = unknown> {
   data: Ref<T[]>
   pagination: Ref<import('@/types').PaginationState>
   sort: Ref<import('@/types').SortConfig | null>
@@ -48,7 +47,7 @@ export interface ListState<T = any> {
 /**
  * 表单状态
  */
-export interface FormState<T = Record<string, any>> {
+export interface FormState<T = Record<string, unknown>> {
   data: Ref<T>
   errors: Ref<Record<string, string[]>>
   touched: Ref<Record<string, boolean>>
@@ -57,7 +56,7 @@ export interface FormState<T = Record<string, any>> {
   loading: Ref<boolean>
   reset: () => void
   validate: () => Promise<boolean>
-  setField: (field: keyof T, value: any) => void
+  setField: (field: keyof T, value: unknown) => void
   setError: (field: keyof T, error: string[]) => void
   clearError: (field: keyof T) => void
   setTouched: (field: keyof T, touched: boolean) => void
@@ -109,9 +108,9 @@ export interface ThrottleConfig {
  */
 export interface DragState {
   isDragging: Ref<boolean>
-  dragData: Ref<any>
+  dragData: Ref<unknown>
   dragOffset: Ref<{ x: number, y: number }>
-  startDrag: (event: MouseEvent | TouchEvent, data?: any) => void
+  startDrag: (event: MouseEvent | TouchEvent, data?: unknown) => void
   onDrag: (event: MouseEvent | TouchEvent) => void
   endDrag: () => void
 }
@@ -214,7 +213,7 @@ export interface ThemeState {
 /**
  * 本地存储状态
  */
-export interface StorageState<T = any> {
+export interface StorageState<T = unknown> {
   data: Ref<T>
   set: (value: T) => void
   remove: () => void
@@ -223,9 +222,7 @@ export interface StorageState<T = any> {
 /**
  * 会话存储状态
  */
-export interface SessionStorageState<T = any> extends StorageState<T> {
-  // 继承StorageState的所有属性
-}
+export type SessionStorageState<T = unknown> = StorageState<T>
 
 /**
  * 路由守卫状态

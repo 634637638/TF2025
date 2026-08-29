@@ -3,14 +3,12 @@
  * 提供手机端特有功能的 Composition API 实现
  */
 
-import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick, readonly, type Ref } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, watch, readonly, type Ref } from 'vue'
 import { useAppStore } from '@/stores/app'
 import { BREAKPOINTS, BreakpointName, deviceType } from '@/config/breakpoints'
 import logger from '@/utils/logger'
 import type {
   DeviceInfo,
-  TouchState,
-  Breakpoints,
   MobileOptimizeConfig
 } from '@/types'
 
@@ -28,6 +26,16 @@ type NetworkConnectionLike = {
   rtt?: number
   addEventListener?: (type: 'change', listener: () => void) => void
   removeEventListener?: (type: 'change', listener: () => void) => void
+}
+
+type PerformanceMemoryLike = {
+  usedJSHeapSize: number
+  totalJSHeapSize: number
+  jsHeapSizeLimit: number
+}
+
+type PerformanceWithMemory = Performance & {
+  memory?: PerformanceMemoryLike
 }
 
 // ============ 移动端配置常量 ============
@@ -224,7 +232,8 @@ export function useMobileDevice() {
   // 更新内存信息
   const updateMemoryInfo = () => {
     if ('memory' in performance) {
-      const memory = (performance as any).memory
+      const memory = (performance as PerformanceWithMemory).memory
+      if (!memory) return
       deviceState.memoryInfo = {
         usedJSHeapSize: memory.usedJSHeapSize,
         totalJSHeapSize: memory.totalJSHeapSize,
@@ -504,7 +513,7 @@ export function useMobileGestures(
 
   // 如果element是响应式的，监听其变化
   if (element && 'value' in element) {
-    watch(element, (newEl, oldEl) => {
+    watch(element, (newEl, _oldEl) => {
       unbindEvents()
       if (newEl) {
         bindEvents()
@@ -568,7 +577,8 @@ export function useMobileViewport() {
   // 更新可视视口
   const updateVisualViewport = () => {
     if ('visualViewport' in window) {
-      const vv = (window as any).visualViewport
+      const vv = window.visualViewport
+      if (!vv) return
       viewportState.visualViewport = {
         width: vv.width,
         height: vv.height,
@@ -609,9 +619,8 @@ export function useMobileViewport() {
     window.addEventListener('resize', handleResize)
 
     if ('visualViewport' in window) {
-      const vv = (window as any).visualViewport
-      vv.addEventListener('resize', updateVisualViewport)
-      vv.addEventListener('scroll', updateVisualViewport)
+      window.visualViewport?.addEventListener('resize', updateVisualViewport)
+      window.visualViewport?.addEventListener('scroll', updateVisualViewport)
     }
 
     // 监听焦点事件检测键盘
@@ -626,9 +635,8 @@ export function useMobileViewport() {
     window.removeEventListener('resize', handleResize)
 
     if ('visualViewport' in window) {
-      const vv = (window as any).visualViewport
-      vv.removeEventListener('resize', updateVisualViewport)
-      vv.removeEventListener('scroll', updateVisualViewport)
+      window.visualViewport?.removeEventListener('resize', updateVisualViewport)
+      window.visualViewport?.removeEventListener('scroll', updateVisualViewport)
     }
 
     document.removeEventListener('focusin', detectKeyboard)
@@ -656,7 +664,7 @@ export function useMobilePerformance() {
     intersectionObserverSupported: 'IntersectionObserver' in window,
 
     // 虚拟滚动
-    virtualScrollItems: [] as any[],
+    virtualScrollItems: [] as unknown[],
     visibleRange: { start: 0, end: 0 },
     itemHeight: 50,
     containerHeight: 300,
@@ -711,7 +719,8 @@ export function useMobilePerformance() {
   // 内存监控
   const monitorMemory = () => {
     if ('memory' in performance) {
-      const memory = (performance as any).memory
+      const memory = (performance as PerformanceWithMemory).memory
+      if (!memory) return
       const usedMemory = memory.usedJSHeapSize / 1024 / 1024 // MB
       const totalMemory = memory.jsHeapSizeLimit / 1024 / 1024 // MB
 
@@ -750,7 +759,8 @@ export function useMobilePerformance() {
   // 网络状态监控
   const monitorNetwork = () => {
     if ('connection' in navigator) {
-      const connection = (navigator as any).connection
+      const connection = (navigator as Navigator & { connection?: NetworkConnectionLike }).connection
+      if (!connection) return
       const updateNetworkStatus = () => {
         performanceState.isSlowNetwork = connection.effectiveType === 'slow-2g' || connection.effectiveType === '2g'
       }
@@ -770,7 +780,7 @@ export function useMobilePerformance() {
 
   // 优化的图片加载
   const loadImage = (src: string, options: { lazy?: boolean; quality?: number } = {}) => {
-    const { lazy = true, quality = 0.8 } = options
+    const { lazy = true } = options
 
     if (!lazy) {
       return new Promise<HTMLImageElement>((resolve, reject) => {
@@ -808,7 +818,7 @@ export function useMobilePerformance() {
   }
 
   // 优化的滚动处理
-  const createOptimizedScroll = (callback: (scrollTop: number) => void, delay = 16) => {
+  const createOptimizedScroll = (callback: (scrollTop: number) => void, _delay = 16) => {
     let ticking = false
 
     return (event: Event) => {

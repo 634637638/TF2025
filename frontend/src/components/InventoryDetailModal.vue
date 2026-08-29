@@ -9,97 +9,160 @@
     :close-on-click-modal="true"
     destroy-on-close
   >
-    <div v-if="item" class="detail-modal-body">
+    <div
+      v-if="item"
+      class="detail-modal-body"
+    >
       <section class="detail-intro">
         <div class="detail-intro-line">
           <span class="detail-intro-main">{{ productTitle }}</span>
           <span class="detail-intro-meta">{{ productMeta || '基础信息' }}</span>
-          <span v-if="canViewField('is_new')" :class="['detail-intro-badge', 'is-condition', conditionClass]">
+          <span
+            v-if="canViewField('is_new')"
+            :class="['detail-intro-badge', 'is-condition', conditionClass]"
+          >
             {{ conditionText }}
           </span>
-          <span v-if="canViewField('status')" class="detail-intro-badge is-status">
+          <span
+            v-if="canViewField('status')"
+            class="detail-intro-badge is-status"
+          >
             {{ statusText }}
           </span>
         </div>
       </section>
 
-      <section v-if="hasSpecificationFields" class="detail-section">
+      <section
+        v-if="hasSpecificationFields"
+        class="detail-section"
+      >
         <div class="detail-section-head">
           <h3>商品规格</h3>
         </div>
 
         <div class="detail-grid">
-          <div v-if="canViewField('brand')" class="detail-field">
+          <div
+            v-if="canViewField('brand')"
+            class="detail-field"
+          >
             <span class="field-label">品牌</span>
             <span class="field-value">{{ item.brand || '-' }}</span>
           </div>
-          <div v-if="canViewField('model')" class="detail-field">
+          <div
+            v-if="canViewField('model')"
+            class="detail-field"
+          >
             <span class="field-label">型号</span>
             <span class="field-value">{{ item.model || '-' }}</span>
           </div>
-          <div v-if="canViewField('color')" class="detail-field">
+          <div
+            v-if="canViewField('color')"
+            class="detail-field"
+          >
             <span class="field-label">颜色</span>
             <span class="field-value">{{ item.color || '-' }}</span>
           </div>
-          <div v-if="canViewField('memory')" class="detail-field">
+          <div
+            v-if="canViewField('memory')"
+            class="detail-field"
+          >
             <span class="field-label">内存</span>
             <span class="field-value">{{ item.memory || '-' }}</span>
           </div>
-          <div v-if="canViewField('is_new')" class="detail-field">
+          <div
+            v-if="canViewField('is_new')"
+            class="detail-field"
+          >
             <span class="field-label">机况</span>
             <span class="field-value field-value-badge">
-              <span class="condition-pill" :class="conditionClass">{{ conditionText }}</span>
+              <span
+                class="condition-pill"
+                :class="conditionClass"
+              >{{ conditionText }}</span>
             </span>
           </div>
-          <div v-if="canViewField('status')" class="detail-field">
+          <div
+            v-if="canViewField('status')"
+            class="detail-field"
+          >
             <span class="field-label">库存状态</span>
             <span class="field-value">{{ statusText }}</span>
           </div>
-          <div v-if="canViewField('purchase_price')" class="detail-field">
+          <div
+            v-if="canViewField('purchase_cost')"
+            class="detail-field"
+          >
             <span class="field-label">采购价格</span>
             <span class="field-value">{{ purchasePriceText }}</span>
           </div>
-          <div v-if="canViewField('Inventorytime')" class="detail-field">
+          <div
+            v-if="canViewField('inventory_time')"
+            class="detail-field"
+          >
             <span class="field-label">入库时间</span>
             <span class="field-value">{{ inventoryTimeText }}</span>
           </div>
-          <div v-if="canViewField('imei')" class="detail-field">
+          <div
+            v-if="canViewField('imei')"
+            class="detail-field"
+          >
             <span class="field-label">IMEI</span>
             <span class="field-value">{{ item.imei || '-' }}</span>
           </div>
-          <div v-if="canViewField('serial_number')" class="detail-field">
+          <div
+            v-if="canViewField('serial_number')"
+            class="detail-field"
+          >
             <span class="field-label">序列号</span>
             <span class="field-value">{{ item.serial_number || '-' }}</span>
           </div>
         </div>
       </section>
 
-      <section v-if="hasRelationFields" class="detail-section">
+      <section
+        v-if="hasRelationFields"
+        class="detail-section"
+      >
         <div class="detail-section-head">
           <h3>关联信息</h3>
         </div>
 
         <div class="detail-grid">
-          <div v-if="canViewField('supplier_name')" class="detail-field">
+          <div
+            v-if="canViewField('supplier_name')"
+            class="detail-field"
+          >
             <span class="field-label">供应商</span>
             <span class="field-value">{{ item.supplier_name || '-' }}</span>
           </div>
-          <div v-if="canViewField('store_name')" class="detail-field">
+          <div
+            v-if="canViewField('store_name')"
+            class="detail-field"
+          >
             <span class="field-label">店铺</span>
             <span class="field-value">{{ item.store_name || '-' }}</span>
           </div>
-          <div v-if="canViewField('inventory_operator_name')" class="detail-field">
+          <div
+            v-if="canViewField('inventory_operator_name')"
+            class="detail-field"
+          >
             <span class="field-label">入库员</span>
             <span class="field-value">{{ item.inventory_operator_name || item.purchase_operator_name || '-' }}</span>
           </div>
-          <div v-if="canViewField('purchase_number')" class="detail-field">
+          <div
+            v-if="canViewField('purchase_number')"
+            class="detail-field"
+          >
             <span class="field-label">采购单号</span>
             <span class="field-value">{{ item.purchase_number || '-' }}</span>
           </div>
         </div>
       </section>
 
-      <section v-if="canViewField('remarks') && item.remarks" class="detail-section">
+      <section
+        v-if="canViewField('remarks') && item.remarks"
+        class="detail-section"
+      >
         <div class="detail-section-head">
           <h3>备注信息</h3>
         </div>
@@ -111,17 +174,24 @@
     </div>
 
     <template #footer>
-      <div v-if="item" class="detail-modal-footer">
-        <el-button type="default" @click="handleClose">
-          <i class="fas fa-times"></i>
-          关闭
+      <div
+        v-if="item"
+        class="detail-modal-footer"
+      >
+        <el-button
+          v-if="canCreate && item.status === 'in_stock'"
+          type="warning"
+          @click="emit('quick-sale')"
+        >
+          <i class="fas fa-shopping-cart" />
+          出库
         </el-button>
         <el-button
           v-if="canEdit && item.status === 'in_stock'"
           type="primary"
           @click="emit('edit')"
         >
-          <i class="fas fa-edit"></i>
+          <i class="fas fa-edit" />
           编辑
         </el-button>
         <el-button
@@ -129,7 +199,7 @@
           type="danger"
           @click="emit('delete')"
         >
-          <i class="fas fa-trash"></i>
+          <i class="fas fa-trash" />
           删除
         </el-button>
       </div>
@@ -147,11 +217,13 @@ import type { ModelValueProps, UpdateModelValueEmits, CloseEmits } from '@/types
 
 interface Props extends ModelValueProps {
   item: InventoryItem | null
+  canCreate?: boolean
   canEdit?: boolean
   canDelete?: boolean
 }
 
 interface Emits extends UpdateModelValueEmits, CloseEmits {
+  'quick-sale': []
   edit: []
   delete: []
 }
@@ -173,8 +245,8 @@ const inventoryFieldMap: Record<string, string> = {
   status: 'basic.status',
   imei: 'basic.imei',
   serial_number: 'basic.serial_number',
-  purchase_price: 'price_info.purchase_price',
-  Inventorytime: 'time_info.Inventorytime',
+  purchase_cost: 'price_info.purchase_cost',
+  inventory_time: 'time_info.inventory_time',
   supplier_name: 'supplier_info.supplier_name',
   store_name: 'store_info.store_name',
   inventory_operator_name: 'operator_info.inventory_operator_name',
@@ -193,7 +265,7 @@ const hasRelationFields = computed(() => {
 })
 
 const hasSpecificationFields = computed(() => {
-  return ['brand', 'model', 'color', 'memory', 'is_new', 'status', 'purchase_price', 'Inventorytime', 'imei', 'serial_number']
+  return ['brand', 'model', 'color', 'memory', 'is_new', 'status', 'purchase_cost', 'inventory_time', 'imei', 'serial_number']
     .some(fieldName => canViewField(fieldName))
 })
 
@@ -221,12 +293,12 @@ const productMeta = computed(() => {
 })
 
 const purchasePriceText = computed(() => {
-  const amount = Number(props.item?.purchase_cost || props.item?.purchase_price || 0)
+  const amount = Number(props.item?.purchase_cost || 0)
   return amount > 0 ? `¥${amount.toLocaleString('zh-CN')}` : '未定价'
 })
 
 const inventoryTimeText = computed(() => {
-  const raw = props.item?.Inventorytime || props.item?.created_at
+  const raw = props.item?.inventory_time || props.item?.created_at
   if (!raw) return '-'
 
   const matched = String(raw).match(/^(\d{4})-(\d{1,2})-(\d{1,2})/)
@@ -238,11 +310,6 @@ const inventoryTimeText = computed(() => {
   if (Number.isNaN(date.getTime())) return '-'
   return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`
 })
-
-const handleClose = () => {
-  emit('close')
-  dialogVisible.value = false
-}
 </script>
 
 <style scoped lang="scss">
@@ -256,7 +323,7 @@ const handleClose = () => {
 .detail-intro {
   padding: 14px 16px;
   border-radius: 16px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
   box-shadow: 0 10px 24px rgba(102, 126, 234, 0.22);
 }
 
@@ -275,7 +342,7 @@ const handleClose = () => {
   font-size: 18px;
   font-weight: 700;
   line-height: 1.3;
-  color: #ffffff;
+  color: var(--color-bg-white);
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -297,7 +364,7 @@ const handleClose = () => {
   border-radius: 999px;
   font-size: 12px;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--color-bg-white);
   background: rgba(255, 255, 255, 0.18);
   backdrop-filter: blur(10px);
   flex-shrink: 0;
@@ -332,7 +399,7 @@ const handleClose = () => {
 .detail-section-head h3 {
   margin: 0;
   font-size: 16px;
-  color: #1f2937;
+  color: var(--tf-color-neutral-800);
 }
 
 .detail-grid {
@@ -354,7 +421,7 @@ const handleClose = () => {
 .field-label {
   font-size: 12px;
   font-weight: 700;
-  color: #6b7280;
+  color: var(--tf-color-neutral-500);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -362,7 +429,7 @@ const handleClose = () => {
 .field-value {
   font-size: 14px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--tf-color-neutral-800);
   word-break: break-word;
 }
 
@@ -383,17 +450,17 @@ const handleClose = () => {
 
 .condition-pill.is-new {
   background: rgba(16, 185, 129, 0.12);
-  color: #047857;
+  color: var(--tf-color-emerald-700);
 }
 
 .condition-pill.is-used {
   background: rgba(245, 158, 11, 0.14);
-  color: #b45309;
+  color: var(--tf-color-amber-700);
 }
 
 .remarks-box {
   padding: 8px 0 0;
-  color: #374151;
+  color: var(--tf-color-neutral-700);
   line-height: 1.65;
   font-size: 14px;
   white-space: pre-wrap;
@@ -438,7 +505,7 @@ const handleClose = () => {
     padding: 10px 12px;
     border-bottom: 0;
     border-radius: 12px;
-    background: #f8f9fc;
+    background: var(--tf-color-surface-cool-page);
     box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.72);
   }
 
@@ -500,22 +567,22 @@ const handleClose = () => {
 
 .mobile-dialog-sheet-panel.inventory-product-detail-dialog .mobile-dialog-sheet-body {
   padding: 4px !important;
-  background: linear-gradient(180deg, #ffffff 0%, #faf7ff 100%) !important;
+  background: linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-violet-surface) 100%) !important;
 }
 
 .mobile-dialog-sheet-panel.inventory-product-detail-dialog .mobile-dialog-sheet-footer {
   padding: 0 6px 6px !important;
-  background: linear-gradient(180deg, #ffffff 0%, #faf7ff 100%) !important;
+  background: linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-violet-surface) 100%) !important;
 }
 
 .inventory-product-detail-dialog .el-dialog__body {
   padding: 24px !important;
-  background: linear-gradient(180deg, #ffffff 0%, #faf7ff 100%) !important;
+  background: linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-violet-surface) 100%) !important;
 }
 
 .inventory-product-detail-dialog .el-dialog__footer {
   padding: 0 24px 24px !important;
-  background: linear-gradient(180deg, #ffffff 0%, #faf7ff 100%) !important;
+  background: linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-violet-surface) 100%) !important;
   border-top: 0 !important;
 }
 

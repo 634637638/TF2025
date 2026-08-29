@@ -1,25 +1,25 @@
 /**
  * 手机库存预警配置数据访问层
  */
-const BaseRepository = require('./base.repository');
-const { ensurePhoneStockWarningSchema } = require('../utils/phone-stock-warning-schema');
-const log = require('../utils/log');
+const BaseRepository = require('./base.repository')
+const { ensurePhoneStockWarningSchema } = require('../utils/phone-stock-warning-schema')
+const log = require('../utils/log')
 
 class PhoneStockWarningRepository extends BaseRepository {
   constructor() {
-    super('phone_stock_warnings');
+    super('phone_stock_warnings')
   }
 
   normalizeNullableId(value) {
-    return value === null || value === undefined || value === 0 ? null : value;
+    return value === null || value === undefined || value === 0 ? null : value
   }
 
   normalizeIsNew(value) {
-    return value === 0 || value === 1 ? value : null;
+    return value === 0 || value === 1 ? value : null
   }
 
   normalizeMinStock(value) {
-    return value === undefined || value === null ? 3 : value;
+    return value === undefined || value === null ? 3 : value
   }
 
   buildConfigMatchQuery(baseQuery, {
@@ -30,53 +30,53 @@ class PhoneStockWarningRepository extends BaseRepository {
     isNew = null,
     excludeId = null
   }) {
-    let query = baseQuery;
-    const params = [];
+    let query = baseQuery
+    const params = []
 
     if (brandId !== null && brandId !== undefined) {
-      query += ' AND brand_id = ?';
-      params.push(brandId);
+      query += ' AND brand_id = ?'
+      params.push(brandId)
     } else {
-      query += ' AND brand_id IS NULL';
+      query += ' AND brand_id IS NULL'
     }
 
     if (modelId !== null && modelId !== undefined) {
-      query += ' AND model_id = ?';
-      params.push(modelId);
+      query += ' AND model_id = ?'
+      params.push(modelId)
     } else {
-      query += ' AND model_id IS NULL';
+      query += ' AND model_id IS NULL'
     }
 
-    const normalizedColorId = this.normalizeNullableId(colorId);
+    const normalizedColorId = this.normalizeNullableId(colorId)
     if (normalizedColorId !== null) {
-      query += ' AND color_id = ?';
-      params.push(normalizedColorId);
+      query += ' AND color_id = ?'
+      params.push(normalizedColorId)
     } else {
-      query += ' AND color_id IS NULL';
+      query += ' AND color_id IS NULL'
     }
 
-    const normalizedMemoryId = this.normalizeNullableId(memoryId);
+    const normalizedMemoryId = this.normalizeNullableId(memoryId)
     if (normalizedMemoryId !== null) {
-      query += ' AND memory_id = ?';
-      params.push(normalizedMemoryId);
+      query += ' AND memory_id = ?'
+      params.push(normalizedMemoryId)
     } else {
-      query += ' AND memory_id IS NULL';
+      query += ' AND memory_id IS NULL'
     }
 
-    const normalizedIsNew = this.normalizeIsNew(isNew);
+    const normalizedIsNew = this.normalizeIsNew(isNew)
     if (normalizedIsNew !== null) {
-      query += ' AND is_new = ?';
-      params.push(normalizedIsNew);
+      query += ' AND is_new = ?'
+      params.push(normalizedIsNew)
     } else {
-      query += ' AND is_new IS NULL';
+      query += ' AND is_new IS NULL'
     }
 
     if (excludeId) {
-      query += ' AND id != ?';
-      params.push(excludeId);
+      query += ' AND id != ?'
+      params.push(excludeId)
     }
 
-    return { query, params };
+    return { query, params }
   }
 
   /**
@@ -84,7 +84,7 @@ class PhoneStockWarningRepository extends BaseRepository {
    */
   async getAllConfigsWithDetails() {
     try {
-      await ensurePhoneStockWarningSchema();
+      await ensurePhoneStockWarningSchema()
 
       const query = `
         SELECT
@@ -116,13 +116,13 @@ class PhoneStockWarningRepository extends BaseRepository {
           c.name,
           mem.size,
           psw.is_new DESC
-      `;
+      `
 
-      const configs = await this.executeQuery(query);
-      return configs;
+      const configs = await this.executeQuery(query)
+      return configs
     } catch (error) {
-      log.error('获取预警配置失败:', error);
-      throw error;
+      log.error('获取预警配置失败:', error)
+      throw error
     }
   }
 
@@ -132,8 +132,8 @@ class PhoneStockWarningRepository extends BaseRepository {
    */
   async getWarningConfig(brandId, modelId, colorId = null, memoryId = null) {
     try {
-      const normalizedColorId = this.normalizeNullableId(colorId);
-      const normalizedMemoryId = this.normalizeNullableId(memoryId);
+      const normalizedColorId = this.normalizeNullableId(colorId)
+      const normalizedMemoryId = this.normalizeNullableId(memoryId)
 
       const query = `
         SELECT COALESCE(
@@ -148,7 +148,7 @@ class PhoneStockWarningRepository extends BaseRepository {
            LIMIT 1),
           3
         ) as threshold
-      `;
+      `
 
       const results = await this.executeQuery(query, [
         brandId,
@@ -157,11 +157,11 @@ class PhoneStockWarningRepository extends BaseRepository {
         normalizedMemoryId,
         normalizedColorId,
         normalizedMemoryId
-      ]);
-      return results[0]?.threshold ?? 3;
+      ])
+      return results[0]?.threshold ?? 3
     } catch (error) {
-      log.error('获取预警阈值失败:', error);
-      return 3;
+      log.error('获取预警阈值失败:', error)
+      return 3
     }
   }
 
@@ -172,25 +172,25 @@ class PhoneStockWarningRepository extends BaseRepository {
   async getWarningConfigBatch(phoneList) {
     try {
       if (!phoneList || phoneList.length === 0) {
-        return {};
+        return {}
       }
 
       // 构建品牌型号的唯一列表
-      const uniquePairs = [...new Set(phoneList.map(p => `${p.brand_id}_${p.model_id}`))];
+      const uniquePairs = [...new Set(phoneList.map(p => `${p.brand_id}_${p.model_id}`))]
 
       if (uniquePairs.length === 0) {
-        return {};
+        return {}
       }
 
       // 使用批量查询替代循环查询，避免 N+1 问题
       // 一次性查询所有品牌型号的预警阈值
-      const placeholders = uniquePairs.map(() => '(?, ?)').join(', ');
+      const placeholders = uniquePairs.map(() => '(?, ?)').join(', ')
       const params = uniquePairs.flatMap(pair => {
-        const [brandId, modelId] = pair.split('_').map(Number);
-        return [brandId, modelId];
-      });
+        const [brandId, modelId] = pair.split('_').map(Number)
+        return [brandId, modelId]
+      })
 
-      const query = `
+      const _query = `
         SELECT
           psw.brand_id,
           psw.model_id,
@@ -204,14 +204,14 @@ class PhoneStockWarningRepository extends BaseRepository {
                AND (memory_id IS NULL OR memory_id = 0)),
             3
           ) as threshold
-        FROM (SELECT DISTINCT ? as brand_id, ? as model_id ${uniquePairs.slice(1).map(() => `UNION ALL SELECT ?, ?`).join('')})
+        FROM (SELECT DISTINCT ? as brand_id, ? as model_id ${uniquePairs.slice(1).map(() => 'UNION ALL SELECT ?, ?').join('')})
         AS unique_configs
         LEFT JOIN phone_stock_warnings psw
           ON psw.brand_id = unique_configs.brand_id
           AND psw.model_id = unique_configs.model_id
           AND psw.status = 1
           AND psw.warning_enabled = 1
-      `;
+      `
 
       // 简化方案：使用 IN 子句批量查询
       const simpleQuery = `
@@ -232,36 +232,36 @@ class PhoneStockWarningRepository extends BaseRepository {
         FROM phone_stock_warnings
         WHERE (brand_id, model_id) IN (${placeholders})
         GROUP BY brand_id, model_id
-      `;
+      `
 
-      const configMap = {};
+      const configMap = {}
 
       // 执行批量查询
-      const results = await this.executeQuery(simpleQuery, params);
+      const results = await this.executeQuery(simpleQuery, params)
 
       // 构建结果 Map
       results.forEach(row => {
-        const key = `${row.brand_id}_${row.model_id}`;
-        configMap[key] = row.threshold || 3;
-      });
+        const key = `${row.brand_id}_${row.model_id}`
+        configMap[key] = row.threshold || 3
+      })
 
       // 对于没有查询结果的配置，使用默认值 3
       uniquePairs.forEach(pair => {
         if (!configMap[pair]) {
-          configMap[pair] = 3;
+          configMap[pair] = 3
         }
-      });
+      })
 
-      return configMap;
+      return configMap
     } catch (error) {
-      log.error('批量获取预警阈值失败:', error);
+      log.error('批量获取预警阈值失败:', error)
       // 发生错误时返回默认值
-      const configMap = {};
-      const uniquePairs = [...new Set(phoneList.map(p => `${p.brand_id}_${p.model_id}`))];
+      const configMap = {}
+      const uniquePairs = [...new Set(phoneList.map(p => `${p.brand_id}_${p.model_id}`))]
       uniquePairs.forEach(pair => {
-        configMap[pair] = 3;
-      });
-      return configMap;
+        configMap[pair] = 3
+      })
+      return configMap
     }
   }
 
@@ -270,18 +270,18 @@ class PhoneStockWarningRepository extends BaseRepository {
    */
   async checkConfigExists(brandId, modelId, colorId = null, memoryId = null, isNew = null, excludeId = null) {
     try {
-      await ensurePhoneStockWarningSchema();
+      await ensurePhoneStockWarningSchema()
 
       const { query, params } = this.buildConfigMatchQuery(
         'SELECT id FROM phone_stock_warnings WHERE 1=1',
         { brandId, modelId, colorId, memoryId, isNew, excludeId }
-      );
+      )
 
-      const result = await this.executeQuery(query, params);
-      return result && result.length > 0;
+      const result = await this.executeQuery(query, params)
+      return result && result.length > 0
     } catch (error) {
-      log.error('检查配置存在性失败:', error);
-      return false;
+      log.error('检查配置存在性失败:', error)
+      return false
     }
   }
 
@@ -290,18 +290,18 @@ class PhoneStockWarningRepository extends BaseRepository {
    */
   async findConfigByExactMatch(brandId, modelId, colorId = null, memoryId = null, isNew = null, excludeId = null) {
     try {
-      await ensurePhoneStockWarningSchema();
+      await ensurePhoneStockWarningSchema()
 
       const { query, params } = this.buildConfigMatchQuery(
         'SELECT * FROM phone_stock_warnings WHERE 1=1',
         { brandId, modelId, colorId, memoryId, isNew, excludeId }
-      );
+      )
 
-      const rows = await this.executeQuery(`${query} ORDER BY id DESC LIMIT 1`, params);
-      return rows && rows.length > 0 ? rows[0] : null;
+      const rows = await this.executeQuery(`${query} ORDER BY id DESC LIMIT 1`, params)
+      return rows && rows.length > 0 ? rows[0] : null
     } catch (error) {
-      log.error('查找精确预警配置失败:', error);
-      throw error;
+      log.error('查找精确预警配置失败:', error)
+      throw error
     }
   }
 
@@ -310,17 +310,17 @@ class PhoneStockWarningRepository extends BaseRepository {
    */
   async createConfig(config) {
     try {
-      await ensurePhoneStockWarningSchema();
+      await ensurePhoneStockWarningSchema()
 
-      const { brand_id, model_id, color_id, memory_id, is_new, min_stock, warning_enabled, config_name, remarks } = config;
+      const { brand_id, model_id, color_id, memory_id, is_new, min_stock, warning_enabled, config_name, remarks } = config
 
       const query = `
         INSERT INTO phone_stock_warnings
         (brand_id, model_id, color_id, memory_id, is_new, min_stock, warning_enabled, config_name, remarks)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `;
+      `
 
-      const db = this.getConnection();
+      const db = this.getConnection()
       const [result] = await db.execute(query, [
         this.normalizeNullableId(brand_id),
         this.normalizeNullableId(model_id),
@@ -331,12 +331,12 @@ class PhoneStockWarningRepository extends BaseRepository {
         warning_enabled !== undefined ? warning_enabled : 1,
         config_name || null,
         remarks || null
-      ]);
+      ])
 
-      return result.insertId;
+      return result.insertId
     } catch (error) {
-      log.error('创建预警配置失败:', error);
-      throw error;
+      log.error('创建预警配置失败:', error)
+      throw error
     }
   }
 
@@ -345,9 +345,9 @@ class PhoneStockWarningRepository extends BaseRepository {
    */
   async updateConfig(id, config) {
     try {
-      await ensurePhoneStockWarningSchema();
+      await ensurePhoneStockWarningSchema()
 
-      const { brand_id, model_id, color_id, memory_id, is_new, min_stock, warning_enabled, config_name, remarks, status } = config;
+      const { brand_id, model_id, color_id, memory_id, is_new, min_stock, warning_enabled, config_name, remarks, status } = config
 
       const query = `
         UPDATE phone_stock_warnings
@@ -362,7 +362,7 @@ class PhoneStockWarningRepository extends BaseRepository {
             remarks = ?,
             status = ?
         WHERE id = ?
-      `;
+      `
 
       await this.executeQuery(query, [
         this.normalizeNullableId(brand_id),
@@ -376,12 +376,12 @@ class PhoneStockWarningRepository extends BaseRepository {
         remarks || null,
         status !== undefined ? status : 1,
         id
-      ]);
+      ])
 
-      return true;
+      return true
     } catch (error) {
-      log.error('更新预警配置失败:', error);
-      throw error;
+      log.error('更新预警配置失败:', error)
+      throw error
     }
   }
 
@@ -391,19 +391,19 @@ class PhoneStockWarningRepository extends BaseRepository {
   async deleteConfig(id) {
     try {
       // 不允许删除默认全局配置（id=1 且 brand_id IS NULL AND model_id IS NULL）
-      const config = await this.executeQuery('SELECT * FROM phone_stock_warnings WHERE id = ?', [id]);
+      const config = await this.executeQuery('SELECT * FROM phone_stock_warnings WHERE id = ?', [id])
       if (config && config.length > 0) {
-        const cfg = config[0];
+        const cfg = config[0]
         if (cfg.brand_id === null && cfg.model_id === null) {
-          throw new Error('不允许删除默认全局配置');
+          throw new Error('不允许删除默认全局配置')
         }
       }
 
-      await this.executeQuery('DELETE FROM phone_stock_warnings WHERE id = ?', [id]);
-      return true;
+      await this.executeQuery('DELETE FROM phone_stock_warnings WHERE id = ?', [id])
+      return true
     } catch (error) {
-      log.error('删除预警配置失败:', error);
-      throw error;
+      log.error('删除预警配置失败:', error)
+      throw error
     }
   }
 
@@ -412,12 +412,12 @@ class PhoneStockWarningRepository extends BaseRepository {
    */
   async toggleWarningEnabled(id, enabled) {
     try {
-      const query = 'UPDATE phone_stock_warnings SET warning_enabled = ? WHERE id = ?';
-      await this.executeQuery(query, [enabled ? 1 : 0, id]);
-      return true;
+      const query = 'UPDATE phone_stock_warnings SET warning_enabled = ? WHERE id = ?'
+      await this.executeQuery(query, [enabled ? 1 : 0, id])
+      return true
     } catch (error) {
-      log.error('切换预警状态失败:', error);
-      throw error;
+      log.error('切换预警状态失败:', error)
+      throw error
     }
   }
 
@@ -427,12 +427,12 @@ class PhoneStockWarningRepository extends BaseRepository {
   async getActiveBrands() {
     try {
       // 按照 sort_order 排序，如果没有则按名称排序
-      const query = 'SELECT id, name FROM brands WHERE status = 1 ORDER BY sort_order, CONVERT(name USING gbk)';
-      const brands = await this.executeQuery(query);
-      return brands;
+      const query = 'SELECT id, name FROM brands WHERE status = 1 ORDER BY sort_order, CONVERT(name USING gbk)'
+      const brands = await this.executeQuery(query)
+      return brands
     } catch (error) {
-      log.error('获取品牌列表失败:', error);
-      throw error;
+      log.error('获取品牌列表失败:', error)
+      throw error
     }
   }
 
@@ -442,12 +442,12 @@ class PhoneStockWarningRepository extends BaseRepository {
   async getActiveModelsByBrand(brandId) {
     try {
       // 按照 sort_order 排序，如果没有则按名称排序
-      const query = 'SELECT id, name FROM models WHERE brand_id = ? AND status = 1 ORDER BY sort_order, CONVERT(name USING gbk)';
-      const models = await this.executeQuery(query, [brandId]);
-      return models;
+      const query = 'SELECT id, name FROM models WHERE brand_id = ? AND status = 1 ORDER BY sort_order, CONVERT(name USING gbk)'
+      const models = await this.executeQuery(query, [brandId])
+      return models
     } catch (error) {
-      log.error('获取型号列表失败:', error);
-      throw error;
+      log.error('获取型号列表失败:', error)
+      throw error
     }
   }
 
@@ -457,12 +457,12 @@ class PhoneStockWarningRepository extends BaseRepository {
   async getActiveColors() {
     try {
       // 按照 sort_order 排序，如果没有则按名称排序
-      const query = 'SELECT id, name FROM colors WHERE status = 1 ORDER BY sort_order, CONVERT(name USING gbk)';
-      const colors = await this.executeQuery(query);
-      return colors;
+      const query = 'SELECT id, name FROM colors WHERE status = 1 ORDER BY sort_order, CONVERT(name USING gbk)'
+      const colors = await this.executeQuery(query)
+      return colors
     } catch (error) {
-      log.error('获取颜色列表失败:', error);
-      throw error;
+      log.error('获取颜色列表失败:', error)
+      throw error
     }
   }
 
@@ -472,14 +472,14 @@ class PhoneStockWarningRepository extends BaseRepository {
   async getActiveMemories() {
     try {
       // 按照 sort_order 排序，如果没有则按名称排序
-      const query = 'SELECT id, size FROM memories WHERE status = 1 ORDER BY sort_order, CONVERT(size USING gbk)';
-      const memories = await this.executeQuery(query);
-      return memories;
+      const query = 'SELECT id, size FROM memories WHERE status = 1 ORDER BY sort_order, CONVERT(size USING gbk)'
+      const memories = await this.executeQuery(query)
+      return memories
     } catch (error) {
-      log.error('获取内存列表失败:', error);
-      throw error;
+      log.error('获取内存列表失败:', error)
+      throw error
     }
   }
 }
 
-module.exports = PhoneStockWarningRepository;
+module.exports = PhoneStockWarningRepository

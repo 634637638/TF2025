@@ -1,530 +1,367 @@
-/**
- * 供应商数据访问层
- * 封装所有数据库操作
- */
-const { executeQuery } = require('../config/database');
-const BaseRepository = require('./base.repository');
+const BaseRepository = require('./base.repository')
+
+const SUPPLIER_SELECT_COLUMNS = `
+  s.id, s.name, s.contact, s.phone, s.address, s.bank_info,
+  s.tax_number, s.status, s.remarks, s.created_at, s.updated_at, s.sort_order
+`
+const SUPPLIER_SORT_COLUMNS = new Set(['id', 'name', 'status', 'sort_order', 'created_at', 'updated_at'])
+
+const formatNullableString = value => {
+  if (value === null || value === undefined) return null
+  return String(value).trim()
+}
+
+const formatSupplier = row => ({
+  id: Number(row.id),
+  name: String(row.name || '').trim(),
+  contact: formatNullableString(row.contact),
+  phone: formatNullableString(row.phone),
+  address: formatNullableString(row.address),
+  bank_info: formatNullableString(row.bank_info),
+  tax_number: formatNullableString(row.tax_number),
+  status: Number(row.status) === 1 ? 1 : 0,
+  remarks: formatNullableString(row.remarks),
+  sort_order: Number(row.sort_order) || 0,
+  created_at: row.created_at ? new Date(row.created_at).toISOString() : null,
+  updated_at: row.updated_at ? new Date(row.updated_at).toISOString() : null
+})
 
 class SupplierRepository extends BaseRepository {
   constructor() {
-    super('suppliers');
+    super('suppliers')
   }
 
-  /**
-   * 获取供应商列表（带分页和过滤）
-   */
   async getSuppliersWithPagination(filters = {}, options = {}) {
-    const {
-      page = 1,
-      limit = 10,
-      name,
-      status
-    } = filters;
-
-    const validLimit = Math.min(Math.max(parseInt(limit) || 10, 1), 100);
-    const validPage = Math.max(parseInt(page) || 1, 1);
-    const offset = (validPage - 1) * validLimit;
-
-    // 构建查询条件
-    const whereConditions = [];
-    const params = [];
+    const { page = 1, page_size = 100, name, status } = filters
+    const validPage = Math.max(Number.parseInt(page, 10) || 1, 1)
+    const validPageSize = Math.min(Math.max(Number.parseInt(page_size, 10) || 100, 1), 10000)
+    const offset = (validPage - 1) * validPageSize
+    const conditions = []
+    const params = []
 
     if (name) {
-      whereConditions.push('s.name LIKE ?');
-      params.push(`%${name}%`);
+      conditions.push('s.name LIKE ?')
+      params.push(`%${String(name).trim()}%`)
+    }
+    if (status !== undefined && status !== null && status !== '') {
+      conditions.push('s.status = ?')
+      params.push(Number(status))
     }
 
-    if (status !== undefined) {
-      whereConditions.push('s.status = ?');
-      params.push(parseInt(status));
-    }
-
-    const whereClause = whereConditions.length > 0 ? whereConditions.join(' AND ') : '';
-
-    // 排序
-    const orderBy = options.orderBy || 's.created_at DESC';
-
-    // 查询数据
-    const dataQuery = `
-      SELECT
-        s.id,
-        s.name,
-        s.contact,
-        s.phone,
-        s.address,
-        s.bank_info,
-        s.tax_number,
-        s.status,
-        s.remarks,
-        s.created_at,
-        s.updated_at,
-        COALESCE(a.accessory_count, 0) as accessory_count,
-        COALESCE(p.phone_count, 0) as phone_count,
-        COALESCE(a.total_cost, 0) as accessory_total_cost,
-        COALESCE(p.total_cost, 0) as phone_total_cost,
-        COALESCE(a.total_cost, 0) + COALESCE(p.total_cost, 0) as total_cost
-      FROM ${this.tableName} s
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
+    const sortColumn = SUPPLIER_SORT_COLUMNS.has(options.sort_by) ? options.sort_by : 'sort_order'
+    const sortDirection = String(options.sort_order).toLowerCase() === 'desc' ? 'DESC' : 'ASC'
+    const fallbackOrder = sortColumn === 'sort_order' ? ', s.name ASC, s.id ASC' : ', s.sort_order ASC, s.id ASC'
+    const suppliers = await this.executeQuery(`
+      SELECT ${SUPPLIER_SELECT_COLUMNS},
+             COALESCE(a.accessory_count, 0) AS accessory_count,
+             COALESCE(p.phone_count, 0) AS phone_count,
+             COALESCE(a.total_cost, 0) AS accessory_total_cost,
+             COALESCE(p.total_cost, 0) AS phone_total_cost,
+             COALESCE(a.total_cost, 0) + COALESCE(p.total_cost, 0) AS total_cost
+      FROM suppliers s
       LEFT JOIN (
-        SELECT supplier_id, COUNT(*) as accessory_count, SUM(cost) as total_cost
-        FROM accessories GROUP BY supplier_id
-      ) a ON s.id = a.supplier_id
+        SELECT supplier_id, COUNT(*) AS accessory_count,
+               COALESCE(SUM(purchase_cost), 0) AS total_cost
+        FROM accessories
+        GROUP BY supplier_id
+      ) a ON a.supplier_id = s.id
       LEFT JOIN (
-        SELECT supplier_id, COUNT(*) as phone_count, SUM(cost) as total_cost
-        FROM phones GROUP BY supplier_id
-      ) p ON s.id = p.supplier_id
-      ${whereClause ? `WHERE ${whereClause}` : ''}
-      ORDER BY ${orderBy}
-      LIMIT ${validLimit} OFFSET ${offset}
-    `;
-
-    const [suppliers] = await this.executeQuery(dataQuery, params);
-
-    // 格式化数据
-    const formattedSuppliers = suppliers.map(row => ({
-      id: parseInt(row.id),
-      name: String(row.name || '').trim(),
-      contact: String(row.contact || '').trim(),
-      phone: String(row.phone || '').trim(),
-      address: String(row.address || '').trim(),
-      bank_info: String(row.bank_info || '').trim(),
-      tax_number: String(row.tax_number || '').trim(),
-      status: parseInt(row.status) || 0,
-      remarks: String(row.remarks || '').trim(),
-      created_at: row.created_at ? new Date(row.created_at).toISOString() : null,
-      updated_at: row.updated_at ? new Date(row.updated_at).toISOString() : null,
-      stats: {
-        accessory_count: parseInt(row.accessory_count) || 0,
-        phone_count: parseInt(row.phone_count) || 0,
-        accessory_total_cost: parseFloat(row.accessory_total_cost) || 0,
-        phone_total_cost: parseFloat(row.phone_total_cost) || 0,
-        total_cost: parseFloat(row.total_cost) || 0
-      }
-    }));
-
-    // 查询总数
-    const countQuery = `
-      SELECT COUNT(*) as total FROM ${this.tableName} s
-      ${whereClause ? `WHERE ${whereClause}` : ''}
-    `;
-    const [countResult] = await this.executeQuery(countQuery, params);
-    const total = countResult[0].total;
-
-    return {
-      suppliers: formattedSuppliers,
-      pagination: {
-        page: validPage,
-        limit: validLimit,
-        total: total,
-        totalPages: Math.ceil(total / validLimit),
-        hasNextPage: validPage < Math.ceil(total / validLimit),
-        hasPrevPage: validPage > 1
-      }
-    };
-  }
-
-  /**
-   * 根据ID获取供应商详情
-   */
-  async getSupplierById(id) {
-    const supplierQuery = `
-      SELECT * FROM ${this.tableName} WHERE id = ?
-    `;
-    const [suppliers] = await this.executeQuery(supplierQuery, [id]);
-
-    if (suppliers.length === 0) {
-      return null;
-    }
-
-    const supplier = suppliers[0];
-
-    // 获取供应商账户信息
-    const accountsQuery = `
-      SELECT
-        sa.*,
-        operator.username as operator_name
-      FROM supplier_accounts sa
-      LEFT JOIN users operator ON sa.operator_id = operator.id
-      WHERE sa.supplier_id = ?
-      ORDER BY sa.created_at DESC
-    `;
-    const [accounts] = await this.executeQuery(accountsQuery, [id]);
-
-    // 获取商品统计
-    const [accessoryStats] = await this.executeQuery(
-      'SELECT COUNT(*) as count, SUM(cost) as total_cost FROM accessories WHERE supplier_id = ?',
-      [id]
-    );
-    const [phoneStats] = await this.executeQuery(
-      'SELECT COUNT(*) as count, SUM(cost) as total_cost FROM phones WHERE supplier_id = ?',
-      [id]
-    );
-
-    return {
-      id: parseInt(supplier.id),
-      name: String(supplier.name || '').trim(),
-      contact: String(supplier.contact || '').trim(),
-      phone: String(supplier.phone || '').trim(),
-      address: String(supplier.address || '').trim(),
-      bank_info: String(supplier.bank_info || '').trim(),
-      tax_number: String(supplier.tax_number || '').trim(),
-      status: parseInt(supplier.status) || 0,
-      remarks: String(supplier.remarks || '').trim(),
-      created_at: supplier.created_at ? new Date(supplier.created_at).toISOString() : null,
-      updated_at: supplier.updated_at ? new Date(supplier.updated_at).toISOString() : null,
-      accounts: accounts.map(account => ({
-        id: parseInt(account.id),
-        type: String(account.type),
-        amount: parseFloat(account.amount),
-        balance_before: parseFloat(account.balance_before),
-        balance_after: parseFloat(account.balance_after),
-        description: String(account.description || '').trim(),
-        operator_name: account.operator_name ? String(account.operator_name).trim() : null,
-        created_at: account.created_at ? new Date(account.created_at).toISOString() : null
-      })),
-      stats: {
-        accessory_count: parseInt(accessoryStats[0].count) || 0,
-        phone_count: parseInt(phoneStats[0].count) || 0,
-        accessory_total_cost: parseFloat(accessoryStats[0].total_cost) || 0,
-        phone_total_cost: parseFloat(phoneStats[0].total_cost) || 0
-      }
-    };
-  }
-
-  /**
-   * 创建供应商
-   */
-  async createSupplier(supplierData) {
-    const {
-      name,
-      contact,
-      phone,
-      address,
-      bank_info,
-      tax_number,
-      status = 1,
-      remarks
-    } = supplierData;
-
-    const query = `
-      INSERT INTO ${this.tableName} (
-        name, contact, phone, address, bank_info, tax_number, status, remarks
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-
-    const params = [
-      name,
-      contact || null,
-      phone || null,
-      address || null,
-      bank_info || null,
-      tax_number || null,
-      parseInt(status) || 1,
-      remarks || null
-    ];
-
-    const [result] = await this.executeQuery(query, params);
-    return result.insertId;
-  }
-
-  /**
-   * 更新供应商
-   */
-  async updateSupplier(id, supplierData) {
-    const {
-      name,
-      contact,
-      phone,
-      address,
-      bank_info,
-      tax_number,
-      status,
-      remarks
-    } = supplierData;
-
-    const query = `
-      UPDATE ${this.tableName} SET
-        name = ?, contact = ?, phone = ?, address = ?,
-        bank_info = ?, tax_number = ?, status = ?, remarks = ?,
-        updated_at = NOW()
-      WHERE id = ?
-    `;
-
-    const params = [
-      name,
-      contact || null,
-      phone || null,
-      address || null,
-      bank_info || null,
-      tax_number || null,
-      parseInt(status) || 0,
-      remarks || null,
-      parseInt(id)
-    ];
-
-    const [result] = await this.executeQuery(query, params);
-    return result.affectedRows > 0;
-  }
-
-  /**
-   * 删除供应商
-   */
-  async deleteSupplier(id) {
-    // 检查是否有关联商品
-    const [accessories] = await this.executeQuery(
-      'SELECT COUNT(*) as count FROM accessories WHERE supplier_id = ?',
-      [id]
-    );
-    const [phones] = await this.executeQuery(
-      'SELECT COUNT(*) as count FROM phones WHERE supplier_id = ?',
-      [id]
-    );
-
-    if (accessories[0].count > 0 || phones[0].count > 0) {
-      return {
-        canDelete: false,
-        reason: '该供应商下还有关联的商品，无法删除',
-        accessoryCount: accessories[0].count,
-        phoneCount: phones[0].count
-      };
-    }
-
-    const [result] = await this.executeQuery(
-      `DELETE FROM ${this.tableName} WHERE id = ?`,
-      [id]
-    );
-
-    return {
-      canDelete: true,
-      deleted: result.affectedRows > 0
-    };
-  }
-
-  /**
-   * 批量更新供应商状态
-   */
-  async batchUpdateStatus(ids, status) {
-    const placeholders = ids.map(() => '?').join(',');
-    const query = `
-      UPDATE ${this.tableName}
-      SET status = ?, updated_at = NOW()
-      WHERE id IN (${placeholders})
-    `;
-
-    const params = [parseInt(status), ...ids.map(id => parseInt(id))];
-    const [result] = await this.executeQuery(query, params);
-    return result.affectedRows;
-  }
-
-  /**
-   * 搜索供应商
-   */
-  async searchSuppliers(keyword, filters = {}) {
-    const { page = 1, limit = 20, status } = filters;
-    const validLimit = Math.min(Math.max(parseInt(limit) || 20, 1), 100);
-    const validPage = Math.max(parseInt(page) || 1, 1);
-    const offset = (validPage - 1) * validLimit;
-
-    const whereConditions = [
-      '(s.name LIKE ? OR s.contact LIKE ? OR s.phone LIKE ? OR s.address LIKE ?)'
-    ];
-    const params = [
-      `%${keyword}%`, `%${keyword}%`, `%${keyword}%`, `%${keyword}%`
-    ];
-
-    if (status !== undefined) {
-      whereConditions.push('s.status = ?');
-      params.push(parseInt(status));
-    }
-
-    const whereClause = whereConditions.join(' AND ');
-
-    const query = `
-      SELECT
-        s.*,
-        COALESCE(a.accessory_count, 0) as accessory_count,
-        COALESCE(p.phone_count, 0) as phone_count
-      FROM ${this.tableName} s
-      LEFT JOIN (
-        SELECT supplier_id, COUNT(*) as accessory_count
-        FROM accessories GROUP BY supplier_id
-      ) a ON s.id = a.supplier_id
-      LEFT JOIN (
-        SELECT supplier_id, COUNT(*) as phone_count
-        FROM phones GROUP BY supplier_id
-      ) p ON s.id = p.supplier_id
-      WHERE ${whereClause}
-      ORDER BY s.name
-      LIMIT ${validLimit} OFFSET ${offset}
-    `;
-
-    const [suppliers] = await this.executeQuery(query, params);
-
-    // 查询总数
-    const countQuery = `
-      SELECT COUNT(*) as total FROM ${this.tableName} s
-      WHERE ${whereClause}
-    `;
-    const [countResult] = await this.executeQuery(countQuery, params);
-    const total = countResult[0].total;
+        SELECT supplier_id, COUNT(*) AS phone_count,
+               COALESCE(SUM(purchase_cost), 0) AS total_cost
+        FROM phones
+        GROUP BY supplier_id
+      ) p ON p.supplier_id = s.id
+      ${whereClause}
+      ORDER BY s.${sortColumn} ${sortDirection}${fallbackOrder}
+      LIMIT ${validPageSize} OFFSET ${offset}
+    `, params)
+    const countRows = await this.executeQuery(
+      `SELECT COUNT(*) AS total FROM suppliers s ${whereClause}`,
+      params
+    )
+    const total = Number(countRows[0]?.total) || 0
+    const total_pages = Math.ceil(total / validPageSize)
 
     return {
       suppliers: suppliers.map(row => ({
-        id: parseInt(row.id),
-        name: String(row.name || '').trim(),
-        contact: String(row.contact || '').trim(),
-        phone: String(row.phone || '').trim(),
-        address: String(row.address || '').trim(),
-        status: parseInt(row.status) || 0,
+        ...formatSupplier(row),
         stats: {
-          accessory_count: parseInt(row.accessory_count) || 0,
-          phone_count: parseInt(row.phone_count) || 0
+          accessory_count: Number(row.accessory_count) || 0,
+          phone_count: Number(row.phone_count) || 0,
+          accessory_total_cost: Number(row.accessory_total_cost) || 0,
+          phone_total_cost: Number(row.phone_total_cost) || 0,
+          total_cost: Number(row.total_cost) || 0
         }
       })),
       pagination: {
         page: validPage,
-        limit: validLimit,
-        total: total,
-        totalPages: Math.ceil(total / validLimit),
-        hasNextPage: validPage < Math.ceil(total / validLimit),
-        hasPrevPage: validPage > 1
+        page_size: validPageSize,
+        total,
+        total_pages,
+        has_next: validPage < total_pages,
+        has_prev: validPage > 1
       }
-    };
-  }
-
-  /**
-   * 检查供应商名称是否可用
-   */
-  async checkNameAvailability(name, excludeId = null) {
-    let query = `SELECT id FROM ${this.tableName} WHERE name = ?`;
-    let params = [name];
-
-    if (excludeId) {
-      query += ' AND id != ?';
-      params.push(parseInt(excludeId));
     }
-
-    const [result] = await this.executeQuery(query, params);
-    return result.length === 0;
   }
 
-  /**
-   * 获取供应商统计信息
-   */
-  async getSupplierStats() {
-    const [totalStats] = await this.executeQuery(`
-      SELECT
-        COUNT(*) as total_suppliers,
-        COUNT(CASE WHEN status = 1 THEN 1 END) as active_suppliers,
-        COUNT(CASE WHEN status = 0 THEN 1 END) as inactive_suppliers
-      FROM ${this.tableName}
-    `);
+  async getSupplierById(id) {
+    const suppliers = await this.executeQuery(
+      `SELECT ${SUPPLIER_SELECT_COLUMNS} FROM suppliers s WHERE s.id = ?`,
+      [id]
+    )
+    if (suppliers.length === 0) return null
 
-    const [productStats] = await this.executeQuery(`
-      SELECT
-        COUNT(DISTINCT s.id) as suppliers_with_products
-      FROM ${this.tableName} s
-      LEFT JOIN accessories a ON s.id = a.supplier_id
-      LEFT JOIN phones p ON s.id = p.supplier_id
-      WHERE a.id IS NOT NULL OR p.id IS NOT NULL
-    `);
+    const [accessoryStats, phoneStats] = await Promise.all([
+      this.executeQuery(
+        'SELECT COUNT(*) AS count, COALESCE(SUM(purchase_cost), 0) AS total_cost FROM accessories WHERE supplier_id = ?',
+        [id]
+      ),
+      this.executeQuery(
+        'SELECT COUNT(*) AS count, COALESCE(SUM(purchase_cost), 0) AS total_cost FROM phones WHERE supplier_id = ?',
+        [id]
+      )
+    ])
 
     return {
-      total_suppliers: parseInt(totalStats[0].total_suppliers) || 0,
-      active_suppliers: parseInt(totalStats[0].active_suppliers) || 0,
-      inactive_suppliers: parseInt(totalStats[0].inactive_suppliers) || 0,
-      suppliers_with_products: parseInt(productStats[0].suppliers_with_products) || 0
-    };
+      ...formatSupplier(suppliers[0]),
+      stats: {
+        accessories_count: Number(accessoryStats[0]?.count) || 0,
+        accessories_total_cost: Number(accessoryStats[0]?.total_cost) || 0,
+        phones_count: Number(phoneStats[0]?.count) || 0,
+        phones_total_cost: Number(phoneStats[0]?.total_cost) || 0
+      }
+    }
   }
 
-  /**
-   * 获取活跃供应商
-   */
+  async createSupplier(supplierData) {
+    const {
+      name, contact, phone, address, bank_info, tax_number,
+      status = 1, sort_order = 0, remarks
+    } = supplierData
+    const [result] = await this.executeQuery(`
+      INSERT INTO suppliers (
+        name, contact, phone, address, bank_info, tax_number,
+        status, sort_order, remarks, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    `, [
+      name,
+      contact || null,
+      phone || null,
+      address || null,
+      bank_info || null,
+      tax_number || null,
+      Number(status),
+      Number(sort_order),
+      remarks || null
+    ])
+    return Number(result.insertId)
+  }
+
+  async updateSupplier(id, supplierData) {
+    const {
+      name, contact, phone, address, bank_info, tax_number,
+      status, sort_order, remarks
+    } = supplierData
+    const [result] = await this.executeQuery(`
+      UPDATE suppliers
+      SET name = ?, contact = ?, phone = ?, address = ?, bank_info = ?,
+          tax_number = ?, status = ?, sort_order = ?, remarks = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `, [
+      name,
+      contact || null,
+      phone || null,
+      address || null,
+      bank_info || null,
+      tax_number || null,
+      Number(status),
+      Number(sort_order),
+      remarks || null,
+      Number(id)
+    ])
+    return result.affectedRows > 0
+  }
+
+  async deleteSupplier(id) {
+    const [accessories, phones] = await Promise.all([
+      this.executeQuery('SELECT COUNT(*) AS count FROM accessories WHERE supplier_id = ?', [id]),
+      this.executeQuery('SELECT COUNT(*) AS count FROM phones WHERE supplier_id = ?', [id])
+    ])
+    const accessory_count = Number(accessories[0]?.count) || 0
+    const phone_count = Number(phones[0]?.count) || 0
+    if (accessory_count > 0 || phone_count > 0) {
+      return {
+        can_delete: false,
+        reason: '该供应商下还有关联的商品，无法删除',
+        accessory_count,
+        phone_count
+      }
+    }
+
+    const [result] = await this.executeQuery('DELETE FROM suppliers WHERE id = ?', [id])
+    return { can_delete: true, deleted: result.affectedRows > 0 }
+  }
+
+  async batchUpdateStatus(ids, status) {
+    const placeholders = ids.map(() => '?').join(',')
+    const [result] = await this.executeQuery(`
+      UPDATE suppliers
+      SET status = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id IN (${placeholders})
+    `, [Number(status), ...ids.map(Number)])
+    return Number(result.affectedRows) || 0
+  }
+
+  async searchSuppliers(keyword, filters = {}) {
+    const { page = 1, page_size = 20, status } = filters
+    const validPage = Math.max(Number.parseInt(page, 10) || 1, 1)
+    const validPageSize = Math.min(Math.max(Number.parseInt(page_size, 10) || 20, 1), 10000)
+    const offset = (validPage - 1) * validPageSize
+    const conditions = ['(s.name LIKE ? OR s.contact LIKE ? OR s.phone LIKE ? OR s.address LIKE ?)']
+    const searchValue = `%${String(keyword).trim()}%`
+    const params = [searchValue, searchValue, searchValue, searchValue]
+
+    if (status !== undefined && status !== null && status !== '') {
+      conditions.push('s.status = ?')
+      params.push(Number(status))
+    }
+    const whereClause = conditions.join(' AND ')
+    const suppliers = await this.executeQuery(`
+      SELECT ${SUPPLIER_SELECT_COLUMNS},
+             COALESCE(a.accessory_count, 0) AS accessory_count,
+             COALESCE(p.phone_count, 0) AS phone_count
+      FROM suppliers s
+      LEFT JOIN (
+        SELECT supplier_id, COUNT(*) AS accessory_count FROM accessories GROUP BY supplier_id
+      ) a ON a.supplier_id = s.id
+      LEFT JOIN (
+        SELECT supplier_id, COUNT(*) AS phone_count FROM phones GROUP BY supplier_id
+      ) p ON p.supplier_id = s.id
+      WHERE ${whereClause}
+      ORDER BY s.sort_order ASC, s.name ASC, s.id ASC
+      LIMIT ${validPageSize} OFFSET ${offset}
+    `, params)
+    const countRows = await this.executeQuery(
+      `SELECT COUNT(*) AS total FROM suppliers s WHERE ${whereClause}`,
+      params
+    )
+    const total = Number(countRows[0]?.total) || 0
+    const total_pages = Math.ceil(total / validPageSize)
+
+    return {
+      suppliers: suppliers.map(row => ({
+        ...formatSupplier(row),
+        stats: {
+          accessory_count: Number(row.accessory_count) || 0,
+          phone_count: Number(row.phone_count) || 0
+        }
+      })),
+      pagination: {
+        page: validPage,
+        page_size: validPageSize,
+        total,
+        total_pages,
+        has_next: validPage < total_pages,
+        has_prev: validPage > 1
+      }
+    }
+  }
+
+  async checkNameAvailability(name, exclude_id = null) {
+    let query = 'SELECT id FROM suppliers WHERE name = ?'
+    const params = [name]
+    if (exclude_id) {
+      query += ' AND id != ?'
+      params.push(Number(exclude_id))
+    }
+    const result = await this.executeQuery(query, params)
+    return result.length === 0
+  }
+
+  async getSupplierStats() {
+    const totalStats = await this.executeQuery(`
+      SELECT COUNT(*) AS total_suppliers,
+             SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) AS active_suppliers,
+             SUM(CASE WHEN status = 0 THEN 1 ELSE 0 END) AS inactive_suppliers
+      FROM suppliers
+    `)
+    const productStats = await this.executeQuery(`
+      SELECT COUNT(DISTINCT s.id) AS suppliers_with_products
+      FROM suppliers s
+      LEFT JOIN accessories a ON a.supplier_id = s.id
+      LEFT JOIN phones p ON p.supplier_id = s.id
+      WHERE a.id IS NOT NULL OR p.id IS NOT NULL
+    `)
+    return {
+      total_suppliers: Number(totalStats[0]?.total_suppliers) || 0,
+      active_suppliers: Number(totalStats[0]?.active_suppliers) || 0,
+      inactive_suppliers: Number(totalStats[0]?.inactive_suppliers) || 0,
+      suppliers_with_products: Number(productStats[0]?.suppliers_with_products) || 0
+    }
+  }
+
   async getActiveSuppliers() {
-    const query = `
-      SELECT id, name, contact, phone
-      FROM ${this.tableName}
-      WHERE status = 1
-      ORDER BY name
-    `;
-
-    const [suppliers] = await this.executeQuery(query);
-    return suppliers.map(row => ({
-      id: parseInt(row.id),
-      name: String(row.name || '').trim(),
-      contact: String(row.contact || '').trim(),
-      phone: String(row.phone || '').trim()
-    }));
+    const suppliers = await this.executeQuery(`
+      SELECT ${SUPPLIER_SELECT_COLUMNS}
+      FROM suppliers s
+      WHERE s.status = 1
+      ORDER BY s.sort_order ASC, s.name ASC, s.id ASC
+    `)
+    return suppliers.map(formatSupplier)
   }
 
-  /**
-   * 导出供应商数据
-   */
   async exportSuppliers(filters = {}) {
-    const { name, status } = filters;
-
-    const whereConditions = [];
-    const params = [];
-
+    const { name, status } = filters
+    const conditions = []
+    const params = []
     if (name) {
-      whereConditions.push('s.name LIKE ?');
-      params.push(`%${name}%`);
+      conditions.push('s.name LIKE ?')
+      params.push(`%${String(name).trim()}%`)
     }
-
-    if (status !== undefined) {
-      whereConditions.push('s.status = ?');
-      params.push(parseInt(status));
+    if (status !== undefined && status !== null && status !== '') {
+      conditions.push('s.status = ?')
+      params.push(Number(status))
     }
-
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
-
-    const query = `
-      SELECT
-        s.id,
-        s.name,
-        s.contact,
-        s.phone,
-        s.address,
-        s.bank_info,
-        s.tax_number,
-        s.status,
-        s.remarks,
-        s.created_at,
-        s.updated_at,
-        COALESCE(a.accessory_count, 0) as accessory_count,
-        COALESCE(p.phone_count, 0) as phone_count,
-        COALESCE(a.total_cost, 0) + COALESCE(p.total_cost, 0) as total_cost
-      FROM ${this.tableName} s
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
+    const suppliers = await this.executeQuery(`
+      SELECT ${SUPPLIER_SELECT_COLUMNS},
+             COALESCE(a.accessory_count, 0) AS accessory_count,
+             COALESCE(p.phone_count, 0) AS phone_count,
+             COALESCE(a.total_cost, 0) + COALESCE(p.total_cost, 0) AS total_cost
+      FROM suppliers s
       LEFT JOIN (
-        SELECT supplier_id, COUNT(*) as accessory_count, SUM(cost) as total_cost
+        SELECT supplier_id, COUNT(*) AS accessory_count,
+               COALESCE(SUM(purchase_cost), 0) AS total_cost
         FROM accessories GROUP BY supplier_id
-      ) a ON s.id = a.supplier_id
+      ) a ON a.supplier_id = s.id
       LEFT JOIN (
-        SELECT supplier_id, COUNT(*) as phone_count, SUM(cost) as total_cost
+        SELECT supplier_id, COUNT(*) AS phone_count,
+               COALESCE(SUM(purchase_cost), 0) AS total_cost
         FROM phones GROUP BY supplier_id
-      ) p ON s.id = p.supplier_id
+      ) p ON p.supplier_id = s.id
       ${whereClause}
-      ORDER BY s.created_at DESC
-    `;
-
-    const [suppliers] = await this.executeQuery(query, params);
+      ORDER BY s.sort_order ASC, s.name ASC, s.id ASC
+    `, params)
 
     return suppliers.map(row => ({
-      ID: parseInt(row.id),
-      供应商名称: String(row.name || '').trim(),
-      联系人: String(row.contact || '').trim(),
-      联系电话: String(row.phone || '').trim(),
-      地址: String(row.address || '').trim(),
-      银行信息: String(row.bank_info || '').trim(),
-      税号: String(row.tax_number || '').trim(),
-      状态: parseInt(row.status) === 1 ? '启用' : '禁用',
-      备注: String(row.remarks || '').trim(),
-      配件数量: parseInt(row.accessory_count) || 0,
-      手机数量: parseInt(row.phone_count) || 0,
-      总成本: parseFloat(row.total_cost) || 0,
-      创建时间: row.created_at ? new Date(row.created_at).toLocaleString() : '',
-      更新时间: row.updated_at ? new Date(row.updated_at).toLocaleString() : ''
-    }));
+      id: Number(row.id),
+      name: String(row.name || '').trim(),
+      contact: formatNullableString(row.contact),
+      phone: formatNullableString(row.phone),
+      address: formatNullableString(row.address),
+      bank_info: formatNullableString(row.bank_info),
+      tax_number: formatNullableString(row.tax_number),
+      status: Number(row.status) === 1 ? 1 : 0,
+      sort_order: Number(row.sort_order) || 0,
+      remarks: formatNullableString(row.remarks),
+      accessory_count: Number(row.accessory_count) || 0,
+      phone_count: Number(row.phone_count) || 0,
+      total_cost: Number(row.total_cost) || 0,
+      created_at: row.created_at ? new Date(row.created_at).toISOString() : null,
+      updated_at: row.updated_at ? new Date(row.updated_at).toISOString() : null
+    }))
   }
 }
 
-module.exports = SupplierRepository;
+module.exports = SupplierRepository

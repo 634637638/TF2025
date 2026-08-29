@@ -2,13 +2,13 @@
  * 仪表板数据访问层
  * 处理所有仪表板相关的数据库操作
  */
-const BaseRepository = require('./base.repository');
-const { ensurePhoneStockWarningSchema } = require('../utils/phone-stock-warning-schema');
-const log = require('../utils/log');
+const BaseRepository = require('./base.repository')
+const { ensurePhoneStockWarningSchema } = require('../utils/phone-stock-warning-schema')
+const log = require('../utils/log')
 
 class DashboardRepository extends BaseRepository {
   constructor() {
-    super('dashboards');
+    super('dashboards')
   }
 
   buildWarningSpecificitySql(alias) {
@@ -17,10 +17,21 @@ class DashboardRepository extends BaseRepository {
         CASE WHEN ${alias}.color_id IS NOT NULL THEN 1 ELSE 0 END +
         CASE WHEN ${alias}.memory_id IS NOT NULL THEN 1 ELSE 0 END
       )
-    `;
+    `
   }
 
-  buildPhoneInventoryAggregateSql() {
+  buildPhoneInventoryAggregateSql(filters = {}) {
+    const conditions = [
+      'p.status = \'in_stock\'',
+      'p.supplier_id IS NOT NULL'
+    ]
+    if (filters.storeId !== undefined && filters.storeId !== null) {
+      conditions.push('p.store_id = ?')
+    }
+    if (filters.supplierId !== undefined && filters.supplierId !== null) {
+      conditions.push('p.supplier_id = ?')
+    }
+
     return `
       SELECT
         p.brand_id,
@@ -35,15 +46,14 @@ class DashboardRepository extends BaseRepository {
         MAX(p.purchase_cost) as max_cost,
         AVG(p.purchase_cost) as avg_cost
       FROM phones p
-      WHERE p.status = 'in_stock'
-        AND p.supplier_id IS NOT NULL
+      WHERE ${conditions.join('\n        AND ')}
       GROUP BY p.brand_id, p.model_id, p.color_id, p.memory_id
-    `;
+    `
   }
 
-  buildWarningCandidatesSql() {
-    const inventoryAggregateSql = this.buildPhoneInventoryAggregateSql();
-    const specificitySql = this.buildWarningSpecificitySql('psw');
+  buildWarningCandidatesSql(filters = {}) {
+    const inventoryAggregateSql = this.buildPhoneInventoryAggregateSql(filters)
+    const specificitySql = this.buildWarningSpecificitySql('psw')
 
     return `
       (
@@ -83,7 +93,7 @@ class DashboardRepository extends BaseRepository {
           AND psw.warning_enabled = 1
           AND (psw.color_id IS NULL OR psw.memory_id IS NULL)
       )
-    `;
+    `
   }
 
   /**
@@ -92,7 +102,7 @@ class DashboardRepository extends BaseRepository {
    */
   async getDashboardStats() {
     try {
-      const stats = {};
+      const stats = {}
 
       // 并行执行所有独立的统计查询，避免串行等待
       const [
@@ -115,35 +125,35 @@ class DashboardRepository extends BaseRepository {
             COUNT(CASE WHEN status = 1 THEN 1 END) as in_stock,
             COUNT(CASE WHEN is_new = 1 THEN 1 END) as new_phones,
             COUNT(CASE WHEN is_new = 0 THEN 1 END) as used_phones,
-            SUM(CASE WHEN status = 1 THEN purchase_unit_price ELSE 0 END) as total_cost,
-            SUM(CASE WHEN status = 1 THEN price ELSE 0 END) as total_value
+            SUM(CASE WHEN status = 1 THEN purchase_cost ELSE 0 END) as total_cost,
+            SUM(CASE WHEN status = 1 THEN sale_price ELSE 0 END) as total_value
           FROM phones
         `),
         this.executeQuery('SELECT COUNT(*) as count FROM suppliers WHERE status = 1'),
         this.executeQuery('SELECT COUNT(*) as count FROM stores WHERE status = 1'),
         this.executeQuery('SELECT COUNT(*) as count FROM brands WHERE status = 1')
-      ]);
+      ])
 
-      stats.users = userCount[0].count;
-      stats.accessories = accessoryCount[0].count;
-      stats.customers = customerCount[0].count;
-      stats.todaySales = todaySales[0].count;
-      stats.phones = phoneStats[0];
-      stats.suppliers = supplierCount[0].count;
-      stats.stores = storeCount[0].count;
-      stats.brands = brandCount[0].count;
+      stats.users = userCount[0].count
+      stats.accessories = accessoryCount[0].count
+      stats.customers = customerCount[0].count
+      stats.todaySales = todaySales[0].count
+      stats.phones = phoneStats[0]
+      stats.suppliers = supplierCount[0].count
+      stats.stores = storeCount[0].count
+      stats.brands = brandCount[0].count
 
-      return stats;
+      return stats
     } catch (error) {
-      log.error('获取仪表板统计数据失败:', error);
-      throw error;
+      log.error('获取仪表板统计数据失败:', error)
+      throw error
     }
   }
 
   /**
    * 获取最近销售记录
    */
-  async getRecentSales(limit = 5) {
+  async getRecentSales(pageSize = 5) {
     try {
       const query = `
         SELECT
@@ -159,20 +169,20 @@ class DashboardRepository extends BaseRepository {
         LEFT JOIN stores st ON asl.store_id = st.id
         ORDER BY asl.created_at DESC
         LIMIT ?
-      `;
+      `
 
-      const recentSales = await this.executeQuery(query, [limit]);
-      return recentSales;
+      const recentSales = await this.executeQuery(query, [pageSize])
+      return recentSales
     } catch (error) {
-      log.error('获取最近销售记录失败:', error);
-      throw error;
+      log.error('获取最近销售记录失败:', error)
+      throw error
     }
   }
 
   /**
    * 获取库存预警（配件）
    */
-  async getStockWarnings(limit = 5) {
+  async getStockWarnings(pageSize = 5) {
     try {
       const query = `
         SELECT
@@ -189,13 +199,13 @@ class DashboardRepository extends BaseRepository {
         WHERE stock <= min_stock AND status = 1
         ORDER BY stock ASC
         LIMIT ?
-      `;
+      `
 
-      const stockWarnings = await this.executeQuery(query, [limit]);
-      return stockWarnings;
+      const stockWarnings = await this.executeQuery(query, [pageSize])
+      return stockWarnings
     } catch (error) {
-      log.error('获取库存预警失败:', error);
-      throw error;
+      log.error('获取库存预警失败:', error)
+      throw error
     }
   }
 
@@ -204,13 +214,13 @@ class DashboardRepository extends BaseRepository {
    * 按型号、颜色、内存分组统计，使用配置的预警值进行判断
    * 优先级：型号级配置 > 品牌级配置 > 全局配置
    */
-  async getPhoneStockWarnings(threshold = 3, limit = 20) {
+  async getPhoneStockWarnings(_threshold = 3, pageSize = 20) {
     try {
-      await ensurePhoneStockWarningSchema();
+      await ensurePhoneStockWarningSchema()
 
-      const inventoryAggregateSql = this.buildPhoneInventoryAggregateSql();
-      const warningCandidatesSql = this.buildWarningCandidatesSql();
-      const betterSpecificitySql = this.buildWarningSpecificitySql('psw2');
+      const inventoryAggregateSql = this.buildPhoneInventoryAggregateSql()
+      const warningCandidatesSql = this.buildWarningCandidatesSql()
+      const betterSpecificitySql = this.buildWarningSpecificitySql('psw2')
 
       const query = `
         SELECT
@@ -272,13 +282,13 @@ class DashboardRepository extends BaseRepository {
           )
         ORDER BY stock_count ASC, br.name, m.name, c.name, mem.size, candidate.is_new DESC
         LIMIT ?
-      `;
+      `
 
-      const phoneWarnings = await this.executeQuery(query, [limit]);
-      return phoneWarnings;
+      const phoneWarnings = await this.executeQuery(query, [pageSize])
+      return phoneWarnings
     } catch (error) {
-      log.error('获取手机库存预警失败:', error);
-      throw error;
+      log.error('获取手机库存预警失败:', error)
+      throw error
     }
   }
 
@@ -303,13 +313,13 @@ class DashboardRepository extends BaseRepository {
         WHERE p.supplier_id IS NOT NULL
         GROUP BY br.name, m.name
         ORDER BY in_stock_count ASC, total_count DESC
-      `;
+      `
 
-      const stockSummary = await this.executeQuery(query);
-      return stockSummary;
+      const stockSummary = await this.executeQuery(query)
+      return stockSummary
     } catch (error) {
-      log.error('获取手机库存统计失败:', error);
-      throw error;
+      log.error('获取手机库存统计失败:', error)
+      throw error
     }
   }
 
@@ -326,15 +336,15 @@ class DashboardRepository extends BaseRepository {
           SUM(p.sale_price - p.purchase_cost) as total_profit,
           COUNT(DISTINCT p.sale_operator_id) as operator_count
         FROM phones p
-        WHERE DATE(p.salestime) = CURDATE()
+        WHERE DATE(p.sale_time) = CURDATE()
           AND p.status = 'sold'
-      `;
+      `
 
-      const [result] = await this.executeQuery(query);
-      return result || { sales_count: 0, total_amount: 0, total_profit: 0, operator_count: 0 };
+      const [result] = await this.executeQuery(query)
+      return result || { sales_count: 0, total_amount: 0, total_profit: 0, operator_count: 0 }
     } catch (error) {
-      log.error('获取今日销售预警失败:', error);
-      throw error;
+      log.error('获取今日销售预警失败:', error)
+      throw error
     }
   }
 
@@ -346,21 +356,21 @@ class DashboardRepository extends BaseRepository {
     try {
       const query = `
         SELECT
-          DATE(p.salestime) as sale_date,
+          DATE(p.sale_time) as sale_time,
           COUNT(*) as sales_count,
           SUM(p.sale_price) as total_amount
         FROM phones p
-        WHERE p.salestime >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+        WHERE p.sale_time >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
           AND p.status = 'sold'
-        GROUP BY DATE(p.salestime)
-        ORDER BY sale_date DESC
-      `;
+        GROUP BY DATE(p.sale_time)
+        ORDER BY sale_time DESC
+      `
 
-      const trends = await this.executeQuery(query);
-      return trends;
+      const trends = await this.executeQuery(query)
+      return trends
     } catch (error) {
-      log.error('获取销售趋势预警失败:', error);
-      throw error;
+      log.error('获取销售趋势预警失败:', error)
+      throw error
     }
   }
 
@@ -373,45 +383,45 @@ class DashboardRepository extends BaseRepository {
       // 最近7天入库统计
       const recentPurchaseQuery = `
         SELECT
-          DATE(p.Inventorytime) as purchase_date,
+          DATE(p.inventory_time) as inventory_time,
           COUNT(*) as purchase_count,
           s.name as supplier_name
         FROM phones p
         LEFT JOIN suppliers s ON p.supplier_id = s.id
-        WHERE DATE(p.Inventorytime) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+        WHERE DATE(p.inventory_time) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
           AND p.supplier_id IS NOT NULL
-          AND p.Inventorytime IS NOT NULL
-        GROUP BY DATE(p.Inventorytime), s.name
-        ORDER BY purchase_date DESC, purchase_count DESC
-      `;
+          AND p.inventory_time IS NOT NULL
+        GROUP BY DATE(p.inventory_time), s.name
+        ORDER BY inventory_time DESC, purchase_count DESC
+      `
 
-      const recentPurchases = await this.executeQuery(recentPurchaseQuery);
+      const recentPurchases = await this.executeQuery(recentPurchaseQuery)
 
       // 长期未入库的供应商（超过7天未进货）
       const noPurchaseQuery = `
         SELECT
           s.id,
           s.name as supplier_name,
-          MAX(p.Inventorytime) as last_purchase_date,
-          DATEDIFF(CURDATE(), MAX(p.Inventorytime)) as days_since_purchase
+          MAX(p.inventory_time) as last_inventory_time,
+          DATEDIFF(CURDATE(), MAX(p.inventory_time)) as days_since_purchase
         FROM suppliers s
         LEFT JOIN phones p ON s.id = p.supplier_id
-          AND p.Inventorytime IS NOT NULL
+          AND p.inventory_time IS NOT NULL
         WHERE s.status = 1
         GROUP BY s.id, s.name
-        HAVING days_since_purchase > 7 OR last_purchase_date IS NULL
+        HAVING days_since_purchase > 7 OR last_inventory_time IS NULL
         ORDER BY days_since_purchase DESC
-      `;
+      `
 
-      const noPurchases = await this.executeQuery(noPurchaseQuery);
+      const noPurchases = await this.executeQuery(noPurchaseQuery)
 
       return {
         recent: recentPurchases,
-        noRecent: noPurchases
-      };
+        no_recent: noPurchases
+      }
     } catch (error) {
-      log.error('获取入库预警失败:', error);
-      throw error;
+      log.error('获取入库预警失败:', error)
+      throw error
     }
   }
 
@@ -420,13 +430,13 @@ class DashboardRepository extends BaseRepository {
    * 按品牌+型号+颜色+内存维度，显示库存低于预警值的机型
    * 只显示有配置预警的型号，没有配置的不会出现在列表中
    */
-  async getModelStockWarnings(threshold = 3, limit = 20) {
+  async getModelStockWarnings(_threshold = 3, pageSize = 20, filters = {}) {
     try {
-      await ensurePhoneStockWarningSchema();
+      await ensurePhoneStockWarningSchema()
 
-      const inventoryAggregateSql = this.buildPhoneInventoryAggregateSql();
-      const warningCandidatesSql = this.buildWarningCandidatesSql();
-      const betterSpecificitySql = this.buildWarningSpecificitySql('psw2');
+      const inventoryAggregateSql = this.buildPhoneInventoryAggregateSql(filters)
+      const warningCandidatesSql = this.buildWarningCandidatesSql(filters)
+      const betterSpecificitySql = this.buildWarningSpecificitySql('psw2')
 
       const query = `
         SELECT
@@ -490,13 +500,19 @@ class DashboardRepository extends BaseRepository {
           )
         ORDER BY stock_count ASC, br.name, m.name, c.name, mem.size, candidate.is_new DESC
         LIMIT ?
-      `;
+      `
 
-      const warnings = await this.executeQuery(query, [limit]);
-      return warnings;
+      const filterParams = [
+        ...(filters.storeId !== undefined && filters.storeId !== null ? [filters.storeId] : []),
+        ...(filters.supplierId !== undefined && filters.supplierId !== null ? [filters.supplierId] : [])
+      ]
+      // The candidate subquery contains one filtered inventory aggregate and
+      // the outer join contains another; bind parameters in SQL appearance order.
+      const warnings = await this.executeQuery(query, [...filterParams, ...filterParams, pageSize])
+      return warnings
     } catch (error) {
-      log.error('获取机型库存预警失败:', error);
-      throw error;
+      log.error('获取机型库存预警失败:', error)
+      throw error
     }
   }
 
@@ -508,9 +524,9 @@ class DashboardRepository extends BaseRepository {
   async getComprehensiveWarnings(options = {}) {
     try {
       const {
-        phoneThreshold = 3,
-        limit = 10
-      } = options;
+        phone_threshold = 3,
+        page_size = 10
+      } = options
 
       // 并行获取各类预警数据（移除配件预警 accessoryWarnings）
       const [
@@ -520,17 +536,17 @@ class DashboardRepository extends BaseRepository {
         purchaseWarnings,
         modelWarnings
       ] = await Promise.all([
-        this.getPhoneStockWarnings(phoneThreshold, limit),
+        this.getPhoneStockWarnings(phone_threshold, page_size),
         this.getTodaySalesWarnings(),
         this.getSalesTrendWarnings(),
         this.getPurchaseWarnings(),
-        this.getModelStockWarnings(phoneThreshold, limit)
-      ]);
+        this.getModelStockWarnings(phone_threshold, page_size)
+      ])
 
       return {
         phones: {
           warnings: phoneWarnings,
-          threshold: phoneThreshold,
+          threshold: phone_threshold,
           count: phoneWarnings.length
         },
         // 暂时移除配件预警
@@ -541,9 +557,12 @@ class DashboardRepository extends BaseRepository {
         sales: {
           today: todaySales,
           trend: salesTrend,
-          avgDailySales: salesTrend.length > 0
+          avg_daily_sales: salesTrend.length > 0
             ? Math.round(salesTrend.reduce((sum, t) => sum + (t.sales_count || 0), 0) / salesTrend.length)
-            : 0
+            : 0,
+          is_below_average: todaySales.sales_count < (salesTrend.length > 0
+            ? Math.round(salesTrend.reduce((sum, t) => sum + (t.sales_count || 0), 0) / salesTrend.length)
+            : 0)
         },
         purchases: purchaseWarnings,
         models: {
@@ -551,14 +570,14 @@ class DashboardRepository extends BaseRepository {
           count: modelWarnings.length
         },
         summary: {
-          totalWarnings: phoneWarnings.length + modelWarnings.length,
-          hasWarnings: (phoneWarnings.length + modelWarnings.length) > 0,
+          total_warnings: phoneWarnings.length + modelWarnings.length,
+          has_warnings: (phoneWarnings.length + modelWarnings.length) > 0,
           note: '配件预警功能暂未启用'
         }
-      };
+      }
     } catch (error) {
-      log.error('获取综合预警失败:', error);
-      throw error;
+      log.error('获取综合预警失败:', error)
+      throw error
     }
   }
 
@@ -577,13 +596,13 @@ class DashboardRepository extends BaseRepository {
         WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
         GROUP BY DATE(created_at)
         ORDER BY date ASC
-      `;
+      `
 
-      const salesTrends = await this.executeQuery(query, [days]);
-      return salesTrends;
+      const salesTrends = await this.executeQuery(query, [days])
+      return salesTrends
     } catch (error) {
-      log.error('获取销售趋势数据失败:', error);
-      throw error;
+      log.error('获取销售趋势数据失败:', error)
+      throw error
     }
   }
 
@@ -591,7 +610,7 @@ class DashboardRepository extends BaseRepository {
   /**
    * 获取热销产品排行
    */
-  async getTopSellingProducts(limit = 10) {
+  async getTopSellingProducts(pageSize = 10) {
     try {
       const query = `
         SELECT
@@ -607,20 +626,20 @@ class DashboardRepository extends BaseRepository {
         GROUP BY asl.accessory_id, acc.id, acc.name, acc.category
         ORDER BY total_sold DESC
         LIMIT ?
-      `;
+      `
 
-      const topProducts = await this.executeQuery(query, [limit]);
-      return topProducts;
+      const topProducts = await this.executeQuery(query, [pageSize])
+      return topProducts
     } catch (error) {
-      log.error('获取热销产品排行失败:', error);
-      throw error;
+      log.error('获取热销产品排行失败:', error)
+      throw error
     }
   }
 
   /**
    * 获取员工绩效排行
    */
-  async getTopEmployees(limit = 10) {
+  async getTopEmployees(pageSize = 10) {
     try {
       const query = `
         SELECT
@@ -635,13 +654,13 @@ class DashboardRepository extends BaseRepository {
         GROUP BY asl.operator_id, u.id, u.username, u.name
         ORDER BY total_revenue DESC
         LIMIT ?
-      `;
+      `
 
-      const topEmployees = await this.executeQuery(query, [limit]);
-      return topEmployees;
+      const topEmployees = await this.executeQuery(query, [pageSize])
+      return topEmployees
     } catch (error) {
-      log.error('获取员工绩效排行失败:', error);
-      throw error;
+      log.error('获取员工绩效排行失败:', error)
+      throw error
     }
   }
 
@@ -661,13 +680,13 @@ class DashboardRepository extends BaseRepository {
         WHERE asl.created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
         GROUP BY acc.category
         ORDER BY total_revenue DESC
-      `;
+      `
 
-      const categoryStats = await this.executeQuery(query);
-      return categoryStats;
+      const categoryStats = await this.executeQuery(query)
+      return categoryStats
     } catch (error) {
-      log.error('获取分类销售统计失败:', error);
-      throw error;
+      log.error('获取分类销售统计失败:', error)
+      throw error
     }
   }
 
@@ -676,21 +695,21 @@ class DashboardRepository extends BaseRepository {
    */
   async getMenus() {
     try {
-      const query = 'SELECT * FROM menus ORDER BY sort_order ASC, id ASC';
-      const menus = await this.executeQuery(query);
+      const query = 'SELECT * FROM menus ORDER BY sort_order ASC, id ASC'
+      const menus = await this.executeQuery(query)
 
       // 确保返回的数据格式正确
       const formattedMenus = menus.map(menu => ({
         ...menu,
         is_active: Boolean(menu.is_active) // 转换为布尔值
-      }));
+      }))
 
-      return formattedMenus;
+      return formattedMenus
     } catch (error) {
-      log.error('获取菜单列表失败:', error);
-      throw error;
+      log.error('获取菜单列表失败:', error)
+      throw error
     }
   }
 }
 
-module.exports = DashboardRepository;
+module.exports = DashboardRepository

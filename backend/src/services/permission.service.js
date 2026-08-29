@@ -1,12 +1,12 @@
-const { getDatabase } = require('../config/database');
-const { hasColumn } = require('./schemaInspector.service');
-const { getModulePermissionTypes, normalizePermissionType } = require('../config/module-permission-actions');
-const { normalizeModuleKey } = require('../utils/moduleKeyNormalizer');
-const log = require('../utils/log');
+const { getDatabase } = require('../config/database')
+const { hasColumn } = require('./schemaInspector.service')
+const { getModulePermissionTypes, normalizePermissionType } = require('../config/module-permission-actions')
+const { normalizeModuleKey } = require('../utils/moduleKeyNormalizer')
+const log = require('../utils/log')
 
 class PermissionService {
   get pool() {
-    return getDatabase();
+    return getDatabase()
   }
 
   /**
@@ -26,16 +26,16 @@ class PermissionService {
           updated_at
         FROM roles
         ORDER BY id
-      `);
+      `)
 
       // 为每个角色添加status字段以兼容前端
       return rows.map(role => ({
         ...role,
         status: role.is_active === 1 ? 'active' : 'inactive'
-      }));
+      }))
     } catch (error) {
-      log.error('获取角色列表失败:', error);
-      throw error;
+      log.error('获取角色列表失败:', error)
+      throw error
     }
   }
 
@@ -44,17 +44,17 @@ class PermissionService {
    */
   async createRole(roleData) {
     try {
-      const { name, description, role_type, is_active } = roleData;
+      const { name, description, role_type, is_active } = roleData
 
       const [result] = await this.pool.execute(
         'INSERT INTO roles (name, description, role_type, is_active) VALUES (?, ?, ?, ?)',
         [name, description || '', role_type || 'employee', is_active !== undefined ? is_active : 1]
-      );
+      )
 
-      return { id: result.insertId, name, description, role_type: role_type || 'employee', is_active: 1 };
+      return { id: result.insertId, name, description, role_type: role_type || 'employee', is_active: 1 }
     } catch (error) {
-      log.error('创建角色失败:', error);
-      throw error;
+      log.error('创建角色失败:', error)
+      throw error
     }
   }
 
@@ -63,18 +63,18 @@ class PermissionService {
    */
   async updateRole(id, roleData) {
     try {
-      const { name, description, role_type, is_active, status } = roleData;
+      const { name, description, role_type, is_active, status } = roleData
 
       // 兼容前端发送的status字段，转换为is_active
-      let finalIsActive = is_active !== undefined ? is_active : 1;
+      let finalIsActive = is_active !== undefined ? is_active : 1
       if (status !== undefined) {
-        finalIsActive = status === 'active' ? 1 : 0;
+        finalIsActive = status === 'active' ? 1 : 0
       }
 
       await this.pool.execute(
         'UPDATE roles SET name = ?, description = ?, role_type = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
         [name, description || '', role_type || 'employee', finalIsActive, id]
-      );
+      )
 
       return {
         id,
@@ -83,10 +83,10 @@ class PermissionService {
         role_type: role_type || 'employee',
         is_active: finalIsActive,
         status: finalIsActive === 1 ? 'active' : 'inactive' // 同时返回status字段供前端使用
-      };
+      }
     } catch (error) {
-      log.error('更新角色失败:', error);
-      throw error;
+      log.error('更新角色失败:', error)
+      throw error
     }
   }
 
@@ -94,37 +94,37 @@ class PermissionService {
    * 删除角色
    */
   async deleteRole(id) {
-    const connection = await this.pool.getConnection();
+    const connection = await this.pool.getConnection()
     try {
-      await connection.beginTransaction();
+      await connection.beginTransaction()
 
       // 检查是否有用户使用该角色
       const [userRoles] = await connection.execute(
         'SELECT COUNT(*) as count FROM user_roles WHERE role_id = ?',
         [id]
-      );
+      )
 
       if (userRoles[0].count > 0) {
-        await connection.rollback();
-        throw new Error('该角色下还有用户，无法删除');
+        await connection.rollback()
+        throw new Error('该角色下还有用户，无法删除')
       }
 
       // 删除角色权限
-      await connection.execute('DELETE FROM role_permissions WHERE role_id = ?', [id]);
+      await connection.execute('DELETE FROM role_permissions WHERE role_id = ?', [id])
 
       // 删除菜单权限
-      await connection.execute('DELETE FROM menu_roles WHERE role_id = ?', [id]);
+      await connection.execute('DELETE FROM menu_roles WHERE role_id = ?', [id])
 
       // 删除角色
-      await connection.execute('DELETE FROM roles WHERE id = ?', [id]);
+      await connection.execute('DELETE FROM roles WHERE id = ?', [id])
 
-      await connection.commit();
-      return true;
+      await connection.commit()
+      return true
     } catch (error) {
-      await connection.rollback();
-      throw error;
+      await connection.rollback()
+      throw error
     } finally {
-      connection.release();
+      connection.release()
     }
   }
 
@@ -135,12 +135,12 @@ class PermissionService {
     try {
       const [rows] = await this.pool.execute(`
         SELECT * FROM modules ORDER BY sort_order ASC, name ASC
-      `);
+      `)
 
-      return rows;
+      return rows
     } catch (error) {
-      log.error('获取模块列表失败:', error);
-      throw error;
+      log.error('获取模块列表失败:', error)
+      throw error
     }
   }
 
@@ -160,12 +160,12 @@ class PermissionService {
         LEFT JOIN modules m ON rp.module_key COLLATE utf8mb4_unicode_ci = m.\`key\` COLLATE utf8mb4_unicode_ci
         WHERE rp.role_id = ?
         ORDER BY m.sort_order ASC, m.name ASC
-      `, [roleId]);
+      `, [roleId])
 
-      return rows;
+      return rows
     } catch (error) {
-      log.error('获取角色权限失败:', error);
-      throw error;
+      log.error('获取角色权限失败:', error)
+      throw error
     }
   }
 
@@ -184,30 +184,30 @@ class PermissionService {
           sort_order
         FROM modules
         ORDER BY sort_order ASC, name ASC
-      `);
+      `)
 
       // 获取角色已有的权限
       const [permissions] = await this.pool.execute(`
         SELECT module_key, permission_type
         FROM role_permissions
         WHERE role_id = ?
-      `, [roleId]);
+      `, [roleId])
 
       // 创建权限映射
-      const permissionMap = new Map();
+      const permissionMap = new Map()
       permissions.forEach(perm => {
-        permissionMap.set(`${perm.module_key}:${perm.permission_type}`, true);
-      });
+        permissionMap.set(`${perm.module_key}:${perm.permission_type}`, true)
+      })
 
       // 定义所有可能的权限类型
-      const permissionTypes = ['view', 'create', 'edit', 'delete', 'export', 'import', 'sell'];
+      const permissionTypes = ['view', 'create', 'edit', 'delete', 'export', 'import', 'sell']
 
       // 构建权限矩阵
       const permissionMatrix = modules.map(module => {
         const modulePermissions = permissionTypes.map(type => ({
           type: type,
           granted: permissionMap.has(`${module.key}:${type}`)
-        }));
+        }))
 
         return {
           key: module.key,
@@ -215,13 +215,13 @@ class PermissionService {
           description: module.description || '',
           icon: module.icon || 'fas fa-cog',
           permissions: modulePermissions
-        };
-      });
+        }
+      })
 
-      return permissionMatrix;
+      return permissionMatrix
     } catch (error) {
-      log.error('获取角色权限矩阵失败:', error);
-      throw error;
+      log.error('获取角色权限矩阵失败:', error)
+      throw error
     }
   }
 
@@ -229,12 +229,12 @@ class PermissionService {
    * 设置角色权限
    */
   async setRolePermissions(roleId, permissions) {
-    const connection = await this.pool.getConnection();
+    const connection = await this.pool.getConnection()
     try {
-      await connection.beginTransaction();
+      await connection.beginTransaction()
 
       // 删除现有权限
-      await connection.execute('DELETE FROM role_permissions WHERE role_id = ?', [roleId]);
+      await connection.execute('DELETE FROM role_permissions WHERE role_id = ?', [roleId])
 
       // 添加新权限
       if (permissions && permissions.length > 0) {
@@ -246,18 +246,18 @@ class PermissionService {
               normalizeModuleKey(permission.module_key),
               normalizePermissionType(permission.permission_type)
             ]
-          );
+          )
         }
       }
 
-      await connection.commit();
-      return true;
+      await connection.commit()
+      return true
     } catch (error) {
-      await connection.rollback();
-      log.error('设置角色权限失败:', error);
-      throw error;
+      await connection.rollback()
+      log.error('设置角色权限失败:', error)
+      throw error
     } finally {
-      connection.release();
+      connection.release()
     }
   }
 
@@ -265,37 +265,37 @@ class PermissionService {
    * 为角色选择所有权限
    */
   async selectAllPermissions(roleId) {
-    const connection = await this.pool.getConnection();
+    const connection = await this.pool.getConnection()
     try {
-      await connection.beginTransaction();
+      await connection.beginTransaction()
 
       // 删除现有权限
-      await connection.execute('DELETE FROM role_permissions WHERE role_id = ?', [roleId]);
+      await connection.execute('DELETE FROM role_permissions WHERE role_id = ?', [roleId])
 
       // 获取所有模块
       const [modules] = await connection.execute(`
         SELECT \`key\` FROM modules ORDER BY sort_order ASC, name ASC
-      `);
+      `)
 
       // 为每个模块添加其真实支持的权限，避免无功能模块出现导入/导出等无关开关。
       for (const module of modules) {
-        const moduleKey = normalizeModuleKey(module.key);
+        const moduleKey = normalizeModuleKey(module.key)
         for (const permissionType of getModulePermissionTypes(moduleKey)) {
           await connection.execute(
             'INSERT INTO role_permissions (role_id, module_key, permission_type) VALUES (?, ?, ?)',
             [roleId, moduleKey, normalizePermissionType(permissionType)]
-          );
+          )
         }
       }
 
-      await connection.commit();
-      return true;
+      await connection.commit()
+      return true
     } catch (error) {
-      await connection.rollback();
-      log.error('选择所有权限失败:', error);
-      throw error;
+      await connection.rollback()
+      log.error('选择所有权限失败:', error)
+      throw error
     } finally {
-      connection.release();
+      connection.release()
     }
   }
 
@@ -304,11 +304,11 @@ class PermissionService {
    */
   async clearAllPermissions(roleId) {
     try {
-      await this.pool.execute('DELETE FROM role_permissions WHERE role_id = ?', [roleId]);
-      return true;
+      await this.pool.execute('DELETE FROM role_permissions WHERE role_id = ?', [roleId])
+      return true
     } catch (error) {
-      log.error('清空所有权限失败:', error);
-      throw error;
+      log.error('清空所有权限失败:', error)
+      throw error
     }
   }
 
@@ -328,12 +328,12 @@ class PermissionService {
         LEFT JOIN menus m ON mr.menu_id = m.id
         WHERE mr.role_id = ? AND m.is_active = 1
         ORDER BY m.sort_order ASC, m.id ASC
-      `, [roleId]);
+      `, [roleId])
 
-      return rows;
+      return rows
     } catch (error) {
-      log.error('获取角色菜单权限失败:', error);
-      throw error;
+      log.error('获取角色菜单权限失败:', error)
+      throw error
     }
   }
 
@@ -341,12 +341,12 @@ class PermissionService {
    * 设置角色菜单权限
    */
   async setRoleMenus(roleId, menuIds) {
-    const connection = await this.pool.getConnection();
+    const connection = await this.pool.getConnection()
     try {
-      await connection.beginTransaction();
+      await connection.beginTransaction()
 
       // 删除现有菜单权限
-      await connection.execute('DELETE FROM menu_roles WHERE role_id = ?', [roleId]);
+      await connection.execute('DELETE FROM menu_roles WHERE role_id = ?', [roleId])
 
       // 添加新菜单权限
       if (menuIds && menuIds.length > 0) {
@@ -354,18 +354,18 @@ class PermissionService {
           await connection.execute(
             'INSERT INTO menu_roles (role_id, menu_id) VALUES (?, ?)',
             [roleId, menuId]
-          );
+          )
         }
       }
 
-      await connection.commit();
-      return true;
+      await connection.commit()
+      return true
     } catch (error) {
-      await connection.rollback();
-      log.error('设置角色菜单权限失败:', error);
-      throw error;
+      await connection.rollback()
+      log.error('设置角色菜单权限失败:', error)
+      throw error
     } finally {
-      connection.release();
+      connection.release()
     }
   }
 
@@ -390,7 +390,7 @@ class PermissionService {
         LEFT JOIN roles r ON ur.role_id = r.id
         WHERE ur.user_id = ? AND ur.status = 'active'
         ORDER BY ur.assigned_at DESC
-      `, [userId]);
+      `, [userId])
 
       // 统一返回格式
       return rows.map(row => ({
@@ -407,10 +407,10 @@ class PermissionService {
         // 兼容性字段
         active: row.r_is_active === 1 && row.ur_status === 'active',
         valid: !row.expires_at || new Date(row.expires_at) > new Date()
-      }));
+      }))
     } catch (error) {
-      log.error('获取用户角色失败:', error);
-      throw error;
+      log.error('获取用户角色失败:', error)
+      throw error
     }
   }
 
@@ -418,40 +418,40 @@ class PermissionService {
    * 设置用户角色（简化版本）
    */
   async setUserRoles(userId, roleIds, assignedBy = null) {
-    log.debug(`🔧 开始设置用户 ${userId} 的角色:`, roleIds);
+    log.debug(`🔧 开始设置用户 ${userId} 的角色:`, roleIds)
 
-    const connection = await this.pool.getConnection();
+    const connection = await this.pool.getConnection()
     try {
-      await connection.beginTransaction();
+      await connection.beginTransaction()
 
       // 先删除所有现有角色
-      log.debug(`🗑️ 删除用户 ${userId} 的现有角色...`);
+      log.debug(`🗑️ 删除用户 ${userId} 的现有角色...`)
       await connection.execute(
         'DELETE FROM user_roles WHERE user_id = ?',
         [userId]
-      );
+      )
 
       // 插入新角色
       if (roleIds && roleIds.length > 0) {
-        log.debug(`➕ 为用户 ${userId} 插入 ${roleIds.length} 个角色...`);
+        log.debug(`➕ 为用户 ${userId} 插入 ${roleIds.length} 个角色...`)
 
         for (const roleId of roleIds) {
           await connection.execute(
             'INSERT INTO user_roles (user_id, role_id, assigned_by, assigned_at, status) VALUES (?, ?, ?, NOW(), ?)',
             [userId, roleId, assignedBy || userId, 'active']
-          );
+          )
         }
       }
 
-      await connection.commit();
-      log.debug(`✅ 用户 ${userId} 角色设置成功`);
-      return true;
+      await connection.commit()
+      log.debug(`✅ 用户 ${userId} 角色设置成功`)
+      return true
     } catch (error) {
-      await connection.rollback();
-      log.error('❌ 设置用户角色失败:', error);
-      throw error;
+      await connection.rollback()
+      log.error('❌ 设置用户角色失败:', error)
+      throw error
     } finally {
-      connection.release();
+      connection.release()
     }
   }
 
@@ -465,12 +465,12 @@ class PermissionService {
         FROM user_roles ur
         JOIN role_permissions rp ON ur.role_id = rp.role_id
         WHERE ur.user_id = ? AND rp.module_key = ? AND rp.permission_type = ?
-      `, [userId, moduleKey, permissionType]);
+      `, [userId, moduleKey, permissionType])
 
-      return rows[0].count > 0;
+      return rows[0].count > 0
     } catch (error) {
-      log.error('检查用户权限失败:', error);
-      return false;
+      log.error('检查用户权限失败:', error)
+      return false
     }
   }
 
@@ -479,8 +479,8 @@ class PermissionService {
    */
   async getPermissionStats() {
     try {
-      const roleHasHierarchyLevel = await hasColumn('roles', 'hierarchy_level', this.pool);
-      const hierarchyExpr = roleHasHierarchyLevel ? 'COALESCE(hierarchy_level, 0)' : '0';
+      const roleHasHierarchyLevel = await hasColumn('roles', 'hierarchy_level', this.pool)
+      const hierarchyExpr = roleHasHierarchyLevel ? 'COALESCE(hierarchy_level, 0)' : '0'
 
       const [stats] = await this.pool.execute(`
         SELECT
@@ -494,14 +494,14 @@ class PermissionService {
           (SELECT COUNT(*) FROM roles WHERE is_active = 1 AND ${hierarchyExpr} < 70) as business_roles,
           (SELECT COUNT(*) FROM role_permissions) as total_permissions,
           (SELECT COUNT(*) FROM modules WHERE is_active = 1) as total_modules
-      `);
+      `)
 
-      return stats[0];
+      return stats[0]
     } catch (error) {
-      log.error('获取权限统计失败:', error);
-      throw error;
+      log.error('获取权限统计失败:', error)
+      throw error
     }
   }
 }
 
-module.exports = PermissionService;
+module.exports = PermissionService

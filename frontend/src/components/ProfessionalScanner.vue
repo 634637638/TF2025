@@ -1,26 +1,37 @@
 <template>
   <!-- 专业扫码组件 -->
-  <div v-if="visible" class="scanner-overlay" @click.self="handleCancel">
+  <div
+    v-if="visible"
+    class="scanner-overlay"
+    @click.self="handleCancel"
+  >
     <div class="scanner-container">
       <!-- 扫码头部 -->
       <div class="scanner-header">
         <h3 class="scanner-title">
-          <i class="fas fa-qrcode"></i>
+          <i class="fas fa-qrcode" />
           {{ title }}
-          <span v-if="phone?.brand" class="phone-brand">({{ phone.brand }})</span>
+          <span
+            v-if="phone?.brand"
+            class="phone-brand"
+          >({{ phone.brand }})</span>
         </h3>
         <div class="header-actions">
           <button
             v-if="hasFlash"
             class="icon-btn flash-btn"
             :class="{ active: flashOn }"
-            @click="toggleFlash"
             title="闪光灯"
+            @click="toggleFlash"
           >
-            <i :class="flashOn ? 'fas fa-lightbulb' : 'far fa-lightbulb'"></i>
+            <i :class="flashOn ? 'fas fa-lightbulb' : 'far fa-lightbulb'" />
           </button>
-          <button class="icon-btn close-btn" @click="handleCancel" title="关闭">
-            <i class="fas fa-times"></i>
+          <button
+            class="icon-btn close-btn"
+            title="关闭"
+            @click="handleCancel"
+          >
+            <i class="fas fa-times" />
           </button>
         </div>
       </div>
@@ -28,42 +39,65 @@
       <!-- 主扫码区域 -->
       <div class="scanner-main">
         <!-- 视频容器 -->
-        <div class="video-wrapper" @click="handleVideoClick" @dblclick="handleVideoDoubleClick">
+        <div
+          class="video-wrapper"
+          @click="handleVideoClick"
+          @dblclick="handleVideoDoubleClick"
+        >
           <video
             ref="videoRef"
             class="scanner-video"
             :style="videoStyle"
             playsinline
             muted
-          ></video>
+          />
 
           <!-- 扫描框 -->
-          <div class="scan-frame" :class="{ active: isScanning }">
+          <div
+            class="scan-frame"
+            :class="{ active: isScanning }"
+          >
             <div class="scan-corners">
-              <div class="corner corner-tl"></div>
-              <div class="corner corner-tr"></div>
-              <div class="corner corner-br"></div>
-              <div class="corner corner-bl"></div>
+              <div class="corner corner-tl" />
+              <div class="corner corner-tr" />
+              <div class="corner corner-br" />
+              <div class="corner corner-bl" />
             </div>
-            <div class="scan-line" :class="{ scanning: isScanning }"></div>
+            <div
+              class="scan-line"
+              :class="{ scanning: isScanning }"
+            />
           </div>
 
           <!-- 状态指示器 -->
           <div class="status-overlay">
-          <div class="status-item camera-status">
-              <i class="fas fa-video"></i>
+            <div class="status-item camera-status">
+              <i class="fas fa-video" />
               <span>{{ cameraStatus }}</span>
             </div>
-            <div class="status-item scan-status" :class="statusClass">
-              <InlineLoading v-if="statusLoading" size="small" variant="inherit" />
-              <i v-else :class="statusIcon"></i>
+            <div
+              class="status-item scan-status"
+              :class="statusClass"
+            >
+              <InlineLoading
+                v-if="statusLoading"
+                size="small"
+                variant="inherit"
+              />
+              <i
+                v-else
+                :class="statusIcon"
+              />
               <span>{{ statusText }}</span>
             </div>
           </div>
 
           <!-- 设备信息 -->
-          <div v-if="deviceInfo.isAndroid" class="device-badge">
-            <i class="fab fa-android"></i>
+          <div
+            v-if="deviceInfo.isAndroid"
+            class="device-badge"
+          >
+            <i class="fab fa-android" />
             <span>安卓优化</span>
           </div>
         </div>
@@ -73,25 +107,25 @@
           <div class="control-group">
             <button
               class="control-btn"
-              @click="toggleRegion"
               :class="{ active: showRegion }"
+              @click="toggleRegion"
             >
-              <i class="fas fa-crop-alt"></i>
+              <i class="fas fa-crop-alt" />
               <span>扫描框</span>
             </button>
             <button
               class="control-btn"
-              @click="toggleAutoFocus"
               :class="{ active: autoFocus }"
+              @click="toggleAutoFocus"
             >
-              <i class="fas fa-crosshairs"></i>
+              <i class="fas fa-crosshairs" />
               <span>自动对焦</span>
             </button>
             <button
               class="control-btn"
               @click="takeSnapshot"
             >
-              <i class="fas fa-camera"></i>
+              <i class="fas fa-camera" />
               <span>拍照</span>
             </button>
           </div>
@@ -101,7 +135,7 @@
               class="control-btn manual-btn"
               @click="handleManualInput"
             >
-              <i class="fas fa-keyboard"></i>
+              <i class="fas fa-keyboard" />
               <span>手动输入</span>
             </button>
           </div>
@@ -111,9 +145,16 @@
       <!-- 底部信息 -->
       <div class="scanner-footer">
         <!-- 智能提示 -->
-        <div v-if="smartTips.length > 0" class="tips-container">
-          <div v-for="(tip, index) in smartTips" :key="index" class="tip-item">
-            <i class="fas fa-info-circle"></i>
+        <div
+          v-if="smartTips.length > 0"
+          class="tips-container"
+        >
+          <div
+            v-for="(tip, index) in smartTips"
+            :key="index"
+            class="tip-item"
+          >
+            <i class="fas fa-info-circle" />
             <span>{{ tip }}</span>
           </div>
         </div>
@@ -121,21 +162,24 @@
         <!-- 操作提示 -->
         <div class="action-hints">
           <div class="hint-item">
-            <i class="fas fa-mouse-pointer"></i>
+            <i class="fas fa-mouse-pointer" />
             <span>单击聚焦</span>
           </div>
           <div class="hint-item">
-            <i class="fas fa-hand-pointer"></i>
+            <i class="fas fa-hand-pointer" />
             <span>双击取消</span>
           </div>
           <div class="hint-item">
-            <i class="fas fa-search-plus"></i>
+            <i class="fas fa-search-plus" />
             <span>双指缩放</span>
           </div>
         </div>
 
         <!-- 调试信息 -->
-        <div v-if="isDevMode" class="debug-panel">
+        <div
+          v-if="isDevMode"
+          class="debug-panel"
+        >
           <div class="debug-item">
             <span>设备: {{ deviceInfo.isAndroid ? 'Android' : deviceInfo.isIOS ? 'iOS' : 'PC' }}</span>
           </div>
@@ -152,7 +196,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch, type CSSProperties } from 'vue'
+import { ref, computed, onBeforeUnmount, watch, type CSSProperties } from 'vue'
 import { ElMessage } from 'element-plus'
 import InlineLoading from '@/components/InlineLoading.vue'
 import { scanOptimizer, type DeviceInfo } from '@/utils/scanOptimizer'
@@ -190,7 +234,7 @@ type TorchMediaTrackConstraintSet = MediaTrackConstraintSet & {
 
 type TorchMediaTrack = MediaStreamTrack & {
   getCapabilities: () => TorchMediaTrackCapabilities
-  applyConstraints: (constraints?: MediaTrackConstraints & { advanced?: TorchMediaTrackConstraintSet[] }) => Promise<void>
+  applyConstraints: (_constraints?: MediaTrackConstraints & { advanced?: TorchMediaTrackConstraintSet[] }) => Promise<void>
 }
 
 const getTorchCapabilities = (track: MediaStreamTrack): TorchMediaTrackCapabilities => (
@@ -212,6 +256,7 @@ interface Emits extends UpdateVisibleEmits, CancelEmits {
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  phone: undefined,
   enableAndroidOptimization: true,
   showPerformance: false
 })
@@ -716,7 +761,7 @@ onBeforeUnmount(() => {
 .scanner-container {
   width: 90vw;
   max-width: 500px;
-  background: #ffffff;
+  background: var(--color-bg-white);
   border-radius: 16px;
   overflow: hidden;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
@@ -739,7 +784,7 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
   color: white;
 
   .scanner-title {
@@ -786,7 +831,7 @@ onBeforeUnmount(() => {
 }
 
 .scanner-main {
-  background: #000;
+  background: var(--tf-color-black);
   position: relative;
 
   .video-wrapper {
@@ -800,7 +845,7 @@ onBeforeUnmount(() => {
       width: 100%;
       height: 100%;
       object-fit: cover;
-      background: #000;
+      background: var(--tf-color-black);
     }
   }
 
@@ -828,7 +873,7 @@ onBeforeUnmount(() => {
         position: absolute;
         width: 20px;
         height: 20px;
-        border: 3px solid #4CAF50;
+        border: 3px solid var(--tf-color-green-material);
 
         &.corner-tl {
           top: 0;
@@ -866,7 +911,7 @@ onBeforeUnmount(() => {
       left: 0;
       right: 0;
       height: 2px;
-      background: linear-gradient(90deg, transparent, #4CAF50, transparent);
+      background: linear-gradient(90deg, transparent, var(--tf-color-green-material), transparent);
       opacity: 0;
       transition: opacity 0.3s ease;
 
@@ -903,12 +948,12 @@ onBeforeUnmount(() => {
       backdrop-filter: blur(4px);
 
       &.scan-status {
-        &.status-starting { color: #ff9800; }
-        &.status-ready { color: #4caf50; }
-        &.status-scanning { color: #2196f3; }
-        &.status-success { color: #4caf50; }
-        &.status-error { color: #f44336; }
-        &.status-cancelled { color: #9e9e9e; }
+        &.status-starting { color: var(--tf-status-warning-color); }
+        &.status-ready { color: var(--tf-status-success-color); }
+        &.status-scanning { color: var(--tf-status-info-color); }
+        &.status-success { color: var(--tf-status-success-color); }
+        &.status-error { color: var(--tf-status-danger-color); }
+        &.status-cancelled { color: var(--tf-status-neutral-color); }
       }
     }
   }
@@ -972,7 +1017,7 @@ onBeforeUnmount(() => {
 }
 
 .scanner-footer {
-  background: #f8f9fa;
+  background: var(--tf-color-surface-muted);
   padding: 16px 20px;
 
   .tips-container {
@@ -984,11 +1029,11 @@ onBeforeUnmount(() => {
       gap: 8px;
       margin-bottom: 6px;
       font-size: 13px;
-      color: #495057;
+      color: var(--tf-color-gray-bootstrap-700);
       line-height: 1.4;
 
       i {
-        color: #28a745;
+        color: var(--success-color);
         margin-top: 2px;
         font-size: 12px;
         flex-shrink: 0;
@@ -1007,7 +1052,7 @@ onBeforeUnmount(() => {
       align-items: center;
       gap: 6px;
       font-size: 12px;
-      color: #6c757d;
+      color: var(--tf-color-muted);
 
       i {
         font-size: 11px;
@@ -1016,8 +1061,8 @@ onBeforeUnmount(() => {
   }
 
   .debug-panel {
-    background: #212529;
-    color: #adb5bd;
+    background: var(--tf-color-gray-bootstrap-900);
+    color: var(--tf-color-gray-bootstrap-500);
     padding: 8px;
     border-radius: 6px;
     font-family: monospace;

@@ -1,6 +1,9 @@
-const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
-const { getDatabase, isConnected } = require('../config/database');
-const log = require('../utils/log');
+const { rateLimit, ipKeyGenerator } = require('express-rate-limit')
+const { getDatabase, isConnected } = require('../config/database')
+const config = require('../config')
+const log = require('../utils/log')
+
+const baseRetryAfterSeconds = Math.max(1, Math.ceil(config.api.rateWindowMs / 1000))
 
 // 内存存储用于限流计数器
 const store = {
@@ -9,18 +12,18 @@ const store = {
 
   // 获取IP的请求计数
   get: async (key) => {
-    const data = store.requests.get(key);
+    const data = store.requests.get(key)
     if (!data) {
-      return null;
+      return null
     }
 
     // 检查是否过期
     if (Date.now() > data.resetTime) {
-      store.requests.delete(key);
-      return null;
+      store.requests.delete(key)
+      return null
     }
 
-    return { totalHits: data.count, resetTime: data.resetTime };
+    return { totalHits: data.count, resetTime: data.resetTime }
   },
 
   // 设置IP的请求计数
@@ -28,49 +31,51 @@ const store = {
     store.requests.set(key, {
       count: value.totalHits,
       resetTime: Date.now() + ttlMs
-    });
+    })
   },
 
   // 删除IP记录
   delete: async (key) => {
-    store.requests.delete(key);
+    store.requests.delete(key)
   },
 
   // 定期清理过期记录
   cleanup: () => {
-    const now = Date.now();
+    const now = Date.now()
     for (const [key, data] of store.requests.entries()) {
       if (now > data.resetTime) {
-        store.requests.delete(key);
+        store.requests.delete(key)
       }
     }
   }
-};
+}
 
 // 每5分钟清理一次过期记录
-setInterval(store.cleanup, 5 * 60 * 1000);
+setInterval(store.cleanup, 5 * 60 * 1000)
 
 // 基础限流配置
 const baseRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15分钟
-  max: 100, // 每个IP最多100个请求
+  windowMs: config.api.rateWindowMs,
+  max: config.api.rateLimit,
   message: {
     success: false,
     message: '请求过于频繁，请15分钟后再试',
     code: 'RATE_LIMIT_EXCEEDED',
-    retryAfter: '900' // 15分钟
+    retryAfter: String(baseRetryAfterSeconds)
   },
   standardHeaders: true, // 返回标准的RateLimit头
   legacyHeaders: false, // 禁用X-RateLimit-*头
   keyGenerator: (req) => {
-    const ip = req.ip || req.socket.remoteAddress || 'unknown';
-    return ipKeyGenerator(ip);
+    const ip = req.ip || req.socket.remoteAddress || 'unknown'
+    return ipKeyGenerator(ip)
   },
   skip: (req) => {
-    // 跳过健康检查等内部请求
-    return req.path === '/health' || req.path === '/ping';
+    // 读取请求由具体接口的搜索/公开限流负责；全局额度只保护写入流量。
+    // 健康检查和 CORS 预检也不应消耗用户额度。
+    return ['GET', 'HEAD', 'OPTIONS'].includes(req.method) ||
+      req.path === '/health' || req.path === '/ping'
   }
-});
+})
 
 // 严格的认证API限流（登录、注册等）
 const authRateLimit = rateLimit({
@@ -85,11 +90,56 @@ const authRateLimit = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => {
-    const ip = req.ip || req.connection.remoteAddress || 'unknown';
-    const identifier = req.body.username || req.body.email || 'anonymous';
-    return `${ipKeyGenerator(ip)}:${identifier}`;
+    const ip = req.ip || req.connection.remoteAddress || 'unknown'
+    const identifier = req.body?.username || req.body?.email || req.body?.phone || 'anonymous'
+    return `${ipKeyGenerator(ip)}:${identifier}`
   }
-});
+})
+
+const createPublicRateLimit = ({ windowMs, max, message, keyWithIdentity = false }) => rateLimit({
+  windowMs,
+  max,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message,
+    code: 'PUBLIC_RATE_LIMIT_EXCEEDED'
+  },
+  keyGenerator: (req) => {
+    const ip = ipKeyGenerator(req.ip || req.socket.remoteAddress || 'unknown')
+    if (!keyWithIdentity) return ip
+    const identity = String(req.body?.phone || req.body?.customerPhone || req.params?.orderNumber || '').trim()
+    return `${ip}:${identity || 'anonymous'}`
+  }
+})
+
+const publicAuthRateLimit = createPublicRateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: '登录或注册尝试过于频繁，请稍后再试',
+  keyWithIdentity: true
+})
+
+const publicOrderRateLimit = createPublicRateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: '订单操作过于频繁，请稍后再试',
+  keyWithIdentity: true
+})
+
+const publicLookupRateLimit = createPublicRateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 30,
+  message: '订单查询过于频繁，请稍后再试',
+  keyWithIdentity: true
+})
+
+const publicMarketingRateLimit = createPublicRateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  message: '文案生成过于频繁，请稍后再试'
+})
 
 // 搜索API限流（较宽松）
 const searchRateLimit = rateLimit({
@@ -103,7 +153,7 @@ const searchRateLimit = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false
-});
+})
 
 // 文件上传限流（更严格）
 const uploadRateLimit = rateLimit({
@@ -117,7 +167,7 @@ const uploadRateLimit = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false
-});
+})
 
 // 数据库操作限流
 const dbRateLimit = rateLimit({
@@ -135,9 +185,9 @@ const dbRateLimit = rateLimit({
     // 跳过静态资源和健康检查
     return req.path.startsWith('/static') ||
            req.path === '/health' ||
-           req.path === '/ping';
+           req.path === '/ping'
   }
-});
+})
 
 // 自适应限流 - 根据系统负载调整限流
 const adaptiveRateLimit = (req, res, next) => {
@@ -147,16 +197,16 @@ const adaptiveRateLimit = (req, res, next) => {
       success: false,
       message: '服务暂时不可用，请稍后再试',
       code: 'SERVICE_UNAVAILABLE'
-    });
+    })
   }
 
   // 检查当前内存使用情况
-  const memUsage = process.memoryUsage();
-  const memUsagePercent = (memUsage.heapUsed / memUsage.heapTotal) * 100;
+  const memUsage = process.memoryUsage()
+  const memUsagePercent = (memUsage.heapUsed / memUsage.heapTotal) * 100
 
   // 如果内存使用超过80%，启用更严格的限流
   if (memUsagePercent > 80) {
-    log.warn(`内存使用率过高: ${memUsagePercent.toFixed(2)}%，启用严格限流`);
+    log.warn(`内存使用率过高: ${memUsagePercent.toFixed(2)}%，启用严格限流`)
 
     const strictLimit = rateLimit({
       windowMs: 15 * 60 * 1000,
@@ -166,59 +216,85 @@ const adaptiveRateLimit = (req, res, next) => {
         message: '服务器负载较高，请稍后再试',
         code: 'HIGH_LOAD_RATE_LIMIT'
       }
-    });
+    })
 
-    return strictLimit(req, res, next);
+    return strictLimit(req, res, next)
   }
 
   // 正常限流
-  return baseRateLimit(req, res, next);
-};
+  return baseRateLimit(req, res, next)
+}
 
 // 限流日志记录
 const rateLimitLogger = (req, res, next) => {
-  const originalSend = res.send;
+  const originalSend = res.send
 
   res.send = function(data) {
     // 记录限流响应
     if (res.statusCode === 429) {
-      const ip = req.ip || req.connection.remoteAddress;
-      const userAgent = req.headers['user-agent'] || 'Unknown';
+      const ip = req.ip || req.connection.remoteAddress
+      const userAgent = req.headers['user-agent'] || 'Unknown'
 
-      log.warn(`限流触发 - IP: ${ip}, 路径: ${req.path}, User-Agent: ${userAgent}`);
+      log.warn(`限流触发 - IP: ${ip}, 路径: ${req.path}, User-Agent: ${userAgent}`)
 
       // 可以在这里发送告警或记录到数据库
       if (isConnected()) {
-        logRateLimitEvent(ip, req.path, userAgent);
+        logRateLimitEvent(ip, req.path, userAgent)
       }
     }
 
-    return originalSend.call(this, data);
-  };
+    return originalSend.call(this, data)
+  }
 
-  next();
-};
+  next()
+}
+
+let rateLimitLogTablePromise = null
+
+async function ensureRateLimitLogTable(database) {
+  if (!rateLimitLogTablePromise) {
+    rateLimitLogTablePromise = database.execute(`
+      CREATE TABLE IF NOT EXISTS rate_limit_logs (
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        ip VARCHAR(64) NOT NULL,
+        path VARCHAR(255) NOT NULL,
+        user_agent TEXT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        KEY idx_rate_limit_logs_created_at (created_at),
+        KEY idx_rate_limit_logs_ip (ip)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `).catch(error => {
+      rateLimitLogTablePromise = null
+      throw error
+    })
+  }
+
+  await rateLimitLogTablePromise
+}
 
 // 记录限流事件到数据库
 async function logRateLimitEvent(ip, path, userAgent) {
   try {
-    const database = getDatabase();
+    const database = getDatabase()
+    await ensureRateLimitLogTable(database)
     await database.execute(
       'INSERT INTO rate_limit_logs (ip, path, user_agent, created_at) VALUES (?, ?, ?, NOW())',
       [ip, path, userAgent]
-    );
+    )
   } catch (error) {
-    log.error('记录限流事件失败:', error);
+    // 限流响应不能因审计日志失败而失败；避免同一缺陷在每次 429 时刷屏。
+    log.warn('限流审计日志不可用，已跳过本次记录:', error.code || error.message)
   }
 }
 
 // 获取当前限流统计信息
 const getRateLimitStats = () => {
-  const totalIPs = store.requests.size;
-  let totalRequests = 0;
+  const totalIPs = store.requests.size
+  let totalRequests = 0
 
   for (const data of store.requests.values()) {
-    totalRequests += data.count;
+    totalRequests += data.count
   }
 
   return {
@@ -226,17 +302,22 @@ const getRateLimitStats = () => {
     totalRequests,
     memoryUsage: process.memoryUsage(),
     timestamp: new Date().toISOString()
-  };
-};
+  }
+}
 
 module.exports = {
   baseRateLimit,
   authRateLimit,
+  publicAuthRateLimit,
+  publicOrderRateLimit,
+  publicLookupRateLimit,
+  publicMarketingRateLimit,
   searchRateLimit,
   uploadRateLimit,
   dbRateLimit,
   adaptiveRateLimit,
   rateLimitLogger,
+  ensureRateLimitLogTable,
   getRateLimitStats,
   store
-};
+}

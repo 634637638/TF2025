@@ -8,36 +8,49 @@
         :class="{ active: tab.path === activeTab }"
         @click="switchTab(tab.path)"
       >
-        <i v-if="tab.icon" :class="tab.icon" class="tab-icon"></i>
+        <i
+          v-if="tab.icon"
+          :class="tab.icon"
+          class="tab-icon"
+        />
         <span class="tab-title">{{ tab.title }}</span>
         <i
           v-if="!tab.fixed"
           class="fas fa-times tab-close"
           @click.stop="closeTab(tab.path)"
-        ></i>
+        />
       </div>
     </div>
     <div class="tabs-actions">
-      <el-dropdown @command="handleCommand" trigger="click">
-        <button class="tabs-action-btn" title="标签页操作">
-          <i class="fas fa-ellipsis-v"></i>
+      <el-dropdown
+        trigger="click"
+        @command="handleCommand"
+      >
+        <button
+          class="tabs-action-btn"
+          title="标签页操作"
+        >
+          <i class="fas fa-ellipsis-v" />
         </button>
         <template #dropdown>
           <el-dropdown-menu>
             <el-dropdown-item command="closeOthers">
-              <i class="fas fa-times-circle"></i>
+              <i class="fas fa-times-circle" />
               关闭其他
             </el-dropdown-item>
             <el-dropdown-item command="closeRight">
-              <i class="fas fa-arrow-right"></i>
+              <i class="fas fa-arrow-right" />
               关闭右侧
             </el-dropdown-item>
             <el-dropdown-item command="closeAll">
-              <i class="fas fa-times"></i>
+              <i class="fas fa-times" />
               关闭全部
             </el-dropdown-item>
-            <el-dropdown-item command="refresh" divided>
-              <i class="fas fa-sync-alt"></i>
+            <el-dropdown-item
+              command="refresh"
+              divided
+            >
+              <i class="fas fa-sync-alt" />
               刷新当前
             </el-dropdown-item>
           </el-dropdown-menu>
@@ -98,20 +111,20 @@ const closeTab = (path: string) => {
 // 处理下拉菜单命令
 const handleCommand = (command: string) => {
   switch (command) {
-    case 'closeOthers':
-      tabsStore.closeOtherTabs(route.path)
-      break
-    case 'closeRight':
-      tabsStore.closeRightTabs(route.path)
-      break
-    case 'closeAll':
-      tabsStore.closeAllTabs()
-      router.push('/dashboard')
-      break
-    case 'refresh':
-      // 只刷新当前路由组件，避免整页重载导致菜单、权限、缓存全部重新初始化。
-      tabsStore.refreshCurrentTab(route.path)
-      break
+  case 'closeOthers':
+    tabsStore.closeOtherTabs(route.path)
+    break
+  case 'closeRight':
+    tabsStore.closeRightTabs(route.path)
+    break
+  case 'closeAll':
+    tabsStore.closeAllTabs()
+    router.push('/dashboard')
+    break
+  case 'refresh':
+    // 只刷新当前路由组件，避免整页重载导致菜单、权限、缓存全部重新初始化。
+    tabsStore.refreshCurrentTab(route.path)
+    break
   }
 }
 </script>
@@ -120,8 +133,8 @@ const handleCommand = (command: string) => {
 .tabs-bar {
   display: flex;
   align-items: center;
-  background: #f5f7fa;
-  border-bottom: 1px solid #e4e7ed;
+  background: var(--tf-color-surface);
+  border-bottom: 1px solid var(--tf-color-border-element);
   height: 40px;
   padding: 0 8px;
   gap: 8px;
@@ -136,7 +149,7 @@ const handleCommand = (command: string) => {
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: thin;
-  scrollbar-color: #c1c1c1 transparent;
+  scrollbar-color: var(--tf-color-gray-300) transparent;
 }
 
 .tabs-container::-webkit-scrollbar {
@@ -144,7 +157,7 @@ const handleCommand = (command: string) => {
 }
 
 .tabs-container::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: var(--tf-color-gray-300);
   border-radius: 2px;
 }
 
@@ -158,7 +171,7 @@ const handleCommand = (command: string) => {
   gap: 6px;
   padding: 6px 12px;
   background: white;
-  border: 1px solid #e4e7ed;
+  border: 1px solid var(--tf-color-border-element);
   border-radius: 4px 4px 0 0;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -169,7 +182,7 @@ const handleCommand = (command: string) => {
 }
 
 .tab-item:hover {
-  background: #f0f2f5;
+  background: var(--tf-color-surface-ant);
 }
 
 .tab-item.active {
@@ -185,35 +198,35 @@ const handleCommand = (command: string) => {
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
 }
 
 .tab-icon {
   font-size: 12px;
-  color: #606266;
+  color: var(--color-text-regular);
   flex-shrink: 0;
 }
 
 .tab-item.active .tab-icon {
-  color: #667eea;
+  color: var(--tf-color-indigo-brand);
 }
 
 .tab-title {
   font-size: 13px;
-  color: #606266;
+  color: var(--color-text-regular);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .tab-item.active .tab-title {
-  color: #303133;
+  color: var(--color-text-primary);
   font-weight: 500;
 }
 
 .tab-close {
   font-size: 11px;
-  color: #909399;
+  color: var(--color-info);
   padding: 2px;
   border-radius: 2px;
   transition: all 0.2s ease;
@@ -222,7 +235,7 @@ const handleCommand = (command: string) => {
 }
 
 .tab-close:hover {
-  background: #f56c6c;
+  background: var(--color-danger);
   color: white;
 }
 

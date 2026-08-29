@@ -25,7 +25,7 @@ export const createWholesaleFormData = (): WholesaleFormData => ({
   payment_method: '',
   payment_channel: '',
   invoice_number: '',
-  sale_date: TimeUtil.nowFormatted(TIME_FORMATS.DATE),
+  sale_time: TimeUtil.nowFormatted(TIME_FORMATS.DATE),
   remarks: ''
 })
 
@@ -56,7 +56,9 @@ export const matchCollectedPrice = (
   })
 
   if (exactMatch) {
-    return Number(exactMatch.wholesale_price || exactMatch.retail_price || 0)
+    const value = exactMatch.wholesale_price ?? exactMatch.retail_price
+    const normalizedValue = value === null || value === undefined || value === '' ? null : Number(value)
+    return normalizedValue !== null && Number.isFinite(normalizedValue) ? normalizedValue : null
   }
 
   const fuzzyMatch = collectedPrices.find((price) => {
@@ -66,7 +68,9 @@ export const matchCollectedPrice = (
   })
 
   if (fuzzyMatch) {
-    return Number(fuzzyMatch.wholesale_price || fuzzyMatch.retail_price || 0)
+    const value = fuzzyMatch.wholesale_price ?? fuzzyMatch.retail_price
+    const normalizedValue = value === null || value === undefined || value === '' ? null : Number(value)
+    return normalizedValue !== null && Number.isFinite(normalizedValue) ? normalizedValue : null
   }
 
   return null
@@ -81,12 +85,19 @@ export const buildEditableWholesalePhones = (
 
   return phones.map((phone) => {
     const collectedPrice = isProxyMode ? null : matchCollectedPrice(phone, collectedPrices)
-    const baseCost = Number(phone.editCost || phone.purchase_cost || phone.purchase_price || 0)
+    const baseCost = phone.purchase_cost === null || phone.purchase_cost === undefined || phone.purchase_cost === ''
+      ? null
+      : Number(phone.purchase_cost)
+    const existingWholesalePrice = phone.wholesale_price === null || phone.wholesale_price === undefined
+      ? null
+      : Number(phone.wholesale_price)
 
     return {
       ...phone,
-      editCost: isProxyMode ? 0 : baseCost,
-      wholesalePrice: isProxyMode ? 0 : (Number(collectedPrice || 0) || Number(phone.wholesalePrice) || baseCost)
+      purchase_cost: isProxyMode ? 0 : (baseCost !== null && Number.isFinite(baseCost) ? baseCost : null),
+      wholesale_price: isProxyMode
+        ? 0
+        : (collectedPrice ?? (Number.isFinite(existingWholesalePrice) ? existingWholesalePrice : null) ?? baseCost)
     }
   })
 }
@@ -145,7 +156,7 @@ export const loadWholesaleDialogOptions = async (): Promise<{
 }
 
 export const resolveProxySupplierId = (phones: WholesalePhone[]): number | null => {
-  const supplierIds = [...new Set(phones.map((phone) => phone.supplier_id).filter((id): id is number => id != null))]
+  const supplierIds = [...new Set(phones.map((phone) => phone.supplier_id).filter((id): id is number => id !== null && id !== undefined))]
   return supplierIds.length === 1 ? supplierIds[0] : null
 }
 
@@ -156,7 +167,7 @@ export const buildWholesaleOpenFormPatch = (options: {
 }): Partial<WholesaleFormData> => ({
   supplier_id: options.mode === 'proxy' ? resolveProxySupplierId(options.phones) : null,
   salesperson_name: options.operatorName,
-  sale_date: TimeUtil.nowFormatted(TIME_FORMATS.DATE)
+  sale_time: TimeUtil.nowFormatted(TIME_FORMATS.DATE)
 })
 
 export const normalizeWholesalePhoneValue = (phone: unknown): string =>
@@ -275,22 +286,29 @@ export const validateWholesaleSubmit = (options: {
   normalizedCustomerPhone: string
   isValidMobilePhone: (phone: string) => boolean
 }): string | null => {
+  if (options.mode === 'wholesale') {
+    const phonesWithoutCost = options.phones.filter((phone) => (
+      phone.purchase_cost === null ||
+      !Number.isFinite(phone.purchase_cost) ||
+      phone.purchase_cost < 0
+    ))
+    if (phonesWithoutCost.length > 0) {
+      return `有 ${phonesWithoutCost.length} 台手机缺少有效入库成本`
+    }
+  }
+
   if (options.mode === 'proxy' && !options.supplierId) {
     return '请选择供应商'
   }
 
   if (options.mode === 'wholesale') {
-    const phonesWithoutPrice = options.phones.filter((phone) => !phone.wholesalePrice || phone.wholesalePrice <= 0)
+    const phonesWithoutPrice = options.phones.filter((phone) => !phone.wholesale_price || phone.wholesale_price <= 0)
     if (phonesWithoutPrice.length > 0) {
       return `请为所有手机设置批发价格（当前有 ${phonesWithoutPrice.length} 台未设置或价格为0）`
     }
   }
 
-  if (options.mode === 'wholesale' && !options.isValidMobilePhone(options.normalizedCustomerPhone)) {
-    return '请输入有效的手机号码'
-  }
-
-  if (options.mode === 'proxy' && options.normalizedCustomerPhone && !options.isValidMobilePhone(options.normalizedCustomerPhone)) {
+  if (!options.isValidMobilePhone(options.normalizedCustomerPhone)) {
     return '请输入有效的手机号码'
   }
 
@@ -311,7 +329,7 @@ export const searchWholesaleCustomers = async (
 
 export const loadWholesaleSuppliers = async (): Promise<Supplier[]> => {
   const response = await unifiedApi.get('/suppliers', {
-    params: { page: 1, limit: 1000, all: true }
+    params: { page: 1, page_size: 1000 }
   })
 
   return response.success && Array.isArray(response.data)
@@ -321,7 +339,7 @@ export const loadWholesaleSuppliers = async (): Promise<Supplier[]> => {
 
 export const loadWholesaleStores = async (): Promise<Store[]> => {
   const response = await unifiedApi.get('/stores', {
-    params: { page: 1, limit: 1000, all: true }
+    params: { page: 1, page_size: 1000, all: true }
   })
 
   return response.success && Array.isArray(response.data)
@@ -362,12 +380,8 @@ export const buildTransferSubmitPayload = (
     phone_ids: options.phoneIds,
     phones: options.phones.map((phone) => ({
       phone_id: phone.id,
-      purchase_cost: Number(
-        options.mode === 'proxy'
-          ? (phone.editCost ?? 0)
-          : (phone.editCost ?? phone.purchase_cost ?? phone.purchase_price ?? 0)
-      ),
-      wholesale_price: Number(phone.wholesalePrice ?? 0)
+      purchase_cost: options.mode === 'proxy' ? 0 : phone.purchase_cost,
+      wholesale_price: options.mode === 'proxy' ? 0 : phone.wholesale_price
     })),
     remarks: options.formData.remarks
   }
@@ -384,7 +398,7 @@ export const buildTransferSubmitPayload = (
     payload.salesperson_name = options.formData.salesperson_name
     payload.payment_method = options.formData.payment_method
     payload.invoice_number = options.formData.invoice_number
-    payload.sale_date = options.formData.sale_date
+    payload.sale_time = options.formData.sale_time
   } else {
     payload.supplier_id = options.formData.supplier_id
 
@@ -397,7 +411,7 @@ export const buildTransferSubmitPayload = (
 
     payload.store_id = options.formData.store_id
     payload.salesperson_name = options.formData.salesperson_name
-    payload.sale_date = options.formData.sale_date
+    payload.sale_time = options.formData.sale_time
   }
 
   return payload

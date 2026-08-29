@@ -5,14 +5,19 @@
 import { ref, computed } from 'vue'
 import { addToCart, getCart as fetchCart, type CartData } from '@/api/shop-public'
 import { storage } from '@/services/storage'
-import { H5_STORAGE_KEYS } from '@/constants/storage'
 import { logger } from '@/utils/logger'
 
 // 获取或生成购物车ID
 export function getCartId(): string {
   let cartId = storage.getH5CartId()
-  if (!cartId) {
-    cartId = `cart_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  if (!/^cart_[a-f0-9]{32}$/.test(cartId || '')) {
+    const cryptoApi = globalThis.crypto
+    const randomPart = cryptoApi?.randomUUID
+      ? cryptoApi.randomUUID().replace(/-/g, '')
+      : cryptoApi
+        ? Array.from(cryptoApi.getRandomValues(new Uint8Array(16)), value => value.toString(16).padStart(2, '0')).join('')
+        : `${Date.now().toString(16)}${Math.random().toString(16).slice(2)}`.padEnd(32, '0').slice(0, 32)
+    cartId = `cart_${randomPart}`
     storage.setH5CartId(cartId)
   }
   return cartId
@@ -33,9 +38,10 @@ export function useCart() {
       await refreshCart()
 
       return { success: true }
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('添加到购物车失败:', error)
-      return { success: false, message: error.message || '添加失败' }
+      const message = error instanceof Error ? error.message : '添加失败'
+      return { success: false, message }
     }
   }
 

@@ -298,6 +298,7 @@ export interface Color {
  */
 export interface MemoryOption {
   id: number
+  size?: string
   name?: string
   capacity?: string
   storage?: string
@@ -332,6 +333,7 @@ export interface InventoryItem {
   created_at?: string
   updated_at?: string
   purchase_number?: string
+  inventory_time?: string
   Inventorytime?: string
   inventory_date?: string
   inventory_days?: number
@@ -387,14 +389,14 @@ export interface QueryStoreInfo {
 }
 
 export interface QueryPriceInfo {
-  purchase_price?: number
-  sale_price?: number
-  profit?: number
+  purchase_cost?: number | null
+  sale_price?: number | null
+  profit?: number | null
 }
 
 export interface QueryTimeInfo {
-  Inventorytime?: string
-  salestime?: string
+  inventory_time?: string
+  sale_time?: string
   created_at?: string
 }
 
@@ -420,7 +422,7 @@ export interface QuerySaleInfo {
   payment_method?: string
   payment_channel?: string
   invoice_number?: string
-  sale_date?: string
+  sale_time?: string
   sale_remarks?: string
 }
 
@@ -563,6 +565,8 @@ export interface Phone {
   remarks?: string
   purchase_number?: string
   purchase_date?: string
+  inventory_time?: string
+  sale_time?: string
   created_at?: string
   updated_at?: string
   image_url?: string
@@ -828,10 +832,12 @@ export interface RouteMeta {
 
 // ===== 工具函数类型 =====
 
+type FunctionSignature = (...args: never[]) => unknown
+
 /**
  * 防抖函数类型
  */
-export type DebouncedFunction<T extends (...args: any[]) => any> = {
+export type DebouncedFunction<T extends FunctionSignature> = {
   (...args: Parameters<T>): void
   cancel(): void
   flush(): ReturnType<T> | undefined
@@ -840,7 +846,7 @@ export type DebouncedFunction<T extends (...args: any[]) => any> = {
 /**
  * 节流函数类型
  */
-export type ThrottledFunction<T extends (...args: any[]) => any> = {
+export type ThrottledFunction<T extends FunctionSignature> = {
   (...args: Parameters<T>): void
   cancel(): void
   flush(): void
@@ -892,7 +898,7 @@ interface ImportMetaEnv {
   readonly VITE_ENABLE_DEVTOOLS: string
 }
 
-interface ImportMeta {
+interface _ImportMeta {
   readonly env: ImportMetaEnv
 }
 
@@ -1098,7 +1104,7 @@ export interface UseSearchReturn<T> {
 /**
  * 防抖 Composable 返回类型
  */
-export interface UseDebounceReturn<T extends (...args: any[]) => any> {
+export interface UseDebounceReturn<T extends FunctionSignature> {
   debouncedFn: DebouncedFunction<T>
   isPending: Ref<boolean>
   cancel: () => void
@@ -1108,7 +1114,7 @@ export interface UseDebounceReturn<T extends (...args: any[]) => any> {
 /**
  * 节流 Composable 返回类型
  */
-export interface UseThrottleReturn<T extends (...args: any[]) => any> {
+export interface UseThrottleReturn<T extends FunctionSignature> {
   throttledFn: ThrottledFunction<T>
   isPending: Ref<boolean>
   cancel: () => void
@@ -1306,16 +1312,16 @@ export interface ErrorReportConfig {
 /**
  * 事件监听器类型
  */
-export type EventListener<T = any> = (payload: T) => void
+export type EventListener<T = unknown> = (payload: T) => void
 
 /**
  * 事件总线接口
  */
 export interface EventBus {
-  on<T = any>(event: string, listener: EventListener<T>): () => void
-  once<T = any>(event: string, listener: EventListener<T>): () => void
-  off<T = any>(event: string, listener: EventListener<T>): void
-  emit<T = any>(event: string, payload?: T): void
+  on<T = unknown>(event: string, listener: EventListener<T>): () => void
+  once<T = unknown>(event: string, listener: EventListener<T>): () => void
+  off<T = unknown>(event: string, listener: EventListener<T>): void
+  emit<T = unknown>(event: string, payload?: T): void
   clear(): void
 }
 
@@ -1522,7 +1528,7 @@ export interface ValidationRule<T = unknown> {
 /**
  * 表单状态接口
  */
-export interface FormState<T extends Record<string, any>> {
+export interface FormState<T extends Record<string, unknown>> {
   data: T
   errors: Partial<Record<keyof T, string>>
   touched: Partial<Record<keyof T, boolean>>
@@ -1703,8 +1709,8 @@ export interface HttpConfig {
  */
 export interface ErrorBoundaryProps {
   fallback?: Component
-  onError?: (error: Error, errorInfo: any) => void
-  children?: any
+  onError?: (error: Error, errorInfo: unknown) => void
+  children?: unknown
 }
 
 /**
@@ -1715,7 +1721,7 @@ export interface VirtualScrollConfig {
   containerHeight: number
   overscan?: number
   enabled?: boolean
-  getItemKey?: (index: number, data: any) => string | number
+  getItemKey?: (index: number, data: unknown) => string | number
 }
 
 /**
@@ -1961,6 +1967,7 @@ export type {
   HomeSectionFilters,
   HomeSectionListResponse,
   SoldProduct,
+  SoldProductImage,
   SoldProductFilters,
   SoldProductListResponse,
   H5OrderStatus,
@@ -1989,6 +1996,7 @@ export type {
   StockInFilters,
   InventoryFilters,
   Pagination,
+  StockInPagination,
   StockInListResponse,
   InventoryListResponse,
   StockMovementListResponse,

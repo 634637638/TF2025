@@ -2,6 +2,13 @@ import { ref, computed } from 'vue'
 import type { Ref } from 'vue'
 import { logger } from '@/utils/logger'
 
+interface LoadingOperationOptions<T> {
+  message?: string
+  showError?: boolean
+  onSuccess?: (result: T) => void
+  onError?: (error: Error) => void
+}
+
 /**
  * 简洁的 Loading 状态管理 Composable
  *
@@ -131,12 +138,7 @@ export function useLoading() {
   const withLoading = async <T>(
     key: string,
     operation: () => Promise<T>,
-    options?: {
-      message?: string
-      showError?: boolean
-      onSuccess?: (result: T) => void
-      onError?: (error: Error) => void
-    }
+    options?: LoadingOperationOptions<T>
   ): Promise<T | null> => {
     try {
       setLoading(key, true, options?.message)
@@ -194,7 +196,7 @@ export function createLoading(key: string, initialMessage?: string) {
     isLoading: isLoading(key),
     start: (message?: string) => setLoading(key, true, message),
     stop: () => setLoading(key, false),
-    withOperation: <T>(operation: () => Promise<T>, options?: any) =>
+    withOperation: <T>(operation: () => Promise<T>, options?: LoadingOperationOptions<T>) =>
       withLoading(key, operation, options)
   }
 }

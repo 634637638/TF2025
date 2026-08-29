@@ -1,10 +1,10 @@
-const { getDatabase } = require('../config/database');
+const { getDatabase } = require('../config/database')
 
-let ensurePromise = null;
+let ensurePromise = null
 
 async function runEnsureReminderSchema() {
-  const db = getDatabase();
-  if (!db) throw new Error('数据库连接池为空');
+  const db = getDatabase()
+  if (!db) throw new Error('数据库连接池为空')
 
   await db.query(`
     CREATE TABLE IF NOT EXISTS reminder_types (
@@ -20,7 +20,7 @@ async function runEnsureReminderSchema() {
       PRIMARY KEY (id),
       KEY idx_reminder_type_active (is_active, sort_order)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-  `);
+  `)
 
   await db.query(`
     CREATE TABLE IF NOT EXISTS reminders (
@@ -43,7 +43,7 @@ async function runEnsureReminderSchema() {
       KEY idx_reminder_creator (created_by),
       KEY idx_reminder_type (type_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-  `);
+  `)
 
   await db.query(`
     CREATE TABLE IF NOT EXISTS reminder_records (
@@ -62,23 +62,23 @@ async function runEnsureReminderSchema() {
       KEY idx_reminder_record_user (user_id, status, remind_at),
       KEY idx_reminder_record_reminder (reminder_id, scheduled_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-  `);
+  `)
 
   await db.query(`
     INSERT INTO reminder_types (name, default_remind_days, color, icon, sort_order)
     SELECT '日常维护', 7, '#409EFF', 'fas fa-screwdriver-wrench', 10
     WHERE NOT EXISTS (SELECT 1 FROM reminder_types)
-  `);
+  `)
 }
 
 async function ensureReminderSchema() {
   if (!ensurePromise) {
     ensurePromise = runEnsureReminderSchema().catch(error => {
-      ensurePromise = null;
-      throw error;
-    });
+      ensurePromise = null
+      throw error
+    })
   }
-  return ensurePromise;
+  return ensurePromise
 }
 
-module.exports = { ensureReminderSchema };
+module.exports = { ensureReminderSchema }

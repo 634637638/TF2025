@@ -12,15 +12,22 @@
     dialog-class="stock-in-detail-modal"
     :show-default-footer="false"
   >
-    <div v-if="record" class="detail-content" :class="{ 'mobile': isMobile }">
+    <div
+      v-if="record"
+      class="detail-content"
+      :class="{ 'mobile': isMobile }"
+    >
       <!-- 基本信息 -->
       <div class="detail-section">
         <h3 class="section-title">
-          <i class="fas fa-info-circle mr-2"></i>
+          <i class="fas fa-info-circle mr-2" />
           基本信息
         </h3>
 
-        <el-descriptions :column="isMobile ? 1 : 2" border>
+        <el-descriptions
+          :column="isMobile ? 1 : 2"
+          border
+        >
           <el-descriptions-item label="入库单号">
             <span class="record-id">#{{ record.id }}</span>
           </el-descriptions-item>
@@ -40,10 +47,7 @@
             </el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="入库时间">
-            {{ formatDateTime(record.created_at) }}
-          </el-descriptions-item>
-          <el-descriptions-item label="更新时间">
-            {{ record.updated_at ? formatDateTime(record.updated_at) : '-' }}
+            {{ formatDateTime(record.inventory_time) }}
           </el-descriptions-item>
         </el-descriptions>
       </div>
@@ -51,30 +55,51 @@
       <!-- 商品信息 -->
       <div class="detail-section">
         <h3 class="section-title">
-          <i class="fas fa-box mr-2"></i>
+          <i class="fas fa-box mr-2" />
           商品信息
         </h3>
 
-        <el-descriptions :column="isMobile ? 1 : 2" border>
+        <el-descriptions
+          :column="isMobile ? 1 : 2"
+          border
+        >
           <el-descriptions-item label="商品名称">
             <span class="product-name">{{ record.product_name }}</span>
           </el-descriptions-item>
-          <el-descriptions-item label="品牌" v-if="record.brand_name">
+          <el-descriptions-item
+            v-if="record.brand_name"
+            label="品牌"
+          >
             {{ record.brand_name }}
           </el-descriptions-item>
-          <el-descriptions-item label="型号" v-if="record.model_name">
+          <el-descriptions-item
+            v-if="record.model_name"
+            label="型号"
+          >
             {{ record.model_name }}
           </el-descriptions-item>
-          <el-descriptions-item label="颜色" v-if="record.color_name">
+          <el-descriptions-item
+            v-if="record.color_name"
+            label="颜色"
+          >
             {{ record.color_name }}
           </el-descriptions-item>
-          <el-descriptions-item label="内存" v-if="record.memory_name">
+          <el-descriptions-item
+            v-if="record.memory_name"
+            label="内存"
+          >
             {{ record.memory_name }}
           </el-descriptions-item>
-          <el-descriptions-item label="IMEI号" v-if="record.imei">
+          <el-descriptions-item
+            v-if="record.imei"
+            label="IMEI号"
+          >
             <span class="imei-text">{{ record.imei }}</span>
           </el-descriptions-item>
-          <el-descriptions-item label="序列号" v-if="record.serial_number">
+          <el-descriptions-item
+            v-if="record.serial_number"
+            label="序列号"
+          >
             {{ record.serial_number }}
           </el-descriptions-item>
         </el-descriptions>
@@ -83,22 +108,34 @@
       <!-- 数量与价格 -->
       <div class="detail-section">
         <h3 class="section-title">
-          <i class="fas fa-calculator mr-2"></i>
+          <i class="fas fa-calculator mr-2" />
           数量与价格
         </h3>
 
         <div class="price-grid">
           <div class="price-item">
-            <div class="price-label">入库数量</div>
-            <div class="price-value quantity-value">{{ record.quantity }}</div>
+            <div class="price-label">
+              入库数量
+            </div>
+            <div class="price-value quantity-value">
+              {{ record.quantity }}
+            </div>
           </div>
           <div class="price-item">
-            <div class="price-label">单价</div>
-            <div class="price-value">¥{{ formatCurrency(record.unit_cost) }}</div>
+            <div class="price-label">
+              单价
+            </div>
+            <div class="price-value">
+              ¥{{ formatCurrency(record.purchase_cost) }}
+            </div>
           </div>
           <div class="price-item">
-            <div class="price-label">总价</div>
-            <div class="price-value total-value">¥{{ formatCurrency(record.total_cost) }}</div>
+            <div class="price-label">
+              总价
+            </div>
+            <div class="price-value total-value">
+              ¥{{ formatCurrency(record.purchase_cost) }}
+            </div>
           </div>
         </div>
       </div>
@@ -106,47 +143,73 @@
       <!-- 门店与供应商 -->
       <div class="detail-section">
         <h3 class="section-title">
-          <i class="fas fa-store mr-2"></i>
+          <i class="fas fa-store mr-2" />
           门店与供应商
         </h3>
 
-        <el-descriptions :column="isMobile ? 1 : 2" border>
+        <el-descriptions
+          :column="isMobile ? 1 : 2"
+          border
+        >
           <el-descriptions-item label="入库门店">
             {{ record.store_name }}
           </el-descriptions-item>
-          <el-descriptions-item label="供应商" v-if="record.supplier_name">
+          <el-descriptions-item
+            v-if="record.supplier_name"
+            label="供应商"
+          >
             {{ record.supplier_name }}
           </el-descriptions-item>
           <el-descriptions-item label="操作人">
             {{ record.operator_name }}
           </el-descriptions-item>
-          <el-descriptions-item label="参考单号" v-if="record.reference_id">
+          <el-descriptions-item
+            v-if="record.reference_id"
+            label="参考单号"
+          >
             {{ record.reference_id }}
           </el-descriptions-item>
         </el-descriptions>
       </div>
 
       <!-- 备注信息 -->
-      <div class="detail-section" v-if="record.reason || record.note">
+      <div
+        v-if="record.reason || record.remarks"
+        class="detail-section"
+      >
         <h3 class="section-title">
-          <i class="fas fa-comment-alt mr-2"></i>
+          <i class="fas fa-comment-alt mr-2" />
           备注信息
         </h3>
 
-        <el-descriptions :column="1" border>
-          <el-descriptions-item label="入库原因" v-if="record.reason">
+        <el-descriptions
+          :column="1"
+          border
+        >
+          <el-descriptions-item
+            v-if="record.reason"
+            label="入库原因"
+          >
             {{ record.reason }}
           </el-descriptions-item>
-          <el-descriptions-item label="备注" v-if="record.note">
-            <div class="note-content">{{ record.note }}</div>
+          <el-descriptions-item
+            v-if="record.remarks"
+            label="备注"
+          >
+            <div class="note-content">
+              {{ record.remarks }}
+            </div>
           </el-descriptions-item>
         </el-descriptions>
       </div>
 
       <!-- 操作历史 -->
-      <div class="detail-section" v-if="operationHistory.length > 0">
+      <div
+        v-if="operationHistory.length > 0"
+        class="detail-section"
+      >
         <h3 class="section-title">
-          <i class="fas fa-history mr-2"></i>
+          <i class="fas fa-history mr-2" />
           操作历史
         </h3>
 
@@ -158,28 +221,54 @@
             :type="getTimelineType(item.type)"
           >
             <div class="timeline-content">
-              <div class="timeline-title">{{ item.title }}</div>
-              <div class="timeline-description">{{ item.description }}</div>
-              <div class="timeline-operator" v-if="item.operator">操作人: {{ item.operator }}</div>
+              <div class="timeline-title">
+                {{ item.title }}
+              </div>
+              <div class="timeline-description">
+                {{ item.description }}
+              </div>
+              <div
+                v-if="item.operator"
+                class="timeline-operator"
+              >
+                操作人: {{ item.operator }}
+              </div>
             </div>
           </el-timeline-item>
         </el-timeline>
       </div>
     </div>
 
-    <div v-else class="empty-content">
-      <el-empty description="暂无数据" />
-    </div>
+    <DataEmptyState
+      v-else
+      size="compact"
+      description="暂无数据"
+    />
 
     <template #footer>
-      <div class="dialog-footer" :class="{ 'mobile': isMobile }">
-        <el-button @click="handlePrint" :icon="Printer" :size="isMobile ? 'default' : 'large'">
+      <div
+        class="dialog-footer"
+        :class="{ 'mobile': isMobile }"
+      >
+        <el-button
+          :icon="Printer"
+          :size="isMobile ? 'default' : 'large'"
+          @click="handlePrint"
+        >
           打印
         </el-button>
-        <el-button @click="handleExport" :icon="Download" :size="isMobile ? 'default' : 'large'">
+        <el-button
+          :icon="Download"
+          :size="isMobile ? 'default' : 'large'"
+          @click="handleExport"
+        >
           导出
         </el-button>
-        <el-button type="primary" @click="handleClose" :size="isMobile ? 'default' : 'large'">
+        <el-button
+          type="primary"
+          :size="isMobile ? 'default' : 'large'"
+          @click="handleClose"
+        >
           关闭
         </el-button>
       </div>
@@ -204,10 +293,11 @@ import { formatDateTime, formatCurrency } from '@/utils/format'
 import type { StockInRecord, OperationType } from '@/types/inventory'
 import type { ModalProps, UpdateVisibleEmits } from '@/types/component'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
+import { escapeHtml } from '@/utils/security'
 
 // Props定义
 interface Props extends ModalProps {
-  record: StockInRecord | null
+  record?: StockInRecord | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -260,18 +350,8 @@ const loadOperationHistory = (record: StockInRecord) => {
     title: '创建入库记录',
     description: `创建了 ${record.product_name} 的入库记录，数量 ${record.quantity}`,
     operator: record.operator_name,
-    timestamp: record.created_at
+    timestamp: record.inventory_time
   })
-
-  // 如果有更新时间，添加更新记录
-  if (record.updated_at && record.updated_at !== record.created_at) {
-    history.push({
-      type: 'success',
-      title: '更新记录',
-      description: '修改了入库记录信息',
-      timestamp: record.updated_at
-    })
-  }
 
   // 如果已结算，添加结算记录
   if (record.is_settled) {
@@ -279,7 +359,7 @@ const loadOperationHistory = (record: StockInRecord) => {
       type: 'success',
       title: '完成结算',
       description: '此入库记录已完成结算',
-      timestamp: record.updated_at || record.created_at
+      timestamp: record.payment_time || record.inventory_time
     })
   }
 
@@ -361,12 +441,14 @@ const handleClose = () => {
 }
 
 const generatePrintContent = (record: StockInRecord) => {
+  const printText = (value: unknown) => escapeHtml(String(value ?? ''))
+
   return `
     <!DOCTYPE html>
     <html>
       <head>
         <meta charset="utf-8">
-        <title>入库单 #${record.id}</title>
+        <title>入库单 #${printText(record.id)}</title>
         <style>
           * {
             margin: 0;
@@ -378,15 +460,15 @@ const generatePrintContent = (record: StockInRecord) => {
             font-family: 'Microsoft YaHei', Arial, sans-serif;
             font-size: 14px;
             line-height: 1.6;
-            color: #333;
-            background: #fff;
+            color: var(--text-primary);
+            background: var(--color-bg-white);
             padding: 20px;
           }
 
           .print-header {
             text-align: center;
             margin-bottom: 30px;
-            border-bottom: 2px solid #eee;
+            border-bottom: 2px solid var(--tf-color-gray-200-alt);
             padding-bottom: 20px;
           }
 
@@ -394,12 +476,12 @@ const generatePrintContent = (record: StockInRecord) => {
             font-size: 24px;
             font-weight: bold;
             margin-bottom: 10px;
-            color: #333;
+            color: var(--text-primary);
           }
 
           .print-subtitle {
             font-size: 16px;
-            color: #666;
+            color: var(--text-secondary);
           }
 
           .section {
@@ -410,8 +492,8 @@ const generatePrintContent = (record: StockInRecord) => {
             font-size: 16px;
             font-weight: bold;
             margin-bottom: 15px;
-            color: #333;
-            border-left: 4px solid #409eff;
+            color: var(--text-primary);
+            border-left: 4px solid var(--color-primary);
             padding-left: 10px;
           }
 
@@ -426,17 +508,17 @@ const generatePrintContent = (record: StockInRecord) => {
             display: flex;
             justify-content: space-between;
             padding: 8px 0;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--tf-color-gray-200-alt);
           }
 
           .info-label {
             font-weight: 500;
-            color: #666;
+            color: var(--text-secondary);
             min-width: 100px;
           }
 
           .info-value {
-            color: #333;
+            color: var(--text-primary);
             text-align: right;
           }
 
@@ -450,33 +532,33 @@ const generatePrintContent = (record: StockInRecord) => {
           .price-item {
             text-align: center;
             padding: 15px;
-            background: #f8f9fa;
+            background: var(--tf-color-surface-muted);
             border-radius: 8px;
-            border: 1px solid #e9ecef;
+            border: 1px solid var(--tf-color-border-muted);
           }
 
           .price-label {
             font-size: 12px;
-            color: #666;
+            color: var(--text-secondary);
             margin-bottom: 5px;
           }
 
           .price-value {
             font-size: 18px;
             font-weight: bold;
-            color: #333;
+            color: var(--text-primary);
           }
 
           .price-value.total-value {
-            color: #409eff;
+            color: var(--color-primary);
             font-size: 20px;
           }
 
           .note-content {
-            background: #f8f9fa;
+            background: var(--tf-color-surface-muted);
             padding: 15px;
             border-radius: 6px;
-            border-left: 4px solid #409eff;
+            border-left: 4px solid var(--color-primary);
             min-height: 50px;
           }
 
@@ -489,29 +571,29 @@ const generatePrintContent = (record: StockInRecord) => {
           }
 
           .tag-primary {
-            background: #ecf5ff;
-            color: #409eff;
-            border: 1px solid #b3d8ff;
+            background: var(--tf-color-primary-surface-element);
+            color: var(--color-primary);
+            border: 1px solid var(--tf-color-blue-element-border);
           }
 
           .tag-success {
-            background: #f0f9ff;
-            color: #67c23a;
-            border: 1px solid #c2e7b0;
+            background: var(--tf-color-blue-50);
+            color: var(--color-success);
+            border: 1px solid var(--tf-color-green-element-border);
           }
 
           .tag-warning {
-            background: #fdf6ec;
-            color: #e6a23c;
-            border: 1px solid #f5dab1;
+            background: var(--tf-color-warning-surface-element);
+            color: var(--color-warning);
+            border: 1px solid var(--tf-color-warning-element-border);
           }
 
           .print-footer {
             text-align: center;
             margin-top: 40px;
             padding-top: 20px;
-            border-top: 1px solid #eee;
-            color: #666;
+            border-top: 1px solid var(--tf-color-gray-200-alt);
+            color: var(--text-secondary);
             font-size: 12px;
           }
 
@@ -532,7 +614,7 @@ const generatePrintContent = (record: StockInRecord) => {
       <body>
         <div class="print-header">
           <h1 class="print-title">入库单</h1>
-          <p class="print-subtitle">单号: #${record.id}</p>
+          <p class="print-subtitle">单号: #${printText(record.id)}</p>
         </div>
 
         <div class="section">
@@ -548,7 +630,7 @@ const generatePrintContent = (record: StockInRecord) => {
             </div>
             <div class="info-item">
               <span class="info-label">操作类型:</span>
-              <span class="info-value">${getOperationTypeText(record.operation_type)}</span>
+              <span class="info-value">${printText(getOperationTypeText(record.operation_type))}</span>
             </div>
             <div class="info-item">
               <span class="info-label">结算状态:</span>
@@ -560,7 +642,7 @@ const generatePrintContent = (record: StockInRecord) => {
             </div>
             <div class="info-item">
               <span class="info-label">入库时间:</span>
-              <span class="info-value">${formatDateTime(record.created_at)}</span>
+              <span class="info-value">${printText(formatDateTime(record.inventory_time))}</span>
             </div>
           </div>
         </div>
@@ -570,30 +652,30 @@ const generatePrintContent = (record: StockInRecord) => {
           <div class="info-grid">
             <div class="info-item">
               <span class="info-label">商品名称:</span>
-              <span class="info-value">${record.product_name}</span>
+              <span class="info-value">${printText(record.product_name)}</span>
             </div>
             <div class="info-item">
               <span class="info-label">品牌:</span>
-              <span class="info-value">${record.brand_name || '-'}</span>
+              <span class="info-value">${printText(record.brand_name || '-')}</span>
             </div>
             <div class="info-item">
               <span class="info-label">型号:</span>
-              <span class="info-value">${record.model_name || '-'}</span>
+              <span class="info-value">${printText(record.model_name || '-')}</span>
             </div>
             <div class="info-item">
               <span class="info-label">颜色:</span>
-              <span class="info-value">${record.color_name || '-'}</span>
+              <span class="info-value">${printText(record.color_name || '-')}</span>
             </div>
             ${record.imei ? `
             <div class="info-item">
               <span class="info-label">IMEI号:</span>
-              <span class="info-value">${record.imei}</span>
+              <span class="info-value">${printText(record.imei)}</span>
             </div>
             ` : ''}
             ${record.serial_number ? `
             <div class="info-item">
               <span class="info-label">序列号:</span>
-              <span class="info-value">${record.serial_number}</span>
+              <span class="info-value">${printText(record.serial_number)}</span>
             </div>
             ` : ''}
           </div>
@@ -604,15 +686,15 @@ const generatePrintContent = (record: StockInRecord) => {
           <div class="price-grid">
             <div class="price-item">
               <div class="price-label">入库数量</div>
-              <div class="price-value quantity-value">${record.quantity}</div>
+              <div class="price-value quantity-value">${printText(record.quantity)}</div>
             </div>
             <div class="price-item">
               <div class="price-label">单价</div>
-              <div class="price-value">¥${formatCurrency(record.unit_cost)}</div>
+              <div class="price-value">¥${printText(formatCurrency(record.purchase_cost))}</div>
             </div>
             <div class="price-item">
               <div class="price-label">总价</div>
-              <div class="price-value total-value">¥${formatCurrency(record.total_cost)}</div>
+              <div class="price-value total-value">¥${printText(formatCurrency(record.purchase_cost))}</div>
             </div>
           </div>
         </div>
@@ -622,42 +704,42 @@ const generatePrintContent = (record: StockInRecord) => {
           <div class="info-grid">
             <div class="info-item">
               <span class="info-label">入库门店:</span>
-              <span class="info-value">${record.store_name}</span>
+              <span class="info-value">${printText(record.store_name)}</span>
             </div>
             <div class="info-item">
               <span class="info-label">供应商:</span>
-              <span class="info-value">${record.supplier_name || '-'}</span>
+              <span class="info-value">${printText(record.supplier_name || '-')}</span>
             </div>
             <div class="info-item">
               <span class="info-label">操作人:</span>
-              <span class="info-value">${record.operator_name}</span>
+              <span class="info-value">${printText(record.operator_name)}</span>
             </div>
             <div class="info-item">
               <span class="info-label">参考单号:</span>
-              <span class="info-value">${record.reference_id || '-'}</span>
+              <span class="info-value">${printText(record.reference_id || '-')}</span>
             </div>
           </div>
         </div>
 
-        ${record.reason || record.note ? `
+        ${record.reason || record.remarks ? `
         <div class="section">
           <h3 class="section-title">备注信息</h3>
           ${record.reason ? `
           <div class="info-item">
             <span class="info-label">入库原因:</span>
-            <span class="info-value">${record.reason}</span>
+            <span class="info-value">${printText(record.reason)}</span>
           </div>
           ` : ''}
-          ${record.note ? `
+          ${record.remarks ? `
           <div class="note-content">
-            ${record.note}
+            ${printText(record.remarks)}
           </div>
           ` : ''}
         </div>
         ` : ''}
 
         <div class="print-footer">
-          <p>打印时间: ${formatDateTime(TimeUtil.now().toISOString())}</p>
+          <p>打印时间: ${printText(formatDateTime(TimeUtil.now().toISOString()))}</p>
           <p>此单据由系统自动生成，无需签字</p>
         </div>
       </body>

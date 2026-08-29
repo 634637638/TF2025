@@ -88,6 +88,23 @@ sudo apt install -y git
 
 ## 部署前准备
 
+### 保留后端配置文件
+
+权限能力清单已经放入后端源码。单独部署后端时，确认以下文件包含在上传内容中：
+
+```text
+/www/wwwroot/api2025.com/backend/src/config/module-permission-capabilities.json
+```
+
+后端目录下执行以下命令确认运行时资源完整：
+
+```bash
+cd /www/wwwroot/api2025.com/backend
+npm run check:runtime-assets
+```
+
+不要在项目根目录或其他位置复制第二份能力清单。
+
 ### 1. 克隆项目
 
 ```bash

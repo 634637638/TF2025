@@ -8,14 +8,30 @@
     destroy-on-close
   >
     <div class="match-preorder-modal">
-      <div class="preorder-summary">
-        <div class="summary-main">
-          <span class="summary-number">{{ preorder.preorder_number }}</span>
-          <el-tag :type="Number(preorder.is_new) === 1 ? 'success' : 'info'" size="small">
+      <div
+        v-if="showPreorderSummary"
+        class="preorder-summary"
+      >
+        <div
+          v-if="canViewPreorderField('preorder_number') || canViewPreorderField('is_new')"
+          class="summary-main"
+        >
+          <span
+            v-if="canViewPreorderField('preorder_number')"
+            class="summary-number"
+          >{{ preorder.preorder_number }}</span>
+          <el-tag
+            v-if="canViewPreorderField('is_new')"
+            :type="Number(preorder.is_new) === 1 ? 'success' : 'info'"
+            size="small"
+          >
             {{ Number(preorder.is_new) === 1 ? '全新' : '二手' }}
           </el-tag>
         </div>
-        <div class="summary-product">
+        <div
+          v-if="productName"
+          class="summary-product"
+        >
           {{ productName }}
         </div>
       </div>
@@ -32,31 +48,64 @@
           @row-click="selectPhone"
         >
           <template #empty>
-            <el-empty :description="loading ? '正在查找匹配库存...' : '暂无完全匹配的在库设备'" />
+            <DataEmptyState :description="loading ? '正在查找匹配库存...' : '暂无完全匹配的在库设备'" />
           </template>
-          <el-table-column label="选择" width="68" align="center">
+          <el-table-column
+            label="选择"
+            width="68"
+            align="center"
+          >
             <template #default="{ row }">
               <el-radio
                 :model-value="selectedPhoneId"
                 :value="row.id"
-                :aria-label="`选择 ${row.imei}`"
+                aria-label="选择设备"
                 @change="selectPhone(row)"
               />
             </template>
           </el-table-column>
-          <el-table-column prop="imei" label="IMEI" min-width="138" class-name="identifier-column" />
-          <el-table-column prop="serial_number" label="序列号" min-width="126">
-            <template #default="{ row }">{{ row.serial_number || '-' }}</template>
-          </el-table-column>
-          <el-table-column label="商品" min-width="190">
+          <el-table-column
+            v-if="canViewPreorderField('imei')"
+            prop="imei"
+            label="IMEI"
+            min-width="138"
+            class-name="identifier-column"
+          />
+          <el-table-column
+            v-if="canViewPreorderField('serial_number')"
+            prop="serial_number"
+            label="序列号"
+            min-width="126"
+          >
             <template #default="{ row }">
-              {{ [row.brand_name, row.model_name, row.color_name, row.memory_size].filter(Boolean).join(' ') }}
+              {{ row.serial_number || '-' }}
             </template>
           </el-table-column>
-          <el-table-column prop="store_name" label="店铺" min-width="100">
-            <template #default="{ row }">{{ row.store_name || '-' }}</template>
+          <el-table-column
+            v-if="showProductField"
+            label="商品"
+            min-width="190"
+          >
+            <template #default="{ row }">
+              {{ getVisibleProductName(row) || '-' }}
+            </template>
           </el-table-column>
-          <el-table-column label="销售价" min-width="96" align="center">
+          <el-table-column
+            v-if="canViewPreorderField('store_name')"
+            prop="store_name"
+            label="店铺"
+            min-width="100"
+          >
+            <template #default="{ row }">
+              {{ row.store_name || '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column
+            v-if="canViewPreorderField('matchable_sale_price')"
+            label="销售价"
+            min-width="96"
+            align="center"
+          >
             <template #default="{ row }">
               {{ row.sale_price === null || row.sale_price === undefined ? '-' : `¥${formatPrice(row.sale_price)}` }}
             </template>
@@ -65,7 +114,12 @@
       </div>
 
       <div class="dialog-actions">
-        <el-button :disabled="submitting" @click="dialogVisible = false">取消</el-button>
+        <el-button
+          :disabled="submitting"
+          @click="dialogVisible = false"
+        >
+          取消
+        </el-button>
         <el-button
           type="primary"
           :loading="submitting"
@@ -84,6 +138,7 @@ import { computed, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import MobileDialog from '@/components/MobileDialog.vue'
 import { preorderApi, type MatchablePhone, type Preorder } from '@/api/preorder'
+import { canViewPreorderField } from '../preorder-field-permissions'
 
 const props = defineProps<{
   visible: boolean
@@ -105,12 +160,19 @@ const selectedPhoneId = ref<number | null>(null)
 const loading = ref(false)
 const submitting = ref(false)
 
-const productName = computed(() => [
-  props.preorder.brand_name,
-  props.preorder.model_name,
-  props.preorder.color_name,
-  props.preorder.memory_size
-].filter(Boolean).join(' ') || props.preorder.phone_model || '-')
+const productFieldNames = ['brand_name', 'model_name', 'color_name', 'memory_size'] as const
+const showProductField = computed(() => productFieldNames.some(canViewPreorderField))
+const getVisibleProductName = (item: Preorder | MatchablePhone) => productFieldNames
+  .filter(canViewPreorderField)
+  .map(field => item[field])
+  .filter(Boolean)
+  .join(' ')
+const productName = computed(() => getVisibleProductName(props.preorder))
+const showPreorderSummary = computed(() => (
+  canViewPreorderField('preorder_number') ||
+  canViewPreorderField('is_new') ||
+  Boolean(productName.value)
+))
 
 const formatPrice = (value: number | string) => {
   const number = Number(value)

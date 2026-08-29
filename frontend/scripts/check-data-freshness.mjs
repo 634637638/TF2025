@@ -9,6 +9,40 @@ const sourceExtensions = new Set(['.ts', '.vue'])
 const directAxiosMutation = /\baxios\s*\.\s*(post|put|patch|delete)\s*\(/g
 const violations = []
 
+// 业务页面不得在接口失败时展示伪造的商品、统计或分析数据。
+const businessFiles = [
+  'src/components/InventoryResultDialog.vue',
+  'src/views/repairs/RepairsView.vue',
+  'src/views/brands/BrandsView.vue',
+  'src/views/colors/ColorsView.vue',
+  'src/views/memories/MemoriesView.vue',
+  'src/views/analytics/page/CustomerAnalytics.vue',
+  'src/views/analytics/page/EmployeeAnalytics.vue',
+  'src/views/analytics/page/ProfitAnalytics.vue',
+  'src/views/price-list/page/PublicPriceQuery.vue',
+  'src/views/price-list/page/SalesPriceDisplay.vue',
+  'src/components/query/SalesReceipt.vue'
+]
+const forbiddenBusinessFallbacks = [
+  /模拟数据/,
+  /mockData/,
+  /总店['"`]\s*[,}]/,
+  /腾飞数码/,
+  /132-0790-3333/
+]
+for (const relativePath of businessFiles) {
+  const path = new URL(`./${relativePath}`, root)
+  const source = readFileSync(path, 'utf8')
+  const patterns = relativePath.includes('price-list/page/')
+    ? forbiddenBusinessFallbacks
+    : [/Math\.random\s*\(/, ...forbiddenBusinessFallbacks]
+  for (const pattern of patterns) {
+    if (pattern.test(source)) {
+      violations.push(`${relativePath} contains prohibited business fallback: ${pattern}`)
+    }
+  }
+}
+
 const walk = directory => {
   for (const name of readdirSync(directory)) {
     const path = join(directory, name)

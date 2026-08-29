@@ -1,6 +1,9 @@
+@use './styles/variables' as *;
+
 /* ==================== 统一导入组件样式 ==================== */
 @use './styles/utilities.scss' as *;
 @use './styles/components/_buttons.scss' as *;
+@use './styles/components/_badges.scss' as *;
 @use './styles/components/_table.scss' as *;
 @use './styles/components/_pagination.scss' as *;
 @use './styles/components/_tabs.scss' as *;
@@ -14,9 +17,9 @@
 
 body {
   font-family: var(--app-font-family-sans);
-  background: var(--bg-primary, #f5f5f5);
+  background: var(--bg-primary, var(--tf-color-surface-soft));
   line-height: 1.6;
-  color: var(--text-primary, #333);
+  color: var(--text-primary, var(--text-primary));
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
@@ -84,6 +87,19 @@ html {
   --text-secondary: #666666;
   --text-muted: #999999;
   --text-inverse: #ffffff;
+
+  /* 共享样式语义令牌。业务组件不得直接写十六进制颜色。 */
+  --tf-color-black: #000000;
+  --tf-color-heading: #2c3e50;
+  --tf-color-muted: #6c757d;
+  --tf-color-border-muted: #e9ecef;
+  --tf-color-border-subtle: #dee2e6;
+  --tf-color-surface: #f5f7fa;
+  --tf-color-surface-muted: #f8f9fa;
+  --tf-color-surface-soft: #f5f5f5;
+  --tf-color-gray-100: #f1f1f1;
+  --tf-color-gray-300: #c1c1c1;
+  --tf-color-gray-400: #a8a8a8;
 
   /* 边框颜色 */
   --border-color: #dee2e6;
@@ -202,37 +218,37 @@ html {
 }
 
 .el-select-dropdown {
-  background-color: #ffffff !important;
-  border: 1px solid #e4e7ed !important;
+  background-color: var(--color-bg-white) !important;
+  border: 1px solid var(--tf-color-border-element) !important;
 }
 
 .el-select-dropdown .el-select-dropdown__item {
-  color: #606266 !important;
-  background-color: #ffffff !important;
+  color: var(--color-text-regular) !important;
+  background-color: var(--color-bg-white) !important;
 }
 
 .el-select-dropdown .el-select-dropdown__item:hover {
-  background-color: #f5f7fa !important;
-  color: #409eff !important;
+  background-color: var(--tf-color-surface) !important;
+  color: var(--color-primary) !important;
 }
 
 .el-select-dropdown .el-select-dropdown__item.is-selected {
-  color: #409eff !important;
+  color: var(--color-primary) !important;
   font-weight: 700 !important;
 }
 
 .el-select-dropdown .el-select-dropdown__item.is-disabled {
-  color: #c0c4cc !important;
+  color: var(--color-text-placeholder) !important;
   cursor: not-allowed !important;
 }
 
 .el-select-dropdown .el-select-dropdown__empty {
-  color: #909399 !important;
+  color: var(--color-info) !important;
 }
 
 .el-select-dropdown .el-select-dropdown__wrap,
 .el-select-dropdown .el-select-dropdown__list {
-  background-color: #ffffff !important;
+  background-color: var(--color-bg-white) !important;
 }
 
 @media (max-width: 767px) {
@@ -401,7 +417,7 @@ html {
   gap: 8px;
   min-width: 112px;
   padding: 10px 14px;
-  color: var(--tf-loading-surface-text, #334155);
+  color: var(--tf-loading-surface-text, var(--tf-color-slate-700));
   font-size: 14px;
   font-weight: 600;
   background: rgba(255, 255, 255, 0.92);
@@ -416,8 +432,8 @@ html {
   width: 18px;
   height: 18px;
   border: 2px solid var(--tf-loading-ring-track, rgba(37, 99, 235, 0.18));
-  border-top-color: var(--tf-loading-ring-primary, #2563eb);
-  border-right-color: var(--tf-loading-ring-secondary, #38bdf8);
+  border-top-color: var(--tf-loading-ring-primary, var(--tf-color-blue-600));
+  border-right-color: var(--tf-loading-ring-secondary, var(--tf-color-sky-400));
   border-radius: 50%;
   box-sizing: border-box;
   animation: tf-spinner-rotate var(--tf-loading-speed, 0.72s) linear infinite;
@@ -430,13 +446,13 @@ html {
 }
 
 .el-loading-spinner .path {
-  stroke: var(--tf-loading-ring-primary, #2563eb) !important;
+  stroke: var(--tf-loading-ring-primary, var(--tf-color-blue-600)) !important;
   stroke-width: 4 !important;
   stroke-linecap: round !important;
 }
 
 .el-loading-spinner .el-loading-text {
-  color: var(--tf-loading-color, #2563eb) !important;
+  color: var(--tf-loading-color, var(--tf-color-blue-600)) !important;
   font-weight: 600;
   letter-spacing: 0;
 }
@@ -561,7 +577,7 @@ html {
 @media (max-width: 768px) {
   .mobile-action-row td {
     padding: 6px 4px 10px !important;
-    background: linear-gradient(180deg, #f8fbff 0%, #f4f7ff 100%) !important;
+    background: linear-gradient(180deg, var(--tf-color-surface-blue) 0%, var(--tf-color-indigo-surface-alt) 100%) !important;
     border-top: none !important;
   }
 
@@ -624,43 +640,43 @@ html {
 
 /* 颜色类 */
 .text-primary {
-  color: #3498db;
+  color: var(--tf-color-blue-legacy);
 }
 
 .text-success {
-  color: #2ecc71;
+  color: var(--tf-color-green-flat);
 }
 
 .text-warning {
-  color: #f39c12;
+  color: var(--tf-color-amber-legacy);
 }
 
 .text-danger {
-  color: #e74c3c;
+  color: var(--tf-color-red-legacy);
 }
 
 .text-muted {
-  color: #7f8c8d;
+  color: var(--tf-color-gray-cool-500);
 }
 
 .bg-primary {
-  background-color: #3498db;
+  background-color: var(--tf-color-blue-legacy);
 }
 
 .bg-success {
-  background-color: #2ecc71;
+  background-color: var(--tf-color-green-flat);
 }
 
 .bg-warning {
-  background-color: #f39c12;
+  background-color: var(--tf-color-amber-legacy);
 }
 
 .bg-danger {
-  background-color: #e74c3c;
+  background-color: var(--tf-color-red-legacy);
 }
 
 .bg-light {
-  background-color: #f8f9fa;
+  background-color: var(--tf-color-surface-muted);
 }
 
 /* 阴影类 */
@@ -678,23 +694,23 @@ html {
 
 /* 边框类 */
 .border {
-  border: 1px solid #dee2e6;
+  border: 1px solid var(--tf-color-border-subtle);
 }
 
 .border-top {
-  border-top: 1px solid #dee2e6;
+  border-top: 1px solid var(--tf-color-border-subtle);
 }
 
 .border-bottom {
-  border-bottom: 1px solid #dee2e6;
+  border-bottom: 1px solid var(--tf-color-border-subtle);
 }
 
 .border-left {
-  border-left: 1px solid #dee2e6;
+  border-left: 1px solid var(--tf-color-border-subtle);
 }
 
 .border-right {
-  border-right: 1px solid #dee2e6;
+  border-right: 1px solid var(--tf-color-border-subtle);
 }
 
 /* 圆角类 */
@@ -1044,27 +1060,27 @@ html {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--tf-color-gray-100);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: var(--tf-color-gray-300);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  background: var(--tf-color-gray-400);
 }
 
 /* 选择文本样式 */
 ::selection {
-  background-color: #3498db;
+  background-color: var(--tf-color-blue-legacy);
   color: white;
 }
 
 ::-moz-selection {
-  background-color: #3498db;
+  background-color: var(--tf-color-blue-legacy);
   color: white;
 }
 
@@ -1190,7 +1206,7 @@ html {
 
 .loading-content {
   text-align: center;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .loading-overlay.dark .loading-content {
@@ -1201,8 +1217,8 @@ html {
   width: 40px;
   height: 40px;
   border: 4px solid var(--tf-loading-ring-track, rgba(37, 99, 235, 0.18));
-  border-top-color: var(--tf-loading-ring-primary, #2563eb);
-  border-right-color: var(--tf-loading-ring-secondary, #38bdf8);
+  border-top-color: var(--tf-loading-ring-primary, var(--tf-color-blue-600));
+  border-right-color: var(--tf-loading-ring-secondary, var(--tf-color-sky-400));
   border-radius: 50%;
   box-sizing: border-box;
   animation: tf-spinner-rotate var(--tf-loading-speed, 0.72s) linear infinite;
@@ -1360,7 +1376,7 @@ html {
 .el-dialog,
 .el-message-box {
   position: relative !important;
-  background: #ffffff !important;
+  background: var(--color-bg-white) !important;
   border: none !important;
   border-radius: var(--dialog-radius) !important;
   box-shadow: 0 22px 56px rgba(15, 23, 42, 0.18) !important;
@@ -1450,7 +1466,7 @@ html {
 .el-message-box__content {
   padding: 24px !important;
   margin: 0 !important;
-  background: #ffffff !important;
+  background: var(--color-bg-white) !important;
   color: var(--dialog-body-text) !important;
   box-shadow: none !important;
 }
@@ -1631,58 +1647,58 @@ body .el-overlay-message-box .el-message-box__message p {
 
 /* 成功消息样式 */
 .el-message--success {
-  background-color: #f0f9ff !important;
-  border-color: #86efac !important;
+  background-color: var(--tf-color-blue-50) !important;
+  border-color: var(--tf-color-green-300) !important;
 }
 
 .el-message--success .el-message__content {
-  color: #166534 !important;
+  color: var(--tf-color-success-text-strong) !important;
 }
 
 .el-message--success .el-message-icon {
-  color: #22c55e !important;
+  color: var(--tf-color-green-500) !important;
 }
 
 /* 错误消息样式 */
 .el-message--error {
-  background-color: #fef2f2 !important;
-  border-color: #fca5a5 !important;
+  background-color: var(--tf-color-red-tailwind-50) !important;
+  border-color: var(--tf-color-red-300) !important;
 }
 
 .el-message--error .el-message__content {
-  color: #991b1b !important;
+  color: var(--tf-color-red-800) !important;
 }
 
 .el-message--error .el-message-icon {
-  color: #ef4444 !important;
+  color: var(--tf-color-red-500) !important;
 }
 
 /* 警告消息样式 */
 .el-message--warning {
-  background-color: #fffbeb !important;
-  border-color: #fcd34d !important;
+  background-color: var(--tf-color-amber-50) !important;
+  border-color: var(--tf-color-amber-300) !important;
 }
 
 .el-message--warning .el-message__content {
-  color: #92400e !important;
+  color: var(--tf-color-amber-800) !important;
 }
 
 .el-message--warning .el-message-icon {
-  color: #f59e0b !important;
+  color: var(--tf-color-amber-500) !important;
 }
 
 /* 信息消息样式 */
 .el-message--info {
-  background-color: #eff6ff !important;
-  border-color: #93c5fd !important;
+  background-color: var(--tf-color-blue-tailwind-50) !important;
+  border-color: var(--tf-color-blue-tailwind-300) !important;
 }
 
 .el-message--info .el-message__content {
-  color: #1e40af !important;
+  color: var(--tf-color-blue-tailwind-800) !important;
 }
 
 .el-message--info .el-message-icon {
-  color: #3b82f6 !important;
+  color: var(--tf-color-blue-500) !important;
 }
 
 /* 关闭按钮样式 */

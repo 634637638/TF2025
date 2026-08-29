@@ -14,12 +14,18 @@
       @drop="handleDrop(index, $event)"
     >
       <div class="drag-handle">
-        <i class="fas fa-grip-vertical"></i>
+        <i class="fas fa-grip-vertical" />
       </div>
       <div class="drag-content">
-        <slot :item="item" :index="index"></slot>
+        <slot
+          :item="item"
+          :index="index"
+        />
       </div>
-      <div class="drag-sort-order" v-if="showSortOrder">
+      <div
+        v-if="showSortOrder"
+        class="drag-sort-order"
+      >
         <span class="sort-badge">{{ item.sort_order || index + 1 }}</span>
       </div>
     </div>
@@ -123,26 +129,26 @@ const handleDrop = (dropIndex: number, event: DragEvent) => {
   gap: 12px;
   padding: 12px 16px;
   background: white;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--tf-color-neutral-200);
   border-radius: 8px;
   cursor: move;
   transition: all 0.2s ease;
   user-select: none;
 
   &:hover {
-    border-color: #3b82f6;
+    border-color: var(--tf-color-blue-500);
     box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
   }
 
   &.is-dragging {
     opacity: 0.5;
-    border-color: #3b82f6;
-    background: #eff6ff;
+    border-color: var(--tf-color-blue-500);
+    background: var(--tf-color-blue-tailwind-50);
   }
 }
 
 .drag-handle {
-  color: #9ca3af;
+  color: var(--tf-color-neutral-400);
   font-size: 16px;
   cursor: grab;
   display: flex;
@@ -166,8 +172,8 @@ const handleDrop = (dropIndex: number, event: DragEvent) => {
     min-width: 32px;
     height: 32px;
     padding: 0 8px;
-    background: #f3f4f6;
-    color: #6b7280;
+    background: var(--tf-color-neutral-100);
+    color: var(--tf-color-neutral-500);
     border-radius: 6px;
     font-size: 13px;
     font-weight: 500;

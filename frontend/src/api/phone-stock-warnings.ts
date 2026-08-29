@@ -18,12 +18,12 @@ export const getWarningThreshold = (brandId: number, modelId?: number) => {
 }
 
 // 创建预警配置
-export const createConfig = (data: any) => {
+export const createConfig = (data: unknown) => {
   return unifiedApi.post('/phone-stock-warnings/configs', data)
 }
 
 // 更新预警配置
-export const updateConfig = (id: number, data: any) => {
+export const updateConfig = (id: number, data: unknown) => {
   return unifiedApi.put(`/phone-stock-warnings/configs/${id}`, data)
 }
 

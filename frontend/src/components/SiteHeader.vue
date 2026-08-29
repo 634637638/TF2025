@@ -1,7 +1,13 @@
 <template>
-  <div class="site-header" v-if="siteSettingsStore.hasLogo">
+  <div
+    v-if="siteSettingsStore.hasLogo"
+    class="site-header"
+  >
     <!-- Logo显示 -->
-    <div class="site-logo" v-if="siteSettingsStore.hasLogo">
+    <div
+      v-if="siteSettingsStore.hasLogo"
+      class="site-logo"
+    >
       <Image
         :src="logoUrl"
         :alt="siteSettingsStore.displayName"
@@ -27,15 +33,15 @@ const logoUrl = computed(() => {
 })
 
 // 监听站点设置更新事件
-const handleSettingsUpdated = (event: CustomEvent) => {
+const handleSettingsUpdated = (_event: CustomEvent) => {
   // 静默处理设置更新
 }
 
-const handleLogoUpdated = (event: CustomEvent) => {
+const handleLogoUpdated = (_event: CustomEvent) => {
   // 静默处理Logo更新
 }
 
-const handleSettingsReset = (event: CustomEvent) => {
+const handleSettingsReset = (_event: CustomEvent) => {
   // 静默处理设置重置
 }
 
@@ -82,13 +88,13 @@ onUnmounted(() => {
 .site-name {
   font-size: 18px;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
   line-height: 1.2;
 }
 
 .site-subtitle {
   font-size: 12px;
-  color: #7f8c8d;
+  color: var(--tf-color-gray-cool-500);
   line-height: 1.2;
 }
 
@@ -115,11 +121,11 @@ onUnmounted(() => {
 /* 暗色模式支持 */
 @media (prefers-color-scheme: dark) {
   .site-name {
-    color: #ffffff;
+    color: var(--color-bg-white);
   }
 
   .site-subtitle {
-    color: #bdc3c7;
+    color: var(--tf-color-gray-flat-400);
   }
 }
 </style>

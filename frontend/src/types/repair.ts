@@ -13,7 +13,7 @@ export type RepairType = 'screen' | 'battery' | 'camera' | 'charging' | 'speaker
 /**
  * 维修状态
  */
-export type RepairStatus = 'pending' | 'diagnosed' | 'repairing' | 'completed' | 'returned' | 'cancelled'
+export type RepairStatus = 'pending' | 'processing' | 'completed' | 'cancelled'
 
 /**
  * 设备类型
@@ -47,42 +47,24 @@ export type CustomerType = 'owner' | 'walk_in' | 'online' | 'other'
  */
 export interface RepairOrder {
   id: number
-  repair_number: string
-  device_type: DeviceType
-  device_brand?: string
-  device_model?: string
-  device_color?: string
-  device_imei?: string
-  fault_description: string
-  repair_type: RepairType
-  priority: RepairPriority
-  warranty_status: WarrantyStatus
-  customer_type: CustomerType
-  customer_id?: number
+  order_no: string
+  customer_id: number
   customer_name: string
   customer_phone: string
-  customer_address?: string
+  brand_id?: number
+  brand_name?: string
+  phone_model?: string
+  imei?: string
+  problem_description: string
   estimated_cost?: number
   actual_cost?: number
-  deposit_amount?: number
-  payment_status: RepairPaymentStatus
-  store_id: number
-  store_name: string
   technician_id?: number
   technician_name?: string
   status: RepairStatus
-  diagnosis?: string
-  repair_process?: string
-  parts_used?: PartsUsed[]
-  accessories?: string[]
-  start_date?: string
-  estimated_complete_date?: string
-  actual_complete_date?: string
-  return_date?: string
-  remark?: string
-  images?: string[]
+  remarks?: string
   created_at: string
   updated_at: string
+  completed_at?: string
 }
 
 /**
@@ -100,65 +82,45 @@ export interface PartsUsed {
  * 维修单表单数据
  */
 export interface RepairOrderForm {
-  device_type: DeviceType
-  device_brand?: string
-  device_model?: string
-  device_color?: string
-  device_imei?: string
-  fault_description: string
-  repair_type: RepairType
-  priority?: RepairPriority
-  warranty_status?: WarrantyStatus
-  customer_type?: CustomerType
-  customer_id?: number
-  customer_name: string
-  customer_phone: string
-  customer_address?: string
+  customer_id?: number | null
+  brand_id?: number | null
+  phone_model: string
+  imei?: string
+  problem_description: string
   estimated_cost?: number
-  deposit_amount?: number
-  store_id: number
-  technician_id?: number
-  estimated_complete_date?: string
-  remark?: string
-  images?: string[]
+  actual_cost?: number
+  technician_id?: number | null
+  remarks?: string
 }
 
 /**
  * 维修单筛选条件
  */
 export interface RepairOrderFilters {
+  page?: number
+  page_size?: number
   search?: string
-  repair_number?: string
-  device_type?: DeviceType
-  repair_type?: RepairType
-  priority?: RepairPriority
-  status?: RepairStatus
-  payment_status?: RepairPaymentStatus
-  store_id?: number
-  technician_id?: number
-  customer_phone?: string
-  start_date?: string
-  end_date?: string
-  is_overdue?: boolean
+  status?: 'all' | RepairStatus
 }
 
 /**
  * 维修单列表响应
  */
 export interface RepairOrderListResponse {
-  orders: RepairOrder[]
+  data: RepairOrder[]
   pagination: {
     page: number
-    limit: number
+    page_size: number
     total: number
-    pages: number
+    total_pages: number
+    has_next: boolean
+    has_prev: boolean
   }
   stats?: {
-    total_count: number
-    pending_count: number
-    in_progress_count: number
-    completed_count: number
-    total_cost: number
+    pending: number
+    processing: number
+    completed: number
+    monthly_revenue: number
   }
 }
 
@@ -168,16 +130,10 @@ export interface RepairOrderListResponse {
  * 维修统计数据
  */
 export interface RepairStats {
-  total_orders: number
-  pending_orders: number
-  in_progress_orders: number
-  completed_orders: number
-  returned_orders: number
-  total_revenue: number
-  avg_repair_time: number
-  on_time_rate: number
-  by_type: Record<RepairType, number>
-  by_priority: Record<RepairPriority, number>
+  pending: number
+  processing: number
+  completed: number
+  monthly_revenue: number
 }
 
 /**
@@ -267,7 +223,7 @@ export interface PartsStockIn {
   supplier_name?: string
   operator_id: number
   operator_name: string
-  remark?: string
+  remarks?: string
   created_at: string
 }
 

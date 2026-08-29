@@ -10,7 +10,10 @@
       @keydown.space.prevent.stop="toggleCollapse"
     >
       <div class="header-left">
-        <i class="collapse-icon" :class="isCollapsed ? 'fas fa-chevron-right' : 'fas fa-chevron-down'"></i>
+        <i
+          class="collapse-icon"
+          :class="isCollapsed ? 'fas fa-chevron-right' : 'fas fa-chevron-down'"
+        />
         <span class="header-title">
           <IconRenderer
             :icon="currentIconClass || 'fas fa-icons'"
@@ -24,7 +27,10 @@
     </div>
 
     <!-- 可折叠的内容区域 -->
-    <div v-show="!isCollapsed" class="icon-picker-content">
+    <div
+      v-show="!isCollapsed"
+      class="icon-picker-content"
+    >
       <div class="icon-picker-search">
         <el-input
           v-model="searchQuery"
@@ -35,9 +41,12 @@
           @keydown.enter.prevent
         >
           <template #prefix>
-            <i class="fas fa-search"></i>
+            <i class="fas fa-search" />
           </template>
-          <template v-if="searching" #suffix>
+          <template
+            v-if="searching"
+            #suffix
+          >
             <InlineLoading size="small" />
           </template>
         </el-input>
@@ -52,7 +61,10 @@
           @change="filterIcons"
           @keydown.enter.prevent
         >
-          <el-option label="所有分类" value="" />
+          <el-option
+            label="所有分类"
+            value=""
+          />
           <el-option
             v-for="category in categories"
             :key="category"
@@ -69,71 +81,84 @@
         />
       </div>
 
-    <!-- 加载状态 -->
-    <div v-if="loading" class="loading-state">
-      <div class="loading-content">
-        <InlineLoading text="正在加载图标..." />
-      </div>
-    </div>
-
-    <!-- 图标网格 -->
-    <div v-else-if="filteredIcons.length > 0" class="icon-grid">
+      <!-- 加载状态 -->
       <div
-        v-for="icon in paginatedIcons"
-        :key="icon.id"
-        class="icon-item"
-        :class="{ active: selectedIcon === icon.class }"
-        role="button"
-        tabindex="0"
-        @pointerdown.prevent.stop="selectIcon(icon)"
-        @click.prevent.stop
-        @keydown.enter.prevent.stop="selectIcon(icon)"
-        @keydown.space.prevent.stop="selectIcon(icon)"
-        :title="`${icon.name} (${icon.class})`"
+        v-if="loading"
+        class="loading-state"
       >
-        <IconRenderer :icon="icon.class" :svg="icon.svg" />
-        <button
-          v-if="canDeleteIcon(icon)"
-          type="button"
-          class="icon-delete-btn"
-          title="删除本地图标"
-          @click.stop="deleteLocalIcon(icon)"
-        >
-          <i class="fas fa-times"></i>
-        </button>
+        <div class="loading-content">
+          <InlineLoading text="正在加载图标..." />
+        </div>
       </div>
-    </div>
 
-    <!-- 无结果状态 -->
-    <div v-else class="no-results">
-      <i class="fas fa-search"></i>
-      <p>{{ emptyStateText }}</p>
-      <p class="hint" v-if="emptyStateHint">
-        {{ emptyStateHint }}
-      </p>
-    </div>
-
-    <div class="icon-picker-footer" v-if="totalPages > 1" @click.stop>
-      <div class="pagination">
-        <button
-          type="button"
-          @click.stop="prevPage"
-          :disabled="currentPage === 1"
-          class="btn btn-sm btn-outline-secondary"
+      <!-- 图标网格 -->
+      <div
+        v-else-if="filteredIcons.length > 0"
+        class="icon-grid"
+      >
+        <div
+          v-for="icon in paginatedIcons"
+          :key="icon.id"
+          class="icon-item"
+          :class="{ active: selectedIcon === icon.class }"
+          role="button"
+          tabindex="0"
+          :title="`${icon.name} (${icon.class})`"
+          @pointerdown.prevent.stop="selectIcon(icon)"
+          @click.prevent.stop
+          @keydown.enter.prevent.stop="selectIcon(icon)"
+          @keydown.space.prevent.stop="selectIcon(icon)"
         >
-          <i class="fas fa-chevron-left"></i>
-        </button>
-        <span class="page-info">{{ currentPage }} / {{ totalPages }}</span>
-        <button
-          type="button"
-          @click.stop="nextPage"
-          :disabled="currentPage === totalPages"
-          class="btn btn-sm btn-outline-secondary"
-        >
-          <i class="fas fa-chevron-right"></i>
-        </button>
+          <IconRenderer
+            :icon="icon.class"
+            :svg="icon.svg"
+          />
+          <button
+            v-if="canDeleteIcon(icon)"
+            type="button"
+            class="icon-delete-btn"
+            title="删除本地图标"
+            @click.stop="deleteLocalIcon(icon)"
+          >
+            <i class="fas fa-times" />
+          </button>
+        </div>
       </div>
-    </div>
+
+      <!-- 无结果状态 -->
+      <DataEmptyState
+        v-else
+        state="filtered"
+        size="compact"
+        :title="emptyStateText"
+        :description="emptyStateHint || emptyStateText"
+      />
+
+      <div
+        v-if="totalPages > 1"
+        class="icon-picker-footer"
+        @click.stop
+      >
+        <div class="pagination">
+          <button
+            type="button"
+            :disabled="currentPage === 1"
+            class="btn btn-sm btn-outline-secondary"
+            @click.stop="prevPage"
+          >
+            <i class="fas fa-chevron-left" />
+          </button>
+          <span class="page-info">{{ currentPage }} / {{ totalPages }}</span>
+          <button
+            type="button"
+            :disabled="currentPage === totalPages"
+            class="btn btn-sm btn-outline-secondary"
+            @click.stop="nextPage"
+          >
+            <i class="fas fa-chevron-right" />
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -888,7 +913,7 @@ watch([searchQuery, selectedCategory], () => {
 
 <style scoped>
 .icon-picker {
-  border: 1px solid #e9ecef;
+  border: 1px solid var(--tf-color-border-muted);
   border-radius: 12px;
   background: white;
   overflow: hidden;
@@ -921,8 +946,8 @@ watch([searchQuery, selectedCategory], () => {
   width: 100%;
   border: 0;
   padding: 12px 16px;
-  background: #f8f9fa;
-  border-bottom: 1px solid #e9ecef;
+  background: var(--tf-color-surface-muted);
+  border-bottom: 1px solid var(--tf-color-border-muted);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -933,7 +958,7 @@ watch([searchQuery, selectedCategory], () => {
 }
 
 .icon-picker-header:hover {
-  background: #e9ecef;
+  background: var(--tf-color-border-muted);
 }
 
 .header-left {
@@ -944,7 +969,7 @@ watch([searchQuery, selectedCategory], () => {
 
 .collapse-icon {
   font-size: 12px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
   transition: transform 0.3s;
 }
 
@@ -953,17 +978,17 @@ watch([searchQuery, selectedCategory], () => {
   align-items: center;
   gap: 8px;
   font-weight: 500;
-  color: #495057;
+  color: var(--tf-color-gray-bootstrap-700);
 }
 
 .current-icon {
   font-size: 16px;
-  color: #667eea;
+  color: var(--tf-color-indigo-brand);
 }
 
 .collapse-hint {
   font-size: 12px;
-  color: #adb5bd;
+  color: var(--tf-color-gray-bootstrap-500);
 }
 
 .icon-picker-content {
@@ -972,8 +997,8 @@ watch([searchQuery, selectedCategory], () => {
 
 .icon-picker-search {
   padding: 16px;
-  background: #f8f9fa;
-  border-bottom: 1px solid #e9ecef;
+  background: var(--tf-color-surface-muted);
+  border-bottom: 1px solid var(--tf-color-border-muted);
   display: flex;
   gap: 12px;
   align-items: center;
@@ -1030,20 +1055,20 @@ watch([searchQuery, selectedCategory], () => {
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s ease;
-  background: #f8f9fa;
+  background: var(--tf-color-surface-muted);
   font-size: 18px;
-  color: #495057;
+  color: var(--tf-color-gray-bootstrap-700);
 }
 
 .icon-item:hover {
-  background: #e9ecef;
-  border-color: #dee2e6;
+  background: var(--tf-color-border-muted);
+  border-color: var(--tf-color-border-subtle);
   transform: translateY(-1px);
 }
 
 .icon-item.active {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-color: #667eea;
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
+  border-color: var(--tf-color-indigo-brand);
   color: white;
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
@@ -1073,7 +1098,7 @@ watch([searchQuery, selectedCategory], () => {
 .no-results {
   padding: 40px;
   text-align: center;
-  color: #6c757d;
+  color: var(--tf-color-muted);
 }
 
 .no-results i {
@@ -1084,8 +1109,8 @@ watch([searchQuery, selectedCategory], () => {
 
 .icon-picker-footer {
   padding: 16px;
-  background: #f8f9fa;
-  border-top: 1px solid #e9ecef;
+  background: var(--tf-color-surface-muted);
+  border-top: 1px solid var(--tf-color-border-muted);
   display: flex;
   justify-content: center;
 }
@@ -1099,7 +1124,7 @@ watch([searchQuery, selectedCategory], () => {
 .page-info {
   font-size: 14px;
   font-weight: 500;
-  color: #495057;
+  color: var(--tf-color-gray-bootstrap-700);
   min-width: 60px;
   text-align: center;
 }
@@ -1108,7 +1133,7 @@ watch([searchQuery, selectedCategory], () => {
 .loading-state {
   padding: 40px;
   text-align: center;
-  color: #6c757d;
+  color: var(--tf-color-muted);
 }
 
 .loading-content {
@@ -1120,12 +1145,12 @@ watch([searchQuery, selectedCategory], () => {
 
 .loading-content i {
   font-size: 32px;
-  color: #667eea;
+  color: var(--tf-color-indigo-brand);
 }
 
 .no-results .hint {
   font-size: 12px;
-  color: #adb5bd;
+  color: var(--tf-color-gray-bootstrap-500);
   margin-top: 8px;
   margin-bottom: 0;
 }
@@ -1136,17 +1161,17 @@ watch([searchQuery, selectedCategory], () => {
 }
 
 .icon-grid::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--tf-color-gray-100);
   border-radius: 3px;
 }
 
 .icon-grid::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: var(--tf-color-gray-300);
   border-radius: 3px;
 }
 
 .icon-grid::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  background: var(--tf-color-gray-400);
 }
 
 /* 响应式设计 */

@@ -3,79 +3,80 @@
  * 功能：商城配置管理、轮播图管理、商品图片管理
  */
 
-const express = require('express');
-const router = express.Router();
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs').promises;
-const { unifiedAuth, requirePermission, requireAnyPermission, requireAdmin } = require('../middleware/unified-auth');
-const ApiResponse = require('../utils/response');
-const ShopService = require('../services/shop.service');
-const log = require('../utils/log');
-const { getUploadsRoot, getUploadSubdir, getUploadUrl } = require('../utils/upload-paths');
+const express = require('express')
+const router = express.Router()
+const multer = require('multer')
+const path = require('path')
+const fs = require('fs').promises
+const crypto = require('crypto')
+const { unifiedAuth, requirePermission, requireAnyPermission, requireAdmin } = require('../middleware/unified-auth')
+const ApiResponse = require('../utils/response')
+const ShopService = require('../services/shop.service')
+const log = require('../utils/log')
+const { getUploadsRoot, getUploadSubdir, getUploadUrl } = require('../utils/upload-paths')
 
-const shopService = new ShopService();
+const shopService = new ShopService()
 
-const H5_CONFIG_VIEW_PERMISSIONS = ['h5-config:view', 'h5-admin:view'];
-const H5_CONFIG_EDIT_PERMISSIONS = ['h5-config:edit', 'h5-admin:edit'];
-const H5_BANNER_VIEW_PERMISSIONS = ['h5-banners:view', 'h5-admin:view'];
-const H5_BANNER_CREATE_PERMISSIONS = ['h5-banners:create', 'h5-admin:create'];
-const H5_BANNER_EDIT_PERMISSIONS = ['h5-banners:edit', 'h5-admin:edit'];
-const H5_BANNER_DELETE_PERMISSIONS = ['h5-banners:delete', 'h5-admin:delete'];
+const H5_CONFIG_VIEW_PERMISSIONS = ['h5-config:view', 'h5-admin:view']
+const H5_CONFIG_EDIT_PERMISSIONS = ['h5-config:edit', 'h5-admin:edit']
+const H5_BANNER_VIEW_PERMISSIONS = ['h5-banners:view', 'h5-admin:view']
+const H5_BANNER_CREATE_PERMISSIONS = ['h5-banners:create', 'h5-admin:create']
+const H5_BANNER_EDIT_PERMISSIONS = ['h5-banners:edit', 'h5-admin:edit']
+const H5_BANNER_DELETE_PERMISSIONS = ['h5-banners:delete', 'h5-admin:delete']
 const H5_TEMPLATE_VIEW_PERMISSIONS = [
   'h5-templates:view',
   'h5-admin:view',
   'inventory:view',
   'query:view'
-];
+]
 const H5_TEMPLATE_CREATE_PERMISSIONS = [
   'h5-templates:create',
   'h5-admin:create',
   'inventory:create',
   'inventory:edit'
-];
+]
 const H5_TEMPLATE_EDIT_PERMISSIONS = [
   'h5-templates:edit',
   'h5-admin:edit',
   'inventory:edit'
-];
+]
 const H5_TEMPLATE_DELETE_PERMISSIONS = [
   'h5-templates:delete',
   'h5-admin:delete',
   'inventory:delete',
   'inventory:edit'
-];
+]
 const H5_SOLD_PRODUCTS_VIEW_PERMISSIONS = [
   'h5-sold-products:view',
   'h5-admin:view',
   'h5-templates:view',
   'inventory:view',
   'query:view'
-];
+]
 const H5_SOLD_PRODUCTS_DELETE_PERMISSIONS = [
   'h5-sold-products:delete',
   'h5-admin:delete',
   'h5-templates:delete',
   'inventory:delete',
   'inventory:edit'
-];
+]
 const H5_ORDER_VIEW_PERMISSIONS = [
   'h5-orders:view',
   'h5-admin:view',
   'sales:view'
-];
+]
 const H5_ORDER_EDIT_PERMISSIONS = [
   'h5-orders:edit',
   'h5-admin:edit',
   'sales:edit'
-];
+]
 const H5_ASSET_EDIT_PERMISSIONS = [
   ...new Set([
     ...H5_CONFIG_EDIT_PERMISSIONS,
     ...H5_BANNER_CREATE_PERMISSIONS,
     ...H5_BANNER_EDIT_PERMISSIONS
   ])
-];
+]
 
 // ============================================================================
 // 图片上传配置
@@ -84,61 +85,61 @@ const H5_ASSET_EDIT_PERMISSIONS = [
 // 配置 multer 存储
 const storage = multer.diskStorage({
   destination: async (req, file, cb) => {
-    const uploadDir = getUploadSubdir('shop');
-    log.debug('[Multer] 上传目录:', uploadDir);
+    const uploadDir = getUploadSubdir('shop')
+    log.debug('[Multer] 上传目录:', uploadDir)
     try {
-      await fs.mkdir(uploadDir, { recursive: true });
-      cb(null, uploadDir);
+      await fs.mkdir(uploadDir, { recursive: true })
+      cb(null, uploadDir)
     } catch (error) {
-      log.error('[Multer] 创建上传目录失败:', error);
-      cb(error, uploadDir);
+      log.error('[Multer] 创建上传目录失败:', error)
+      cb(error, uploadDir)
     }
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    cb(null, 'shop-' + uniqueSuffix + ext);
+    const uniqueSuffix = Date.now() + '-' + crypto.randomBytes(8).toString('hex')
+    const ext = path.extname(file.originalname)
+    cb(null, 'shop-' + uniqueSuffix + ext)
   }
-});
+})
 
 const createFileFilter = ({ allowedTypes, allowedExtensions, label, allowMimePrefixes = [] }) => {
   return (req, file, cb) => {
-    log.debug(`[${label}] 检测到的文件信息:`);
-    log.debug('  - MIME类型:', file.mimetype);
-    log.debug('  - 原始文件名:', file.originalname);
+    log.debug(`[${label}] 检测到的文件信息:`)
+    log.debug('  - MIME类型:', file.mimetype)
+    log.debug('  - 原始文件名:', file.originalname)
 
-    const ext = path.extname(file.originalname).toLowerCase();
-    const isAllowedExt = allowedExtensions.includes(ext);
-    const isAllowedMime = allowedTypes.includes(file.mimetype);
-    const matchesMimePrefix = !file.mimetype || allowMimePrefixes.some(prefix => file.mimetype.startsWith(prefix));
+    const ext = path.extname(file.originalname).toLowerCase()
+    const isAllowedExt = allowedExtensions.includes(ext)
+    const isAllowedMime = allowedTypes.includes(file.mimetype)
+    const matchesMimePrefix = !file.mimetype || allowMimePrefixes.some(prefix => file.mimetype.startsWith(prefix))
 
-    log.debug('  - 文件扩展名:', ext);
-    log.debug('  - MIME类型通过:', isAllowedMime);
-    log.debug('  - 扩展名通过:', isAllowedExt);
+    log.debug('  - 文件扩展名:', ext)
+    log.debug('  - MIME类型通过:', isAllowedMime)
+    log.debug('  - 扩展名通过:', isAllowedExt)
 
     if (isAllowedExt && matchesMimePrefix) {
-      log.debug(`[${label}] ✅ 文件类型验证通过（基于扩展名）`);
-      cb(null, true);
-      return;
+      log.debug(`[${label}] ✅ 文件类型验证通过（基于扩展名）`)
+      cb(null, true)
+      return
     }
 
     if (isAllowedMime) {
-      log.debug(`[${label}] ✅ 文件类型验证通过（基于MIME类型）`);
-      cb(null, true);
-      return;
+      log.debug(`[${label}] ✅ 文件类型验证通过（基于MIME类型）`)
+      cb(null, true)
+      return
     }
 
-    log.debug(`[${label}] ❌ 文件类型被拒绝:`, file.mimetype, '扩展名:', ext);
-    cb(new Error(`只支持上传${label}`), false);
-  };
-};
+    log.debug(`[${label}] ❌ 文件类型被拒绝:`, file.mimetype, '扩展名:', ext)
+    cb(new Error(`只支持上传${label}`), false)
+  }
+}
 
 const imageFileFilter = createFileFilter({
   allowedTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'],
   allowedExtensions: ['.jpg', '.jpeg', '.png', '.gif', '.webp'],
   label: '图片文件（jpeg, png, gif, webp）',
   allowMimePrefixes: ['image/']
-});
+})
 
 const templateMediaFileFilter = createFileFilter({
   allowedTypes: [
@@ -155,7 +156,7 @@ const templateMediaFileFilter = createFileFilter({
   allowedExtensions: ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.mp4', '.webm', '.ogg', '.mov'],
   label: '图片或视频文件（jpg, png, gif, webp, mp4, webm, ogg, mov）',
   allowMimePrefixes: ['image/', 'video/']
-});
+})
 
 const upload = multer({
   storage,
@@ -163,7 +164,7 @@ const upload = multer({
   limits: {
     fileSize: 2 * 1024 * 1024 // 2MB
   }
-});
+})
 
 const templateMediaUpload = multer({
   storage,
@@ -171,26 +172,26 @@ const templateMediaUpload = multer({
   limits: {
     fileSize: 50 * 1024 * 1024 // 50MB
   }
-});
+})
 
 // Multer 错误处理中间件
 const handleMulterError = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
-    log.error('[Multer Error]', err);
+    log.error('[Multer Error]', err)
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return ApiResponse.error(res, '文件大小超过限制', 400);
+      return ApiResponse.error(res, '文件大小超过限制', 400)
     }
     if (err.code === 'LIMIT_UNEXPECTED_FILE') {
-      return ApiResponse.error(res, '上传字段名称错误', 400);
+      return ApiResponse.error(res, '上传字段名称错误', 400)
     }
-    return ApiResponse.error(res, `上传失败: ${err.message}`, 400);
+    return ApiResponse.error(res, `上传失败: ${err.message}`, 400)
   }
   if (err) {
-    log.error('[Upload Error]', err.message);
-    return ApiResponse.error(res, err.message || '上传失败', 400);
+    log.error('[Upload Error]', err.message)
+    return ApiResponse.error(res, err.message || '上传失败', 400)
   }
-  next();
-};
+  next()
+}
 
 // ============================================================================
 // 图片上传 API
@@ -209,15 +210,15 @@ router.post('/upload/image',
   unifiedAuth,
   requireAnyPermission(H5_ASSET_EDIT_PERMISSIONS),
   (req, res, next) => {
-    upload.array('files', 10)(req, res, next);
+    upload.array('files', 10)(req, res, next)
   },
   handleMulterError,
   async (req, res) => {
     try {
-      const files = req.files;
+      const files = req.files
 
       if (!files || files.length === 0) {
-        return ApiResponse.error(res, '没有上传文件', 400);
+        return ApiResponse.error(res, '没有上传文件', 400)
       }
 
       // 生成文件访问URL数组（返回相对路径，由前端负责拼接完整URL）
@@ -226,18 +227,18 @@ router.post('/upload/image',
         filename: file.filename,
         originalname: file.originalname,
         size: file.size
-      }));
+      }))
 
       ApiResponse.success(res, {
         files: uploadedFiles,
         count: uploadedFiles.length
-      }, `成功上传 ${uploadedFiles.length} 张图片`);
+      }, `成功上传 ${uploadedFiles.length} 张图片`)
     } catch (error) {
-      log.error('上传图片失败:', error);
-      ApiResponse.error(res, error.message || '上传失败', 500);
+      log.error('上传图片失败:', error)
+      ApiResponse.error(res, error.message || '上传失败', 500)
     }
   }
-);
+)
 
 /**
  * 删除商城图片文件
@@ -249,39 +250,39 @@ router.post('/delete-image',
   requireAnyPermission(H5_ASSET_EDIT_PERMISSIONS),
   async (req, res) => {
     try {
-      const { image_url } = req.body;
+      const { image_url } = req.body
 
       if (!image_url) {
-        return ApiResponse.error(res, '缺少图片URL', 400);
+        return ApiResponse.error(res, '缺少图片URL', 400)
       }
 
       // 删除物理文件
       if (image_url) {
         try {
-          const fs = require('fs').promises;
-          const { getRelativeUploadPathFromUrl, getUploadPathFromUrl } = require('../utils/upload-paths');
-          const relativePath = getRelativeUploadPathFromUrl(image_url);
+          const fs = require('fs').promises
+          const { getRelativeUploadPathFromUrl, getUploadPathFromUrl } = require('../utils/upload-paths')
+          const relativePath = getRelativeUploadPathFromUrl(image_url)
           if (!relativePath.startsWith('shop/')) {
-            return ApiResponse.error(res, '只能删除商城图片目录中的文件', 400);
+            return ApiResponse.error(res, '只能删除商城图片目录中的文件', 400)
           }
-          const filePath = getUploadPathFromUrl(image_url);
+          const filePath = getUploadPathFromUrl(image_url)
 
           // 检查文件是否存在并删除
-          await fs.unlink(filePath);
-          log.debug('✅ 已删除商城图片文件:', filePath);
+          await fs.unlink(filePath)
+          log.debug('✅ 已删除商城图片文件:', filePath)
         } catch (error) {
           // 文件不存在或删除失败，静默处理
-          log.warn('⚠️ 删除商城图片文件失败:', error.message);
+          log.warn('⚠️ 删除商城图片文件失败:', error.message)
         }
       }
 
-      ApiResponse.success(res, null, '删除成功');
+      ApiResponse.success(res, null, '删除成功')
     } catch (error) {
-      log.error('删除图片失败:', error);
-      ApiResponse.error(res, error.message || '删除失败', 500);
+      log.error('删除图片失败:', error)
+      ApiResponse.error(res, error.message || '删除失败', 500)
     }
   }
-);
+)
 
 // ============================================================================
 // 商城配置管理 API
@@ -297,14 +298,14 @@ router.get('/config',
   requireAnyPermission(H5_CONFIG_VIEW_PERMISSIONS),
   async (req, res) => {
     try {
-      const configs = await shopService.getAllConfigs();
-      ApiResponse.success(res, configs, '获取配置成功');
+      const configs = await shopService.getAllConfigs()
+      ApiResponse.success(res, configs, '获取配置成功')
     } catch (error) {
-      log.error('获取商城配置失败:', error);
-      ApiResponse.error(res, error.message || '获取配置失败', 500);
+      log.error('获取商城配置失败:', error)
+      ApiResponse.error(res, error.message || '获取配置失败', 500)
     }
   }
-);
+)
 
 /**
  * 获取指定分类的配置
@@ -316,15 +317,15 @@ router.get('/config/category/:category',
   requireAnyPermission(H5_CONFIG_VIEW_PERMISSIONS),
   async (req, res) => {
     try {
-      const { category } = req.params;
-      const configs = await shopService.getConfigsByCategory(category);
-      ApiResponse.success(res, configs, '获取配置成功');
+      const { category } = req.params
+      const configs = await shopService.getConfigsByCategory(category)
+      ApiResponse.success(res, configs, '获取配置成功')
     } catch (error) {
-      log.error('获取商城配置失败:', error);
-      ApiResponse.error(res, error.message || '获取配置失败', 500);
+      log.error('获取商城配置失败:', error)
+      ApiResponse.error(res, error.message || '获取配置失败', 500)
     }
   }
-);
+)
 
 /**
  * 更新单个配置
@@ -336,17 +337,17 @@ router.put('/config/:key',
   requireAnyPermission(H5_CONFIG_EDIT_PERMISSIONS),
   async (req, res) => {
     try {
-      const { key } = req.params;
-      const { value } = req.body;
+      const { key } = req.params
+      const { value } = req.body
 
-      await shopService.updateConfig(key, value);
-      ApiResponse.success(res, null, '更新配置成功');
+      await shopService.updateConfig(key, value)
+      ApiResponse.success(res, null, '更新配置成功')
     } catch (error) {
-      log.error('更新商城配置失败:', error);
-      ApiResponse.error(res, error.message || '更新配置失败', 500);
+      log.error('更新商城配置失败:', error)
+      ApiResponse.error(res, error.message || '更新配置失败', 500)
     }
   }
-);
+)
 
 /**
  * 批量更新配置
@@ -358,16 +359,16 @@ router.post('/config/batch',
   requireAnyPermission(H5_CONFIG_EDIT_PERMISSIONS),
   async (req, res) => {
     try {
-      const { configs } = req.body; // 格式: [{ key: 'shop_name', value: '新名称' }, ...]
+      const { configs } = req.body // 格式: [{ key: 'shop_name', value: '新名称' }, ...]
 
-      await shopService.batchUpdateConfigs(configs);
-      ApiResponse.success(res, null, '批量更新配置成功');
+      await shopService.batchUpdateConfigs(configs)
+      ApiResponse.success(res, null, '批量更新配置成功')
     } catch (error) {
-      log.error('批量更新商城配置失败:', error);
-      ApiResponse.error(res, error.message || '批量更新配置失败', 500);
+      log.error('批量更新商城配置失败:', error)
+      ApiResponse.error(res, error.message || '批量更新配置失败', 500)
     }
   }
-);
+)
 
 // ============================================================================
 // 轮播图管理 API
@@ -383,14 +384,14 @@ router.get('/banners',
   requireAnyPermission(H5_BANNER_VIEW_PERMISSIONS),
   async (req, res) => {
     try {
-      const banners = await shopService.getAllBanners();
-      ApiResponse.success(res, banners, '获取轮播图成功');
+      const banners = await shopService.getAllBanners()
+      ApiResponse.success(res, banners, '获取轮播图成功')
     } catch (error) {
-      log.error('获取轮播图失败:', error);
-      ApiResponse.error(res, error.message || '获取轮播图失败', 500);
+      log.error('获取轮播图失败:', error)
+      ApiResponse.error(res, error.message || '获取轮播图失败', 500)
     }
   }
-);
+)
 
 /**
  * 创建轮播图
@@ -402,15 +403,15 @@ router.post('/banners',
   requireAnyPermission(H5_BANNER_CREATE_PERMISSIONS),
   async (req, res) => {
     try {
-      const bannerData = req.body;
-      const banner = await shopService.createBanner(bannerData);
-      ApiResponse.created(res, '创建轮播图成功', banner);
+      const bannerData = req.body
+      const banner = await shopService.createBanner(bannerData)
+      ApiResponse.created(res, '创建轮播图成功', banner)
     } catch (error) {
-      log.error('创建轮播图失败:', error);
-      ApiResponse.error(res, error.message || '创建轮播图失败', 500);
+      log.error('创建轮播图失败:', error)
+      ApiResponse.error(res, error.message || '创建轮播图失败', 500)
     }
   }
-);
+)
 
 /**
  * 更新轮播图
@@ -422,17 +423,17 @@ router.put('/banners/:id',
   requireAnyPermission(H5_BANNER_EDIT_PERMISSIONS),
   async (req, res) => {
     try {
-      const { id } = req.params;
-      const bannerData = req.body;
+      const { id } = req.params
+      const bannerData = req.body
 
-      await shopService.updateBanner(id, bannerData);
-      ApiResponse.success(res, null, '更新轮播图成功');
+      await shopService.updateBanner(id, bannerData)
+      ApiResponse.success(res, null, '更新轮播图成功')
     } catch (error) {
-      log.error('更新轮播图失败:', error);
-      ApiResponse.error(res, error.message || '更新轮播图失败', 500);
+      log.error('更新轮播图失败:', error)
+      ApiResponse.error(res, error.message || '更新轮播图失败', 500)
     }
   }
-);
+)
 
 /**
  * 删除轮播图
@@ -444,15 +445,15 @@ router.delete('/banners/:id',
   requireAnyPermission(H5_BANNER_DELETE_PERMISSIONS),
   async (req, res) => {
     try {
-      const { id } = req.params;
-      await shopService.deleteBanner(id);
-      ApiResponse.success(res, null, '删除轮播图成功');
+      const { id } = req.params
+      await shopService.deleteBanner(id)
+      ApiResponse.success(res, null, '删除轮播图成功')
     } catch (error) {
-      log.error('删除轮播图失败:', error);
-      ApiResponse.error(res, error.message || '删除轮播图失败', 500);
+      log.error('删除轮播图失败:', error)
+      ApiResponse.error(res, error.message || '删除轮播图失败', 500)
     }
   }
-);
+)
 
 /**
  * 批量更新轮播图排序
@@ -464,16 +465,16 @@ router.put('/banners/reorder',
   requireAnyPermission(H5_BANNER_EDIT_PERMISSIONS),
   async (req, res) => {
     try {
-      const { orders } = req.body; // 格式: [{ id: 1, sort_order: 1 }, ...]
+      const { orders } = req.body // 格式: [{ id: 1, sort_order: 1 }, ...]
 
-      await shopService.reorderBanners(orders);
-      ApiResponse.success(res, null, '更新排序成功');
+      await shopService.reorderBanners(orders)
+      ApiResponse.success(res, null, '更新排序成功')
     } catch (error) {
-      log.error('更新轮播图排序失败:', error);
-      ApiResponse.error(res, error.message || '更新排序失败', 500);
+      log.error('更新轮播图排序失败:', error)
+      ApiResponse.error(res, error.message || '更新排序失败', 500)
     }
   }
-);
+)
 
 // ============================================================================
 // 商品图片管理 API
@@ -489,15 +490,15 @@ router.get('/phones/:id/images',
   requirePermission('inventory:view'),
   async (req, res) => {
     try {
-      const { id } = req.params;
-      const images = await shopService.getPhoneImages(id);
-      ApiResponse.success(res, images, '获取图片成功');
+      const { id } = req.params
+      const images = await shopService.getPhoneImages(id)
+      ApiResponse.success(res, images, '获取图片成功')
     } catch (error) {
-      log.error('获取商品图片失败:', error);
-      ApiResponse.error(res, error.message || '获取图片失败', 500);
+      log.error('获取商品图片失败:', error)
+      ApiResponse.error(res, error.message || '获取图片失败', 500)
     }
   }
-);
+)
 
 /**
  * 设置主图
@@ -509,15 +510,15 @@ router.put('/images/:id/primary',
   requirePermission('inventory:edit'),
   async (req, res) => {
     try {
-      const { id } = req.params;
-      await shopService.setPrimaryImage(id);
-      ApiResponse.success(res, null, '设置主图成功');
+      const { id } = req.params
+      await shopService.setPrimaryImage(id)
+      ApiResponse.success(res, null, '设置主图成功')
     } catch (error) {
-      log.error('设置主图失败:', error);
-      ApiResponse.error(res, error.message || '设置主图失败', 500);
+      log.error('设置主图失败:', error)
+      ApiResponse.error(res, error.message || '设置主图失败', 500)
     }
   }
-);
+)
 
 /**
  * 删除商品图片
@@ -529,15 +530,15 @@ router.delete('/images/:id',
   requireAnyPermission(H5_SOLD_PRODUCTS_DELETE_PERMISSIONS),
   async (req, res) => {
     try {
-      const { id } = req.params;
-      await shopService.deleteImage(id);
-      ApiResponse.success(res, null, '删除图片成功');
+      const { id } = req.params
+      await shopService.deleteImage(id)
+      ApiResponse.success(res, null, '删除图片成功')
     } catch (error) {
-      log.error('删除图片失败:', error);
-      ApiResponse.error(res, error.message || '删除图片失败', 500);
+      log.error('删除图片失败:', error)
+      ApiResponse.error(res, error.message || '删除图片失败', 500)
     }
   }
-);
+)
 
 // ============================================================================
 // 订单管理 API（员工端）
@@ -553,35 +554,44 @@ router.get('/orders',
   requireAnyPermission(H5_ORDER_VIEW_PERMISSIONS),
   async (req, res) => {
     try {
+      const page = Math.max(1, Number.parseInt(String(req.query.page ?? 1), 10) || 1)
+      const page_size = Math.min(100, Math.max(1, Number.parseInt(String(req.query.page_size ?? 20), 10) || 20))
       const {
-        page = 1,
-        limit = 20,
         status,
-        startDate,
-        endDate,
+        start_date,
+        end_date,
         search
-      } = req.query;
+      } = req.query
 
       const result = await shopService.getOrders({
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page,
+        page_size,
         status,
-        startDate,
-        endDate,
+        start_date,
+        end_date,
         search
-      });
+      })
 
-      ApiResponse.paginated(res, result.data, {
-        page: result.page,
-        limit: result.limit,
-        total: result.total
-      }, '获取订单成功');
+      res.status(200).json({
+        success: true,
+        message: '获取订单成功',
+        data: result.data,
+        pagination: {
+          page: result.page,
+          page_size: result.page_size,
+          total: result.total,
+          total_pages: result.total_pages,
+          has_next: result.has_next,
+          has_prev: result.has_prev
+        },
+        timestamp: new Date().toISOString()
+      })
     } catch (error) {
-      log.error('获取订单列表失败:', error);
-      ApiResponse.error(res, error.message || '获取订单列表失败', 500);
+      log.error('获取订单列表失败:', error)
+      ApiResponse.error(res, error.message || '获取订单列表失败', 500)
     }
   }
-);
+)
 
 /**
  * 获取订单详情
@@ -593,15 +603,15 @@ router.get('/orders/:id',
   requireAnyPermission(H5_ORDER_VIEW_PERMISSIONS),
   async (req, res) => {
     try {
-      const { id } = req.params;
-      const order = await shopService.getOrderDetail(id);
-      ApiResponse.success(res, order, '获取订单详情成功');
+      const { id } = req.params
+      const order = await shopService.getOrderDetail(id)
+      ApiResponse.success(res, order, '获取订单详情成功')
     } catch (error) {
-      log.error('获取订单详情失败:', error);
-      ApiResponse.error(res, error.message || '获取订单详情失败', 500);
+      log.error('获取订单详情失败:', error)
+      ApiResponse.error(res, error.message || '获取订单详情失败', 500)
     }
   }
-);
+)
 
 /**
  * 更新订单状态
@@ -613,18 +623,18 @@ router.put('/orders/:id/status',
   requireAnyPermission(H5_ORDER_EDIT_PERMISSIONS),
   async (req, res) => {
     try {
-      const { id } = req.params;
-      const { status } = req.body;
-      const userId = req.user.id;
+      const { id } = req.params
+      const { status } = req.body
+      const userId = req.user.id
 
-      await shopService.updateOrderStatus(id, status, userId);
-      ApiResponse.success(res, null, '更新订单状态成功');
+      await shopService.updateOrderStatus(id, status, userId)
+      ApiResponse.success(res, null, '更新订单状态成功')
     } catch (error) {
-      log.error('更新订单状态失败:', error);
-      ApiResponse.error(res, error.message || '更新订单状态失败', 500);
+      log.error('更新订单状态失败:', error)
+      ApiResponse.error(res, error.message || '更新订单状态失败', 500)
     }
   }
-);
+)
 
 // ============================================================================
 // 数据迁移 API
@@ -639,27 +649,27 @@ router.post('/migrate/condition-grade',
   requireAdmin,
   async (req, res) => {
     try {
-      await shopService.migrateConditionGrade();
-      ApiResponse.success(res, null, '成色字段迁移成功');
+      await shopService.migrateConditionGrade()
+      ApiResponse.success(res, null, '成色字段迁移成功')
     } catch (error) {
-      log.error('成色字段迁移失败:', error);
-      ApiResponse.error(res, error.message || '迁移失败', 500);
+      log.error('成色字段迁移失败:', error)
+      ApiResponse.error(res, error.message || '迁移失败', 500)
     }
   }
-);
+)
 
 router.post('/migrate/sale-price',
   unifiedAuth,
   async (req, res) => {
     try {
-      await shopService.migrateSalePrice();
-      ApiResponse.success(res, null, '销售价格字段迁移成功');
+      await shopService.migrateSalePrice()
+      ApiResponse.success(res, null, '销售价格字段迁移成功')
     } catch (error) {
-      log.error('销售价格字段迁移失败:', error);
-      ApiResponse.error(res, error.message || '迁移失败', 500);
+      log.error('销售价格字段迁移失败:', error)
+      ApiResponse.error(res, error.message || '迁移失败', 500)
     }
   }
-);
+)
 
 // ============================================================================
 // 全新机商品模板管理
@@ -674,21 +684,21 @@ router.get('/templates',
   requireAnyPermission(H5_TEMPLATE_VIEW_PERMISSIONS),
   async (req, res) => {
     try {
-      const templates = await shopService.getTemplates();
-      log.debug('[获取模板列表] 返回数量:', templates.length);
+      const templates = await shopService.getTemplates()
+      log.debug('[获取模板列表] 返回数量:', templates.length)
       log.debug('[获取模板列表] 模板数据:', templates.map(t => ({
         id: t.id,
         name: t.template_name || `${t.brand_name} ${t.model_name} ${t.color_name}`,
         is_active: t.is_active,
         is_active_type: typeof t.is_active
-      })));
-      ApiResponse.success(res, templates, '获取模板列表成功');
+      })))
+      ApiResponse.success(res, templates, '获取模板列表成功')
     } catch (error) {
-      log.error('获取模板列表失败:', error);
-      ApiResponse.error(res, error.message || '获取失败', 500);
+      log.error('获取模板列表失败:', error)
+      ApiResponse.error(res, error.message || '获取失败', 500)
     }
   }
-);
+)
 
 /**
  * 批量更新模板排序
@@ -700,22 +710,22 @@ router.put('/templates/reorder',
   requireAnyPermission(H5_TEMPLATE_EDIT_PERMISSIONS),
   async (req, res) => {
     try {
-      const { orders } = req.body;
+      const { orders } = req.body
 
       if (!Array.isArray(orders) || orders.length === 0) {
-        return ApiResponse.error(res, '排序数据不能为空', 400);
+        return ApiResponse.error(res, '排序数据不能为空', 400)
       }
 
-      log.debug('[模板排序] 更新排序:', orders);
+      log.debug('[模板排序] 更新排序:', orders)
 
-      await shopService.reorderTemplates(orders);
-      ApiResponse.success(res, null, '排序更新成功');
+      await shopService.reorderTemplates(orders)
+      ApiResponse.success(res, null, '排序更新成功')
     } catch (error) {
-      log.error('更新排序失败:', error);
-      ApiResponse.error(res, error.message || '更新失败', 500);
+      log.error('更新排序失败:', error)
+      ApiResponse.error(res, error.message || '更新失败', 500)
     }
   }
-);
+)
 
 /**
  * 获取商品模板详情
@@ -726,17 +736,17 @@ router.get('/templates/:id',
   requireAnyPermission(H5_TEMPLATE_VIEW_PERMISSIONS),
   async (req, res) => {
     try {
-      const template = await shopService.getTemplateById(req.params.id);
+      const template = await shopService.getTemplateById(req.params.id)
       if (!template) {
-        return ApiResponse.error(res, '模板不存在', 404);
+        return ApiResponse.error(res, '模板不存在', 404)
       }
-      ApiResponse.success(res, template, '获取模板详情成功');
+      ApiResponse.success(res, template, '获取模板详情成功')
     } catch (error) {
-      log.error('获取模板详情失败:', error);
-      ApiResponse.error(res, error.message || '获取失败', 500);
+      log.error('获取模板详情失败:', error)
+      ApiResponse.error(res, error.message || '获取失败', 500)
     }
   }
-);
+)
 
 /**
  * 创建商品模板
@@ -747,16 +757,16 @@ router.post('/templates',
   requireAnyPermission(H5_TEMPLATE_CREATE_PERMISSIONS),
   async (req, res) => {
     try {
-      log.debug('[创建模板] 请求体:', req.body);
-      const template = await shopService.createTemplate(req.body);
-      log.debug('[创建模板] 服务返回:', template);
-      ApiResponse.success(res, template, '创建模板成功');
+      log.debug('[创建模板] 请求体:', req.body)
+      const template = await shopService.createTemplate(req.body)
+      log.debug('[创建模板] 服务返回:', template)
+      ApiResponse.success(res, template, '创建模板成功')
     } catch (error) {
-      log.error('创建模板失败:', error);
-      ApiResponse.error(res, error.message || '创建失败', 500);
+      log.error('创建模板失败:', error)
+      ApiResponse.error(res, error.message || '创建失败', 500)
     }
   }
-);
+)
 
 /**
  * 更新商品模板
@@ -767,17 +777,17 @@ router.put('/templates/:id',
   requireAnyPermission(H5_TEMPLATE_EDIT_PERMISSIONS),
   async (req, res) => {
     try {
-      log.debug('[更新模板] 模板ID:', req.params.id);
-      log.debug('[更新模板] 请求体:', req.body);
-      log.debug('[更新模板] 请求体字段:', Object.keys(req.body));
-      const template = await shopService.updateTemplate(req.params.id, req.body);
-      ApiResponse.success(res, template, '更新模板成功');
+      log.debug('[更新模板] 模板ID:', req.params.id)
+      log.debug('[更新模板] 请求体:', req.body)
+      log.debug('[更新模板] 请求体字段:', Object.keys(req.body))
+      const template = await shopService.updateTemplate(req.params.id, req.body)
+      ApiResponse.success(res, template, '更新模板成功')
     } catch (error) {
-      log.error('更新模板失败:', error);
-      ApiResponse.error(res, error.message || '更新失败', 500);
+      log.error('更新模板失败:', error)
+      ApiResponse.error(res, error.message || '更新失败', 500)
     }
   }
-);
+)
 
 /**
  * 删除商品模板
@@ -788,14 +798,14 @@ router.delete('/templates/:id',
   requireAnyPermission(H5_TEMPLATE_DELETE_PERMISSIONS),
   async (req, res) => {
     try {
-      await shopService.deleteTemplate(req.params.id);
-      ApiResponse.success(res, null, '删除模板成功');
+      await shopService.deleteTemplate(req.params.id)
+      ApiResponse.success(res, null, '删除模板成功')
     } catch (error) {
-      log.error('删除模板失败:', error);
-      ApiResponse.error(res, error.message || '删除失败', 500);
+      log.error('删除模板失败:', error)
+      ApiResponse.error(res, error.message || '删除失败', 500)
     }
   }
-);
+)
 
 /**
  * 上传模板图片
@@ -805,34 +815,34 @@ router.post('/templates/:id/images',
   unifiedAuth,
   requireAnyPermission(H5_TEMPLATE_EDIT_PERMISSIONS),
   (req, res, next) => {
-    templateMediaUpload.single('image')(req, res, next);
+    templateMediaUpload.single('image')(req, res, next)
   },
   handleMulterError,
   async (req, res) => {
     try {
-      log.debug('[上传模板图片] 模板ID:', req.params.id);
-      log.debug('[上传模板图片] 用户ID:', req.user?.id);
+      log.debug('[上传模板图片] 模板ID:', req.params.id)
+      log.debug('[上传模板图片] 用户ID:', req.user?.id)
       log.debug('[上传模板图片] 文件信息:', req.file ? {
         filename: req.file.filename,
         originalname: req.file.originalname,
         size: req.file.size,
         mimetype: req.file.mimetype
-      } : '无文件');
+      } : '无文件')
 
       if (!req.file) {
-        log.error('[上传模板图片] 错误: 没有接收到文件');
-        return ApiResponse.error(res, '没有上传文件', 400);
+        log.error('[上传模板图片] 错误: 没有接收到文件')
+        return ApiResponse.error(res, '没有上传文件', 400)
       }
 
-      const image = await shopService.uploadTemplateImage(req.params.id, req.file, req.user?.id);
-      log.debug('[上传模板图片] 服务返回:', image);
-      ApiResponse.success(res, image, '上传图片成功');
+      const image = await shopService.uploadTemplateImage(req.params.id, req.file, req.user?.id)
+      log.debug('[上传模板图片] 服务返回:', image)
+      ApiResponse.success(res, image, '上传图片成功')
     } catch (error) {
-      log.error('上传图片失败:', error);
-      ApiResponse.error(res, error.message || '上传失败', 500);
+      log.error('上传图片失败:', error)
+      ApiResponse.error(res, error.message || '上传失败', 500)
     }
   }
-);
+)
 
 /**
  * 删除模板图片
@@ -843,14 +853,14 @@ router.delete('/templates/:id/images/:imageId',
   requireAnyPermission(H5_TEMPLATE_EDIT_PERMISSIONS),
   async (req, res) => {
     try {
-      await shopService.deleteTemplateImage(req.params.id, req.params.imageId);
-      ApiResponse.success(res, null, '删除图片成功');
+      await shopService.deleteTemplateImage(req.params.id, req.params.imageId)
+      ApiResponse.success(res, null, '删除图片成功')
     } catch (error) {
-      log.error('删除图片失败:', error);
-      ApiResponse.error(res, error.message || '删除失败', 500);
+      log.error('删除图片失败:', error)
+      ApiResponse.error(res, error.message || '删除失败', 500)
     }
   }
-);
+)
 
 /**
  * 设置主图
@@ -861,14 +871,14 @@ router.put('/templates/:id/images/:imageId/primary',
   requireAnyPermission(H5_TEMPLATE_EDIT_PERMISSIONS),
   async (req, res) => {
     try {
-      await shopService.setPrimaryTemplateImage(req.params.id, req.params.imageId);
-      ApiResponse.success(res, null, '设置主图成功');
+      await shopService.setPrimaryTemplateImage(req.params.id, req.params.imageId)
+      ApiResponse.success(res, null, '设置主图成功')
     } catch (error) {
-      log.error('设置主图失败:', error);
-      ApiResponse.error(res, error.message || '设置失败', 500);
+      log.error('设置主图失败:', error)
+      ApiResponse.error(res, error.message || '设置失败', 500)
     }
   }
-);
+)
 
 /**
  * 批量更新模板图片排序
@@ -879,21 +889,21 @@ router.put('/templates/:id/images/reorder',
   requireAnyPermission(H5_TEMPLATE_EDIT_PERMISSIONS),
   async (req, res) => {
     try {
-      const { id } = req.params;
-      const { orders } = req.body;
+      const { id } = req.params
+      const { orders } = req.body
 
       if (!Array.isArray(orders)) {
-        return ApiResponse.error(res, '排序数据格式错误', 400);
+        return ApiResponse.error(res, '排序数据格式错误', 400)
       }
 
-      await shopService.reorderTemplateImages(id, orders);
-      ApiResponse.success(res, null, '图片排序更新成功');
+      await shopService.reorderTemplateImages(id, orders)
+      ApiResponse.success(res, null, '图片排序更新成功')
     } catch (error) {
-      log.error('更新图片排序失败:', error);
-      ApiResponse.error(res, error.message || '更新排序失败', 500);
+      log.error('更新图片排序失败:', error)
+      ApiResponse.error(res, error.message || '更新排序失败', 500)
     }
   }
-);
+)
 
 // ============================================================================
 // 基础数据API（用于模板管理）
@@ -907,18 +917,18 @@ router.get('/base-data/brands',
   requirePermission('inventory:view'),
   async (req, res) => {
     try {
-      const db = require('../config/database');
-      const pool = db.getDatabase();
+      const db = require('../config/database')
+      const pool = db.getDatabase()
       const [brands] = await pool.query(
         'SELECT id, name, sort_order FROM brands ORDER BY sort_order ASC, name ASC'
-      );
-      ApiResponse.success(res, brands, '获取品牌列表成功');
+      )
+      ApiResponse.success(res, brands, '获取品牌列表成功')
     } catch (error) {
-      log.error('获取品牌失败:', error);
-      ApiResponse.error(res, error.message || '获取品牌失败', 500);
+      log.error('获取品牌失败:', error)
+      ApiResponse.error(res, error.message || '获取品牌失败', 500)
     }
   }
-);
+)
 
 /**
  * 获取所有型号（用于模板管理）
@@ -928,28 +938,28 @@ router.get('/base-data/models',
   requirePermission('inventory:view'),
   async (req, res) => {
     try {
-      const db = require('../config/database');
-      const pool = db.getDatabase();
-      const { brand_id } = req.query;
+      const db = require('../config/database')
+      const pool = db.getDatabase()
+      const { brand_id } = req.query
 
-      let query = 'SELECT id, name, brand_id, sort_order FROM models';
-      const params = [];
+      let query = 'SELECT id, name, brand_id, sort_order FROM models'
+      const params = []
 
       if (brand_id) {
-        query += ' WHERE brand_id = ?';
-        params.push(brand_id);
+        query += ' WHERE brand_id = ?'
+        params.push(brand_id)
       }
 
-      query += ' ORDER BY sort_order ASC, name ASC';
+      query += ' ORDER BY sort_order ASC, name ASC'
 
-      const [models] = await pool.query(query, params);
-      ApiResponse.success(res, models, '获取型号列表成功');
+      const [models] = await pool.query(query, params)
+      ApiResponse.success(res, models, '获取型号列表成功')
     } catch (error) {
-      log.error('获取型号失败:', error);
-      ApiResponse.error(res, error.message || '获取型号失败', 500);
+      log.error('获取型号失败:', error)
+      ApiResponse.error(res, error.message || '获取型号失败', 500)
     }
   }
-);
+)
 
 /**
  * 获取所有颜色（用于模板管理）
@@ -959,45 +969,45 @@ router.get('/base-data/colors',
   requirePermission('inventory:view'),
   async (req, res) => {
     try {
-      const db = require('../config/database');
-      const pool = db.getDatabase();
+      const db = require('../config/database')
+      const pool = db.getDatabase()
       const [colors] = await pool.query(
         'SELECT id, name, sort_order FROM colors ORDER BY sort_order ASC, name ASC'
-      );
-      ApiResponse.success(res, colors, '获取颜色列表成功');
+      )
+      ApiResponse.success(res, colors, '获取颜色列表成功')
     } catch (error) {
-      log.error('获取颜色失败:', error);
-      ApiResponse.error(res, error.message || '获取颜色失败', 500);
+      log.error('获取颜色失败:', error)
+      ApiResponse.error(res, error.message || '获取颜色失败', 500)
     }
   }
-);
+)
 
 /**
  * 获取所有内存
  */
 router.get('/base-data/memories', unifiedAuth, requirePermission('inventory:view'),
-    async (req, res) => {
-      try {
-        const db = require('../config/database');
-        const pool = db.getDatabase();
+  async (req, res) => {
+    try {
+      const db = require('../config/database')
+      const pool = db.getDatabase()
 
-        const [memories] = await pool.query(
-          'SELECT id, size, sort_order FROM memories ORDER BY sort_order ASC, size ASC'
-        );
+      const [memories] = await pool.query(
+        'SELECT id, size, sort_order FROM memories ORDER BY sort_order ASC, size ASC'
+      )
 
-        ApiResponse.success(res, memories, '获取内存列表成功');
-      } catch (error) {
-        log.error('获取内存失败:', error);
-        ApiResponse.error(res, error.message || '获取内存失败', 500);
-      }
+      ApiResponse.success(res, memories, '获取内存列表成功')
+    } catch (error) {
+      log.error('获取内存失败:', error)
+      ApiResponse.error(res, error.message || '获取内存失败', 500)
+    }
   }
-);
+)
 
 /**
  * 上传手机图片（简化版，用于综合查询）
  * POST /api/shop/upload-phone-image
  */
-shopImageUpload = upload;
+shopImageUpload = upload
 router.post('/upload-phone-image',
   unifiedAuth,
   requireAnyPermission(H5_TEMPLATE_CREATE_PERMISSIONS),
@@ -1005,30 +1015,30 @@ router.post('/upload-phone-image',
   async (req, res) => {
     try {
       if (!req.file) {
-        return ApiResponse.error(res, '没有上传文件', 400);
+        return ApiResponse.error(res, '没有上传文件', 400)
       }
 
-      const { phone_id } = req.body;
+      const { phone_id } = req.body
       if (!phone_id) {
-        return ApiResponse.error(res, '缺少手机ID', 400);
+        return ApiResponse.error(res, '缺少手机ID', 400)
       }
 
-      const uploadedBy = req.user ? req.user.id : 0;
-      const fileUrl = `/uploads/phones/${req.file.filename}`;
+      const uploadedBy = req.user ? req.user.id : 0
+      const fileUrl = `/uploads/phones/${req.file.filename}`
 
       // 使用 ShopService 添加单张图片
-      await shopService.addPhoneImage(phone_id, fileUrl, 'inventory', uploadedBy);
+      await shopService.addPhoneImage(phone_id, fileUrl, 'inventory', uploadedBy)
 
       ApiResponse.success(res, {
         url: fileUrl,
         filename: req.file.filename
-      }, '图片上传成功');
+      }, '图片上传成功')
     } catch (error) {
-      log.error('上传图片失败:', error);
-      ApiResponse.error(res, error.message || '上传失败', 500);
+      log.error('上传图片失败:', error)
+      ApiResponse.error(res, error.message || '上传失败', 500)
     }
   }
-);
+)
 
 /**
  * 获取已售商品列表（带图片的二手机）
@@ -1039,19 +1049,19 @@ router.get('/sold-products',
   requireAnyPermission(H5_SOLD_PRODUCTS_VIEW_PERMISSIONS),
   async (req, res) => {
     try {
-      const db = require('../config/database');
-      const pool = db.getDatabase();
+      const db = require('../config/database')
+      const pool = db.getDatabase()
 
       // 查询已售出且有图片的二手机
       const [products] = await pool.query(`
         SELECT
           p.id,
           p.imei,
-          COALESCE(b.name, '未知品牌') AS brand,
-          COALESCE(m.name, '未知型号') AS model,
-          COALESCE(c.name, '未知颜色') AS color,
-          COALESCE(mem.size, '') AS memory,
-          p.salestime AS sale_date,
+          b.name AS brand,
+          m.name AS model,
+          c.name AS color,
+          mem.size AS memory,
+          p.sale_time AS sale_time,
           COUNT(hi.id) AS image_count
         FROM phones p
         INNER JOIN H5_images hi ON p.id = hi.phone_id
@@ -1062,8 +1072,8 @@ router.get('/sold-products',
         WHERE p.status = 'sold' AND p.is_new = 0
         GROUP BY p.id
         HAVING image_count > 0
-        ORDER BY p.salestime DESC
-      `);
+        ORDER BY p.sale_time DESC
+      `)
 
       // HTML 转义函数，防止 XSS 攻击
       const escapeHtml = (str) => {
@@ -1078,21 +1088,23 @@ router.get('/sold-products',
 
       // 清理返回的数据
       const cleanProducts = products.map(product => ({
-        ...product,
+        id: product.id,
+        imei: escapeHtml(product.imei),
         brand: escapeHtml(product.brand),
         model: escapeHtml(product.model),
         color: escapeHtml(product.color),
         memory: escapeHtml(product.memory),
-        imei: escapeHtml(product.imei)
+        sale_time: product.sale_time,
+        image_count: Number(product.image_count)
       }))
 
-      ApiResponse.success(res, cleanProducts, '获取已售商品列表成功');
+      ApiResponse.success(res, cleanProducts, '获取已售商品列表成功')
     } catch (error) {
-      log.error('获取已售商品列表失败:', error);
-      ApiResponse.error(res, error.message || '获取已售商品列表失败', 500);
+      log.error('获取已售商品列表失败:', error)
+      ApiResponse.serverError(res, '获取已售商品列表失败', error)
     }
   }
-);
+)
 
 /**
  * 获取商品图片列表
@@ -1103,22 +1115,22 @@ router.get('/products/:id/images',
   requireAnyPermission(H5_SOLD_PRODUCTS_VIEW_PERMISSIONS),
   async (req, res) => {
     try {
-      const { id } = req.params;
-      const db = require('../config/database');
-      const pool = db.getDatabase();
+      const { id } = req.params
+      const db = require('../config/database')
+      const pool = db.getDatabase()
 
       const [images] = await pool.query(
-        'SELECT * FROM H5_images WHERE phone_id = ? ORDER BY is_primary DESC, sort_order ASC',
+        'SELECT id, phone_id, image_url, image_type, is_primary, sort_order, uploaded_by FROM H5_images WHERE phone_id = ? ORDER BY is_primary DESC, sort_order ASC',
         [id]
-      );
+      )
 
-      ApiResponse.success(res, images, '获取图片列表成功');
+      ApiResponse.success(res, images, '获取图片列表成功')
     } catch (error) {
-      log.error('获取图片列表失败:', error);
-      ApiResponse.error(res, error.message || '获取图片列表失败', 500);
+      log.error('获取图片列表失败:', error)
+      ApiResponse.error(res, error.message || '获取图片列表失败', 500)
     }
   }
-);
+)
 
 /**
  * 重排序商品图片
@@ -1129,28 +1141,22 @@ router.put('/products/:id/images/reorder',
   requireAnyPermission(H5_TEMPLATE_EDIT_PERMISSIONS),
   async (req, res) => {
     try {
-      const { id } = req.params;
-      const { imageIds } = req.body;
+      const { id } = req.params
+      const { image_ids } = req.body
 
-      if (!Array.isArray(imageIds) || imageIds.length === 0) {
-        return ApiResponse.error(res, '图片ID列表不能为空', 400);
+      if (!Array.isArray(image_ids) || image_ids.length === 0) {
+        return ApiResponse.error(res, '图片ID列表不能为空', 400)
       }
 
-      // 更新每张图片的排序值
-      for (let i = 0; i < imageIds.length; i++) {
-        await db.getDatabase().query(
-          'UPDATE H5_images SET sort_order = ? WHERE id = ? AND phone_id = ?',
-          [i, imageIds[i], id]
-        );
-      }
+      await shopService.reorderPhoneImages(id, image_ids)
 
-      ApiResponse.success(res, null, '排序保存成功');
+      ApiResponse.success(res, null, '排序保存成功')
     } catch (error) {
-      log.error('保存图片排序失败:', error);
-      ApiResponse.error(res, error.message || '保存排序失败', 500);
+      log.error('保存图片排序失败:', error)
+      ApiResponse.error(res, error.message || '保存排序失败', 500)
     }
   }
-);
+)
 
 /**
  * 删除商品所有图片
@@ -1161,53 +1167,53 @@ router.delete('/products/:id/images',
   requireAnyPermission(H5_SOLD_PRODUCTS_DELETE_PERMISSIONS),
   async (req, res) => {
     try {
-      const { id } = req.params;
-      const db = require('../config/database');
-      const pool = db.getDatabase();
+      const { id } = req.params
+      const db = require('../config/database')
+      const pool = db.getDatabase()
 
       // 获取所有图片URL
       const [images] = await pool.query(
         'SELECT image_url FROM H5_images WHERE phone_id = ?',
         [id]
-      );
+      )
 
       // 删除物理文件
       for (const image of images) {
         if (image.image_url) {
           try {
             // 确定上传目录路径
-            const uploadDir = getUploadsRoot();
+            const uploadDir = getUploadsRoot()
 
             // 图片 URL 格式：/uploads/phones/phone-xxx.jpg
             const relativePath = image.image_url.startsWith('/uploads/')
               ? image.image_url.substring('/uploads/'.length)
-              : (image.image_url.startsWith('/') ? image.image_url.substring(1) : image.image_url);
+              : (image.image_url.startsWith('/') ? image.image_url.substring(1) : image.image_url)
 
-            const filePath = path.join(uploadDir, relativePath);
+            const filePath = path.join(uploadDir, relativePath)
 
             // 安全检查
-            const normalizedFilePath = path.normalize(filePath);
-            const normalizedUploadDir = path.normalize(uploadDir);
+            const normalizedFilePath = path.normalize(filePath)
+            const normalizedUploadDir = path.normalize(uploadDir)
 
             if (normalizedFilePath.startsWith(normalizedUploadDir)) {
-              await fs.unlink(filePath);
-              log.debug('✅ 已删除图片文件:', filePath);
+              await fs.unlink(filePath)
+              log.debug('✅ 已删除图片文件:', filePath)
             }
           } catch (error) {
-            log.warn('⚠️ 删除图片文件失败:', error.message);
+            log.warn('⚠️ 删除图片文件失败:', error.message)
           }
         }
       }
 
       // 删除数据库记录
-      await pool.query('DELETE FROM H5_images WHERE phone_id = ?', [id]);
+      await pool.query('DELETE FROM H5_images WHERE phone_id = ?', [id])
 
-      ApiResponse.success(res, null, '删除图片成功');
+      ApiResponse.success(res, null, '删除图片成功')
     } catch (error) {
-      log.error('删除图片失败:', error);
-      ApiResponse.error(res, error.message || '删除图片失败', 500);
+      log.error('删除图片失败:', error)
+      ApiResponse.error(res, error.message || '删除图片失败', 500)
     }
   }
-);
+)
 
-module.exports = router;
+module.exports = router

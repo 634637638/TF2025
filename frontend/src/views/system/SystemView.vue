@@ -7,568 +7,915 @@
       module-name="系统管理"
       permission-code="system:view"
     >
+      <!-- 页面头部 -->
+      <PageHeader
+        icon="fas fa-cogs"
+        title="系统管理"
+      >
+        <template #actions>
+          <el-button
+            v-if="canViewField('warning.config') && activeTab === 'warning' && canUpdateSettings"
+            type="primary"
+            @click="openWarningTemplateDialog"
+          >
+            <i class="fas fa-plus" />
+            <span>新增</span>
+          </el-button>
+          <el-button
+            v-if="canViewField('system_info.operations')"
+            type="info"
+            :disabled="refreshing"
+            @click="refreshSystemStatus"
+          >
+            <InlineLoading
+              v-if="refreshing"
+              text="刷新中..."
+              size="small"
+              variant="inherit"
+            />
+            <template v-else>
+              <i class="fas fa-sync-alt" />
+              <span>刷新</span>
+            </template>
+          </el-button>
+        </template>
+      </PageHeader>
 
-    <!-- 页面头部 -->
-    <PageHeader
-      icon="fas fa-cogs"
-      title="系统管理"
-    >
-      <template #actions>
-        <el-button
-          v-if="activeTab === 'warning' && canUpdateSettings"
-          type="primary"
-          @click="openWarningTemplateDialog"
-        >
-          <i class="fas fa-plus"></i>
-          <span>新增</span>
-        </el-button>
-        <el-button type="info" @click="refreshSystemStatus" :disabled="refreshing">
-          <InlineLoading v-if="refreshing" text="刷新中..." size="small" variant="inherit" />
-          <template v-else>
-            <i class="fas fa-sync-alt"></i>
-            <span>刷新</span>
-          </template>
-        </el-button>
-      </template>
-    </PageHeader>
+      <!-- 系统功能模块 -->
+      <div class="system-container admin-page-content">
+        <!-- TAB导航 -->
+        <div class="tab-navigation tf-page-tabs">
+          <el-button
+            v-if="canViewField('settings.site_info') || canViewField('settings.logo')"
+            :type="activeTab === 'settings' ? 'primary' : 'default'"
+            :icon="Setting"
+            @click="activeTab = 'settings'"
+          >
+            站点信息
+          </el-button>
+          <el-button
+            v-if="canViewField('settings.price_watermark')"
+            :type="activeTab === 'price' ? 'primary' : 'default'"
+            @click="activeTab = 'price'"
+          >
+            <i class="fas fa-tags" />
+            报价信息
+          </el-button>
+          <el-button
+            v-if="canViewField('screen_lock.config')"
+            :type="activeTab === 'screenlock' ? 'primary' : 'default'"
+            :icon="Lock"
+            @click="activeTab = 'screenlock'"
+          >
+            锁屏设置
+          </el-button>
+          <el-button
+            v-if="canViewField('warning.config')"
+            :type="activeTab === 'warning' ? 'primary' : 'default'"
+            @click="activeTab = 'warning'"
+          >
+            <i class="fas fa-bell" />
+            预警配置
+          </el-button>
+          <el-button
+            v-if="canViewReturngoods"
+            data-view-permission="return-goods:view"
+            :type="activeTab === 'returngoods' ? 'primary' : 'default'"
+            @click="activeTab = 'returngoods'"
+          >
+            <i class="fas fa-undo-alt" />
+            退库管理
+          </el-button>
+        </div>
 
-    <!-- 系统功能模块 -->
-    <div class="system-container admin-page-content">
-      <!-- TAB导航 -->
-      <div class="tab-navigation tf-page-tabs">
-        <el-button
-          :type="activeTab === 'settings' ? 'primary' : 'default'"
-          @click="activeTab = 'settings'"
-          :icon="Setting"
-        >
-          站点信息
-        </el-button>
-        <el-button
-          :type="activeTab === 'price' ? 'primary' : 'default'"
-          @click="activeTab = 'price'"
-        >
-          <i class="fas fa-tags"></i>
-          报价信息
-        </el-button>
-        <el-button
-          :type="activeTab === 'screenlock' ? 'primary' : 'default'"
-          @click="activeTab = 'screenlock'"
-          :icon="Lock"
-        >
-          锁屏设置
-        </el-button>
-        <el-button
-          :type="activeTab === 'warning' ? 'primary' : 'default'"
-          @click="activeTab = 'warning'"
-        >
-          <i class="fas fa-bell"></i>
-          预警配置
-        </el-button>
-        <el-button
-          v-if="canViewReturngoods"
-          data-view-permission="return-goods:view"
-          :type="activeTab === 'returngoods' ? 'primary' : 'default'"
-          @click="activeTab = 'returngoods'"
-        >
-          <i class="fas fa-undo-alt"></i>
-          退库管理
-        </el-button>
-      </div>
-
-      <!-- TAB内容区域 -->
-      <div class="tab-content tf-tab-content">
-        <!-- 站点信息TAB -->
-        <div v-if="activeTab === 'settings'" class="tab-panel tf-tab-panel">
-          <div class="system-settings-section">
-
-            <!-- 站点 Logo 设置和编辑站点信息 - PC端一行展示 -->
-            <div class="site-settings-row">
-              <div class="site-logo-panel admin-panel">
-                <div class="card-header-with-action">
-                  <h3 class="card-title">
-                    <i class="fas fa-image"></i>
-                    站点 Logo 设置
-                  </h3>
-                  <el-button
-                    type="primary"
-                    size="small"
-                    @click="saveSiteSettings"
-                    :loading="isLoading"
-                    :disabled="!canUpdateSettings"
-                  >
-                    <span v-if="isLoading">保存中...</span>
-                    <template v-else>
-                      <i class="fas fa-save"></i>
-                      <span>保存</span>
-                    </template>
-                  </el-button>
-                </div>
-
+        <!-- TAB内容区域 -->
+        <div class="tab-content tf-tab-content">
+          <!-- 站点信息TAB -->
+          <div
+            v-if="activeTab === 'settings' && (canViewField('settings.site_info') || canViewField('settings.logo'))"
+            class="tab-panel tf-tab-panel"
+          >
+            <div class="system-settings-section">
+              <!-- 站点 Logo 设置和编辑站点信息 - PC端一行展示 -->
+              <div class="site-settings-row">
                 <div
-                  class="site-logo-preview-card"
-                  :class="{ clickable: canUpdateSettings && !logoUploading }"
-                  :tabindex="canUpdateSettings && !logoUploading ? 0 : -1"
-                  :role="canUpdateSettings && !logoUploading ? 'button' : undefined"
-                  @click="triggerSiteLogoUpload"
-                  @keydown.enter.prevent="triggerSiteLogoUpload"
-                  @keydown.space.prevent="triggerSiteLogoUpload"
+                  v-if="canViewField('settings.logo')"
+                  class="site-logo-panel admin-panel"
                 >
-                  <div v-if="siteLogoPreviewUrl" class="site-logo-preview">
-                    <Image :src="siteLogoPreviewUrl" alt="站点Logo预览" mode="eager" />
-                  </div>
-                  <div v-else class="site-logo-empty">
-                    <i class="fas fa-image"></i>
-                    <span>暂无站点 Logo</span>
-                  </div>
-                  <div v-if="canUpdateSettings" class="site-logo-preview-tip">
-                    {{ logoUploading ? '上传中...' : '点击这里选择新照片 / Logo' }}
-                  </div>
-                </div>
-
-                <div class="site-logo-editor">
-                  <div class="logo-editor-header">
-                    <h3>
-                      <i class="fas fa-image"></i>
+                  <div class="card-header-with-action">
+                    <h3 class="card-title">
+                      <i class="fas fa-image" />
                       站点 Logo 设置
                     </h3>
-                    <el-tag type="success" size="small">页面顶部显示</el-tag>
-                  </div>
-
-                  <p class="logo-editor-tip">
-                    用于页面顶部和移动端菜单展示。上传后会自动保存到系统设置，支持透明底 PNG、SVG 和 ICO。
-                  </p>
-
-                  <el-input
-                    v-model="siteSettings.logoUrl"
-                    placeholder="可直接输入 Logo 图片地址，或使用下方按钮上传"
-                    :disabled="!canUpdateSettings"
-                    clearable
-                  />
-
-                  <div class="site-logo-actions">
                     <el-button
+                      v-if="canViewField('system_info.operations')"
                       type="primary"
-                      @click="triggerSiteLogoUpload"
-                      :loading="logoUploading"
+                      size="small"
+                      :loading="isLoading"
                       :disabled="!canUpdateSettings"
+                      @click="saveSiteSettings"
                     >
-                      <span v-if="logoUploading">上传中...</span>
+                      <span v-if="isLoading">保存中...</span>
                       <template v-else>
-                        <i class="fas fa-upload"></i>
-                        <span>上传 Logo</span>
+                        <i class="fas fa-save" />
+                        <span>保存</span>
                       </template>
                     </el-button>
-                    <el-button
-                      v-if="siteSettings.logoUrl"
-                      type="default"
-                      @click="clearSiteLogo"
-                      :disabled="logoUploading || !canUpdateSettings"
+                  </div>
+
+                  <div
+                    class="site-logo-preview-card"
+                    :class="{ clickable: canUpdateSettings && !logoUploading }"
+                    :tabindex="canUpdateSettings && !logoUploading ? 0 : -1"
+                    :role="canUpdateSettings && !logoUploading ? 'button' : undefined"
+                    @click="triggerSiteLogoUpload"
+                    @keydown.enter.prevent="triggerSiteLogoUpload"
+                    @keydown.space.prevent="triggerSiteLogoUpload"
+                  >
+                    <div
+                      v-if="siteLogoPreviewUrl"
+                      class="site-logo-preview"
                     >
-                      <i class="fas fa-trash-alt"></i>
-                      <span>清空 Logo</span>
+                      <Image
+                        :src="siteLogoPreviewUrl"
+                        alt="站点Logo预览"
+                        mode="eager"
+                      />
+                    </div>
+                    <div
+                      v-else
+                      class="site-logo-empty"
+                    >
+                      <i class="fas fa-image" />
+                      <span>暂无站点 Logo</span>
+                    </div>
+                    <div
+                      v-if="canUpdateSettings"
+                      class="site-logo-preview-tip"
+                    >
+                      {{ logoUploading ? '上传中...' : '点击这里选择新照片 / Logo' }}
+                    </div>
+                  </div>
+
+                  <div class="site-logo-editor">
+                    <div class="logo-editor-header">
+                      <h3>
+                        <i class="fas fa-image" />
+                        站点 Logo 设置
+                      </h3>
+                      <el-tag
+                        type="success"
+                        size="small"
+                      >
+                        页面顶部显示
+                      </el-tag>
+                    </div>
+
+                    <p class="logo-editor-tip">
+                      用于页面顶部和移动端菜单展示。上传后会自动保存到系统设置，支持透明底 PNG、SVG 和 ICO。
+                    </p>
+
+                    <el-input
+                      v-model="siteSettings.logoUrl"
+                      placeholder="可直接输入 Logo 图片地址，或使用下方按钮上传"
+                      :disabled="!canUpdateSettings"
+                      clearable
+                    />
+
+                    <div class="site-logo-actions">
+                      <el-button
+                        type="primary"
+                        :loading="logoUploading"
+                        :disabled="!canUpdateSettings"
+                        @click="triggerSiteLogoUpload"
+                      >
+                        <span v-if="logoUploading">上传中...</span>
+                        <template v-else>
+                          <i class="fas fa-upload" />
+                          <span>上传 Logo</span>
+                        </template>
+                      </el-button>
+                      <el-button
+                        v-if="siteSettings.logoUrl"
+                        type="default"
+                        :disabled="logoUploading || !canUpdateSettings"
+                        @click="clearSiteLogo"
+                      >
+                        <i class="fas fa-trash-alt" />
+                        <span>清空 Logo</span>
+                      </el-button>
+                    </div>
+
+                    <div class="logo-editor-help">
+                      支持 JPG、PNG、GIF、ICO，文件大小不超过 5MB。
+                    </div>
+
+                    <input
+                      ref="siteLogoInputRef"
+                      type="file"
+                      :accept="SITE_LOGO_ACCEPT"
+                      class="site-logo-hidden-input"
+                      @change="handleSiteLogoFileChange"
+                    >
+                  </div>
+                </div>
+
+                <!-- 站点信息编辑表格 -->
+                <div class="table-section site-settings-table admin-panel admin-table-panel">
+                  <div class="card-header-with-action">
+                    <h3 class="section-subtitle">
+                      <i class="fas fa-edit" />
+                      编辑站点信息
+                    </h3>
+                    <el-button
+                      v-if="canViewField('system_info.operations')"
+                      type="primary"
+                      size="small"
+                      :loading="isLoading"
+                      :disabled="!canUpdateSettings"
+                      @click="saveSiteSettings"
+                    >
+                      <span v-if="isLoading">保存中...</span>
+                      <template v-else>
+                        <i class="fas fa-save" />
+                        <span>保存</span>
+                      </template>
                     </el-button>
                   </div>
+                  <el-table
+                    class="data-table compact-fit-table"
+                    :data="visibleSiteSettingsList"
+                    border
+                    stripe
+                    table-layout="auto"
+                    :fit="true"
+                  >
+                    <el-table-column
+                      prop="category"
+                      label="分类"
+                      min-width="120"
+                      align="center"
+                    >
+                      <template #default="{ row }">
+                        <el-tag
+                          :type="row.category === 'basic' ? 'primary' : 'success'"
+                          size="small"
+                        >
+                          {{ row.categoryLabel }}
+                        </el-tag>
+                      </template>
+                    </el-table-column>
 
-                  <div class="logo-editor-help">
-                    支持 JPG、PNG、GIF、SVG、ICO，文件大小不超过 5MB。上传目录：`uploads/brand/`
-                  </div>
+                    <el-table-column
+                      prop="label"
+                      label="设置项"
+                      min-width="150"
+                    >
+                      <template #default="{ row }">
+                        <i :class="row.icon" />
+                        {{ row.label }}
+                      </template>
+                    </el-table-column>
 
-                  <input
-                    ref="siteLogoInputRef"
-                    type="file"
-                    :accept="SITE_LOGO_ACCEPT"
-                    class="site-logo-hidden-input"
-                    @change="handleSiteLogoFileChange"
-                  />
+                    <el-table-column
+                      prop="value"
+                      label="当前值"
+                      min-width="160"
+                    >
+                      <template #default="{ row }">
+                        <el-input
+                          v-if="row.type === 'input'"
+                          v-model="siteSettings[row.key]"
+                          :placeholder="row.placeholder"
+                          :disabled="!canUpdateSettings"
+                          clearable
+                        />
+                        <el-input
+                          v-else-if="row.type === 'textarea'"
+                          v-model="siteSettings[row.key]"
+                          type="textarea"
+                          :rows="2"
+                          :placeholder="row.placeholder"
+                          :disabled="!canUpdateSettings"
+                          clearable
+                        />
+                        <el-switch
+                          v-else-if="row.type === 'switch'"
+                          v-model="siteSettings[row.key]"
+                          active-value="1"
+                          inactive-value="0"
+                          :disabled="!canUpdateSettings"
+                        />
+                        <span v-else>{{ siteSettings[row.key] || row.defaultValue }}</span>
+                      </template>
+                    </el-table-column>
+                  </el-table>
                 </div>
               </div>
+            </div>
+          </div>
 
-              <!-- 站点信息编辑表格 -->
-              <div class="table-section site-settings-table admin-panel admin-table-panel">
-                <div class="card-header-with-action">
-                  <h3 class="section-subtitle">
-                    <i class="fas fa-edit"></i>
-                    编辑站点信息
-                  </h3>
-                  <el-button
-                    type="primary"
-                    size="small"
-                    @click="saveSiteSettings"
-                    :loading="isLoading"
-                    :disabled="!canUpdateSettings"
+          <!-- 报价信息TAB -->
+          <div
+            v-if="activeTab === 'price' && canViewField('settings.price_watermark')"
+            class="tab-panel tf-tab-panel"
+          >
+            <div class="table-section site-settings-table admin-panel admin-table-panel">
+              <div class="price-config-grid">
+                <div
+                  v-if="canViewField('settings.price_watermark')"
+                  class="setting-card price-contact-card"
+                >
+                  <div class="card-header-with-action">
+                    <h3 class="section-subtitle">
+                      <i class="fas fa-tags" />报价联系人
+                    </h3>
+                    <el-button
+                      v-if="canViewField('system_info.operations')"
+                      type="primary"
+                      size="small"
+                      :disabled="!canUpdateSettings"
+                      @click="openPriceContactDialog()"
+                    >
+                      <i class="fas fa-plus" /><span>新增联系人</span>
+                    </el-button>
+                  </div>
+                  <el-table
+                    :data="priceContactsEditor"
+                    border
+                    stripe
+                    class="data-table compact-fit-table"
+                    table-layout="auto"
+                    :fit="true"
                   >
-                    <span v-if="isLoading">保存中...</span>
-                    <template v-else>
-                      <i class="fas fa-save"></i>
-                      <span>保存</span>
-                    </template>
-                  </el-button>
+                    <el-table-column
+                      v-if="canViewField('settings.price_watermark')"
+                      type="index"
+                      label="排序"
+                      width="72"
+                      align="center"
+                    />
+                    <el-table-column
+                      v-if="canViewField('settings.price_watermark')"
+                      prop="name"
+                      label="姓名"
+                      min-width="140"
+                      align="center"
+                    />
+                    <el-table-column
+                      v-if="canViewField('settings.price_watermark')"
+                      prop="phone"
+                      label="手机号码"
+                      min-width="160"
+                      align="center"
+                    />
+                    <el-table-column
+                      v-if="canViewField('system_info.operations')"
+                      label="操作"
+                      :width="$getActionColumnWidth(4)"
+                      align="center"
+                      class-name="actions-column"
+                    >
+                      <template #default="{ $index, row }">
+                        <div class="action-buttons">
+                          <el-button
+                            size="small"
+                            plain
+                            type="primary"
+                            :disabled="!canUpdateSettings"
+                            @click.stop="openPriceContactDialog(row, $index)"
+                          >
+                            编辑
+                          </el-button>
+                          <el-button
+                            size="small"
+                            plain
+                            type="danger"
+                            :disabled="!canUpdateSettings"
+                            @click.stop="removePriceContact($index)"
+                          >
+                            删除
+                          </el-button>
+                          <el-button
+                            size="small"
+                            plain
+                            type="info"
+                            :disabled="!canUpdateSettings || $index === 0"
+                            @click.stop="movePriceContact($index, -1)"
+                          >
+                            上移
+                          </el-button>
+                          <el-button
+                            size="small"
+                            plain
+                            type="info"
+                            :disabled="!canUpdateSettings || $index === priceContactsEditor.length - 1"
+                            @click.stop="movePriceContact($index, 1)"
+                          >
+                            下移
+                          </el-button>
+                        </div>
+                      </template>
+                    </el-table-column>
+                  </el-table>
+                  <DataEmptyState
+                    v-if="!priceContactsEditor.length"
+                    description="暂无报价联系人"
+                  />
                 </div>
-                <el-table class="data-table compact-fit-table" :data="siteSettingsList" border stripe table-layout="auto" :fit="true">
-                  <el-table-column prop="category" label="分类" min-width="120" align="center">
-                    <template #default="{ row }">
-                      <el-tag :type="row.category === 'basic' ? 'primary' : 'success'" size="small">
-                        {{ row.categoryLabel }}
-                      </el-tag>
-                    </template>
-                  </el-table-column>
-
-                  <el-table-column prop="label" label="设置项" min-width="150">
-                    <template #default="{ row }">
-                      <i :class="row.icon"></i>
-                      {{ row.label }}
-                    </template>
-                  </el-table-column>
-
-                  <el-table-column prop="value" label="当前值" min-width="160">
-                    <template #default="{ row }">
+                <div class="price-watermark-settings">
+                  <div class="card-header-with-action">
+                    <h3 class="section-subtitle">
+                      <i class="fas fa-stamp" />报价图片水印
+                    </h3>
+                    <el-button
+                      v-if="canViewField('system_info.operations')"
+                      type="primary"
+                      size="small"
+                      :loading="isLoading"
+                      :disabled="!canUpdateSettings"
+                      @click="saveSiteSettings"
+                    >
+                      <i class="fas fa-save" /><span>保存报价设置</span>
+                    </el-button>
+                  </div>
+                  <el-form
+                    label-position="top"
+                    class="price-watermark-form"
+                  >
+                    <el-form-item label="水印文字">
                       <el-input
-                        v-if="row.type === 'input'"
-                        v-model="siteSettings[row.key]"
-                        :placeholder="row.placeholder"
+                        v-model="siteSettings.publicPriceWatermark"
                         :disabled="!canUpdateSettings"
-                        clearable
+                        placeholder="请输入公开报价水印文字"
                       />
-                      <el-input
-                        v-else-if="row.type === 'textarea'"
-                        v-model="siteSettings[row.key]"
-                        type="textarea"
-                        :rows="2"
-                        :placeholder="row.placeholder"
-                        :disabled="!canUpdateSettings"
-                        clearable
-                      />
+                    </el-form-item>
+                    <el-form-item label="显示水印">
                       <el-switch
-                        v-else-if="row.type === 'switch'"
-                        v-model="siteSettings[row.key]"
+                        v-model="siteSettings.publicPriceWatermarkEnabled"
                         active-value="1"
                         inactive-value="0"
                         :disabled="!canUpdateSettings"
                       />
-                      <span v-else>{{ siteSettings[row.key] || row.defaultValue }}</span>
-                    </template>
-                  </el-table-column>
-                </el-table>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 报价信息TAB -->
-        <div v-if="activeTab === 'price'" class="tab-panel tf-tab-panel">
-          <div class="table-section site-settings-table admin-panel admin-table-panel">
-            <div class="price-config-grid">
-            <div class="setting-card price-contact-card">
-            <div class="card-header-with-action">
-              <h3 class="section-subtitle"><i class="fas fa-tags"></i>报价联系人</h3>
-              <el-button type="primary" size="small" :disabled="!canUpdateSettings" @click="openPriceContactDialog()">
-                <i class="fas fa-plus"></i><span>新增联系人</span>
-              </el-button>
-            </div>
-            <el-table :data="priceContactsEditor" border stripe class="data-table compact-fit-table" table-layout="auto" :fit="true">
-              <el-table-column type="index" label="排序" width="72" align="center" />
-              <el-table-column prop="name" label="姓名" min-width="140" align="center" />
-              <el-table-column prop="phone" label="手机号码" min-width="160" align="center" />
-              <el-table-column label="操作" :width="$getActionColumnWidth(4)" align="center" class-name="actions-column">
-                <template #default="{ $index, row }">
-                  <div class="action-buttons">
-                    <el-button size="small" plain type="primary" :disabled="!canUpdateSettings" @click.stop="openPriceContactDialog(row, $index)">编辑</el-button>
-                    <el-button size="small" plain type="danger" :disabled="!canUpdateSettings" @click.stop="removePriceContact($index)">删除</el-button>
-                    <el-button size="small" plain type="info" :disabled="!canUpdateSettings || $index === 0" @click.stop="movePriceContact($index, -1)">上移</el-button>
-                    <el-button size="small" plain type="info" :disabled="!canUpdateSettings || $index === priceContactsEditor.length - 1" @click.stop="movePriceContact($index, 1)">下移</el-button>
-                  </div>
-                </template>
-              </el-table-column>
-            </el-table>
-            <el-empty v-if="!priceContactsEditor.length" description="暂无报价联系人" />
-            </div>
-            <div class="price-watermark-settings">
-              <div class="card-header-with-action">
-                <h3 class="section-subtitle"><i class="fas fa-stamp"></i>报价图片水印</h3>
-                <el-button type="primary" size="small" :loading="isLoading" :disabled="!canUpdateSettings" @click="saveSiteSettings">
-                  <i class="fas fa-save"></i><span>保存报价设置</span>
-                </el-button>
-              </div>
-              <el-form label-position="top" class="price-watermark-form">
-                <el-form-item label="水印文字">
-                  <el-input v-model="siteSettings.publicPriceWatermark" :disabled="!canUpdateSettings" placeholder="请输入完整水印文字，例如：腾飞数码 132-0790-3333" />
-                </el-form-item>
-                <el-form-item label="显示水印">
-                  <el-switch v-model="siteSettings.publicPriceWatermarkEnabled" active-value="1" inactive-value="0" :disabled="!canUpdateSettings" />
-                </el-form-item>
-                <el-form-item label="显示时间">
-                  <el-switch v-model="siteSettings.publicPriceWatermarkTimeEnabled" active-value="1" inactive-value="0" :disabled="!canUpdateSettings" />
-                </el-form-item>
-                <el-form-item label="水印颜色">
-                  <el-color-picker v-model="siteSettings.publicPriceWatermarkColor" :disabled="!canUpdateSettings" show-alpha />
-                </el-form-item>
-              </el-form>
-              <p class="form-help">水印文字直接按最终显示内容填写；开启“显示时间”后会在文字末尾自动追加当前时间，颜色可单独设置。</p>
-            </div>
-
-            <div class="price-watermark-settings setting-card price-query-card">
-              <div class="card-header-custom">
-                <div class="card-title"><i class="fas fa-search-dollar"></i><span>报价管理查询</span></div>
-              </div>
-              <div v-if="canManageInventoryPasswords" class="password-list-section">
-                <div class="password-list-header">
-                  <h4>查询密码</h4>
-                  <el-button type="primary" size="small" @click="showAddPasswordDialog" :icon="Plus">添加密码</el-button>
+                    </el-form-item>
+                    <el-form-item label="显示时间">
+                      <el-switch
+                        v-model="siteSettings.publicPriceWatermarkTimeEnabled"
+                        active-value="1"
+                        inactive-value="0"
+                        :disabled="!canUpdateSettings"
+                      />
+                    </el-form-item>
+                    <el-form-item label="水印颜色">
+                      <el-color-picker
+                        v-model="siteSettings.publicPriceWatermarkColor"
+                        :disabled="!canUpdateSettings"
+                        show-alpha
+                      />
+                    </el-form-item>
+                  </el-form>
+                  <p class="form-help">
+                    水印文字直接按最终显示内容填写；开启“显示时间”后会在文字末尾自动追加当前时间，颜色可单独设置。
+                  </p>
                 </div>
-                <el-table :data="loadingPasswords ? [] : inventoryPasswords" border stripe class="data-table mobile-password-table" style="width: 100%; margin-top: 12px;">
-                  <template #empty>
-                    <TableLoadingRow v-if="loadingPasswords" mode="block" text="加载中..." />
-                    <el-empty v-else description="暂无密码记录" />
-                  </template>
-                  <el-table-column prop="name" label="用户名" min-width="100" class-name="complete-text-column" />
-                  <el-table-column prop="password" label="密码" width="100" align="center"><template #default><span class="password-mask">******</span></template></el-table-column>
-                  <el-table-column prop="remarks" label="备注" min-width="100" class-name="complete-text-column wrapped-text-column" />
-                  <el-table-column prop="is_active" label="状态" width="80" align="center"><template #default="{ row }"><el-tag :type="row.is_active ? 'success' : 'info'" size="small">{{ row.is_active ? '启用' : '禁用' }}</el-tag></template></el-table-column>
-                  <el-table-column label="操作" :width="$getActionColumnWidth(1 + Number(canDeleteInventoryPasswords))" align="center" class-name="actions-column">
-                    <template #default="{ row }"><div class="action-buttons"><el-button type="primary" size="small" link @click.stop="editPassword(row)" :icon="Edit">编辑</el-button><el-button v-if="canDeleteInventoryPasswords" type="danger" size="small" link @click.stop="deletePassword(row.id)" :icon="Delete">删除</el-button></div></template>
-                  </el-table-column>
-                </el-table>
+
+                <div class="price-watermark-settings setting-card price-query-card">
+                  <div class="card-header-custom">
+                    <div class="card-title">
+                      <i class="fas fa-search-dollar" /><span>报价管理查询</span>
+                    </div>
+                  </div>
+                  <div
+                    v-if="canManageInventoryPasswords && canViewField('settings.passwords')"
+                    class="password-list-section"
+                  >
+                    <div class="password-list-header">
+                      <h4>查询密码</h4>
+                      <el-button
+                        type="primary"
+                        size="small"
+                        :icon="Plus"
+                        @click="showAddPasswordDialog"
+                      >
+                        添加密码
+                      </el-button>
+                    </div>
+                    <el-table
+                      :data="loadingPasswords ? [] : inventoryPasswords"
+                      border
+                      stripe
+                      class="data-table mobile-password-table"
+                      style="width: 100%; margin-top: 12px;"
+                    >
+                      <template #empty>
+                        <TableLoadingRow
+                          v-if="loadingPasswords"
+                          mode="block"
+                          text="加载中..."
+                        />
+                        <DataEmptyState
+                          v-else
+                          description="暂无密码记录"
+                        />
+                      </template>
+                      <el-table-column
+                        v-if="canViewField('settings.passwords')"
+                        prop="name"
+                        label="用户名"
+                        min-width="100"
+                        class-name="complete-text-column"
+                      />
+                      <el-table-column
+                        v-if="canViewField('settings.passwords')"
+                        prop="password"
+                        label="密码"
+                        width="100"
+                        align="center"
+                      >
+                        <template #default>
+                          <span class="password-mask">******</span>
+                        </template>
+                      </el-table-column>
+                      <el-table-column
+                        v-if="canViewField('settings.passwords')"
+                        prop="remarks"
+                        label="备注"
+                        min-width="100"
+                        class-name="complete-text-column wrapped-text-column"
+                      />
+                      <el-table-column
+                        v-if="canViewField('settings.passwords')"
+                        prop="is_active"
+                        label="状态"
+                        width="80"
+                        align="center"
+                      >
+                        <template #default="{ row }">
+                          <el-tag
+                            :type="row.is_active ? 'success' : 'info'"
+                            size="small"
+                          >
+                            {{ row.is_active ? '启用' : '禁用' }}
+                          </el-tag>
+                        </template>
+                      </el-table-column>
+                      <el-table-column
+                        v-if="canViewField('system_info.operations')"
+                        label="操作"
+                        :width="$getActionColumnWidth(1 + Number(canDeleteInventoryPasswords))"
+                        align="center"
+                        class-name="actions-column"
+                      >
+                        <template #default="{ row }">
+                          <div class="action-buttons">
+                            <el-button
+                              type="primary"
+                              size="small"
+                              link
+                              :icon="Edit"
+                              @click.stop="editPassword(row)"
+                            >
+                              编辑
+                            </el-button><el-button
+                              v-if="canDeleteInventoryPasswords"
+                              type="danger"
+                              size="small"
+                              link
+                              :icon="Delete"
+                              @click.stop="deletePassword(row.id)"
+                            >
+                              删除
+                            </el-button>
+                          </div>
+                        </template>
+                      </el-table-column>
+                    </el-table>
+                  </div>
+                  <el-alert
+                    v-else
+                    title="需要系统设置编辑权限才能管理报价查询密码"
+                    type="warning"
+                    :closable="false"
+                    show-icon
+                  />
+                </div>
               </div>
-              <el-alert v-else title="需要系统设置编辑权限才能管理报价查询密码" type="warning" :closable="false" show-icon />
-            </div>
             </div>
           </div>
-        </div>
 
-        <!-- 锁屏设置TAB -->
-        <div v-if="activeTab === 'screenlock'" class="tab-panel tf-tab-panel">
-          <div class="screen-lock-settings-wrapper">
-            <!-- 设置卡片组 -->
-            <div class="settings-cards-group">
-              <!-- 屏幕保护设置卡片 -->
-              <div class="setting-card">
-                <div class="card-header-custom">
-                  <div class="card-title">
-                    <i class="fas fa-desktop"></i>
-                    <span>屏幕保护设置</span>
+          <!-- 锁屏设置TAB -->
+          <div
+            v-if="activeTab === 'screenlock' && canViewField('screen_lock.config')"
+            class="tab-panel tf-tab-panel"
+          >
+            <div class="screen-lock-settings-wrapper">
+              <!-- 设置卡片组 -->
+              <div class="settings-cards-group">
+                <!-- 屏幕保护设置卡片 -->
+                <div class="setting-card">
+                  <div class="card-header-custom">
+                    <div class="card-title">
+                      <i class="fas fa-desktop" />
+                      <span>屏幕保护设置</span>
+                    </div>
+                    <el-button
+                      type="primary"
+                      size="small"
+                      :loading="isLoading"
+                      :disabled="!canUpdateSettings"
+                      @click="saveScreenLockSettings"
+                    >
+                      <span v-if="isLoading">保存中...</span>
+                      <template v-else>
+                        <i class="fas fa-save" />
+                        <span>保存</span>
+                      </template>
+                    </el-button>
                   </div>
-                  <el-button
-                    type="primary"
-                    size="small"
-                    @click="saveScreenLockSettings"
-                    :loading="isLoading"
+
+                  <el-alert
+                    title="功能说明"
+                    type="info"
+                    show-icon
+                    :closable="false"
+                    style="margin-bottom: 20px;"
+                  >
+                    <p>• 点击顶部操作栏的"锁定"按钮即可锁定屏幕</p>
+                    <p>• 解锁时需要输入您当前的登录密码</p>
+                  </el-alert>
+
+                  <el-form
+                    ref="screenLockFormRef"
+                    :model="screenLockSettings"
                     :disabled="!canUpdateSettings"
+                    label-width="100px"
+                    label-position="left"
+                    class="screen-lock-form"
                   >
-                    <span v-if="isLoading">保存中...</span>
-                    <template v-else>
-                      <i class="fas fa-save"></i>
-                      <span>保存</span>
-                    </template>
-                  </el-button>
+                    <!-- 背景类型 -->
+                    <el-form-item label="背景类型">
+                      <el-radio-group v-model="screenLockSettings.backgroundType">
+                        <el-radio value="default">
+                          默认背景
+                        </el-radio>
+                        <el-radio value="image">
+                          图片背景
+                        </el-radio>
+                        <el-radio value="video">
+                          视频背景
+                        </el-radio>
+                      </el-radio-group>
+                    </el-form-item>
+
+                    <!-- 图片背景 -->
+                    <el-form-item
+                      v-if="screenLockSettings.backgroundType === 'image'"
+                      label="背景图片"
+                    >
+                      <div class="image-upload-container">
+                        <div
+                          v-if="screenLockSettings.imageUrl"
+                          class="image-preview"
+                        >
+                          <Image
+                            :src="screenLockSettings.imageUrl"
+                            alt="背景图片"
+                            mode="eager"
+                          />
+                          <el-button
+                            type="danger"
+                            size="small"
+                            style="position: absolute; top: 8px; right: 8px"
+                            @click="screenLockSettings.imageUrl = ''"
+                          >
+                            <i class="fas fa-times" />
+                          </el-button>
+                        </div>
+                        <div
+                          v-else
+                          class="upload-placeholder"
+                        >
+                          <i class="fas fa-image" />
+                          <span>暂无图片</span>
+                        </div>
+                        <el-input
+                          v-model="screenLockSettings.imageUrl"
+                          placeholder="输入图片URL或上传图片"
+                          clearable
+                        />
+                      </div>
+                      <div class="form-help">
+                        支持 JPG、PNG 格式，建议尺寸 1920x1080，文件大小不超过 5MB
+                      </div>
+                    </el-form-item>
+
+                    <!-- 视频背景 -->
+                    <el-form-item
+                      v-if="screenLockSettings.backgroundType === 'video'"
+                      label="背景视频"
+                    >
+                      <div class="video-upload-container">
+                        <div
+                          v-if="screenLockSettings.videoUrl"
+                          class="video-preview"
+                        >
+                          <video
+                            :src="screenLockSettings.videoUrl"
+                            muted
+                            loop
+                          />
+                          <el-button
+                            type="danger"
+                            size="small"
+                            style="position: absolute; top: 8px; right: 8px"
+                            @click="screenLockSettings.videoUrl = ''"
+                          >
+                            <i class="fas fa-times" />
+                          </el-button>
+                        </div>
+                        <div
+                          v-else
+                          class="upload-placeholder"
+                        >
+                          <i class="fas fa-video" />
+                          <span>暂无视频</span>
+                        </div>
+                        <el-input
+                          v-model="screenLockSettings.videoUrl"
+                          placeholder="输入视频URL"
+                          clearable
+                        />
+                      </div>
+                      <div class="form-help">
+                        支持 MP4、WebM 格式，建议时长 10-30 秒，文件大小不超过 50MB
+                      </div>
+                    </el-form-item>
+
+                    <!-- 锁定信息 -->
+                    <el-form-item label="锁定标题">
+                      <el-input
+                        v-model="screenLockSettings.title"
+                        placeholder="屏幕已锁定"
+                        maxlength="30"
+                        show-word-limit
+                      />
+                    </el-form-item>
+
+                    <el-form-item label="锁定提示">
+                      <el-input
+                        v-model="screenLockSettings.message"
+                        type="textarea"
+                        :rows="2"
+                        placeholder="请输入密码解锁"
+                        maxlength="100"
+                        show-word-limit
+                      />
+                    </el-form-item>
+                  </el-form>
                 </div>
-
-                <el-alert
-                  title="功能说明"
-                  type="info"
-                  show-icon
-                  :closable="false"
-                  style="margin-bottom: 20px;"
-                >
-                  <p>• 点击顶部操作栏的"锁定"按钮即可锁定屏幕</p>
-                  <p>• 解锁时需要输入您当前的登录密码</p>
-                </el-alert>
-
-                <el-form
-                  ref="screenLockFormRef"
-                  :model="screenLockSettings"
-                  :disabled="!canUpdateSettings"
-                  label-width="100px"
-                  label-position="left"
-                  class="screen-lock-form"
-                >
-                  <!-- 背景类型 -->
-                  <el-form-item label="背景类型">
-                    <el-radio-group v-model="screenLockSettings.backgroundType">
-                      <el-radio value="default">默认背景</el-radio>
-                      <el-radio value="image">图片背景</el-radio>
-                      <el-radio value="video">视频背景</el-radio>
-                    </el-radio-group>
-                  </el-form-item>
-
-                  <!-- 图片背景 -->
-                  <el-form-item
-                    v-if="screenLockSettings.backgroundType === 'image'"
-                    label="背景图片"
-                  >
-                    <div class="image-upload-container">
-                      <div v-if="screenLockSettings.imageUrl" class="image-preview">
-                        <Image :src="screenLockSettings.imageUrl" alt="背景图片" mode="eager" />
-                        <el-button
-                          type="danger"
-                          size="small"
-                          @click="screenLockSettings.imageUrl = ''"
-                          style="position: absolute; top: 8px; right: 8px"
-                        >
-                          <i class="fas fa-times"></i>
-                        </el-button>
-                      </div>
-                      <div v-else class="upload-placeholder">
-                        <i class="fas fa-image"></i>
-                        <span>暂无图片</span>
-                      </div>
-                      <el-input
-                        v-model="screenLockSettings.imageUrl"
-                        placeholder="输入图片URL或上传图片"
-                        clearable
-                      />
-                    </div>
-                    <div class="form-help">
-                      支持 JPG、PNG 格式，建议尺寸 1920x1080，文件大小不超过 5MB
-                    </div>
-                  </el-form-item>
-
-                  <!-- 视频背景 -->
-                  <el-form-item
-                    v-if="screenLockSettings.backgroundType === 'video'"
-                    label="背景视频"
-                  >
-                    <div class="video-upload-container">
-                      <div v-if="screenLockSettings.videoUrl" class="video-preview">
-                        <video :src="screenLockSettings.videoUrl" muted loop></video>
-                        <el-button
-                          type="danger"
-                          size="small"
-                          @click="screenLockSettings.videoUrl = ''"
-                          style="position: absolute; top: 8px; right: 8px"
-                        >
-                          <i class="fas fa-times"></i>
-                        </el-button>
-                      </div>
-                      <div v-else class="upload-placeholder">
-                        <i class="fas fa-video"></i>
-                        <span>暂无视频</span>
-                      </div>
-                      <el-input
-                        v-model="screenLockSettings.videoUrl"
-                        placeholder="输入视频URL"
-                        clearable
-                      />
-                    </div>
-                    <div class="form-help">
-                      支持 MP4、WebM 格式，建议时长 10-30 秒，文件大小不超过 50MB
-                    </div>
-                  </el-form-item>
-
-                  <!-- 锁定信息 -->
-                  <el-form-item label="锁定标题">
-                    <el-input
-                      v-model="screenLockSettings.title"
-                      placeholder="屏幕已锁定"
-                      maxlength="30"
-                      show-word-limit
-                    />
-                  </el-form-item>
-
-                  <el-form-item label="锁定提示">
-                    <el-input
-                      v-model="screenLockSettings.message"
-                      type="textarea"
-                      :rows="2"
-                      placeholder="请输入密码解锁"
-                      maxlength="100"
-                      show-word-limit
-                    />
-                  </el-form-item>
-                </el-form>
               </div>
-
             </div>
           </div>
-        </div>
 
-        <!-- 预警配置TAB -->
-        <div v-if="activeTab === 'warning'" class="tab-panel tf-tab-panel">
-          <div class="phone-warning-config-wrapper">
-            <PhoneWarningConfigView ref="warningConfigRef" />
+          <!-- 预警配置TAB -->
+          <div
+            v-if="activeTab === 'warning' && canViewField('warning.config')"
+            class="tab-panel tf-tab-panel"
+          >
+            <div class="phone-warning-config-wrapper">
+              <PhoneWarningConfigView ref="warningConfigRef" />
+            </div>
           </div>
-        </div>
 
-        <div v-if="activeTab === 'returngoods' && canViewReturngoods" class="tab-panel tf-tab-panel">
-          <Returngoods ref="returngoodsRef" />
+          <div
+            v-if="activeTab === 'returngoods' && canViewReturngoods && canViewField('returngoods.records')"
+            class="tab-panel tf-tab-panel"
+          >
+            <Returngoods ref="returngoodsRef" />
+          </div>
         </div>
       </div>
-    </div>
 
-    <MobileDialog
-      v-model="priceContactDialogVisible"
-      :title="priceContactEditIndex === null ? '新增报价联系人' : '编辑报价联系人'"
-      width="460px"
-      :show-default-footer="false"
-    >
-      <el-form label-position="top">
-        <el-form-item label="联系人姓名">
-          <el-input v-model="priceContactForm.name" maxlength="50" clearable placeholder="请输入姓名或店铺名称" />
-        </el-form-item>
-        <el-form-item label="手机号码">
-          <el-input v-model="priceContactForm.phone" maxlength="30" clearable placeholder="请输入手机号码" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="priceContactDialogVisible = false">取消</el-button>
-        <el-button type="primary" :disabled="!canUpdateSettings" @click="savePriceContact">保存</el-button>
-      </template>
-    </MobileDialog>
-
-    <!-- 添加/编辑密码对话框 -->
-    <MobileDialog
-      v-model="passwordDialogVisible"
-      :title="passwordDialogMode === 'add' ? '添加密码' : '编辑密码'"
-      width="500px"
-      :close-on-click-modal="false"
-      dialog-class="system-password-dialog"
-      :show-default-footer="false"
-    >
-      <el-form
-        ref="passwordFormRef"
-        :model="passwordForm"
-        :rules="passwordFormRules"
-        label-width="80px"
+      <MobileDialog
+        v-model="priceContactDialogVisible"
+        :title="priceContactEditIndex === null ? '新增报价联系人' : '编辑报价联系人'"
+        width="460px"
+        :show-default-footer="false"
       >
-        <el-form-item label="用户名" prop="name">
-          <el-input
-            v-model="passwordForm.name"
-            placeholder="请输入用户名（如：张三、总店、广场店等）"
-            clearable
-          />
-        </el-form-item>
-        <el-form-item label="密码" prop="password">
-          <el-input
-            v-model="passwordForm.password"
-            type="text"
-            :placeholder="passwordDialogMode === 'edit' ? '留空表示不修改密码' : '请输入密码'"
-            clearable
-            show-password
-          />
-        </el-form-item>
-        <el-form-item label="备注" prop="remarks">
-          <el-input
-            v-model="passwordForm.remarks"
-            type="textarea"
-            :rows="2"
-            placeholder="请输入备注说明（可选）"
-            clearable
-          />
-        </el-form-item>
-        <el-form-item label="状态" prop="is_active">
-          <el-switch
-            v-model="passwordForm.is_active"
-            active-text="启用"
-            inactive-text="禁用"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button type="default" @click="passwordDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="savePassword" :loading="savingPassword">
-          {{ passwordDialogMode === 'add' ? '添加' : '保存' }}
-        </el-button>
-      </template>
-    </MobileDialog>
+        <el-form label-position="top">
+          <el-form-item label="联系人姓名">
+            <el-input
+              v-model="priceContactForm.name"
+              maxlength="50"
+              clearable
+              placeholder="请输入姓名或店铺名称"
+            />
+          </el-form-item>
+          <el-form-item label="手机号码">
+            <el-input
+              v-model="priceContactForm.phone"
+              maxlength="30"
+              clearable
+              placeholder="请输入手机号码"
+            />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="priceContactDialogVisible = false">
+            取消
+          </el-button>
+          <el-button
+            type="primary"
+            :disabled="!canUpdateSettings"
+            @click="savePriceContact"
+          >
+            保存
+          </el-button>
+        </template>
+      </MobileDialog>
+
+      <!-- 添加/编辑密码对话框 -->
+      <MobileDialog
+        v-if="canViewField('settings.passwords')"
+        v-model="passwordDialogVisible"
+        :title="passwordDialogMode === 'add' ? '添加密码' : '编辑密码'"
+        width="500px"
+        :close-on-click-modal="false"
+        dialog-class="system-password-dialog"
+        :show-default-footer="false"
+      >
+        <el-form
+          ref="passwordFormRef"
+          :model="passwordForm"
+          :rules="passwordFormRules"
+          label-width="80px"
+        >
+          <el-form-item
+            v-if="canViewField('settings.passwords')"
+            label="用户名"
+            prop="name"
+          >
+            <el-input
+              v-model="passwordForm.name"
+              placeholder="请输入用户名（如：张三、总店、广场店等）"
+              clearable
+            />
+          </el-form-item>
+          <el-form-item
+            v-if="canViewField('settings.passwords')"
+            label="密码"
+            prop="password"
+          >
+            <el-input
+              v-model="passwordForm.password"
+              type="text"
+              :placeholder="passwordDialogMode === 'edit' ? '留空表示不修改密码' : '请输入密码'"
+              clearable
+              show-password
+            />
+          </el-form-item>
+          <el-form-item
+            v-if="canViewField('settings.passwords')"
+            label="备注"
+            prop="remarks"
+          >
+            <el-input
+              v-model="passwordForm.remarks"
+              type="textarea"
+              :rows="2"
+              placeholder="请输入备注说明（可选）"
+              clearable
+            />
+          </el-form-item>
+          <el-form-item
+            v-if="canViewField('settings.passwords')"
+            label="状态"
+            prop="is_active"
+          >
+            <el-switch
+              v-model="passwordForm.is_active"
+              active-text="启用"
+              inactive-text="禁用"
+            />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button
+            type="default"
+            @click="passwordDialogVisible = false"
+          >
+            取消
+          </el-button>
+          <el-button
+            v-if="canViewField('system_info.operations')"
+            type="primary"
+            :loading="savingPassword"
+            @click="savePassword"
+          >
+            {{ passwordDialogMode === 'add' ? '添加' : '保存' }}
+          </el-button>
+        </template>
+      </MobileDialog>
     </PermissionGate>
   </div>
 </template>
@@ -581,6 +928,7 @@ import { unifiedApi } from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
+import { fieldPermissions } from '@/composables/useFieldPermissions'
 import { useSiteSettingsStore } from '@/stores/siteSettings'
 import { buildLogoUrl } from '@/utils/logoUtils'
 import { PermissionGate, PageHeader } from '@/components/base'
@@ -601,7 +949,6 @@ const SITE_LOGO_ALLOWED_MIME_TYPES = {
   '.jpeg': ['image/jpeg'],
   '.png': ['image/png'],
   '.gif': ['image/gif'],
-  '.svg': ['image/svg+xml'],
   '.ico': [
     'image/x-icon',
     'image/vnd.microsoft.icon',
@@ -614,7 +961,7 @@ const SITE_LOGO_ALLOWED_MIME_TYPES = {
 
 const SITE_LOGO_ACCEPT = Object.keys(SITE_LOGO_ALLOWED_MIME_TYPES).join(',')
 const SITE_LOGO_ALLOWED_EXTENSIONS = Object.keys(SITE_LOGO_ALLOWED_MIME_TYPES)
-const SITE_LOGO_ALLOWED_LABEL = 'JPG、PNG、GIF、SVG、ICO'
+const SITE_LOGO_ALLOWED_LABEL = 'JPG、PNG、GIF、ICO'
 
 const getSiteLogoFileExtension = (fileName: string) => {
   const extension = fileName.slice(fileName.lastIndexOf('.')).toLowerCase()
@@ -639,6 +986,8 @@ const { success, error, warning, loading } = useNotification()
 const { canView, canEdit, canDelete } = usePagePermissions('settings')
 const { canView: canViewReturngoods } = usePagePermissions('returngoods')
 const canUpdateSettings = computed(() => canEdit.value)
+const SYSTEM_MODULE_KEY = 'system'
+const canViewField = (fieldKey: string) => fieldPermissions.isFieldVisible(SYSTEM_MODULE_KEY, fieldKey)
 const canManageInventoryPasswords = computed(() => canEdit.value)
 const canDeleteInventoryPasswords = computed(() => canDelete.value)
 
@@ -652,10 +1001,10 @@ const localSiteLogoPreviewUrl = ref('')
 const warningConfigRef = ref<{
   openAddDialog: () => void
   loadConfigs: () => void
-} | null>(null)
+    } | null>(null)
 const returngoodsRef = ref<{
   reload: () => void
-} | null>(null)
+    } | null>(null)
 
 // TAB管理 - 支持从 URL 参数读取
 const activeTab = ref((route.query.tab as string) || 'settings')
@@ -729,7 +1078,7 @@ const siteSettingsList = [
     categoryLabel: '基本信息',
     type: 'input',
     icon: 'fas fa-building',
-    placeholder: '腾飞数码管理系统'
+    placeholder: '请输入网站名称'
   },
   {
     key: 'siteSubtitle',
@@ -738,7 +1087,7 @@ const siteSettingsList = [
     categoryLabel: '基本信息',
     type: 'input',
     icon: 'fas fa-quote-right',
-    placeholder: '专业的手机销售管理解决方案'
+    placeholder: '请输入站点副标题'
   },
   {
     key: 'siteDomain',
@@ -747,7 +1096,7 @@ const siteSettingsList = [
     categoryLabel: '基本信息',
     type: 'input',
     icon: 'fas fa-globe',
-    placeholder: 'www.tf2025.com'
+    placeholder: '请输入网站域名'
   },
   {
     key: 'icpNumber',
@@ -756,7 +1105,7 @@ const siteSettingsList = [
     categoryLabel: '基本信息',
     type: 'input',
     icon: 'fas fa-certificate',
-    placeholder: '京ICP备12345678号'
+    placeholder: '请输入ICP备案号'
   },
   // 公司信息
   {
@@ -766,7 +1115,7 @@ const siteSettingsList = [
     categoryLabel: '公司信息',
     type: 'input',
     icon: 'fas fa-building',
-    placeholder: '腾飞数码科技有限公司'
+    placeholder: '请输入公司名称'
   },
   {
     key: 'contactPhone',
@@ -775,7 +1124,7 @@ const siteSettingsList = [
     categoryLabel: '公司信息',
     type: 'input',
     icon: 'fas fa-phone',
-    placeholder: '400-123-4567'
+    placeholder: '请输入联系电话'
   },
   {
     key: 'contactEmail',
@@ -784,7 +1133,7 @@ const siteSettingsList = [
     categoryLabel: '公司信息',
     type: 'input',
     icon: 'fas fa-envelope',
-    placeholder: 'service@tf2025.com'
+    placeholder: '请输入联系邮箱'
   },
   {
     key: 'companyAddress',
@@ -793,11 +1142,17 @@ const siteSettingsList = [
     categoryLabel: '公司信息',
     type: 'textarea',
     icon: 'fas fa-map-marker-alt',
-    placeholder: '北京市朝阳区建国路88号SOHO现代城A座2808室'
-  },
+    placeholder: '请输入公司地址'
+  }
 ]
 
-const priceSettingsList = [
+const visibleSiteSettingsList = computed(() => siteSettingsList.filter((item) => (
+  item.key === 'logoUrl'
+    ? canViewField('settings.logo')
+    : canViewField('settings.site_info')
+)))
+
+const _priceSettingsList = [
   {
     key: 'publicPriceContacts',
     label: '公开报价联系方式',
@@ -810,7 +1165,7 @@ const priceSettingsList = [
     label: '报价图片水印文字',
     type: 'input',
     icon: 'fas fa-stamp',
-    placeholder: '请输入完整水印文字，例如：腾飞数码 132-0790-3333'
+    placeholder: '请输入公开报价水印文字'
   },
   {
     key: 'publicPriceWatermarkEnabled',
@@ -901,8 +1256,7 @@ const screenLockSettings = reactive({
   imageUrl: '',
   videoUrl: '',
   title: '屏幕已锁定',
-  message: '请输入密码解锁',
-  inventoryQueryPassword: '' // 在库查询密码（已废弃，改用多密码管理）
+  message: '请输入密码解锁'
 })
 
 // 在库查询密码管理
@@ -1247,16 +1601,17 @@ const deletePassword = async (id: number) => {
 const handleKeyDown = (event: KeyboardEvent) => {
   if (event.ctrlKey || event.metaKey) {
     switch (event.key) {
-      case 's':
-        event.preventDefault()
-        saveSiteSettings()
-        break
+    case 's':
+      event.preventDefault()
+      saveSiteSettings()
+      break
     }
   }
 }
 
 // 生命周期
 onMounted(async () => {
+  await fieldPermissions.init()
   // 初始化数据
   if (canView.value) {
     try {
@@ -1289,7 +1644,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .system-management {
   padding: 24px;
-  background: var(--bg-primary, #f5f7fa);
+  background: var(--bg-primary, var(--tf-color-surface));
   min-height: 100vh;
 }
 
@@ -1332,8 +1687,8 @@ onBeforeUnmount(() => {
 .site-logo-panel {
   padding: 24px;
   border-radius: 12px;
-  background: #ffffff;
-  border: 1px solid var(--border-light, #e9ecef);
+  background: var(--color-bg-white);
+  border: 1px solid var(--border-light, var(--tf-color-border-muted));
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
@@ -1344,7 +1699,7 @@ onBeforeUnmount(() => {
   align-items: center;
   margin-bottom: 20px;
   padding-bottom: 16px;
-  border-bottom: 2px solid var(--bg-tertiary, #f8f9fa);
+  border-bottom: 2px solid var(--bg-tertiary, var(--tf-color-surface-muted));
 }
 
 .card-header-with-action .card-title,
@@ -1352,7 +1707,7 @@ onBeforeUnmount(() => {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: var(--text-primary, #2c3e50);
+  color: var(--text-primary, var(--tf-color-heading));
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1360,7 +1715,7 @@ onBeforeUnmount(() => {
 
 .card-header-with-action .card-title i,
 .card-header-with-action .section-subtitle i {
-  color: var(--primary-color, #667eea);
+  color: var(--primary-color, var(--tf-color-indigo-brand));
 }
 
 .site-logo-preview-card {
@@ -1371,8 +1726,8 @@ onBeforeUnmount(() => {
   min-height: 200px;
   padding: 20px;
   border-radius: 12px;
-  border: 1px dashed #d8dee9;
-  background: linear-gradient(180deg, #f8fbff 0%, #f3f6fb 100%);
+  border: 1px dashed var(--tf-color-border-blue-light);
+  background: linear-gradient(180deg, var(--tf-color-surface-blue) 0%, var(--tf-color-surface-cool-soft) 100%);
 }
 
 .site-logo-preview-card.clickable {
@@ -1382,7 +1737,7 @@ onBeforeUnmount(() => {
 
 .site-logo-preview-card.clickable:hover,
 .site-logo-preview-card.clickable:focus-visible {
-  border-color: var(--primary-color, #667eea);
+  border-color: var(--primary-color, var(--tf-color-indigo-brand));
   box-shadow: 0 6px 18px rgba(102, 126, 234, 0.16);
   transform: translateY(-1px);
   outline: none;
@@ -1408,12 +1763,12 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  color: var(--text-muted, #999);
+  color: var(--text-muted, var(--text-muted));
 }
 
 .site-logo-empty i {
   font-size: 30px;
-  color: #a0aec0;
+  color: var(--tf-color-gray-chakra-400);
 }
 
 .site-logo-preview-tip {
@@ -1424,7 +1779,7 @@ onBeforeUnmount(() => {
   padding: 8px 12px;
   border-radius: 8px;
   background: rgba(44, 62, 80, 0.72);
-  color: #fff;
+  color: var(--color-bg-white);
   font-size: 12px;
   line-height: 1.4;
   text-align: center;
@@ -1450,21 +1805,21 @@ onBeforeUnmount(() => {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  color: var(--text-primary, #2c3e50);
+  color: var(--text-primary, var(--tf-color-heading));
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
 .logo-editor-header h3 i {
-  color: var(--primary-color, #667eea);
+  color: var(--primary-color, var(--tf-color-indigo-brand));
 }
 
 .logo-editor-tip {
   margin: 0;
   font-size: 14px;
   line-height: 1.7;
-  color: var(--text-secondary, #6c757d);
+  color: var(--text-secondary, var(--tf-color-muted));
 }
 
 .site-logo-actions {
@@ -1477,7 +1832,7 @@ onBeforeUnmount(() => {
 .logo-editor-help {
   font-size: 12px;
   line-height: 1.6;
-  color: var(--text-muted, #999);
+  color: var(--text-muted, var(--text-muted));
 }
 
 .site-logo-hidden-input {
@@ -1500,7 +1855,7 @@ onBeforeUnmount(() => {
   border-radius: 12px;
   padding: 20px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  border: 1px solid var(--border-light, #e9ecef);
+  border: 1px solid var(--border-light, var(--tf-color-border-muted));
   display: flex;
   align-items: center;
   gap: 16px;
@@ -1516,7 +1871,7 @@ onBeforeUnmount(() => {
   width: 50px;
   height: 50px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1537,14 +1892,14 @@ onBeforeUnmount(() => {
   margin: 0 0 6px 0;
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-secondary, #6c757d);
+  color: var(--text-secondary, var(--tf-color-muted));
 }
 
 .settings-card .card-content p {
   margin: 0;
   font-size: 16px;
   font-weight: 500;
-  color: var(--text-primary, #2c3e50);
+  color: var(--text-primary, var(--tf-color-heading));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1554,14 +1909,14 @@ onBeforeUnmount(() => {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: var(--text-primary, #2c3e50);
+  color: var(--text-primary, var(--tf-color-heading));
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
 .section-subtitle i {
-  color: var(--primary-color, #667eea);
+  color: var(--primary-color, var(--tf-color-indigo-brand));
 }
 
 /* 移除旧的section-header样式，已不再使用 */
@@ -1581,16 +1936,16 @@ onBeforeUnmount(() => {
 }
 
 .site-settings-table :deep(.el-input__inner) {
-  border: 1px solid var(--border-light, #e9ecef);
+  border: 1px solid var(--border-light, var(--tf-color-border-muted));
 }
 
 .site-settings-table :deep(.el-textarea__inner) {
   border-radius: 6px;
-  border: 1px solid var(--border-light, #e9ecef);
+  border: 1px solid var(--border-light, var(--tf-color-border-muted));
 }
 
 .text-muted {
-  color: var(--text-muted, #999);
+  color: var(--text-muted, var(--text-muted));
   font-size: 13px;
 }
 
@@ -1604,7 +1959,7 @@ onBeforeUnmount(() => {
 .section-header h2 {
   margin: 0;
   font-size: 20px;
-  color: var(--text-primary, #2c3e50);
+  color: var(--text-primary, var(--tf-color-heading));
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -1612,7 +1967,7 @@ onBeforeUnmount(() => {
 }
 
 .section-header h2 i {
-  color: var(--primary-color, #667eea);
+  color: var(--primary-color, var(--tf-color-indigo-brand));
 }
 
 .section-actions {
@@ -1767,7 +2122,7 @@ onBeforeUnmount(() => {
   border-radius: 16px;
   padding: 24px;
   box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
-  border: 1px solid var(--border-light, #e9ecef);
+  border: 1px solid var(--border-light, var(--tf-color-border-muted));
   transition: all 0.3s ease;
 }
 
@@ -1781,7 +2136,7 @@ onBeforeUnmount(() => {
   align-items: center;
   margin-bottom: 20px;
   padding-bottom: 16px;
-  border-bottom: 2px solid var(--bg-tertiary, #f8f9fa);
+  border-bottom: 2px solid var(--bg-tertiary, var(--tf-color-surface-muted));
 }
 
 .card-title {
@@ -1790,13 +2145,13 @@ onBeforeUnmount(() => {
   gap: 12px;
   font-size: 18px;
   font-weight: 600;
-  color: var(--text-primary, #2c3e50);
+  color: var(--text-primary, var(--tf-color-heading));
   margin: 0;
 }
 
 .card-title i {
   font-size: 20px;
-  color: var(--primary-color, #667eea);
+  color: var(--primary-color, var(--tf-color-indigo-brand));
 }
 
 /* 功能演示框 */
@@ -1806,7 +2161,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 8px;
   padding: 20px;
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  background: linear-gradient(135deg, var(--tf-color-surface-muted) 0%, var(--tf-color-border-muted) 100%);
   border-radius: 12px;
 }
 
@@ -1826,7 +2181,7 @@ onBeforeUnmount(() => {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
   color: white;
   display: flex;
   align-items: center;
@@ -1837,12 +2192,12 @@ onBeforeUnmount(() => {
 
 .step-text {
   font-size: 14px;
-  color: var(--text-primary, #2c3e50);
+  color: var(--text-primary, var(--tf-color-heading));
 }
 
 .demo-arrow {
   font-size: 20px;
-  color: var(--primary-color, #667eea);
+  color: var(--primary-color, var(--tf-color-indigo-brand));
   margin: 4px 0;
 }
 
@@ -1860,7 +2215,7 @@ onBeforeUnmount(() => {
 
 .screen-lock-form :deep(.el-form-item__label) {
   font-weight: 500;
-  color: var(--text-primary, #2c3e50);
+  color: var(--text-primary, var(--tf-color-heading));
 }
 
 .image-upload-container,
@@ -1878,7 +2233,7 @@ onBeforeUnmount(() => {
   position: relative;
   overflow: hidden;
   border-radius: 8px;
-  border: 2px solid var(--border-light, #e9ecef);
+  border: 2px solid var(--border-light, var(--tf-color-border-muted));
 }
 
 .image-preview img,
@@ -1896,16 +2251,16 @@ onBeforeUnmount(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: var(--text-muted, #999);
-  background: var(--bg-tertiary, #f8f9fa);
-  border: 2px dashed var(--border-light, #e9ecef);
+  color: var(--text-muted, var(--text-muted));
+  background: var(--bg-tertiary, var(--tf-color-surface-muted));
+  border: 2px dashed var(--border-light, var(--tf-color-border-muted));
   border-radius: 8px;
 }
 
 .upload-placeholder i {
   font-size: 48px;
   margin-bottom: 12px;
-  color: var(--text-secondary, #6c757d);
+  color: var(--text-secondary, var(--tf-color-muted));
 }
 
 .upload-placeholder span {
@@ -1915,7 +2270,7 @@ onBeforeUnmount(() => {
 .form-help {
   margin-top: 8px;
   font-size: 12px;
-  color: var(--text-muted, #999);
+  color: var(--text-muted, var(--text-muted));
   line-height: 1.5;
 }
 
@@ -1935,11 +2290,11 @@ onBeforeUnmount(() => {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: var(--text-primary, #2c3e50);
+  color: var(--text-primary, var(--tf-color-heading));
 }
 
 .password-mask {
-  color: var(--text-muted, #999);
+  color: var(--text-muted, var(--text-muted));
   font-family: monospace;
   letter-spacing: 2px;
 }
@@ -2077,7 +2432,7 @@ onBeforeUnmount(() => {
     height: auto;
     min-height: 38px;
     padding: 9px 10px;
-    border: 1px solid var(--border-light, #e9ecef);
+    border: 1px solid var(--border-light, var(--tf-color-border-muted));
     border-radius: 12px;
     background: rgba(248, 250, 252, 0.9);
   }
@@ -2194,7 +2549,7 @@ onBeforeUnmount(() => {
       width: 100%;
       height: 100%;
       border: none;
-      background: var(--bg-primary, #f5f7fa);
+      background: var(--bg-primary, var(--tf-color-surface));
       border-radius: 8px;
     }
   }

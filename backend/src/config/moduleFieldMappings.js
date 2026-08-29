@@ -20,8 +20,8 @@ const moduleFieldMappings = {
     'memories': ['id', 'size'],
     // 手机主表 - 采购入库需要的字段
     'phones': ['id', 'imei', 'serial_number', 'brand_id', 'model_id', 'color_id',
-              'memory_id', 'purchase_cost', 'store_id', 'supplier_id',
-              'quality_grade', 'inventory_operator_id', 'Inventorytime'],
+      'memory_id', 'purchase_cost', 'store_id', 'supplier_id',
+      'quality_grade', 'inventory_operator_id', 'inventory_time'],
     // 用户表 - 用于获取入库员信息
     'users': ['id', 'name', 'username']
   },
@@ -29,8 +29,8 @@ const moduleFieldMappings = {
   // 销售页面 - sales_phonesaleview
   'sales_phonesaleview': {
     'phones': ['id', 'imei', 'serial_number', 'brand_id', 'model_id', 'color_id',
-              'memory_id', 'sale_price', 'customer_name', 'sale_operator_id',
-              'salestime', 'status'],
+      'memory_id', 'sale_price', 'customer_name', 'sale_operator_id',
+      'sale_time', 'status'],
     'customers': ['id', 'name', 'phone'],
     'users': ['id', 'name', 'username'],
     'brands': ['id', 'name'],
@@ -42,13 +42,13 @@ const moduleFieldMappings = {
   // 供应商管理页面 - suppliers_suppliersview
   'suppliers_suppliersview': {
     'suppliers': ['id', 'name', 'contact', 'phone', 'email', 'address',
-                 'status', 'created_at', 'updated_at']
+      'status', 'created_at', 'updated_at']
   },
 
   // 品牌管理页面 - brands_brandsview
   'brands_brandsview': {
     'brands': ['id', 'name', 'description', 'status', 'sort_order',
-              'created_at', 'updated_at']
+      'created_at', 'updated_at']
   },
 
   // 型号管理页面 - models_modelsview
@@ -60,43 +60,42 @@ const moduleFieldMappings = {
   // 颜色管理页面 - colors_colorsview
   'colors_colorsview': {
     'colors': ['id', 'name', 'hex_code', 'status', 'sort_order',
-              'created_at', 'updated_at']
+      'created_at', 'updated_at']
   },
 
   // 内存管理页面 - memories_memoriesview
   'memories_memoriesview': {
     'memories': ['id', 'size', 'status', 'sort_order',
-               'created_at', 'updated_at']
+      'created_at', 'updated_at']
   },
 
   // 客户管理页面 - customers_customersview
   'customers_customersview': {
     'customers': ['id', 'name', 'phone', 'email', 'address', 'status',
-                 'created_at', 'updated_at']
+      'created_at', 'updated_at']
   },
 
   // 员工管理页面 - employees_employeesview
   'employees_employeesview': {
     'users': ['id', 'username', 'name', 'email', 'phone', 'role', 'status',
-             'created_at', 'updated_at'],
+      'created_at', 'updated_at'],
     'stores': ['id', 'name']
   },
 
   // 维修管理页面 - repairs_repairsview
   'repairs_repairsview': {
-    'repairs': ['id', 'phone_id', 'customer_id', 'problem_description',
-                'repair_cost', 'status', 'created_at', 'updated_at'],
-    'phones': ['id', 'imei', 'serial_number', 'brand_id', 'model_id'],
+    'repairs': ['id', 'order_no', 'phone_id', 'customer_id', 'brand_id', 'phone_model',
+      'imei', 'problem_description', 'estimated_cost', 'actual_cost', 'status',
+      'technician_id', 'remarks', 'created_at', 'updated_at', 'completed_at'],
     'customers': ['id', 'name', 'phone'],
-    'brands': ['id', 'name'],
-    'models': ['id', 'name']
+    'brands': ['id', 'name']
   },
 
   // 租赁管理页面 - rentals_rentalsview
   'rentals_rentalsview': {
     'rentals': ['id', 'phone_id', 'customer_id', 'billing_mode', 'unit_price',
-                'term_months', 'monitoring_lock', 'start_date', 'end_date', 'returned_at', 'deposit',
-                'total_cost', 'status', 'remarks', 'created_at'],
+      'term_months', 'monitoring_lock', 'start_date', 'end_date', 'returned_at', 'deposit',
+      'total_cost', 'status', 'remarks', 'created_at'],
     'phones': ['id', 'imei', 'serial_number', 'brand_id', 'model_id'],
     'customers': ['id', 'name', 'phone'],
     'brands': ['id', 'name'],
@@ -106,7 +105,7 @@ const moduleFieldMappings = {
   // 店铺管理页面 - stores_storesview
   'stores_storesview': {
     'stores': ['id', 'name', 'location', 'manager_id', 'phone', 'status',
-              'created_at', 'updated_at'],
+      'created_at', 'updated_at'],
     'users': ['id', 'name', 'username']
   },
 
@@ -134,7 +133,7 @@ const moduleFieldMappings = {
     ],
     'users': ['id', 'name', 'username']
   }
-};
+}
 
 /**
  * 获取模块需要的字段列表
@@ -143,12 +142,12 @@ const moduleFieldMappings = {
  * @returns {Array} 字段名数组
  */
 function getModuleFields(moduleKey, tableName) {
-  const moduleConfig = moduleFieldMappings[moduleKey];
+  const moduleConfig = moduleFieldMappings[moduleKey]
   if (!moduleConfig || !moduleConfig[tableName]) {
     // 如果没有配置，返回空数组（不显示任何字段）
-    return [];
+    return []
   }
-  return moduleConfig[tableName];
+  return moduleConfig[tableName]
 }
 
 /**
@@ -156,8 +155,8 @@ function getModuleFields(moduleKey, tableName) {
  * @param {string} moduleKey 模块标识
  * @returns {Object} 表名到字段数组的映射
  */
-function getModuleAllFields(moduleKey) {
-  return moduleFieldMappings[moduleKey] || {};
+function _getModuleAllFields(moduleKey) {
+  return moduleFieldMappings[moduleKey] || {}
 }
 
 /**
@@ -168,8 +167,8 @@ function getModuleAllFields(moduleKey) {
  * @returns {boolean} 是否需要
  */
 function isFieldNeeded(moduleKey, tableName, fieldName) {
-  const fields = getModuleFields(moduleKey, tableName);
-  return fields.includes(fieldName);
+  const fields = getModuleFields(moduleKey, tableName)
+  return fields.includes(fieldName)
 }
 
 /**
@@ -180,26 +179,26 @@ function isFieldNeeded(moduleKey, tableName, fieldName) {
  * @returns {Array} 过滤后的字段列表
  */
 function filterFieldsForModule(moduleKey, tableName, allFields) {
-  const neededFields = getModuleFields(moduleKey, tableName);
+  const neededFields = getModuleFields(moduleKey, tableName)
   if (neededFields.length === 0) {
     // 如果没有配置需要的字段，返回空数组
-    return [];
+    return []
   }
 
-  return allFields.filter(field => neededFields.includes(field.name || field.field_name));
+  return allFields.filter(field => neededFields.includes(field.name || field.field_name))
 }
 
 // 导出配置（使用 scanner 需要的函数名）
 module.exports = {
   // 获取所有模块的字段配置（用于扫描器）- 包含系统模块
   getModuleAllFields: function() {
-    return moduleFieldMappings;
+    return moduleFieldMappings
   },
 
   // 获取业务模块的字段配置（不包含系统模块）
   getBusinessModuleAllFields: function() {
-    const { filterModuleConfigs } = require('./excludeSystemModules');
-    return filterModuleConfigs(moduleFieldMappings);
+    const { filterModuleConfigs } = require('./excludeSystemModules')
+    return filterModuleConfigs(moduleFieldMappings)
   },
 
   // 保留原始配置对象
@@ -208,4 +207,4 @@ module.exports = {
   getModuleFields,
   isFieldNeeded,
   filterFieldsForModule
-};
+}

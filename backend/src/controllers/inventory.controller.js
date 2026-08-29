@@ -1,14 +1,14 @@
-const log = require('../utils/log');
+const log = require('../utils/log')
 /**
  * 库存控制器
  * 处理所有库存相关的HTTP请求
  */
-const InventoryService = require('../services/inventory.service');
-const ApiResponse = require('../utils/response');
+const InventoryService = require('../services/inventory.service')
+const ApiResponse = require('../utils/response')
 
 class InventoryController {
   constructor() {
-    this.inventoryService = new InventoryService();
+    this.inventoryService = new InventoryService()
   }
 
   /**
@@ -16,11 +16,11 @@ class InventoryController {
    */
   async testInventory(req, res) {
     try {
-      const result = await this.inventoryService.testInventory();
-      ApiResponse.success(res, result.message, result.data);
+      const result = await this.inventoryService.testInventory()
+      ApiResponse.success(res, result.message, result.data)
     } catch (error) {
-      log.error('测试库存模块失败:', error);
-      ApiResponse.serverError(res, '测试库存模块失败', error);
+      log.error('测试库存模块失败:', error)
+      ApiResponse.serverError(res, '测试库存模块失败', error)
     }
   }
 
@@ -40,7 +40,7 @@ class InventoryController {
         is_settled,
         start_date,
         end_date
-      } = req.query;
+      } = req.query
 
       const filters = {
         page: parseInt(page) || 1,
@@ -53,9 +53,9 @@ class InventoryController {
         is_settled: is_settled !== undefined ? parseInt(is_settled) : undefined,
         start_date,
         end_date
-      };
+      }
 
-      const result = await this.inventoryService.getInventoryRecords(filters);
+      const result = await this.inventoryService.getInventoryRecords(filters)
 
       if (result.success) {
         ApiResponse.paginated(
@@ -63,13 +63,13 @@ class InventoryController {
           result.message,
           result.data.records,
           result.data.pagination
-        );
+        )
       } else {
-        ApiResponse.error(res, result.message, 400, result.code);
+        ApiResponse.error(res, result.message, 400, result.code)
       }
     } catch (error) {
-      log.error('获取库存记录列表失败:', error);
-      ApiResponse.serverError(res, '获取库存记录列表失败', error);
+      log.error('获取库存记录列表失败:', error)
+      ApiResponse.serverError(res, '获取库存记录列表失败', error)
     }
   }
 
@@ -78,22 +78,22 @@ class InventoryController {
    */
   async getInventoryRecordById(req, res) {
     try {
-      const { id } = req.params;
+      const { id } = req.params
 
-      const result = await this.inventoryService.getInventoryRecordById(id);
+      const result = await this.inventoryService.getInventoryRecordById(id)
 
       if (result.success) {
-        ApiResponse.success(res, result.message, result.data);
+        ApiResponse.success(res, result.message, result.data)
       } else {
         if (result.code === 'NOT_FOUND') {
-          ApiResponse.notFound(res, result.message);
+          ApiResponse.notFound(res, result.message)
         } else {
-          ApiResponse.error(res, result.message, 400, result.code);
+          ApiResponse.error(res, result.message, 400, result.code)
         }
       }
     } catch (error) {
-      log.error('获取库存记录详情失败:', error);
-      ApiResponse.serverError(res, '获取库存记录详情失败', error);
+      log.error('获取库存记录详情失败:', error)
+      ApiResponse.serverError(res, '获取库存记录详情失败', error)
     }
   }
 
@@ -102,22 +102,22 @@ class InventoryController {
    */
   async createInventoryRecord(req, res) {
     try {
-      const inventoryData = req.body;
+      const inventoryData = req.body
 
-      const result = await this.inventoryService.createInventoryRecord(inventoryData, req.user);
+      const result = await this.inventoryService.createInventoryRecord(inventoryData, req.user)
 
       if (result.success) {
-        ApiResponse.created(res, result.message, result.data);
+        ApiResponse.created(res, result.message, result.data)
       } else {
         if (result.code === 'VALIDATION_ERROR') {
-          ApiResponse.validationError(res, result.message);
+          ApiResponse.validationError(res, result.message)
         } else {
-          ApiResponse.error(res, result.message, 400, result.code);
+          ApiResponse.error(res, result.message, 400, result.code)
         }
       }
     } catch (error) {
-      log.error('创建库存记录失败:', error);
-      ApiResponse.serverError(res, '创建库存记录失败', error);
+      log.error('创建库存记录失败:', error)
+      ApiResponse.serverError(res, '创建库存记录失败', error)
     }
   }
 
@@ -126,25 +126,25 @@ class InventoryController {
    */
   async updateInventoryRecord(req, res) {
     try {
-      const { id } = req.params;
-      const inventoryData = req.body;
+      const { id } = req.params
+      const inventoryData = req.body
 
-      const result = await this.inventoryService.updateInventoryRecord(id, inventoryData, req.user);
+      const result = await this.inventoryService.updateInventoryRecord(id, inventoryData, req.user)
 
       if (result.success) {
-        ApiResponse.success(res, result.message, result.data);
+        ApiResponse.success(res, result.message, result.data)
       } else {
         if (result.code === 'NOT_FOUND') {
-          ApiResponse.notFound(res, result.message);
+          ApiResponse.notFound(res, result.message)
         } else if (result.code === 'VALIDATION_ERROR') {
-          ApiResponse.validationError(res, result.message);
+          ApiResponse.validationError(res, result.message)
         } else {
-          ApiResponse.error(res, result.message, 400, result.code);
+          ApiResponse.error(res, result.message, 400, result.code)
         }
       }
     } catch (error) {
-      log.error('更新库存记录失败:', error);
-      ApiResponse.serverError(res, '更新库存记录失败', error);
+      log.error('更新库存记录失败:', error)
+      ApiResponse.serverError(res, '更新库存记录失败', error)
     }
   }
 
@@ -153,24 +153,24 @@ class InventoryController {
    */
   async deleteInventoryRecord(req, res) {
     try {
-      const { id } = req.params;
+      const { id } = req.params
 
-      const result = await this.inventoryService.deleteInventoryRecord(id, req.user);
+      const result = await this.inventoryService.deleteInventoryRecord(id, req.user)
 
       if (result.success) {
-        ApiResponse.success(res, result.message, result.data);
+        ApiResponse.success(res, result.message, result.data)
       } else {
         if (result.code === 'NOT_FOUND') {
-          ApiResponse.notFound(res, result.message);
+          ApiResponse.notFound(res, result.message)
         } else if (result.code === 'HAS_RELATIONSHIPS') {
-          ApiResponse.error(res, result.message, 409, result.code);
+          ApiResponse.error(res, result.message, 409, result.code)
         } else {
-          ApiResponse.error(res, result.message, 400, result.code);
+          ApiResponse.error(res, result.message, 400, result.code)
         }
       }
     } catch (error) {
-      log.error('删除库存记录失败:', error);
-      ApiResponse.serverError(res, '删除库存记录失败', error);
+      log.error('删除库存记录失败:', error)
+      ApiResponse.serverError(res, '删除库存记录失败', error)
     }
   }
 
@@ -179,22 +179,22 @@ class InventoryController {
    */
   async batchUpdateSettledStatus(req, res) {
     try {
-      const { ids, is_settled } = req.body;
+      const { ids, is_settled } = req.body
 
-      const result = await this.inventoryService.batchUpdateSettledStatus(ids, is_settled, req.user);
+      const result = await this.inventoryService.batchUpdateSettledStatus(ids, is_settled, req.user)
 
       if (result.success) {
-        ApiResponse.success(res, result.message, result.data);
+        ApiResponse.success(res, result.message, result.data)
       } else {
         if (result.code === 'VALIDATION_ERROR') {
-          ApiResponse.validationError(res, result.message);
+          ApiResponse.validationError(res, result.message)
         } else {
-          ApiResponse.error(res, result.message, 400, result.code);
+          ApiResponse.error(res, result.message, 400, result.code)
         }
       }
     } catch (error) {
-      log.error('批量更新结算状态失败:', error);
-      ApiResponse.serverError(res, '批量更新结算状态失败', error);
+      log.error('批量更新结算状态失败:', error)
+      ApiResponse.serverError(res, '批量更新结算状态失败', error)
     }
   }
 
@@ -203,10 +203,10 @@ class InventoryController {
    */
   async searchInventoryRecords(req, res) {
     try {
-      const { keyword, page, limit, type, operation_type, store_id, is_settled } = req.query;
+      const { keyword, page, limit, type, operation_type, store_id, is_settled } = req.query
 
       if (!keyword) {
-        return ApiResponse.validationError(res, '搜索关键词不能为空');
+        return ApiResponse.validationError(res, '搜索关键词不能为空')
       }
 
       const filters = {
@@ -217,9 +217,9 @@ class InventoryController {
         operation_type,
         store_id: store_id ? parseInt(store_id) : undefined,
         is_settled: is_settled !== undefined ? parseInt(is_settled) : undefined
-      };
+      }
 
-      const result = await this.inventoryService.searchInventoryRecords(filters.keyword, filters);
+      const result = await this.inventoryService.searchInventoryRecords(filters.keyword, filters)
 
       if (result.success) {
         ApiResponse.paginated(
@@ -227,13 +227,13 @@ class InventoryController {
           result.message,
           result.data.records,
           result.data.pagination
-        );
+        )
       } else {
-        ApiResponse.error(res, result.message, 400, result.code);
+        ApiResponse.error(res, result.message, 400, result.code)
       }
     } catch (error) {
-      log.error('搜索库存记录失败:', error);
-      ApiResponse.serverError(res, '搜索库存记录失败', error);
+      log.error('搜索库存记录失败:', error)
+      ApiResponse.serverError(res, '搜索库存记录失败', error)
     }
   }
 
@@ -242,25 +242,25 @@ class InventoryController {
    */
   async getInventoryStats(req, res) {
     try {
-      const { store_id, product_type, start_date, end_date } = req.query;
+      const { store_id, product_type, start_date, end_date } = req.query
 
       const filters = {
         store_id: store_id ? parseInt(store_id) : undefined,
         product_type,
         start_date,
         end_date
-      };
+      }
 
-      const result = await this.inventoryService.getInventoryStats(filters);
+      const result = await this.inventoryService.getInventoryStats(filters)
 
       if (result.success) {
-        ApiResponse.success(res, result.message, result.data);
+        ApiResponse.success(res, result.message, result.data)
       } else {
-        ApiResponse.error(res, result.message, 400, result.code);
+        ApiResponse.error(res, result.message, 400, result.code)
       }
     } catch (error) {
-      log.error('获取库存统计信息失败:', error);
-      ApiResponse.serverError(res, '获取库存统计信息失败', error);
+      log.error('获取库存统计信息失败:', error)
+      ApiResponse.serverError(res, '获取库存统计信息失败', error)
     }
   }
 
@@ -269,7 +269,7 @@ class InventoryController {
    */
   async exportInventoryRecords(req, res) {
     try {
-      const { type, operation_type, store_id, is_settled, start_date, end_date } = req.query;
+      const { type, operation_type, store_id, is_settled, start_date, end_date } = req.query
 
       const filters = {
         type,
@@ -278,20 +278,20 @@ class InventoryController {
         is_settled: is_settled !== undefined ? parseInt(is_settled) : undefined,
         start_date,
         end_date
-      };
+      }
 
-      const result = await this.inventoryService.exportInventoryRecords(filters);
+      const result = await this.inventoryService.exportInventoryRecords(filters)
 
       if (result.success) {
-        ApiResponse.success(res, result.message, result.data);
+        ApiResponse.success(res, result.message, result.data)
       } else {
-        ApiResponse.error(res, result.message, 400, result.code);
+        ApiResponse.error(res, result.message, 400, result.code)
       }
     } catch (error) {
-      log.error('导出库存数据失败:', error);
-      ApiResponse.serverError(res, '导出库存数据失败', error);
+      log.error('导出库存数据失败:', error)
+      ApiResponse.serverError(res, '导出库存数据失败', error)
     }
   }
 }
 
-module.exports = InventoryController;
+module.exports = InventoryController

@@ -10,330 +10,573 @@
     module-name="首页推荐"
     permission-code="home-sections:view"
   >
-
-  <div class="home-sections-config-page">
-    <!-- 加载状态 -->
-    <div v-if="loading" class="loading-state">
-      <SectionLoading text="加载首页推荐中..." size="large" />
-    </div>
+    <div class="home-sections-config-page">
+      <!-- 加载状态 -->
+      <div
+        v-if="loading"
+        class="loading-state"
+      >
+        <SectionLoading
+          text="加载首页推荐中..."
+          size="large"
+        />
+      </div>
 
       <!-- 推荐区域列表 -->
-      <div v-else class="sections-content">
-      <el-empty v-if="sections.length === 0" description="暂无推荐区域">
-        <el-button v-if="canCreate" type="primary" @click="openCreateDialog">新增</el-button>
-      </el-empty>
-
-      <div v-else class="sections-list">
-        <div
-          v-for="section in sections"
-          :key="section.id"
-          class="section-card"
+      <div
+        v-else
+        class="sections-content"
+      >
+        <DataEmptyState
+          v-if="sections.length === 0"
+          description="暂无推荐区域"
         >
-          <div class="section-header">
-            <div class="section-info">
-              <i :class="section.icon || 'fas fa-list'"></i>
-              <div>
-                <h4>{{ section.section_name }}</h4>
-                <p class="section-key">{{ section.section_key }}</p>
-              </div>
-            </div>
-            <div class="section-actions">
-              <el-switch
-                v-model="section.is_enabled"
-                :disabled="!canEdit"
-                @change="() => toggleSection(section)"
-                active-text="启用"
-                inactive-text="禁用"
-              />
-              <el-button v-if="canEdit" plain type="primary" size="small" @click="editSection(section)" class="btn-sm">
-                <i class="fas fa-edit mr-1"></i>编辑
-              </el-button>
-              <el-button v-if="canDelete" plain type="danger" size="small" @click="deleteSection(section)" class="btn-sm">
-                <i class="fas fa-trash mr-1"></i>删除
-              </el-button>
-            </div>
-          </div>
+          <el-button
+            v-if="canCreate"
+            type="primary"
+            @click="openCreateDialog"
+          >
+            新增
+          </el-button>
+        </DataEmptyState>
 
-          <!-- 商品列表 -->
-          <div class="section-products">
-            <div class="products-header">
-              <div class="products-count-info">
-                <span class="main-count">推荐商品 ({{ section.product_count || 0 }}/{{ section.product_limit }})</span>
-                <span v-if="section.fill_count > 0" class="fill-info">
-                  <i class="fas fa-magic"></i> 保底 {{ section.fill_count }}
-                </span>
-              </div>
-              <el-button v-if="canEdit" plain type="primary" size="small" @click="manageProducts(section)" class="btn-sm">
-                <i class="fas fa-cog mr-1"></i>管理
-              </el-button>
-            </div>
-            <div v-if="section.products && section.products.length > 0" class="products-preview">
-              <div
-                v-for="product in section.products"
-                :key="product.id"
-                class="product-item"
-              >
-                <img :src="getImageUrl(product.main_image)" :alt="product.brand_name" />
-                <div class="product-info">
-                  <p class="product-name">{{ product.brand_name }} {{ product.model_name }}</p>
-                  <p class="product-price">¥{{ product.min_price || product.sale_price }}</p>
+        <div
+          v-else
+          class="sections-list"
+        >
+          <div
+            v-for="section in sections"
+            :key="section.id"
+            class="section-card"
+          >
+            <div class="section-header">
+              <div class="section-info">
+                <i
+                  v-if="canViewField('section.icon')"
+                  :class="section.icon || 'fas fa-list'"
+                />
+                <div v-if="canViewField('section.section_name') || canViewField('section.section_key')">
+                  <h4 v-if="canViewField('section.section_name')">
+                    {{ section.section_name }}
+                  </h4>
+                  <p
+                    v-if="canViewField('section.section_key')"
+                    class="section-key"
+                  >
+                    {{ section.section_key }}
+                  </p>
                 </div>
               </div>
+              <div
+                v-if="showActionColumn"
+                class="section-actions"
+              >
+                <el-switch
+                  v-if="canViewField('section.is_enabled')"
+                  v-model="section.is_enabled"
+                  :disabled="!canEdit"
+                  active-text="启用"
+                  inactive-text="禁用"
+                  @change="() => toggleSection(section)"
+                />
+                <el-button
+                  v-if="canEdit"
+                  plain
+                  type="primary"
+                  size="small"
+                  class="btn-sm"
+                  @click="editSection(section)"
+                >
+                  <i class="fas fa-edit mr-1" />编辑
+                </el-button>
+                <el-button
+                  v-if="canDelete"
+                  plain
+                  type="danger"
+                  size="small"
+                  class="btn-sm"
+                  @click="deleteSection(section)"
+                >
+                  <i class="fas fa-trash mr-1" />删除
+                </el-button>
+              </div>
             </div>
-            <div v-else class="no-products">
-              <p>暂无推荐商品</p>
+
+            <!-- 商品列表 -->
+            <div class="section-products">
+              <div
+                v-if="canViewField('products.product_info') || canViewField('system_info.operations')"
+                class="products-header"
+              >
+                <div class="products-count-info">
+                  <span
+                    v-if="canViewField('products.product_info')"
+                    class="main-count"
+                  >推荐商品 ({{ section.product_count || 0 }}/{{ section.product_limit }})</span>
+                </div>
+                <el-button
+                  v-if="canEdit && canViewField('system_info.operations')"
+                  plain
+                  type="primary"
+                  size="small"
+                  class="btn-sm"
+                  @click="manageProducts(section)"
+                >
+                  <i class="fas fa-cog mr-1" />管理
+                </el-button>
+              </div>
+              <div
+                v-if="canViewField('products.product_info') && section.products && section.products.length > 0"
+                class="products-preview"
+              >
+                <div
+                  v-for="product in section.products"
+                  :key="product.id"
+                  class="product-item"
+                >
+                  <img
+                    v-if="product.main_image"
+                    :src="getImageUrl(product.main_image)"
+                    :alt="product.brand_name"
+                  >
+                  <div class="product-info">
+                    <p class="product-name">
+                      {{ product.brand_name }} {{ product.model_name }}
+                    </p>
+                    <p
+                      v-if="canViewField('products.product_info')"
+                      class="product-price"
+                    >
+                      ¥{{ product.min_price || product.sale_price }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div
+                v-else-if="canViewField('products.product_info')"
+                class="no-products"
+              >
+                <p>暂无推荐商品</p>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- 创建/编辑推荐区域对话框 -->
-    <MobileDialog
-      v-model="showCreateDialog"
-      :title="editingSection ? '编辑推荐区域' : '新增'"
-      width="550px"
-      dialog-class="home-section-dialog"
-      :show-default-footer="false"
-      @close="handleDialogClose"
-    >
-      <el-form
-        :model="sectionForm"
-        label-width="100px"
-        :disabled="!canEditSectionForm"
-        class="home-section-form"
+      <!-- 创建/编辑推荐区域对话框 -->
+      <MobileDialog
+        v-model="showCreateDialog"
+        :title="editingSection ? '编辑推荐区域' : '新增'"
+        width="550px"
+        dialog-class="home-section-dialog"
+        :show-default-footer="false"
+        @close="handleDialogClose"
       >
-        <!-- 快捷模板选择 -->
-        <el-form-item label="快捷模板">
-          <el-select
-            v-model="selectedTemplate"
-            placeholder="选择模板快速创建（可选）"
-            clearable
-            @change="applyTemplate"
-            :disabled="!!editingSection"
-            class="w-full"
+        <el-form
+          :model="sectionForm"
+          label-width="100px"
+          :disabled="!canEditSectionForm"
+          class="home-section-form"
+        >
+          <!-- 快捷模板选择 -->
+          <el-form-item
+            v-if="canViewField('section.section_name') || canViewField('section.section_key')"
+            label="快捷模板"
           >
-            <el-option-group label="🔥 热门推荐">
-              <el-option
-                label="热门推荐"
-                value="hot_recommend"
-              >
-                <span>热门推荐</span>
-                <span class="float-right text-secondary text-xs">hot_recommend</span>
-              </el-option>
-            </el-option-group>
-            <el-option-group label="📱 手机类型">
-              <el-option label="全新机" value="new_phones">
-                <span>全新机</span>
-                <span class="float-right text-secondary text-xs">new_phones</span>
-              </el-option>
-              <el-option label="二手机" value="used_phones">
-                <span>二手机</span>
-                <span class="float-right text-secondary text-xs">used_phones</span>
-              </el-option>
-              <el-option label="原装靓机" value="quality_used">
-                <span>原装靓机</span>
-                <span class="float-right text-secondary text-xs">quality_used</span>
-              </el-option>
-            </el-option-group>
-            <el-option-group label="⭐ 特色商品">
-              <el-option label="新品上架" value="new_arrivals">
-                <span>新品上架</span>
-                <span class="float-right text-secondary text-xs">new_arrivals</span>
-              </el-option>
-              <el-option label="限时特惠" value="flash_sale">
-                <span>限时特惠</span>
-                <span class="float-right text-secondary text-xs">flash_sale</span>
-              </el-option>
-              <el-option label="品牌专卖" value="brand_exclusive">
-                <span>品牌专卖</span>
-                <span class="float-right text-secondary text-xs">brand_exclusive</span>
-              </el-option>
-            </el-option-group>
-          </el-select>
-          <template #tip>
-            <span class="tip-text">💡 选择模板会自动填充区域标识和名称</span>
-          </template>
-        </el-form-item>
-
-        <el-divider content-position="left">或手动填写</el-divider>
-
-        <el-form-item label="区域标识" required>
-          <el-input
-            v-model="sectionForm.section_key"
-            placeholder="如：hot_recommend"
-            :disabled="!!editingSection"
-          >
-            <template #append>
-              <el-button @click="generateSectionKey" :disabled="!!editingSection" title="根据区域名称自动生成">
-                <i class="fas fa-magic"></i>
-              </el-button>
-            </template>
-          </el-input>
-          <template #tip>
-            <div class="tip-text">
-              <p>✨ 唯一标识，创建后不可修改</p>
-              <p>📝 命名规则：小写字母、数字、下划线</p>
-            </div>
-          </template>
-        </el-form-item>
-        <el-form-item label="区域名称" required>
-          <el-input
-            v-model="sectionForm.section_name"
-            placeholder="如：热门推荐"
-            @blur="editingSection ? null : generateSectionKey()"
-          />
-          <template #tip>
-            <span class="tip-text">用户看到的名称，可以随时修改</span>
-          </template>
-        </el-form-item>
-        <el-form-item label="图标">
-          <el-input v-model="sectionForm.icon" placeholder="如：fas fa-fire">
-            <template #prepend>
-              <i :class="sectionForm.icon || 'fas fa-list'"></i>
-            </template>
-          </el-input>
-        </el-form-item>
-        <el-form-item label="显示数量">
-          <el-input-number v-model="sectionForm.product_limit" :min="1" :max="50" />
-          <template #tip>
-            <span class="tip-text">📊 同时显示的商品数量。即使选择了更多商品，也只会显示前 N 条。超出部分会按排序在销售后自动补上</span>
-          </template>
-        </el-form-item>
-        <el-form-item label="补齐数量">
-          <el-input-number v-model="sectionForm.fill_count" :min="0" :max="50" />
-          <template #tip>
-            <span class="tip-text">🔧 自动补齐到此数量（0表示不补齐）。当已选在库商品少于此数量时，系统会从在库商品中随机补齐。通常设置为显示数量的 60%-100%</span>
-          </template>
-        </el-form-item>
-        <el-form-item label="排序">
-          <el-input-number v-model="sectionForm.sort_order" :min="0" />
-          <template #tip>
-            <span class="tip-text">数值越小越靠前</span>
-          </template>
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-switch v-model="sectionForm.is_enabled" active-text="启用" inactive-text="禁用" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button type="default" @click="showCreateDialog = false">取消</el-button>
-        <el-button v-if="canEditSectionForm" type="primary" @click="saveSection" :loading="saving">保存</el-button>
-      </template>
-    </MobileDialog>
-
-    <!-- 管理商品对话框 -->
-    <MobileDialog
-      v-model="showProductsDialog"
-      :title="`管理商品 - ${currentSection?.section_name}`"
-      width="900px"
-      dialog-class="home-section-products-dialog"
-      :show-default-footer="false"
-      @close="handleProductsDialogClose"
-    >
-      <div v-if="currentSection" class="products-manager">
-        <UnifiedSearchPanel :expanded="true">
-          <template #primary>
-            <el-autocomplete
-              v-model="searchKeyword"
-              :fetch-suggestions="searchProducts"
-              placeholder="搜索商品名称、品牌、型号"
-              :trigger-on-focus="false"
-              :disabled="!canEdit"
-              @select="handleProductSelect"
+            <el-select
+              v-model="selectedTemplate"
+              placeholder="选择模板快速创建（可选）"
+              clearable
+              :disabled="!!editingSection"
+              class="w-full"
+              @change="applyTemplate"
             >
-              <template #default="{ item }">
-                <div class="search-result-item">
-                  <img v-if="item.main_image" :src="getImageUrl(item.main_image)" class="product-thumb" />
-                  <div>
-                    <div class="product-name">{{ item.display_text }}</div>
-                    <div class="product-price" v-if="item.price">¥{{ item.price }}</div>
+              <el-option-group label="🔥 热门推荐">
+                <el-option
+                  label="热门推荐"
+                  value="hot_recommend"
+                >
+                  <span>热门推荐</span>
+                  <span class="float-right text-secondary text-xs">hot_recommend</span>
+                </el-option>
+              </el-option-group>
+              <el-option-group label="📱 手机类型">
+                <el-option
+                  label="全新机"
+                  value="new_phones"
+                >
+                  <span>全新机</span>
+                  <span class="float-right text-secondary text-xs">new_phones</span>
+                </el-option>
+                <el-option
+                  label="二手机"
+                  value="used_phones"
+                >
+                  <span>二手机</span>
+                  <span class="float-right text-secondary text-xs">used_phones</span>
+                </el-option>
+                <el-option
+                  label="原装靓机"
+                  value="quality_used"
+                >
+                  <span>原装靓机</span>
+                  <span class="float-right text-secondary text-xs">quality_used</span>
+                </el-option>
+              </el-option-group>
+              <el-option-group label="⭐ 特色商品">
+                <el-option
+                  label="新品上架"
+                  value="new_arrivals"
+                >
+                  <span>新品上架</span>
+                  <span class="float-right text-secondary text-xs">new_arrivals</span>
+                </el-option>
+                <el-option
+                  label="限时特惠"
+                  value="flash_sale"
+                >
+                  <span>限时特惠</span>
+                  <span class="float-right text-secondary text-xs">flash_sale</span>
+                </el-option>
+                <el-option
+                  label="品牌专卖"
+                  value="brand_exclusive"
+                >
+                  <span>品牌专卖</span>
+                  <span class="float-right text-secondary text-xs">brand_exclusive</span>
+                </el-option>
+              </el-option-group>
+            </el-select>
+            <template #tip>
+              <span class="tip-text">💡 选择模板会自动填充区域标识和名称</span>
+            </template>
+          </el-form-item>
+
+          <el-divider content-position="left">
+            或手动填写
+          </el-divider>
+
+          <el-form-item
+            v-if="canViewField('section.section_key')"
+            label="区域标识"
+            required
+          >
+            <el-input
+              v-model="sectionForm.section_key"
+              placeholder="如：hot_recommend"
+              :disabled="!!editingSection"
+            >
+              <template #append>
+                <el-button
+                  :disabled="!!editingSection"
+                  title="根据区域名称自动生成"
+                  @click="generateSectionKey"
+                >
+                  <i class="fas fa-magic" />
+                </el-button>
+              </template>
+            </el-input>
+            <template #tip>
+              <div class="tip-text">
+                <p>✨ 唯一标识，创建后不可修改</p>
+                <p>📝 命名规则：小写字母、数字、下划线</p>
+              </div>
+            </template>
+          </el-form-item>
+          <el-form-item
+            v-if="canViewField('section.section_name')"
+            label="区域名称"
+            required
+          >
+            <el-input
+              v-model="sectionForm.section_name"
+              placeholder="如：热门推荐"
+              @blur="editingSection ? null : generateSectionKey()"
+            />
+            <template #tip>
+              <span class="tip-text">用户看到的名称，可以随时修改</span>
+            </template>
+          </el-form-item>
+          <el-form-item
+            v-if="canViewField('section.icon')"
+            label="图标"
+          >
+            <el-input
+              v-model="sectionForm.icon"
+              placeholder="如：fas fa-fire"
+            >
+              <template #prepend>
+                <i :class="sectionForm.icon || 'fas fa-list'" />
+              </template>
+            </el-input>
+          </el-form-item>
+          <el-form-item
+            v-if="canViewField('section.product_limit')"
+            label="显示数量"
+          >
+            <el-input-number
+              v-model="sectionForm.product_limit"
+              :min="1"
+              :max="50"
+            />
+            <template #tip>
+              <span class="tip-text">同时显示的商品数量，只展示后台已选择且仍有效的商品。</span>
+            </template>
+          </el-form-item>
+          <el-form-item
+            v-if="canViewField('section.sort_order')"
+            label="排序"
+          >
+            <el-input-number
+              v-model="sectionForm.sort_order"
+              :min="0"
+            />
+            <template #tip>
+              <span class="tip-text">数值越小越靠前</span>
+            </template>
+          </el-form-item>
+          <el-form-item
+            v-if="canViewField('section.is_enabled')"
+            label="状态"
+          >
+            <el-switch
+              v-model="sectionForm.is_enabled"
+              active-text="启用"
+              inactive-text="禁用"
+            />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button
+            type="default"
+            @click="showCreateDialog = false"
+          >
+            取消
+          </el-button>
+          <el-button
+            v-if="canEditSectionForm"
+            type="primary"
+            :loading="saving"
+            @click="saveSection"
+          >
+            保存
+          </el-button>
+        </template>
+      </MobileDialog>
+
+      <!-- 管理商品对话框 -->
+      <MobileDialog
+        v-model="showProductsDialog"
+        :title="`管理商品 - ${currentSection?.section_name}`"
+        width="900px"
+        dialog-class="home-section-products-dialog"
+        :show-default-footer="false"
+        @close="handleProductsDialogClose"
+      >
+        <div
+          v-if="currentSection"
+          class="products-manager"
+        >
+          <UnifiedSearchPanel
+            v-if="canViewField('products.product_search')"
+            :expanded="true"
+          >
+            <template #primary>
+              <el-autocomplete
+                v-model="searchKeyword"
+                :fetch-suggestions="searchProducts"
+                placeholder="搜索商品名称、品牌、型号"
+                :trigger-on-focus="false"
+                :disabled="!canEdit"
+                @select="handleProductSelect"
+              >
+                <template #default="{ item }">
+                  <div class="search-result-item">
+                    <img
+                      v-if="item.main_image"
+                      :src="getImageUrl(item.main_image)"
+                      class="product-thumb"
+                    >
+                    <div>
+                      <div class="product-name">
+                        {{ item.display_text }}
+                      </div>
+                      <div
+                        v-if="item.price"
+                        class="product-price"
+                      >
+                        ¥{{ item.price }}
+                      </div>
+                    </div>
+                  </div>
+                </template>
+              </el-autocomplete>
+            </template>
+            <div class="form-group filter-item">
+              <el-select
+                v-model="productType"
+                placeholder="商品类型"
+                class="w-28"
+                :disabled="!canEdit"
+              >
+                <el-option
+                  label="全部"
+                  value="all"
+                />
+                <el-option
+                  label="全新机"
+                  value="new"
+                />
+                <el-option
+                  label="二手机"
+                  value="used"
+                />
+              </el-select>
+            </div>
+          </UnifiedSearchPanel>
+
+          <!-- 可选商品列表 -->
+          <div
+            v-if="canViewField('products.product_info')"
+            class="available-products-section"
+          >
+            <div class="list-header">
+              <span>可选商品 ({{ availableProducts.length }})</span>
+              <el-button
+                text
+                size="small"
+                :disabled="!canEdit"
+                @click="loadAvailableProducts"
+              >
+                <i class="fas fa-sync" />
+                <span>刷新</span>
+              </el-button>
+            </div>
+            <DataEmptyState
+              v-if="availableProducts.length === 0"
+              description="暂无商品"
+              :image-size="60"
+            />
+            <div
+              v-else
+              class="available-products-grid"
+            >
+              <div
+                v-for="product in availableProducts"
+                :key="product.template_id || product.phone_id"
+                class="available-product-card"
+                :class="{ 'is-added': isProductAdded(product) }"
+                @click="addProductFromAvailable(product)"
+              >
+                <img
+                  v-if="product.main_image"
+                  :src="getImageUrl(product.main_image)"
+                  class="product-thumb"
+                >
+                <div class="product-info">
+                  <div class="product-name">
+                    {{ product.model_name }} {{ product.color_name }}
+                  </div>
+                  <div
+                    v-if="product.price"
+                    class="product-price"
+                  >
+                    ¥{{ product.price }}
                   </div>
                 </div>
-              </template>
-            </el-autocomplete>
-          </template>
-          <div class="form-group filter-item">
-            <el-select v-model="productType" placeholder="商品类型" class="w-28" :disabled="!canEdit">
-              <el-option label="全部" value="all" />
-              <el-option label="全新机" value="new" />
-              <el-option label="二手机" value="used" />
-            </el-select>
-          </div>
-        </UnifiedSearchPanel>
-
-        <!-- 可选商品列表 -->
-        <div class="available-products-section">
-          <div class="list-header">
-            <span>可选商品 ({{ availableProducts.length }})</span>
-            <el-button text size="small" :disabled="!canEdit" @click="loadAvailableProducts">
-              <i class="fas fa-sync"></i>
-              <span>刷新</span>
-            </el-button>
-          </div>
-          <el-empty v-if="availableProducts.length === 0" description="暂无商品" :image-size="60" />
-          <div v-else class="available-products-grid">
-            <div
-              v-for="product in availableProducts"
-              :key="product.template_id || product.phone_id"
-              class="available-product-card"
-              :class="{ 'is-added': isProductAdded(product) }"
-              @click="addProductFromAvailable(product)"
-            >
-              <img v-if="product.main_image" :src="getImageUrl(product.main_image)" class="product-thumb" />
-              <div class="product-info">
-                <div class="product-name">{{ product.model_name }} {{ product.color_name }}</div>
-                <div class="product-price" v-if="product.price">¥{{ product.price }}</div>
-              </div>
-              <div v-if="isProductAdded(product)" class="added-badge">
-                <i class="fas fa-check"></i>
+                <div
+                  v-if="isProductAdded(product)"
+                  class="added-badge"
+                >
+                  <i class="fas fa-check" />
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- 已添加的商品列表 -->
-        <div class="products-list-section">
-          <div class="list-header">
-            <span>已添加商品 ({{ sectionProducts.length }})</span>
-            <el-button v-if="canDelete" plain type="danger" size="small" @click="clearAllProducts" class="btn-sm">
-              <i class="fas fa-trash mr-1"></i>清空
-            </el-button>
-          </div>
-          <el-empty v-if="sectionProducts.length === 0" description="暂无商品" :image-size="80" />
-          <draggable
-            v-else
-            v-model="sectionProducts"
-            item-key="id"
-            @end="handleDragEnd"
-            :disabled="!canEdit"
-            class="products-grid"
-            :animation="200"
+          <!-- 已添加的商品列表 -->
+          <div
+            v-if="canViewField('products.product_info') || canViewField('system_info.operations')"
+            class="products-list-section"
           >
-            <template #item="{ element: product }">
-              <div class="product-card">
-                  <div v-if="canEdit" class="product-remove" @click="removeProduct(product)">
-                    <i class="fas fa-times"></i>
+            <div class="list-header">
+              <span>已添加商品 ({{ sectionProducts.length }})</span>
+              <el-button
+                v-if="canDelete"
+                plain
+                type="danger"
+                size="small"
+                class="btn-sm"
+                @click="clearAllProducts"
+              >
+                <i class="fas fa-trash mr-1" />清空
+              </el-button>
+            </div>
+            <DataEmptyState
+              v-if="sectionProducts.length === 0"
+              description="暂无商品"
+              :image-size="80"
+            />
+            <draggable
+              v-else
+              v-model="sectionProducts"
+              item-key="id"
+              :disabled="!canEdit"
+              class="products-grid"
+              :animation="200"
+              @end="handleDragEnd"
+            >
+              <template #item="{ element: product }">
+                <div class="product-card">
+                  <div
+                    v-if="canEdit && canViewField('system_info.operations')"
+                    class="product-remove"
+                    @click="removeProduct(product)"
+                  >
+                    <i class="fas fa-times" />
                   </div>
-                  <img :src="getImageUrl(product.main_image)" :alt="product.brand_name" />
-                  <div class="product-details">
-                    <p class="product-name">{{ product.model_name }} {{ product.color_name }}</p>
-                    <p class="product-price">¥{{ product.min_price || product.sale_price }}</p>
+                  <img
+                    v-if="product.main_image && canViewField('products.product_info')"
+                    :src="getImageUrl(product.main_image)"
+                    :alt="product.brand_name"
+                  >
+                  <div
+                    v-if="canViewField('products.product_info')"
+                    class="product-details"
+                  >
+                    <p class="product-name">
+                      {{ product.model_name }} {{ product.color_name }}
+                    </p>
+                    <p class="product-price">
+                      ¥{{ product.min_price || product.sale_price }}
+                    </p>
                   </div>
                   <div class="drag-handle">
-                    <i class="fas fa-grip-vertical"></i>
+                    <i class="fas fa-grip-vertical" />
                   </div>
                 </div>
               </template>
             </draggable>
+          </div>
         </div>
-      </div>
-      <template #footer>
-        <el-button type="default" @click="showProductsDialog = false">取消</el-button>
-        <el-button v-if="canEdit" type="primary" @click="saveProducts" :loading="savingProducts">保存</el-button>
-      </template>
-    </MobileDialog>
-  </div>
+        <template #footer>
+          <el-button
+            type="default"
+            @click="showProductsDialog = false"
+          >
+            取消
+          </el-button>
+          <el-button
+            v-if="canEdit"
+            type="primary"
+            :loading="savingProducts"
+            @click="saveProducts"
+          >
+            保存
+          </el-button>
+        </template>
+      </MobileDialog>
+    </div>
   </PermissionGate>
 </template>
 
@@ -361,19 +604,26 @@ import {
 import type { HomeSection, HomeSectionProduct, SearchProduct } from '@/api/home-sections'
 import { formatImageUrl } from '@/utils/format'
 import { usePagePermissions } from '@/composables/usePagePermissions'
+import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useLoadingState } from '@/composables'
 import { logger } from '@/utils/logger'
 import type { HeaderAction } from '@/types'
-const router = useRouter()
+const _router = useRouter()
 const homeSectionPermissions = usePagePermissions('h5-admin-home-sections')
 const { handleNoPermission } = homeSectionPermissions
 const canView = computed(() => homeSectionPermissions.canView.value)
 const canCreate = computed(() => homeSectionPermissions.canCreate.value)
 const canEdit = computed(() => homeSectionPermissions.canEdit.value)
 const canDelete = computed(() => homeSectionPermissions.canDelete.value)
+const HOME_SECTIONS_MODULE_KEY = 'h5_admin_home_sectionsview'
+const canViewField = (fieldKey: string) => fieldPermissions.isFieldVisible(HOME_SECTIONS_MODULE_KEY, fieldKey)
+const showActionColumn = computed(() => shouldShowActionColumn(
+  canViewField('system_info.operations'),
+  [canEdit.value, canDelete.value]
+))
 
 // 注入父组件提供的注册方法
-const registerHeaderActions = inject<(actions: HeaderAction[]) => void>('registerHeaderActions')
+const registerHeaderActions = inject<(_actions: HeaderAction[]) => void>('registerHeaderActions')
 const clearHeaderActions = inject<() => void>('clearHeaderActions')
 
 const { loading } = useLoadingState()
@@ -409,10 +659,8 @@ const sectionForm = ref({
   section_type: 'products' as 'products' | 'banner' | 'custom',
   icon: 'fas fa-list',
   product_limit: 10,
-  fill_count: 0,
   sort_order: 0,
-  is_enabled: true,
-  auto_fill: false
+  is_enabled: true
 })
 
 const openCreateDialog = () => {
@@ -429,17 +677,15 @@ const openCreateDialog = () => {
     section_type: 'products',
     icon: 'fas fa-list',
     product_limit: 10,
-    fill_count: 0,
     sort_order: 0,
-    is_enabled: true,
-    auto_fill: false
+    is_enabled: true
   }
   showCreateDialog.value = true
 }
 
 // 获取图片URL - 使用统一的图片URL处理函数
 const getImageUrl = (imageUrl: string): string => {
-  if (!imageUrl) return 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22 viewBox=%220 0 200 200%22%3E%3Crect width=%22200%22 height=%22200%22 fill=%22%23f5f5f5%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23999%22 font-size=%2216%22%3ENo Image%3C/text%3E%3C/svg%3E'
+  if (!imageUrl) return ''
   return formatImageUrl(imageUrl)
 }
 
@@ -458,9 +704,15 @@ const loadSections = async () => {
     const data = response.data || response || []
     // 转换数据格式，确保布尔值正确
     sections.value = (Array.isArray(data) ? data : []).map((section: any) => ({
-      ...section,
+      id: section.id,
+      section_key: section.section_key,
+      section_name: section.section_name,
+      section_type: section.section_type,
+      icon: section.icon,
       is_enabled: Boolean(section.is_enabled),
-      auto_fill: Boolean(section.auto_fill)
+      sort_order: section.sort_order,
+      product_limit: section.product_limit,
+      product_count: section.product_count
     }))
 
     // 加载每个区域的部分商品用于预览
@@ -498,7 +750,11 @@ const toggleSection = async (section: HomeSection) => {
     if (!section || !section.id) {
       throw new Error('无效的区域对象')
     }
-    await updateHomeSection(section.id, section)
+    if (!canViewField('section.is_enabled')) {
+      section.is_enabled = !section.is_enabled
+      return
+    }
+    await updateHomeSection(section.id, { id: section.id, is_enabled: section.is_enabled })
     ElMessage.success(section.is_enabled ? '已启用' : '已禁用')
   } catch (error) {
     logger.error('更新区域状态失败:', error)
@@ -524,10 +780,8 @@ const editSection = (section: HomeSection) => {
     section_type: section.section_type,
     icon: section.icon,
     product_limit: section.product_limit,
-    fill_count: section.fill_count || 0,
     sort_order: section.sort_order,
-    is_enabled: Boolean(section.is_enabled),
-    auto_fill: Boolean(section.auto_fill)
+    is_enabled: Boolean(section.is_enabled)
   }
   showCreateDialog.value = true
 }
@@ -577,11 +831,23 @@ const saveSection = async () => {
 
   saving.value = true
   try {
+    const fieldMap: Record<string, string> = {
+      section_key: 'section.section_key',
+      section_name: 'section.section_name',
+      section_type: 'section.section_key',
+      icon: 'section.icon',
+      product_limit: 'section.product_limit',
+      sort_order: 'section.sort_order',
+      is_enabled: 'section.is_enabled'
+    }
+    const payload = Object.fromEntries(Object.entries(sectionForm.value).filter(([key]) => (
+      canViewField(fieldMap[key] || key)
+    )))
     if (editingSection.value) {
-      await updateHomeSection(editingSection.value.id, sectionForm.value)
+      await updateHomeSection(editingSection.value.id, payload)
       ElMessage.success('更新成功')
     } else {
-      await createHomeSection(sectionForm.value)
+      await createHomeSection(payload)
       ElMessage.success('创建成功')
     }
     showCreateDialog.value = false
@@ -684,7 +950,7 @@ const addProductFromAvailable = async (product: SearchProduct) => {
 }
 
 // 搜索商品
-const searchProducts = (queryString: string, cb: (data: any[]) => void) => {
+const searchProducts = (queryString: string, cb: (_data: any[]) => void) => {
   if (!canEdit.value) {
     handleNoPermission('edit')
     cb([])
@@ -910,10 +1176,8 @@ const handleDialogClose = () => {
     section_type: 'products',
     icon: 'fas fa-list',
     product_limit: 10,
-    fill_count: 0,
     sort_order: 0,
-    is_enabled: true,
-    auto_fill: false
+    is_enabled: true
   }
 }
 
@@ -969,6 +1233,7 @@ watch(canCreate, () => {
 })
 
 onMounted(() => {
+  void fieldPermissions.init()
   void initializePageData()
   registerPageHeaderActions()
 })
@@ -999,8 +1264,8 @@ onUnmounted(() => {
   }
 
   .section-card {
-    background: #fff;
-    border: 1px solid #e5e7eb;
+    background: var(--color-bg-white);
+    border: 1px solid var(--tf-color-neutral-200);
     border-radius: 12px;
     padding: 20px;
     transition: all 0.3s;
@@ -1024,7 +1289,7 @@ onUnmounted(() => {
 
         i {
           font-size: 24px;
-          color: #667eea;
+          color: var(--tf-color-indigo-brand);
         }
 
         h4 {
@@ -1036,7 +1301,7 @@ onUnmounted(() => {
 
         .section-key {
           font-size: 12px;
-          color: #999;
+          color: var(--text-muted);
           margin: 0;
           word-break: break-all;
         }
@@ -1060,7 +1325,7 @@ onUnmounted(() => {
     }
 
     .section-products {
-      border-top: 1px solid #f0f0f0;
+      border-top: 1px solid var(--tf-color-gray-200);
       padding-top: 16px;
 
       .products-header {
@@ -1069,7 +1334,7 @@ onUnmounted(() => {
         align-items: center;
         margin-bottom: 12px;
         font-size: 14px;
-        color: #666;
+        color: var(--text-secondary);
 
         .products-count-info {
           display: flex;
@@ -1078,7 +1343,7 @@ onUnmounted(() => {
 
           .main-count {
             font-weight: 500;
-            color: #333;
+            color: var(--text-primary);
           }
 
           .fill-info {
@@ -1086,8 +1351,8 @@ onUnmounted(() => {
             align-items: center;
             gap: 4px;
             font-size: 12px;
-            color: #667eea;
-            background: #f0f4ff;
+            color: var(--tf-color-indigo-brand);
+            background: var(--tf-color-indigo-surface);
             padding: 2px 8px;
             border-radius: 12px;
 
@@ -1109,14 +1374,14 @@ onUnmounted(() => {
           align-items: center;
           gap: 6px;
           padding: 10px;
-          background: #f9fafb;
-          border: 1px solid #e5e7eb;
+          background: var(--tf-color-neutral-50);
+          border: 1px solid var(--tf-color-neutral-200);
           border-radius: 8px;
           transition: all 0.2s;
 
           &:hover {
-            border-color: #667eea;
-            background: #f0f4ff;
+            border-color: var(--tf-color-indigo-brand);
+            background: var(--tf-color-indigo-surface);
             transform: translateY(-2px);
           }
 
@@ -1135,7 +1400,7 @@ onUnmounted(() => {
 
             .product-name {
               font-size: 11px;
-              color: #333;
+              color: var(--text-primary);
               margin: 0 0 4px;
               overflow: hidden;
               text-overflow: ellipsis;
@@ -1144,7 +1409,7 @@ onUnmounted(() => {
 
             .product-price {
               font-size: 13px;
-              color: #ff1744;
+              color: var(--tf-color-accent-pink);
               font-weight: 600;
               margin: 0;
             }
@@ -1155,7 +1420,7 @@ onUnmounted(() => {
       .no-products {
         text-align: center;
         padding: 20px;
-        color: #999;
+        color: var(--text-muted);
         font-size: 14px;
       }
     }
@@ -1164,7 +1429,7 @@ onUnmounted(() => {
 
 .tip-text {
   font-size: 12px;
-  color: #999;
+  color: var(--text-muted);
   line-height: 1.6;
 
   p {
@@ -1198,16 +1463,16 @@ onUnmounted(() => {
       }
 
       &::-webkit-scrollbar-track {
-        background: #f1f1f1;
+        background: var(--tf-color-gray-100);
         border-radius: 3px;
       }
 
       &::-webkit-scrollbar-thumb {
-        background: #c1c1c1;
+        background: var(--tf-color-gray-300);
         border-radius: 3px;
 
         &:hover {
-          background: #a8a8a8;
+          background: var(--tf-color-gray-400);
         }
       }
 
@@ -1218,15 +1483,15 @@ onUnmounted(() => {
         align-items: center;
         gap: 6px;
         padding: 10px;
-        background: #f9fafb;
-        border: 1px solid #e5e7eb;
+        background: var(--tf-color-neutral-50);
+        border: 1px solid var(--tf-color-neutral-200);
         border-radius: 8px;
         cursor: move;
         transition: all 0.3s;
 
         &:hover {
-          border-color: #667eea;
-          background: #f0f4ff;
+          border-color: var(--tf-color-indigo-brand);
+          background: var(--tf-color-indigo-surface);
           transform: translateY(-2px);
           box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
         }
@@ -1243,12 +1508,12 @@ onUnmounted(() => {
           background: rgba(255, 255, 255, 0.9);
           border-radius: 4px;
           cursor: pointer;
-          color: #999;
+          color: var(--text-muted);
           z-index: 1;
 
           &:hover {
-            background: #fee;
-            color: #f56565;
+            background: var(--tf-color-red-surface-light);
+            color: var(--tf-color-red-chakra);
           }
         }
 
@@ -1271,7 +1536,7 @@ onUnmounted(() => {
 
           .product-name {
             font-size: 11px;
-            color: #333;
+            color: var(--text-primary);
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -1280,12 +1545,12 @@ onUnmounted(() => {
 
           .product-specs {
             font-size: 11px;
-            color: #999;
+            color: var(--text-muted);
           }
 
           .product-price {
             font-size: 13px;
-            color: #ff1744;
+            color: var(--tf-color-accent-pink);
             font-weight: 600;
           }
         }
@@ -1294,11 +1559,11 @@ onUnmounted(() => {
           position: absolute;
           bottom: 8px;
           left: 8px;
-          color: #ccc;
+          color: var(--tf-color-gray-300-solid);
           cursor: move;
 
           &:hover {
-            color: #667eea;
+            color: var(--tf-color-indigo-brand);
           }
         }
       }
@@ -1321,12 +1586,12 @@ onUnmounted(() => {
 
   .product-name {
     font-size: 14px;
-    color: #333;
+    color: var(--text-primary);
   }
 
   .product-price {
     font-size: 12px;
-    color: #ff1744;
+    color: var(--tf-color-accent-pink);
   }
 }
 
@@ -1334,7 +1599,7 @@ onUnmounted(() => {
 .available-products-section {
   margin-top: 20px;
   padding-top: 20px;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid var(--tf-color-gray-200);
 
   .available-products-grid {
     display: grid;
@@ -1351,16 +1616,16 @@ onUnmounted(() => {
     }
 
     &::-webkit-scrollbar-track {
-      background: #f1f1f1;
+      background: var(--tf-color-gray-100);
       border-radius: 3px;
     }
 
     &::-webkit-scrollbar-thumb {
-      background: #c1c1c1;
+      background: var(--tf-color-gray-300);
       border-radius: 3px;
 
       &:hover {
-        background: #a8a8a8;
+        background: var(--tf-color-gray-400);
       }
     }
   }
@@ -1372,21 +1637,21 @@ onUnmounted(() => {
     align-items: center;
     gap: 6px;
     padding: 10px;
-    background: #f9fafb;
-    border: 1px solid #e5e7eb;
+    background: var(--tf-color-neutral-50);
+    border: 1px solid var(--tf-color-neutral-200);
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s;
 
     &:hover {
-      border-color: #667eea;
-      background: #f0f4ff;
+      border-color: var(--tf-color-indigo-brand);
+      background: var(--tf-color-indigo-surface);
       transform: translateY(-2px);
     }
 
     &.is-added {
-      background: #f0fdf4;
-      border-color: #22c55e;
+      background: var(--tf-color-green-50);
+      border-color: var(--tf-color-green-500);
       opacity: 0.8;
 
       .added-badge {
@@ -1399,7 +1664,7 @@ onUnmounted(() => {
         align-items: center;
         justify-content: center;
         background: rgba(34, 197, 94, 0.9);
-        color: #fff;
+        color: var(--color-bg-white);
         border-radius: 50%;
         font-size: 12px;
         z-index: 1;
@@ -1421,7 +1686,7 @@ onUnmounted(() => {
 
       .product-name {
         font-size: 11px;
-        color: #333;
+        color: var(--text-primary);
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -1430,7 +1695,7 @@ onUnmounted(() => {
 
       .product-price {
         font-size: 13px;
-        color: #ff1744;
+        color: var(--tf-color-accent-pink);
         font-weight: 600;
         margin-bottom: 4px;
       }
@@ -1583,7 +1848,7 @@ onUnmounted(() => {
     height: auto;
     margin-bottom: 8px;
     padding: 0 !important;
-    color: #334155;
+    color: var(--tf-color-slate-700);
     font-size: 13px;
     font-weight: 700;
     line-height: 1.4;

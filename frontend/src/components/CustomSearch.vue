@@ -1,8 +1,11 @@
 <template>
-  <div class="custom-search" :class="{ 'mobile-mode': isMobile }">
+  <div
+    class="custom-search"
+    :class="{ 'mobile-mode': isMobile }"
+  >
     <!-- 主搜索输入框 -->
     <div class="search-input-container">
-      <i class="fas fa-search search-icon"></i>
+      <i class="fas fa-search search-icon" />
       <input
         ref="mainSearchInput"
         v-model="searchQuery"
@@ -12,18 +15,21 @@
         :title="placeholder === '搜索 IMEI/序列号/入库价格' ? '支持搜索：IMEI号、序列号、入库价格' : ''"
         @input="handleSearchInput"
         @keyup.enter="handleSearch"
-      />
+      >
       <button
         v-if="searchQuery"
         class="clear-btn"
         @click="clearSearch"
       >
-        <i class="fas fa-times"></i>
+        <i class="fas fa-times" />
       </button>
     </div>
 
     <!-- PC端筛选条件 -->
-    <div v-if="!isMobile" class="filters-row">
+    <div
+      v-if="!isMobile"
+      class="filters-row"
+    >
       <div
         v-for="filter in filters"
         :key="filter.key"
@@ -37,7 +43,9 @@
           class="filter-select"
           @change="handleFilterChange"
         >
-          <option value="">全部</option>
+          <option value="">
+            全部
+          </option>
           <option
             v-for="option in filter.options"
             :key="option.value"
@@ -47,7 +55,10 @@
           </option>
         </select>
         <!-- 可编辑选择器 - 使用原生select配合datalist -->
-        <div v-else-if="filter.type === 'editable-select'" class="editable-select">
+        <div
+          v-else-if="filter.type === 'editable-select'"
+          class="editable-select"
+        >
           <input
             :ref="`filter-${filter.key}`"
             v-model="filterInputValues[filter.key]"
@@ -58,8 +69,11 @@
             @input="handleEditableInput(filter)"
             @change="handleEditableChange(filter)"
             @focus="handleEditableFocus(filter)"
-          />
-          <datalist :id="`list-${filter.key}`" :key="`datalist-${filter.key}-${updateTrigger}`">
+          >
+          <datalist
+            :id="`list-${filter.key}`"
+            :key="`datalist-${filter.key}-${updateTrigger}`"
+          >
             <option
               v-for="option in getFilterOptions(filter)"
               :key="`${option}-${updateTrigger}`"
@@ -71,46 +85,64 @@
             class="filter-clear"
             @click="clearFilter(filter)"
           >
-            <i class="fas fa-times"></i>
+            <i class="fas fa-times" />
           </button>
         </div>
         <!-- 日期范围选择器 -->
-        <div v-else-if="filter.type === 'daterange'" class="daterange-filter">
+        <div
+          v-else-if="filter.type === 'daterange'"
+          class="daterange-filter"
+        >
           <input
             v-model="dateRangeStart[filter.key]"
             type="date"
             class="date-input"
             @change="handleDateRangeChange(filter)"
-          />
+          >
           <span class="date-separator">至</span>
           <input
             v-model="dateRangeEnd[filter.key]"
             type="date"
             class="date-input"
             @change="handleDateRangeChange(filter)"
-          />
+          >
         </div>
       </div>
 
       <!-- 操作按钮 -->
       <div class="action-buttons">
-        <button class="btn btn-primary" @click="handleSearch">
-          <i class="fas fa-search"></i>
+        <button
+          class="btn btn-primary"
+          @click="handleSearch"
+        >
+          <i class="fas fa-search" />
           搜索
         </button>
-        <button class="btn btn-secondary" @click="handleReset">
-          <i class="fas fa-redo"></i>
+        <button
+          class="btn btn-secondary"
+          @click="handleReset"
+        >
+          <i class="fas fa-redo" />
           重置
         </button>
       </div>
     </div>
 
     <!-- 移动端筛选按钮 -->
-    <div v-else class="mobile-filter-trigger">
-      <button class="filter-btn" @click="showFilterDrawer = true">
-        <i class="fas fa-filter"></i>
+    <div
+      v-else
+      class="mobile-filter-trigger"
+    >
+      <button
+        class="filter-btn"
+        @click="showFilterDrawer = true"
+      >
+        <i class="fas fa-filter" />
         <span>筛选条件</span>
-        <span v-if="hasActiveFilters" class="filter-count">{{ activeFilterCount }}</span>
+        <span
+          v-if="hasActiveFilters"
+          class="filter-count"
+        >{{ activeFilterCount }}</span>
       </button>
     </div>
 
@@ -126,8 +158,11 @@
       <template #header>
         <div class="drawer-header">
           <h3>筛选条件</h3>
-          <el-button link @click="showFilterDrawer = false">
-            <i class="fas fa-times"></i>
+          <el-button
+            link
+            @click="showFilterDrawer = false"
+          >
+            <i class="fas fa-times" />
           </el-button>
         </div>
       </template>
@@ -146,7 +181,9 @@
               class="mobile-filter-select compact"
               @change="handleFilterChange"
             >
-              <option value="">{{ filter.label }}</option>
+              <option value="">
+                {{ filter.label }}
+              </option>
               <option
                 v-for="option in filter.options"
                 :key="option.value"
@@ -163,7 +200,9 @@
               class="mobile-filter-select compact"
               @change="handleFilterChange"
             >
-              <option value="">{{ filter.label }}</option>
+              <option value="">
+                {{ filter.label }}
+              </option>
               <option
                 v-for="option in getFilterOptions(filter)"
                 :key="option"
@@ -188,7 +227,9 @@
               class="mobile-filter-select compact"
               @change="handleFilterChange"
             >
-              <option value="">{{ filter.label }}</option>
+              <option value="">
+                {{ filter.label }}
+              </option>
               <option
                 v-for="option in filter.options"
                 :key="option.value"
@@ -205,7 +246,9 @@
               class="mobile-filter-select compact"
               @change="handleFilterChange"
             >
-              <option value="">{{ filter.label }}</option>
+              <option value="">
+                {{ filter.label }}
+              </option>
               <option
                 v-for="option in getFilterOptions(filter)"
                 :key="option"
@@ -232,7 +275,9 @@
             class="mobile-filter-select"
             @change="handleFilterChange"
           >
-            <option value="">全部</option>
+            <option value="">
+              全部
+            </option>
             <option
               v-for="option in filter.options"
               :key="option.value"
@@ -249,7 +294,9 @@
             class="mobile-filter-select"
             @change="handleFilterChange"
           >
-            <option value="">请选择{{ filter.label }}</option>
+            <option value="">
+              请选择{{ filter.label }}
+            </option>
             <option
               v-for="option in getFilterOptions(filter)"
               :key="option"
@@ -260,29 +307,38 @@
           </select>
 
           <!-- 日期范围选择器 -->
-          <div v-else-if="filter.type === 'daterange'" class="mobile-daterange">
+          <div
+            v-else-if="filter.type === 'daterange'"
+            class="mobile-daterange"
+          >
             <input
               v-model="dateRangeStart[filter.key]"
               type="date"
               class="mobile-date-input"
               @change="handleDateRangeChange(filter)"
-            />
+            >
             <span class="mobile-date-separator">至</span>
             <input
               v-model="dateRangeEnd[filter.key]"
               type="date"
               class="mobile-date-input"
               @change="handleDateRangeChange(filter)"
-            />
+            >
           </div>
         </div>
 
         <!-- 移动端操作按钮 -->
         <div class="mobile-actions">
-          <button class="mobile-btn mobile-btn-primary" @click="applyAndClose">
+          <button
+            class="mobile-btn mobile-btn-primary"
+            @click="applyAndClose"
+          >
             应用筛选
           </button>
-          <button class="mobile-btn mobile-btn-secondary" @click="resetAndClose">
+          <button
+            class="mobile-btn mobile-btn-secondary"
+            @click="resetAndClose"
+          >
             重置
           </button>
         </div>
@@ -315,7 +371,7 @@ interface FilterConfig {
   placeholder?: string
   options?: FilterOption[]
   editableOptions?: () => string[]
-  onOptionsChange?: (filter: FilterConfig, value: unknown) => void
+  onOptionsChange?: (_filter: FilterConfig, _value: unknown) => void
 }
 
 interface Props extends StringModelValueProps {
@@ -631,7 +687,7 @@ watch(() => props.filterValues, (newValues) => {
     left: 12px;
     top: 50%;
     transform: translateY(-50%);
-    color: #909399;
+    color: var(--color-info);
     z-index: 1;
   }
 
@@ -639,14 +695,14 @@ watch(() => props.filterValues, (newValues) => {
     width: 100%;
     height: 40px;
     padding: 0 40px 0 36px;
-    border: 1px solid #dcdfe6;
+    border: 1px solid var(--color-border);
     border-radius: 4px;
     font-size: 14px;
     transition: border-color 0.2s;
 
     &:focus {
       outline: none;
-      border-color: #409eff;
+      border-color: var(--color-primary);
     }
   }
 
@@ -688,7 +744,7 @@ watch(() => props.filterValues, (newValues) => {
 
   .filter-label {
     font-size: 14px;
-    color: #606266;
+    color: var(--color-text-regular);
     font-weight: 500;
   }
 
@@ -696,7 +752,7 @@ watch(() => props.filterValues, (newValues) => {
   .filter-input {
     height: 32px;
     padding: 0 8px;
-    border: 1px solid #dcdfe6;
+    border: 1px solid var(--color-border);
     border-radius: 4px;
     font-size: 14px;
     background: white;
@@ -704,7 +760,7 @@ watch(() => props.filterValues, (newValues) => {
 
     &:focus {
       outline: none;
-      border-color: #409eff;
+      border-color: var(--color-primary);
     }
   }
 
@@ -718,13 +774,13 @@ watch(() => props.filterValues, (newValues) => {
       transform: translateY(-50%);
       background: none;
       border: none;
-      color: #909399;
+      color: var(--color-info);
       cursor: pointer;
       padding: 2px;
       font-size: 12px;
 
       &:hover {
-        color: #606266;
+        color: var(--color-text-regular);
       }
     }
   }
@@ -737,20 +793,20 @@ watch(() => props.filterValues, (newValues) => {
     .date-input {
       height: 32px;
       padding: 0 8px;
-      border: 1px solid #dcdfe6;
+      border: 1px solid var(--color-border);
       border-radius: 4px;
       font-size: 14px;
       min-width: 100px;
 
       &:focus {
         outline: none;
-        border-color: #409eff;
+        border-color: var(--color-primary);
       }
     }
 
     .date-separator {
       font-size: 14px;
-      color: #909399;
+      color: var(--color-info);
     }
   }
 }
@@ -806,7 +862,7 @@ watch(() => props.filterValues, (newValues) => {
   h3 {
     margin: 0;
     font-size: 18px;
-    color: #303133;
+    color: var(--color-text-primary);
   }
 }
 
@@ -832,14 +888,14 @@ watch(() => props.filterValues, (newValues) => {
       width: 100%;
       height: 36px;
       padding: 0 12px;
-      border: 1px solid #dcdfe6;
+      border: 1px solid var(--color-border);
       border-radius: 18px;
       font-size: 13px;
       background: white;
 
       &:focus {
         outline: none;
-        border-color: #409eff;
+        border-color: var(--color-primary);
       }
 
       option {
@@ -928,7 +984,7 @@ watch(() => props.filterValues, (newValues) => {
   .mobile-filter-label {
     display: block;
     font-size: 16px;
-    color: #303133;
+    color: var(--color-text-primary);
     margin-bottom: 8px;
     font-weight: 500;
   }
@@ -938,13 +994,13 @@ watch(() => props.filterValues, (newValues) => {
     width: 100%;
     height: 44px;
     padding: 0 12px;
-    border: 1px solid #dcdfe6;
+    border: 1px solid var(--color-border);
     border-radius: 4px;
     font-size: 16px; /* 防止iOS缩放 */
 
     &:focus {
       outline: none;
-      border-color: #409eff;
+      border-color: var(--color-primary);
     }
   }
 
@@ -959,7 +1015,7 @@ watch(() => props.filterValues, (newValues) => {
 
     .mobile-date-separator {
       font-size: 14px;
-      color: #909399;
+      color: var(--color-info);
     }
   }
 }

@@ -54,7 +54,7 @@ export interface DetailedErrorInfo {
   url: string
   userAgent: string
   stack?: string
-  context?: Record<string, any>
+  context?: Record<string, unknown>
   userId?: number
   sessionId: string
   resolved: boolean
@@ -306,16 +306,16 @@ export class ErrorBoundary {
 
     // 根据错误类型判断
     switch (error.type) {
-      case ErrorType.NETWORK:
-        return ErrorLevel.HIGH
-      case ErrorType.PERMISSION:
-        return ErrorLevel.HIGH
-      case ErrorType.PERFORMANCE:
-        return ErrorLevel.MEDIUM
-      case ErrorType.VALIDATION:
-        return ErrorLevel.LOW
-      default:
-        return ErrorLevel.MEDIUM
+    case ErrorType.NETWORK:
+      return ErrorLevel.HIGH
+    case ErrorType.PERMISSION:
+      return ErrorLevel.HIGH
+    case ErrorType.PERFORMANCE:
+      return ErrorLevel.MEDIUM
+    case ErrorType.VALIDATION:
+      return ErrorLevel.LOW
+    default:
+      return ErrorLevel.MEDIUM
     }
   }
 
@@ -384,7 +384,7 @@ export class ErrorBoundary {
     unresolved: number
     byLevel: Record<ErrorLevel, number>
     byType: Record<ErrorType, number>
-  } {
+    } {
     const errors = this.getErrors()
     const stats = {
       total: errors.length,
@@ -529,12 +529,19 @@ export const ErrorBoundaryPlugin = {
 
     // Vue错误处理器
     app.config.errorHandler = (error: Error, instance, info) => {
+      const componentOptions = instance?.$options as {
+        name?: string
+        __name?: string
+        __file?: string
+      } | undefined
+
       errorBoundary.handleError({
         type: ErrorType.VUE,
         message: error.message,
         stack: error.stack,
         context: {
-          component: instance?.$options?.name || 'Unknown',
+          component: componentOptions?.name || componentOptions?.__name || 'Unknown',
+          componentFile: componentOptions?.__file || 'Unknown',
           info
         }
       })
@@ -542,12 +549,19 @@ export const ErrorBoundaryPlugin = {
 
     // Vue警告处理器
     app.config.warnHandler = (msg, instance, trace) => {
+      const componentOptions = instance?.$options as {
+        name?: string
+        __name?: string
+        __file?: string
+      } | undefined
+
       errorBoundary.handleError({
         type: ErrorType.VUE,
         level: ErrorLevel.LOW,
         message: `Vue Warning: ${msg}`,
         context: {
-          component: instance?.$options?.name || 'Unknown',
+          component: componentOptions?.name || componentOptions?.__name || 'Unknown',
+          componentFile: componentOptions?.__file || 'Unknown',
           trace
         }
       })

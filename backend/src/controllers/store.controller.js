@@ -1,6 +1,6 @@
-const log = require('../utils/log');
-const StoreService = require('../services/store.service');
-const ApiResponse = require('../utils/response');
+const log = require('../utils/log')
+const StoreService = require('../services/store.service')
+const ApiResponse = require('../utils/response')
 
 /**
  * 商店控制器类
@@ -8,7 +8,7 @@ const ApiResponse = require('../utils/response');
  */
 class StoreController {
   constructor() {
-    this.storeService = new StoreService();
+    this.storeService = new StoreService()
   }
 
   /**
@@ -18,24 +18,24 @@ class StoreController {
    */
   async getStores(req, res) {
     try {
-      const { page, limit, name, status } = req.query;
+      const { page, limit, name, status } = req.query
       const filters = {
         page: page ? parseInt(page, 10) : 1,
         limit: limit ? parseInt(limit, 10) : 10,
         name: name ? name.trim() : '',
         status: status !== undefined ? parseInt(status, 10) : null
-      };
-
-      const result = await this.storeService.getStores(filters);
-
-      if (!result.success) {
-        return ApiResponse.error(res, result.message, 400);
       }
 
-      ApiResponse.paginated(res, result.message, result.data, result.meta);
+      const result = await this.storeService.getStores(filters)
+
+      if (!result.success) {
+        return ApiResponse.error(res, result.message, 400)
+      }
+
+      ApiResponse.paginated(res, result.message, result.data, result.meta)
     } catch (error) {
-      log.error('获取商店列表控制器错误:', error);
-      ApiResponse.serverError(res, '获取商店列表失败');
+      log.error('获取商店列表控制器错误:', error)
+      ApiResponse.serverError(res, '获取商店列表失败')
     }
   }
 
@@ -46,16 +46,16 @@ class StoreController {
    */
   async getStoreStats(req, res) {
     try {
-      const result = await this.storeService.getStoreStats();
+      const result = await this.storeService.getStoreStats()
 
       if (!result.success) {
-        return ApiResponse.error(res, result.message, 500);
+        return ApiResponse.error(res, result.message, 500)
       }
 
-      ApiResponse.success(res, result.message, result.data);
+      ApiResponse.success(res, result.message, result.data)
     } catch (error) {
-      log.error('获取商店统计控制器错误:', error);
-      ApiResponse.serverError(res, '获取商店统计失败');
+      log.error('获取商店统计控制器错误:', error)
+      ApiResponse.serverError(res, '获取商店统计失败')
     }
   }
 
@@ -66,16 +66,16 @@ class StoreController {
    */
   async getAvailableManagers(req, res) {
     try {
-      const result = await this.storeService.getAvailableManagers();
+      const result = await this.storeService.getAvailableManagers()
 
       if (!result.success) {
-        return ApiResponse.error(res, result.message, 500);
+        return ApiResponse.error(res, result.message, 500)
       }
 
-      ApiResponse.success(res, result.message, result.data);
+      ApiResponse.success(res, result.message, result.data)
     } catch (error) {
-      log.error('获取管理员列表控制器错误:', error);
-      ApiResponse.serverError(res, '获取管理员列表失败');
+      log.error('获取管理员列表控制器错误:', error)
+      ApiResponse.serverError(res, '获取管理员列表失败')
     }
   }
 
@@ -86,17 +86,17 @@ class StoreController {
    */
   async getStoreById(req, res) {
     try {
-      const { id } = req.params;
-      const result = await this.storeService.getStoreById(id);
+      const { id } = req.params
+      const result = await this.storeService.getStoreById(id)
 
       if (!result.success) {
-        return ApiResponse.error(res, result.message, 404);
+        return ApiResponse.error(res, result.message, 404)
       }
 
-      ApiResponse.success(res, result.message, result.data);
+      ApiResponse.success(res, result.message, result.data)
     } catch (error) {
-      log.error('获取商店详情控制器错误:', error);
-      ApiResponse.serverError(res, '获取商店详情失败');
+      log.error('获取商店详情控制器错误:', error)
+      ApiResponse.serverError(res, '获取商店详情失败')
     }
   }
 
@@ -107,17 +107,17 @@ class StoreController {
    */
   async createStore(req, res) {
     try {
-      const storeData = req.body;
-      const result = await this.storeService.createStore(storeData, req.user);
+      const storeData = req.body
+      const result = await this.storeService.createStore(storeData, req.user)
 
       if (!result.success) {
-        return ApiResponse.error(res, result.message, 400);
+        return ApiResponse.error(res, result.message, 400)
       }
 
-      ApiResponse.created(res, result.message, result.data);
+      ApiResponse.created(res, result.message, result.data)
     } catch (error) {
-      log.error('创建商店控制器错误:', error);
-      ApiResponse.serverError(res, '创建商店失败');
+      log.error('创建商店控制器错误:', error)
+      ApiResponse.serverError(res, '创建商店失败')
     }
   }
 
@@ -128,18 +128,18 @@ class StoreController {
    */
   async updateStore(req, res) {
     try {
-      const { id } = req.params;
-      const storeData = req.body;
-      const result = await this.storeService.updateStore(id, storeData, req.user);
+      const { id } = req.params
+      const storeData = req.body
+      const result = await this.storeService.updateStore(id, storeData, req.user)
 
       if (!result.success) {
-        return ApiResponse.error(res, result.message, 400);
+        return ApiResponse.error(res, result.message, 400)
       }
 
-      ApiResponse.success(res, result.message, result.data);
+      ApiResponse.success(res, result.message, result.data)
     } catch (error) {
-      log.error('更新商店控制器错误:', error);
-      ApiResponse.serverError(res, '更新商店失败');
+      log.error('更新商店控制器错误:', error)
+      ApiResponse.serverError(res, '更新商店失败')
     }
   }
 
@@ -150,17 +150,17 @@ class StoreController {
    */
   async deleteStore(req, res) {
     try {
-      const { id } = req.params;
-      const result = await this.storeService.deleteStore(id, req.user);
+      const { id } = req.params
+      const result = await this.storeService.deleteStore(id, req.user)
 
       if (!result.success) {
-        return ApiResponse.error(res, result.message, 400);
+        return ApiResponse.error(res, result.message, 400)
       }
 
-      ApiResponse.success(res, result.message, result.data);
+      ApiResponse.success(res, result.message, result.data)
     } catch (error) {
-      log.error('删除商店控制器错误:', error);
-      ApiResponse.serverError(res, '删除商店失败');
+      log.error('删除商店控制器错误:', error)
+      ApiResponse.serverError(res, '删除商店失败')
     }
   }
 
@@ -171,26 +171,26 @@ class StoreController {
    */
   async batchUpdateStatus(req, res) {
     try {
-      const { ids, status } = req.body;
+      const { ids, status } = req.body
 
       if (!Array.isArray(ids) || ids.length === 0) {
-        return ApiResponse.error(res, '请提供要更新的商店ID列表', 400);
+        return ApiResponse.error(res, '请提供要更新的商店ID列表', 400)
       }
 
       if (status !== 0 && status !== 1) {
-        return ApiResponse.error(res, '状态值只能是0（禁用）或1（启用）', 400);
+        return ApiResponse.error(res, '状态值只能是0（禁用）或1（启用）', 400)
       }
 
-      const result = await this.storeService.batchUpdateStatus(ids, status, req.user);
+      const result = await this.storeService.batchUpdateStatus(ids, status, req.user)
 
       if (!result.success) {
-        return ApiResponse.error(res, result.message, 400);
+        return ApiResponse.error(res, result.message, 400)
       }
 
-      ApiResponse.success(res, result.message, result.data);
+      ApiResponse.success(res, result.message, result.data)
     } catch (error) {
-      log.error('批量更新状态控制器错误:', error);
-      ApiResponse.serverError(res, '批量更新状态失败');
+      log.error('批量更新状态控制器错误:', error)
+      ApiResponse.serverError(res, '批量更新状态失败')
     }
   }
 
@@ -201,17 +201,17 @@ class StoreController {
    */
   async getStoresByManager(req, res) {
     try {
-      const { managerId } = req.params;
-      const result = await this.storeService.getStoresByManager(managerId);
+      const { managerId } = req.params
+      const result = await this.storeService.getStoresByManager(managerId)
 
       if (!result.success) {
-        return ApiResponse.error(res, result.message, 400);
+        return ApiResponse.error(res, result.message, 400)
       }
 
-      ApiResponse.success(res, result.message, result.data);
+      ApiResponse.success(res, result.message, result.data)
     } catch (error) {
-      log.error('根据管理员获取商店控制器错误:', error);
-      ApiResponse.serverError(res, '获取管理员商店失败');
+      log.error('根据管理员获取商店控制器错误:', error)
+      ApiResponse.serverError(res, '获取管理员商店失败')
     }
   }
 
@@ -222,16 +222,16 @@ class StoreController {
    */
   async getActiveStores(req, res) {
     try {
-      const result = await this.storeService.getActiveStores();
+      const result = await this.storeService.getActiveStores()
 
       if (!result.success) {
-        return ApiResponse.error(res, result.message, 500);
+        return ApiResponse.error(res, result.message, 500)
       }
 
-      ApiResponse.success(res, result.message, result.data);
+      ApiResponse.success(res, result.message, result.data)
     } catch (error) {
-      log.error('获取活跃商店控制器错误:', error);
-      ApiResponse.serverError(res, '获取活跃商店失败');
+      log.error('获取活跃商店控制器错误:', error)
+      ApiResponse.serverError(res, '获取活跃商店失败')
     }
   }
 
@@ -242,23 +242,23 @@ class StoreController {
    */
   async checkNameAvailability(req, res) {
     try {
-      const { name } = req.query;
-      const { excludeId } = req.query;
+      const { name } = req.query
+      const { excludeId } = req.query
 
       if (!name) {
-        return ApiResponse.error(res, '商店名称不能为空', 400);
+        return ApiResponse.error(res, '商店名称不能为空', 400)
       }
 
-      const result = await this.storeService.checkNameAvailability(name, excludeId);
+      const result = await this.storeService.checkNameAvailability(name, excludeId)
 
       if (!result.success) {
-        return ApiResponse.error(res, result.message, 400);
+        return ApiResponse.error(res, result.message, 400)
       }
 
-      ApiResponse.success(res, result.message, result.data);
+      ApiResponse.success(res, result.message, result.data)
     } catch (error) {
-      log.error('检查商店名称控制器错误:', error);
-      ApiResponse.serverError(res, '检查商店名称失败');
+      log.error('检查商店名称控制器错误:', error)
+      ApiResponse.serverError(res, '检查商店名称失败')
     }
   }
 
@@ -269,28 +269,28 @@ class StoreController {
    */
   async searchStores(req, res) {
     try {
-      const { keyword, page, limit, status } = req.query;
+      const { keyword, page, limit, status } = req.query
 
       if (!keyword) {
-        return ApiResponse.error(res, '搜索关键词不能为空', 400);
+        return ApiResponse.error(res, '搜索关键词不能为空', 400)
       }
 
       const options = {
         page: page ? parseInt(page, 10) : 1,
         limit: limit ? parseInt(limit, 10) : 10,
         status: status !== undefined ? parseInt(status, 10) : null
-      };
-
-      const result = await this.storeService.searchStores(keyword, options);
-
-      if (!result.success) {
-        return ApiResponse.error(res, result.message, 400);
       }
 
-      ApiResponse.paginated(res, result.message, result.data, result.meta);
+      const result = await this.storeService.searchStores(keyword, options)
+
+      if (!result.success) {
+        return ApiResponse.error(res, result.message, 400)
+      }
+
+      ApiResponse.paginated(res, result.message, result.data, result.meta)
     } catch (error) {
-      log.error('搜索商店控制器错误:', error);
-      ApiResponse.serverError(res, '搜索商店失败');
+      log.error('搜索商店控制器错误:', error)
+      ApiResponse.serverError(res, '搜索商店失败')
     }
   }
 
@@ -301,25 +301,25 @@ class StoreController {
    */
   async exportStores(req, res) {
     try {
-      const { status } = req.query;
+      const { status } = req.query
       const filters = {
         status: status !== undefined ? parseInt(status, 10) : null
-      };
+      }
 
-      const result = await this.storeService.exportStores(filters);
+      const result = await this.storeService.exportStores(filters)
 
       if (!result.success) {
-        return ApiResponse.error(res, result.message, 500);
+        return ApiResponse.error(res, result.message, 500)
       }
 
       // 设置响应头用于文件下载
-      res.setHeader('Content-Type', 'application/json');
-      res.setHeader('Content-Disposition', `attachment; filename="stores_export_${Date.now()}.json"`);
+      res.setHeader('Content-Type', 'application/json')
+      res.setHeader('Content-Disposition', `attachment; filename="stores_export_${Date.now()}.json"`)
 
-      ApiResponse.success(res, result.message, result.data);
+      ApiResponse.success(res, result.message, result.data)
     } catch (error) {
-      log.error('导出商店控制器错误:', error);
-      ApiResponse.serverError(res, '导出商店失败');
+      log.error('导出商店控制器错误:', error)
+      ApiResponse.serverError(res, '导出商店失败')
     }
   }
 
@@ -342,10 +342,10 @@ class StoreController {
           '搜索功能'
         ],
         timestamp: new Date().toISOString()
-      });
+      })
     } catch (error) {
-      log.error('测试商店API控制器错误:', error);
-      ApiResponse.serverError(res, '测试商店API失败');
+      log.error('测试商店API控制器错误:', error)
+      ApiResponse.serverError(res, '测试商店API失败')
     }
   }
 
@@ -360,10 +360,10 @@ class StoreController {
       const [statsResult, activeStoresResult] = await Promise.all([
         this.storeService.getStoreStats(),
         this.storeService.getActiveStores()
-      ]);
+      ])
 
       if (!statsResult.success || !activeStoresResult.success) {
-        return ApiResponse.error(res, '获取商店概览失败', 500);
+        return ApiResponse.error(res, '获取商店概览失败', 500)
       }
 
       const overview = {
@@ -371,14 +371,14 @@ class StoreController {
         activeStores: activeStoresResult.data.slice(0, 5), // 最近5个活跃商店
         totalActiveStores: activeStoresResult.data.length,
         timestamp: new Date().toISOString()
-      };
+      }
 
-      ApiResponse.success(res, '获取商店概览成功', overview);
+      ApiResponse.success(res, '获取商店概览成功', overview)
     } catch (error) {
-      log.error('获取商店概览控制器错误:', error);
-      ApiResponse.serverError(res, '获取商店概览失败');
+      log.error('获取商店概览控制器错误:', error)
+      ApiResponse.serverError(res, '获取商店概览失败')
     }
   }
 }
 
-module.exports = StoreController;
+module.exports = StoreController

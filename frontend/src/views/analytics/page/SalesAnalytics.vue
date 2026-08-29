@@ -1,89 +1,156 @@
 <template>
   <div class="sales-analytics">
     <!-- 销售概览卡片 -->
-    <el-row :gutter="12" class="overview-cards">
-      <el-col v-if="canViewSalesField('total_sales')" :span="4" :xs="12" :sm="6" :md="4">
+    <el-row
+      :gutter="12"
+      class="overview-cards"
+    >
+      <el-col
+        v-if="canViewSalesField('total_sales')"
+        :span="4"
+        :xs="12"
+        :sm="6"
+        :md="4"
+      >
         <el-card class="overview-card">
           <div class="card-content">
             <div class="card-icon total">
               <Money />
             </div>
             <div class="card-info">
-              <div class="card-title">总销售额</div>
-              <div class="card-value">¥{{ formatNumber(totalSalesAmount) }}</div>
+              <div class="card-title">
+                总销售额
+              </div>
+              <div class="card-value">
+                ¥{{ formatNumber(totalSalesAmount) }}
+              </div>
             </div>
           </div>
         </el-card>
       </el-col>
 
-      <el-col v-if="canViewSalesField('total_orders')" :span="4" :xs="12" :sm="6" :md="4">
+      <el-col
+        v-if="canViewSalesField('total_orders')"
+        :span="4"
+        :xs="12"
+        :sm="6"
+        :md="4"
+      >
         <el-card class="overview-card">
           <div class="card-content">
             <div class="card-icon orders">
               <ShoppingCart />
             </div>
             <div class="card-info">
-              <div class="card-title">总销售台数</div>
-              <div class="card-value">{{ totalSalesCount }}台</div>
+              <div class="card-title">
+                总销售台数
+              </div>
+              <div class="card-value">
+                {{ totalSalesCount }}台
+              </div>
             </div>
           </div>
         </el-card>
       </el-col>
 
-      <el-col v-if="canViewSalesField('new_sales_count')" :span="4" :xs="12" :sm="6" :md="4">
+      <el-col
+        v-if="canViewSalesField('new_sales_count')"
+        :span="4"
+        :xs="12"
+        :sm="6"
+        :md="4"
+      >
         <el-card class="overview-card new">
           <div class="card-content">
             <div class="card-icon new">
               <Star />
             </div>
             <div class="card-info">
-              <div class="card-title">全新销售</div>
-              <div class="card-value">{{ newUsedSales.new?.count || 0 }}台</div>
-              <div class="card-subtitle">¥{{ formatNumber(newUsedSales.new?.amount || 0) }}</div>
+              <div class="card-title">
+                全新销售
+              </div>
+              <div class="card-value">
+                {{ newUsedSales.new?.count || 0 }}台
+              </div>
+              <div class="card-subtitle">
+                ¥{{ formatNumber(newUsedSales.new?.amount || 0) }}
+              </div>
             </div>
           </div>
         </el-card>
       </el-col>
 
-      <el-col v-if="canViewSalesField('used_sales_count')" :span="4" :xs="12" :sm="6" :md="4">
+      <el-col
+        v-if="canViewSalesField('used_sales_count')"
+        :span="4"
+        :xs="12"
+        :sm="6"
+        :md="4"
+      >
         <el-card class="overview-card used">
           <div class="card-content">
             <div class="card-icon used">
               <RefreshRight />
             </div>
             <div class="card-info">
-              <div class="card-title">二手销售</div>
-              <div class="card-value">{{ newUsedSales.used?.count || 0 }}台</div>
-              <div class="card-subtitle">¥{{ formatNumber(newUsedSales.used?.amount || 0) }}</div>
+              <div class="card-title">
+                二手销售
+              </div>
+              <div class="card-value">
+                {{ newUsedSales.used?.count || 0 }}台
+              </div>
+              <div class="card-subtitle">
+                ¥{{ formatNumber(newUsedSales.used?.amount || 0) }}
+              </div>
             </div>
           </div>
         </el-card>
       </el-col>
 
-      <el-col :span="4" :xs="12" :sm="6" :md="4">
+      <el-col
+        :span="4"
+        :xs="12"
+        :sm="6"
+        :md="4"
+      >
         <el-card class="overview-card transfer">
           <div class="card-content">
             <div class="card-icon transfer">
               <Switch />
             </div>
             <div class="card-info">
-              <div class="card-title">批发</div>
-              <div class="card-value">{{ transferAllocationData.transfer?.count || 0 }}台</div>
-              <div class="card-subtitle">¥{{ formatNumber(transferAllocationData.transfer?.profit || 0) }}</div>
+              <div class="card-title">
+                批发
+              </div>
+              <div class="card-value">
+                {{ transferAllocationData.transfer?.count || 0 }}台
+              </div>
+              <div class="card-subtitle">
+                ¥{{ formatNumber(transferAllocationData.transfer?.profit || 0) }}
+              </div>
             </div>
           </div>
         </el-card>
       </el-col>
 
-      <el-col :span="4" :xs="12" :sm="6" :md="4">
+      <el-col
+        :span="4"
+        :xs="12"
+        :sm="6"
+        :md="4"
+      >
         <el-card class="overview-card allocation">
           <div class="card-content">
             <div class="card-icon allocation">
               <Connection />
             </div>
             <div class="card-info">
-              <div class="card-title">划拨</div>
-              <div class="card-value">{{ transferAllocationData.allocation?.count || 0 }}台</div>
+              <div class="card-title">
+                划拨
+              </div>
+              <div class="card-value">
+                {{ transferAllocationData.allocation?.count || 0 }}台
+              </div>
             </div>
           </div>
         </el-card>
@@ -91,65 +158,136 @@
     </el-row>
 
     <!-- 图表区域 -->
-    <el-row v-if="showSalesChartsRow" :gutter="16" class="charts-section">
+    <el-row
+      v-if="showSalesChartsRow"
+      :gutter="16"
+      class="charts-section"
+    >
       <!-- 销售趋势图 -->
-      <el-col v-if="canViewSalesField('sales_trend_chart')" :xs="24" :sm="24" :md="12" :lg="12">
+      <el-col
+        v-if="canViewSalesField('sales_trend_chart')"
+        :xs="24"
+        :sm="24"
+        :md="12"
+        :lg="12"
+      >
         <el-card class="chart-card">
           <template #header>
             <div class="card-header">
               <h3>销售趋势</h3>
-              <el-radio-group v-model="trendPeriod" size="small">
-                <el-radio-button value="monthly">年度对比</el-radio-button>
+              <el-radio-group
+                v-model="trendPeriod"
+                size="small"
+              >
+                <el-radio-button value="monthly">
+                  年度对比
+                </el-radio-button>
               </el-radio-group>
             </div>
           </template>
           <div class="chart-container">
-            <div ref="trendChartRef" class="chart"></div>
+            <div
+              ref="trendChartRef"
+              class="chart"
+            />
           </div>
         </el-card>
       </el-col>
 
       <!-- 产品销售分布 -->
-      <el-col v-if="canViewSalesField('product_distribution_chart')" :xs="24" :sm="24" :md="12" :lg="12">
+      <el-col
+        v-if="canViewSalesField('product_distribution_chart')"
+        :xs="24"
+        :sm="24"
+        :md="12"
+        :lg="12"
+      >
         <el-card class="chart-card">
           <template #header>
             <div class="card-header">
               <h3>产品销售分布</h3>
-              <el-button size="small" @click="toggleChartType">
+              <el-button
+                size="small"
+                @click="toggleChartType"
+              >
                 {{ chartType === 'pie' ? '柱状图' : '饼图' }}
               </el-button>
             </div>
           </template>
           <div class="chart-container">
-            <div ref="distributionChartRef" class="chart"></div>
+            <div
+              ref="distributionChartRef"
+              class="chart"
+            />
           </div>
         </el-card>
       </el-col>
     </el-row>
 
     <!-- 数据表格区域 -->
-    <el-row v-if="showSalesTableRow" :gutter="16" class="table-section admin-panel admin-table-panel">
+    <el-row
+      v-if="showSalesTableRow"
+      :gutter="16"
+      class="table-section admin-panel admin-table-panel"
+    >
       <!-- 热销产品排行 -->
-      <el-col v-if="canViewSalesField('top_products_table')" :xs="24" :sm="24" :md="14" :lg="14">
+      <el-col
+        v-if="canViewSalesField('top_products_table')"
+        :xs="24"
+        :sm="24"
+        :md="14"
+        :lg="14"
+      >
         <el-card class="table-card admin-panel admin-table-panel">
           <template #header>
             <div class="card-header">
               <h3>热销产品排行</h3>
               <el-space>
-                <el-select v-model="productFilter" placeholder="筛选类别" size="small" clearable>
-                  <el-option label="全部" value="" />
-                  <el-option label="手机" value="手机" />
-                  <el-option label="配件" value="配件" />
+                <el-select
+                  v-model="productFilter"
+                  placeholder="筛选类别"
+                  size="small"
+                  clearable
+                >
+                  <el-option
+                    label="全部"
+                    value=""
+                  />
+                  <el-option
+                    label="手机"
+                    value="手机"
+                  />
+                  <el-option
+                    label="配件"
+                    value="配件"
+                  />
                 </el-select>
-                <el-button type="success" size="small" @click="exportTopProducts">
+                <el-button
+                  type="success"
+                  size="small"
+                  @click="exportTopProducts"
+                >
                   导出
                 </el-button>
               </el-space>
             </div>
           </template>
-          <el-table class="data-table" :data="filteredTopProducts" stripe style="width: 100%">
-            <el-table-column type="index" label="排名" width="60" align="center" />
-            <el-table-column prop="name" label="产品名称">
+          <el-table
+            class="data-table"
+            :data="filteredTopProducts"
+            stripe
+            style="width: 100%"
+          >
+            <el-table-column
+              type="index"
+              label="排名"
+              width="60"
+              align="center"
+            />
+            <el-table-column
+              prop="name"
+              label="产品名称"
+            >
               <template #default="{ row }">
                 <div class="product-name">
                   <span class="brand">{{ row.brand_name }}</span>
@@ -157,22 +295,45 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column prop="quantity" label="销量" width="100" align="right" />
-            <el-table-column prop="revenue" label="销售额" width="120" align="right">
+            <el-table-column
+              prop="quantity"
+              label="销量"
+              width="100"
+              align="right"
+            />
+            <el-table-column
+              prop="revenue"
+              label="销售额"
+              width="120"
+              align="right"
+            >
               <template #default="{ row }">
                 ¥{{ formatNumber(row.revenue) }}
               </template>
             </el-table-column>
-            <el-table-column prop="profit" label="利润" width="120" align="right">
+            <el-table-column
+              prop="profit"
+              label="利润"
+              width="120"
+              align="right"
+            >
               <template #default="{ row }">
                 <span :class="getProfitClass(row.profit)">
                   ¥{{ formatNumber(row.profit) }}
                 </span>
               </template>
             </el-table-column>
-            <el-table-column prop="growth" label="增长率" width="100" align="center">
+            <el-table-column
+              prop="growth"
+              label="增长率"
+              width="100"
+              align="center"
+            >
               <template #default="{ row }">
-                <el-tag :type="getGrowthTagType(row.growth || 0)" size="small">
+                <el-tag
+                  :type="getGrowthTagType(row.growth || 0)"
+                  size="small"
+                >
                   {{ (row.growth || 0) > 0 ? '+' : '' }}{{ (row.growth || 0).toFixed(1) }}%
                 </el-tag>
               </template>
@@ -182,7 +343,13 @@
       </el-col>
 
       <!-- 店铺销售对比 -->
-      <el-col v-if="canViewSalesField('store_comparison_chart')" :xs="24" :sm="24" :md="10" :lg="10">
+      <el-col
+        v-if="canViewSalesField('store_comparison_chart')"
+        :xs="24"
+        :sm="24"
+        :md="10"
+        :lg="10"
+      >
         <el-card class="chart-card">
           <template #header>
             <div class="card-header">
@@ -190,30 +357,59 @@
             </div>
           </template>
           <div class="chart-container">
-            <div ref="storeComparisonRef" class="chart"></div>
+            <div
+              ref="storeComparisonRef"
+              class="chart"
+            />
           </div>
         </el-card>
       </el-col>
     </el-row>
 
     <!-- 销售预测 -->
-    <el-card v-if="canViewSalesField('sales_forecast_chart')" class="forecast-card">
+    <el-card
+      v-if="canViewSalesField('sales_forecast_chart')"
+      class="forecast-card"
+    >
       <template #header>
         <div class="card-header">
           <div>
             <h3>销售预测</h3>
             <div class="update-info">
-              <el-tag size="small" type="success">实时预测</el-tag>
+              <el-tag
+                size="small"
+                type="success"
+              >
+                实时预测
+              </el-tag>
               <span class="update-text">每5分钟自动更新</span>
             </div>
           </div>
           <el-space>
-            <el-select v-model="forecastPeriod" size="small" @change="generateForecast">
-              <el-option label="未来7天" value="week" />
-              <el-option label="未来30天" value="month" />
-              <el-option label="未来90天" value="quarter" />
+            <el-select
+              v-model="forecastPeriod"
+              size="small"
+              @change="generateForecast"
+            >
+              <el-option
+                label="未来7天"
+                value="week"
+              />
+              <el-option
+                label="未来30天"
+                value="month"
+              />
+              <el-option
+                label="未来90天"
+                value="quarter"
+              />
             </el-select>
-            <el-button size="small" type="primary" @click="generateForecast" :loading="forecastLoading">
+            <el-button
+              size="small"
+              type="primary"
+              :loading="forecastLoading"
+              @click="generateForecast"
+            >
               {{ forecastLoading ? '生成中...' : '刷新预测' }}
             </el-button>
           </el-space>
@@ -221,9 +417,15 @@
       </template>
 
       <!-- 预测图表展示 -->
-      <div v-if="forecastData.combinations && forecastData.combinations.length > 0" class="forecast-content">
+      <div
+        v-if="forecastData.combinations && forecastData.combinations.length > 0"
+        class="forecast-content"
+      >
         <!-- 选中日期的预测卡片 -->
-        <div v-if="selectedDate && isFutureDate(selectedDate)" class="forecast-cards-section">
+        <div
+          v-if="selectedDate && isFutureDate(selectedDate)"
+          class="forecast-cards-section"
+        >
           <div class="section-header">
             <h4>{{ selectedDate }} 预测销量</h4>
             <div class="total-prediction">
@@ -231,8 +433,12 @@
               <span class="value">{{ getTotalPredictionForDate(selectedDate) }}</span>
               <span class="unit">台</span>
             </div>
-            <el-button size="small" text @click="selectedDate = null">
-              <i class="fas fa-times"></i> 清除选择
+            <el-button
+              size="small"
+              text
+              @click="selectedDate = null"
+            >
+              <i class="fas fa-times" /> 清除选择
             </el-button>
           </div>
           <div class="forecast-cards">
@@ -263,27 +469,46 @@
                   <span class="value">{{ getActualSales(item, selectedDate) }}</span>
                 </div>
                 <div class="stat-item confidence">
-                  <el-tag :type="getConfidenceType(item.confidence)" size="small">
+                  <el-tag
+                    :type="getConfidenceType(item.confidence)"
+                    size="small"
+                  >
                     {{ getConfidenceLabel(item.confidence) }}
                   </el-tag>
                 </div>
               </div>
             </div>
           </div>
-          <div v-if="getProductsWithPrediction(selectedDate).length === 0" class="no-prediction-tip">
-            <el-empty description="该日期暂无预测数据" :image-size="80" />
+          <div
+            v-if="getProductsWithPrediction(selectedDate).length === 0"
+            class="no-prediction-tip"
+          >
+            <DataEmptyState
+              description="该日期暂无预测数据"
+              :image-size="80"
+            />
           </div>
         </div>
 
         <!-- 点击历史日期的提示 -->
-        <div v-else-if="selectedDate && !isFutureDate(selectedDate)" class="history-date-tip">
-          <el-alert type="info" :closable="false">
+        <div
+          v-else-if="selectedDate && !isFutureDate(selectedDate)"
+          class="history-date-tip"
+        >
+          <el-alert
+            type="info"
+            :closable="false"
+          >
             <template #title>
               <div class="tip-content">
-                <i class="fas fa-info-circle"></i>
+                <i class="fas fa-info-circle" />
                 <span>{{ selectedDate }} 是历史日期，实际销量为 {{ getHistoricalTotal(selectedDate) }} 台。请点击未来日期查看预测销量。</span>
-                <el-button size="small" text @click="selectedDate = null">
-                  <i class="fas fa-times"></i>
+                <el-button
+                  size="small"
+                  text
+                  @click="selectedDate = null"
+                >
+                  <i class="fas fa-times" />
                 </el-button>
               </div>
             </template>
@@ -292,15 +517,21 @@
 
         <!-- 预测图表 -->
         <div class="chart-container">
-          <div ref="forecastChartRef" class="chart"></div>
+          <div
+            ref="forecastChartRef"
+            class="chart"
+          />
         </div>
 
         <!-- 预测说明 -->
         <div class="forecast-note">
-          <el-alert type="info" :closable="false">
+          <el-alert
+            type="info"
+            :closable="false"
+          >
             <template #title>
               <div class="note-content">
-                <i class="fas fa-info-circle"></i>
+                <i class="fas fa-info-circle" />
                 <span>
                   预测说明：基于过去90天的历史销售数据，使用移动平均法计算未来销售趋势。
                   点击图表中的日期可查看当天各产品的预测销量。默认展示未来7天的预测数据。
@@ -312,7 +543,10 @@
       </div>
 
       <!-- 无数据提示 -->
-      <el-empty v-else description="暂无预测数据，请点击生成预测" />
+      <DataEmptyState
+        v-else
+        description="暂无预测数据，请点击生成预测"
+      />
     </el-card>
   </div>
 </template>
@@ -322,8 +556,6 @@ import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import {
   Money,
   ShoppingCart,
-  TrendCharts,
-  DataLine,
   ArrowUp,
   ArrowDown,
   Minus,
@@ -366,13 +598,13 @@ const { exportTextFile, buildDateFilename } = useImportExport()
 
 // 响应式数据
 const salesData = ref<SalesAnalytics>({
-  totalSales: { total: 0, change: 0, changePercent: 0, trend: 'stable' },
-  totalOrders: { total: 0, change: 0, changePercent: 0, trend: 'stable' },
-  averageOrderValue: { total: 0, change: 0, changePercent: 0, trend: 'stable' },
-  topProducts: [],
-  salesByStore: [],
-  salesByPeriod: [],
-  revenueForecast: []
+  total_sales: { total: 0, change: 0, change_percent: 0, trend: 'stable' },
+  total_orders: { total: 0, change: 0, change_percent: 0, trend: 'stable' },
+  average_order_value: { total: 0, change: 0, change_percent: 0, trend: 'stable' },
+  top_products: [],
+  sales_by_store: [],
+  sales_by_period: [],
+  revenue_forecast: []
 })
 
 // 全新/二手销售数据
@@ -411,7 +643,7 @@ const forecastData = ref<{
 })
 
 // 当前选中的产品数据
-const selectedProductData = computed(() => {
+const _selectedProductData = computed(() => {
   if (forecastData.value.combinations.length > 0 && selectedProduct.value !== null) {
     return forecastData.value.combinations[selectedProduct.value]
   }
@@ -468,9 +700,9 @@ let chartsInitialized = false
 // 计算属性
 const filteredTopProducts = computed(() => {
   if (!productFilter.value) {
-    return salesData.value.topProducts || []
+    return salesData.value.top_products || []
   }
-  return (salesData.value.topProducts || []).filter(product =>
+  return (salesData.value.top_products || []).filter(product =>
     product.brand_name?.includes(productFilter.value) ||
     product.model_name?.includes(productFilter.value)
   )
@@ -495,20 +727,25 @@ const loadSalesData = async (showLoadingState = true) => {
       emit('loading-change', true)
     }
 
-    const params: any = {}
+    const params: {
+      start_date?: string
+      end_date?: string
+      store_id?: number
+      supplier_id?: number
+    } = {}
 
     // 使用父组件传递的检索参数
     if (props.startDate) {
-      params.startDate = props.startDate
+      params.start_date = props.startDate
     }
     if (props.endDate) {
-      params.endDate = props.endDate
+      params.end_date = props.endDate
     }
     if (props.storeId) {
-      params.storeId = props.storeId
+      params.store_id = Number(props.storeId)
     }
     if (props.supplierId) {
-      params.supplierId = props.supplierId
+      params.supplier_id = Number(props.supplierId)
     }
 
     const cacheKeySales = CACHE_KEYS.sales(params)
@@ -540,13 +777,13 @@ const loadSalesData = async (showLoadingState = true) => {
     if (newUsedResponse.success) {
       newUsedSales.value = {
         new: {
-          count: newUsedResponse.data.new?.salesCount || 0,
-          amount: newUsedResponse.data.new?.salesAmount || 0,
+          count: newUsedResponse.data.new?.sales_count || 0,
+          amount: newUsedResponse.data.new?.sales_amount || 0,
           profit: newUsedResponse.data.new?.profit || 0
         },
         used: {
-          count: newUsedResponse.data.used?.salesCount || 0,
-          amount: newUsedResponse.data.used?.salesAmount || 0,
+          count: newUsedResponse.data.used?.sales_count || 0,
+          amount: newUsedResponse.data.used?.sales_amount || 0,
           profit: newUsedResponse.data.used?.profit || 0
         }
       }
@@ -595,15 +832,15 @@ const loadMonthlyTrendData = async () => {
       const lastDay = dayjs(`${currentYear}-${month}`).daysInMonth()
       const endDate = `${currentYear}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
 
-      const cacheKey = CACHE_KEYS.salesCondition({ startDate, endDate })
+      const cacheKey = CACHE_KEYS.salesCondition({ start_date: startDate, end_date: endDate })
       const response = await useCachedRequest(cacheKey, () =>
         unifiedApi.get('/analytics/sales-by-condition', {
-          params: { startDate, endDate }
+          params: { start_date: startDate, end_date: endDate }
         }), DEFAULT_CACHE_TTL.STATIC)
 
       if (response.success && response.data) {
-        newCounts[month - 1] = response.data.new?.salesCount || 0
-        usedCounts[month - 1] = response.data.used?.salesCount || 0
+        newCounts[month - 1] = response.data.new?.sales_count || 0
+        usedCounts[month - 1] = response.data.used?.sales_count || 0
       }
     }
 
@@ -634,18 +871,18 @@ const loadStoreComparisonData = async () => {
 
     // 获取每个店铺的全新和二手销售数据（使用缓存）
     for (const store of stores) {
-      const cacheKey = CACHE_KEYS.salesCondition({ storeId: store.id })
+      const cacheKey = CACHE_KEYS.salesCondition({ store_id: store.id })
       const response = await useCachedRequest(cacheKey, () =>
         unifiedApi.get('/analytics/sales-by-condition', {
-          params: { storeId: store.id }
+          params: { store_id: store.id }
         }), DEFAULT_CACHE_TTL.DYNAMIC)
 
       if (response.success && response.data) {
         comparisonData.push({
           storeId: store.id,
           storeName: store.name,
-          newCount: response.data.new?.salesCount || 0,
-          usedCount: response.data.used?.salesCount || 0
+          newCount: response.data.new?.sales_count || 0,
+          usedCount: response.data.used?.sales_count || 0
         })
       }
     }
@@ -662,12 +899,12 @@ const formatNumber = (num?: number | null) => {
   return num.toLocaleString('zh-CN')
 }
 
-const formatPercent = (percent?: number) => {
+const _formatPercent = (percent?: number) => {
   if (!percent) return '0%'
   return `${percent > 0 ? '+' : ''}${percent.toFixed(1)}%`
 }
 
-const getChangeClass = (trend?: string) => {
+const _getChangeClass = (trend?: string) => {
   return {
     'positive': trend === 'up',
     'negative': trend === 'down',
@@ -675,11 +912,11 @@ const getChangeClass = (trend?: string) => {
   }
 }
 
-const getTrendIcon = (trend?: string) => {
+const _getTrendIcon = (trend?: string) => {
   switch (trend) {
-    case 'up': return ArrowUp
-    case 'down': return ArrowDown
-    default: return Minus
+  case 'up': return ArrowUp
+  case 'down': return ArrowDown
+  default: return Minus
   }
 }
 
@@ -815,7 +1052,7 @@ const updateTrendChart = () => {
 const updateDistributionChart = () => {
   if (!distributionChart) return
 
-  const products = salesData.value.topProducts || []
+  const products = salesData.value.top_products || []
   const data = products.slice(0, 10).map(item => ({
     name: item.model_name,
     value: item.quantity
@@ -952,7 +1189,7 @@ const toggleChartType = () => {
   updateDistributionChart()
 }
 
-const toggleComparisonType = () => {
+const _toggleComparisonType = () => {
   comparisonType.value = comparisonType.value === 'bar' ? 'radar' : 'bar'
   updateStoreComparison()
 }
@@ -1000,7 +1237,7 @@ const generateForecast = async () => {
     const response = await unifiedApi.get('/analytics/sales-forecast', {
       params: {
         period: forecastPeriod.value,
-        limit: 10
+        page_size: 10
       }
     })
 
@@ -1199,7 +1436,7 @@ const updateForecastChart = () => {
   })
 }
 
-const getTrendType = (trend: number): 'success' | 'info' | 'danger' | 'warning' => {
+const _getTrendType = (trend: number): 'success' | 'info' | 'danger' | 'warning' => {
   const trendNum = Number(trend)
   if (trendNum > 10) return 'success'
   if (trendNum > 0) return 'info'
@@ -1453,35 +1690,35 @@ onBeforeUnmount(() => {
     flex-shrink: 0;
 
     &.total {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
     }
 
     &.orders {
-      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      background: linear-gradient(135deg, var(--tf-color-pink-gradient) 0%, var(--tf-color-coral-gradient) 100%);
     }
 
     &.new {
-      background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
+      background: linear-gradient(135deg, var(--tf-color-green-mint) 0%, var(--tf-color-cyan-mint) 100%);
     }
 
     &.used {
-      background: linear-gradient(135deg, #fdcb6e 0%, #e17055 100%);
+      background: linear-gradient(135deg, var(--tf-color-amber-pastel-dark) 0%, var(--tf-color-red-chakra) 100%);
     }
 
     &.average {
-      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      background: linear-gradient(135deg, var(--tf-color-sky-gradient) 0%, var(--tf-color-cyan-gradient) 100%);
     }
 
     &.conversion {
-      background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+      background: linear-gradient(135deg, var(--tf-color-green-gradient) 0%, var(--tf-color-teal-gradient) 100%);
     }
 
     &.transfer {
-      background: linear-gradient(135deg, #a29bfe 0%, #6c5ce7 100%);
+      background: linear-gradient(135deg, var(--tf-color-violet-400) 0%, var(--tf-color-indigo-500) 100%);
     }
 
     &.allocation {
-      background: linear-gradient(135deg, #fd79a8 0%, #e84393 100%);
+      background: linear-gradient(135deg, var(--tf-color-pink-legacy) 0%, var(--tf-color-pink-500) 100%);
     }
   }
 
@@ -1667,7 +1904,7 @@ onBeforeUnmount(() => {
           align-items: center;
           gap: 4px;
           padding: 6px 12px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
           border-radius: 6px;
           color: white;
           font-weight: 600;
@@ -1761,32 +1998,32 @@ onBeforeUnmount(() => {
 
           // 高预测值样式
           &.high-prediction {
-            border: 2px solid #67C23A;
-            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            border: 2px solid var(--color-success);
+            background: linear-gradient(135deg, var(--tf-color-blue-50) 0%, var(--tf-color-sky-100) 100%);
 
             .stat-item:first-child .value {
-              color: #67C23A;
+              color: var(--color-success);
               font-size: 20px;
             }
           }
 
           // 中等预测值样式
           &.medium-prediction {
-            border: 2px solid #E6A23C;
-            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+            border: 2px solid var(--color-warning);
+            background: linear-gradient(135deg, var(--tf-color-amber-50) 0%, var(--tf-color-amber-100) 100%);
 
             .stat-item:first-child .value {
-              color: #E6A23C;
+              color: var(--color-warning);
             }
           }
 
           // 低预测值样式（预测为0）
           &.low-prediction {
             opacity: 0.6;
-            border: 1px dashed #dcdfe6;
+            border: 1px dashed var(--color-border);
 
             .stat-item:first-child .value {
-              color: #909399;
+              color: var(--color-info);
             }
           }
         }
@@ -1814,7 +2051,7 @@ onBeforeUnmount(() => {
     .no-prediction-tip {
       padding: 40px 20px;
       text-align: center;
-      background: #f5f7fa;
+      background: var(--tf-color-surface);
       border-radius: 8px;
       margin-top: 16px;
     }
@@ -1861,7 +2098,7 @@ onBeforeUnmount(() => {
       min-height: 152px;
       height: auto;
       position: relative;
-      background: #fff;
+      background: var(--color-bg-white);
       border-radius: 18px;
       border: 1px solid rgba(15, 23, 42, 0.06);
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -1872,7 +2109,7 @@ onBeforeUnmount(() => {
         position: absolute;
         inset: 0 0 auto 0;
         height: 3px;
-        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(90deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
       }
 
       :deep(.el-card__body) {
@@ -1911,7 +2148,7 @@ onBeforeUnmount(() => {
         font-weight: 700;
         letter-spacing: 0.45px;
         text-transform: uppercase;
-        color: #8e8e93;
+        color: var(--tf-color-gray-ios);
         white-space: normal;
         overflow: visible;
         text-overflow: clip;
@@ -1921,7 +2158,7 @@ onBeforeUnmount(() => {
         margin-bottom: 0;
         font-size: 21px;
         line-height: 1.18;
-        color: #1c1c1e;
+        color: var(--tf-color-neutral-ios);
         white-space: normal;
         overflow: visible;
         text-overflow: clip;
@@ -1937,7 +2174,7 @@ onBeforeUnmount(() => {
         font-size: 11px;
         line-height: 1.35;
         font-weight: 600;
-        color: #4b5563;
+        color: var(--tf-color-neutral-600);
         background: linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(102, 126, 234, 0.12));
         white-space: normal;
         overflow: visible;

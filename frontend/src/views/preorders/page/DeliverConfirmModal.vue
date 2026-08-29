@@ -8,24 +8,30 @@
     :show-default-footer="false"
   >
     <div v-if="preorder">
-      <el-descriptions :column="2" border>
+      <el-descriptions
+        :column="2"
+        border
+      >
         <el-descriptions-item label="预定单号">
           {{ preorder.preorder_number }}
         </el-descriptions-item>
         <el-descriptions-item label="客户">
           {{ preorder.customer_name }}
         </el-descriptions-item>
-        <el-descriptions-item label="商品信息" :span="2">
+        <el-descriptions-item
+          label="商品信息"
+          :span="2"
+        >
           {{ preorder.product_name }}
         </el-descriptions-item>
         <el-descriptions-item label="IMEI">
           {{ preorder.imei || '-' }}
         </el-descriptions-item>
         <el-descriptions-item label="定金">
-          ¥{{ preorder.advance_payment?.toFixed(2) }}
+          ¥{{ preorder.deposit_amount?.toFixed(2) }}
         </el-descriptions-item>
         <el-descriptions-item label="约定价格">
-          ¥{{ preorder.expected_price?.toFixed(2) || '-' }}
+          ¥{{ preorder.total_price?.toFixed(2) || '-' }}
         </el-descriptions-item>
         <el-descriptions-item label="尾款">
           ¥{{ (preorder.remaining_amount || 0).toFixed(2) }}
@@ -49,7 +55,7 @@
 
         <el-form-item label="备注">
           <el-input
-            v-model="formData.notes"
+            v-model="formData.remarks"
             type="textarea"
             :rows="2"
             placeholder="请输入备注信息"
@@ -59,8 +65,17 @@
     </div>
 
     <template #footer>
-      <el-button type="default" @click="dialogVisible = false">取消</el-button>
-      <el-button type="primary" :loading="submitting" @click="handleSubmit">
+      <el-button
+        type="default"
+        @click="dialogVisible = false"
+      >
+        取消
+      </el-button>
+      <el-button
+        type="primary"
+        :loading="submitting"
+        @click="handleSubmit"
+      >
         确认交付
       </el-button>
     </template>
@@ -89,13 +104,13 @@ const submitting = ref(false)
 
 const formData = reactive({
   actual_price: 0,
-  notes: ''
+  remarks: ''
 })
 
 watch(() => props.preorder, (preorder) => {
   if (preorder) {
-    formData.actual_price = preorder.expected_price || preorder.actual_price || 0
-    formData.notes = ''
+    formData.actual_price = preorder.total_price || preorder.actual_price || 0
+    formData.remarks = ''
   }
 }, { immediate: true })
 

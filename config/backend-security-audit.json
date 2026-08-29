@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "unauthenticatedRouteFiles": [
+    "price-list-public.js"
+  ]
+}

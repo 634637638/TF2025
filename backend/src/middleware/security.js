@@ -1,6 +1,6 @@
-const helmet = require('helmet');
-const log = require('../utils/log');
-const { DEFAULT_CSP_CONNECT_SRC } = require('../config/constants');
+const helmet = require('helmet')
+const log = require('../utils/log')
+const { DEFAULT_CSP_CONNECT_SRC } = require('../config/constants')
 
 // 内容安全策略配置
 const contentSecurityPolicy = {
@@ -34,13 +34,13 @@ const contentSecurityPolicy = {
     manifestSrc: ["'self'"],
     upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null
   }
-};
+}
 
 // 开发环境放宽的安全策略
 const developmentSecurity = {
   contentSecurityPolicy: false, // 开发环境禁用CSP以避免Vue HMR问题
   crossOriginEmbedderPolicy: false
-};
+}
 
 // 生产环境严格的安全策略
 const productionSecurity = {
@@ -59,15 +59,15 @@ const productionSecurity = {
       upgradeInsecureRequests: [] // 强制HTTPS
     }
   },
-  crossOriginEmbedderPolicy: { policy: "require-corp" },
-  crossOriginResourcePolicy: { policy: "cross-origin" },
-  crossOriginOpenerPolicy: { policy: "same-origin" }
-};
+  crossOriginEmbedderPolicy: { policy: 'require-corp' },
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  crossOriginOpenerPolicy: { policy: 'same-origin' }
+}
 
 // 根据环境选择安全配置
 const securityOptions = process.env.NODE_ENV === 'production'
   ? productionSecurity
-  : developmentSecurity;
+  : developmentSecurity
 
 // 创建helmet中间件
 const securityMiddleware = helmet({
@@ -94,32 +94,27 @@ const securityMiddleware = helmet({
     policy: 'strict-origin-when-cross-origin'
   },
   xssFilter: true
-});
+})
 
 // 自定义安全头中间件
 const customSecurityHeaders = (req, res, next) => {
   // 移除可能泄露服务器信息的头
-  res.removeHeader('X-Powered-By');
-  res.removeHeader('Server');
+  res.removeHeader('X-Powered-By')
+  res.removeHeader('Server')
 
   // 添加自定义安全头
-  res.setHeader('X-API-Version', '1.0.0');
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('X-API-Version', '1.0.0')
+  res.setHeader('X-Content-Type-Options', 'nosniff')
+  res.setHeader('X-Frame-Options', 'DENY')
+  res.setHeader('X-XSS-Protection', '1; mode=block')
   res.setHeader('Strict-Transport-Security',
     process.env.NODE_ENV === 'production'
       ? 'max-age=31536000; includeSubDomains; preload'
       : 'max-age=3600' // 开发环境较短时间
-  );
+  )
 
-  // API限流信息头（如果有）
-  res.setHeader('X-RateLimit-Limit', '100');
-  res.setHeader('X-RateLimit-Remaining', '99');
-  res.setHeader('X-RateLimit-Reset', new Date(Date.now() + 15 * 60 * 1000).toISOString());
-
-  next();
-};
+  next()
+}
 
 // 安全日志记录
 const securityLogger = (req, res, next) => {
@@ -129,30 +124,30 @@ const securityLogger = (req, res, next) => {
     /union.*select/i, // SQL注入尝试
     /javascript:/i,   // JavaScript协议
     /data:.*base64/i  // Base64编码内容
-  ];
+  ]
 
-  const url = req.url;
-  const userAgent = req.headers['user-agent'] || '';
-  const ip = req.ip || req.connection.remoteAddress;
+  const url = req.url
+  const userAgent = req.headers['user-agent'] || ''
+  const ip = req.ip || req.connection.remoteAddress
 
   // 检查可疑请求
   const isSuspicious = suspiciousPatterns.some(pattern =>
     pattern.test(url) || pattern.test(userAgent)
-  );
+  )
 
   if (isSuspicious) {
     if (process.env.NODE_ENV === 'production') {
       log.warn('检测到可疑请求', {
         method: req.method,
         path: req.path
-      });
+      })
     } else {
       log.warn('检测到可疑请求', {
         method: req.method,
         path: req.path,
         ip,
         userAgent
-      });
+      })
     }
   }
 
@@ -162,15 +157,15 @@ const securityLogger = (req, res, next) => {
       method: req.method,
       path: req.path,
       ip
-    });
+    })
   }
 
-  next();
-};
+  next()
+}
 
 module.exports = {
   securityMiddleware,
   customSecurityHeaders,
   securityLogger,
   contentSecurityPolicy
-};
+}

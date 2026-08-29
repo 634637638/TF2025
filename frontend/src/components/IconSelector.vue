@@ -1,21 +1,39 @@
 <template>
   <div class="icon-selector">
     <!-- 触发按钮 -->
-    <div class="icon-display" @click="showSelector = true">
-      <div v-if="modelValue" class="selected-icon">
-        <i :class="modelValue"></i>
+    <div
+      class="icon-display"
+      @click="showSelector = true"
+    >
+      <div
+        v-if="modelValue"
+        class="selected-icon"
+      >
+        <i :class="modelValue" />
         <span class="icon-class">{{ modelValue }}</span>
       </div>
-      <div v-else class="icon-placeholder">
-        <i class="fas fa-icons"></i>
+      <div
+        v-else
+        class="icon-placeholder"
+      >
+        <i class="fas fa-icons" />
         <span>点击选择图标</span>
       </div>
     </div>
-    <button type="button" class="btn btn-secondary" @click="showSelector = true">
-      <i class="fas fa-icons"></i> 选择
+    <button
+      type="button"
+      class="btn btn-secondary"
+      @click="showSelector = true"
+    >
+      <i class="fas fa-icons" /> 选择
     </button>
-    <button v-if="modelValue" type="button" class="btn btn-warning" @click="clearIcon">
-      <i class="fas fa-times"></i> 清除
+    <button
+      v-if="modelValue"
+      type="button"
+      class="btn btn-warning"
+      @click="clearIcon"
+    >
+      <i class="fas fa-times" /> 清除
     </button>
 
     <!-- 图标选择器模态框 -->
@@ -34,51 +52,79 @@
             class="form-control" 
             placeholder="搜索图标..."
             @input="filterIcons"
-          />
+          >
         </div>
 
         <div class="icon-categories">
           <button 
             v-for="category in categories" 
             :key="category.key"
-            @click="selectedCategory = category.key; filterIcons()"
             :class="['category-btn', { active: selectedCategory === category.key }]"
+            @click="selectedCategory = category.key; filterIcons()"
           >
             {{ category.name }} ({{ category.count }})
           </button>
         </div>
 
-        <div v-if="loading" class="loading">
+        <div
+          v-if="loading"
+          class="loading"
+        >
           <InlineLoading text="加载图标中..." />
         </div>
 
-        <div v-else-if="filteredIcons.length > 0" class="icon-grid">
+        <div
+          v-else-if="filteredIcons.length > 0"
+          class="icon-grid"
+        >
           <div 
             v-for="icon in filteredIcons" 
             :key="icon.id || icon.class"
-            @click="selectIcon(icon.class)"
             :class="['icon-item', { selected: modelValue === icon.class }]"
             :title="`${icon.name || icon.class} - ${icon.class}`"
+            @click="selectIcon(icon.class)"
           >
             <div class="icon-preview">
-              <i :class="icon.class" v-if="icon.class && icon.class.startsWith('fas')"></i>
-              <span v-else class="icon-fallback">{{ (icon.name || icon.class).charAt(0).toUpperCase() }}</span>
+              <i
+                v-if="icon.class && icon.class.startsWith('fas')"
+                :class="icon.class"
+              />
+              <span
+                v-else
+                class="icon-fallback"
+              >{{ (icon.name || icon.class).charAt(0).toUpperCase() }}</span>
             </div>
             <span class="icon-name">{{ icon.name || icon.class.replace('fas fa-', '').replace(/-/g, ' ') }}</span>
           </div>
         </div>
 
-        <div v-else class="no-results">
-          <i class="fas fa-search"></i>
-          <p>未找到匹配的图标</p>
-        </div>
+        <DataEmptyState
+          v-else
+          state="filtered"
+          size="compact"
+          description="未找到匹配的图标"
+        />
       </div>
 
       <template #footer>
         <div class="modal-footer">
-          <button @click="closeSelector" class="btn btn-secondary">取消</button>
-          <button @click="clearIcon" class="btn btn-warning">清除图标</button>
-          <button @click="confirmSelection" class="btn btn-primary" :disabled="!modelValue">
+          <button
+            class="btn btn-secondary"
+            @click="closeSelector"
+          >
+            取消
+          </button>
+          <button
+            class="btn btn-warning"
+            @click="clearIcon"
+          >
+            清除图标
+          </button>
+          <button
+            class="btn btn-primary"
+            :disabled="!modelValue"
+            @click="confirmSelection"
+          >
             确认选择
           </button>
         </div>
@@ -245,7 +291,7 @@ onMounted(async () => {
 
 .icon-display {
   flex: 1;
-  border: 2px dashed #ddd;
+  border: 2px dashed var(--tf-color-gray-300-alt);
   border-radius: 8px;
   padding: 15px;
   text-align: center;
@@ -258,8 +304,8 @@ onMounted(async () => {
 }
 
 .icon-display:hover {
-  border-color: #007bff;
-  background-color: #f8f9fa;
+  border-color: var(--tf-color-blue-bootstrap);
+  background-color: var(--tf-color-surface-muted);
 }
 
 .selected-icon {
@@ -267,18 +313,18 @@ onMounted(async () => {
   align-items: center;
   gap: 10px;
   font-size: 18px;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .selected-icon i {
   font-size: 24px;
-  color: #007bff;
+  color: var(--tf-color-blue-bootstrap);
 }
 
 .icon-class {
   font-family: 'Courier New', monospace;
   font-size: 14px;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .icon-placeholder {
@@ -286,7 +332,7 @@ onMounted(async () => {
   flex-direction: column;
   align-items: center;
   gap: 5px;
-  color: #999;
+  color: var(--text-muted);
 }
 
 .icon-placeholder i {
@@ -342,7 +388,7 @@ onMounted(async () => {
 .loading {
   text-align: center;
   padding: 40px;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .icon-grid {
@@ -352,7 +398,7 @@ onMounted(async () => {
   max-height: 400px;
   overflow-y: auto;
   padding: 10px;
-  border: 1px solid #eee;
+  border: 1px solid var(--tf-color-gray-200-alt);
   border-radius: 8px;
 }
 
@@ -361,7 +407,7 @@ onMounted(async () => {
   flex-direction: column;
   align-items: center;
   padding: 15px 10px;
-  border: 1px solid #eee;
+  border: 1px solid var(--tf-color-gray-200-alt);
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -369,14 +415,14 @@ onMounted(async () => {
 }
 
 .icon-item:hover {
-  background: #f8f9fa;
-  border-color: #007bff;
+  background: var(--tf-color-surface-muted);
+  border-color: var(--tf-color-blue-bootstrap);
   transform: translateY(-2px);
 }
 
 .icon-item.selected {
-  background: #e3f2fd;
-  border-color: #007bff;
+  background: var(--tf-color-blue-100);
+  border-color: var(--tf-color-blue-bootstrap);
   box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
 }
 
@@ -388,24 +434,24 @@ onMounted(async () => {
   justify-content: center;
   margin-bottom: 8px;
   border-radius: 6px;
-  background: #f8f9fa;
-  border: 1px solid #e9ecef;
+  background: var(--tf-color-surface-muted);
+  border: 1px solid var(--tf-color-border-muted);
 }
 
 .icon-item i {
   font-size: 20px;
-  color: #007bff;
+  color: var(--tf-color-blue-bootstrap);
 }
 
 .icon-fallback {
   font-size: 16px;
   font-weight: bold;
-  color: #6c757d;
+  color: var(--tf-color-muted);
 }
 
 .icon-name {
   font-size: 12px;
-  color: #666;
+  color: var(--text-secondary);
   word-break: break-all;
   line-height: 1.2;
 }
@@ -413,7 +459,7 @@ onMounted(async () => {
 .no-results {
   text-align: center;
   padding: 40px;
-  color: #999;
+  color: var(--text-muted);
 }
 
 .no-results i {
@@ -426,8 +472,8 @@ onMounted(async () => {
   justify-content: flex-end;
   gap: 10px;
   padding: 20px;
-  border-top: 1px solid #eee;
-  background: #f8f9fa;
+  border-top: 1px solid var(--tf-color-gray-200-alt);
+  background: var(--tf-color-surface-muted);
 }
 
 .btn:disabled {
@@ -438,14 +484,14 @@ onMounted(async () => {
 .form-control {
   width: 100%;
   padding: 10px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--tf-color-gray-300-alt);
   border-radius: 6px;
   font-size: 14px;
 }
 
 .form-control:focus {
   outline: none;
-  border-color: #007bff;
+  border-color: var(--tf-color-blue-bootstrap);
   box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
 }
 </style>

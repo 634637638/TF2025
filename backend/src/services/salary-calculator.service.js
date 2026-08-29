@@ -2,21 +2,21 @@
  * 工资计算服务（核心）
  * 负责计算员工工资：底薪 + 提成 + 加班费 - 扣除
  */
-const { getDatabase } = require('../config/database');
-const log = require('../utils/log');
+const { getDatabase } = require('../config/database')
+const log = require('../utils/log')
 const {
   formatLocalDate,
   parseLocalDate
-} = require('../utils/time');
+} = require('../utils/time')
 const {
   buildLeaveExclusionRules,
   shouldExcludeSaleByLeave
-} = require('../utils/leave-sales-filter');
+} = require('../utils/leave-sales-filter')
 
 const EXPECTED_SALARY_ERRORS = new Set([
   '员工不存在',
   '员工没有关联工资模板'
-]);
+])
 
 class SalaryCalculatorService {
   /**
@@ -29,21 +29,21 @@ class SalaryCalculatorService {
   async calculateSalary(employeeId, periodStart, periodEnd, options = {}) {
     try {
       // 1. 获取员工信息和工资模板
-      const employeeInfo = await this._getEmployeeWithTemplate(employeeId);
+      const employeeInfo = await this._getEmployeeWithTemplate(employeeId)
       if (!employeeInfo) {
-        throw new Error('员工不存在');
+        throw new Error('员工不存在')
       }
 
       // 检查是否有关联工资模板（template_id 不为空）
       if (!employeeInfo.template_id || !employeeInfo.base_salary) {
-        throw new Error('员工没有关联工资模板');
+        throw new Error('员工没有关联工资模板')
       }
 
       // 2. 获取销售数据（传入员工信息用于过滤有提成的销售）
-      const salesData = await this._getSalesData(employeeId, periodStart, periodEnd, employeeInfo);
+      const salesData = await this._getSalesData(employeeId, periodStart, periodEnd, employeeInfo)
 
       // 3. 获取考勤数据
-      const attendanceData = await this._getAttendanceData(employeeId, periodStart, periodEnd);
+      const attendanceData = await this._getAttendanceData(employeeId, periodStart, periodEnd)
 
       // 4. 计算工资各组成部分
       const salaryBreakdown = {
@@ -78,53 +78,53 @@ class SalaryCalculatorService {
         // 汇总
         net_salary: 0,
         status: 'approved' // 管理员计算后直接进入待发放状态
-      };
+      }
 
       // 5. 计算底薪（含工龄调整）
       const baseSalaryResult = await this._calculateBaseSalary(
         employeeInfo,
         salaryBreakdown,
         periodEnd
-      );
+      )
       // base_salary 应该是涨薪后的总额
-      salaryBreakdown.base_salary = baseSalaryResult.base_salary + baseSalaryResult.adjustment;
-      salaryBreakdown.base_salary_adjustment = baseSalaryResult.adjustment;
-      salaryBreakdown.base_salary_note = baseSalaryResult.note;
+      salaryBreakdown.base_salary = baseSalaryResult.base_salary + baseSalaryResult.adjustment
+      salaryBreakdown.base_salary_adjustment = baseSalaryResult.adjustment
+      salaryBreakdown.base_salary_note = baseSalaryResult.note
 
       // 6. 计算提成
       salaryBreakdown.commission_amount = this._calculateCommission(
         salesData,
         employeeInfo
-      );
+      )
 
       // 7. 计算加班费
       salaryBreakdown.overtime_pay = this._calculateOvertimePay(
         attendanceData.overtimeHours,
         employeeInfo.overtime_hourly_rate || 0
-      );
+      )
 
       // 8. 计算扣除
-      const periodDays = this._calculatePeriodDays(periodStart, periodEnd);
+      const periodDays = this._calculatePeriodDays(periodStart, periodEnd)
       const deductions = this._calculateDeductions(
         attendanceData,
         employeeInfo,
         salaryBreakdown.base_salary,
         periodDays
-      );
-      salaryBreakdown.leave_deduction = deductions.leaveDeduction;
-      salaryBreakdown.leave_days = deductions.actualLeaveDays;
+      )
+      salaryBreakdown.leave_deduction = deductions.leaveDeduction
+      salaryBreakdown.leave_days = deductions.actualLeaveDays
 
       // 10. 检查长期/整月请假
       // 长期请假则无工资、无提成；整月请假也必须明确归零，避免扣款抵消后仍计算提成或加班费。
-      const workDays = this._calculateWorkDays(periodStart, periodEnd);
-      const isFullPeriodLeave = attendanceData.leaveDays >= periodDays;
+      const workDays = this._calculateWorkDays(periodStart, periodEnd)
+      const isFullPeriodLeave = attendanceData.leaveDays >= periodDays
       if (isFullPeriodLeave || attendanceData.leaveDays > workDays / 2) {
-        salaryBreakdown.base_salary = 0;
-        salaryBreakdown.base_salary_adjustment = 0;
-        salaryBreakdown.commission_amount = 0;
-        salaryBreakdown.overtime_pay = 0;
-        salaryBreakdown.leave_deduction = 0;
-        salaryBreakdown.base_salary_note = isFullPeriodLeave ? '整月请假，无工资无提成' : '长期请假，无工资无提成';
+        salaryBreakdown.base_salary = 0
+        salaryBreakdown.base_salary_adjustment = 0
+        salaryBreakdown.commission_amount = 0
+        salaryBreakdown.overtime_pay = 0
+        salaryBreakdown.leave_deduction = 0
+        salaryBreakdown.base_salary_note = isFullPeriodLeave ? '整月请假，无工资无提成' : '长期请假，无工资无提成'
       }
 
       // 11. 计算实发工资（不扣社保个税）
@@ -135,24 +135,24 @@ class SalaryCalculatorService {
         salaryBreakdown.overtime_pay +
         salaryBreakdown.performance_bonus +
         salaryBreakdown.other_bonus -
-        (salaryBreakdown.leave_deduction + salaryBreakdown.other_deduction);
+        (salaryBreakdown.leave_deduction + salaryBreakdown.other_deduction)
 
       // 12. 添加工作天数相关字段
       // 实际工作天数 = 月份天数 - 请假天数
       // 注意：休假（monthly_leave）不影响工作天数计算
-      salaryBreakdown.actual_work_days = periodDays - salaryBreakdown.leave_days;
+      salaryBreakdown.actual_work_days = periodDays - salaryBreakdown.leave_days
 
-      return salaryBreakdown;
+      return salaryBreakdown
     } catch (error) {
-      const isExpectedError = EXPECTED_SALARY_ERRORS.has(error.message);
+      const isExpectedError = EXPECTED_SALARY_ERRORS.has(error.message)
 
       if (!isExpectedError) {
-        log.error('计算工资失败:', error);
+        log.error('计算工资失败:', error)
       } else if (options.logExpectedErrors) {
-        log.warn(`工资计算已跳过员工 ${employeeId}: ${error.message}`);
+        log.warn(`工资计算已跳过员工 ${employeeId}: ${error.message}`)
       }
 
-      throw error;
+      throw error
     }
   }
 
@@ -160,8 +160,8 @@ class SalaryCalculatorService {
    * 获取员工信息和工资模板
    */
   async _getEmployeeWithTemplate(employeeId) {
-    const db = getDatabase();
-    const conn = await db.getConnection();
+    const db = getDatabase()
+    const conn = await db.getConnection()
 
     try {
       const query = `
@@ -177,18 +177,18 @@ class SalaryCalculatorService {
         FROM users u
         LEFT JOIN salary_templates st ON u.salary_template_id = st.id
         WHERE u.id = ? AND u.status = 1
-      `;
-      const [rows] = await conn.execute(query, [employeeId]);
+      `
+      const [rows] = await conn.execute(query, [employeeId])
 
-      const employee = rows[0] || null;
+      const employee = rows[0] || null
       if (employee) {
         // 优先使用 hire_date，如果为空则使用 created_at 作为入职日期
-        employee.hire_date = employee.hire_date || employee.created_at;
+        employee.hire_date = employee.hire_date || employee.created_at
       }
 
-      return employee;
+      return employee
     } finally {
-      conn.release();
+      conn.release()
     }
   }
 
@@ -197,8 +197,8 @@ class SalaryCalculatorService {
    * 只返回实际有提成的销售记录
    */
   async _getSalesData(employeeId, periodStart, periodEnd, employeeInfo = null) {
-    const db = getDatabase();
-    const conn = await db.getConnection();
+    const db = getDatabase()
+    const conn = await db.getConnection()
 
     try {
       // 首先获取该员工在周期内的请假日期
@@ -209,10 +209,10 @@ class SalaryCalculatorService {
           AND record_date BETWEEN ? AND ?
           AND record_type = 'leave'
           AND status = 'approved'
-      `;
-      const [leaveRows] = await conn.execute(leaveQuery, [employeeId, periodStart, periodEnd]);
+      `
+      const [leaveRows] = await conn.execute(leaveQuery, [employeeId, periodStart, periodEnd])
 
-      const leaveRules = buildLeaveExclusionRules(leaveRows);
+      const leaveRules = buildLeaveExclusionRules(leaveRows)
 
       // 查询周期内该员工的销售记录（统计全新机和二手机）
       // 排除请假日期的销售
@@ -223,7 +223,7 @@ class SalaryCalculatorService {
           p.imei,
           p.sale_price,
           p.purchase_cost,
-          p.salestime,
+          p.sale_time,
           (p.sale_price - p.purchase_cost) as profit,
           p.is_new,
           c.name as customer_name,
@@ -243,42 +243,42 @@ class SalaryCalculatorService {
         ) latest_sale ON p.id = latest_sale.phone_id
         LEFT JOIN customers c ON latest_sale.customer_id = c.id
         WHERE p.sale_operator_id = ?
-          AND p.salestime IS NOT NULL
-          AND DATE(p.salestime) BETWEEN ? AND ?
+          AND p.sale_time IS NOT NULL
+          AND DATE(p.sale_time) BETWEEN ? AND ?
           AND p.status = 'sold'
           AND (latest_sale.sale_type IS NULL OR latest_sale.sale_type NOT IN ('wholesale', 'supplier_proxy', 'peer_transfer'))
-        ORDER BY p.salestime DESC
-      `;
+        ORDER BY p.sale_time DESC
+      `
 
-      const [rows] = await conn.execute(query, [employeeId, periodStart, periodEnd]);
+      const [rows] = await conn.execute(query, [employeeId, periodStart, periodEnd])
 
       // 调试：记录查询结果
-      log.debug(`[工资计算] 员工 ${employeeId} 在 ${periodStart} ~ ${periodEnd} 的销售查询：`);
-      log.debug(`  - 原始查询结果数: ${rows.length}`);
-      log.debug(`  - 请假日期集合: ${leaveRules.fullDayDates.size > 0 ? Array.from(leaveRules.fullDayDates).sort().join(', ') : '无'}`);
+      log.debug(`[工资计算] 员工 ${employeeId} 在 ${periodStart} ~ ${periodEnd} 的销售查询：`)
+      log.debug(`  - 原始查询结果数: ${rows.length}`)
+      log.debug(`  - 请假日期集合: ${leaveRules.fullDayDates.size > 0 ? Array.from(leaveRules.fullDayDates).sort().join(', ') : '无'}`)
 
       // 过滤掉请假日期的销售
       let filteredRows = rows.filter(r => {
-        return !shouldExcludeSaleByLeave(r.salestime, leaveRules);
-      });
+        return !shouldExcludeSaleByLeave(r.sale_time, leaveRules)
+      })
 
-      log.debug(`  - 过滤请假日期后结果数: ${filteredRows.length}`);
+      log.debug(`  - 过滤请假日期后结果数: ${filteredRows.length}`)
 
       // 获取提成配置（从员工模板中获取）
-      const commissionType = employeeInfo?.commission_type || 'fixed';
-      const newRate = parseFloat(employeeInfo?.commission_new_fixed || employeeInfo?.commission_fixed || 0);
-      const usedRate = parseFloat(employeeInfo?.commission_used_fixed || 0);
-      const commissionPercentage = parseFloat(employeeInfo?.commission_percentage || 0);
+      const commissionType = employeeInfo?.commission_type || 'fixed'
+      const newRate = parseFloat(employeeInfo?.commission_new_fixed || employeeInfo?.commission_fixed || 0)
+      const usedRate = parseFloat(employeeInfo?.commission_used_fixed || 0)
+      const commissionPercentage = parseFloat(employeeInfo?.commission_percentage || 0)
 
       // 进一步过滤：只保留实际有提成的销售
       // 判断该员工是否有提成配置：
       // - 固定提成模式：只要全新机或二手机任一提成率 > 0
       // - 利润提成模式：只要利润提成率 > 0
-      let hasCommissionConfig = false;
+      let hasCommissionConfig = false
       if (commissionType === 'fixed') {
-        hasCommissionConfig = (newRate > 0 || usedRate > 0);
+        hasCommissionConfig = (newRate > 0 || usedRate > 0)
       } else if (commissionType === 'percentage') {
-        hasCommissionConfig = (commissionPercentage > 0);
+        hasCommissionConfig = (commissionPercentage > 0)
       }
 
       // 如果没有任何提成配置，则不过滤（保持向后兼容，显示所有销售）
@@ -286,16 +286,16 @@ class SalaryCalculatorService {
       if (hasCommissionConfig) {
         if (commissionType === 'fixed') {
           filteredRows = filteredRows.filter(r => {
-            const isNew = r.is_new === 1;
-            if (isNew && newRate > 0) return true;  // 全新机有提成
-            if (!isNew && usedRate > 0) return true;  // 二手机有提成
-            return false;  // 对应机型没有提成
-          });
-          log.debug(`  - 过滤无提成销售后结果数: ${filteredRows.length} (全新机提成率=${newRate}, 二手机提成率=${usedRate})`);
+            const isNew = r.is_new === 1
+            if (isNew && newRate > 0) return true  // 全新机有提成
+            if (!isNew && usedRate > 0) return true  // 二手机有提成
+            return false  // 对应机型没有提成
+          })
+          log.debug(`  - 过滤无提成销售后结果数: ${filteredRows.length} (全新机提成率=${newRate}, 二手机提成率=${usedRate})`)
         }
         // percentage 模式不过滤，因为所有销售都有利润提成
       } else {
-        log.debug('  - 该员工无提成配置，保留所有销售记录');
+        log.debug('  - 该员工无提成配置，保留所有销售记录')
       }
 
       const details = filteredRows.map(r => ({
@@ -304,15 +304,15 @@ class SalaryCalculatorService {
         sale_price: parseFloat(r.sale_price) || 0,
         purchase_cost: parseFloat(r.purchase_cost) || 0,
         profit: parseFloat(r.profit) || 0,
-        sale_time: r.salestime,
+        sale_time: r.sale_time,
         is_new: r.is_new,
         customer_name: r.customer_name || null,
         model_name: r.model_name || null,
         color_name: r.color_name || null
-      }));
+      }))
 
-      const newRows = filteredRows.filter(r => r.is_new === 1);
-      const usedRows = filteredRows.filter(r => r.is_new === 0 || r.is_new === null);
+      const newRows = filteredRows.filter(r => r.is_new === 1)
+      const usedRows = filteredRows.filter(r => r.is_new === 0 || r.is_new === null)
 
       return {
         count: filteredRows.length,
@@ -323,9 +323,9 @@ class SalaryCalculatorService {
         profit: filteredRows.reduce((sum, r) => sum + (parseFloat(r.profit) || 0), 0),
         details,
         excludedCount: rows.length - filteredRows.length // 记录被排除的销售数量
-      };
+      }
     } finally {
-      conn.release();
+      conn.release()
     }
   }
 
@@ -336,17 +336,17 @@ class SalaryCalculatorService {
    * - 加班（overtime）记录：只查询当月的记录
    */
   async _getAttendanceData(employeeId, periodStart, periodEnd) {
-    const db = getDatabase();
-    const conn = await db.getConnection();
+    const db = getDatabase()
+    const conn = await db.getConnection()
 
     try {
-      const currentMonthStartDate = parseLocalDate(periodStart);
-      currentMonthStartDate.setDate(1);
-      const currentMonthStart = formatLocalDate(currentMonthStartDate);
+      const currentMonthStartDate = parseLocalDate(periodStart)
+      currentMonthStartDate.setDate(1)
+      const currentMonthStart = formatLocalDate(currentMonthStartDate)
 
-      const lastMonthStartDate = new Date(currentMonthStartDate);
-      lastMonthStartDate.setMonth(lastMonthStartDate.getMonth() - 1);
-      const lastMonthStart = formatLocalDate(lastMonthStartDate);
+      const lastMonthStartDate = new Date(currentMonthStartDate)
+      lastMonthStartDate.setMonth(lastMonthStartDate.getMonth() - 1)
+      const lastMonthStart = formatLocalDate(lastMonthStartDate)
 
       // 查询1：当月的请假和加班记录（只查询计算周期内的）
       const currentPeriodQuery = `
@@ -360,23 +360,23 @@ class SalaryCalculatorService {
           AND status = 'approved'
           AND record_type IN ('leave', 'overtime')
         ORDER BY record_date
-      `;
+      `
 
-      const [currentRows] = await conn.execute(currentPeriodQuery, [employeeId, periodStart, periodEnd]);
+      const [currentRows] = await conn.execute(currentPeriodQuery, [employeeId, periodStart, periodEnd])
 
       const result = {
         leaveDays: 0,
         overtimeHours: 0
-      };
+      }
 
       // 统计当月的请假和加班
       currentRows.forEach(row => {
         if (row.record_type === 'leave') {
-          result.leaveDays += parseFloat(row.leave_days) || 0;
+          result.leaveDays += parseFloat(row.leave_days) || 0
         } else if (row.record_type === 'overtime') {
-          result.overtimeHours += parseFloat(row.overtime_hours) || 0;
+          result.overtimeHours += parseFloat(row.overtime_hours) || 0
         }
-      });
+      })
 
       // 查询2：2个月的休假记录（用于计算累积和超额）
       const restDaysQuery = `
@@ -389,21 +389,21 @@ class SalaryCalculatorService {
           AND status = 'approved'
           AND record_type = 'monthly_leave'
         ORDER BY record_date
-      `;
+      `
 
-      const [restRows] = await conn.execute(restDaysQuery, [employeeId, lastMonthStart, periodEnd]);
+      const [restRows] = await conn.execute(restDaysQuery, [employeeId, lastMonthStart, periodEnd])
 
-      let lastMonthRestDays = 0;
-      let currentMonthRestDays = 0;
+      let lastMonthRestDays = 0
+      let currentMonthRestDays = 0
       restRows.forEach(row => {
-        const restDays = parseFloat(row.monthly_leave_days) || 0;
-        const recordDate = new Date(row.record_date);
+        const restDays = parseFloat(row.monthly_leave_days) || 0
+        const recordDate = new Date(row.record_date)
         if (recordDate < currentMonthStartDate) {
-          lastMonthRestDays += restDays;
+          lastMonthRestDays += restDays
         } else {
-          currentMonthRestDays += restDays;
+          currentMonthRestDays += restDays
         }
-      });
+      })
 
       // 查询3：上个月是否存在普通请假（leave），有则不累计上月剩余休假额度
       const lastMonthLeaveQuery = `
@@ -413,9 +413,9 @@ class SalaryCalculatorService {
           AND record_date BETWEEN ? AND DATE_SUB(?, INTERVAL 1 DAY)
           AND status = 'approved'
           AND record_type = 'leave'
-      `;
-      const [lastMonthLeaveRows] = await conn.execute(lastMonthLeaveQuery, [employeeId, lastMonthStart, currentMonthStart]);
-      const lastMonthHasRegularLeave = (lastMonthLeaveRows[0]?.leave_count || 0) > 0;
+      `
+      const [lastMonthLeaveRows] = await conn.execute(lastMonthLeaveQuery, [employeeId, lastMonthStart, currentMonthStart])
+      const lastMonthHasRegularLeave = (lastMonthLeaveRows[0]?.leave_count || 0) > 0
 
       // 获取员工模板以确定月均休假天数
       const templateQuery = `
@@ -423,28 +423,28 @@ class SalaryCalculatorService {
         FROM users u
         LEFT JOIN salary_templates st ON u.salary_template_id = st.id
         WHERE u.id = ?
-      `;
-      const [templateRows] = await conn.execute(templateQuery, [employeeId]);
-      const monthlyRestDays = (templateRows[0]?.rest_days) || 2;
+      `
+      const [templateRows] = await conn.execute(templateQuery, [employeeId])
+      const monthlyRestDays = (templateRows[0]?.rest_days) || 2
 
       // 上个月只有普通请假才阻断累计；只有休假不阻断累计，且累计上限最多 2 个月。
       const carryForwardRestDays = lastMonthHasRegularLeave
         ? 0
-        : Math.min(monthlyRestDays, Math.max(0, monthlyRestDays - lastMonthRestDays));
+        : Math.min(monthlyRestDays, Math.max(0, monthlyRestDays - lastMonthRestDays))
       const allowedCurrentRestDays = Math.min(
         monthlyRestDays * 2,
         monthlyRestDays + carryForwardRestDays
-      );
+      )
 
       // 当月休假超出本月可用额度时，超出部分转为请假扣款
       if (currentMonthRestDays > allowedCurrentRestDays) {
-        const excessDays = currentMonthRestDays - allowedCurrentRestDays;
-        result.leaveDays += excessDays;
+        const excessDays = currentMonthRestDays - allowedCurrentRestDays
+        result.leaveDays += excessDays
       }
 
-      return result;
+      return result
     } finally {
-      conn.release();
+      conn.release()
     }
   }
 
@@ -452,28 +452,28 @@ class SalaryCalculatorService {
    * 计算周期天数
    */
   _calculatePeriodDays(startDate, endDate) {
-    const start = parseLocalDate(startDate);
-    const end = parseLocalDate(endDate);
-    return Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+    const start = parseLocalDate(startDate)
+    const end = parseLocalDate(endDate)
+    return Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1
   }
 
   /**
    * 计算工作日天数（简化版，排除周末）
    */
   _calculateWorkDays(startDate, endDate) {
-    let count = 0;
-    let current = parseLocalDate(startDate);
-    const end = parseLocalDate(endDate);
+    let count = 0
+    const current = parseLocalDate(startDate)
+    const end = parseLocalDate(endDate)
 
     while (current <= end) {
-      const dayOfWeek = current.getDay();
+      const dayOfWeek = current.getDay()
       if (dayOfWeek !== 0 && dayOfWeek !== 6) { // 排除周六日
-        count++;
+        count++
       }
-      current.setDate(current.getDate() + 1);
+      current.setDate(current.getDate() + 1)
     }
 
-    return count;
+    return count
   }
 
   /**
@@ -487,52 +487,52 @@ class SalaryCalculatorService {
       employeeInfo.auto_raise_rule,
       employeeInfo.hire_date,
       periodEnd
-    );
+    )
   }
 
   /** Calculate the effective base salary for a payroll period. */
   calculateDynamicBaseSalary(baseSalaryValue, autoRaiseRule, hireDateValue, periodEnd) {
-    const baseSalary = parseFloat(baseSalaryValue) || 0;
-    let adjustment = 0;
-    let note = '';
+    const baseSalary = parseFloat(baseSalaryValue) || 0
+    let adjustment = 0
+    let note = ''
 
     // 检查是否有自动涨薪规则（从模板中获取）
     if (autoRaiseRule && hireDateValue) {
       try {
         const rule = typeof autoRaiseRule === 'string'
           ? JSON.parse(autoRaiseRule)
-          : autoRaiseRule;
+          : autoRaiseRule
 
         if (rule.enabled && rule.months && rule.amount) {
-          const hireDate = new Date(hireDateValue);
+          const hireDate = new Date(hireDateValue)
           // 使用结算月份的结束日期计算工龄涨薪
-          const currentDate = periodEnd ? new Date(periodEnd) : new Date();
+          const currentDate = periodEnd ? new Date(periodEnd) : new Date()
 
           // 计算入职月数
-          const monthsOfService = this._calculateMonthsOfService(hireDate, currentDate);
+          const monthsOfService = this._calculateMonthsOfService(hireDate, currentDate)
 
           // 计算涨薪次数
-          const raiseCount = Math.floor(monthsOfService / rule.months);
+          const raiseCount = Math.floor(monthsOfService / rule.months)
 
           if (raiseCount > 0) {
-            const potentialAdjustment = raiseCount * parseFloat(rule.amount);
-            const maxSalary = parseFloat(rule.max_salary) || 0;
+            const potentialAdjustment = raiseCount * parseFloat(rule.amount)
+            const maxSalary = parseFloat(rule.max_salary) || 0
 
             // 检查是否超过最高上限
-            const newSalary = baseSalary + potentialAdjustment;
+            const newSalary = baseSalary + potentialAdjustment
             if (maxSalary > 0 && newSalary > maxSalary) {
               // 超过上限，只涨到上限
-              adjustment = maxSalary - baseSalary;
-              note = `工龄涨薪：每${rule.months}个月涨${rule.amount}元，已达到上限${maxSalary}元`;
+              adjustment = maxSalary - baseSalary
+              note = `工龄涨薪：每${rule.months}个月涨${rule.amount}元，已达到上限${maxSalary}元`
             } else {
-              adjustment = potentialAdjustment;
-              note = `工龄涨薪：每${rule.months}个月涨${rule.amount}元，已涨薪${raiseCount}次`;
+              adjustment = potentialAdjustment
+              note = `工龄涨薪：每${rule.months}个月涨${rule.amount}元，已涨薪${raiseCount}次`
             }
           }
         }
       } catch (e) {
         // JSON 解析失败，忽略自动涨薪
-        log.warn('解析自动涨薪规则失败:', e);
+        log.warn('解析自动涨薪规则失败:', e)
       }
     }
 
@@ -541,7 +541,7 @@ class SalaryCalculatorService {
       base_salary: baseSalary,  // 原始底薪
       adjustment,  // 调整金额
       note
-    };
+    }
   }
 
   /**
@@ -551,39 +551,39 @@ class SalaryCalculatorService {
    * @returns {number} 入职月数
    */
   _calculateMonthsOfService(hireDate, currentDate) {
-    const years = currentDate.getFullYear() - hireDate.getFullYear();
-    const months = currentDate.getMonth() - hireDate.getMonth();
-    return years * 12 + months;
+    const years = currentDate.getFullYear() - hireDate.getFullYear()
+    const months = currentDate.getMonth() - hireDate.getMonth()
+    return years * 12 + months
   }
 
   /**
    * 计算提成
    */
   _calculateCommission(salesData, template) {
-    const type = template.commission_type;
+    const type = template.commission_type
 
     if (type === 'fixed') {
       // 固定金额/台（按全新/二手机分别计算）
-      const newRate = parseFloat(template.commission_new_fixed || template.commission_fixed) || 0;
-      const usedRate = parseFloat(template.commission_used_fixed) || 0;
-      const newCount = parseInt(salesData.new_count) || 0;
-      const usedCount = parseInt(salesData.used_count) || 0;
+      const newRate = parseFloat(template.commission_new_fixed || template.commission_fixed) || 0
+      const usedRate = parseFloat(template.commission_used_fixed) || 0
+      const newCount = parseInt(salesData.new_count) || 0
+      const usedCount = parseInt(salesData.used_count) || 0
 
-      return (newCount * newRate) + (usedCount * usedRate);
+      return (newCount * newRate) + (usedCount * usedRate)
     } else if (type === 'percentage') {
       // 利润百分比
-      const percentage = parseFloat(template.commission_percentage) || 0;
-      return salesData.profit * (percentage / 100);
+      const percentage = parseFloat(template.commission_percentage) || 0
+      return salesData.profit * (percentage / 100)
     }
 
-    return 0;
+    return 0
   }
 
   /**
    * 计算加班费
    */
   _calculateOvertimePay(overtimeHours, hourlyRate) {
-    return (parseFloat(overtimeHours) || 0) * (parseFloat(hourlyRate) || 0);
+    return (parseFloat(overtimeHours) || 0) * (parseFloat(hourlyRate) || 0)
   }
 
   /**
@@ -596,73 +596,73 @@ class SalaryCalculatorService {
    */
   _calculateDeductions(attendanceData, template, baseSalary, periodDays) {
     // 计算日薪 = 当月底薪 ÷ 当月天数
-    const dailySalary = periodDays > 0 ? baseSalary / periodDays : 0;
+    const dailySalary = periodDays > 0 ? baseSalary / periodDays : 0
 
     // 请假天数直接使用 attendanceData.leaveDays（已包含累积超出的部分转为请假）
-    const actualLeaveDays = attendanceData.leaveDays || 0;
+    const actualLeaveDays = attendanceData.leaveDays || 0
 
     // 请假扣除 = 日薪 × 请假天数
-    const leaveDeduction = dailySalary * actualLeaveDays;
+    const leaveDeduction = dailySalary * actualLeaveDays
 
     return {
       leaveDeduction,
       actualLeaveDays
-    };
+    }
   }
 
   /**
    * 计算社保
    */
   _calculateSocialInsurance(grossSalary, rate) {
-    return grossSalary * (parseFloat(rate) / 100);
+    return grossSalary * (parseFloat(rate) / 100)
   }
 
   /**
    * 计算个税（简化版）
    */
   _calculateTax(taxableIncome, rate) {
-    const threshold = 5000; // 起征点
+    const threshold = 5000 // 起征点
     if (taxableIncome <= threshold) {
-      return 0;
+      return 0
     }
 
-    const userRate = parseFloat(rate) || 0;
+    const userRate = parseFloat(rate) || 0
     if (userRate > 0) {
-      return (taxableIncome - threshold) * (userRate / 100);
+      return (taxableIncome - threshold) * (userRate / 100)
     }
 
     // 默认累进税率
-    const excess = taxableIncome - threshold;
-    if (excess <= 3000) return excess * 0.03;
-    if (excess <= 12000) return excess * 0.1 - 210;
-    if (excess <= 25000) return excess * 0.2 - 1410;
-    if (excess <= 35000) return excess * 0.25 - 2660;
-    if (excess <= 55000) return excess * 0.3 - 4410;
-    if (excess <= 80000) return excess * 0.35 - 7160;
-    return excess * 0.45 - 15160;
+    const excess = taxableIncome - threshold
+    if (excess <= 3000) return excess * 0.03
+    if (excess <= 12000) return excess * 0.1 - 210
+    if (excess <= 25000) return excess * 0.2 - 1410
+    if (excess <= 35000) return excess * 0.25 - 2660
+    if (excess <= 55000) return excess * 0.3 - 4410
+    if (excess <= 80000) return excess * 0.35 - 7160
+    return excess * 0.45 - 15160
   }
 
   /**
    * 批量计算工资
    */
   async batchCalculateSalary(employeeIds, periodStart, periodEnd, options = {}) {
-    const results = [];
+    const results = []
 
     for (const employeeId of employeeIds) {
       try {
-        const salary = await this.calculateSalary(employeeId, periodStart, periodEnd, options);
-        results.push({ success: true, data: salary });
+        const salary = await this.calculateSalary(employeeId, periodStart, periodEnd, options)
+        results.push({ success: true, data: salary })
       } catch (error) {
         results.push({
           success: false,
           employee_id: employeeId,
           error: error.message
-        });
+        })
       }
     }
 
-    return results;
+    return results
   }
 }
 
-module.exports = new SalaryCalculatorService();
+module.exports = new SalaryCalculatorService()

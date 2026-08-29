@@ -17,26 +17,38 @@
     >
       <!-- 手机号 + 店铺 -->
       <el-row :gutter="20">
-        <el-col :span="12">
-          <el-form-item label="手机号" prop="customer_phone">
+        <el-col
+          v-if="canViewPreorderField('customer_phone')"
+          :span="12"
+        >
+          <el-form-item
+            label="手机号"
+            prop="customer_phone"
+          >
             <div class="customer-search-container">
               <el-input
                 v-model="formData.customer_phone"
                 type="tel"
                 placeholder="请输入手机号"
                 maxlength="11"
+                :disabled="isEditMode"
                 @input="handleCustomerInput"
                 @keyup.enter="handleCustomerEnter"
                 @focus="showCustomerSearch = true"
-                :disabled="isEditMode"
               />
               <!-- 客户搜索结果（仅创建模式显示） -->
               <div
                 v-if="!isEditMode && showCustomerSearch && (customerSearchResults.length > 0 || customerSearching || (formData.customer_phone.length >= 3 && !selectedCustomer && !customerSearching))"
                 class="customer-search-results"
               >
-                <div v-if="customerSearching" class="search-loading">
-                  <InlineLoading text="搜索中..." size="small" />
+                <div
+                  v-if="customerSearching"
+                  class="search-loading"
+                >
+                  <InlineLoading
+                    text="搜索中..."
+                    size="small"
+                  />
                 </div>
                 <template v-else>
                   <div
@@ -46,18 +58,22 @@
                     @click="selectCustomer(customer)"
                   >
                     <div class="customer-info">
-                      <div class="customer-name">{{ customer.name }}</div>
-                      <div class="customer-phone">{{ customer.phone }}</div>
+                      <div class="customer-name">
+                        {{ customer.name }}
+                      </div>
+                      <div class="customer-phone">
+                        {{ customer.phone }}
+                      </div>
                     </div>
                     <div class="customer-select">
-                      <i class="fas fa-check"></i>
+                      <i class="fas fa-check" />
                     </div>
                   </div>
                   <div
                     v-if="customerSearchResults.length === 0 && !selectedCustomer && !customerSearching && formData.customer_phone.length >= 3"
                     class="no-customer-hint"
                   >
-                    <i class="fas fa-info-circle"></i>
+                    <i class="fas fa-info-circle" />
                     未找到匹配的客户，请输入姓名创建新客户
                   </div>
                 </template>
@@ -66,8 +82,14 @@
           </el-form-item>
         </el-col>
 
-        <el-col :span="12">
-          <el-form-item label="预定店铺" prop="store_id">
+        <el-col
+          v-if="canViewPreorderField('store_name')"
+          :span="12"
+        >
+          <el-form-item
+            label="预定店铺"
+            prop="store_id"
+          >
             <el-select
               v-model="formData.store_id"
               placeholder="请选择店铺"
@@ -87,7 +109,11 @@
       </el-row>
 
       <!-- 姓名 -->
-      <el-form-item label="姓名" prop="customer_name">
+      <el-form-item
+        v-if="canViewPreorderField('customer_name')"
+        label="姓名"
+        prop="customer_name"
+      >
         <el-input
           v-model="formData.customer_name"
           placeholder="请输入客户姓名"
@@ -96,31 +122,57 @@
           show-word-limit
           @input="handleNameInput"
         >
-          <template #suffix v-if="selectedCustomer">
-            <el-tag type="success" size="small">已选择客户</el-tag>
+          <template
+            v-if="selectedCustomer"
+            #suffix
+          >
+            <el-tag
+              type="success"
+              size="small"
+            >
+              已选择客户
+            </el-tag>
           </template>
         </el-input>
-        <div v-if="selectedCustomer && !isEditMode" class="text-secondary text-xs">
+        <div
+          v-if="selectedCustomer && !isEditMode"
+          class="text-secondary text-xs"
+        >
           已选择：{{ selectedCustomer.name }} ({{ selectedCustomer.phone }})
-          <el-link type="danger" class="ml-2" @click="clearSelectedCustomer">清除</el-link>
+          <el-link
+            type="danger"
+            class="ml-2"
+            @click="clearSelectedCustomer"
+          >
+            清除
+          </el-link>
         </div>
-        <div v-else-if="!isEditMode && formData.customer_phone.length >= 3 && customerSearchResults.length === 0 && !customerSearching" class="text-success text-xs">
-          <i class="fas fa-user-plus"></i>
+        <div
+          v-else-if="!isEditMode && formData.customer_phone.length >= 3 && customerSearchResults.length === 0 && !customerSearching"
+          class="text-success text-xs"
+        >
+          <i class="fas fa-user-plus" />
           输入姓名后将自动创建新客户
         </div>
       </el-form-item>
 
       <!-- 品牌 + 型号 -->
       <el-row :gutter="20">
-        <el-col :span="12">
-          <el-form-item label="品牌" prop="brand_id">
+        <el-col
+          v-if="canViewPreorderField('brand_name')"
+          :span="12"
+        >
+          <el-form-item
+            label="品牌"
+            prop="brand_id"
+          >
             <el-select
               v-model="formData.brand_id"
               placeholder="请选择品牌"
               class="w-full"
               filterable
-              @change="handleBrandChange"
               clearable
+              @change="handleBrandChange"
             >
               <el-option
                 v-for="brand in brands"
@@ -132,8 +184,14 @@
           </el-form-item>
         </el-col>
 
-        <el-col :span="12">
-          <el-form-item label="型号" prop="model_id">
+        <el-col
+          v-if="canViewPreorderField('model_name')"
+          :span="12"
+        >
+          <el-form-item
+            label="型号"
+            prop="model_id"
+          >
             <el-select
               ref="modelSelectRef"
               v-model="formData.model_id"
@@ -141,8 +199,8 @@
               class="w-full"
               filterable
               :disabled="!formData.brand_id"
-              @change="handleModelChange"
               clearable
+              @change="handleModelChange"
             >
               <el-option
                 v-for="model in filteredModels"
@@ -157,8 +215,14 @@
 
       <!-- 颜色 + 内存 -->
       <el-row :gutter="20">
-        <el-col :span="12">
-          <el-form-item label="颜色" prop="color_id">
+        <el-col
+          v-if="canViewPreorderField('color_name')"
+          :span="12"
+        >
+          <el-form-item
+            label="颜色"
+            prop="color_id"
+          >
             <el-select
               v-model="formData.color_id"
               placeholder="请选择颜色"
@@ -176,8 +240,14 @@
           </el-form-item>
         </el-col>
 
-        <el-col :span="12">
-          <el-form-item label="内存" prop="memory_id">
+        <el-col
+          v-if="canViewPreorderField('memory_size')"
+          :span="12"
+        >
+          <el-form-item
+            label="内存"
+            prop="memory_id"
+          >
             <el-select
               v-model="formData.memory_id"
               placeholder="请选择内存"
@@ -198,25 +268,40 @@
 
       <!-- 机况 + 预定时间/预计到货 -->
       <el-row :gutter="20">
-        <el-col :span="12">
-          <el-form-item label="机况" prop="is_new">
+        <el-col
+          v-if="canViewPreorderField('is_new')"
+          :span="12"
+        >
+          <el-form-item
+            label="机况"
+            prop="is_new"
+          >
             <el-select
               v-model="formData.is_new"
               placeholder="请选择机况"
               class="w-full"
             >
-              <el-option label="全新" :value="1" />
-              <el-option label="二手" :value="0" />
+              <el-option
+                label="全新"
+                :value="1"
+              />
+              <el-option
+                label="二手"
+                :value="0"
+              />
             </el-select>
           </el-form-item>
         </el-col>
 
-        <el-col :span="12">
-          <el-form-item :label="isEditMode ? '预计到货' : '预定时间'">
+        <el-col
+          v-if="canViewPreorderField('expected_arrival')"
+          :span="12"
+        >
+          <el-form-item label="预计到货">
             <el-date-picker
-              v-model="dateFieldValue"
+              v-model="formData.expected_arrival"
               type="date"
-              :placeholder="isEditMode ? '选择到货日期' : '选择预定日期'"
+              placeholder="选择预计到货日期"
               class="w-full"
               :disabled-date="disabledDate"
             />
@@ -226,10 +311,13 @@
 
       <!-- 售价 + 定金金额 -->
       <el-row :gutter="20">
-        <el-col :span="12">
+        <el-col
+          v-if="canViewPreorderField('total_price')"
+          :span="12"
+        >
           <el-form-item label="销售价格">
             <el-input-number
-              v-model="formData.expected_price"
+              v-model="formData.total_price"
               :min="0"
               :precision="2"
               placeholder="销售价格"
@@ -239,10 +327,16 @@
           </el-form-item>
         </el-col>
 
-        <el-col :span="12">
-          <el-form-item label="定金金额" prop="advance_payment">
+        <el-col
+          v-if="canViewPreorderField('deposit_amount')"
+          :span="12"
+        >
+          <el-form-item
+            label="定金金额"
+            prop="deposit_amount"
+          >
             <el-input-number
-              v-model="formData.advance_payment"
+              v-model="formData.deposit_amount"
               :min="0"
               :precision="2"
               placeholder="定金金额"
@@ -255,7 +349,10 @@
 
       <!-- 尾款显示 + 备注 -->
       <el-row :gutter="20">
-        <el-col :span="12">
+        <el-col
+          v-if="canShowRemainingAmount"
+          :span="12"
+        >
           <el-form-item label="尾款">
             <div class="remaining-amount-display">
               <span class="amount-value">¥{{ remainingAmount }}</span>
@@ -263,7 +360,10 @@
           </el-form-item>
         </el-col>
 
-        <el-col :span="12">
+        <el-col
+          v-if="canViewPreorderField('remarks')"
+          :span="12"
+        >
           <el-form-item label="备注">
             <el-input
               v-model="formData.remarks"
@@ -277,8 +377,18 @@
     </el-form>
 
     <template #footer>
-      <el-button type="default" @click="handleClose">取消</el-button>
-      <el-button type="primary" :loading="submitting" @click="handleSubmit">
+      <el-button
+        type="default"
+        @click="handleClose"
+      >
+        取消
+      </el-button>
+      <el-button
+        type="primary"
+        :loading="submitting"
+        :disabled="!canSubmitVisibleFields"
+        @click="handleSubmit"
+      >
         {{ isEditMode ? '保存' : '创建预定单' }}
       </el-button>
     </template>
@@ -292,17 +402,22 @@ import type { FormInstance } from 'element-plus'
 import { ValidationRules } from '@/composables'
 import { isValidMobilePhone, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
 import { preorderApi, Preorder } from '@/api/preorder'
+import type { CreatePreorderParams } from '@/api/preorder'
+import {
+  canViewPreorderField,
+  pickVisiblePreorderFields,
+  type PreorderFieldName
+} from '../preorder-field-permissions'
 import { baseDataApi } from '@/api/base-data'
 import { unifiedApi } from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import { sortOptionsByOrder } from '@/utils/option-sort'
 import InlineLoading from '@/components/InlineLoading.vue'
-import dayjs from 'dayjs'
 import { logger } from '@/utils/logger'
 import type { ModalProps, SuccessEmits, UpdateVisibleEmits } from '@/types'
 
 interface Props extends ModalProps {
-  mode: 'create' | 'edit'
+  mode?: 'create' | 'edit'
   preorder?: Preorder | null
 }
 
@@ -374,26 +489,34 @@ const formData = reactive<any>({
   color_id: null,
   memory_id: null,
   is_new: 1,
-  preorder_date: dayjs(),
   expected_arrival: null as string | null,
-  expected_price: null,
-  advance_payment: null,
+  total_price: null,
+  deposit_amount: null,
   remarks: ''
 })
 
 const normalizeCustomerPhone = (phone: unknown) => normalizePhoneDigits(phone)
 
-// 日期字段统一处理
-const dateFieldValue = computed({
-  get: () => isEditMode.value ? formData.expected_arrival : formData.preorder_date,
-  set: (val) => {
-    if (isEditMode.value) {
-      formData.expected_arrival = val ? dayjs(val).format('YYYY-MM-DD') : null
-    } else {
-      formData.preorder_date = val || dayjs()
-    }
-  }
-})
+const requiredCreateFields: PreorderFieldName[] = [
+  'customer_name',
+  'customer_phone',
+  'brand_name',
+  'model_name',
+  'color_name',
+  'memory_size',
+  'is_new',
+  'deposit_amount'
+]
+
+const canSubmitVisibleFields = computed(() => (
+  isEditMode.value || requiredCreateFields.every(canViewPreorderField)
+))
+
+const canShowRemainingAmount = computed(() => (
+  canViewPreorderField('remaining_amount') &&
+  canViewPreorderField('total_price') &&
+  canViewPreorderField('deposit_amount')
+))
 
 const formRules = {
   customer_phone: [
@@ -439,7 +562,7 @@ const formRules = {
   model_id: [ValidationRules.required('请选择型号')],
   color_id: [ValidationRules.required('请选择颜色')],
   memory_id: [ValidationRules.required('请选择内存')],
-  advance_payment: [
+  deposit_amount: [
     ValidationRules.required('请输入定金金额'),
     {
       validator: (_rule: any, value: any, callback: any) => {
@@ -463,19 +586,32 @@ const filteredModels = computed(() => {
 
 // 计算尾款
 const remainingAmount = computed(() => {
-  const price = Number(formData.expected_price) || 0
-  const deposit = Number(formData.advance_payment) || 0
+  const price = Number(formData.total_price) || 0
+  const deposit = Number(formData.deposit_amount) || 0
 
   if (!price) return '请先输入销售价格'
-  if (!formData.advance_payment || deposit === 0) return '请输入定金金额'
+  if (!formData.deposit_amount || deposit === 0) return '请输入定金金额'
 
   const remaining = price - deposit
   return Number.isInteger(remaining) ? remaining.toString() : remaining.toFixed(2)
 })
 
-// 禁用未来的日期
+// 预计到货日期不能早于今天。
 const disabledDate = (date: Date) => {
-  return date.getTime() > Date.now()
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return date.getTime() < today.getTime()
+}
+
+const formatDateOnly = (value: unknown) => {
+  if (!value) return null
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value
+  const date = new Date(value as string | number | Date)
+  if (Number.isNaN(date.getTime())) return null
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 // 加载基础数据
@@ -580,7 +716,7 @@ const searchCustomers = async (keyword: string) => {
   customerSearching.value = true
   try {
     const response = await unifiedApi.get('/customers', {
-      params: { search: keyword, limit: 10, status: '' }
+      params: { search: keyword, page_size: 10, status: '' }
     })
 
     const records = extractCustomerList(response.data)
@@ -646,10 +782,9 @@ const resetForm = () => {
     color_id: null,
     memory_id: null,
     is_new: 1,
-    preorder_date: dayjs(),
     expected_arrival: null,
-    expected_price: null,
-    advance_payment: null,
+    total_price: null,
+    deposit_amount: null,
     remarks: ''
   })
   selectedCustomer.value = null
@@ -669,8 +804,8 @@ const fillFormData = (preorder: Preorder) => {
     color_id: preorder.color_id || null,
     memory_id: preorder.memory_id || null,
     is_new: preorder.is_new !== undefined ? preorder.is_new : 1,
-    expected_price: Number(preorder.expected_price ?? 0),
-    advance_payment: Number(preorder.advance_payment ?? preorder.deposit ?? 0),
+    total_price: Number(preorder.total_price ?? 0),
+    deposit_amount: Number(preorder.deposit_amount ?? 0),
     expected_arrival: preorder.expected_arrival || preorder.arrival_date || null,
     remarks: preorder.remarks || ''
   })
@@ -680,6 +815,10 @@ const fillFormData = (preorder: Preorder) => {
 const handleSubmit = async () => {
   if (submitting.value) return
   if (!formRef.value) return
+  if (!canSubmitVisibleFields.value) {
+    ElMessage.error('当前字段权限不足，无法提交预定所需字段')
+    return
+  }
 
   try {
     await formRef.value.validate()
@@ -730,16 +869,7 @@ const handleCreateSubmit = async () => {
     throw new Error('客户信息保存失败')
   }
 
-  const remarksParts = []
-  if (formData.preorder_date) {
-    const preorderDate = new Date(formData.preorder_date).toLocaleDateString('zh-CN')
-    remarksParts.push(`预定日期: ${preorderDate}`)
-  }
-  if (formData.remarks) {
-    remarksParts.push(formData.remarks)
-  }
-
-  await preorderApi.createPreorder({
+  const payload = pickVisiblePreorderFields({
     customer_id: customerId,
     store_id: formData.store_id,
     brand_id: formData.brand_id,
@@ -747,10 +877,25 @@ const handleCreateSubmit = async () => {
     color_id: formData.color_id,
     memory_id: formData.memory_id,
     is_new: formData.is_new,
-    expected_price: formData.expected_price,
-    advance_payment: formData.advance_payment,
-    notes: remarksParts.join(' | ')
+    total_price: formData.total_price,
+    deposit_amount: formData.deposit_amount,
+    expected_arrival: formatDateOnly(formData.expected_arrival),
+    remarks: formData.remarks
+  }, {
+    customer_id: 'customer_name',
+    store_id: 'store_name',
+    brand_id: 'brand_name',
+    model_id: 'model_name',
+    color_id: 'color_name',
+    memory_id: 'memory_size',
+    is_new: 'is_new',
+    total_price: 'total_price',
+    deposit_amount: 'deposit_amount',
+    expected_arrival: 'expected_arrival',
+    remarks: 'remarks'
   })
+
+  await preorderApi.createPreorder(payload as CreatePreorderParams)
 }
 
 // 编辑预定单
@@ -763,15 +908,16 @@ const handleEditSubmit = async () => {
 
   formData.customer_name = normalizedCustomerName
 
-  if ((normalizedCustomerName && normalizedCustomerName !== normalizePersonName(props.preorder?.customer_name || '', 20)) ||
-      (normalizedCustomerPhone && normalizedCustomerPhone !== normalizeCustomerPhone(props.preorder?.customer_phone))) {
+  if (canViewPreorderField('customer_name') && canViewPreorderField('customer_phone') &&
+      ((normalizedCustomerName && normalizedCustomerName !== normalizePersonName(props.preorder?.customer_name || '', 20)) ||
+      (normalizedCustomerPhone && normalizedCustomerPhone !== normalizeCustomerPhone(props.preorder?.customer_phone)))) {
     if (normalizedCustomerPhone) {
       if (!isValidMobilePhone(normalizedCustomerPhone)) {
         throw new Error('请输入有效的手机号码')
       }
 
       const searchRes = await unifiedApi.get('/customers', {
-        params: { search: normalizedCustomerPhone, limit: 1 }
+        params: { search: normalizedCustomerPhone, page_size: 1 }
       })
       const customers = extractCustomerList(searchRes.data)
       const existingCustomer = customers.find((c: any) => normalizeCustomerPhone(c.phone) === normalizedCustomerPhone)
@@ -795,23 +941,33 @@ const handleEditSubmit = async () => {
     throw new Error('客户信息保存失败')
   }
 
-  await preorderApi.updatePreorder(props.preorder.id, {
+  const payload = pickVisiblePreorderFields({
     customer_id: customerId,
     store_id: formData.store_id,
-    customer_name: normalizedCustomerName,
-    customer_phone: normalizedCustomerPhone,
     brand_id: formData.brand_id,
     model_id: formData.model_id,
     color_id: formData.color_id,
     memory_id: formData.memory_id,
     is_new: formData.is_new,
-    expected_price: formData.expected_price,
-    advance_payment: formData.advance_payment,
-    expected_arrival: formData.expected_arrival
-      ? new Date(formData.expected_arrival).toISOString().split('T')[0]
-      : null,
+    total_price: formData.total_price,
+    deposit_amount: formData.deposit_amount,
+    expected_arrival: formatDateOnly(formData.expected_arrival),
     remarks: formData.remarks
+  }, {
+    customer_id: 'customer_name',
+    store_id: 'store_name',
+    brand_id: 'brand_name',
+    model_id: 'model_name',
+    color_id: 'color_name',
+    memory_id: 'memory_size',
+    is_new: 'is_new',
+    total_price: 'total_price',
+    deposit_amount: 'deposit_amount',
+    expected_arrival: 'expected_arrival',
+    remarks: 'remarks'
   })
+
+  await preorderApi.updatePreorder(props.preorder.id, payload)
 }
 
 // 关闭对话框
@@ -883,7 +1039,7 @@ onBeforeUnmount(() => {
     max-height: 250px;
     overflow-y: auto;
     background: white;
-    border: 1px solid #dcdfe6;
+    border: 1px solid var(--color-border);
     border-radius: 4px;
     box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
     z-index: 1000;
@@ -892,7 +1048,7 @@ onBeforeUnmount(() => {
     .search-loading {
       padding: 12px 16px;
       text-align: center;
-      color: #909399;
+      color: var(--color-info);
       font-size: 14px;
     }
 
@@ -902,11 +1058,11 @@ onBeforeUnmount(() => {
       justify-content: space-between;
       padding: 12px 16px;
       cursor: pointer;
-      border-bottom: 1px solid #f0f0f0;
+      border-bottom: 1px solid var(--tf-color-gray-200);
       transition: background 0.2s;
 
       &:hover {
-        background: #f5f7fa;
+        background: var(--tf-color-surface);
       }
 
       &:last-child {
@@ -919,18 +1075,18 @@ onBeforeUnmount(() => {
         .customer-name {
           font-size: 14px;
           font-weight: 500;
-          color: #303133;
+          color: var(--color-text-primary);
           margin-bottom: 4px;
         }
 
         .customer-phone {
           font-size: 12px;
-          color: #909399;
+          color: var(--color-info);
         }
       }
 
       .customer-select {
-        color: #67c23a;
+        color: var(--color-success);
         font-size: 16px;
       }
     }
@@ -938,7 +1094,7 @@ onBeforeUnmount(() => {
     .no-customer-hint {
       padding: 12px 16px;
       text-align: center;
-      color: #909399;
+      color: var(--color-info);
       font-size: 13px;
 
       i {
@@ -953,15 +1109,15 @@ onBeforeUnmount(() => {
   align-items: center;
   height: 32px;
   padding: 0 11px;
-  background: #f5f7fa;
-  border: 1px solid #dcdfe6;
+  background: var(--tf-color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 4px;
-  color: #606266;
+  color: var(--color-text-regular);
 
   .amount-value {
     font-size: 14px;
     font-weight: 500;
-    color: #409eff;
+    color: var(--color-primary);
   }
 }
 

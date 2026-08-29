@@ -4,11 +4,20 @@
 -->
 <template>
   <div class="cart-page">
-    <div v-if="loading" class="loading-state">
-      <SectionLoading text="加载购物车中..." size="large" />
+    <div
+      v-if="loading"
+      class="loading-state"
+    >
+      <SectionLoading
+        text="加载购物车中..."
+        size="large"
+      />
     </div>
 
-    <div v-else-if="cartData && cartData.items.length > 0" class="cart-content">
+    <div
+      v-else-if="cartData && cartData.items.length > 0"
+      class="cart-content"
+    >
       <!-- 商品列表 -->
       <div class="cart-items">
         <div
@@ -17,25 +26,35 @@
           class="cart-item"
           @swipe="handleSwipe(item.id)"
         >
-          <div class="item-checkbox" @click="toggleSelect(item.cart_id)">
-            <i :class="selectedItems.has(item.cart_id) ? 'fas fa-check-circle active' : 'far fa-circle'"></i>
+          <div
+            class="item-checkbox"
+            @click="toggleSelect(item.cart_id)"
+          >
+            <i :class="selectedItems.has(item.cart_id) ? 'fas fa-check-circle active' : 'far fa-circle'" />
           </div>
           <div class="item-image">
-            <Image :src="item.image" :alt="item.brand_name + ' ' + item.model_name" mode="lazy" />
+            <Image
+              :src="item.image"
+              :alt="item.brand_name + ' ' + item.model_name"
+              mode="lazy"
+            />
           </div>
           <div class="item-info">
-            <h4 class="item-title">{{ item.brand_name }} {{ item.model_name }}</h4>
-            <p class="item-specs">{{ item.color_name }} | {{ item.memory_name }}</p>
+            <h4 class="item-title">
+              {{ item.brand_name }} {{ item.model_name }}
+            </h4>
+            <p class="item-specs">
+              {{ item.color_name }} | {{ item.memory_name }}
+            </p>
             <div class="item-footer">
               <span class="item-price">¥{{ formatPrice(item.sale_price) }}</span>
               <div class="item-actions">
-                <div class="quantity-control">
-                  <button @click="updateQuantity(item.cart_id, item.quantity - 1)" :disabled="item.quantity <= 1">-</button>
-                  <span>{{ item.quantity }}</span>
-                  <button @click="updateQuantity(item.cart_id, item.quantity + 1)">+</button>
-                </div>
-                <button class="delete-btn" @click="confirmDelete(item)">
-                  <i class="fas fa-trash"></i>
+                <span class="device-quantity">1 台</span>
+                <button
+                  class="delete-btn"
+                  @click="confirmDelete(item)"
+                >
+                  <i class="fas fa-trash" />
                 </button>
               </div>
             </div>
@@ -45,26 +64,41 @@
 
       <!-- 底部结算栏 -->
       <div class="bottom-bar">
-        <div class="select-all" @click="toggleSelectAll">
-          <i :class="isAllSelected ? 'fas fa-check-circle active' : 'far fa-circle'"></i>
+        <div
+          class="select-all"
+          @click="toggleSelectAll"
+        >
+          <i :class="isAllSelected ? 'fas fa-check-circle active' : 'far fa-circle'" />
           <span>全选</span>
         </div>
         <div class="total-info">
           <span class="total-label">合计：</span>
           <span class="total-price">¥{{ selectedTotal }}</span>
         </div>
-        <el-button type="primary" class="checkout-btn" :disabled="selectedItems.size === 0" @click="goCheckout">
+        <el-button
+          type="primary"
+          class="checkout-btn"
+          :disabled="selectedItems.size === 0"
+          @click="goCheckout"
+        >
           结算({{ selectedItems.size }})
         </el-button>
       </div>
     </div>
 
     <!-- 空状态 -->
-    <div v-else class="empty-state">
-      <el-empty description="购物车是空的">
-        <el-button type="primary" @click="goProducts">去逛逛</el-button>
-      </el-empty>
-    </div>
+    <DataEmptyState
+      v-else
+      size="page"
+      description="购物车是空的"
+    >
+      <el-button
+        type="primary"
+        @click="goProducts"
+      >
+        去逛逛
+      </el-button>
+    </DataEmptyState>
   </div>
 </template>
 
@@ -72,13 +106,14 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { getCart, updateCartItem, removeFromCart } from '@/api/shop-public'
+import { getCart, removeFromCart } from '@/api/shop-public'
 import type { CartItem } from '@/api/shop-public'
 import { storage } from '@/services/storage'
 import { H5_STORAGE_KEYS } from '@/constants/storage'
 import Image from '@/components/Image.vue'
 import SectionLoading from '@/components/SectionLoading.vue'
 import { logger } from '@/utils/logger'
+import { getCartId as ensureCartId } from '@/composables/useCart'
 const router = useRouter()
 
 // 数据
@@ -114,13 +149,7 @@ const formatPrice = (value: number | string | null | undefined) => {
 
 // 获取购物车
 const loadCart = async () => {
-  cartId.value = storage.getH5CartId() || ''
-
-  if (!cartId.value) {
-    cartData.value = { items: [], total: 0, count: 0 }
-    loading.value = false
-    return
-  }
+  cartId.value = ensureCartId()
 
   loading.value = true
   try {
@@ -176,19 +205,6 @@ const toggleSelectAll = () => {
   selectedItems.value = new Set(selectedItems.value)
 }
 
-// 更新数量
-const updateQuantity = async (cartItemId: number, quantity: number) => {
-  if (quantity < 1) return
-
-  try {
-    await updateCartItem(cartItemId, quantity)
-    await loadCart()
-  } catch (error) {
-    logger.error('更新数量失败:', error)
-    ElMessage.error('更新失败')
-  }
-}
-
 // 确认删除
 const confirmDelete = (item: CartItem) => {
   ElMessageBox.confirm(
@@ -201,7 +217,7 @@ const confirmDelete = (item: CartItem) => {
     }
   ).then(async () => {
     try {
-      await removeFromCart(item.cart_id)
+      await removeFromCart(cartId.value, item.cart_id)
       // 先从选中项中移除（使用 cart_id）
       selectedItems.value.delete(item.cart_id)
       selectedItems.value = new Set(selectedItems.value)
@@ -269,7 +285,7 @@ onMounted(() => {
 <style scoped lang="scss">
 .cart-page {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: var(--tf-color-surface-soft);
   padding-bottom: calc(132px + env(safe-area-inset-bottom));
 }
 
@@ -285,7 +301,7 @@ onMounted(() => {
   .cart-item {
     display: flex;
     align-items: center;
-    background: #fff;
+    background: var(--color-bg-white);
     border-radius: 8px;
     padding: 12px;
     margin-bottom: 8px;
@@ -297,10 +313,10 @@ onMounted(() => {
 
       i {
         font-size: 20px;
-        color: #ddd;
+        color: var(--tf-color-gray-300-alt);
 
         &.active {
-          color: #ff6b00;
+          color: var(--tf-color-accent-orange);
         }
       }
     }
@@ -310,7 +326,7 @@ onMounted(() => {
       height: 80px;
       border-radius: 8px;
       overflow: hidden;
-      background: #f5f5f5;
+      background: var(--tf-color-surface-soft);
       flex-shrink: 0;
 
       img {
@@ -328,7 +344,7 @@ onMounted(() => {
       .item-title {
         font-size: 14px;
         font-weight: 500;
-        color: #333;
+        color: var(--text-primary);
         margin: 0 0 4px;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -337,7 +353,7 @@ onMounted(() => {
 
       .item-specs {
         font-size: 12px;
-        color: #999;
+        color: var(--text-muted);
         margin: 0 0 8px;
       }
 
@@ -349,7 +365,7 @@ onMounted(() => {
         .item-price {
           font-size: 16px;
           font-weight: 500;
-          color: #ff1744;
+          color: var(--tf-color-accent-pink);
         }
 
         .item-actions {
@@ -357,32 +373,10 @@ onMounted(() => {
           align-items: center;
           gap: 12px;
 
-          .quantity-control {
-            display: flex;
-            align-items: center;
-            border: 1px solid #eee;
-            border-radius: 4px;
-
-            button {
-              width: 28px;
-              height: 28px;
-              border: none;
-              background: var(--tf-button-neutral-bg);
-              font-size: 16px;
-              color: var(--tf-button-tool-color);
-              cursor: pointer;
-
-              &:disabled {
-                color: var(--tf-button-tool-color);
-              }
-            }
-
-            span {
-              width: 40px;
-              text-align: center;
-              font-size: 14px;
-              color: #333;
-            }
+          .device-quantity {
+            font-size: 13px;
+            color: var(--el-text-color-secondary);
+            white-space: nowrap;
           }
 
           .delete-btn {
@@ -417,11 +411,11 @@ onMounted(() => {
       top: 0;
       bottom: 0;
       width: 60px;
-      background: #ff1744;
+      background: var(--tf-color-accent-pink);
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #fff;
+      color: var(--color-bg-white);
       font-size: 18px;
       cursor: pointer;
       transition: right 0.3s;
@@ -450,8 +444,8 @@ onMounted(() => {
   align-items: center;
   padding: 12px 16px;
   padding-bottom: 12px;
-  background: #fff;
-  border-top: 1px solid #eee;
+  background: var(--color-bg-white);
+  border-top: 1px solid var(--tf-color-gray-200-alt);
   box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.08);
   z-index: 120;
 
@@ -463,16 +457,16 @@ onMounted(() => {
 
     i {
       font-size: 18px;
-      color: #ddd;
+      color: var(--tf-color-gray-300-alt);
 
       &.active {
-        color: #ff6b00;
+        color: var(--tf-color-accent-orange);
       }
     }
 
     span {
       font-size: 14px;
-      color: #333;
+      color: var(--text-primary);
     }
   }
 
@@ -482,13 +476,13 @@ onMounted(() => {
 
     .total-label {
       font-size: 14px;
-      color: #666;
+      color: var(--text-secondary);
     }
 
     .total-price {
       font-size: 18px;
       font-weight: 500;
-      color: #ff1744;
+      color: var(--tf-color-accent-pink);
     }
   }
 

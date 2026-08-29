@@ -35,16 +35,16 @@ export const useMenuStore = defineStore('menu', () => {
     loadPromise = (async () => {
       loading.value = true
       try {
-      const response = await unifiedApi.get('/permissions/user-menu', {
-        params: { _t: Date.now() }
-      })
+        const response = await unifiedApi.get('/permissions/user-menu', {
+          params: { _t: Date.now() }
+        })
 
-      if (response?.success && response?.data?.menuPermissions) {
-        menuItems.value = response.data.menuPermissions
-        lastLoadTime.value = Date.now()
-      } else {
-        menuItems.value = []
-      }
+        if (response?.success && response?.data?.menuPermissions) {
+          menuItems.value = response.data.menuPermissions
+          lastLoadTime.value = Date.now()
+        } else {
+          menuItems.value = []
+        }
       } catch (error) {
         menuItems.value = []
       } finally {

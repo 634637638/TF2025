@@ -1,39 +1,39 @@
-const express = require('express');
-const router = express.Router();
-const bcrypt = require('bcryptjs');
-const crypto = require('crypto');
-const { getDatabase, isConnected } = require('../config/database');
-const config = require('../config');
-const { generateTokens, addToBlacklist, verifyToken } = require('../middleware/jwt-blacklist');
-const { unifiedAuth } = require('../middleware/unified-auth');
-const { recordSuccessfulLogin, recordFailedLogin, getClientIdentifier } = require('../middleware/login-attempts');
-const ApiResponse = require('../utils/response');
-const { validateBody } = require('../middleware/validation');
-const { getUserAccessProfile } = require('../services/accessControl.service');
-const { hasColumn } = require('../services/schemaInspector.service');
-const { isValidFieldName, validatePassword } = require('../utils/security-enhanced');
-const log = require('../utils/log');
+const express = require('express')
+const router = express.Router()
+const bcrypt = require('bcryptjs')
+const crypto = require('crypto')
+const { getDatabase, isConnected } = require('../config/database')
+const config = require('../config')
+const { generateTokens, addToBlacklist, verifyToken } = require('../middleware/jwt-blacklist')
+const { unifiedAuth } = require('../middleware/unified-auth')
+const { recordSuccessfulLogin, recordFailedLogin, getClientIdentifier } = require('../middleware/login-attempts')
+const ApiResponse = require('../utils/response')
+const { validateBody } = require('../middleware/validation')
+const { getUserAccessProfile } = require('../services/accessControl.service')
+const { hasColumn } = require('../services/schemaInspector.service')
+const { isValidFieldName, validatePassword } = require('../utils/security-enhanced')
+const log = require('../utils/log')
 
 // 登录失败处理辅助函数
 const handleLoginFailure = (req, res, message) => {
-  const identifier = getClientIdentifier(req);
-  const result = recordFailedLogin(identifier);
-  req.loginAttemptHandled = true;
+  const identifier = getClientIdentifier(req)
+  const result = recordFailedLogin(identifier)
+  req.loginAttemptHandled = true
 
   if (result.attempts >= 3 || result.blocked) {
-    log.warn(`登录失败记录 - 标识符: ${identifier}, 尝试次数: ${result.attempts}`);
+    log.warn(`登录失败记录 - 标识符: ${identifier}, 尝试次数: ${result.attempts}`)
   }
 
   // 设置响应头
-  res.setHeader('X-Login-Attempts-Remaining', result.remainingAttempts);
+  res.setHeader('X-Login-Attempts-Remaining', result.remainingAttempts)
 
   // 如果被锁定，返回 429 状态码
   if (result.blocked) {
-    const lockUntil = result.lockUntil;
-    const now = Date.now();
-    const remainingMinutes = Math.ceil((lockUntil - now) / 60000);
+    const lockUntil = result.lockUntil
+    const now = Date.now()
+    const remainingMinutes = Math.ceil((lockUntil - now) / 60000)
 
-    log.warn(`账户已被锁定 - 标识符: ${identifier}, 锁定时长: ${remainingMinutes} 分钟`);
+    log.warn(`账户已被锁定 - 标识符: ${identifier}, 锁定时长: ${remainingMinutes} 分钟`)
 
     return res.status(429).json({
       success: false,
@@ -42,15 +42,15 @@ const handleLoginFailure = (req, res, message) => {
       details: {
         lockDuration: remainingMinutes
       }
-    });
+    })
   }
 
   // 否则返回标准错误
   return res.status(401).json({
     success: false,
     message
-  });
-};
+  })
+}
 
 const EMPTY_ACCESS_PROFILE = Object.freeze({
   summary: {},
@@ -58,9 +58,9 @@ const EMPTY_ACCESS_PROFILE = Object.freeze({
   rolePermissions: {},
   roles: [],
   menuVisibility: {}
-});
+})
 
-const rawSql = (value) => ({ __raw: value });
+const rawSql = (value) => ({ __raw: value })
 
 const cloneEmptyAccessProfile = () => ({
   summary: {},
@@ -68,11 +68,11 @@ const cloneEmptyAccessProfile = () => ({
   rolePermissions: {},
   roles: [],
   menuVisibility: {}
-});
+})
 
 const normalizeAccessProfile = (accessProfile = null) => {
   if (!accessProfile || typeof accessProfile !== 'object') {
-    return cloneEmptyAccessProfile();
+    return cloneEmptyAccessProfile()
   }
 
   return {
@@ -91,57 +91,57 @@ const normalizeAccessProfile = (accessProfile = null) => {
     menuVisibility: accessProfile.menuVisibility && typeof accessProfile.menuVisibility === 'object'
       ? accessProfile.menuVisibility
       : {}
-  };
-};
+  }
+}
 
 function buildInsertStatement(tableName, valueMap) {
-  const columns = [];
-  const placeholders = [];
-  const values = [];
+  const columns = []
+  const placeholders = []
+  const values = []
 
   Object.entries(valueMap).forEach(([column, value]) => {
     if (value === undefined) {
-      return;
+      return
     }
 
     if (!isValidFieldName(column)) {
-      throw new Error(`检测到非法字段名: ${column}`);
+      throw new Error(`检测到非法字段名: ${column}`)
     }
 
-    columns.push(`\`${column}\``);
+    columns.push(`\`${column}\``)
 
     if (value && typeof value === 'object' && value.__raw) {
-      placeholders.push(value.__raw);
-      return;
+      placeholders.push(value.__raw)
+      return
     }
 
-    placeholders.push('?');
-    values.push(value);
-  });
+    placeholders.push('?')
+    values.push(value)
+  })
 
   return {
     sql: `INSERT INTO \`${tableName}\` (${columns.join(', ')}) VALUES (${placeholders.join(', ')})`,
     values
-  };
+  }
 }
 
 function generateOneTimeAdminPassword() {
-  return crypto.randomBytes(12).toString('base64url');
+  return crypto.randomBytes(12).toString('base64url')
 }
 
 function resolveInitAdminPassword() {
-  const configuredPassword = config.security.initAdminPassword?.trim();
-  const password = configuredPassword || generateOneTimeAdminPassword();
-  const passwordValidation = validatePassword(password);
+  const configuredPassword = config.security.initAdminPassword?.trim()
+  const password = configuredPassword || generateOneTimeAdminPassword()
+  const passwordValidation = validatePassword(password)
 
   if (!passwordValidation.valid) {
-    throw new Error(`INIT_ADMIN_PASSWORD 不符合安全要求: ${passwordValidation.errors.join('；')}`);
+    throw new Error(`INIT_ADMIN_PASSWORD 不符合安全要求: ${passwordValidation.errors.join('；')}`)
   }
 
   return {
     password,
     source: configuredPassword ? 'env' : 'generated'
-  };
+  }
 }
 
 async function getUserStoreBindings(database, userId) {
@@ -155,45 +155,45 @@ async function getUserStoreBindings(database, userId) {
       INNER JOIN stores s ON us.store_id = s.id
       WHERE us.user_id = ?
       ORDER BY us.is_primary DESC, us.assigned_at ASC
-    `, [userId]);
+    `, [userId])
 
-    const primaryStore = stores.find(store => store.is_primary === 1) || stores[0] || null;
+    const primaryStore = stores.find(store => store.is_primary === 1) || stores[0] || null
 
     return {
       stores,
       primaryStoreId: primaryStore ? primaryStore.store_id : null,
       storeIds: stores.map(store => store.store_id)
-    };
+    }
   } catch (error) {
-    log.warn('⚠️ 获取用户门店失败，使用空门店信息:', error);
+    log.warn('⚠️ 获取用户门店失败，使用空门店信息:', error)
     return {
       stores: [],
       primaryStoreId: null,
       storeIds: []
-    };
+    }
   }
 }
 
 async function buildAuthenticatedUserPayload(database, user) {
-  let accessProfile = EMPTY_ACCESS_PROFILE;
+  let accessProfile = EMPTY_ACCESS_PROFILE
 
   try {
     // 并行获取权限和门店信息，减少等待时间
     const [accessProfileResult] = await Promise.all([
       getUserAccessProfile(user.id, database)
-    ]);
-    accessProfile = normalizeAccessProfile(accessProfileResult);
+    ])
+    accessProfile = normalizeAccessProfile(accessProfileResult)
   } catch (error) {
-    log.warn('⚠️ 获取用户权限汇总失败，使用空权限:', error);
-    accessProfile = cloneEmptyAccessProfile();
+    log.warn('⚠️ 获取用户权限汇总失败，使用空权限:', error)
+    accessProfile = cloneEmptyAccessProfile()
   }
 
-  const { stores, primaryStoreId, storeIds } = await getUserStoreBindings(database, user.id);
-  const roleNames = accessProfile.roles.map(role => role.roleName).filter(Boolean);
+  const { stores, primaryStoreId, storeIds } = await getUserStoreBindings(database, user.id)
+  const roleNames = accessProfile.roles.map(role => role.roleName).filter(Boolean)
   const roleIds = accessProfile.roles
     .map(role => role.roleId)
-    .filter(roleId => roleId !== null && roleId !== undefined);
-  const roleCodes = accessProfile.roles.map(role => role.roleCode).filter(Boolean);
+    .filter(roleId => roleId !== null && roleId !== undefined)
+  const roleCodes = accessProfile.roles.map(role => role.roleCode).filter(Boolean)
 
   return {
     accessProfile,
@@ -227,21 +227,21 @@ async function buildAuthenticatedUserPayload(database, user) {
       permission_summary: accessProfile.summary,
       menu_visibility: accessProfile.menuVisibility
     }
-  };
+  }
 }
 
 async function ensureDevelopmentAdminRole(connection) {
-  const supportsRoleCode = await hasColumn('roles', 'code', connection);
+  const supportsRoleCode = await hasColumn('roles', 'code', connection)
   const query = supportsRoleCode
     ? 'SELECT id FROM roles WHERE code = ? OR name IN (?, ?) LIMIT 1'
-    : 'SELECT id FROM roles WHERE name IN (?, ?) LIMIT 1';
+    : 'SELECT id FROM roles WHERE name IN (?, ?) LIMIT 1'
   const params = supportsRoleCode
     ? ['admin', '管理员', '系统管理员']
-    : ['管理员', '系统管理员'];
-  const [existingRoles] = await connection.execute(query, params);
+    : ['管理员', '系统管理员']
+  const [existingRoles] = await connection.execute(query, params)
 
   if (existingRoles.length > 0) {
-    return existingRoles[0].id;
+    return existingRoles[0].id
   }
 
   const roleData = {
@@ -255,21 +255,21 @@ async function ensureDevelopmentAdminRole(connection) {
     is_active: await hasColumn('roles', 'is_active', connection) ? 1 : undefined,
     created_at: await hasColumn('roles', 'created_at', connection) ? rawSql('NOW()') : undefined,
     updated_at: await hasColumn('roles', 'updated_at', connection) ? rawSql('NOW()') : undefined
-  };
+  }
 
-  const { sql, values } = buildInsertStatement('roles', roleData);
-  const [result] = await connection.execute(sql, values);
-  return result.insertId;
+  const { sql, values } = buildInsertStatement('roles', roleData)
+  const [result] = await connection.execute(sql, values)
+  return result.insertId
 }
 
 async function ensureUserRoleBinding(connection, userId, roleId) {
   const [existingBindings] = await connection.execute(
     'SELECT 1 FROM user_roles WHERE user_id = ? AND role_id = ? LIMIT 1',
     [userId, roleId]
-  );
+  )
 
   if (existingBindings.length > 0) {
-    return;
+    return
   }
 
   const bindingData = {
@@ -280,10 +280,10 @@ async function ensureUserRoleBinding(connection, userId, roleId) {
     assigned_at: await hasColumn('user_roles', 'assigned_at', connection) ? rawSql('NOW()') : undefined,
     created_at: await hasColumn('user_roles', 'created_at', connection) ? rawSql('NOW()') : undefined,
     updated_at: await hasColumn('user_roles', 'updated_at', connection) ? rawSql('NOW()') : undefined
-  };
+  }
 
-  const { sql, values } = buildInsertStatement('user_roles', bindingData);
-  await connection.execute(sql, values);
+  const { sql, values } = buildInsertStatement('user_roles', bindingData)
+  await connection.execute(sql, values)
 }
 
 // 用户登录接口
@@ -292,58 +292,58 @@ router.post('/login', validateBody({
   password: { type: 'string', required: true, minLength: 4, maxLength: 100 }
 }), async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, password } = req.body
 
     // 注释：已移除开发环境硬编码密码绕过逻辑，确保数据库密码唯一性
     // 原有的硬编码密码验证存在安全风险，现已删除，所有登录必须通过数据库验证
 
     // 检查数据库连接
     if (!isConnected()) {
-      log.error('数据库未连接，无法进行用户验证');
-      return ApiResponse.error(res, '服务暂时不可用，请稍后再试', 503);
+      log.error('数据库未连接，无法进行用户验证')
+      return ApiResponse.error(res, '服务暂时不可用，请稍后再试', 503)
     }
 
     // 查询用户
-    const database = getDatabase();
+    const database = getDatabase()
     const [users] = await database.execute(
       'SELECT id, username, password, name, status FROM users WHERE username = ?',
       [username]
-    );
+    )
 
     if (users.length === 0) {
-      return handleLoginFailure(req, res, '用户名或密码错误');
+      return handleLoginFailure(req, res, '用户名或密码错误')
     }
 
-    const user = users[0];
+    const user = users[0]
 
     // 检查用户状态
     if (user.status !== 1 && user.status !== 'active') {
-      return handleLoginFailure(req, res, '账户已被禁用，请联系管理员启用账户');
+      return handleLoginFailure(req, res, '账户已被禁用，请联系管理员启用账户')
     }
 
     // 验证密码 (数据库中的密码是bcrypt加密的)
-    const passwordMatch = await bcrypt.compare(password, user.password);
+    const passwordMatch = await bcrypt.compare(password, user.password)
 
     if (!passwordMatch) {
-      return handleLoginFailure(req, res, '用户名或密码错误');
+      return handleLoginFailure(req, res, '用户名或密码错误')
     }
 
     // 更新最后登录时间
     await database.execute(
       'UPDATE users SET last_login = NOW() WHERE id = ?',
       [user.id]
-    );
+    )
 
     // 记录登录成功
-    const clientIdentifier = req.ip || req.connection.remoteAddress || 'unknown';
-    recordSuccessfulLogin(`${clientIdentifier}:${username}`);
+    const clientIdentifier = req.ip || req.connection.remoteAddress || 'unknown'
+    recordSuccessfulLogin(`${clientIdentifier}:${username}`)
 
     const {
       userPayload,
       accessProfile,
       tokenPayload
-    } = await buildAuthenticatedUserPayload(database, user);
-    const { accessToken, refreshToken } = generateTokens(tokenPayload);
+    } = await buildAuthenticatedUserPayload(database, user)
+    const { accessToken, refreshToken } = generateTokens(tokenPayload)
 
     // 登录接口特殊处理：token和user需要在顶层，而不是在data中
     res.json({
@@ -353,64 +353,64 @@ router.post('/login', validateBody({
       refreshToken: refreshToken,
       user: userPayload,
       accessProfile
-    });
+    })
 
   } catch (error) {
-    log.error('登录失败:', error);
-    ApiResponse.error(res, '登录失败', 500);
+    log.error('登录失败:', error)
+    ApiResponse.error(res, '登录失败', 500)
   }
-});
+})
 
 // 获取当前用户信息
 router.get('/user', unifiedAuth, async (req, res) => {
   try {
     // 检查数据库连接
     if (!isConnected()) {
-      log.error('数据库未连接，无法获取用户信息');
-      return ApiResponse.error(res, '服务暂时不可用，请稍后再试', 503);
+      log.error('数据库未连接，无法获取用户信息')
+      return ApiResponse.error(res, '服务暂时不可用，请稍后再试', 503)
     }
 
-    const database = getDatabase();
+    const database = getDatabase()
     // 首先获取用户基本信息
     const [users] = await database.execute(
       'SELECT id, username, name, phone, email, status, last_login FROM users WHERE id = ?',
       [req.user.id]
-    );
+    )
 
     if (users.length === 0) {
-      return ApiResponse.error(res, '用户不存在', 404);
+      return ApiResponse.error(res, '用户不存在', 404)
     }
 
-    const user = users[0];
+    const user = users[0]
 
-    const { userPayload } = await buildAuthenticatedUserPayload(database, user);
+    const { userPayload } = await buildAuthenticatedUserPayload(database, user)
 
     ApiResponse.success(res, {
       ...userPayload,
       last_login: user.last_login ? new Date(user.last_login).toISOString() : null
-    });
+    })
 
   } catch (error) {
-    log.error('获取用户信息失败:', error);
-    ApiResponse.error(res, '获取用户信息失败', 500);
+    log.error('获取用户信息失败:', error)
+    ApiResponse.error(res, '获取用户信息失败', 500)
   }
-});
+})
 
 // 刷新访问令牌
 router.post('/refresh', validateBody({
   refreshToken: { type: 'string', required: true, minLength: 10 }
 }), async (req, res) => {
   try {
-    const { refreshToken } = req.body;
+    const { refreshToken } = req.body
 
     if (!isConnected()) {
-      return ApiResponse.error(res, '服务暂时不可用，请稍后再试', 503);
+      return ApiResponse.error(res, '服务暂时不可用，请稍后再试', 503)
     }
 
-    const database = getDatabase();
+    const database = getDatabase()
 
     // 验证刷新令牌
-    const decoded = await verifyToken(refreshToken, 'refresh');
+    const decoded = await verifyToken(refreshToken, 'refresh')
 
     // 查询用户信息
     const [users] = await database.execute(
@@ -419,116 +419,116 @@ router.post('/refresh', validateBody({
        WHERE id = ?
          AND (status = 1 OR status = 'active')`,
       [decoded.sub]
-    );
+    )
 
     if (users.length === 0) {
-      return ApiResponse.error(res, '用户不存在或已被禁用', 401);
+      return ApiResponse.error(res, '用户不存在或已被禁用', 401)
     }
 
-    const user = users[0];
+    const user = users[0]
 
     const {
       userPayload,
       accessProfile,
       tokenPayload
-    } = await buildAuthenticatedUserPayload(database, user);
+    } = await buildAuthenticatedUserPayload(database, user)
 
     // 将旧的刷新令牌加入黑名单
-    await addToBlacklist(refreshToken, 'refresh_used');
+    await addToBlacklist(refreshToken, 'refresh_used')
 
     // 生成新的令牌对
-    const { accessToken, refreshToken: newRefreshToken } = generateTokens(tokenPayload);
+    const { accessToken, refreshToken: newRefreshToken } = generateTokens(tokenPayload)
 
     ApiResponse.success(res, {
       token: accessToken,
       refreshToken: newRefreshToken,
       user: userPayload,
       accessProfile
-    }, '令牌刷新成功');
+    }, '令牌刷新成功')
 
   } catch (error) {
-    log.error('令牌刷新失败:', error);
+    log.error('令牌刷新失败:', error)
 
     if (error.message === '令牌已过期') {
-      return ApiResponse.error(res, '刷新令牌已过期，请重新登录', 401);
+      return ApiResponse.error(res, '刷新令牌已过期，请重新登录', 401)
     } else if (error.message === '无效的令牌' || error.message === 'Token已被吊销') {
-      return ApiResponse.error(res, '无效的刷新令牌', 401);
+      return ApiResponse.error(res, '无效的刷新令牌', 401)
     }
 
-    ApiResponse.error(res, '令牌刷新失败', 500);
+    ApiResponse.error(res, '令牌刷新失败', 500)
   }
-});
+})
 
 // 用户退出登录
 router.post('/logout', unifiedAuth, (req, res) => {
   try {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    const authHeader = req.headers['authorization']
+    const token = authHeader && authHeader.split(' ')[1]
 
     if (token) {
       // 将访问令牌加入黑名单
-      addToBlacklist(token, 'logout');
+      addToBlacklist(token, 'logout')
     }
 
-    ApiResponse.success(res, null, '退出成功');
+    ApiResponse.success(res, null, '退出成功')
   } catch (error) {
-    log.error('退出处理失败:', error);
-    ApiResponse.error(res, '退出失败', 500);
+    log.error('退出处理失败:', error)
+    ApiResponse.error(res, '退出失败', 500)
   }
-});
+})
 
 // 退出所有设备
 router.post('/logout-all', unifiedAuth, async (req, res) => {
   try {
-    const database = getDatabase();
-    const userId = req.user.id;
+    const database = getDatabase()
+    const userId = req.user.id
 
     // 这里可以实现将用户的所有令牌加入黑名单
     // 目前只是记录到数据库
     await database.execute(
       'INSERT INTO logout_all_logs (user_id, created_at) VALUES (?, NOW())',
       [userId]
-    );
+    )
 
-    ApiResponse.success(res, null, '已退出所有设备');
+    ApiResponse.success(res, null, '已退出所有设备')
   } catch (error) {
-    log.error('退出所有设备失败:', error);
-    ApiResponse.error(res, '退出所有设备失败', 500);
+    log.error('退出所有设备失败:', error)
+    ApiResponse.error(res, '退出所有设备失败', 500)
   }
-});
+})
 
 // 初始化管理员用户（仅开发环境）
 router.post('/init-admin', async (req, res) => {
   try {
-    // 仅在开发环境允许
-    if (process.env.NODE_ENV === 'production') {
-      return ApiResponse.error(res, '此功能仅在开发环境可用', 403);
+    // 初始化接口默认关闭，必须显式开启且只能在开发环境使用。
+    if (process.env.NODE_ENV !== 'development' || process.env.ENABLE_DEV_INIT_ADMIN !== 'true') {
+      return ApiResponse.error(res, '管理员初始化接口未启用', 403)
     }
 
-    const database = getDatabase();
-    const connection = await database.getConnection();
+    const database = getDatabase()
+    const connection = await database.getConnection()
 
     try {
-      await connection.beginTransaction();
+      await connection.beginTransaction()
 
       // 检查是否已有管理员用户
       const [existingAdmins] = await connection.execute(
         'SELECT id FROM users WHERE username = ? LIMIT 1',
         ['admin']
-      );
+      )
 
       if (existingAdmins.length > 0) {
-        await connection.rollback();
-        return ApiResponse.error(res, '管理员用户已存在', 400);
+        await connection.rollback()
+        return ApiResponse.error(res, '管理员用户已存在', 400)
       }
 
-      const adminRoleId = await ensureDevelopmentAdminRole(connection);
+      const adminRoleId = await ensureDevelopmentAdminRole(connection)
 
       // 创建默认管理员用户
-      const { password: defaultPassword, source: passwordSource } = resolveInitAdminPassword();
-      const hashedPassword = await bcrypt.hash(defaultPassword, 12);
-      const supportsUserRole = await hasColumn('users', 'role', connection);
-      const supportsUserRoleId = await hasColumn('users', 'role_id', connection);
+      const { password: defaultPassword, source: passwordSource } = resolveInitAdminPassword()
+      const hashedPassword = await bcrypt.hash(defaultPassword, 12)
+      const supportsUserRole = await hasColumn('users', 'role', connection)
+      const supportsUserRoleId = await hasColumn('users', 'role_id', connection)
       const userData = {
         username: 'admin',
         password: hashedPassword,
@@ -538,12 +538,12 @@ router.post('/init-admin', async (req, res) => {
         status: 1,
         created_at: await hasColumn('users', 'created_at', connection) ? rawSql('NOW()') : undefined,
         updated_at: await hasColumn('users', 'updated_at', connection) ? rawSql('NOW()') : undefined
-      };
-      const { sql, values } = buildInsertStatement('users', userData);
-      const [result] = await connection.execute(sql, values);
+      }
+      const { sql, values } = buildInsertStatement('users', userData)
+      const [result] = await connection.execute(sql, values)
 
-      await ensureUserRoleBinding(connection, result.insertId, adminRoleId);
-      await connection.commit();
+      await ensureUserRoleBinding(connection, result.insertId, adminRoleId)
+      await connection.commit()
 
       ApiResponse.success(res, {
         id: result.insertId,
@@ -552,18 +552,18 @@ router.post('/init-admin', async (req, res) => {
         password_source: passwordSource,
         role_id: adminRoleId,
         message: '请保存此密码并在登录后立即修改'
-      }, '管理员用户初始化成功');
+      }, '管理员用户初始化成功')
     } catch (error) {
-      await connection.rollback();
-      throw error;
+      await connection.rollback()
+      throw error
     } finally {
-      connection.release();
+      connection.release()
     }
 
   } catch (error) {
-    log.error('初始化管理员失败:', error);
-    ApiResponse.error(res, '初始化管理员失败', 500);
+    log.error('初始化管理员失败:', error)
+    ApiResponse.error(res, '初始化管理员失败', 500)
   }
-});
+})
 
-module.exports = router;
+module.exports = router

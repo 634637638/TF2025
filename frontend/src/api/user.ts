@@ -6,7 +6,7 @@ import type { User } from '@/types'
 
 export interface UserFilters {
   page?: number
-  limit?: number
+  page_size?: number
   role?: string
   status?: string | number
   store_id?: number
@@ -16,8 +16,11 @@ export interface UserListResponse {
   users: User[]
   pagination: {
     page: number
-    limit: number
+    page_size: number
     total: number
+    total_pages: number
+    has_next: boolean
+    has_prev: boolean
   }
 }
 
@@ -53,7 +56,7 @@ export const userApi = {
   /**
    * 创建用户
    */
-  createUser: (data: Partial<User> & { password: string; salary_template_id?: number; group_name?: string }) => {
+  createUser: (data: Partial<User> & { password: string; salary_template_id?: number }) => {
     return unifiedApi.post('/users', data)
   },
 

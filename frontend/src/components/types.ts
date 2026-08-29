@@ -2,7 +2,7 @@
  * 全局组件注册系统类型定义
  */
 
-import type { App, Component } from 'vue'
+import type { Component } from 'vue'
 
 /**
  * 组件注册选项
@@ -118,8 +118,7 @@ declare module '@vue/runtime-core' {
       registered: number
       components: string[]
       duration: number
-      registry?: any
+      registry?: unknown
     }
   }
 }
-

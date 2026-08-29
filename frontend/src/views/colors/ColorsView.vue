@@ -7,274 +7,487 @@
       module-name="颜色管理"
       permission-code="colors:view"
     >
-    <!-- 页面头部 - 使用公共组件 -->
-    <PageHeader
-      icon="fas fa-palette"
-      title="颜色管理"
-    >
-      <template #actions>
-        <el-button
-          v-if="canCreate"
-          type="primary"
-          @click="handleCreateColor"
+      <!-- 页面头部 - 使用公共组件 -->
+      <PageHeader
+        icon="fas fa-palette"
+        title="颜色管理"
+      >
+        <template #actions>
+          <el-button
+            v-if="canCreate"
+            type="primary"
+            @click="handleCreateColor"
+          >
+            <i class="fas fa-plus" />
+            <span>新增</span>
+          </el-button>
+          <el-button
+            type="info"
+            :disabled="refreshing"
+            @click="handleRefresh"
+          >
+            <InlineLoading
+              v-if="refreshing"
+              text="刷新中..."
+              size="small"
+              variant="inherit"
+            />
+            <template v-else>
+              <i class="fas fa-sync-alt" />
+              <span>刷新</span>
+            </template>
+          </el-button>
+        </template>
+      </PageHeader>
+
+      <div class="content admin-page-content">
+        <!-- 统计卡片 -->
+        <div
+          v-if="showStatsCards"
+          class="stats-cards"
         >
-          <i class="fas fa-plus"></i>
-          <span>新增</span>
-        </el-button>
-        <el-button type="info" @click="handleRefresh" :disabled="refreshing">
-          <InlineLoading v-if="refreshing" text="刷新中..." size="small" variant="inherit" />
-          <template v-else>
-            <i class="fas fa-sync-alt"></i>
-            <span>刷新</span>
-          </template>
-        </el-button>
-      </template>
-    </PageHeader>
-
-    <div class="content admin-page-content">
-
-    <!-- 统计卡片 -->
-    <div v-if="showStatsCards" class="stats-cards">
-      <div v-if="canViewField('stats_total_colors')" class="stat-card">
-        <div class="stat-icon">
-          <i class="fas fa-palette"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ pagination.total }}</div>
-          <div class="stat-label">颜色总数</div>
-        </div>
-      </div>
-      <div v-if="canViewField('stats_active_colors')" class="stat-card">
-        <div class="stat-icon active">
-          <i class="fas fa-check-circle"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ colors.filter(c => c.status === 1 || c.is_active === true).length }}</div>
-          <div class="stat-label">启用颜色</div>
-        </div>
-      </div>
-      <div v-if="canViewField('stats_inactive_colors')" class="stat-card">
-        <div class="stat-icon inactive">
-          <i class="fas fa-pause-circle"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ colors.filter(c => c.status === 0 || c.is_active === false).length }}</div>
-          <div class="stat-label">禁用颜色</div>
-        </div>
-      </div>
-      <div v-if="canViewField('stats_related_phones')" class="stat-card">
-        <div class="stat-icon">
-          <i class="fas fa-mobile-alt"></i>
-        </div>
-        <div class="stat-content">
-          <div class="stat-value">{{ getPhoneCount() }}</div>
-          <div class="stat-label">相关手机</div>
-        </div>
-      </div>
-    </div>
-
-    <UnifiedSearchPanel
-      v-model:expanded="searchExpanded"
-      :loading="tableLoading"
-      @search="searchColors"
-      @reset="resetSearch"
-    >
-      <template #primary>
-        <el-input
-          v-if="canViewField('name')"
-          v-model="searchForm.name"
-          placeholder="搜索关键词"
-          clearable
-          @keyup.enter="searchColors"
-          @click.stop
-        >
-          <template #prefix>
-            <i class="fas fa-search"></i>
-          </template>
-        </el-input>
-      </template>
-
-      <div v-if="canViewField('status')" class="form-group filter-item" data-field="status">
-        <el-select
-          v-model="searchForm.status"
-          placeholder="状态"
-          clearable
-          @change="searchColors"
-        >
-          <el-option label="启用" value="1" />
-          <el-option label="禁用" value="0" />
-        </el-select>
-      </div>
-    </UnifiedSearchPanel>
-
-    <!-- 数据表格区域 -->
-    <div class="table-section admin-panel admin-table-panel">
-      <div class="section-title">
-        <i class="fas fa-list"></i>
-        颜色列表
-        <span class="record-count">共 {{ pagination.total }} 条记录</span>
-      </div>
-      
-      <div class="table-responsive">
-        <el-table
-          ref="colorsTableRef"
-          :data="tableLoading ? [] : colors"
-          border
-          stripe
-          class="data-table devices-table base-data-table colors-data-table"
-          table-layout="fixed"
-          :fit="true"
-          :row-key="getColorRowKey"
-          :expand-row-keys="isMobile && mobileActionRowId ? [mobileActionRowId] : []"
-          @row-click="(row) => handleMobileRowTap(row.id)"
-        >
-          <template #empty>
-            <TableLoadingRow v-if="tableLoading" mode="block" text="加载颜色列表..." />
-            <div v-else class="empty-state">
-              <i class="fas fa-inbox"></i>
-              <p>暂无颜色数据</p>
-              <el-button size="small" type="info" @click="loadColors()">重新加载</el-button>
+          <div
+            v-if="canViewField('stats_total_colors')"
+            class="stat-card"
+          >
+            <div class="stat-icon">
+              <i class="fas fa-palette" />
             </div>
+            <div class="stat-content">
+              <div class="stat-value">
+                {{ stats.total }}
+              </div>
+              <div class="stat-label">
+                颜色总数
+              </div>
+            </div>
+          </div>
+          <div
+            v-if="canViewField('stats_active_colors')"
+            class="stat-card"
+          >
+            <div class="stat-icon active">
+              <i class="fas fa-check-circle" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">
+                {{ stats.active }}
+              </div>
+              <div class="stat-label">
+                启用颜色
+              </div>
+            </div>
+          </div>
+          <div
+            v-if="canViewField('stats_inactive_colors')"
+            class="stat-card"
+          >
+            <div class="stat-icon inactive">
+              <i class="fas fa-pause-circle" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">
+                {{ stats.inactive }}
+              </div>
+              <div class="stat-label">
+                禁用颜色
+              </div>
+            </div>
+          </div>
+          <div
+            v-if="canViewField('stats_related_phones')"
+            class="stat-card"
+          >
+            <div class="stat-icon">
+              <i class="fas fa-mobile-alt" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">
+                {{ stats.related_phones }}
+              </div>
+              <div class="stat-label">
+                相关手机
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <UnifiedSearchPanel
+          v-model:expanded="searchExpanded"
+          :loading="tableLoading"
+          @search="searchColors"
+          @reset="resetSearch"
+        >
+          <template #primary>
+            <el-input
+              v-if="canViewField('name')"
+              v-model="searchForm.name"
+              placeholder="搜索关键词"
+              clearable
+              @keyup.enter="searchColors"
+              @click.stop
+            >
+              <template #prefix>
+                <i class="fas fa-search" />
+              </template>
+            </el-input>
           </template>
 
-          <el-table-column v-if="showSortField" width="44" align="center" class-name="drag-handle-cell">
-            <template #default>
-              <div class="drag-handle" :class="{ disabled: !canEdit }"><i class="fas fa-grip-vertical"></i></div>
-            </template>
-          </el-table-column>
-          <el-table-column v-if="showSortOrderField" label="排序" width="70" align="center">
-            <template #default="{ row, $index }">
-              <input v-model.number="row.sort_order" type="number" class="sort-order-input" :disabled="!canEdit" min="0" max="9999" @change="handleSortOrderChange($index, row.sort_order)" />
-            </template>
-          </el-table-column>
-          <el-table-column v-if="canViewField('id')" label="序号" width="70" align="center">
-            <template #default="{ $index }"><span class="id-badge">{{ $index + 1 }}</span></template>
-          </el-table-column>
-          <el-table-column v-if="canViewField('name')" label="颜色名称" min-width="130" align="center">
-            <template #default="{ row }">
-              <div class="color-info">
-                <div class="color-name"><strong>{{ row.name || '未命名颜色' }}</strong></div>
-              </div>
-            </template>
-          </el-table-column>
-          <el-table-column v-if="showCodeField" label="颜色预览" :min-width="isMobile ? 104 : 150" align="center">
-            <template #default="{ row }">
-              <div class="color-preview">
-                <span class="color-circle" :style="{ backgroundColor: row.hex_code || getColorCode(row.name) }"></span>
-                <span class="color-code">{{ row.hex_code || getColorCode(row.name) }}</span>
-              </div>
-            </template>
-          </el-table-column>
-          <el-table-column v-if="canViewField('status')" label="状态" min-width="84" align="center">
-            <template #default="{ row }">
-              <span :class="['status-badge', (row.status === 1 || row.is_active === true) ? 'status-active' : 'status-inactive']">
-                <i :class="(row.status === 1 || row.is_active === true) ? 'fas fa-check' : 'fas fa-times'"></i>
-                {{ (row.status === 1 || row.is_active === true) ? '启用' : '禁用' }}
-              </span>
-            </template>
-          </el-table-column>
-          <el-table-column v-if="showCreatedAtField" label="创建时间" min-width="156" align="center">
-            <template #default="{ row }"><div class="time-info"><i class="fas fa-clock"></i>{{ formatDate(row.created_at) }}</div></template>
-          </el-table-column>
-          <el-table-column v-if="showActionField" label="操作" :width="$getActionColumnWidth(Number(canEdit) + Number(canDelete))" align="center" class-name="actions-column">
-            <template #default="{ row }">
-              <div class="action-buttons">
-                <el-button v-if="canEdit" v-permission="'colors:edit'" type="primary" size="small" @click.stop="editColor(row)"><i class="fas fa-edit"></i><span>编辑</span></el-button>
-                <el-button v-if="canDelete" v-permission="'colors:delete'" type="danger" size="small" @click.stop="deleteColor(row)"><i class="fas fa-trash"></i><span>删除</span></el-button>
-              </div>
-            </template>
-          </el-table-column>
-          <el-table-column v-if="isMobile && (canEdit || canDelete)" type="expand" width="1" class-name="mobile-expand-column" label-class-name="mobile-expand-header">
-            <template #default="{ row }">
-              <div class="mobile-row-actions">
-                <el-button v-if="canEdit" v-permission="'colors:edit'" type="primary" size="small" @click.stop="editColor(row)"><i class="fas fa-edit"></i><span>编辑</span></el-button>
-                <el-button v-if="canDelete" v-permission="'colors:delete'" type="danger" size="small" @click.stop="deleteColor(row)"><i class="fas fa-trash"></i><span>删除</span></el-button>
-              </div>
-            </template>
-          </el-table-column>
-        </el-table>
-      </div>
+          <div
+            v-if="canViewField('status')"
+            class="form-group filter-item"
+            data-field="status"
+          >
+            <el-select
+              v-model="searchForm.status"
+              placeholder="状态"
+              clearable
+              @change="searchColors"
+            >
+              <el-option
+                label="启用"
+                value="1"
+              />
+              <el-option
+                label="禁用"
+                value="0"
+              />
+            </el-select>
+          </div>
+        </UnifiedSearchPanel>
 
-      <!-- 分页组件 -->
-      <Pagination
-        v-if="pagination.total > 0"
-        v-model:current="pagination.page"
-        v-model:page-size="pagination.limit"
-        :total="pagination.total"
-        :page-sizes="[10, 20, 50, 100]"
-        :show-total="true"
-        :show-range="true"
-        :show-page-sizes="true"
-        :show-quick-jumper="true"
-        @change="handlePaginationChange"
-      />
-    </div>
+        <!-- 数据表格区域 -->
+        <div class="table-section admin-panel admin-table-panel">
+          <div class="section-title">
+            <i class="fas fa-list" />
+            颜色列表
+            <span class="record-count">共 {{ pagination.total }} 条记录</span>
+          </div>
 
-    <!-- 创建/编辑模态框 -->
-    <MobileDialog
-      v-model="dialogVisible"
-      :title="isEditMode ? '编辑颜色' : '新增颜色'"
-      width="500px"
-      dialog-class="colors-form-dialog crud-dialog-sm"
-      :close-on-click-modal="false"
-      @close="attemptCloseModal"
-      :show-default-footer="false"
-    >
-      <el-form :model="formData" label-width="80px" class="colors-dialog-form">
-        <el-form-item v-if="canViewField('name')" label="颜色名称" required>
-          <el-input
-            v-model="formData.name"
-            placeholder="请输入颜色名称，如：黑色、白色、深空灰等"
-            clearable
-            maxlength="50"
-            show-word-limit
-            @input="updateColorPreview"
-            :disabled="!canEditField('name')"
+          <div class="table-responsive">
+            <el-table
+              ref="colorsTableRef"
+              :data="tableLoading ? [] : colors"
+              border
+              stripe
+              class="data-table devices-table base-data-table colors-data-table"
+              table-layout="fixed"
+              :fit="true"
+              :row-key="getColorRowKey"
+              :expand-row-keys="isMobile && mobileActionRowId ? [mobileActionRowId] : []"
+              @row-click="(row) => handleMobileRowTap(row.id)"
+            >
+              <template #empty>
+                <TableLoadingRow
+                  v-if="tableLoading"
+                  mode="block"
+                  text="加载颜色列表..."
+                />
+                <DataEmptyState
+                  v-else
+                  description="暂无颜色数据"
+                >
+                  <el-button
+                    size="small"
+                    type="info"
+                    @click="loadColors()"
+                  >
+                    重新加载
+                  </el-button>
+                </DataEmptyState>
+              </template>
+
+              <el-table-column
+                v-if="showSortField"
+                width="44"
+                align="center"
+                class-name="drag-handle-cell"
+              >
+                <template #default>
+                  <div
+                    class="drag-handle"
+                    :class="{ disabled: !canEdit }"
+                  >
+                    <i class="fas fa-grip-vertical" />
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="showSortOrderField"
+                label="排序"
+                width="70"
+                align="center"
+              >
+                <template #default="{ row, $index }">
+                  <input
+                    v-model.number="row.sort_order"
+                    type="number"
+                    class="sort-order-input"
+                    :disabled="!canEdit"
+                    min="0"
+                    max="9999"
+                    @change="handleSortOrderChange($index, row.sort_order)"
+                  >
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="canViewField('id')"
+                label="序号"
+                width="70"
+                align="center"
+              >
+                <template #default="{ $index }">
+                  <span class="id-badge">{{ $index + 1 }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="canViewField('name')"
+                label="颜色名称"
+                min-width="130"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <div class="color-info">
+                    <div class="color-name">
+                      <strong>{{ row.name || '未命名颜色' }}</strong>
+                    </div>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="showCodeField"
+                label="颜色预览"
+                :min-width="isMobile ? 104 : 150"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <div class="color-preview">
+                    <span
+                      class="color-circle"
+                      :style="{ backgroundColor: getColorCode(row.name) }"
+                    />
+                    <span class="color-code">{{ getColorCode(row.name) }}</span>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="canViewField('status')"
+                label="状态"
+                min-width="84"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <span :class="['status-badge', row.status === 1 ? 'status-active' : 'status-inactive']">
+                    <i :class="row.status === 1 ? 'fas fa-check' : 'fas fa-times'" />
+                    {{ row.status === 1 ? '启用' : '禁用' }}
+                  </span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="showCreatedAtField"
+                label="创建时间"
+                min-width="156"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <div class="time-info">
+                    <i class="fas fa-clock" />{{ formatDate(row.created_at) }}
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="showUpdatedAtField"
+                label="更新时间"
+                min-width="156"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <div class="time-info">
+                    <i class="fas fa-clock" />{{ formatDate(row.updated_at) }}
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="showActionField"
+                label="操作"
+                :width="$getActionColumnWidth(Number(canEdit) + Number(canDelete))"
+                align="center"
+                class-name="actions-column"
+              >
+                <template #default="{ row }">
+                  <div class="action-buttons">
+                    <el-button
+                      v-if="canEdit"
+                      v-permission="'colors:edit'"
+                      type="primary"
+                      size="small"
+                      @click.stop="editColor(row)"
+                    >
+                      <i class="fas fa-edit" /><span>编辑</span>
+                    </el-button>
+                    <el-button
+                      v-if="canDelete"
+                      v-permission="'colors:delete'"
+                      type="danger"
+                      size="small"
+                      @click.stop="deleteColor(row)"
+                    >
+                      <i class="fas fa-trash" /><span>删除</span>
+                    </el-button>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="isMobile && (canEdit || canDelete)"
+                type="expand"
+                width="1"
+                class-name="mobile-expand-column"
+                label-class-name="mobile-expand-header"
+              >
+                <template #default="{ row }">
+                  <div class="mobile-row-actions">
+                    <el-button
+                      v-if="canEdit"
+                      v-permission="'colors:edit'"
+                      type="primary"
+                      size="small"
+                      @click.stop="editColor(row)"
+                    >
+                      <i class="fas fa-edit" /><span>编辑</span>
+                    </el-button>
+                    <el-button
+                      v-if="canDelete"
+                      v-permission="'colors:delete'"
+                      type="danger"
+                      size="small"
+                      @click.stop="deleteColor(row)"
+                    >
+                      <i class="fas fa-trash" /><span>删除</span>
+                    </el-button>
+                  </div>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+
+          <!-- 分页组件 -->
+          <Pagination
+            v-if="pagination.total > 0"
+            v-model:current="pagination.page"
+            v-model:page-size="pagination.page_size"
+            :total="pagination.total"
+            :page-sizes="[10, 20, 50, 100]"
+            :show-total="true"
+            :show-range="true"
+            :show-page-sizes="true"
+            :show-quick-jumper="true"
+            @change="handlePaginationChange"
           />
-          <div v-if="canViewField('code') && formData.name && formData.name.trim()" class="color-preview-modal">
-            <div class="preview-label">颜色预览:</div>
-            <div class="preview-content">
+        </div>
+
+        <!-- 创建/编辑模态框 -->
+        <MobileDialog
+          v-model="dialogVisible"
+          :title="isEditMode ? '编辑颜色' : '新增颜色'"
+          width="500px"
+          dialog-class="colors-form-dialog crud-dialog-sm"
+          :close-on-click-modal="false"
+          :show-default-footer="false"
+          @close="attemptCloseModal"
+        >
+          <el-form
+            :model="formData"
+            label-width="80px"
+            class="colors-dialog-form"
+          >
+            <el-form-item
+              v-if="canViewField('name')"
+              label="颜色名称"
+              required
+            >
+              <el-input
+                v-model="formData.name"
+                placeholder="请输入颜色名称，如：黑色、白色、深空灰等"
+                clearable
+                maxlength="50"
+                show-word-limit
+                :disabled="!canEditField('name')"
+                @input="updateColorPreview"
+              />
               <div
-                class="color-circle-large"
-                :style="{ backgroundColor: getColorCode(formData.name.trim()) }"
-              ></div>
-              <span class="color-code-text">{{ getColorCode(formData.name.trim()) }}</span>
-            </div>
-          </div>
-        </el-form-item>
-        <el-form-item v-if="canViewField('sort_order')" label="排序">
-          <el-input-number
-            v-model="formData.sort_order"
-            :min="0"
-            :max="999999"
-            placeholder="请输入排序值，数字越小越靠前"
-            controls-position="right"
-            style="width: 100%"
-            :disabled="!canEditField('sort_order')"
-          />
-          <div class="input-hint">
-            <span>范围: 0-999999，数字越小越靠前</span>
-          </div>
-        </el-form-item>
-        <el-form-item v-if="canViewField('status')" label="状态">
-          <el-radio-group v-model="formData.status" :disabled="!canEditField('status')">
-            <el-radio :value="1">启用</el-radio>
-            <el-radio :value="0">禁用</el-radio>
-          </el-radio-group>
-          <div class="input-hint">
-            <span>禁用的颜色将不会在产品选择中显示</span>
-          </div>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button type="default" @click="attemptCloseModal">取消</el-button>
-        <el-button type="primary" @click="submitForm" :disabled="submitting" :loading="submitting">
-          <span v-if="submitting">{{ isEditMode ? '更新中...' : '创建中...' }}</span>
-          <template v-else>{{ isEditMode ? '更新' : '创建' }}</template>
-        </el-button>
-      </template>
-    </MobileDialog>
-    </div>
+                v-if="canViewField('code') && formData.name && formData.name.trim()"
+                class="color-preview-modal"
+              >
+                <div class="preview-label">
+                  颜色预览:
+                </div>
+                <div class="preview-content">
+                  <div
+                    class="color-circle-large"
+                    :style="{ backgroundColor: getColorCode(formData.name.trim()) }"
+                  />
+                  <span class="color-code-text">{{ getColorCode(formData.name.trim()) }}</span>
+                </div>
+              </div>
+            </el-form-item>
+            <el-form-item
+              v-if="canViewField('sort_order')"
+              label="排序"
+            >
+              <el-input-number
+                v-model="formData.sort_order"
+                :min="0"
+                :max="999999"
+                placeholder="请输入排序值，数字越小越靠前"
+                controls-position="right"
+                style="width: 100%"
+                :disabled="!canEditField('sort_order')"
+              />
+              <div class="input-hint">
+                <span>范围: 0-999999，数字越小越靠前</span>
+              </div>
+            </el-form-item>
+            <el-form-item
+              v-if="canViewField('status')"
+              label="状态"
+            >
+              <el-radio-group
+                v-model="formData.status"
+                :disabled="!canEditField('status')"
+              >
+                <el-radio :value="1">
+                  启用
+                </el-radio>
+                <el-radio :value="0">
+                  禁用
+                </el-radio>
+              </el-radio-group>
+              <div class="input-hint">
+                <span>禁用的颜色将不会在产品选择中显示</span>
+              </div>
+            </el-form-item>
+          </el-form>
+          <template #footer>
+            <el-button
+              type="default"
+              @click="attemptCloseModal"
+            >
+              取消
+            </el-button>
+            <el-button
+              type="primary"
+              :disabled="submitting"
+              :loading="submitting"
+              @click="submitForm"
+            >
+              <span v-if="submitting">{{ isEditMode ? '更新中...' : '创建中...' }}</span>
+              <template v-else>
+                {{ isEditMode ? '更新' : '创建' }}
+              </template>
+            </el-button>
+          </template>
+        </MobileDialog>
+      </div>
     </PermissionGate>
   </div>
 </template>
@@ -287,7 +500,7 @@ import unifiedApi from '@/utils/unified-api'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useRefreshData } from '@/composables/useRefreshData'
-import { fieldPermissions } from '@/composables/useFieldPermissions'
+import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useAuthStore } from '@/stores/auth'
 import Pagination from '../../components/Pagination.vue'
 import InlineLoading from '@/components/InlineLoading.vue'
@@ -303,15 +516,15 @@ import { logger } from '@/utils/logger'
 import type { Color } from '@/types'
 
 // 获取路由实例
-const router = useRouter()
+const _router = useRouter()
 
 // 使用统一的 composable
-const { success, error, warning, info, handleApiError, confirm } = useNotification()
+const { success, error, warning: _warning, info: _info, handleApiError, confirm } = useNotification()
 const { canView, canCreate, canEdit, canDelete } = usePagePermissions('colors')
 const { showViewDenied, showEditDenied, showDeleteDenied, showCreateDenied } = usePermissionToast()
 const { refreshing, refresh } = useRefreshData()
 const { isMobile } = useMobile()
-const authStore = useAuthStore()
+const _authStore = useAuthStore()
 const { init: initFieldPermissions } = fieldPermissions
 const colorListRequest = useLatestRequest()
 
@@ -349,8 +562,11 @@ const canEditField = (fieldName: string) => {
 
 const showSortField = computed(() => canViewField('sort_order') && !isMobile.value)
 const showSortOrderField = computed(() => canViewField('sort_order') && !isMobile.value)
-const showActionField = computed(() => canViewField('actions') && (canEdit.value || canDelete.value) && !isMobile.value)
+const showActionField = computed(() => (
+  shouldShowActionColumn(canViewField('actions'), [canEdit.value, canDelete.value]) && !isMobile.value
+))
 const showCreatedAtField = computed(() => canViewField('created_at') && !isMobile.value)
+const showUpdatedAtField = computed(() => canViewField('updated_at') && !isMobile.value)
 const showCodeField = computed(() => canViewField('code'))
 const showStatsCards = computed(() => (
   canViewField('stats_total_colors') ||
@@ -367,6 +583,7 @@ const mobileActionRowId = ref<string | null>(null)
 const lastTappedRowId = ref<string | null>(null)
 const lastTapTimestamp = ref(0)
 const colors = ref<Color[]>([])
+const stats = ref({ total: 0, active: 0, inactive: 0, related_phones: 0 })
 
 const getColorRowKey = (color: Color) => String(color.id)
 
@@ -414,9 +631,11 @@ const formData = ref({
 // 分页数据
 const pagination = ref({
   page: 1,
-  limit: 100,
+  page_size: 100,
   total: 0,
-  pages: 0
+  total_pages: 0,
+  has_next: false,
+  has_prev: false
 })
 
 // 模态框显示状态
@@ -470,7 +689,7 @@ const updateColorPreview = () => {
   // 这个方法用于在输入时更新预览，实际上通过计算属性已经处理了
 }
 
-const loadColors = async (bustCache = false, silentError = false, _showLoadingState = true) => {
+const loadColors = async (_bustCache = false, silentError = false, _showLoadingState = true) => {
   // 检查查看权限
   if (!canView.value) {
     if (!silentError) {
@@ -488,9 +707,9 @@ const loadColors = async (bustCache = false, silentError = false, _showLoadingSt
   try {
     const params: any = {
       page: pagination.value.page,
-      limit: pagination.value.limit,
-      sortBy: 'sort_order',
-      sortOrder: 'asc'
+      page_size: pagination.value.page_size,
+      sort_by: 'sort_order',
+      sort_order: 'asc'
     }
 
     // 添加搜索参数
@@ -510,18 +729,21 @@ const loadColors = async (bustCache = false, silentError = false, _showLoadingSt
     if (response.success) {
       colors.value = response.data.colors || []
       // 确保 total 是数字类型
-      const apiPagination = response.data.pagination || { page: 1, limit: 50, total: 0, pages: 0 }
+      const apiPagination = response.data.pagination || {}
       pagination.value = {
-        ...apiPagination,
+        page: Number(apiPagination.page) || 1,
+        page_size: Number(apiPagination.page_size) || 100,
         total: Number(apiPagination.total) || 0,
-        pages: Number(apiPagination.pages) || 0
+        total_pages: Number(apiPagination.total_pages) || 0,
+        has_next: apiPagination.has_next === true,
+        has_prev: apiPagination.has_prev === true
       }
 
       // 按 sort_order 排序，确保序号和排序值一致
       colors.value.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
     } else {
       colors.value = []
-      pagination.value = { page: 1, limit: 50, total: 0, pages: 0 }
+      pagination.value = { page: 1, page_size: 100, total: 0, total_pages: 0, has_next: false, has_prev: false }
       if (!silentError) {
         error(`获取颜色列表失败: ${response.message || '未知错误'}`)
       }
@@ -533,7 +755,7 @@ const loadColors = async (bustCache = false, silentError = false, _showLoadingSt
 
     logger.error('获取颜色列表失败:', err)
     colors.value = []
-    pagination.value = { page: 1, limit: 50, total: 0, pages: 0 }
+    pagination.value = { page: 1, page_size: 100, total: 0, total_pages: 0, has_next: false, has_prev: false }
 
     // 静默模式不显示错误提示
     if (silentError) {
@@ -563,14 +785,14 @@ const resetSearch = () => {
   loadColors(true) // 重置时破坏缓存
 }
 
-const changePage = (page: number) => {
+const _changePage = (page: number) => {
   pagination.value.page = page
   loadColors()
 }
 
 const handlePaginationChange = (page, pageSize) => {
-  const oldPageSize = pagination.value.limit
-  pagination.value.limit = pageSize
+  const oldPageSize = pagination.value.page_size
+  pagination.value.page_size = pageSize
   pagination.value.page = pageSize !== oldPageSize ? 1 : page
   loadColors()
 }
@@ -594,7 +816,7 @@ const editColor = (color: Color) => {
 
   formData.value = {
     name: color.name,
-    status: color.status !== undefined ? (color.status === 1 ? 1 : 0) : (color.is_active ? 1 : 0),
+    status: color.status === 1 ? 1 : 0,
     sort_order: color.sort_order || 0
   }
 
@@ -775,7 +997,7 @@ const hasUnsavedChanges = (): boolean => {
 
   // 检查是否有任何非空字段的更改
   const currentForm = formData.value
-  const initialForm = {
+  const _initialForm = {
     name: '',
     status: 1,
     sort_order: 0
@@ -838,9 +1060,22 @@ const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleString('zh-CN')
 }
 
-const getPhoneCount = () => {
-  // 这里应该从后端获取相关手机数量，暂时返回模拟数据
-  return Math.floor(Math.random() * 30) + 5
+const loadStats = async () => {
+  try {
+    const response = await unifiedApi.get('/colors/stats/overview')
+    if (response.success) {
+      const data = response.data || {}
+      stats.value = {
+        total: Number(data.total) || 0,
+        active: Number(data.active) || 0,
+        inactive: Number(data.inactive) || 0,
+        related_phones: Number(data.related_phones) || 0
+      }
+    }
+  } catch (error) {
+    logger.error('获取颜色统计失败:', error)
+    stats.value = { total: 0, active: 0, inactive: 0, related_phones: 0 }
+  }
 }
 
 // 处理新增颜色
@@ -957,7 +1192,7 @@ onMounted(async () => {
 
   // 加载数据
   await initFieldPermissions()
-  await loadColors()
+  await Promise.all([loadColors(), loadStats()])
 
   // 添加键盘事件监听器
   document.addEventListener('keydown', handleKeyboardShortcuts)
@@ -973,7 +1208,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .colors-view {
   padding: 24px;
-  background: #f5f7fa;
+  background: var(--tf-color-surface);
   min-height: 100vh;
 }
 
@@ -1004,7 +1239,7 @@ onBeforeUnmount(() => {
   gap: 16px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.08);
   transition: all 0.3s ease;
-  border: 1px solid #e8ecef;
+  border: 1px solid var(--tf-color-border-cool);
 }
 
 .stat-card:hover {
@@ -1020,16 +1255,16 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   font-size: 20px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand));
   color: white;
 }
 
 .stat-icon.active {
-  background: linear-gradient(135deg, #28a745, #20c997);
+  background: linear-gradient(135deg, var(--success-color), var(--tf-color-teal-500));
 }
 
 .stat-icon.inactive {
-  background: linear-gradient(135deg, #dc3545, #fd7e14);
+  background: linear-gradient(135deg, var(--danger-color), var(--tf-color-orange-bootstrap));
 }
 
 .stat-content {
@@ -1039,13 +1274,13 @@ onBeforeUnmount(() => {
 .stat-value {
   font-size: 24px;
   font-weight: 700;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
   margin-bottom: 4px;
 }
 
 .stat-label {
   font-size: 14px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
   font-weight: 500;
 }
 
@@ -1055,20 +1290,20 @@ onBeforeUnmount(() => {
   gap: 8px;
   font-size: 16px;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
   margin-bottom: 20px;
   padding-bottom: 12px;
-  border-bottom: 2px solid #f8f9fa;
+  border-bottom: 2px solid var(--tf-color-surface-muted);
 }
 
 .section-title i {
-  color: #667eea;
+  color: var(--tf-color-indigo-brand);
 }
 
 .record-count {
   margin-left: auto;
   font-size: 14px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
   font-weight: 400;
 }
 
@@ -1080,7 +1315,7 @@ onBeforeUnmount(() => {
   border-radius: 12px;
   padding: 24px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-  border: 1px solid #e8ecef;
+  border: 1px solid var(--tf-color-border-cool);
 }
 
 .table-responsive {
@@ -1097,14 +1332,14 @@ onBeforeUnmount(() => {
 }
 
 .table th {
-  background: linear-gradient(135deg, #495057 0%, #343a40 100%);
+  background: linear-gradient(135deg, var(--tf-color-gray-bootstrap-700) 0%, var(--tf-color-gray-bootstrap-800) 100%);
   color: white;
   padding: 12px 10px;
   text-align: center;
   font-weight: 600;
   font-size: 14px;
-  border-right: 1px solid #dee2e6;
-  border-bottom: 2px solid #dee2e6;
+  border-right: 1px solid var(--tf-color-border-subtle);
+  border-bottom: 2px solid var(--tf-color-border-subtle);
   position: relative;
   white-space: nowrap;
 }
@@ -1116,11 +1351,11 @@ onBeforeUnmount(() => {
 .table td {
   padding: 6px 6px;
   font-size: 14px;
-  border-right: 1px solid #e9ecef;
-  border-bottom: 1px solid #e9ecef;
+  border-right: 1px solid var(--tf-color-border-muted);
+  border-bottom: 1px solid var(--tf-color-border-muted);
   vertical-align: middle;
   text-align: center;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
   font-weight: 500;
 }
 
@@ -1134,27 +1369,27 @@ onBeforeUnmount(() => {
 }
 
 .table tbody tr:nth-child(even) {
-  background: #f8f9fa;
+  background: var(--tf-color-surface-muted);
 }
 
 .table tbody tr:hover {
-  background: #e3f2fd;
+  background: var(--tf-color-blue-100);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .table tbody tr:hover td {
-  border-bottom-color: #dee2e6;
+  border-bottom-color: var(--tf-color-border-subtle);
 }
 
 .table tbody tr.is-dragging {
   opacity: 0.5;
-  background: #eff6ff !important;
+  background: var(--tf-color-blue-tailwind-50) !important;
 }
 
 .table tbody tr.is-drag-over {
-  background: #f0f9ff !important;
-  border-top: 2px solid #3b82f6;
+  background: var(--tf-color-blue-50) !important;
+  border-top: 2px solid var(--tf-color-blue-500);
 }
 
 /* 拖拽手柄 */
@@ -1166,7 +1401,7 @@ onBeforeUnmount(() => {
 }
 
 .drag-handle {
-  color: #9ca3af;
+  color: var(--tf-color-neutral-400);
   font-size: 16px;
   cursor: grab;
   display: inline-flex;
@@ -1179,8 +1414,8 @@ onBeforeUnmount(() => {
 }
 
 .drag-handle:hover {
-  color: #3b82f6;
-  background: #eff6ff;
+  color: var(--tf-color-blue-500);
+  background: var(--tf-color-blue-tailwind-50);
 }
 
 .drag-handle:active {
@@ -1194,7 +1429,7 @@ onBeforeUnmount(() => {
 }
 
 .drag-handle.disabled:hover {
-  color: #9ca3af;
+  color: var(--tf-color-neutral-400);
   background: transparent;
 }
 
@@ -1203,7 +1438,7 @@ onBeforeUnmount(() => {
   width: 50px;
   height: 28px;
   padding: 0 6px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--tf-color-neutral-300);
   border-radius: 6px;
   font-size: 13px;
   font-weight: 600;
@@ -1213,23 +1448,23 @@ onBeforeUnmount(() => {
 }
 
 .sort-order-input:focus:not(:disabled) {
-  border-color: #3b82f6;
+  border-color: var(--tf-color-blue-500);
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
 .sort-order-input:hover:not(:disabled) {
-  border-color: #9ca3af;
+  border-color: var(--tf-color-neutral-400);
 }
 
 .sort-order-input:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  background-color: #f3f4f6;
+  background-color: var(--tf-color-neutral-100);
 }
 
 /* 表格内容样式 */
 .id-badge {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand));
   color: white;
   padding: 4px 8px;
   border-radius: 6px;
@@ -1254,8 +1489,8 @@ onBeforeUnmount(() => {
 }
 
 .warning-badge {
-  background: #ffc107;
-  color: #212529;
+  background: var(--warning-color);
+  color: var(--tf-color-gray-bootstrap-900);
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 10px;
@@ -1273,13 +1508,13 @@ onBeforeUnmount(() => {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  border: 2px solid #e8ecef;
+  border: 2px solid var(--tf-color-border-cool);
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .color-code {
   font-size: 13px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
   font-family: monospace;
 }
 
@@ -1294,18 +1529,20 @@ onBeforeUnmount(() => {
 }
 
 .status-active {
-  background: #d4edda;
-  color: #155724;
+  background: var(--tf-status-success-bg);
+  color: var(--tf-status-success-color);
+  border: 1px solid var(--tf-status-success-border);
 }
 
 .status-inactive {
-  background: #f8d7da;
-  color: #721c24;
+  background: var(--tf-status-danger-bg);
+  color: var(--tf-status-danger-color);
+  border: 1px solid var(--tf-status-danger-border);
 }
 
 .time-info {
   font-size: 13px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1333,7 +1570,7 @@ onBeforeUnmount(() => {
   flex-direction: column;
   align-items: center;
   gap: 16px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
 }
 
 .empty-content i {
@@ -1343,7 +1580,7 @@ onBeforeUnmount(() => {
 
 .empty-text h4 {
   margin: 0 0 8px 0;
-  color: #495057;
+  color: var(--tf-color-gray-bootstrap-700);
 }
 
 .empty-text p {
@@ -1363,7 +1600,7 @@ onBeforeUnmount(() => {
   align-items: center;
   margin-top: 4px;
   font-size: 12px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
 }
 
 .character-count {
@@ -1372,36 +1609,36 @@ onBeforeUnmount(() => {
 }
 
 .character-count {
-  color: #6c757d;
+  color: var(--tf-color-muted);
 }
 
 .character-count.warning {
-  color: #ffc107;
+  color: var(--warning-color);
 }
 
 .character-count.danger {
-  color: #dc3545;
+  color: var(--danger-color);
 }
 
 .validation-message {
   margin-top: 4px;
   font-size: 12px;
-  color: #dc3545;
+  color: var(--danger-color);
   font-weight: 500;
 }
 
 .color-preview-modal {
   margin-top: 12px;
   padding: 16px;
-  background: #f8f9fa;
+  background: var(--tf-color-surface-muted);
   border-radius: 8px;
-  border: 1px solid #e9ecef;
+  border: 1px solid var(--tf-color-border-muted);
 }
 
 .preview-label {
   font-size: 12px;
   font-weight: 600;
-  color: #495057;
+  color: var(--tf-color-gray-bootstrap-700);
   margin-bottom: 8px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -1417,8 +1654,8 @@ onBeforeUnmount(() => {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  border: 3px solid #fff;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15), 0 0 0 1px #e8ecef;
+  border: 3px solid var(--color-bg-white);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15), 0 0 0 1px var(--tf-color-border-cool);
   transition: transform 0.2s ease;
 }
 
@@ -1428,17 +1665,17 @@ onBeforeUnmount(() => {
 
 .color-code-text {
   font-size: 14px;
-  color: #495057;
+  color: var(--tf-color-gray-bootstrap-700);
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
   font-weight: 600;
-  background: #fff;
+  background: var(--color-bg-white);
   padding: 4px 8px;
   border-radius: 4px;
-  border: 1px solid #e8ecef;
+  border: 1px solid var(--tf-color-border-cool);
 }
 
 .required {
-  color: #dc3545;
+  color: var(--danger-color);
 }
 
 /* 响应式设计 */
@@ -1739,7 +1976,7 @@ onBeforeUnmount(() => {
     margin-right: 0;
     min-height: 40px;
     padding: 0 12px;
-    border: 1px solid #dbe3ef;
+    border: 1px solid var(--tf-color-border-blue);
     border-radius: 12px;
     display: inline-flex;
     align-items: center;
@@ -1777,7 +2014,7 @@ onBeforeUnmount(() => {
 
   .mobile-action-row td {
     padding: 6px 4px 10px !important;
-    background: linear-gradient(180deg, #f8fbff 0%, #f4f7ff 100%);
+    background: linear-gradient(180deg, var(--tf-color-surface-blue) 0%, var(--tf-color-indigo-surface-alt) 100%);
     border-top: none !important;
   }
 
@@ -1793,7 +2030,7 @@ onBeforeUnmount(() => {
     gap: 6px;
     margin-top: 6px;
     font-size: 11px;
-    color: #5f6b7a;
+    color: var(--tf-color-neutral-500);
   }
 
   .mobile-color-preview .color-circle {

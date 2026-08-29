@@ -168,6 +168,16 @@ const PERMISSION_META_MAP: Record<string, PermissionMeta> = {
     name: '审批',
     description: '审批待处理业务'
   },
+  arrival: {
+    icon: 'fas fa-hand-holding-usd',
+    name: '到账',
+    description: '确认国补款项到账'
+  },
+  upload: {
+    icon: 'fas fa-cloud-upload-alt',
+    name: '图片上传',
+    description: '上传和保存国补照片'
+  },
   manage: {
     icon: 'fas fa-user-shield',
     name: '管理',

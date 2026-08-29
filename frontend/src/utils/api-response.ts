@@ -16,7 +16,13 @@ import type { ApiResponse } from '@/types'
  * @param response API响应
  * @returns 响应数据
  */
-export function extractResponseData<T = any>(response: any): T {
+type ResponseRecord = Record<string, unknown>
+
+const asRecord = (value: unknown): ResponseRecord | null => (
+  value !== null && typeof value === 'object' ? value as ResponseRecord : null
+)
+
+export function extractResponseData<T = unknown>(response: unknown): T {
   // 空响应
   if (!response) {
     return [] as T
@@ -28,12 +34,14 @@ export function extractResponseData<T = any>(response: any): T {
   }
 
   // 标准格式 { success, message, data }
-  if ('data' in response) {
-    const innerData = response.data
+  const record = asRecord(response)
+  if (record && 'data' in record) {
+    const innerData = record.data
+    const innerRecord = asRecord(innerData)
 
     // 双层嵌套: { data: { success, data: [...] } }
-    if (innerData && typeof innerData === 'object' && !Array.isArray(innerData) && 'data' in innerData) {
-      return innerData.data as T
+    if (innerRecord && 'data' in innerRecord) {
+      return innerRecord.data as T
     }
 
     // 对象包装数组格式: { data: { colors: [...] } } 或 { data: { memories: [...] } }
@@ -41,8 +49,8 @@ export function extractResponseData<T = any>(response: any): T {
       // 常见的包装字段名
       const arrayKeys = ['colors', 'memories', 'brands', 'models', 'stores', 'phones', 'data']
       for (const key of arrayKeys) {
-        if (Array.isArray(innerData[key])) {
-          return innerData[key] as T
+        if (Array.isArray(innerRecord?.[key])) {
+          return innerRecord[key] as T
         }
       }
     }
@@ -58,17 +66,19 @@ export function extractResponseData<T = any>(response: any): T {
 /**
  * 检查响应是否成功
  */
-export function isResponseSuccess(response: any): boolean {
+export function isResponseSuccess(response: unknown): boolean {
   if (!response) return false
-  return response.success === true || response.success === undefined
+  const record = asRecord(response)
+  return record?.success === true || record?.success === undefined
 }
 
 /**
  * 获取响应消息
  */
-export function getResponseMessage(response: any, defaultMessage = ''): string {
+export function getResponseMessage(response: unknown, defaultMessage = ''): string {
   if (!response) return defaultMessage
-  return response.message || defaultMessage
+  const message = asRecord(response)?.message
+  return typeof message === 'string' ? message : defaultMessage
 }
 
 /**
@@ -77,7 +87,7 @@ export function getResponseMessage(response: any, defaultMessage = ''): string {
  * @param fallback 空数据时的默认值
  */
 export function createResponseExtractor<T>(fallback: T) {
-  return (response: any): T => {
+  return (response: unknown): T => {
     const data = extractResponseData<T>(response)
     if (data === undefined || data === null) {
       return fallback

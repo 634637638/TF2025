@@ -1,24 +1,38 @@
 <template>
   <div class="notification-container">
-    <transition-group name="notification" tag="div">
+    <transition-group
+      name="notification"
+      tag="div"
+    >
       <div
         v-for="notification in notifications"
         :key="notification.id"
         :class="['notification', `notification-${notification.type}`]"
       >
         <div class="notification-icon">
-          <i :class="getIconClass(notification.type)"></i>
+          <i :class="getIconClass(notification.type)" />
         </div>
         <div class="notification-content">
-          <div class="notification-title">{{ notification.title }}</div>
-          <div v-if="notification.message" class="notification-message">
+          <div class="notification-title">
+            {{ notification.title }}
+          </div>
+          <div
+            v-if="notification.message"
+            class="notification-message"
+          >
             {{ notification.message }}
           </div>
         </div>
-        <button class="notification-close" @click="removeNotification(notification.id)">
-          <i class="fas fa-times"></i>
+        <button
+          class="notification-close"
+          @click="removeNotification(notification.id)"
+        >
+          <i class="fas fa-times" />
         </button>
-        <div class="notification-progress" :style="{ animationDuration: `${notification.duration}ms` }"></div>
+        <div
+          class="notification-progress"
+          :style="{ animationDuration: `${notification.duration}ms` }"
+        />
       </div>
     </transition-group>
   </div>
@@ -68,19 +82,19 @@ const getIconClass = (type: string) => {
 }
 
 .notification-success {
-  border-left-color: #52c41a;
+  border-left-color: var(--tf-color-green-ant);
 }
 
 .notification-error {
-  border-left-color: #ff4d4f;
+  border-left-color: var(--tf-color-red-ant);
 }
 
 .notification-warning {
-  border-left-color: #faad14;
+  border-left-color: var(--tf-color-amber-ant);
 }
 
 .notification-info {
-  border-left-color: #1890ff;
+  border-left-color: var(--tf-color-blue-ant);
 }
 
 .notification-icon {
@@ -94,19 +108,19 @@ const getIconClass = (type: string) => {
 }
 
 .notification-success .notification-icon {
-  color: #52c41a;
+  color: var(--tf-color-green-ant);
 }
 
 .notification-error .notification-icon {
-  color: #ff4d4f;
+  color: var(--tf-color-red-ant);
 }
 
 .notification-warning .notification-icon {
-  color: #faad14;
+  color: var(--tf-color-amber-ant);
 }
 
 .notification-info .notification-icon {
-  color: #1890ff;
+  color: var(--tf-color-blue-ant);
 }
 
 .notification-content {
@@ -117,14 +131,14 @@ const getIconClass = (type: string) => {
 .notification-title {
   font-weight: 600;
   font-size: 14px;
-  color: #333;
+  color: var(--text-primary);
   margin-bottom: 4px;
   line-height: 1.4;
 }
 
 .notification-message {
   font-size: 13px;
-  color: #666;
+  color: var(--text-secondary);
   line-height: 1.4;
   word-wrap: break-word;
 }
@@ -132,7 +146,7 @@ const getIconClass = (type: string) => {
 .notification-close {
   background: none;
   border: none;
-  color: #999;
+  color: var(--text-muted);
   cursor: pointer;
   padding: 4px;
   border-radius: 4px;
@@ -145,8 +159,8 @@ const getIconClass = (type: string) => {
 }
 
 .notification-close:hover {
-  background: #f5f5f5;
-  color: #666;
+  background: var(--tf-color-surface-soft);
+  color: var(--text-secondary);
 }
 
 .notification-progress {
@@ -160,19 +174,19 @@ const getIconClass = (type: string) => {
 }
 
 .notification-success .notification-progress {
-  background: #52c41a;
+  background: var(--tf-color-green-ant);
 }
 
 .notification-error .notification-progress {
-  background: #ff4d4f;
+  background: var(--tf-color-red-ant);
 }
 
 .notification-warning .notification-progress {
-  background: #faad14;
+  background: var(--tf-color-amber-ant);
 }
 
 .notification-info .notification-progress {
-  background: #1890ff;
+  background: var(--tf-color-blue-ant);
 }
 
 /* 动画效果 */
@@ -244,25 +258,25 @@ const getIconClass = (type: string) => {
 /* 深色模式支持 */
 @media (prefers-color-scheme: dark) {
   .notification {
-    background: #1f1f1f;
-    color: #fff;
+    background: var(--tf-color-gray-ant-950);
+    color: var(--color-bg-white);
   }
 
   .notification-title {
-    color: #fff;
+    color: var(--color-bg-white);
   }
 
   .notification-message {
-    color: #ccc;
+    color: var(--tf-color-gray-300-solid);
   }
 
   .notification-close {
-    color: #999;
+    color: var(--text-muted);
   }
 
   .notification-close:hover {
-    background: #333;
-    color: #fff;
+    background: var(--text-primary);
+    color: var(--color-bg-white);
   }
 }
 </style>

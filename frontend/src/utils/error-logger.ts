@@ -8,7 +8,6 @@ import { unifiedApi } from './unified-api'
 import { ErrorLevel, ErrorType } from './error-boundary'
 import { TimeUtil } from './time'
 import { storage } from '@/services/storage'
-import { AUTH_STORAGE_KEYS } from '@/constants/storage'
 import { logger } from './logger'
 
 // 重新导出 ErrorLevel 和 ErrorType 以便其他模块使用
@@ -25,7 +24,7 @@ export interface ErrorLogEntry {
   type: ErrorType
   message: string
   stack?: string
-  context?: Record<string, any>
+  context?: Record<string, unknown>
   url: string
   userAgent: string
   userId?: number
@@ -149,7 +148,7 @@ export class ErrorLogger {
     type: ErrorType
     message: string
     stack?: string
-    context?: Record<string, any>
+    context?: Record<string, unknown>
     component?: string
     action?: string
     tags?: string[]
@@ -231,8 +230,9 @@ export class ErrorLogger {
   private getCurrentUserId(): number | undefined {
     try {
       const authData = storage.getAuth()
-      if (authData) {
-        return (authData as any).user?.id || (authData as any).userId
+      if (authData && typeof authData === 'object') {
+        const authRecord = authData as { user?: { id?: number }; userId?: number }
+        return authRecord.user?.id ?? authRecord.userId
       }
     } catch (error) {
       logger.warn('获取用户ID失败:', error)
@@ -243,8 +243,8 @@ export class ErrorLogger {
   /**
    * 控制台日志输出
    */
-  private logToConsole(entry: ErrorLogEntry): void {
-    const styles = {
+  private logToConsole(_entry: ErrorLogEntry): void {
+    const _styles = {
       [ErrorLevel.CRITICAL]: 'color: #ff4444; font-weight: bold; background: #ffebee; padding: 2px 4px; border-radius: 2px',
       [ErrorLevel.HIGH]: 'color: #ff6b6b; font-weight: bold; background: #fff3e0; padding: 2px 4px; border-radius: 2px',
       [ErrorLevel.MEDIUM]: 'color: #ffa726; font-weight: bold; background: #f3e5f5; padding: 2px 4px; border-radius: 2px',
@@ -272,13 +272,16 @@ export class ErrorLogger {
    */
   private trackNetworkStatus(): void {
     const logNetworkStatus = () => {
+      const connection = (navigator as Navigator & {
+        connection?: { effectiveType: string; downlink: number; rtt: number }
+      }).connection
       this.logError({
         level: ErrorLevel.MEDIUM,
         type: ErrorType.NETWORK,
         message: `网络状态变化: ${navigator.onLine ? '在线' : '离线'}`,
         context: {
           online: navigator.onLine,
-          connection: (navigator as any).connection?.effectiveType,
+          connection: connection?.effectiveType,
           userActionCount: this.userActionCount
         },
         tags: ['network', 'connectivity']
@@ -292,11 +295,11 @@ export class ErrorLogger {
   /**
    * 节流函数
    */
-  private throttle<T extends (...args: any[]) => any>(func: T, delay: number): T {
+  private throttle<T extends (...args: never[]) => unknown>(func: T, delay: number): T {
     let timeoutId: number | null = null
     let lastExecTime = 0
 
-    return ((...args: any[]) => {
+    return ((...args: Parameters<T>) => {
       const currentTime = Date.now()
 
       if (currentTime - lastExecTime > delay) {
@@ -319,8 +322,8 @@ export class ErrorLogger {
    */
   public getStatistics(): ErrorStatistics {
     const logs = Array.from(this.logs.values())
-    const byLevel: Record<ErrorLevel, number> = {} as any
-    const byType: Record<ErrorType, number> = {} as any
+    const byLevel = {} as Record<ErrorLevel, number>
+    const byType = {} as Record<ErrorType, number>
     const byHour: Record<string, number> = {}
     const byComponent: Record<string, number> = {}
 
@@ -347,7 +350,7 @@ export class ErrorLogger {
     })
 
     // 计算错误率
-    const sessionDuration = Date.now() - this.sessionStartTime
+    const _sessionDuration = Date.now() - this.sessionStartTime
     const errorRate = this.userActionCount > 0 ? (logs.length / this.userActionCount) * 100 : 0
 
     // 最常见错误
@@ -470,7 +473,13 @@ export class ErrorLogger {
   /**
    * 获取环境信息
    */
-  private getEnvironmentInfo(): Record<string, any> {
+  private getEnvironmentInfo(): Record<string, unknown> {
+    const memory = (performance as Performance & {
+      memory?: { usedJSHeapSize: number; totalJSHeapSize: number }
+    }).memory
+    const connection = (navigator as Navigator & {
+      connection?: { effectiveType: string; downlink: number; rtt: number }
+    }).connection
     return {
       appVersion: import.meta.env.VITE_APP_VERSION,
       buildTime: import.meta.env.VITE_BUILD_TIME,
@@ -486,14 +495,14 @@ export class ErrorLogger {
         width: window.innerWidth,
         height: window.innerHeight
       },
-      connection: (navigator as any).connection ? {
-        effectiveType: (navigator as any).connection.effectiveType,
-        downlink: (navigator as any).connection.downlink,
-        rtt: (navigator as any).connection.rtt
+      connection: connection ? {
+        effectiveType: connection.effectiveType,
+        downlink: connection.downlink,
+        rtt: connection.rtt
       } : null,
-      memory: (performance as any).memory ? {
-        usedJSHeapSize: (performance as any).memory.usedJSHeapSize,
-        totalJSHeapSize: (performance as any).memory.totalJSHeapSize
+      memory: memory ? {
+        usedJSHeapSize: memory.usedJSHeapSize,
+        totalJSHeapSize: memory.totalJSHeapSize
       } : null
     }
   }
@@ -649,7 +658,7 @@ export function useErrorLogger() {
     type: ErrorType
     message: string
     stack?: string
-    context?: Record<string, any>
+    context?: Record<string, unknown>
     component?: string
     action?: string
     tags?: string[]

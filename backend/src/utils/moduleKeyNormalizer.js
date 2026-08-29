@@ -22,17 +22,17 @@ const LEGACY_MODULE_KEY_MAP = {
   'h5-sold-products': 'h5_admin_soldproductsview',
   'h5-admin-sold-products': 'h5_admin_soldproductsview',
   backup: 'backup_backupview'
-};
+}
 
 function normalizeModuleKey(moduleKey) {
   if (!moduleKey) {
-    return moduleKey;
+    return moduleKey
   }
 
-  return LEGACY_MODULE_KEY_MAP[moduleKey] || moduleKey;
+  return LEGACY_MODULE_KEY_MAP[moduleKey] || moduleKey
 }
 
 module.exports = {
   LEGACY_MODULE_KEY_MAP,
   normalizeModuleKey
-};
+}

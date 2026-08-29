@@ -14,6 +14,7 @@
   --admin-panel-radius: 12px;
   --admin-search-panel-padding-y: 12px;
   --admin-search-panel-padding-x: 16px;
+  --admin-search-panel-bg: var(--tf-color-surface-cool-blue);
   --admin-table-panel-padding-y: 24px;
   --admin-table-panel-padding-x: 16px;
   --admin-table-panel-bg: #f8f9fa;
@@ -765,7 +766,7 @@
 
 .admin-page .base-data-table .el-table__expanded-cell {
   padding: 0 !important;
-  background: #f8fafc !important;
+  background: var(--tf-color-slate-50) !important;
 }
 
 .admin-page .base-data-table .mobile-row-actions {
@@ -782,7 +783,7 @@
   justify-content: center;
   width: 24px;
   height: 24px;
-  color: #9ca3af;
+  color: var(--tf-color-neutral-400);
   cursor: grab;
   user-select: none;
 }
@@ -841,11 +842,11 @@
 }
 
 .element-table-sort-ghost > td {
-  background: #eff6ff !important;
+  background: var(--tf-color-blue-tailwind-50) !important;
 }
 
 .element-table-sort-chosen > td {
-  box-shadow: inset 0 2px 0 #3b82f6, inset 0 -2px 0 #3b82f6;
+  box-shadow: inset 0 2px 0 var(--tf-color-blue-500), inset 0 -2px 0 var(--tf-color-blue-500);
 }
 
 @media (max-width: 768px) {

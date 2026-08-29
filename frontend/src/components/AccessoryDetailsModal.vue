@@ -5,45 +5,75 @@
     width="920px"
     dialog-class="accessory-details-dialog"
     :show-default-footer="false"
-    @update:modelValue="handleDialogVisibility"
+    @update:model-value="handleDialogVisibility"
   >
-    <div class="modal-body" v-if="accessory">
+    <div
+      v-if="accessory"
+      class="modal-body"
+    >
       <div class="details-container">
         <!-- 基本信息 -->
-        <div class="detail-section">
+        <div
+          v-if="showBasicSection"
+          class="detail-section"
+        >
           <h3>基本信息</h3>
           <div class="detail-grid">
-            <div class="detail-item">
+            <div
+              v-if="canViewAccessoryField('name')"
+              class="detail-item"
+            >
               <label>配件名称：</label>
               <span>{{ accessory.name || '-' }}</span>
             </div>
-            <div class="detail-item">
+            <div
+              v-if="canViewAccessoryField('category')"
+              class="detail-item"
+            >
               <label>配件分类：</label>
-              <span>{{ getCategoryName(accessory.category_id) || '-' }}</span>
+              <span>{{ accessory.category || '-' }}</span>
             </div>
             <!-- 品牌型号一行显示 -->
-            <div class="detail-item">
+            <div
+              v-if="canViewAccessoryField('brand_name')"
+              class="detail-item"
+            >
               <label>品牌：</label>
-              <span>{{ getBrandName(accessory.brand_id) || '-' }}</span>
+              <span>{{ accessory.brand_name || '-' }}</span>
             </div>
-            <div class="detail-item">
+            <div
+              v-if="canViewAccessoryField('model_name')"
+              class="detail-item"
+            >
               <label>规格型号：</label>
-              <span>{{ accessory.model || '-' }}</span>
+              <span>{{ accessory.model_name || '-' }}</span>
             </div>
             <!-- 颜色内存一行显示（配件用单位和颜色） -->
-            <div class="detail-item">
+            <div
+              v-if="canViewAccessoryField('color_name')"
+              class="detail-item"
+            >
               <label>颜色：</label>
-              <span>{{ accessory.color || '-' }}</span>
+              <span>{{ accessory.color_name || '-' }}</span>
             </div>
-            <div class="detail-item">
+            <div
+              v-if="canViewAccessoryField('unit')"
+              class="detail-item"
+            >
               <label>单位：</label>
               <span>{{ accessory.unit || '-' }}</span>
             </div>
-            <div class="detail-item">
+            <div
+              v-if="canViewAccessoryField('supplier_name')"
+              class="detail-item"
+            >
               <label>供应商：</label>
-              <span>{{ accessory.supplier || '-' }}</span>
+              <span>{{ accessory.supplier_name || '-' }}</span>
             </div>
-            <div class="detail-item">
+            <div
+              v-if="canViewAccessoryField('status')"
+              class="detail-item"
+            >
               <label>状态：</label>
               <span :class="['status-badge', accessory.status]">
                 {{ getStatusText(accessory.status) }}
@@ -53,66 +83,105 @@
         </div>
 
         <!-- 价格信息 -->
-        <div class="detail-section">
+        <div
+          v-if="showPriceSection"
+          class="detail-section"
+        >
           <h3>价格信息</h3>
           <div class="detail-grid">
-            <div class="detail-item">
+            <div
+              v-if="canViewAccessoryField('purchase_cost')"
+              class="detail-item"
+            >
               <label>采购价格：</label>
-              <span class="price">¥{{ accessory.purchase_price || '0.00' }}</span>
+              <span class="price">¥{{ accessory.purchase_cost || '0.00' }}</span>
             </div>
-            <div class="detail-item">
+            <div
+              v-if="canViewAccessoryField('sale_price')"
+              class="detail-item"
+            >
               <label>销售价格：</label>
               <span class="price">¥{{ accessory.sale_price || '0.00' }}</span>
             </div>
-            <div class="detail-item">
-              <label>利润率：</label>
-              <span class="profit-rate" :class="getProfitRateClass()">
-                {{ calculateProfitRate() }}%
-              </span>
+            <div
+              v-if="canViewAccessoryField('profit')"
+              class="detail-item"
+            >
+              <label>毛利：</label>
+              <span class="profit-rate">¥{{ accessory.profit ?? '-' }}</span>
             </div>
           </div>
         </div>
 
         <!-- 库存信息 -->
-        <div class="detail-section">
+        <div
+          v-if="showStockSection"
+          class="detail-section"
+        >
           <h3>库存信息</h3>
           <div class="detail-grid">
-            <div class="detail-item">
+            <div
+              v-if="canViewAccessoryField('total_stock')"
+              class="detail-item"
+            >
               <label>当前库存：</label>
-              <span :class="['stock-status', getStockStatusClass()]">
-                {{ accessory.stock_quantity || 0 }} {{ accessory.unit || '' }}
+              <span :class="['stock-status', canViewAccessoryField('min_stock') ? getStockStatusClass() : '']">
+                {{ accessory.total_stock || 0 }}<template v-if="canViewAccessoryField('unit')"> {{ accessory.unit || '' }}</template>
               </span>
             </div>
-            <div class="detail-item">
+            <div
+              v-if="canViewAccessoryField('min_stock')"
+              class="detail-item"
+            >
               <label>最小库存警告：</label>
-              <span>{{ accessory.min_stock || 0 }} {{ accessory.unit || '' }}</span>
+              <span>{{ accessory.min_stock || 0 }}<template v-if="canViewAccessoryField('unit')"> {{ accessory.unit || '' }}</template></span>
             </div>
-            <div class="detail-item">
+            <div
+              v-if="canViewAccessoryField('remaining_stock')"
+              class="detail-item"
+            >
               <label>库存状态：</label>
-              <span :class="['stock-status', getStockStatusClass()]">
-                {{ getStockStatusText() }}
-              </span>
+              <span>{{ accessory.remaining_stock ?? '-' }}</span>
             </div>
           </div>
         </div>
 
         <!-- 描述和备注 -->
-        <div class="detail-section">
+        <div
+          v-if="showOtherSection"
+          class="detail-section"
+        >
           <h3>其他信息</h3>
           <div class="detail-grid full-width">
-            <div class="detail-item" v-if="accessory.description">
+            <div
+              v-if="canViewAccessoryField('description') && accessory.description"
+              class="detail-item"
+            >
               <label>描述：</label>
-              <p class="description">{{ accessory.description }}</p>
+              <p class="description">
+                {{ accessory.description }}
+              </p>
             </div>
-            <div class="detail-item" v-if="accessory.remarks">
+            <div
+              v-if="canViewAccessoryField('remarks') && accessory.remarks"
+              class="detail-item"
+            >
               <label>备注：</label>
-              <p class="remarks">{{ accessory.remarks }}</p>
+              <p class="remarks">
+                {{ accessory.remarks }}
+              </p>
             </div>
-            <div class="detail-item">
+            <div
+              v-if="canViewAccessoryField('created_at')"
+              class="detail-item"
+            >
               <label>创建时间：</label>
               <span>{{ formatDateTime(accessory.created_at) }}</span>
             </div>
-            <div class="detail-item">
+            <div
+              v-if="canViewAccessoryField('updated_at')"
+              class="detail-item"
+            >
               <label>更新时间：</label>
               <span>{{ formatDateTime(accessory.updated_at) }}</span>
             </div>
@@ -121,21 +190,29 @@
       </div>
     </div>
 
-    <div class="modal-body" v-else>
-      <div class="no-data">
-        <p>未找到配件信息</p>
-      </div>
+    <div
+      v-else
+      class="modal-body"
+    >
+      <DataEmptyState
+        state="filtered"
+        size="compact"
+        description="未找到配件信息"
+      />
     </div>
 
     <template #footer>
       <div class="modal-footer">
-        <button @click="closeModal" class="btn btn-secondary">
+        <button
+          class="btn btn-secondary"
+          @click="closeModal"
+        >
           关闭
         </button>
         <button
           v-if="accessory && hasEditPermission"
-          @click="editAccessory"
           class="btn btn-primary"
+          @click="editAccessory"
         >
           编辑配件
         </button>
@@ -145,28 +222,31 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { PropType } from 'vue'
+import { computed, type PropType } from 'vue'
 import MobileDialog from '@/components/MobileDialog.vue'
+import { canViewAccessoryField, type AccessoryFieldName } from './accessory-field-permissions'
 
 interface AccessoryDetailItem {
   id?: number
   name?: string
-  category_id?: number | string
+  category?: string
   brand_id?: number | string
-  model?: string
-  color?: string
+  brand_name?: string
+  model_name?: string
+  color_name?: string
   unit?: string
-  supplier?: string
+  supplier_name?: string
   status?: string | number | boolean
-  purchase_price?: string | number
+  purchase_cost?: string | number
   sale_price?: string | number
-  stock_quantity?: string | number
+  total_stock?: string | number
   min_stock?: string | number
   description?: string
   remarks?: string
   created_at?: string | null
   updated_at?: string | null
+  profit?: string | number
+  remaining_stock?: string | number
 }
 
 interface AccessoryOptionItem {
@@ -196,18 +276,11 @@ const props = defineProps({
 
 // Emits
 const emit = defineEmits(['close', 'edit'])
-
-// 获取分类名称
-const getCategoryName = (categoryId: number | string) => {
-  const category = props.categories.find((cat) => cat.id === categoryId)
-  return category?.name
-}
-
-// 获取品牌名称
-const getBrandName = (brandId: number | string) => {
-  const brand = props.brands.find((b) => b.id === brandId)
-  return brand?.name
-}
+const hasAnyField = (fields: AccessoryFieldName[]) => fields.some(canViewAccessoryField)
+const showBasicSection = computed(() => hasAnyField(['name','category','brand_name','model_name','color_name','unit','supplier_name','status']))
+const showPriceSection = computed(() => hasAnyField(['purchase_cost','sale_price','profit']))
+const showStockSection = computed(() => hasAnyField(['total_stock','min_stock','remaining_stock']))
+const showOtherSection = computed(() => hasAnyField(['description','remarks','created_at','updated_at']))
 
 // 获取状态文本
 const getStatusText = (status: string | number | boolean | undefined) => {
@@ -223,47 +296,16 @@ const toNumber = (value: string | number | undefined) => {
   return Number.isFinite(parsedValue) ? parsedValue : 0
 }
 
-// 计算利润率
-const calculateProfitRate = (): string => {
-  if (!props.accessory) return '0.00'
-
-  const purchasePrice = toNumber(props.accessory.purchase_price)
-  const salePrice = toNumber(props.accessory.sale_price)
-
-  if (purchasePrice === 0) return '0.00'
-  return ((salePrice - purchasePrice) / purchasePrice * 100).toFixed(2)
-}
-
-// 获取利润率样式类
-const getProfitRateClass = () => {
-  const profitRate = toNumber(calculateProfitRate())
-  if (profitRate > 30) return 'high-profit'
-  if (profitRate > 10) return 'medium-profit'
-  return 'low-profit'
-}
-
 // 获取库存状态类
 const getStockStatusClass = () => {
   if (!props.accessory) return ''
 
-  const currentStock = toNumber(props.accessory.stock_quantity)
+  const currentStock = toNumber(props.accessory.total_stock)
   const minStock = toNumber(props.accessory.min_stock)
 
   if (currentStock === 0) return 'out-of-stock'
   if (currentStock <= minStock) return 'low-stock'
   return 'normal-stock'
-}
-
-// 获取库存状态文本
-const getStockStatusText = () => {
-  if (!props.accessory) return '未知'
-
-  const currentStock = toNumber(props.accessory.stock_quantity)
-  const minStock = toNumber(props.accessory.min_stock)
-
-  if (currentStock === 0) return '缺货'
-  if (currentStock <= minStock) return '库存不足'
-  return '库存正常'
 }
 
 // 格式化日期时间
@@ -316,7 +358,7 @@ const editAccessory = () => {
 }
 
 .detail-section {
-  background: #f8f9fa;
+  background: var(--tf-color-surface-muted);
   border-radius: 6px;
   padding: 16px;
 }
@@ -325,8 +367,8 @@ const editAccessory = () => {
   margin: 0 0 12px 0;
   font-size: 16px;
   font-weight: 600;
-  color: #1f2937;
-  border-bottom: 2px solid #3b82f6;
+  color: var(--tf-color-neutral-800);
+  border-bottom: 2px solid var(--tf-color-blue-500);
   padding-bottom: 4px;
 }
 
@@ -348,20 +390,20 @@ const editAccessory = () => {
 
 .detail-item label {
   font-weight: 500;
-  color: #374151;
+  color: var(--tf-color-neutral-700);
   min-width: 100px;
   flex-shrink: 0;
 }
 
 .detail-item span {
-  color: #1f2937;
+  color: var(--tf-color-neutral-800);
 }
 
 .detail-item .description,
 .detail-item .remarks {
   flex: 1;
   margin: 0;
-  color: #4b5563;
+  color: var(--tf-color-neutral-600);
   line-height: 1.5;
   white-space: pre-wrap;
 }
@@ -375,19 +417,21 @@ const editAccessory = () => {
 }
 
 .status-badge.active {
-  background-color: #d1fae5;
-  color: #065f46;
+  background-color: var(--tf-status-success-bg);
+  color: var(--tf-status-success-color);
+  border: 1px solid var(--tf-status-success-border);
 }
 
 .status-badge.inactive {
-  background-color: #fee2e2;
-  color: #991b1b;
+  background-color: var(--tf-status-danger-bg);
+  color: var(--tf-status-danger-color);
+  border: 1px solid var(--tf-status-danger-border);
 }
 
 /* 价格样式 */
 .price {
   font-weight: 600;
-  color: #059669;
+  color: var(--tf-color-emerald-600);
 }
 
 /* 利润率样式 */
@@ -399,18 +443,18 @@ const editAccessory = () => {
 }
 
 .profit-rate.high-profit {
-  background-color: #d1fae5;
-  color: #065f46;
+  background-color: var(--tf-color-emerald-100);
+  color: var(--tf-color-emerald-800);
 }
 
 .profit-rate.medium-profit {
-  background-color: #fef3c7;
-  color: #92400e;
+  background-color: var(--tf-color-amber-100);
+  color: var(--tf-color-amber-800);
 }
 
 .profit-rate.low-profit {
-  background-color: #fee2e2;
-  color: #991b1b;
+  background-color: var(--tf-color-red-100);
+  color: var(--tf-color-red-800);
 }
 
 /* 库存状态样式 */
@@ -422,25 +466,25 @@ const editAccessory = () => {
 }
 
 .stock-status.normal-stock {
-  background-color: #d1fae5;
-  color: #065f46;
+  background-color: var(--tf-color-emerald-100);
+  color: var(--tf-color-emerald-800);
 }
 
 .stock-status.low-stock {
-  background-color: #fef3c7;
-  color: #92400e;
+  background-color: var(--tf-color-amber-100);
+  color: var(--tf-color-amber-800);
 }
 
 .stock-status.out-of-stock {
-  background-color: #fee2e2;
-  color: #991b1b;
+  background-color: var(--tf-color-red-100);
+  color: var(--tf-color-red-800);
 }
 
 /* 无数据状态 */
 .no-data {
   text-align: center;
   padding: 40px 20px;
-  color: #6b7280;
+  color: var(--tf-color-neutral-500);
 }
 
 .modal-footer {
@@ -448,8 +492,8 @@ const editAccessory = () => {
   justify-content: flex-end;
   gap: 12px;
   padding: 20px 24px;
-  border-top: 1px solid #e5e7eb;
-  background: #f9fafb;
+  border-top: 1px solid var(--tf-color-neutral-200);
+  background: var(--tf-color-neutral-50);
 }
 
 /* 响应式设计 */

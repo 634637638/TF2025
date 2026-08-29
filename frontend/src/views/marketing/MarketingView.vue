@@ -2,43 +2,94 @@
   <div class="marketing-page">
     <PublicPriceHeader title="营销文案">
       <template #search>
-        <div class="hero-copy">
+        <div
+          v-if="canViewField('context.auto_context')"
+          class="hero-copy"
+        >
           <div class="hero-tags">
-            <el-tag v-for="tag in heroTags" :key="tag" effect="dark" round class="hero-tag">
+            <el-tag
+              v-for="tag in heroTags"
+              :key="tag"
+              effect="dark"
+              round
+              class="hero-tag"
+            >
               {{ tag }}
             </el-tag>
           </div>
         </div>
       </template>
-
     </PublicPriceHeader>
 
     <div class="page-body">
-      <el-card class="editor-card" shadow="never">
+      <el-card
+        class="editor-card"
+        shadow="never"
+      >
         <div class="card-head">
           <div>
             <h2>文案参数设置</h2>
           </div>
         </div>
 
-        <el-tabs v-model="form.mode" class="mode-tabs tf-page-tabs" type="card">
-          <el-tab-pane label="营业" name="opening" class="tf-tab-panel" />
-          <el-tab-pane label="销售" name="sales" class="tf-tab-panel" />
+        <el-tabs
+          v-if="canViewField('filters.mode')"
+          v-model="form.mode"
+          class="mode-tabs tf-page-tabs"
+          type="card"
+        >
+          <el-tab-pane
+            label="营业"
+            name="opening"
+            class="tf-tab-panel"
+          />
+          <el-tab-pane
+            label="销售"
+            name="sales"
+            class="tf-tab-panel"
+          />
         </el-tabs>
 
-        <el-form :model="form" label-position="top" class="marketing-form">
-          <div v-if="form.mode === 'sales'" class="form-grid">
-            <div v-if="form.mode === 'sales'" class="marketing-toggle-row">
-              <div class="marketing-condition-item">
-                <div class="marketing-switch-title">机况</div>
-                <el-radio-group v-model="form.condition" class="condition-buttons">
-                  <el-radio-button label="new">全新</el-radio-button>
-                  <el-radio-button label="used">二手</el-radio-button>
+        <el-form
+          :model="form"
+          label-position="top"
+          class="marketing-form"
+        >
+          <div
+            v-if="form.mode === 'sales' && (canViewField('filters.condition') || canViewField('context.subsidy') || canViewField('context.color') || canViewField('context.weather') || canViewField('context.solar_term') || canViewField('filters.brand') || canViewField('filters.model') || canViewField('filters.color') || canViewField('filters.memory'))"
+            class="form-grid"
+          >
+            <div
+              v-if="canViewField('filters.condition') || canViewField('context.subsidy') || canViewField('context.color') || canViewField('context.weather') || canViewField('context.solar_term')"
+              class="marketing-toggle-row"
+            >
+              <div
+                v-if="canViewField('filters.condition')"
+                class="marketing-condition-item"
+              >
+                <div class="marketing-switch-title">
+                  机况
+                </div>
+                <el-radio-group
+                  v-model="form.condition"
+                  class="condition-buttons"
+                >
+                  <el-radio-button label="new">
+                    全新
+                  </el-radio-button>
+                  <el-radio-button label="used">
+                    二手
+                  </el-radio-button>
                 </el-radio-group>
               </div>
 
-              <div v-if="subsidyAvailable" class="marketing-switch-item">
-                <div class="marketing-switch-title">国补</div>
+              <div
+                v-if="subsidyAvailable && canViewField('context.subsidy')"
+                class="marketing-switch-item"
+              >
+                <div class="marketing-switch-title">
+                  国补
+                </div>
                 <el-switch
                   v-model="useSubsidy"
                   class="subsidy-switch"
@@ -46,24 +97,39 @@
                 />
               </div>
 
-              <div class="marketing-switch-item">
-                <div class="marketing-switch-title">颜色</div>
+              <div
+                v-if="canViewField('context.color')"
+                class="marketing-switch-item"
+              >
+                <div class="marketing-switch-title">
+                  颜色
+                </div>
                 <el-switch
                   v-model="useColor"
                   @change="refreshVariants(true)"
                 />
               </div>
 
-              <div v-if="weatherAvailable" class="marketing-switch-item">
-                <div class="marketing-switch-title">天气</div>
+              <div
+                v-if="weatherAvailable && canViewField('context.weather')"
+                class="marketing-switch-item"
+              >
+                <div class="marketing-switch-title">
+                  天气
+                </div>
                 <el-switch
                   v-model="useWeather"
                   @change="refreshVariants(true)"
                 />
               </div>
 
-              <div v-if="solarTermAvailable" class="marketing-switch-item">
-                <div class="marketing-switch-title">节气</div>
+              <div
+                v-if="solarTermAvailable && canViewField('context.solar_term')"
+                class="marketing-switch-item"
+              >
+                <div class="marketing-switch-title">
+                  节气
+                </div>
                 <el-switch
                   v-model="useSolarTerm"
                   @change="refreshVariants(true)"
@@ -71,7 +137,10 @@
               </div>
             </div>
 
-            <el-form-item label="品牌">
+            <el-form-item
+              v-if="canViewField('filters.brand')"
+              label="品牌"
+            >
               <el-select
                 v-model="form.brandId"
                 class="full-width"
@@ -90,7 +159,10 @@
               </el-select>
             </el-form-item>
 
-            <el-form-item label="型号">
+            <el-form-item
+              v-if="canViewField('filters.model')"
+              label="型号"
+            >
               <el-select
                 v-model="form.modelId"
                 class="full-width"
@@ -110,7 +182,10 @@
               </el-select>
             </el-form-item>
 
-            <el-form-item label="颜色">
+            <el-form-item
+              v-if="canViewField('filters.color')"
+              label="颜色"
+            >
               <el-select
                 v-model="form.colorId"
                 class="full-width"
@@ -129,7 +204,10 @@
               </el-select>
             </el-form-item>
 
-            <el-form-item label="内存">
+            <el-form-item
+              v-if="canViewField('filters.memory')"
+              label="内存"
+            >
               <el-select
                 v-model="form.memoryId"
                 class="full-width"
@@ -150,35 +228,67 @@
           </div>
         </el-form>
 
-        <div class="form-actions">
-          <el-button :loading="locationLoading" @click="refreshAutoContext">
+        <div
+          v-if="canViewField('system_info.operations')"
+          class="form-actions"
+        >
+          <el-button
+            :loading="locationLoading"
+            @click="refreshAutoContext"
+          >
             <span>定位</span>
           </el-button>
-          <el-button type="primary" :loading="generating" @click="refreshVariants(true)">
+          <el-button
+            type="primary"
+            :loading="generating"
+            @click="refreshVariants(true)"
+          >
             <span>换一批</span>
           </el-button>
-          <el-button type="success" :disabled="!suggestions.length" @click="copyAllVariants">
+          <el-button
+            type="success"
+            :disabled="!suggestions.length"
+            @click="copyAllVariants"
+          >
             <span>复制全部</span>
           </el-button>
-          <el-button @click="resetForm">清空</el-button>
+          <el-button @click="resetForm">
+            清空
+          </el-button>
         </div>
       </el-card>
 
-      <el-card class="result-card" shadow="never">
+      <el-card
+        v-if="canViewField('context.preview')"
+        class="result-card"
+        shadow="never"
+      >
         <div class="card-head">
           <div>
             <h2>文案结果</h2>
           </div>
         </div>
 
-        <div v-if="suggestions.length" class="copy-grid">
-          <article v-for="item in suggestions" :key="item.id" class="copy-card">
+        <div
+          v-if="suggestions.length"
+          class="copy-grid"
+        >
+          <article
+            v-for="item in suggestions"
+            :key="item.id"
+            class="copy-card"
+          >
             <div class="copy-card__head">
               <div>
-                <div class="copy-title">{{ item.title }}</div>
-                <div class="copy-tone">{{ item.tone }}</div>
+                <div class="copy-title">
+                  {{ item.title }}
+                </div>
+                <div class="copy-tone">
+                  {{ item.tone }}
+                </div>
               </div>
               <el-button
+                v-if="canViewField('system_info.operations')"
                 circle
                 size="small"
                 plain
@@ -191,13 +301,17 @@
               </el-button>
             </div>
 
-            <div class="copy-text">{{ item.text }}</div>
+            <div class="copy-text">
+              {{ item.text }}
+            </div>
           </article>
         </div>
 
-        <div v-else class="empty-state">
-          <el-empty :description="hasConfiguredTypeLexicon ? '正在生成文案' : '请先在后台词库中添加至少一条类型语录'" />
-        </div>
+        <DataEmptyState
+          v-else
+          state="initial"
+          :description="hasConfiguredTypeLexicon ? '正在生成文案' : '请先在后台词库中添加至少一条类型语录'"
+        />
       </el-card>
     </div>
   </div>
@@ -207,15 +321,13 @@
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
-  CopyDocument,
-  LocationFilled,
-  RefreshRight
+  CopyDocument
 } from '@element-plus/icons-vue'
 import { PublicPriceHeader } from '@/components/base'
+import { fieldPermissions } from '@/composables/useFieldPermissions'
 import { getPublicBrands, getPublicColors, getPublicMarketingLexicon, getPublicMemories, getPublicModels, type Brand, type Color, type Memory, type Model } from '@/api/base-data'
 import { TimeUtil } from '@/utils/time'
 import {
-  DEFAULT_MARKETING_LOCATION,
   DEFAULT_MARKETING_LEXICON,
   buildMarketingAutoContext,
   generateMarketingCopySuggestions,
@@ -225,7 +337,7 @@ import {
   type MarketingLexicon,
   type MarketingCondition,
   type MarketingCopySuggestion,
-  type MarketingMode,
+  type MarketingMode
 } from '@/utils/marketing'
 
 interface MarketingFormState {
@@ -236,6 +348,12 @@ interface MarketingFormState {
   colorId: number | null
   memoryId: number | null
 }
+
+const MARKETING_FIELD_MODULE_KEY = 'marketing'
+const canViewField = (fieldKey: string) => fieldPermissions.isFieldVisible(
+  MARKETING_FIELD_MODULE_KEY,
+  fieldKey
+)
 
 const form = reactive<MarketingFormState>({
   mode: 'opening',
@@ -266,8 +384,6 @@ const useWeather = ref(false)
 const useSolarTerm = ref(false)
 const autoContext = ref<MarketingAutoContext>(
   buildMarketingAutoContext({
-    locationName: DEFAULT_MARKETING_LOCATION.name,
-    weatherText: '天气正常',
     date: TimeUtil.now().toDate()
   })
 )
@@ -275,11 +391,11 @@ const autoContext = ref<MarketingAutoContext>(
 const heroTags = computed(() => [
   '自动应景',
   autoContext.value.timeSegment,
-  autoContext.value.weatherText,
+  autoContext.value.weatherText || '天气未获取',
   autoContext.value.holidayCue || '无节日',
   autoContext.value.solarTermCue || '无节气',
-  autoContext.value.locationName
-])
+  autoContext.value.locationName || '定位未获取'
+].filter(Boolean))
 
 const hasConfiguredTypeLexicon = computed(() => (
   getConfiguredMarketingCopyTypes(marketingLexicon.value).length > 0
@@ -300,17 +416,18 @@ const hasContextPhrases = (values: unknown) => {
   ))
 }
 
-const colorAvailable = computed(() => hasContextPhrases(marketingLexicon.value.contextLexicon?.color))
+const _colorAvailable = computed(() => hasContextPhrases(marketingLexicon.value.contextLexicon?.color))
 const weatherAvailable = computed(() => hasContextPhrases(marketingLexicon.value.contextLexicon?.weather))
 const solarTermAvailable = computed(() => (
   hasContextPhrases(marketingLexicon.value.contextLexicon?.solarTerm) ||
   hasContextPhrases(marketingLexicon.value.eventLexicon?.solarTerms)
 ))
 
-const selectedBrand = computed(() => brandOptions.value.find(item => item.id === form.brandId)?.name || '')
-const selectedModel = computed(() => modelOptions.value.find(item => item.id === form.modelId)?.name || '')
-const selectedColor = computed(() => colorOptions.value.find(item => item.id === form.colorId)?.name || '')
+const selectedBrand = computed(() => canViewField('filters.brand') ? brandOptions.value.find(item => item.id === form.brandId)?.name || '' : '')
+const selectedModel = computed(() => canViewField('filters.model') ? modelOptions.value.find(item => item.id === form.modelId)?.name || '' : '')
+const selectedColor = computed(() => canViewField('filters.color') ? colorOptions.value.find(item => item.id === form.colorId)?.name || '' : '')
 const selectedMemory = computed(() => {
+  if (!canViewField('filters.memory')) return ''
   const item = memoryOptions.value.find(memory => memory.id === form.memoryId) as Memory & { name?: string } | undefined
   return String(item?.size || item?.name || item?.id || '').trim()
 })
@@ -382,15 +499,15 @@ const resolveLocationText = async (latitude: number, longitude: number) => {
     )
     const data = await response.json()
     const result = data?.results?.[0]
-    if (!result) return DEFAULT_MARKETING_LOCATION.name
+    if (!result) return ''
 
     const parts = [result.country, result.admin1, result.admin2, result.name]
       .map((item: string) => String(item || '').trim())
       .filter(Boolean)
 
-    return parts.length ? parts.join('') : DEFAULT_MARKETING_LOCATION.name
+    return parts.length ? parts.join('') : ''
   } catch {
-    return DEFAULT_MARKETING_LOCATION.name
+    return ''
   }
 }
 
@@ -411,7 +528,7 @@ const resolveWeather = async (latitude: number, longitude: number) => {
     }
   } catch {
     return {
-      weatherText: '天气正常',
+      weatherText: '',
       weatherCode: null,
       temperature: null,
       apparentTemperature: null
@@ -423,20 +540,19 @@ const refreshAutoContext = async () => {
   locationLoading.value = true
   locationStatus.value = '正在自动获取定位...'
 
-  let latitude = DEFAULT_MARKETING_LOCATION.latitude
-  let longitude = DEFAULT_MARKETING_LOCATION.longitude
-
+  let browserLocation
   try {
-    const browserLocation = await getBrowserLocation()
-    latitude = browserLocation.latitude
-    longitude = browserLocation.longitude
+    browserLocation = await getBrowserLocation()
   } catch {
-    locationStatus.value = `定位失败，已回退到${DEFAULT_MARKETING_LOCATION.name}`
+    autoContext.value = buildMarketingAutoContext({ date: TimeUtil.now().toDate() })
+    locationStatus.value = '定位不可用，未使用默认位置'
+    locationLoading.value = false
+    return
   }
 
   const [locationName, weather] = await Promise.all([
-    resolveLocationText(latitude, longitude),
-    resolveWeather(latitude, longitude)
+    resolveLocationText(browserLocation.latitude, browserLocation.longitude),
+    resolveWeather(browserLocation.latitude, browserLocation.longitude)
   ])
 
   autoContext.value = buildMarketingAutoContext({
@@ -448,7 +564,9 @@ const refreshAutoContext = async () => {
     apparentTemperature: weather.apparentTemperature
   })
 
-  locationStatus.value = `已自动识别：${autoContext.value.locationName}`
+  locationStatus.value = autoContext.value.locationName
+    ? `已自动识别：${autoContext.value.locationName}`
+    : '定位信息未获取'
   locationLoading.value = false
 }
 
@@ -460,22 +578,39 @@ const refreshVariants = async (bumpNonce = false) => {
 
   await nextTick()
 
+  const effectiveMode = canViewField('filters.mode') ? form.mode : 'opening'
+
   const localSuggestions = generateMarketingCopySuggestions({
-    mode: form.mode,
-    condition: form.condition,
+    mode: effectiveMode,
+    condition: canViewField('filters.condition') ? form.condition : 'new',
     product: {
       brand: selectedBrand.value,
       model: selectedModel.value,
       color: selectedColor.value,
       memory: selectedMemory.value
     },
-    context: autoContext.value,
+    context: canViewField('context.auto_context')
+      ? autoContext.value
+      : {
+          ...autoContext.value,
+          locationName: '',
+          weatherText: '',
+          weatherCode: null,
+          temperature: null,
+          apparentTemperature: null,
+          timeSegment: '',
+          season: '',
+          holidayCue: '',
+          holidayName: '',
+          solarTermCue: '',
+          dayName: ''
+        },
     lexicon: {
       ...marketingLexicon.value,
-      subsidyEnabled: form.mode === 'sales' && marketingLexicon.value.subsidyEnabled === true && useSubsidy.value,
-      colorEnabled: form.mode === 'sales' && useColor.value,
-      weatherEnabled: form.mode === 'sales' && useWeather.value,
-      solarTermEnabled: form.mode === 'sales' && useSolarTerm.value
+      subsidyEnabled: canViewField('context.subsidy') && effectiveMode === 'sales' && marketingLexicon.value.subsidyEnabled === true && useSubsidy.value,
+      colorEnabled: canViewField('context.color') && effectiveMode === 'sales' && useColor.value,
+      weatherEnabled: canViewField('context.weather') && effectiveMode === 'sales' && useWeather.value,
+      solarTermEnabled: canViewField('context.solar_term') && effectiveMode === 'sales' && useSolarTerm.value
     },
     count: 12,
     nonce: generationNonce.value
@@ -582,6 +717,7 @@ const handleMemoryChange = () => {
 }
 
 onMounted(async () => {
+  await fieldPermissions.init()
   await Promise.all([
     loadBrandOptions(),
     loadColorOptions(),
@@ -606,10 +742,12 @@ onMounted(async () => {
         useSolarTerm.value = marketingLexicon.value.solarTermEnabled === true
       }
     }).catch(() => {
-      // 使用内置词库继续生成
+      // 词库读取失败时保持空结果，不注入本地业务文案。
     })
   ])
-  await refreshAutoContext()
+  if (canViewField('context.auto_context')) {
+    await refreshAutoContext()
+  }
   await refreshVariants(false)
 })
 </script>
@@ -620,7 +758,7 @@ onMounted(async () => {
   width: 100%;
   background:
     radial-gradient(circle at top, rgba(255, 255, 255, 0.14), transparent 35%),
-    linear-gradient(135deg, #0f172a 0%, #312e81 48%, #6d28d9 100%);
+    linear-gradient(135deg, var(--tf-color-slate-900) 0%, var(--tf-color-blue-tailwind-900) 48%, var(--tf-color-violet-700) 100%);
   overflow-x: hidden;
 }
 
@@ -656,12 +794,12 @@ onMounted(async () => {
   h2 {
     margin: 0;
     font-size: 18px;
-    color: #111827;
+    color: var(--tf-color-neutral-900);
   }
 
   p {
     margin: 6px 0 0;
-    color: #64748b;
+    color: var(--tf-color-slate-500);
     font-size: 13px;
     line-height: 1.6;
   }
@@ -675,7 +813,7 @@ onMounted(async () => {
   padding: 12px 16px;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.12);
-  color: #fff;
+  color: var(--color-bg-white);
   backdrop-filter: blur(16px);
 }
 
@@ -728,19 +866,19 @@ onMounted(async () => {
   gap: 4px;
   padding: 12px 14px;
   border-radius: 14px;
-  background: linear-gradient(135deg, #eef2ff 0%, #f8fafc 100%);
+  background: linear-gradient(135deg, var(--tf-color-indigo-50) 0%, var(--tf-color-slate-50) 100%);
   border: 1px solid rgba(99, 102, 241, 0.12);
 }
 
 .context-label {
   font-size: 12px;
-  color: #64748b;
+  color: var(--tf-color-slate-500);
 }
 
 .context-value {
   font-size: 15px;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--tf-color-slate-900);
   word-break: break-word;
 }
 
@@ -755,12 +893,12 @@ onMounted(async () => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: #4f46e5;
+  color: var(--tf-color-indigo-600);
   font-size: 13px;
 }
 
 .context-summary {
-  color: #475569;
+  color: var(--tf-color-slate-600);
   font-size: 13px;
   line-height: 1.6;
 }
@@ -804,7 +942,7 @@ onMounted(async () => {
 }
 
 .marketing-switch-title {
-  color: #334155;
+  color: var(--tf-color-slate-700);
   font-size: 14px;
   font-weight: 600;
   line-height: 20px;
@@ -853,13 +991,13 @@ onMounted(async () => {
   margin: 0 0 16px;
   padding: 10px 12px;
   border-radius: 12px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--tf-color-slate-50);
+  border: 1px solid var(--tf-color-slate-200);
 }
 
 .copy-type-picker__label {
   flex: 0 0 auto;
-  color: #475569;
+  color: var(--tf-color-slate-600);
   font-size: 13px;
   font-weight: 600;
 }
@@ -878,7 +1016,7 @@ onMounted(async () => {
   padding: 16px;
   border-radius: 16px;
   border: 1px solid rgba(99, 102, 241, 0.12);
-  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  background: linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-slate-50) 100%);
   box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
 }
 
@@ -903,18 +1041,18 @@ onMounted(async () => {
 .copy-title {
   font-size: 16px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--tf-color-slate-900);
 }
 
 .copy-tone {
   margin-top: 4px;
   font-size: 12px;
-  color: #64748b;
+  color: var(--tf-color-slate-500);
 }
 
 .copy-text {
   white-space: pre-wrap;
-  color: #1f2937;
+  color: var(--tf-color-neutral-800);
   font-size: 14px;
   line-height: 1.8;
   min-height: 108px;

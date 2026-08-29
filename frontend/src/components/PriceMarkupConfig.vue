@@ -8,7 +8,10 @@
     :show-default-footer="false"
     @close="handleClose"
   >
-    <div class="markup-layout" v-loading="loading">
+    <div
+      v-loading="loading"
+      class="markup-layout"
+    >
       <section class="overview-panel">
         <div class="overview-item">
           <span class="overview-label">销售模式</span>
@@ -24,12 +27,22 @@
         </div>
       </section>
 
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="92px" class="markup-form">
+      <el-form
+        ref="formRef"
+        :model="form"
+        :rules="rules"
+        label-width="92px"
+        class="markup-form"
+      >
         <section class="config-card">
           <div class="section-heading">
             <div>
-              <h4 class="form-section-title">销售加价规则</h4>
-              <p class="section-subtitle">开启销售加价模式</p>
+              <h4 class="form-section-title">
+                销售加价规则
+              </h4>
+              <p class="section-subtitle">
+                开启销售加价模式
+              </p>
             </div>
             <el-switch
               v-model="form.enabled"
@@ -39,14 +52,29 @@
           </div>
 
           <div class="inline-grid inline-grid--top">
-            <el-form-item label="加价模式" prop="mode" class="compact-form-item">
-              <el-radio-group v-model="form.mode" class="mode-group">
-                <el-radio value="fixed">固定金额</el-radio>
-                <el-radio value="percentage">百分比</el-radio>
+            <el-form-item
+              label="加价模式"
+              prop="mode"
+              class="compact-form-item"
+            >
+              <el-radio-group
+                v-model="form.mode"
+                class="mode-group"
+              >
+                <el-radio value="fixed">
+                  固定金额
+                </el-radio>
+                <el-radio value="percentage">
+                  百分比
+                </el-radio>
               </el-radio-group>
             </el-form-item>
 
-            <el-form-item label="价格分界点" prop="threshold" class="compact-form-item">
+            <el-form-item
+              label="价格分界点"
+              prop="threshold"
+              class="compact-form-item"
+            >
               <div class="price-input-group">
                 <el-input-number
                   v-model="form.threshold"
@@ -62,7 +90,12 @@
           </div>
 
           <div class="tier-grid">
-            <el-form-item v-if="form.mode === 'fixed'" label="" prop="lowFixed" class="tier-form-item">
+            <el-form-item
+              v-if="form.mode === 'fixed'"
+              label=""
+              prop="lowFixed"
+              class="tier-form-item"
+            >
               <div class="tier-card">
                 <span class="price-label">低于{{ form.threshold }}元</span>
                 <div class="tier-input-wrap">
@@ -79,7 +112,12 @@
               </div>
             </el-form-item>
 
-            <el-form-item v-if="form.mode === 'fixed'" label="" prop="highFixed" class="tier-form-item">
+            <el-form-item
+              v-if="form.mode === 'fixed'"
+              label=""
+              prop="highFixed"
+              class="tier-form-item"
+            >
               <div class="tier-card">
                 <span class="price-label">高于{{ form.threshold }}元</span>
                 <div class="tier-input-wrap">
@@ -96,7 +134,12 @@
               </div>
             </el-form-item>
 
-            <el-form-item v-if="form.mode === 'percentage'" label="" prop="lowPercent" class="tier-form-item">
+            <el-form-item
+              v-if="form.mode === 'percentage'"
+              label=""
+              prop="lowPercent"
+              class="tier-form-item"
+            >
               <div class="tier-card">
                 <span class="price-label">低于{{ form.threshold }}元</span>
                 <div class="tier-input-wrap">
@@ -114,7 +157,12 @@
               </div>
             </el-form-item>
 
-            <el-form-item v-if="form.mode === 'percentage'" label="" prop="highPercent" class="tier-form-item">
+            <el-form-item
+              v-if="form.mode === 'percentage'"
+              label=""
+              prop="highPercent"
+              class="tier-form-item"
+            >
               <div class="tier-card">
                 <span class="price-label">高于{{ form.threshold }}元</span>
                 <div class="tier-input-wrap">
@@ -137,8 +185,12 @@
         <section class="config-card">
           <div class="section-heading">
             <div>
-              <h4 class="form-section-title">批发加价规则</h4>
-              <p class="section-subtitle">开启批发价格模式</p>
+              <h4 class="form-section-title">
+                批发加价规则
+              </h4>
+              <p class="section-subtitle">
+                开启批发价格模式
+              </p>
             </div>
             <el-switch
               v-model="form.wholesale.enabled"
@@ -148,7 +200,10 @@
           </div>
 
           <div class="inline-grid inline-grid--single">
-            <el-form-item label="加价金额" class="compact-form-item">
+            <el-form-item
+              label="加价金额"
+              class="compact-form-item"
+            >
               <div class="price-input-group">
                 <el-input-number
                   v-model="form.wholesale.adjustment"
@@ -168,8 +223,12 @@
       <section class="price-preview">
         <div class="section-heading">
           <div>
-            <h4 class="form-section-title">价格预览</h4>
-            <p class="section-subtitle">根据当前配置即时预估</p>
+            <h4 class="form-section-title">
+              价格预览
+            </h4>
+            <p class="section-subtitle">
+              根据当前配置即时预估
+            </p>
           </div>
         </div>
         <div class="preview-grid">
@@ -194,9 +253,18 @@
     </div>
 
     <template #footer>
-      <el-button type="default" @click="visible = false">取消</el-button>
-      <el-button type="primary" @click="handleSave" :loading="saving">
-        <i class="fas fa-save"></i>
+      <el-button
+        type="default"
+        @click="visible = false"
+      >
+        取消
+      </el-button>
+      <el-button
+        type="primary"
+        :loading="saving"
+        @click="handleSave"
+      >
+        <i class="fas fa-save" />
         保存配置
       </el-button>
     </template>
@@ -449,20 +517,20 @@ const handleClose = () => {
 
 .overview-item {
   padding: 14px 16px;
-  background: #f6f7f9;
-  border: 1px solid #e7e9ee;
+  background: var(--tf-color-surface-neutral-alt);
+  border: 1px solid var(--tf-color-border-neutral);
   border-radius: 14px;
 }
 
 .overview-label {
   display: block;
   margin-bottom: 6px;
-  color: #8a94a6;
+  color: var(--tf-color-gray-ui-alt);
   font-size: 12px;
 }
 
 .overview-value {
-  color: #111827;
+  color: var(--tf-color-neutral-900);
   font-size: 17px;
   font-weight: 700;
   letter-spacing: 0.01em;
@@ -471,8 +539,8 @@ const handleClose = () => {
 .config-card,
 .price-preview {
   padding: 20px;
-  background: #ffffff;
-  border: 1px solid #e7e9ee;
+  background: var(--color-bg-white);
+  border: 1px solid var(--tf-color-border-neutral);
   border-radius: 18px;
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
 }
@@ -487,14 +555,14 @@ const handleClose = () => {
 
 .form-section-title {
   margin: 0;
-  color: #111827;
+  color: var(--tf-color-neutral-900);
   font-size: 17px;
   font-weight: 700;
 }
 
 .section-subtitle {
   margin: 3px 0 0;
-  color: #8a94a6;
+  color: var(--tf-color-gray-ui-alt);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -541,8 +609,8 @@ const handleClose = () => {
   gap: 12px;
   min-height: 100%;
   padding: 16px;
-  background: #fafbfc;
-  border: 1px solid #eceef2;
+  background: var(--tf-color-surface-neutral);
+  border: 1px solid var(--tf-color-border-neutral-alt);
   border-radius: 14px;
 }
 
@@ -558,7 +626,7 @@ const handleClose = () => {
   gap: 12px;
 
   .price-label {
-    color: #374151;
+    color: var(--tf-color-neutral-700);
     font-size: 14px;
     font-weight: 600;
   }
@@ -568,7 +636,7 @@ const handleClose = () => {
   }
 
   .price-unit {
-    color: #909399;
+    color: var(--color-info);
     font-size: 14px;
     min-width: 30px;
   }
@@ -579,7 +647,7 @@ const handleClose = () => {
   align-items: center;
   gap: 6px;
   margin-top: 8px;
-  color: #8a94a6;
+  color: var(--tf-color-gray-ui-alt);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -596,23 +664,23 @@ const handleClose = () => {
       gap: 6px;
       justify-content: space-between;
       padding: 12px 14px;
-      background: #fafbfc;
+      background: var(--tf-color-surface-neutral);
       border-radius: 14px;
-      border: 1px solid #eceef2;
+      border: 1px solid var(--tf-color-border-neutral-alt);
 
       .preview-label {
-        color: #607089;
+        color: var(--tf-color-slate-500);
         font-size: 13px;
       }
 
       .preview-value {
-        color: #67c23a;
+        color: var(--color-success);
         font-weight: bold;
         font-size: 14px;
       }
 
       .preview-value--wholesale {
-        color: #409eff;
+        color: var(--color-primary);
       }
     }
   }

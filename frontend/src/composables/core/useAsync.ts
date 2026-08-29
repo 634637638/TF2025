@@ -14,8 +14,8 @@ import logger from '@/utils/logger'
  * @param initialData 初始数据
  * @param options 配置选项
  */
-export function useAsync<T = any>(
-  asyncFunction: (...args: any[]) => Promise<T>,
+export function useAsync<T = unknown>(
+  asyncFunction: (...args: never[]) => Promise<T>,
   initialData: T | null = null,
   options: {
     immediate?: boolean
@@ -33,7 +33,7 @@ export function useAsync<T = any>(
   const success = ref(false)
 
   // 执行异步操作
-  const execute = async (...args: any[]): Promise<T | null> => {
+  const execute = async (...args: never[]): Promise<T | null> => {
     try {
       // 重置状态
       if (resetOnExecute) {
@@ -106,13 +106,13 @@ export function useAsync<T = any>(
  * 创建可重用的异步状态
  * @param initialData 初始数据
  */
-export function createAsyncState<T = any>(initialData: T | null = null): AsyncState<T> {
+export function createAsyncState<T = unknown>(initialData: T | null = null): AsyncState<T> {
   const data = ref<T | null>(initialData) as Ref<T | null>
   const loading = ref(false)
   const error = ref<string | null>(null)
   const success = ref(false)
 
-  const execute = async (asyncFunction: (...args: any[]) => Promise<T>): Promise<T | null> => {
+  const execute = async (asyncFunction: (...args: never[]) => Promise<T>): Promise<T | null> => {
     try {
       loading.value = true
       error.value = null

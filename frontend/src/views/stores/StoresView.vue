@@ -7,360 +7,676 @@
       module-name="门店管理"
       permission-code="stores:view"
     >
-
-    <div class="content admin-page-content">
-      <!-- 页面头部 - 使用公共组件 -->
-      <PageHeader
-        icon="fas fa-store"
-        title="门店管理"
-      >
-        <template #actions>
-          <el-button
-            v-if="canCreate"
-            type="primary"
-            @click="openAddModal"
-          >
-            <i class="fas fa-plus"></i>
-            <span>新增</span>
-          </el-button>
-          <ImportExportActions
-            :can-export="canExport"
-            :export-loading="exportingStores"
-            export-label="导出"
-            export-loading-label="导出中..."
-            export-icon-class="fas fa-file-excel"
-            export-type="success"
-            @export="handleExport"
-          />
-          <el-button type="info" @click="handleRefresh" :disabled="refreshing">
-            <InlineLoading v-if="refreshing" text="刷新中..." size="small" variant="inherit" />
-            <template v-else>
-              <i class="fas fa-sync-alt"></i>
-              <span>刷新</span>
-            </template>
-          </el-button>
-        </template>
-      </PageHeader>
-
-      <!-- 权限验证通过后的内容 -->
-      <!-- 统计卡片 -->
-      <div v-if="showStatsCards" class="stats-cards">
-        <div v-if="canViewField('stats_total_stores')" class="stat-card">
-          <div class="stat-icon">
-            <i class="fas fa-store"></i>
-          </div>
-          <div class="stat-content">
-            <div class="stat-value">{{ stats.total }}</div>
-            <div class="stat-label">店铺总数</div>
-          </div>
-        </div>
-        <div v-if="canViewField('stats_active_stores')" class="stat-card">
-          <div class="stat-icon active">
-            <i class="fas fa-check-circle"></i>
-          </div>
-          <div class="stat-content">
-            <div class="stat-value">{{ stats.active }}</div>
-            <div class="stat-label">正常营业</div>
-          </div>
-        </div>
-        <div v-if="canViewField('stats_inactive_stores')" class="stat-card">
-          <div class="stat-icon inactive">
-            <i class="fas fa-pause-circle"></i>
-          </div>
-          <div class="stat-content">
-            <div class="stat-value">{{ stats.inactive }}</div>
-            <div class="stat-label">已禁用</div>
-          </div>
-        </div>
-        <div v-if="canViewField('stats_phone_completion')" class="stat-card">
-          <div class="stat-icon">
-            <i class="fas fa-phone"></i>
-          </div>
-          <div class="stat-content">
-            <div class="stat-value">{{ stats.withPhone }}</div>
-            <div class="stat-label">已留电话</div>
-          </div>
-        </div>
-      </div>
-
-      <UnifiedSearchPanel
-        v-model:expanded="searchExpanded"
-        :loading="isLoading"
-        @search="loadStores"
-        @reset="resetSearch"
-      >
-        <template #primary>
-          <el-input
-            v-if="canViewField('name')"
-            v-model="searchForm.name"
-            placeholder="搜索店铺名称"
-            clearable
-            @input="debounceSearch"
-            @keyup.enter="loadStores"
-            @click.stop
-          >
-            <template #prefix>
-              <i class="fas fa-search"></i>
-            </template>
-          </el-input>
-        </template>
-
-        <div v-if="canViewField('status')" class="form-group filter-item" data-field="status">
-          <el-select
-            v-model="searchForm.status"
-            placeholder="状态"
-            clearable
-            @change="loadStores"
-          >
-            <el-option label="正常" value="1" />
-            <el-option label="禁用" value="0" />
-          </el-select>
-        </div>
-      </UnifiedSearchPanel>
-
-      <!-- 数据表格区域 -->
-      <div class="table-section admin-panel admin-table-panel">
-        <div class="section-title">
-          <i class="fas fa-list"></i>
-          店铺列表
-          <span class="record-count">共 {{ pagination.total }} 条记录</span>
-        </div>
-
-        <div class="table-responsive">
-          <el-table
-            ref="storesTableRef"
-            :data="isLoading ? [] : stores"
-            border
-            stripe
-            class="data-table devices-table base-data-table compact-fit-table stores-data-table"
-            table-layout="fixed"
-            :fit="true"
-            :row-key="getStoreRowKey"
-            :expand-row-keys="isMobile && mobileActionRowId ? [mobileActionRowId] : []"
-            @row-click="(row) => handleMobileRowTap(row.id)"
-          >
-            <template #empty>
-              <TableLoadingRow v-if="isLoading" mode="block" text="加载店铺列表..." />
-              <div v-else class="empty-state">
-                <i class="fas fa-inbox"></i>
-                <p>暂无店铺数据</p>
-                <el-button size="small" type="info" @click="loadStores()">重新加载</el-button>
-              </div>
-            </template>
-
-            <el-table-column v-if="showSortField" width="44" align="center" class-name="drag-handle-cell">
-              <template #default><div class="drag-handle" :class="{ disabled: !canEdit }"><i class="fas fa-grip-vertical"></i></div></template>
-            </el-table-column>
-            <el-table-column v-if="showSortOrderField" label="排序" width="70" align="center">
-              <template #default="{ row, $index }"><input v-model.number="row.sort_order" type="number" class="sort-order-input" :disabled="!canEdit" min="0" max="9999" @change="handleSortOrderChange($index, row.sort_order || 0)" /></template>
-            </el-table-column>
-            <el-table-column v-if="canViewField('id')" label="ID" :width="isMobile ? 54 : 70" align="center">
-              <template #default="{ $index }"><span class="id-badge">{{ (pagination.page - 1) * pagination.limit + (stores.length - $index) }}</span></template>
-            </el-table-column>
-            <el-table-column v-if="canViewField('name')" prop="name" label="店铺名称" :min-width="isMobile ? 126 : 160" align="center">
-              <template #default="{ row }"><strong>{{ row.name || '未命名店铺' }}</strong></template>
-            </el-table-column>
-            <el-table-column v-if="showAddressField" label="地址" min-width="220" align="center" class-name="complete-text-column wrapped-text-column">
-              <template #default="{ row }"><span v-if="row.address || row.location" class="address-text"><i class="fas fa-map-marker-alt"></i>{{ row.address || row.location }}</span><span v-else class="no-data">-</span></template>
-            </el-table-column>
-            <el-table-column v-if="showManagerField" label="联系人" :min-width="isMobile ? 92 : 120" align="center">
-              <template #default="{ row }"><span v-if="row.manager" class="contact-name"><i class="fas fa-user"></i>{{ row.manager }}</span><span v-else class="no-data">-</span></template>
-            </el-table-column>
-            <el-table-column v-if="showPhoneField" label="电话" min-width="132" align="center">
-              <template #default="{ row }"><span v-if="row.phone" class="phone-number"><i class="fas fa-phone"></i>{{ row.phone }}</span><span v-else class="no-data">-</span></template>
-            </el-table-column>
-            <el-table-column v-if="canViewField('status')" label="状态" :min-width="isMobile ? 72 : 84" align="center">
-              <template #default="{ row }"><span :class="['status-badge', isStoreActive(row.status) ? 'status-active' : 'status-inactive']"><i :class="isStoreActive(row.status) ? 'fas fa-check' : 'fas fa-times'"></i>{{ isStoreActive(row.status) ? '正常' : '禁用' }}</span></template>
-            </el-table-column>
-            <el-table-column v-if="showCreatedAtField" label="创建时间" min-width="156" align="center">
-              <template #default="{ row }"><div class="time-info"><i class="fas fa-clock"></i>{{ formatDate(row.created_at) }}</div></template>
-            </el-table-column>
-            <el-table-column v-if="showActionField" label="操作" :width="$getActionColumnWidth(1 + Number(canEdit) + Number(canDelete))" align="center" class-name="actions-column">
-              <template #default="{ row }"><div class="action-buttons"><el-button type="success" size="small" @click.stop="viewStore(row)"><i class="fas fa-eye"></i><span>查看</span></el-button><el-button v-if="canEdit" type="primary" size="small" @click.stop="editStore(row)"><i class="fas fa-edit"></i><span>编辑</span></el-button><el-button v-if="canDelete" type="danger" size="small" @click.stop="deleteStore(row)"><i class="fas fa-trash"></i><span>删除</span></el-button></div></template>
-            </el-table-column>
-            <el-table-column v-if="isMobile" type="expand" width="1" class-name="mobile-expand-column" label-class-name="mobile-expand-header">
-              <template #default="{ row }"><div class="mobile-row-actions"><el-button type="success" size="small" @click.stop="viewStore(row)"><i class="fas fa-eye"></i><span>查看</span></el-button><el-button v-if="canEdit" type="primary" size="small" @click.stop="editStore(row)"><i class="fas fa-edit"></i><span>编辑</span></el-button><el-button v-if="canDelete" type="danger" size="small" @click.stop="deleteStore(row)"><i class="fas fa-trash"></i><span>删除</span></el-button></div></template>
-            </el-table-column>
-          </el-table>
-        </div>
-
-        <!-- 分页组件 -->
-        <Pagination
-          v-if="pagination.total > 0"
-          v-model:current="pagination.page"
-          v-model:page-size="pagination.limit"
-          :total="pagination.total"
-          :page-sizes="[10, 20, 50, 100]"
-          :show-total="true"
-          :show-range="true"
-          :show-page-sizes="true"
-          :show-quick-jumper="true"
-          :disabled="isLoading"
-          @change="handlePaginationChange"
-        />
-      </div>
-    </div>
-
-    <!-- 创建/编辑模态框 -->
-    <MobileDialog
-      v-model="formDialogVisible"
-      :title="isEditMode ? '编辑门店' : '新增门店'"
-      width="500px"
-      dialog-class="stores-form-dialog crud-dialog-sm"
-      :close-on-click-modal="false"
-      @close="attemptCloseModal"
-      :show-default-footer="false"
-    >
-      <el-form :model="storeForm" label-width="100px">
-        <el-form-item v-if="canViewField('name')" label="门店名称" required>
-          <el-input
-            v-model="storeForm.name"
-            placeholder="请输入门店名称"
-            :class="{ 'is-invalid': formErrors.name }"
-            :disabled="!canEditField('name')"
-          />
-          <div v-if="formErrors.name" class="invalid-feedback">{{ formErrors.name }}</div>
-        </el-form-item>
-
-        <el-form-item v-if="canViewField('sort_order')" label="排序">
-          <el-input-number
-            v-model="storeForm.sort_order"
-            :min="0"
-            :max="999999"
-            placeholder="请输入排序值，数字越小越靠前"
-            controls-position="right"
-            style="width: 100%"
-            :disabled="!canEditField('sort_order')"
-          />
-          <div class="input-hint">
-            <span>范围: 0-999999，数字越小越靠前</span>
-          </div>
-        </el-form-item>
-
-        <el-form-item v-if="canViewField('address')" label="地址">
-          <el-input
-            v-model="storeForm.address"
-            type="textarea"
-            placeholder="请输入门店地址"
-            :rows="3"
-            :class="{ 'is-invalid': formErrors.address }"
-            :disabled="!canEditField('address')"
-          />
-          <div v-if="formErrors.address" class="invalid-feedback">{{ formErrors.address }}</div>
-        </el-form-item>
-
-        <el-form-item v-if="canViewField('manager')" label="门店负责人">
-          <el-select
-            v-model="storeForm.manager_id"
-            placeholder="请选择门店负责人"
-            style="width: 100%"
-            :class="{ 'is-invalid': formErrors.manager_id }"
-            :disabled="!canEditField('manager')"
-            :loading="managerOptionsLoading"
-            filterable
-            clearable
-            @change="handleManagerChange"
-          >
-            <el-option
-              v-for="user in users"
-              :key="user.id"
-              :value="user.id"
-              :label="formatManagerOptionLabel(user)"
+      <div class="content admin-page-content">
+        <!-- 页面头部 - 使用公共组件 -->
+        <PageHeader
+          icon="fas fa-store"
+          title="门店管理"
+        >
+          <template #actions>
+            <el-button
+              v-if="canCreate"
+              type="primary"
+              @click="openAddModal"
+            >
+              <i class="fas fa-plus" />
+              <span>新增</span>
+            </el-button>
+            <ImportExportActions
+              :can-export="canExport"
+              :export-loading="exportingStores"
+              export-label="导出"
+              export-loading-label="导出中..."
+              export-icon-class="fas fa-file-excel"
+              export-type="success"
+              @export="handleExport"
             />
-          </el-select>
-          <div v-if="formErrors.manager_id" class="invalid-feedback">{{ formErrors.manager_id }}</div>
-        </el-form-item>
+            <el-button
+              type="info"
+              :disabled="refreshing"
+              @click="handleRefresh"
+            >
+              <InlineLoading
+                v-if="refreshing"
+                text="刷新中..."
+                size="small"
+                variant="inherit"
+              />
+              <template v-else>
+                <i class="fas fa-sync-alt" />
+                <span>刷新</span>
+              </template>
+            </el-button>
+          </template>
+        </PageHeader>
 
-        <el-form-item v-if="canViewField('phone')" label="电话">
-          <el-input
-            v-model="storeForm.phone"
-            :placeholder="storeForm.manager_id ? '取自负责人联系方式' : '请输入联系电话'"
-            :class="{ 'is-invalid': formErrors.phone }"
-            :disabled="!canEditField('phone') || Boolean(storeForm.manager_id)"
+        <!-- 权限验证通过后的内容 -->
+        <!-- 统计卡片 -->
+        <div
+          v-if="showStatsCards"
+          class="stats-cards"
+        >
+          <div
+            v-if="canViewField('stats_total_stores')"
+            class="stat-card"
+          >
+            <div class="stat-icon">
+              <i class="fas fa-store" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">
+                {{ stats.total }}
+              </div>
+              <div class="stat-label">
+                店铺总数
+              </div>
+            </div>
+          </div>
+          <div
+            v-if="canViewField('stats_active_stores')"
+            class="stat-card"
+          >
+            <div class="stat-icon active">
+              <i class="fas fa-check-circle" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">
+                {{ stats.active }}
+              </div>
+              <div class="stat-label">
+                正常营业
+              </div>
+            </div>
+          </div>
+          <div
+            v-if="canViewField('stats_inactive_stores')"
+            class="stat-card"
+          >
+            <div class="stat-icon inactive">
+              <i class="fas fa-pause-circle" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">
+                {{ stats.inactive }}
+              </div>
+              <div class="stat-label">
+                已禁用
+              </div>
+            </div>
+          </div>
+          <div
+            v-if="canViewField('stats_phone_completion')"
+            class="stat-card"
+          >
+            <div class="stat-icon">
+              <i class="fas fa-phone" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">
+                {{ stats.withPhone }}
+              </div>
+              <div class="stat-label">
+                已留电话
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <UnifiedSearchPanel
+          v-model:expanded="searchExpanded"
+          :loading="isLoading"
+          @search="loadStores"
+          @reset="resetSearch"
+        >
+          <template #primary>
+            <el-input
+              v-if="canViewField('name')"
+              v-model="searchForm.name"
+              placeholder="搜索店铺名称"
+              clearable
+              @input="debounceSearch"
+              @keyup.enter="loadStores"
+              @click.stop
+            >
+              <template #prefix>
+                <i class="fas fa-search" />
+              </template>
+            </el-input>
+          </template>
+
+          <div
+            v-if="canViewField('status')"
+            class="form-group filter-item"
+            data-field="status"
+          >
+            <el-select
+              v-model="searchForm.status"
+              placeholder="状态"
+              clearable
+              @change="loadStores"
+            >
+              <el-option
+                label="正常"
+                value="1"
+              />
+              <el-option
+                label="禁用"
+                value="0"
+              />
+            </el-select>
+          </div>
+        </UnifiedSearchPanel>
+
+        <!-- 数据表格区域 -->
+        <div class="table-section admin-panel admin-table-panel">
+          <div class="section-title">
+            <i class="fas fa-list" />
+            店铺列表
+            <span class="record-count">共 {{ pagination.total }} 条记录</span>
+          </div>
+
+          <div class="table-responsive">
+            <el-table
+              ref="storesTableRef"
+              :data="isLoading ? [] : stores"
+              border
+              stripe
+              class="data-table devices-table base-data-table compact-fit-table stores-data-table"
+              table-layout="fixed"
+              :fit="true"
+              :row-key="getStoreRowKey"
+              :expand-row-keys="isMobile && mobileActionRowId ? [mobileActionRowId] : []"
+              @row-click="(row) => handleMobileRowTap(row.id)"
+            >
+              <template #empty>
+                <TableLoadingRow
+                  v-if="isLoading"
+                  mode="block"
+                  text="加载店铺列表..."
+                />
+                <DataEmptyState
+                  v-else
+                  description="暂无店铺数据"
+                >
+                  <el-button
+                    size="small"
+                    type="info"
+                    @click="loadStores()"
+                  >
+                    重新加载
+                  </el-button>
+                </DataEmptyState>
+              </template>
+
+              <el-table-column
+                v-if="showSortField"
+                width="44"
+                align="center"
+                class-name="drag-handle-cell"
+              >
+                <template #default>
+                  <div
+                    class="drag-handle"
+                    :class="{ disabled: !canEdit }"
+                  >
+                    <i class="fas fa-grip-vertical" />
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="showSortOrderField"
+                label="排序"
+                width="70"
+                align="center"
+              >
+                <template #default="{ row, $index }">
+                  <input
+                    v-model.number="row.sort_order"
+                    type="number"
+                    class="sort-order-input"
+                    :disabled="!canEdit"
+                    min="0"
+                    max="9999"
+                    @change="handleSortOrderChange($index, row.sort_order || 0)"
+                  >
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="canViewField('id')"
+                label="ID"
+                :width="isMobile ? 54 : 70"
+                align="center"
+              >
+                <template #default="{ $index }">
+                  <span class="id-badge">{{ (pagination.page - 1) * pagination.page_size + (stores.length - $index) }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="canViewField('name')"
+                prop="name"
+                label="店铺名称"
+                :min-width="isMobile ? 126 : 160"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <strong>{{ row.name || '未命名店铺' }}</strong>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="showAddressField"
+                label="地址"
+                min-width="220"
+                align="center"
+                class-name="complete-text-column wrapped-text-column"
+              >
+                <template #default="{ row }">
+                  <span
+                    v-if="row.address || row.location"
+                    class="address-text"
+                  ><i class="fas fa-map-marker-alt" />{{ row.address || row.location }}</span><span
+                    v-else
+                    class="no-data"
+                  >-</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="showManagerField"
+                label="联系人"
+                :min-width="isMobile ? 92 : 120"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <span
+                    v-if="row.manager"
+                    class="contact-name"
+                  ><i class="fas fa-user" />{{ row.manager }}</span><span
+                    v-else
+                    class="no-data"
+                  >-</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="showPhoneField"
+                label="电话"
+                min-width="132"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <span
+                    v-if="row.phone"
+                    class="phone-number"
+                  ><i class="fas fa-phone" />{{ row.phone }}</span><span
+                    v-else
+                    class="no-data"
+                  >-</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="canViewField('status')"
+                label="状态"
+                :min-width="isMobile ? 72 : 84"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <span :class="['status-badge', isStoreActive(row.status) ? 'status-active' : 'status-inactive']"><i :class="isStoreActive(row.status) ? 'fas fa-check' : 'fas fa-times'" />{{ isStoreActive(row.status) ? '正常' : '禁用' }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="showCreatedAtField"
+                label="创建时间"
+                min-width="156"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <div class="time-info">
+                    <i class="fas fa-clock" />{{ formatDate(row.created_at) }}
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="showActionField"
+                label="操作"
+                :width="$getActionColumnWidth(1 + Number(canEdit) + Number(canDelete))"
+                align="center"
+                class-name="actions-column"
+              >
+                <template #default="{ row }">
+                  <div class="action-buttons">
+                    <el-button
+                      type="success"
+                      size="small"
+                      @click.stop="viewStore(row)"
+                    >
+                      <i class="fas fa-eye" /><span>查看</span>
+                    </el-button><el-button
+                      v-if="canEdit"
+                      type="primary"
+                      size="small"
+                      @click.stop="editStore(row)"
+                    >
+                      <i class="fas fa-edit" /><span>编辑</span>
+                    </el-button><el-button
+                      v-if="canDelete"
+                      type="danger"
+                      size="small"
+                      @click.stop="deleteStore(row)"
+                    >
+                      <i class="fas fa-trash" /><span>删除</span>
+                    </el-button>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="isMobile"
+                type="expand"
+                width="1"
+                class-name="mobile-expand-column"
+                label-class-name="mobile-expand-header"
+              >
+                <template #default="{ row }">
+                  <div class="mobile-row-actions">
+                    <el-button
+                      type="success"
+                      size="small"
+                      @click.stop="viewStore(row)"
+                    >
+                      <i class="fas fa-eye" /><span>查看</span>
+                    </el-button><el-button
+                      v-if="canEdit"
+                      type="primary"
+                      size="small"
+                      @click.stop="editStore(row)"
+                    >
+                      <i class="fas fa-edit" /><span>编辑</span>
+                    </el-button><el-button
+                      v-if="canDelete"
+                      type="danger"
+                      size="small"
+                      @click.stop="deleteStore(row)"
+                    >
+                      <i class="fas fa-trash" /><span>删除</span>
+                    </el-button>
+                  </div>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+
+          <!-- 分页组件 -->
+          <Pagination
+            v-if="pagination.total > 0"
+            v-model:current="pagination.page"
+            v-model:page-size="pagination.page_size"
+            :total="pagination.total"
+            :page-sizes="[10, 20, 50, 100]"
+            :show-total="true"
+            :show-range="true"
+            :show-page-sizes="true"
+            :show-quick-jumper="true"
+            :disabled="isLoading"
+            @change="handlePaginationChange"
           />
-          <div v-if="formErrors.phone" class="invalid-feedback">{{ formErrors.phone }}</div>
-        </el-form-item>
-
-        <el-form-item v-if="canViewField('status')" label="状态">
-          <el-radio-group v-model="storeForm.status" :disabled="!canEditField('status')">
-            <el-radio :value="1">正常营业</el-radio>
-            <el-radio :value="0">已禁用</el-radio>
-          </el-radio-group>
-          <div v-if="formErrors.status" class="invalid-feedback">{{ formErrors.status }}</div>
-        </el-form-item>
-      </el-form>
-
-      <template #footer>
-        <el-button type="default" @click="attemptCloseModal">取消</el-button>
-        <el-button type="primary" @click="saveStore" :loading="saving">
-          {{ isEditMode ? '更新' : '创建' }}
-        </el-button>
-      </template>
-    </MobileDialog>
-
-    <!-- 查看详情模态框 -->
-    <MobileDialog
-      v-model="showViewModal"
-      title="门店详情"
-      width="500px"
-      dialog-class="stores-detail-dialog crud-dialog-sm"
-      :close-on-click-modal="false"
-      :show-default-footer="false"
-    >
-      <div v-if="selectedStore" class="store-detail-view">
-        <!-- 基本信息 -->
-        <div v-if="hasBasicDetailFields" class="detail-section">
-          <h4>基本信息</h4>
-          <div v-if="canViewField('name')" class="detail-row">
-            <span class="label">门店名称：</span>
-            <span class="value">{{ selectedStore.name || '-' }}</span>
-          </div>
-          <div v-if="canViewField('address')" class="detail-row">
-            <span class="label">门店地址：</span>
-            <span class="value">{{ selectedStore.location || selectedStore.address || '-' }}</span>
-          </div>
-          <div v-if="canViewField('phone')" class="detail-row">
-            <span class="label">联系电话：</span>
-            <span class="value">{{ selectedStore.phone || '-' }}</span>
-          </div>
-          <div v-if="canViewField('status')" class="detail-row">
-            <span class="label">状态：</span>
-            <span class="value">
-              <span class="status-badge" :class="isStoreActive(selectedStore.status) ? 'active' : 'inactive'">
-                <i :class="isStoreActive(selectedStore.status) ? 'fas fa-check' : 'fas fa-times'"></i>
-                {{ isStoreActive(selectedStore.status) ? '正常营业' : '已禁用' }}
-              </span>
-            </span>
-          </div>
-        </div>
-
-        <!-- 负责人信息 -->
-        <div v-if="canViewField('manager')" class="detail-section">
-          <h4>负责人信息</h4>
-          <div class="detail-row">
-            <span class="label">门店负责人：</span>
-            <span class="value">{{ selectedStore.manager || getManagerName(selectedStore.manager_id) }}</span>
-          </div>
-        </div>
-
-        <!-- 时间信息 -->
-        <div v-if="canViewField('created_at')" class="detail-section">
-          <h4>时间信息</h4>
-          <div class="detail-row">
-            <span class="label">创建时间：</span>
-            <span class="value">{{ formatDate(selectedStore.created_at) }}</span>
-          </div>
-          <div class="detail-row" v-if="selectedStore.updated_at">
-            <span class="label">更新时间：</span>
-            <span class="value">{{ formatDate(selectedStore.updated_at) }}</span>
-          </div>
         </div>
       </div>
 
-      <template #footer>
-        <el-button type="default" @click="attemptCloseModal">关闭</el-button>
-      </template>
-    </MobileDialog>
+      <!-- 创建/编辑模态框 -->
+      <MobileDialog
+        v-model="formDialogVisible"
+        :title="isEditMode ? '编辑门店' : '新增门店'"
+        width="500px"
+        dialog-class="stores-form-dialog crud-dialog-sm"
+        :close-on-click-modal="false"
+        :show-default-footer="false"
+        @close="attemptCloseModal"
+      >
+        <el-form
+          :model="storeForm"
+          label-width="100px"
+        >
+          <el-form-item
+            v-if="canViewField('name')"
+            label="门店名称"
+            required
+          >
+            <el-input
+              v-model="storeForm.name"
+              placeholder="请输入门店名称"
+              :class="{ 'is-invalid': formErrors.name }"
+              :disabled="!canEditField('name')"
+            />
+            <div
+              v-if="formErrors.name"
+              class="invalid-feedback"
+            >
+              {{ formErrors.name }}
+            </div>
+          </el-form-item>
+
+          <el-form-item
+            v-if="canViewField('sort_order')"
+            label="排序"
+          >
+            <el-input-number
+              v-model="storeForm.sort_order"
+              :min="0"
+              :max="999999"
+              placeholder="请输入排序值，数字越小越靠前"
+              controls-position="right"
+              style="width: 100%"
+              :disabled="!canEditField('sort_order')"
+            />
+            <div class="input-hint">
+              <span>范围: 0-999999，数字越小越靠前</span>
+            </div>
+          </el-form-item>
+
+          <el-form-item
+            v-if="canViewField('address')"
+            label="地址"
+          >
+            <el-input
+              v-model="storeForm.address"
+              type="textarea"
+              placeholder="请输入门店地址"
+              :rows="3"
+              :class="{ 'is-invalid': formErrors.address }"
+              :disabled="!canEditField('address')"
+            />
+            <div
+              v-if="formErrors.address"
+              class="invalid-feedback"
+            >
+              {{ formErrors.address }}
+            </div>
+          </el-form-item>
+
+          <el-form-item
+            v-if="canViewField('manager')"
+            label="门店负责人"
+          >
+            <el-select
+              v-model="storeForm.manager_id"
+              placeholder="请选择门店负责人"
+              style="width: 100%"
+              :class="{ 'is-invalid': formErrors.manager_id }"
+              :disabled="!canEditField('manager')"
+              :loading="managerOptionsLoading"
+              filterable
+              clearable
+              @change="handleManagerChange"
+            >
+              <el-option
+                v-for="user in users"
+                :key="user.id"
+                :value="user.id"
+                :label="formatManagerOptionLabel(user)"
+              />
+            </el-select>
+            <div
+              v-if="formErrors.manager_id"
+              class="invalid-feedback"
+            >
+              {{ formErrors.manager_id }}
+            </div>
+          </el-form-item>
+
+          <el-form-item
+            v-if="canViewField('phone')"
+            label="电话"
+          >
+            <el-input
+              v-model="storeForm.phone"
+              :placeholder="storeForm.manager_id ? '取自负责人联系方式' : '请输入联系电话'"
+              :class="{ 'is-invalid': formErrors.phone }"
+              :disabled="!canEditField('phone') || Boolean(storeForm.manager_id)"
+            />
+            <div
+              v-if="formErrors.phone"
+              class="invalid-feedback"
+            >
+              {{ formErrors.phone }}
+            </div>
+          </el-form-item>
+
+          <el-form-item
+            v-if="canViewField('status')"
+            label="状态"
+          >
+            <el-radio-group
+              v-model="storeForm.status"
+              :disabled="!canEditField('status')"
+            >
+              <el-radio :value="1">
+                正常营业
+              </el-radio>
+              <el-radio :value="0">
+                已禁用
+              </el-radio>
+            </el-radio-group>
+            <div
+              v-if="formErrors.status"
+              class="invalid-feedback"
+            >
+              {{ formErrors.status }}
+            </div>
+          </el-form-item>
+        </el-form>
+
+        <template #footer>
+          <el-button
+            type="default"
+            @click="attemptCloseModal"
+          >
+            取消
+          </el-button>
+          <el-button
+            type="primary"
+            :loading="saving"
+            @click="saveStore"
+          >
+            {{ isEditMode ? '更新' : '创建' }}
+          </el-button>
+        </template>
+      </MobileDialog>
+
+      <!-- 查看详情模态框 -->
+      <MobileDialog
+        v-model="showViewModal"
+        title="门店详情"
+        width="500px"
+        dialog-class="stores-detail-dialog crud-dialog-sm"
+        :close-on-click-modal="false"
+        :show-default-footer="false"
+      >
+        <div
+          v-if="selectedStore"
+          class="store-detail-view"
+        >
+          <!-- 基本信息 -->
+          <div
+            v-if="hasBasicDetailFields"
+            class="detail-section"
+          >
+            <h4>基本信息</h4>
+            <div
+              v-if="canViewField('name')"
+              class="detail-row"
+            >
+              <span class="label">门店名称：</span>
+              <span class="value">{{ selectedStore.name || '-' }}</span>
+            </div>
+            <div
+              v-if="canViewField('address')"
+              class="detail-row"
+            >
+              <span class="label">门店地址：</span>
+              <span class="value">{{ selectedStore.location || selectedStore.address || '-' }}</span>
+            </div>
+            <div
+              v-if="canViewField('phone')"
+              class="detail-row"
+            >
+              <span class="label">联系电话：</span>
+              <span class="value">{{ selectedStore.phone || '-' }}</span>
+            </div>
+            <div
+              v-if="canViewField('status')"
+              class="detail-row"
+            >
+              <span class="label">状态：</span>
+              <span class="value">
+                <span
+                  class="status-badge"
+                  :class="isStoreActive(selectedStore.status) ? 'active' : 'inactive'"
+                >
+                  <i :class="isStoreActive(selectedStore.status) ? 'fas fa-check' : 'fas fa-times'" />
+                  {{ isStoreActive(selectedStore.status) ? '正常营业' : '已禁用' }}
+                </span>
+              </span>
+            </div>
+          </div>
+
+          <!-- 负责人信息 -->
+          <div
+            v-if="canViewField('manager')"
+            class="detail-section"
+          >
+            <h4>负责人信息</h4>
+            <div class="detail-row">
+              <span class="label">门店负责人：</span>
+              <span class="value">{{ selectedStore.manager || getManagerName(selectedStore.manager_id) }}</span>
+            </div>
+          </div>
+
+          <!-- 时间信息 -->
+          <div
+            v-if="canViewField('created_at')"
+            class="detail-section"
+          >
+            <h4>时间信息</h4>
+            <div class="detail-row">
+              <span class="label">创建时间：</span>
+              <span class="value">{{ formatDate(selectedStore.created_at) }}</span>
+            </div>
+            <div
+              v-if="selectedStore.updated_at"
+              class="detail-row"
+            >
+              <span class="label">更新时间：</span>
+              <span class="value">{{ formatDate(selectedStore.updated_at) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <template #footer>
+          <el-button
+            type="default"
+            @click="attemptCloseModal"
+          >
+            关闭
+          </el-button>
+        </template>
+      </MobileDialog>
 
       <!-- Toast 通知组件 -->
       <Toast />
@@ -383,7 +699,7 @@ import { useImportExport } from '@/composables/useImportExport'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useRefreshData } from '@/composables/useRefreshData'
-import { fieldPermissions } from '@/composables/useFieldPermissions'
+import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useAuthStore } from '@/stores/auth'
 import { usePageState } from '@/composables/usePageState'
 import { PageHeader, PermissionGate } from '@/components/base'
@@ -393,7 +709,7 @@ import { useMobile } from '@/composables/mobile'
 import { useLatestRequest } from '@/composables/useLatestRequest'
 import type { Store, StoreFormData } from '@/types/system'
 import type { User } from '@/types'
-import { TimeUtil, TIME_FORMATS } from '@/utils/time'
+import { TimeUtil } from '@/utils/time'
 import { logger } from '@/utils/logger'
 import { useElementTableSortable } from '@/composables/useElementTableSortable'
 
@@ -405,9 +721,9 @@ interface SearchForm {
 }
 
 // 使用统一的 composable
-const { success: showSuccess, error: showError, warning: showWarning, info: showInfo, handleApiError } = useNotification()
+const { success: showSuccess, error: showError, warning: _showWarning, info: _showInfo, handleApiError } = useNotification()
 const { canView, canCreate, canEdit, canDelete, canExport, handleNoPermission } = usePagePermissions('stores')
-const { showViewDenied, showEditDenied, showDeleteDenied, showCreateDenied } = usePermissionToast()
+const { showViewDenied: _showViewDenied, showEditDenied, showDeleteDenied, showCreateDenied } = usePermissionToast()
 const { refreshing, refresh } = useRefreshData()
 const { exportFile, buildDateFilename } = useImportExport()
 const authStore = useAuthStore()
@@ -416,10 +732,10 @@ const {
   isSubmitting,
   setDataLoading,
   setSubmitLoading,
-  hasError,
-  errorMessage,
-  setError,
-  clearError
+  hasError: _hasError,
+  errorMessage: _errorMessage,
+  setError: _setError,
+  clearError: _clearError
 } = usePageState({ initialPageSize: 24 })
 setDataLoading(true)
 const { init: initFieldPermissions } = fieldPermissions
@@ -467,7 +783,9 @@ const showAddressField = computed(() => canViewField('address') && !isMobile.val
 const showManagerField = computed(() => canViewField('manager'))
 const showPhoneField = computed(() => canViewField('phone') && !isMobile.value)
 const showCreatedAtField = computed(() => canViewField('created_at') && !isMobile.value)
-const showActionField = computed(() => canViewField('actions') && (canEdit.value || canDelete.value) && !isMobile.value)
+const showActionField = computed(() => (
+  shouldShowActionColumn(canViewField('actions'), [canEdit.value, canDelete.value]) && !isMobile.value
+))
 const showStatsCards = computed(() => (
   canViewField('stats_total_stores') ||
   canViewField('stats_active_stores') ||
@@ -541,16 +859,16 @@ const handlePermissionsUpdated = async () => {
   } else {
     stores.value = []
     pagination.total = 0
-    pagination.pages = 1
+    pagination.total_pages = 1
   }
 }
 
 // 分页数据
 const pagination = reactive({
   page: 1,
-  limit: 10,
+  page_size: 10,
   total: 0,
-  pages: 1
+  total_pages: 1
 })
 
 // 统计数据
@@ -611,7 +929,7 @@ const loadStores = async () => {
   if (!canView.value) {
     stores.value = []
     pagination.total = 0
-    pagination.pages = 1
+    pagination.total_pages = 1
     setDataLoading(false)
     return
   }
@@ -624,7 +942,7 @@ const loadStores = async () => {
     if (searchForm.name) params.name = searchForm.name
     if (searchForm.status !== '') params.status = searchForm.status
     params.page = pagination.page
-    params.limit = pagination.limit
+    params.page_size = pagination.page_size
 
     const response = await unifiedApi.get('/stores', {
       params,
@@ -641,12 +959,12 @@ const loadStores = async () => {
       const storesData = Array.isArray(responseData) ? responseData : (responseData.data || [])
       stores.value = storesData
       pagination.total = Number(responseData?.pagination?.total) || storesData.length
-      pagination.pages = Number(responseData?.pagination?.pages) || 1
+      pagination.total_pages = Number(responseData?.pagination?.total_pages) || 1
       updateStats()
     } else {
       stores.value = []
       pagination.total = 0
-      pagination.pages = 1
+      pagination.total_pages = 1
       showError(response.message || '加载门店数据失败')
     }
   } catch (err: any) {
@@ -658,7 +976,7 @@ const loadStores = async () => {
     handleApiError(err, '加载门店数据失败')
     stores.value = []
     pagination.total = 0
-    pagination.pages = 1
+    pagination.total_pages = 1
   } finally {
     if (request.isLatest()) {
       setDataLoading(false)
@@ -701,7 +1019,7 @@ const loadStoresSilent = async () => {
   if (!canView.value) {
     stores.value = []
     pagination.total = 0
-    pagination.pages = 1
+    pagination.total_pages = 1
     return
   }
 
@@ -712,7 +1030,7 @@ const loadStoresSilent = async () => {
     if (searchForm.name) params.name = searchForm.name
     if (searchForm.status !== '') params.status = searchForm.status
     params.page = pagination.page
-    params.limit = pagination.limit
+    params.page_size = pagination.page_size
 
     const response = await unifiedApi.get('/stores', {
       params,
@@ -728,7 +1046,7 @@ const loadStoresSilent = async () => {
       const storesData = Array.isArray(responseData) ? responseData : (responseData.data || [])
       stores.value = storesData
       pagination.total = Number(responseData?.pagination?.total) || storesData.length
-      pagination.pages = Number(responseData?.pagination?.pages) || 1
+      pagination.total_pages = Number(responseData?.pagination?.total_pages) || 1
       updateStats()
     }
   } catch (error) {
@@ -900,7 +1218,7 @@ const saveStore = async () => {
         name: storeForm.name,
         address: storeForm.address,
         phone: storeForm.phone,
-        manager: storeForm.manager_id || null,  // 后端期望 manager 字段，前端是 manager_id
+        manager_id: storeForm.manager_id || null,
         status: storeForm.status,
         sort_order: storeForm.sort_order
       }
@@ -920,7 +1238,7 @@ const saveStore = async () => {
         name: storeForm.name,
         address: storeForm.address,
         phone: storeForm.phone,
-        manager: storeForm.manager_id || null,  // 后端期望 manager 字段，前端是 manager_id
+        manager_id: storeForm.manager_id || null,
         status: storeForm.status,
         sort_order: storeForm.sort_order
       }
@@ -1025,16 +1343,16 @@ const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleString('zh-CN')
 }
 
-const changePage = (page: number) => {
-  if (page < 1 || page > pagination.pages) return
+const _changePage = (page: number) => {
+  if (page < 1 || page > pagination.total_pages) return
   pagination.page = page
   loadStores()
 }
 
 // 新的分页变化处理方法
 const handlePaginationChange = (page: number, pageSize: number) => {
-  const oldPageSize = pagination.limit
-  pagination.limit = pageSize
+  const oldPageSize = pagination.page_size
+  pagination.page_size = pageSize
   pagination.page = pageSize !== oldPageSize ? 1 : page
   loadStores()
 }
@@ -1165,7 +1483,7 @@ onUnmounted(() => {
 <style scoped>
 .stores-view {
   padding: 24px;
-  background: #f8fafc;
+  background: var(--tf-color-slate-50);
   min-height: 100vh;
 }
 /* 统计卡片样式 */
@@ -1185,7 +1503,7 @@ onUnmounted(() => {
   gap: 16px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.08);
   transition: all 0.3s ease;
-  border: 1px solid #e8ecef;
+  border: 1px solid var(--tf-color-border-cool);
 }
 
 .stat-card:hover {
@@ -1201,16 +1519,16 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   font-size: 20px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand));
   color: white;
 }
 
 .stat-icon.active {
-  background: linear-gradient(135deg, #28a745, #20c997);
+  background: linear-gradient(135deg, var(--success-color), var(--tf-color-teal-500));
 }
 
 .stat-icon.inactive {
-  background: linear-gradient(135deg, #dc3545, #fd7e14);
+  background: linear-gradient(135deg, var(--danger-color), var(--tf-color-orange-bootstrap));
 }
 
 .stat-content {
@@ -1220,13 +1538,13 @@ onUnmounted(() => {
 .stat-value {
   font-size: 24px;
   font-weight: 700;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
   margin-bottom: 4px;
 }
 
 .stat-label {
   font-size: 14px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
   font-weight: 500;
 }
 
@@ -1237,20 +1555,20 @@ onUnmounted(() => {
   gap: 8px;
   font-size: 16px;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--tf-color-heading);
   margin-bottom: 20px;
   padding-bottom: 12px;
-  border-bottom: 2px solid #f8f9fa;
+  border-bottom: 2px solid var(--tf-color-surface-muted);
 }
 
 .section-title i {
-  color: #667eea;
+  color: var(--tf-color-indigo-brand);
 }
 
 .record-count {
   margin-left: auto;
   font-size: 14px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
   font-weight: 400;
 }
 
@@ -1261,7 +1579,7 @@ onUnmounted(() => {
   padding: 24px;
   margin-bottom: 24px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-  border: 1px solid #e8ecef;
+  border: 1px solid var(--tf-color-border-cool);
   overflow: hidden; /* 防止内容溢出 */
 
   /* 移动端去除左右内边距，让内容占据全屏宽度 */
@@ -1286,7 +1604,7 @@ onUnmounted(() => {
 .form-label {
   font-size: 14px;
   font-weight: 500;
-  color: #495057;
+  color: var(--tf-color-gray-bootstrap-700);
 }
 
 .input-group {
@@ -1298,7 +1616,7 @@ onUnmounted(() => {
   left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  color: #6c757d;
+  color: var(--tf-color-muted);
   font-size: 14px;
   z-index: 1;
 }
@@ -1306,16 +1624,16 @@ onUnmounted(() => {
 .form-control {
   width: 100%;
   padding: 10px 12px 10px 36px;
-  border: 2px solid #e8ecef;
+  border: 2px solid var(--tf-color-border-cool);
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.3s ease;
-  background: #f8f9fa;
+  background: var(--tf-color-surface-muted);
 }
 
 .form-control:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: var(--tf-color-indigo-brand);
   background: white;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
@@ -1334,7 +1652,7 @@ onUnmounted(() => {
 }
 
 .drag-handle {
-  color: #9ca3af;
+  color: var(--tf-color-neutral-400);
   font-size: 16px;
   cursor: grab;
   display: inline-flex;
@@ -1347,8 +1665,8 @@ onUnmounted(() => {
 }
 
 .drag-handle:hover {
-  color: #3b82f6;
-  background: #eff6ff;
+  color: var(--tf-color-blue-500);
+  background: var(--tf-color-blue-tailwind-50);
 }
 
 .drag-handle:active {
@@ -1362,7 +1680,7 @@ onUnmounted(() => {
 }
 
 .drag-handle.disabled:hover {
-  color: #9ca3af;
+  color: var(--tf-color-neutral-400);
   background: transparent;
 }
 
@@ -1371,7 +1689,7 @@ onUnmounted(() => {
   width: 50px;
   height: 28px;
   padding: 0 6px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--tf-color-neutral-300);
   border-radius: 6px;
   font-size: 13px;
   font-weight: 600;
@@ -1381,18 +1699,18 @@ onUnmounted(() => {
 }
 
 .sort-order-input:focus:not(:disabled) {
-  border-color: #3b82f6;
+  border-color: var(--tf-color-blue-500);
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
 .sort-order-input:hover:not(:disabled) {
-  border-color: #9ca3af;
+  border-color: var(--tf-color-neutral-400);
 }
 
 .sort-order-input:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  background-color: #f3f4f6;
+  background-color: var(--tf-color-neutral-100);
 }
 
 .store-info {
@@ -1406,12 +1724,12 @@ onUnmounted(() => {
 
 .store-name {
   font-weight: 600;
-  color: #1e293b;
+  color: var(--tf-color-slate-800);
   font-size: 14px;
 }
 
 .store-address {
-  color: #64748b;
+  color: var(--tf-color-slate-500);
   font-size: 13px;
   text-align: center;
 }
@@ -1426,12 +1744,12 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #374151;
+  color: var(--tf-color-neutral-700);
   font-size: 14px;
 }
 
 .contact-item i {
-  color: #667eea;
+  color: var(--tf-color-indigo-brand);
   width: 16px;
   text-align: center;
 }
@@ -1448,14 +1766,14 @@ onUnmounted(() => {
 
 /* Element Plus 表单错误提示样式 */
 .invalid-feedback {
-  color: #f56c6c;
+  color: var(--color-danger);
   font-size: 12px;
   margin-top: 4px;
   line-height: 1;
 }
 
 .is-invalid {
-  border-color: #f56c6c !important;
+  border-color: var(--color-danger) !important;
 }
 
 .input-hint {
@@ -1464,7 +1782,7 @@ onUnmounted(() => {
   align-items: center;
   margin-top: 4px;
   font-size: 12px;
-  color: #6c757d;
+  color: var(--tf-color-muted);
 }
 
 /* 辅助样式类 */
@@ -1484,8 +1802,8 @@ onUnmounted(() => {
     padding: 0;
     font-size: 16px;
     font-weight: 600;
-    color: #374151;
-    border-bottom: 1px solid #e5e7eb;
+    color: var(--tf-color-neutral-700);
+    border-bottom: 1px solid var(--tf-color-neutral-200);
     padding-bottom: 8px;
   }
 }
@@ -1494,7 +1812,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   padding: 12px 0;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--tf-color-neutral-100);
 
   &:last-child {
     border-bottom: none;
@@ -1502,7 +1820,7 @@ onUnmounted(() => {
 
   .label {
     font-weight: 500;
-    color: #6b7280;
+    color: var(--tf-color-neutral-500);
     min-width: 100px;
     margin-right: 16px;
     font-size: 14px;
@@ -1510,7 +1828,7 @@ onUnmounted(() => {
 
   .value {
     flex: 1;
-    color: #1f2937;
+    color: var(--tf-color-neutral-800);
     font-weight: 500;
     font-size: 14px;
     word-break: break-word;
@@ -1529,18 +1847,18 @@ onUnmounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   font-size: 13px;
-  color: #374151;
+  color: var(--tf-color-neutral-700);
 }
 
 .contact-name,
 .phone-number {
   font-size: 13px;
-  color: #374151;
+  color: var(--tf-color-neutral-700);
   font-weight: 500;
 }
 
 .no-data {
-  color: #9ca3af;
+  color: var(--tf-color-neutral-400);
   font-style: italic;
   font-size: 13px;
 }
@@ -1563,8 +1881,8 @@ onUnmounted(() => {
   padding: 0;
   font-size: 16px;
   font-weight: 600;
-  color: #374151;
-  border-bottom: 1px solid #e5e7eb;
+  color: var(--tf-color-neutral-700);
+  border-bottom: 1px solid var(--tf-color-neutral-200);
   padding-bottom: 8px;
 }
 
@@ -1583,7 +1901,7 @@ onUnmounted(() => {
 .detail-item label {
   font-size: 12px;
   font-weight: 500;
-  color: #6b7280;
+  color: var(--tf-color-neutral-500);
   text-transform: uppercase;
   letter-spacing: 0.025em;
 }
@@ -1591,7 +1909,7 @@ onUnmounted(() => {
 .detail-item span {
   font-size: 14px;
   font-weight: 500;
-  color: #1f2937;
+  color: var(--tf-color-neutral-800);
   word-break: break-word;
 }
 
@@ -1606,23 +1924,27 @@ onUnmounted(() => {
 }
 
 .status-badge.active {
-  background-color: #10b981;
-  color: white;
+  background-color: var(--tf-status-success-bg);
+  color: var(--tf-status-success-color);
+  border: 1px solid var(--tf-status-success-border);
 }
 
 .status-badge.inactive {
-  background-color: #ef4444;
-  color: white;
+  background-color: var(--tf-status-danger-bg);
+  color: var(--tf-status-danger-color);
+  border: 1px solid var(--tf-status-danger-border);
 }
 
 .status-badge.status-active {
-  background: #d4edda;
-  color: #155724;
+  background: var(--tf-status-success-bg);
+  color: var(--tf-status-success-color);
+  border-color: var(--tf-status-success-border);
 }
 
 .status-badge.status-inactive {
-  background: #f8d7da;
-  color: #721c24;
+  background: var(--tf-status-danger-bg);
+  color: var(--tf-status-danger-color);
+  border-color: var(--tf-status-danger-border);
 }
 
 /* ===== 移动端响应式适配 ===== */

@@ -1,14 +1,14 @@
-const log = require('../utils/log');
+const log = require('../utils/log')
 /**
  * 仪表板控制器
  * 处理所有仪表板相关的HTTP请求
  */
-const DashboardService = require('../services/dashboard.service');
-const ApiResponse = require('../utils/response');
+const DashboardService = require('../services/dashboard.service')
+const ApiResponse = require('../utils/response')
 
 class DashboardController {
   constructor() {
-    this.dashboardService = new DashboardService();
+    this.dashboardService = new DashboardService()
   }
 
   /**
@@ -16,11 +16,11 @@ class DashboardController {
    */
   async testDashboard(req, res) {
     try {
-      const result = await this.dashboardService.testDashboard();
-      ApiResponse.success(res, result.message, result.data);
+      const result = await this.dashboardService.testDashboard()
+      ApiResponse.success(res, result.message, result.data)
     } catch (error) {
-      log.error('测试仪表板模块失败:', error);
-      ApiResponse.serverError(res, '测试仪表板模块失败', error);
+      log.error('测试仪表板模块失败:', error)
+      ApiResponse.serverError(res, '测试仪表板模块失败', error)
     }
   }
 
@@ -29,16 +29,16 @@ class DashboardController {
    */
   async getDashboard(req, res) {
     try {
-      const result = await this.dashboardService.getDashboardData();
+      const result = await this.dashboardService.getDashboardData()
 
       if (result.success) {
-        ApiResponse.success(res, result.message, result.data);
+        ApiResponse.success(res, result.message, result.data)
       } else {
-        ApiResponse.error(res, result.message, 400, result.code);
+        ApiResponse.error(res, result.message, 400, result.code)
       }
     } catch (error) {
-      log.error('获取仪表板数据失败:', error);
-      ApiResponse.serverError(res, '获取仪表板数据失败', error);
+      log.error('获取仪表板数据失败:', error)
+      ApiResponse.serverError(res, '获取仪表板数据失败', error)
     }
   }
 
@@ -47,18 +47,18 @@ class DashboardController {
    */
   async getSalesTrends(req, res) {
     try {
-      const { days = 7 } = req.query;
+      const { days = 7 } = req.query
 
-      const result = await this.dashboardService.getSalesTrends(days);
+      const result = await this.dashboardService.getSalesTrends(days)
 
       if (result.success) {
-        ApiResponse.success(res, result.message, result.data);
+        ApiResponse.success(res, result.message, result.data)
       } else {
-        ApiResponse.error(res, result.message, 400, result.code);
+        ApiResponse.error(res, result.message, 400, result.code)
       }
     } catch (error) {
-      log.error('获取销售趋势数据失败:', error);
-      ApiResponse.serverError(res, '获取销售趋势数据失败', error);
+      log.error('获取销售趋势数据失败:', error)
+      ApiResponse.serverError(res, '获取销售趋势数据失败', error)
     }
   }
 
@@ -68,18 +68,18 @@ class DashboardController {
    */
   async getTopSellingProducts(req, res) {
     try {
-      const { limit = 10 } = req.query;
+      const { page_size = 10 } = req.query
 
-      const result = await this.dashboardService.getTopSellingProducts(limit);
+      const result = await this.dashboardService.getTopSellingProducts(page_size)
 
       if (result.success) {
-        ApiResponse.success(res, result.message, result.data);
+        ApiResponse.success(res, result.message, result.data)
       } else {
-        ApiResponse.error(res, result.message, 400, result.code);
+        ApiResponse.error(res, result.message, 400, result.code)
       }
     } catch (error) {
-      log.error('获取热销产品排行失败:', error);
-      ApiResponse.serverError(res, '获取热销产品排行失败', error);
+      log.error('获取热销产品排行失败:', error)
+      ApiResponse.serverError(res, '获取热销产品排行失败', error)
     }
   }
 
@@ -88,18 +88,18 @@ class DashboardController {
    */
   async getTopEmployees(req, res) {
     try {
-      const { limit = 10 } = req.query;
+      const { page_size = 10 } = req.query
 
-      const result = await this.dashboardService.getTopEmployees(limit);
+      const result = await this.dashboardService.getTopEmployees(page_size)
 
       if (result.success) {
-        ApiResponse.success(res, result.message, result.data);
+        ApiResponse.success(res, result.message, result.data)
       } else {
-        ApiResponse.error(res, result.message, 400, result.code);
+        ApiResponse.error(res, result.message, 400, result.code)
       }
     } catch (error) {
-      log.error('获取员工绩效排行失败:', error);
-      ApiResponse.serverError(res, '获取员工绩效排行失败', error);
+      log.error('获取员工绩效排行失败:', error)
+      ApiResponse.serverError(res, '获取员工绩效排行失败', error)
     }
   }
 
@@ -108,16 +108,16 @@ class DashboardController {
    */
   async getCategorySalesStats(req, res) {
     try {
-      const result = await this.dashboardService.getCategorySalesStats();
+      const result = await this.dashboardService.getCategorySalesStats()
 
       if (result.success) {
-        ApiResponse.success(res, result.message, result.data);
+        ApiResponse.success(res, result.message, result.data)
       } else {
-        ApiResponse.error(res, result.message, 400, result.code);
+        ApiResponse.error(res, result.message, 400, result.code)
       }
     } catch (error) {
-      log.error('获取分类销售统计失败:', error);
-      ApiResponse.serverError(res, '获取分类销售统计失败', error);
+      log.error('获取分类销售统计失败:', error)
+      ApiResponse.serverError(res, '获取分类销售统计失败', error)
     }
   }
 
@@ -126,16 +126,16 @@ class DashboardController {
    */
   async getMenus(req, res) {
     try {
-      const result = await this.dashboardService.getMenus();
+      const result = await this.dashboardService.getMenus()
 
       if (result.success) {
-        ApiResponse.success(res, result.message, result.data);
+        ApiResponse.success(res, result.message, result.data)
       } else {
-        ApiResponse.error(res, result.message, 400, result.code);
+        ApiResponse.error(res, result.message, 400, result.code)
       }
     } catch (error) {
-      log.error('获取菜单列表失败:', error);
-      ApiResponse.serverError(res, '获取菜单列表失败', error);
+      log.error('获取菜单列表失败:', error)
+      ApiResponse.serverError(res, '获取菜单列表失败', error)
     }
   }
 
@@ -144,25 +144,25 @@ class DashboardController {
    */
   async getDashboardOverview(req, res) {
     try {
-      const { days = 7, limit = 10 } = req.query;
+      const { days = 7, page_size = 10 } = req.query
 
       const filters = {
         days,
-        limit
-      };
+        page_size
+      }
 
-      const result = await this.dashboardService.getDashboardOverview(filters);
+      const result = await this.dashboardService.getDashboardOverview(filters)
 
       if (result.success) {
-        ApiResponse.success(res, result.message, result.data);
+        ApiResponse.success(res, result.message, result.data)
       } else {
-        ApiResponse.error(res, result.message, 400, result.code);
+        ApiResponse.error(res, result.message, 400, result.code)
       }
     } catch (error) {
-      log.error('获取仪表板概览失败:', error);
-      ApiResponse.serverError(res, '获取仪表板概览失败', error);
+      log.error('获取仪表板概览失败:', error)
+      ApiResponse.serverError(res, '获取仪表板概览失败', error)
     }
   }
 }
 
-module.exports = DashboardController;
+module.exports = DashboardController

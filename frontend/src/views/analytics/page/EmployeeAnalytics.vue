@@ -1,16 +1,26 @@
 <template>
   <div class="employee-analytics">
     <!-- 员工概览卡片 -->
-    <div v-if="canViewEmployeeField('overview_stats')" class="overview-grid">
+    <div
+      v-if="canViewEmployeeField('overview_stats')"
+      class="overview-grid"
+    >
       <el-card class="overview-card">
         <div class="card-content">
           <div class="card-icon total">
-            <i class="fas fa-users"></i>
+            <i class="fas fa-users" />
           </div>
           <div class="card-info">
-            <div class="card-title">员工总数</div>
-            <div class="card-value">{{ employeeData.totalCount || 0 }}</div>
-            <div class="card-change" :class="getChangeClass(employeeData.totalTrend)">
+            <div class="card-title">
+              员工总数
+            </div>
+            <div class="card-value">
+              {{ employeeData.totalCount || 0 }}
+            </div>
+            <div
+              class="card-change"
+              :class="getChangeClass(employeeData.totalTrend)"
+            >
               <el-icon><component :is="getTrendIcon(employeeData.totalTrend)" /></el-icon>
               {{ formatPercent(employeeData.totalChange) }}
             </div>
@@ -21,11 +31,15 @@
       <el-card class="overview-card">
         <div class="card-content">
           <div class="card-icon active">
-            <i class="fas fa-user-check"></i>
+            <i class="fas fa-user-check" />
           </div>
           <div class="card-info">
-            <div class="card-title">在职员工</div>
-            <div class="card-value">{{ employeeData.activeCount || 0 }}</div>
+            <div class="card-title">
+              在职员工
+            </div>
+            <div class="card-value">
+              {{ employeeData.activeCount || 0 }}
+            </div>
             <div class="card-change neutral">
               <el-icon><Minus /></el-icon>
               稳定
@@ -37,12 +51,19 @@
       <el-card class="overview-card overview-card-salary">
         <div class="card-content">
           <div class="card-icon salary">
-            <i class="fas fa-money-bill-wave"></i>
+            <i class="fas fa-money-bill-wave" />
           </div>
           <div class="card-info">
-            <div class="card-title">本月应发工资</div>
-            <div class="card-value">¥{{ formatNumber(employeeData.totalSalary || 0) }}</div>
-            <div class="card-change" :class="getChangeClass(employeeData.salaryTrend)">
+            <div class="card-title">
+              本月应发工资
+            </div>
+            <div class="card-value">
+              ¥{{ formatNumber(employeeData.totalSalary || 0) }}
+            </div>
+            <div
+              class="card-change"
+              :class="getChangeClass(employeeData.salaryTrend)"
+            >
               <el-icon><component :is="getTrendIcon(employeeData.salaryTrend)" /></el-icon>
               {{ formatPercent(employeeData.salaryChange) }}
             </div>
@@ -53,12 +74,19 @@
       <el-card class="overview-card">
         <div class="card-content">
           <div class="card-icon new-sales">
-            <i class="fas fa-mobile-alt"></i>
+            <i class="fas fa-mobile-alt" />
           </div>
           <div class="card-info">
-            <div class="card-title">全新机销量</div>
-            <div class="card-value">{{ salesData.newCount || 0 }}</div>
-            <div class="card-change" :class="getChangeClass(salesData.newTrend)">
+            <div class="card-title">
+              全新机销量
+            </div>
+            <div class="card-value">
+              {{ salesData.newCount || 0 }}
+            </div>
+            <div
+              class="card-change"
+              :class="getChangeClass(salesData.newTrend)"
+            >
               <el-icon><component :is="getTrendIcon(salesData.newTrend)" /></el-icon>
               {{ formatPercent(salesData.newChange) }}
             </div>
@@ -69,12 +97,19 @@
       <el-card class="overview-card">
         <div class="card-content">
           <div class="card-icon used-sales">
-            <i class="fas fa-recycle"></i>
+            <i class="fas fa-recycle" />
           </div>
           <div class="card-info">
-            <div class="card-title">二手机销量</div>
-            <div class="card-value">{{ salesData.usedCount || 0 }}</div>
-            <div class="card-change" :class="getChangeClass(salesData.usedTrend)">
+            <div class="card-title">
+              二手机销量
+            </div>
+            <div class="card-value">
+              {{ salesData.usedCount || 0 }}
+            </div>
+            <div
+              class="card-change"
+              :class="getChangeClass(salesData.usedTrend)"
+            >
               <el-icon><component :is="getTrendIcon(salesData.usedTrend)" /></el-icon>
               {{ formatPercent(salesData.usedChange) }}
             </div>
@@ -84,9 +119,19 @@
     </div>
 
     <!-- 图表区域 -->
-    <el-row v-if="showEmployeePrimaryCharts" :gutter="16" class="charts-section">
+    <el-row
+      v-if="showEmployeePrimaryCharts"
+      :gutter="16"
+      class="charts-section"
+    >
       <!-- 员工角色分布 -->
-      <el-col v-if="canViewEmployeeField('role_distribution_chart')" :xs="24" :sm="24" :md="12" :lg="12">
+      <el-col
+        v-if="canViewEmployeeField('role_distribution_chart')"
+        :xs="24"
+        :sm="24"
+        :md="12"
+        :lg="12"
+      >
         <el-card class="chart-card role-chart-card">
           <template #header>
             <div class="card-header">
@@ -96,20 +141,32 @@
               </div>
               <div class="card-header-actions">
                 <span class="header-chip">组织结构</span>
-                <el-button size="small" @click="toggleRoleChartType">
+                <el-button
+                  size="small"
+                  @click="toggleRoleChartType"
+                >
                   {{ roleChartType === 'pie' ? '柱状图' : '饼图' }}
                 </el-button>
               </div>
             </div>
           </template>
           <div class="chart-container">
-            <div ref="roleChartRef" class="chart"></div>
+            <div
+              ref="roleChartRef"
+              class="chart"
+            />
           </div>
         </el-card>
       </el-col>
 
       <!-- 销售对比 -->
-      <el-col v-if="canViewEmployeeField('sales_compare_chart')" :xs="24" :sm="24" :md="12" :lg="12">
+      <el-col
+        v-if="canViewEmployeeField('sales_compare_chart')"
+        :xs="24"
+        :sm="24"
+        :md="12"
+        :lg="12"
+      >
         <el-card class="chart-card sales-chart-card">
           <template #header>
             <div class="card-header">
@@ -119,42 +176,84 @@
               </div>
               <div class="card-header-actions">
                 <span class="header-chip highlight">销售趋势</span>
-                <el-select v-model="salesComparePeriod" size="small" @change="updateSalesCompareChart">
-                  <el-option label="本月" value="month" />
-                  <el-option label="本季度" value="quarter" />
-                  <el-option label="本年" value="year" />
+                <el-select
+                  v-model="salesComparePeriod"
+                  size="small"
+                  @change="updateSalesCompareChart"
+                >
+                  <el-option
+                    label="本月"
+                    value="month"
+                  />
+                  <el-option
+                    label="本季度"
+                    value="quarter"
+                  />
+                  <el-option
+                    label="本年"
+                    value="year"
+                  />
                 </el-select>
               </div>
             </div>
           </template>
           <div class="chart-container">
-            <div ref="salesCompareRef" class="chart"></div>
+            <div
+              ref="salesCompareRef"
+              class="chart"
+            />
           </div>
         </el-card>
       </el-col>
     </el-row>
 
-    <el-row v-if="showEmployeeSecondaryCharts" :gutter="16" class="charts-section">
+    <el-row
+      v-if="showEmployeeSecondaryCharts"
+      :gutter="16"
+      class="charts-section"
+    >
       <!-- 工资趋势分析 -->
-      <el-col v-if="canViewEmployeeField('salary_trend_chart')" :xs="24" :sm="24" :md="16" :lg="16">
+      <el-col
+        v-if="canViewEmployeeField('salary_trend_chart')"
+        :xs="24"
+        :sm="24"
+        :md="16"
+        :lg="16"
+      >
         <el-card class="chart-card">
           <template #header>
             <div class="card-header">
               <h3>工资趋势分析</h3>
-              <el-radio-group v-model="salaryTrendPeriod" size="small">
-                <el-radio-button value="6">近半年</el-radio-button>
-                <el-radio-button value="12">近一年</el-radio-button>
+              <el-radio-group
+                v-model="salaryTrendPeriod"
+                size="small"
+              >
+                <el-radio-button value="6">
+                  近半年
+                </el-radio-button>
+                <el-radio-button value="12">
+                  近一年
+                </el-radio-button>
               </el-radio-group>
             </div>
           </template>
           <div class="chart-container">
-            <div ref="salaryTrendRef" class="chart"></div>
+            <div
+              ref="salaryTrendRef"
+              class="chart"
+            />
           </div>
         </el-card>
       </el-col>
 
       <!-- 出勤统计 -->
-      <el-col v-if="canViewEmployeeField('attendance_chart')" :xs="24" :sm="24" :md="8" :lg="8">
+      <el-col
+        v-if="canViewEmployeeField('attendance_chart')"
+        :xs="24"
+        :sm="24"
+        :md="8"
+        :lg="8"
+      >
         <el-card class="chart-card">
           <template #header>
             <div class="card-header">
@@ -162,16 +261,29 @@
             </div>
           </template>
           <div class="chart-container">
-            <div ref="attendanceChartRef" class="chart"></div>
+            <div
+              ref="attendanceChartRef"
+              class="chart"
+            />
           </div>
         </el-card>
       </el-col>
     </el-row>
 
     <!-- 数据表格区域 -->
-    <el-row v-if="showEmployeeTableSection" :gutter="16" class="table-section admin-panel admin-table-panel">
+    <el-row
+      v-if="showEmployeeTableSection"
+      :gutter="16"
+      class="table-section admin-panel admin-table-panel"
+    >
       <!-- 员工销售业绩排行 -->
-      <el-col v-if="canViewEmployeeField('performance_table')" :xs="24" :sm="24" :md="16" :lg="16">
+      <el-col
+        v-if="canViewEmployeeField('performance_table')"
+        :xs="24"
+        :sm="24"
+        :md="16"
+        :lg="16"
+      >
         <el-card class="table-card admin-panel admin-table-panel">
           <template #header>
             <div class="card-header">
@@ -181,14 +293,37 @@
               </div>
               <div class="card-header-actions">
                 <span class="header-chip highlight">业务看板</span>
-                <el-select v-model="performanceMetric" size="small" @change="loadEmployeePerformance">
-                  <el-option label="总销售额" value="totalSales" />
-                  <el-option label="全新机销量" value="newSales" />
-                  <el-option label="二手机销量" value="usedSales" />
-                  <el-option label="批发量" value="wholesale" />
-                  <el-option label="划拨量" value="allocation" />
+                <el-select
+                  v-model="performanceMetric"
+                  size="small"
+                  @change="loadEmployeePerformance"
+                >
+                  <el-option
+                    label="总销售额"
+                    value="totalSales"
+                  />
+                  <el-option
+                    label="全新机销量"
+                    value="newSales"
+                  />
+                  <el-option
+                    label="二手机销量"
+                    value="usedSales"
+                  />
+                  <el-option
+                    label="批发量"
+                    value="wholesale"
+                  />
+                  <el-option
+                    label="划拨量"
+                    value="allocation"
+                  />
                 </el-select>
-                <el-button type="success" size="small" @click="exportPerformance">
+                <el-button
+                  type="success"
+                  size="small"
+                  @click="exportPerformance"
+                >
                   导出
                 </el-button>
               </div>
@@ -208,55 +343,129 @@
               <span class="summary-value">{{ performanceSummary.wholesaleCount }} / {{ performanceSummary.allocationCount }}</span>
             </div>
           </div>
-          <el-table class="data-table" :data="employeePerformance" stripe style="width: 100%" max-height="450" :table-layout="'auto'">
-            <el-table-column type="index" label="排名" width="60" align="center" />
-            <el-table-column prop="name" label="姓名" min-width="96" />
-            <el-table-column prop="store_name" label="绑定店铺" min-width="110">
+          <el-table
+            class="data-table"
+            :data="employeePerformance"
+            stripe
+            style="width: 100%"
+            max-height="450"
+            :table-layout="'auto'"
+          >
+            <el-table-column
+              type="index"
+              label="排名"
+              width="60"
+              align="center"
+            />
+            <el-table-column
+              prop="name"
+              label="姓名"
+              min-width="96"
+            />
+            <el-table-column
+              prop="store_name"
+              label="绑定店铺"
+              min-width="110"
+            >
               <template #default="{ row }">
-                <el-tag v-if="row.store_name" size="small" type="primary">{{ row.store_name }}</el-tag>
-                <el-tag v-else size="small" type="info">未绑定</el-tag>
+                <el-tag
+                  v-if="row.store_name"
+                  size="small"
+                  type="primary"
+                >
+                  {{ row.store_name }}
+                </el-tag>
+                <el-tag
+                  v-else
+                  size="small"
+                  type="info"
+                >
+                  未绑定
+                </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="new_sales" label="全新销量" min-width="92" align="right">
+            <el-table-column
+              prop="new_sales"
+              label="全新销量"
+              min-width="92"
+              align="right"
+            >
               <template #default="{ row }">
                 <span class="new-sales">{{ row.new_sales || 0 }}</span>
               </template>
             </el-table-column>
-            <el-table-column prop="used_sales" label="二手销量" min-width="92" align="right">
+            <el-table-column
+              prop="used_sales"
+              label="二手销量"
+              min-width="92"
+              align="right"
+            >
               <template #default="{ row }">
                 <span class="used-sales">{{ row.used_sales || 0 }}</span>
               </template>
             </el-table-column>
-            <el-table-column prop="total_sales" label="总销售额" min-width="126" align="right">
+            <el-table-column
+              prop="total_sales"
+              label="总销售额"
+              min-width="126"
+              align="right"
+            >
               <template #default="{ row }">
                 ¥{{ formatNumber(row.total_sales || 0) }}
               </template>
             </el-table-column>
-            <el-table-column prop="wholesale_count" label="批发" min-width="78" align="right">
+            <el-table-column
+              prop="wholesale_count"
+              label="批发"
+              min-width="78"
+              align="right"
+            >
               <template #default="{ row }">
                 <span class="wholesale-count">{{ row.wholesale_count || 0 }}</span>
               </template>
             </el-table-column>
-            <el-table-column prop="allocation_count" label="划拨" min-width="78" align="right">
+            <el-table-column
+              prop="allocation_count"
+              label="划拨"
+              min-width="78"
+              align="right"
+            >
               <template #default="{ row }">
                 <span class="allocation-count">{{ row.allocation_count || 0 }}</span>
               </template>
             </el-table-column>
-            <el-table-column prop="attendance_rate" label="出勤率" min-width="90" align="center">
+            <el-table-column
+              prop="attendance_rate"
+              label="出勤率"
+              min-width="90"
+              align="center"
+            >
               <template #default="{ row }">
                 <span :class="getAttendanceClass(row.attendance_rate || 0)">
                   {{ (row.attendance_rate || 0).toFixed(1) }}%
                 </span>
               </template>
             </el-table-column>
-            <el-table-column prop="salary" label="在途工资" min-width="120" align="right">
+            <el-table-column
+              prop="salary"
+              label="在途工资"
+              min-width="120"
+              align="right"
+            >
               <template #default="{ row }">
                 ¥{{ formatNumber(row.salary || 0) }}
               </template>
             </el-table-column>
-            <el-table-column label="趋势" min-width="72" align="center">
+            <el-table-column
+              label="趋势"
+              min-width="72"
+              align="center"
+            >
               <template #default="{ row }">
-                <el-tag :type="row.trend === 'up' ? 'success' : row.trend === 'down' ? 'danger' : 'info'" size="small">
+                <el-tag
+                  :type="row.trend === 'up' ? 'success' : row.trend === 'down' ? 'danger' : 'info'"
+                  size="small"
+                >
                   {{ row.trend === 'up' ? '↑' : row.trend === 'down' ? '↓' : '→' }}
                 </el-tag>
               </template>
@@ -266,62 +475,139 @@
       </el-col>
 
       <!-- 考勤详情 -->
-      <el-col v-if="canViewEmployeeField('attendance_records_table')" :xs="24" :sm="24" :md="8" :lg="8">
+      <el-col
+        v-if="canViewEmployeeField('attendance_records_table')"
+        :xs="24"
+        :sm="24"
+        :md="8"
+        :lg="8"
+      >
         <el-card class="table-card admin-panel admin-table-panel">
           <template #header>
             <div class="card-header">
               <h3>考勤记录</h3>
-              <el-badge :value="attendanceSummary.pendingCount" :hidden="attendanceSummary.pendingCount === 0" type="danger">
-                <el-button type="success" size="small" @click="exportAttendance">导出</el-button>
+              <el-badge
+                :value="attendanceSummary.pendingCount"
+                :hidden="attendanceSummary.pendingCount === 0"
+                type="danger"
+              >
+                <el-button
+                  type="success"
+                  size="small"
+                  @click="exportAttendance"
+                >
+                  导出
+                </el-button>
               </el-badge>
             </div>
           </template>
-          <div v-if="attendanceSummary.totalRecords > 0" class="attendance-summary-grid">
+          <div
+            v-if="attendanceSummary.totalRecords > 0"
+            class="attendance-summary-grid"
+          >
             <div class="attendance-summary-item">
-              <div class="summary-label">近30天记录</div>
-              <div class="summary-value">{{ attendanceSummary.totalRecords }}</div>
+              <div class="summary-label">
+                近30天记录
+              </div>
+              <div class="summary-value">
+                {{ attendanceSummary.totalRecords }}
+              </div>
             </div>
             <div class="attendance-summary-item warning">
-              <div class="summary-label">异常记录</div>
-              <div class="summary-value">{{ attendanceSummary.abnormalCount }}</div>
+              <div class="summary-label">
+                异常记录
+              </div>
+              <div class="summary-value">
+                {{ attendanceSummary.abnormalCount }}
+              </div>
             </div>
             <div class="attendance-summary-item primary">
-              <div class="summary-label">请假/休假</div>
-              <div class="summary-value">{{ attendanceSummary.leaveCount }}</div>
+              <div class="summary-label">
+                请假/休假
+              </div>
+              <div class="summary-value">
+                {{ attendanceSummary.leaveCount }}
+              </div>
             </div>
             <div class="attendance-summary-item success">
-              <div class="summary-label">加班记录</div>
-              <div class="summary-value">{{ attendanceSummary.overtimeCount }}</div>
+              <div class="summary-label">
+                加班记录
+              </div>
+              <div class="summary-value">
+                {{ attendanceSummary.overtimeCount }}
+              </div>
             </div>
           </div>
-          <el-table class="data-table" :data="attendanceRecords" stripe style="width: 100%" max-height="450" empty-text="暂无考勤记录" :table-layout="'auto'">
-            <el-table-column prop="date" label="日期" min-width="110" />
-            <el-table-column prop="employee_name" label="员工" width="80" />
-            <el-table-column prop="store_name" label="店铺" width="80">
+          <el-table
+            class="data-table"
+            :data="attendanceRecords"
+            stripe
+            style="width: 100%"
+            max-height="450"
+            empty-text="暂无考勤记录"
+            :table-layout="'auto'"
+          >
+            <el-table-column
+              prop="date"
+              label="日期"
+              min-width="110"
+            />
+            <el-table-column
+              prop="employee_name"
+              label="员工"
+              width="80"
+            />
+            <el-table-column
+              prop="store_name"
+              label="店铺"
+              width="80"
+            >
               <template #default="{ row }">
                 {{ row.store_name || '-' }}
               </template>
             </el-table-column>
-            <el-table-column prop="type" label="类型" width="96">
+            <el-table-column
+              prop="type"
+              label="类型"
+              width="96"
+            >
               <template #default="{ row }">
-                <el-tag :type="getAttendanceTagType(row.type)" size="small">
+                <el-tag
+                  :type="getAttendanceTagType(row.type)"
+                  size="small"
+                >
                   {{ row.type }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="detail" label="明细" min-width="90">
+            <el-table-column
+              prop="detail"
+              label="明细"
+              min-width="90"
+            >
               <template #default="{ row }">
                 {{ row.detail || '-' }}
               </template>
             </el-table-column>
-            <el-table-column prop="status" label="状态" width="76">
+            <el-table-column
+              prop="status"
+              label="状态"
+              width="76"
+            >
               <template #default="{ row }">
-                <el-tag :type="row.status === 'pending' ? 'warning' : row.status === 'approved' ? 'success' : 'info'" size="small">
+                <el-tag
+                  :type="row.status === 'pending' ? 'warning' : row.status === 'approved' ? 'success' : 'info'"
+                  size="small"
+                >
                   {{ row.status === 'pending' ? '待处理' : row.status === 'approved' ? '已通过' : '已处理' }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="approved_at" label="处理时间" min-width="140">
+            <el-table-column
+              prop="approved_at"
+              label="处理时间"
+              min-width="140"
+            >
               <template #default="{ row }">
                 {{ row.approved_at || '-' }}
               </template>
@@ -334,7 +620,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { ArrowUp, ArrowDown, Minus } from '@element-plus/icons-vue'
 import { useNotification } from '@/composables/useNotification'
 import { useLoadingState } from '@/composables'
@@ -345,7 +631,6 @@ import echarts, { ECharts } from '@/utils/echarts'
 import { buildCsvContent } from '@/utils/csv-export'
 import { useAnalyticsFieldVisibility } from './useAnalyticsFieldVisibility'
 import type { EmployeeAnalyticsProps, LoadingChangeEmits } from '@/types/component'
-import dayjs from 'dayjs'
 import { logger } from '@/utils/logger'
 
 const props = withDefaults(defineProps<EmployeeAnalyticsProps>(), {
@@ -360,7 +645,7 @@ const props = withDefaults(defineProps<EmployeeAnalyticsProps>(), {
 
 const emit = defineEmits<LoadingChangeEmits>()
 
-const { success, error, warning } = useNotification()
+const { success: _success, error, warning } = useNotification()
 const { canViewField: canViewEmployeeField, canViewAnyField: canViewAnyEmployeeField } = useAnalyticsFieldVisibility('employee')
 const { exportTextFile, buildDateFilename } = useImportExport()
 
@@ -373,12 +658,12 @@ const employeeData = ref({
   commissionTotal: 0,
   overtimePayTotal: 0,
   deductionTotal: 0,
-  avgAttendance: 95,
+  avgAttendance: 0,
   storeCount: 0,
-  totalTrend: 'up',
-  totalChange: 5.2,
-  salaryTrend: 'up',
-  salaryChange: 3.8
+  totalTrend: 'stable',
+  totalChange: 0,
+  salaryTrend: 'stable',
+  salaryChange: 0
 })
 
 const salesData = ref({
@@ -386,9 +671,9 @@ const salesData = ref({
   usedCount: 0,
   avgSales: 0,
   newTrend: 'up',
-  newChange: 12.5,
+  newChange: 0,
   usedTrend: 'up',
-  usedChange: 8.3
+  usedChange: 0
 })
 
 const { loading } = useLoadingState()
@@ -443,7 +728,7 @@ let attendanceChart: ECharts | null = null
 let chartsInitialized = false
 
 // 格式化金额
-const formatAmount = (amount: number) => {
+const _formatAmount = (amount: number) => {
   if (amount >= 10000) {
     return (amount / 10000).toFixed(1) + '万'
   }
@@ -468,9 +753,9 @@ const getChangeClass = (trend: string) => {
 
 const getTrendIcon = (trend: string) => {
   switch (trend) {
-    case 'up': return ArrowUp
-    case 'down': return ArrowDown
-    default: return Minus
+  case 'up': return ArrowUp
+  case 'down': return ArrowDown
+  default: return Minus
   }
 }
 
@@ -518,13 +803,13 @@ const loadEmployeeData = async (showLoadingState = true) => {
 
     // 使用父组件传递的检索参数
     if (props.startDate) {
-      params.startDate = props.startDate
+      params.start_date = props.startDate
     }
     if (props.endDate) {
-      params.endDate = props.endDate
+      params.end_date = props.endDate
     }
     if (props.storeId) {
-      params.storeId = props.storeId
+      params.store_id = props.storeId
     }
 
     const cacheKeyEmployee = CACHE_KEYS.employeeAnalytics(params)
@@ -612,7 +897,7 @@ const loadEmployeePerformance = async () => {
     const response = await useCachedRequest(cacheKey, () =>
       analyticsService.getEmployeePerformance({
         metric: performanceMetric.value,
-        limit: 20
+        page_size: 20
       }), DEFAULT_CACHE_TTL.DYNAMIC)
 
     if (response.success) {
@@ -663,12 +948,7 @@ const updateRoleChart = async () => {
     // 从API获取真实数据（使用缓存）
     const response = await useCachedRequest(CACHE_KEYS.employeeRoles, () =>
       analyticsService.getEmployeeRoles(), DEFAULT_CACHE_TTL.STATIC)
-    const data = response.success ? response.data : [
-      { value: 5, name: '管理员' },
-      { value: 8, name: '销售主管' },
-      { value: 10, name: '销售员' },
-      { value: 2, name: '店长' }
-    ]
+    const data = response.success && Array.isArray(response.data) ? response.data : []
 
     const option: any = {
       tooltip: {
@@ -716,14 +996,24 @@ const updateRoleChart = async () => {
   }
 }
 
-const updateSalesCompareChart = () => {
+const updateSalesCompareChart = async () => {
   if (!salesCompareChart) return
 
   const months = salesComparePeriod.value === 'month' ? ['第1周', '第2周', '第3周', '第4周'] :
-                  salesComparePeriod.value === 'quarter' ? ['1月', '2月', '3月'] : ['Q1', 'Q2', 'Q3', 'Q4']
+    salesComparePeriod.value === 'quarter' ? ['1月', '2月', '3月'] : ['Q1', 'Q2', 'Q3', 'Q4']
 
-  const newData = months.map(() => Math.floor(Math.random() * 50 + 30))
-  const usedData = months.map(() => Math.floor(Math.random() * 30 + 15))
+  let newData = months.map(() => 0)
+  let usedData = months.map(() => 0)
+  try {
+    const response = await analyticsService.getSalesTrends({
+      period: salesComparePeriod.value === 'month' ? 'weekly' : 'monthly'
+    })
+    const rows = response.success && Array.isArray(response.data) ? response.data : []
+    newData = months.map((_, index) => Number(rows[index]?.new || rows[index]?.new_count || 0))
+    usedData = months.map((_, index) => Number(rows[index]?.used || rows[index]?.used_count || 0))
+  } catch (error) {
+    logger.error('加载新旧机销量对比失败:', error)
+  }
 
   const option = {
     tooltip: {
@@ -788,15 +1078,7 @@ const updateSalaryTrendChart = async () => {
       months = response.data.months || []
       salaries = response.data.salaries || []
     } else {
-      // 生成默认数据
-      const now = dayjs()
-      const count = salaryTrendPeriod.value === '6' ? 6 : 12
-
-      for (let i = count - 1; i >= 0; i--) {
-        const date = now.subtract(i, 'month')
-        months.push(`${date.month() + 1}月`)
-        salaries.push(Math.floor(150000 + Math.random() * 50000))
-      }
+      logger.warn('工资趋势接口未返回数据，保持空图表')
     }
 
     const option = {
@@ -844,12 +1126,7 @@ const updateAttendanceChart = async () => {
     // 从API获取真实数据（使用缓存）
     const response = await useCachedRequest(CACHE_KEYS.employeeAttendance, () =>
       analyticsService.getEmployeeAttendance(), DEFAULT_CACHE_TTL.STATIC)
-    const data = response.success ? response.data : [
-      { value: 85, name: '正常', color: '#52c41a' },
-      { value: 8, name: '迟到', color: '#faad14' },
-      { value: 4, name: '早退', color: '#fa8c16' },
-      { value: 3, name: '缺勤', color: '#ff4d4f' }
-    ]
+    const data = response.success && Array.isArray(response.data) ? response.data : []
 
     const option = {
       tooltip: {
@@ -1071,23 +1348,23 @@ onBeforeUnmount(() => {
       color: white;
 
       &.total {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
       }
 
       &.active {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        background: linear-gradient(135deg, var(--tf-color-pink-gradient) 0%, var(--tf-color-coral-gradient) 100%);
       }
 
       &.salary {
-        background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);
+        background: linear-gradient(135deg, var(--tf-color-teal-700) 0%, var(--tf-color-teal-tailwind-500) 100%);
       }
 
       &.new-sales {
-        background: linear-gradient(135deg, #2563eb 0%, #60a5fa 100%);
+        background: linear-gradient(135deg, var(--tf-color-blue-600) 0%, var(--tf-color-blue-400) 100%);
       }
 
       &.used-sales {
-        background: linear-gradient(135deg, #db2777 0%, #f472b6 100%);
+        background: linear-gradient(135deg, var(--tf-color-pink-600) 0%, var(--tf-color-pink-tailwind-400) 100%);
       }
     }
 
@@ -1185,14 +1462,14 @@ onBeforeUnmount(() => {
         margin: 0;
         font-size: 16px;
         font-weight: 700;
-        color: #0f172a;
+        color: var(--tf-color-slate-900);
       }
 
       .card-header-subtitle {
         display: block;
         margin-top: 4px;
         font-size: 12px;
-        color: #64748b;
+        color: var(--tf-color-slate-500);
       }
 
       .card-header-actions {
@@ -1208,14 +1485,14 @@ onBeforeUnmount(() => {
         padding: 0 10px;
         border-radius: 999px;
         background: rgba(15, 118, 110, 0.08);
-        color: #0f766e;
+        color: var(--tf-color-teal-700);
         font-size: 12px;
         font-weight: 600;
         white-space: nowrap;
 
         &.highlight {
           background: rgba(37, 99, 235, 0.08);
-          color: #2563eb;
+          color: var(--tf-color-blue-600);
         }
       }
     }
@@ -1278,14 +1555,14 @@ onBeforeUnmount(() => {
       display: block;
       margin-bottom: 6px;
       font-size: 12px;
-      color: #64748b;
+      color: var(--tf-color-slate-500);
     }
 
     .summary-value {
       display: block;
       font-size: 18px;
       font-weight: 700;
-      color: #0f172a;
+      color: var(--tf-color-slate-900);
       line-height: 1.2;
     }
   }
@@ -1323,22 +1600,22 @@ onBeforeUnmount(() => {
   }
 
   .new-sales {
-    color: #1890ff;
+    color: var(--tf-color-blue-ant);
     font-weight: 600;
   }
 
   .used-sales {
-    color: #ec4899;
+    color: var(--tf-color-pink-500);
     font-weight: 600;
   }
 
   .wholesale-count {
-    color: #2563eb;
+    color: var(--tf-color-blue-600);
     font-weight: 700;
   }
 
   .allocation-count {
-    color: #0f766e;
+    color: var(--tf-color-teal-700);
     font-weight: 700;
   }
 

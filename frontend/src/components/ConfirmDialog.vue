@@ -1,17 +1,31 @@
 <template>
   <transition name="confirm-dialog">
-    <div v-if="visible" class="confirm-dialog-overlay" @click.self="handleCancel">
-      <div class="confirm-dialog" :class="[`confirm-${type}`]">
+    <div
+      v-if="visible"
+      class="confirm-dialog-overlay"
+      @click.self="handleCancel"
+    >
+      <div
+        class="confirm-dialog"
+        :class="[`confirm-${type}`]"
+      >
         <div class="confirm-header">
           <div class="confirm-icon">
-            <i :class="getIconClass()"></i>
+            <i :class="getIconClass()" />
           </div>
-          <h3 class="confirm-title">{{ title }}</h3>
+          <h3 class="confirm-title">
+            {{ title }}
+          </h3>
         </div>
 
         <div class="confirm-body">
-          <p class="confirm-message">{{ message }}</p>
-          <div v-if="details" class="confirm-details">
+          <p class="confirm-message">
+            {{ message }}
+          </p>
+          <div
+            v-if="details"
+            class="confirm-details"
+          >
             {{ details }}
           </div>
         </div>
@@ -19,21 +33,26 @@
         <div class="confirm-footer tf-dialog-actions">
           <button
             class="btn btn-outline-secondary"
-            @click="handleCancel"
             :disabled="loading"
+            @click="handleCancel"
           >
-            <i class="fas fa-times"></i>
+            <i class="fas fa-times" />
             {{ cancelText }}
           </button>
           <button
             class="btn"
             :class="getConfirmButtonClass()"
-            @click="handleConfirm"
             :disabled="loading"
+            @click="handleConfirm"
           >
-            <InlineLoading v-if="loading" text="处理中..." size="small" variant="inherit" />
+            <InlineLoading
+              v-if="loading"
+              text="处理中..."
+              size="small"
+              variant="inherit"
+            />
             <template v-else>
-              <i :class="getConfirmIcon()"></i>
+              <i :class="getConfirmIcon()" />
               {{ confirmText }}
             </template>
           </button>
@@ -44,7 +63,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { computed, watch } from 'vue'
 import { useTheme } from '../composables/useTheme'
 import InlineLoading from '@/components/InlineLoading.vue'
 
@@ -92,7 +111,7 @@ const emit = defineEmits(['confirm', 'cancel'])
 const { isDark } = useTheme()
 
 // 计算属性
-const dialogClasses = computed(() => ({
+const _dialogClasses = computed(() => ({
   'confirm-dialog-overlay': true,
   'theme-dark': isDark.value
 }))
@@ -143,14 +162,14 @@ const handleKeydown = (event) => {
   if (!props.visible) return
 
   switch (event.key) {
-    case 'Enter':
-      event.preventDefault()
-      handleConfirm()
-      break
-    case 'Escape':
-      event.preventDefault()
-      handleCancel()
-      break
+  case 'Enter':
+    event.preventDefault()
+    handleConfirm()
+    break
+  case 'Escape':
+    event.preventDefault()
+    handleCancel()
+    break
   }
 }
 
@@ -196,8 +215,8 @@ watch(() => props.visible, (visible) => {
 
 /* 暗夜模式适配 */
 .theme-dark .confirm-dialog {
-  background: #1f1f1f;
-  color: #ffffff;
+  background: var(--tf-color-gray-ant-950);
+  color: var(--color-bg-white);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
 }
 
@@ -206,11 +225,11 @@ watch(() => props.visible, (visible) => {
   align-items: center;
   gap: 12px;
   padding: 24px 24px 16px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--tf-color-gray-200);
 }
 
 .theme-dark .confirm-header {
-  border-bottom-color: #434343;
+  border-bottom-color: var(--tf-color-gray-ant-700);
 }
 
 .confirm-icon {
@@ -225,35 +244,35 @@ watch(() => props.visible, (visible) => {
 }
 
 .confirm-success .confirm-icon {
-  background: #f6ffed;
-  color: #52c41a;
+  background: var(--tf-color-green-ant-50);
+  color: var(--tf-color-green-ant);
 }
 
 .confirm-warning .confirm-icon {
-  background: #fff7e6;
-  color: #faad14;
+  background: var(--tf-color-orange-ant-surface);
+  color: var(--tf-color-amber-ant);
 }
 
 .confirm-error .confirm-icon {
-  background: #fff2f0;
-  color: #ff4d4f;
+  background: var(--tf-color-red-ant-surface);
+  color: var(--tf-color-red-ant);
 }
 
 .confirm-info .confirm-icon {
-  background: #e6f7ff;
-  color: #1890ff;
+  background: var(--tf-color-cyan-ant-50);
+  color: var(--tf-color-blue-ant);
 }
 
 .confirm-title {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: #333333;
+  color: var(--text-primary);
   flex: 1;
 }
 
 .theme-dark .confirm-title {
-  color: #ffffff;
+  color: var(--color-bg-white);
 }
 
 .confirm-body {
@@ -264,36 +283,36 @@ watch(() => props.visible, (visible) => {
   margin: 0 0 12px 0;
   font-size: 14px;
   line-height: 1.5;
-  color: #666666;
+  color: var(--text-secondary);
 }
 
 .theme-dark .confirm-message {
-  color: #b3b3b3;
+  color: var(--tf-color-gray-element-placeholder);
 }
 
 .confirm-details {
-  background: #f8f9fa;
+  background: var(--tf-color-surface-muted);
   padding: 12px;
   border-radius: 6px;
   font-size: 13px;
-  color: #555555;
-  border-left: 3px solid #1890ff;
+  color: var(--tf-color-gray-500-solid);
+  border-left: 3px solid var(--tf-color-blue-ant);
   margin-top: 12px;
 }
 
 .theme-dark .confirm-details {
-  background: #262626;
-  color: #d9d9d9;
-  border-left-color: #177ddc;
+  background: var(--tf-color-neutral-ant);
+  color: var(--tf-color-gray-ant-400);
+  border-left-color: var(--tf-color-blue-ant-dark);
 }
 
 .confirm-footer {
   padding: 16px 24px 24px;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid var(--tf-color-gray-200);
 }
 
 .theme-dark .confirm-footer {
-  border-top-color: #434343;
+  border-top-color: var(--tf-color-gray-ant-700);
 }
 
 /* 动画 */

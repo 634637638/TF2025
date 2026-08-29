@@ -7,36 +7,71 @@
     <UnifiedSearchPanel :expanded="true">
       <template #primary>
         <div class="search-box">
-          <i class="fas fa-phone search-icon"></i>
+          <i class="fas fa-phone search-icon" />
           <input
-            v-model="phone"
+            v-model="customer_phone"
             type="tel"
             maxlength="11"
             placeholder="请输入手机号查询订单"
             @input="onPhoneInput"
-          />
-          <el-button v-if="phone" class="clear-btn" @click="clearPhone">
-            <i class="fas fa-times"></i>
+          >
+          <input
+            v-model.trim="customer_name"
+            type="text"
+            maxlength="50"
+            placeholder="请输入下单姓名"
+          >
+          <el-button
+            v-if="customer_phone"
+            class="clear-btn"
+            @click="clearPhone"
+          >
+            <i class="fas fa-times" />
           </el-button>
         </div>
       </template>
       <template #actions>
-        <el-button type="primary" class="search-btn" :disabled="!isValidPhone" :loading="searching" @click="searchOrders">
+        <el-button
+          type="primary"
+          class="search-btn"
+          :disabled="!isValidIdentity"
+          :loading="searching"
+          @click="searchOrders"
+        >
           查询订单
         </el-button>
       </template>
     </UnifiedSearchPanel>
 
     <!-- 订单列表 -->
-    <div v-if="loading && orders.length === 0" class="loading-state">
-      <SectionLoading text="加载订单中..." size="large" />
+    <div
+      v-if="loading && orders.length === 0"
+      class="loading-state"
+    >
+      <SectionLoading
+        text="加载订单中..."
+        size="large"
+      />
     </div>
 
-    <div v-else-if="orders.length > 0" class="orders-list">
-      <div v-for="order in orders" :key="order.id" class="order-card" @click="goToDetail(order.order_number)">
+    <div
+      v-else-if="orders.length > 0"
+      class="orders-list"
+    >
+      <div
+        v-for="order in orders"
+        :key="order.id"
+        class="order-card"
+        @click="goToDetail(order)"
+      >
         <div class="order-header">
-          <div class="order-number">订单号：{{ order.order_number }}</div>
-          <div class="order-status" :class="`status-${order.status}`">
+          <div class="order-number">
+            订单号：{{ order.order_number }}
+          </div>
+          <div
+            class="order-status"
+            :class="`status-${order.status}`"
+          >
             {{ getStatusText(order.status) }}
           </div>
         </div>
@@ -54,10 +89,22 @@
           </div>
 
           <div class="order-items-preview">
-            <div v-for="(item, index) in getFirstItems(order.items)" :key="index" class="item-preview">
-              <Image v-if="item.image_url" :src="item.image_url" :alt="item.product_name" mode="lazy" />
+            <div
+              v-for="(item, index) in getFirstItems(order.items)"
+              :key="index"
+              class="item-preview"
+            >
+              <Image
+                v-if="item.image_url"
+                :src="item.image_url"
+                :alt="item.product_name"
+                mode="lazy"
+              />
               <span>{{ item.product_name || '商品' }}</span>
-              <span v-if="order.items.length > 1" class="more-count">等{{ order.items.length }}件</span>
+              <span
+                v-if="order.items.length > 1"
+                class="more-count"
+              >等{{ order.items.length }}件</span>
             </div>
           </div>
 
@@ -66,30 +113,50 @@
               <span class="label">订单金额：</span>
               <span class="amount">¥{{ parseFloat(order.total_amount).toFixed(2) }}</span>
             </div>
-            <i class="fas fa-chevron-right arrow-icon"></i>
+            <i class="fas fa-chevron-right arrow-icon" />
           </div>
         </div>
       </div>
 
       <!-- 分页 -->
-      <div v-if="hasMore" class="load-more" @click="loadMore">
-        <el-button :loading="loadingMore">加载更多</el-button>
+      <div
+        v-if="hasMore"
+        class="load-more"
+        @click="loadMore"
+      >
+        <el-button :loading="loadingMore">
+          加载更多
+        </el-button>
       </div>
     </div>
 
     <!-- 空状态 -->
-    <div v-else-if="searched" class="empty-state">
-      <el-empty description="暂无订单记录">
-        <el-button type="primary" @click="goHome">去逛逛</el-button>
-      </el-empty>
-    </div>
+    <DataEmptyState
+      v-else-if="searched"
+      size="page"
+      description="暂无订单记录"
+    >
+      <el-button
+        type="primary"
+        @click="goHome"
+      >
+        去逛逛
+      </el-button>
+    </DataEmptyState>
 
     <!-- 默认提示 -->
-    <div v-else class="default-state">
+    <div
+      v-else
+      class="default-state"
+    >
       <div class="tips-content">
-        <i class="fas fa-clipboard-list tips-icon"></i>
-        <p class="tips-title">查询我的订单</p>
-        <p class="tips-desc">请输入下单时填写的手机号查询订单记录</p>
+        <i class="fas fa-clipboard-list tips-icon" />
+        <p class="tips-title">
+          查询我的订单
+        </p>
+        <p class="tips-desc">
+          请输入下单时填写的手机号查询订单记录
+        </p>
       </div>
     </div>
   </div>
@@ -105,22 +172,26 @@ import Image from '@/components/Image.vue'
 import SectionLoading from '@/components/SectionLoading.vue'
 import { useLoadingState } from '@/composables'
 import { logger } from '@/utils/logger'
+import { storage } from '@/services/storage'
+import { H5_STORAGE_KEYS } from '@/constants/storage'
 const router = useRouter()
 
-const phone = ref('')
+const customer_phone = ref('')
+const customer_name = ref('')
 const orders = ref<any[]>([])
 const { loading } = useLoadingState()
 const searching = ref(false)
 const { loading: loadingMore } = useLoadingState()
 const searched = ref(false)
-const currentPage = ref(1)
-const pageSize = 10
+const current_page = ref(1)
+const page_size = 10
 const total = ref(0)
 
 // 验证手机号
 const isValidPhone = computed(() => {
-  return /^1[3-9]\d{9}$/.test(phone.value)
+  return /^1[3-9]\d{9}$/.test(customer_phone.value)
 })
+const isValidIdentity = computed(() => isValidPhone.value && customer_name.value.length >= 2)
 
 // 是否有更多
 const hasMore = computed(() => {
@@ -130,31 +201,32 @@ const hasMore = computed(() => {
 // 手机号输入
 const onPhoneInput = (e: any) => {
   // 只允许输入数字
-  phone.value = e.target.value.replace(/\D/g, '')
+  customer_phone.value = e.target.value.replace(/\D/g, '')
 }
 
 // 清空手机号
 const clearPhone = () => {
-  phone.value = ''
+  customer_phone.value = ''
 }
 
 // 查询订单
 const searchOrders = async () => {
-  if (!isValidPhone.value) {
-    ElMessage.warning('请输入正确的手机号')
+  if (!isValidIdentity.value) {
+    ElMessage.warning('请输入正确的手机号和下单姓名')
     return
   }
 
   searching.value = true
   loading.value = true
-  currentPage.value = 1
+  current_page.value = 1
   orders.value = []
   searched.value = true
 
   try {
-    const result: any = await getOrdersByPhone(phone.value, {
-      page: currentPage.value,
-      limit: pageSize
+    const result: any = await getOrdersByPhone(customer_phone.value, {
+      page: current_page.value,
+      page_size,
+      customer_name: customer_name.value
     })
 
     orders.value = result.data || []
@@ -177,12 +249,13 @@ const loadMore = async () => {
   if (loadingMore.value || !hasMore.value) return
 
   loadingMore.value = true
-  currentPage.value++
+  current_page.value++
 
   try {
-    const result: any = await getOrdersByPhone(phone.value, {
-      page: currentPage.value,
-      limit: pageSize
+    const result: any = await getOrdersByPhone(customer_phone.value, {
+      page: current_page.value,
+      page_size,
+      customer_name: customer_name.value
     })
 
     orders.value.push(...(result.data || []))
@@ -190,7 +263,7 @@ const loadMore = async () => {
   } catch (error: any) {
     logger.error('加载更多失败:', error)
     ElMessage.error('加载失败')
-    currentPage.value-- // 恢复页码
+    current_page.value-- // 恢复页码
   } finally {
     loadingMore.value = false
   }
@@ -237,11 +310,17 @@ const getFirstItems = (items: any[]) => {
 }
 
 // 跳转到订单详情
-const goToDetail = (orderNumber: string) => {
+const goToDetail = (order: any) => {
+  storage.set(H5_STORAGE_KEYS.ORDER_SUCCESS, {
+    orderNumber: order.order_number,
+    totalAmount: order.total_amount,
+    accessToken: order.access_token,
+    timestamp: Date.now()
+  }, 'session')
   router.push({
     name: 'MobileOrderDetail',
     params: {
-      orderNumber
+      orderNumber: order.order_number
     }
   })
 }
@@ -255,7 +334,7 @@ const goHome = () => {
 <style scoped lang="scss">
 .my-orders-page {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: var(--tf-color-surface-soft);
   padding-bottom: 20px;
 }
 
@@ -267,7 +346,7 @@ const goHome = () => {
 // 订单列表
 .orders-list {
   .order-card {
-    background: #fff;
+    background: var(--color-bg-white);
     margin: 0 12px 12px;
     border-radius: 12px;
     overflow: hidden;
@@ -283,12 +362,12 @@ const goHome = () => {
       justify-content: space-between;
       align-items: center;
       padding: 12px 16px;
-      background: #f8f9fa;
-      border-bottom: 1px solid #f0f0f0;
+      background: var(--tf-color-surface-muted);
+      border-bottom: 1px solid var(--tf-color-gray-200);
 
       .order-number {
         font-size: 13px;
-        color: #666;
+        color: var(--text-secondary);
       }
 
       .order-status {
@@ -298,28 +377,33 @@ const goHome = () => {
         border-radius: 4px;
 
         &.status-pending {
-          color: #ff9800;
-          background: #fff3e0;
+          color: var(--tf-status-warning-color);
+          background: var(--tf-status-warning-bg);
+          border: 1px solid var(--tf-status-warning-border);
         }
 
         &.status-paid {
-          color: #2196f3;
-          background: #e3f2fd;
+          color: var(--tf-status-success-color);
+          background: var(--tf-status-success-bg);
+          border: 1px solid var(--tf-status-success-border);
         }
 
         &.status-shipped {
-          color: #4caf50;
-          background: #e8f5e9;
+          color: var(--tf-status-info-color);
+          background: var(--tf-status-info-bg);
+          border: 1px solid var(--tf-status-info-border);
         }
 
         &.status-completed {
-          color: #9e9e9e;
-          background: #f5f5f5;
+          color: var(--tf-status-success-color);
+          background: var(--tf-status-success-bg);
+          border: 1px solid var(--tf-status-success-border);
         }
 
         &.status-cancelled {
-          color: #f44336;
-          background: #ffebee;
+          color: var(--tf-status-danger-color);
+          background: var(--tf-status-danger-bg);
+          border: 1px solid var(--tf-status-danger-border);
         }
       }
     }
@@ -337,12 +421,12 @@ const goHome = () => {
 
           .label {
             font-size: 13px;
-            color: #999;
+            color: var(--text-muted);
           }
 
           .value {
             font-size: 13px;
-            color: #333;
+            color: var(--text-primary);
           }
         }
       }
@@ -356,11 +440,11 @@ const goHome = () => {
           display: flex;
           align-items: center;
           gap: 6px;
-          background: #f5f5f5;
+          background: var(--tf-color-surface-soft);
           padding: 6px 10px;
           border-radius: 6px;
           font-size: 12px;
-          color: #666;
+          color: var(--text-secondary);
 
           img {
             width: 24px;
@@ -370,7 +454,7 @@ const goHome = () => {
           }
 
           .more-count {
-            color: #999;
+            color: var(--text-muted);
             font-size: 11px;
           }
         }
@@ -381,23 +465,23 @@ const goHome = () => {
         justify-content: space-between;
         align-items: center;
         padding-top: 12px;
-        border-top: 1px solid #f0f0f0;
+        border-top: 1px solid var(--tf-color-gray-200);
 
         .order-total {
           .label {
             font-size: 14px;
-            color: #666;
+            color: var(--text-secondary);
           }
 
           .amount {
             font-size: 18px;
             font-weight: 500;
-            color: #ff1744;
+            color: var(--tf-color-accent-pink);
           }
         }
 
         .arrow-icon {
-          color: #ddd;
+          color: var(--tf-color-gray-300-alt);
           font-size: 14px;
         }
       }
@@ -436,19 +520,19 @@ const goHome = () => {
 
     .tips-icon {
       font-size: 64px;
-      color: #ddd;
+      color: var(--tf-color-gray-300-alt);
       margin-bottom: 16px;
     }
 
     .tips-title {
       font-size: 18px;
-      color: #333;
+      color: var(--text-primary);
       margin: 0 0 8px;
     }
 
     .tips-desc {
       font-size: 14px;
-      color: #999;
+      color: var(--text-muted);
       margin: 0;
     }
   }

@@ -2,9 +2,8 @@
  * 屏幕锁定 Composable
  */
 import { ref, watch } from 'vue'
-import { TimeUtil } from '@/utils/time'
 import { storage } from '@/services/storage'
-import { AUTH_STORAGE_KEYS, SECURITY_STORAGE_KEYS } from '@/constants/storage'
+import { AUTH_STORAGE_KEYS } from '@/constants/storage'
 import { logger } from '@/utils/logger'
 
 const getValidSessionToken = () => {
@@ -39,30 +38,30 @@ export const useScreenLock = () => {
     }
 
     sharedLockSettingsPromise = (async () => {
-    try {
-      const token = getValidSessionToken()
-      const response = await fetch('/api/screen-lock', {
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        }
-      })
-      if (response.ok) {
-        const data = await response.json()
-        if (data.success) {
+      try {
+        const token = getValidSessionToken()
+        const response = await fetch('/api/screen-lock', {
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          }
+        })
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success) {
           // 只加载背景设置，不加载密码
-          lockSettings.value = {
-            backgroundType: data.data.backgroundType || 'default',
-            imageUrl: data.data.imageUrl || '',
-            videoUrl: data.data.videoUrl || '',
-            title: data.data.title || '屏幕已锁定',
-            message: data.data.message || '请输入密码解锁'
+            lockSettings.value = {
+              backgroundType: data.data.backgroundType || 'default',
+              imageUrl: data.data.imageUrl || '',
+              videoUrl: data.data.videoUrl || '',
+              title: data.data.title || '屏幕已锁定',
+              message: data.data.message || '请输入密码解锁'
+            }
           }
         }
+      } catch (error) {
+        logger.error('加载屏幕锁定设置失败:', error)
       }
-    } catch (error) {
-      logger.error('加载屏幕锁定设置失败:', error)
-    }
     })().finally(() => {
       sharedLockSettingsPromise = null
     })

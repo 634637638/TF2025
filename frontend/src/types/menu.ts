@@ -177,7 +177,7 @@ export interface MenuValidationRule {
   max?: number
   pattern?: RegExp
   message?: string
-  validator?: (value: any) => boolean | string
+  validator?: (value: unknown) => boolean | string
 }
 
 // 菜单导入导出格式
@@ -206,8 +206,8 @@ export interface MenuContext {
   route: {
     path: string
     name?: string
-    params?: Record<string, any>
-    query?: Record<string, any>
+    params?: Record<string, unknown>
+    query?: Record<string, unknown>
   }
   config: MenuConfig
 }

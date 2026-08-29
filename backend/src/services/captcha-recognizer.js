@@ -3,22 +3,22 @@
  * 使用Tesseract.js识别数字验证码
  */
 
-const axios = require('axios');
-const fs = require('fs');
-const path = require('path');
-const log = require('../utils/log');
-const { ensureLogDir } = require('../utils/log-paths');
+const axios = require('axios')
+const fs = require('fs')
+const path = require('path')
+const log = require('../utils/log')
+const { ensureLogDir } = require('../utils/log-paths')
 const {
   preprocessImageForOcr,
   recognizeTextWithTesseract,
   validateImageResponse
-} = require('../utils/ocr-image');
-const { DEFAULT_BROWSER_USER_AGENT, EXTERNAL_PRICE } = require('../config/constants');
+} = require('../utils/ocr-image')
+const { DEFAULT_BROWSER_USER_AGENT, EXTERNAL_PRICE } = require('../config/constants')
 
 class CaptchaRecognizer {
   constructor() {
     // 验证码图片缓存目录
-    this.cacheDir = ensureLogDir('captcha-cache');
+    this.cacheDir = ensureLogDir('captcha-cache')
   }
 
   /**
@@ -31,21 +31,21 @@ class CaptchaRecognizer {
     const headers = {
       'User-Agent': DEFAULT_BROWSER_USER_AGENT,
       'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
-      'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-    };
+      'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'
+    }
 
     if (referer) {
-      headers['Referer'] = referer;
+      headers['Referer'] = referer
     }
 
     const response = await axios.get(captchaUrl, {
       headers,
       responseType: 'arraybuffer',
       validateStatus: (status) => status < 500
-    });
+    })
 
-    const { buffer, format } = validateImageResponse(response, log);
-    return { buffer, format };
+    const { buffer, format } = validateImageResponse(response, log)
+    return { buffer, format }
   }
 
   /**
@@ -56,62 +56,62 @@ class CaptchaRecognizer {
    */
   async recognize(captchaUrl, referer = '') {
     try {
-      log.debug('🔍 开始识别验证码...');
+      log.debug('🔍 开始识别验证码...')
 
       // 1. 获取验证码图片
-      const { buffer: imageBuffer, format } = await this.fetchCaptchaImage(captchaUrl, referer);
+      const { buffer: imageBuffer, format } = await this.fetchCaptchaImage(captchaUrl, referer)
 
       // 2. 保存图片到缓存（用于调试）
-      const timestamp = Date.now();
-      const cachePath = path.join(this.cacheDir, `captcha-${timestamp}.${format || 'bin'}`);
-      fs.writeFileSync(cachePath, imageBuffer);
-      log.debug(`📸 验证码已保存: ${cachePath}`);
+      const timestamp = Date.now()
+      const cachePath = path.join(this.cacheDir, `captcha-${timestamp}.${format || 'bin'}`)
+      fs.writeFileSync(cachePath, imageBuffer)
+      log.debug(`📸 验证码已保存: ${cachePath}`)
 
-      const { buffer: processedBuffer, metadata } = await preprocessImageForOcr(imageBuffer);
-      const processedCachePath = path.join(this.cacheDir, `captcha-${timestamp}-processed.png`);
-      fs.writeFileSync(processedCachePath, processedBuffer);
-      log.debug(`🧹 验证码预处理完成: ${metadata.width}x${metadata.height} -> ${processedCachePath}`);
+      const { buffer: processedBuffer, metadata } = await preprocessImageForOcr(imageBuffer)
+      const processedCachePath = path.join(this.cacheDir, `captcha-${timestamp}-processed.png`)
+      fs.writeFileSync(processedCachePath, processedBuffer)
+      log.debug(`🧹 验证码预处理完成: ${metadata.width}x${metadata.height} -> ${processedCachePath}`)
 
       // 3. 使用Tesseract识别
       // 由于是数字验证码，设置识别白名单为数字
       const result = await recognizeTextWithTesseract(processedBuffer, {
         logger: (m) => {
           if (m.status === 'recognizing text') {
-            log.debug(`   识别进度: ${Math.round(m.progress * 100)}%`);
+            log.debug(`   识别进度: ${Math.round(m.progress * 100)}%`)
           }
         },
         params: {
           tessedit_char_whitelist: '0123456789'
         }
-      });
+      })
 
-      const rawText = result.data.text;
-      log.debug(`📝 原始识别结果: "${rawText}"`);
+      const rawText = result.data.text
+      log.debug(`📝 原始识别结果: "${rawText}"`)
 
       // 4. 清理识别结果：提取数字，去除空格和换行
-      let code = rawText.replace(/[^0-9]/g, '');
+      let code = rawText.replace(/[^0-9]/g, '')
 
       // 5. 验证码长度验证（通常4位）
       if (code.length === 0) {
-        log.warn('⚠️ 未能识别出数字，返回空字符串');
-        return '';
+        log.warn('⚠️ 未能识别出数字，返回空字符串')
+        return ''
       } else if (code.length < 4) {
-        log.warn(`⚠️ 识别结果过短 (${code.length}位)，可能不准确`);
+        log.warn(`⚠️ 识别结果过短 (${code.length}位)，可能不准确`)
       } else if (code.length > 4) {
         // 如果识别出多位，取前4位
-        code = code.substring(0, 4);
-        log.warn(`⚠️ 识别结果过长，截取前4位: ${code}`);
+        code = code.substring(0, 4)
+        log.warn(`⚠️ 识别结果过长，截取前4位: ${code}`)
       }
 
-      log.debug(`✅ 识别结果: ${code}`);
-      return code;
+      log.debug(`✅ 识别结果: ${code}`)
+      return code
 
     } catch (error) {
-      log.error('❌ 验证码识别失败:', error.message);
+      log.error('❌ 验证码识别失败:', error.message)
       if (error.stack) {
-        log.error(error.stack.split('\n').slice(0, 5).join('\n'));
+        log.error(error.stack.split('\n').slice(0, 5).join('\n'))
       }
-      return '';
+      return ''
     }
   }
 
@@ -121,39 +121,39 @@ class CaptchaRecognizer {
    * @param {string} captchaUrl - 验证码URL模板
    */
   async batchRecognize(count = 5, captchaUrl = EXTERNAL_PRICE.CAPTCHA_URL) {
-    log.debug(`\n🔄 开始批量识别测试 (${count}次)`);
+    log.debug(`\n🔄 开始批量识别测试 (${count}次)`)
 
-    const results = [];
+    const results = []
     for (let i = 0; i < count; i++) {
-      log.debug(`\n--- 第 ${i + 1}/${count} 次识别 ---`);
-      const url = `${captchaUrl}${Date.now()}`;
-      const code = await this.recognize(url, EXTERNAL_PRICE.REFERER_URL);
+      log.debug(`\n--- 第 ${i + 1}/${count} 次识别 ---`)
+      const url = `${captchaUrl}${Date.now()}`
+      const code = await this.recognize(url, EXTERNAL_PRICE.REFERER_URL)
       results.push({
         index: i + 1,
         code: code,
         success: code.length === 4,
         timestamp: new Date().toISOString()
-      });
+      })
 
       // 等待1秒再进行下一次
       if (i < count - 1) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 1000))
       }
     }
 
     // 输出统计
-    log.debug('\n' + '='.repeat(60));
-    log.debug('识别结果统计:');
-    log.debug('='.repeat(60));
+    log.debug('\n' + '='.repeat(60))
+    log.debug('识别结果统计:')
+    log.debug('='.repeat(60))
     results.forEach(r => {
-      log.debug(`${r.index}. ${r.code || '(失败)'} ${r.success ? '✅' : '❌'}`);
-    });
+      log.debug(`${r.index}. ${r.code || '(失败)'} ${r.success ? '✅' : '❌'}`)
+    })
 
-    const successCount = results.filter(r => r.success).length;
-    log.debug(`\n成功率: ${successCount}/${count} (${Math.round(successCount/count*100)}%)`);
+    const successCount = results.filter(r => r.success).length
+    log.debug(`\n成功率: ${successCount}/${count} (${Math.round(successCount/count*100)}%)`)
 
-    return results;
+    return results
   }
 }
 
-module.exports = CaptchaRecognizer;
+module.exports = CaptchaRecognizer

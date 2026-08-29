@@ -3,14 +3,13 @@
  * 提供全局事件通信功能
  */
 
-import { ref, onUnmounted } from 'vue'
-import type { Ref } from 'vue'
+import { onUnmounted } from 'vue'
 import { logger } from '@/utils/logger'
 
 /**
  * 事件监听器
  */
-export interface EventListener<T = any> {
+export interface EventListener<T = unknown> {
   callback: (data: T) => void
   once?: boolean
 }
@@ -19,7 +18,7 @@ export interface EventListener<T = any> {
  * 事件总线实现
  */
 class EventBus {
-  private events = new Map<string, EventListener[]>()
+  private events = new Map<string, EventListener<unknown>[]>()
 
   /**
    * 订阅事件
@@ -27,10 +26,10 @@ class EventBus {
    * @param callback 回调函数
    * @param once 是否只执行一次
    */
-  on<T = any>(event: string, callback: (data: T) => void, once = false): () => void {
+  on<T = unknown>(event: string, callback: (data: T) => void, once = false): () => void {
     const listeners = this.events.get(event) || []
     const listener: EventListener<T> = { callback, once }
-    listeners.push(listener)
+    listeners.push(listener as EventListener<unknown>)
     this.events.set(event, listeners)
 
     // 返回取消订阅函数
@@ -51,7 +50,7 @@ class EventBus {
    * @param event 事件名
    * @param callback 回调函数
    */
-  once<T = any>(event: string, callback: (data: T) => void): () => void {
+  once<T = unknown>(event: string, callback: (data: T) => void): () => void {
     return this.on(event, callback, true)
   }
 
@@ -60,7 +59,7 @@ class EventBus {
    * @param event 事件名
    * @param callback 回调函数
    */
-  off<T = any>(event: string, callback?: (data: T) => void): void {
+  off<T = unknown>(event: string, callback?: (data: T) => void): void {
     const listeners = this.events.get(event)
     if (!listeners) return
 
@@ -85,7 +84,7 @@ class EventBus {
    * @param event 事件名
    * @param data 事件数据
    */
-  emit<T = any>(event: string, data?: T): void {
+  emit<T = unknown>(event: string, data?: T): void {
     const listeners = this.events.get(event)
     if (!listeners) return
 
@@ -190,7 +189,7 @@ export function createEventBus(): EventBus {
  * @param eventBus 可选的事件总线实例
  * @param timeout 超时时间（毫秒）
  */
-export function waitForEvent<T = any>(
+export function waitForEvent<T = unknown>(
   event: string,
   eventBus?: EventBus,
   timeout = 5000
@@ -222,7 +221,7 @@ export function waitForEvent<T = any>(
  * @param events 事件名数组
  * @param eventBus 可选的事件总线实例
  */
-export function waitForEvents<T = Record<string, any>>(
+export function waitForEvents<T = Record<string, unknown>>(
   events: string[],
   eventBus?: EventBus
 ): Promise<T> {
@@ -230,10 +229,10 @@ export function waitForEvents<T = Record<string, any>>(
   const results: Partial<T> = {}
   const completedEvents = new Set<string>()
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve, _reject) => {
     const unsubscribers = events.map(event => {
-      return bus.on(event, (data: any) => {
-        results[event as keyof T] = data
+      return bus.on(event, (data: unknown) => {
+        results[event as keyof T] = data as T[keyof T]
         completedEvents.add(event)
 
         // 检查是否所有事件都已完成

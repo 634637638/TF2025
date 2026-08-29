@@ -324,7 +324,7 @@ body {
       tr {
         display: block;
         margin-bottom: 16px;
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--tf-color-slate-200);
         border-radius: 8px;
         padding: 12px;
         background: white;
@@ -339,7 +339,7 @@ body {
         &:before {
           content: attr(data-label);
           font-weight: 600;
-          color: #6b7280;
+          color: var(--tf-color-neutral-500);
         }
       }
     }

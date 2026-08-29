@@ -1,8 +1,8 @@
-const { getDatabase } = require('../config/database');
-const { normalizePermissionType, sortPermissionTypes } = require('../config/module-permission-actions');
-const { hasTable, hasColumn } = require('./schemaInspector.service');
-const { normalizeModuleKey } = require('../utils/moduleKeyNormalizer');
-const log = require('../utils/log');
+const { getDatabase } = require('../config/database')
+const { normalizePermissionType, sortPermissionTypes } = require('../config/module-permission-actions')
+const { hasTable, hasColumn } = require('./schemaInspector.service')
+const { normalizeModuleKey } = require('../utils/moduleKeyNormalizer')
+const log = require('../utils/log')
 
 const DEFAULT_PERMISSION_ACTIONS = [
   'view',
@@ -15,7 +15,7 @@ const DEFAULT_PERMISSION_ACTIONS = [
   'manage',
   'sell',
   'sync'
-];
+]
 
 /**
  * 角色层级参考（仅作为文档注释，实际层级从数据库读取）
@@ -40,19 +40,19 @@ const DEFAULT_PERMISSION_ACTIONS = [
 //   'user': 30
 // };
 
-const LEGACY_USER_ROLE_CODES = ['employee', 'admin', 'manager'];
-const LEGACY_USER_ROLE_SQL_LIST = LEGACY_USER_ROLE_CODES.map((roleCode) => `'${roleCode}'`).join(', ');
+const LEGACY_USER_ROLE_CODES = ['employee', 'admin', 'manager']
+const LEGACY_USER_ROLE_SQL_LIST = LEGACY_USER_ROLE_CODES.map((roleCode) => `'${roleCode}'`).join(', ')
 
 // 全局管理员角色代码（固定，用于兼容性检查）
-const GLOBAL_ADMIN_ROLE_CODES = new Set(['super_admin', 'webadmin', 'admin']);
-const MODULE_MANAGE_ACTIONS = new Set(['create', 'edit', 'delete', 'approve', 'manage']);
+const GLOBAL_ADMIN_ROLE_CODES = new Set(['super_admin', 'webadmin', 'admin'])
+const MODULE_MANAGE_ACTIONS = new Set(['create', 'edit', 'delete', 'approve', 'manage'])
 
 // ========== 角色层级缓存机制 ==========
 
 // 角色层级缓存（从数据库加载）
-let roleHierarchyCache = null;
-let cacheExpiryTime = 0;
-const ROLE_HIERARCHY_CACHE_TTL_MS = 5 * 60 * 1000; // 5分钟缓存
+let roleHierarchyCache = null
+let cacheExpiryTime = 0
+const ROLE_HIERARCHY_CACHE_TTL_MS = 5 * 60 * 1000 // 5分钟缓存
 
 /**
  * 从数据库获取角色层级映射
@@ -60,44 +60,44 @@ const ROLE_HIERARCHY_CACHE_TTL_MS = 5 * 60 * 1000; // 5分钟缓存
  * @returns {Object} 角色名称/代码到层级的映射
  */
 async function getRoleHierarchyFromDB(db = null) {
-  const now = Date.now();
+  const now = Date.now()
   if (roleHierarchyCache && now < cacheExpiryTime) {
-    return roleHierarchyCache;
+    return roleHierarchyCache
   }
 
-  const executor = db || getDatabase();
-  const hasHierarchyLevel = await hasColumn('roles', 'hierarchy_level', executor);
+  const executor = db || getDatabase()
+  const hasHierarchyLevel = await hasColumn('roles', 'hierarchy_level', executor)
 
   if (!hasHierarchyLevel) {
     // 降级：数据库无 hierarchy_level 字段时返回空映射
-    roleHierarchyCache = {};
-    cacheExpiryTime = now + ROLE_HIERARCHY_CACHE_TTL_MS;
-    return roleHierarchyCache;
+    roleHierarchyCache = {}
+    cacheExpiryTime = now + ROLE_HIERARCHY_CACHE_TTL_MS
+    return roleHierarchyCache
   }
 
   const [rows] = await executor.execute(`
     SELECT name, code, COALESCE(hierarchy_level, 0) as level
     FROM roles WHERE is_active = 1 OR status = 'active'
-  `);
+  `)
 
-  roleHierarchyCache = {};
+  roleHierarchyCache = {}
   rows.forEach((r) => {
-    roleHierarchyCache[r.name] = r.level;
+    roleHierarchyCache[r.name] = r.level
     if (r.code) {
-      roleHierarchyCache[r.code] = r.level;
+      roleHierarchyCache[r.code] = r.level
     }
-  });
+  })
 
-  cacheExpiryTime = now + ROLE_HIERARCHY_CACHE_TTL_MS;
-  return roleHierarchyCache;
+  cacheExpiryTime = now + ROLE_HIERARCHY_CACHE_TTL_MS
+  return roleHierarchyCache
 }
 
 /**
  * 清除角色层级缓存（角色变更时调用）
  */
 function clearRoleHierarchyCache() {
-  roleHierarchyCache = null;
-  cacheExpiryTime = 0;
+  roleHierarchyCache = null
+  cacheExpiryTime = 0
 }
 
 /**
@@ -106,12 +106,12 @@ function clearRoleHierarchyCache() {
  * @returns {Set} 管理员角色名称集合
  */
 async function getGlobalAdminRoleNames(db = null) {
-  const hierarchy = await getRoleHierarchyFromDB(db);
+  const hierarchy = await getRoleHierarchyFromDB(db)
   return new Set(
     Object.entries(hierarchy)
       .filter(([, level]) => level >= 80)
       .map(([name]) => name)
-  );
+  )
 }
 
 /**
@@ -121,27 +121,27 @@ async function getGlobalAdminRoleNames(db = null) {
  * @returns {boolean} 是否为管理员
  */
 async function hasGlobalAdminRole(roles = [], db = null) {
-  const adminNames = await getGlobalAdminRoleNames(db);
+  const adminNames = await getGlobalAdminRoleNames(db)
   return roles.some((role) => {
-    const roleName = role?.roleName || role?.name || role;
-    const roleCode = role?.roleCode || role?.code || null;
-    return adminNames.has(roleName) || GLOBAL_ADMIN_ROLE_CODES.has(roleCode);
-  });
+    const roleName = role?.roleName || role?.name || role
+    const roleCode = role?.roleCode || role?.code || null
+    return adminNames.has(roleName) || GLOBAL_ADMIN_ROLE_CODES.has(roleCode)
+  })
 }
 
 // ========== 工具函数 ==========
 
 function getExecutor(executor = null) {
-  return executor || getDatabase();
+  return executor || getDatabase()
 }
 
 function uniqueStrings(values = []) {
-  return Array.from(new Set(values.filter(Boolean)));
+  return Array.from(new Set(values.filter(Boolean)))
 }
 
 function normalizeModuleKeys(moduleKeys = []) {
-  const keys = Array.isArray(moduleKeys) ? moduleKeys : [moduleKeys];
-  return uniqueStrings(keys.map((moduleKey) => normalizeModuleKey(moduleKey)));
+  const keys = Array.isArray(moduleKeys) ? moduleKeys : [moduleKeys]
+  return uniqueStrings(keys.map((moduleKey) => normalizeModuleKey(moduleKey)))
 }
 
 // ========== 访问控制核心功能 ==========
@@ -155,7 +155,7 @@ async function getAccessControlSchemaSupport(db) {
     hasColumn('user_roles', 'status', db),
     hasColumn('user_roles', 'expires_at', db),
     hasColumn('modules', 'is_active', db)
-  ]);
+  ])
 
   return {
     hasRoleCode: checks[0],
@@ -164,30 +164,30 @@ async function getAccessControlSchemaSupport(db) {
     hasUserRoleStatus: checks[3],
     hasUserRoleExpiresAt: checks[4],
     hasModuleIsActive: checks[5]
-  };
+  }
 }
 
 function mergeMenuVisibility(explicitVisibility = {}, fallbackVisibility = {}) {
   return {
     ...fallbackVisibility,
     ...explicitVisibility
-  };
+  }
 }
 
 function rowsToNormalizedVisibilityMap(rows = []) {
   return rows.reduce((map, row) => {
-    const moduleKey = normalizeModuleKey(row.module_key);
+    const moduleKey = normalizeModuleKey(row.module_key)
     if (!moduleKey) {
-      return map;
+      return map
     }
 
-    map[moduleKey] = Number(row.visible) === 1;
-    return map;
-  }, {});
+    map[moduleKey] = Number(row.visible) === 1
+    return map
+  }, {})
 }
 
 async function getRolePermissionModuleVisibility(roleId, executor = null) {
-  const db = getExecutor(executor);
+  const db = getExecutor(executor)
   const [rows] = await db.execute(
     `SELECT module_key, 1 AS visible
      FROM role_permissions
@@ -195,14 +195,14 @@ async function getRolePermissionModuleVisibility(roleId, executor = null) {
        AND permission_type != 'menu_view'
      GROUP BY module_key`,
     [roleId]
-  );
+  )
 
-  return rowsToNormalizedVisibilityMap(rows);
+  return rowsToNormalizedVisibilityMap(rows)
 }
 
 async function getUserPermissionModuleVisibility(userId, executor = null) {
-  const db = getExecutor(executor);
-  const { hasRoleIsActive, hasUserRoleStatus, hasUserRoleExpiresAt } = await getAccessControlSchemaSupport(db);
+  const db = getExecutor(executor)
+  const { hasRoleIsActive, hasUserRoleStatus, hasUserRoleExpiresAt } = await getAccessControlSchemaSupport(db)
   const [rows] = await db.execute(
     `SELECT rp.module_key, 1 AS visible
      FROM role_permissions rp
@@ -215,41 +215,41 @@ async function getUserPermissionModuleVisibility(userId, executor = null) {
        AND rp.permission_type != 'menu_view'
      GROUP BY rp.module_key`,
     [userId]
-  );
+  )
 
-  return rowsToNormalizedVisibilityMap(rows);
+  return rowsToNormalizedVisibilityMap(rows)
 }
 
 async function listPermissionActions(executor = null) {
-  const db = getExecutor(executor);
-  const tableExists = await hasTable('permission_actions', db);
+  const db = getExecutor(executor)
+  const tableExists = await hasTable('permission_actions', db)
 
   if (!tableExists) {
-    return sortPermissionTypes(DEFAULT_PERMISSION_ACTIONS);
+    return sortPermissionTypes(DEFAULT_PERMISSION_ACTIONS)
   }
 
-  const hasIsActive = await hasColumn('permission_actions', 'is_active', db);
-  const hasSortOrder = await hasColumn('permission_actions', 'sort_order', db);
+  const hasIsActive = await hasColumn('permission_actions', 'is_active', db)
+  const hasSortOrder = await hasColumn('permission_actions', 'sort_order', db)
   const [rows] = await db.execute(
     `SELECT code
      FROM permission_actions
      ${hasIsActive ? 'WHERE is_active = 1' : ''}
      ORDER BY ${hasSortOrder ? 'sort_order,' : ''} id ASC`
-  );
+  )
 
-  const dbActions = rows.map((row) => row.code);
-  return sortPermissionTypes(uniqueStrings([...DEFAULT_PERMISSION_ACTIONS, ...dbActions]));
+  const dbActions = rows.map((row) => row.code)
+  return sortPermissionTypes(uniqueStrings([...DEFAULT_PERMISSION_ACTIONS, ...dbActions]))
 }
 
 async function getActiveUserRoles(userId, executor = null) {
-  const db = getExecutor(executor);
+  const db = getExecutor(executor)
   const {
     hasRoleCode,
     hasRoleType,
     hasRoleIsActive,
     hasUserRoleStatus,
     hasUserRoleExpiresAt
-  } = await getAccessControlSchemaSupport(db);
+  } = await getAccessControlSchemaSupport(db)
 
   const [rows] = await db.execute(
     `SELECT DISTINCT
@@ -267,14 +267,14 @@ async function getActiveUserRoles(userId, executor = null) {
        ${hasUserRoleExpiresAt ? 'AND (ur.expires_at IS NULL OR ur.expires_at > NOW())' : ''}
      ORDER BY r.name ASC`,
     [userId]
-  );
+  )
 
-  return rows;
+  return rows
 }
 
 async function getRoleMenuVisibility(roleId, executor = null) {
-  const db = getExecutor(executor);
-  const fallbackVisibility = await getRolePermissionModuleVisibility(roleId, db);
+  const db = getExecutor(executor)
+  const fallbackVisibility = await getRolePermissionModuleVisibility(roleId, db)
 
   if (await hasTable('role_menu_visibility', db)) {
     const [rows] = await db.execute(
@@ -282,13 +282,13 @@ async function getRoleMenuVisibility(roleId, executor = null) {
        FROM role_menu_visibility
        WHERE role_id = ?`,
       [roleId]
-    );
+    )
 
-    return mergeMenuVisibility(rowsToNormalizedVisibilityMap(rows), fallbackVisibility);
+    return mergeMenuVisibility(rowsToNormalizedVisibilityMap(rows), fallbackVisibility)
   }
 
   if (!(await hasColumn('role_permissions', 'menu_visible', db))) {
-    return fallbackVisibility;
+    return fallbackVisibility
   }
 
   const [rows] = await db.execute(
@@ -298,21 +298,21 @@ async function getRoleMenuVisibility(roleId, executor = null) {
        AND permission_type = 'menu_view'
      GROUP BY module_key`,
     [roleId]
-  );
+  )
 
-  return mergeMenuVisibility(rowsToNormalizedVisibilityMap(rows), fallbackVisibility);
+  return mergeMenuVisibility(rowsToNormalizedVisibilityMap(rows), fallbackVisibility)
 }
 
 async function getUserMenuVisibility(userId, executor = null) {
-  const db = getExecutor(executor);
-  const { hasRoleIsActive, hasUserRoleStatus, hasUserRoleExpiresAt } = await getAccessControlSchemaSupport(db);
-  const fallbackVisibility = await getUserPermissionModuleVisibility(userId, db);
+  const db = getExecutor(executor)
+  const { hasRoleIsActive, hasUserRoleStatus, hasUserRoleExpiresAt } = await getAccessControlSchemaSupport(db)
+  const fallbackVisibility = await getUserPermissionModuleVisibility(userId, db)
 
   // 并行检查表和列是否存在
   const [hasMenuVisibilityTable, hasMenuVisibleColumn] = await Promise.all([
     hasTable('role_menu_visibility', db),
     hasColumn('role_permissions', 'menu_visible', db)
-  ]);
+  ])
 
   if (hasMenuVisibilityTable) {
     const [rows] = await db.execute(
@@ -326,13 +326,13 @@ async function getUserMenuVisibility(userId, executor = null) {
          ${hasUserRoleExpiresAt ? 'AND (ur.expires_at IS NULL OR ur.expires_at > NOW())' : ''}
        GROUP BY rmv.module_key`,
       [userId]
-    );
+    )
 
-    return mergeMenuVisibility(rowsToNormalizedVisibilityMap(rows), fallbackVisibility);
+    return mergeMenuVisibility(rowsToNormalizedVisibilityMap(rows), fallbackVisibility)
   }
 
   if (!hasMenuVisibleColumn) {
-    return fallbackVisibility;
+    return fallbackVisibility
   }
 
   const [rows] = await db.execute(
@@ -347,20 +347,20 @@ async function getUserMenuVisibility(userId, executor = null) {
        AND rp.permission_type = 'menu_view'
      GROUP BY rp.module_key`,
     [userId]
-  );
+  )
 
-  return mergeMenuVisibility(rowsToNormalizedVisibilityMap(rows), fallbackVisibility);
+  return mergeMenuVisibility(rowsToNormalizedVisibilityMap(rows), fallbackVisibility)
 }
 
 async function getUserActionRows(userId, executor = null) {
-  const db = getExecutor(executor);
+  const db = getExecutor(executor)
   const {
     hasRoleCode,
     hasRoleIsActive,
     hasUserRoleStatus,
     hasUserRoleExpiresAt,
     hasModuleIsActive
-  } = await getAccessControlSchemaSupport(db);
+  } = await getAccessControlSchemaSupport(db)
 
   const [rows] = await db.execute(
     `SELECT DISTINCT
@@ -381,14 +381,14 @@ async function getUserActionRows(userId, executor = null) {
        ${hasModuleIsActive ? 'AND (m.is_active = 1 OR m.is_active IS NULL)' : ''}
      ORDER BY rp.module_key, rp.permission_type`,
     [userId]
-  );
+  )
 
-  return rows;
+  return rows
 }
 
 async function getUserAccessProfile(userId, executor = null) {
   // 使用单次复杂查询获取所有需要的数据，减少数据库往返
-  const db = getExecutor(executor);
+  const db = getExecutor(executor)
 
   try {
     // 并行执行多个独立查询
@@ -396,58 +396,58 @@ async function getUserAccessProfile(userId, executor = null) {
       getActiveUserRoles(userId, db),
       getUserActionRows(userId, db),
       getUserMenuVisibility(userId, db)
-    ]);
+    ])
 
-    const roles = rolesResult;
-    const menuVisibility = menuVisibilityResult;
+    const roles = rolesResult
+    const menuVisibility = menuVisibilityResult
 
-    const summary = {};
-    const userPermissions = [];
-    const rolePermissions = {};
+    const summary = {}
+    const userPermissions = []
+    const rolePermissions = {}
 
     actionRows.forEach((row) => {
-      const moduleKey = normalizeModuleKey(row.module_key);
-      const permissionType = normalizePermissionType(row.permission_type);
+      const moduleKey = normalizeModuleKey(row.module_key)
+      const permissionType = normalizePermissionType(row.permission_type)
       if (!moduleKey) {
-        return;
+        return
       }
 
       if (!summary[moduleKey]) {
-        summary[moduleKey] = [];
+        summary[moduleKey] = []
       }
       if (!summary[moduleKey].includes(permissionType)) {
-        summary[moduleKey].push(permissionType);
-        userPermissions.push(`${moduleKey}:${permissionType}`);
+        summary[moduleKey].push(permissionType)
+        userPermissions.push(`${moduleKey}:${permissionType}`)
       }
 
-      const roleKey = String(row.role_id);
+      const roleKey = String(row.role_id)
       if (!rolePermissions[roleKey]) {
         rolePermissions[roleKey] = {
           roleId: row.role_id,
           roleName: row.role_name,
           roleCode: row.role_code || null,
           summary: {}
-        };
+        }
       }
 
       if (!rolePermissions[roleKey].summary[moduleKey]) {
-        rolePermissions[roleKey].summary[moduleKey] = [];
+        rolePermissions[roleKey].summary[moduleKey] = []
       }
 
       if (!rolePermissions[roleKey].summary[moduleKey].includes(permissionType)) {
-        rolePermissions[roleKey].summary[moduleKey].push(permissionType);
+        rolePermissions[roleKey].summary[moduleKey].push(permissionType)
       }
-    });
+    })
 
     Object.keys(summary).forEach((moduleKey) => {
-      summary[moduleKey] = sortPermissionTypes(summary[moduleKey]);
-    });
+      summary[moduleKey] = sortPermissionTypes(summary[moduleKey])
+    })
 
     Object.keys(rolePermissions).forEach((roleKey) => {
       Object.keys(rolePermissions[roleKey].summary).forEach((moduleKey) => {
-        rolePermissions[roleKey].summary[moduleKey] = sortPermissionTypes(rolePermissions[roleKey].summary[moduleKey]);
-      });
-    });
+        rolePermissions[roleKey].summary[moduleKey] = sortPermissionTypes(rolePermissions[roleKey].summary[moduleKey])
+      })
+    })
 
     return {
       summary,
@@ -460,51 +460,51 @@ async function getUserAccessProfile(userId, executor = null) {
         roleType: role.role_type || null
       })),
       menuVisibility
-    };
+    }
   } catch (error) {
-    log.error('❌ 获取用户权限配置失败:', error);
+    log.error('❌ 获取用户权限配置失败:', error)
     return {
       summary: {},
       userPermissions: [],
       rolePermissions: {},
       roles: [],
       menuVisibility: {}
-    };
+    }
   }
 }
 
 async function hasUserPermission(userId, moduleKey, permissionType, executor = null) {
-  const profile = await getUserAccessProfile(userId, executor);
-  const normalizedModuleKey = normalizeModuleKey(moduleKey);
-  return Array.isArray(profile.summary[normalizedModuleKey]) && profile.summary[normalizedModuleKey].includes(permissionType);
+  const profile = await getUserAccessProfile(userId, executor)
+  const normalizedModuleKey = normalizeModuleKey(moduleKey)
+  return Array.isArray(profile.summary[normalizedModuleKey]) && profile.summary[normalizedModuleKey].includes(permissionType)
 }
 
 function collectModulePermissions(summary, moduleKeys = []) {
   return uniqueStrings(
     normalizeModuleKeys(moduleKeys).flatMap((moduleKey) => summary[moduleKey] || [])
-  );
+  )
 }
 
 async function getExplicitViewAccessScope(userId, options = {}, executor = null) {
-  const profile = await getUserAccessProfile(userId, executor);
-  const allModuleKeys = normalizeModuleKeys(options.allModuleKeys);
-  const ownModuleKeys = normalizeModuleKeys(options.ownModuleKeys);
-  const allViewPermissions = uniqueStrings(options.allViewPermissions || ['view']);
-  const ownViewPermissions = uniqueStrings(options.ownViewPermissions || ['view']);
+  const profile = await getUserAccessProfile(userId, executor)
+  const allModuleKeys = normalizeModuleKeys(options.allModuleKeys)
+  const ownModuleKeys = normalizeModuleKeys(options.ownModuleKeys)
+  const allViewPermissions = uniqueStrings(options.allViewPermissions || ['view'])
+  const ownViewPermissions = uniqueStrings(options.ownViewPermissions || ['view'])
 
-  const allPermissions = collectModulePermissions(profile.summary, allModuleKeys);
-  const ownPermissions = collectModulePermissions(profile.summary, ownModuleKeys);
-  const permissions = sortPermissionTypes(uniqueStrings([...allPermissions, ...ownPermissions]));
-  const canManage = permissions.some((permissionType) => MODULE_MANAGE_ACTIONS.has(permissionType));
-  const isAdminRole = await hasGlobalAdminRole(profile.roles, executor);
-  const canViewAll = allPermissions.some((permissionType) => allViewPermissions.includes(permissionType));
-  const canViewOwn = ownPermissions.some((permissionType) => ownViewPermissions.includes(permissionType));
+  const allPermissions = collectModulePermissions(profile.summary, allModuleKeys)
+  const ownPermissions = collectModulePermissions(profile.summary, ownModuleKeys)
+  const permissions = sortPermissionTypes(uniqueStrings([...allPermissions, ...ownPermissions]))
+  const canManage = permissions.some((permissionType) => MODULE_MANAGE_ACTIONS.has(permissionType))
+  const isAdminRole = await hasGlobalAdminRole(profile.roles, executor)
+  const canViewAll = isAdminRole || allPermissions.some((permissionType) => allViewPermissions.includes(permissionType))
+  const canViewOwn = ownPermissions.some((permissionType) => ownViewPermissions.includes(permissionType))
 
-  let scope = 'none';
+  let scope = 'none'
   if (canViewAll) {
-    scope = 'all';
+    scope = 'all'
   } else if (canViewOwn) {
-    scope = 'own';
+    scope = 'own'
   }
 
   return {
@@ -520,23 +520,23 @@ async function getExplicitViewAccessScope(userId, options = {}, executor = null)
     isAdminRole,
     isAdmin: scope === 'all',
     isOwnOnly: scope === 'own'
-  };
+  }
 }
 
 async function getModuleAccessScope(userId, moduleKeys, executor = null) {
-  const profile = await getUserAccessProfile(userId, executor);
-  const normalizedModuleKeys = normalizeModuleKeys(moduleKeys);
+  const profile = await getUserAccessProfile(userId, executor)
+  const normalizedModuleKeys = normalizeModuleKeys(moduleKeys)
   const permissions = uniqueStrings(
     normalizedModuleKeys.flatMap((moduleKey) => profile.summary[moduleKey] || [])
-  );
-  const sortedPermissions = sortPermissionTypes(permissions);
-  const canView = sortedPermissions.includes('view') || sortedPermissions.includes('menu_view');
-  const canManage = sortedPermissions.some((permissionType) => MODULE_MANAGE_ACTIONS.has(permissionType));
-  const isAdminRole = await hasGlobalAdminRole(profile.roles, executor);
+  )
+  const sortedPermissions = sortPermissionTypes(permissions)
+  const canView = sortedPermissions.includes('view') || sortedPermissions.includes('menu_view')
+  const canManage = sortedPermissions.some((permissionType) => MODULE_MANAGE_ACTIONS.has(permissionType))
+  const isAdminRole = await hasGlobalAdminRole(profile.roles, executor)
 
-  let scope = 'none';
+  let scope = 'none'
   if (canView) {
-    scope = (isAdminRole || canManage) ? 'all' : 'own';
+    scope = (isAdminRole || canManage) ? 'all' : 'own'
   }
 
   return {
@@ -548,7 +548,7 @@ async function getModuleAccessScope(userId, moduleKeys, executor = null) {
     isAdminRole,
     isAdmin: scope === 'all',
     isOwnOnly: scope === 'own'
-  };
+  }
 }
 
 async function getAttendanceAccessScope(userId, executor = null) {
@@ -557,7 +557,7 @@ async function getAttendanceAccessScope(userId, executor = null) {
     ownModuleKeys: ['attendance_myattendanceview', 'attendance_attendanceview'],
     allViewPermissions: ['view'],
     ownViewPermissions: ['view', 'view:own']
-  }, executor);
+  }, executor)
 }
 
 async function getSalaryAccessScope(userId, executor = null) {
@@ -566,36 +566,36 @@ async function getSalaryAccessScope(userId, executor = null) {
     ownModuleKeys: ['salary_mysalaryview', 'salary_salaryrecordsview'],
     allViewPermissions: ['view'],
     ownViewPermissions: ['view', 'view:own']
-  }, executor);
+  }, executor)
 }
 
 function resolveScopedTargetId(scopeInfo, currentUserId, requestedTargetId = null) {
   if (!scopeInfo?.canView) {
-    return null;
+    return null
   }
 
   if (scopeInfo.isAdmin) {
     if (requestedTargetId !== undefined && requestedTargetId !== null && requestedTargetId !== '') {
-      return requestedTargetId;
+      return requestedTargetId
     }
 
     // 管理员未指定目标时，不应强制收敛到本人，返回 null 表示查询全量数据
-    return null;
+    return null
   }
 
-  return currentUserId;
+  return currentUserId
 }
 
 function canAccessScopedTarget(scopeInfo, currentUserId, ownerId) {
   if (!scopeInfo?.canView) {
-    return false;
+    return false
   }
 
   if (scopeInfo.isAdmin) {
-    return true;
+    return true
   }
 
-  return String(ownerId) === String(currentUserId);
+  return String(ownerId) === String(currentUserId)
 }
 
 module.exports = {
@@ -625,4 +625,4 @@ module.exports = {
   getSalaryAccessScope,
   resolveScopedTargetId,
   canAccessScopedTarget
-};
+}

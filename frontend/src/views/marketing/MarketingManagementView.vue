@@ -8,184 +8,348 @@
       permission-code="marketing:view"
     >
       <div class="admin-page-content marketing-admin-content">
-      <PageHeader
-        icon="fas fa-bullhorn"
-        title="营销管理"
-      >
-        <template #actions>
-          <el-button @click="openPublicPage">
-            <el-icon><Link /></el-icon>
-            <span>打开公开页</span>
-          </el-button>
-          <el-button :loading="locationLoading" @click="refreshAutoContext">
-            <el-icon><LocationFilled /></el-icon>
-            <span>重新识别</span>
-          </el-button>
-        </template>
-      </PageHeader>
-
-      <div class="marketing-admin-grid">
-        <el-card class="context-card" shadow="never">
-          <div class="card-head">
-            <div>
-              <h2>当前应景</h2>
-              <p>自动识别节日、节气、天气和时间段。</p>
-            </div>
-            <el-tag type="success" effect="dark" round>自动</el-tag>
-          </div>
-
-          <div class="context-grid">
-            <div class="context-item" v-for="item in contextItems" :key="item.label">
-              <span class="context-label">{{ item.label }}</span>
-              <span class="context-value">{{ item.value }}</span>
-            </div>
-          </div>
-
-          <div class="context-footer">
-            <div class="context-status">
+        <PageHeader
+          icon="fas fa-bullhorn"
+          title="营销管理"
+        >
+          <template #actions>
+            <el-button
+              v-if="canViewField('system_info.operations')"
+              @click="openPublicPage"
+            >
+              <el-icon><Link /></el-icon>
+              <span>打开公开页</span>
+            </el-button>
+            <el-button
+              v-if="canViewField('system_info.operations')"
+              :loading="locationLoading"
+              @click="refreshAutoContext"
+            >
               <el-icon><LocationFilled /></el-icon>
-              <span>{{ locationStatus }}</span>
-            </div>
-            <div class="context-summary">{{ marketingSummary }}</div>
-          </div>
+              <span>重新识别</span>
+            </el-button>
+          </template>
+        </PageHeader>
 
-          <div class="preview-section">
-            <div class="preview-head">
+        <div class="marketing-admin-grid">
+          <el-card
+            v-if="canViewField('context.auto_context') || canViewField('context.preview')"
+            class="context-card"
+            shadow="never"
+          >
+            <div class="card-head">
               <div>
-                <h3>文案预览</h3>
+                <h2>当前应景</h2>
+                <p>自动识别节日、节气、天气和时间段。</p>
+              </div>
+              <el-tag
+                type="success"
+                effect="dark"
+                round
+              >
+                自动
+              </el-tag>
+            </div>
+
+            <div
+              v-if="canViewField('context.auto_context')"
+              class="context-grid"
+            >
+              <div
+                v-for="item in contextItems"
+                :key="item.label"
+                class="context-item"
+              >
+                <span class="context-label">{{ item.label }}</span>
+                <span class="context-value">{{ item.value }}</span>
               </div>
             </div>
 
-            <div class="copy-grid preview-grid">
-              <article v-for="item in previewCards" :key="item.type" class="copy-card preview-card">
-                <div class="copy-card__head">
-                  <div>
-                    <div class="copy-title">{{ item.label }}</div>
-                    <div v-if="item.suggestion" class="copy-tone">{{ item.suggestion.tone }}</div>
-                  </div>
-                  <el-button
-                    size="small"
-                    :loading="previewLoadingType === item.type"
-                    @click="refreshPreview(item.type)"
-                  >
-                    <el-icon><RefreshRight /></el-icon>
-                    <span>更换</span>
-                  </el-button>
-                </div>
-                <div class="copy-text">
-                  <span v-if="item.suggestion">{{ item.suggestion.text }}</span>
-                  <span v-else class="preview-card__empty">暂无该类型词库</span>
-                </div>
-              </article>
+            <div class="context-footer">
+              <div class="context-status">
+                <el-icon><LocationFilled /></el-icon>
+                <span>{{ locationStatus }}</span>
+              </div>
+              <div class="context-summary">
+                {{ marketingSummary }}
+              </div>
             </div>
-          </div>
-        </el-card>
-        <el-card class="management-card" shadow="never">
-          <div class="card-head">
-            <div>
-              <h2>词库管理</h2>
-            </div>
-            <el-tag type="success" effect="plain">数据库</el-tag>
-          </div>
 
-          <el-form label-position="top" class="marketing-admin-form">
-            <el-tabs v-model="lexiconTab" type="card" class="tf-page-tabs lexicon-tabs">
-              <el-tab-pane
-                v-for="item in copyTypeOptions"
-                :key="item.value"
-                :label="item.label"
-                :name="item.value"
-                class="tf-tab-panel"
-              >
-                <el-form-item :label="`${item.label}语录 - ${typeLexiconLineCount(item.value)} 条`">
-                  <el-input
-                    v-model="typeLexiconForm[item.value].linesText"
-                    :disabled="!canWriteLexiconText(typeLexiconForm[item.value].linesText)"
-                    type="textarea"
-                    :rows="4"
-                    resize="none"
-                    placeholder="每行一条，点击当前类型即可维护对应语录"
-                  />
-                </el-form-item>
-              </el-tab-pane>
-            </el-tabs>
-            <div class="section-title">模式通用词库</div>
-            <p class="lexicon-hint">营业和销售只使用开始、结束语句；销售模式在深夜时自动使用深夜语句。</p>
-            <el-tabs v-model="modeLexiconTab" type="card" class="tf-page-tabs lexicon-tabs">
-              <el-tab-pane label="营业语句" name="opening" class="tf-tab-panel">
-                <div class="context-lexicon-grid">
-                  <el-form-item :label="`营业语句 - ${modeLexiconLineCount('opening', 'lines')} 条`">
-                    <el-input v-model="modeLexiconForm.opening.linesText" :disabled="!canWriteLexiconText(modeLexiconForm.opening.linesText)" type="textarea" :rows="4" resize="none" />
-                  </el-form-item>
+            <div
+              v-if="canViewField('context.preview')"
+              class="preview-section"
+            >
+              <div class="preview-head">
+                <div>
+                  <h3>文案预览</h3>
                 </div>
-              </el-tab-pane>
-              <el-tab-pane label="销售语句" name="sales" class="tf-tab-panel">
-                <div class="context-lexicon-grid">
-                  <el-form-item :label="`销售语句 - ${modeLexiconLineCount('sales', 'lines')} 条`">
-                    <el-input v-model="modeLexiconForm.sales.linesText" :disabled="!canWriteLexiconText(modeLexiconForm.sales.linesText)" type="textarea" :rows="4" resize="none" />
-                  </el-form-item>
-                  <el-form-item :label="`销售话术 - ${modeLexiconLineCount('sales', 'salesTalks')} 条`">
-                    <el-input v-model="modeLexiconForm.sales.salesTalksText" :disabled="!canWriteLexiconText(modeLexiconForm.sales.salesTalksText)" type="textarea" :rows="4" resize="none" placeholder="每行一条，补充成交、带走、安排等销售表达" />
-                  </el-form-item>
-                  <el-form-item :label="`深夜语句 - ${modeLexiconLineCount('sales', 'nightLines')} 条`">
-                    <el-input v-model="modeLexiconForm.sales.nightLinesText" :disabled="!canWriteLexiconText(modeLexiconForm.sales.nightLinesText)" type="textarea" :rows="4" resize="none" />
-                  </el-form-item>
-                </div>
-              </el-tab-pane>
-            </el-tabs>
-            <div class="section-title">自动应景词库</div>
-            <el-tabs v-model="contextLexiconTab" type="card" class="tf-page-tabs lexicon-tabs context-lexicon-tabs">
-              <el-tab-pane v-for="item in contextLexiconTabs" :key="item.value" :label="item.label" :name="item.value" class="tf-tab-panel">
-                <div v-if="item.value === 'subsidy'" class="subsidy-toggle-row">
-                  <div>
-                    <strong>启用国补语录</strong>
-                    <span>开启后，公开页会读取国补 TAB 中配置的语句。</span>
+              </div>
+
+              <div class="copy-grid preview-grid">
+                <article
+                  v-for="item in previewCards"
+                  :key="item.type"
+                  class="copy-card preview-card"
+                >
+                  <div class="copy-card__head">
+                    <div>
+                      <div class="copy-title">
+                        {{ item.label }}
+                      </div>
+                      <div
+                        v-if="item.suggestion"
+                        class="copy-tone"
+                      >
+                        {{ item.suggestion.tone }}
+                      </div>
+                    </div>
+                    <el-button
+                      v-if="canViewField('system_info.operations')"
+                      size="small"
+                      :loading="previewLoadingType === item.type"
+                      @click="refreshPreview(item.type)"
+                    >
+                      <el-icon><RefreshRight /></el-icon>
+                      <span>更换</span>
+                    </el-button>
                   </div>
-                  <el-switch v-model="subsidyEnabled" :disabled="!canEdit" active-text="开启" inactive-text="关闭" />
-                </div>
-                <div class="context-category-summary">
-                  <span class="context-category-summary__label">系统可识别分类</span>
-                  <span class="context-category-summary__value">{{ contextCategoryOptions(item.value).map(key => contextCategoryLabel(item.value, key)).join('、') }}</span>
-                </div>
-                <div class="lexicon-entry-list">
-                  <div v-for="(entry, index) in contextLexiconEntries[item.value]" :key="`${item.value}-${index}`" class="lexicon-entry-row">
-                    <el-select v-model="entry.key" :disabled="!canEdit && Boolean(entry.key)" class="lexicon-entry-key" filterable clearable :placeholder="contextEntryKeyPlaceholder(item.value)">
-                      <el-option
-                        v-for="key in contextCategoryOptions(item.value)"
-                        :key="key"
-                        :label="contextCategoryLabel(item.value, key)"
-                        :value="key"
-                      />
-                    </el-select>
+                  <div class="copy-text">
+                    <span v-if="item.suggestion">{{ item.suggestion.text }}</span>
+                    <span
+                      v-else
+                      class="preview-card__empty"
+                    >暂无该类型词库</span>
+                  </div>
+                </article>
+              </div>
+            </div>
+          </el-card>
+          <el-card
+            v-if="canViewField('lexicon.type') || canViewField('lexicon.mode') || canViewField('lexicon.context')"
+            class="management-card"
+            shadow="never"
+          >
+            <div class="card-head">
+              <div>
+                <h2>词库管理</h2>
+              </div>
+              <el-tag
+                type="success"
+                effect="plain"
+              >
+                数据库
+              </el-tag>
+            </div>
+
+            <el-form
+              label-position="top"
+              class="marketing-admin-form"
+            >
+              <el-tabs
+                v-if="canViewField('lexicon.type')"
+                v-model="lexiconTab"
+                type="card"
+                class="tf-page-tabs lexicon-tabs"
+              >
+                <el-tab-pane
+                  v-for="item in copyTypeOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :name="item.value"
+                  class="tf-tab-panel"
+                >
+                  <el-form-item :label="`${item.label}语录 - ${typeLexiconLineCount(item.value)} 条`">
                     <el-input
-                      v-model="entry.text"
-                      :disabled="!canWriteLexiconText(entry.text)"
-                      class="lexicon-entry-value"
+                      v-model="typeLexiconForm[item.value].linesText"
+                      :disabled="!canWriteLexiconText(typeLexiconForm[item.value].linesText)"
                       type="textarea"
                       :rows="4"
                       resize="none"
-                      placeholder="每行一条语录"
+                      placeholder="每行一条，点击当前类型即可维护对应语录"
                     />
-                    <el-button v-if="canDelete" type="danger" text @click="removeContextLexiconEntry(item.value, index)">删除</el-button>
+                  </el-form-item>
+                </el-tab-pane>
+              </el-tabs>
+              <div
+                v-if="canViewField('lexicon.mode')"
+                class="section-title"
+              >
+                模式通用词库
+              </div>
+              <p
+                v-if="canViewField('lexicon.mode')"
+                class="lexicon-hint"
+              >
+                营业和销售只使用开始、结束语句；销售模式在深夜时自动使用深夜语句。
+              </p>
+              <el-tabs
+                v-if="canViewField('lexicon.mode')"
+                v-model="modeLexiconTab"
+                type="card"
+                class="tf-page-tabs lexicon-tabs"
+              >
+                <el-tab-pane
+                  label="营业语句"
+                  name="opening"
+                  class="tf-tab-panel"
+                >
+                  <div class="context-lexicon-grid">
+                    <el-form-item :label="`营业语句 - ${modeLexiconLineCount('opening', 'lines')} 条`">
+                      <el-input
+                        v-model="modeLexiconForm.opening.linesText"
+                        :disabled="!canWriteLexiconText(modeLexiconForm.opening.linesText)"
+                        type="textarea"
+                        :rows="4"
+                        resize="none"
+                      />
+                    </el-form-item>
                   </div>
-                  <el-empty v-if="!contextLexiconEntries[item.value].length" :image-size="56" description="暂无语句" />
-                  <el-button v-if="canCreate" type="primary" plain :disabled="!canAddContextLexiconEntry(item.value)" @click="addContextLexiconEntry(item.value)">
-                    <el-icon><Plus /></el-icon>
-                    <span>新增语句</span>
-                  </el-button>
-                </div>
-              </el-tab-pane>
-            </el-tabs>
-            <div class="inline-actions">
-              <el-button v-if="canWriteLexicon" type="primary" :loading="settingsSaving" @click="saveLexicon">
-                保存词库
-              </el-button>
-            </div>
-          </el-form>
-        </el-card>
-
-      </div>
-
+                </el-tab-pane>
+                <el-tab-pane
+                  label="销售语句"
+                  name="sales"
+                  class="tf-tab-panel"
+                >
+                  <div class="context-lexicon-grid">
+                    <el-form-item :label="`销售语句 - ${modeLexiconLineCount('sales', 'lines')} 条`">
+                      <el-input
+                        v-model="modeLexiconForm.sales.linesText"
+                        :disabled="!canWriteLexiconText(modeLexiconForm.sales.linesText)"
+                        type="textarea"
+                        :rows="4"
+                        resize="none"
+                      />
+                    </el-form-item>
+                    <el-form-item :label="`销售话术 - ${modeLexiconLineCount('sales', 'salesTalks')} 条`">
+                      <el-input
+                        v-model="modeLexiconForm.sales.salesTalksText"
+                        :disabled="!canWriteLexiconText(modeLexiconForm.sales.salesTalksText)"
+                        type="textarea"
+                        :rows="4"
+                        resize="none"
+                        placeholder="每行一条，补充成交、带走、安排等销售表达"
+                      />
+                    </el-form-item>
+                    <el-form-item :label="`深夜语句 - ${modeLexiconLineCount('sales', 'nightLines')} 条`">
+                      <el-input
+                        v-model="modeLexiconForm.sales.nightLinesText"
+                        :disabled="!canWriteLexiconText(modeLexiconForm.sales.nightLinesText)"
+                        type="textarea"
+                        :rows="4"
+                        resize="none"
+                      />
+                    </el-form-item>
+                  </div>
+                </el-tab-pane>
+              </el-tabs>
+              <div
+                v-if="canViewField('lexicon.context')"
+                class="section-title"
+              >
+                自动应景词库
+              </div>
+              <el-tabs
+                v-if="canViewField('lexicon.context')"
+                v-model="contextLexiconTab"
+                type="card"
+                class="tf-page-tabs lexicon-tabs context-lexicon-tabs"
+              >
+                <el-tab-pane
+                  v-for="item in contextLexiconTabs"
+                  :key="item.value"
+                  :label="item.label"
+                  :name="item.value"
+                  class="tf-tab-panel"
+                >
+                  <div
+                    v-if="item.value === 'subsidy'"
+                    class="subsidy-toggle-row"
+                  >
+                    <div>
+                      <strong>启用国补语录</strong>
+                      <span>开启后，公开页会读取国补 TAB 中配置的语句。</span>
+                    </div>
+                    <el-switch
+                      v-model="subsidyEnabled"
+                      :disabled="!canEdit"
+                      active-text="开启"
+                      inactive-text="关闭"
+                    />
+                  </div>
+                  <div class="context-category-summary">
+                    <span class="context-category-summary__label">系统可识别分类</span>
+                    <span class="context-category-summary__value">{{ contextCategoryOptions(item.value).map(key => contextCategoryLabel(item.value, key)).join('、') }}</span>
+                  </div>
+                  <div class="lexicon-entry-list">
+                    <div
+                      v-for="(entry, index) in contextLexiconEntries[item.value]"
+                      :key="`${item.value}-${index}`"
+                      class="lexicon-entry-row"
+                    >
+                      <el-select
+                        v-model="entry.key"
+                        :disabled="!canEdit && Boolean(entry.key)"
+                        class="lexicon-entry-key"
+                        filterable
+                        clearable
+                        :placeholder="contextEntryKeyPlaceholder(item.value)"
+                      >
+                        <el-option
+                          v-for="key in contextCategoryOptions(item.value)"
+                          :key="key"
+                          :label="contextCategoryLabel(item.value, key)"
+                          :value="key"
+                        />
+                      </el-select>
+                      <el-input
+                        v-model="entry.text"
+                        :disabled="!canWriteLexiconText(entry.text)"
+                        class="lexicon-entry-value"
+                        type="textarea"
+                        :rows="4"
+                        resize="none"
+                        placeholder="每行一条语录"
+                      />
+                      <el-button
+                        v-if="canDelete && canViewField('system_info.operations')"
+                        type="danger"
+                        text
+                        @click="removeContextLexiconEntry(item.value, index)"
+                      >
+                        删除
+                      </el-button>
+                    </div>
+                    <DataEmptyState
+                      v-if="!contextLexiconEntries[item.value].length"
+                      :image-size="56"
+                      description="暂无语句"
+                    />
+                    <el-button
+                      v-if="canCreate && canViewField('system_info.operations')"
+                      type="primary"
+                      plain
+                      :disabled="!canAddContextLexiconEntry(item.value)"
+                      @click="addContextLexiconEntry(item.value)"
+                    >
+                      <el-icon><Plus /></el-icon>
+                      <span>新增语句</span>
+                    </el-button>
+                  </div>
+                </el-tab-pane>
+              </el-tabs>
+              <div class="inline-actions">
+                <el-button
+                  v-if="canWriteLexicon && canViewField('system_info.operations') && (canViewField('lexicon.type') || canViewField('lexicon.mode') || canViewField('lexicon.context'))"
+                  type="primary"
+                  :loading="settingsSaving"
+                  @click="saveLexicon"
+                >
+                  保存词库
+                </el-button>
+              </div>
+            </el-form>
+          </el-card>
+        </div>
       </div>
     </PermissionGate>
   </div>
@@ -202,11 +366,11 @@ import {
 } from '@element-plus/icons-vue'
 import { PageHeader, PermissionGate } from '@/components/base'
 import { usePagePermissions } from '@/composables/usePagePermissions'
+import { fieldPermissions } from '@/composables/useFieldPermissions'
 import { systemSettingsApi } from '@/api/system-settings'
 import { TimeUtil } from '@/utils/time'
 import {
   DEFAULT_MARKETING_LEXICON,
-  DEFAULT_MARKETING_LOCATION,
   buildMarketingAutoContext,
   generateMarketingCopySuggestions,
   getWeatherTextByCode,
@@ -221,6 +385,8 @@ import {
 } from '@/utils/marketing'
 
 const { canView, canCreate, canEdit, canDelete, handleNoPermission } = usePagePermissions('marketing')
+const MARKETING_MODULE_KEY = 'marketing'
+const canViewField = (fieldKey: string) => fieldPermissions.isFieldVisible(MARKETING_MODULE_KEY, fieldKey)
 const canWriteLexicon = computed(() => canCreate.value || canEdit.value || canDelete.value)
 const canWriteLexiconText = (_value: unknown) => canCreate.value || canEdit.value
 
@@ -380,7 +546,7 @@ const modeLexiconLineCount = (mode: MarketingMode, field: 'lines' | 'nightLines'
     ? modeLexiconForm[mode].nightLinesText
     : field === 'salesTalks'
       ? (modeLexiconForm[mode].salesTalksText || '')
-    : modeLexiconForm[mode].linesText
+      : modeLexiconForm[mode].linesText
   return parseLinesText(text).length
 }
 
@@ -421,8 +587,6 @@ const settingsSaving = ref(false)
 const locationStatus = ref('正在自动获取定位...')
 const autoContext = ref<MarketingAutoContext>(
   buildMarketingAutoContext({
-    locationName: DEFAULT_MARKETING_LOCATION.name,
-    weatherText: '天气正常',
     date: TimeUtil.now().toDate()
   })
 )
@@ -659,15 +823,15 @@ const resolveLocationText = async (latitude: number, longitude: number) => {
     )
     const data = await response.json()
     const result = data?.results?.[0]
-    if (!result) return DEFAULT_MARKETING_LOCATION.name
+    if (!result) return ''
 
     const parts = [result.country, result.admin1, result.admin2, result.name]
       .map((item: string) => String(item || '').trim())
       .filter(Boolean)
 
-    return parts.length ? parts.join('') : DEFAULT_MARKETING_LOCATION.name
+    return parts.length ? parts.join('') : ''
   } catch {
-    return DEFAULT_MARKETING_LOCATION.name
+    return ''
   }
 }
 
@@ -688,7 +852,7 @@ const resolveWeather = async (latitude: number, longitude: number) => {
     }
   } catch {
     return {
-      weatherText: '天气正常',
+      weatherText: '',
       weatherCode: null,
       temperature: null,
       apparentTemperature: null
@@ -700,37 +864,40 @@ const refreshAutoContext = async () => {
   locationLoading.value = true
   locationStatus.value = '正在自动获取定位...'
 
-  let latitude = DEFAULT_MARKETING_LOCATION.latitude
-  let longitude = DEFAULT_MARKETING_LOCATION.longitude
-
+  let browserLocation
   try {
-    const browserLocation = await getBrowserLocation()
-    latitude = browserLocation.latitude
-    longitude = browserLocation.longitude
+    browserLocation = await getBrowserLocation()
   } catch {
-    locationStatus.value = `定位失败，已回退到${DEFAULT_MARKETING_LOCATION.name}`
+    autoContext.value = buildMarketingAutoContext({ date: TimeUtil.now().toDate() })
+    locationStatus.value = '定位不可用，未使用默认位置'
+    locationLoading.value = false
+    await refreshAllPreviews()
+    return
   }
 
   const [locationName, weather] = await Promise.all([
-    resolveLocationText(latitude, longitude),
-    resolveWeather(latitude, longitude)
+    resolveLocationText(browserLocation.latitude, browserLocation.longitude),
+    resolveWeather(browserLocation.latitude, browserLocation.longitude)
   ])
 
   autoContext.value = buildMarketingAutoContext({
     date: TimeUtil.now().toDate(),
-    locationName: locationName || DEFAULT_MARKETING_LOCATION.name,
+    locationName,
     weatherText: weather.weatherText,
     weatherCode: weather.weatherCode,
     temperature: weather.temperature,
     apparentTemperature: weather.apparentTemperature
   })
 
-  locationStatus.value = `已自动识别：${autoContext.value.locationName}`
+  locationStatus.value = autoContext.value.locationName
+    ? `已自动识别：${autoContext.value.locationName}`
+    : '定位信息未获取'
   locationLoading.value = false
   await refreshAllPreviews()
 }
 
 onMounted(async () => {
+  await fieldPermissions.init()
   if (!canView.value) return
   await loadManagementSettings()
   await refreshAutoContext()
@@ -769,12 +936,12 @@ onMounted(async () => {
   h2 {
     margin: 0;
     font-size: 18px;
-    color: #111827;
+    color: var(--tf-color-neutral-900);
   }
 
   p {
     margin: 6px 0 0;
-    color: #64748b;
+    color: var(--tf-color-slate-500);
     font-size: 13px;
     line-height: 1.6;
   }
@@ -816,12 +983,12 @@ onMounted(async () => {
   margin: 16px 0 12px;
   font-size: 14px;
   font-weight: 700;
-  color: #334155;
+  color: var(--tf-color-slate-700);
 }
 
 .lexicon-hint {
   margin: -4px 0 12px;
-  color: #64748b;
+  color: var(--tf-color-slate-500);
   font-size: 12px;
   line-height: 1.6;
 }
@@ -840,7 +1007,7 @@ onMounted(async () => {
   display: flex;
   gap: 8px;
   margin-bottom: 10px;
-  color: #64748b;
+  color: var(--tf-color-slate-500);
   font-size: 12px;
   line-height: 1.6;
 }
@@ -852,9 +1019,9 @@ onMounted(async () => {
   gap: 16px;
   margin-bottom: 12px;
   padding: 12px 14px;
-  border: 1px solid #dbeafe;
+  border: 1px solid var(--tf-color-blue-tailwind-100);
   border-radius: 8px;
-  background: #eff6ff;
+  background: var(--tf-color-blue-tailwind-50);
 }
 
 .subsidy-toggle-row > div {
@@ -865,18 +1032,18 @@ onMounted(async () => {
 }
 
 .subsidy-toggle-row strong {
-  color: #1e3a8a;
+  color: var(--tf-color-blue-tailwind-900);
   font-size: 14px;
 }
 
 .subsidy-toggle-row span {
-  color: #475569;
+  color: var(--tf-color-slate-600);
   font-size: 12px;
 }
 
 .context-category-summary__label {
   flex: none;
-  color: #334155;
+  color: var(--tf-color-slate-700);
   font-weight: 700;
 }
 
@@ -891,9 +1058,9 @@ onMounted(async () => {
   align-items: center;
   gap: 10px;
   padding: 10px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--tf-color-slate-200);
   border-radius: 10px;
-  background: #f8fafc;
+  background: var(--tf-color-slate-50);
 }
 
 .lexicon-entry-key,
@@ -925,19 +1092,19 @@ onMounted(async () => {
   gap: 4px;
   padding: 12px 14px;
   border-radius: 14px;
-  background: linear-gradient(135deg, #eef2ff 0%, #f8fafc 100%);
+  background: linear-gradient(135deg, var(--tf-color-indigo-50) 0%, var(--tf-color-slate-50) 100%);
   border: 1px solid rgba(99, 102, 241, 0.12);
 }
 
 .context-label {
   font-size: 12px;
-  color: #64748b;
+  color: var(--tf-color-slate-500);
 }
 
 .context-value {
   font-size: 15px;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--tf-color-slate-900);
   word-break: break-word;
 }
 
@@ -955,7 +1122,7 @@ onMounted(async () => {
   gap: 6px;
   min-width: 0;
   flex: 0 1 auto;
-  color: #4f46e5;
+  color: var(--tf-color-indigo-600);
   font-size: 12px;
   white-space: nowrap;
 }
@@ -964,7 +1131,7 @@ onMounted(async () => {
   min-width: 0;
   flex: 1 1 auto;
   overflow: hidden;
-  color: #475569;
+  color: var(--tf-color-slate-600);
   font-size: 12px;
   line-height: 1.5;
   text-overflow: ellipsis;
@@ -974,7 +1141,7 @@ onMounted(async () => {
 .preview-section {
   margin-top: 18px;
   padding-top: 16px;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--tf-color-slate-200);
 }
 
 .preview-head {
@@ -986,7 +1153,7 @@ onMounted(async () => {
 
   h3 {
     margin: 0;
-    color: #0f172a;
+    color: var(--tf-color-slate-900);
     font-size: 15px;
   }
 }
@@ -1002,7 +1169,7 @@ onMounted(async () => {
   padding: 16px;
   border-radius: 16px;
   border: 1px solid rgba(99, 102, 241, 0.12);
-  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  background: linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-slate-50) 100%);
   box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
 }
 
@@ -1019,7 +1186,7 @@ onMounted(async () => {
 }
 
 .preview-card :deep(.copy-title) {
-  color: #0f172a;
+  color: var(--tf-color-slate-900);
   font-size: 16px;
   font-weight: 700;
   overflow: hidden;
@@ -1034,13 +1201,13 @@ onMounted(async () => {
 
 .preview-card :deep(.copy-tone) {
   margin-top: 4px;
-  color: #64748b;
+  color: var(--tf-color-slate-500);
   font-size: 12px;
 }
 
 .preview-card :deep(.copy-text) {
   min-height: 108px;
-  color: #475569;
+  color: var(--tf-color-slate-600);
   font-size: 14px;
   line-height: 1.8;
   overflow-wrap: anywhere;
@@ -1048,7 +1215,7 @@ onMounted(async () => {
 }
 
 .preview-card__empty {
-  color: #94a3b8;
+  color: var(--tf-color-slate-400);
 }
 
 @media (max-width: 1100px) {

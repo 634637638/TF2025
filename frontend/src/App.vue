@@ -1,7 +1,7 @@
 <template>
   <el-config-provider :locale="zhCn">
     <div id="app">
-      <router-view v-slot="{ Component, route }">
+      <router-view v-slot="{ Component }">
         <component :is="Component" />
       </router-view>
       <GlobalLoading size="medium" />

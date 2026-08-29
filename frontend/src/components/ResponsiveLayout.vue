@@ -15,22 +15,24 @@
         <div class="mobile-header-content">
           <button
             v-if="showBackButton"
-            @click="$emit('back')"
             class="back-button"
             aria-label="返回"
+            @click="$emit('back')"
           >
             <el-icon><ArrowLeft /></el-icon>
           </button>
 
-          <h2 class="mobile-title">{{ title }}</h2>
+          <h2 class="mobile-title">
+            {{ title }}
+          </h2>
 
           <div class="mobile-header-actions">
             <slot name="header-actions" />
             <button
               v-if="showMenuButton"
-              @click="toggleMobileMenu"
               class="menu-button"
               aria-label="菜单"
+              @click="toggleMobileMenu"
             >
               <el-icon><Menu /></el-icon>
             </button>
@@ -69,12 +71,18 @@
       >
         <div class="content-wrapper">
           <!-- 面包屑导航 -->
-          <nav v-if="showBreadcrumb && !isMobile" class="breadcrumb">
+          <nav
+            v-if="showBreadcrumb && !isMobile"
+            class="breadcrumb"
+          >
             <slot name="breadcrumb" />
           </nav>
 
           <!-- 页面内容 -->
-          <div class="page-content" :class="contentClasses">
+          <div
+            class="page-content"
+            :class="contentClasses"
+          >
             <slot />
           </div>
         </div>
@@ -99,11 +107,11 @@
           <button
             v-for="(action, index) in fabActions"
             :key="action.id"
-            @click="action.handler"
             class="fab-button"
             :class="[`fab-${action.type || 'primary'}`, { 'fab-mini': index > 0 }]"
             :style="fabButtonStyles(index)"
             :aria-label="action.label"
+            @click="action.handler"
           >
             <el-icon v-if="action.icon">
               <component :is="action.icon" />
@@ -342,7 +350,7 @@ defineExpose({
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: var(--el-bg-color, #f5f5f5);
+  background-color: var(--el-bg-color, var(--tf-color-surface-soft));
 }
 
 .safe-area-wrapper {
@@ -359,8 +367,8 @@ defineExpose({
   left: 0;
   right: 0;
   z-index: 1000;
-  background: var(--el-bg-color, #fff);
-  border-bottom: 1px solid var(--el-border-color-light, #ebeef5);
+  background: var(--el-bg-color, var(--color-bg-white));
+  border-bottom: 1px solid var(--el-border-color-light, var(--color-border-light));
   backdrop-filter: blur(10px);
   background: rgba(255, 255, 255, 0.95);
 }
@@ -389,19 +397,19 @@ defineExpose({
   border-radius: 50%;
   cursor: pointer;
   transition: all 0.2s ease;
-  color: var(--el-text-color-primary, #303133);
+  color: var(--el-text-color-primary, var(--color-text-primary));
 }
 
 .back-button:hover,
 .menu-button:hover {
-  background-color: var(--el-fill-color-light, #f5f7fa);
+  background-color: var(--el-fill-color-light, var(--tf-color-surface));
 }
 
 .mobile-title {
   font-size: 18px;
   font-weight: 600;
   margin: 0;
-  color: var(--el-text-color-primary, #303133);
+  color: var(--el-text-color-primary, var(--color-text-primary));
   flex: 1;
   text-align: center;
   overflow: hidden;
@@ -430,8 +438,8 @@ defineExpose({
 /* 侧边栏 */
 .sidebar {
   position: relative;
-  background: var(--el-bg-color-page, #fff);
-  border-right: 1px solid var(--el-border-color-light, #ebeef5);
+  background: var(--el-bg-color-page, var(--color-bg-white));
+  border-right: 1px solid var(--el-border-color-light, var(--color-border-light));
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 100;
 }
@@ -496,8 +504,8 @@ defineExpose({
   bottom: 0;
   left: 0;
   right: 0;
-  background: var(--el-bg-color, #fff);
-  border-top: 1px solid var(--el-border-color-light, #ebeef5);
+  background: var(--el-bg-color, var(--color-bg-white));
+  border-top: 1px solid var(--el-border-color-light, var(--color-border-light));
   z-index: 1000;
 }
 
@@ -537,27 +545,27 @@ defineExpose({
 }
 
 .fab-button.fab-primary {
-  background: var(--el-color-primary, #409eff);
+  background: var(--el-color-primary, var(--color-primary));
   color: var(--tf-button-on-color);
 }
 
 .fab-button.fab-success {
-  background: var(--el-color-success, #67c23a);
+  background: var(--el-color-success, var(--color-success));
   color: var(--tf-button-on-color);
 }
 
 .fab-button.fab-warning {
-  background: var(--el-color-warning, #e6a23c);
+  background: var(--el-color-warning, var(--color-warning));
   color: var(--tf-button-on-color);
 }
 
 .fab-button.fab-danger {
-  background: var(--el-color-danger, #f56c6c);
+  background: var(--el-color-danger, var(--color-danger));
   color: var(--tf-button-on-color);
 }
 
 .fab-button.fab-info {
-  background: var(--el-color-info, #909399);
+  background: var(--el-color-info, var(--color-info));
   color: var(--tf-button-on-color);
 }
 
@@ -645,7 +653,7 @@ defineExpose({
 /* 高对比度模式 */
 @media (prefers-contrast: high) {
   .mobile-header {
-    border-bottom: 2px solid var(--el-border-color, #dcdfe6);
+    border-bottom: 2px solid var(--el-border-color, var(--color-border));
   }
 
   .fab-button {

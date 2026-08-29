@@ -2,16 +2,26 @@
   <section class="stock-in-section stock-in-phone-list">
     <header class="stock-in-section__header phone-list-header">
       <div class="phone-list-title">
-        <h3 class="stock-in-section__title">商品明细</h3>
+        <h3 class="stock-in-section__title">
+          商品明细
+        </h3>
         <span class="phone-count">{{ formData.phones.length }} 件</span>
       </div>
       <div class="phone-list-actions">
-        <el-button type="primary" size="small" @click="emit('add')">
-          <i class="fas fa-plus"></i>
+        <el-button
+          type="primary"
+          size="small"
+          @click="emit('add')"
+        >
+          <i class="fas fa-plus" />
           添加单条
         </el-button>
-        <el-button type="success" size="small" @click="emit('batch')">
-          <i class="fas fa-layer-group"></i>
+        <el-button
+          type="success"
+          size="small"
+          @click="emit('batch')"
+        >
+          <i class="fas fa-layer-group" />
           批量添加
         </el-button>
         <el-button
@@ -20,14 +30,17 @@
           size="small"
           @click="emit('clear')"
         >
-          <i class="fas fa-trash-alt"></i>
+          <i class="fas fa-trash-alt" />
           清空
         </el-button>
       </div>
     </header>
 
     <div class="stock-in-section__body phone-list-body">
-      <div v-if="!isMobile" class="batch-table-container">
+      <div
+        v-if="!isMobile"
+        class="batch-table-container"
+      >
         <el-table
           :data="formData.phones"
           border
@@ -38,10 +51,21 @@
           max-height="60vh"
           :row-class-name="getRowClassName"
         >
-          <el-table-column type="index" label="#" width="54" align="center" />
+          <el-table-column
+            type="index"
+            label="#"
+            width="54"
+            align="center"
+          />
 
-          <el-table-column label="品牌" min-width="120" align="center">
-            <template #header>品牌 <span class="required">*</span></template>
+          <el-table-column
+            label="品牌"
+            min-width="120"
+            align="center"
+          >
+            <template #header>
+              品牌 <span class="required">*</span>
+            </template>
             <template #default="{ row: phone, $index: index }">
               <el-select
                 v-model="phone.brand"
@@ -62,8 +86,14 @@
             </template>
           </el-table-column>
 
-          <el-table-column label="型号" min-width="160" align="center">
-            <template #header>型号 <span class="required">*</span></template>
+          <el-table-column
+            label="型号"
+            min-width="160"
+            align="center"
+          >
+            <template #header>
+              型号 <span class="required">*</span>
+            </template>
             <template #default="{ row: phone, $index: index }">
               <el-select
                 v-model="phone.model"
@@ -85,8 +115,14 @@
             </template>
           </el-table-column>
 
-          <el-table-column label="颜色" min-width="110" align="center">
-            <template #header>颜色 <span class="required">*</span></template>
+          <el-table-column
+            label="颜色"
+            min-width="110"
+            align="center"
+          >
+            <template #header>
+              颜色 <span class="required">*</span>
+            </template>
             <template #default="{ row: phone, $index: index }">
               <el-select
                 v-model="phone.color"
@@ -106,8 +142,14 @@
             </template>
           </el-table-column>
 
-          <el-table-column label="内存" min-width="110" align="center">
-            <template #header>内存 <span class="required">*</span></template>
+          <el-table-column
+            label="内存"
+            min-width="110"
+            align="center"
+          >
+            <template #header>
+              内存 <span class="required">*</span>
+            </template>
             <template #default="{ row: phone, $index: index }">
               <el-select
                 v-model="phone.memory"
@@ -120,28 +162,40 @@
                 <el-option
                   v-for="memory in getFilteredMemoriesForPhone(index)"
                   :key="memory.id"
-                  :label="memory.name || memory.capacity"
+                  :label="memory.size || memory.name || memory.capacity"
                   :value="memory.id"
                 />
               </el-select>
             </template>
           </el-table-column>
 
-          <el-table-column label="序列号" min-width="160" align="center">
-            <template #header>序列号 <span class="required">*</span></template>
+          <el-table-column
+            label="序列号"
+            min-width="160"
+            align="center"
+          >
+            <template #header>
+              序列号 <span class="required">*</span>
+            </template>
             <template #default="{ row: phone }">
               <el-input
                 v-model="phone.serial_number"
                 placeholder="序列号"
-                  maxlength="30"
+                maxlength="30"
                 size="small"
                 @input="formatSerialNumber(phone)"
               />
             </template>
           </el-table-column>
 
-          <el-table-column label="IMEI" min-width="170" align="center">
-            <template #header>IMEI <span class="required">*</span></template>
+          <el-table-column
+            label="IMEI"
+            min-width="170"
+            align="center"
+          >
+            <template #header>
+              IMEI <span class="required">*</span>
+            </template>
             <template #default="{ row: phone }">
               <div
                 class="cursor-pointer"
@@ -159,11 +213,17 @@
             </template>
           </el-table-column>
 
-          <el-table-column label="入库价格" min-width="120" align="center">
-            <template #header>入库价格 <span class="required">*</span></template>
+          <el-table-column
+            label="入库价格"
+            min-width="120"
+            align="center"
+          >
+            <template #header>
+              入库价格 <span class="required">*</span>
+            </template>
             <template #default="{ row: phone }">
               <el-input
-                :model-value="formatPriceValue(phone.purchase_price)"
+                :model-value="formatPriceValue(phone.purchase_cost)"
                 placeholder="价格"
                 clearable
                 inputmode="decimal"
@@ -173,7 +233,12 @@
             </template>
           </el-table-column>
 
-          <el-table-column label="操作" width="78" align="center" class-name="compact-action-column">
+          <el-table-column
+            label="操作"
+            width="78"
+            align="center"
+            class-name="compact-action-column"
+          >
             <template #default="{ $index: index }">
               <el-button
                 v-if="formData.phones.length > 1"
@@ -183,14 +248,17 @@
                 title="删除商品"
                 @click.stop="removePhone(index)"
               >
-                <i class="fas fa-trash-alt"></i>
+                <i class="fas fa-trash-alt" />
               </el-button>
             </template>
           </el-table-column>
         </el-table>
       </div>
 
-      <div v-else class="modern-phone-list">
+      <div
+        v-else
+        class="modern-phone-list"
+      >
         <div
           v-for="(phone, index) in formData.phones"
           :key="index"
@@ -208,13 +276,16 @@
               aria-label="删除商品"
               @click.stop="removePhone(index)"
             >
-              <i class="fas fa-times"></i>
+              <i class="fas fa-times" />
             </el-button>
           </div>
 
           <div class="phone-grid">
             <div class="grid-row">
-              <el-form-item label="品牌" :prop="`phones.${index}.brand`">
+              <el-form-item
+                label="品牌"
+                :prop="`phones.${index}.brand`"
+              >
                 <el-select
                   v-model="phone.brand"
                   placeholder="请选择或输入品牌"
@@ -234,7 +305,10 @@
                 </el-select>
               </el-form-item>
 
-              <el-form-item label="型号" :prop="`phones.${index}.model`">
+              <el-form-item
+                label="型号"
+                :prop="`phones.${index}.model`"
+              >
                 <el-select
                   v-model="phone.model"
                   placeholder="请选择或输入型号"
@@ -256,7 +330,10 @@
             </div>
 
             <div class="grid-row">
-              <el-form-item label="颜色" :prop="`phones.${index}.color`">
+              <el-form-item
+                label="颜色"
+                :prop="`phones.${index}.color`"
+              >
                 <el-select
                   v-model="phone.color"
                   placeholder="请选择或输入颜色"
@@ -275,7 +352,10 @@
                 </el-select>
               </el-form-item>
 
-              <el-form-item label="内存" :prop="`phones.${index}.memory`">
+              <el-form-item
+                label="内存"
+                :prop="`phones.${index}.memory`"
+              >
                 <el-select
                   v-model="phone.memory"
                   placeholder="请选择或输入内存"
@@ -288,7 +368,7 @@
                   <el-option
                     v-for="memory in getFilteredMemoriesForPhone(index)"
                     :key="memory.id"
-                    :label="memory.name || memory.capacity"
+                    :label="memory.size || memory.name || memory.capacity"
                     :value="memory.id"
                   />
                 </el-select>
@@ -296,7 +376,10 @@
             </div>
 
             <div class="grid-row single-column">
-              <el-form-item label="序列号" :prop="`phones.${index}.serial_number`">
+              <el-form-item
+                label="序列号"
+                :prop="`phones.${index}.serial_number`"
+              >
                 <div class="long-input-field">
                   <el-input
                     v-model="phone.serial_number"
@@ -305,26 +388,35 @@
                     @input="formatSerialNumber(phone)"
                     @blur="validateSerialOnBlur(phone)"
                   >
-                    <template v-if="isMobile" #suffix>
+                    <template
+                      v-if="isMobile"
+                      #suffix
+                    >
                       <el-button
                         link
                         type="primary"
                         title="扫码识别序列号"
                         @click="scanSerialNumber(phone)"
                       >
-                        <i class="fas fa-qrcode"></i>
+                        <i class="fas fa-qrcode" />
                       </el-button>
                     </template>
                   </el-input>
                 </div>
-                <div v-if="phone.serialValid === false" class="error-message">
+                <div
+                  v-if="phone.serialValid === false"
+                  class="error-message"
+                >
                   序列号为4-30位字母、数字、斜杠或连字符
                 </div>
               </el-form-item>
             </div>
 
             <div class="grid-row single-column">
-              <el-form-item label="IMEI号" :prop="`phones.${index}.imei`">
+              <el-form-item
+                label="IMEI号"
+                :prop="`phones.${index}.imei`"
+              >
                 <div
                   class="long-input-field imei-field"
                   @dblclick="handleImeiDoubleClick(phone)"
@@ -339,8 +431,11 @@
                     @blur="validateImeiOnBlur(phone)"
                   >
                     <template #suffix>
-                      <span v-if="phone.isNoIMEIMode" class="text-xs text-success">
-                        <i class="fas fa-check-circle"></i> 无IMEI
+                      <span
+                        v-if="phone.isNoIMEIMode"
+                        class="text-xs text-success"
+                      >
+                        <i class="fas fa-check-circle" /> 无IMEI
                       </span>
                       <el-button
                         v-else-if="isMobile"
@@ -349,24 +444,33 @@
                         title="扫码识别IMEI"
                         @click.stop="scanImei(phone)"
                       >
-                        <i class="fas fa-qrcode"></i>
+                        <i class="fas fa-qrcode" />
                       </el-button>
                     </template>
                   </el-input>
                 </div>
-                <div v-if="phone.imeiValid === false" class="error-message">
+                <div
+                  v-if="phone.imeiValid === false"
+                  class="error-message"
+                >
                   {{ phone.isNoIMEIMode ? 'IMEI必须与序列号相同' : 'IMEI号必须是15位纯数字' }}
                 </div>
-                <div v-if="phone.isNoIMEIMode" class="text-xs text-gray-500 mt-1">
+                <div
+                  v-if="phone.isNoIMEIMode"
+                  class="text-xs text-gray-500 mt-1"
+                >
                   双击IMEI输入框可切换回标准模式
                 </div>
               </el-form-item>
             </div>
 
             <div class="grid-row">
-              <el-form-item label="入库价格" :prop="`phones.${index}.purchase_price`">
+              <el-form-item
+                label="入库价格"
+                :prop="`phones.${index}.purchase_cost`"
+              >
                 <el-input
-                  :model-value="formatPriceValue(phone.purchase_price)"
+                  :model-value="formatPriceValue(phone.purchase_cost)"
                   placeholder="请输入入库价格"
                   clearable
                   inputmode="decimal"
@@ -375,7 +479,10 @@
               </el-form-item>
             </div>
 
-            <div v-if="formData.product_status === '二手'" class="grid-row">
+            <div
+              v-if="formData.product_status === '二手'"
+              class="grid-row"
+            >
               <el-form-item label="H5上架">
                 <el-switch
                   v-model="phone.is_published"
@@ -385,20 +492,27 @@
                   inactive-text="已下架"
                   inline-prompt
                 />
-                <div class="field-hint">关闭后H5商城将不显示此商品</div>
+                <div class="field-hint">
+                  关闭后H5商城将不显示此商品
+                </div>
               </el-form-item>
             </div>
           </div>
         </div>
       </div>
 
-      <div v-if="formData.phones.length === 0" class="empty-state">
-        <div class="empty-content">
-          <i class="fas fa-box-open"></i>
-          <p>暂无商品</p>
-          <el-button type="primary" @click="emit('add')">添加第一个商品</el-button>
-        </div>
-      </div>
+      <DataEmptyState
+        v-if="formData.phones.length === 0"
+        size="compact"
+        description="暂无商品"
+      >
+        <el-button
+          type="primary"
+          @click="emit('add')"
+        >
+          添加第一个商品
+        </el-button>
+      </DataEmptyState>
     </div>
   </section>
 </template>
@@ -411,32 +525,32 @@ interface Props {
   isMobile: boolean
   cacheVersion: number
   formData: StockInFormModel
-  hasRowError: (phone: StockInPhoneItem) => boolean
-  getFilteredBrandsForPhone: (index: number) => Brand[]
-  getFilteredModelsForPhone: (index: number) => Model[]
-  getFilteredColorsForPhone: (index: number) => Color[]
-  getFilteredMemoriesForPhone: (index: number) => Memory[]
-  handleBrandFilter: (query: string, index: number) => boolean
-  handleModelFilter: (query: string, index: number) => boolean
-  handleColorFilter: (query: string, index: number) => boolean
-  handleMemoryFilter: (query: string, index: number) => boolean
-  handleBrandChange: (phone: StockInPhoneItem) => void | Promise<void>
-  formatSerialNumber: (phone: StockInPhoneItem) => void
-  formatImei: (phone: StockInPhoneItem) => void
-  formatPriceValue: (value: number | string | undefined) => string
-  updatePurchasePrice: (phone: StockInPhoneItem, value: string) => void
-  removePhone: (index: number) => void
-  validateSerialOnBlur: (phone: StockInPhoneItem) => void
-  validateImeiOnBlur: (phone: StockInPhoneItem) => void
-  scanSerialNumber: (phone: StockInPhoneItem) => void
-  scanImei: (phone: StockInPhoneItem) => void
-  enableNoImeiMode: (phone: StockInPhoneItem) => void
+  hasRowError: (_phone: StockInPhoneItem) => boolean
+  getFilteredBrandsForPhone: (_index: number) => Brand[]
+  getFilteredModelsForPhone: (_index: number) => Model[]
+  getFilteredColorsForPhone: (_index: number) => Color[]
+  getFilteredMemoriesForPhone: (_index: number) => Memory[]
+  handleBrandFilter: (_query: string, _index: number) => boolean
+  handleModelFilter: (_query: string, _index: number) => boolean
+  handleColorFilter: (_query: string, _index: number) => boolean
+  handleMemoryFilter: (_query: string, _index: number) => boolean
+  handleBrandChange: (_phone: StockInPhoneItem) => void | Promise<void>
+  formatSerialNumber: (_phone: StockInPhoneItem) => void
+  formatImei: (_phone: StockInPhoneItem) => void
+  formatPriceValue: (_value: number | string | undefined) => string
+  updatePurchasePrice: (_phone: StockInPhoneItem, _value: string) => void
+  removePhone: (_index: number) => void
+  validateSerialOnBlur: (_phone: StockInPhoneItem) => void
+  validateImeiOnBlur: (_phone: StockInPhoneItem) => void
+  scanSerialNumber: (_phone: StockInPhoneItem) => void
+  scanImei: (_phone: StockInPhoneItem) => void
+  enableNoImeiMode: (_phone: StockInPhoneItem) => void
 }
 
 const emit = defineEmits<{
-  (e: 'add'): void
-  (e: 'batch'): void
-  (e: 'clear'): void
+  add: []
+  batch: []
+  clear: []
 }>()
 
 const props = defineProps<Props>()
@@ -622,7 +736,7 @@ const handleImeiDoubleClick = (phone: StockInPhoneItem) => {
 }
 
 .stock-in-data-table .required {
-  color: #ef4444;
+  color: var(--tf-color-red-500);
   margin-left: 2px;
 }
 

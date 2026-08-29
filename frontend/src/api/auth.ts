@@ -7,7 +7,7 @@ import publicApi from './shop-public'
 import { storage } from '@/services/storage'
 import { H5_STORAGE_KEYS } from '@/constants/storage'
 
-const unwrapData = <T>(response: any): T => {
+const unwrapData = <T>(response: unknown): T => {
   if (response && typeof response === 'object' && 'data' in response) {
     return response.data as T
   }
@@ -36,6 +36,24 @@ export interface RegisterParams {
   name: string
   phone: string
   password: string
+}
+
+export interface H5CustomerSale {
+  id: number
+  invoice_number: string | null
+  sale_time: string | null
+  sale_price: number | null
+  payment_method: string | null
+  store_name: string | null
+  operator_name: string | null
+  imei: string | null
+  serial_number: string | null
+  product_name: string | null
+  brand_name: string | null
+  model_name: string | null
+  color_name: string | null
+  profit: number | null
+  is_new: number | null
 }
 
 /**
@@ -76,8 +94,9 @@ export function getUserOrders() {
  * 获取用户销售记录
  * GET /api/public/auth/sales
  */
-export function getUserSales() {
-  return publicApi.get('/public/auth/sales').then((response) => unwrapData(response))
+export function getUserSales(): Promise<H5CustomerSale[]> {
+  return publicApi.get<H5CustomerSale[]>('/public/auth/sales')
+    .then((response) => unwrapData<H5CustomerSale[]>(response))
 }
 
 /**
@@ -87,7 +106,7 @@ export function getUserSales() {
  * 与 user.ts 中的 getUserProfile(username) 区分（后台管理，按用户名查询）
  */
 export function getUserProfile() {
-  return publicApi.get<any>('/public/auth/profile').then((response) => unwrapData<any>(response))
+  return publicApi.get<unknown>('/public/auth/profile').then((response) => unwrapData<unknown>(response))
 }
 
 /**

@@ -3,52 +3,103 @@
   功能：统一的移动端页面布局，包含顶部导航和底部菜单
 -->
 <template>
-  <div class="mobile-layout" :class="{ 'has-bottom-nav': showBottomNav }">
+  <div
+    class="mobile-layout"
+    :class="{ 'has-bottom-nav': showBottomNav }"
+  >
     <!-- 顶部导航栏 -->
-    <div v-if="showHeader" class="mobile-header">
-      <div class="header-left" @click="handleBack">
-        <i v-if="showBack" class="fas fa-arrow-left"></i>
+    <div
+      v-if="showHeader"
+      class="mobile-header"
+    >
+      <div
+        class="header-left"
+        @click="handleBack"
+      >
+        <i
+          v-if="showBack"
+          class="fas fa-arrow-left"
+        />
       </div>
-      <div class="header-title">{{ pageTitle }}</div>
+      <div class="header-title">
+        {{ pageTitle }}
+      </div>
       <div class="header-right">
         <slot name="header-actions">
-          <i v-if="showShare" class="fas fa-share-alt" @click="handleShare"></i>
+          <i
+            v-if="showShare"
+            class="fas fa-share-alt"
+            @click="handleShare"
+          />
         </slot>
       </div>
     </div>
 
     <!-- 页面内容 -->
-    <div class="mobile-content" :class="{ 'with-header': showHeader, 'with-bottom-nav': showBottomNav }">
+    <div
+      class="mobile-content"
+      :class="{ 'with-header': showHeader, 'with-bottom-nav': showBottomNav }"
+    >
       <router-view v-slot="{ Component }">
-        <component v-if="Component" :is="Component" :key="routeViewKey" />
+        <component
+          :is="Component"
+          v-if="Component"
+          :key="routeViewKey"
+        />
       </router-view>
     </div>
 
     <!-- 底部导航栏 -->
-    <div v-if="showBottomNav" class="bottom-nav">
-      <div class="nav-item" :class="{ active: route.path === '/m' }" @click="navigateTo('/m')">
-        <i class="fas fa-home"></i>
+    <div
+      v-if="showBottomNav"
+      class="bottom-nav"
+    >
+      <div
+        class="nav-item"
+        :class="{ active: route.path === '/m' }"
+        @click="navigateTo('/m')"
+      >
+        <i class="fas fa-home" />
         <span>首页</span>
       </div>
-      <div class="nav-item" :class="{ active: route.path.includes('/products') }" @click="navigateTo('/m/products')">
-        <i class="fas fa-th-large"></i>
+      <div
+        class="nav-item"
+        :class="{ active: route.path.includes('/products') }"
+        @click="navigateTo('/m/products')"
+      >
+        <i class="fas fa-th-large" />
         <span>商品</span>
       </div>
-      <div class="nav-item" :class="{ active: route.path === '/m/cart' }" @click="navigateTo('/m/cart')">
-        <i class="fas fa-shopping-cart"></i>
+      <div
+        class="nav-item"
+        :class="{ active: route.path === '/m/cart' }"
+        @click="navigateTo('/m/cart')"
+      >
+        <i class="fas fa-shopping-cart" />
         <span>购物车</span>
-        <span v-if="cartCount > 0" class="badge">{{ cartCount > 99 ? '99+' : cartCount }}</span>
+        <span
+          v-if="cartCount > 0"
+          class="badge"
+        >{{ cartCount > 99 ? '99+' : cartCount }}</span>
       </div>
-      <div class="nav-item" :class="{ active: route.path.includes('/my') }" @click="navigateTo('/m/my')">
-        <i class="fas fa-user"></i>
+      <div
+        class="nav-item"
+        :class="{ active: route.path.includes('/my') }"
+        @click="navigateTo('/m/my')"
+      >
+        <i class="fas fa-user" />
         <span>我的</span>
       </div>
     </div>
 
     <!-- 悬浮客服按钮 -->
-    <div v-if="showFloatingService" class="floating-service" @click="showServiceDialog">
+    <div
+      v-if="showFloatingService"
+      class="floating-service"
+      @click="showServiceDialog"
+    >
       <div class="service-icon">
-        <i class="fas fa-headset"></i>
+        <i class="fas fa-headset" />
       </div>
       <span class="service-text">客服</span>
     </div>
@@ -65,52 +116,87 @@
       <div class="service-info">
         <!-- 一行显示两个选项 -->
         <div class="service-row">
-          <div v-if="shopConfig.shop_phone" class="service-item phone-item" @click="callPhone">
+          <div
+            v-if="shopConfig.shop_phone"
+            class="service-item phone-item"
+            @click="callPhone"
+          >
             <div class="service-icon phone-icon">
-              <i class="fas fa-phone"></i>
+              <i class="fas fa-phone" />
             </div>
             <div class="service-content">
-              <div class="service-label">拨打</div>
-              <div class="service-value">{{ shopConfig.shop_phone }}</div>
+              <div class="service-label">
+                拨打
+              </div>
+              <div class="service-value">
+                {{ shopConfig.shop_phone }}
+              </div>
             </div>
           </div>
 
-          <div v-if="shopConfig.wechat_id" class="service-item wechat-item" @click="copyWechat">
+          <div
+            v-if="shopConfig.wechat_id"
+            class="service-item wechat-item"
+            @click="copyWechat"
+          >
             <div class="service-icon wechat-icon">
-              <i class="fab fa-weixin"></i>
+              <i class="fab fa-weixin" />
             </div>
             <div class="service-content">
-              <div class="service-label">加微信</div>
-              <div class="service-value">{{ shopConfig.wechat_id }}</div>
+              <div class="service-label">
+                加微信
+              </div>
+              <div class="service-value">
+                {{ shopConfig.wechat_id }}
+              </div>
             </div>
           </div>
         </div>
 
         <!-- 只有一个选项时居中显示 -->
-        <div v-if="shopConfig.shop_phone && !shopConfig.wechat_id" class="service-single" @click="callPhone">
+        <div
+          v-if="shopConfig.shop_phone && !shopConfig.wechat_id"
+          class="service-single"
+          @click="callPhone"
+        >
           <div class="info-icon phone-icon">
-            <i class="fas fa-phone"></i>
+            <i class="fas fa-phone" />
           </div>
           <div class="info-content">
-            <div class="info-label">客服电话</div>
-            <div class="info-value">{{ shopConfig.shop_phone }}</div>
+            <div class="info-label">
+              客服电话
+            </div>
+            <div class="info-value">
+              {{ shopConfig.shop_phone }}
+            </div>
           </div>
-          <i class="fas fa-chevron-right info-arrow"></i>
+          <i class="fas fa-chevron-right info-arrow" />
         </div>
 
-        <div v-if="!shopConfig.shop_phone && shopConfig.wechat_id" class="service-single" @click="copyWechat">
+        <div
+          v-if="!shopConfig.shop_phone && shopConfig.wechat_id"
+          class="service-single"
+          @click="copyWechat"
+        >
           <div class="info-icon wechat-icon">
-            <i class="fab fa-weixin"></i>
+            <i class="fab fa-weixin" />
           </div>
           <div class="info-content">
-            <div class="info-label">微信号</div>
-            <div class="info-value">{{ shopConfig.wechat_id }}</div>
+            <div class="info-label">
+              微信号
+            </div>
+            <div class="info-value">
+              {{ shopConfig.wechat_id }}
+            </div>
           </div>
-          <i class="fas fa-chevron-right info-arrow"></i>
+          <i class="fas fa-chevron-right info-arrow" />
         </div>
 
-        <div v-if="!shopConfig.shop_phone && !shopConfig.wechat_id" class="no-service">
-          <i class="fas fa-info-circle"></i>
+        <div
+          v-if="!shopConfig.shop_phone && !shopConfig.wechat_id"
+          class="no-service"
+        >
+          <i class="fas fa-info-circle" />
           <p>暂无客服联系方式</p>
         </div>
       </div>
@@ -124,7 +210,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getPublicConfig } from '@/api/shop-public'
 import { storage } from '@/services/storage'
-import { H5_STORAGE_KEYS } from '@/constants/storage'
 import { logger } from '@/utils/logger'
 const route = useRoute()
 const router = useRouter()
@@ -295,7 +380,7 @@ defineExpose({
 <style scoped lang="scss">
 .mobile-layout {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: var(--tf-color-surface-soft);
   padding-bottom: env(safe-area-inset-bottom);
   // 移除 flex 布局，让内容自然流动
 }
@@ -307,7 +392,7 @@ defineExpose({
   left: 0;
   right: 0;
   height: 44px;
-  background: #fff;
+  background: var(--color-bg-white);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -322,7 +407,7 @@ defineExpose({
     align-items: center;
     justify-content: center;
     font-size: 18px;
-    color: #333;
+    color: var(--text-primary);
     cursor: pointer;
 
     i {
@@ -335,7 +420,7 @@ defineExpose({
     text-align: center;
     font-size: 16px;
     font-weight: 500;
-    color: #333;
+    color: var(--text-primary);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -363,11 +448,11 @@ defineExpose({
   left: 0;
   right: 0;
   height: 60px;
-  background: #fff;
+  background: var(--color-bg-white);
   display: flex;
   justify-content: space-around;
   align-items: center;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--tf-color-gray-200-alt);
   z-index: 100;
   padding-bottom: env(safe-area-inset-bottom);
 
@@ -378,7 +463,7 @@ defineExpose({
     align-items: center;
     justify-content: center;
     text-decoration: none;
-    color: #999;
+    color: var(--text-muted);
     position: relative;
     padding: 8px 0;
     cursor: pointer;
@@ -393,7 +478,7 @@ defineExpose({
     }
 
     &.active {
-      color: #ff6b00;
+      color: var(--tf-color-accent-orange);
     }
 
     .badge {
@@ -402,8 +487,8 @@ defineExpose({
       right: 25%;
       min-width: 16px;
       height: 16px;
-      background: #ff1744;
-      color: #fff;
+      background: var(--tf-color-accent-pink);
+      color: var(--color-bg-white);
       font-size: 10px;
       border-radius: 8px;
       display: flex;
@@ -462,12 +547,12 @@ defineExpose({
     width: 56px;
     height: 56px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #00c853 0%, #00e676 100%);
+    background: linear-gradient(135deg, var(--tf-color-accent-green) 0%, var(--tf-color-green-accent) 100%);
     box-shadow: 0 4px 16px rgba(0, 200, 83, 0.4);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
+    color: var(--color-bg-white);
 
     i {
       font-size: 24px;
@@ -476,7 +561,7 @@ defineExpose({
 
   .service-text {
     font-size: 12px;
-    color: #00c853;
+    color: var(--tf-color-accent-green);
     font-weight: 500;
     background: rgba(255, 255, 255, 0.9);
     padding: 2px 8px;
@@ -499,13 +584,13 @@ defineExpose({
       align-items: center;
       gap: 8px;
       padding: 16px;
-      background: #f8f9fa;
+      background: var(--tf-color-surface-muted);
       border-radius: 8px;
       cursor: pointer;
       transition: all 0.3s;
 
       &:active {
-        background: #e9ecef;
+        background: var(--tf-color-border-muted);
         transform: scale(0.98);
       }
 
@@ -516,14 +601,14 @@ defineExpose({
         display: flex;
         align-items: center;
         justify-content: center;
-        color: #fff;
+        color: var(--color-bg-white);
 
         &.phone-icon {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
         }
 
         &.wechat-icon {
-          background: linear-gradient(135deg, #00c853 0%, #00e676 100%);
+          background: linear-gradient(135deg, var(--tf-color-accent-green) 0%, var(--tf-color-green-accent) 100%);
         }
 
         i {
@@ -536,14 +621,14 @@ defineExpose({
 
         .service-label {
           font-size: 12px;
-          color: #666;
+          color: var(--text-secondary);
           margin-bottom: 4px;
         }
 
         .service-value {
           font-size: 14px;
           font-weight: 500;
-          color: #333;
+          color: var(--text-primary);
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
@@ -559,13 +644,13 @@ defineExpose({
     align-items: center;
     gap: 12px;
     padding: 16px;
-    background: #f8f9fa;
+    background: var(--tf-color-surface-muted);
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.3s;
 
     &:active {
-      background: #e9ecef;
+      background: var(--tf-color-border-muted);
       transform: scale(0.98);
     }
 
@@ -576,15 +661,15 @@ defineExpose({
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #fff;
+      color: var(--color-bg-white);
       flex-shrink: 0;
 
       &.phone-icon {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
       }
 
       &.wechat-icon {
-        background: linear-gradient(135deg, #00c853 0%, #00e676 100%);
+        background: linear-gradient(135deg, var(--tf-color-accent-green) 0%, var(--tf-color-green-accent) 100%);
       }
 
       i {
@@ -598,14 +683,14 @@ defineExpose({
 
       .info-label {
         font-size: 12px;
-        color: #666;
+        color: var(--text-secondary);
         margin-bottom: 4px;
       }
 
       .info-value {
         font-size: 15px;
         font-weight: 500;
-        color: #333;
+        color: var(--text-primary);
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -613,7 +698,7 @@ defineExpose({
     }
 
     .info-arrow {
-      color: #ddd;
+      color: var(--tf-color-gray-300-alt);
       font-size: 14px;
       flex-shrink: 0;
     }
@@ -624,7 +709,7 @@ defineExpose({
     align-items: center;
     gap: 12px;
     padding: 16px;
-    background: #f8f9fa;
+    background: var(--tf-color-surface-muted);
     border-radius: 8px;
     margin-bottom: 12px;
     cursor: pointer;
@@ -635,7 +720,7 @@ defineExpose({
     }
 
     &:active {
-      background: #e9ecef;
+      background: var(--tf-color-border-muted);
       transform: scale(0.98);
     }
 
@@ -646,15 +731,15 @@ defineExpose({
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #fff;
+      color: var(--color-bg-white);
       flex-shrink: 0;
 
       &.phone-icon {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
       }
 
       &.wechat-icon {
-        background: linear-gradient(135deg, #00c853 0%, #00e676 100%);
+        background: linear-gradient(135deg, var(--tf-color-accent-green) 0%, var(--tf-color-green-accent) 100%);
       }
 
       i {
@@ -668,14 +753,14 @@ defineExpose({
 
       .info-label {
         font-size: 12px;
-        color: #666;
+        color: var(--text-secondary);
         margin-bottom: 4px;
       }
 
       .info-value {
         font-size: 15px;
         font-weight: 500;
-        color: #333;
+        color: var(--text-primary);
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -683,7 +768,7 @@ defineExpose({
     }
 
     .info-arrow {
-      color: #ddd;
+      color: var(--tf-color-gray-300-alt);
       font-size: 14px;
       flex-shrink: 0;
     }
@@ -692,7 +777,7 @@ defineExpose({
   .no-service {
     text-align: center;
     padding: 32px 16px;
-    color: #999;
+    color: var(--text-muted);
 
     i {
       font-size: 40px;
@@ -711,16 +796,16 @@ defineExpose({
 <style lang="scss">
 // 悬浮客服按钮（全局样式，确保在所有页面都能正常显示）
 .floating-service {
-  position: fixed !important;
-  bottom: 148px !important;
-  right: 16px !important;
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  gap: 4px !important;
-  cursor: pointer !important;
-  z-index: 1000 !important;
-  animation: pulse 2s infinite !important;
+  position: fixed;
+  bottom: 148px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  z-index: 1000;
+  animation: pulse 2s infinite;
 
   @keyframes pulse {
     0%, 100% {
@@ -732,118 +817,118 @@ defineExpose({
   }
 
   .service-icon {
-    width: 56px !important;
-    height: 56px !important;
-    border-radius: 50% !important;
-    background: linear-gradient(135deg, #00c853 0%, #00e676 100%) !important;
-    box-shadow: 0 4px 16px rgba(0, 200, 83, 0.4) !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    color: #fff !important;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--tf-color-accent-green) 0%, var(--tf-color-green-accent) 100%);
+    box-shadow: 0 4px 16px rgba(0, 200, 83, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-bg-white);
 
     i {
-      font-size: 24px !important;
+      font-size: 24px;
     }
   }
 
   .service-text {
-    font-size: 12px !important;
-    color: #00c853 !important;
-    font-weight: 500 !important;
-    background: rgba(255, 255, 255, 0.9) !important;
-    padding: 2px 8px !important;
-    border-radius: 10px !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+    font-size: 12px;
+    color: var(--tf-color-accent-green);
+    font-weight: 500;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 2px 8px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 }
 
 // 客服信息弹窗样式（全局样式）
 .service-info {
   .info-item {
-    display: flex !important;
-    align-items: center !important;
-    gap: 12px !important;
-    padding: 16px !important;
-    background: #f8f9fa !important;
-    border-radius: 8px !important;
-    margin-bottom: 12px !important;
-    cursor: pointer !important;
-    transition: all 0.3s !important;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: var(--tf-color-surface-muted);
+    border-radius: 8px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: all 0.3s;
 
     &:last-child {
-      margin-bottom: 0 !important;
+      margin-bottom: 0;
     }
 
     &:active {
-      background: #e9ecef !important;
-      transform: scale(0.98) !important;
+      background: var(--tf-color-border-muted);
+      transform: scale(0.98);
     }
 
     .info-icon {
-      width: 44px !important;
-      height: 44px !important;
-      border-radius: 50% !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      color: #fff !important;
-      flex-shrink: 0 !important;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--color-bg-white);
+      flex-shrink: 0;
 
       &.phone-icon {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
       }
 
       &.wechat-icon {
-        background: linear-gradient(135deg, #00c853 0%, #00e676 100%) !important;
+        background: linear-gradient(135deg, var(--tf-color-accent-green) 0%, var(--tf-color-green-accent) 100%);
       }
 
       i {
-        font-size: 20px !important;
+        font-size: 20px;
       }
     }
 
     .info-content {
-      flex: 1 !important;
-      min-width: 0 !important;
+      flex: 1;
+      min-width: 0;
 
       .info-label {
-        font-size: 12px !important;
-        color: #666 !important;
-        margin-bottom: 4px !important;
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin-bottom: 4px;
       }
 
       .info-value {
-        font-size: 15px !important;
-        font-weight: 500 !important;
-        color: #333 !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-        white-space: nowrap !important;
+        font-size: 15px;
+        font-weight: 500;
+        color: var(--text-primary);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
     }
 
     .info-arrow {
-      color: #ddd !important;
-      font-size: 14px !important;
-      flex-shrink: 0 !important;
+      color: var(--tf-color-gray-300-alt);
+      font-size: 14px;
+      flex-shrink: 0;
     }
   }
 
   .no-service {
-    text-align: center !important;
-    padding: 32px 16px !important;
-    color: #999 !important;
+    text-align: center;
+    padding: 32px 16px;
+    color: var(--text-muted);
 
     i {
-      font-size: 40px !important;
-      margin-bottom: 12px !important;
-      opacity: 0.5 !important;
+      font-size: 40px;
+      margin-bottom: 12px;
+      opacity: 0.5;
     }
 
     p {
-      font-size: 14px !important;
-      margin: 0 !important;
+      font-size: 14px;
+      margin: 0;
     }
   }
 }

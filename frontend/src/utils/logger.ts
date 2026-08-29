@@ -59,7 +59,7 @@ class Logger {
     return levels.indexOf(level) >= levels.indexOf(this.config.level)
   }
 
-  private formatMessage(level: string, message: string, data?: any): unknown[] {
+  private formatMessage(level: string, message: string, data?: unknown): unknown[] {
     const timestamp = formatLogTimestamp(new Date())
     const prefix = `[${timestamp}] [${level.toUpperCase()}]`
 
@@ -70,22 +70,22 @@ class Logger {
     return [`${prefix} ${message}`]
   }
 
-  debug(message: string, data?: any): void {
+  debug(message: string, data?: unknown): void {
     if (!this.shouldLog('debug') || !this.config.enableConsole) return
     console.debug(...this.formatMessage('debug', message, data))
   }
 
-  info(message: string, data?: any): void {
+  info(message: string, data?: unknown): void {
     if (!this.shouldLog('info') || !this.config.enableConsole) return
     console.info(...this.formatMessage('info', message, data))
   }
 
-  warn(message: string, data?: any): void {
+  warn(message: string, data?: unknown): void {
     if (!this.shouldLog('warn') || !this.config.enableConsole) return
     console.warn(...this.formatMessage('warn', message, data))
   }
 
-  error(message: string, error?: any): void {
+  error(message: string, error?: unknown): void {
     if (!this.shouldLog('error') || !this.config.enableConsole) return
     console.error(...this.formatMessage('error', message, error))
 
@@ -95,7 +95,7 @@ class Logger {
     }
   }
 
-  private sendToServer(message: string, error: any): void {
+  private sendToServer(message: string, error: unknown): void {
     // 发送错误日志到服务器
     try {
       fetch('/api/logs', {
@@ -105,7 +105,7 @@ class Logger {
         },
         body: JSON.stringify({
           message,
-          error: error?.stack || error,
+          error: error instanceof Error ? error.stack || error.message : error,
           timestamp: new Date().toISOString(),
           url: window.location.href,
           userAgent: navigator.userAgent
@@ -121,16 +121,16 @@ class Logger {
   // 创建组件日志
   createComponentLogger(componentName: string) {
     return {
-      debug: (message: string, data?: any) => {
+      debug: (message: string, data?: unknown) => {
         this.debug(`[${componentName}] ${message}`, data)
       },
-      info: (message: string, data?: any) => {
+      info: (message: string, data?: unknown) => {
         this.info(`[${componentName}] ${message}`, data)
       },
-      warn: (message: string, data?: any) => {
+      warn: (message: string, data?: unknown) => {
         this.warn(`[${componentName}] ${message}`, data)
       },
-      error: (message: string, error?: any) => {
+      error: (message: string, error?: unknown) => {
         this.error(`[${componentName}] ${message}`, error)
       }
     }
@@ -142,14 +142,14 @@ export const logger = new Logger()
 
 // 为了兼容现有代码，暂时保留这些方法，但内部使用新的日志系统
 export const consoleLog = {
-  log: (...args: any[]) => {
+  log: (...args: unknown[]) => {
     if (import.meta.env.DEV) {
       console.log(...args)
     }
   },
-  info: (...args: any[]) => logger.info(args[0], args[1]),
-  warn: (...args: any[]) => logger.warn(args[0], args[1]),
-  error: (...args: any[]) => logger.error(args[0], args[1])
+  info: (...args: unknown[]) => logger.info(String(args[0] ?? ''), args[1]),
+  warn: (...args: unknown[]) => logger.warn(String(args[0] ?? ''), args[1]),
+  error: (...args: unknown[]) => logger.error(String(args[0] ?? ''), args[1])
 }
 
 // 默认导出

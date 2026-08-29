@@ -2,40 +2,64 @@
   <div class="data-check-tab">
     <!-- 操作按钮 -->
     <div class="action-bar">
-      <el-button type="primary" @click="handleCheckAll" :disabled="loading">
-        <InlineLoading v-if="loading" text="检查中..." size="small" variant="inherit" />
+      <el-button
+        v-if="canViewField('check.action_check_all')"
+        type="primary"
+        :disabled="loading"
+        @click="handleCheckAll"
+      >
+        <InlineLoading
+          v-if="loading"
+          text="检查中..."
+          size="small"
+          variant="inherit"
+        />
         <template v-else>
-          <i class="fas fa-search"></i>
+          <i class="fas fa-search" />
           <span>综合检查</span>
         </template>
       </el-button>
-      <el-button type="info" @click="getStatistics" :disabled="loading">
-        <i class="fas fa-chart-bar"></i>
+      <el-button
+        v-if="canViewField('check.action_statistics')"
+        type="info"
+        :disabled="loading"
+        @click="getStatistics"
+      >
+        <i class="fas fa-chart-bar" />
         <span>数据统计</span>
       </el-button>
     </div>
 
     <!-- 快捷检查卡片 -->
-    <div class="check-cards">
+    <div
+      v-if="canViewField('check.check_cards')"
+      class="check-cards"
+    >
       <div
         v-for="item in checkItems"
         :key="item.key"
         class="check-card"
-        :class="{ 'has-duplicates': item.duplicateCount > 0 }"
+        :class="{ 'has-duplicates': item.duplicate_count > 0 }"
         @click="handleViewItem(item.key)"
       >
         <div class="card-icon">
-          <i :class="item.icon"></i>
+          <i :class="item.icon" />
         </div>
         <div class="card-content">
           <h3>{{ item.label }}</h3>
           <div class="card-stats">
             <span class="stat-item">总数: {{ item.total }}</span>
-            <span v-if="item.duplicateCount > 0" class="stat-item duplicate">
-              重复: {{ item.duplicateCount }} 组
+            <span
+              v-if="item.duplicate_count > 0"
+              class="stat-item duplicate"
+            >
+              重复: {{ item.duplicate_count }} 组
             </span>
-            <span v-else class="stat-item ok">
-              <i class="fas fa-check-circle"></i> 无重复
+            <span
+              v-else
+              class="stat-item ok"
+            >
+              <i class="fas fa-check-circle" /> 无重复
             </span>
           </div>
         </div>
@@ -43,158 +67,247 @@
     </div>
 
     <!-- 所有数据列表视图 -->
-    <div v-if="viewMode === 'all'" class="all-data-section">
+    <div
+      v-if="viewMode === 'all' && canViewField('check.all_data_table')"
+      class="all-data-section"
+    >
       <!-- 空数据提示 -->
-      <div v-if="allDataList.length === 0" class="empty-data-section">
-        <div class="empty-state">
-          <i class="fas fa-inbox"></i>
-          <h3>{{ currentCheck?.label }} - 暂无数据</h3>
-          <p>该数据表当前没有数据，请先添加数据后再查看</p>
-          <el-button type="primary" @click="closeAllDataView">
-            <i class="fas fa-arrow-left"></i>
+      <div
+        v-if="allDataList.length === 0"
+        class="empty-data-section"
+      >
+        <DataEmptyState
+          :title="`${currentCheck?.label || '当前数据表'} - 暂无数据`"
+          description="该数据表当前没有数据，请先添加数据后再查看"
+        >
+          <el-button
+            type="primary"
+            @click="closeAllDataView"
+          >
             返回
           </el-button>
-        </div>
+        </DataEmptyState>
       </div>
 
       <!-- 数据表格 -->
       <div v-else>
-      <div class="section-header">
-        <h2>
-          <i class="fas fa-list"></i>
-          {{ currentCheck?.label }} - 所有数据
-        </h2>
-        <div class="section-actions">
-          <div class="duplicate-summary">
-            <span class="summary-item total">总数: {{ allDataList.length }}</span>
-            <span v-if="duplicateCount > 0" class="summary-item duplicate">
-              <i class="fas fa-exclamation-triangle"></i>
-              重复: {{ duplicateCount }} 条
-            </span>
-            <span v-else class="summary-item ok">
-              <i class="fas fa-check-circle"></i>
-              无重复
-            </span>
-          </div>
-          <el-button type="info" @click="closeAllDataView">
-            <i class="fas fa-times"></i>
-            关闭
-          </el-button>
-        </div>
-      </div>
-
-      <div class="data-table-container">
-        <el-table class="data-table"
-          :data="loading ? [] : paginatedAllData"
-          stripe
-          border
-          :row-class-name="getRowClassName"
-        >
-          <template #empty>
-            <TableLoadingRow v-if="loading" mode="block" text="加载中..." />
-            <el-empty v-else description="暂无数据" />
-          </template>
-
-          <el-table-column type="index" label="#" width="60" />
-          <el-table-column prop="id" label="ID" width="80" />
-          <el-table-column prop="name" label="名称" min-width="150">
-            <template #default="{ row }">
-              <span v-if="row._isDuplicate" class="duplicate-badge">
-                <i class="fas fa-exclamation-circle"></i>
-                {{ getRowName(row) }}
+        <div class="section-header">
+          <h2>
+            <i class="fas fa-list" />
+            {{ currentCheck?.label }} - 所有数据
+          </h2>
+          <div class="section-actions">
+            <div class="duplicate-summary">
+              <span class="summary-item total">总数: {{ allDataList.length }}</span>
+              <span
+                v-if="duplicate_count > 0"
+                class="summary-item duplicate"
+              >
+                <i class="fas fa-exclamation-triangle" />
+                重复: {{ duplicate_count }} 条
               </span>
-              <span v-else>{{ getRowName(row) }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="phone" label="电话" width="130" v-if="['customers', 'suppliers'].includes(currentCheck?.key)" />
-          <el-table-column prop="brand_name" label="品牌" width="120" v-if="currentCheck?.key === 'models'" />
-          <el-table-column prop="customer_type" label="客户类型" width="100" v-if="currentCheck?.key === 'customers'" />
-          <el-table-column prop="vip_level" label="VIP等级" width="100" v-if="currentCheck?.key === 'customers'" />
-          <el-table-column prop="status" label="状态" width="80">
-            <template #default="{ row }">
-              <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">
-                {{ row.status === 1 ? '启用' : '禁用' }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="重复信息" width="120">
-            <template #default="{ row }">
-              <el-tag v-if="row._isDuplicate" type="danger" size="small">
-                重复 ({{ row._duplicateCount }})
-              </el-tag>
-              <el-tag v-else type="success" size="small">唯一</el-tag>
-            </template>
-          </el-table-column>
-        </el-table>
-
-        <!-- 分页 -->
-        <div class="pagination-wrapper">
-          <Pagination
-            v-model:current="allDataPagination.currentPage"
-            v-model:page-size="allDataPagination.pageSize"
-            :page-sizes="[20, 50, 100, 200]"
-            :total="allDataList.length"
-            :show-range="true"
-            @change="handleAllDataPaginationChange"
-          />
+              <span
+                v-else
+                class="summary-item ok"
+              >
+                <i class="fas fa-check-circle" />
+                无重复
+              </span>
+            </div>
+            <el-button
+              type="info"
+              @click="closeAllDataView"
+            >
+              <i class="fas fa-times" />
+              关闭
+            </el-button>
+          </div>
         </div>
-      </div>
+
+        <div class="data-table-container">
+          <el-table
+            class="data-table"
+            :data="loading ? [] : paginatedAllData"
+            stripe
+            border
+            :row-class-name="getRowClassName"
+          >
+            <template #empty>
+              <TableLoadingRow
+                v-if="loading"
+                mode="block"
+                text="加载中..."
+              />
+              <DataEmptyState
+                v-else
+                description="暂无数据"
+              />
+            </template>
+
+            <el-table-column
+              type="index"
+              label="#"
+              width="60"
+            />
+            <el-table-column
+              prop="id"
+              label="ID"
+              width="80"
+            />
+            <el-table-column
+              prop="name"
+              label="名称"
+              min-width="150"
+            >
+              <template #default="{ row }">
+                <span
+                  v-if="row.is_duplicate"
+                  class="duplicate-badge"
+                >
+                  <i class="fas fa-exclamation-circle" />
+                  {{ getRowName(row) }}
+                </span>
+                <span v-else>{{ getRowName(row) }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column
+              v-if="['customers', 'suppliers'].includes(currentCheck?.key)"
+              prop="phone"
+              label="电话"
+              width="130"
+            />
+            <el-table-column
+              v-if="currentCheck?.key === 'models'"
+              prop="brand_name"
+              label="品牌"
+              width="120"
+            />
+            <el-table-column
+              v-if="currentCheck?.key === 'customers'"
+              prop="customer_type"
+              label="客户类型"
+              width="100"
+            />
+            <el-table-column
+              v-if="currentCheck?.key === 'customers'"
+              prop="vip_level"
+              label="VIP等级"
+              width="100"
+            />
+            <el-table-column
+              prop="status"
+              label="状态"
+              width="80"
+            >
+              <template #default="{ row }">
+                <el-tag
+                  :type="row.status === 1 ? 'success' : 'info'"
+                  size="small"
+                >
+                  {{ row.status === 1 ? '启用' : '禁用' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column
+              label="重复信息"
+              width="120"
+            >
+              <template #default="{ row }">
+                <el-tag
+                  v-if="row.is_duplicate"
+                  type="danger"
+                  size="small"
+                >
+                  重复 ({{ row.duplicate_count }})
+                </el-tag>
+                <el-tag
+                  v-else
+                  type="success"
+                  size="small"
+                >
+                  唯一
+                </el-tag>
+              </template>
+            </el-table-column>
+          </el-table>
+
+          <!-- 分页 -->
+          <div class="pagination-wrapper">
+            <Pagination
+              v-model:current="allDataPagination.page"
+              v-model:page-size="allDataPagination.page_size"
+              :page-sizes="[20, 50, 100, 200]"
+              :total="allDataList.length"
+              :show-range="true"
+              @change="handleAllDataPaginationChange"
+            />
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- 重复数据列表 -->
-    <div v-if="viewMode === 'duplicates' && currentCheck && checkResult" class="duplicates-section">
+    <div
+      v-if="viewMode === 'duplicates' && currentCheck && checkResult && canViewField('check.duplicates_list')"
+      class="duplicates-section"
+    >
       <div class="section-header">
         <h2>
-          <i class="fas fa-exclamation-triangle"></i>
+          <i class="fas fa-exclamation-triangle" />
           {{ currentCheck.label }} - 重复数据
         </h2>
         <div class="section-actions">
           <el-button
-            v-if="hasDuplicates"
+            v-if="hasDuplicates && canEdit"
             type="info"
-            @click="handleSelectAll"
             :title="isAllSelected ? '取消全选' : '全选'"
+            @click="handleSelectAll"
           >
-            <i :class="isAllSelected ? 'fas fa-check-square' : 'fas fa-square'"></i>
+            <i :class="isAllSelected ? 'fas fa-check-square' : 'fas fa-square'" />
             <span>{{ isAllSelected ? '取消全选' : '全选' }}</span>
           </el-button>
           <el-button
-            v-if="hasDuplicates"
+            v-if="hasDuplicates && canEdit"
             type="primary"
-            @click="handleMergeSelected"
             :disabled="!hasSelectedDuplicates"
+            @click="handleMergeSelected"
           >
-            <i class="fas fa-compress-arrows-alt"></i>
+            <i class="fas fa-compress-arrows-alt" />
             合并选中 ({{ selectedDuplicates.length }})
           </el-button>
           <el-button
-            v-if="hasDuplicates"
+            v-if="hasDuplicates && canDelete"
             type="danger"
-            @click="handleDeleteSelected"
             :disabled="!hasSelectedDuplicates"
+            @click="handleDeleteSelected"
           >
-            <i class="fas fa-trash"></i>
+            <i class="fas fa-trash" />
             删除选中 ({{ selectedDuplicates.length }})
           </el-button>
           <el-button
-            v-if="hasDuplicates && currentCheck?.key === 'customers'"
+            v-if="hasDuplicates && currentCheck?.key === 'customers' && canDelete"
             type="danger"
-            @click="handleCleanupAllDuplicates"
             :disabled="loading"
+            @click="handleCleanupAllDuplicates"
           >
-            <i class="fas fa-broom"></i>
+            <i class="fas fa-broom" />
             一键清理所有重复行
           </el-button>
         </div>
       </div>
 
-      <div v-if="!hasDuplicates" class="no-duplicates">
-        <i class="fas fa-check-circle"></i>
+      <div
+        v-if="!hasDuplicates"
+        class="no-duplicates"
+      >
+        <i class="fas fa-check-circle" />
         <p>没有发现重复数据</p>
       </div>
 
-      <div v-else class="duplicates-list">
+      <div
+        v-else
+        class="duplicates-list"
+      >
         <div
           v-for="(group, index) in currentPageDuplicates"
           :key="index"
@@ -207,21 +320,23 @@
             </div>
             <div class="group-actions">
               <el-button
+                v-if="canEdit"
                 type="primary"
                 size="small"
-                @click="handleMergeGroup(group)"
                 title="合并到第一条"
+                @click="handleMergeGroup(group)"
               >
-                <i class="fas fa-compress-arrows-alt"></i>
+                <i class="fas fa-compress-arrows-alt" />
                 合并
               </el-button>
               <el-button
+                v-if="canDelete"
                 type="danger"
                 size="small"
-                @click="handleDeleteGroup(group)"
                 title="删除重复项"
+                @click="handleDeleteGroup(group)"
               >
-                <i class="fas fa-trash"></i>
+                <i class="fas fa-trash" />
                 删除
               </el-button>
             </div>
@@ -240,19 +355,25 @@
             >
               <div class="item-select">
                 <input
-                  type="checkbox"
                   :id="`item-${group.key}-${itemIndex}`"
-                  :value="`${group.key}-${itemIndex}`"
                   v-model="selectedDuplicates"
+                  type="checkbox"
+                  :value="`${group.key}-${itemIndex}`"
                   :disabled="itemIndex === 0"
                   :title="itemIndex === 0 ? '主记录不可选中' : ''"
-                />
+                >
               </div>
               <div class="item-content">
-                <div class="item-badge" v-if="itemIndex === 0">
+                <div
+                  v-if="itemIndex === 0"
+                  class="item-badge"
+                >
                   <span class="badge badge-primary">主记录</span>
                 </div>
-                <div class="item-badge" v-else>
+                <div
+                  v-else
+                  class="item-badge"
+                >
                   <span class="badge badge-duplicate">重复记录</span>
                 </div>
                 <div class="item-fields">
@@ -268,21 +389,22 @@
               </div>
               <div class="item-actions">
                 <el-button
+                  v-if="canEdit"
                   type="info"
                   size="small"
-                  @click="handleEditItem(item)"
                   title="编辑"
+                  @click="handleEditItem(item)"
                 >
-                  <i class="fas fa-edit"></i>
+                  <i class="fas fa-edit" />
                 </el-button>
                 <el-button
-                  v-if="itemIndex !== 0"
+                  v-if="itemIndex !== 0 && canDelete"
                   type="danger"
                   size="small"
-                  @click="handleDeleteItem(item, itemIndex, group)"
                   title="删除"
+                  @click="handleDeleteItem(item, itemIndex, group)"
                 >
-                  <i class="fas fa-trash"></i>
+                  <i class="fas fa-trash" />
                 </el-button>
               </div>
             </div>
@@ -291,10 +413,13 @@
       </div>
 
       <!-- 分页组件 -->
-      <div v-if="hasDuplicates && pagination.total > 0" class="pagination-wrapper">
+      <div
+        v-if="hasDuplicates && pagination.total > 0"
+        class="pagination-wrapper"
+      >
         <Pagination
-          v-model:current="pagination.currentPage"
-          v-model:page-size="pagination.pageSize"
+          v-model:current="pagination.page"
+          v-model:page-size="pagination.page_size"
           :page-sizes="[10, 20, 50, 100]"
           :total="pagination.total"
           :show-range="true"
@@ -311,7 +436,10 @@
       dialog-class="data-check-edit-dialog"
       :show-default-footer="false"
     >
-      <el-form :model="editForm" label-width="100px">
+      <el-form
+        :model="editForm"
+        label-width="100px"
+      >
         <el-form-item
           v-for="(value, field) in editForm"
           :key="field"
@@ -322,8 +450,18 @@
       </el-form>
       <template #footer>
         <div class="tf-dialog-actions">
-          <el-button type="default" @click="showEditDialog = false">取消</el-button>
-          <el-button type="primary" @click="handleSaveEdit">保存</el-button>
+          <el-button
+            type="default"
+            @click="showEditDialog = false"
+          >
+            取消
+          </el-button>
+          <el-button
+            type="primary"
+            @click="handleSaveEdit"
+          >
+            保存
+          </el-button>
         </div>
       </template>
     </MobileDialog>
@@ -336,6 +474,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { dataCheckApi } from '@/api/data-optimization'
 import { extractResponseData } from '@/utils/api-response'
 import { usePagePermissions } from '@/composables/usePagePermissions'
+import { fieldPermissions } from '@/composables/useFieldPermissions'
 import { useLoadingState } from '@/composables'
 import { useLoadingStore } from '@/stores/loading'
 import Pagination from '@/components/Pagination.vue'
@@ -344,6 +483,8 @@ import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { logger } from '@/utils/logger'
 
 const { canView, canEdit, canDelete, handleNoPermission } = usePagePermissions('data-optimization')
+const DATA_CHECK_MODULE_KEY = 'data_optimization_dataoptimizationview'
+const canViewField = (fieldKey: string) => fieldPermissions.isFieldVisible(DATA_CHECK_MODULE_KEY, fieldKey)
 const globalLoading = useLoadingStore()
 
 const ensureViewPermission = () => {
@@ -372,14 +513,14 @@ const ensureDeletePermission = () => {
 
 // 检查项配置
 const checkItems = reactive([
-  { key: 'brands', label: '品牌', icon: 'fas fa-tags', total: 0, duplicateCount: 0 },
-  { key: 'models', label: '型号', icon: 'fas fa-mobile-alt', total: 0, duplicateCount: 0 },
-  { key: 'colors', label: '颜色', icon: 'fas fa-palette', total: 0, duplicateCount: 0 },
-  { key: 'memories', label: '内存', icon: 'fas fa-memory', total: 0, duplicateCount: 0 },
-  { key: 'suppliers', label: '供应商', icon: 'fas fa-truck', total: 0, duplicateCount: 0 },
-  { key: 'stores', label: '店铺', icon: 'fas fa-store', total: 0, duplicateCount: 0 },
-  { key: 'customers', label: '客户', icon: 'fas fa-users', total: 0, duplicateCount: 0 },
-  { key: 'users', label: '员工', icon: 'fas fa-user-tie', total: 0, duplicateCount: 0 }
+  { key: 'brands', label: '品牌', icon: 'fas fa-tags', total: 0, duplicate_count: 0 },
+  { key: 'models', label: '型号', icon: 'fas fa-mobile-alt', total: 0, duplicate_count: 0 },
+  { key: 'colors', label: '颜色', icon: 'fas fa-palette', total: 0, duplicate_count: 0 },
+  { key: 'memories', label: '内存', icon: 'fas fa-memory', total: 0, duplicate_count: 0 },
+  { key: 'suppliers', label: '供应商', icon: 'fas fa-truck', total: 0, duplicate_count: 0 },
+  { key: 'stores', label: '店铺', icon: 'fas fa-store', total: 0, duplicate_count: 0 },
+  { key: 'customers', label: '客户', icon: 'fas fa-users', total: 0, duplicate_count: 0 },
+  { key: 'users', label: '员工', icon: 'fas fa-user-tie', total: 0, duplicate_count: 0 }
 ])
 
 const { loading } = useLoadingState()
@@ -394,25 +535,25 @@ const allDataList = ref<any[]>([])
 
 // 所有数据分页
 const allDataPagination = reactive({
-  currentPage: 1,
-  pageSize: 20
+  page: 1,
+  page_size: 20
 })
 
 // 计算重复数据数量
-const duplicateCount = computed(() => {
-  return allDataList.value.filter(item => item._isDuplicate).length
+const duplicate_count = computed(() => {
+  return allDataList.value.filter(item => item.is_duplicate).length
 })
 
 // 当前页的所有数据
 const paginatedAllData = computed(() => {
-  const start = (allDataPagination.currentPage - 1) * allDataPagination.pageSize
-  const end = start + allDataPagination.pageSize
+  const start = (allDataPagination.page - 1) * allDataPagination.page_size
+  const end = start + allDataPagination.page_size
   return allDataList.value.slice(start, end)
 })
 
 // 获取表格行类名（用于高亮重复数据）
 const getRowClassName = ({ row }: { row: any }) => {
-  return row._isDuplicate ? 'duplicate-row' : ''
+  return row.is_duplicate ? 'duplicate-row' : ''
 }
 
 // 获取行名称（根据不同数据类型使用不同字段）
@@ -420,12 +561,12 @@ const getRowName = (row: any) => {
   if (!row) return ''
   const currentKey = currentCheck.value?.key
   switch (currentKey) {
-    case 'memories':
-      return row.size || '-'
-    case 'users':
-      return row.username || row.name || '-'
-    default:
-      return row.name || row.username || '-'
+  case 'memories':
+    return row.size || '-'
+  case 'users':
+    return row.username || row.name || '-'
+  default:
+    return row.name || row.username || '-'
   }
 }
 // 存储选中的记录的组合键 (格式: "组键-索引")
@@ -448,7 +589,7 @@ const handleViewItem = async (key: string) => {
     const responseData = extractResponseData<any>(response)
 
     // 检查是否为空数据
-    if (responseData.isEmpty || responseData.total === 0) {
+    if (responseData.is_empty || responseData.total === 0) {
       const itemName = currentCheck.value?.label || '数据'
       ElMessage.info(`${itemName}表暂无数据，请先添加数据后再查看`)
       allDataList.value = []
@@ -457,11 +598,11 @@ const handleViewItem = async (key: string) => {
       const item = checkItems.find(i => i.key === key)
       if (item) {
         item.total = 0
-        item.duplicateCount = 0
+        item.duplicate_count = 0
       }
 
       // 重置分页
-      allDataPagination.currentPage = 1
+      allDataPagination.page = 1
       return
     }
 
@@ -471,16 +612,16 @@ const handleViewItem = async (key: string) => {
     const item = checkItems.find(i => i.key === key)
     if (item) {
       item.total = responseData.total
-      item.duplicateCount = responseData.duplicateCount || 0
+      item.duplicate_count = responseData.duplicate_count || 0
     }
 
     // 重置分页
-    allDataPagination.currentPage = 1
+    allDataPagination.page = 1
 
     // 显示成功提示
     if (response.data.total > 0) {
-      const duplicateInfo = response.data.duplicateCount > 0
-        ? `，发现 ${response.data.duplicateCount} 条重复数据`
+      const duplicateInfo = response.data.duplicate_count > 0
+        ? `，发现 ${response.data.duplicate_count} 条重复数据`
         : '，无重复数据'
       ElMessage.success(`获取数据成功：共 ${response.data.total} 条${duplicateInfo}`)
     }
@@ -504,7 +645,7 @@ const handleViewItem = async (key: string) => {
     const item = checkItems.find(i => i.key === key)
     if (item) {
       item.total = 0
-      item.duplicateCount = 0
+      item.duplicate_count = 0
     }
   } finally {
     loading.value = false
@@ -520,18 +661,18 @@ const closeAllDataView = () => {
 
 // 所有数据分页大小改变
 const handleAllDataSizeChange = (size: number) => {
-  allDataPagination.pageSize = size
-  allDataPagination.currentPage = 1
+  allDataPagination.page_size = size
+  allDataPagination.page = 1
 }
 
 // 所有数据页码改变
 const handleAllDataPageChange = (page: number) => {
-  allDataPagination.currentPage = page
+  allDataPagination.page = page
 }
 
-const handleAllDataPaginationChange = (page: number, pageSize: number) => {
-  if (pageSize !== allDataPagination.pageSize) {
-    handleAllDataSizeChange(pageSize)
+const handleAllDataPaginationChange = (page: number, page_size: number) => {
+  if (page_size !== allDataPagination.page_size) {
+    handleAllDataSizeChange(page_size)
     return
   }
 
@@ -541,8 +682,8 @@ const editingItemId = ref<number | null>(null)
 
 // 分页数据
 const pagination = reactive({
-  currentPage: 1,
-  pageSize: 5,  // 每页显示5组，方便查看
+  page: 1,
+  page_size: 5,  // 每页显示5组，方便查看
   total: 0
 })
 
@@ -563,8 +704,8 @@ const currentPageDuplicates = computed(() => {
     return []
   }
 
-  const start = (pagination.currentPage - 1) * pagination.pageSize
-  const end = start + pagination.pageSize
+  const start = (pagination.page - 1) * pagination.page_size
+  const end = start + pagination.page_size
   const pageData = duplicatesList.value.slice(start, end)
 
   return pageData
@@ -599,7 +740,7 @@ const handleCheckAll = async () => {
       const detail = details[item.key]
       if (detail) {
         item.total = detail.total
-        item.duplicateCount = detail.duplicateGroups || 0
+        item.duplicate_count = detail.duplicate_groups || 0
       }
     })
 
@@ -607,11 +748,11 @@ const handleCheckAll = async () => {
     currentCheck.value = checkItems[0]
 
     // 设置检查结果（显示第一个有重复数据的项）
-    const firstItemWithDuplicates = checkItems.find(item => item.duplicateCount > 0)
+    const firstItemWithDuplicates = checkItems.find(item => item.duplicate_count > 0)
     if (firstItemWithDuplicates) {
       currentCheck.value = firstItemWithDuplicates
       checkResult.value = details[firstItemWithDuplicates.key]
-      pagination.total = firstItemWithDuplicates.duplicateCount
+      pagination.total = firstItemWithDuplicates.duplicate_count
     } else {
       checkResult.value = null
     }
@@ -645,12 +786,12 @@ const handleCheckItem = async (key: string) => {
     const item = checkItems.find(i => i.key === key)
     if (item) {
       item.total = response.data.total
-      item.duplicateCount = response.data.duplicateGroups || 0
+      item.duplicate_count = response.data.duplicate_groups || 0
     }
 
     // 重置分页
-    pagination.currentPage = 1
-    pagination.total = response.data.duplicateGroups || 0
+    pagination.page = 1
+    pagination.total = response.data.duplicate_groups || 0
   } catch (error: any) {
     logger.error('检查失败:', error)
     ElMessage.error('检查失败: ' + (error.message || '未知错误'))
@@ -662,22 +803,22 @@ const handleCheckItem = async (key: string) => {
 
 // 分页大小改变
 const handleSizeChange = (size: number) => {
-  pagination.pageSize = size
-  pagination.currentPage = 1
+  pagination.page_size = size
+  pagination.page = 1
   // 切换页码时清空选中
   selectedDuplicates.value = []
 }
 
 // 页码改变
 const handleCurrentChange = (page: number) => {
-  pagination.currentPage = page
+  pagination.page = page
   // 切换页码时清空选中
   selectedDuplicates.value = []
 }
 
-const handleDuplicatePaginationChange = (page: number, pageSize: number) => {
-  if (pageSize !== pagination.pageSize) {
-    handleSizeChange(pageSize)
+const handleDuplicatePaginationChange = (page: number, page_size: number) => {
+  if (page_size !== pagination.page_size) {
+    handleSizeChange(page_size)
     return
   }
 
@@ -697,7 +838,7 @@ const getStatistics = async () => {
       // 统计 API 返回的是字符串，需要转换为数字
       item.total = parseInt(stats[item.key]) || 0
       // 重置重复数量，稍后用户点击卡片时会更新
-      item.duplicateCount = 0
+      item.duplicate_count = 0
     })
 
     ElMessage.success('统计数据已更新')
@@ -737,8 +878,8 @@ const handleSelectAll = () => {
 const getCurrentPageDuplicateIds = () => {
   if (!duplicatesList.value.length) return []
 
-  const start = (pagination.currentPage - 1) * pagination.pageSize
-  const end = start + pagination.pageSize
+  const start = (pagination.page - 1) * pagination.page_size
+  const end = start + pagination.page_size
   const currentGroups = duplicatesList.value.slice(start, end)
 
   const keys: string[] = []
@@ -784,18 +925,18 @@ const handleMergeGroup = async (group: any) => {
       }
     )
 
-    const duplicateIds = group.duplicates.map((d: any) => d.id)
+    const duplicate_ids = group.duplicates.map((d: any) => d.id)
 
-    // 安全检查：确保主记录ID不在duplicateIds中
-    if (duplicateIds.includes(group.primary.id)) {
+    // 安全检查：确保主记录ID不在duplicate_ids中
+    if (duplicate_ids.includes(group.primary.id)) {
       ElMessage.error('数据错误：主记录ID不能在待删除列表中')
       return
     }
 
     await dataCheckApi.mergeDuplicates({
       type: currentCheck.value.key,
-      primaryId: group.primary.id,
-      duplicateIds
+      primary_id: group.primary.id,
+      duplicate_ids: duplicate_ids
     })
 
     ElMessage.success('合并成功')
@@ -816,13 +957,13 @@ const handleDeleteGroup = async (group: any) => {
     // 检查是否有可删除的记录
     const hasDuplicates = group.duplicates && group.duplicates.length > 0
 
-    if (!hasDuplicates && !group.isDuplicateRows) {
+    if (!hasDuplicates && !group.is_duplicate_rows) {
       ElMessage.warning('该组没有重复记录可以删除')
       return
     }
 
     // 对于重复数据行，提示不同的消息
-    const confirmMessage = group.isDuplicateRows
+    const confirmMessage = group.is_duplicate_rows
       ? `确定要删除 ${group.count - 1} 条重复数据行吗？（保留一条主记录）`
       : `确定要删除 ${group.duplicates.length} 条重复记录吗？`
 
@@ -837,7 +978,7 @@ const handleDeleteGroup = async (group: any) => {
     )
 
     // 对于重复数据行，我们使用后端的清理功能
-    if (group.isDuplicateRows) {
+    if (group.is_duplicate_rows) {
       const loadingTaskId = 'data-check-cleanup-duplicate-row'
       globalLoading.startLoading('正在清理重复数据行，请稍候...', loadingTaskId)
 
@@ -849,7 +990,7 @@ const handleDeleteGroup = async (group: any) => {
         const result = response.data
 
         if (result && result.cleaned > 0) {
-          ElMessage.success(result.message || `清理成功`)
+          ElMessage.success(result.message || '清理成功')
           handleCheckItem(currentCheck.value.key)
         } else {
           ElMessage.info(result?.message || '该ID没有重复记录需要清理')
@@ -863,16 +1004,16 @@ const handleDeleteGroup = async (group: any) => {
     }
 
     // 对于重复客户记录，正常删除
-    const duplicateIds = group.duplicates.map((d: any) => d.id)
+    const duplicate_ids = group.duplicates.map((d: any) => d.id)
 
-    if (duplicateIds.length === 0) {
+    if (duplicate_ids.length === 0) {
       ElMessage.warning('没有选择要删除的记录')
       return
     }
 
     await dataCheckApi.batchDeleteDuplicates({
       type: currentCheck.value.key,
-      ids: duplicateIds
+      ids: duplicate_ids
     })
 
     ElMessage.success('删除成功')
@@ -916,14 +1057,14 @@ const handleMergeSelected = async () => {
 
       // 如果该组有选中的重复记录，则合并到主记录
       if (selectedDuplicatesInGroup.length > 0) {
-        const duplicateIds = selectedDuplicatesInGroup.map((d: any) => d.id)
+        const duplicate_ids = selectedDuplicatesInGroup.map((d: any) => d.id)
         const primaryRecord = group.primary
 
         groupsToMerge.push({
-          primaryId: primaryRecord.id,
-          duplicateIds,
-          primaryName: primaryRecord.name || primaryRecord.username || primaryRecord.phone || `ID:${primaryRecord.id}`,
-          count: duplicateIds.length
+          primary_id: primaryRecord.id,
+          duplicate_ids,
+          primary_name: primaryRecord.name || primaryRecord.username || primaryRecord.phone || `ID:${primaryRecord.id}`,
+          count: duplicate_ids.length
         })
       }
     }
@@ -942,7 +1083,7 @@ const handleMergeSelected = async () => {
     confirmMessage += '✓ 主记录（推荐保留的记录）将被保留\n'
     confirmMessage += '✓ 选中的重复记录将合并到主记录\n'
     confirmMessage += '✓ 关联的数据会自动更新到主记录\n\n'
-    confirmMessage += groupsToMerge.map(g => `- 保留 "${g.primaryName}"，合并 ${g.count} 条记录`).join('\n')
+    confirmMessage += groupsToMerge.map(g => `- 保留 "${g.primary_name}"，合并 ${g.count} 条记录`).join('\n')
 
     await ElMessageBox.confirm(
       confirmMessage,
@@ -961,14 +1102,14 @@ const handleMergeSelected = async () => {
 
     try {
       // 准备批量合并的数据
-      const mergeGroups = groupsToMerge.map(g => ({
-        primaryId: g.primaryId,
-        duplicateIds: g.duplicateIds
+      const merge_groups = groupsToMerge.map(g => ({
+        primary_id: g.primary_id,
+        duplicate_ids: g.duplicate_ids
       }))
 
       await dataCheckApi.batchMergeMultipleGroups({
         type: currentCheck.value.key,
-        mergeGroups
+        merge_groups: merge_groups
       })
 
       ElMessage.success(`成功合并 ${groupsToMerge.length} 个重复组，共 ${totalToMerge} 条记录`)
@@ -1005,7 +1146,7 @@ const handleDeleteSelected = async () => {
       const groupsToCleanup: any[] = []
 
       for (const group of duplicatesList.value) {
-        if (group.isDuplicateRows && group.primary) {
+        if (group.is_duplicate_rows && group.primary) {
           // 检查该组的哪些重复记录被选中了
           let selectedInGroup = 0
           for (let i = 1; i < group.duplicates.length + 1; i++) {
@@ -1201,7 +1342,7 @@ const handleDeleteItem = async (item: any, itemIndex: number, group: any) => {
 
   try {
     // 对于重复数据行类型，需要特殊处理
-    if (group.isDuplicateRows) {
+    if (group.is_duplicate_rows) {
       await ElMessageBox.confirm(
         '确定要删除这条重复记录吗？',
         '确认删除',
@@ -1248,6 +1389,7 @@ const handleDeleteItem = async (item: any, itemIndex: number, group: any) => {
 }
 
 onMounted(() => {
+  void fieldPermissions.init()
   if (canView.value) {
     getStatistics()
   }
@@ -1284,12 +1426,12 @@ onMounted(() => {
     }
 
     &.has-duplicates {
-      border-color: #f56c6c;
+      border-color: var(--color-danger);
     }
 
     .card-icon {
       font-size: 32px;
-      color: #409eff;
+      color: var(--color-primary);
       margin-bottom: 12px;
     }
 
@@ -1297,7 +1439,7 @@ onMounted(() => {
       h3 {
         font-size: 18px;
         font-weight: 600;
-        color: #303133;
+        color: var(--color-text-primary);
         margin: 0 0 8px 0;
       }
 
@@ -1307,15 +1449,15 @@ onMounted(() => {
         font-size: 14px;
 
         .stat-item {
-          color: #909399;
+          color: var(--color-info);
 
           &.duplicate {
-            color: #f56c6c;
+            color: var(--color-danger);
             font-weight: 600;
           }
 
           &.ok {
-            color: #67c23a;
+            color: var(--color-success);
           }
         }
       }
@@ -1325,7 +1467,7 @@ onMounted(() => {
 
 .duplicates-section {
   margin-top: 20px;
-  background: #f5f7fa;
+  background: var(--tf-color-surface);
   border-radius: 8px;
   padding: 20px;
 
@@ -1335,19 +1477,19 @@ onMounted(() => {
     align-items: center;
     margin-bottom: 20px;
     padding-bottom: 16px;
-    border-bottom: 1px solid #ebeef5;
+    border-bottom: 1px solid var(--color-border-light);
 
     h2 {
       font-size: 20px;
       font-weight: 600;
-      color: #303133;
+      color: var(--color-text-primary);
       margin: 0;
       display: flex;
       align-items: center;
       gap: 8px;
 
       i {
-        color: #e6a23c;
+        color: var(--color-warning);
       }
     }
 
@@ -1360,7 +1502,7 @@ onMounted(() => {
   .no-duplicates {
     text-align: center;
     padding: 60px 20px;
-    color: #67c23a;
+    color: var(--color-success);
     background: white;
     border-radius: 8px;
 
@@ -1378,29 +1520,29 @@ onMounted(() => {
   .duplicates-list {
     .duplicate-group {
       margin-bottom: 24px;
-      border: 1px solid #ebeef5;
+      border: 1px solid var(--color-border-light);
       border-radius: 8px;
       overflow: hidden;
       background: white;
 
       .group-header {
-        background: #f5f7fa;
+        background: var(--tf-color-surface);
         padding: 12px 16px;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        border-bottom: 1px solid #ebeef5;
+        border-bottom: 1px solid var(--color-border-light);
 
         .group-info {
           .group-key {
             font-weight: 600;
-            color: #303133;
+            color: var(--color-text-primary);
             margin-right: 16px;
           }
 
           .group-count {
             font-size: 14px;
-            color: #f56c6c;
+            color: var(--color-danger);
           }
         }
 
@@ -1415,7 +1557,7 @@ onMounted(() => {
           display: flex;
           align-items: center;
           padding: 16px;
-          border-bottom: 1px solid #ebeef5;
+          border-bottom: 1px solid var(--color-border-light);
 
           &:last-child {
             border-bottom: none;
@@ -1423,18 +1565,18 @@ onMounted(() => {
 
           // 主记录样式：蓝色背景
           &.primary {
-            background: #e3f2fd;
-            border-left: 4px solid #2196f3;
+            background: var(--tf-color-blue-100);
+            border-left: 4px solid var(--tf-color-blue-material-500);
           }
 
           // 重复记录样式：浅红色背景
           &.duplicate {
-            background: #ffebee;
-            border-left: 4px solid #f44336;
+            background: var(--tf-color-red-50);
+            border-left: 4px solid var(--tf-color-red-material);
           }
 
           &.selected {
-            background: #fff3e0;
+            background: var(--tf-color-orange-material-50);
             border-left-width: 6px;
           }
 
@@ -1465,12 +1607,12 @@ onMounted(() => {
                 font-weight: 600;
 
                 &.badge-primary {
-                  background: #2196f3;
+                  background: var(--tf-color-blue-material-500);
                   color: white;
                 }
 
                 &.badge-duplicate {
-                  background: #f44336;
+                  background: var(--tf-color-red-material);
                   color: white;
                 }
               }
@@ -1484,12 +1626,12 @@ onMounted(() => {
               .item-field {
                 label {
                   font-weight: 600;
-                  color: #606266;
+                  color: var(--color-text-regular);
                   margin-right: 4px;
                 }
 
                 span {
-                  color: #909399;
+                  color: var(--color-info);
                 }
               }
             }
@@ -1519,7 +1661,7 @@ onMounted(() => {
 // 所有数据视图样式
 .all-data-section {
   margin-top: 20px;
-  background: #f5f7fa;
+  background: var(--tf-color-surface);
   border-radius: 8px;
   padding: 20px;
 
@@ -1533,7 +1675,7 @@ onMounted(() => {
     .empty-state {
       i {
         font-size: 80px;
-        color: #dcdfe6;
+        color: var(--color-border);
         margin-bottom: 20px;
         display: block;
       }
@@ -1541,13 +1683,13 @@ onMounted(() => {
       h3 {
         font-size: 20px;
         font-weight: 600;
-        color: #303133;
+        color: var(--color-text-primary);
         margin: 0 0 12px 0;
       }
 
       p {
         font-size: 14px;
-        color: #909399;
+        color: var(--color-info);
         margin: 0 0 24px 0;
       }
     }
@@ -1559,19 +1701,19 @@ onMounted(() => {
     align-items: center;
     margin-bottom: 20px;
     padding-bottom: 16px;
-    border-bottom: 1px solid #ebeef5;
+    border-bottom: 1px solid var(--color-border-light);
 
     h2 {
       font-size: 20px;
       font-weight: 600;
-      color: #303133;
+      color: var(--color-text-primary);
       margin: 0;
       display: flex;
       align-items: center;
       gap: 8px;
 
       i {
-        color: #409eff;
+        color: var(--color-primary);
       }
     }
 
@@ -1594,25 +1736,25 @@ onMounted(() => {
           background: white;
 
           &.total {
-            color: #606266;
+            color: var(--color-text-regular);
             font-weight: 600;
           }
 
           &.duplicate {
-            color: #f56c6c;
-            background: #fee;
+            color: var(--color-danger);
+            background: var(--tf-color-red-surface-light);
 
             i {
-              color: #f56c6c;
+              color: var(--color-danger);
             }
           }
 
           &.ok {
-            color: #67c23a;
-            background: #f0f9ff;
+            color: var(--color-success);
+            background: var(--tf-color-blue-50);
 
             i {
-              color: #67c23a;
+              color: var(--color-success);
             }
           }
         }
@@ -1627,22 +1769,22 @@ onMounted(() => {
 
     // 重复数据行高亮样式
     :deep(.el-table .duplicate-row) {
-      background-color: #fff2f0 !important;
+      background-color: var(--tf-color-red-ant-surface) !important;
 
       &:hover > td {
-        background-color: #ffebe6 !important;
+        background-color: var(--tf-color-red-pastel-light) !important;
       }
     }
 
     .duplicate-badge {
-      color: #f56c6c;
+      color: var(--color-danger);
       font-weight: 600;
       display: flex;
       align-items: center;
       gap: 4px;
 
       i {
-        color: #f56c6c;
+        color: var(--color-danger);
       }
     }
   }

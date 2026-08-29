@@ -49,6 +49,60 @@ curl http://localhost:30000/api/health
 
 ## 问题说明
 
+### 刷新页面提示“请求过于频繁”
+
+这是后端返回的 `429 RATE_LIMIT_EXCEEDED`，不是登录失效。全局限流按客户端 IP 和 `API_RATE_WINDOW_MS` 统计。当前实现已排除 GET/HEAD 读取请求和 `OPTIONS` 预检；全局额度只统计写入请求，读取接口仍可按自身业务规则配置更细的限流。
+
+查看服务器当前配置：
+
+```bash
+grep -E '^(API_RATE_LIMIT|API_RATE_WINDOW_MS)=' /www/wwwroot/api2025.com/backend/.env.production
+```
+
+建议生产环境至少使用：
+
+```env
+API_RATE_LIMIT=3000
+API_RATE_WINDOW_MS=900000
+```
+
+修改后重启会清空当前进程的内存限流计数：
+
+```bash
+sed -i 's/^API_RATE_LIMIT=.*/API_RATE_LIMIT=3000/' /www/wwwroot/api2025.com/backend/.env.production
+sed -i 's/^API_RATE_WINDOW_MS=.*/API_RATE_WINDOW_MS=900000/' /www/wwwroot/api2025.com/backend/.env.production
+cd /www/wwwroot/api2025.com/backend
+pm2 restart backend --update-env
+```
+
+如果仍然触发，检查 Nginx 是否正确转发 `X-Forwarded-For`；否则所有设备可能被识别为同一个代理 IP，共用一个限流桶。
+
+### 权限能力清单包含在后端目录
+
+权限能力清单位于后端源码中，单独上传完整 `backend/` 即可：
+
+```text
+/www/wwwroot/api2025.com/backend/src/config/module-permission-capabilities.json
+```
+
+该文件是前后端共用的唯一能力清单，不需要在项目根目录额外创建 `config`。
+
+启动前可先执行资源检查：
+
+```bash
+cd /www/wwwroot/api2025.com/backend
+npm run check:runtime-assets
+```
+
+检查通过后再启动或重启 PM2：
+
+```bash
+pm2 restart tf2025-api --update-env
+pm2 logs tf2025-api --lines 50
+```
+
+缺少该文件时，说明上传的 `backend/src/config` 不完整，应重新上传完整后端目录。
+
 如果在云端启动时出现以下错误：
 ```
 Error: 缺少必需的环境变量: DB_PASSWORD

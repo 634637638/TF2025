@@ -12,13 +12,23 @@
     :show-default-footer="false"
     @close="handleClose"
   >
-    <div v-if="template" class="memory-selector">
+    <div
+      v-if="template"
+      class="memory-selector"
+    >
       <!-- 商品基本信息 -->
       <div class="product-summary">
-        <Image :src="template.main_image" :alt="template.template_name" mode="eager" class="product-thumb" />
+        <Image
+          :src="template.main_image"
+          :alt="template.template_name"
+          mode="eager"
+          class="product-thumb"
+        />
         <div class="product-info">
           <h4>{{ template.template_name || template.brand_name + ' ' + template.model_name + ' ' + template.color_name }}</h4>
-          <p class="price-range">¥{{ minPrice }} - ¥{{ maxPrice }}</p>
+          <p class="price-range">
+            ¥{{ minPrice }} - ¥{{ maxPrice }}
+          </p>
         </div>
       </div>
 
@@ -33,21 +43,39 @@
         >
           <div class="option-info">
             <span class="memory-name">{{ option.memory_name }}</span>
-            <span v-if="option.store_name" class="store-name">{{ option.store_name }}</span>
+            <span
+              v-if="option.store_name"
+              class="store-name"
+            >{{ option.store_name }}</span>
           </div>
           <div class="option-price">
             <span class="price">¥{{ option.sale_price }}</span>
-            <span v-if="option.stock_count > 1" class="stock-count">库存{{ option.stock_count }}</span>
+            <span
+              v-if="option.stock_count > 1"
+              class="stock-count"
+            >库存{{ option.stock_count }}</span>
           </div>
         </div>
 
-        <el-empty v-if="memoryOptions.length === 0" description="暂无可用规格" />
+        <DataEmptyState
+          v-if="memoryOptions.length === 0"
+          description="暂无可用规格"
+        />
       </div>
     </div>
 
     <template #footer>
-      <el-button type="default" @click="handleClose">取消</el-button>
-      <el-button type="primary" :disabled="!selectedPhoneId" @click="handleConfirm">
+      <el-button
+        type="default"
+        @click="handleClose"
+      >
+        取消
+      </el-button>
+      <el-button
+        type="primary"
+        :disabled="!selectedPhoneId"
+        @click="handleConfirm"
+      >
         确定
       </el-button>
     </template>
@@ -220,7 +248,7 @@ const handleClose = () => {
   display: flex;
   gap: 12px;
   padding: 12px;
-  background: #f9f9f9;
+  background: var(--tf-color-surface-plain);
   border-radius: 8px;
   margin-bottom: 16px;
 
@@ -241,7 +269,7 @@ const handleClose = () => {
     h4 {
       font-size: 14px;
       font-weight: 500;
-      color: #333;
+      color: var(--text-primary);
       margin: 0 0 4px;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -250,7 +278,7 @@ const handleClose = () => {
 
     .price-range {
       font-size: 13px;
-      color: #ff1744;
+      color: var(--tf-color-accent-pink);
       margin: 0;
     }
   }
@@ -269,20 +297,20 @@ const handleClose = () => {
     justify-content: space-between;
     align-items: center;
     padding: 12px 16px;
-    background: #fff;
-    border: 1px solid #e5e7eb;
+    background: var(--color-bg-white);
+    border: 1px solid var(--tf-color-neutral-200);
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s;
 
     &:hover {
-      border-color: #ff6b00;
-      background: #fff8f0;
+      border-color: var(--tf-color-accent-orange);
+      background: var(--tf-color-orange-surface);
     }
 
     &.selected {
-      border-color: #ff6b00;
-      background: #fff8f0;
+      border-color: var(--tf-color-accent-orange);
+      background: var(--tf-color-orange-surface);
       box-shadow: 0 0 0 2px rgba(255, 107, 0, 0.1);
     }
 
@@ -294,12 +322,12 @@ const handleClose = () => {
       .memory-name {
         font-size: 15px;
         font-weight: 500;
-        color: #333;
+        color: var(--text-primary);
       }
 
       .store-name {
         font-size: 12px;
-        color: #999;
+        color: var(--text-muted);
       }
     }
 
@@ -310,13 +338,13 @@ const handleClose = () => {
         display: block;
         font-size: 16px;
         font-weight: 500;
-        color: #ff1744;
+        color: var(--tf-color-accent-pink);
       }
 
       .stock-count {
         display: block;
         font-size: 11px;
-        color: #999;
+        color: var(--text-muted);
         margin-top: 2px;
       }
     }

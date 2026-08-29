@@ -2,12 +2,33 @@
  * 配件数据访问层
  * 处理所有配件相关的数据库操作
  */
-const BaseRepository = require('./base.repository');
-const log = require('../utils/log');
+const BaseRepository = require('./base.repository')
+const log = require('../utils/log')
+
+const ACCESSORY_SELECT_FIELDS = `
+  a.id,
+  a.name,
+  a.barcode,
+  a.category,
+  a.brand_id,
+  a.model_id,
+  a.color_id,
+  a.supplier_id,
+  a.purchase_cost,
+  a.sale_price,
+  a.specifications,
+  a.unit,
+  a.status,
+  a.description,
+  a.remarks,
+  a.image_url,
+  a.created_at,
+  a.updated_at
+`
 
 class AccessoryRepository extends BaseRepository {
   constructor() {
-    super('accessories');
+    super('accessories')
   }
 
   /**
@@ -17,65 +38,71 @@ class AccessoryRepository extends BaseRepository {
     try {
       const {
         page = 1,
-        pageSize = 50,
+        page_size = 50,
         category,
-        brandId,
-        modelId,
-        supplierId,
+        brand_id,
+        model_id,
+        supplier_id,
         status = 1,
-        search
-      } = options;
+        search,
+        search_fields = ['name', 'barcode']
+      } = options
 
-      const offset = (page - 1) * pageSize;
-      const conditions = [];
-      const params = [];
+      const normalized_page_size = Number(page_size) || 50
+      const offset = (page - 1) * normalized_page_size
+      const conditions = []
+      const params = []
 
       // 构建查询条件
       if (status !== null && status !== undefined) {
-        conditions.push('a.status = ?');
-        params.push(status);
+        conditions.push('a.status = ?')
+        params.push(status)
       }
 
       if (category) {
-        conditions.push('a.category = ?');
-        params.push(category);
+        conditions.push('a.category = ?')
+        params.push(category)
       }
 
-      if (brandId) {
-        conditions.push('a.brand_id = ?');
-        params.push(brandId);
+      if (brand_id) {
+        conditions.push('a.brand_id = ?')
+        params.push(brand_id)
       }
 
-      if (modelId) {
-        conditions.push('a.model_id = ?');
-        params.push(modelId);
+      if (model_id) {
+        conditions.push('a.model_id = ?')
+        params.push(model_id)
       }
 
-      if (supplierId) {
-        conditions.push('a.supplier_id = ?');
-        params.push(supplierId);
+      if (supplier_id) {
+        conditions.push('a.supplier_id = ?')
+        params.push(supplier_id)
       }
 
       if (search) {
-        conditions.push('(a.name LIKE ? OR a.barcode LIKE ?)');
-        params.push(`%${search}%`, `%${search}%`);
+        const allowedSearchColumns = { name: 'a.name', barcode: 'a.barcode' }
+        const searchColumns = search_fields.map(field => allowedSearchColumns[field]).filter(Boolean)
+        if (searchColumns.length) {
+          conditions.push(`(${searchColumns.map(column => `${column} LIKE ?`).join(' OR ')})`)
+          params.push(...searchColumns.map(() => `%${search}%`))
+        }
       }
 
-      const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
+      const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : ''
 
       // 查询总数
       const countQuery = `
         SELECT COUNT(DISTINCT a.id) as total
         FROM accessories a
         ${whereClause}
-      `;
-      const countResult = await this.executeQuery(countQuery, params);
-      const total = countResult && countResult.length > 0 ? countResult[0].total : 0;
+      `
+      const countResult = await this.executeQuery(countQuery, params)
+      const total = countResult && countResult.length > 0 ? countResult[0].total : 0
 
       // 查询列表
       const query = `
         SELECT
-          a.*,
+          ${ACCESSORY_SELECT_FIELDS},
           b.name as brand_name,
           m.name as model_name,
           c.name as color_name,
@@ -93,22 +120,24 @@ class AccessoryRepository extends BaseRepository {
         GROUP BY a.id
         ORDER BY a.id DESC
         LIMIT ? OFFSET ?
-      `;
+      `
 
-      const accessories = await this.executeQuery(query, [...params, pageSize, offset]);
+      const accessories = await this.executeQuery(query, [...params, normalized_page_size, offset])
 
       return {
         data: accessories,
         pagination: {
           page: parseInt(page),
-          pageSize: parseInt(pageSize),
+          page_size: normalized_page_size,
           total,
-          totalPages: Math.ceil(total / pageSize)
+          total_pages: Math.ceil(total / normalized_page_size),
+          has_next: page * normalized_page_size < total,
+          has_prev: page > 1
         }
-      };
+      }
     } catch (error) {
-      log.error('获取配件列表失败:', error);
-      throw error;
+      log.error('获取配件列表失败:', error)
+      throw error
     }
   }
 
@@ -119,7 +148,7 @@ class AccessoryRepository extends BaseRepository {
     try {
       const query = `
         SELECT
-          a.*,
+          ${ACCESSORY_SELECT_FIELDS},
           b.name as brand_name,
           m.name as model_name,
           c.name as color_name,
@@ -130,13 +159,13 @@ class AccessoryRepository extends BaseRepository {
         LEFT JOIN colors c ON a.color_id = c.id
         LEFT JOIN suppliers s ON a.supplier_id = s.id
         WHERE a.id = ?
-      `;
+      `
 
-      const accessories = await this.executeQuery(query, [id]);
-      return accessories && accessories.length > 0 ? accessories[0] : null;
+      const accessories = await this.executeQuery(query, [id])
+      return accessories && accessories.length > 0 ? accessories[0] : null
     } catch (error) {
-      log.error('获取配件详情失败:', error);
-      throw error;
+      log.error('获取配件详情失败:', error)
+      throw error
     }
   }
 
@@ -147,7 +176,7 @@ class AccessoryRepository extends BaseRepository {
     try {
       const query = `
         SELECT
-          a.*,
+          ${ACCESSORY_SELECT_FIELDS},
           b.name as brand_name,
           m.name as model_name,
           c.name as color_name,
@@ -158,14 +187,14 @@ class AccessoryRepository extends BaseRepository {
         LEFT JOIN colors c ON a.color_id = c.id
         LEFT JOIN suppliers s ON a.supplier_id = s.id
         WHERE a.barcode = ? AND a.status = 1
-      `;
+      `
 
       // executeQuery 已经返回解构后的 rows 数组，不需要再解构
-      const accessories = await this.executeQuery(query, [barcode]);
-      return accessories && accessories.length > 0 ? accessories[0] : null;
+      const accessories = await this.executeQuery(query, [barcode])
+      return accessories && accessories.length > 0 ? accessories[0] : null
     } catch (error) {
-      log.error('根据条形码获取配件失败:', error);
-      throw error;
+      log.error('根据条形码获取配件失败:', error)
+      throw error
     }
   }
 
@@ -177,10 +206,10 @@ class AccessoryRepository extends BaseRepository {
       const query = `
         INSERT INTO accessories (
           name, barcode, category, brand_id, model_id, color_id, supplier_id,
-          purchase_price, selling_price, specifications, unit, status,
+          purchase_cost, sale_price, specifications, unit, status,
           description, remarks, image_url
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `;
+      `
 
       const params = [
         data.name,
@@ -190,31 +219,31 @@ class AccessoryRepository extends BaseRepository {
         data.model_id || null,
         data.color_id || null,
         data.supplier_id || null,
-        data.purchase_price || 0,
-        data.selling_price || 0,
+        data.purchase_cost || 0,
+        data.sale_price || 0,
         data.specifications || null,
         data.unit || '个',
         data.status !== undefined ? data.status : 1,
         data.description || null,
         data.remarks || null,
         data.image_url || null
-      ];
+      ]
 
       // INSERT 语句需要直接使用 db.query 来获取 insertId
-      const db = this.getConnection();
-      const queryResult = await db.query(query, params);
+      const db = this.getConnection()
+      const queryResult = await db.query(query, params)
 
       // mysql2 pool.query 返回 [ResultSetHeader, fields]
       // ResultSetHeader 包含 insertId, affectedRows 等属性
-      let result = queryResult;
+      let result = queryResult
       if (Array.isArray(queryResult) && queryResult.length > 0) {
-        result = queryResult[0];
+        result = queryResult[0]
       }
 
-      return result.insertId;
+      return result.insertId
     } catch (error) {
-      log.error('创建配件失败:', error);
-      throw error;
+      log.error('创建配件失败:', error)
+      throw error
     }
   }
 
@@ -223,39 +252,38 @@ class AccessoryRepository extends BaseRepository {
    */
   async updateAccessory(id, data) {
     try {
-      const fields = [];
-      const params = [];
+      const fields = []
+      const params = []
 
       const allowedFields = [
         'name', 'barcode', 'category', 'brand_id', 'model_id', 'color_id',
-        'supplier_id', 'purchase_price', 'selling_price', 'specifications',
+        'supplier_id', 'purchase_cost', 'sale_price', 'specifications',
         'unit', 'status', 'description', 'remarks', 'image_url'
-      ];
-
+      ]
       allowedFields.forEach(field => {
         if (data[field] !== undefined) {
-          fields.push(`${field} = ?`);
-          params.push(data[field]);
+          fields.push(`${field} = ?`)
+          params.push(data[field])
         }
-      });
+      })
 
       if (fields.length === 0) {
-        return false;
+        return false
       }
 
-      params.push(id);
+      params.push(id)
 
       const query = `
         UPDATE accessories
         SET ${fields.join(', ')}, updated_at = NOW()
         WHERE id = ?
-      `;
+      `
 
-      const result = await this.executeQuery(query, params);
-      return result.affectedRows > 0;
+      const result = await this.executeQuery(query, params)
+      return result.affectedRows > 0
     } catch (error) {
-      log.error('更新配件失败:', error);
-      throw error;
+      log.error('更新配件失败:', error)
+      throw error
     }
   }
 
@@ -264,12 +292,12 @@ class AccessoryRepository extends BaseRepository {
    */
   async deleteAccessory(id) {
     try {
-      const query = 'UPDATE accessories SET status = 0, updated_at = NOW() WHERE id = ?';
-      const result = await this.executeQuery(query, [id]);
-      return result.affectedRows > 0;
+      const query = 'UPDATE accessories SET status = 0, updated_at = NOW() WHERE id = ?'
+      const result = await this.executeQuery(query, [id])
+      return result.affectedRows > 0
     } catch (error) {
-      log.error('删除配件失败:', error);
-      throw error;
+      log.error('删除配件失败:', error)
+      throw error
     }
   }
 
@@ -298,21 +326,21 @@ class AccessoryRepository extends BaseRepository {
         LEFT JOIN stores s ON ast.store_id = s.id
         WHERE ast.accessory_id = ?
         ORDER BY ast.store_id
-      `;
+      `
 
-      const stock = await this.executeQuery(query, [accessoryId]);
+      const stock = await this.executeQuery(query, [accessoryId])
 
       // 计算总库存
-      const totalStock = stock.reduce((sum, s) => sum + (s.quantity || 0), 0);
+      const totalStock = stock.reduce((sum, s) => sum + (s.quantity || 0), 0)
 
       return {
         accessory_id: accessoryId,
         total_stock: totalStock,
         stores: stock
-      };
+      }
     } catch (error) {
-      log.error('获取配件库存失败:', error);
-      throw error;
+      log.error('获取配件库存失败:', error)
+      throw error
     }
   }
 
@@ -322,40 +350,50 @@ class AccessoryRepository extends BaseRepository {
   async getAllAccessoryStock(options = {}) {
     try {
       const {
-        storeId,
-        lowStockOnly = false,
+        store_id,
+        low_stock_only = false,
         page = 1,
-        pageSize = 50
-      } = options;
+        page_size = 50
+      } = options
 
-      const offset = (page - 1) * pageSize;
-      const conditions = [];
-      const params = [];
+      const normalized_page_size = Number(page_size) || 50
+      const offset = (page - 1) * normalized_page_size
+      const conditions = []
+      const params = []
 
-      if (storeId) {
-        conditions.push('ast.store_id = ?');
-        params.push(storeId);
+      if (store_id) {
+        conditions.push('ast.store_id = ?')
+        params.push(store_id)
       }
 
-      if (lowStockOnly) {
-        conditions.push('ast.quantity <= ast.min_stock');
+      if (low_stock_only) {
+        conditions.push('ast.quantity <= ast.min_stock')
       }
 
-      const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
+      const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : ''
 
       // 查询总数
       const countQuery = `
         SELECT COUNT(*) as total
         FROM accessory_stock ast
         ${whereClause}
-      `;
-      const countResult = await this.executeQuery(countQuery, params);
-      const total = countResult && countResult.length > 0 ? countResult[0].total : 0;
+      `
+      const countResult = await this.executeQuery(countQuery, params)
+      const total = countResult && countResult.length > 0 ? countResult[0].total : 0
 
       // 查询列表
       const query = `
         SELECT
-          ast.*,
+          ast.id,
+          ast.accessory_id,
+          ast.store_id,
+          ast.quantity,
+          ast.min_stock,
+          ast.max_stock,
+          ast.total_in,
+          ast.total_out,
+          ast.created_at,
+          ast.updated_at,
           a.name as accessory_name,
           a.barcode,
           a.category,
@@ -371,22 +409,24 @@ class AccessoryRepository extends BaseRepository {
         ${whereClause}
         ORDER BY ast.store_id, a.id
         LIMIT ? OFFSET ?
-      `;
+      `
 
-      const stock = await this.executeQuery(query, [...params, pageSize, offset]);
+      const stock = await this.executeQuery(query, [...params, normalized_page_size, offset])
 
       return {
         data: stock,
         pagination: {
           page: parseInt(page),
-          pageSize: parseInt(pageSize),
+          page_size: normalized_page_size,
           total,
-          totalPages: Math.ceil(total / pageSize)
+          total_pages: Math.ceil(total / normalized_page_size),
+          has_next: page * normalized_page_size < total,
+          has_prev: page > 1
         }
-      };
+      }
     } catch (error) {
-      log.error('获取配件库存列表失败:', error);
-      throw error;
+      log.error('获取配件库存列表失败:', error)
+      throw error
     }
   }
 
@@ -396,9 +436,9 @@ class AccessoryRepository extends BaseRepository {
    */
   async updateAccessoryStock(accessoryId, storeId, quantity, operation = 'add', minStock = 5) {
     try {
-      const operator = operation === 'add' ? '+' : '-';
-      const totalInValue = operation === 'add' ? quantity : 0;
-      const totalOutValue = operation === 'subtract' ? quantity : 0;
+      const operator = operation === 'add' ? '+' : '-'
+      const totalInValue = operation === 'add' ? quantity : 0
+      const totalOutValue = operation === 'subtract' ? quantity : 0
 
       const query = `
         INSERT INTO accessory_stock (accessory_id, store_id, quantity, total_in, total_out, min_stock)
@@ -409,10 +449,10 @@ class AccessoryRepository extends BaseRepository {
           total_out = total_out + ?,
           min_stock = VALUES(min_stock),
           updated_at = NOW()
-      `;
+      `
 
       // INSERT ... ON DUPLICATE KEY UPDATE 需要使用 db.query 来获取 affectedRows
-      const db = this.getConnection();
+      const db = this.getConnection()
       const queryResult = await db.query(query, [
         accessoryId,
         storeId,
@@ -423,18 +463,18 @@ class AccessoryRepository extends BaseRepository {
         quantity,           // UPDATE 时 quantity = quantity + quantity
         totalInValue,       // UPDATE 时 total_in = total_in + totalInValue
         totalOutValue       // UPDATE 时 total_out = total_out + totalOutValue
-      ]);
+      ])
 
       // mysql2 pool.query 返回 [ResultSetHeader, fields]
-      let result = queryResult;
+      let result = queryResult
       if (Array.isArray(queryResult) && queryResult.length > 0) {
-        result = queryResult[0];
+        result = queryResult[0]
       }
 
-      return result.affectedRows > 0;
+      return result.affectedRows > 0
     } catch (error) {
-      log.error('更新配件库存失败:', error);
-      throw error;
+      log.error('更新配件库存失败:', error)
+      throw error
     }
   }
 
@@ -446,11 +486,11 @@ class AccessoryRepository extends BaseRepository {
       const query = `
         INSERT INTO accessory_stock_in (
           batch_no, accessory_id, supplier_id, store_id,
-          quantity, purchase_price, total_amount,
+          quantity, purchase_cost, total_amount,
           barcode_scanned, distribution, remarks,
-          operator_id, operator_name, stock_in_date, status
+          operator_id, operator_name, inventory_time, status
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `;
+      `
 
       const params = [
         data.batch_no,
@@ -458,31 +498,31 @@ class AccessoryRepository extends BaseRepository {
         data.supplier_id,
         data.store_id,
         data.quantity,
-        data.purchase_price,
+        data.purchase_cost,
         data.total_amount,
         data.barcode_scanned || null,
         data.distribution || null,
         data.remarks || null,
         data.operator_id,
         data.operator_name,
-        data.stock_in_date,
+        data.inventory_time,
         data.status || 'completed'
-      ];
+      ]
 
       // INSERT 语句需要直接使用 db.query 来获取 insertId
-      const db = this.getConnection();
-      const queryResult = await db.query(query, params);
+      const db = this.getConnection()
+      const queryResult = await db.query(query, params)
 
       // mysql2 pool.query 返回 [ResultSetHeader, fields]
-      let result = queryResult;
+      let result = queryResult
       if (Array.isArray(queryResult) && queryResult.length > 0) {
-        result = queryResult[0];
+        result = queryResult[0]
       }
 
-      return result.insertId;
+      return result.insertId
     } catch (error) {
-      log.error('创建入库记录失败:', error);
-      throw error;
+      log.error('创建入库记录失败:', error)
+      throw error
     }
   }
 
@@ -492,59 +532,76 @@ class AccessoryRepository extends BaseRepository {
   async getStockInRecords(options = {}) {
     try {
       const {
-        accessoryId,
-        supplierId,
-        storeId,
-        startDate,
-        endDate,
+        accessory_id,
+        supplier_id,
+        store_id,
+        start_date,
+        end_date,
         page = 1,
-        pageSize = 50
-      } = options;
+        page_size = 50
+      } = options
 
-      const offset = (page - 1) * pageSize;
-      const conditions = [];
-      const params = [];
+      const normalized_page_size = Number(page_size) || 50
+      const offset = (page - 1) * normalized_page_size
+      const conditions = []
+      const params = []
 
-      if (accessoryId) {
-        conditions.push('asi.accessory_id = ?');
-        params.push(accessoryId);
+      if (accessory_id) {
+        conditions.push('asi.accessory_id = ?')
+        params.push(accessory_id)
       }
 
-      if (supplierId) {
-        conditions.push('asi.supplier_id = ?');
-        params.push(supplierId);
+      if (supplier_id) {
+        conditions.push('asi.supplier_id = ?')
+        params.push(supplier_id)
       }
 
-      if (storeId) {
-        conditions.push('asi.store_id = ?');
-        params.push(storeId);
+      if (store_id) {
+        conditions.push('asi.store_id = ?')
+        params.push(store_id)
       }
 
-      if (startDate) {
-        conditions.push('asi.stock_in_date >= ?');
-        params.push(startDate);
+      if (start_date) {
+        conditions.push('asi.inventory_time >= ?')
+        params.push(start_date)
       }
 
-      if (endDate) {
-        conditions.push('asi.stock_in_date <= ?');
-        params.push(endDate);
+      if (end_date) {
+        conditions.push('asi.inventory_time <= ?')
+        params.push(end_date)
       }
 
-      const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
+      const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : ''
 
       // 查询总数
       const countQuery = `
         SELECT COUNT(*) as total
         FROM accessory_stock_in asi
         ${whereClause}
-      `;
-      const countResult = await this.executeQuery(countQuery, params);
-      const total = countResult && countResult.length > 0 ? countResult[0].total : 0;
+      `
+      const countResult = await this.executeQuery(countQuery, params)
+      const total = countResult && countResult.length > 0 ? countResult[0].total : 0
 
       // 查询列表
       const query = `
         SELECT
-          asi.*,
+          asi.id,
+          asi.batch_no,
+          asi.accessory_id,
+          asi.supplier_id,
+          asi.store_id,
+          asi.quantity,
+          asi.purchase_cost,
+          asi.total_amount,
+          asi.barcode_scanned,
+          asi.distribution,
+          asi.remarks,
+          asi.operator_id,
+          asi.operator_name,
+          asi.inventory_time,
+          asi.status,
+          asi.created_at,
+          asi.updated_at,
           a.name as accessory_name,
           a.barcode,
           s.name as supplier_name,
@@ -554,24 +611,26 @@ class AccessoryRepository extends BaseRepository {
         LEFT JOIN suppliers s ON asi.supplier_id = s.id
         LEFT JOIN stores st ON asi.store_id = st.id
         ${whereClause}
-        ORDER BY asi.stock_in_date DESC, asi.id DESC
+        ORDER BY asi.inventory_time DESC, asi.id DESC
         LIMIT ? OFFSET ?
-      `;
+      `
 
-      const records = await this.executeQuery(query, [...params, pageSize, offset]);
+      const records = await this.executeQuery(query, [...params, normalized_page_size, offset])
 
       return {
         data: records,
         pagination: {
           page: parseInt(page),
-          pageSize: parseInt(pageSize),
+          page_size: normalized_page_size,
           total,
-          totalPages: Math.ceil(total / pageSize)
+          total_pages: Math.ceil(total / normalized_page_size),
+          has_next: page * normalized_page_size < total,
+          has_prev: page > 1
         }
-      };
+      }
     } catch (error) {
-      log.error('获取入库记录失败:', error);
-      throw error;
+      log.error('获取入库记录失败:', error)
+      throw error
     }
   }
 
@@ -588,7 +647,7 @@ class AccessoryRepository extends BaseRepository {
           purchase_cost, profit, remarks,
           operator_id, operator_name, sale_time
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `;
+      `
 
       const params = [
         data.sale_no,
@@ -606,22 +665,22 @@ class AccessoryRepository extends BaseRepository {
         data.operator_id,
         data.operator_name,
         data.sale_time
-      ];
+      ]
 
       // INSERT 语句需要直接使用 db.query 来获取 insertId
-      const db = this.getConnection();
-      const queryResult = await db.query(query, params);
+      const db = this.getConnection()
+      const queryResult = await db.query(query, params)
 
       // mysql2 pool.query 返回 [ResultSetHeader, fields]
-      let result = queryResult;
+      let result = queryResult
       if (Array.isArray(queryResult) && queryResult.length > 0) {
-        result = queryResult[0];
+        result = queryResult[0]
       }
 
-      return result.insertId;
+      return result.insertId
     } catch (error) {
-      log.error('创建销售记录失败:', error);
-      throw error;
+      log.error('创建销售记录失败:', error)
+      throw error
     }
   }
 
@@ -634,18 +693,18 @@ class AccessoryRepository extends BaseRepository {
         SELECT
           category,
           COUNT(*) as count,
-          SUM(selling_price) as total_value
+          SUM(sale_price) as total_value
         FROM accessories
         WHERE status = 1 AND category IS NOT NULL
         GROUP BY category
         ORDER BY count DESC
-      `;
+      `
 
-      const stats = await this.executeQuery(query);
-      return stats;
+      const stats = await this.executeQuery(query)
+      return stats
     } catch (error) {
-      log.error('获取分类统计失败:', error);
-      throw error;
+      log.error('获取分类统计失败:', error)
+      throw error
     }
   }
 
@@ -668,7 +727,7 @@ class AccessoryRepository extends BaseRepository {
         GROUP BY a.id
         HAVING total_quantity <= COALESCE(MIN(ast.min_stock), 5)
         ORDER BY total_quantity ASC
-      `;
+      `
 
       if (threshold) {
         query = `
@@ -685,16 +744,16 @@ class AccessoryRepository extends BaseRepository {
           GROUP BY a.id
           HAVING total_quantity <= ${threshold}
           ORDER BY total_quantity ASC
-        `;
+        `
       }
 
-      const [accessories] = await this.executeQuery(query);
-      return accessories;
+      const [accessories] = await this.executeQuery(query)
+      return accessories
     } catch (error) {
-      log.error('获取库存预警失败:', error);
-      throw error;
+      log.error('获取库存预警失败:', error)
+      throw error
     }
   }
 }
 
-module.exports = AccessoryRepository;
+module.exports = AccessoryRepository

@@ -14,19 +14,15 @@ export interface WholesalePhone {
   color?: string
   memory?: string
   purchase_cost?: number | string | null
-  purchase_price?: number | string | null
-  editCost?: number | null
-  wholesalePrice?: number | null
+  wholesale_price?: number | null
   supplier_name?: string
   store_name?: string
-  Inventorytime?: string
-  purchase_date?: string
-  created_at?: string
+  inventory_time?: string
 }
 
-export interface EditableWholesalePhone extends WholesalePhone {
-  editCost: number
-  wholesalePrice: number
+export type EditableWholesalePhone = Omit<WholesalePhone, 'purchase_cost' | 'wholesale_price'> & {
+  purchase_cost: number | null
+  wholesale_price: number | null
 }
 
 export interface CollectedPriceItem {
@@ -40,8 +36,8 @@ export interface CollectedPriceItem {
 
 export interface TransferPhonePayload {
   phone_id: number
-  purchase_cost: number
-  wholesale_price: number
+  purchase_cost: number | null
+  wholesale_price: number | null
 }
 
 export interface TransferSubmitPayload {
@@ -56,7 +52,7 @@ export interface TransferSubmitPayload {
   salesperson_name?: string
   payment_method?: string
   invoice_number?: string
-  sale_date?: string
+  sale_time?: string
 }
 
 export interface WholesaleFormData {
@@ -70,6 +66,6 @@ export interface WholesaleFormData {
   payment_method: string
   payment_channel: string
   invoice_number: string
-  sale_date: string
+  sale_time: string
   remarks: string
 }

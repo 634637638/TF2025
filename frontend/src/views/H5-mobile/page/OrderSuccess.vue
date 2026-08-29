@@ -6,10 +6,12 @@
   <div class="order-success-page">
     <!-- 成功图标 -->
     <div class="success-icon">
-      <i class="fas fa-check-circle"></i>
+      <i class="fas fa-check-circle" />
     </div>
 
-    <h2 class="success-title">订单提交成功</h2>
+    <h2 class="success-title">
+      订单提交成功
+    </h2>
 
     <!-- 订单信息 -->
     <div class="order-info-card">
@@ -25,36 +27,66 @@
 
     <!-- 支付方式 -->
     <div class="payment-section">
-      <h3 class="section-title">请选择付款方式</h3>
+      <h3 class="section-title">
+        请选择付款方式
+      </h3>
 
       <!-- 微信支付 -->
-      <div v-if="shopConfig.wechat_qrcode" class="payment-method">
+      <div
+        v-if="shopConfig.wechat_qrcode"
+        class="payment-method"
+      >
         <div class="method-header">
-          <i class="fab fa-weixin" style="color: #09bb07;"></i>
+          <i
+            class="fab fa-weixin"
+            style="color: #09bb07;"
+          />
           <span>微信扫码支付</span>
         </div>
         <div class="qrcode-box">
-          <img :src="shopConfig.wechat_qrcode" alt="微信支付二维码" />
+          <img
+            :src="formatImageUrl(shopConfig.wechat_qrcode)"
+            alt="微信支付二维码"
+          >
         </div>
-        <p class="payment-tip">请使用微信扫一扫，扫描二维码完成支付</p>
+        <p class="payment-tip">
+          请使用微信扫一扫，扫描二维码完成支付
+        </p>
       </div>
 
       <!-- 支付宝 -->
-      <div v-if="shopConfig.alipay_qrcode" class="payment-method">
+      <div
+        v-if="shopConfig.alipay_qrcode"
+        class="payment-method"
+      >
         <div class="method-header">
-          <i class="fab fa-alipay" style="color: #1677ff;"></i>
+          <i
+            class="fab fa-alipay"
+            style="color: #1677ff;"
+          />
           <span>支付宝扫码支付</span>
         </div>
         <div class="qrcode-box">
-          <img :src="shopConfig.alipay_qrcode" alt="支付宝二维码" />
+          <img
+            :src="formatImageUrl(shopConfig.alipay_qrcode)"
+            alt="支付宝二维码"
+          >
         </div>
-        <p class="payment-tip">请使用支付宝扫一扫，扫描二维码完成支付</p>
+        <p class="payment-tip">
+          请使用支付宝扫一扫，扫描二维码完成支付
+        </p>
       </div>
 
       <!-- 银行转账 -->
-      <div v-if="shopConfig.bank_info" class="payment-method bank">
+      <div
+        v-if="shopConfig.bank_info"
+        class="payment-method bank"
+      >
         <div class="method-header">
-          <i class="fas fa-university" style="color: #ff6b00;"></i>
+          <i
+            class="fas fa-university"
+            style="color: #ff6b00;"
+          />
           <span>银行转账</span>
         </div>
         <div class="bank-info">
@@ -65,33 +97,53 @@
       <!-- 到店自提 -->
       <div class="payment-method pickup">
         <div class="method-header">
-          <i class="fas fa-store" style="color: #00c853;"></i>
+          <i
+            class="fas fa-store"
+            style="color: #00c853;"
+          />
           <span>到店自提</span>
         </div>
         <div class="pickup-info">
-          <p v-if="shopConfig.shop_address"><i class="fas fa-map-marker-alt"></i> {{ shopConfig.shop_address }}</p>
-          <p v-if="shopConfig.shop_phone"><i class="fas fa-phone"></i> {{ shopConfig.shop_phone }}</p>
-          <p v-if="shopConfig.shop_hours"><i class="fas fa-clock"></i> {{ shopConfig.shop_hours }}</p>
+          <p v-if="shopConfig.shop_address">
+            <i class="fas fa-map-marker-alt" /> {{ shopConfig.shop_address }}
+          </p>
+          <p v-if="shopConfig.shop_phone">
+            <i class="fas fa-phone" /> {{ shopConfig.shop_phone }}
+          </p>
+          <p v-if="shopConfig.shop_hours">
+            <i class="fas fa-clock" /> {{ shopConfig.shop_hours }}
+          </p>
         </div>
       </div>
     </div>
 
     <!-- 温馨提示 -->
     <div class="tips-section">
-      <p><i class="fas fa-info-circle"></i> 付款后请保留付款凭证，联系客服确认</p>
-      <p v-if="shopConfig.shop_phone"><i class="fas fa-phone"></i> 客服电话：<a :href="`tel:${shopConfig.shop_phone}`">{{ shopConfig.shop_phone }}</a></p>
+      <p><i class="fas fa-info-circle" /> 付款后请保留付款凭证，联系客服确认</p>
+      <p v-if="shopConfig.shop_phone">
+        <i class="fas fa-phone" /> 客服电话：<a :href="`tel:${shopConfig.shop_phone}`">{{ shopConfig.shop_phone }}</a>
+      </p>
     </div>
 
     <!-- 操作按钮 -->
     <div class="actions">
-      <el-button class="action-btn home" @click="goHome">
-        <i class="fas fa-home"></i> 返回首页
+      <el-button
+        class="action-btn home"
+        @click="goHome"
+      >
+        <i class="fas fa-home" /> 返回首页
       </el-button>
-      <el-button class="action-btn primary" @click="viewOrder">
-        <i class="fas fa-receipt"></i> 查看订单
+      <el-button
+        class="action-btn primary"
+        @click="viewOrder"
+      >
+        <i class="fas fa-receipt" /> 查看订单
       </el-button>
-      <el-button class="action-btn success" @click="contactService">
-        <i class="fas fa-phone"></i> 联系客服
+      <el-button
+        class="action-btn success"
+        @click="contactService"
+      >
+        <i class="fas fa-phone" /> 联系客服
       </el-button>
     </div>
   </div>
@@ -102,6 +154,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getPublicConfig, getOrderByNumber } from '@/api/shop-public'
 import { ElMessage } from 'element-plus'
+import { formatImageUrl } from '@/utils/format'
 import { storage } from '@/services/storage'
 import { H5_STORAGE_KEYS } from '@/constants/storage'
 import { logger } from '@/utils/logger'
@@ -125,7 +178,7 @@ const loadConfig = async () => {
 // 获取订单详情
 const loadOrder = async () => {
   // 1. 优先从 sessionStorage 获取订单信息
-  const sessionOrder = storage.get<{ orderNumber: string; totalAmount: string; timestamp: number }>(H5_STORAGE_KEYS.ORDER_SUCCESS, 'session')
+  const sessionOrder = storage.get<{ orderNumber: string; totalAmount: string; accessToken?: string; timestamp: number }>(H5_STORAGE_KEYS.ORDER_SUCCESS, 'session')
 
   if (sessionOrder?.orderNumber) {
     // 验证时间戳（30分钟内有效，允许刷新）
@@ -144,9 +197,9 @@ const loadOrder = async () => {
 
     // 从后端获取真实订单信息验证
     try {
-      const response = await getOrderByNumber(sessionOrder.orderNumber)
-      if (response?.data) {
-        totalAmount.value = response.data.total_amount || totalAmount.value
+      const order = await getOrderByNumber(sessionOrder.orderNumber, sessionOrder.accessToken)
+      if (order) {
+        totalAmount.value = String(order.total_amount || totalAmount.value)
       }
     } catch (error) {
       logger.error('验证订单失败:', error)
@@ -161,14 +214,16 @@ const loadOrder = async () => {
   if (orderNum && /^H5\d{12}$/.test(orderNum)) {
     // 从后端获取订单信息
     try {
-      const response = await getOrderByNumber(orderNum)
-      if (response?.data) {
+      const accessToken = String(route.query.access_token || '')
+      const order = await getOrderByNumber(orderNum, accessToken)
+      if (order) {
         orderNumber.value = orderNum
-        totalAmount.value = response.data.total_amount || '0.00'
+        totalAmount.value = String(order.total_amount || '0.00')
         // 保存到 sessionStorage 方便后续使用
         storage.set(H5_STORAGE_KEYS.ORDER_SUCCESS, {
           orderNumber: orderNum,
-          totalAmount: response.data.total_amount || '0.00',
+          totalAmount: String(order.total_amount || '0.00'),
+          accessToken,
           timestamp: Date.now()
         }, 'session')
         return
@@ -217,7 +272,7 @@ onMounted(() => {
 <style scoped lang="scss">
 .order-success-page {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: var(--tf-color-surface-soft);
   padding: 24px 16px;
 }
 
@@ -228,7 +283,7 @@ onMounted(() => {
 
   i {
     font-size: 64px;
-    color: #00c853;
+    color: var(--tf-color-accent-green);
     animation: scaleIn 0.5s ease-out;
   }
 }
@@ -249,13 +304,13 @@ onMounted(() => {
   text-align: center;
   font-size: 20px;
   font-weight: 500;
-  color: #333;
+  color: var(--text-primary);
   margin: 0 0 24px;
 }
 
 // 订单信息卡片
 .order-info-card {
-  background: #fff;
+  background: var(--color-bg-white);
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 16px;
@@ -271,17 +326,17 @@ onMounted(() => {
 
     .label {
       font-size: 14px;
-      color: #666;
+      color: var(--text-secondary);
     }
 
     .value {
       font-size: 14px;
-      color: #333;
+      color: var(--text-primary);
 
       &.amount {
         font-size: 20px;
         font-weight: 500;
-        color: #ff1744;
+        color: var(--tf-color-accent-pink);
       }
     }
   }
@@ -294,12 +349,12 @@ onMounted(() => {
   .section-title {
     font-size: 16px;
     font-weight: 500;
-    color: #333;
+    color: var(--text-primary);
     margin: 0 0 12px;
   }
 
   .payment-method {
-    background: #fff;
+    background: var(--color-bg-white);
     border-radius: 8px;
     padding: 16px;
     margin-bottom: 12px;
@@ -311,14 +366,14 @@ onMounted(() => {
       margin-bottom: 12px;
       font-size: 16px;
       font-weight: 500;
-      color: #333;
+      color: var(--text-primary);
     }
 
     .qrcode-box {
       display: flex;
       justify-content: center;
       padding: 16px;
-      background: #f5f5f5;
+      background: var(--tf-color-surface-soft);
       border-radius: 8px;
       margin-bottom: 12px;
 
@@ -332,16 +387,16 @@ onMounted(() => {
     .payment-tip {
       text-align: center;
       font-size: 13px;
-      color: #999;
+      color: var(--text-muted);
       margin: 0;
     }
 
     .bank-info {
       padding: 12px;
-      background: #f5f5f5;
+      background: var(--tf-color-surface-soft);
       border-radius: 4px;
       font-size: 14px;
-      color: #333;
+      color: var(--text-primary);
       line-height: 1.8;
       white-space: pre-line;
     }
@@ -353,15 +408,15 @@ onMounted(() => {
         gap: 8px;
         padding: 8px 0;
         font-size: 14px;
-        color: #333;
+        color: var(--text-primary);
         margin: 0;
 
         i {
-          color: #ff6b00;
+          color: var(--tf-color-accent-orange);
         }
 
         a {
-          color: #ff6b00;
+          color: var(--tf-color-accent-orange);
           text-decoration: none;
         }
       }
@@ -371,7 +426,7 @@ onMounted(() => {
 
 // 温馨提示
 .tips-section {
-  background: #fff8f0;
+  background: var(--tf-color-orange-surface);
   border-radius: 8px;
   padding: 12px 16px;
   margin-bottom: 24px;
@@ -381,7 +436,7 @@ onMounted(() => {
     align-items: center;
     gap: 8px;
     font-size: 13px;
-    color: #ff6b00;
+    color: var(--tf-color-accent-orange);
     margin: 8px 0;
 
     &:first-child {
@@ -397,7 +452,7 @@ onMounted(() => {
     }
 
     a {
-      color: #ff6b00;
+      color: var(--tf-color-accent-orange);
       text-decoration: none;
     }
   }
@@ -411,7 +466,7 @@ onMounted(() => {
   padding: 16px 0;
   position: sticky;
   bottom: 0;
-  background: linear-gradient(to top, #f5f5f5 80%, transparent);
+  background: linear-gradient(to top, var(--tf-color-surface-soft) 80%, transparent);
   margin: 0 -16px -24px;
   padding: 24px 16px 32px;
 

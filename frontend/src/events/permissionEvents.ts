@@ -3,14 +3,13 @@
  * 用于在权限变更时通知所有组件刷新权限状态
  */
 
-import { ref } from 'vue'
 
 // 权限变更事件
 interface PermissionChangeEvent {
   type: 'permission_change' | 'force_refresh' | 'role_change'
   timestamp: number
   source?: string // 来源：'permission_page', 'api', 'system'
-  data?: any
+  data?: unknown
 }
 
 // 权限事件监听器
@@ -77,7 +76,7 @@ class PermissionEventBus {
   /**
    * 触发权限变更事件
    */
-  emitPermissionChange(source?: string, data?: any): void {
+  emitPermissionChange(source?: string, data?: unknown): void {
     this.emit({
       type: 'permission_change',
       source: source || 'unknown',
