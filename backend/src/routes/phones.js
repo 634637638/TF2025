@@ -1058,19 +1058,58 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
       remarks
     } = req.body
 
-    const finalNotes = remarks ?? ''
+    // 获取数据库连接
+    const pool = require('../config/database').getDatabase()
+    connection = await pool.getConnection()
 
-    if (!brand_id || !model_id || !color_id || !memory_id) {
+    // 先读取当前记录。编辑请求可能只提交被修改的字段，未提交字段必须保留原值。
+    const [existingPhones] = await connection.execute(
+      `SELECT id, status, brand_id, model_id, color_id, memory_id, store_id,
+              imei, serial_number, purchase_cost, sale_price, is_new,
+              supplier_id, inventory_operator_id, sale_operator_id,
+              inventory_time, sale_time, remarks
+       FROM phones WHERE id = ?`,
+      [id]
+    )
+
+    if (existingPhones.length === 0) {
+      return ApiResponse.notFound(res, '手机不存在')
+    }
+
+    const currentPhone = existingPhones[0]
+    const valueOrCurrent = (value, currentValue) => (
+      value === undefined ? currentValue : value
+    )
+    const effectiveBrandId = valueOrCurrent(brand_id, currentPhone.brand_id)
+    const effectiveModelId = valueOrCurrent(model_id, currentPhone.model_id)
+    const effectiveColorId = valueOrCurrent(color_id, currentPhone.color_id)
+    const effectiveMemoryId = valueOrCurrent(memory_id, currentPhone.memory_id)
+    const effectiveStoreId = valueOrCurrent(store_id, currentPhone.store_id)
+    const effectiveImei = valueOrCurrent(imei, currentPhone.imei)
+    const effectiveSerialNumber = valueOrCurrent(serial_number, currentPhone.serial_number)
+    const effectiveCondition = valueOrCurrent(
+      condition,
+      Number(currentPhone.is_new) === 1 ? 'new' : 'used'
+    )
+    const effectiveSupplierId = valueOrCurrent(supplier_id, currentPhone.supplier_id)
+    const effectivePurchaseCost = valueOrCurrent(purchase_cost, currentPhone.purchase_cost)
+    const effectiveSalePrice = valueOrCurrent(sale_price, currentPhone.sale_price)
+    const effectiveInventoryTime = valueOrCurrent(inventory_time, currentPhone.inventory_time)
+    const effectiveSaleTime = valueOrCurrent(sale_time, currentPhone.sale_time)
+    const effectiveStatus = valueOrCurrent(status, currentPhone.status)
+    const finalNotes = valueOrCurrent(remarks, currentPhone.remarks) ?? ''
+
+    if (!effectiveBrandId || !effectiveModelId || !effectiveColorId || !effectiveMemoryId) {
       return ApiResponse.badRequest(res, '品牌、型号、颜色和内存必须使用有效的数据库 ID')
     }
-    if (!store_id) {
+    if (!effectiveStoreId) {
       return ApiResponse.badRequest(res, '缺少店铺字段')
     }
-    if (!imei) {
+    if (!effectiveImei) {
       return ApiResponse.badRequest(res, '缺少IMEI号')
     }
 
-    const imeiValidation = validateImei(imei, serial_number)
+    const imeiValidation = validateImei(effectiveImei, effectiveSerialNumber)
     if (!imeiValidation.valid) {
       return ApiResponse.badRequest(res, imeiValidation.reason)
     }
@@ -1081,31 +1120,15 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
     // 打印调试信息
     log.debug('📝 收到的更新数据:', {
       id,
-      brand_id,
-      model_id,
-      color_id,
-      memory_id,
-      store_id,
+      brand_id: effectiveBrandId,
+      model_id: effectiveModelId,
+      color_id: effectiveColorId,
+      memory_id: effectiveMemoryId,
+      store_id: effectiveStoreId,
       imei: normalizedImei
     })
-    // price字段不再是必需的，因为编辑页面只修改成本字段
-    // 如果需要修改销售价格，可以在专门的页面或接口中处理
 
-    // 获取数据库连接
-    const pool = require('../config/database').getDatabase()
-    connection = await pool.getConnection()
-
-    // 检查手机是否存在
-    const [existingPhones] = await connection.execute(
-      'SELECT id,status FROM phones WHERE id = ?',
-      [id]
-    )
-
-    if (existingPhones.length === 0) {
-      return ApiResponse.notFound(res, '手机不存在')
-    }
-
-    if (['repair', 'rented'].includes(existingPhones[0].status) && !isAdministrator(req)) {
+    if (['repair', 'rented'].includes(currentPhone.status) && !isAdministrator(req)) {
       return ApiResponse.forbidden(res, existingPhones[0].status === 'rented' ? '租赁中的设备仅管理员可编辑' : '维修中的设备仅管理员可编辑')
     }
 
@@ -1137,11 +1160,12 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
       log.debug(`ℹ️ IMEI ${normalizedImei} 已存在于其他客户，允许继续`)
     }
 
-    const brandId = Number(brand_id)
-    const modelId = Number(model_id)
-    const colorId = Number(color_id)
-    const memoryId = Number(memory_id)
-    if (![brandId, modelId, colorId, memoryId].every(Number.isInteger)) {
+    const brandId = Number(effectiveBrandId)
+    const modelId = Number(effectiveModelId)
+    const colorId = Number(effectiveColorId)
+    const memoryId = Number(effectiveMemoryId)
+    const storeId = Number(effectiveStoreId)
+    if (![brandId, modelId, colorId, memoryId, storeId].every(Number.isInteger)) {
       return ApiResponse.badRequest(res, '品牌、型号、颜色和内存 ID 无效')
     }
 
@@ -1153,12 +1177,12 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
       log.debug(`✅ 使用前端发送的入库员ID: ${inventoryOperatorId}`)
     } else {
       // 如果前端没有发送操作员ID，保持原有的操作员ID不变
-      const [currentPhone] = await connection.execute(
+      const [currentPhoneRows] = await connection.execute(
         'SELECT inventory_operator_id FROM phones WHERE id = ?',
         [id]
       )
-      if (currentPhone.length > 0) {
-        inventoryOperatorId = currentPhone[0].inventory_operator_id
+      if (currentPhoneRows.length > 0) {
+        inventoryOperatorId = currentPhoneRows[0].inventory_operator_id
         log.debug(`🔧 保持原有入库员ID: ${inventoryOperatorId}`)
       }
     }
@@ -1171,12 +1195,12 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
       log.debug(`✅ 使用前端发送的销售员ID: ${saleOperatorId}`)
     } else {
       // 如果前端没有发送销售员ID，保持原有的销售员ID不变
-      const [currentPhone] = await connection.execute(
+      const [currentPhoneRows] = await connection.execute(
         'SELECT sale_operator_id FROM phones WHERE id = ?',
         [id]
       )
-      if (currentPhone.length > 0) {
-        saleOperatorId = currentPhone[0].sale_operator_id
+      if (currentPhoneRows.length > 0) {
+        saleOperatorId = currentPhoneRows[0].sale_operator_id
         log.debug(`🔧 保持原有销售员ID: ${saleOperatorId}`)
       }
     }
@@ -1207,35 +1231,35 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
       updateFields.push('status = ?')
     }
 
-    const finalPurchaseCost = purchase_cost === null || purchase_cost === undefined || purchase_cost === ''
+    const finalPurchaseCost = effectivePurchaseCost === null || effectivePurchaseCost === undefined || effectivePurchaseCost === ''
       ? null
-      : Number(purchase_cost)
-    const finalSalePrice = sale_price === null || sale_price === undefined || sale_price === ''
+      : Number(effectivePurchaseCost)
+    const finalSalePrice = effectiveSalePrice === null || effectiveSalePrice === undefined || effectiveSalePrice === ''
       ? null
-      : Number(sale_price)
+      : Number(effectiveSalePrice)
     if ([finalPurchaseCost, finalSalePrice].some(value => value !== null && !Number.isFinite(value))) {
       return ApiResponse.badRequest(res, '价格字段必须是有效数字')
     }
-    const normalizedCondition = condition === 'new' || condition === '全新' ? 'new' : 'used'
+    const normalizedCondition = effectiveCondition === 'new' || effectiveCondition === '全新' ? 'new' : 'used'
 
     const updateValues = [
       brandId || null,     // 使用转换后的brand_id
       modelId || null,     // 使用转换后的model_id
       colorId || null,     // 使用转换后的color_id
       memoryId || null,    // 使用转换后的memory_id
-      store_id,
+      storeId,
       normalizedImei,
       normalizedSerialNumber,
       finalPurchaseCost, // 更新purchase_cost字段（真正的成本价）
       finalSalePrice,     // 更新sale_price字段（销售价格）
       normalizedCondition === 'new' ? 1 : 0,
       normalizedCondition === 'new' ? 'A' : 'B',
-      supplier_id || null,
+      effectiveSupplierId || null,
       inventoryOperatorId, // 更新入库员ID
       saleOperatorId, // 更新销售员ID
       finalNotes,
-      inventory_time ?? null,
-      sale_time ?? null
+      effectiveInventoryTime ?? null,
+      effectiveSaleTime ?? null
     ]
 
     // 如果提供了status字段，添加到更新值
@@ -1407,12 +1431,12 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
         'peer_transfer': 'wholesale',
         'supplier_proxy': 'supplier_proxy'
       }
-      const saleType = statusToSaleType[status] || 'retail'
+      const saleType = statusToSaleType[effectiveStatus] || 'retail'
 
       // 生成发票号
       const { _generateInvoiceNumberForDate } = require('../utils/invoice-number')
       let invoiceNumber
-      const saleDate = sale_time ?? null
+      const saleDate = effectiveSaleTime ?? null
 
       if (saleDate) {
         const targetDate = new Date(saleDate)
@@ -1462,8 +1486,8 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
           finalCustomerId || null,
           saleType,
           saleOperatorId || null,
-          store_id || null,
-          sale_price || null,
+          storeId,
+          finalSalePrice,
           finalPurchaseCost || null,
           saleDate || null,
           invoiceNumber,
@@ -1483,7 +1507,7 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
         const { _generateInvoiceNumberForDate } = require('../utils/invoice-number')
         const saleType = existingSale.sale_type || 'retail'
         // 使用销售时间，优先使用 phones.sale_time，否则使用销售记录时间
-        const saleDate = sale_time ?? existingSale.sale_time
+        const saleDate = effectiveSaleTime ?? existingSale.sale_time
         let invoiceNumber
 
         if (saleDate) {
@@ -1546,27 +1570,27 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
       }
 
       // 同步 sale_date（从phones表同步）
-      if (sale_time !== null && sale_time !== undefined) {
+      if (effectiveSaleTime !== null && effectiveSaleTime !== undefined) {
         updateSalesFields.push('sale_time = ?')
-        updateSalesValues.push(sale_time)
+        updateSalesValues.push(effectiveSaleTime)
       }
 
       // 同步 store_id
-      if (store_id !== null && store_id !== undefined) {
+      if (effectiveStoreId !== null && effectiveStoreId !== undefined) {
         updateSalesFields.push('store_id = ?')
-        updateSalesValues.push(store_id)
+        updateSalesValues.push(storeId)
       }
 
       // 🔥 同步销售价格 (price字段)
-      if (sale_price !== null && sale_price !== undefined) {
+      if (effectiveSalePrice !== null && effectiveSalePrice !== undefined) {
         updateSalesFields.push('sale_price = ?')
-        updateSalesValues.push(parseFloat(sale_price))
-        log.debug(`✅ 同步销售价格: ${sale_price}`)
+        updateSalesValues.push(finalSalePrice)
+        log.debug(`✅ 同步销售价格: ${finalSalePrice}`)
       }
 
       // 同步入库成本
-      const costValue = purchase_cost !== null && purchase_cost !== undefined
-        ? purchase_cost
+      const costValue = effectivePurchaseCost !== null && effectivePurchaseCost !== undefined
+        ? finalPurchaseCost
         : null
       if (costValue !== null && costValue !== undefined) {
         updateSalesFields.push('purchase_cost = ?')
@@ -1592,7 +1616,7 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
     }
 
     // 根据状态更新销售记录的sale_type
-    if (status) {
+    if (status !== undefined && status !== null && status !== '') {
       log.debug('🔄 根据状态更新销售记录的sale_type...')
 
       // 状态到sale_type的映射
@@ -1602,7 +1626,7 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
         'supplier_proxy': 'supplier_proxy'  // 代供应商划拨
       }
 
-      const targetSaleType = statusToSaleType[status]
+      const targetSaleType = statusToSaleType[effectiveStatus]
 
       if (targetSaleType) {
         // 更新该手机的销售记录中的sale_type
@@ -1619,7 +1643,7 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
           log.debug('ℹ️ 该手机没有销售记录，或无需更新sale_type')
         }
       } else {
-        log.debug(`ℹ️ 状态 "${status}" 不需要更新sale_type (在库、预定、维修、丢失等状态)`)
+        log.debug(`ℹ️ 状态 "${effectiveStatus}" 不需要更新sale_type (在库、预定、维修、丢失等状态)`)
       }
     }
 
@@ -1677,7 +1701,7 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
     }
 
     // 自动匹配预定单（当手机入库且状态为 in_stock 时）
-    if (status === 'in_stock' || !status) {
+    if (effectiveStatus === 'in_stock') {
       log.debug('🔍 开始自动匹配预定单...')
 
       try {
@@ -1695,7 +1719,7 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
              AND p.store_id = ?
            ORDER BY p.created_at ASC
            LIMIT 1`,
-          [brandId, modelId, colorId, memoryId, store_id]
+          [brandId, modelId, colorId, memoryId, storeId]
         )
 
         if (matchablePreorders.length > 0) {
@@ -1712,7 +1736,7 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
               matched_time = NOW(),
               updated_at = NOW()
             WHERE id = ?`,
-            [id, imei, brandId, modelId, preorder.id]
+            [id, normalizedImei, brandId, modelId, preorder.id]
           )
 
           // 更新手机状态为已预定

@@ -6,6 +6,7 @@
 import { ref } from 'vue'
 import { useNotification } from './useNotification'
 import logger from '@/utils/logger'
+import { unifiedApi } from '@/utils/unified-api'
 
 export interface RefreshDataOptions {
   /** 成功提示消息 */
@@ -102,6 +103,8 @@ export function useRefreshData(): UseRefreshDataReturn {
     refreshing.value = true
 
     try {
+      // 手动刷新必须绕过统一 API 缓存和页面缓存，确保看到最新数据库状态。
+      unifiedApi.clearCache()
       // 刷新前回调
       await onBeforeRefresh?.()
 

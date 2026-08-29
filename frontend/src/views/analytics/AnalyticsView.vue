@@ -254,6 +254,7 @@ import {
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useLoadingState } from '@/composables'
+import { unifiedApi } from '@/utils/unified-api'
 import { useImportExport } from '@/composables/useImportExport'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
 import { PermissionGate, PageHeader } from '@/components/base'
@@ -620,6 +621,7 @@ const refreshData = async () => {
 
   refreshing.value = true
   try {
+    unifiedApi.clearCache()
     if (activeAnalyticsRef.value?.refreshSilently) {
       await activeAnalyticsRef.value.refreshSilently()
     }

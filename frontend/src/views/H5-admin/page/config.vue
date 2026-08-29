@@ -441,6 +441,7 @@ const ensureEditPermission = () => {
 
 // 刷新配置
 const handleRefresh = async () => {
+  unifiedApi.clearCache()
   await cleanupTempImages()
   await loadConfigs()
 }

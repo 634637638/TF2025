@@ -960,6 +960,7 @@ import { fieldPermissions, shouldShowActionColumn } from '@/composables/useField
 import { canViewPreorderField } from './preorder-field-permissions'
 import { useLoadingState } from '@/composables'
 import { preorderApi, Preorder, PreorderStatus } from '@/api/preorder'
+import { unifiedApi } from '@/utils/unified-api'
 import { PageHeader, PermissionGate } from '@/components/base'
 import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
@@ -1276,6 +1277,7 @@ const handleRefresh = async () => {
 
   refreshing.value = true
   try {
+    unifiedApi.clearCache()
     await loadStats()
     if (activeTab.value === 'new') {
       await loadPendingPreorders(false)

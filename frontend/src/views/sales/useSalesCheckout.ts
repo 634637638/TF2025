@@ -126,7 +126,7 @@ export const useSalesCheckout = ({
       apple_id: '',
       sale_price: '',
       store_id: '',
-      operator_id: matchedOperator?.id || '',
+      operator_id: matchedOperator ? String(matchedOperator.id) : '',
       sale_time: getTodayDate(),
       payment_method: '',
       payment_channel: '',
@@ -150,7 +150,7 @@ export const useSalesCheckout = ({
       sale_price: '',
       purchase_cost: '',
       store_id: '',
-      operator_id: matchedOperator?.id || '',
+      operator_id: matchedOperator ? String(matchedOperator.id) : '',
       sale_time: getTodayDate(),
       payment_method: '',
       payment_channel: '',
@@ -347,7 +347,7 @@ export const useSalesCheckout = ({
         const pointsEarned = Number(response.data?.points_earned) || 0
         showSuccess(`批量销售成功！共销售 ${selectedCount} 台设备${pointsEarned > 0 ? `，本单获得 ${pointsEarned} 积分` : ''}`)
         clearBatchSelection()
-        void loadAvailablePhones()
+        await loadAvailablePhones()
         todaySold.value += selectedCount
       } else {
         showError(response.message || '批量销售失败')
@@ -479,7 +479,7 @@ export const useSalesCheckout = ({
           selectedPhones.value = []
           selectAll.value = false
         }
-        void loadAvailablePhones()
+        await loadAvailablePhones()
         todaySold.value += batchMode.value ? batchCount : 1
       } else {
         showError(response.message || '销售出库失败')

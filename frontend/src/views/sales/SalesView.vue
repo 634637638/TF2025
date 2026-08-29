@@ -701,6 +701,8 @@ const todaySold = ref(0)
 const newInventoryValue = ref('0') // 全新库存金额
 const usedInventoryValue = ref('0') // 二手库存金额
 const exportingAvailablePhones = ref(false)
+// 防止销售/刷新期间旧请求晚返回后覆盖最新列表。
+let availablePhonesRequestVersion = 0
 
 // 筛选条件
 const filters = reactive({
@@ -856,7 +858,7 @@ const {
   handleNoPermission,
   normalizeCustomerPhone,
   resetCustomerForm,
-  loadAvailablePhones: () => loadAvailablePhones(),
+  loadAvailablePhones: () => loadAvailablePhones(true, false, true),
   showError,
   showSuccess
 })
@@ -1314,6 +1316,9 @@ const loadAvailablePhones = async (_bustCache = false, silentError = false, show
     return
   }
 
+  const requestVersion = ++availablePhonesRequestVersion
+  const requestedPage = pagination.page
+
   if (showLoadingState) {
     loading.value = true
   }
@@ -1322,15 +1327,26 @@ const loadAvailablePhones = async (_bustCache = false, silentError = false, show
 
     const response = await api.get('/sales/phones/available', {
       params,
-      useCache: !getRouteAutoOpenSalePhoneId()
+      // 销售、删除和手动刷新后必须读取数据库最新库存。
+      useCache: !_bustCache && !getRouteAutoOpenSalePhoneId()
     })
+
+    // 旧请求不能覆盖更新后的列表和加载状态。
+    if (requestVersion !== availablePhonesRequestVersion) return
 
     if (response.success) {
       const responseData = extractResponseData<any>(response)
       const records = (Array.isArray(responseData) ? responseData : (responseData.records || [])).map(normalizeSalesPhone)
+      const responseTotal = Number(response.pagination?.total) || records.length || 0
 
       availablePhones.value = records
-      setTotal(Number(response.pagination?.total) || records.length || 0)
+      setTotal(responseTotal)
+
+      // 当前页在销售后可能已经超过最后一页，回到有效页并重新读取。
+      if (records.length === 0 && responseTotal > 0 && requestedPage !== pagination.page) {
+        await loadAvailablePhones(true, silentError, showLoadingState)
+        return
+      }
 
       // 从后端获取全新和二手库存金额统计
       const stats = (response as any)?.stats || {}
@@ -1382,6 +1398,7 @@ const loadAvailablePhones = async (_bustCache = false, silentError = false, show
       setTotal(0)
     }
   } catch (error) {
+    if (requestVersion !== availablePhonesRequestVersion) return
     logger.error('加载手机列表失败:', error)
     if (!silentError) {
       showError('加载数据失败')
@@ -1389,7 +1406,7 @@ const loadAvailablePhones = async (_bustCache = false, silentError = false, show
     availablePhones.value = []
     setTotal(0)
   } finally {
-    if (showLoadingState) {
+    if (showLoadingState && requestVersion === availablePhonesRequestVersion) {
       loading.value = false
     }
   }
@@ -1452,8 +1469,25 @@ const editPhone = async (phone: any) => {
     return
   }
 
+  // 列表接口可能来自旧缓存或旧后端版本，打开编辑时重新读取详情以取得规范 ID 字段。
+  let editRecord = phone
+  try {
+    const detailResponse = await api.get(`/phones/${phone.id}`, {
+      showError: false,
+      useCache: false
+    })
+    if (detailResponse.success) {
+      const detail = extractResponseData<any>(detailResponse)
+      if (detail && typeof detail === 'object' && !Array.isArray(detail)) {
+        editRecord = { ...phone, ...detail }
+      }
+    }
+  } catch (error) {
+    logger.warn('读取手机详情失败，使用列表数据打开编辑:', error)
+  }
+
   // 所有设备统一使用弹窗编辑
-  selectedPhoneForEdit.value = phone
+  selectedPhoneForEdit.value = editRecord
   showEditModal.value = true
 }
 
@@ -1480,6 +1514,7 @@ const submitEdit = async () => {
         serial_number: editForm.serial_number,
         imei: editForm.imei,
         purchase_cost: editForm.purchase_cost,
+        sale_price: editForm.sale_price,
         supplier_id: editForm.supplier_id,
         store_id: editForm.store_id,
         condition: editForm.condition,
@@ -1508,7 +1543,15 @@ const submitEdit = async () => {
     }
   } catch (error) {
     logger.error('更新失败:', error)
-    showError('更新失败，请重试')
+    // 统一 API 会将非 2xx 响应以 AxiosError 抛出，优先展示后端的可读校验原因。
+    const errorRecord = error as {
+      response?: { data?: { message?: unknown } }
+      message?: unknown
+    }
+    const backendMessage = errorRecord.response?.data?.message
+    showError(typeof backendMessage === 'string' && backendMessage.trim()
+      ? backendMessage
+      : '更新失败，请重试')
   }
 }
 
@@ -1675,6 +1718,7 @@ watch(showEditModal, async (newVal) => {
       serial_number: phone.serial_number || '',
       imei: phone.imei || '',
       purchase_cost: phone.purchase_cost === null || phone.purchase_cost === undefined ? null : Math.round(Number(phone.purchase_cost)),
+      sale_price: phone.sale_price === null || phone.sale_price === undefined ? null : Number(phone.sale_price),
       supplier_id: phone.supplier_id || null,
       store_id: phone.store_id || null,
       operator_id: phone.inventory_operator_id === null || phone.inventory_operator_id === undefined ? '' : String(phone.inventory_operator_id),
@@ -1758,7 +1802,7 @@ const resetFilters = () => {
 const handleRefresh = async () => {
   await refresh(async () => {
     await Promise.all([
-      loadAvailablePhones(false, true, false),
+      loadAvailablePhones(true, true, false),
       loadStores(),
       loadOperators(),
       loadSuppliers(),

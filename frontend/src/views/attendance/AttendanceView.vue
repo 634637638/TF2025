@@ -2844,6 +2844,7 @@ const refreshData = async () => {
 
   refreshing.value = true
   try {
+    unifiedApi.clearCache()
     if (activeTab.value === 'all') {
       await loadData(false)
     } else if (activeTab.value === 'my') {

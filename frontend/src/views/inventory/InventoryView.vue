@@ -1018,7 +1018,7 @@ const toDateInputValue = (dateString?: string | null) => {
 }
 
 // 编辑项目 - 统一使用 watch 填充数据
-const editItem = (item: InventoryItem) => {
+const editItem = async (item: InventoryItem) => {
   if (!canEdit.value) {
     handleNoPermission('edit')
     return
@@ -1030,8 +1030,25 @@ const editItem = (item: InventoryItem) => {
     return
   }
 
+  // 列表可能来自缓存或旧接口，打开编辑时读取最新规范字段（各类 *_id、IMEI 等）。
+  let editItemData: InventoryItem = item
+  try {
+    const response = await api.get(`/inventory/${item.id}`, {
+      useCache: false,
+      showError: false
+    })
+    if (response.success) {
+      const detail = extractResponseData<InventoryItem>(response)
+      if (detail && typeof detail === 'object' && !Array.isArray(detail)) {
+        editItemData = { ...item, ...detail }
+      }
+    }
+  } catch (detailError) {
+    logger.warn('读取库存详情失败，使用列表数据打开编辑:', detailError)
+  }
+
   // 设置选中的设备并打开弹窗（数据填充通过 watch 自动完成）
-  selectedPhoneForEdit.value = item
+  selectedPhoneForEdit.value = editItemData
   showEditModal.value = true
 }
 
@@ -1288,7 +1305,10 @@ const submitEdit = async () => {
     }
   } catch (err: any) {
     logger.error('更新失败:', err)
-    error(err.message || '更新失败，请重试')
+    const backendMessage = err?.response?.data?.message
+    error(typeof backendMessage === 'string' && backendMessage.trim()
+      ? backendMessage
+      : (err.message || '更新失败，请重试'))
   } finally {
     submitting.value = false
   }

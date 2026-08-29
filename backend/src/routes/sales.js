@@ -687,6 +687,10 @@ router.get('/phones/available', unifiedAuth, requirePermission('sales:view'), as
     const query = `
       SELECT
         p.id,
+        p.brand_id,
+        p.model_id,
+        p.color_id,
+        p.memory_id,
         p.imei,
         p.serial_number,
         m.name as model,

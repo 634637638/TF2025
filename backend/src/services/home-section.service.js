@@ -37,7 +37,8 @@ class HomeSectionService {
     for (const section of sections) {
       section.products = await this.getSectionProducts(
         section.id,
-        section.product_limit
+        section.product_limit,
+        section
       )
     }
 
@@ -49,7 +50,7 @@ class HomeSectionService {
    * @param {number} sectionId - 推荐区域ID
    * @param {number} productLimit - 最大显示数量
    */
-  async getSectionProducts(sectionId, productLimit = 10) {
+  async getSectionProducts(sectionId, productLimit = 10, section = null) {
     const normalizedProductLimit = this.normalizeCount(productLimit, 10)
 
     // 1. 获取已配置的推荐商品
@@ -148,9 +149,79 @@ class HomeSectionService {
 
     const [products] = await db.getDatabase().query(query, [sectionId, sectionId])
 
-    // 只展示后台明确配置的商品；缺少配置时保持真实空结果。
     if (normalizedProductLimit === 0) return []
-    return products.slice(0, normalizedProductLimit)
+
+    // 靓机/二手机专区除了手动设置外，自动补充真实在库二手机。
+    // 其他专区仍只展示后台明确配置的商品，避免商品跨专区串入。
+    const sectionKey = String(section?.section_key || '').toLowerCase()
+    const sectionName = String(section?.section_name || '')
+    const isAutomaticUsedSection = (
+      sectionKey.includes('quality') ||
+      sectionKey.includes('liangji') ||
+      sectionKey.includes('used') ||
+      sectionName.includes('靓机') ||
+      sectionName.includes('二手')
+    )
+
+    if (!isAutomaticUsedSection || products.length >= normalizedProductLimit) {
+      return products.slice(0, normalizedProductLimit)
+    }
+
+    const remainingLimit = normalizedProductLimit - products.length
+    const qualityCondition = (
+      sectionKey.includes('quality') ||
+      sectionKey.includes('liangji') ||
+      sectionName.includes('靓机')
+    )
+      ? `AND (h5.condition_grade = '靓机' OR p.quality_grade = 'A')`
+      : ''
+    const autoQuery = `
+      SELECT
+        2147483647 as sort_order,
+        NULL as template_id,
+        p.id as phone_id,
+        p.brand_id,
+        b.name as brand_name,
+        p.model_id,
+        m.name as model_name,
+        p.color_id,
+        c.name as color_name,
+        NULL as template_name,
+        COALESCE(
+          (SELECT image_url FROM H5_images WHERE phone_id = p.id AND is_primary = 1 LIMIT 1),
+          (SELECT image_url FROM H5_images WHERE phone_id = p.id ORDER BY sort_order ASC, id ASC LIMIT 1)
+        ) as main_image,
+        COALESCE(h5.sale_price, p.sale_price) as min_price,
+        1 as stock_count,
+        p.id as first_phone_id,
+        mem.size as memory_name,
+        p.quality_grade,
+        h5.condition_grade,
+        0 as is_new,
+        'used' as product_type
+      FROM phones p
+      LEFT JOIN H5_product h5 ON p.id = h5.phone_id
+      LEFT JOIN brands b ON p.brand_id = b.id
+      LEFT JOIN models m ON p.model_id = m.id
+      LEFT JOIN colors c ON p.color_id = c.id
+      LEFT JOIN memories mem ON p.memory_id = mem.id
+      WHERE p.status = 'in_stock'
+        AND p.is_new = 0
+        AND (h5.is_published = 1 OR h5.is_published IS NULL)
+        ${qualityCondition}
+        AND NOT EXISTS (
+          SELECT 1 FROM H5_home_section_products configured
+          WHERE configured.section_id = ? AND configured.phone_id = p.id
+        )
+      ORDER BY p.inventory_time DESC, p.id DESC
+      LIMIT ?
+    `
+    const [automaticProducts] = await db.getDatabase().query(
+      autoQuery,
+      [sectionId, remainingLimit]
+    )
+
+    return products.concat(automaticProducts).slice(0, normalizedProductLimit)
   }
 
   /**

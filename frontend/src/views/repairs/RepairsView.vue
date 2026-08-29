@@ -592,6 +592,7 @@ import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { logger } from '@/utils/logger'
 import { getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 import { repairsApi } from '@/api/repairs'
+import { unifiedApi } from '@/utils/unified-api'
 import type { RepairOrder, RepairOrderForm, RepairStatus } from '@/types/repair'
 
 interface CustomerOption { id: number; name: string; phone: string }
@@ -891,6 +892,7 @@ const refreshData = async () => {
   if (refreshing.value) return
   refreshing.value = true
   try {
+    unifiedApi.clearCache()
     await Promise.all([loadRepairs(), loadOptions()])
     success('数据刷新成功')
   } catch (err) {

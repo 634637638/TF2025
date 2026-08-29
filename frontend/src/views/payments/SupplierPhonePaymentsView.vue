@@ -3360,6 +3360,7 @@ const refreshData = async (options: { showSuccess?: boolean } = {}) => {
 
   refreshing.value = true
   try {
+    unifiedApi.clearCache()
     await Promise.all([
       loadSummaryStatistics(),
       loadStatistics(false),

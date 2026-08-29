@@ -69,8 +69,11 @@ export interface SearchProduct {
 /**
  * 获取所有启用的推荐区域及其商品
  */
-export function getActiveHomeSections() {
-  return unifiedApi.get<HomeSection[]>('/public/home/sections')
+export function getActiveHomeSections(options?: { useCache?: boolean }) {
+  return unifiedApi.get<HomeSection[]>('/public/home/sections', {
+    // 首页配置和库存会由后台随时调整，进入首页始终读取最新推荐数据。
+    useCache: options?.useCache ?? false
+  })
 }
 
 // ============================================================================
