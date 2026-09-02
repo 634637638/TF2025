@@ -8,6 +8,7 @@
 ## 文档列表
 
 - [云端部署指南](CLOUD_DEPLOYMENT_GUIDE.md) - 完整的云端服务器部署教程
+- [上传文件存储与迁移规范](../backend/upload-storage-standard.md) - 上传目录迁移、数据库 URL 与文件同步发布要求
 
 ## 快速开始
 

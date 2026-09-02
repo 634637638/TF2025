@@ -274,13 +274,16 @@
                 v-for="(file, index) in pendingFiles"
                 :key="index"
                 class="publish-to-h5-media-card is-pending"
+                @click="openPendingMediaPreview(index)"
               >
                 <!-- 视频预览 -->
                 <video
-                  v-if="file.raw?.type?.startsWith('video/')"
+                  v-if="isVideoMedia({ type: file.raw?.type, name: file.name, url: file.url })"
                   :src="previewUrl(file)"
-                  class="publish-to-h5-media-thumb"
+                  class="publish-to-h5-media-thumb is-previewable"
                   muted
+                  playsinline
+                  preload="metadata"
                 />
                 <!-- 图片预览 -->
                 <Image
@@ -293,8 +296,8 @@
 
                 <!-- 文件类型标记 -->
                 <div class="image-badge">
-                  <i :class="file.raw?.type?.startsWith('video/') ? 'fas fa-video' : 'fas fa-image'" />
-                  {{ file.raw?.type?.startsWith('video/') ? '视频' : '图片' }}
+                  <i :class="isVideoMedia({ type: file.raw?.type, name: file.name, url: file.url }) ? 'fas fa-video' : 'fas fa-image'" />
+                  {{ isVideoMedia({ type: file.raw?.type, name: file.name, url: file.url }) ? '视频' : '图片' }}
                 </div>
 
                 <!-- 移除按钮 -->
@@ -347,13 +350,16 @@
             <template #item="{ element: image }">
               <div
                 class="publish-to-h5-media-card"
+                @click="openUploadedMediaPreview(image)"
               >
                 <!-- 视频显示 -->
                 <video
-                  v-if="image.image_type === 'video'"
+                  v-if="isVideoMedia(image)"
                   :src="formatImageUrl(image.image_url)"
-                  class="publish-to-h5-media-thumb"
+                  class="publish-to-h5-media-thumb is-previewable"
                   muted
+                  playsinline
+                  preload="metadata"
                 />
                 <!-- 图片显示 -->
                 <Image
@@ -388,7 +394,7 @@
                 <!-- 设置主图按钮 - 悬停时显示 -->
                 <div class="image-actions">
                   <div
-                    v-if="!image.is_primary && image.image_type !== 'video'"
+                    v-if="!image.is_primary && !isVideoMedia(image)"
                     class="image-set-primary-btn"
                     @click.stop="setPrimaryImage(image)"
                   >
@@ -398,7 +404,7 @@
 
                 <!-- 视频标记 -->
                 <div
-                  v-if="image.image_type === 'video'"
+                  v-if="isVideoMedia(image)"
                   class="image-badge"
                 >
                   <i class="fas fa-video" />
@@ -430,32 +436,31 @@
     </template>
   </MobileDialog>
 
-  <el-image-viewer
-    v-if="showImagePreview"
-    :url-list="previewImageUrls"
-    :initial-index="previewInitialIndex"
-    @close="closeImagePreview"
+  <MediaPreviewViewer
+    v-model="showMediaPreview"
+    :items="previewMediaItems"
+    :initial-index="previewMediaIndex"
   />
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { ElImageViewer, ElMessage } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import type { UploadFile, UploadFiles } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { unifiedApi as api } from '@/utils/unified-api'
 import { formatImageUrl } from '@/utils/format'
 import Image from './Image.vue'
+import MediaPreviewViewer from '@/components/MediaPreviewViewer.vue'
 import InlineLoading from '@/components/InlineLoading.vue'
 import { useMobile } from '@/composables/mobile'
 import draggable from 'vuedraggable'
 import { logger } from '@/utils/logger'
+import { isVideoMedia, type MediaPreviewItem } from '@/utils/media'
 import type { ModelValueProps, SuccessEmits, UpdateModelValueEmits } from '@/types'
 import {
   applyPublishConversionResults,
   buildPublishInspectionForm,
-  buildPublishPreviewStateFromPending,
-  buildPublishPreviewStateFromUploaded,
   buildConvertedPublishFile,
   createDefaultPublishForm,
   ensurePublishPendingFileUrl,
@@ -505,13 +510,14 @@ const form = ref<PublishFormState>(createDefaultPublishForm())
 
 // 图片相关
 const images = ref<UploadedMediaItem[]>([])
+const uploadedMediaIds = ref<number[]>([])
 const uploading = ref(false)
 const saving = ref(false)
 const isNewPhone = ref(false) // 是否全新机
 const loadingPhoneData = ref(false) // 加载商品数据中
-const showImagePreview = ref(false)
-const previewImageUrls = ref<string[]>([])
-const previewInitialIndex = ref(0)
+const showMediaPreview = ref(false)
+const previewMediaItems = ref<MediaPreviewItem[]>([])
+const previewMediaIndex = ref(0)
 
 // 视频相关
 const productVideo = ref('')
@@ -636,6 +642,27 @@ const resetUploadState = () => {
   pendingFiles.value = []
 }
 
+const cleanupUnsavedUploadedMedia = async () => {
+  const mediaIds = [...uploadedMediaIds.value]
+  uploadedMediaIds.value = []
+
+  if (!props.phoneId || mediaIds.length === 0) {
+    return
+  }
+
+  const results = await Promise.allSettled(
+    mediaIds.map(mediaId => api.delete(`/phones/${props.phoneId}/images/${mediaId}`))
+  )
+  results.forEach((result, index) => {
+    if (result.status === 'rejected') {
+      logger.warn('清理未保存商品素材失败:', {
+        mediaId: mediaIds[index],
+        error: result.reason
+      })
+    }
+  })
+}
+
 const resetPublishState = () => {
   resetUploadState()
   form.value = createDefaultPublishForm()
@@ -643,9 +670,9 @@ const resetPublishState = () => {
   isNewPhone.value = false
   images.value = []
   productVideo.value = ''
-  showImagePreview.value = false
-  previewImageUrls.value = []
-  previewInitialIndex.value = 0
+  showMediaPreview.value = false
+  previewMediaItems.value = []
+  previewMediaIndex.value = 0
 }
 
 // 处理电池输入
@@ -667,6 +694,7 @@ const handleBatteryInput = (value: string) => {
 const loadPhoneData = async () => {
   if (!props.phoneId) return
 
+  await cleanupUnsavedUploadedMedia()
   resetPublishState()
 
   // 显示加载状态
@@ -745,6 +773,7 @@ watch(
     const [wasOpen, previousPhoneId] = previousState ?? [false, null]
 
     if (!isOpen) {
+      await cleanupUnsavedUploadedMedia()
       resetUploadState()
       return
     }
@@ -944,28 +973,34 @@ const previewUrl = (file: PendingUploadFile) => {
   return ensurePublishPendingFileUrl(file)
 }
 
-const _openPendingImagePreview = (clickedIndex: number) => {
-  const previewState = buildPublishPreviewStateFromPending(pendingFiles.value, clickedIndex)
-  previewImageUrls.value = previewState.urls
-  previewInitialIndex.value = previewState.initialIndex
-  showImagePreview.value = previewState.urls.length > 0
+const openPendingMediaPreview = (clickedIndex: number) => {
+  const clickedFile = pendingFiles.value[clickedIndex]
+  const items = pendingFiles.value
+    .map<MediaPreviewItem>(file => ({
+      id: file.uid,
+      url: ensurePublishPendingFileUrl(file),
+      type: file.raw?.type,
+      name: file.name,
+      label: isVideoMedia({ type: file.raw?.type, name: file.name, url: file.url }) ? '待上传视频' : '待上传图片'
+    }))
+    .filter(item => Boolean(item.url))
+
+  previewMediaItems.value = items
+  previewMediaIndex.value = Math.max(items.findIndex(item => item.id === clickedFile?.uid), 0)
+  showMediaPreview.value = items.length > 0
 }
 
-const _openUploadedImagePreview = (clickedImage: UploadedMediaItem) => {
-  const previewState = buildPublishPreviewStateFromUploaded(images.value, clickedImage, formatImageUrl)
-  previewImageUrls.value = previewState.urls
-  previewInitialIndex.value = previewState.initialIndex
-  showImagePreview.value = previewState.urls.length > 0
-}
+const openUploadedMediaPreview = (clickedMedia: UploadedMediaItem) => {
+  const items = images.value.map<MediaPreviewItem>(media => ({
+    id: media.id,
+    url: media.image_url,
+    type: media.image_type,
+    label: isVideoMedia(media) ? '商品视频' : '商品图片'
+  }))
 
-const closeImagePreview = () => {
-  resetImagePreviewState()
-}
-
-const resetImagePreviewState = () => {
-  showImagePreview.value = false
-  previewImageUrls.value = []
-  previewInitialIndex.value = 0
+  previewMediaItems.value = items
+  previewMediaIndex.value = Math.max(items.findIndex(item => item.id === clickedMedia.id), 0)
+  showMediaPreview.value = items.length > 0
 }
 
 // 移除待上传文件
@@ -986,6 +1021,13 @@ const uploadMediaFile = async (file: File) => {
   )
 }
 
+const trackUploadedMedia = (result: { data?: UploadResult }) => {
+  const mediaId = Number(result.data?.id)
+  if (Number.isInteger(mediaId) && mediaId > 0 && !uploadedMediaIds.value.includes(mediaId)) {
+    uploadedMediaIds.value.push(mediaId)
+  }
+}
+
 // 批量上传待上传文件
 const uploadPendingFiles = async () => {
   const filesToUpload = filterValidPublishFiles(pendingFiles.value)
@@ -1002,6 +1044,7 @@ const uploadPendingFiles = async () => {
       const result = await uploadMediaFile(file.raw)
 
       if (result.success) {
+        trackUploadedMedia(result)
         // 上传成功，从待上传列表移除
         const index = pendingFiles.value.findIndex(f => f.uid === file.uid)
         if (index > -1) {
@@ -1051,6 +1094,7 @@ const handleMediaUpload = async (options: MediaUploadOptions) => {
     const result = await uploadMediaFile(file)
 
     if (result.success) {
+      trackUploadedMedia(result)
       ElMessage.success(isVideo ? '视频上传成功' : '图片上传成功')
       onSuccess(result)
       await loadPhoneImages()
@@ -1097,6 +1141,7 @@ const setPrimaryImage = async (image: UploadedMediaItem) => {
 const deleteImage = async (image: UploadedMediaItem) => {
   try {
     await api.delete(`/phones/${props.phoneId}/images/${image.id}`)
+    uploadedMediaIds.value = uploadedMediaIds.value.filter(id => id !== image.id)
     await loadPhoneImages()
     ElMessage.success('删除成功')
   } catch (error) {
@@ -1109,7 +1154,7 @@ const deleteImage = async (image: UploadedMediaItem) => {
 const deleteVideo = async () => {
   try {
     // 找到视频的ID
-    const video = images.value.find(img => img.image_type === 'video')
+    const video = images.value.find(isVideoMedia)
     if (video) {
       await api.delete(`/phones/${props.phoneId}/images/${video.id}`)
       productVideo.value = ''
@@ -1171,6 +1216,7 @@ const handleSave = async () => {
     if (!isNewPhone.value) {
       await api.post(`/phones/${props.phoneId}/inspection`, form.value)
     }
+    uploadedMediaIds.value = []
     ElMessage.success('保存成功')
     emit('success')
     handleClose()
@@ -1183,7 +1229,8 @@ const handleSave = async () => {
 }
 
 // 关闭对话框
-const handleClose = () => {
+const handleClose = async () => {
+  await cleanupUnsavedUploadedMedia()
   visible.value = false
   resetPublishState()
 }

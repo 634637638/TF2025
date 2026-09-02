@@ -3764,62 +3764,6 @@ export const MODULE_FIELDS = {
         description: '导入策略卡片与确认区域'
       },
       {
-        id: 'database_sync.tab_access',
-        name: '远程数据同步页签',
-        group: '远程数据同步',
-        type: FIELD_TYPES.TEXT,
-        sensitivity: SENSITIVITY_LEVELS.INTERNAL,
-        description: '远程数据同步子页面入口与页签显示控制'
-      },
-      {
-        id: 'database_sync.smart_sync_banner',
-        name: '智能同步入口',
-        group: '远程数据同步',
-        type: FIELD_TYPES.TEXT,
-        sensitivity: SENSITIVITY_LEVELS.INTERNAL,
-        description: '一键本地到云端智能同步入口'
-      },
-      {
-        id: 'database_sync.step_navigation',
-        name: '同步步骤导航',
-        group: '远程数据同步',
-        type: FIELD_TYPES.TEXT,
-        sensitivity: SENSITIVITY_LEVELS.INTERNAL,
-        description: '同步步骤导航与流程提示'
-      },
-      {
-        id: 'database_sync.connection_config',
-        name: '连接配置',
-        group: '远程数据同步',
-        type: FIELD_TYPES.TEXT,
-        sensitivity: SENSITIVITY_LEVELS.SENSITIVE,
-        description: '数据库连接列表与新建连接表单'
-      },
-      {
-        id: 'database_sync.table_selection',
-        name: '表选择',
-        group: '远程数据同步',
-        type: FIELD_TYPES.TEXT,
-        sensitivity: SENSITIVITY_LEVELS.INTERNAL,
-        description: '源表与目标表选择区域'
-      },
-      {
-        id: 'database_sync.field_mapping',
-        name: '字段映射',
-        group: '远程数据同步',
-        type: FIELD_TYPES.TEXT,
-        sensitivity: SENSITIVITY_LEVELS.INTERNAL,
-        description: '字段映射配置与同步预检区域'
-      },
-      {
-        id: 'database_sync.sync_result',
-        name: '同步结果',
-        group: '远程数据同步',
-        type: FIELD_TYPES.TEXT,
-        sensitivity: SENSITIVITY_LEVELS.INTERNAL,
-        description: '同步执行结果与日志区域'
-      },
-      {
         id: 'system_info.operations',
         name: '操作',
         group: '系统信息',

@@ -2936,7 +2936,7 @@ onMounted(async () => {
 
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1023px) {
   .action-buttons {
   }
 

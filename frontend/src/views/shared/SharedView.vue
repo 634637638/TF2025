@@ -624,6 +624,7 @@ import { PageHeader, PermissionGate } from '@/components/base'
 import Pagination from '@/components/Pagination.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { unifiedApi as api } from '@/utils/unified-api'
+import { deleteTempFiles } from '@/utils/temp-file-cleaner'
 import { useAuthStore } from '@/stores/auth'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
@@ -877,10 +878,10 @@ const uploadInlineDocument = async (event:Event) => {
     uploadingFile.value = false
   }
 }
-const cleanupUnsavedInlineUploads = () => {
+const cleanupUnsavedInlineUploads = async () => {
   const urls = inlineUploaded.value.map(file => file.url)
   inlineUploaded.value = []
-  if (urls.length) api.post('/shared/uploads/cleanup', { urls }).catch(() => undefined)
+  if (urls.length) await deleteTempFiles(urls)
 }
 
 const resetForm = () => {
@@ -896,7 +897,8 @@ const resetForm = () => {
   formRef.value?.clearValidate()
 }
 
-const openCreate = () => {
+const openCreate = async () => {
+  await cleanupUnsavedInlineUploads()
   resetForm()
   editorVisible.value = true
 }
@@ -915,6 +917,8 @@ const openDetail = async (id: number) => {
 }
 
 const openEdit = async (id: number) => {
+  await cleanupUnsavedInlineUploads()
+
   const post = await fetchPost(id)
   if (!post) return
 
@@ -962,17 +966,16 @@ const savePost = async () => {
       : await api.post('/shared', payload)
 
     if (removedInline.length) {
-      await api.post('/shared/uploads/cleanup', { urls: removedInline.map(file => file.url) })
+      await deleteTempFiles(removedInline.map(file => file.url))
     }
     if (response.success) {
       ElMessage.success(editingId.value ? '经验分享已更新' : '经验分享已发布')
+      inlineUploaded.value = []
+      originalInlineUrls.value = new Set()
       editorVisible.value = false
       await Promise.all([loadPosts(), loadCategories()])
     }
   } catch (error: any) {
-    if (inlineUploaded.value.length) {
-      api.post('/shared/uploads/cleanup', { urls: inlineUploaded.value.map(file => file.url) }).catch(() => undefined)
-    }
     ElMessage.error(error?.response?.data?.message || error?.message || '保存失败')
   } finally {
     saving.value = false
@@ -1006,7 +1009,10 @@ onMounted(async () => {
   if (!canView.value) return
   void Promise.all([loadPosts(), loadCategories()])
 })
-onBeforeUnmount(() => { editorInstance.value?.destroy() })
+onBeforeUnmount(() => {
+  void cleanupUnsavedInlineUploads()
+  editorInstance.value?.destroy()
+})
 </script>
 
 <style scoped lang="scss">

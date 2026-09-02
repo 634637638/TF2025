@@ -28,6 +28,7 @@
 - [API 缓存指南](guides/API_CACHE_GUIDE.md) - ⭐ **NEW** 页面级 API 缓存使用规范
 - [代码审查标准](guides/CODE_REVIEW_STANDARDS.md) - ⭐ **NEW** AI 代码审查完整提示词规范
 - [日志系统规范](guides/LOG_SYSTEM_STANDARDS.md) - ⭐ **NEW** 统一日志入口，后端 `backend/src/utils/log.js` / 前端 `frontend/src/utils/logger.ts`
+- [上传文件存储与迁移规范](backend/upload-storage-standard.md) - 国补、手机图片/视频、H5 商城目录与迁移部署规范
 - [前端类型统一进展](development/FRONTEND_TYPE_UNIFICATION_PROGRESS.md) - ⭐ **NEW** 公共类型、表格组件、业务页面去 `any` 收口记录
 - [全局加载动画统一规范](frontend/global-loading-standard.md) - ⭐ **NEW** 页面切换、局部加载与按钮 loading 分层规范
 - [全局按钮统一规范](frontend/button-standards.md) - ⭐ **NEW** 普通、表格、手机端与模态框按钮统一入口及自动审计
@@ -64,8 +65,9 @@
 - [工资模板考勤天数](business/leave/LEAVE_DAYS_FROM_SALARY_TEMPLATE.md)
 - [待计算考勤处理](business/leave/LEAVE_PENDING_CALCULATION.md)
 
-### [销售管理 (sales/)](business/sales/)
-销售业务相关文档（待补充）
+### 销售管理
+- [销售页面批发划拨集成指南](business/销售页面批发划拨集成指南.md)
+- [批发自动创建销售记录](business/批发自动创建销售记录.md)
 
 ### [库存管理 (inventory/)](business/inventory/)
 库存业务相关文档（待补充）
@@ -136,7 +138,7 @@ UI 组件开发指南和样式规范。
 ### 通用组件
 - [模态框指南](components/modal-guide.md)
 - [样式标准](components/style-standards.md)
-- [样式使用指南](components/styleusage-guide.md)
+- [样式使用指南](components/style-usage-guide.md)
 
 ---
 
@@ -329,8 +331,7 @@ docs/
 
 - [前端文档索引](frontend/INDEX.md)
 - [后端文档索引](backend/INDEX.md)
-- [README.md](../README.md)
 
 ---
 
-**最后更新**: 2026-04-11
+**最后更新**: 2026-08-30

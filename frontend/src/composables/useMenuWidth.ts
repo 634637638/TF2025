@@ -9,6 +9,7 @@ import { unifiedApi } from '@/utils/unified-api'
 import { storage } from '@/services/storage'
 import { PREFERENCE_STORAGE_KEYS } from '@/constants/storage'
 import { logger } from '@/utils/logger'
+import { isMobileViewport, isTabletViewport } from '@/utils/device-detection'
 
 export interface MenuWidthConfig {
   mobile: number
@@ -37,8 +38,8 @@ const DEFAULT_CONFIG: MenuWidthConfig = {
 
 const DEFAULT_BREAKPOINTS = {
   mobile: 768,
-  tablet: 1024,
-  desktop: 1200
+  tablet: 1023,
+  desktop: 1024
 }
 
 let sharedLoadMenuWidthsPromise: Promise<{ pc: number; mobile: number }> | null = null
@@ -90,12 +91,12 @@ export function useMenuWidth(options: MenuWidthOptions = {}) {
   const menuWidth = ref<number>(getInitialWidth())
 
   // 是否处于移动端
-  const isMobile = computed(() => windowWidth.value < breakpoints.mobile)
+  const isMobile = computed(() => isMobileViewport(windowWidth.value))
 
   // 是否处于平板端
   const isTablet = computed(() => {
     const width = windowWidth.value
-    return width >= breakpoints.mobile && width < breakpoints.tablet
+    return isTabletViewport(width)
   })
 
   // 是否处于桌面端

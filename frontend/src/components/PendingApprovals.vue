@@ -260,7 +260,8 @@ const canViewPendingApprovals = computed(() => {
 })
 
 const totalPending = computed(() => {
-  return attendanceCount.value + leaveCount.value + overtimeCount.value
+  // 后端 total 已包含休假、请假、加班和其他考勤申请，不能再叠加分类数量。
+  return attendanceCount.value
 })
 
 const resetPendingApprovals = () => {
@@ -328,10 +329,14 @@ const showPendingNotification = () => {
   const messages = []
 
   if (leaveCount.value > 0) {
-    messages.push(`${leaveCount.value}条休假申请`)
+    messages.push(`${leaveCount.value}条请假/休假申请`)
   }
-  if (attendanceCount.value > 0 && attendanceCount.value !== leaveCount.value) {
-    messages.push(`${attendanceCount.value - leaveCount.value}条考勤申请`)
+  const otherAttendanceCount = Math.max(
+    attendanceCount.value - leaveCount.value - overtimeCount.value,
+    0
+  )
+  if (otherAttendanceCount > 0) {
+    messages.push(`${otherAttendanceCount}条考勤申请`)
   }
   if (overtimeCount.value > 0) {
     messages.push(`${overtimeCount.value}条加班申请`)

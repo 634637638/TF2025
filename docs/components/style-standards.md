@@ -375,9 +375,9 @@ $breakpoints: (
   'xs': 0,
   'sm': 576px,
   'md': 768px,
-  'lg': 992px,
+  'lg': 1024px,
   'xl': 1200px,
-  '2xl': 1600px
+  '2xl': 1440px
 );
 
 // 响应式混入

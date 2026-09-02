@@ -14,6 +14,7 @@ const { getDatabase } = require('../config/database')
 const log = require('../utils/log')
 const dataMaskingService = require('../services/dataMaskingService')
 const { getUploadsRoot, getUploadSubdir, getRelativeUploadPathFromUrl } = require('../utils/upload-paths')
+const { getSubsidyPhotoNaming, encodeSubsidyPhotoUrl } = require('../utils/subsidy-photo-storage')
 const XLSX = require('xlsx')
 
 const maskSubsidyItem = (item, req) => (
@@ -156,6 +157,151 @@ const mapSubsidyPhotoUrls = (photos = []) => (
     ? photos.map(photo => buildProtectedSubsidyPhotoUrl(photo))
     : []
 )
+
+const getSafeSubsidyPhotoPath = (photoUrl) => {
+  const normalizedRelativePath = normalizeSubsidyPhotoPath(photoUrl)
+  if (!normalizedRelativePath) {
+    return null
+  }
+
+  const uploadsRoot = path.resolve(getUploadsRoot())
+  const absolutePath = path.resolve(uploadsRoot, normalizedRelativePath)
+  if (
+    absolutePath !== uploadsRoot &&
+    !absolutePath.startsWith(`${uploadsRoot}${path.sep}`)
+  ) {
+    return null
+  }
+
+  return {
+    relativePath: normalizedRelativePath,
+    absolutePath
+  }
+}
+
+const removeEmptySubsidyPhotoDirectories = (relativePhotoPath) => {
+  const normalizedRelativePath = normalizeSubsidyPhotoPath(
+    String(relativePhotoPath || '').startsWith(`${SUBSIDY_UPLOAD_PREFIX}`)
+      ? `/uploads/${relativePhotoPath}`
+      : relativePhotoPath
+  )
+  if (!normalizedRelativePath) {
+    return
+  }
+
+  const subsidyRoot = path.resolve(getUploadSubdir('subsidy'))
+  let currentDirectory = path.dirname(
+    path.resolve(getUploadsRoot(), normalizedRelativePath)
+  )
+
+  while (
+    currentDirectory !== subsidyRoot &&
+    currentDirectory.startsWith(`${subsidyRoot}${path.sep}`)
+  ) {
+    if (!fs.existsSync(currentDirectory) || fs.readdirSync(currentDirectory).length > 0) {
+      break
+    }
+
+    fs.rmdirSync(currentDirectory)
+    currentDirectory = path.dirname(currentDirectory)
+  }
+}
+
+const parseStoredSubsidyPhotos = (value) => {
+  if (Array.isArray(value)) {
+    return value.filter(photo => typeof photo === 'string' && photo.trim())
+  }
+  if (typeof value !== 'string' || !value.trim()) {
+    return []
+  }
+
+  try {
+    const parsed = JSON.parse(value)
+    return Array.isArray(parsed)
+      ? parsed.filter(photo => typeof photo === 'string' && photo.trim())
+      : []
+  } catch {
+    return []
+  }
+}
+
+const isProtectedSubsidyPhotoUrl = (photoUrl) => {
+  try {
+    return new URL(photoUrl, 'http://localhost').pathname.startsWith('/api/subsidy/files/')
+  } catch {
+    return false
+  }
+}
+
+const syncSubsidyPhotoDirectory = async (subsidyId, storedPhotos, namingInput) => {
+  const photos = parseStoredSubsidyPhotos(storedPhotos)
+  if (photos.length === 0) return
+
+  const naming = getSubsidyPhotoNaming(namingInput)
+  const targetDirectory = getUploadSubdir('subsidy', naming.directoryName)
+  const movedFiles = []
+  const updatedPhotos = [...photos]
+
+  try {
+    for (let index = 0; index < photos.length; index += 1) {
+      const photoUrl = photos[index]
+      const source = getSafeSubsidyPhotoPath(photoUrl)
+      if (!source) continue
+
+      const filename = path.basename(source.relativePath)
+      const targetRelativePath = path.posix.join('subsidy', naming.directoryName, filename)
+      const targetPath = path.resolve(getUploadsRoot(), targetRelativePath)
+      if (source.absolutePath === targetPath) continue
+
+      if (!fs.existsSync(source.absolutePath)) {
+        log.warn('国补照片文件不存在，跳过目录同步:', photoUrl)
+        continue
+      }
+      if (fs.existsSync(targetPath)) {
+        throw new Error(`国补照片目标文件已存在: ${targetPath}`)
+      }
+
+      fs.mkdirSync(targetDirectory, { recursive: true })
+      fs.renameSync(source.absolutePath, targetPath)
+      movedFiles.push({
+        sourcePath: source.absolutePath,
+        targetPath,
+        sourceRelativePath: source.relativePath
+      })
+      updatedPhotos[index] = encodeSubsidyPhotoUrl(
+        targetRelativePath,
+        isProtectedSubsidyPhotoUrl(photoUrl)
+      )
+    }
+
+    if (movedFiles.length > 0) {
+      await getDatabase().execute(
+        'UPDATE national_subsidies SET subsidy_photos = ? WHERE id = ?',
+        [JSON.stringify(updatedPhotos), subsidyId]
+      )
+    }
+  } catch (error) {
+    for (const moved of movedFiles.reverse()) {
+      try {
+        if (fs.existsSync(moved.targetPath) && !fs.existsSync(moved.sourcePath)) {
+          fs.mkdirSync(path.dirname(moved.sourcePath), { recursive: true })
+          fs.renameSync(moved.targetPath, moved.sourcePath)
+        }
+      } catch (rollbackError) {
+        error.message += `；国补照片回滚失败: ${rollbackError.message}`
+      }
+    }
+    throw error
+  }
+
+  for (const moved of movedFiles) {
+    try {
+      removeEmptySubsidyPhotoDirectories(moved.sourceRelativePath)
+    } catch (error) {
+      log.warn('清理国补照片旧目录失败:', error.message)
+    }
+  }
+}
 
 const authenticateSubsidyFileAccess = async (req, res, next) => {
   try {
@@ -558,6 +704,7 @@ router.get('/search-phones/:identifier', unifiedAuth, requirePermission('subsidy
         p.imei,
         p.serial_number,
         p.is_new,
+        p.inventory_time,
         p.status,
         b.name as brand,
         m.name as model,
@@ -711,6 +858,7 @@ router.get('/phone-detail/:phoneId', unifiedAuth, requirePermission('subsidy:vie
         p.imei,
         p.serial_number,
         p.is_new,
+        p.inventory_time,
         p.sale_price,
         DATE_FORMAT(COALESCE(p.sale_time, latest_sale.sale_time), '%Y-%m-%d') as sale_time,
         p.sale_operator_id,
@@ -824,6 +972,8 @@ router.get('/phone-detail/:phoneId', unifiedAuth, requirePermission('subsidy:vie
       phone_color: phone.color,
       phone_memory: phone.memory,
       serial_number: phone.serial_number,
+      is_new: phone.is_new,
+      inventory_time: phone.inventory_time,
       imei1: phone.imei,
       imei2: null,
       sale_price: parseFloat(phone.sale_price) || 0,
@@ -1091,7 +1241,9 @@ router.get('/', unifiedAuth, requirePermission('subsidy:view'), cacheMiddleware(
         has_different_handler,
         handler_name,
         handler_phone,
-        handler_idcard
+        handler_idcard,
+        (SELECT is_new FROM phones WHERE phones.id = national_subsidies.phone_id LIMIT 1) as is_new,
+        (SELECT inventory_time FROM phones WHERE phones.id = national_subsidies.phone_id LIMIT 1) as inventory_time
       FROM national_subsidies
       WHERE ${whereConditions.join(' AND ')}
       ${orderClause}
@@ -1495,11 +1647,11 @@ router.put('/:id/photos', unifiedAuth, requireSubsidyUpload, async (req, res) =>
     }
 
     for (const photoUrl of deletedPhotos || []) {
-      const relativePath = normalizeSubsidyPhotoPath(photoUrl)
-      if (!relativePath) continue
-      const absolutePath = path.join(getUploadsRoot(), relativePath)
-      if (fs.existsSync(absolutePath)) {
-        fs.unlinkSync(absolutePath)
+      const photoPath = getSafeSubsidyPhotoPath(photoUrl)
+      if (!photoPath) continue
+      if (fs.existsSync(photoPath.absolutePath)) {
+        fs.unlinkSync(photoPath.absolutePath)
+        removeEmptySubsidyPhotoDirectories(photoPath.relativePath)
       }
     }
 
@@ -1549,7 +1701,12 @@ router.put(
 
       // 获取当前记录信息
       const [existing] = await getDatabase().execute(
-        'SELECT customer_id, imei2 FROM national_subsidies WHERE id = ?',
+        `SELECT
+           ns.customer_id,
+           ns.imei2,
+           ns.subsidy_photos
+         FROM national_subsidies ns
+         WHERE ns.id = ?`,
         [id]
       )
 
@@ -1779,6 +1936,28 @@ router.put(
       WHERE id = ?
     `, updateValues)
 
+      const [updatedSubsidies] = await getDatabase().execute(
+        `SELECT
+           ns.customer_name,
+           ns.has_different_handler,
+           ns.handler_name,
+           ns.serial_number,
+           p.is_new,
+           p.inventory_time
+         FROM national_subsidies ns
+         LEFT JOIN phones p ON p.id = ns.phone_id
+         WHERE ns.id = ?`,
+        [id]
+      )
+
+      if (updatedSubsidies.length > 0) {
+        await syncSubsidyPhotoDirectory(
+          id,
+          existing[0].subsidy_photos,
+          updatedSubsidies[0]
+        )
+      }
+
       // 🔥 同步更新 phones 表的 sale_time 字段
       if (sale_time !== undefined) {
       // 查询该补贴记录对应的手机ID
@@ -1889,13 +2068,10 @@ router.delete('/:id', unifiedAuth, requirePermission('subsidy:delete'), async (r
 
         if (Array.isArray(photos) && photos.length > 0) {
           for (const photoUrl of photos) {
-            // 从 URL 中提取文件名
-            const filename = photoUrl.split('/').pop()
-            const filePath = path.join(uploadDir, filename)
-
-            // 检查文件是否存在并删除
-            if (fs.existsSync(filePath)) {
-              fs.unlinkSync(filePath)
+            const photoPath = getSafeSubsidyPhotoPath(photoUrl)
+            if (photoPath && fs.existsSync(photoPath.absolutePath)) {
+              fs.unlinkSync(photoPath.absolutePath)
+              removeEmptySubsidyPhotoDirectories(photoPath.relativePath)
             }
           }
         }
@@ -2158,27 +2334,37 @@ router.post('/upload/photo', unifiedAuth, requireSubsidyUpload, (req, res, next)
     next()
   })
 }, async (req, res) => {
+  let temporaryFilePath = ''
+  let photoDirectoryPath = ''
+
   try {
     if (!req.file) {
       return ApiResponse.error(res, '没有上传文件', 400)
     }
 
-    // 获取序列号和销售时间，用于重命名文件
-    const serialNumber = req.body.serial_number || 'unknown'
+    temporaryFilePath = req.file.path
+
+    // 获取命名所需信息：有代办人时优先使用代办人姓名，否则使用客户姓名
     const saleTime = req.body.sale_time || ''
+    const naming = getSubsidyPhotoNaming(req.body)
     const timestamp = Date.now()
 
     // 清理文件名中的特殊字符
-    const safeName = serialNumber.replace(/[^a-zA-Z0-9\-]/g, '')
+    const safeDisplayName = naming.displayName
+    const safeName = naming.isSecondHand ? naming.displayName : naming.directoryName.slice(safeDisplayName.length)
     const safeSaleTime = String(saleTime).replace(/[^0-9\-]/g, '')
+    const photoDirectoryName = naming.directoryName
+    const photoDirectory = getUploadSubdir('subsidy', photoDirectoryName)
+    photoDirectoryPath = photoDirectory
+    fs.mkdirSync(photoDirectory, { recursive: true })
 
     // 获取文件扩展名
     const ext = path.extname(req.file.originalname).toLowerCase()
 
-    // 构建新文件名：序列号-销售时间-时间戳.扩展名
-    const newFilename = `${safeName}-${safeSaleTime}-${timestamp}${ext}`
-    const oldPath = req.file.path
-    const newPath = path.join(uploadDir, newFilename)
+    // 构建新文件名：姓名-序列号-销售时间-时间戳.扩展名
+    const newFilename = `${safeDisplayName}-${safeName}-${safeSaleTime}-${timestamp}${ext}`
+    const oldPath = temporaryFilePath
+    const newPath = path.join(photoDirectory, newFilename)
 
     let finalFilename = newFilename
 
@@ -2186,8 +2372,8 @@ router.post('/upload/photo', unifiedAuth, requireSubsidyUpload, (req, res, next)
     if (ext === '.heic' || ext === '.heif') {
       try {
         // 生成JPEG文件名
-        const jpegFilename = `${safeName}-${safeSaleTime}-${timestamp}.jpg`
-        const jpegPath = path.join(uploadDir, jpegFilename)
+        const jpegFilename = `${safeDisplayName}-${safeName}-${safeSaleTime}-${timestamp}.jpg`
+        const jpegPath = path.join(photoDirectory, jpegFilename)
 
         // 读取HEIC文件
         const inputBuffer = fs.readFileSync(oldPath)
@@ -2212,6 +2398,11 @@ router.post('/upload/photo', unifiedAuth, requireSubsidyUpload, (req, res, next)
         if (fs.existsSync(oldPath)) {
           fs.unlinkSync(oldPath)
         }
+        removeEmptySubsidyPhotoDirectories(path.posix.join(
+          'subsidy',
+          photoDirectoryName,
+          newFilename
+        ))
         return ApiResponse.error(res, 'HEIC格式转换失败', 500)
       }
     } else {
@@ -2221,15 +2412,25 @@ router.post('/upload/photo', unifiedAuth, requireSubsidyUpload, (req, res, next)
 
     // 构建文件访问URL - 统一返回相对路径，由前端 formatImageUrl 函数处理
     // 这样可以和 H5 上传保持一致，开发环境走 Vite 代理，生产环境走 Nginx 代理
-    const fileUrl = buildProtectedSubsidyPhotoUrl(`/uploads/subsidy/${finalFilename}`)
+    const relativeFilename = path.posix.join('subsidy', photoDirectoryName, finalFilename)
+    const fileUrl = buildProtectedSubsidyPhotoUrl(`/uploads/${relativeFilename}`)
 
     // 注意：ApiResponse.success 参数顺序是 (res, message, data, statusCode, meta)
     ApiResponse.success(res, '照片上传成功', {
       url: fileUrl,
-      filename: finalFilename,
+      filename: relativeFilename,
       size: req.file.size
     })
   } catch (error) {
+    if (temporaryFilePath && fs.existsSync(temporaryFilePath)) {
+      fs.unlinkSync(temporaryFilePath)
+    }
+    if (photoDirectoryPath && fs.existsSync(photoDirectoryPath)) {
+      removeEmptySubsidyPhotoDirectories(path.posix.join(
+        'subsidy',
+        path.basename(photoDirectoryPath)
+      ))
+    }
     log.error('上传国补照片失败:', error)
     ApiResponse.error(res, error.message || '照片上传失败', 500)
   }
@@ -2291,26 +2492,17 @@ router.post('/delete-temp-photos', unifiedAuth, requirePermission('subsidy:uploa
 
     for (const photoUrl of photos) {
       try {
-        const normalizedRelativePath = normalizeSubsidyPhotoPath(photoUrl)
-        if (!normalizedRelativePath) {
-          failedFiles.push(photoUrl)
-          continue
-        }
-
-        const uploadDirPath = getUploadsRoot()
-        const filePath = path.join(uploadDirPath, normalizedRelativePath)
-        const normalizedFilePath = path.normalize(filePath)
-        const normalizedUploadDir = path.normalize(uploadDirPath + path.sep)
-
-        if (!normalizedFilePath.startsWith(normalizedUploadDir)) {
+        const photoPath = getSafeSubsidyPhotoPath(photoUrl)
+        if (!photoPath) {
           failedFiles.push(photoUrl)
           continue
         }
 
         // 删除文件
-        if (fs.existsSync(normalizedFilePath)) {
-          fs.unlinkSync(normalizedFilePath)
-          deletedFiles.push(normalizedRelativePath)
+        if (fs.existsSync(photoPath.absolutePath)) {
+          fs.unlinkSync(photoPath.absolutePath)
+          removeEmptySubsidyPhotoDirectories(photoPath.relativePath)
+          deletedFiles.push(photoPath.relativePath)
         }
       } catch (error) {
         log.error(`⚠️ 删除临时照片失败: ${photoUrl}`, error.message)

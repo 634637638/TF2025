@@ -1439,6 +1439,7 @@ import { TimeUtil } from '@/utils/time'
 import { logger } from '@/utils/logger'
 import { useLoadingState } from '@/composables'
 import { getAdaptiveActionColumnWidth, getTextColumnMinWidth } from '@/utils/table-layout'
+import { isMobileViewport } from '@/utils/device-detection'
 
 const PriceMarkupConfig = defineAsyncComponent(() => import('@/components/PriceMarkupConfig.vue'))
 
@@ -1699,7 +1700,7 @@ const getPriceListRowKey = (row: any) => {
 
 const updateMobileState = () => {
   if (typeof window === 'undefined') return
-  isMobile.value = window.innerWidth <= 768
+  isMobile.value = isMobileViewport(window.innerWidth)
   if (!isMobile.value) {
     mobileActionRowId.value = null
     lastTappedRowId.value = null

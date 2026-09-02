@@ -289,33 +289,20 @@
 }
 
 .status-badge {
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  box-sizing: border-box;
   width: fit-content;
-  border: 2px solid;
-  position: relative;
-  overflow: hidden;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.status-badge::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 6px;
-  transition: width 0.3s ease;
-}
-
-.status-badge:hover::before {
-  width: 8px;
+  min-height: var(--tf-button-height);
+  padding: 0 var(--tf-button-padding-x-small);
+  border: 1px solid;
+  border-radius: var(--tf-button-radius);
+  font-size: var(--tf-button-font-size-small);
+  font-weight: var(--tf-button-font-weight);
+  letter-spacing: 0;
+  line-height: 1;
+  box-shadow: none;
 }
 
 .status-badge.active {
@@ -324,14 +311,8 @@
   border-color: var(--tf-status-success-border);
 }
 
-.status-badge.active::before {
-  background-color: var(--tf-status-success-color);
-  box-shadow: none;
-}
-
 .status-badge.active i {
   color: var(--tf-status-success-color);
-  filter: none;
 }
 
 .status-badge.inactive {
@@ -340,103 +321,34 @@
   border-color: var(--tf-status-danger-border);
 }
 
-.status-badge.inactive::before {
-  background-color: var(--tf-status-danger-color);
-  box-shadow: none;
-}
-
 .status-badge.inactive i {
   color: var(--tf-status-danger-color);
-  filter: none;
 }
 
 .status-badge i {
-  font-size: 10px;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.7;
-  }
-  100% {
-    opacity: 1;
-  }
+  flex: 0 0 auto;
+  font-size: var(--tf-button-font-size-small);
 }
 
 /* 状态显示样式 */
 .status-display {
-  padding: 6px 12px;
-  font-size: 13px;
-  font-weight: 600;
-  border: 2px solid;
-  position: relative;
-  overflow: hidden;
-}
-
-.status-display::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-}
-
-.status-display.active {
-  background: var(--tf-status-success-bg);
-  color: var(--tf-status-success-color);
-  border-color: var(--tf-status-success-border);
-  box-shadow: none;
-}
-
-.status-display.active::before {
-  background-color: var(--tf-status-success-color);
-}
-
-.status-display.inactive {
-  background: var(--tf-status-danger-bg);
-  color: var(--tf-status-danger-color);
-  border-color: var(--tf-status-danger-border);
-  box-shadow: none;
-}
-
-.status-display.inactive::before {
-  background-color: var(--tf-status-danger-color);
+  cursor: default;
 }
 
 /* 操作按钮样式 */
 .status-button {
-  border: 2px solid;
+  appearance: none;
+  min-width: 0;
   cursor: pointer;
-  transition: all 0.3s ease;
-  padding: 6px 16px;
-  font-weight: 600;
-  position: relative;
-  overflow: hidden;
+  border-color: var(--tf-status-neutral-border);
+  background: var(--tf-status-neutral-bg);
+  color: var(--tf-status-neutral-color);
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.status-button::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: var(--tf-button-overlay-bg);
-  transition: left 0.3s ease;
-}
-
-.status-button:hover::after {
-  left: 100%;
-}
-
-.status-button:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--tf-button-shadow-hover);
+.status-button:focus-visible {
+  outline: none;
+  box-shadow: var(--tf-button-focus-ring);
 }
 
 .status-button.active {
@@ -445,8 +357,13 @@
   border-color: var(--tf-status-warning-border);
 }
 
-.status-button.active:hover {
+.status-button.active i {
+  color: var(--tf-status-warning-color);
+}
+
+.status-button.active:hover:not(:disabled) {
   background: var(--tf-status-warning-hover-bg);
+  color: var(--tf-status-warning-hover-color);
   border-color: var(--tf-status-warning-hover-border);
 }
 
@@ -456,47 +373,48 @@
   border-color: var(--tf-status-success-border);
 }
 
-.status-button.inactive:hover {
-  background: var(--tf-status-success-hover-bg);
-  border-color: var(--tf-status-success-hover-border);
-}
-
-.status-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none !important;
-  box-shadow: none !important;
-}
-
-.status-button:disabled:hover {
-  background: var(--tf-button-neutral-hover-bg) !important;
-  border-color: var(--tf-button-neutral-hover-border) !important;
-  transform: none !important;
-  box-shadow: none !important;
-}
-
-.status-button:hover:not(:disabled) {
-  transform: scale(1.05);
-  box-shadow: var(--tf-button-shadow-hover);
-}
-
-.status-button:active:not(:disabled) {
-  transform: scale(0.95);
-}
-
-.status-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-.status-button.active:hover:not(:disabled) {
-  background: var(--tf-status-warning-hover-bg);
-  color: var(--tf-status-warning-hover-color);
+.status-button.inactive i {
+  color: var(--tf-status-success-color);
 }
 
 .status-button.inactive:hover:not(:disabled) {
   background: var(--tf-status-success-hover-bg);
   color: var(--tf-status-success-hover-color);
+  border-color: var(--tf-status-success-hover-border);
+}
+
+.status-button:hover:not(:disabled) {
+  box-shadow: var(--tf-button-shadow);
+}
+
+.status-button:active:not(:disabled) {
+  box-shadow: none;
+}
+
+.status-button:disabled {
+  cursor: not-allowed;
+  opacity: 1;
+  background: var(--tf-button-disabled-bg) !important;
+  color: var(--tf-button-disabled-color) !important;
+  border-color: var(--tf-button-disabled-border) !important;
+  box-shadow: none !important;
+}
+
+.status-button:disabled i {
+  color: var(--tf-button-disabled-color) !important;
+}
+
+/* 保持旧页面中状态徽标的语义颜色，但不再叠加装饰色条。 */
+.status-display.active {
+  background: var(--tf-status-success-bg);
+  color: var(--tf-status-success-color);
+  border-color: var(--tf-status-success-border);
+}
+
+.status-display.inactive {
+  background: var(--tf-status-danger-bg);
+  color: var(--tf-status-danger-color);
+  border-color: var(--tf-status-danger-border);
 }
 
 .user-roles {
@@ -2295,7 +2213,7 @@
 
 
 /* 角色字段权限响应式设计 */
-@media (max-width: 1024px) {
+@media (max-width: 1023px) {
   .el-dialog.role-field-permission-dialog,
   .mobile-dialog-sheet-panel.role-field-permission-dialog {
     width: 95vw;
@@ -2841,23 +2759,38 @@
   box-shadow: inset 0 0 0 1px rgba(36, 87, 245, 0.08);
 }
 
-.permissions-view .user-role-modal .el-dialog {
+.user-role-modal.el-dialog {
   max-width: 1180px;
   width: min(1180px, 96vw);
+  max-height: min(900px, calc(100vh - 48px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-.permissions-view .user-role-modal .modal-body {
+.user-role-modal .el-dialog__body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.user-role-modal .modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
   padding: 24px;
-  max-height: min(78vh, 880px);
+  overflow: hidden;
   background:
     radial-gradient(circle at top right, rgba(59, 130, 246, 0.08), transparent 28%),
     linear-gradient(180deg, var(--tf-color-surface-blue) 0%, var(--tf-color-surface-cool-soft) 100%);
 }
 
-.permissions-view .user-role-modal .modal-footer.user-role-footer {
+.user-role-modal .modal-footer.user-role-footer {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 16px;
   padding: 18px 24px;
   border-top: 1px solid rgba(148, 163, 184, 0.18);
@@ -2868,6 +2801,8 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
+  height: 100%;
+  min-height: 0;
 }
 
 .permissions-view .role-assignment-hero {
@@ -2887,24 +2822,27 @@
 .permissions-view .role-assignment-user-card {
   display: flex;
   align-items: center;
-  gap: 18px;
-  padding: 22px;
-  border-radius: 22px;
+  gap: 14px;
+  min-height: 76px;
+  padding: 14px 16px;
+  border-radius: 14px;
   background: linear-gradient(135deg, var(--tf-color-blue-tailwind-50) 0%, var(--tf-color-cyan-50) 100%);
 }
 
 .permissions-view .role-assignment-user-card .user-avatar {
-  width: 78px;
-  height: 78px;
+  flex: 0 0 48px;
+  width: 48px;
+  height: 48px;
   margin: 0;
   border: 0;
   color: var(--tf-color-blue-700);
   background: rgba(255, 255, 255, 0.92);
+  font-size: 25px;
 }
 
 .permissions-view .role-assignment-caption {
   display: inline-flex;
-  margin-bottom: 8px;
+  margin-bottom: 3px;
   color: var(--tf-color-blue-600);
   font-size: 12px;
   font-weight: 700;
@@ -2915,17 +2853,17 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
-  padding: 18px;
-  border-radius: 22px;
+  padding: 12px;
+  border-radius: 14px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.96) 100%);
 }
 
 .permissions-view .summary-metric {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 14px;
-  border-radius: 16px;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 10px;
   background: rgba(239, 246, 255, 0.88);
   border: 1px solid rgba(59, 130, 246, 0.12);
 }
@@ -2942,7 +2880,7 @@
 
 .permissions-view .summary-metric strong {
   color: var(--tf-color-slate-900);
-  font-size: 24px;
+  font-size: 20px;
   line-height: 1;
 }
 
@@ -2950,14 +2888,23 @@
   display: grid;
   grid-template-columns: minmax(0, 2.2fr) minmax(300px, 0.9fr);
   gap: 18px;
-  align-items: start;
+  flex: 1 1 auto;
+  min-height: 0;
+  align-items: stretch;
 }
 
 .permissions-view .assignment-main-panel,
 .permissions-view .assignment-side-panel {
+  min-height: 0;
   padding: 20px;
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.94);
+}
+
+.permissions-view .assignment-main-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .permissions-view .assignment-toolbar {
@@ -3015,11 +2962,14 @@
 
 .permissions-view .assignment-role-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 14px;
-  max-height: 52vh;
+  flex: 1 1 auto;
+  min-height: 0;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  align-content: start;
+  gap: 10px;
   padding-right: 4px;
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .permissions-view .assignment-role-option {
@@ -3036,14 +2986,14 @@
 
 .permissions-view .assignment-role-check {
   position: absolute;
-  top: 14px;
-  right: 14px;
+  top: 10px;
+  right: 10px;
   z-index: 2;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   border-radius: 999px;
   color: var(--tf-color-slate-500);
   background: var(--color-bg-white);
@@ -3054,9 +3004,9 @@
 
 .permissions-view .assignment-role-card {
   height: 100%;
-  min-height: 152px;
-  padding: 18px;
-  border-radius: 18px;
+  min-height: 118px;
+  padding: 13px 14px;
+  border-radius: 14px;
   border: 1px solid rgba(148, 163, 184, 0.16);
   background: linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-slate-50) 100%);
   transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
@@ -3085,33 +3035,33 @@
 .permissions-view .assignment-role-header {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  padding-right: 40px;
-  margin-bottom: 10px;
+  gap: 6px;
+  padding-right: 32px;
+  margin-bottom: 7px;
 }
 
 .permissions-view .assignment-role-header strong {
   color: var(--tf-color-slate-900);
-  font-size: 16px;
+  font-size: 14px;
 }
 
 .permissions-view .assignment-role-badge {
   display: inline-flex;
   align-items: center;
-  height: 24px;
-  padding: 0 10px;
+  height: 20px;
+  padding: 0 7px;
   border-radius: 999px;
   color: var(--color-bg-white);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
 }
 
 .permissions-view .assignment-role-description {
-  min-height: 40px;
+  min-height: 34px;
   color: var(--tf-color-slate-600);
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.55;
-  margin-bottom: 14px;
+  margin-bottom: 9px;
 }
 
 .permissions-view .assignment-role-meta {
@@ -3120,7 +3070,7 @@
   justify-content: space-between;
   gap: 10px;
   color: var(--tf-color-slate-500);
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .permissions-view .assignment-role-state {
@@ -3167,8 +3117,9 @@
 }
 
 .permissions-view .assignment-side-panel {
-  position: sticky;
-  top: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .permissions-view .assignment-side-header {
@@ -3176,38 +3127,49 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .permissions-view .assignment-side-count {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 42px;
-  height: 42px;
-  padding: 0 12px;
-  border-radius: 14px;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 9px;
+  border-radius: 10px;
   color: var(--tf-color-blue-700);
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 800;
   background: rgba(219, 234, 254, 0.95);
 }
 
 .permissions-view .assignment-selected-list {
-  gap: 10px;
-  max-height: 320px;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 2px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 10px;
+  background: rgba(248, 250, 252, 0.72);
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .permissions-view .assignment-selected-tag {
   display: inline-flex;
   align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 34px;
   gap: 8px;
-  padding: 9px 12px;
+  padding: 6px 9px;
   color: var(--tf-color-slate-900);
   background: rgba(239, 246, 255, 0.96);
   border: 1px solid rgba(59, 130, 246, 0.16);
-  border-radius: 999px;
+  border-radius: 8px;
   transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
 }
 
@@ -3215,25 +3177,6 @@
   transform: translateY(-1px);
   box-shadow: 0 10px 20px rgba(37, 99, 235, 0.12);
   background: rgba(219, 234, 254, 1);
-}
-
-.permissions-view .assignment-side-tip,
-.permissions-view .user-role-footer-info {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--tf-color-teal-700);
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.5;
-}
-
-.permissions-view .assignment-side-tip {
-  margin-top: 18px;
-  padding: 12px 14px;
-  border-radius: 16px;
-  background: rgba(240, 253, 250, 0.94);
-  border: 1px solid rgba(13, 148, 136, 0.14);
 }
 
 .permissions-view .user-role-footer-actions {
@@ -3313,4 +3256,1014 @@
     border-radius: 18px;
   }
 
+}
+
+/* Role assignment dialog workspace. MobileDialog teleports the dialog to body,
+ * so these selectors intentionally anchor to the dialog class itself. */
+.user-role-modal.el-dialog {
+  max-height: min(900px, calc(100dvh - 48px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.user-role-modal.el-dialog > .el-dialog__header,
+.user-role-modal.el-dialog > .el-dialog__footer {
+  flex: 0 0 auto;
+}
+
+.user-role-modal .el-dialog__body,
+.user-role-modal .mobile-dialog-sheet-body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.user-role-modal .modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  max-height: none;
+  overflow: hidden;
+}
+
+.user-role-modal .role-assignment-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  gap: 16px;
+}
+
+.user-role-modal .role-assignment-hero {
+  flex: 0 0 auto;
+}
+
+.user-role-modal .role-assignment-layout {
+  flex: 1 1 auto;
+  min-height: 0;
+  align-items: stretch;
+}
+
+.user-role-modal .assignment-main-panel,
+.user-role-modal .assignment-side-panel {
+  min-height: 0;
+}
+
+.user-role-modal .assignment-main-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.user-role-modal .assignment-role-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  align-content: start;
+  gap: 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.user-role-modal .assignment-role-card {
+  min-height: 96px;
+  padding: 10px 11px;
+  border-radius: 12px;
+}
+
+.user-role-modal .assignment-role-check {
+  top: 8px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+}
+
+.user-role-modal .assignment-role-header {
+  gap: 5px;
+  padding-right: 28px;
+  margin-bottom: 5px;
+}
+
+.user-role-modal .assignment-role-header strong {
+  font-size: 13px;
+}
+
+.user-role-modal .assignment-role-badge {
+  height: 18px;
+  padding: 0 6px;
+  font-size: 9px;
+}
+
+.user-role-modal .assignment-role-description {
+  min-height: 28px;
+  margin-bottom: 6px;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.user-role-modal .assignment-role-meta {
+  font-size: 10px;
+}
+
+.user-role-modal .assignment-side-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.user-role-modal .assignment-selected-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+  gap: 6px;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.user-role-modal .assignment-selected-tag {
+  gap: 6px;
+  padding: 6px 9px;
+  font-size: 12px;
+}
+
+.user-role-modal .role-assignment-user-card {
+  position: relative;
+  align-items: center;
+  min-height: 68px;
+  padding: 12px 14px;
+  border: 1px solid rgba(59, 130, 246, 0.16);
+  box-shadow: 0 8px 20px rgba(30, 64, 175, 0.08);
+}
+
+.user-role-modal .role-assignment-user-card .user-avatar {
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(59, 130, 246, 0.14);
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.user-role-modal .user-identity-copy {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  column-gap: 8px;
+  row-gap: 2px;
+}
+
+.user-role-modal .user-identity-copy .role-assignment-caption {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+}
+
+.user-role-modal .user-identity-copy h4,
+.user-role-modal .user-identity-copy p {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-role-modal .user-identity-copy h4 {
+  margin: 0;
+  color: var(--tf-color-slate-900);
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.user-role-modal .user-identity-copy p {
+  margin: 0;
+  color: var(--tf-color-slate-500);
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.user-role-modal .user-identity-status {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.user-role-modal .user-identity-status .status-badge {
+  gap: 5px;
+  min-height: 26px;
+  padding: 4px 9px;
+  border-width: 1px;
+  border-radius: 7px;
+  box-shadow: none;
+  font-size: 11px;
+}
+
+.user-role-modal .user-identity-status .status-badge::before {
+  display: none;
+}
+
+.user-role-modal .user-identity-status .status-badge i {
+  animation: none;
+  font-size: 9px;
+}
+
+@media (max-width: 1100px) {
+  .user-role-modal .role-assignment-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(260px, 1fr) minmax(180px, 0.8fr);
+    overflow: hidden;
+  }
+
+  .user-role-modal .assignment-side-panel {
+    position: static;
+  }
+}
+
+@media (max-width: 768px) {
+  .user-role-modal.el-dialog {
+    width: 100vw;
+    max-width: 100vw;
+    max-height: 100dvh;
+    border-radius: 0;
+  }
+
+  .user-role-modal .modal-footer.user-role-footer {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .user-role-modal .user-role-footer-actions {
+    flex: 0 0 auto;
+    width: auto;
+  }
+
+  .user-role-modal .modal-body {
+    padding: 16px;
+  }
+
+  .user-role-modal .role-assignment-shell {
+    gap: 12px;
+  }
+
+  .user-role-modal .role-assignment-layout {
+    grid-template-rows: minmax(260px, 1fr) minmax(160px, 0.7fr);
+    gap: 12px;
+  }
+
+  .user-role-modal .assignment-main-panel,
+  .user-role-modal .assignment-side-panel {
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .user-role-modal .assignment-role-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .user-role-modal .assignment-empty-selection {
+    min-height: 0;
+  }
+
+  .user-role-modal .role-assignment-user-card {
+    min-height: 64px;
+    padding: 10px 12px;
+  }
+
+  .user-role-modal .role-assignment-user-card .user-avatar {
+    flex-basis: 40px;
+    width: 40px;
+    height: 40px;
+    font-size: 21px;
+  }
+
+  .user-role-modal .user-identity-copy h4 {
+    font-size: 14px;
+  }
+
+.user-role-modal .user-identity-status .status-badge {
+    min-height: 24px;
+    padding-inline: 7px;
+    font-size: 10px;
+  }
+}
+
+/* Role assignment modal refinement */
+.user-role-modal.el-dialog,
+.user-role-modal.mobile-dialog-sheet-panel {
+  --role-assignment-border: rgba(148, 163, 184, 0.18);
+  --role-assignment-soft-border: rgba(148, 163, 184, 0.12);
+  --role-assignment-blue-soft: rgba(239, 246, 255, 0.94);
+  --role-assignment-green-soft: rgba(240, 253, 250, 0.92);
+  width: min(1180px, calc(100vw - 32px));
+  max-width: 1180px;
+  height: min(820px, calc(100dvh - 48px));
+  max-height: calc(100dvh - 48px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 14px;
+}
+
+.user-role-modal.el-dialog > .el-dialog__header,
+.user-role-modal.mobile-dialog-sheet-panel > .mobile-dialog-sheet-header {
+  flex: 0 0 auto;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--role-assignment-border);
+}
+
+.user-role-modal.el-dialog > .el-dialog__body,
+.user-role-modal .mobile-dialog-sheet-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.user-role-modal.el-dialog > .el-dialog__footer,
+.user-role-modal .mobile-dialog-sheet-footer {
+  flex: 0 0 auto;
+  padding: 0;
+}
+
+.user-role-modal .modal-body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  padding: 18px;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(248, 250, 252, 0.96) 0%, rgba(241, 245, 249, 0.94) 100%),
+    var(--color-bg-white);
+}
+
+.user-role-modal .role-assignment-shell {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 14px;
+}
+
+.user-role-modal .role-assignment-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(360px, 0.75fr);
+  gap: 12px;
+  flex: 0 0 auto;
+}
+
+.user-role-modal .role-assignment-user-card,
+.user-role-modal .role-assignment-summary,
+.user-role-modal .assignment-main-panel,
+.user-role-modal .assignment-side-panel {
+  border: 1px solid var(--role-assignment-border);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+}
+
+.user-role-modal .role-assignment-user-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 68px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--color-bg-white);
+}
+
+.user-role-modal .role-assignment-user-card .user-avatar {
+  display: inline-flex;
+  flex: 0 0 44px;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  color: var(--tf-color-blue-700);
+  background: var(--role-assignment-blue-soft);
+  border: 1px solid rgba(59, 130, 246, 0.16);
+  border-radius: 10px;
+  font-size: 22px;
+}
+
+.user-role-modal .user-identity-copy {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 8px;
+  row-gap: 2px;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.user-role-modal .role-assignment-caption {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--tf-color-slate-500);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.user-role-modal .user-identity-copy h4,
+.user-role-modal .user-identity-copy p {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-role-modal .user-identity-copy h4 {
+  color: var(--tf-color-slate-900);
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.user-role-modal .user-identity-copy p {
+  color: var(--tf-color-slate-500);
+  font-size: 12px;
+}
+
+.user-role-modal .user-identity-status {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.user-role-modal .user-identity-status .status-badge {
+  min-height: 26px;
+  padding: 4px 9px;
+  border-width: 1px;
+  border-radius: 8px;
+  box-shadow: none;
+  font-size: 11px;
+}
+
+.user-role-modal .user-identity-status .status-badge::before {
+  display: none;
+}
+
+.user-role-modal .user-identity-status .status-badge i {
+  animation: none;
+}
+
+.user-role-modal .role-assignment-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--color-bg-white);
+}
+
+.user-role-modal .summary-metric {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  min-height: 48px;
+  gap: 3px;
+  padding: 8px 9px;
+  border: 1px solid rgba(59, 130, 246, 0.12);
+  border-radius: 8px;
+  background: var(--role-assignment-blue-soft);
+}
+
+.user-role-modal .summary-metric.hint {
+  border-color: rgba(13, 148, 136, 0.16);
+  background: var(--role-assignment-green-soft);
+}
+
+.user-role-modal .summary-metric-label {
+  color: var(--tf-color-slate-500);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.user-role-modal .summary-metric strong {
+  color: var(--tf-color-slate-900);
+  font-size: 18px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.user-role-modal .role-assignment-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 14px;
+  flex: 1 1 auto;
+  min-height: 0;
+  align-items: stretch;
+}
+
+.user-role-modal .assignment-main-panel,
+.user-role-modal .assignment-side-panel {
+  min-height: 0;
+  padding: 14px;
+  border-radius: 10px;
+  background: var(--color-bg-white);
+}
+
+.user-role-modal .assignment-main-panel,
+.user-role-modal .assignment-side-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.user-role-modal .assignment-toolbar {
+  flex: 0 0 auto;
+  margin-bottom: 12px;
+}
+
+.user-role-modal .assignment-toolbar-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.user-role-modal .assignment-toolbar-title {
+  min-width: 0;
+}
+
+.user-role-modal .assignment-toolbar-title h4,
+.user-role-modal .assignment-side-header h4 {
+  margin: 0;
+  color: var(--tf-color-slate-900);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.user-role-modal .assignment-toolbar-title p,
+.user-role-modal .assignment-side-header p {
+  margin: 4px 0 0;
+  color: var(--tf-color-slate-500);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.user-role-modal .assignment-search-box {
+  margin-bottom: 10px;
+}
+
+.user-role-modal .assignment-filter-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.user-role-modal .assignment-filter-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 30px;
+  margin: 0;
+  padding: 5px 10px;
+  color: var(--tf-color-slate-700);
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid var(--role-assignment-border);
+  border-radius: 8px;
+  background: rgba(248, 250, 252, 0.92);
+  cursor: pointer;
+}
+
+.user-role-modal .assignment-filter-toggle input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--tf-color-blue-600);
+}
+
+.user-role-modal .assignment-toolbar-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+  margin: 0;
+}
+
+.user-role-modal .assignment-meta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 5px 9px;
+  color: var(--tf-color-slate-700);
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid var(--role-assignment-border);
+  border-radius: 8px;
+  background: rgba(248, 250, 252, 0.92);
+}
+
+.user-role-modal .assignment-meta-pill.active,
+.user-role-modal .assignment-meta-pill.selected {
+  color: var(--tf-color-blue-700);
+  border-color: rgba(59, 130, 246, 0.22);
+  background: rgba(219, 234, 254, 0.92);
+}
+
+.user-role-modal .assignment-role-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(188px, 1fr));
+  align-content: start;
+  gap: 9px;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 2px 4px 2px 2px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.user-role-modal .assignment-role-option {
+  position: relative;
+  display: block;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.user-role-modal .assignment-role-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.user-role-modal .assignment-role-check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  color: var(--tf-color-slate-500);
+  border: 1px solid rgba(148, 163, 184, 0.26);
+  border-radius: 999px;
+  background: var(--color-bg-white);
+  box-shadow: 0 6px 12px rgba(15, 23, 42, 0.06);
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.user-role-modal .assignment-role-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 104px;
+  height: 100%;
+  padding: 10px 11px;
+  border: 1px solid var(--role-assignment-border);
+  border-radius: 9px;
+  background: linear-gradient(180deg, var(--color-bg-white) 0%, rgba(248, 250, 252, 0.9) 100%);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, transform 0.18s ease;
+}
+
+.user-role-modal .assignment-role-option:hover .assignment-role-card {
+  transform: translateY(-1px);
+  border-color: rgba(37, 99, 235, 0.28);
+  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.09);
+}
+
+.user-role-modal .assignment-role-option.selected .assignment-role-card,
+.user-role-modal .assignment-role-input:checked + .assignment-role-check + .assignment-role-card {
+  border-color: rgba(37, 99, 235, 0.34);
+  background: linear-gradient(135deg, rgba(239, 246, 255, 0.98) 0%, rgba(236, 254, 255, 0.96) 100%);
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.08), 0 10px 20px rgba(37, 99, 235, 0.08);
+}
+
+.user-role-modal .assignment-role-option.selected .assignment-role-check,
+.user-role-modal .assignment-role-input:checked + .assignment-role-check {
+  color: var(--color-bg-white);
+  border-color: transparent;
+  background: var(--tf-color-blue-600);
+}
+
+.user-role-modal .assignment-role-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  padding-right: 28px;
+  margin-bottom: 5px;
+}
+
+.user-role-modal .assignment-role-header strong {
+  min-width: 0;
+  max-width: 100%;
+  color: var(--tf-color-slate-900);
+  font-size: 13px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.user-role-modal .assignment-role-badge {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-height: 18px;
+  padding: 2px 6px;
+  color: var(--color-bg-white);
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.user-role-modal .assignment-role-description {
+  display: -webkit-box;
+  min-height: 32px;
+  margin-bottom: 8px;
+  color: var(--tf-color-slate-600);
+  font-size: 11px;
+  line-height: 1.45;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.user-role-modal .assignment-role-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+  color: var(--tf-color-slate-500);
+  font-size: 10px;
+}
+
+.user-role-modal .assignment-role-meta .user-count,
+.user-role-modal .assignment-role-risk,
+.user-role-modal .assignment-role-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 20px;
+}
+
+.user-role-modal .assignment-role-risk {
+  padding: 0 6px;
+  color: var(--tf-color-amber-700);
+  border: 1px solid rgba(245, 158, 11, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 251, 235, 0.92);
+  font-weight: 700;
+}
+
+.user-role-modal .assignment-role-state {
+  margin-left: auto;
+  color: var(--tf-color-blue-600);
+  font-weight: 700;
+}
+
+.user-role-modal .assignment-side-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex: 0 0 auto;
+  margin-bottom: 10px;
+}
+
+.user-role-modal .assignment-side-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 9px;
+  color: var(--tf-color-blue-700);
+  border-radius: 8px;
+  background: rgba(219, 234, 254, 0.92);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.user-role-modal .assignment-selected-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 6px;
+  border: 1px solid var(--role-assignment-soft-border);
+  border-radius: 9px;
+  background: rgba(248, 250, 252, 0.72);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.user-role-modal .assignment-selected-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 32px;
+  gap: 8px;
+  padding: 6px 9px;
+  color: var(--tf-color-slate-900);
+  border: 1px solid rgba(59, 130, 246, 0.16);
+  border-radius: 8px;
+  background: rgba(239, 246, 255, 0.96);
+  font-size: 12px;
+  transition: background 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.user-role-modal .assignment-selected-tag span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-role-modal .assignment-selected-tag:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: rgba(219, 234, 254, 1);
+  box-shadow: 0 8px 16px rgba(37, 99, 235, 0.1);
+}
+
+.user-role-modal .assignment-selected-tag:disabled,
+.user-role-modal .assignment-role-option:has(.assignment-role-input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.68;
+}
+
+.user-role-modal .assignment-empty-selection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 auto;
+  min-height: 120px;
+  gap: 10px;
+  padding: 14px;
+  color: var(--tf-color-slate-500);
+  text-align: center;
+  border: 1px dashed rgba(148, 163, 184, 0.28);
+  border-radius: 9px;
+  background: rgba(248, 250, 252, 0.72);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.user-role-modal .assignment-empty-selection i {
+  color: var(--tf-color-blue-600);
+  font-size: 22px;
+}
+
+.user-role-modal .assignment-side-tools {
+  display: flex;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+  margin-top: 10px;
+}
+
+.user-role-modal .assignment-side-tip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--tf-color-slate-600);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.user-role-modal .assignment-side-tip {
+  flex: 0 0 auto;
+  margin-top: 10px;
+  padding: 10px;
+  color: var(--tf-color-teal-700);
+  border: 1px solid rgba(13, 148, 136, 0.14);
+  border-radius: 8px;
+  background: rgba(240, 253, 250, 0.82);
+}
+
+.user-role-modal .modal-footer.user-role-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 14px 18px;
+  border-top: none;
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.user-role-modal .user-role-footer-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+@media (max-width: 1100px) {
+  .user-role-modal.el-dialog,
+  .user-role-modal.mobile-dialog-sheet-panel {
+    width: min(960px, calc(100vw - 20px));
+  }
+
+  .user-role-modal .role-assignment-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .user-role-modal .role-assignment-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(280px, 1fr) minmax(180px, 0.62fr);
+  }
+
+  .user-role-modal .assignment-side-panel {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .user-role-modal.el-dialog,
+  .user-role-modal.mobile-dialog-sheet-panel {
+    width: 100vw;
+    max-width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+  }
+
+  .user-role-modal .modal-body {
+    padding: 12px;
+  }
+
+  .user-role-modal .role-assignment-shell {
+    gap: 10px;
+  }
+
+  .user-role-modal .role-assignment-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .user-role-modal .role-assignment-layout {
+    grid-template-rows: minmax(250px, 1fr) minmax(160px, 0.62fr);
+    gap: 10px;
+  }
+
+  .user-role-modal .assignment-main-panel,
+  .user-role-modal .assignment-side-panel {
+    padding: 12px;
+    border-radius: 9px;
+  }
+
+  .user-role-modal .assignment-toolbar-head,
+  .user-role-modal .assignment-filter-row,
+  .user-role-modal .modal-footer.user-role-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .user-role-modal .assignment-toolbar-meta,
+  .user-role-modal .user-role-footer-actions {
+    justify-content: stretch;
+  }
+
+  .user-role-modal .user-role-footer-actions .el-button {
+    flex: 1 1 0;
+  }
+
+  .user-role-modal .assignment-filter-toggle,
+  .user-role-modal .assignment-meta-pill {
+    justify-content: center;
+  }
+
+  .user-role-modal .assignment-role-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .user-role-modal .role-assignment-user-card {
+    min-height: 62px;
+    padding: 10px;
+  }
+
+  .user-role-modal .role-assignment-user-card .user-avatar {
+    flex-basis: 38px;
+    width: 38px;
+    height: 38px;
+    font-size: 19px;
+  }
+
+  .user-role-modal .user-identity-copy h4 {
+    font-size: 14px;
+  }
+
+  .user-role-modal .user-identity-status .status-badge {
+    min-height: 24px;
+    padding-inline: 7px;
+    font-size: 10px;
+  }
 }

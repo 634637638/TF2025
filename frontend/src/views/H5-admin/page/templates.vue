@@ -783,6 +783,7 @@ import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useLoadingState } from '@/composables'
 import { formatImageUrl } from '@/utils/format'
+import { isVideoMedia } from '@/utils/media'
 import { createTempFileTracker, type TempFileTracker } from '@/utils/temp-file-cleaner'
 import {
   getTemplates,
@@ -910,18 +911,6 @@ const ensureTemplatePermission = (action: 'create' | 'edit' | 'delete') => {
 
   handleNoPermission(action)
   return false
-}
-
-const isVideoMedia = (media?: Pick<TemplateImage, 'image_url' | 'image_type'> | null) => {
-  if (!media?.image_url) {
-    return false
-  }
-
-  if (media.image_type === 'video') {
-    return true
-  }
-
-  return /\.(mp4|webm|ogg|mov)$/i.test(media.image_url)
 }
 
 const getPreferredCoverMedia = (images: TemplateImage[] = []) => {

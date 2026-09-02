@@ -9,7 +9,7 @@ import { unifiedApi as api } from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import { clearPersistedAuthData, setBackendDisconnectedState } from '@/utils/auth-session'
 import { storage } from '@/services/storage'
-import { AUTH_STORAGE_KEYS } from '@/constants/storage'
+import { AUTH_STORAGE_KEYS, SESSION_STORAGE_KEYS } from '@/constants/storage'
 import { PermissionMapper, PermissionUtils } from '@/utils/permissionMapper'
 import type { User, LoginCredentials } from '@/types'
 import { showElementWarning } from '@/utils/element-feedback'
@@ -415,6 +415,10 @@ export const useAuthStore = defineStore('auth', () => {
         // 持久化存储（只执行一次）
         persistAuthData()
 
+        // 每次重新登录都允许重新提示未处理的审批事项；同一次登录内仍由
+        // PendingApprovals 使用该标记避免轮询重复弹窗。
+        storage.remove(SESSION_STORAGE_KEYS.PENDING_APPROVAL_NOTIFIED, 'session')
+
         // 清除后端失联状态（登录成功说明后端已恢复）
         setBackendDisconnected(false)
 
@@ -814,6 +818,9 @@ export const useAuthStore = defineStore('auth', () => {
     isLocked.value = false
     lockReason.value = ''
 
+    // 退出当前登录会话后，下一位用户或下一次登录应重新接收审批提醒。
+    storage.remove(SESSION_STORAGE_KEYS.PENDING_APPROVAL_NOTIFIED, 'session')
+
     if (!preserveDisconnectState) {
       backendDisconnected.value = false
       setBackendDisconnectedState(false)
@@ -1114,8 +1121,17 @@ export const useAuthStore = defineStore('auth', () => {
   // 监听用户活动
   if (typeof window !== 'undefined') {
     const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart']
+    let lastMouseMoveActivity = 0
 
-    const handleActivity = () => {
+    const handleActivity = (event: Event) => {
+      // 鼠标移动事件频率很高；限制认证状态更新，避免触发权限指令的重复计算。
+      // 点击、键盘、滚动和触摸仍然每次即时刷新活动时间。
+      if (event.type === 'mousemove') {
+        const now = Date.now()
+        if (now - lastMouseMoveActivity < 1000) return
+        lastMouseMoveActivity = now
+      }
+
       updateActivity()
     }
 

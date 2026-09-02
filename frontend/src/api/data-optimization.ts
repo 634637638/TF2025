@@ -146,6 +146,13 @@ export const dataImportApi = {
   },
 
   /**
+   * 清理未使用的Excel文件
+   */
+  cleanupFile: (fileToken: string) => {
+    return unifiedApi.post('/data-import/upload/cleanup', { file_token: fileToken })
+  },
+
+  /**
    * 分析Excel数据
    */
   analyzeData: (fileToken: string, options: Record<string, unknown> = {}) => {

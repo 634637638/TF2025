@@ -568,7 +568,6 @@
 .admin-page table.data-table tbody tr,
 .admin-page table.table tbody tr,
 .admin-page .table-section .table-responsive > table tbody tr {
-  transition: all 0.2s ease !important;
   position: relative !important;
 }
 
@@ -588,7 +587,7 @@
   background: var(--admin-data-table-row-hover-bg) !important;
   outline: 1px solid var(--admin-data-table-row-hover-border) !important;
   outline-offset: -1px;
-  box-shadow: var(--admin-data-table-row-hover-shadow) !important;
+  box-shadow: none !important;
   z-index: 2;
 }
 
@@ -597,7 +596,7 @@
   position: relative !important;
   outline: 1px solid var(--admin-data-table-row-hover-border) !important;
   outline-offset: -1px;
-  box-shadow: var(--admin-data-table-row-hover-shadow) !important;
+  box-shadow: none !important;
   z-index: 2;
 }
 
@@ -611,6 +610,47 @@
 .admin-page table.table tbody tr:hover td,
 .admin-page .table-section .table-responsive > table tbody tr:hover td {
   border-bottom-color: var(--admin-data-table-header-border) !important;
+}
+
+/* Draw the hover frame inside cells so Element Plus scroll wrappers cannot clip it. */
+.admin-page .admin-data-table tbody tr:hover > td.el-table__cell,
+.admin-page .devices-table tbody tr:hover > td.el-table__cell,
+.admin-page table.data-table tbody tr:hover > td.el-table__cell,
+.admin-page table.table tbody tr:hover > td.el-table__cell,
+.admin-page .table-section .table-responsive > table tbody tr:hover > td.el-table__cell,
+.admin-page .el-table__body tr.hover-row > td.el-table__cell {
+  box-shadow: inset 0 1px 0 var(--admin-data-table-row-hover-border),
+    inset 0 -1px 0 var(--admin-data-table-row-hover-border);
+}
+
+.admin-page .admin-data-table tbody tr:not(.row-selected):is(:hover, .hover-row) > td.el-table__cell:first-child,
+.admin-page .devices-table tbody tr:not(.row-selected):is(:hover, .hover-row) > td.el-table__cell:first-child,
+.admin-page table.data-table tbody tr:not(.row-selected):is(:hover, .hover-row) > td.el-table__cell:first-child,
+.admin-page table.table tbody tr:not(.row-selected):is(:hover, .hover-row) > td.el-table__cell:first-child,
+.admin-page .el-table__body tr:not(.row-selected):is(:hover, .hover-row) > td.el-table__cell:first-child {
+  box-shadow: inset 1px 0 0 var(--admin-data-table-row-hover-border),
+    inset 0 1px 0 var(--admin-data-table-row-hover-border),
+    inset 0 -1px 0 var(--admin-data-table-row-hover-border);
+}
+
+.admin-page .admin-data-table tbody tr:not(.row-selected):is(:hover, .hover-row) > td.el-table__cell:last-child,
+.admin-page .devices-table tbody tr:not(.row-selected):is(:hover, .hover-row) > td.el-table__cell:last-child,
+.admin-page table.data-table tbody tr:not(.row-selected):is(:hover, .hover-row) > td.el-table__cell:last-child,
+.admin-page table.table tbody tr:not(.row-selected):is(:hover, .hover-row) > td.el-table__cell:last-child,
+.admin-page .el-table__body tr:not(.row-selected):is(:hover, .hover-row) > td.el-table__cell:last-child {
+  box-shadow: inset -1px 0 0 var(--admin-data-table-row-hover-border),
+    inset 0 1px 0 var(--admin-data-table-row-hover-border),
+    inset 0 -1px 0 var(--admin-data-table-row-hover-border);
+}
+
+.admin-page .admin-data-table tbody tr.row-selected:is(:hover, .hover-row) > td.el-table__cell:first-child,
+.admin-page .devices-table tbody tr.row-selected:is(:hover, .hover-row) > td.el-table__cell:first-child,
+.admin-page table.data-table tbody tr.row-selected:is(:hover, .hover-row) > td.el-table__cell:first-child,
+.admin-page table.table tbody tr.row-selected:is(:hover, .hover-row) > td.el-table__cell:first-child,
+.admin-page .el-table__body tr.row-selected:is(:hover, .hover-row) > td.el-table__cell:first-child {
+  box-shadow: inset 3px 0 0 var(--admin-data-table-row-selected-accent),
+    inset 0 1px 0 var(--admin-data-table-row-hover-border),
+    inset 0 -1px 0 var(--admin-data-table-row-hover-border);
 }
 
 .admin-page .admin-data-table tbody tr.selected-row,

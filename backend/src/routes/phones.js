@@ -836,6 +836,14 @@ router.get('/longest-inventory', requireInventoryQueryToken, async (req, res) =>
       }
     }
 
+    const requiredSpecIds = { brand_id, model_id, color_id, memory_id }
+    const missingSpecIds = Object.entries(requiredSpecIds)
+      .filter(([, value]) => value === undefined || value === '')
+      .map(([field]) => field)
+    if (missingSpecIds.length > 0) {
+      return ApiResponse.badRequest(res, `缺少库存规格参数: ${missingSpecIds.join(', ')}`)
+    }
+
     log.debug('📦 查询在库最久商品，参数:', { brand_id, model_id, color_id, memory_id, store_id })
 
     const pool = require('../config/database').getDatabase()
@@ -876,13 +884,13 @@ router.get('/longest-inventory', requireInventoryQueryToken, async (req, res) =>
       SELECT
         p.id,
         p.imei,
+        p.serial_number,
         st.name as store_name,
         p.inventory_time as inventory_time
       FROM phones p
         LEFT JOIN stores st ON p.store_id = st.id
       WHERE ${whereClause}
       ORDER BY p.inventory_time ASC
-      LIMIT 50
     `
 
     log.debug('执行SQL:', query)
@@ -1274,6 +1282,21 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
     const updateSQL = `UPDATE phones SET ${updateFields.join(', ')} WHERE id = ?`
     await connection.execute(updateSQL, updateValues)
     log.debug('✅ phones表更新成功')
+
+    const nextIsNew = normalizedCondition === 'new' ? 1 : 0
+    const mediaDirectoryFieldsChanged = (
+      String(normalizedSerialNumber || '') !== String(currentPhone.serial_number || '') ||
+      String(effectiveInventoryTime || '') !== String(currentPhone.inventory_time || '') ||
+      nextIsNew !== Number(currentPhone.is_new)
+    )
+    if (nextIsNew === 0 && mediaDirectoryFieldsChanged) {
+      await syncPhoneMediaDirectory(id, {
+        is_new: nextIsNew,
+        serial_number: normalizedSerialNumber,
+        inventory_time: effectiveInventoryTime
+      }, connection)
+      log.debug('✅ 手机图片目录已同步:', id)
+    }
 
     // 🔥 处理客户信息更新
     // 规则：
@@ -1810,7 +1833,8 @@ const path = require('path')
 const fs = require('fs').promises
 const crypto = require('crypto')
 const ShopServiceClass = require('../services/shop.service')
-const { getUploadSubdir, getUploadUrl } = require('../utils/upload-paths')
+const { getUploadsRoot, getUploadSubdir, getUploadUrl, getRelativeUploadPathFromUrl } = require('../utils/upload-paths')
+const { buildPhoneMediaDirectoryName, archivePhoneMediaUpload } = require('../utils/phone-media-storage')
 const { validateUploadedFileSignature, removeUploadedFiles } = require('../utils/upload-file-validation')
 const shopService = new ShopServiceClass()
 
@@ -1849,6 +1873,96 @@ const upload = multer({
   }
 })
 
+const movePhoneMediaToInventoryDirectory = async (phoneId, file, mediaType) => {
+  const mediaRoot = mediaType === 'video' ? 'videos' : 'phones'
+  return archivePhoneMediaUpload({
+    phoneId,
+    file,
+    mediaRoot,
+    database: require('../config/database').getDatabase()
+  })
+}
+
+const syncPhoneMediaDirectory = async (phoneId, nextPhone, connection) => {
+  if (Number(nextPhone.is_new) !== 0) return
+
+  const folderName = buildPhoneMediaDirectoryName({
+    serialNumber: nextPhone.serial_number,
+    inventoryTime: nextPhone.inventory_time
+  })
+  const uploadsRoot = path.resolve(getUploadsRoot())
+  const [images] = await connection.query(
+    `SELECT id, image_url
+     FROM H5_images
+     WHERE phone_id = ?
+       AND (image_url LIKE '%/uploads/phones/%' OR image_url LIKE '%/uploads/videos/%')`,
+    [phoneId]
+  )
+  const movedFiles = []
+  const updates = []
+
+  try {
+    for (const image of images) {
+      const relativePath = getRelativeUploadPathFromUrl(image.image_url).replace(/\\/g, '/')
+      const mediaRoot = relativePath.split('/')[0]
+      if (!['phones', 'videos'].includes(mediaRoot)) continue
+
+      const pathParts = relativePath.split('/')
+      const filename = path.basename(pathParts[pathParts.length - 1])
+      const sourcePath = path.resolve(uploadsRoot, ...pathParts)
+      const targetDirectory = getUploadSubdir(mediaRoot, folderName)
+      const targetPath = path.resolve(targetDirectory, filename)
+      const targetUrl = getUploadUrl(mediaRoot, folderName, filename)
+
+      if (!sourcePath.startsWith(`${uploadsRoot}${path.sep}`) || !targetPath.startsWith(`${uploadsRoot}${path.sep}`)) {
+        throw new Error('手机图片路径超出上传目录')
+      }
+      if (sourcePath === targetPath) continue
+
+      const sourceExists = await fs.access(sourcePath).then(() => true).catch(() => false)
+      if (!sourceExists) {
+        log.warn('手机图片文件不存在，跳过目录同步:', image.image_url)
+        continue
+      }
+      const targetExists = await fs.access(targetPath).then(() => true).catch(() => false)
+      if (targetExists) {
+        throw new Error(`手机图片目标文件已存在: ${targetPath}`)
+      }
+
+      await fs.mkdir(targetDirectory, { recursive: true })
+      await fs.rename(sourcePath, targetPath)
+      movedFiles.push({ sourcePath, targetPath, mediaRoot })
+      updates.push({ id: image.id, targetUrl })
+    }
+
+    for (const update of updates) {
+      await connection.query(
+        'UPDATE H5_images SET image_url = ? WHERE id = ? AND phone_id = ?',
+        [update.targetUrl, update.id, phoneId]
+      )
+    }
+
+    const oldDirectories = new Set(movedFiles.map(file => path.dirname(file.sourcePath)))
+    for (const oldDirectory of oldDirectories) {
+      const isMediaRoot = movedFiles.some(file => (
+        oldDirectory === getUploadSubdir(file.mediaRoot)
+      ))
+      if (isMediaRoot) continue
+      const entries = await fs.readdir(oldDirectory).catch(() => [])
+      if (entries.length === 0) await fs.rmdir(oldDirectory).catch(() => {})
+    }
+  } catch (error) {
+    for (const moved of movedFiles.reverse()) {
+      try {
+        await fs.rename(moved.targetPath, moved.sourcePath)
+      } catch (rollbackError) {
+        error.message += `；手机图片回滚失败: ${rollbackError.message}`
+      }
+    }
+    throw error
+  }
+}
+
 /**
  * 上传手机图片
  * POST /api/phones/:id/upload-image
@@ -1872,13 +1986,14 @@ router.post('/:id/upload-image',
       const { id } = req.params
       const uploadedBy = req.user ? req.user.id : 0
 
-      // 生成文件访问URL
-      const fileUrl = getUploadUrl('phones', req.file.filename)
+      // 二手机按序列号+入库时间归档，全新机保持原有目录
+      const fileUrl = await movePhoneMediaToInventoryDirectory(id, req.file, 'image')
 
       // 使用 ShopService 添加单张图片（不删除旧图片）
-      await shopService.addPhoneImage(id, fileUrl, 'inventory', uploadedBy)
+      const imageId = await shopService.addPhoneImage(id, fileUrl, 'inventory', uploadedBy)
 
       ApiResponse.success(res, {
+        id: imageId,
         url: fileUrl,
         filename: req.file.filename,
         originalname: req.file.originalname,
@@ -2160,13 +2275,14 @@ router.post('/:id/upload-video',
       const { id } = req.params
       const uploadedBy = req.user ? req.user.id : 0
 
-      // 生成文件访问URL
-      const videoUrl = getUploadUrl('videos', req.file.filename)
+      // 二手机按序列号+入库时间归档，全新机保持原有目录
+      const videoUrl = await movePhoneMediaToInventoryDirectory(id, req.file, 'video')
 
       // 使用 addPhoneImage 方法，指定类型为 video
-      await shopService.addPhoneImage(id, videoUrl, 'video', uploadedBy)
+      const imageId = await shopService.addPhoneImage(id, videoUrl, 'video', uploadedBy)
 
       ApiResponse.success(res, {
+        id: imageId,
         url: videoUrl,
         filename: req.file.filename,
         originalname: req.file.originalname,

@@ -6,3 +6,4 @@
 - [迁移计划](MIGRATION_PLAN.md) - 系统迁移方案
 - [迁移报告](MIGRATION_REPORT.md) - 迁移执行记录
 - [菜单 API 规范](menu-api-specification.md) - 菜单接口说明
+- [上传文件存储与迁移规范](upload-storage-standard.md) - 国补、手机媒体、H5 商城目录及部署要求

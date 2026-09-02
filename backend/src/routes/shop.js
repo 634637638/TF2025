@@ -13,7 +13,10 @@ const { unifiedAuth, requirePermission, requireAnyPermission, requireAdmin } = r
 const ApiResponse = require('../utils/response')
 const ShopService = require('../services/shop.service')
 const log = require('../utils/log')
-const { getUploadsRoot, getUploadSubdir, getUploadUrl } = require('../utils/upload-paths')
+const { getUploadsRoot, getUploadSubdir } = require('../utils/upload-paths')
+const { archivePhoneMediaUpload } = require('../utils/phone-media-storage')
+const { archiveShopAssetUpload } = require('../utils/shop-media-storage')
+const { validateUploadedFileSignature, removeUploadedFiles } = require('../utils/upload-file-validation')
 
 const shopService = new ShopService()
 
@@ -166,6 +169,30 @@ const upload = multer({
   }
 })
 
+const phoneImageStorage = multer.diskStorage({
+  destination: async (req, file, cb) => {
+    const uploadDir = getUploadSubdir('phones')
+    try {
+      await fs.mkdir(uploadDir, { recursive: true })
+      cb(null, uploadDir)
+    } catch (error) {
+      cb(error, uploadDir)
+    }
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + crypto.randomBytes(8).toString('hex')
+    cb(null, `phone-${uniqueSuffix}${path.extname(file.originalname)}`)
+  }
+})
+
+const phoneImageUpload = multer({
+  storage: phoneImageStorage,
+  fileFilter: imageFileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024
+  }
+})
+
 const templateMediaUpload = multer({
   storage,
   fileFilter: templateMediaFileFilter,
@@ -221,9 +248,23 @@ router.post('/upload/image',
         return ApiResponse.error(res, '没有上传文件', 400)
       }
 
+      const signatureChecks = await Promise.all(
+        files.map(file => validateUploadedFileSignature(file, ['image']))
+      )
+      if (signatureChecks.some(isValid => !isValid)) {
+        await removeUploadedFiles(files)
+        return ApiResponse.error(res, '文件内容与图片格式不匹配', 400)
+      }
+
+      const moduleName = String(req.body?.module || '').trim()
+      const fileUrls = []
+      for (const file of files) {
+        fileUrls.push(await archiveShopAssetUpload({ file, moduleName }))
+      }
+
       // 生成文件访问URL数组（返回相对路径，由前端负责拼接完整URL）
-      const uploadedFiles = files.map(file => ({
-        url: getUploadUrl('shop', file.filename),
+      const uploadedFiles = files.map((file, index) => ({
+        url: fileUrls[index],
         filename: file.filename,
         originalname: file.originalname,
         size: file.size
@@ -234,6 +275,7 @@ router.post('/upload/image',
         count: uploadedFiles.length
       }, `成功上传 ${uploadedFiles.length} 张图片`)
     } catch (error) {
+      await removeUploadedFiles(Array.isArray(req.files) ? req.files : []).catch(() => {})
       log.error('上传图片失败:', error)
       ApiResponse.error(res, error.message || '上传失败', 500)
     }
@@ -834,10 +876,16 @@ router.post('/templates/:id/images',
         return ApiResponse.error(res, '没有上传文件', 400)
       }
 
+      if (!(await validateUploadedFileSignature(req.file, ['image', 'video']))) {
+        await removeUploadedFiles([req.file])
+        return ApiResponse.error(res, '文件内容与图片或视频格式不匹配', 400)
+      }
+
       const image = await shopService.uploadTemplateImage(req.params.id, req.file, req.user?.id)
       log.debug('[上传模板图片] 服务返回:', image)
       ApiResponse.success(res, image, '上传图片成功')
     } catch (error) {
+      await removeUploadedFiles(req.file ? [req.file] : []).catch(() => {})
       log.error('上传图片失败:', error)
       ApiResponse.error(res, error.message || '上传失败', 500)
     }
@@ -1007,33 +1055,46 @@ router.get('/base-data/memories', unifiedAuth, requirePermission('inventory:view
  * 上传手机图片（简化版，用于综合查询）
  * POST /api/shop/upload-phone-image
  */
-shopImageUpload = upload
 router.post('/upload-phone-image',
   unifiedAuth,
   requireAnyPermission(H5_TEMPLATE_CREATE_PERMISSIONS),
-  shopImageUpload.single('image'),
+  (req, res, next) => phoneImageUpload.single('image')(req, res, next),
+  handleMulterError,
   async (req, res) => {
     try {
       if (!req.file) {
         return ApiResponse.error(res, '没有上传文件', 400)
       }
 
+      if (!(await validateUploadedFileSignature(req.file, ['image']))) {
+        await removeUploadedFiles([req.file])
+        return ApiResponse.error(res, '文件内容与图片格式不匹配', 400)
+      }
+
       const { phone_id } = req.body
       if (!phone_id) {
+        await removeUploadedFiles([req.file])
         return ApiResponse.error(res, '缺少手机ID', 400)
       }
 
       const uploadedBy = req.user ? req.user.id : 0
-      const fileUrl = `/uploads/phones/${req.file.filename}`
+      const fileUrl = await archivePhoneMediaUpload({
+        phoneId: phone_id,
+        file: req.file,
+        mediaRoot: 'phones',
+        database: require('../config/database').getDatabase()
+      })
 
       // 使用 ShopService 添加单张图片
-      await shopService.addPhoneImage(phone_id, fileUrl, 'inventory', uploadedBy)
+      const imageId = await shopService.addPhoneImage(phone_id, fileUrl, 'inventory', uploadedBy)
 
       ApiResponse.success(res, {
+        id: imageId,
         url: fileUrl,
         filename: req.file.filename
       }, '图片上传成功')
     } catch (error) {
+      await removeUploadedFiles(req.file ? [req.file] : []).catch(() => {})
       log.error('上传图片失败:', error)
       ApiResponse.error(res, error.message || '上传失败', 500)
     }

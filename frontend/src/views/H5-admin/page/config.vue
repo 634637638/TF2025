@@ -63,6 +63,7 @@
                 <el-upload
                   :action="uploadAction"
                   :headers="uploadHeaders"
+                  :data="{ module: 'h5_config' }"
                   :show-file-list="false"
                   :on-success="(res) => handleUploadSuccess(res, 'shop_logo')"
                   :before-upload="beforeUpload"
@@ -199,6 +200,7 @@
                 <el-upload
                   :action="uploadAction"
                   :headers="uploadHeaders"
+                  :data="{ module: 'h5_config' }"
                   :show-file-list="false"
                   :on-success="(res) => handleUploadSuccess(res, 'wechat_qrcode')"
                   :before-upload="beforeUpload"
@@ -240,6 +242,7 @@
                 <el-upload
                   :action="uploadAction"
                   :headers="uploadHeaders"
+                  :data="{ module: 'h5_config' }"
                   :show-file-list="false"
                   :on-success="(res) => handleUploadSuccess(res, 'alipay_qrcode')"
                   :before-upload="beforeUpload"

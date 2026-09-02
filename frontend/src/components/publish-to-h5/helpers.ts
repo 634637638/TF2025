@@ -4,6 +4,7 @@ import type {
   PublishInspectionResponse,
   UploadedMediaItem
 } from './types'
+import { isVideoMedia } from '@/utils/media'
 
 export const createDefaultPublishForm = (): PublishFormState => ({
   sale_price: null,
@@ -39,7 +40,7 @@ export const revokePendingFileUrls = (files: PendingUploadFile[]) => {
 }
 
 export const findUploadedVideoUrl = (mediaItems: UploadedMediaItem[]) =>
-  mediaItems.find((img) => img.image_type === 'video')?.image_url || ''
+  mediaItems.find(isVideoMedia)?.image_url || ''
 
 export const resolvePublishIsNewPhone = (
   phoneValue: unknown,
@@ -196,7 +197,7 @@ export const buildPublishPreviewStateFromUploaded = (
   formatUrl: (url: string) => string
 ) => {
   const previewableImages = images
-    .filter((image) => image.image_type !== 'video')
+    .filter((image) => !isVideoMedia(image))
     .map((image) => formatUrl(image.image_url))
     .filter(Boolean)
 

@@ -162,6 +162,24 @@
                         <i class="fas fa-edit" />
                         <span>编辑</span>
                       </el-button>
+                      <el-button
+                        v-if="canMatch"
+                        type="success"
+                        size="small"
+                        @click.stop="openMatchModal(row)"
+                      >
+                        <i class="fas fa-link" />
+                        <span>匹配</span>
+                      </el-button>
+                      <el-button
+                        v-if="canCancel"
+                        type="danger"
+                        size="small"
+                        @click.stop="cancelPreorder(row)"
+                      >
+                        <i class="fas fa-times" />
+                        <span>取消</span>
+                      </el-button>
                     </div>
                   </template>
                 </el-table-column>
@@ -278,22 +296,13 @@
                   min-width="150"
                 >
                   <template #default="{ row }">
-                    <div class="action-buttons">
+                    <div class="status-cell">
                       <el-tag
                         v-if="canViewPreorderField('status')"
                         :type="getStatusTagType(row.status)"
                       >
                         {{ row.status_text }}
                       </el-tag>
-                      <el-button
-                        v-if="canCancel"
-                        type="danger"
-                        size="small"
-                        @click.stop="cancelPreorder(row)"
-                      >
-                        <i class="fas fa-times" />
-                        取消
-                      </el-button>
                     </div>
                   </template>
                 </el-table-column>
@@ -303,20 +312,9 @@
                   min-width="150"
                 >
                   <template #default="{ row }">
-                    <div class="action-buttons">
-                      <span v-if="canViewPreorderField('matched_time')">
-                        {{ getMatchedTimeText(row) }}
-                      </span>
-                      <el-button
-                        v-if="canMatch"
-                        type="success"
-                        size="small"
-                        @click.stop="openMatchModal(row)"
-                      >
-                        <i class="fas fa-link" />
-                        匹配
-                      </el-button>
-                    </div>
+                    <span v-if="canViewPreorderField('matched_time')">
+                      {{ getMatchedTimeText(row) }}
+                    </span>
                   </template>
                 </el-table-column>
                 <el-table-column
@@ -346,6 +344,24 @@
                       >
                         <i class="fas fa-edit" />
                         编辑
+                      </el-button>
+                      <el-button
+                        v-if="canMatch"
+                        type="success"
+                        size="small"
+                        @click.stop="openMatchModal(row)"
+                      >
+                        <i class="fas fa-link" />
+                        匹配
+                      </el-button>
+                      <el-button
+                        v-if="canCancel"
+                        type="danger"
+                        size="small"
+                        @click.stop="cancelPreorder(row)"
+                      >
+                        <i class="fas fa-times" />
+                        取消
                       </el-button>
                     </div>
                   </template>
@@ -422,7 +438,6 @@
                 >
                   <template #default="{ row }">
                     <div class="mobile-row-actions">
-                      <!-- 通用操作列仅保留编辑、删除。 -->
                       <template v-if="row.status === 'pending'">
                         <el-button
                           v-if="canEdit"
@@ -433,9 +448,55 @@
                           <i class="fas fa-edit" />
                           <span>编辑</span>
                         </el-button>
+                        <el-button
+                          v-if="canMatch"
+                          type="success"
+                          size="small"
+                          @click.stop="openMatchModal(row)"
+                        >
+                          <i class="fas fa-link" />
+                          <span>匹配</span>
+                        </el-button>
+                        <el-button
+                          v-if="canCancel"
+                          type="danger"
+                          size="small"
+                          @click.stop="cancelMatchedPreorder(row)"
+                        >
+                          <i class="fas fa-times" />
+                          <span>取消</span>
+                        </el-button>
                       </template>
-                      <!-- 已取消状态可执行删除。 -->
+                      <template v-if="row.status === 'arrived'">
+                        <el-button
+                          v-if="canDeliver"
+                          type="success"
+                          size="small"
+                          @click.stop="deliverPreorder(row)"
+                        >
+                          <i class="fas fa-check" />
+                          <span>交付</span>
+                        </el-button>
+                        <el-button
+                          v-if="canCancel"
+                          type="danger"
+                          size="small"
+                          @click.stop="cancelMatchedPreorder(row)"
+                        >
+                          <i class="fas fa-times" />
+                          <span>取消</span>
+                        </el-button>
+                      </template>
                       <template v-if="row.status === 'cancelled'">
+                        <el-button
+                          v-if="canEdit"
+                          type="warning"
+                          size="small"
+                          @click.stop="restorePreorder(row)"
+                        >
+                          <i class="fas fa-undo" />
+                          <span>恢复</span>
+                        </el-button>
                         <el-button
                           v-if="canDelete"
                           type="danger"
@@ -576,31 +637,13 @@
                   min-width="190"
                 >
                   <template #default="{ row }">
-                    <div class="action-buttons">
+                    <div class="status-cell">
                       <el-tag
                         v-if="canViewPreorderField('status')"
                         :type="getStatusTagType(row.status)"
                       >
                         {{ row.status_text }}
                       </el-tag>
-                      <el-button
-                        v-if="canCancel && ['pending', 'arrived'].includes(row.status)"
-                        type="danger"
-                        size="small"
-                        @click.stop="cancelMatchedPreorder(row)"
-                      >
-                        <i class="fas fa-times" />
-                        取消
-                      </el-button>
-                      <el-button
-                        v-if="canEdit && row.status === 'cancelled'"
-                        type="warning"
-                        size="small"
-                        @click.stop="restorePreorder(row)"
-                      >
-                        <i class="fas fa-undo" />
-                        恢复
-                      </el-button>
                     </div>
                   </template>
                 </el-table-column>
@@ -609,7 +652,7 @@
                   prop="matched_time"
                   label="匹配时间"
                   min-width="170"
-                >
+                  >
                   <template #default="{ row }">
                     <span
                       v-if="canViewPreorderField('matched_time')"
@@ -617,15 +660,6 @@
                     >
                       {{ getMatchedTimeText(row) }}
                     </span>
-                    <el-button
-                      v-if="canMatch && row.status === 'pending'"
-                      type="success"
-                      size="small"
-                      @click.stop="openMatchModal(row)"
-                    >
-                      <i class="fas fa-link" />
-                      匹配
-                    </el-button>
                   </template>
                 </el-table-column>
                 <el-table-column
@@ -637,15 +671,6 @@
                     <span v-if="canViewPreorderField('delivered_time')">
                       {{ row.delivered_time ? formatDateTime(row.delivered_time) : '-' }}
                     </span>
-                    <el-button
-                      v-if="canDeliver && row.status === 'arrived'"
-                      type="success"
-                      size="small"
-                      @click.stop="deliverPreorder(row)"
-                    >
-                      <i class="fas fa-check" />
-                      交付
-                    </el-button>
                   </template>
                 </el-table-column>
                 <el-table-column
@@ -657,7 +682,6 @@
                 >
                   <template #default="{ row }">
                     <div class="action-buttons">
-                      <!-- 通用操作列仅保留编辑、删除。 -->
                       <template v-if="row.status === 'pending'">
                         <el-button
                           v-if="canEdit"
@@ -668,8 +692,56 @@
                           <i class="fas fa-edit" />
                           编辑
                         </el-button>
+                        <el-button
+                          v-if="canMatch"
+                          type="success"
+                          size="small"
+                          @click.stop="openMatchModal(row)"
+                        >
+                          <i class="fas fa-link" />
+                          匹配
+                        </el-button>
+                        <el-button
+                          v-if="canCancel"
+                          type="danger"
+                          size="small"
+                          @click.stop="cancelMatchedPreorder(row)"
+                        >
+                          <i class="fas fa-times" />
+                          取消
+                        </el-button>
                       </template>
-                      <!-- 已取消状态可执行删除。 -->
+                      <template v-if="row.status === 'arrived'">
+                        <el-button
+                          v-if="canDeliver"
+                          type="success"
+                          size="small"
+                          @click.stop="deliverPreorder(row)"
+                        >
+                          <i class="fas fa-check" />
+                          交付
+                        </el-button>
+                        <el-button
+                          v-if="canCancel"
+                          type="danger"
+                          size="small"
+                          @click.stop="cancelMatchedPreorder(row)"
+                        >
+                          <i class="fas fa-times" />
+                          取消
+                        </el-button>
+                      </template>
+                      <template v-if="row.status === 'cancelled'">
+                        <el-button
+                          v-if="canEdit"
+                          type="warning"
+                          size="small"
+                          @click.stop="restorePreorder(row)"
+                        >
+                          <i class="fas fa-undo" />
+                          恢复
+                        </el-button>
+                      </template>
                       <template v-if="row.status === 'cancelled'">
                         <el-button
                           v-if="canDelete"
@@ -966,6 +1038,7 @@ import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { logger } from '@/utils/logger'
 import { getAdaptiveActionColumnWidth, getIdentifierColumnMinWidth } from '@/utils/table-layout'
+import { isMobileViewport } from '@/utils/device-detection'
 
 const PreorderFormModal = defineAsyncComponent(() => import('./page/PreorderFormModal.vue'))
 const MatchPreorderModal = defineAsyncComponent(() => import('./page/MatchPreorderModal.vue'))
@@ -1006,37 +1079,37 @@ const { loading } = useLoadingState()
 loading.value = true
 const refreshing = ref(false)
 const matchedStatus = ref('all')
-const isMobile = ref(window.innerWidth <= 768)
+const isMobile = ref(typeof window !== 'undefined' && isMobileViewport(window.innerWidth))
 const showPendingStatusField = computed(() => shouldShowActionColumn(
   canViewPreorderField('status'),
-  [canCancel.value]
+  []
 ))
 const showPendingMatchedTimeField = computed(() => shouldShowActionColumn(
   canViewPreorderField('matched_time'),
-  [canMatch.value]
+  []
 ))
 const showMatchedStatusField = computed(() => shouldShowActionColumn(
   canViewPreorderField('status'),
-  [canCancel.value, canEdit.value]
+  []
 ))
 const showMatchedTimeField = computed(() => shouldShowActionColumn(
   canViewPreorderField('matched_time'),
-  [canMatch.value]
+  []
 ))
 const showMatchedDeliveryField = computed(() => shouldShowActionColumn(
   canViewPreorderField('delivered_time'),
-  [canDeliver.value]
+  []
 ))
 const showPendingActionField = computed(() => (
   !isMobile.value && shouldShowActionColumn(
     canViewPreorderField('operations'),
-    [canEdit.value]
+    [canEdit.value, canMatch.value, canCancel.value]
   )
 ))
 const showMatchedActionField = computed(() => (
   !isMobile.value && shouldShowActionColumn(
     canViewPreorderField('operations'),
-    [canEdit.value, canDelete.value]
+    [canEdit.value, canDelete.value, canCancel.value, canMatch.value, canDeliver.value]
   )
 ))
 const showDeliveredActionField = computed(() => (
@@ -1044,11 +1117,11 @@ const showDeliveredActionField = computed(() => (
 ))
 const showMobilePendingActionField = computed(() => isMobile.value && shouldShowActionColumn(
   canViewPreorderField('operations'),
-  [canEdit.value]
+  [canEdit.value, canMatch.value, canCancel.value]
 ))
 const showMobileMatchedActionField = computed(() => isMobile.value && shouldShowActionColumn(
   canViewPreorderField('operations'),
-  [canEdit.value, canDelete.value]
+  [canEdit.value, canDelete.value, canCancel.value, canMatch.value, canDeliver.value]
 ))
 const showMobileDeliveredActionField = computed(() => isMobile.value && shouldShowActionColumn(
   canViewPreorderField('operations'),
@@ -1057,7 +1130,7 @@ const showMobileDeliveredActionField = computed(() => isMobile.value && shouldSh
 
 // 监听窗口大小变化
 const handleResize = () => {
-  isMobile.value = window.innerWidth <= 768
+  isMobile.value = typeof window !== 'undefined' && isMobileViewport(window.innerWidth)
 }
 
 onMounted(() => {
@@ -1090,13 +1163,19 @@ const deliveredPreorders = ref<Preorder[]>([])
 const pendingPreorderActionColumnWidth = computed(() => getAdaptiveActionColumnWidth(
   pendingPreorders.value,
   [
-    { label: '编辑', visible: canEdit.value }
+    { label: '编辑', visible: canEdit.value },
+    { label: '匹配', visible: canMatch.value },
+    { label: '取消', visible: canCancel.value }
   ]
 ))
 const matchedPreorderActionColumnWidth = computed(() => getAdaptiveActionColumnWidth(
   matchedPreorders.value,
   [
     { label: '编辑', visible: row => canEdit.value && row.status === 'pending' },
+    { label: '匹配', visible: row => canMatch.value && row.status === 'pending' },
+    { label: '交付', visible: row => canDeliver.value && row.status === 'arrived' },
+    { label: '取消', visible: row => canCancel.value && ['pending', 'arrived'].includes(row.status) },
+    { label: '恢复', visible: row => canEdit.value && row.status === 'cancelled' },
     { label: '删除', visible: row => canDelete.value && row.status === 'cancelled' }
   ]
 ))

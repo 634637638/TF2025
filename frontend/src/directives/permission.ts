@@ -6,7 +6,7 @@
 
 import { useAuthStore } from '@/stores/auth'
 import { PermissionUtils } from '@/utils/permissionMapper'
-import type { App, Directive, DirectiveBinding } from 'vue'
+import { watch, type App, type Directive, type DirectiveBinding } from 'vue'
 
 interface PermissionBinding {
   permission: string | string[]
@@ -65,9 +65,14 @@ const applyPermissionVisibility = (
 export const vPermission: Directive<HTMLElement, PermissionDirectiveValue> = {
   mounted(el, binding) {
     applyPermissionVisibility(el, binding)
-    const unsubscribe = useAuthStore().$subscribe(() => {
+    const authStore = useAuthStore()
+    const unsubscribe = watch(() => [
+      authStore.userPermissions,
+      authStore.isAuthenticated,
+      authStore.isActive
+    ], () => {
       applyPermissionVisibility(el, binding)
-    })
+    }, { deep: true })
     permissionUnsubscribers.set(el, unsubscribe)
   },
 
@@ -90,7 +95,12 @@ export const vPermissionNot: Directive<HTMLElement, PermissionDirectiveValue> = 
     }
 
     applyInverseVisibility()
-    const unsubscribe = useAuthStore().$subscribe(applyInverseVisibility)
+    const authStore = useAuthStore()
+    const unsubscribe = watch(() => [
+      authStore.userPermissions,
+      authStore.isAuthenticated,
+      authStore.isActive
+    ], applyInverseVisibility, { deep: true })
     permissionNotUnsubscribers.set(el, unsubscribe)
   },
 

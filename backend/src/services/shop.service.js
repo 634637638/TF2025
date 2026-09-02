@@ -8,6 +8,7 @@ const fs = require('fs').promises
 const path = require('path')
 const log = require('../utils/log')
 const { getUploadsRoot } = require('../utils/upload-paths')
+const { archiveShopTemplateUpload, relocateShopTemplateMedia } = require('../utils/shop-media-storage')
 
 const H5_ORDER_FIELDS = [
   'id', 'order_number', 'customer_name', 'customer_phone', 'customer_address',
@@ -559,12 +560,13 @@ class ShopService {
     }
 
     // 插入新图片
-    await db.getDatabase().query(`
+    const [result] = await db.getDatabase().query(`
       INSERT INTO H5_images (phone_id, image_url, image_type, is_primary, sort_order, uploaded_by)
       VALUES (?, ?, ?, ?, ?, ?)
     `, [phoneId, imageUrl, imageType || 'other', isFirstImage, sortOrder, uploadedBy])
 
     await this.ensurePrimaryPhoneImage(phoneId)
+    return result.insertId
   }
 
   /**
@@ -619,7 +621,7 @@ class ShopService {
       const normalizedFilePath = path.normalize(filePath)
       const normalizedUploadDir = path.normalize(uploadDir)
 
-      if (!normalizedFilePath.startsWith(normalizedUploadDir)) {
+      if (!normalizedFilePath.startsWith(`${normalizedUploadDir}${path.sep}`)) {
         log.warn(`⚠️ 安全警告：尝试删除上传目录外的文件: ${filePath}`)
         return
       }
@@ -627,6 +629,14 @@ class ShopService {
       // 检查文件是否存在并删除
       await fs.unlink(filePath)
       log.debug('✅ 已删除图片文件:', filePath)
+
+      let currentDirectory = path.dirname(normalizedFilePath)
+      while (currentDirectory !== normalizedUploadDir) {
+        const entries = await fs.readdir(currentDirectory).catch(() => [])
+        if (entries.length > 0) break
+        await fs.rmdir(currentDirectory).catch(() => {})
+        currentDirectory = path.dirname(currentDirectory)
+      }
     } catch (error) {
       // 文件不存在或删除失败，不影响数据库记录的删除
       log.warn('⚠️ 删除图片文件失败:', error.message)
@@ -1158,12 +1168,6 @@ class ShopService {
   async updateTemplate(templateId, templateData) {
     const { brand_id, model_id, color_id, memory_ids, template_name, description, price_markup, price_markup_type, is_active, sort_order } = templateData
 
-    // 获取模板信息（用于更新 price_list）
-    const [_templateInfo] = await db.getDatabase().query(
-      'SELECT brand_id, model_id, color_id, memory_ids FROM H5_newtemplates WHERE id = ?',
-      [templateId]
-    )
-
     const updates = []
     const values = []
 
@@ -1220,19 +1224,35 @@ class ShopService {
     log.debug(`[updateTemplate] 执行SQL: UPDATE H5_newtemplates SET ${updates.join(', ')}, updated_at = NOW() WHERE id = ${templateId}`)
     log.debug('[updateTemplate] 参数值:', values)
 
-    await db.getDatabase().query(`
-      UPDATE H5_newtemplates
-      SET ${updates.join(', ')}, updated_at = NOW()
-      WHERE id = ?
-    `, values)
+    const connection = await db.getDatabase().getConnection()
+    let mediaRelocation = null
+    try {
+      await connection.beginTransaction()
+      const [result] = await connection.query(`
+        UPDATE H5_newtemplates
+        SET ${updates.join(', ')}, updated_at = NOW()
+        WHERE id = ?
+      `, values)
+      if (result.affectedRows === 0) {
+        throw new Error('模板不存在')
+      }
 
-    // 验证更新结果
-    const [verifyResult] = await db.getDatabase().query(
-      'SELECT id, is_active FROM H5_newtemplates WHERE id = ?',
-      [templateId]
-    )
-    if (verifyResult.length > 0) {
-      log.debug(`[updateTemplate] 验证更新结果: 模板 ${templateId} 的 is_active = ${verifyResult[0].is_active}`)
+      mediaRelocation = await relocateShopTemplateMedia({
+        templateId,
+        database: connection
+      })
+      await connection.commit()
+      await mediaRelocation.cleanup()
+    } catch (error) {
+      await connection.rollback().catch(() => {})
+      if (mediaRelocation) {
+        await mediaRelocation.rollback().catch(rollbackError => {
+          error.message += `；商品模板媒体回滚失败: ${rollbackError.message}`
+        })
+      }
+      throw error
+    } finally {
+      connection.release()
     }
 
     return await this.getTemplateById(templateId)
@@ -1242,7 +1262,37 @@ class ShopService {
    * 删除商品模板
    */
   async deleteTemplate(templateId) {
-    await db.getDatabase().query('DELETE FROM H5_newtemplates WHERE id = ?', [templateId])
+    const pool = db.getDatabase()
+    const connection = await pool.getConnection()
+    let imageUrls = []
+
+    try {
+      await connection.beginTransaction()
+      const [images] = await connection.query(
+        'SELECT image_url FROM h5_newimages WHERE template_id = ? FOR UPDATE',
+        [templateId]
+      )
+      imageUrls = images.map(image => image.image_url).filter(Boolean)
+
+      const [result] = await connection.query(
+        'DELETE FROM H5_newtemplates WHERE id = ?',
+        [templateId]
+      )
+      if (result.affectedRows === 0) {
+        throw new Error('模板不存在')
+      }
+
+      await connection.commit()
+    } catch (error) {
+      await connection.rollback().catch(() => {})
+      throw error
+    } finally {
+      connection.release()
+    }
+
+    for (const imageUrl of imageUrls) {
+      await this.deletePhysicalFile(imageUrl)
+    }
   }
 
   /**
@@ -1257,38 +1307,52 @@ class ShopService {
 
     const isVideo = file.mimetype?.startsWith('video/')
     const mediaType = isVideo ? 'video' : 'other'
-    const imageUrl = '/uploads/shop/' + file.filename
+    const pool = db.getDatabase()
+    const imageUrl = await archiveShopTemplateUpload({
+      file,
+      templateId,
+      database: pool
+    })
+    const connection = await pool.getConnection()
 
-    // 仅当当前模板还没有图片类媒体时，首张图片自动设为主图；视频不允许成为主图。
-    const [existingImages] = await db.getDatabase().query(
-      'SELECT COUNT(*) as count FROM h5_newimages WHERE template_id = ? AND image_type <> ?',
-      [templateId, 'video']
-    )
-    const [existingMedia] = await db.getDatabase().query(
-      'SELECT COUNT(*) as count FROM h5_newimages WHERE template_id = ?',
-      [templateId]
-    )
+    try {
+      await connection.beginTransaction()
 
-    const isPrimary = !isVideo && existingImages[0].count === 0
-    const sortOrder = Number(existingMedia[0]?.count || 0)
-    log.debug('[uploadTemplateImage] 是否设为主图:', isPrimary)
+      // 仅当当前模板还没有图片类媒体时，首张图片自动设为主图；视频不允许成为主图。
+      const [existingImages] = await connection.query(
+        'SELECT COUNT(*) as count FROM h5_newimages WHERE template_id = ? AND image_type <> ?',
+        [templateId, 'video']
+      )
+      const [existingMedia] = await connection.query(
+        'SELECT COUNT(*) as count FROM h5_newimages WHERE template_id = ?',
+        [templateId]
+      )
 
-    const [result] = await db.getDatabase().query(`
-      INSERT INTO h5_newimages (template_id, image_url, image_type, is_primary, sort_order, uploaded_by)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `, [templateId, imageUrl, mediaType, isPrimary, sortOrder, userId])
+      const isPrimary = !isVideo && existingImages[0].count === 0
+      const sortOrder = Number(existingMedia[0]?.count || 0)
+      log.debug('[uploadTemplateImage] 是否设为主图:', isPrimary)
 
-    await this.ensurePrimaryTemplateImage(templateId)
+      const [result] = await connection.query(`
+        INSERT INTO h5_newimages (template_id, image_url, image_type, is_primary, sort_order, uploaded_by)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `, [templateId, imageUrl, mediaType, isPrimary, sortOrder, userId])
 
-    log.debug('[uploadTemplateImage] 媒体已保存到数据库，ID:', result.insertId)
+      await this.ensurePrimaryTemplateImage(templateId, connection)
 
-    // 返回完整的图片信息
-    const [newImage] = await db.getDatabase().query(
-      'SELECT * FROM h5_newimages WHERE id = ?',
-      [result.insertId]
-    )
+      const [newImage] = await connection.query(
+        'SELECT * FROM h5_newimages WHERE id = ?',
+        [result.insertId]
+      )
+      await connection.commit()
 
-    return newImage[0]
+      log.debug('[uploadTemplateImage] 媒体已保存到数据库，ID:', result.insertId)
+      return newImage[0]
+    } catch (error) {
+      await connection.rollback().catch(() => {})
+      throw error
+    } finally {
+      connection.release()
+    }
   }
 
   /**

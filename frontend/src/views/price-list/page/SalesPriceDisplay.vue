@@ -31,7 +31,8 @@
 
       <template #actions>
         <button
-          class="download-trigger-btn"
+          type="button"
+          class="price-header-action price-header-action--download"
           :disabled="isGenerating || searchResults.length === 0"
           @click="downloadAsImage"
         >
@@ -39,23 +40,8 @@
             v-if="!isGenerating"
             class="btn-content"
           >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              class="btn-icon"
-            >
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line
-                x1="12"
-                y1="15"
-                x2="12"
-                y2="3"
-              />
-            </svg>
-            <span class="btn-text">保存为图片</span>
+            <el-icon class="btn-icon"><Download /></el-icon>
+            <span class="btn-text">保存图片</span>
           </span>
           <span
             v-else
@@ -260,7 +246,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { Search, Close } from '@element-plus/icons-vue'
+import { Search, Close, Download } from '@element-plus/icons-vue'
 import { getAllSalesPrices, searchSalesPrices } from '@/api/price-list'
 import { PublicPriceHeader } from '@/components/base'
 import InlineLoading from '@/components/InlineLoading.vue'
@@ -979,12 +965,12 @@ onBeforeUnmount(() => {
 }
 
 .results-section {
-  padding: 40px 20px;
+  padding: 10px 20px 40px;
   min-height: 400px;
 
   // 移动端去除边距
   @media (max-width: 768px) {
-    padding: 20px 0;
+    padding: 4px 0 20px;
   }
 
   .container {
@@ -1241,104 +1227,6 @@ onBeforeUnmount(() => {
 
   .copyright {
     opacity: 0.6;
-  }
-}
-
-.notice-section {
-  padding: 20px 20px 30px;
-
-  .container {
-    max-width: 1000px;
-    margin: 0 auto;
-
-    @media (max-width: 768px) {
-      padding: 0;
-      max-width: 100%;
-    }
-
-    // 按钮容器
-    .action-buttons {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-
-      @media (max-width: 768px) {
-        flex-direction: column;
-        padding: 0 12px;
-      }
-    }
-
-    // 保存图片按钮
-    .download-trigger-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      flex: 1;
-      max-width: 400px;
-      padding: 14px 24px;
-      background: var(--tf-button-success-bg);
-      border: none;
-      border-radius: 12px;
-      color: var(--tf-button-on-color);
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      box-shadow: var(--tf-button-success-shadow);
-
-      @media (max-width: 768px) {
-        max-width: 100%;
-        width: 100%;
-        padding: 12px 20px;
-        font-size: 14px;
-        border-radius: 8px;
-      }
-
-      &:hover:not(:disabled) {
-        background: var(--tf-button-success-hover-bg);
-        box-shadow: var(--tf-button-success-shadow);
-        transform: translateY(-2px);
-      }
-
-      &:active:not(:disabled) {
-        transform: translateY(0);
-      }
-
-      &:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-
-      .btn-content {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-
-        .btn-icon {
-          width: 20px;
-          height: 20px;
-
-          @media (max-width: 768px) {
-            width: 18px;
-            height: 18px;
-          }
-
-          &.loading-spinner {
-            animation: spin 1s linear infinite;
-          }
-        }
-
-        .btn-text {
-          font-size: 16px;
-          font-weight: 600;
-
-          @media (max-width: 768px) {
-            font-size: 14px;
-          }
-        }
-      }
-    }
   }
 }
 

@@ -1592,7 +1592,7 @@ defineExpose({
   }
 }
 
-@media (max-width: 992px) {
+@media (max-width: 1023px) {
   .phone-warning-config {
     .dialog-grid {
       grid-template-columns: 1fr;

@@ -251,8 +251,8 @@ export const DEFAULT_MENU_CONFIG: MenuConfig = {
 // 菜单断点
 export const MENU_BREAKPOINTS = {
   mobile: 768,
-  tablet: 1024,
-  desktop: 1200
+  tablet: 1023,
+  desktop: 1024
 } as const
 
 // 菜单图标映射

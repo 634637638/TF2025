@@ -103,7 +103,7 @@
               class="image-count"
             >
               <i class="fas fa-images" />
-              <span>{{ product.image_count }} 张</span>
+              <span>{{ product.image_count }} 个</span>
             </div>
           </div>
 
@@ -120,7 +120,7 @@
               class="btn-sm"
               @click="viewImages(product)"
             >
-              <i class="fas fa-eye mr-1" />查看图片
+              <i class="fas fa-eye mr-1" />查看素材
             </el-button>
             <el-button
               v-if="canDelete"
@@ -130,7 +130,7 @@
               class="btn-sm"
               @click="deleteProductImages(product)"
             >
-              <i class="fas fa-trash mr-1" />删除图片
+              <i class="fas fa-trash mr-1" />删除素材
             </el-button>
           </div>
         </div>
@@ -160,13 +160,14 @@
         </el-button>
       </div>
 
-      <!-- 图片管理模态框 -->
+      <!-- 媒体管理模态框 -->
       <el-dialog
         v-model="showImageModal"
-        title="图片管理"
+        title="素材管理"
         width="90%"
         :close-on-click-modal="true"
         class="image-manage-dialog"
+        @closed="showImageViewer = false"
       >
         <div class="image-preview-modal">
           <div class="modal-header">
@@ -196,15 +197,15 @@
             v-if="loadingImages"
             class="loading-images"
           >
-            <InlineLoading text="加载图片中..." />
+            <InlineLoading text="加载素材中..." />
           </div>
 
           <div
             v-else-if="productImages.length === 0"
             class="no-images"
           >
-            <i class="fas fa-image" />
-            <p>暂无图片</p>
+            <i class="fas fa-photo-video" />
+            <p>暂无图片或视频</p>
           </div>
 
           <div
@@ -216,8 +217,17 @@
               :key="image.id"
               class="image-item"
             >
+              <video
+                v-if="(canViewField('images.image_url') || canDelete) && isVideoMedia(image)"
+                :src="getImageUrl(image.image_url)"
+                class="media-thumbnail"
+                muted
+                playsinline
+                preload="metadata"
+                @click="previewImage(image)"
+              />
               <Image
-                v-if="canViewField('images.image_url') || canDelete"
+                v-else-if="canViewField('images.image_url') || canDelete"
                 :src="image.image_url"
                 :alt="`图片 ${index + 1}`"
                 mode="eager"
@@ -229,6 +239,10 @@
                 }"
                 @click="previewImage(image)"
               />
+              <div v-if="isVideoMedia(image)" class="media-type-badge">
+                <i class="fas fa-play" />
+                视频
+              </div>
               <div
                 v-if="image.is_primary && canViewField('images.is_primary')"
                 class="primary-badge"
@@ -271,51 +285,32 @@
         </template>
       </el-dialog>
 
-      <!-- 大图预览 -->
-      <teleport to="body">
-        <div
-          v-if="showImageViewer"
-          class="image-viewer-mask"
-          @click.self="showImageViewer = false"
-        >
-          <div
-            class="preview-wrapper"
-            @click.self="showImageViewer = false"
-          >
-            <el-image-viewer
-              :url-list="[currentPreviewImage]"
-              :hide-on-click-modal="true"
-              @close="showImageViewer = false"
-            />
-            <!-- 右上角删除按钮 -->
-            <button
-              v-if="canDelete"
-              class="preview-delete-btn"
-              title="删除此图片"
-              @click.stop="deleteCurrentImage"
-            >
-              <i class="fas fa-trash" />
-            </button>
-          </div>
-        </div>
-      </teleport>
+      <MediaPreviewViewer
+        v-model="showImageViewer"
+        :items="previewMediaItems"
+        :initial-index="previewMediaIndex"
+        :deletable="canDelete"
+        @delete="deleteCurrentMedia"
+      />
     </div>
   </PermissionGate>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onUnmounted, inject, watch } from 'vue'
-import { ElMessage, ElMessageBox, ElImageViewer } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
 import { unifiedApi as api } from '@/utils/unified-api'
 import { formatImageUrl } from '@/utils/format'
 import { useLoadingState } from '@/composables'
 import InlineLoading from '@/components/InlineLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
+import MediaPreviewViewer from '@/components/MediaPreviewViewer.vue'
 import { PermissionGate } from '@/components/base'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { logger } from '@/utils/logger'
+import { isVideoMedia, type MediaPreviewItem } from '@/utils/media'
 import type { HeaderAction } from '@/types'
 import type { SoldProduct, SoldProductImage } from '@/types/h5'
 // 注入父组件提供的注册方法
@@ -347,24 +342,13 @@ const selectedProduct = ref<SoldProduct | null>(null)
 const productImages = ref<SoldProductImage[]>([])
 
 const showImageViewer = ref(false)
-const currentPreviewImage = ref('')
-const currentPreviewImageId = ref<number | null>(null)
-
-// 监听 ESC 键关闭预览
-const handleKeyDown = (e: KeyboardEvent) => {
-  if (e.key === 'Escape' && showImageViewer.value) {
-    showImageViewer.value = false
-  }
-}
-
-// 监听预览状态变化来添加/移除键盘事件
-watch(showImageViewer, (val) => {
-  if (val) {
-    document.addEventListener('keydown', handleKeyDown)
-  } else {
-    document.removeEventListener('keydown', handleKeyDown)
-  }
-})
+const previewMediaIndex = ref(0)
+const previewMediaItems = computed<MediaPreviewItem[]>(() => productImages.value.map(media => ({
+  id: media.id,
+  url: media.image_url,
+  type: media.image_type,
+  label: isVideoMedia(media) ? '商品视频' : '商品图片'
+})))
 
 // 过滤后的商品列表
 const filteredProducts = computed(() => {
@@ -515,24 +499,22 @@ const deleteSingleImage = async (image: SoldProductImage) => {
 
 // 预览大图
 const previewImage = (image: SoldProductImage) => {
-  currentPreviewImage.value = getImageUrl(image.image_url)
-  currentPreviewImageId.value = image.id
+  const index = productImages.value.findIndex(media => media.id === image.id)
+  previewMediaIndex.value = index >= 0 ? index : 0
   showImageViewer.value = true
 }
 
-// 删除当前预览的图片
-const deleteCurrentImage = async () => {
+// 删除当前预览的媒体
+const deleteCurrentMedia = async (mediaItem: MediaPreviewItem) => {
   if (!ensureDeletePermission()) {
     return
   }
 
-  if (!currentPreviewImageId.value) return
-
-  const image = productImages.value.find(img => img.id === currentPreviewImageId.value)
+  const image = productImages.value.find(img => img.id === Number(mediaItem.id))
   if (!image) return
 
   try {
-    await ElMessageBox.confirm('确定要删除这张图片吗？', '删除确认', {
+    await ElMessageBox.confirm(`确定要删除这个${isVideoMedia(image) ? '视频' : '图片'}吗？`, '删除确认', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
@@ -648,7 +630,6 @@ onUnmounted(() => {
   if (clearHeaderActions) {
     clearHeaderActions()
   }
-  document.removeEventListener('keydown', handleKeyDown)
 })
 </script>
 
@@ -843,10 +824,26 @@ onUnmounted(() => {
     background: var(--tf-color-surface-soft);
     cursor: pointer;
 
-    img {
+    img,
+    video {
       width: 100%;
       height: 100%;
       object-fit: cover;
+    }
+
+    .media-type-badge {
+      position: absolute;
+      left: 8px;
+      bottom: 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 7px;
+      border-radius: 4px;
+      background: rgba(15, 23, 42, 0.78);
+      color: var(--color-bg-white);
+      font-size: 12px;
+      pointer-events: none;
     }
 
     .primary-badge {
@@ -980,139 +977,4 @@ onUnmounted(() => {
   }
 }
 
-// 图片预览容器
-.preview-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  // 确保 el-image-viewer 内部按钮可见
-  :deep(.el-image-viewer__btn) {
-    opacity: 1 !important;
-  }
-
-  :deep(.el-image-viewer__canvas) {
-    align-items: center;
-    justify-content: center;
-  }
-
-  // 限制预览图片的默认大小
-  :deep(img.el-image-viewer__img) {
-    max-width: 80vw !important;
-    max-height: 80vh !important;
-    width: auto !important;
-    height: auto !important;
-    object-fit: contain !important;
-  }
-
-  :deep(.el-image-viewer__canvas) > div {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-  }
-
-  :deep(.el-image-viewer__canvas) img {
-    max-width: 80vw !important;
-    max-height: 80vh !important;
-    width: auto !important;
-    height: auto !important;
-    object-fit: contain !important;
-  }
-}
-
-// 右上角删除按钮
-.preview-delete-btn {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 10010;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: none;
-  background: var(--tf-button-danger-bg);
-  color: var(--tf-button-on-color);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: var(--tf-button-shadow);
-  transition: background 0.2s;
-
-  i {
-    font-size: 18px;
-  }
-
-  &:hover {
-    background: var(--tf-button-danger-hover-bg);
-  }
-}
-</style>
-
-<!-- 全局样式 -->
-<style lang="scss">
-/* 图片预览遮罩层 - z-index 需要高于 el-dialog (默认2000) */
-.image-viewer-mask {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.9);
-
-  :deep(.el-image-viewer__wrapper) {
-    z-index: 10000;
-  }
-
-  /* 限制预览图片的默认大小 */
-  :deep(img.el-image-viewer__img) {
-    max-width: 80vw !important;
-    max-height: 80vh !important;
-    width: auto !important;
-    height: auto !important;
-    object-fit: contain !important;
-  }
-
-  :deep(.el-image-viewer__canvas) > div {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-  }
-
-  :deep(.el-image-viewer__canvas) img {
-    max-width: 80vw !important;
-    max-height: 80vh !important;
-    width: auto !important;
-    height: auto !important;
-    object-fit: contain !important;
-  }
-}
-
-/* 全局样式：限制 el-image-viewer 图片默认大小 */
-:global(.el-image-viewer__img) {
-  max-width: 80vw !important;
-  max-height: 80vh !important;
-  width: auto !important;
-  height: auto !important;
-  object-fit: contain !important;
-}
-
-:global(.el-image-viewer__canvas img) {
-  max-width: 80vw !important;
-  max-height: 80vh !important;
-  width: auto !important;
-  height: auto !important;
-  object-fit: contain !important;
-}
-
-/* 强制覆盖内联样式 - 只限制最大尺寸，不干扰 transform */
-:global(.el-image-viewer__wrapper .el-image-viewer__img[style]) {
-  max-width: 80vw !important;
-  max-height: 80vh !important;
-}
 </style>

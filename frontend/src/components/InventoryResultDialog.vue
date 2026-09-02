@@ -89,8 +89,8 @@
                   </div>
                   <div class="item-details">
                     <span class="imei">
-                      <span class="imei-label">序列号</span>
-                      {{ item.imei }}
+                      <span class="imei-label">序列号：</span>
+                      <span class="imei-value">{{ getDeviceIdentifier(item) }}</span>
                     </span>
                     <span
                       class="item-days"
@@ -183,8 +183,8 @@
           </div>
           <div class="item-details">
             <span class="imei">
-              <span class="imei-label">序列号</span>
-              {{ item.imei }}
+              <span class="imei-label">序列号：</span>
+              <span class="imei-value">{{ getDeviceIdentifier(item) }}</span>
             </span>
             <span
               class="item-days"
@@ -217,9 +217,13 @@ import { useMobile } from '@/composables/mobile'
 import SectionLoading from '@/components/SectionLoading.vue'
 import { logger } from '@/utils/logger'
 import type { InventoryItem } from '@/types'
-import type { ModelValueProps, UpdateModelValueEmits } from '@/types/component'
+import type { ModelValueProps } from '@/types/component'
 
 interface Product {
+  brand_id?: number
+  model_id?: number
+  color_id?: number
+  memory_id?: number
   brand: string
   model: string
   color?: string
@@ -227,10 +231,10 @@ interface Product {
 }
 
 interface LongInventoryQueryParams {
-  brand?: string
-  model?: string
-  color?: string
-  memory?: string
+  brand_id?: number
+  model_id?: number
+  color_id?: number
+  memory_id?: number
 }
 
 // Props
@@ -243,6 +247,10 @@ const props = withDefaults(defineProps<Props>(), {
   modelValue: false,
   queryToken: '',
   product: () => ({
+    brand_id: undefined,
+    model_id: undefined,
+    color_id: undefined,
+    memory_id: undefined,
     brand: '',
     model: '',
     color: '',
@@ -251,7 +259,12 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 // Emits
-const emit = defineEmits<UpdateModelValueEmits>()
+interface Emits {
+  'update:modelValue': [value: boolean]
+  authorizationExpired: []
+}
+
+const emit = defineEmits<Emits>()
 
 // 响应式数据
 const visible = ref(props.modelValue)
@@ -292,11 +305,18 @@ watch(visible, (newVal) => {
 const loadData = async () => {
   loading.value = true
   try {
-    const params: LongInventoryQueryParams = {}
-    if (props.product.brand) params.brand = props.product.brand
-    if (props.product.model) params.model = props.product.model
-    if (props.product.color) params.color = props.product.color
-    if (props.product.memory) params.memory = props.product.memory
+    const params: LongInventoryQueryParams = {
+      brand_id: props.product.brand_id,
+      model_id: props.product.model_id,
+      color_id: props.product.color_id,
+      memory_id: props.product.memory_id
+    }
+
+    if (Object.values(params).some(id => !Number.isSafeInteger(Number(id)) || Number(id) <= 0)) {
+      inventoryData.value = []
+      ElMessage.error('当前报价缺少完整规格，无法查询在库明细')
+      return
+    }
 
     const response = await unifiedApi.get('/phones/longest-inventory', {
       params,
@@ -312,9 +332,15 @@ const loadData = async () => {
       ElMessage.error(response.message || '加载在库数据失败')
     }
   } catch (error: unknown) {
-    logger.error('加载在库数据失败:', error)
     inventoryData.value = []
-    ElMessage.error('在库明细加载失败，请稍后重试')
+    const requestError = error as { response?: { status?: number }; status?: number }
+    const status = requestError.response?.status ?? requestError.status
+    if (status === 401) {
+      emit('authorizationExpired')
+    } else {
+      logger.error('加载在库数据失败:', error)
+      ElMessage.error('在库明细加载失败，请稍后重试')
+    }
   } finally {
     loading.value = false
   }
@@ -333,6 +359,12 @@ const getDaysClass = (days: number) => {
   if (days >= 20) return 'days-warning'
   if (days >= 10) return 'days-caution'
   return 'days-normal'
+}
+
+const isImei = (value?: string) => /^\d{15}$/.test(String(value || '').trim())
+const getDeviceIdentifier = (item: InventoryItem) => {
+  if (isImei(item.imei)) return String(item.imei).trim()
+  return String(item.serial_number || item.imei || '未录入').trim()
 }
 
 onMounted(() => {
@@ -692,6 +724,14 @@ onUnmounted(() => {
             color: var(--tf-color-slate-600);
             font-weight: 600;
             flex-shrink: 0;
+          }
+
+          .imei-value {
+            min-width: 0;
+            overflow: hidden;
+            color: var(--tf-color-slate-900);
+            font-weight: 700;
+            text-overflow: ellipsis;
           }
         }
 

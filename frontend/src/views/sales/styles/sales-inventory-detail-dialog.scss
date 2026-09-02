@@ -182,7 +182,7 @@
   color: var(--tf-button-danger-soft-color);
 }
 
-@media (max-width: 1024px) and (min-width: 769px) {
+@media (max-width: 1023px) and (min-width: 769px) {
   .inventory-detail-modal .detail-summary-cards {
     grid-template-columns: repeat(4, 1fr);
     gap: 10px;

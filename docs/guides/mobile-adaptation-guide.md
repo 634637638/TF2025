@@ -9,6 +9,7 @@
 ## 概述
 
 TF2025项目已内置完善的移动端适配系统，支持从375px（iPhone SE）到所有桌面尺寸的响应式设计。
+后台左侧固定菜单以视口宽度为准，1024px 及以上进入桌面壳，不再由设备类型、UA 或触摸能力单独决定。
 
 ## 核心组件
 
@@ -243,8 +244,8 @@ const {
   --breakpoint-xs: 414px;   // iPhone SE 2022, iPhone 12, 13
   --breakpoint-sm: 480px;   // 大屏手机竖屏
   --breakpoint-md: 768px;   // 平板竖屏/大屏手机横屏
-  --breakpoint-lg: 1024px;  // 平板横屏/小桌面
-  --breakpoint-xl: 1200px;  // 标准桌面
+  --breakpoint-lg: 1024px;  // 桌面起点
+  --breakpoint-xl: 1200px;  // 宽屏桌面
   --breakpoint-2xl: 1440px; // 大桌面
 }
 
@@ -254,8 +255,8 @@ $breakpoints: (
   xs: 414px,    // 小屏手机
   sm: 480px,    // 中屏手机
   md: 768px,    // 大屏手机/平板
-  lg: 1024px,   // 平板
-  xl: 1200px,   // 桌面
+  lg: 1024px,   // 桌面起点
+  xl: 1200px,   // 宽屏桌面
   xxl: 1440px   // 大桌面
 );
 

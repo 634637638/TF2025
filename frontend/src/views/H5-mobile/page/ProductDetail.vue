@@ -33,7 +33,7 @@
           >
             <div class="swiper-zoom-container">
               <video
-                v-if="image.image_type === 'video'"
+                v-if="isVideoMedia(image)"
                 :src="getImageUrl(image.image_url)"
                 controls
                 playsinline
@@ -51,7 +51,7 @@
             </div>
             <!-- 视频标记 -->
             <div
-              v-if="image.image_type === 'video'"
+              v-if="isVideoMedia(image)"
               class="media-video-label"
             >
               <i class="fas fa-video" /> 验机视频
@@ -320,6 +320,7 @@ import type { ProductDetail } from '@/api/shop-public'
 import { storage } from '@/services/storage'
 import { H5_STORAGE_KEYS } from '@/constants/storage'
 import { logger } from '@/utils/logger'
+import { isVideoMedia } from '@/utils/media'
 const SwiperPagination = Pagination
 const SwiperZoom = Zoom
 
@@ -579,7 +580,7 @@ const handleSlideChange = (swiper: any) => {
 
     // 如果当前slide是视频，自动播放
     const currentSlide = product.value?.images[swiper.activeIndex]
-    if (currentSlide?.image_type === 'video') {
+    if (isVideoMedia(currentSlide)) {
       const currentVideo = allVideos[swiper.activeIndex] as HTMLVideoElement
       if (currentVideo) {
         currentVideo.play().catch(() => {

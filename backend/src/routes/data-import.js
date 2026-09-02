@@ -148,6 +148,28 @@ router.post('/upload', requirePermission('data-import:upload'), upload.single('f
 })
 
 /**
+ * 清理未使用的导入文件
+ */
+router.post('/upload/cleanup', requirePermission('data-import:upload'), async (req, res) => {
+  try {
+    const filePath = resolveFileToken(req.body?.file_token)
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath)
+    }
+    return res.json({
+      success: true,
+      message: '未使用的导入文件已清理'
+    })
+  } catch (error) {
+    log.error('清理导入文件失败:', error)
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: '清理导入文件失败'
+    })
+  }
+})
+
+/**
  * 分析Excel数据并检查重复
  */
 router.post('/analyze', requirePermission('data-import:upload'), async (req, res) => {
@@ -216,6 +238,15 @@ router.post('/import', requirePermission('data-import:execute'), async (req, res
       })
       .catch(error => {
         log.error(`✗ 导入 ${importId} 失败:`, error)
+      })
+      .finally(() => {
+        try {
+          if (fs.existsSync(safeFilePath)) {
+            fs.unlinkSync(safeFilePath)
+          }
+        } catch (cleanupError) {
+          log.warn('导入完成后清理文件失败:', cleanupError.message)
+        }
       })
 
     res.json({

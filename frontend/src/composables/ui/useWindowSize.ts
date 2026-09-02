@@ -4,6 +4,7 @@
  */
 
 import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { getViewportDimensions, isMobileViewport } from '@/utils/device-detection'
 
 /**
  * 窗口尺寸信息
@@ -89,11 +90,12 @@ export function useWindowSize(options: UseWindowSizeOptions = {}) {
   const updateSize = () => {
     if (typeof window === 'undefined') return
 
+    const viewport = getViewportDimensions()
     size.value = {
       width: window.screen.width,
       height: window.screen.height,
-      innerWidth: window.innerWidth,
-      innerHeight: window.innerHeight,
+      innerWidth: viewport.width,
+      innerHeight: viewport.height,
       outerWidth: window.outerWidth,
       outerHeight: window.outerHeight,
       devicePixelRatio: window.devicePixelRatio || 1
@@ -177,7 +179,7 @@ export function useWindowSize(options: UseWindowSizeOptions = {}) {
   }
 
   // 计算属性
-  const isMobile = computed(() => size.value.innerWidth < 768)
+  const isMobile = computed(() => isMobileViewport(size.value.innerWidth))
   const isTablet = computed(() => size.value.innerWidth >= 768 && size.value.innerWidth < 1024)
   const isDesktop = computed(() => size.value.innerWidth >= 1024)
 

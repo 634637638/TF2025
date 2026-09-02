@@ -177,7 +177,8 @@
     z-index: 2;
     outline: 1px solid var(--admin-data-table-row-hover-border, var(--tf-color-slate-400));
     outline-offset: -1px;
-    box-shadow: var(--admin-data-table-row-hover-shadow, 0 5px 16px rgba(15, 23, 42, 0.08));
+    // 外轮廓不会改变表格尺寸；不叠加阴影，减少鼠标经过时的重绘。
+    box-shadow: none;
   }
 
   &:hover > td,
@@ -210,6 +211,32 @@
   &.el-table__row--striped.hover-row > td {
     background: var(--admin-data-table-row-hover-bg, var(--tf-color-violet-100)) !important;
   }
+}
+
+// Element Plus 的滚动层可能裁剪行 outline；将四边线绘制到单元格内部，
+// 让 hover 和 hover-row 状态都保持稳定可见，同时不改变列宽和行高。
+.el-table__body tr:hover > td.el-table__cell,
+.el-table__body tr.hover-row > td.el-table__cell {
+  box-shadow: inset 0 1px 0 var(--admin-data-table-row-hover-border, var(--tf-color-slate-400)),
+    inset 0 -1px 0 var(--admin-data-table-row-hover-border, var(--tf-color-slate-400));
+}
+
+.el-table__body tr:not(.row-selected):is(:hover, .hover-row) > td.el-table__cell:first-child {
+  box-shadow: inset 1px 0 0 var(--admin-data-table-row-hover-border, var(--tf-color-slate-400)),
+    inset 0 1px 0 var(--admin-data-table-row-hover-border, var(--tf-color-slate-400)),
+    inset 0 -1px 0 var(--admin-data-table-row-hover-border, var(--tf-color-slate-400));
+}
+
+.el-table__body tr:not(.row-selected):is(:hover, .hover-row) > td.el-table__cell:last-child {
+  box-shadow: inset -1px 0 0 var(--admin-data-table-row-hover-border, var(--tf-color-slate-400)),
+    inset 0 1px 0 var(--admin-data-table-row-hover-border, var(--tf-color-slate-400)),
+    inset 0 -1px 0 var(--admin-data-table-row-hover-border, var(--tf-color-slate-400));
+}
+
+.el-table__body tr.row-selected:is(:hover, .hover-row) > td.el-table__cell:first-child {
+  box-shadow: inset 3px 0 0 var(--admin-data-table-row-selected-accent, var(--tf-color-blue-700)),
+    inset 0 1px 0 var(--admin-data-table-row-hover-border, var(--tf-color-slate-400)),
+    inset 0 -1px 0 var(--admin-data-table-row-hover-border, var(--tf-color-slate-400));
 }
 
 // 调货/同行批发数据统一识别色。业务页面只需返回 admin-row--peer-transfer。

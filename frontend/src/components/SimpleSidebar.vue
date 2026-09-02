@@ -120,11 +120,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, useAttrs, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, useAttrs, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useMobile, useMobileGestures } from '../composables/mobile'
 import { useTheme } from '../composables/useTheme'
 import { useMenuWidth } from '../composables/useMenuWidth'
+import { BREAKPOINTS } from '@/config/breakpoints'
 import { useMenuStore } from '../stores/menu'
 import { useEventBus } from '../composables/core/useEventBus'
 import IconRenderer from './IconRenderer.vue'
@@ -157,7 +158,8 @@ const menuStore = useMenuStore()
 const attrs = useAttrs()
 
 // Mobile Composables
-const { isMobile } = useMobile()
+const { screenWidth } = useMobile()
+const isMobile = computed(() => screenWidth.value < BREAKPOINTS.DESKTOP_MIN)
 const { handleTouchStart, handleTouchEnd } = useMobileGestures()
 
 // Theme Composable
@@ -627,23 +629,23 @@ onUnmounted(() => {
 }
 
 
-.simple-sidebar.collapsed .menu-text {
+.modern-sidebar.collapsed .menu-text {
   display: none;
 }
 
-.simple-sidebar.collapsed .sub-menu {
+.modern-sidebar.collapsed .sub-menu {
   display: none;
 }
 
-.simple-sidebar.collapsed .sidebar-footer {
+.modern-sidebar.collapsed .sidebar-footer {
   padding: 16px 8px;
 }
 
-.simple-sidebar.collapsed .logout-btn span {
+.modern-sidebar.collapsed .logout-btn span {
   display: none;
 }
 
-.simple-sidebar.collapsed .logout-btn {
+.modern-sidebar.collapsed .logout-btn {
   justify-content: center;
 }
 
@@ -931,52 +933,52 @@ onUnmounted(() => {
 }
 
 /* 暗夜模式适配 */
-.simple-sidebar.theme-dark {
+.modern-sidebar.theme-dark {
   background: var(--theme-sidebar-bg, var(--tf-color-gray-ant-950));
   border-right-color: var(--theme-border-color, var(--tf-color-gray-ant-700));
 }
 
-.simple-sidebar.theme-dark .sidebar-header {
+.modern-sidebar.theme-dark .sidebar-header {
   border-bottom-color: var(--theme-border-color, var(--tf-color-gray-ant-700));
 }
 
-.simple-sidebar.theme-dark .menu-item:hover {
+.modern-sidebar.theme-dark .menu-item:hover {
   background: var(--theme-hover-bg, var(--tf-color-neutral-ant));
 }
 
-.simple-sidebar.theme-dark .menu-item.active {
+.modern-sidebar.theme-dark .menu-item.active {
   background: rgba(23, 121, 220, 0.15);
   color: var(--theme-primary-color, var(--tf-color-blue-ant-dark));
 }
 
-.simple-sidebar.theme-dark .menu-item.active::before {
+.modern-sidebar.theme-dark .menu-item.active::before {
   background: var(--theme-primary-color, var(--tf-color-blue-ant-dark));
 }
 
-.simple-sidebar.theme-dark .menu-icon {
+.modern-sidebar.theme-dark .menu-icon {
   color: var(--theme-sidebar-text, var(--color-bg-white));
 }
 
-.simple-sidebar.theme-dark .menu-text {
+.modern-sidebar.theme-dark .menu-text {
   color: var(--theme-sidebar-text, var(--color-bg-white));
 }
 
-.simple-sidebar.theme-dark .logout-btn:hover {
+.modern-sidebar.theme-dark .logout-btn:hover {
   background: var(--theme-hover-bg, var(--tf-color-neutral-ant));
   color: var(--tf-button-danger-soft-hover-color);
 }
 
-.simple-sidebar.theme-dark .sidebar-footer {
+.modern-sidebar.theme-dark .sidebar-footer {
   border-top-color: var(--theme-border-color, var(--tf-color-gray-ant-700));
 }
 
 /* 桌面端响应式优化 */
-@media (max-width: 1024px) {
-  .simple-sidebar {
+@media (max-width: 1023px) {
+  .modern-sidebar {
     width: 240px;
   }
 
-  .simple-sidebar.collapsed {
+  .modern-sidebar.collapsed {
     width: 60px;
   }
 
@@ -991,7 +993,7 @@ onUnmounted(() => {
 
 /* 小屏幕设备优化 */
 @media (max-width: 768px) {
-  .simple-sidebar:not(.mobile) {
+  .modern-sidebar:not(.mobile) {
     width: 100%;
     max-width: 280px;
   }
@@ -1008,7 +1010,7 @@ onUnmounted(() => {
 
 /* 超小屏幕设备优化 */
 @media (max-width: 480px) {
-  .simple-sidebar.mobile {
+  .modern-sidebar.mobile {
     width: 100%;
     max-width: 320px;
   }
@@ -1046,7 +1048,7 @@ onUnmounted(() => {
 
 /* 无障碍访问优化 */
 @media (prefers-reduced-motion: reduce) {
-  .simple-sidebar.mobile {
+  .modern-sidebar.mobile {
     transition: none;
   }
 
@@ -1097,7 +1099,7 @@ onUnmounted(() => {
 
 /* 高对比度模式支持 */
 @media (prefers-contrast: high) {
-  .simple-sidebar {
+  .modern-sidebar {
     border-right: 2px solid currentColor;
   }
 

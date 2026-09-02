@@ -36,6 +36,15 @@
         </div>
       </div>
 
+      <el-alert
+        class="match-scope-alert"
+        title="匹配仅预留库存，不会直接出库销售"
+        description="匹配成功后设备仍保持在库状态。完成销售请在已匹配列表中点击“交付”，并在销售页面完成结算。"
+        type="info"
+        :closable="false"
+        show-icon
+      />
+
       <div class="table-responsive matchable-table-wrap">
         <el-table
           v-loading="loading"
@@ -202,7 +211,7 @@ const submitMatch = async () => {
   submitting.value = true
   try {
     await preorderApi.matchPreorder(props.preorder.id, { phone_id: selectedPhoneId.value })
-    ElMessage.success('预定单已匹配库存设备')
+    ElMessage.success('预定单匹配成功，库存已预留，尚未出库')
     emit('success')
     dialogVisible.value = false
   } catch (error) {
@@ -236,6 +245,10 @@ watch(
   border: 1px solid var(--el-border-color-light);
   border-radius: 6px;
   background: var(--el-fill-color-light);
+}
+
+.match-scope-alert {
+  margin: 0;
 }
 
 .summary-main {

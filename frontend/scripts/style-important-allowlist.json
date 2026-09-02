@@ -2,7 +2,7 @@
   "files": [
     {
       "file": "src/styles/admin-layout.css",
-      "max": 305,
+      "max": 304,
       "reason": "Unified admin layout must override legacy page-scoped spacing and table shells."
     },
     {
@@ -82,13 +82,13 @@
     },
     {
       "file": "src/views/query/QueryView.vue",
-      "max": 57,
-      "reason": "Mobile viewport lock and Element Plus image viewer bounds override inline vendor dimensions."
+      "max": 32,
+      "reason": "Mobile viewport lock and existing Element Plus table and dialog dimensions."
     },
     {
       "file": "src/views/H5-admin/page/SoldProductsView.vue",
-      "max": 46,
-      "reason": "Element Plus image viewer bounds override inline transform-aware image dimensions."
+      "max": 7,
+      "reason": "Element Plus media management dialog buttons require fixed dimensions and state colors."
     },
     {
       "file": "src/components/PublishToH5Modal.vue",
@@ -127,7 +127,7 @@
     },
     {
       "file": "src/views/permissions/styles/permissions-view.css",
-      "max": 20,
+      "max": 19,
       "reason": "Teleported permission dialogs and controls override the unified dialog and button contracts."
     },
     {

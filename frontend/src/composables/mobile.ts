@@ -6,6 +6,12 @@
 import { ref, reactive, computed, onMounted, onUnmounted, watch, readonly, type Ref } from 'vue'
 import { useAppStore } from '@/stores/app'
 import { BREAKPOINTS, BreakpointName, deviceType } from '@/config/breakpoints'
+import {
+  isIOSDevice,
+  isMobileViewport,
+  isTabletViewport,
+  getViewportDimensions
+} from '@/utils/device-detection'
 import logger from '@/utils/logger'
 import type {
   DeviceInfo,
@@ -108,10 +114,10 @@ export function useMobileDevice() {
     breakpoint: computed(() => appStore.breakpoint),
 
     // 屏幕信息
-    screenWidth: window.innerWidth,
-    screenHeight: window.innerHeight,
+    screenWidth: getViewportDimensions().width,
+    screenHeight: getViewportDimensions().height,
     orientation: 'portrait' as 'portrait' | 'landscape',
-    pixelRatio: window.devicePixelRatio || 1,
+    pixelRatio: getViewportDimensions().scale || window.devicePixelRatio || 1,
 
     // 功能检测
     touchSupported: 'ontouchstart' in window,
@@ -171,13 +177,16 @@ export function useMobileDevice() {
 
   // 更新屏幕方向
   const updateOrientation = () => {
-    deviceState.orientation = window.innerWidth > window.innerHeight ? 'landscape' : 'portrait'
+    const { width, height } = getViewportDimensions()
+    deviceState.orientation = width > height ? 'landscape' : 'portrait'
   }
 
   // 更新屏幕尺寸
   const updateScreenSize = () => {
-    deviceState.screenWidth = window.innerWidth
-    deviceState.screenHeight = window.innerHeight
+    const { width, height, scale } = getViewportDimensions()
+    deviceState.screenWidth = width
+    deviceState.screenHeight = height
+    deviceState.pixelRatio = scale || window.devicePixelRatio || 1
     updateOrientation()
     appStore.updateDeviceBreakpoint()
   }
@@ -536,8 +545,8 @@ export function useMobileGestures(
  */
 export function useMobileViewport() {
   const viewportState = reactive({
-    width: window.innerWidth,
-    height: window.innerHeight,
+    width: getViewportDimensions().width,
+    height: getViewportDimensions().height,
     visualViewport: null as {
       width: number
       height: number
@@ -569,9 +578,10 @@ export function useMobileViewport() {
 
   // 更新视口尺寸
   const updateViewportSize = () => {
-    viewportState.width = window.innerWidth
-    viewportState.height = window.innerHeight
-    viewportState.orientation = window.innerWidth > window.innerHeight ? 'landscape' : 'portrait'
+    const { width, height } = getViewportDimensions()
+    viewportState.width = width
+    viewportState.height = height
+    viewportState.orientation = width > height ? 'landscape' : 'portrait'
   }
 
   // 更新可视视口
@@ -591,8 +601,8 @@ export function useMobileViewport() {
 
   // 检测键盘状态
   const detectKeyboard = () => {
-    const initialHeight = window.innerHeight
-    const currentHeight = window.innerHeight
+    const initialHeight = getViewportDimensions().height
+    const currentHeight = getViewportDimensions().height
     const keyboardHeight = initialHeight - currentHeight
 
     viewportState.isKeyboardVisible = keyboardHeight > 150
@@ -1045,7 +1055,8 @@ export function useMobileForm() {
  * 检测是否为移动端浏览器
  */
 export function isMobileBrowser(): boolean {
-  return /Mobi|Android/i.test(navigator.userAgent)
+  if (typeof window === 'undefined') return false
+  return isMobileViewport(getViewportDimensions().width)
 }
 
 /**
@@ -1059,22 +1070,26 @@ export function isWeChatBrowser(): boolean {
  * 获取移动端设备信息
  */
 export function getMobileDeviceInfo(): Partial<DeviceInfo> {
+  const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : ''
+  const platform = typeof navigator !== 'undefined' ? navigator.platform : ''
+  const { width, height } = getViewportDimensions()
+
   return {
-    userAgent: navigator.userAgent,
-    platform: navigator.platform,
-    isMobile: isMobileBrowser(),
-    isIOS: /iPhone|iPad|iPod/.test(navigator.userAgent),
-    isAndroid: /Android/.test(navigator.userAgent),
-    isSafari: /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent),
-    isChrome: /Chrome/.test(navigator.userAgent),
-    isTablet: /Tablet|iPad/i.test(navigator.userAgent),
-    isDesktop: !isMobileBrowser(),
+    userAgent,
+    platform,
+    isMobile: isMobileViewport(width),
+    isIOS: isIOSDevice(userAgent, platform),
+    isAndroid: /Android/.test(userAgent),
+    isSafari: /Safari/.test(userAgent) && !/Chrome/.test(userAgent),
+    isChrome: /Chrome/.test(userAgent),
+    isTablet: isTabletViewport(width),
+    isDesktop: !isMobileViewport(width) && !isTabletViewport(width),
     screenSize: {
-      width: screen.width,
-      height: screen.height
+      width,
+      height
     },
-    orientation: (screen.orientation?.type?.startsWith('landscape') ? 'landscape' : 'portrait') as 'portrait' | 'landscape',
-    isTouchDevice: 'ontouchstart' in window
+    orientation: (width > height ? 'landscape' : 'portrait') as 'portrait' | 'landscape',
+    isTouchDevice: typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
   }
 }
 
@@ -1120,23 +1135,29 @@ export interface ResponsiveState {
 }
 
 // 全局响应式状态
+const initialViewport = getViewportDimensions()
+const initialWidth = initialViewport.width || 1920
+const initialHeight = initialViewport.height || 1080
+const initialIsMobile = isMobileViewport(initialWidth)
+const initialIsTablet = isTabletViewport(initialWidth)
+
 const responsiveState = ref<ResponsiveState>({
-  screenWidth: 1920,
-  screenHeight: 1080,
-  viewportWidth: 1920,
-  viewportHeight: 1080,
-  isSmallMobile: false,
-  isMobile: false,
-  isTablet: false,
-  isDesktop: true,
+  screenWidth: initialWidth,
+  screenHeight: initialHeight,
+  viewportWidth: initialWidth,
+  viewportHeight: initialHeight,
+  isSmallMobile: deviceType.isSmallMobile(initialWidth),
+  isMobile: initialIsMobile,
+  isTablet: initialIsTablet,
+  isDesktop: !initialIsMobile && !initialIsTablet,
   isWide: false,
   isUltraWide: false,
-  currentBreakpoint: BreakpointName.DESKTOP,
-  orientation: 'landscape',
-  isTouchDevice: false,
-  isIOS: false,
-  isAndroid: false,
-  devicePixelRatio: 1,
+  currentBreakpoint: getCurrentBreakpoint(initialWidth),
+  orientation: initialWidth > initialHeight ? 'landscape' : 'portrait',
+  isTouchDevice: typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0),
+  isIOS: typeof navigator !== 'undefined' && isIOSDevice(navigator.userAgent, navigator.platform),
+  isAndroid: typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent),
+  devicePixelRatio: initialViewport.scale || (typeof window !== 'undefined' ? window.devicePixelRatio : 1),
   safeArea: { top: 0, right: 0, bottom: 0, left: 0 }
 })
 
@@ -1144,18 +1165,17 @@ const responsiveState = ref<ResponsiveState>({
 function updateResponsiveState() {
   if (typeof window === 'undefined') return
 
-  const width = window.innerWidth
-  const height = window.innerHeight
+  const { width, height } = getViewportDimensions()
 
-  responsiveState.value.screenWidth = window.screen.width
-  responsiveState.value.screenHeight = window.screen.height
+  responsiveState.value.screenWidth = width
+  responsiveState.value.screenHeight = height
   responsiveState.value.viewportWidth = width
   responsiveState.value.viewportHeight = height
 
   responsiveState.value.isSmallMobile = deviceType.isSmallMobile(width)
-  responsiveState.value.isMobile = deviceType.isMobile(width)
-  responsiveState.value.isTablet = deviceType.isTablet(width)
-  responsiveState.value.isDesktop = deviceType.isDesktop(width)
+  responsiveState.value.isMobile = isMobileViewport(width)
+  responsiveState.value.isTablet = isTabletViewport(width)
+  responsiveState.value.isDesktop = !responsiveState.value.isMobile && !responsiveState.value.isTablet
   responsiveState.value.isWide = deviceType.isWide(width)
   responsiveState.value.isUltraWide = deviceType.isUltraWide(width)
 
@@ -1167,6 +1187,10 @@ function updateResponsiveState() {
 }
 
 function getCurrentBreakpoint(width: number): BreakpointName {
+  if (isMobileViewport(width)) {
+    return width < BREAKPOINTS.SMALL_MOBILE_MAX ? BreakpointName.SMALL_MOBILE : BreakpointName.MOBILE
+  }
+
   if (width < BREAKPOINTS.SMALL_MOBILE_MAX) return BreakpointName.SMALL_MOBILE
   if (width < BREAKPOINTS.MOBILE_MAX) return BreakpointName.MOBILE
   if (width < BREAKPOINTS.TABLET_MIN) return BreakpointName.MOBILE
@@ -1179,9 +1203,9 @@ function getCurrentBreakpoint(width: number): BreakpointName {
 function updateDeviceInfo() {
   const ua = navigator.userAgent.toLowerCase()
   responsiveState.value.isTouchDevice = 'ontouchend' in document
-  responsiveState.value.isIOS = /iphone|ipad|ipod/.test(ua)
+  responsiveState.value.isIOS = isIOSDevice(navigator.userAgent, navigator.platform)
   responsiveState.value.isAndroid = /android/.test(ua)
-  responsiveState.value.devicePixelRatio = window.devicePixelRatio || 1
+  responsiveState.value.devicePixelRatio = getViewportDimensions().scale || window.devicePixelRatio || 1
 }
 
 function updateSafeArea() {

@@ -10,6 +10,11 @@ const { getUploadsRoot, getUploadPathFromUrl, getRelativeUploadPathFromUrl } = r
 const MAX_TEMP_FILE_AGE_MS = 2 * 60 * 60 * 1000
 const TEMP_DIRECTORY_PERMISSIONS = {
   subsidy: ['subsidy:create', 'subsidy:edit'],
+  accessories: ['accessories:create', 'accessories:edit'],
+  phones: ['inventory:edit'],
+  videos: ['inventory:edit'],
+  'screen-lock': ['system:edit'],
+  import: ['data-import:upload'],
   shop: [
     'h5-config:edit',
     'h5-admin:edit',
@@ -87,7 +92,7 @@ router.post('/delete-temp-files', unifiedAuth, requireTempFilePermissions, async
         }
 
         // 删除文件
-        if (fs.existsSync(filePath)) {
+      if (fs.existsSync(filePath)) {
           const stats = fs.statSync(filePath)
           if (!stats.isFile() || Date.now() - stats.mtimeMs > MAX_TEMP_FILE_AGE_MS) {
             log.warn(`⚠️ 拒绝删除非近期临时文件: ${relativePath}`)
@@ -96,6 +101,7 @@ router.post('/delete-temp-files', unifiedAuth, requireTempFilePermissions, async
           }
           fs.unlinkSync(filePath)
           deletedFiles.push(relativePath)
+          await removeEmptyTempDirectories(filePath, uploadDirPath, relativePath)
           log.debug(`✅ 已删除临时文件: ${relativePath}`)
         } else {
           log.warn(`⚠️ 文件不存在: ${filePath}`)
@@ -117,5 +123,29 @@ router.post('/delete-temp-files', unifiedAuth, requireTempFilePermissions, async
     ApiResponse.error(res, error.message || '删除临时文件失败', 500)
   }
 })
+
+async function removeEmptyTempDirectories(filePath, uploadsRoot, relativePath) {
+  const topLevelDirectory = path.resolve(uploadsRoot, String(relativePath).split('/')[0])
+  let currentDirectory = path.dirname(filePath)
+
+  while (
+    currentDirectory !== topLevelDirectory &&
+    currentDirectory.startsWith(`${topLevelDirectory}${path.sep}`)
+  ) {
+    try {
+      const entries = await fs.readdir(currentDirectory)
+      if (entries.length > 0) {
+        break
+      }
+      await fs.rmdir(currentDirectory)
+      currentDirectory = path.dirname(currentDirectory)
+    } catch (error) {
+      if (error.code !== 'ENOENT') {
+        log.warn(`⚠️ 清理空临时目录失败: ${currentDirectory}`, error.message)
+      }
+      break
+    }
+  }
+}
 
 module.exports = router

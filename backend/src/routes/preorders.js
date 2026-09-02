@@ -5,7 +5,7 @@
  */
 const express = require('express')
 const router = express.Router()
-const { unifiedAuth, requirePermission } = require('../middleware/unified-auth')
+const { unifiedAuth, requirePermission, requireAnyPermission } = require('../middleware/unified-auth')
 const ApiResponse = require('../utils/response')
 const log = require('../utils/log')
 const { ensurePreorderSchema } = require('../utils/preorder-schema')
@@ -365,6 +365,46 @@ router.get('/stats', unifiedAuth, requirePermission('preorders:view'), async (re
 })
 
 /**
+ * 获取新建/编辑预订单所需的基础选项。
+ * 预订单不应依赖库存或店铺管理页面权限才能填写商品信息。
+ * GET /api/preorders/options
+ */
+router.get('/options', unifiedAuth, requireAnyPermission(['preorders:view', 'preorders:create']), async (req, res) => {
+  let connection
+  try {
+    const pool = require('../config/database').getDatabase()
+    connection = await pool.getConnection()
+
+    const [[stores], [brands], [models], [colors], [memories]] = await Promise.all([
+      connection.query(
+        'SELECT id, name, sort_order FROM stores WHERE status = 1 ORDER BY sort_order ASC, name ASC, id ASC'
+      ),
+      connection.query(
+        'SELECT id, name, sort_order FROM brands ORDER BY sort_order ASC, name ASC, id ASC'
+      ),
+      connection.query(
+        'SELECT id, name, brand_id, sort_order FROM models ORDER BY brand_id ASC, sort_order ASC, name ASC, id ASC'
+      ),
+      connection.query(
+        'SELECT id, name, sort_order FROM colors ORDER BY sort_order ASC, name ASC, id ASC'
+      ),
+      connection.query(
+        'SELECT id, size, sort_order FROM memories ORDER BY sort_order ASC, size ASC, id ASC'
+      )
+    ])
+
+    return ApiResponse.success(res, { stores, brands, models, colors, memories })
+  } catch (error) {
+    log.error('获取预订单基础选项失败:', error)
+    return ApiResponse.serverError(res, '获取预订单基础选项失败', error)
+  } finally {
+    if (connection) {
+      connection.release()
+    }
+  }
+})
+
+/**
  * 查找待匹配的预定单（用于入库时自动匹配）
  * GET /api/preorders/matchable
  * 参数: brand_id, model_id, color_id, memory_id
@@ -629,6 +669,8 @@ router.post('/', unifiedAuth, requirePermission('preorders:create'), rejectHidde
     const normalizedTotalPrice = total_price === undefined || total_price === null || total_price === ''
       ? null
       : Number(total_price)
+    // 数据库中的预计到货日期为必填字段；表单允许不填写时按当天处理。
+    const normalizedExpectedArrival = expected_arrival || new Date().toISOString().slice(0, 10)
 
     if (![0, 1].includes(normalizedCondition)) {
       return ApiResponse.badRequest(res, '机况必须为全新或二手')
@@ -749,7 +791,7 @@ router.post('/', unifiedAuth, requirePermission('preorders:create'), rejectHidde
         // 标记手机为已预定
         const [phoneUpdate] = await connection.execute(
           `UPDATE phones
-           SET is_preordered = 1, updated_at = NOW()
+           SET is_preordered = 1
            WHERE id = ? AND status = 'in_stock' AND COALESCE(is_preordered, 0) = 0`,
           [matchedPhoneId]
         )
@@ -781,7 +823,7 @@ router.post('/', unifiedAuth, requirePermission('preorders:create'), rejectHidde
           normalizedDepositAmount,
           normalizedDepositAmount, // deposit_paid 默认等于 deposit_amount
           normalizedTotalPrice,
-          expected_arrival || null,
+          normalizedExpectedArrival,
           initialStatus,
           remarks || null,
           userId,
@@ -803,7 +845,9 @@ router.post('/', unifiedAuth, requirePermission('preorders:create'), rejectHidde
         matched_phone_id: matchedPhoneId,
         imei: matchedImei
       }, req)
-      ApiResponse.success(res, visiblePreorder, initialStatus === PREORDER_STATUS.MATCHED ? '预定单创建成功，已自动匹配库存' : '预定单创建成功')
+      ApiResponse.success(res, visiblePreorder, initialStatus === PREORDER_STATUS.MATCHED
+        ? '预定单创建成功，已自动匹配并预留库存，尚未出库'
+        : '预定单创建成功')
 
     } catch (dbError) {
       await connection.rollback()
@@ -930,7 +974,7 @@ router.put('/:id/match', unifiedAuth, requirePermission('preorders:match'), reje
 
     const [phoneUpdate] = await connection.execute(
       `UPDATE phones
-       SET is_preordered = 1, updated_at = NOW()
+       SET is_preordered = 1
        WHERE id = ? AND status = 'in_stock' AND COALESCE(is_preordered, 0) = 0`,
       [phone.id]
     )
@@ -950,7 +994,7 @@ router.put('/:id/match', unifiedAuth, requirePermission('preorders:match'), reje
       actual_price: finalPrice,
       remaining_amount: remainingAmount
     }, req)
-    return ApiResponse.success(res, visiblePreorder, '预定单匹配成功')
+    return ApiResponse.success(res, visiblePreorder, '预定单匹配成功，库存已预留，尚未出库')
 
   } catch (error) {
     if (connection) {
@@ -1004,8 +1048,7 @@ router.put('/:id/deliver', unifiedAuth, requirePermission('preorders:deliver'), 
         await connection.execute(
           `UPDATE phones SET
             status = 'sold',
-            sale_time = NOW(),
-            updated_at = NOW()
+            sale_time = NOW()
           WHERE imei = ? AND status = 'in_stock'`,
           [preorder.imei]
         )

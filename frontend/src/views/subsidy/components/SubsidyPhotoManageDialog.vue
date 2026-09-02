@@ -317,6 +317,13 @@ const closeDialog = async () => {
 
 const resolvePhotoUrl = (photo?: string) => formatImageUrl(photo || '')
 
+const getPhotoOwnerName = () => {
+  const handler_name = props.item?.handler_info?.handler_name || props.item?.handler_name || ''
+  const has_handler = Boolean(props.item?.has_different_handler || handler_name)
+  const owner_name = has_handler ? (handler_name || props.item?.customer_name) : props.item?.customer_name
+  return sanitizeDownloadNamePart(owner_name, has_handler ? '未知代办人' : '未知客户')
+}
+
 const preloadPhoto = async (photo?: string) => {
   const resolvedUrl = resolvePhotoUrl(photo)
   if (!resolvedUrl || decodedPhotoCache.has(resolvedUrl)) {
@@ -494,6 +501,11 @@ const customUploadRequest = async (options: any) => {
   formData.append('file', uploadFile)
   formData.append('serial_number', props.item?.serial_number || 'unknown')
   formData.append('sale_time', props.item?.sale_time || '')
+  formData.append('customer_name', props.item?.customer_name || '')
+  formData.append('has_different_handler', props.item?.has_different_handler ? '1' : '0')
+  formData.append('handler_name', props.item?.handler_info?.handler_name || props.item?.handler_name || '')
+  formData.append('is_new', props.item?.is_new === undefined ? '' : String(props.item.is_new))
+  formData.append('inventory_time', props.item?.inventory_time || '')
 
   try {
     const result = await unifiedApi.upload('/subsidy/upload/photo', formData, {
@@ -555,7 +567,7 @@ const getPhotoExtension = (photoUrl: string) => {
 }
 
 const getPhotoDownloadFilename = (index: number, photoUrl: string) => {
-  const customerName = sanitizeDownloadNamePart(props.item?.customer_name, '未知客户')
+  const customerName = getPhotoOwnerName()
   const serialNumber = sanitizeDownloadNamePart(props.item?.serial_number, '无序列号')
   const extension = getPhotoExtension(photoUrl)
   return `${customerName}_${serialNumber}_${index + 1}.${extension}`
@@ -822,36 +834,35 @@ const savePhotoChanges = async () => {
 }
 
 .photo-upload-actions {
-  width: 100%;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: stretch;
+  width: fit-content;
+  max-width: 100%;
   gap: 12px;
-  flex-wrap: nowrap;
+  align-items: center;
 
   :deep(.toolbar-upload) {
-    display: block;
-    width: 100%;
+    display: inline-flex;
+    width: auto;
     min-width: 0;
   }
 
   :deep(.toolbar-upload .el-upload) {
-    display: block;
-    width: 100%;
+    display: inline-flex;
+    width: auto;
   }
 
   :deep(.toolbar-action-btn) {
-    width: 100%;
+    display: inline-flex;
+    width: auto;
     min-width: 0;
     height: 40px;
     margin-left: 0 !important;
+    white-space: nowrap;
   }
 
   :deep(.toolbar-action-btn > span) {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 100%;
     gap: 6px;
     white-space: nowrap;
   }
@@ -1121,14 +1132,13 @@ const savePhotoChanges = async () => {
   }
 
   .photo-upload-actions {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    align-items: stretch;
     gap: 6px;
+    width: 100%;
+    justify-content: flex-start;
 
     :deep(.toolbar-action-btn) {
-      width: 100%;
       min-width: 0;
-      padding: 8px 6px !important;
+      padding: 0 12px !important;
       height: 36px;
       font-size: 12px !important;
     }

@@ -126,6 +126,14 @@ export interface PreorderStats {
   cancelled_count: number
 }
 
+export interface PreorderOptions {
+  stores: Array<{ id: number; name: string; sort_order?: number }>
+  brands: Array<{ id: number; name: string; sort_order?: number }>
+  models: Array<{ id: number; name: string; brand_id: number; sort_order?: number }>
+  colors: Array<{ id: number; name: string; sort_order?: number }>
+  memories: Array<{ id: number; size: string; sort_order?: number }>
+}
+
 /**
  * 获取预定单列表
  */
@@ -148,6 +156,14 @@ export async function getPreorders(params?: {
 export async function getPreorderStats(): Promise<PreorderStats> {
   const response = await unifiedApi.get<PreorderStats>('/preorders/stats')
   return response.data as PreorderStats
+}
+
+/**
+ * 获取预订单表单所需的基础选项。
+ */
+export async function getPreorderOptions(): Promise<PreorderOptions> {
+  const response = await unifiedApi.get<PreorderOptions>('/preorders/options')
+  return response.data as PreorderOptions
 }
 
 /**
@@ -238,6 +254,7 @@ export async function restorePreorder(id: number): Promise<Preorder> {
 export const preorderApi = {
   getPreorders,
   getPreorderStats,
+  getPreorderOptions,
   getMatchablePreorders,
   getMatchablePhones,
   getPreorderDetail,

@@ -4,15 +4,16 @@
       <div class="user-avatar">
         <i class="fas fa-user-circle" />
       </div>
-      <div class="user-details">
+      <div class="user-details user-identity-copy">
         <span class="role-assignment-caption">当前操作用户</span>
         <h4>{{ user.username }}</h4>
         <p>{{ user.full_name || user.name || '未设置姓名' }}</p>
-        <div class="user-status">
-          <span :class="['status-badge', user.status === 1 ? 'active' : 'inactive']">
-            {{ user.status === 1 ? '活跃' : '禁用' }}
-          </span>
-        </div>
+      </div>
+      <div class="user-status user-identity-status">
+        <span :class="['status-badge', user.status === 1 ? 'active' : 'inactive']">
+          <i :class="user.status === 1 ? 'fas fa-check' : 'fas fa-pause'" />
+          {{ user.status === 1 ? '活跃' : '禁用' }}
+        </span>
       </div>
     </div>
 
@@ -22,16 +23,12 @@
         <strong>{{ selectedCount }}</strong>
       </div>
       <div class="summary-metric">
-        <span class="summary-metric-label">当前可见</span>
+        <span class="summary-metric-label">搜索匹配</span>
         <strong>{{ visibleCount }}</strong>
       </div>
       <div class="summary-metric">
         <span class="summary-metric-label">角色总数</span>
         <strong>{{ totalCount }}</strong>
-      </div>
-      <div class="summary-metric hint">
-        <span class="summary-metric-label">分配模式</span>
-        <strong>支持多选</strong>
       </div>
     </div>
   </div>

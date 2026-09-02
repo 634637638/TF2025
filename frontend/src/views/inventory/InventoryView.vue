@@ -234,12 +234,12 @@ let searchDebounceTimer: any = null
 const touchTimers = ref<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 const lastTapTime = ref<Map<string, number>>(new Map())
 
-// 窗口宽度响应式
-const windowWidth = ref(window.innerWidth)
-
-const updateWindowWidth = () => {
-  windowWidth.value = window.innerWidth
-}
+// 统一使用全局移动端状态，避免桌面书签 / 独立窗口和普通浏览器判断不一致
+const windowWidth = computed(() => (
+  mobileDetection.isMobile
+    ? Math.min(mobileDetection.deviceState.screenWidth, 768)
+    : mobileDetection.deviceState.screenWidth
+))
 
 // Element Plus 表格在移动端不会可靠触发 dblclick，使用两次 row-click 模拟双击。
 const handleInventoryRowTap = (item: InventoryItem, _column: unknown, event: MouseEvent) => {
@@ -2263,9 +2263,6 @@ onMounted(async () => {
 
   // 检查 URL 参数，如果有 openStockIn=true 则自动打开入库模态框
   openStockInFromRoute()
-
-  // 添加窗口大小监听
-  window.addEventListener('resize', updateWindowWidth)
 })
 
 onActivated(() => {
@@ -2274,8 +2271,6 @@ onActivated(() => {
 
 // 清理监听器
 onUnmounted(() => {
-  window.removeEventListener('resize', updateWindowWidth)
-
   // 清理所有触摸定时器
   touchTimers.value.forEach(timer => clearTimeout(timer))
   touchTimers.value.clear()

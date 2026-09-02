@@ -1035,7 +1035,7 @@ html {
   }
 }
 
-@media (max-width: 992px) {
+@media (max-width: 1023px) {
   .d-lg-none {
     display: none;
   }
@@ -1609,7 +1609,7 @@ body .el-overlay-message-box .el-message-box__message p {
 /* ==================== Element Plus 消息提示样式 ==================== */
 
 /* 顶部居中定位 */
-.el-message {
+body .el-message {
   position: fixed !important;
   top: 20px !important;
   left: 50% !important;
@@ -1621,13 +1621,16 @@ body .el-overlay-message-box .el-message-box__message p {
   padding: 10px 14px !important;
   font-size: 13px !important;
   border: 1px solid transparent !important;
-  min-width: 280px !important;
-  max-width: 450px !important;
+  // 先按内容的最大自然宽度布局，超过 max-width 后再换行。
+  // fit-content 在 flex 子项较多时会提前收缩，中文短提示容易被挤成两行。
+  width: max-content;
+  min-width: 0 !important;
+  max-width: min(560px, calc(100vw - 32px)) !important;
   height: auto !important;
   line-height: 1.4 !important;
   display: flex !important;
   align-items: center !important;
-  justify-content: space-between !important;
+  justify-content: flex-start !important;
   gap: 8px !important;
 }
 
@@ -1729,14 +1732,16 @@ body .el-overlay-message-box .el-message-box__message p {
   align-self: center !important;
 }
 
-.el-message__content {
+body .el-message .el-message__content {
   font-size: 13px !important;
   line-height: 1.4 !important;
   padding: 0 !important;
   margin: 0 !important;
-  flex: 1 !important;
+  flex: 0 1 auto !important;
+  min-width: 0;
   align-self: center !important;
   word-break: break-word !important;
+  overflow-wrap: anywhere;
 }
 
 .el-message .el-message__closeBtn {

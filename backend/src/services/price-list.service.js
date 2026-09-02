@@ -681,7 +681,6 @@ class PriceListService {
           AND (p.memory_id = real_stock.memory_id OR (p.memory_id IS NULL AND real_stock.memory_id IS NULL))
         WHERE ${latestPublishedFilters}
         ORDER BY b.name, model_sort_num, mo.name, memory_sort_num, c.name
-        LIMIT 500
       `
       const [rows] = await this.db.query(query)
       const rowsWithDisplayMarkup = await this.applyWholesaleDisplayMarkup(rows)
@@ -850,6 +849,10 @@ class PriceListService {
 
       const query = `
         SELECT
+          p.brand_id,
+          p.model_id,
+          p.color_id,
+          p.memory_id,
           b.name as brand_name,
           mo.name as model_number,
           c.name as color_name,
@@ -890,7 +893,6 @@ class PriceListService {
         WHERE (${searchConditions.join(' OR ')})
         AND ${latestPublishedFilters}
         ORDER BY b.name, model_sort_num, mo.name, memory_sort_num, c.name
-        LIMIT 100
       `
       const [rows] = await this.db.query(query, searchParams)
       const rowsWithDisplayMarkup = await this.applyWholesaleDisplayMarkup(rows)

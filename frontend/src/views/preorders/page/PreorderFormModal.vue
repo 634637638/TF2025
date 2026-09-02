@@ -408,9 +408,7 @@ import {
   pickVisiblePreorderFields,
   type PreorderFieldName
 } from '../preorder-field-permissions'
-import { baseDataApi } from '@/api/base-data'
 import { unifiedApi } from '@/utils/unified-api'
-import { extractResponseData } from '@/utils/api-response'
 import { sortOptionsByOrder } from '@/utils/option-sort'
 import InlineLoading from '@/components/InlineLoading.vue'
 import { logger } from '@/utils/logger'
@@ -581,7 +579,7 @@ const formRules = {
 // 过滤后的型号列表
 const filteredModels = computed(() => {
   if (!formData.brand_id) return []
-  return models.value.filter(m => m.brand_id === formData.brand_id)
+  return models.value.filter(m => Number(m.brand_id) === Number(formData.brand_id))
 })
 
 // 计算尾款
@@ -621,19 +619,12 @@ const loadBaseData = async () => {
   }
 
   try {
-    const [storesRes, brandsRes, modelsRes, colorsRes, memoriesRes] = await Promise.all([
-      unifiedApi.get('/stores', { params: { all: true } }),
-      baseDataApi.getAdminBrands(),
-      baseDataApi.getAdminModels(),
-      baseDataApi.getAdminColors(),
-      baseDataApi.getAdminMemories()
-    ])
-
-    const storesData = extractResponseData<any[]>(storesRes)
-    const brandsData = extractResponseData<any[]>(brandsRes)
-    const modelsData = extractResponseData<any[]>(modelsRes)
-    const colorsData = extractResponseData<any[]>(colorsRes)
-    const memoriesData = extractResponseData<any[]>(memoriesRes)
+    const options = await preorderApi.getPreorderOptions()
+    const storesData = Array.isArray(options?.stores) ? options.stores : []
+    const brandsData = Array.isArray(options?.brands) ? options.brands : []
+    const modelsData = Array.isArray(options?.models) ? options.models : []
+    const colorsData = Array.isArray(options?.colors) ? options.colors : []
+    const memoriesData = Array.isArray(options?.memories) ? options.memories : []
 
     stores.value = sortOptionsByOrder(storesData)
     brands.value = sortOptionsByOrder(brandsData)
@@ -648,6 +639,7 @@ const loadBaseData = async () => {
     models.value = []
     colors.value = []
     memories.value = []
+    ElMessage.error('预订单选项加载失败，请刷新后重试')
   }
 }
 
@@ -990,7 +982,7 @@ watch(() => props.visible, (visible) => {
   }
 
   resetForm()
-})
+}, { immediate: true })
 
 // 监听预定单数据变化
 watch(() => props.preorder, (preorder) => {

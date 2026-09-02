@@ -34,24 +34,33 @@
 
       <template #actions>
         <button
-          class="notice-trigger-btn"
+          type="button"
+          class="price-header-action price-header-action--notice"
           @click="showNoticeDialog = true"
         >
-          <span class="btn-icon">⚠️</span>
+          <el-icon class="btn-icon">
+            <WarningFilled />
+          </el-icon>
           <span class="btn-text">调货须知</span>
         </button>
         <button
           v-if="passwordVerified"
-          class="inventory-trigger-btn"
+          type="button"
+          class="price-header-action price-header-action--inventory"
           :class="{ active: showInStockOnly }"
           :disabled="isGenerating || allResults.length === 0"
+          :aria-pressed="showInStockOnly"
           @click="toggleInStockFilter"
         >
-          <span class="btn-icon">{{ showInStockOnly ? '📦' : '🏪' }}</span>
+          <el-icon class="btn-icon">
+            <Grid v-if="showInStockOnly" />
+            <Box v-else />
+          </el-icon>
           <span class="btn-text">{{ showInStockOnly ? '全部' : '在库' }}</span>
         </button>
         <button
-          class="download-trigger-btn"
+          type="button"
+          class="price-header-action price-header-action--download"
           :disabled="isGenerating || searchResults.length === 0"
           @click="downloadAsImage"
         >
@@ -59,23 +68,8 @@
             v-if="!isGenerating"
             class="btn-content"
           >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              class="btn-icon"
-            >
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line
-                x1="12"
-                y1="15"
-                x2="12"
-                y2="3"
-              />
-            </svg>
-            <span class="btn-text">保存为图片</span>
+            <el-icon class="btn-icon"><Download /></el-icon>
+            <span class="btn-text">保存图片</span>
           </span>
           <span
             v-else
@@ -428,6 +422,7 @@
       v-model="showInventoryResult"
       :product="selectedProduct"
       :query-token="inventoryQueryToken"
+      @authorization-expired="handleInventoryAuthorizationExpired"
     />
 
     <!-- iOS 图片保存弹窗 -->
@@ -472,14 +467,15 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue'
-import { Search, Close } from '@element-plus/icons-vue'
+import { Search, Close, WarningFilled, Box, Grid, Download } from '@element-plus/icons-vue'
 import { getAllPrices, searchPrices } from '@/api/price-list'
 import { PublicPriceHeader } from '@/components/base'
 import InlineLoading from '@/components/InlineLoading.vue'
 import { unifiedApi } from '@/utils/unified-api'
 import { ElMessage } from 'element-plus'
-import { TimeUtil, TIME_FORMATS } from '@/utils/time'
+import { TimeUtil } from '@/utils/time'
 import { useLoadingState } from '@/composables'
+import { useMobile } from '@/composables/mobile'
 import { logger } from '@/utils/logger'
 import { loadHtml2Canvas } from '@/utils/html2canvas'
 import { useSiteSettingsStore } from '@/stores/siteSettings'
@@ -488,6 +484,7 @@ import { parsePublicPriceContacts, formatPublicPriceWatermark } from '@/utils/pu
 const InventoryResultDialog = defineAsyncComponent(() => import('@/components/InventoryResultDialog.vue'))
 // 状态
 const { loading } = useLoadingState()
+const { isMobile } = useMobile()
 const siteSettingsStore = useSiteSettingsStore()
 const priceContacts = computed(() => {
   const configured = parsePublicPriceContacts(siteSettingsStore.settings.publicPriceContacts)
@@ -511,12 +508,22 @@ const passwordVerified = ref(false)
 const verifiedUserName = ref('') // 验证成功的用户名
 const inventoryQueryToken = ref('')
 const showInventoryResult = ref(false)
+let inventoryTokenExpiryTimer: ReturnType<typeof setTimeout> | null = null
+let activePriceRequestId = 0
 const selectedProduct = ref<{
+  brand_id?: number
+  model_id?: number
+  color_id?: number
+  memory_id?: number
   brand: string
   model: string
   color: string
   memory: string
 }>({
+  brand_id: undefined,
+  model_id: undefined,
+  color_id: undefined,
+  memory_id: undefined,
   brand: '',
   model: '',
   color: '',
@@ -534,6 +541,21 @@ const applyInventoryFilter = () => {
   searchResults.value = [...source]
 }
 
+const normalizePriceRows = (rows: unknown): any[] => {
+  if (!Array.isArray(rows)) return []
+
+  const uniqueRows = new Map<string, any>()
+  for (const row of rows) {
+    const key = [row?.brand_id, row?.model_id, row?.color_id, row?.memory_id].join(':')
+    if (uniqueRows.has(key)) {
+      logger.warn('公开报价存在重复规格，已忽略重复行', { key })
+      continue
+    }
+    uniqueRows.set(key, row)
+  }
+  return [...uniqueRows.values()]
+}
+
 const toggleInStockFilter = () => {
   if (!passwordVerified.value) return
 
@@ -547,18 +569,30 @@ let lastTapRowIndex = -1
 
 // 加载所有数据
 const loadAllData = async () => {
+  const requestId = ++activePriceRequestId
   loading.value = true
   try {
     const res = await getAllPrices()
+    if (requestId !== activePriceRequestId) return
     if (res.success) {
-      allResults.value = Array.isArray(res.data) ? res.data : []
+      allResults.value = normalizePriceRows(res.data)
       applyInventoryFilter()
       hasSearched.value = true
+    } else {
+      allResults.value = []
+      applyInventoryFilter()
+      hasSearched.value = true
+      ElMessage.error(res.message || '报价数据加载失败')
     }
   } catch (error) {
+    if (requestId !== activePriceRequestId) return
     logger.error('加载数据失败', error)
+    allResults.value = []
+    applyInventoryFilter()
+    hasSearched.value = true
+    ElMessage.error('报价数据加载失败，请稍后重试')
   } finally {
-    loading.value = false
+    if (requestId === activePriceRequestId) loading.value = false
   }
 }
 
@@ -566,53 +600,98 @@ const loadAllData = async () => {
 const handleSearchInput = async () => {
   const keyword = searchKeyword.value.trim()
 
-  // 先尝试作为密码验证（静默）
-  if (!passwordVerified.value && keyword.length > 0) {
-    const verified = await verifyInventoryPassword(keyword)
-    if (verified) {
-      searchKeyword.value = '' // 验证成功后清空输入
-      loadAllData() // 重新加载所有数据
-      return
-    }
-    // 如果验证失败，继续作为搜索关键词
-  }
-
-  // 正常搜索
-  await handleSearch()
-}
-
-// 搜索
-const handleSearch = async () => {
-  const keyword = searchKeyword.value.trim()
-  if (!keyword) {
-    // 如果搜索为空，加载所有数据
-    loadAllData()
+  if (!keyword || passwordVerified.value) {
+    await handleSearch()
     return
   }
 
+  // 普通关键词优先搜索，避免每次查询都消耗密码验证限流额度。
+  const searchResult = keyword.length >= 2 ? await handleSearch(false) : false
+  if (searchResult !== false) return
+
+  const verified = await verifyInventoryPassword(keyword)
+  if (verified) {
+    searchKeyword.value = ''
+    await loadAllData()
+    return
+  }
+
+  ElMessage.warning({
+    message: keyword.length < 2 ? '搜索关键词至少需要 2 个字符' : '未检索到相关数据',
+    duration: 2000,
+    offset: 60
+  })
+}
+
+// 搜索
+const handleSearch = async (notifyNoResults = true): Promise<boolean | null> => {
+  const keyword = searchKeyword.value.trim()
+  if (!keyword) {
+    // 如果搜索为空，加载所有数据
+    await loadAllData()
+    return true
+  }
+
+  if (keyword.length < 2) {
+    if (notifyNoResults) ElMessage.warning('搜索关键词至少需要 2 个字符')
+    return false
+  }
+
+  const requestId = ++activePriceRequestId
   loading.value = true
   try {
     const res = await searchPrices(keyword)
+    if (requestId !== activePriceRequestId) return null
     if (res.success) {
       // 后端已经按 show_price 过滤，前端直接使用返回的数据
-      allResults.value = Array.isArray(res.data) ? res.data : []
+      allResults.value = normalizePriceRows(res.data)
       applyInventoryFilter()
       hasSearched.value = true
 
       // 如果没有搜索结果，显示友好提示（和正常搜索行为一致）
       if (searchResults.value.length === 0) {
-        ElMessage.warning({
-          message: '未检索到相关数据',
-          duration: 2000,
-          offset: 60
-        })
+        if (notifyNoResults) {
+          ElMessage.warning({
+            message: '未检索到相关数据',
+            duration: 2000,
+            offset: 60
+          })
+        }
+        return false
       }
+      return true
+    } else {
+      allResults.value = []
+      applyInventoryFilter()
+      hasSearched.value = true
+      ElMessage.error(res.message || '搜索失败')
+      return null
     }
   } catch (error) {
+    if (requestId !== activePriceRequestId) return null
     logger.error('搜索失败', error)
+    allResults.value = []
+    applyInventoryFilter()
+    hasSearched.value = true
+    ElMessage.error('搜索失败，请稍后重试')
+    return null
   } finally {
-    loading.value = false
+    if (requestId === activePriceRequestId) loading.value = false
   }
+}
+
+const resetInventoryAccess = (showExpiredMessage = false) => {
+  if (inventoryTokenExpiryTimer) {
+    clearTimeout(inventoryTokenExpiryTimer)
+    inventoryTokenExpiryTimer = null
+  }
+  passwordVerified.value = false
+  verifiedUserName.value = ''
+  inventoryQueryToken.value = ''
+  showInStockOnly.value = false
+  showInventoryResult.value = false
+  applyInventoryFilter()
+  if (showExpiredMessage) ElMessage.info('在库查询验证已失效，请重新验证')
 }
 
 // 验证在库查询密码（仅使用后端验证）
@@ -626,17 +705,22 @@ const verifyInventoryPassword = async (password: string): Promise<boolean> => {
     })
 
     if (response.success) {
+      const queryToken = String(response.data?.queryToken || '')
+      if (!queryToken) return false
       passwordVerified.value = true
-      inventoryQueryToken.value = response.data?.queryToken || ''
+      inventoryQueryToken.value = queryToken
       // 从后端返回的用户名
       verifiedUserName.value = response.data?.userName || '用户'
+      if (inventoryTokenExpiryTimer) clearTimeout(inventoryTokenExpiryTimer)
+      const expiresInSeconds = Math.max(1, Number(response.data?.expiresIn) || 600)
+      inventoryTokenExpiryTimer = setTimeout(() => resetInventoryAccess(true), expiresInSeconds * 1000)
       applyInventoryFilter()
       return true
     } else {
       // 静默失败，作为搜索关键词
       return false
     }
-  } catch (error: any) {
+  } catch {
     // 完全忽略所有错误，不打印错误日志，不显示任何提示
     // 这样可以让密码验证完全静默，和普通搜索无结果无法区分
 
@@ -648,7 +732,7 @@ const verifyInventoryPassword = async (password: string): Promise<boolean> => {
 // 清空
 const handleClear = () => {
   searchKeyword.value = ''
-  loadAllData()
+  void loadAllData()
 }
 
 const hasWholesalePrice = (row: any) => {
@@ -659,11 +743,6 @@ const hasWholesalePrice = (row: any) => {
 const formatWholesalePrice = (row: any) => {
   const price = Number(row?.display_wholesale_price ?? row?.wholesale_price ?? 0)
   return Math.round(price)
-}
-
-// 获取当前日期时间字符串
-const _getCurrentDateTime = () => {
-  return TimeUtil.nowFormatted(TIME_FORMATS.DATETIME)
 }
 
 // 固定安全区域并轻微倾斜，避免随机位置靠近边缘导致水印被裁剪。
@@ -848,15 +927,16 @@ const applyContactImageStyles = (clonedDocument: Document) => {
 const downloadAsImage = async () => {
   if (isGenerating.value) return
 
+  const element = document.getElementById('price-results')
+  if (!element) {
+    ElMessage.error('当前没有可生成的报价内容')
+    return
+  }
+
+  const watermarkEl = element.querySelector<HTMLElement>('.image-watermark')
   isGenerating.value = true
   try {
-    const element = document.getElementById('price-results')
-    if (!element) {
-      throw new Error('找不到报价元素')
-    }
-
     // 显示水印并设置随机位置
-    const watermarkEl = element.querySelector('.image-watermark')
     const watermarkItems = element.querySelectorAll('.watermark-item')
     if (watermarkEl && watermarkItems.length > 0) {
       (watermarkEl as HTMLElement).style.display = 'block'
@@ -938,40 +1018,28 @@ const downloadAsImage = async () => {
           croppedCtx.drawImage(canvas, 0, 0, croppedCanvas.width, croppedCanvas.height)
         }
 
-        // 隐藏水印
-        if (watermarkEl) {
-          (watermarkEl as HTMLElement).style.display = 'none'
-        }
-
-        // 恢复原类名
-        element.classList.remove('generating-image')
-
         // 转换为 blob 并保存
         await saveImageToGallery(croppedCanvas)
         return
       }
     }
 
-    // 隐藏水印
-    if (watermarkEl) {
-      (watermarkEl as HTMLElement).style.display = 'none'
-    }
-
-    // 恢复原类名
-    element.classList.remove('generating-image')
-
     // 转换为 blob 并保存
     await saveImageToGallery(canvas)
   } catch (error) {
     logger.error('生成图片失败', error)
-    alert('生成图片失败，请重试')
+    ElMessage.error('生成图片失败，请重试')
   } finally {
+    if (watermarkEl) watermarkEl.style.display = 'none'
+    element.classList.remove('generating-image')
     isGenerating.value = false
   }
 }
 
 // 表格行双击处理
 const handleRowDoubleClick = (row: any) => {
+  if (isMobile.value) return
+
   // 只有已验证密码才显示在库信息
   if (passwordVerified.value) {
     showInventoryResultDialog(row)
@@ -980,7 +1048,9 @@ const handleRowDoubleClick = (row: any) => {
 }
 
 // 表格行点击处理（支持移动端双击）
-const handleRowClick = (row: any, column: any, event: Event) => {
+const handleRowClick = (row: any, _column: any, event: Event) => {
+  if (!isMobile.value) return
+
   const currentTime = Date.now()
   const tapInterval = currentTime - lastTapTime
 
@@ -1007,12 +1077,13 @@ const handleRowClick = (row: any, column: any, event: Event) => {
   }
 }
 
-// 双击型号处理（保留备用，已废弃）
-// 已移除此功能，统一使用表格行双击
-
 // 显示在库查询结果弹窗
 const showInventoryResultDialog = (row: any) => {
   selectedProduct.value = {
+    brand_id: Number(row.brand_id),
+    model_id: Number(row.model_id),
+    color_id: Number(row.color_id),
+    memory_id: Number(row.memory_id),
     brand: row.brand_name,
     model: row.model_number,
     color: row.color_name,
@@ -1020,6 +1091,8 @@ const showInventoryResultDialog = (row: any) => {
   }
   showInventoryResult.value = true
 }
+
+const handleInventoryAuthorizationExpired = () => resetInventoryAccess(true)
 
 const refreshPublicPriceSettings = () => {
   // 公开页面可能在后台设置页保存后才打开，不能依赖应用启动时的设置快照。
@@ -1038,60 +1111,36 @@ const handlePublicPriceSettingsStorage = (event: StorageEvent) => {
   }
 }
 
-onMounted(async () => {
-  // 进入公开报价页时强制读取数据库，确保联系人、站点名称和水印使用最新值。
-  await refreshPublicPriceSettings()
-  // 默认加载所有数据
-  await loadAllData()
+const preventRubberBand = (event: TouchEvent) => {
+  const touch = event.touches[0] || event.changedTouches[0]
+  if (!touch) return
 
-  // 防止 Safari 橡皮筋效果导致页面左右移动
-  const preventRubberBand = (e: TouchEvent) => {
-    const touch = e.touches[0] || e.changedTouches[0]
-    if (!touch) return
-
-    const windowWidth = window.innerWidth
-    // 如果触摸点在页面边缘10px内，阻止默认行为
-    if (touch.clientX <= 10 || touch.clientX >= windowWidth - 10) {
-      // 但表格容器内允许水平滑动
-      const target = e.target as HTMLElement
-      const tableWrapper = target.closest('.table-wrapper')
-      if (!tableWrapper && e.cancelable) {
-        e.preventDefault()
-      }
-    }
+  const windowWidth = window.innerWidth
+  if (touch.clientX <= 10 || touch.clientX >= windowWidth - 10) {
+    const target = event.target as HTMLElement
+    if (!target.closest('.table-wrapper') && event.cancelable) event.preventDefault()
   }
+}
 
-  // 监听触摸事件
+onMounted(async () => {
+  // 站点设置不可用时不能阻塞报价数据首屏加载。
+  await Promise.allSettled([refreshPublicPriceSettings(), loadAllData()])
+
   document.addEventListener('touchstart', preventRubberBand, { passive: false })
   document.addEventListener('touchmove', preventRubberBand, { passive: false })
   document.addEventListener('visibilitychange', handlePublicPriceVisibility)
   window.addEventListener('storage', handlePublicPriceSettingsStorage)
-
-  // 保存清理函数
-  window.__priceQueryCleanup = () => {
-    document.removeEventListener('touchstart', preventRubberBand)
-    document.removeEventListener('touchmove', preventRubberBand)
-    document.removeEventListener('visibilitychange', handlePublicPriceVisibility)
-    window.removeEventListener('storage', handlePublicPriceSettingsStorage)
-  }
 })
 
 onBeforeUnmount(() => {
+  activePriceRequestId += 1
+  if (inventoryTokenExpiryTimer) clearTimeout(inventoryTokenExpiryTimer)
+  inventoryTokenExpiryTimer = null
+  document.removeEventListener('touchstart', preventRubberBand)
+  document.removeEventListener('touchmove', preventRubberBand)
   document.removeEventListener('visibilitychange', handlePublicPriceVisibility)
   window.removeEventListener('storage', handlePublicPriceSettingsStorage)
-  // 清理事件监听器
-  if (window.__priceQueryCleanup) {
-    window.__priceQueryCleanup()
-    delete window.__priceQueryCleanup
-  }
 })
-
-// 声明全局类型
-declare global {
-  interface Window {
-    __priceQueryCleanup?: () => void
-  }
-}
 </script>
 
 <style scoped lang="scss">
@@ -1397,12 +1446,12 @@ declare global {
 }
 
 .results-section {
-  padding: 40px 20px;
+  padding: 10px 20px 40px;
   min-height: 400px;
 
   // 移动端去除边距
   @media (max-width: 768px) {
-    padding: 20px 0;
+    padding: 4px 0 20px;
     // 防止左右移动
     overflow-x: hidden;
   }
@@ -1795,295 +1844,6 @@ declare global {
 
   .copyright {
     opacity: 0.6;
-  }
-}
-
-.notice-section {
-  padding: 20px 20px 30px;
-
-  .container {
-    max-width: 1000px;
-    margin: 0 auto;
-
-    @media (max-width: 768px) {
-      padding: 0;
-      max-width: 100%;
-      // 防止左右移动
-      width: 100%;
-      overflow-x: hidden;
-    }
-
-    // 按钮容器
-    .action-buttons {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-
-      @media (max-width: 768px) {
-        flex-direction: row;
-        padding: 0 12px;
-      }
-
-      // 小屏幕手机适配
-      @media (max-width: 420px) {
-        padding: 0 8px;
-      }
-
-      // 超小屏幕适配
-      @media (max-width: 380px) {
-        padding: 0 6px;
-      }
-    }
-
-    // 调货须知按钮
-    .notice-trigger-btn,
-    .inventory-trigger-btn,
-    .download-trigger-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      flex: 1;
-      max-width: 400px;
-      height: 58px;
-      padding: 14px 24px;
-      border: none;
-      border-radius: 12px;
-      box-sizing: border-box;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      min-width: 0;
-      line-height: 1;
-
-      @media (max-width: 768px) {
-        max-width: none;
-        flex: 1;
-        min-width: 0;
-        height: 48px;
-        padding: 10px 12px;
-        border-radius: 8px;
-      }
-
-      // 小屏幕手机适配
-      @media (max-width: 420px) {
-        padding: 9px 10px;
-        gap: 6px;
-      }
-
-      // 超小屏幕适配
-      @media (max-width: 380px) {
-        padding: 8px 8px;
-        gap: 5px;
-      }
-
-      .btn-icon {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 24px;
-        font-size: 22px;
-
-        @media (max-width: 768px) {
-          font-size: 18px;
-          min-width: 18px;
-        }
-
-        @media (max-width: 420px) {
-          font-size: 16px;
-          min-width: 16px;
-        }
-
-        @media (max-width: 380px) {
-          font-size: 14px;
-          min-width: 14px;
-        }
-      }
-
-      .btn-text {
-        font-size: 16px;
-        font-weight: 700;
-        line-height: 1;
-        white-space: nowrap;
-
-        @media (max-width: 768px) {
-          font-size: 14px;
-        }
-
-        @media (max-width: 420px) {
-          font-size: 13px;
-        }
-
-        @media (max-width: 380px) {
-          font-size: 12px;
-        }
-      }
-    }
-
-    .notice-trigger-btn {
-      background: var(--tf-button-neutral-bg);
-      box-shadow: var(--tf-button-shadow);
-
-      @media (max-width: 768px) {
-        &:hover {
-          background: var(--tf-button-neutral-hover-bg);
-          transform: none;
-          box-shadow: var(--tf-button-shadow-hover);
-        }
-
-        &:active {
-          transform: none;
-        }
-      }
-
-      &:hover {
-        background: var(--tf-button-neutral-hover-bg);
-        transform: translateY(-2px);
-        box-shadow: var(--tf-button-shadow-hover);
-      }
-
-      &:active {
-        transform: translateY(0);
-      }
-
-      .btn-text {
-        color: var(--tf-button-tool-color);
-      }
-
-      .btn-hint {
-        font-size: 14px;
-        color: var(--tf-button-warning-soft-color);
-        font-weight: normal;
-
-        @media (max-width: 768px) {
-          font-size: 12px;
-        }
-      }
-    }
-
-    // 保存图片按钮
-    .inventory-trigger-btn {
-      background: var(--tf-button-primary-bg);
-      color: var(--tf-button-on-color);
-      box-shadow: var(--tf-button-primary-shadow);
-
-      @media (max-width: 768px) {
-        &:hover:not(:disabled) {
-          background: var(--tf-button-primary-hover-bg);
-          box-shadow: var(--tf-button-primary-shadow);
-          transform: none;
-        }
-
-        &:active:not(:disabled) {
-          transform: none;
-        }
-      }
-
-      &:hover:not(:disabled) {
-        background: var(--tf-button-neutral-hover-bg);
-        box-shadow: var(--tf-button-primary-shadow);
-        transform: translateY(-2px);
-      }
-
-      &:active:not(:disabled) {
-        transform: translateY(0);
-      }
-
-      &.active {
-        background: var(--tf-button-neutral-hover-bg);
-        box-shadow: var(--tf-button-shadow-hover);
-      }
-
-      &:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-
-      .btn-text {
-        color: var(--tf-button-on-color);
-      }
-    }
-
-    .download-trigger-btn {
-      background: var(--tf-button-success-bg);
-      color: var(--tf-button-on-color);
-      box-shadow: var(--tf-button-success-shadow);
-
-      @media (max-width: 768px) {
-        &:hover:not(:disabled) {
-          background: var(--tf-button-success-hover-bg);
-          box-shadow: var(--tf-button-success-shadow);
-          transform: none;
-        }
-
-        &:active:not(:disabled) {
-          transform: none;
-        }
-      }
-
-      // 小屏幕手机适配
-      @media (max-width: 420px) {
-        padding: 9px 10px;
-        gap: 6px;
-      }
-
-      // 超小屏幕适配
-      @media (max-width: 380px) {
-        padding: 8px 8px;
-        gap: 5px;
-      }
-
-      &:hover:not(:disabled) {
-        background: var(--tf-button-success-hover-bg);
-        box-shadow: var(--tf-button-success-shadow);
-        transform: translateY(-2px);
-      }
-
-      &:active:not(:disabled) {
-        transform: translateY(0);
-      }
-
-      &:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-
-      .btn-content {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        width: 100%;
-        height: 100%;
-
-        .btn-text {
-          color: var(--tf-button-on-color);
-        }
-
-        .btn-icon {
-          width: 20px;
-          height: 20px;
-
-          @media (max-width: 768px) {
-            width: 16px;
-            height: 16px;
-          }
-
-          @media (max-width: 420px) {
-            width: 14px;
-            height: 14px;
-          }
-
-          @media (max-width: 380px) {
-            width: 12px;
-            height: 12px;
-          }
-
-          &.loading-spinner {
-            animation: spin 1s linear infinite;
-          }
-        }
-      }
-    }
   }
 }
 

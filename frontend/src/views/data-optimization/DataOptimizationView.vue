@@ -55,7 +55,6 @@ import { fieldPermissions } from '@/composables/useFieldPermissions'
 import { PageHeader, PermissionGate } from '@/components/base'
 import DataCheckTab from './page/DataCheckTab.vue'
 import DataImportTab from './page/DataImportTab.vue'
-import DatabaseSyncTab from './page/DatabaseSyncTab.vue'
 
 const DATA_OPTIMIZATION_MODULE_KEY = 'data_optimization_dataoptimizationview'
 const activeTab = ref('check')
@@ -89,21 +88,6 @@ const optimizationTabs = [
       'import.upload_panel',
       'import.analysis_summary',
       'import.strategy_selection'
-    ]
-  },
-  {
-    key: 'database-sync',
-    label: '远程数据同步',
-    icon: 'fas fa-sync',
-    component: DatabaseSyncTab,
-    accessField: 'database_sync.tab_access',
-    contentFields: [
-      'database_sync.smart_sync_banner',
-      'database_sync.step_navigation',
-      'database_sync.connection_config',
-      'database_sync.table_selection',
-      'database_sync.field_mapping',
-      'database_sync.sync_result'
     ]
   }
 ] as const

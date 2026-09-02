@@ -214,6 +214,7 @@
               <el-upload
                 :action="uploadAction"
                 :headers="uploadHeaders"
+                :data="{ module: 'h5_banners' }"
                 :show-file-list="false"
                 :on-success="handleBannerUploadSuccess"
                 :on-error="handleUploadError"

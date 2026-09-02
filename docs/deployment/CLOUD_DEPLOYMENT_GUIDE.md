@@ -643,6 +643,32 @@ mysqldump -u tf2025_user -p tf2025_prod > backup_$(date +%Y%m%d_%H%M%S).sql
 mysql -u tf2025_user -p tf2025_prod < migration_script.sql
 ```
 
+### 上传目录与数据库 URL 同步
+
+上传目录重组时，后端代码、`backend/uploads` 和数据库 URL 必须作为同一个发布单元。
+执行前先阅读[上传文件存储与迁移规范](../backend/upload-storage-standard.md)。
+
+```bash
+cd /var/www/tf2025/backend
+
+# 只读预演
+npm run migrate:subsidy-photos
+npm run migrate:phone-media
+npm run migrate:shop-media
+
+# 仅在数据库 URL 尚未迁移且服务器保留旧目录时执行
+npm run migrate:subsidy-photos -- --apply
+npm run migrate:phone-media -- --apply
+npm run migrate:shop-media -- --apply
+```
+
+如果迁移已在本地执行且本地连接的是云端数据库，不要在服务器直接重复执行
+`--apply`。应停止上传写入，备份服务器 `backend/uploads`，再将本地重组后的
+上传目录与后端代码一起增量同步到服务器。文件同步禁止使用 `--delete`。
+
+迁移或同步完成后再次执行三个预演命令，待迁移数量应为 `0`，并抽查数据库 URL
+对应的物理文件存在后再恢复服务。
+
 ---
 
 ## 常见问题

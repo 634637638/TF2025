@@ -1,7 +1,7 @@
 <template>
   <div
     class="unified-search-panel"
-    @click.capture="handlePanelClick"
+    @click="handlePanelClick"
   >
     <div
       class="unified-search-panel__form"

@@ -1,10 +1,13 @@
 <template>
   <MobileDialog
     :model-value="modelValue"
-    :title="`角色分配 - ${user?.username || ''}`"
+    title="分配用户角色"
     width="1180px"
+    max-width="1180px"
     dialog-class="permissions-dialog user-role-modal"
     :show-default-footer="false"
+    :close-on-click-modal="false"
+    :close-on-press-escape="!saving"
     @update:model-value="emit('update:modelValue', $event)"
   >
     <div class="modal-body">
@@ -20,6 +23,7 @@
         />
         <UserRoleAssignmentBody
           :get-role-card-badge-class="getRoleCardBadgeClass"
+          :is-saving="saving"
           :roles="roles"
           :search-query="searchQuery"
           :selected-role-ids="selectedRoleIds"
@@ -31,13 +35,10 @@
 
     <template #footer>
       <div class="modal-footer user-role-footer">
-        <div class="user-role-footer-info">
-          <i class="fas fa-shield-alt" />
-          <span>本次将为 {{ user?.username || '该用户' }} 更新 {{ selectedRoleIds.length }} 个角色</span>
-        </div>
         <div class="tf-dialog-actions user-role-footer-actions">
           <el-button
             type="info"
+            :disabled="saving"
             @click="emit('close')"
           >
             取消
@@ -54,7 +55,7 @@
               variant="inherit"
             />
             <template v-else>
-              保存角色分配
+              确认分配
             </template>
           </el-button>
         </div>
@@ -94,6 +95,7 @@ const filteredRoleCount = computed(() => {
   if (!query) return props.roles.length
   return props.roles.filter(role => (
     role.name.toLowerCase().includes(query) ||
+    Boolean(role.code?.toLowerCase().includes(query)) ||
     Boolean(role.description?.toLowerCase().includes(query))
   )).length
 })

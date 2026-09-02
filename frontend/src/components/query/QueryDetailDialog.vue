@@ -82,9 +82,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onUnmounted, watch } from 'vue'
 import MobileDialog from '@/components/MobileDialog.vue'
 import QueryDetailContent from '@/components/query/QueryDetailContent.vue'
+import { useMobile } from '@/composables/mobile'
 import type { QueryItem } from '@/types'
 import type { ModelValueProps, UpdateModelValueEmits } from '@/types/component'
 
@@ -103,18 +104,14 @@ interface Emits extends UpdateModelValueEmits {
 
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
+const { isMobile, screenWidth } = useMobile()
 
-const screenWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1280)
-const isMobileSheet = computed(() => screenWidth.value <= 1024)
+const isMobileSheet = computed(() => isMobile.value || screenWidth.value <= 1024)
 
 const dialogVisible = computed({
   get: () => props.modelValue,
   set: (value: boolean) => emit('update:modelValue', value)
 })
-
-const updateScreenWidth = () => {
-  screenWidth.value = window.innerWidth
-}
 
 const handleClose = () => {
   dialogVisible.value = false
@@ -128,12 +125,7 @@ watch([dialogVisible, isMobileSheet], ([visible, mobile]) => {
   }
 })
 
-onMounted(() => {
-  window.addEventListener('resize', updateScreenWidth, { passive: true })
-})
-
 onUnmounted(() => {
-  window.removeEventListener('resize', updateScreenWidth)
   document.body.style.overflow = ''
 })
 </script>

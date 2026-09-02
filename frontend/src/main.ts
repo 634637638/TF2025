@@ -61,6 +61,7 @@ import { enhanceGlobalMessageBox } from '@/utils/message-box'
 import logger from '@/utils/logger'
 import { initAdminTableDragScroll } from '@/utils/admin-table-drag-scroll'
 import { getActionColumnMinWidth } from '@/utils/table-layout'
+import { applyDeviceRootClass } from '@/utils/device-detection'
 
 // 导入 Token 过期检测
 import { startTokenExpiryCheck } from '@/utils/token-expiry-check'
@@ -68,6 +69,10 @@ import { startTokenExpiryCheck } from '@/utils/token-expiry-check'
 // 移除开发环境模拟认证，使用真实登录
 
 const app = createApp(App)
+
+// Safari 的“请求桌面网站”和桌面书签可能返回桌面 UA；
+// 先写入设备标记，让首屏 CSS 与统一响应式状态使用同一套判断。
+applyDeviceRootClass()
 
 // 统一增强 Element Plus 确认弹框。延后到空闲时执行，避免首屏同步加载 Element Plus 服务。
 setTimeout(() => {

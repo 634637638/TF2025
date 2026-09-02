@@ -648,6 +648,7 @@ import { useLoadingState } from '@/composables'
 import { useImportExport } from '@/composables/useImportExport'
 import { useCachedRequest, DEFAULT_CACHE_TTL } from '@/composables/usePageCache'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
+import { isMobileViewport } from '@/utils/device-detection'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import InlineLoading from '@/components/InlineLoading.vue'
@@ -941,7 +942,7 @@ const arriveDateRange = ref<[string, string] | null>(null)
 
 // 判断是否为移动端
 const isMobile = computed(() => {
-  return window.innerWidth <= 768
+  return typeof window !== 'undefined' && isMobileViewport(window.innerWidth)
 })
 
 // 搜索展开状态 - 统一管理

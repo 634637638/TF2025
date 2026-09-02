@@ -645,6 +645,7 @@ import InlineLoading from '@/components/InlineLoading.vue'
 import SectionLoading from '@/components/SectionLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { logger } from '@/utils/logger'
+import { isMobileViewport } from '@/utils/device-detection'
 const router = useRouter()
 const { canView, canDelete, handleNoPermission } = usePagePermissions('price-list-sync-logs')
 
@@ -987,7 +988,7 @@ const getSuccessRateClass = (log: any) => {
 
 const updateMobileState = () => {
   if (typeof window === 'undefined') return
-  isMobile.value = window.innerWidth <= 768
+  isMobile.value = isMobileViewport(window.innerWidth)
   if (!isMobile.value) {
     mobileActionRowId.value = null
     lastTappedRowId.value = null

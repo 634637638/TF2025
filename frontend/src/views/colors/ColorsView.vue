@@ -1691,7 +1691,7 @@ onBeforeUnmount(() => {
 
 }
 
-@media (max-width: 992px) {
+@media (max-width: 1023px) {
   .colors-view {
     padding: 20px;
   }

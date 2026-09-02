@@ -84,13 +84,14 @@
           <template #default="{ row }">
               <button
                 v-if="ctx.canEdit"
+                type="button"
                 :class="['status-badge', 'status-button', row.is_active == '1' || row.is_active === true ? 'active' : 'inactive']"
-              :disabled="row.id === 1 || row.id === 9"
-              :title="row.id === 1 || row.id === 9 ? '系统角色不能停用' : (row.is_active == '1' || row.is_active === true ? '点击停用角色' : '点击启用角色')"
-              @click.stop="ctx.toggleRoleStatus(row)"
-            >
-              <i :class="row.is_active == '1' || row.is_active === true ? 'fas fa-pause' : 'fas fa-play'" />{{ row.is_active == '1' || row.is_active === true ? '停用' : '启用' }}
-            </button>
+                :disabled="row.id === 1 || row.id === 9"
+                :title="row.id === 1 || row.id === 9 ? '系统角色不能停用' : (row.is_active == '1' || row.is_active === true ? '点击停用角色' : '点击启用角色')"
+                @click.stop="ctx.toggleRoleStatus(row)"
+              >
+                <i :class="row.is_active == '1' || row.is_active === true ? 'fas fa-pause' : 'fas fa-play'" />{{ row.is_active == '1' || row.is_active === true ? '停用' : '启用' }}
+              </button>
           </template>
         </el-table-column>
         <el-table-column

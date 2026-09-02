@@ -6,6 +6,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { useTime } from '@/utils/time'
+import { getViewportDimensions, isIOSDevice, isMobileViewport, isTabletViewport } from '@/utils/device-detection'
 import { storage } from '@/services/storage'
 import { PREFERENCE_STORAGE_KEYS } from '@/constants/storage'
 import type { AppLanguage, DeviceInfo, SystemInfo, ThemeMode } from '@/types'
@@ -273,14 +274,14 @@ export const useAppStore = defineStore('app', () => {
   }
 
   const updateDeviceBreakpoint = (): void => {
-    const width = window.innerWidth
+    const { width } = getViewportDimensions()
 
-    if (width < 768) {
+    if (isMobileViewport(width)) {
       isMobile.value = true
       isTablet.value = false
       breakpoint.value = 'sm'
       sidebarCollapsed.value = true
-    } else if (width < 1024) {
+    } else if (isTabletViewport(width)) {
       isMobile.value = false
       isTablet.value = true
       breakpoint.value = 'md'
@@ -471,19 +472,18 @@ export const useAppStore = defineStore('app', () => {
   const updateDeviceInfo = (): void => {
     const userAgent = navigator.userAgent
     const platform = navigator.platform
-    const width = window.innerWidth
-    const height = window.innerHeight
+    const { width, height } = getViewportDimensions()
 
     deviceInfo.value = {
       userAgent,
       platform,
-      isIOS: /iPad|iPhone|iPod/.test(userAgent),
+      isIOS: isIOSDevice(userAgent, platform),
       isAndroid: /Android/i.test(userAgent),
       isSafari: /Safari/i.test(userAgent) && !/Chrome|CriOS|Edg/i.test(userAgent),
       isChrome: /Chrome|CriOS/i.test(userAgent),
-      isMobile: width < 768,
-      isTablet: width >= 768 && width < 1024,
-      isDesktop: width >= 1024,
+      isMobile: isMobileViewport(width, userAgent, platform),
+      isTablet: isTabletViewport(width, userAgent, platform),
+      isDesktop: !isMobileViewport(width, userAgent, platform) && !isTabletViewport(width, userAgent, platform),
       screenSize: {
         width,
         height

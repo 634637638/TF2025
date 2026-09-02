@@ -1407,14 +1407,18 @@ onMounted(() => {
 
 .check-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 20px;
-  margin-bottom: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
 
   .check-card {
     background: white;
     border-radius: 8px;
-    padding: 20px;
+    min-height: 96px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
     cursor: pointer;
     transition: all 0.3s;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
@@ -1430,23 +1434,32 @@ onMounted(() => {
     }
 
     .card-icon {
-      font-size: 32px;
+      flex: 0 0 32px;
+      width: 32px;
+      height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
       color: var(--color-primary);
-      margin-bottom: 12px;
     }
 
     .card-content {
+      min-width: 0;
+      flex: 1;
+
       h3 {
-        font-size: 18px;
+        font-size: 15px;
         font-weight: 600;
         color: var(--color-text-primary);
-        margin: 0 0 8px 0;
+        margin: 0 0 5px;
       }
 
       .card-stats {
         display: flex;
-        gap: 16px;
-        font-size: 14px;
+        flex-wrap: wrap;
+        gap: 4px 10px;
+        font-size: 12px;
 
         .stat-item {
           color: var(--color-info);

@@ -62,6 +62,7 @@ import { useRoute } from 'vue-router'
 import { useMenuStore } from '@/stores/menu'
 import type { MenuItem } from '@/types/menu'
 import IconRenderer from '@/components/IconRenderer.vue'
+import { useMobile } from '@/composables/mobile'
 /**
  * PageHeader - 统一页面头部组件
  *
@@ -101,14 +102,10 @@ const props = withDefaults(defineProps<Props>(), {
 const route = useRoute()
 const slots = useSlots()
 const menuStore = useMenuStore()
-const viewportWidth = ref(typeof window === 'undefined' ? 1440 : window.innerWidth)
+const { isMobile, screenWidth } = useMobile()
 const actionsRef = ref<HTMLElement | null>(null)
 const actionCount = ref(0)
 let actionsObserver: MutationObserver | null = null
-
-const handleResize = () => {
-  viewportWidth.value = window.innerWidth
-}
 
 const updateActionCount = () => {
   if (!actionsRef.value) {
@@ -139,8 +136,6 @@ const updateActionCount = () => {
 }
 
 onMounted(() => {
-  handleResize()
-  window.addEventListener('resize', handleResize, { passive: true })
   nextTick(() => {
     updateActionCount()
     if (actionsRef.value && typeof MutationObserver !== 'undefined') {
@@ -155,7 +150,6 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
-  window.removeEventListener('resize', handleResize)
   actionsObserver?.disconnect()
   actionsObserver = null
 })
@@ -199,9 +193,8 @@ const menuIcon = computed(() => findMenuIconByPath(menuStore.menuItems, normaliz
 const routeMetaIcon = computed(() => String(route.meta?.icon || ''))
 const resolvedIcon = computed(() => menuIcon.value.icon || routeMetaIcon.value || props.icon || '')
 const resolvedIconSvg = computed(() => menuIcon.value.svg || '')
-const isMobile = computed(() => viewportWidth.value <= 768)
-const isSmallMobile = computed(() => viewportWidth.value <= 480)
-const isTinyMobile = computed(() => viewportWidth.value <= 375)
+const isSmallMobile = computed(() => screenWidth.value <= 480)
+const isTinyMobile = computed(() => screenWidth.value <= 375)
 const isDenseMobileHeader = computed(() => isMobile.value && actionCount.value >= 4)
 const isShortTitle = computed(() => props.title.trim().length <= 4 && !props.description)
 

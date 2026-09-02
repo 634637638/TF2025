@@ -39,8 +39,11 @@ export interface MediaUploadOptions {
 }
 
 export interface UploadResult {
-  success?: boolean
-  message?: string
+  id?: number
+  url?: string
+  filename?: string
+  originalname?: string
+  size?: number
 }
 
 export interface PublishInspectionResponse {

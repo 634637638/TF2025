@@ -1462,7 +1462,7 @@ watch(canView, async (value) => {
   cursor: pointer;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1023px) {
   .main-grid {
     grid-template-columns: 1fr;
   }

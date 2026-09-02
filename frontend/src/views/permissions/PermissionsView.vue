@@ -987,9 +987,6 @@ const loadUsers = async (showLoading = true, showSuccess = false) => {
       usersLoading.value = true
     }
 
-    // 🔥 性能优化：使用新的优化端点，一次性获取用户及其角色信息
-    const startTime = Date.now()
-
     const response = await unifiedApi.get('/permissions/users-with-roles', {
       params: {
         page: usersPagination.page,
@@ -1004,11 +1001,9 @@ const loadUsers = async (showLoading = true, showSuccess = false) => {
       const responseData = response.data || {}
       const users = responseData.users || []
 
-      // 静默刷新成功提示
+      // 仅在明确要求时显示成功提示，普通加载保持静默
       if (showSuccess) {
-        const loadTime = Date.now() - startTime
-        success('用户数据已刷新', {
-          title: `加载了 ${users.length} 个用户 (耗时 ${loadTime}ms)`,
+        success(`成功加载 ${users.length} 个用户`, {
           duration: 2000
         })
       }
@@ -1036,9 +1031,6 @@ const loadUsers = async (showLoading = true, showSuccess = false) => {
       })
 
       usersData.value = processedUsers
-
-      // 显示成功消息
-      success(`成功加载 ${processedUsers.length} 个用户 (优化版)`)
 
     } else {
       error(response.message || '获取用户列表失败')

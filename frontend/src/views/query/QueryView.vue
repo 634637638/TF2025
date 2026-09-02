@@ -573,14 +573,15 @@
       @add-item="handleAddItemToReceipt"
     />
 
-    <!-- 图片管理模态框 -->
+    <!-- 媒体管理模态框 -->
     <el-dialog
       v-model="showImageModal"
-      title="图片管理"
+      title="素材管理"
       width="90%"
       :close-on-click-modal="true"
       :z-index="2000"
       class="image-manage-dialog"
+      @closed="showImageViewer = false"
     >
       <div class="image-preview-modal">
         <div class="modal-header">
@@ -592,15 +593,15 @@
           v-if="loadingImages"
           class="loading-images"
         >
-          <InlineLoading text="加载图片中..." />
+          <InlineLoading text="加载素材中..." />
         </div>
 
         <div
           v-else-if="productImages.length === 0"
           class="no-images"
         >
-          <i class="fas fa-image" />
-          <p>暂无图片，点击下方"上传图片"按钮添加</p>
+          <i class="fas fa-photo-video" />
+          <p>暂无图片或视频</p>
         </div>
 
         <div v-else>
@@ -617,7 +618,16 @@
                 class="image-item"
                 @click="previewImage(image)"
               >
+                <video
+                  v-if="isVideoMedia(image)"
+                  :src="getImageUrl(image.image_url)"
+                  class="media-thumbnail"
+                  muted
+                  playsinline
+                  preload="metadata"
+                />
                 <Image
+                  v-else
                   :src="image.image_url"
                   :alt="`图片 ${index + 1}`"
                   mode="eager"
@@ -628,6 +638,10 @@
                     memory: selectedPhoneInfo?.memory || ''
                   }"
                 />
+                <div v-if="isVideoMedia(image)" class="media-type-badge">
+                  <i class="fas fa-play" />
+                  视频
+                </div>
                 <!-- 拖拽手柄 -->
                 <div class="drag-handle">
                   <i class="fas fa-grip-vertical" />
@@ -652,7 +666,7 @@
                 </el-button>
                 <!-- 设置主图按钮 -->
                 <div
-                  v-if="!image.is_primary"
+                  v-if="!image.is_primary && !isVideoMedia(image)"
                   class="set-primary-btn"
                   @click="setPrimaryImage(image)"
                 >
@@ -700,30 +714,18 @@
       </template>
     </el-dialog>
 
-    <!-- 大图预览 - 用 teleport 移到 body -->
-    <teleport to="body">
-      <div
-        v-if="showImageViewer"
-        class="image-viewer-mask"
-        @click.self="closeImageViewer"
-      >
-        <div @click.stop>
-          <el-image-viewer
-            :url-list="imageViewerUrls"
-            :initial-index="imageViewerIndex"
-            :hide-on-click-modal="true"
-            @close="closeImageViewer"
-          />
-        </div>
-      </div>
-    </teleport>
+    <MediaPreviewViewer
+      v-model="showImageViewer"
+      :items="previewMediaItems"
+      :initial-index="previewMediaIndex"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick, defineAsyncComponent } from 'vue'
 import { useRouter, onBeforeRouteLeave } from 'vue-router'
-import { ElMessage, ElMessageBox, ElImageViewer } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { useNotification } from '@/composables/useNotification'
 import { useImportExport } from '@/composables/useImportExport'
@@ -748,6 +750,7 @@ import InlineLoading from '@/components/InlineLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { PageHeader, PermissionGate } from '@/components/base'
 import Image from '@/components/Image.vue'
+import MediaPreviewViewer from '@/components/MediaPreviewViewer.vue'
 import SalesReceipt from '@/components/query/SalesReceipt.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
@@ -755,6 +758,8 @@ import { refreshScrollAnimations } from '@/utils/scrollAnimation'
 import { PHONE_STATUS_OPTIONS, getPhoneStatusClass, getPhoneStatusLabel } from '@/constants/phoneStatuses'
 import { normalizeAppleId, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
 import { logger } from '@/utils/logger'
+import { isVideoMedia, type MediaPreviewItem } from '@/utils/media'
+import { useMobile } from '@/composables/mobile'
 
 // 定义消息提示函数
 const message = ElMessage
@@ -821,8 +826,13 @@ const productImages = ref<any[]>([])
 const selectedPhoneId = ref<number | null>(null)
 const selectedPhoneInfo = ref<{ brand: string; model: string; color: string; memory: string; imei: string } | null>(null)
 const showImageViewer = ref(false)
-const imageViewerUrls = ref<string[]>([])
-const imageViewerIndex = ref(0)
+const previewMediaIndex = ref(0)
+const previewMediaItems = computed<MediaPreviewItem[]>(() => productImages.value.map(media => ({
+  id: media.id,
+  url: media.image_url,
+  type: media.image_type,
+  label: isVideoMedia(media) ? '商品视频' : '商品图片'
+})))
 const { loading: uploadingImage } = useLoadingState()
 
 // 临时文件跟踪器
@@ -836,18 +846,16 @@ const selectedReturnDevice = ref<ReturnDeviceInfo | null>(null)
 const fieldPermissionsLoading = ref(false)
 
 // 响应式表格相关状态
-const windowWidth = ref(window.innerWidth)
+const { isMobile, screenWidth } = useMobile()
+const windowWidth = computed(() => (
+  isMobile.value ? Math.min(screenWidth.value, 768) : screenWidth.value
+))
 const showDetailModal = ref(false)
 const detailItem = ref<QueryItem | null>(null)
 
 // 触摸事件相关状态（用于移动端双击检测）
 const touchTimers = ref<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 const lastTapTime = ref<Map<string, number>>(new Map())
-
-// 监听窗口大小变化
-const updateWindowWidth = () => {
-  windowWidth.value = window.innerWidth
-}
 
 // Element Plus 表格不会在移动端可靠触发 dblclick，使用两次 row-click 模拟双击。
 const handleRowTap = (item: QueryItem, _column: unknown, event: MouseEvent) => {
@@ -1817,26 +1825,9 @@ const formatPrice = (price?: number | null) => {
 
 // 图片预览相关函数
 const previewImage = (image: any) => {
-  const urls = productImages.value.map(img => getImageUrl(img.image_url))
   const index = productImages.value.findIndex(img => img.id === image.id)
-  imageViewerUrls.value = urls
-  imageViewerIndex.value = index >= 0 ? index : 0
+  previewMediaIndex.value = index >= 0 ? index : 0
   showImageViewer.value = true
-
-  // 添加 ESC 键监听
-  document.addEventListener('keydown', handleEscKey)
-}
-
-const handleEscKey = (e: KeyboardEvent) => {
-  if (e.key === 'Escape' && showImageViewer.value) {
-    closeImageViewer()
-  }
-}
-
-// 关闭图片预览
-const closeImageViewer = () => {
-  showImageViewer.value = false
-  document.removeEventListener('keydown', handleEscKey)
 }
 
 const getImageUrl = (url: string) => {
@@ -2707,8 +2698,6 @@ onMounted(async () => {
     }, 1200)
   })
 
-  // 添加窗口大小监听
-  window.addEventListener('resize', updateWindowWidth)
   await refreshQueryAnimations()
 })
 
@@ -2730,8 +2719,6 @@ onBeforeRouteLeave(async () => {
 
 // 清理监听器
 onUnmounted(() => {
-  window.removeEventListener('resize', updateWindowWidth)
-
   if (debounceTimer) {
     clearTimeout(debounceTimer)
   }
@@ -3425,7 +3412,7 @@ textarea.form-control {
 }
 
 /* 平板适配 */
-@media (min-width: 768px) and (max-width: 1024px) {
+@media (min-width: 768px) and (max-width: 1023px) {
   .device-info-table .label-cell,
   .device-info-table .value-cell {
     padding: 10px 12px;
@@ -3647,7 +3634,7 @@ textarea.form-control {
 }
 
 /* 移动端整行可点击 */
-@media (max-width: 1024px) {
+@media (max-width: 1023px) {
   .data-row {
     cursor: pointer;
   }
@@ -3835,10 +3822,26 @@ textarea.form-control {
       transform: scale(1.05);
     }
 
-    img {
+    img,
+    video {
       width: 100%;
       height: 100%;
       object-fit: cover;
+    }
+
+    .media-type-badge {
+      position: absolute;
+      left: 8px;
+      bottom: 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 7px;
+      border-radius: 4px;
+      background: rgba(15, 23, 42, 0.78);
+      color: var(--color-bg-white);
+      font-size: 12px;
+      pointer-events: none;
     }
 
     .primary-badge {
@@ -3960,70 +3963,6 @@ textarea.form-control {
       gap: 10px;
     }
   }
-}
-
-/* 图片预览容器 - 确保在所有内容之上，居中显示 */
-.image-viewer-mask {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 2000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.9);
-
-  :deep(.el-image-viewer__wrapper) {
-    z-index: 2001;
-  }
-
-  /* 限制预览图片的默认大小 - 使用多个选择器确保生效 */
-  :deep(img.el-image-viewer__img) {
-    max-width: 80vw !important;
-    max-height: 80vh !important;
-    width: auto !important;
-    height: auto !important;
-    object-fit: contain !important;
-  }
-
-  :deep(.el-image-viewer__canvas) > div {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-  }
-
-  :deep(.el-image-viewer__canvas) img {
-    max-width: 80vw !important;
-    max-height: 80vh !important;
-    width: auto !important;
-    height: auto !important;
-    object-fit: contain !important;
-  }
-}
-
-/* 全局样式：限制 el-image-viewer 图片默认大小 */
-.el-image-viewer__img {
-  max-width: 80vw !important;
-  max-height: 80vh !important;
-  width: auto !important;
-  height: auto !important;
-  object-fit: contain !important;
-}
-
-.el-image-viewer__canvas img {
-  max-width: 80vw !important;
-  max-height: 80vh !important;
-  width: auto !important;
-  height: auto !important;
-  object-fit: contain !important;
-}
-
-/* 强制覆盖内联样式 - 只限制最大尺寸，不干扰 transform */
-.el-image-viewer__wrapper .el-image-viewer__img[style] {
-  max-width: 80vw !important;
-  max-height: 80vh !important;
 }
 
 .remark-cell {

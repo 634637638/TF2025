@@ -188,10 +188,11 @@
           <div class="table-responsive">
             <el-table
               ref="modelsTableRef"
-              :data="tableLoading ? [] : models"
+              :data="models"
+              class="data-table devices-table base-data-table models-data-table"
               border
               stripe
-              class="data-table devices-table base-data-table models-data-table"
+              v-loading="tableLoading && models.length > 0"
               table-layout="fixed"
               :fit="true"
               :row-key="getModelRowKey"
@@ -251,7 +252,7 @@
                 </template>
               </el-table-column>
               <el-table-column
-                v-if="canViewField('id')"
+                v-if="showModelIndexField"
                 label="序号"
                 width="70"
                 align="center"
@@ -560,8 +561,10 @@ const canEditField = (fieldName: string) => {
   return fieldPermissions.isFieldEditable('models_modelsview', getFieldKey(fieldName))
 }
 
-const showSortField = computed(() => canViewField('sort_order') && !isMobile.value)
-const showSortOrderField = computed(() => canViewField('sort_order') && !isMobile.value)
+const hasBrandFilter = computed(() => searchForm.value.brand_id !== null)
+const showSortField = computed(() => canViewField('sort_order') && !isMobile.value && hasBrandFilter.value)
+const showSortOrderField = computed(() => canViewField('sort_order') && !isMobile.value && hasBrandFilter.value)
+const showModelIndexField = computed(() => canViewField('id') && !isMobile.value)
 const showActionField = computed(() => (
   shouldShowActionColumn(canViewField('actions'), [canEdit.value, canDelete.value]) && !isMobile.value
 ))
@@ -610,6 +613,7 @@ const savingOrder = ref(false)
 const models = ref<Model[]>([])
 const getModelRowKey = (model: Model) => String(model.id)
 const brands = ref<Brand[]>([])
+let lastLoadedQueryKey = ''
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
 const currentEditingId = ref<number | null>(null)
@@ -655,6 +659,12 @@ const isEditMode = computed(() => showEditModal.value && currentEditingId.value 
 // 方法
 // 计算型号在品牌内的序号（从1开始）
 const getModelIndexInBrand = (model: Model): number => {
+  // 品牌筛选后直接使用数据库中的品牌内排序值，与分页无关。
+  const sortOrder = Number(model.sort_order)
+  if (Number.isFinite(sortOrder) && sortOrder >= 0) {
+    return sortOrder + 1
+  }
+
   return modelIndexMap.value.get(model.id) || 0
 }
 
@@ -729,12 +739,27 @@ const loadModels = async (_bustCache = false, silentError = false, _showLoadingS
     const params: any = {
       page: pagination.value.page,
       page_size: pagination.value.page_size,
-      sort_by: 'sort_order',
+      // sort_order 只在品牌范围内有意义；全部型号仅按品牌分组展示，不参与品牌内排序操作。
+      sort_by: searchForm.value.brand_id === null ? 'brand_id' : 'sort_order',
       sort_order: 'asc'
     }
 
+    const queryKey = JSON.stringify({
+      page: params.page,
+      page_size: params.page_size,
+      name: searchForm.value.name.trim(),
+      brand_id: searchForm.value.brand_id,
+      status: searchForm.value.status
+    })
+
+    // 搜索条件没有变化时直接复用当前结果，避免重复点击造成远程请求等待。
+    if (!_bustCache && queryKey === lastLoadedQueryKey) {
+      return
+    }
+
     // 添加搜索参数
-    if (searchForm.value.name) params.name = searchForm.value.name
+    const normalizedName = searchForm.value.name.trim()
+    if (normalizedName) params.name = normalizedName
     if (searchForm.value.brand_id !== null && searchForm.value.brand_id !== undefined) {
       params.brand_id = searchForm.value.brand_id
     }
@@ -752,6 +777,7 @@ const loadModels = async (_bustCache = false, silentError = false, _showLoadingS
 
     if (response.success) {
       models.value = sortOptionsByOrder(response.data.models || [])
+      lastLoadedQueryKey = queryKey
       // 确保 total 是数字类型
       const paginationData = response.data.pagination || {
         page: 1,

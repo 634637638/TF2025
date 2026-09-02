@@ -953,6 +953,11 @@ const customUploadRequest = async (options: any) => {
   formData.append('file', uploadFile)
   formData.append('serial_number', phoneDetail.value?.serial_number || 'unknown')
   formData.append('sale_time', phoneDetail.value?.sale_time || '')
+  formData.append('customer_name', phoneDetail.value?.customer_name || '')
+  formData.append('has_different_handler', applyForm.has_different_handler ? '1' : '0')
+  formData.append('handler_name', applyForm.handler_name || '')
+  formData.append('is_new', phoneDetail.value?.is_new === undefined ? '' : String(phoneDetail.value.is_new))
+  formData.append('inventory_time', phoneDetail.value?.inventory_time || '')
 
   try {
     const result = await unifiedApi.upload('/subsidy/upload/photo', formData, {

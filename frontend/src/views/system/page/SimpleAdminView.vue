@@ -1,5 +1,8 @@
 <template>
-  <div class="admin-container">
+  <div
+    class="admin-container"
+    :class="{ 'compact-device': !isDesktopLayout }"
+  >
     <!-- Font Awesome -->
     <link
       rel="stylesheet"
@@ -13,16 +16,16 @@
     />
 
     <div class="admin-layout">
-      <!-- 桌面端侧边栏 - 仅在非移动端显示 -->
+      <!-- 桌面端侧边栏 - 仅在桌面端常驻显示 -->
       <SimpleSidebar
-        v-if="!isMobile"
+        v-if="isDesktopLayout"
         :collapsed="sidebarCollapsed"
         :menu-items="menuItems"
         class="sidebar-component"
         @menu-click="handleMenuNavigation"
       />
 
-      <!-- 移动端响应式菜单 - 仅在移动端显示 -->
+      <!-- 手机和平板统一使用侧滑菜单 -->
       <ResponsiveMenu
         v-else
         ref="responsiveMenuRef"
@@ -50,8 +53,8 @@
           :class="{ scrolled: isScrolled }"
         >
           <div class="header-left">
-            <!-- 多标签页 - 仅PC端显示 -->
-            <TabsBar v-if="!isMobile" />
+            <!-- 多标签页 - 仅桌面端显示 -->
+            <TabsBar v-if="isDesktopLayout" />
           </div>
           <div class="topbar-actions">
             <!-- 用户信息显示 -->
@@ -145,6 +148,7 @@ import { TimeUtil } from '@/utils/time'
 import { storage } from '@/services/storage'
 import { canAccessRoutePath } from '@/constants/routePermissions'
 import { logger } from '@/utils/logger'
+import { BREAKPOINTS } from '@/config/breakpoints'
 
 // 路由
 const router = useRouter()
@@ -162,7 +166,8 @@ const getRouteCacheKey = (path: string) => `${path}:${tabsStore.tabRefreshVersio
 const isRefreshingCurrentRoute = (path: string) => tabsStore.refreshingPath === path
 
 // 移动端检测
-const { isMobile } = useMobile()
+const { isMobile, isTablet, screenWidth } = useMobile()
+const isDesktopLayout = computed(() => screenWidth.value >= BREAKPOINTS.DESKTOP_MIN)
 
 // 使用菜单宽度组合式函数
 const { menuWidth, loadAllMenuWidths } = useMenuWidth()
@@ -399,7 +404,7 @@ watch(
       saveRouteScrollPosition(oldPath)
     }
 
-    if (newPath && !isMobile.value) {
+    if (newPath && isDesktopLayout.value) {
       if (!canAddRouteTab(newPath)) {
         tabsStore.closeTab(newPath)
         return
@@ -510,6 +515,30 @@ onUnmounted(() => {
   display: flex;
   align-items: stretch;
   overflow: hidden;
+}
+
+.sidebar-toggle-btn {
+  width: 44px;
+  min-width: 44px;
+  height: 40px;
+  align-self: center;
+  margin: 0 8px 0 12px;
+  border: 1px solid var(--tf-color-border-cool);
+  border-radius: 6px;
+  background: var(--color-bg-white);
+  color: var(--tf-color-indigo-brand);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.sidebar-toggle-btn:hover {
+  background: var(--tf-color-surface-blue);
+  border-color: var(--tf-color-indigo-brand);
+  color: var(--tf-color-indigo-brand);
 }
 
 .topbar-actions {
@@ -950,18 +979,19 @@ onUnmounted(() => {
 
   .topbar-actions {
     width: 100%;
-    justify-content: space-between;
+    justify-content: flex-end;
     gap: 6px;
   }
 
   .user-info {
     height: var(--tf-topbar-control-height, 36px);
     padding: 4px 10px;
-    justify-content: flex-start;
+    justify-content: flex-end;
     width: auto;
     min-width: 0;
     flex: 0 1 auto;
     max-width: calc(100% - 92px);
+    margin-left: auto;
     gap: 8px;
   }
 
@@ -976,10 +1006,13 @@ onUnmounted(() => {
     display: flex;
     flex-direction: row;
     align-items: center;
-    gap: 6px;
+    justify-content: flex-end;
+    gap: 4px;
     flex: 0 1 auto;
     min-width: 0;
     height: 100%;
+    flex-wrap: nowrap;
+    overflow: hidden;
   }
 
   .user-name {
@@ -990,7 +1023,7 @@ onUnmounted(() => {
     flex: 0 1 auto;
     min-width: 0;
     width: fit-content;
-    max-width: min(36vw, 140px);
+    max-width: min(28vw, 140px);
     overflow: hidden;
     text-overflow: ellipsis;
     padding: 3px 8px;
@@ -1032,6 +1065,102 @@ onUnmounted(() => {
     display: none; /* 隐藏文字，只显示图标 */
   }
 
+}
+
+/* Safari iPhone 桌面网站模式的 CSS 视口可能大于 768px；
+ * 设备根标记用于补齐必须保留的手机后台布局规则。 */
+.admin-container.compact-device .main-content {
+  margin-left: 0;
+  min-width: 0;
+}
+
+.admin-container.compact-device .topbar {
+  padding: 8px 12px;
+  padding-left: 70px;
+  flex-direction: row;
+  gap: 8px;
+  align-items: center;
+  min-height: 56px;
+}
+
+.admin-container.compact-device .header-left {
+  display: none;
+}
+
+.admin-container.compact-device .topbar-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-container.compact-device .user-info {
+  min-width: 0;
+  flex: 0 1 auto;
+  width: fit-content;
+  max-width: 100%;
+  margin-left: auto;
+  justify-content: flex-end;
+  overflow: hidden;
+}
+
+.admin-container.compact-device .user-main-info {
+  flex: 0 1 auto;
+  min-width: 0;
+  width: fit-content;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.admin-container.compact-device .user-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  width: fit-content;
+  max-width: min(28vw, 140px);
+}
+
+.admin-container.compact-device .user-role {
+  flex: 0 0 auto;
+}
+
+.admin-container.compact-device .topbar-buttons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .admin-container.compact-device .topbar {
+    padding-left: 64px;
+  }
+
+  .admin-container.compact-device .topbar-actions {
+    gap: 10px;
+  }
+
+  .admin-container.compact-device .user-info {
+    overflow: hidden;
+  }
+
+  .admin-container.compact-device .user-main-info {
+    justify-content: flex-end;
+    text-align: right;
+  }
+
+  .admin-container.compact-device .user-name,
+  .admin-container.compact-device .user-role {
+    white-space: nowrap;
+    text-align: right;
+  }
+
+  .admin-container.compact-device .user-time-info {
+    display: none;
+  }
 }
 
 /* 滚动条样式 */

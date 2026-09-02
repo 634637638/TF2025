@@ -218,7 +218,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive, onMounted, watch } from 'vue'
+import { ref, computed, reactive, onMounted, onUnmounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, UploadProps } from 'element-plus'
 import { unifiedApi } from '@/utils/unified-api'
@@ -228,6 +228,7 @@ import Image from './Image.vue'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { storage } from '@/services/storage'
 import { logger } from '@/utils/logger'
+import { deleteTempFiles } from '@/utils/temp-file-cleaner'
 
 // 接口定义
 interface ScreenLockSettings {
@@ -289,6 +290,7 @@ const screenLockForm = reactive({
 
 // 原始数据备份
 const originalData = ref<ScreenLockSettings>({ ...screenLockForm })
+const uploadedTempFiles = ref<string[]>([])
 
 // 认证信息
 const authStore = useAuthStore()
@@ -366,6 +368,7 @@ const saveSettings = async () => {
 
     if (response.success) {
       originalData.value = { ...screenLockForm }
+      uploadedTempFiles.value = []
       lastSavedTime.value = TimeUtil.nowFormatted(TIME_FORMATS.DATETIME)
       ElMessage.success('设置保存成功')
       emit('change', data)
@@ -378,6 +381,7 @@ const saveSettings = async () => {
     // 如果后端失败（404），但 localStorage 已保存，也视为成功
     if ((isApiLikeError(error) && error.message?.includes('404')) || (isApiLikeError(error) && error.response?.status === 404)) {
       originalData.value = { ...screenLockForm }
+      uploadedTempFiles.value = []
       lastSavedTime.value = TimeUtil.nowFormatted(TIME_FORMATS.DATETIME)
       ElMessage.warning('设置已保存到本地（后端未连接）')
       emit('change', { ...screenLockForm })
@@ -395,6 +399,7 @@ const resetForm = async () => {
       type: 'warning'
     })
 
+    await cleanupTempFiles()
     Object.assign(screenLockForm, {
       backgroundType: originalData.value.backgroundType || 'default',
       imageUrl: originalData.value.imageUrl || '',
@@ -442,6 +447,9 @@ const beforeVideoUpload: UploadProps['beforeUpload'] = (file) => {
 
 const handleImageSuccess = (response: UploadResponse) => {
   if (response.success && response.data?.url) {
+    if (!uploadedTempFiles.value.includes(response.data.url)) {
+      uploadedTempFiles.value.push(response.data.url)
+    }
     screenLockForm.imageUrl = response.data.url
     ElMessage.success('图片上传成功')
   } else {
@@ -451,6 +459,9 @@ const handleImageSuccess = (response: UploadResponse) => {
 
 const handleVideoSuccess = (response: UploadResponse) => {
   if (response.success && response.data?.url) {
+    if (!uploadedTempFiles.value.includes(response.data.url)) {
+      uploadedTempFiles.value.push(response.data.url)
+    }
     screenLockForm.videoUrl = response.data.url
     ElMessage.success('视频上传成功')
   } else {
@@ -463,6 +474,16 @@ const handleUploadError = (error: unknown) => {
   ElMessage.error('文件上传失败')
 }
 
+const cleanupTempFiles = async () => {
+  const targets = [...uploadedTempFiles.value]
+  if (targets.length === 0) return
+
+  const success = await deleteTempFiles(targets)
+  if (success) {
+    uploadedTempFiles.value = uploadedTempFiles.value.filter(url => !targets.includes(url))
+  }
+}
+
 // 监听变化
 watch([screenLockForm], () => {
   emit('update:modelValue', hasChanges.value)
@@ -471,6 +492,10 @@ watch([screenLockForm], () => {
 // 生命周期
 onMounted(() => {
   loadSettings()
+})
+
+onUnmounted(() => {
+  void cleanupTempFiles()
 })
 </script>
 

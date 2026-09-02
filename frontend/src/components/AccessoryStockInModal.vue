@@ -592,10 +592,12 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { unifiedApi } from '@/utils/unified-api'
+import { deleteTempFiles } from '@/utils/temp-file-cleaner'
 import { formatImageUrl } from '@/utils/format'
 import { sortOptionsByOrder } from '@/utils/option-sort'
 import { useAuthStore } from '@/stores/auth'
 import { logger } from '@/utils/logger'
+import { isMobileViewport } from '@/utils/device-detection'
 import type { ModelValueProps, UpdateModelValueEmits, SuccessEmits, CloseEmits } from '@/types/component'
 import Image from './Image.vue'
 import { storage } from '@/services/storage'
@@ -634,6 +636,7 @@ const visible = computed({
 const searching = ref(false)
 const submitting = ref(false)
 const existingAccessory = ref(null)
+const uploadedTempImages = ref<string[]>([])
 
 // 表单数据
 const formData = ref({
@@ -713,7 +716,7 @@ const canSubmit = computed(() => {
   )
 })
 
-const isMobile = computed(() => window.innerWidth < 768)
+const isMobile = computed(() => typeof window !== 'undefined' && isMobileViewport(window.innerWidth))
 
 // 图片显示 URL - 使用统一的图片URL处理函数
 const _displayImageUrl = computed(() => {
@@ -757,6 +760,9 @@ const beforeImageUpload = (file) => {
 const handleImageSuccess = (response) => {
   if (response.success && response.data?.url) {
     formData.value.image_url = response.data.url
+    if (!uploadedTempImages.value.includes(response.data.url)) {
+      uploadedTempImages.value.push(response.data.url)
+    }
     ElMessage.success('图片上传成功')
   } else {
     ElMessage.error('图片上传失败')
@@ -929,6 +935,7 @@ const handleSubmit = async () => {
       await unifiedApi.post('/accessories/stock-in', data)
       ElMessage.success('入库成功！')
     }
+    uploadedTempImages.value = []
     handleClose()
     emit('success')
   } catch (err) {
@@ -939,12 +946,22 @@ const handleSubmit = async () => {
   }
 }
 
-const handleDialogClose = () => {
+const handleDialogClose = async () => {
+  await cleanupTempImages()
   resetFormData()
 }
 
 const handleClose = () => {
   visible.value = false
+}
+
+const cleanupTempImages = async () => {
+  if (uploadedTempImages.value.length === 0) return
+  const targets = [...uploadedTempImages.value]
+  const success = await deleteTempFiles(targets)
+  if (success) {
+    uploadedTempImages.value = uploadedTempImages.value.filter(url => !targets.includes(url))
+  }
 }
 
 const resetFormData = () => {
@@ -971,6 +988,7 @@ const resetFormData = () => {
     remarks: ''
   }
   existingAccessory.value = null
+  uploadedTempImages.value = []
 
   if (stores.value.length > 0) {
     const userStoreId = authStore.user?.store_id
