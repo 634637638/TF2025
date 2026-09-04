@@ -77,6 +77,9 @@
               >
                 <div
                   class="menu-item-content"
+                  :class="{
+                    'has-actions': menu.children && menu.children.length > 0
+                  }"
                   @click.stop="handleMenuPrimaryAction(menu)"
                 >
                   <div class="menu-icon">
@@ -237,8 +240,10 @@ const filteredMenuList = computed(() => {
 
 // Styles
 const menuStyles = computed(() => {
+  const viewportWidth = typeof window === 'undefined' ? 320 : window.innerWidth
+  const configuredWidth = Number(menuWidth.value) || 160
   const baseTransform = isDragging.value
-    ? `translateX(${Math.min(Math.max(dragCurrentX.value, -window.innerWidth), 0)}px)`
+    ? `translateX(${Math.min(Math.max(dragCurrentX.value, -viewportWidth), 0)}px)`
     : (props.isOpen ? 'translateX(0)' : 'translateX(-100%)')
 
   const transition = isDragging.value ? 'none' : 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
@@ -246,7 +251,7 @@ const menuStyles = computed(() => {
   return {
     transform: baseTransform,
     transition,
-    width: `${menuWidth.value}px`,
+    width: `${configuredWidth}px`,
     maxWidth: 'none'
   }
 })
@@ -675,11 +680,18 @@ onUnmounted(() => {
 }
 
 .all-menus .menu-list .menu-item .menu-item-content {
-  display: flex;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  column-gap: 8px;
   align-items: center;
-  padding: 14px 20px;
+  padding: 14px 12px;
+  min-height: 52px;
   cursor: pointer;
   transition: background 0.2s;
+}
+
+.all-menus .menu-list .menu-item .menu-item-content.has-actions {
+  grid-template-columns: 20px minmax(0, 1fr) 16px;
 }
 
 .all-menus .menu-list .menu-item .menu-item-content:hover {
@@ -688,20 +700,30 @@ onUnmounted(() => {
 
 .all-menus .menu-list .menu-item .menu-item-content .menu-icon {
   width: 20px;
-  margin-right: 12px;
+  min-width: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   color: rgba(255, 255, 255, 0.9);
 }
 
 .all-menus .menu-list .menu-item .menu-item-content .menu-name {
-  flex: 1;
+  min-width: 0;
   text-align: left;
   color: rgba(255, 255, 255, 0.95);
   font-size: 15px;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .all-menus .menu-list .menu-item .menu-item-content .menu-actions {
   display: flex;
   align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 28px;
   gap: 8px;
   border: 0;
   background: transparent;
@@ -723,10 +745,13 @@ onUnmounted(() => {
 }
 
 .all-menus .menu-list .sub-menu-list .sub-menu-item {
-  display: flex;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  column-gap: 8px;
   align-items: center;
   width: 100%;
-  padding: 12px 20px 12px 52px;
+  min-height: 48px;
+  padding: 12px;
   border: none;
   background: transparent;
   cursor: pointer;
@@ -747,16 +772,23 @@ onUnmounted(() => {
 }
 
 .all-menus .menu-list .sub-menu-list .sub-menu-item .menu-icon {
-  width: 18px;
-  margin-right: 12px;
+  width: 20px;
+  min-width: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   color: rgba(255, 255, 255, 0.8);
 }
 
 .all-menus .menu-list .sub-menu-list .sub-menu-item .menu-name {
-  flex: 1;
+  min-width: 0;
   text-align: left;
   color: rgba(255, 255, 255, 0.9);
   font-size: 14px;
+  line-height: 1.55;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 
@@ -797,23 +829,6 @@ onUnmounted(() => {
 .sub-menu-leave-from {
   max-height: 500px;
   opacity: 1;
-}
-
-// 手机端二级菜单样式优化
-@media (max-width: 768px) {
-  .all-menus .menu-list .sub-menu-list .sub-menu-item {
-    padding: 12px 16px;
-
-    .menu-icon {
-      margin-right: 10px;
-      flex-shrink: 0;
-    }
-
-    .menu-name {
-      flex: 1;
-      text-align: left;
-    }
-  }
 }
 
 // Dark mode

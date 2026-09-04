@@ -7,7 +7,7 @@
     },
     {
       "file": "src/styles.scss",
-      "max": 301,
+      "max": 299,
       "reason": "Global Element Plus poppers, teleported dialogs, loading states and mobile safe-area contracts."
     },
     {
@@ -22,8 +22,8 @@
     },
     {
       "file": "src/styles/responsive.scss",
-      "max": 76,
-      "reason": "Global mobile breakpoints and safe-area rules must win over desktop legacy declarations."
+      "max": 84,
+      "reason": "Global mobile breakpoints, safe-area rules and Safari phone fallbacks must win over desktop legacy declarations."
     },
     {
       "file": "src/styles/components/_dialog-actions.scss",

@@ -62,7 +62,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useNotification } from '@/composables/useNotification'
 import { useLoadingState } from '@/composables/useLoading'
@@ -72,6 +72,7 @@ import { AUTH_STORAGE_KEYS } from '@/constants/storage'
 import logger from '@/utils/logger'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 const siteSettingsStore = useSiteSettingsStore()
 const { success, error: showError, warning, info } = useNotification()
@@ -136,6 +137,22 @@ const initializeAuth = () => {
   }
 }
 
+const getLoginRedirect = (): string => {
+  const redirect = Array.isArray(route.query.redirect)
+    ? route.query.redirect[0]
+    : route.query.redirect
+
+  if (
+    typeof redirect === 'string' &&
+    redirect.startsWith('/') &&
+    !redirect.startsWith('//')
+  ) {
+    return redirect
+  }
+
+  return '/dashboard'
+}
+
 // 在组件挂载时执行初始化
 onMounted(() => {
   initializeAuth()
@@ -167,8 +184,22 @@ const handleLogin = async () => {
     // 显示成功消息给用户
     success(`登录成功！欢迎回来，${authStore.user?.name || '用户'}！`)
 
-    // 直接跳转，不等待
-    router.push('/dashboard')
+    const redirectPath = getLoginRedirect()
+
+    try {
+      const navigationFailure = await router.replace(redirectPath)
+
+      if (navigationFailure) {
+        logger.warn('登录后路由跳转被阻止，将使用页面级跳转重试', {
+          redirectPath,
+          navigationFailure
+        })
+        window.location.replace(redirectPath)
+      }
+    } catch (navigationError) {
+      logger.error('登录后路由跳转失败，将使用页面级跳转重试', navigationError)
+      window.location.replace(redirectPath)
+    }
 
   } catch (error: any) {
     // 提取友好的错误消息

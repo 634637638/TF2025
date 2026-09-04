@@ -188,11 +188,11 @@
           <div class="table-responsive">
             <el-table
               ref="modelsTableRef"
+              v-loading="showTableLoadingOverlay"
               :data="models"
               class="data-table devices-table base-data-table models-data-table"
               border
               stripe
-              v-loading="tableLoading && models.length > 0"
               table-layout="fixed"
               :fit="true"
               :row-key="getModelRowKey"
@@ -611,6 +611,7 @@ const tableLoading = ref(true)
 const submitting = ref(false)
 const savingOrder = ref(false)
 const models = ref<Model[]>([])
+const showTableLoadingOverlay = computed(() => tableLoading.value && models.value.length > 0)
 const getModelRowKey = (model: Model) => String(model.id)
 const brands = ref<Brand[]>([])
 let lastLoadedQueryKey = ''

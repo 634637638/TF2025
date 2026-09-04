@@ -1068,8 +1068,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, reactive, onMounted, onUnmounted, inject, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, ref, reactive, onMounted, onUnmounted, onActivated, inject, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
 import { PermissionGate } from '@/components/base'
@@ -1122,7 +1121,6 @@ interface OrderStatistics {
 }
 type OrderDateRange = [string, string] | []
 
-const _router = useRouter()
 const orderPermissions = usePagePermissions('h5-admin-orders')
 const { handleNoPermission } = orderPermissions
 const canView = computed(() => orderPermissions.canView.value)
@@ -1535,6 +1533,13 @@ const confirmShip = async () => {
     return
   }
 
+  const order = currentOrder.value
+  if (!order) {
+    ElMessage.warning('订单信息已失效，请重新打开')
+    showShipDialog.value = false
+    return
+  }
+
   if (!shipForm.shipping_company || !shipForm.tracking_number) {
     ElMessage.warning('请填写物流公司和物流单号')
     return
@@ -1542,7 +1547,7 @@ const confirmShip = async () => {
 
   try {
     submitting.value = true
-    await api.put(`/sales-management/h5-orders/${currentOrder.value.id}/ship`, shipForm)
+    await api.put(`/sales-management/h5-orders/${order.id}/ship`, shipForm)
 
     ElMessage.success('订单发货成功')
     showShipDialog.value = false
@@ -1578,9 +1583,16 @@ const confirmComplete = async () => {
     return
   }
 
+  const order = currentOrder.value
+  if (!order) {
+    ElMessage.warning('订单信息已失效，请重新打开')
+    showCompleteDialog.value = false
+    return
+  }
+
   try {
     submitting.value = true
-    await api.put(`/sales-management/h5-orders/${currentOrder.value.id}/complete`, {
+    await api.put(`/sales-management/h5-orders/${order.id}/complete`, {
       remarks: completeForm.remarks
     })
 
@@ -1618,6 +1630,13 @@ const confirmCancel = async () => {
     return
   }
 
+  const order = currentOrder.value
+  if (!order) {
+    ElMessage.warning('订单信息已失效，请重新打开')
+    showCancelDialog.value = false
+    return
+  }
+
   if (!cancelForm.reason) {
     ElMessage.warning('请输入取消原因')
     return
@@ -1625,7 +1644,7 @@ const confirmCancel = async () => {
 
   try {
     submitting.value = true
-    await api.put(`/sales-management/h5-orders/${currentOrder.value.id}/cancel`, {
+    await api.put(`/sales-management/h5-orders/${order.id}/cancel`, {
       reason: cancelForm.reason
     })
 
@@ -1688,6 +1707,11 @@ watch(canView, (allowed) => {
 
 onMounted(() => {
   void initializePageData()
+  registerPageHeaderActions()
+})
+
+// KeepAlive 切换回来时重新注册当前页面的头部操作
+onActivated(() => {
   registerPageHeaderActions()
 })
 

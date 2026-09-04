@@ -4,7 +4,7 @@
  */
 
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { getViewportDimensions, isMobileViewport } from '@/utils/device-detection'
+import { getViewportDimensions, isMobileViewport, isTabletViewport } from '@/utils/device-detection'
 
 /**
  * 窗口尺寸信息
@@ -160,6 +160,7 @@ export function useWindowSize(options: UseWindowSizeOptions = {}) {
       window.addEventListener('scroll', handleScroll, { passive: true })
     }
     window.addEventListener('resize', handleResize, { passive: true })
+    window.visualViewport?.addEventListener('resize', handleResize, { passive: true })
   }
 
   const cleanup = () => {
@@ -171,6 +172,7 @@ export function useWindowSize(options: UseWindowSizeOptions = {}) {
       window.removeEventListener('scroll', handleScroll)
     }
     window.removeEventListener('resize', handleResize)
+    window.visualViewport?.removeEventListener('resize', handleResize)
   }
 
   if (immediate) {
@@ -180,8 +182,8 @@ export function useWindowSize(options: UseWindowSizeOptions = {}) {
 
   // 计算属性
   const isMobile = computed(() => isMobileViewport(size.value.innerWidth))
-  const isTablet = computed(() => size.value.innerWidth >= 768 && size.value.innerWidth < 1024)
-  const isDesktop = computed(() => size.value.innerWidth >= 1024)
+  const isTablet = computed(() => isTabletViewport(size.value.innerWidth))
+  const isDesktop = computed(() => !isMobile.value && !isTablet.value)
 
   const isLandscape = computed(() => size.value.innerWidth > size.value.innerHeight)
   const isPortrait = computed(() => size.value.innerHeight > size.value.innerWidth)
@@ -340,10 +342,10 @@ export function useViewport() {
   const updateViewport = () => {
     if (typeof window === 'undefined') return
 
-    // 获取视口尺寸
-    width.value = window.visualViewport?.width || window.innerWidth
-    height.value = window.visualViewport?.height || window.innerHeight
-    scale.value = window.visualViewport?.scale || 1
+    const viewport = getViewportDimensions()
+    width.value = viewport.width
+    height.value = viewport.height
+    scale.value = viewport.scale
   }
 
   onMounted(() => {

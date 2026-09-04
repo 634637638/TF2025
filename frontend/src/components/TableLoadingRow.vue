@@ -55,15 +55,30 @@ const sectionSize = computed(() => props.size === 'small' ? 'compact' : props.si
 }
 
 .table-loading-row__block {
+  display: block;
   width: 100%;
+  line-height: normal;
 }
 
 .table-loading-row__cell :deep(.section-loading),
 .table-loading-row__block :deep(.section-loading) {
+  width: 100%;
   min-height: 132px;
+  box-sizing: border-box;
   border-radius: 0;
   border-left: 0;
   border-right: 0;
   box-shadow: none;
+  background: linear-gradient(
+    90deg,
+    var(--tf-color-surface, var(--color-bg-white)) 0%,
+    var(--tf-color-sky-50, var(--tf-color-surface-muted)) 50%,
+    var(--tf-color-surface, var(--color-bg-white)) 100%
+  );
+}
+
+.table-loading-row__cell :deep(.section-loading)::before,
+.table-loading-row__block :deep(.section-loading)::before {
+  display: none;
 }
 </style>

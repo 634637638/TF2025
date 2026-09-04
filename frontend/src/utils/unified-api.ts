@@ -1220,18 +1220,19 @@ class UnifiedApiManager {
     let token = null
     let tokenSource = ''
 
-    // 尝试从多个来源获取token，按优先级顺序
-    // 1. sessionStorage access_token (认证存储)
-    token = storage.get<string>('access_token', 'session')
+    // 尝试从多个来源获取 token，优先使用当前认证存储。
+    // access_token 仅作为旧版本数据的兼容回退，不能覆盖新登录令牌。
+    // 1. sessionStorage tf2025_token
+    token = storage.getToken()
     if (token) {
-      tokenSource = 'sessionStorage (access_token)'
+      tokenSource = 'sessionStorage (tf2025_token)'
     }
 
-    // 2. sessionStorage tf2025_token (兼容旧版本)
+    // 2. sessionStorage access_token (兼容旧版本)
     if (!token) {
-      token = storage.getToken()
+      token = storage.get<string>('access_token', 'session')
       if (token) {
-        tokenSource = 'sessionStorage (tf2025_token)'
+        tokenSource = 'sessionStorage (access_token)'
       }
     }
 

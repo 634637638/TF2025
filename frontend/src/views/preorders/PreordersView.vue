@@ -1038,7 +1038,7 @@ import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { logger } from '@/utils/logger'
 import { getAdaptiveActionColumnWidth, getIdentifierColumnMinWidth } from '@/utils/table-layout'
-import { isMobileViewport } from '@/utils/device-detection'
+import { isCurrentMobileViewport } from '@/utils/device-detection'
 
 const PreorderFormModal = defineAsyncComponent(() => import('./page/PreorderFormModal.vue'))
 const MatchPreorderModal = defineAsyncComponent(() => import('./page/MatchPreorderModal.vue'))
@@ -1079,7 +1079,7 @@ const { loading } = useLoadingState()
 loading.value = true
 const refreshing = ref(false)
 const matchedStatus = ref('all')
-const isMobile = ref(typeof window !== 'undefined' && isMobileViewport(window.innerWidth))
+const isMobile = ref(isCurrentMobileViewport())
 const showPendingStatusField = computed(() => shouldShowActionColumn(
   canViewPreorderField('status'),
   []
@@ -1130,7 +1130,7 @@ const showMobileDeliveredActionField = computed(() => isMobile.value && shouldSh
 
 // 监听窗口大小变化
 const handleResize = () => {
-  isMobile.value = typeof window !== 'undefined' && isMobileViewport(window.innerWidth)
+  isMobile.value = isCurrentMobileViewport()
 }
 
 onMounted(() => {

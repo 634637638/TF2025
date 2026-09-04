@@ -19,7 +19,8 @@ import {
   TitleComponent,
   TooltipComponent,
   LegendComponent,
-  GridComponent
+  GridComponent,
+  GraphicComponent
 } from 'echarts/components'
 
 // 按需引入渲染器
@@ -38,6 +39,7 @@ echarts.use([
   TooltipComponent,
   LegendComponent,
   GridComponent,
+  GraphicComponent,
   // 渲染器
   CanvasRenderer
 ])

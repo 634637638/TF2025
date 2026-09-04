@@ -5,7 +5,7 @@
 
 import type { App, Directive, DirectiveBinding } from 'vue'
 import { installPermissionDirective } from './permission'
-import { isMobileViewport } from '@/utils/device-detection'
+import { isCurrentMobileViewport } from '@/utils/device-detection'
 
 type DirectiveHandler = (...args: unknown[]) => unknown
 
@@ -459,7 +459,7 @@ function showToast(el: HTMLElement, message: string, type: 'success' | 'error') 
 }
 
 function isMobileDevice() {
-  return typeof window !== 'undefined' && isMobileViewport(window.innerWidth)
+  return isCurrentMobileViewport()
 }
 
 // 安装所有指令

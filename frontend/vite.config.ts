@@ -1,46 +1,46 @@
-import { defineConfig } from 'vite';
-import vue from '@vitejs/plugin-vue';
-import { resolve } from 'path';
-import { existsSync, readFileSync } from 'node:fs';
-import AutoImport from 'unplugin-auto-import/vite';
-import Components from 'unplugin-vue-components/vite';
-import { ElementPlusResolver } from 'unplugin-vue-components/resolvers';
-import Compression from 'vite-plugin-compression';
+import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+import { resolve } from 'path'
+import { existsSync, readFileSync } from 'node:fs'
+import AutoImport from 'unplugin-auto-import/vite'
+import Components from 'unplugin-vue-components/vite'
+import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
+import Compression from 'vite-plugin-compression'
 
 // HTTPS 已暂停：如需恢复，将下方 USE_HTTPS 改回 true 即可
-const USE_HTTPS = false;
-const localHttpsKey = resolve(__dirname, 'ssl/local-dev-key.pem');
-const localHttpsCert = resolve(__dirname, 'ssl/local-dev-cert.pem');
+const USE_HTTPS = false
+const localHttpsKey = resolve(__dirname, 'ssl/local-dev-key.pem')
+const localHttpsCert = resolve(__dirname, 'ssl/local-dev-cert.pem')
 const localHttps = USE_HTTPS && existsSync(localHttpsKey) && existsSync(localHttpsCert)
   ? {
-      key: readFileSync(localHttpsKey),
-      cert: readFileSync(localHttpsCert),
-    }
-  : undefined;
+    key: readFileSync(localHttpsKey),
+    cert: readFileSync(localHttpsCert)
+  }
+  : undefined
 
 export default defineConfig({
   plugins: [
     vue(),
     AutoImport({
       resolvers: [ElementPlusResolver()],
-      dts: 'src/auto-imports.d.ts',
+      dts: 'src/auto-imports.d.ts'
     }),
     Components({
       resolvers: [ElementPlusResolver({ importStyle: 'css' })],
-      dts: 'src/components.d.ts',
+      dts: 'src/components.d.ts'
     }),
     // Gzip 压缩插件
     Compression({
       algorithm: 'gzip',
       ext: '.gz',
-      threshold: 8192, // 只压缩大于 8KB 的文件
+      threshold: 8192 // 只压缩大于 8KB 的文件
     }),
     // Brotli 压缩插件
     Compression({
       algorithm: 'brotliCompress',
       ext: '.br',
-      threshold: 8192,
-    }),
+      threshold: 8192
+    })
   ],
   base: '/',
   resolve: {
@@ -55,7 +55,7 @@ export default defineConfig({
     target: 'es2020',
     // 启用模块预加载以优化性能
     modulePreload: {
-      polyfill: false,
+      polyfill: false
     },
     // 智能代码分割 - 按路由分割，保持按需加载
     rollupOptions: {
@@ -71,7 +71,7 @@ export default defineConfig({
               id.includes('/vue-router/') ||
               id.includes('/@vue/')
             ) {
-              return 'vue-core';
+              return 'vue-core'
             }
 
             // H5 交互与动效库交给 Rollup 自动拆分；强制合并容易和 vue-vendor 形成循环 chunk。
@@ -81,7 +81,7 @@ export default defineConfig({
               id.includes('/axios/') ||
               id.includes('/dompurify/')
             ) {
-              return 'core-utils';
+              return 'core-utils'
             }
 
             // Element Plus, ECharts, PDF.js, ZXing, html2canvas and heic2any
@@ -95,14 +95,14 @@ export default defineConfig({
         chunkFileNames: 'js/[name]-[hash].js',
         entryFileNames: 'js/[name]-[hash].js',
         assetFileNames: (assetInfo: { name?: string }) => {
-          const assetName = typeof assetInfo.name === 'string' ? assetInfo.name : '';
+          const assetName = typeof assetInfo.name === 'string' ? assetInfo.name : ''
           if (/\.(css)$/.test(assetName)) {
-            return 'css/[name]-[hash].[ext]';
+            return 'css/[name]-[hash].[ext]'
           }
           if (/\.(png|jpe?g|gif|svg|webp|ico)$/.test(assetName)) {
-            return 'images/[name]-[hash].[ext]';
+            return 'images/[name]-[hash].[ext]'
           }
-          return 'assets/[name]-[hash].[ext]';
+          return 'assets/[name]-[hash].[ext]'
         }
       }
     },
@@ -111,11 +111,11 @@ export default defineConfig({
       compress: {
         drop_console: true,
         drop_debugger: true,
-        pure_funcs: ['console.log', 'console.info', 'console.debug', 'console.warn', 'console.error'],
+        pure_funcs: ['console.log', 'console.info', 'console.debug', 'console.warn', 'console.error']
       },
       format: {
-        comments: false,
-      },
+        comments: false
+      }
     },
     // 启用 CSS 代码分割
     cssCodeSplit: true,
@@ -153,13 +153,13 @@ export default defineConfig({
         target: 'http://localhost:3000',
         changeOrigin: true,
         secure: false,
-        configure: (proxy, options) => {
-          proxy.on('proxyReq', (proxyReq, req, res) => {
+        configure: (proxy, _options) => {
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
             // 转发所有请求头，特别是 Authorization
             if (req.headers['authorization']) {
-              proxyReq.setHeader('Authorization', req.headers['authorization']);
+              proxyReq.setHeader('Authorization', req.headers['authorization'])
             }
-          });
+          })
         },
         rewrite: (path) => path
       },
@@ -171,4 +171,4 @@ export default defineConfig({
       }
     }
   }
-});
+})

@@ -1,4 +1,4 @@
-import { computed, type Ref } from 'vue'
+import { type Ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { extractResponseData } from '@/utils/api-response'
 import { unifiedApi as api } from '@/utils/unified-api'
@@ -80,7 +80,12 @@ export const useInventoryData = ({
   loadingStore,
   onError
 }: UseInventoryDataOptions) => {
+  let statsRequestId = 0
+
   const clearStats = () => {
+    // Invalidate an in-flight request so stale statistics cannot overwrite a
+    // newly reset filter state.
+    statsRequestId += 1
     stats.total = 0
     stats.inStock = 0
     stats.sold = 0
@@ -88,30 +93,37 @@ export const useInventoryData = ({
     statsAvailable.value = false
   }
 
-  const hasComplexFilters = computed(() => Boolean(
-    filters.supplier_id ||
-    filters.brand ||
-    filters.model ||
-    filters.color ||
-    filters.memory ||
-    filters.status ||
-    filters.is_new ||
-    filters.search ||
-    filters.date_start ||
-    filters.date_end
-  ))
-
-  const updateStats = async () => {
+  const updateStats = async (requestParams: Record<string, unknown> = {}) => {
+    const requestId = ++statsRequestId
     try {
-      if (hasComplexFilters.value) {
-        clearStats()
-        return
+      const params: Record<string, unknown> = {}
+      const filterKeys: Array<keyof InventoryFilters> = [
+        'supplier_id',
+        'store_id',
+        'operator_id',
+        'brand',
+        'model',
+        'color',
+        'memory',
+        'is_new',
+        'status',
+        'date_start',
+        'date_end',
+        'search'
+      ]
+
+      for (const key of filterKeys) {
+        const value = Object.prototype.hasOwnProperty.call(requestParams, key)
+          ? requestParams[key]
+          : filters[key]
+        if (value !== '' && value !== null && value !== undefined) {
+          params[key] = value
+        }
       }
 
-      const params: Record<string, unknown> = {}
-      if (filters.store_id) params.store_id = filters.store_id
-
       const response = await api.get('/inventory/stats/overview', { params })
+      if (requestId !== statsRequestId) return
+
       if (!response.success) {
         clearStats()
         return
@@ -124,6 +136,7 @@ export const useInventoryData = ({
       stats.totalValue = Number(data.total_value) || 0
       statsAvailable.value = true
     } catch (error) {
+      if (requestId !== statsRequestId) return
       logger.error('获取统计数据失败:', error)
       clearStats()
     }
@@ -196,9 +209,16 @@ export const useInventoryData = ({
         price: record.sale_price ?? 0
       }))
 
-      const paginationInfo = isRecord(responseData)
-        ? (responseData.pagination || (isRecord(responseData.data) ? responseData.data.pagination : undefined))
-        : undefined
+      // `extractResponseData` intentionally returns the records array. Keep
+      // the pagination metadata from the original envelope as well, because
+      // otherwise a filtered page would report only its current row count.
+      const responseRecord = isRecord(response) ? response : undefined
+      const responseDataRecord = isRecord(responseRecord?.data) ? responseRecord.data : undefined
+      const paginationInfo = (
+        (isRecord(responseData) ? responseData.pagination : undefined) ||
+        responseDataRecord?.pagination ||
+        responseRecord?.pagination
+      )
       pagination.total = isRecord(paginationInfo) && paginationInfo.total
         ? Number(paginationInfo.total) || records.length
         : records.length
@@ -208,13 +228,13 @@ export const useInventoryData = ({
           Boolean(value) && key !== 'search'
         ))
         if (hasFilters) {
-          ElMessage.warning('当前筛选条件下没有找到数据，请调整筛选条件')
+          ElMessage.warning('您筛选的条件无数据')
         } else if (!filters.search?.trim()) {
           ElMessage.info('暂无库存数据')
         }
       }
 
-      await updateStats()
+      await updateStats(params)
     } catch (error) {
       logger.error('获取库存数据失败:', error)
       const status = readErrorStatus(error)
@@ -245,7 +265,6 @@ export const useInventoryData = ({
   return {
     clearStats,
     debounceLoadInventory,
-    hasComplexFilters,
     loadInventory,
     loadInventoryData,
     updateStats

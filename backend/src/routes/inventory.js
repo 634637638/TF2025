@@ -11,6 +11,153 @@ const log = require('../utils/log')
 const ADMIN_ROLE_CODES = new Set(['super_admin', 'webadmin', 'admin'])
 const isAdministrator = req => (req.user?.role_codes || []).some(code => ADMIN_ROLE_CODES.has(String(code).toLowerCase()))
 
+// 统计卡片使用与库存列表相同的筛选条件，确保统计结果和列表保持一致。
+const buildInventoryStatsWhere = query => {
+  const {
+    store_id,
+    supplier_id,
+    operator_id,
+    status,
+    search,
+    brand,
+    model,
+    color,
+    memory,
+    is_new,
+    date_start,
+    date_end
+  } = query
+
+  const whereConditions = ["p.status IN ('in_stock','repair','rented')"]
+  const queryParams = []
+
+  if (store_id) {
+    whereConditions.push('p.store_id = ?')
+    queryParams.push(parseInt(store_id))
+  }
+  if (supplier_id) {
+    whereConditions.push('p.supplier_id = ?')
+    queryParams.push(parseInt(supplier_id))
+  }
+  if (operator_id) {
+    whereConditions.push('p.inventory_operator_id = ?')
+    queryParams.push(parseInt(operator_id))
+  }
+  if (status) {
+    whereConditions.push('p.status = ?')
+    queryParams.push(status)
+  }
+  if (brand) {
+    whereConditions.push('b.name = ?')
+    queryParams.push(brand)
+  }
+  if (model) {
+    whereConditions.push('m.name = ?')
+    queryParams.push(model)
+  }
+  if (color) {
+    whereConditions.push('co.name = ?')
+    queryParams.push(color)
+  }
+  if (memory) {
+    whereConditions.push('mem.size = ?')
+    queryParams.push(memory)
+  }
+  if (is_new !== undefined && is_new !== null && is_new !== '') {
+    const isNewValue = is_new === 'true' || is_new === true || is_new === '1'
+    whereConditions.push('p.is_new = ?')
+    queryParams.push(isNewValue ? 1 : 0)
+  }
+
+  if (date_start || date_end) {
+    if (date_start && date_end) {
+      whereConditions.push('DATE(p.inventory_time) BETWEEN ? AND ?')
+      queryParams.push(date_start, date_end)
+    } else if (date_start) {
+      whereConditions.push('DATE(p.inventory_time) >= ?')
+      queryParams.push(date_start)
+    } else {
+      whereConditions.push('DATE(p.inventory_time) <= ?')
+      queryParams.push(date_end)
+    }
+  }
+
+  if (search) {
+    const searchStr = search.trim()
+    if (/^\d{15}$/.test(searchStr)) {
+      whereConditions.push('p.imei = ?')
+      queryParams.push(searchStr)
+    } else if (/^[A-Za-z0-9]{8,}$/.test(searchStr)) {
+      whereConditions.push('UPPER(p.serial_number) LIKE ?')
+      queryParams.push(`%${searchStr.toUpperCase()}%`)
+    } else if (/^(\d+[Gg][Bb]|1[Tt][Bb])$/.test(searchStr)) {
+      whereConditions.push('UPPER(mem.size) LIKE ?')
+      queryParams.push(`%${searchStr.toUpperCase()}%`)
+    } else if (['available', 'sold', 'reserved', 'repair', 'rented', 'lost'].includes(searchStr.toLowerCase())) {
+      whereConditions.push('p.status = ?')
+      queryParams.push(searchStr.toLowerCase())
+    } else if (['可用', '可售', '已售', '预定', '维修', '租赁', '丢失', '在库'].includes(searchStr)) {
+      const statusMap = {
+        '可用': 'available',
+        '可售': 'in_stock',
+        '已售': 'sold',
+        '预定': 'reserved',
+        '维修': 'repair',
+        '租赁': 'rented',
+        '丢失': 'lost',
+        // “在库” is the user-facing label for the canonical sellable state.
+        '在库': 'in_stock'
+      }
+      whereConditions.push('p.status = ?')
+      queryParams.push(statusMap[searchStr])
+    } else if (['new', 'used', '全新', '二手'].includes(searchStr.toLowerCase())) {
+      const isNew = ['new', '全新'].includes(searchStr.toLowerCase())
+      whereConditions.push('p.is_new = ?')
+      queryParams.push(isNew ? 1 : 0)
+    } else if (/^[A-C]$/.test(searchStr.toUpperCase())) {
+      whereConditions.push('UPPER(p.quality_grade) = ?')
+      queryParams.push(searchStr.toUpperCase())
+    } else if (/^\d{4}-\d{2}-\d{2}$/.test(searchStr)) {
+      whereConditions.push('(DATE(p.inventory_time) = ? OR DATE(p.sale_time) = ?)')
+      queryParams.push(searchStr, searchStr)
+    } else if (/^\d+$/.test(searchStr)) {
+      whereConditions.push(`(
+        p.imei LIKE ? OR
+        p.serial_number LIKE ? OR
+        p.purchase_number LIKE ? OR
+        p.sale_price = ? OR
+        p.purchase_cost = ? OR
+        CAST(p.id AS CHAR) LIKE ?
+      )`)
+      const searchTerm = `%${searchStr}%`
+      const price = parseFloat(searchStr)
+      queryParams.push(searchTerm, searchTerm, searchTerm, price, price, searchTerm)
+    } else {
+      whereConditions.push(`(
+        p.imei LIKE ? OR
+        p.serial_number LIKE ? OR
+        b.name LIKE ? OR
+        m.name LIKE ? OR
+        co.name LIKE ? OR
+        mem.size LIKE ? OR
+        p.status LIKE ? OR
+        p.quality_grade LIKE ? OR
+        p.remarks LIKE ? OR
+        st.name LIKE ? OR
+        s.name LIKE ? OR
+        p.purchase_number LIKE ?
+      )`)
+      const searchTerm = `%${searchStr}%`
+      queryParams.push(...Array(12).fill(searchTerm))
+    }
+  }
+
+  return {
+    whereClause: `WHERE ${whereConditions.join(' AND ')}`,
+    queryParams
+  }
+}
+
 // 获取库存列表
 router.get('/list', unifiedAuth, requirePermission('inventory:view'), async (req, res) => {
   let connection
@@ -184,7 +331,7 @@ router.get('/list', unifiedAuth, requirePermission('inventory:view'), async (req
           '维修': 'repair',
           '租赁': 'rented',
           '丢失': 'lost',
-          '在库': 'available'
+          '在库': 'in_stock'
         }
         whereConditions.push('p.status = ?')
         queryParams.push(statusMap[searchStr])
@@ -372,19 +519,16 @@ router.get('/stats/overview', unifiedAuth, requirePermission('inventory:view'), 
       return ApiResponse.error(res, '数据库未连接', 500)
     }
 
-    const { store_id } = req.query
     const pool = getDatabase()
-
-    // 构建查询条件 - 库存统计只统计在库状态的数据
-    const whereConditions = ['p.status = ?']
-    const queryParams = ['in_stock']
-
-    if (store_id) {
-      whereConditions.push('p.store_id = ?')
-      queryParams.push(parseInt(store_id))
-    }
-
-    const whereCondition = 'WHERE ' + whereConditions.join(' AND ')
+    const { whereClause, queryParams } = buildInventoryStatsWhere(req.query)
+    const inventoryJoins = `
+      LEFT JOIN brands b ON p.brand_id = b.id
+      LEFT JOIN models m ON p.model_id = m.id
+      LEFT JOIN colors co ON p.color_id = co.id
+      LEFT JOIN memories mem ON p.memory_id = mem.id
+      LEFT JOIN suppliers s ON p.supplier_id = s.id
+      LEFT JOIN stores st ON p.store_id = st.id
+    `
 
     // 获取基本统计
     const statsQuery = `
@@ -394,7 +538,8 @@ router.get('/stats/overview', unifiedAuth, requirePermission('inventory:view'), 
         COUNT(CASE WHEN p.is_new = 0 THEN 1 END) as used_count,
         COALESCE(SUM(p.purchase_cost), 0) as total_value
       FROM phones p
-      ${whereCondition}
+      ${inventoryJoins}
+      ${whereClause}
     `
 
     const [statsResult] = await pool.execute(statsQuery, queryParams)
@@ -403,12 +548,12 @@ router.get('/stats/overview', unifiedAuth, requirePermission('inventory:view'), 
     // 按门店统计
     const storeStatsQuery = `
       SELECT
-        s.name as store_name,
+        st.name as store_name,
         COUNT(*) as count
       FROM phones p
-      LEFT JOIN stores s ON p.store_id = s.id
-      ${whereCondition}
-      ${store_id ? '' : 'GROUP BY p.store_id, s.name'}
+      ${inventoryJoins}
+      ${whereClause}
+      GROUP BY p.store_id, st.name
       ORDER BY count DESC
     `
 
@@ -420,9 +565,9 @@ router.get('/stats/overview', unifiedAuth, requirePermission('inventory:view'), 
         b.name as brand_name,
         COUNT(*) as count
       FROM phones p
-      LEFT JOIN brands b ON p.brand_id = b.id
-      ${whereCondition}
-      ${store_id ? '' : 'GROUP BY b.name'}
+      ${inventoryJoins}
+      ${whereClause}
+      GROUP BY b.name
       ORDER BY count DESC
       LIMIT 10
     `

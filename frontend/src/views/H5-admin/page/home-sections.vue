@@ -581,8 +581,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, inject, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, onUnmounted, onActivated, computed, inject, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, Plus } from '@element-plus/icons-vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
@@ -608,7 +607,6 @@ import { fieldPermissions, shouldShowActionColumn } from '@/composables/useField
 import { useLoadingState } from '@/composables'
 import { logger } from '@/utils/logger'
 import type { HeaderAction } from '@/types'
-const _router = useRouter()
 const homeSectionPermissions = usePagePermissions('h5-admin-home-sections')
 const { handleNoPermission } = homeSectionPermissions
 const canView = computed(() => homeSectionPermissions.canView.value)
@@ -931,14 +929,20 @@ const addProductFromAvailable = async (product: SearchProduct) => {
     return
   }
 
+  const section = currentSection.value
+  if (!section) {
+    ElMessage.warning('推荐区域信息已失效，请重新打开')
+    return
+  }
+
   try {
-    await addProductToSection(currentSection.value!.id, {
+    await addProductToSection(section.id, {
       template_id: product.template_id,
       phone_id: product.phone_id,
       sort_order: sectionProducts.value.length
     })
     // 重新加载商品列表
-    const response = await getSectionProducts(currentSection.value!.id)
+    const response = await getSectionProducts(section.id)
     const data = response.data || response || []
     sectionProducts.value = Array.isArray(data) ? data : []
     searchKeyword.value = ''
@@ -981,14 +985,20 @@ const handleProductSelect = async (item: SearchProduct) => {
     return
   }
 
+  const section = currentSection.value
+  if (!section) {
+    ElMessage.warning('推荐区域信息已失效，请重新打开')
+    return
+  }
+
   try {
-    await addProductToSection(currentSection.value!.id, {
+    await addProductToSection(section.id, {
       template_id: item.template_id,
       phone_id: item.phone_id,
       sort_order: sectionProducts.value.length
     })
     // 重新加载商品列表
-    const response = await getSectionProducts(currentSection.value!.id)
+    const response = await getSectionProducts(section.id)
     const data = response.data || response || []
     sectionProducts.value = Array.isArray(data) ? data : []
     searchKeyword.value = ''
@@ -1015,8 +1025,14 @@ const removeProduct = (product: HomeSectionProduct) => {
       type: 'warning'
     }
   ).then(async () => {
+    const section = currentSection.value
+    if (!section) {
+      ElMessage.warning('推荐区域信息已失效，请重新打开')
+      return
+    }
+
     try {
-      await removeProductFromSection(currentSection.value!.id, product.id)
+      await removeProductFromSection(section.id, product.id)
       sectionProducts.value = sectionProducts.value.filter(p => p.id !== product.id)
       ElMessage.success('移除成功')
     } catch (error) {
@@ -1042,8 +1058,14 @@ const clearAllProducts = () => {
       type: 'warning'
     }
   ).then(async () => {
+    const section = currentSection.value
+    if (!section) {
+      ElMessage.warning('推荐区域信息已失效，请重新打开')
+      return
+    }
+
     try {
-      await clearSectionProducts(currentSection.value!.id)
+      await clearSectionProducts(section.id)
       sectionProducts.value = []
       ElMessage.success('清空成功')
     } catch (error) {
@@ -1060,12 +1082,18 @@ const handleDragEnd = async () => {
     return
   }
 
+  const section = currentSection.value
+  if (!section) {
+    ElMessage.warning('推荐区域信息已失效，请重新打开')
+    return
+  }
+
   // 更新排序
   for (let i = 0; i < sectionProducts.value.length; i++) {
     const product = sectionProducts.value[i]
     if (product.sort_order !== i) {
       try {
-        await updateProductSort(currentSection.value!.id, product.id, i)
+        await updateProductSort(section.id, product.id, i)
         product.sort_order = i
       } catch (error) {
         logger.error('更新排序失败:', error)
@@ -1235,6 +1263,11 @@ watch(canCreate, () => {
 onMounted(() => {
   void fieldPermissions.init()
   void initializePageData()
+  registerPageHeaderActions()
+})
+
+// KeepAlive 切换回来时重新注册当前页面的头部操作
+onActivated(() => {
   registerPageHeaderActions()
 })
 

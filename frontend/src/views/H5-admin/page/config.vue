@@ -404,8 +404,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick, inject, onUnmounted, watch } from 'vue'
-import { useRouter, onBeforeRouteLeave } from 'vue-router'
+import { ref, computed, onMounted, onActivated, nextTick, inject, onUnmounted, watch } from 'vue'
+import { onBeforeRouteLeave } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Refresh, Check } from '@element-plus/icons-vue'
 import { getAllConfigs, batchUpdateConfigs } from '@/api/shop'
@@ -421,7 +421,6 @@ import { logger } from '@/utils/logger'
 import { buildTencentMapScriptUrl, ensureTencentMapKey } from '@/utils/tencent-map'
 import type { HeaderAction } from '@/types'
 
-const _router = useRouter()
 const authStore = useAuthStore()
 const configPermissions = usePagePermissions('h5-admin-config')
 const { handleNoPermission } = configPermissions
@@ -915,6 +914,11 @@ watch(canEdit, () => {
 onMounted(() => {
   void fieldPermissions.init()
   void initializePageData()
+  registerPageHeaderActions()
+})
+
+// KeepAlive 切换回来时重新注册当前页面的头部操作
+onActivated(() => {
   registerPageHeaderActions()
 })
 

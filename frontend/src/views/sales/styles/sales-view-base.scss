@@ -275,7 +275,6 @@ input.form-control:focus, textarea.form-control:focus {
     display: none;
   }
   -ms-overflow-style: none;
-  scrollbar-width: none;
 }
 
 .loading-state,
@@ -462,7 +461,6 @@ input.form-control:focus, textarea.form-control:focus {
     display: none;
   }
   -ms-overflow-style: none;
-  scrollbar-width: none;
 }
 
 .device-title {
@@ -917,6 +915,7 @@ input.form-control:focus, textarea.form-control:focus {
   color: var(--tf-button-on-color);
   font-size: 12px;
   font-weight: 700;
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 }
 
@@ -1506,10 +1505,6 @@ input.form-control:focus, textarea.form-control:focus {
     width: 100%;
   }
 
-  /* 图文卡片中的按钮特殊优化 */
-  .device-card .action-buttons {
-  }
-
 }
 
 /* 客户搜索样式 */
@@ -1705,6 +1700,7 @@ input.form-control:focus, textarea.form-control:focus {
   background: var(--tf-button-primary-bg);
   border-radius: var(--admin-panel-radius) var(--admin-panel-radius) 0 0;
   cursor: pointer;
+  -webkit-user-select: none;
   user-select: none;
   transition: all 0.3s ease;
 }
@@ -2129,7 +2125,6 @@ input.form-control:focus, textarea.form-control:focus {
 
 /* 触摸反馈优化 */
 .drawer-wrapper {
-  -webkit-overflow-scrolling: touch;
   -webkit-tap-highlight-color: transparent;
 }
 

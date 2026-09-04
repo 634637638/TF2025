@@ -13,7 +13,10 @@
           <div class="media-preview-meta">
             <i :class="currentIsVideo ? 'fas fa-video' : 'fas fa-image'" />
             <span>{{ currentItem.label || mediaTypeLabel }}</span>
-            <span v-if="items.length > 1" class="media-preview-count">
+            <span
+              v-if="items.length > 1"
+              class="media-preview-count"
+            >
               {{ currentIndex + 1 }} / {{ items.length }}
             </span>
           </div>
@@ -51,11 +54,14 @@
           <i class="fas fa-chevron-left" />
         </button>
 
-        <div class="media-preview-stage" @click.stop>
+        <div
+          class="media-preview-stage"
+          @click.stop
+        >
           <video
             v-if="currentIsVideo && !loadFailed"
             ref="videoElement"
-            :key="currentItem.url"
+            :key="`video-${currentItem.url}`"
             :src="currentUrl"
             class="media-preview-content"
             controls
@@ -68,13 +74,17 @@
           </video>
           <img
             v-else-if="!currentIsVideo && !loadFailed"
-            :key="currentItem.url"
+            :key="`image-${currentItem.url}`"
             :src="currentUrl"
             :alt="currentItem.label || '图片预览'"
             class="media-preview-content"
             @error="loadFailed = true"
           >
-          <div v-else class="media-preview-error">
+          <div
+            v-else
+            :key="`error-${currentItem.url}`"
+            class="media-preview-error"
+          >
             <i class="fas fa-exclamation-circle" />
             <span>{{ currentIsVideo ? '视频加载失败或格式不受支持' : '图片加载失败' }}</span>
           </div>

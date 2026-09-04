@@ -349,8 +349,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, inject, watch } from 'vue'
-import { useRouter, onBeforeRouteLeave } from 'vue-router'
+import { ref, computed, onMounted, onUnmounted, onActivated, inject, watch } from 'vue'
+import { onBeforeRouteLeave } from 'vue-router'
 import { ElMessage, ElMessageBox, FormInstance } from 'element-plus'
 import { ValidationRules } from '@/composables'
 import { Refresh, Plus } from '@element-plus/icons-vue'
@@ -366,7 +366,6 @@ import { deleteTempFiles } from '@/utils/temp-file-cleaner'
 import type { ShopBanner } from '@/api/shop'
 import { logger } from '@/utils/logger'
 import type { HeaderAction } from '@/types'
-const _router = useRouter()
 const authStore = useAuthStore()
 const bannerPermissions = usePagePermissions('h5-admin-banners')
 const { handleNoPermission } = bannerPermissions
@@ -780,7 +779,11 @@ const handleSave = async () => {
       await createBanner(payload as unknown as ShopBanner)
       ElMessage.success('创建成功')
     } else {
-      await updateBanner(form.value.id!, payload as unknown as ShopBanner)
+      if (form.value.id === undefined || form.value.id === null) {
+        ElMessage.error('轮播图信息已失效，请重新打开')
+        return
+      }
+      await updateBanner(form.value.id, payload as unknown as ShopBanner)
       ElMessage.success('更新成功')
     }
 
@@ -814,7 +817,11 @@ const handleDelete = (banner: ShopBanner) => {
     }
   ).then(async () => {
     try {
-      await deleteBanner(banner.id!)
+      if (banner.id === undefined || banner.id === null) {
+        ElMessage.error('轮播图信息已失效，请刷新后重试')
+        return
+      }
+      await deleteBanner(banner.id)
       ElMessage.success('删除成功')
       await loadBanners()
     } catch (error: any) {
@@ -833,8 +840,14 @@ const handleStatusChange = async (banner: ShopBanner) => {
     return
   }
 
+  if (banner.id === undefined || banner.id === null) {
+    banner.status = banner.status === 'active' ? 'inactive' : 'active'
+    ElMessage.error('轮播图信息已失效，请刷新后重试')
+    return
+  }
+
   try {
-    await updateBanner(banner.id!, banner)
+    await updateBanner(banner.id, banner)
     ElMessage.success('状态更新成功')
   } catch (error: any) {
     // 恢复原状态
@@ -852,9 +865,15 @@ const handleDragEnd = async () => {
 
   try {
     const orders = banners.value.map((banner, index) => ({
-      id: banner.id!,
+      id: banner.id,
       sort_order: index
     }))
+
+    if (orders.some(order => order.id === undefined || order.id === null)) {
+      ElMessage.error('存在无效轮播图，请刷新后重试')
+      await loadBanners()
+      return
+    }
 
     await reorderBanners(orders)
     ElMessage.success('排序更新成功')
@@ -949,6 +968,11 @@ watch(canCreate, () => {
 onMounted(() => {
   void fieldPermissions.init()
   void initializePageData()
+  registerPageHeaderActions()
+})
+
+// KeepAlive 切换回来时重新注册当前页面的头部操作
+onActivated(() => {
   registerPageHeaderActions()
 })
 

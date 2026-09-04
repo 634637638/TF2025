@@ -5,7 +5,7 @@
 
 import AOS from 'aos'
 import 'aos/dist/aos.css'
-import { isMobileViewport } from '@/utils/device-detection'
+import { isCurrentMobileViewport } from '@/utils/device-detection'
 
 /**
  * 初始化 AOS 动画
@@ -37,7 +37,7 @@ export function initScrollAnimations() {
     disableMutationObserver: false,
 
     // 针对移动端的优化
-    disable: typeof window !== 'undefined' && isMobileViewport(window.innerWidth) ? 'mobile' : false,
+    disable: isCurrentMobileViewport() ? 'mobile' : false,
 
     // 镜像动画（从右到左 vs 从左到右）
     mirror: false,

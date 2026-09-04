@@ -150,7 +150,6 @@
         <i class="fas fa-user-tag" />
         <span>暂未选择角色</span>
       </div>
-
     </div>
   </div>
 </template>

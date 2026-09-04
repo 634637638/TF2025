@@ -10,7 +10,8 @@ import {
   isIOSDevice,
   isMobileViewport,
   isTabletViewport,
-  getViewportDimensions
+  getViewportDimensions,
+  applyDeviceRootClass
 } from '@/utils/device-detection'
 import logger from '@/utils/logger'
 import type {
@@ -1182,6 +1183,7 @@ function updateResponsiveState() {
   responsiveState.value.currentBreakpoint = getCurrentBreakpoint(width)
   responsiveState.value.orientation = width > height ? 'landscape' : 'portrait'
 
+  applyDeviceRootClass()
   updateDeviceInfo()
   updateSafeArea()
 }
@@ -1228,11 +1230,13 @@ export function useResponsive() {
     update()
     window.addEventListener('resize', update, { passive: true })
     window.addEventListener('orientationchange', update, { passive: true })
+    window.visualViewport?.addEventListener('resize', update, { passive: true })
   })
 
   onUnmounted(() => {
     window.removeEventListener('resize', update)
     window.removeEventListener('orientationchange', update)
+    window.visualViewport?.removeEventListener('resize', update)
   })
 
   // 媒体查询工具
@@ -1264,11 +1268,13 @@ export function useMobile() {
     update()
     window.addEventListener('resize', update, { passive: true })
     window.addEventListener('orientationchange', update, { passive: true })
+    window.visualViewport?.addEventListener('resize', update, { passive: true })
   })
 
   onUnmounted(() => {
     window.removeEventListener('resize', update)
     window.removeEventListener('orientationchange', update)
+    window.visualViewport?.removeEventListener('resize', update)
   })
 
   // screenSize 对象（兼容旧版 API）

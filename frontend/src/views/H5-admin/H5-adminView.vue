@@ -96,13 +96,14 @@
       <!-- 页面内容 -->
       <div class="admin-content tf-tab-content">
         <router-view v-slot="{ Component, route: viewRoute }">
-          <KeepAlive :max="6">
-            <component
-              :is="Component"
-              :key="viewRoute.name || viewRoute.fullPath"
-              class="tf-tab-panel"
-            />
-          </KeepAlive>
+          <div class="tf-tab-panel">
+            <KeepAlive :max="6">
+              <component
+                :is="Component"
+                :key="viewRoute.name || viewRoute.fullPath"
+              />
+            </KeepAlive>
+          </div>
         </router-view>
       </div>
     </PermissionGate>

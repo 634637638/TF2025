@@ -2936,11 +2936,6 @@ onMounted(async () => {
 
 }
 
-@media (max-width: 1023px) {
-  .action-buttons {
-  }
-
-}
 /* 角色复选框样式 */
 .role-checkboxes {
   display: flex;

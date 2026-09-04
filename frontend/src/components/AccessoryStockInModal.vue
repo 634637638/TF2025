@@ -597,7 +597,7 @@ import { formatImageUrl } from '@/utils/format'
 import { sortOptionsByOrder } from '@/utils/option-sort'
 import { useAuthStore } from '@/stores/auth'
 import { logger } from '@/utils/logger'
-import { isMobileViewport } from '@/utils/device-detection'
+import { isCurrentMobileViewport } from '@/utils/device-detection'
 import type { ModelValueProps, UpdateModelValueEmits, SuccessEmits, CloseEmits } from '@/types/component'
 import Image from './Image.vue'
 import { storage } from '@/services/storage'
@@ -716,7 +716,7 @@ const canSubmit = computed(() => {
   )
 })
 
-const isMobile = computed(() => typeof window !== 'undefined' && isMobileViewport(window.innerWidth))
+const isMobile = computed(() => isCurrentMobileViewport())
 
 // 图片显示 URL - 使用统一的图片URL处理函数
 const _displayImageUrl = computed(() => {

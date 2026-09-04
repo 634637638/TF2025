@@ -772,8 +772,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, inject, watch } from 'vue'
-import { useRouter, onBeforeRouteLeave } from 'vue-router'
+import { computed, onMounted, onUnmounted, onActivated, ref, inject, watch } from 'vue'
+import { onBeforeRouteLeave } from 'vue-router'
 import { Refresh, Plus } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import draggable from 'vuedraggable'
@@ -828,7 +828,6 @@ interface TemplateGroup {
   main_media_type?: TemplateImage['image_type']
 }
 
-const _router = useRouter()
 const templatePermissions = usePagePermissions('h5-admin-templates')
 const { handleNoPermission } = templatePermissions
 const canView = computed(() => templatePermissions.canView.value)
@@ -1667,6 +1666,11 @@ watch(canCreate, () => {
 onMounted(() => {
   void fieldPermissions.init()
   void initializePageData()
+  registerPageHeaderActions()
+})
+
+// KeepAlive 切换回来时重新注册当前页面的头部操作
+onActivated(() => {
   registerPageHeaderActions()
 })
 

@@ -297,7 +297,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted, inject, watch } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, onActivated, inject, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
 import { unifiedApi as api } from '@/utils/unified-api'
@@ -356,9 +356,9 @@ const filteredProducts = computed(() => {
 
   const keyword = searchKeyword.value.toLowerCase()
   return products.value.filter(p =>
-    p.imei?.toLowerCase().includes(keyword) ||
-    p.brand?.toLowerCase().includes(keyword) ||
-    p.model?.toLowerCase().includes(keyword)
+    String(p.imei || '').toLowerCase().includes(keyword) ||
+    String(p.brand || '').toLowerCase().includes(keyword) ||
+    String(p.model || '').toLowerCase().includes(keyword)
   )
 })
 
@@ -623,6 +623,11 @@ watch(canView, (allowed) => {
 onMounted(() => {
   void fieldPermissions.init()
   void initializePageData()
+  registerPageHeaderActions()
+})
+
+// KeepAlive 切换回来时重新注册当前页面的头部操作
+onActivated(() => {
   registerPageHeaderActions()
 })
 

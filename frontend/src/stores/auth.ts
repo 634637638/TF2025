@@ -205,6 +205,10 @@ export const useAuthStore = defineStore('auth', () => {
       .map(perm => PermissionMapper.normalizePermission(perm))
       .filter(Boolean)
 
+    if (normalizedUserPermissions.includes('*')) {
+      return true
+    }
+
     // 检查每个权限
     return permissions.every(perm => {
       if (!perm) return false
@@ -400,6 +404,9 @@ export const useAuthStore = defineStore('auth', () => {
         if (!userData || !finalToken) {
           throw new Error('登录响应数据不完整')
         }
+
+        // 清理旧版本遗留的 access_token，避免它覆盖本次登录生成的新令牌。
+        storage.remove('access_token', 'session')
 
         // 设置认证信息
         token.value = finalToken

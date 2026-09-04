@@ -337,8 +337,8 @@
             </template>
             <el-table-column
               label="菜单名称"
-              min-width="220"
-              class-name="complete-text-column"
+              :min-width="isMobile ? 180 : 220"
+              class-name="menu-name-column complete-text-column"
             >
               <template #default="{ row }">
                 <div
@@ -365,19 +365,22 @@
                       :class="`type-${row.menu_type || 'menu'}`"
                     >{{ getMenuTypeLabel(row.menu_type) }}</span>
                   </div>
-                  <div
-                    v-if="row.remarks"
-                    class="menu-remarks"
-                  >
-                    {{ row.remarks }}
-                  </div>
                 </div>
               </template>
             </el-table-column>
             <el-table-column
+              label="备注"
+              :min-width="isMobile ? 180 : 220"
+              class-name="menu-remarks-column wrapped-text-column"
+            >
+              <template #default="{ row }">
+                <span class="menu-remarks-text">{{ row.remarks || '-' }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column
               label="路径"
-              min-width="180"
-              class-name="complete-text-column"
+              :min-width="isMobile ? 180 : 220"
+              class-name="menu-path-column complete-text-column"
             >
               <template #default="{ row }">
                 <code class="url-text">{{ row.path || row.url || '-' }}</code>
@@ -2507,6 +2510,16 @@ onMounted(async () => {
   gap: 6px;
 }
 
+.menu-remarks-text {
+  display: block;
+  color: var(--tf-color-muted);
+  line-height: 1.5;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 /* 展开/折叠按钮样式 */
 .expand-btn {
   display: flex;
@@ -3162,46 +3175,36 @@ onMounted(async () => {
     font-size: 11px;
   }
 
-  .menu-table {
-    min-width: 100%;
-    width: 100%;
-    table-layout: fixed;
-  }
-
-  .menu-table .column-name {
-    width: 42%;
-  }
-
-  .menu-table .column-url {
-    width: 40%;
-  }
-
-  .menu-table .column-icon {
-    width: 18%;
-  }
-
-  .menu-table .column-sort,
-  .menu-table .column-status,
-  .menu-table .column-actions,
-  .menu-table .menu-sort-cell,
-  .menu-table .menu-status-cell,
-  .menu-table .menu-actions-cell {
-    display: none;
-  }
-
-  .menu-table th,
-  .menu-table td {
-    padding: 9px 6px;
+  :deep(.menu-data-table .el-table__body td),
+  :deep(.menu-data-table .el-table__header th) {
     font-size: 12px;
-    vertical-align: middle;
   }
 
-  .menu-name-cell .menu-text {
+  :deep(.menu-data-table .menu-name-column .cell),
+  :deep(.menu-data-table .menu-remarks-column .cell),
+  :deep(.menu-data-table .menu-path-column .cell) {
+    text-align: left;
+  }
+
+  :deep(.menu-data-table .menu-name-column .cell) {
+    min-width: 0;
+  }
+
+  :deep(.menu-data-table .menu-remarks-column .cell) {
+    min-width: 0;
+    white-space: normal;
+  }
+
+  :deep(.menu-data-table .menu-path-column .cell) {
+    min-width: 0;
+  }
+
+  .menu-text {
     gap: 4px;
     min-width: 0;
   }
 
-  .menu-name-cell .menu-title {
+  .menu-title {
     display: block;
     min-width: 0;
     overflow: hidden;
@@ -3211,12 +3214,18 @@ onMounted(async () => {
     font-weight: 700;
   }
 
-  .menu-name-cell .menu-type,
-  .menu-name-cell .menu-remarks {
-    display: none;
+  .menu-remarks-text {
+    display: -webkit-box;
+    overflow: hidden;
+    line-height: 1.45;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    text-overflow: ellipsis;
+    white-space: normal;
   }
 
-  .menu-url-cell .url-text {
+  .url-text {
     display: block;
     overflow: hidden;
     white-space: nowrap;
@@ -3224,16 +3233,16 @@ onMounted(async () => {
     font-size: 11px;
   }
 
-  .menu-icon-cell .icon-display {
+  .icon-display {
     justify-content: center;
     gap: 0;
   }
 
-  .menu-icon-cell .icon-text {
+  .icon-text {
     display: none;
   }
 
-  .menu-icon-cell .menu-icon {
+  .menu-icon {
     font-size: 15px;
   }
 

@@ -44,15 +44,15 @@ function walk(node, visit) {
 function isRemovableInit(init) {
   if (!init) return true
   switch (init.type) {
-    case 'ArrowFunctionExpression':
-    case 'FunctionExpression':
-    case 'Literal':
-    case 'TemplateLiteral':
-    case 'ArrayExpression':
-    case 'ObjectExpression':
-      return true
-    default:
-      return false
+  case 'ArrowFunctionExpression':
+  case 'FunctionExpression':
+  case 'Literal':
+  case 'TemplateLiteral':
+  case 'ArrayExpression':
+  case 'ObjectExpression':
+    return true
+  default:
+    return false
   }
 }
 

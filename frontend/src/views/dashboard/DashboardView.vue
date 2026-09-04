@@ -274,8 +274,55 @@ const CACHE_KEYS = {
   recentActivities: '/dashboard/activities'
 }
 
-// 活动数据必须由后端提供；当前没有活动接口时保持为空，不展示虚构记录。
-const recentActivities = ref<any[]>([])
+type DashboardActivityType = 'sales' | 'customer' | 'inventory' | 'repair'
+
+interface DashboardActivity {
+  id: string
+  type: DashboardActivityType
+  icon: string
+  description: string
+  time: string
+}
+
+interface DashboardActivityApiRecord {
+  id?: string | number
+  type?: string
+  icon?: string
+  description?: string
+  occurred_at?: string
+}
+
+const recentActivities = ref<DashboardActivity[]>([])
+
+const normalizeRecentActivities = (payload: unknown): DashboardActivity[] => {
+  if (!Array.isArray(payload)) return []
+
+  return payload
+    .filter((activity): activity is DashboardActivityApiRecord => (
+      activity !== null && typeof activity === 'object'
+    ))
+    .filter(activity => {
+      if (!activity.occurred_at) return false
+      return !Number.isNaN(new Date(activity.occurred_at).getTime())
+    })
+    .sort((a, b) => (
+      new Date(String(b.occurred_at)).getTime() - new Date(String(a.occurred_at)).getTime()
+    ))
+    .slice(0, 8)
+    .map((activity, index) => {
+      const activityType = ['sales', 'customer', 'inventory', 'repair'].includes(activity.type || '')
+        ? activity.type as DashboardActivityType
+        : 'inventory'
+
+      return {
+        id: String(activity.id || `activity-${index}`),
+        type: activityType,
+        icon: activity.icon || 'fas fa-clock',
+        description: activity.description || '发生一项业务活动',
+        time: TimeUtil.fromNow(String(activity.occurred_at))
+      }
+    })
+}
 
 // 计算属性
 const _hasWarning = computed(() => {
@@ -401,9 +448,20 @@ const loadDashboardData = async (showLoadingState = true) => {
   }
 
   try {
-    // 使用缓存的API调用
-    const response = await useCachedRequest(CACHE_KEYS.dashboard, () =>
-      unifiedApi.get('/dashboard'), DEFAULT_CACHE_TTL.STATIC)
+    const activityRequest = useCachedRequest(
+      CACHE_KEYS.recentActivities,
+      () => unifiedApi.get('/dashboard/activities', { params: { limit: 8 } }),
+      DEFAULT_CACHE_TTL.STATIC
+    ).catch(error => {
+      handleApiError(error, '加载最近活动失败')
+      return null
+    })
+
+    const [response, activityResponse] = await Promise.all([
+      useCachedRequest(CACHE_KEYS.dashboard, () =>
+        unifiedApi.get('/dashboard'), DEFAULT_CACHE_TTL.STATIC),
+      activityRequest
+    ])
 
     if (response.success && response.data) {
       const stats = response.data.stats
@@ -423,6 +481,10 @@ const loadDashboardData = async (showLoadingState = true) => {
         inventoryAlert.value = true
       }
     }
+
+    recentActivities.value = activityResponse?.success
+      ? normalizeRecentActivities(activityResponse.data)
+      : []
 
   } catch (error) {
     handleApiError(error, '加载仪表盘数据失败')

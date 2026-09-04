@@ -144,11 +144,11 @@ import { useTabsStore } from '@/stores/tabs'
 import { storeToRefs } from 'pinia'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { MenuItem } from '@/types/menu'
+import { BREAKPOINTS } from '@/config/breakpoints'
 import { TimeUtil } from '@/utils/time'
 import { storage } from '@/services/storage'
 import { canAccessRoutePath } from '@/constants/routePermissions'
 import { logger } from '@/utils/logger'
-import { BREAKPOINTS } from '@/config/breakpoints'
 
 // 路由
 const router = useRouter()
@@ -166,8 +166,11 @@ const getRouteCacheKey = (path: string) => `${path}:${tabsStore.tabRefreshVersio
 const isRefreshingCurrentRoute = (path: string) => tabsStore.refreshingPath === path
 
 // 移动端检测
-const { isMobile, isTablet, screenWidth } = useMobile()
-const isDesktopLayout = computed(() => screenWidth.value >= BREAKPOINTS.DESKTOP_MIN)
+const { isMobile, isTablet, isDesktop, screenWidth } = useMobile()
+const isDesktopLayout = computed(() => (
+  isDesktop.value &&
+  screenWidth.value > BREAKPOINTS.DESKTOP_MIN
+))
 
 // 使用菜单宽度组合式函数
 const { menuWidth, loadAllMenuWidths } = useMenuWidth()

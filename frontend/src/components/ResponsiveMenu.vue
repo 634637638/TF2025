@@ -17,7 +17,7 @@
       @quick-action="handleQuickAction"
     />
 
-    
+
     <!-- 桌面端菜单 -->
     <div
       v-else
@@ -85,8 +85,6 @@ const props = withDefaults(defineProps<Props>(), {
 
 // 使用移动端菜单 Composable
 const {
-  isMobile,
-  isTablet,
   isSlideMenuOpen,
   isMenuLoading,
   userInfo,
@@ -107,10 +105,13 @@ const {
   quickActions: props.quickActions
 })
 
-const { screenWidth } = useMobile()
+const { isMobile, isTablet, screenWidth } = useMobile()
 
-// 纯按宽度切换：1024px 以下使用侧滑菜单，1024px 及以上使用常驻侧栏。
-const isDrawerNavigation = computed(() => screenWidth.value < BREAKPOINTS.DESKTOP_MIN)
+const isDrawerNavigation = computed(() => (
+  isMobile.value ||
+  isTablet.value ||
+  screenWidth.value <= BREAKPOINTS.DESKTOP_MIN
+))
 
 // 菜单宽度管理
 const { isCollapsed, setCollapsed } = useMenuWidth()
@@ -260,7 +261,7 @@ defineExpose({
 }
 
 // 桌面设备使用常驻侧栏，不显示侧滑菜单按钮
-@media (min-width: 1024px) {
+@media (min-width: 1025px) {
   .mobile-menu-button {
     display: none;
   }

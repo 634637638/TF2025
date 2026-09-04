@@ -592,19 +592,19 @@ const refreshVariants = async (bumpNonce = false) => {
     context: canViewField('context.auto_context')
       ? autoContext.value
       : {
-          ...autoContext.value,
-          locationName: '',
-          weatherText: '',
-          weatherCode: null,
-          temperature: null,
-          apparentTemperature: null,
-          timeSegment: '',
-          season: '',
-          holidayCue: '',
-          holidayName: '',
-          solarTermCue: '',
-          dayName: ''
-        },
+        ...autoContext.value,
+        locationName: '',
+        weatherText: '',
+        weatherCode: null,
+        temperature: null,
+        apparentTemperature: null,
+        timeSegment: '',
+        season: '',
+        holidayCue: '',
+        holidayName: '',
+        solarTermCue: '',
+        dayName: ''
+      },
     lexicon: {
       ...marketingLexicon.value,
       subsidyEnabled: canViewField('context.subsidy') && effectiveMode === 'sales' && marketingLexicon.value.subsidyEnabled === true && useSubsidy.value,

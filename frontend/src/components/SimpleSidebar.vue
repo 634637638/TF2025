@@ -125,7 +125,6 @@ import { useRouter, useRoute } from 'vue-router'
 import { useMobile, useMobileGestures } from '../composables/mobile'
 import { useTheme } from '../composables/useTheme'
 import { useMenuWidth } from '../composables/useMenuWidth'
-import { BREAKPOINTS } from '@/config/breakpoints'
 import { useMenuStore } from '../stores/menu'
 import { useEventBus } from '../composables/core/useEventBus'
 import IconRenderer from './IconRenderer.vue'
@@ -158,8 +157,8 @@ const menuStore = useMenuStore()
 const attrs = useAttrs()
 
 // Mobile Composables
-const { screenWidth } = useMobile()
-const isMobile = computed(() => screenWidth.value < BREAKPOINTS.DESKTOP_MIN)
+const { isMobile: isPhone, isTablet } = useMobile()
+const isMobile = computed(() => isPhone.value || isTablet.value)
 const { handleTouchStart, handleTouchEnd } = useMobileGestures()
 
 // Theme Composable

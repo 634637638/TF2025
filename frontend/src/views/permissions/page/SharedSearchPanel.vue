@@ -25,9 +25,9 @@
       </template>
 
       <div
+        v-if="ctx.canViewPermissionsField('roles.name') || ctx.canViewPermissionsField('roles.code') || ctx.canViewPermissionsField('roles.description')"
         class="form-group filter-item"
         data-field="roleHint"
-        v-if="ctx.canViewPermissionsField('roles.name') || ctx.canViewPermissionsField('roles.code') || ctx.canViewPermissionsField('roles.description')"
       >
         <div class="search-hint-card">
           <i class="fas fa-database" />
@@ -58,9 +58,9 @@
       </template>
 
       <div
+        v-if="ctx.canViewPermissionsField('users.roles')"
         class="form-group filter-item"
         data-field="role"
-        v-if="ctx.canViewPermissionsField('users.roles')"
       >
         <el-select
           v-model="ctx.userSearchForm.role_id"

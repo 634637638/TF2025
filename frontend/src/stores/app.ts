@@ -6,7 +6,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { useTime } from '@/utils/time'
-import { getViewportDimensions, isIOSDevice, isMobileViewport, isTabletViewport } from '@/utils/device-detection'
+import { applyDeviceRootClass, getViewportDimensions, isIOSDevice, isMobileViewport, isTabletViewport } from '@/utils/device-detection'
 import { storage } from '@/services/storage'
 import { PREFERENCE_STORAGE_KEYS } from '@/constants/storage'
 import type { AppLanguage, DeviceInfo, SystemInfo, ThemeMode } from '@/types'
@@ -473,6 +473,8 @@ export const useAppStore = defineStore('app', () => {
     const userAgent = navigator.userAgent
     const platform = navigator.platform
     const { width, height } = getViewportDimensions()
+    const mobileViewport = isMobileViewport(width, userAgent, platform)
+    const tabletViewport = isTabletViewport(width, userAgent, platform)
 
     deviceInfo.value = {
       userAgent,
@@ -481,9 +483,9 @@ export const useAppStore = defineStore('app', () => {
       isAndroid: /Android/i.test(userAgent),
       isSafari: /Safari/i.test(userAgent) && !/Chrome|CriOS|Edg/i.test(userAgent),
       isChrome: /Chrome|CriOS/i.test(userAgent),
-      isMobile: isMobileViewport(width, userAgent, platform),
-      isTablet: isTabletViewport(width, userAgent, platform),
-      isDesktop: !isMobileViewport(width, userAgent, platform) && !isTabletViewport(width, userAgent, platform),
+      isMobile: mobileViewport,
+      isTablet: tabletViewport,
+      isDesktop: !mobileViewport && !tabletViewport,
       screenSize: {
         width,
         height
@@ -492,6 +494,7 @@ export const useAppStore = defineStore('app', () => {
       isTouchDevice: 'ontouchstart' in window || navigator.maxTouchPoints > 0
     }
 
+    applyDeviceRootClass()
     updateDeviceBreakpoint()
   }
 
@@ -610,6 +613,8 @@ export const useAppStore = defineStore('app', () => {
 
     // 监听窗口大小变化
     window.addEventListener('resize', updateDeviceInfo)
+    window.addEventListener('orientationchange', updateDeviceInfo)
+    window.visualViewport?.addEventListener('resize', updateDeviceInfo, { passive: true })
 
     // 监听系统主题变化
     if ('matchMedia' in window) {

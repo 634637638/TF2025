@@ -33,6 +33,7 @@ export const clearPersistedAuthData = (options: ClearAuthOptions = {}): void => 
   // 清除 sessionStorage 中的认证数据
   storage.remove(AUTH_STORAGE_KEYS.AUTH, 'session')
   storage.remove(AUTH_STORAGE_KEYS.TOKEN, 'session')
+  storage.remove('access_token', 'session')
 
   if (clearDisconnectState) {
     storage.remove(AUTH_STORAGE_KEYS.BACKEND_DISCONNECTED, 'session')

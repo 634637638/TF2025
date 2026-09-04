@@ -350,7 +350,7 @@ import { storage } from '@/services/storage'
 import { loadHtml2Canvas } from '@/utils/html2canvas'
 import { toCanonicalPhoneUpdatePayload } from '@/utils/phone-update-payload'
 import { sortAvailableSalesPhones } from './sales-sort'
-import { isMobileViewport } from '@/utils/device-detection'
+import { isCurrentMobileViewport } from '@/utils/device-detection'
 import { useSalesBaseOptions } from './useSalesBaseOptions'
 import { useSalesCheckout } from './useSalesCheckout'
 import { useSalesCustomers } from './useSalesCustomers'
@@ -434,7 +434,7 @@ const handleSalesPermissionsUpdated = async () => {
 }
 
 const isSalesMobileLayout = () => {
-  return typeof window !== 'undefined' && isMobileViewport(window.innerWidth)
+  return isCurrentMobileViewport()
 }
 
 const syncSalesViewMode = () => {

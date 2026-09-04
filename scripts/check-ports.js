@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
-const { getPortsStatus, printPortsStatus } = require('./port-utils');
+const { getPortsStatus, printPortsStatus } = require('./port-utils')
 
-const status = getPortsStatus();
-const occupiedCount = printPortsStatus(status);
+const status = getPortsStatus()
+const occupiedCount = printPortsStatus(status)
 
-process.exit(occupiedCount > 0 ? 1 : 0);
+process.exit(occupiedCount > 0 ? 1 : 0)

@@ -141,6 +141,7 @@
   width: 100vw;
   height: 100vh;
   background: rgba(0, 0, 0, 0.5);
+  -webkit-backdrop-filter: blur(2px);
   backdrop-filter: blur(2px);
   z-index: 9999;
   display: flex;
@@ -311,9 +312,9 @@
     background-position: right 12px center;
     background-repeat: no-repeat;
     background-size: 16px;
-    appearance: none;
     -webkit-appearance: none;
     -moz-appearance: none;
+    appearance: none;
   }
 
   // 表单验证状态

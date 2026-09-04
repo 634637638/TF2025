@@ -668,6 +668,45 @@ body {
   }
 }
 
+/* Safari 桌面网站模式兜底：设备检测确认是手机时，不进入平板展示语义。 */
+html.device-phone {
+  .tablet-only,
+  .hidden-mobile {
+    display: none !important;
+  }
+
+  .mobile-only {
+    display: block !important;
+  }
+
+  .grid-2,
+  .grid-3,
+  .grid-4 {
+    grid-template-columns: 1fr !important;
+  }
+
+  .admin-container,
+  .admin-container .main-content,
+  .admin-page,
+  .admin-page-content,
+  .content-area {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .admin-container {
+    overflow-x: hidden !important;
+  }
+
+  .admin-container .main-content,
+  .admin-page,
+  .admin-page-content,
+  .content-area {
+    width: 100% !important;
+    margin-left: 0 !important;
+  }
+}
+
 /* ================================
    8. 打印样式
    ================================ */

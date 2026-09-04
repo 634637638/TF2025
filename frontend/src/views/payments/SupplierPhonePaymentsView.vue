@@ -875,11 +875,18 @@
 
             <!-- 打款信息卡片 -->
             <div class="details-info payment-form-cards mt-5">
+              <div class="payment-form-heading">
+                <span class="payment-form-heading-icon"><i class="fas fa-pen-to-square" /></span>
+                <span>
+                  <strong>打款信息</strong>
+                  <small>确认本次付款记录</small>
+                </span>
+              </div>
               <div
                 v-if="canViewPaymentField('payment_method')"
-                class="info-row"
+                class="info-row payment-method-row"
               >
-                <label>打款方式:</label>
+                <label><i class="fas fa-credit-card" />打款方式</label>
                 <el-select
                   v-model="paymentForm.payment_method"
                   placeholder="请选择打款方式"
@@ -910,9 +917,9 @@
               </div>
               <div
                 v-if="canViewPaymentField('payment_time')"
-                class="info-row"
+                class="info-row payment-time-row"
               >
-                <label>打款时间:</label>
+                <label><i class="fas fa-calendar-day" />打款时间</label>
                 <el-date-picker
                   v-model="paymentForm.payment_time"
                   type="date"
@@ -927,7 +934,7 @@
                 v-if="canViewPaymentField('remarks')"
                 class="info-row payment-remarks-row"
               >
-                <label>备注:</label>
+                <label><i class="fas fa-note-sticky" />备注</label>
                 <el-input
                   v-model="paymentForm.payment_remarks"
                   type="textarea"
@@ -940,9 +947,9 @@
               </div>
               <div
                 v-if="canViewPaymentField('payment_operator')"
-                class="info-row"
+                class="info-row payment-operator-row"
               >
-                <label>打款人:</label>
+                <label><i class="fas fa-user-check" />打款人</label>
                 <el-input
                   v-model="paymentForm.payment_operator"
                   placeholder="打款人"
@@ -1199,11 +1206,18 @@
 
             <!-- 打款信息卡片 -->
             <div class="details-info payment-form-cards mt-5">
+              <div class="payment-form-heading">
+                <span class="payment-form-heading-icon"><i class="fas fa-pen-to-square" /></span>
+                <span>
+                  <strong>打款信息</strong>
+                  <small>确认本次付款记录</small>
+                </span>
+              </div>
               <div
                 v-if="canViewPaymentField('payment_method')"
-                class="info-row"
+                class="info-row payment-method-row"
               >
-                <label>打款方式:</label>
+                <label><i class="fas fa-credit-card" />打款方式</label>
                 <el-select
                   v-model="paymentForm.payment_method"
                   placeholder="请选择打款方式"
@@ -1234,9 +1248,9 @@
               </div>
               <div
                 v-if="canViewPaymentField('payment_time')"
-                class="info-row"
+                class="info-row payment-time-row"
               >
-                <label>打款时间:</label>
+                <label><i class="fas fa-calendar-day" />打款时间</label>
                 <el-date-picker
                   v-model="paymentForm.payment_time"
                   type="date"
@@ -1251,7 +1265,7 @@
                 v-if="canViewPaymentField('remarks')"
                 class="info-row payment-remarks-row"
               >
-                <label>备注:</label>
+                <label><i class="fas fa-note-sticky" />备注</label>
                 <el-input
                   v-model="paymentForm.payment_remarks"
                   type="textarea"
@@ -1264,9 +1278,9 @@
               </div>
               <div
                 v-if="canViewPaymentField('payment_operator')"
-                class="info-row"
+                class="info-row payment-operator-row"
               >
-                <label>打款人:</label>
+                <label><i class="fas fa-user-check" />打款人</label>
                 <el-input
                   v-model="paymentForm.payment_operator"
                   placeholder="打款人"
@@ -1320,7 +1334,6 @@
             <!-- 批次信息 -->
             <div
               class="details-info payment-summary-cards payment-batch-summary-cards"
-              style="grid-template-columns: repeat(4, 1fr);"
             >
               <div
                 v-if="canViewPaymentField('supplier_name')"
@@ -1576,7 +1589,7 @@
                 @click="handleBatchCancelPayment"
               >
                 <i class="fas fa-times-circle" />
-                <span>批量取消 {{ paymentDetails.phones?.length || 0 }} 台</span>
+                <span>全部取消</span>
               </el-button>
               <el-button
                 type="primary"
@@ -1586,7 +1599,7 @@
                 <span v-if="savingImage">保存中...</span>
                 <template v-else>
                   <i class="fas fa-camera" />
-                  <span>保存为图片</span>
+                  <span>保存图片</span>
                 </template>
               </el-button>
               <el-button
@@ -3989,6 +4002,204 @@ onMounted(async () => {
   }
 }
 
+/* 打款批次详情摘要卡片 */
+.payment-details .payment-batch-summary-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  padding: 14px;
+}
+
+.payment-details .details-info.payment-summary-cards.payment-batch-summary-cards > .info-row:first-child {
+  grid-column: auto;
+}
+
+.payment-details .payment-batch-summary-cards > .batch-summary-supplier {
+  order: 1;
+}
+
+.payment-details .payment-batch-summary-cards > .batch-summary-time {
+  order: 2;
+}
+
+.payment-details .payment-batch-summary-cards > .batch-summary-method {
+  order: 3;
+}
+
+.payment-details .payment-batch-summary-cards > .batch-summary-operator {
+  order: 4;
+}
+
+.payment-details .payment-batch-summary-cards > .batch-summary-count {
+  order: 5;
+}
+
+.payment-details .payment-batch-summary-cards > .batch-summary-cost {
+  order: 6;
+}
+
+.payment-details .payment-batch-summary-cards > .batch-summary-sales {
+  order: 7;
+}
+
+.payment-details .payment-batch-summary-cards > .batch-summary-profit {
+  order: 8;
+}
+
+.payment-details .payment-batch-summary-cards > .batch-summary-remarks {
+  grid-column: 1 / -1;
+  order: 9;
+}
+
+/* 打款表单信息面板：批量和单个打款共用 */
+.payment-details .payment-form-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(160px, 1fr));
+  align-items: stretch;
+  gap: 12px;
+  margin-top: 18px;
+  padding: 14px;
+  border: 1px solid var(--tf-color-slate-200);
+  border-radius: 12px;
+  background: var(--tf-color-slate-50);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+}
+
+.payment-details .payment-form-heading {
+  grid-column: 1 / -1;
+  order: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 0 2px 2px;
+}
+
+.payment-details .payment-form-heading-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  border-radius: 8px;
+  background: var(--tf-color-slate-900);
+  color: var(--color-bg-white);
+}
+
+.payment-details .payment-form-heading > span:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.payment-details .payment-form-heading strong {
+  color: var(--tf-color-slate-900);
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.payment-details .payment-form-heading small {
+  color: var(--tf-color-slate-500);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.payment-details .payment-form-cards > .payment-method-row {
+  --payment-form-accent: var(--tf-color-blue-500);
+  order: 1;
+}
+
+.payment-details .payment-form-cards > .payment-time-row {
+  --payment-form-accent: var(--tf-color-amber-500);
+  order: 2;
+}
+
+.payment-details .payment-form-cards > .payment-operator-row {
+  --payment-form-accent: var(--tf-color-teal-tailwind-500);
+  order: 3;
+}
+
+.payment-details .payment-form-cards > .payment-remarks-row {
+  --payment-form-accent: var(--tf-color-slate-500);
+  grid-column: 1 / -1;
+  order: 4;
+}
+
+.payment-details .payment-form-cards > .info-row {
+  position: relative;
+  min-width: 0;
+  min-height: 88px;
+  padding: 14px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 8px;
+  overflow: hidden;
+  border: 1px solid var(--tf-color-slate-200);
+  border-radius: 8px;
+  background: var(--color-bg-white);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+}
+
+.payment-details .payment-form-cards > .info-row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 3px;
+  background: var(--payment-form-accent, var(--tf-color-slate-400));
+}
+
+.payment-details .payment-form-cards > .payment-remarks-row {
+  min-height: 112px;
+}
+
+.payment-details .payment-form-cards > .info-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  color: var(--tf-color-slate-600);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.payment-details .payment-form-cards > .info-row label i {
+  width: 16px;
+  color: var(--payment-form-accent, var(--tf-color-primary-500));
+  font-size: 12px;
+  text-align: center;
+}
+
+.payment-details .payment-form-cards > .info-row > :deep(.el-select),
+.payment-details .payment-form-cards > .info-row > :deep(.el-date-picker),
+.payment-details .payment-form-cards > .info-row > :deep(.el-input) {
+  width: 100%;
+  max-width: 100%;
+}
+
+.payment-details .payment-form-cards > .info-row :deep(.el-input__wrapper),
+.payment-details .payment-form-cards > .info-row :deep(.el-select__wrapper) {
+  min-height: 38px;
+  border-radius: 6px;
+  background: var(--tf-color-surface-muted);
+  box-shadow: inset 0 0 0 1px var(--tf-color-border-form);
+}
+
+.payment-details .payment-form-cards > .payment-remarks-row :deep(.el-textarea__inner) {
+  min-height: 58px;
+  padding: 9px 10px;
+  border-radius: 6px;
+  background: var(--tf-color-surface-muted);
+  box-shadow: inset 0 0 0 1px var(--tf-color-border-form);
+  resize: vertical;
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -4573,6 +4784,11 @@ onMounted(async () => {
       border-radius: 0;
       box-shadow: none;
 
+      > .info-row:first-child {
+        grid-column: auto;
+        min-height: 78px;
+      }
+
       .info-row {
         --batch-summary-accent: #64748b;
         --batch-summary-tint: #f8fafc;
@@ -4638,6 +4854,11 @@ onMounted(async () => {
 
       @media (min-width: 481px) {
         grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .batch-summary-remarks {
+        grid-column: 1 / -1;
+        order: 9;
       }
 
       .batch-summary-supplier {
@@ -4802,53 +5023,37 @@ onMounted(async () => {
     }
 
     .details-info.payment-form-cards {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      overflow: hidden;
-      padding: 12px;
-      border-radius: 16px;
-      background: linear-gradient(180deg, var(--tf-color-surface-blue) 0%, var(--tf-color-surface-cool-blue) 100%);
-      border: 1px solid var(--tf-color-slate-200);
-      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.07);
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      padding: 10px;
+      border-radius: 12px;
 
       .info-row {
         min-width: 0;
-        min-height: auto;
-        padding: 2px 0;
+        min-height: 78px;
+        padding: 12px 8px 9px;
         display: flex;
-        flex-direction: row;
-        align-items: center;
-        justify-content: flex-start;
-        background: transparent;
-        border: none;
-        border-radius: 0;
-        box-shadow: none;
-        position: relative;
-        gap: 10px;
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: center;
+        gap: 6px;
+        border-radius: 8px;
 
         label {
-          font-size: 13px;
+          min-width: 0;
           margin-bottom: 0;
+          padding-left: 0;
+          font-size: 11px;
+          line-height: 1.2;
           letter-spacing: 0;
-          color: var(--tf-color-gray-chakra-600);
-          font-weight: 700;
           text-transform: none;
           white-space: nowrap;
-          padding-left: 2px;
-          flex: 0 0 68px;
         }
 
         span {
-          font-size: 14px;
-          line-height: 1.35;
-          color: var(--tf-color-slate-form);
-          font-weight: 700;
-          flex: 1 1 auto;
-          width: auto;
-          white-space: normal;
-          overflow: visible;
-          text-overflow: unset;
+          font-size: 12px;
+          line-height: 1.3;
         }
 
         :deep(.el-select),
@@ -4856,13 +5061,13 @@ onMounted(async () => {
         :deep(.el-input) {
           width: 100% !important;
           max-width: 100%;
-          flex: 1 1 auto;
         }
 
-        :deep(.el-input__wrapper) {
-          min-height: 42px;
-          padding: 0 12px;
-          border-radius: 12px;
+        :deep(.el-input__wrapper),
+        :deep(.el-select__wrapper) {
+          min-height: 34px;
+          padding: 0 8px;
+          border-radius: 6px;
           background: rgba(255, 255, 255, 0.96) !important;
           box-shadow: inset 0 0 0 1px var(--tf-color-border-form-strong) !important;
         }
@@ -4875,11 +5080,7 @@ onMounted(async () => {
         }
 
         :deep(.el-date-editor .el-input__prefix) {
-          display: inline-flex;
-          align-items: center;
-          margin-right: 8px;
-          padding-right: 8px;
-          border-right: 1px solid var(--tf-color-border-form-strong);
+          display: none;
         }
 
         :deep(.el-date-editor .el-input__prefix-inner) {
@@ -4891,15 +5092,20 @@ onMounted(async () => {
         :deep(.el-select__selected-item),
         :deep(.el-date-editor .el-range-input),
         :deep(.el-date-editor .el-input__inner) {
-          font-size: 14px;
+          font-size: 12px;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
         }
       }
 
-      .info-row + .info-row::before {
-        display: none;
+      .payment-form-heading {
+        grid-column: 1 / -1;
+      }
+
+      .payment-remarks-row {
+        grid-column: 1 / -1;
+        min-height: 92px;
       }
     }
   }
@@ -4914,12 +5120,53 @@ onMounted(async () => {
     padding: 10px 8px;
   }
 
-  .data-table .mobile-row-actions {
-  }
-
   .data-table .mobile-action-btn {
     flex: 1 1 calc(50% - 6px);
     min-width: 0;
+  }
+
+  .payment-details .details-info.payment-form-cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 14px;
+    padding: 10px;
+    border-radius: 12px;
+  }
+
+  .payment-details .payment-form-cards > .info-row,
+  .payment-details .payment-form-cards > .payment-remarks-row {
+    min-height: 78px;
+    padding: 12px 8px 9px;
+  }
+
+  .payment-details .payment-form-cards > .payment-remarks-row {
+    min-height: 92px;
+    padding: 12px 10px;
+  }
+
+  .payment-details .payment-form-cards > .info-row label {
+    font-size: 11px;
+  }
+
+  .payment-details .payment-form-cards > .info-row label i {
+    width: 13px;
+    font-size: 11px;
+  }
+
+  .payment-details .payment-form-cards > .info-row :deep(.el-input__wrapper),
+  .payment-details .payment-form-cards > .info-row :deep(.el-select__wrapper) {
+    min-height: 34px;
+    padding: 0 8px;
+  }
+
+  .payment-details .payment-form-cards > .info-row :deep(.el-date-editor .el-input__prefix) {
+    display: none;
+  }
+
+  .payment-details .payment-form-cards > .info-row :deep(.el-input__inner),
+  .payment-details .payment-form-cards > .info-row :deep(.el-select__selected-item),
+  .payment-details .payment-form-cards > .info-row :deep(.el-date-editor .el-input__inner) {
+    font-size: 12px;
   }
 }
 </style>
@@ -4998,7 +5245,25 @@ onMounted(async () => {
   text-underline-offset: 3px;
 }
 
+.supplier-phone-payments-detail-dialog .payment-details .details-info.payment-summary-cards.payment-batch-summary-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.supplier-phone-payments-detail-dialog .payment-details .details-info.payment-summary-cards.payment-batch-summary-cards > .info-row:first-child {
+  grid-column: auto;
+}
+
+.supplier-phone-payments-detail-dialog .payment-details .details-info.payment-summary-cards.payment-batch-summary-cards > .batch-summary-remarks {
+  grid-column: 1 / -1;
+  order: 9;
+}
+
 @media (max-width: 768px) {
+  .supplier-phone-payments-detail-dialog .payment-details .details-info.payment-summary-cards.payment-batch-summary-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .supplier-phone-payments-dialog {
     .el-dialog__header,
     &.mobile-dialog-sheet-panel .mobile-dialog-sheet-header {
@@ -5018,6 +5283,12 @@ onMounted(async () => {
 
   .payment-dialog-footer {
     gap: 8px;
+  }
+}
+
+@media (min-width: 481px) and (max-width: 768px) {
+  .supplier-phone-payments-detail-dialog .payment-details .details-info.payment-summary-cards.payment-batch-summary-cards {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 

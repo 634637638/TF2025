@@ -234,6 +234,7 @@ class UnifiedStorageService {
     // 清除 sessionStorage 中的认证数据
     this.remove(AUTH_STORAGE_KEYS.AUTH, 'session')
     this.remove(AUTH_STORAGE_KEYS.TOKEN, 'session')
+    this.remove('access_token', 'session')
     this.remove(AUTH_STORAGE_KEYS.DISCONNECT_NOTIFIED, 'session')
     this.remove(AUTH_STORAGE_KEYS.PERMISSIONS_LOADED, 'session')
     this.remove(ROUTER_STORAGE_KEYS.REDIRECT_COOLDOWN, 'session')

@@ -142,6 +142,158 @@ router.get('/', unifiedAuth, requirePermission('dashboard:view'), async (req, re
   }
 })
 
+// 获取最近活动
+router.get('/activities', unifiedAuth, requirePermission('dashboard:view'), async (req, res) => {
+  try {
+    if (!isConnected()) {
+      return ApiResponse.success(res, [], '获取最近活动成功')
+    }
+
+    const database = getDatabase()
+    const sourceLimit = 8
+    const [
+      [phoneSales],
+      [accessorySales],
+      [newCustomers],
+      [phoneInventory],
+      [repairEvents]
+    ] = await Promise.all([
+      database.execute(`
+        SELECT
+          CONCAT('phone-sale-', s.id) AS id,
+          'sales' AS activity_type,
+          'fas fa-shopping-cart' AS icon,
+          b.name AS brand_name,
+          m.name AS model_name,
+          COALESCE(s.sale_time, s.created_at) AS occurred_at
+        FROM sales s
+        LEFT JOIN phones p ON p.id = s.phone_id
+        LEFT JOIN brands b ON b.id = p.brand_id
+        LEFT JOIN models m ON m.id = p.model_id
+        WHERE COALESCE(s.sale_time, s.created_at) IS NOT NULL
+        ORDER BY occurred_at DESC, s.id DESC
+        LIMIT ${sourceLimit}
+      `),
+      database.execute(`
+        SELECT
+          CONCAT('accessory-sale-', asl.id) AS id,
+          'sales' AS activity_type,
+          'fas fa-shopping-bag' AS icon,
+          a.name AS accessory_name,
+          COALESCE(asl.sale_time, asl.created_at) AS occurred_at
+        FROM accessory_sales asl
+        LEFT JOIN accessories a ON a.id = asl.accessory_id
+        WHERE COALESCE(asl.sale_time, asl.created_at) IS NOT NULL
+        ORDER BY occurred_at DESC, asl.id DESC
+        LIMIT ${sourceLimit}
+      `),
+      database.execute(`
+        SELECT
+          CONCAT('customer-', c.id) AS id,
+          'customer' AS activity_type,
+          'fas fa-user-plus' AS icon,
+          c.name AS customer_name,
+          c.created_at AS occurred_at
+        FROM customers c
+        WHERE c.created_at IS NOT NULL
+        ORDER BY c.created_at DESC, c.id DESC
+        LIMIT ${sourceLimit}
+      `),
+      database.execute(`
+        SELECT
+          CONCAT('phone-inventory-', p.id) AS id,
+          'inventory' AS activity_type,
+          'fas fa-box' AS icon,
+          b.name AS brand_name,
+          m.name AS model_name,
+          p.inventory_time AS occurred_at
+        FROM phones p
+        LEFT JOIN brands b ON b.id = p.brand_id
+        LEFT JOIN models m ON m.id = p.model_id
+        WHERE p.inventory_time IS NOT NULL
+        ORDER BY p.inventory_time DESC, p.id DESC
+        LIMIT ${sourceLimit}
+      `),
+      database.execute(`
+        SELECT
+          CONCAT('repair-created-', r.id) AS id,
+          'repair' AS activity_type,
+          'fas fa-tools' AS icon,
+          '创建维修单' AS event_label,
+          b.name AS brand_name,
+          r.phone_model AS model_name,
+          r.created_at AS occurred_at
+        FROM repairs r
+        LEFT JOIN brands b ON b.id = r.brand_id
+        WHERE r.created_at IS NOT NULL
+
+        UNION ALL
+
+        SELECT
+          CONCAT('repair-completed-', r.id) AS id,
+          'repair' AS activity_type,
+          'fas fa-check-circle' AS icon,
+          '维修完成' AS event_label,
+          b.name AS brand_name,
+          r.phone_model AS model_name,
+          r.completed_at AS occurred_at
+        FROM repairs r
+        LEFT JOIN brands b ON b.id = r.brand_id
+        WHERE r.completed_at IS NOT NULL
+
+        ORDER BY occurred_at DESC, id DESC
+        LIMIT ${sourceLimit}
+      `)
+    ])
+
+    const buildDescription = activity => {
+      const productName = [activity.brand_name, activity.model_name]
+        .filter(value => value && String(value).trim())
+        .join(' ')
+        .trim()
+
+      switch (activity.activity_type) {
+      case 'sales':
+        if (activity.accessory_name) {
+          return `完成配件销售：${activity.accessory_name}`
+        }
+        return `完成手机销售：${productName || '手机'}`
+      case 'customer':
+        return `新增客户：${activity.customer_name || '新客户'}`
+      case 'inventory':
+        return `手机入库：${productName || '手机'}`
+      case 'repair':
+        return `${activity.event_label || '维修动态'}：${productName || '设备'}`
+      default:
+        return '发生一项业务活动'
+      }
+    }
+
+    const activities = [
+      ...phoneSales,
+      ...accessorySales,
+      ...newCustomers,
+      ...phoneInventory,
+      ...repairEvents
+    ]
+      .filter(activity => activity.occurred_at)
+      .map(activity => ({
+        id: String(activity.id),
+        type: activity.activity_type,
+        icon: activity.icon,
+        description: buildDescription(activity),
+        occurred_at: activity.occurred_at
+      }))
+      .sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime())
+      .slice(0, 8)
+
+    return ApiResponse.success(res, activities, '获取最近活动成功')
+  } catch (error) {
+    log.error('获取最近活动失败:', error)
+    return ApiResponse.serverError(res, '获取最近活动失败', error)
+  }
+})
+
 /**
  * 获取综合预警信息
  * 包含：手机库存预警、配件库存预警、销售预警、入库预警
