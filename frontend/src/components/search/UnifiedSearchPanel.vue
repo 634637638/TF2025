@@ -1,7 +1,12 @@
 <template>
   <div
+    ref="panelRef"
     class="unified-search-panel"
     @click="handlePanelClick"
+    @click.capture="handleSearchInteraction"
+    @input.capture="handleSearchInteraction"
+    @change.capture="handleSearchInteraction"
+    @keydown.enter.capture="handleSearchInteraction"
   >
     <div
       class="unified-search-panel__form"
@@ -17,18 +22,25 @@
           class="unified-search-panel__actions"
           @click.stop
         >
-          <slot name="actions">
+          <slot
+            name="actions"
+            :loading="loading"
+            :searching="loading"
+          >
             <el-button
               type="primary"
-              :disabled="loading"
-              @click="$emit('search')"
+              class="unified-search-panel__search-button"
+              :loading="loading"
+              :aria-busy="loading"
+              @click="handleSearch"
             >
               <i class="fas fa-search" />
               搜索
             </el-button>
             <el-button
               type="default"
-              @click="$emit('reset')"
+              :disabled="loading"
+              @click="handleReset"
             >
               <i class="fas fa-redo" />
               重置
@@ -43,6 +55,9 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
+import { requestPaginationReset } from '@/utils/search-pagination'
+
 interface Props {
   expanded?: boolean
   loading?: boolean
@@ -60,6 +75,30 @@ interface Emits {
 }
 
 const emit = defineEmits<Emits>()
+const panelRef = ref<HTMLElement | null>(null)
+
+const resetPagination = () => {
+  requestPaginationReset(panelRef.value)
+}
+
+const handleSearch = () => {
+  resetPagination()
+  emit('search')
+}
+
+const handleReset = () => {
+  resetPagination()
+  emit('reset')
+}
+
+const handleSearchInteraction = (event: Event) => {
+  const target = event.target as HTMLElement | null
+  if (!target) return
+
+  if (target.closest('input, button, textarea, select, [role="button"], .el-select, .el-date-editor')) {
+    resetPagination()
+  }
+}
 
 const _openPanel = () => {
   if (!props.expanded) {
@@ -263,6 +302,14 @@ const handlePanelClick = (event: MouseEvent) => {
     box-sizing: border-box;
   }
 
+  .unified-search-panel__actions :deep(.el-button--primary) {
+    min-width: 74px;
+  }
+
+  .unified-search-panel__actions :deep(.el-button--default) {
+    min-width: 60px;
+  }
+
   .unified-search-panel__primary :deep(.el-input__wrapper) {
     min-height: var(--tf-search-control-height, 34px) !important;
     height: var(--tf-search-control-height, 34px) !important;
@@ -315,10 +362,13 @@ const handlePanelClick = (event: MouseEvent) => {
     box-sizing: border-box;
   }
 
-  .unified-search-panel__actions :deep(.el-button) {
-    min-width: 0;
+  .unified-search-panel__actions :deep(.el-button--primary) {
+    min-width: 68px;
   }
 
+  .unified-search-panel__actions :deep(.el-button--default) {
+    min-width: 56px;
+  }
 }
 
 @media (max-width: 390px) {

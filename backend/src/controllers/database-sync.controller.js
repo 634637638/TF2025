@@ -10,7 +10,12 @@ const SmartSyncService = require('../services/smart-sync.service')
 
 // 创建服务实例
 const syncService = new DatabaseSyncService()
-const smartSyncService = new SmartSyncService()
+const smartSyncService = new SmartSyncService(syncService)
+const getUserId = req => req.user?.id ?? req.user?.userId ?? req.user?.sub
+const sendSyncError = (res, error) => res.status(error.statusCode || 500).json({
+  success: false,
+  message: error.message
+})
 
 class DatabaseSyncController {
   /**
@@ -34,6 +39,7 @@ class DatabaseSyncController {
       // 创建连接
       const result = await syncService.createConnection({
         id: connectionId,
+        ownerId: getUserId(req),
         host,
         port: port || 3306,
         user,
@@ -44,10 +50,7 @@ class DatabaseSyncController {
       res.json(result)
     } catch (error) {
       log.error('创建数据库连接失败:', error)
-      res.status(500).json({
-        success: false,
-        message: error.message
-      })
+      sendSyncError(res, error)
     }
   }
 
@@ -56,16 +59,13 @@ class DatabaseSyncController {
    */
   async getConnections(req, res) {
     try {
-      const connections = syncService.getConnections()
+      const connections = syncService.getConnections(getUserId(req))
       res.json({
         success: true,
         connections
       })
     } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: error.message
-      })
+      sendSyncError(res, error)
     }
   }
 
@@ -75,13 +75,10 @@ class DatabaseSyncController {
   async closeConnection(req, res) {
     try {
       const { connectionId } = req.params
-      const result = await syncService.closeConnection(connectionId)
+      const result = await syncService.closeConnection(connectionId, getUserId(req))
       res.json(result)
     } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: error.message
-      })
+      sendSyncError(res, error)
     }
   }
 
@@ -91,7 +88,7 @@ class DatabaseSyncController {
   async getTables(req, res) {
     try {
       const { connectionId } = req.params
-      const result = await syncService.getTables(connectionId)
+      const result = await syncService.getTables(connectionId, getUserId(req))
       res.json(result)
     } catch (error) {
       res.status(500).json({
@@ -107,7 +104,7 @@ class DatabaseSyncController {
   async getTableStructure(req, res) {
     try {
       const { connectionId, tableName } = req.params
-      const result = await syncService.getTableStructure(connectionId, tableName)
+      const result = await syncService.getTableStructure(connectionId, tableName, getUserId(req))
       res.json(result)
     } catch (error) {
       res.status(500).json({
@@ -128,7 +125,7 @@ class DatabaseSyncController {
       const result = await syncService.getTableData(connectionId, tableName, {
         limit: parseInt(limit) || 10,
         offset: parseInt(offset) || 0
-      })
+      }, getUserId(req))
 
       res.json(result)
     } catch (error) {
@@ -244,6 +241,7 @@ class DatabaseSyncController {
 
       const result = syncService.saveMappingConfig({
         id,
+        ownerId: getUserId(req),
         sourceTable,
         targetTable,
         fieldMappings,
@@ -252,10 +250,7 @@ class DatabaseSyncController {
 
       res.json(result)
     } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: error.message
-      })
+      sendSyncError(res, error)
     }
   }
 
@@ -264,7 +259,7 @@ class DatabaseSyncController {
    */
   async getMappingConfigs(req, res) {
     try {
-      const configs = syncService.getAllMappingConfigs()
+      const configs = syncService.getAllMappingConfigs(getUserId(req))
       res.json({
         success: true,
         configs
@@ -283,7 +278,7 @@ class DatabaseSyncController {
   async getMappingConfig(req, res) {
     try {
       const { configId } = req.params
-      const config = syncService.getMappingConfig(configId)
+      const config = syncService.getMappingConfig(configId, getUserId(req))
 
       if (!config) {
         return res.status(404).json({
@@ -310,7 +305,7 @@ class DatabaseSyncController {
   async deleteMappingConfig(req, res) {
     try {
       const { configId } = req.params
-      const result = syncService.deleteMappingConfig(configId)
+      const result = syncService.deleteMappingConfig(configId, getUserId(req))
       res.json(result)
     } catch (error) {
       res.status(500).json({
@@ -341,7 +336,8 @@ class DatabaseSyncController {
           connectionId,
           sourceTable,
           targetTable,
-          targetConnection
+          targetConnection,
+          getUserId(req)
         )
 
         res.json(result)
@@ -377,7 +373,8 @@ class DatabaseSyncController {
         const result = await syncService.preCheckSync(
           connectionId,
           configId,
-          targetConnection
+          targetConnection,
+          getUserId(req)
         )
 
         res.json(result)
@@ -438,7 +435,7 @@ class DatabaseSyncController {
   async getSyncProgress(req, res) {
     try {
       const { syncId } = req.params
-      const progress = syncService.getSyncProgress(syncId)
+      const progress = syncService.getSyncProgress(syncId, getUserId(req))
 
       if (!progress) {
         return res.status(404).json({
@@ -503,10 +500,11 @@ class DatabaseSyncController {
       const LocalToCloudSyncService = require('../services/local-to-cloud-sync.service')
       const syncService = new LocalToCloudSyncService()
 
-      const result = await syncService.syncLocalToCloud(connectionId, {
+      const localToCloudService = new LocalToCloudSyncService(syncService)
+      const result = await localToCloudService.syncLocalToCloud(connectionId, {
         tables: tables || ['phones', 'customers', 'sales', 'brands', 'models', 'colors', 'memories'],
         dryRun
-      })
+      }, req.user)
 
       res.json(result)
     } catch (error) {
@@ -533,10 +531,10 @@ class DatabaseSyncController {
       }
 
       const LocalToCloudSyncService = require('../services/local-to-cloud-sync.service')
-      const syncService = new LocalToCloudSyncService()
+      const localToCloudService = new LocalToCloudSyncService(syncService)
 
       // 预检查：分析本地数据和云端数据的差异
-      const cloudConnection = syncService.syncService.getConnection(connectionId)
+      const cloudConnection = localToCloudService.syncService.getConnection(connectionId, getUserId(req))
       const localConnection = await require('../config/database').getDatabase().getConnection()
 
       try {
@@ -670,12 +668,12 @@ class DatabaseSyncController {
       }
 
       const LocalToCloudSyncService = require('../services/local-to-cloud-sync.service')
-      const syncService = new LocalToCloudSyncService()
+      const localToCloudService = new LocalToCloudSyncService(syncService)
 
-      const result = await syncService.syncLocalToCloud(connectionId, {
+      const result = await localToCloudService.syncLocalToCloud(connectionId, {
         tables: tables || ['phones', 'customers', 'sales', 'brands', 'models', 'colors', 'memories'],
         dryRun
-      })
+      }, req.user)
 
       res.json(result)
     } catch (error) {

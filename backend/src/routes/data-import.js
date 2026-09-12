@@ -15,21 +15,60 @@ const { getUploadSubdir } = require('../utils/upload-paths')
 const { validateSpreadsheetFile, readSpreadsheetFileSafe, sheetToJsonSafe } = require('../utils/spreadsheet-security')
 
 const IMPORT_UPLOAD_DIR = getUploadSubdir('import')
+const FILE_TOKEN_TTL = 30 * 60 * 1000
+const fileTokenRegistry = new Map()
+
+const getUserId = user => user?.id ?? user?.userId ?? user?.sub ?? null
+
+function registerFileToken(fileToken, userId) {
+  fileTokenRegistry.set(fileToken, {
+    userId: String(userId),
+    createdAt: Date.now()
+  })
+}
+
+function removeExpiredFileTokens() {
+  const now = Date.now()
+  for (const [fileToken, metadata] of fileTokenRegistry.entries()) {
+    if (now - metadata.createdAt > FILE_TOKEN_TTL) {
+      fileTokenRegistry.delete(fileToken)
+    }
+  }
+}
+
+function createFileTokenError(message, statusCode = 400) {
+  const error = new Error(message)
+  error.statusCode = statusCode
+  return error
+}
 
 // API 只暴露受控文件令牌，绝不把服务器绝对路径交给客户端。
-function resolveFileToken(fileToken) {
+function resolveFileToken(fileToken, userId) {
+  removeExpiredFileTokens()
   if (typeof fileToken !== 'string' || !fileToken.trim()) {
-    const error = new Error('文件令牌无效')
-    error.statusCode = 400
-    throw error
+    throw createFileTokenError('文件令牌无效')
   }
   const token = path.basename(fileToken.trim())
   if (token !== fileToken.trim() || token.includes('..')) {
-    const error = new Error('文件令牌无效')
-    error.statusCode = 400
-    throw error
+    throw createFileTokenError('文件令牌无效')
   }
-  return validateSpreadsheetFile(path.join(IMPORT_UPLOAD_DIR, token), { rootPath: IMPORT_UPLOAD_DIR })
+
+  const metadata = fileTokenRegistry.get(token)
+  if (!metadata || Date.now() - metadata.createdAt > FILE_TOKEN_TTL) {
+    fileTokenRegistry.delete(token)
+    throw createFileTokenError('文件令牌已过期或不存在', 404)
+  }
+
+  if (String(userId) !== metadata.userId) {
+    throw createFileTokenError('无权访问该导入文件', 403)
+  }
+
+  const safeImportPath = validateSpreadsheetFile(path.join(IMPORT_UPLOAD_DIR, token), { rootPath: IMPORT_UPLOAD_DIR })
+  if (!fs.existsSync(safeImportPath)) {
+    fileTokenRegistry.delete(token)
+    throw createFileTokenError('导入文件不存在', 404)
+  }
+  return safeImportPath
 }
 
 function normalizeImportProgress(progress, importId) {
@@ -135,6 +174,7 @@ router.post('/upload', requirePermission('data-import:upload'), upload.single('f
         sheets: workbook.SheetNames
       }
     })
+    registerFileToken(path.basename(req.file.path), getUserId(req.user))
   } catch (error) {
     log.error('上传文件失败:', error)
     if (req.file && fs.existsSync(req.file.path)) {
@@ -152,10 +192,12 @@ router.post('/upload', requirePermission('data-import:upload'), upload.single('f
  */
 router.post('/upload/cleanup', requirePermission('data-import:upload'), async (req, res) => {
   try {
-    const filePath = resolveFileToken(req.body?.file_token)
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath)
+    const fileToken = req.body?.file_token
+    const safeImportPath = resolveFileToken(fileToken, getUserId(req.user))
+    if (fs.existsSync(safeImportPath)) {
+      fs.unlinkSync(safeImportPath)
     }
+    fileTokenRegistry.delete(path.basename(String(fileToken || '')))
     return res.json({
       success: true,
       message: '未使用的导入文件已清理'
@@ -177,7 +219,7 @@ router.post('/analyze', requirePermission('data-import:upload'), async (req, res
     const fileToken = req.body.file_token
     const options = req.body.options || {}
 
-    const safeFilePath = resolveFileToken(fileToken)
+    const safeFilePath = resolveFileToken(fileToken, getUserId(req.user))
     const result = await dataImportService.analyzeData(safeFilePath, options)
 
     res.json({
@@ -207,7 +249,8 @@ router.post('/import', requirePermission('data-import:execute'), async (req, res
     const fileToken = req.body.file_token
     const options = { ...(req.body.options || {}) }
 
-    const safeFilePath = resolveFileToken(fileToken)
+    const safeFilePath = resolveFileToken(fileToken, getUserId(req.user))
+    fileTokenRegistry.delete(path.basename(String(fileToken || '')))
 
     // 验证选项
     const validStrategies = ['smart', 'skip', 'overwrite', 'merge', 'replace_all']

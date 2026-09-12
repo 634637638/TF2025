@@ -4,7 +4,10 @@
 -->
 <template>
   <div class="my-orders-page">
-    <UnifiedSearchPanel :expanded="true">
+    <UnifiedSearchPanel
+      :expanded="true"
+      :loading="searching"
+    >
       <template #primary>
         <div class="search-box">
           <i class="fas fa-phone search-icon" />
@@ -30,12 +33,13 @@
           </el-button>
         </div>
       </template>
-      <template #actions>
+      <template #actions="{ loading: searchLoading }">
         <el-button
           type="primary"
           class="search-btn"
           :disabled="!isValidIdentity"
-          :loading="searching"
+          :loading="searchLoading"
+          :aria-busy="searchLoading"
           @click="searchOrders"
         >
           查询订单

@@ -111,6 +111,7 @@
 </template>
 
 <script setup lang="ts">
+import '@/styles/admin-layout.css'
 import { computed, onMounted, watch, shallowRef, provide, markRaw } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSiteSettingsStore } from '@/stores/siteSettings'

@@ -2,6 +2,11 @@ const { getDatabase } = require('../config/database')
 const { ensureReminderSchema } = require('../utils/reminder-schema')
 
 const MAX_GENERATION_DAYS = 120
+const COMPLETION_NOTICE_DAYS = 30
+const MAX_COMPLETION_NOTICES = 50
+const MAX_PENDING_REMINDERS = 100
+const NORMAL_PROMPT_INTERVAL_MINUTES = 6 * 60
+const FINAL_DAY_PROMPT_INTERVAL_MINUTES = 60
 const PRIORITIES = new Set(['low', 'normal', 'high', 'urgent'])
 const REPEAT_TYPES = new Set(['once', 'daily', 'weekly', 'monthly', 'yearly'])
 const PENDING_MATERIALIZE_INTERVAL_MS = 5 * 60 * 1000
@@ -534,26 +539,100 @@ class ReminderService {
   async pending(userId) {
     await this.ensure()
     const db = getDatabase()
-    await this.refreshPendingOccurrences(db)
+    const connection = await db.getConnection()
+    try {
+      await connection.beginTransaction()
+      await this.refreshPendingOccurrences(connection)
+      const [rows] = await connection.query(
+        `SELECT rr.id occurrence_id,rr.scheduled_at,rr.remind_at,r.id reminder_id,
+          r.title,r.content,r.priority,rt.name type_name,rt.color type_color,
+          rr.status recipient_status,rr.action_at,rr.snoozed_until
+         FROM reminder_records rr
+         JOIN reminders r ON r.id=rr.reminder_id
+         LEFT JOIN reminder_types rt ON rt.id=r.type_id
+         WHERE rr.user_id=? AND r.status='active' AND rr.remind_at<=NOW()
+           AND (rr.status='pending' OR (rr.status='snoozed' AND (rr.snoozed_until IS NULL OR rr.snoozed_until<=NOW())))
+           AND NOT EXISTS (
+             SELECT 1 FROM reminder_records newer
+             WHERE newer.reminder_id=rr.reminder_id
+               AND newer.user_id=rr.user_id
+               AND newer.remind_at<=NOW()
+               AND newer.scheduled_at>rr.scheduled_at
+           )
+           AND (
+             rr.last_prompted_at IS NULL
+             OR (
+               rr.scheduled_at<=DATE_ADD(NOW(), INTERVAL 1 DAY)
+               AND rr.last_prompted_at<=DATE_SUB(NOW(), INTERVAL ${FINAL_DAY_PROMPT_INTERVAL_MINUTES} MINUTE)
+             )
+             OR (
+               rr.scheduled_at>DATE_ADD(NOW(), INTERVAL 1 DAY)
+               AND rr.last_prompted_at<=DATE_SUB(NOW(), INTERVAL ${NORMAL_PROMPT_INTERVAL_MINUTES} MINUTE)
+             )
+           )
+         ORDER BY r.priority='urgent' DESC,r.priority='high' DESC,rr.remind_at DESC
+         LIMIT ${MAX_PENDING_REMINDERS}
+         FOR UPDATE`,
+        [userId]
+      )
+      if (rows.length) {
+        const placeholders = rows.map(() => '?').join(',')
+        await connection.query(
+          `UPDATE reminder_records SET last_prompted_at=NOW()
+           WHERE id IN (${placeholders})`,
+          rows.map(row => row.occurrence_id)
+        )
+      }
+      await connection.commit()
+      return rows
+    } catch (error) {
+      await connection.rollback()
+      throw error
+    } finally {
+      connection.release()
+    }
+  }
+
+  async pendingCompletions(adminUserId) {
+    await this.ensure()
+    const db = getDatabase()
     const [rows] = await db.query(
-      `SELECT rr.id occurrence_id,rr.scheduled_at,rr.remind_at,r.id reminder_id,
+      `SELECT rr.id occurrence_id,rr.reminder_id,rr.scheduled_at,rr.remind_at,
         r.title,r.content,r.priority,rt.name type_name,rt.color type_color,
-        rr.status recipient_status,rr.action_at,rr.snoozed_until
+        rr.user_id,rr.action_at,
+        u.name user_name,u.username
        FROM reminder_records rr
        JOIN reminders r ON r.id=rr.reminder_id
        LEFT JOIN reminder_types rt ON rt.id=r.type_id
-       WHERE rr.user_id=? AND r.status='active' AND rr.remind_at<=NOW() AND rr.status!='completed'
-       ORDER BY r.priority='urgent' DESC,r.priority='high' DESC,rr.remind_at LIMIT 100`,
-      [userId]
+       LEFT JOIN users u ON u.id=rr.user_id
+       LEFT JOIN reminder_completion_views cv
+         ON cv.occurrence_id=rr.id AND cv.admin_user_id=?
+       WHERE rr.status='completed'
+         AND rr.user_id<>?
+         AND rr.action_at>=DATE_SUB(NOW(), INTERVAL ${COMPLETION_NOTICE_DAYS} DAY)
+         AND cv.occurrence_id IS NULL
+       ORDER BY rr.action_at DESC
+       LIMIT ${MAX_COMPLETION_NOTICES}`,
+      [adminUserId, adminUserId]
     )
     return rows
+  }
+
+  async acknowledgeCompletion(adminUserId, occurrenceId) {
+    await this.ensure()
+    const db = getDatabase()
+    await db.query(
+      `INSERT IGNORE INTO reminder_completion_views (occurrence_id,admin_user_id)
+       SELECT id,? FROM reminder_records WHERE id=? AND status='completed'`,
+      [adminUserId, occurrenceId]
+    )
   }
 
   async updateRecipient(userId, recordId, action, snoozedUntil) {
     await this.ensure()
     const db = getDatabase()
     const [rows] = await db.query(
-      'SELECT id,status FROM reminder_records WHERE id=? AND user_id=?',
+      'SELECT id,status,scheduled_at FROM reminder_records WHERE id=? AND user_id=?',
       [recordId, userId]
     )
     if (!rows[0]) throw new Error('该待办未分配给当前员工')
@@ -562,9 +641,16 @@ class ReminderService {
       throw new Error('该周期已完成，不能再修改状态')
     }
     if (action === 'snooze') {
-      const until = asDate(snoozedUntil) || addDays(new Date(), 1)
+      const now = new Date()
+      const scheduledAt = asDate(rows[0].scheduled_at)
+      const until = asDate(snoozedUntil) || addDays(now, 1)
+      if (until <= now) throw new Error('稍后提醒时间必须晚于当前时间')
+      const snoozeDeadline = scheduledAt ? addDays(scheduledAt, -1) : null
+      if (!snoozeDeadline || now >= snoozeDeadline || until > snoozeDeadline) {
+        throw new Error('稍后提醒时间必须早于本轮执行时间至少1天')
+      }
       await db.query(
-        "UPDATE reminder_records SET status='snoozed',snoozed_until=?,action_at=NOW(),updated_at=NOW() WHERE id=? AND user_id=?",
+        "UPDATE reminder_records SET status='snoozed',snoozed_until=?,last_prompted_at=NULL,action_at=NOW(),updated_at=NOW() WHERE id=? AND user_id=?",
         [sqlDate(until), recordId, userId]
       )
       return
@@ -572,7 +658,7 @@ class ReminderService {
     const statusByAction = { read: 'read', ignore: 'ignored', complete: 'completed' }
     if (!statusByAction[action]) throw new Error('状态操作无效')
     await db.query(
-      'UPDATE reminder_records SET status=?,action_at=NOW(),snoozed_until=NULL,updated_at=NOW() WHERE id=? AND user_id=?',
+      'UPDATE reminder_records SET status=?,action_at=NOW(),snoozed_until=NULL,last_prompted_at=NULL,updated_at=NOW() WHERE id=? AND user_id=?',
       [statusByAction[action], recordId, userId]
     )
   }

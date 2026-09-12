@@ -91,6 +91,7 @@
                 v-model="filters.billing_mode"
                 placeholder="合同类型"
                 clearable
+                @change="handleSearch"
               >
                 <el-option
                   label="到期买断"
@@ -111,6 +112,7 @@
                 v-model="filters.status"
                 placeholder="合同状态"
                 clearable
+                @change="handleSearch"
               >
                 <el-option
                   label="进行中"
@@ -737,54 +739,22 @@
                 v-if="canViewRentalField('sale_payment_method')"
                 label="支付方式"
               >
-                <el-select
+                <PaymentMethodSelect
                   v-model="form.sale_payment_method"
+                  variant="rental"
                   placeholder="选择支付方式"
-                >
-                  <el-option
-                    label="现金支付"
-                    value="cash"
-                  /><el-option
-                    label="移动支付"
-                    value="mobile"
-                  /><el-option
-                    label="银行卡"
-                    value="bank_card"
-                  /><el-option
-                    label="国补刷卡"
-                    value="subsidy_card"
-                  /><el-option
-                    label="其他"
-                    value="other"
-                  />
-                </el-select>
+                />
               </el-form-item>
               <el-form-item
                 v-if="canViewRentalField('sale_payment_channel') && ['mobile','bank_card','subsidy_card'].includes(form.sale_payment_method)"
                 label="支付渠道"
               >
-                <el-select
+                <PaymentChannelSelect
                   v-model="form.sale_payment_channel"
+                  :payment-method="form.sale_payment_method"
                   clearable
                   placeholder="选择支付渠道"
-                >
-                  <el-option
-                    label="微信"
-                    value="wechat"
-                  /><el-option
-                    label="支付宝"
-                    value="alipay"
-                  /><el-option
-                    label="银行转账"
-                    value="bank_transfer"
-                  /><el-option
-                    label="刷卡消费"
-                    value="card_consumption"
-                  /><el-option
-                    label="国补刷卡"
-                    value="subsidy_card"
-                  />
-                </el-select>
+                />
               </el-form-item>
               <el-form-item
                 v-if="canViewRentalField('sale_remarks')"
@@ -941,7 +911,10 @@
               v-if="canViewRentalField('sale_payment_method') || canViewRentalField('sale_payment_channel')"
               label="支付方式"
             >
-              <span v-if="canViewRentalField('sale_payment_method')">{{ paymentMethodLabel(selected.sale_payment_method) }}</span>
+              <PaymentMethodText
+                v-if="canViewRentalField('sale_payment_method')"
+                :value="selected.sale_payment_method"
+              />
               <span v-if="canViewRentalField('sale_payment_channel') && selected.sale_payment_channel"> / {{ selected.sale_payment_channel }}</span>
             </el-descriptions-item>
             <el-descriptions-item
@@ -1128,6 +1101,8 @@ import MobileDialog from '@/components/MobileDialog.vue'
 import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
+import { PaymentChannelSelect, PaymentMethodSelect, PaymentMethodText } from '@/components/payment'
+import { getPaymentMethodLabel } from '@/constants/paymentMethods'
 import { escapeHtml } from '@/utils/security'
 
 type BillingMode = 'daily' | 'buyout'
@@ -1257,7 +1232,6 @@ const contractNumber = (row:Partial<Rental>) => canViewRentalField('contract_num
 const statusLabel = (status:string) => ({ active:'进行中',returned:'已归还',overdue:'已逾期',damaged:'设备损坏',bought_out:'已买断' }[status] || status)
 const statusType = (status:string):'success'|'info'|'warning'|'danger' => ({ active:'success',returned:'info',overdue:'warning',damaged:'danger',bought_out:'success' }[status] as any || 'info')
 const maskIdCard = (value?:string) => value ? `${value.slice(0,6)}********${value.slice(-4)}` : '-'
-const paymentMethodLabel = (value?:string) => ({ cash:'现金支付',mobile:'移动支付',bank_card:'银行卡',subsidy_card:'国补刷卡',transfer:'银行转账',other:'其他' }[value || ''] || value || '-')
 const principalAmount = computed(() => canViewRentalField('sale_price') && canViewRentalField('down_payment')
   ? Math.max(Number(form.sale_price || 0) - Number(form.down_payment || 0), 0)
   : 0)
@@ -1375,7 +1349,7 @@ function printContract(row: Rental) {
     canViewRentalField('purchase_cost') ? ['入库价格', `¥${formatMoney(row.purchase_cost)}`] : null,
     canViewRentalField('sale_store_name') ? ['销售店铺', row.sale_store_name || '-'] : null,
     canViewRentalField('sale_operator_name') ? ['销售员', row.sale_operator_name || '-'] : null,
-    canViewRentalField('sale_payment_method') ? ['支付方式', paymentMethodLabel(row.sale_payment_method)] : null,
+    canViewRentalField('sale_payment_method') ? ['支付方式', getPaymentMethodLabel(row.sale_payment_method)] : null,
     canViewRentalField('deposit') ? ['押金', `¥${formatMoney(row.deposit)}`] : null,
     canViewRentalField('monitoring_lock') ? ['监管锁', row.monitoring_lock ? '安装监管锁' : '不安装监管锁'] : null,
     canViewRentalField('end_date') ? ['合同结束', row.end_date || '实际归还日'] : null,

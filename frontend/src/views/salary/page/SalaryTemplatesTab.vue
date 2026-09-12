@@ -25,11 +25,12 @@
           </template>
         </el-input>
       </template>
-      <template #actions>
+      <template #actions="{ loading: searchLoading }">
         <el-button
           type="primary"
           size="small"
-          :disabled="loading"
+          :loading="searchLoading"
+          :aria-busy="searchLoading"
           @click="emit('search')"
         >
           <i class="fas fa-search" />
@@ -38,6 +39,7 @@
         <el-button
           type="default"
           size="small"
+          :disabled="searchLoading"
           @click="emit('reset')"
         >
           <i class="fas fa-redo" />

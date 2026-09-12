@@ -55,12 +55,33 @@ async function runEnsureReminderSchema() {
       status ENUM('pending', 'read', 'snoozed', 'ignored', 'completed') NOT NULL DEFAULT 'pending',
       action_at DATETIME NULL,
       snoozed_until DATETIME NULL,
+      last_prompted_at DATETIME NULL,
       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       PRIMARY KEY (id),
       UNIQUE KEY uq_reminder_record (reminder_id, user_id, scheduled_at),
       KEY idx_reminder_record_user (user_id, status, remind_at),
-      KEY idx_reminder_record_reminder (reminder_id, scheduled_at)
+      KEY idx_reminder_record_reminder (reminder_id, scheduled_at),
+      KEY idx_reminder_record_prompt (user_id, status, last_prompted_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `)
+
+  const [promptColumns] = await db.query("SHOW COLUMNS FROM reminder_records LIKE 'last_prompted_at'")
+  if (!promptColumns.length) {
+    await db.query('ALTER TABLE reminder_records ADD COLUMN last_prompted_at DATETIME NULL AFTER snoozed_until')
+  }
+  const [promptIndexes] = await db.query("SHOW INDEX FROM reminder_records WHERE Key_name = 'idx_reminder_record_prompt'")
+  if (!promptIndexes.length) {
+    await db.query('ALTER TABLE reminder_records ADD KEY idx_reminder_record_prompt (user_id, status, last_prompted_at)')
+  }
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS reminder_completion_views (
+      occurrence_id BIGINT UNSIGNED NOT NULL,
+      admin_user_id INT UNSIGNED NOT NULL,
+      acknowledged_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (occurrence_id, admin_user_id),
+      KEY idx_completion_view_admin (admin_user_id, acknowledged_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `)
 

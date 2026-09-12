@@ -1,6 +1,6 @@
 /**
  * Loading Store - 全局加载状态管理
- * 与 @/utils/loading.ts 的全局Loading系统集成
+ * App.vue 中的 GlobalLoading 统一监听这里，避免多套全屏 Loading 重复显示。
  */
 
 import { defineStore } from 'pinia'
@@ -28,13 +28,6 @@ export const useLoadingStore = defineStore('loading', () => {
       loadingOperations.value.add(operationId)
     }
 
-    // 触发全局Loading系统
-    if (window.__TF2025__?.loading) {
-      window.__TF2025__.loading.start(text, {
-        id: operationId,
-        progress: 0
-      })
-    }
   }
 
   // 结束加载
@@ -49,21 +42,13 @@ export const useLoadingStore = defineStore('loading', () => {
       loadingText.value = ''
       loadingProgress.value = 100
 
-      // 触发全局Loading系统
-      if (window.__TF2025__?.loading) {
-        window.__TF2025__.loading.stop(operationId)
-      }
     }
   }
 
   // 更新进度
-  const updateProgress = (progress: number, operationId?: string) => {
+  const updateProgress = (progress: number, _operationId?: string) => {
     loadingProgress.value = progress
 
-    // 触发全局Loading系统
-    if (window.__TF2025__?.loading && operationId) {
-      window.__TF2025__.loading.updateProgress(operationId, progress)
-    }
   }
 
   // 设置加载状态
@@ -79,10 +64,6 @@ export const useLoadingStore = defineStore('loading', () => {
   const setLoadingText = (text: string) => {
     loadingText.value = text
 
-    // 触发全局Loading系统
-    if (window.__TF2025__?.loading) {
-      window.__TF2025__.loading.updateText(text)
-    }
   }
 
   // 清除所有加载状态
@@ -92,10 +73,6 @@ export const useLoadingStore = defineStore('loading', () => {
     loadingProgress.value = 0
     loadingOperations.value.clear()
 
-    // 触发全局Loading系统
-    if (window.__TF2025__?.loading) {
-      window.__TF2025__.loading.stopAll()
-    }
   }
 
   // 检查操作是否正在加载

@@ -1023,7 +1023,7 @@ const refreshSystemStatus = async () => {
 
   refreshing.value = true
   try {
-    unifiedApi.clearCache()
+    unifiedApi.clearCache('/system')
     await Promise.all([
       siteSettingsStore.loadSiteSettings(true),
       loadScreenLockSettings(),

@@ -5,6 +5,9 @@
         v-if="showGlobalLoading"
         v-bind="$attrs"
         class="global-loading"
+        role="status"
+        aria-live="polite"
+        aria-label="正在加载"
       >
         <div class="loading-backdrop">
           <div class="loading-content">
@@ -91,52 +94,29 @@ export default defineComponent({
 <style scoped>
 .global-loading {
   position: fixed;
-  top: 0;
-  left: 0;
+  inset: 0;
   width: 100%;
   height: 100%;
+  min-height: 100dvh;
+  box-sizing: border-box;
   z-index: 9998;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .loading-backdrop {
+  position: relative;
   width: 100%;
-  height: 100%;
-  background:
-    radial-gradient(circle at 50% 38%, rgba(255, 255, 255, 0.96), rgba(241, 245, 249, 0.82) 38%, rgba(15, 23, 42, 0.1)),
-    linear-gradient(135deg, rgba(236, 254, 255, 0.8), rgba(248, 250, 252, 0.92) 48%, rgba(239, 246, 255, 0.82));
+  height: 100dvh;
+  min-height: 100%;
+  box-sizing: border-box;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  background: rgba(15, 23, 42, 0.22);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-}
-
-.loading-backdrop::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(15, 23, 42, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(15, 23, 42, 0.035) 1px, transparent 1px);
-  background-size: 42px 42px;
-  mask-image: radial-gradient(circle at center, black, transparent 72%);
-  opacity: 0.55;
-  pointer-events: none;
-}
-
-.loading-backdrop::after {
-  content: '';
-  position: absolute;
-  width: min(520px, 76vw);
-  height: min(520px, 76vw);
-  border-radius: 999px;
-  background:
-    radial-gradient(circle, rgba(14, 165, 233, 0.18), transparent 56%),
-    radial-gradient(circle at 62% 58%, rgba(20, 184, 166, 0.15), transparent 45%);
-  filter: blur(10px);
-  opacity: 0.85;
-  animation: ambient-breathe 3.8s ease-in-out infinite;
-  pointer-events: none;
 }
 
 .loading-content {
@@ -145,30 +125,27 @@ export default defineComponent({
   flex-direction: column;
   align-items: center;
   gap: 16px;
-  min-width: 236px;
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(248, 250, 252, 0.82));
-  padding: 28px 32px 26px;
-  border: 1px solid rgba(226, 232, 240, 0.74);
-  border-radius: 30px;
-  box-shadow:
-    0 30px 88px rgba(15, 23, 42, 0.15),
-    0 14px 34px rgba(14, 165, 233, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  width: min(280px, 100%);
+  min-width: 0;
+  padding: 24px 22px 22px;
+  border: 1px solid var(--tf-loading-surface-border, rgba(226, 232, 240, 0.78));
+  border-radius: var(--tf-loading-surface-radius, 16px);
+  background: var(--tf-loading-surface-bg, rgba(255, 255, 255, 0.96));
+  box-shadow: var(--tf-loading-surface-shadow, 0 18px 50px rgba(15, 23, 42, 0.2));
+  -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
-  overflow: hidden;
   animation: content-rise 0.34s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .loading-content::before {
   content: '';
   position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(135deg, rgba(14, 165, 233, 0.08), transparent 34%),
-    linear-gradient(120deg, transparent 0 30%, rgba(255, 255, 255, 0.46) 44%, transparent 60% 100%);
-  transform: translateX(-120%);
-  animation: panel-sheen 2.8s ease-in-out infinite;
+  top: -1px;
+  left: 20px;
+  right: 20px;
+  height: 3px;
+  border-radius: 0 0 4px 4px;
+  background: linear-gradient(90deg, var(--tf-loading-ring-secondary), var(--tf-loading-ring-primary));
 }
 
 .global-loading-ring {
@@ -177,14 +154,11 @@ export default defineComponent({
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 88px;
-  height: 88px;
+  width: 76px;
+  height: 76px;
   border-radius: 50%;
-  background:
-    radial-gradient(circle, rgba(255, 255, 255, 0.98), rgba(239, 246, 255, 0.86) 68%, rgba(186, 230, 253, 0.52));
-  box-shadow:
-    0 18px 40px rgba(37, 99, 235, 0.14),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.9);
+  background: rgba(239, 246, 255, 0.9);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.9), 0 12px 26px rgba(37, 99, 235, 0.14);
 }
 
 .global-loading-ring::before {
@@ -192,11 +166,8 @@ export default defineComponent({
   position: absolute;
   inset: -14px;
   border-radius: 50%;
-  background:
-    radial-gradient(circle, rgba(56, 189, 248, 0.18), transparent 58%),
-    radial-gradient(circle at 64% 62%, rgba(37, 99, 235, 0.14), transparent 48%);
-  filter: blur(8px);
-  animation: ambient-breathe 2.6s ease-in-out infinite;
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  animation: ring-pulse 1.8s ease-in-out infinite;
 }
 
 .global-loading-ring :deep(.inline-loading) {
@@ -205,13 +176,13 @@ export default defineComponent({
 }
 
 .global-loading-ring--small {
-  width: 72px;
-  height: 72px;
+  width: 64px;
+  height: 64px;
 }
 
 .global-loading-ring--large {
-  width: 108px;
-  height: 108px;
+  width: 92px;
+  height: 92px;
 }
 
 .loading-copy {
@@ -222,9 +193,9 @@ export default defineComponent({
 
 .loading-title {
   font-size: 15px;
-  color: var(--tf-color-slate-900);
+  color: var(--tf-loading-surface-text, var(--tf-color-slate-900));
   font-weight: 800;
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
 }
 
 .loading-subtitle {
@@ -232,28 +203,17 @@ export default defineComponent({
   font-size: 12px;
   color: var(--tf-color-slate-500);
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
 }
 
-@keyframes panel-sheen {
-  0%,
-  38% {
-    transform: translateX(-120%);
-  }
-  72%,
-  100% {
-    transform: translateX(120%);
-  }
-}
-
-@keyframes ambient-breathe {
+@keyframes ring-pulse {
   0%,
   100% {
-    transform: scale(0.96);
-    opacity: 0.7;
+    transform: scale(1);
+    opacity: 0.55;
   }
   50% {
-    transform: scale(1.04);
+    transform: scale(1.08);
     opacity: 1;
   }
 }
@@ -278,5 +238,20 @@ export default defineComponent({
 .loading-enter-from,
 .loading-leave-to {
   opacity: 0;
+}
+
+@media (max-width: 480px) {
+  .loading-content {
+    width: min(248px, 100%);
+    padding: 20px 18px 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-content,
+  .global-loading-ring::before,
+  .global-loading-ring :deep(.inline-loading__spinner) {
+    animation: none;
+  }
 }
 </style>

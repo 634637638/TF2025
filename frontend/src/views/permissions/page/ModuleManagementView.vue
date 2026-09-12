@@ -13,6 +13,7 @@
         <div class="main-content admin-page-content">
           <UnifiedSearchPanel
             :expanded="searchExpanded"
+            :loading="isLoading"
             @update:expanded="searchExpanded = $event"
             @search="handleSearch"
             @reset="clearFilters"

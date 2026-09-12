@@ -315,6 +315,10 @@ export interface MemoryOption {
  */
 export interface InventoryItem {
   id: number
+  brand_id?: number | null
+  model_id?: number | null
+  color_id?: number | null
+  memory_id?: number | null
   imei?: string
   serial_number?: string
   brand?: string
@@ -325,7 +329,6 @@ export interface InventoryItem {
   color_name?: string
   memory?: string
   memory_name?: string
-  memory_id?: number
   phone_condition?: string
   status?: string
   is_new?: number | boolean | string
@@ -455,6 +458,7 @@ export interface IdNameOption {
 export interface UserOption {
   id: number
   name: string
+  status?: number
 }
 
 /**

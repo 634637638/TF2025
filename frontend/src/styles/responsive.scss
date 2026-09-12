@@ -38,14 +38,9 @@
 
 /* 1.1 视口设置 */
 html {
-  /* 防止移动端缩放 */
-  -webkit-text-size-adjust: 100%;
-  -ms-text-size-adjust: 100%;
   /* 允许纵向滚动 */
   overflow-x: hidden;
   overflow-y: auto;
-  /* 滚动行为优化 */
-  -webkit-overflow-scrolling: touch;
   min-height: 100%;
 }
 
@@ -121,7 +116,6 @@ body {
   /* 表格统一为单列 */
   .table-container {
     overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
   }
 
   /* 模态框统一样式 - 保持居中 */
@@ -216,7 +210,6 @@ body {
       padding: 16px 20px;
       max-height: calc(90vh - 140px);
       overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
     }
 
     .modal-footer,
@@ -300,7 +293,6 @@ body {
   /* 移动端表格适配 - 所有小屏手机 */
   @media (max-width: 479px) {
     overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
 
     table {
       min-width: 600px;

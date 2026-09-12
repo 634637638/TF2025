@@ -3,16 +3,8 @@
  */
 import { ref, watch } from 'vue'
 import { storage } from '@/services/storage'
-import { AUTH_STORAGE_KEYS } from '@/constants/storage'
 import { logger } from '@/utils/logger'
-
-const getValidSessionToken = () => {
-  const token = storage.get<string>(AUTH_STORAGE_KEYS.TOKEN, 'session')
-  if (!token || token === 'null' || token === 'undefined') {
-    return ''
-  }
-  return token?.trim() || ''
-}
+import { unifiedApi } from '@/utils/unified-api'
 
 let sharedLockSettingsPromise: Promise<void> | null = null
 
@@ -39,24 +31,20 @@ export const useScreenLock = () => {
 
     sharedLockSettingsPromise = (async () => {
       try {
-        const token = getValidSessionToken()
-        const response = await fetch('/api/screen-lock', {
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {})
-          }
+        const response = await unifiedApi.get('/screen-lock', {
+          showLoading: false,
+          showError: false,
+          useCache: true,
+          cacheTTL: 60000
         })
-        if (response.ok) {
-          const data = await response.json()
-          if (data.success) {
+        if (response.success && response.data) {
           // 只加载背景设置，不加载密码
-            lockSettings.value = {
-              backgroundType: data.data.backgroundType || 'default',
-              imageUrl: data.data.imageUrl || '',
-              videoUrl: data.data.videoUrl || '',
-              title: data.data.title || '屏幕已锁定',
-              message: data.data.message || '请输入密码解锁'
-            }
+          lockSettings.value = {
+            backgroundType: response.data.backgroundType || 'default',
+            imageUrl: response.data.imageUrl || '',
+            videoUrl: response.data.videoUrl || '',
+            title: response.data.title || '屏幕已锁定',
+            message: response.data.message || '请输入解锁密码'
           }
         }
       } catch (error) {
@@ -92,22 +80,15 @@ export const useScreenLock = () => {
   // 验证密码 - 调用后台API验证
   const verifyPassword = async (password: string): Promise<boolean> => {
     try {
-      const token = getValidSessionToken()
-      const response = await fetch('/api/screen-lock/verify', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({ password })
+      const response = await unifiedApi.post('/screen-lock/verify', { password }, {
+        showLoading: false,
+        showError: false,
+        useCache: false
       })
 
-      if (response.ok) {
-        const data = await response.json()
-        if (data.success) {
-          unlockScreen()
-          return true
-        }
+      if (response.success) {
+        unlockScreen()
+        return true
       }
       return false
     } catch (error) {

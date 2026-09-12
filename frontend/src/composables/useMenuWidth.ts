@@ -38,8 +38,8 @@ const DEFAULT_CONFIG: MenuWidthConfig = {
 
 const DEFAULT_BREAKPOINTS = {
   mobile: 768,
-  tablet: 1023,
-  desktop: 1024
+  tablet: 1024,
+  desktop: 1025
 }
 
 let sharedLoadMenuWidthsPromise: Promise<{ pc: number; mobile: number }> | null = null
@@ -180,17 +180,19 @@ export function useMenuWidth(options: MenuWidthOptions = {}) {
     try {
 
       // 使用批量API获取所有宽度信息
-      const response = await fetch('/api/settings/public/menu-widths')
+      const response = await unifiedApi.get('/settings/public/menu-widths', {
+        showLoading: false,
+        showError: false,
+        useCache: true,
+        cacheTTL: 60000
+      })
 
-      if (response.ok) {
-        const data = await response.json()
-        if (data.success && data.data) {
-          const pcWidth = parseInt(data.data.pc) || defaultConfig.desktop
-          const mobileWidth = parseInt(data.data.mobile) || defaultConfig.mobile
-          return {
-            pc: pcWidth,
-            mobile: mobileWidth
-          }
+      if (response.success && response.data) {
+        const pcWidth = parseInt(response.data.pc) || defaultConfig.desktop
+        const mobileWidth = parseInt(response.data.mobile) || defaultConfig.mobile
+        return {
+          pc: pcWidth,
+          mobile: mobileWidth
         }
       }
 

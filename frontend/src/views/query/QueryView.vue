@@ -638,7 +638,10 @@
                     memory: selectedPhoneInfo?.memory || ''
                   }"
                 />
-                <div v-if="isVideoMedia(image)" class="media-type-badge">
+                <div
+                  v-if="isVideoMedia(image)"
+                  class="media-type-badge"
+                >
                   <i class="fas fa-play" />
                   视频
                 </div>
@@ -1276,18 +1279,41 @@ const refreshQueryAfterDelete = () => {
 
 // 防抖函数
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
-const debounceLoadQueryData = () => {
+
+const clearDebounceTimer = () => {
   if (debounceTimer) {
     clearTimeout(debounceTimer)
+    debounceTimer = null
   }
+}
+
+// 新筛选条件必须从第一页开始，并同步请求参数与分页组件状态。
+const resetQueryPagination = (pageSize = paginationData.page_size.value) => {
+  filters.page = 1
+  filters.page_size = pageSize
+
+  if (paginationData.page_size.value !== pageSize) {
+    paginationData.setPageSize(pageSize)
+  } else if (paginationData.page.value !== 1) {
+    goToPage(1)
+  }
+}
+
+const debounceLoadQueryData = () => {
+  resetQueryPagination()
+  clearDebounceTimer()
 
   debounceTimer = setTimeout(() => {
+    debounceTimer = null
     loadQueryData()
   }, 500)
 }
 
 const triggerLoadQueryData = () => {
-  void loadQueryData()
+  clearDebounceTimer()
+  resetQueryPagination()
+  // 手动点击搜索必须绕过缓存，确保每次点击都会重新请求。
+  return loadQueryData(true)
 }
 
 // 加载查询数据
@@ -1748,9 +1774,18 @@ const handleEditSuccess = async () => {
 
 // 新的统一分页变化处理方法
 const handlePaginationChange = (page: number, pageSize: number) => {
-  goToPage(page)
-  filters.page = page
-  filters.page_size = pageSize
+  const nextPageSize = Number(pageSize) || paginationData.page_size.value
+
+  if (paginationData.page_size.value !== nextPageSize) {
+    // 修改每页条数后从第一页重新查询，避免新页大小沿用旧页码。
+    paginationData.setPageSize(nextPageSize)
+    filters.page = 1
+  } else {
+    goToPage(page)
+    filters.page = page
+  }
+
+  filters.page_size = nextPageSize
   loadQueryData()
 }
 
@@ -1774,7 +1809,7 @@ const handleFilterBrandChange = () => {
   }
 
   // 重新加载数据
-  loadQueryData()
+  triggerLoadQueryData()
 }
 
 // 重置筛选
@@ -1795,7 +1830,8 @@ const resetFilters = () => {
     end_date: '',
     search_term: ''
   })
-  loadQueryData()
+  resetQueryPagination(100)
+  triggerLoadQueryData()
 }
 
 // 刷新数据
@@ -3799,6 +3835,29 @@ textarea.form-control {
       font-size: 14px;
       color: var(--text-muted);
     }
+  }
+
+  .loading-images,
+  .no-images {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 180px;
+    box-sizing: border-box;
+    padding: 40px 24px;
+    gap: 10px;
+    color: var(--text-muted);
+    text-align: center;
+  }
+
+  .no-images i {
+    font-size: 36px;
+  }
+
+  .no-images p {
+    margin: 0;
   }
 
   /* 图片网格 - 水平铺满 */

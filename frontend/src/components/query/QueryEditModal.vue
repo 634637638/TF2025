@@ -494,79 +494,36 @@
               <el-option
                 v-for="user in options.users"
                 :key="user.id"
-                :label="user.name"
+                :label="getSalesUserLabel(user)"
                 :value="String(user.id)"
               />
             </el-select>
           </el-form-item>
 
           <el-form-item label="支付方式">
-            <el-select
+            <PaymentMethodSelect
               v-model="formData.payment_method"
               placeholder="请选择"
               clearable
               teleported
               popper-class="tf2025-form-popper"
               @change="handlePaymentMethodChange"
-            >
-              <el-option
-                label="现金支付"
-                value="cash"
-              />
-              <el-option
-                label="移动支付"
-                value="mobile"
-              />
-              <el-option
-                label="银行卡"
-                value="bank_card"
-              />
-              <el-option
-                label="国补刷卡"
-                value="subsidy_card"
-              />
-            </el-select>
+            />
           </el-form-item>
 
           <el-form-item
             v-if="showPaymentChannel"
             label="支付渠道"
           >
-            <el-select
+            <PaymentChannelSelect
               v-model="formData.payment_channel"
+              :payment-method="formData.payment_method"
               placeholder="请选择"
               clearable
               teleported
               popper-class="tf2025-form-popper"
               @change="handlePaymentChannelChange"
-            >
-              <template v-if="formData.payment_method === 'mobile'">
-                <el-option
-                  label="微信"
-                  value="wechat"
-                />
-                <el-option
-                  label="支付宝"
-                  value="alipay"
-                />
-              </template>
-              <template v-if="formData.payment_method === 'bank_card'">
-                <el-option
-                  label="刷卡消费"
-                  value="card_consumption"
-                />
-                <el-option
-                  label="银行转账"
-                  value="bank_transfer"
-                />
-              </template>
-              <template v-if="formData.payment_method === 'subsidy_card'">
-                <el-option
-                  label="国补刷卡"
-                  value="subsidy_card"
-                />
-              </template>
-            </el-select>
+            />
           </el-form-item>
 
           <el-form-item
@@ -614,6 +571,7 @@ import type { FormInstance } from 'element-plus'
 import { ValidationRules } from '@/composables'
 import { useNotification } from '@/composables/useNotification'
 import MobileDialog from '@/components/MobileDialog.vue'
+import { PaymentChannelSelect, PaymentMethodSelect } from '@/components/payment'
 import SectionLoading from '@/components/SectionLoading.vue'
 import { useMobile } from '@/composables/mobile'
 import unifiedApi from '@/utils/unified-api'
@@ -987,7 +945,8 @@ const fetchEditOptions = async (): Promise<EditModalOptions> => {
           users: usersRes.success && Array.isArray(usersRes.data?.employees)
             ? sortOptionsByOrder(usersRes.data.employees.map((item) => ({
               id: Number(item.id || 0),
-              name: item.name
+              name: item.name,
+              status: Number(item.status)
             })))
             : []
         }
@@ -1157,6 +1116,29 @@ const defaultFormState = (): FormData => ({
 })
 
 const normalizeCustomerPhone = (phone: unknown) => normalizePhoneDigits(phone)
+
+const getSalesUserLabel = (user: UserOption) => {
+  return user.status === 0 ? `${user.name}（已离职）` : user.name
+}
+
+const ensureHistoricalUserOption = (userId: unknown, userName: unknown) => {
+  const normalizedId = toNullableNumber(userId)
+  const normalizedName = String(userName || '').trim()
+
+  if (!normalizedId || !normalizedName) return
+
+  const alreadyIncluded = options.users.some(user => Number(user.id) === normalizedId)
+  if (alreadyIncluded) return
+
+  options.users = sortOptionsByOrder([
+    ...options.users,
+    {
+      id: normalizedId,
+      name: normalizedName,
+      status: 0
+    }
+  ])
+}
 
 const props = defineProps<ModelValueProps & {
   phoneId: number | null
@@ -1398,6 +1380,12 @@ const loadDialogData = async () => {
       isNoIMEIMode: isNoImeiPhone || rawImei === rawSerialNumber,
       remarks: basicInfo.remarks || ''
     })
+
+    // 离职员工不在常规在职列表时，保留历史销售记录中的姓名供编辑回显。
+    ensureHistoricalUserOption(
+      formData.sale_operator_id,
+      operatorInfo.sale_operator_name
+    )
 
     syncCatalogSelections()
 

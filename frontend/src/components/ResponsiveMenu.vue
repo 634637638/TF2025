@@ -51,7 +51,7 @@ import { useRoute } from 'vue-router'
 import { useMobileMenu } from '@/composables/useMobileMenu'
 import { useMobile } from '@/composables/mobile'
 import { useMenuWidth } from '@/composables/useMenuWidth'
-import { BREAKPOINTS } from '@/config/breakpoints'
+import { isDrawerNavigationViewport } from '@/config/breakpoints'
 import MobileSlideMenu from './mobile/MobileSlideMenu.vue'
 import SimpleSidebar from './SimpleSidebar.vue'
 import type { MenuItem } from '@/types/menu'
@@ -110,7 +110,7 @@ const { isMobile, isTablet, screenWidth } = useMobile()
 const isDrawerNavigation = computed(() => (
   isMobile.value ||
   isTablet.value ||
-  screenWidth.value <= BREAKPOINTS.DESKTOP_MIN
+  isDrawerNavigationViewport(screenWidth.value)
 ))
 
 // 菜单宽度管理

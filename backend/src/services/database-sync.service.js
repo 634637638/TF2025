@@ -48,7 +48,7 @@ class DatabaseSyncService {
    * 创建外部数据库连接
    */
   async createConnection(config) {
-    const { id, host, port, user, password, database } = config
+    const { id, host, port, user, password, database, ownerId } = config
 
     try {
       // 测试连接
@@ -68,6 +68,7 @@ class DatabaseSyncService {
         connection,
         config: {
           id,
+          ownerId: String(ownerId),
           host,
           port,
           user,
@@ -93,10 +94,15 @@ class DatabaseSyncService {
   /**
    * 获取数据库连接
    */
-  getConnection(connectionId) {
+  getConnection(connectionId, ownerId) {
     const conn = this.externalConnections.get(connectionId)
     if (!conn) {
       throw new Error('数据库连接不存在')
+    }
+    if (ownerId !== undefined && String(conn.config.ownerId) !== String(ownerId)) {
+      const error = new Error('无权访问该数据库连接')
+      error.statusCode = 403
+      throw error
     }
     return conn.connection
   }
@@ -104,10 +110,15 @@ class DatabaseSyncService {
   /**
    * 关闭数据库连接
    */
-  async closeConnection(connectionId) {
+  async closeConnection(connectionId, ownerId) {
     const conn = this.externalConnections.get(connectionId)
     if (!conn) {
       throw new Error('数据库连接不存在')
+    }
+    if (ownerId !== undefined && String(conn.config.ownerId) !== String(ownerId)) {
+      const error = new Error('无权访问该数据库连接')
+      error.statusCode = 403
+      throw error
     }
 
     try {
@@ -125,9 +136,10 @@ class DatabaseSyncService {
   /**
    * 获取所有连接
    */
-  getConnections() {
+  getConnections(ownerId) {
     const connections = []
     for (const [id, conn] of this.externalConnections.entries()) {
+      if (ownerId !== undefined && String(conn.config.ownerId) !== String(ownerId)) continue
       connections.push({
         id,
         host: conn.config.host,
@@ -143,8 +155,8 @@ class DatabaseSyncService {
   /**
    * 获取外部数据库的表列表
    */
-  async getTables(connectionId) {
-    const connection = this.getConnection(connectionId)
+  async getTables(connectionId, ownerId) {
+    const connection = this.getConnection(connectionId, ownerId)
 
     try {
       const [rows] = await connection.query('SHOW TABLES')
@@ -165,8 +177,8 @@ class DatabaseSyncService {
   /**
    * 获取表结构
    */
-  async getTableStructure(connectionId, tableName) {
-    const connection = this.getConnection(connectionId)
+  async getTableStructure(connectionId, tableName, ownerId, connectionOverride = null) {
+    const connection = connectionOverride || this.getConnection(connectionId, ownerId)
 
     try {
       const safeTableName = await this.assertTableExists(connection, tableName)
@@ -213,8 +225,8 @@ class DatabaseSyncService {
   /**
    * 获取表数据（预览）
    */
-  async getTableData(connectionId, tableName, options = {}) {
-    const connection = this.getConnection(connectionId)
+  async getTableData(connectionId, tableName, options = {}, ownerId) {
+    const connection = this.getConnection(connectionId, ownerId)
 
     try {
       const safeTableName = await this.assertTableExists(connection, tableName)
@@ -249,7 +261,7 @@ class DatabaseSyncService {
    * 保存数据映射配置
    */
   saveMappingConfig(config) {
-    const { id, sourceTable, targetTable, fieldMappings, syncOptions } = config
+    const { id, sourceTable, targetTable, fieldMappings, syncOptions, ownerId } = config
 
     const safeSourceTable = this.normalizeIdentifier(sourceTable, '源表名')
     const safeTargetTable = this.normalizeIdentifier(targetTable, '目标表名')
@@ -262,6 +274,7 @@ class DatabaseSyncService {
 
     this.mappingConfigs.set(id, {
       id,
+      ownerId: String(ownerId),
       sourceTable: safeSourceTable,
       targetTable: safeTargetTable,
       fieldMappings: safeFieldMappings, // { sourceField: targetField }
@@ -285,22 +298,28 @@ class DatabaseSyncService {
   /**
    * 获取映射配置
    */
-  getMappingConfig(configId) {
-    return this.mappingConfigs.get(configId)
+  getMappingConfig(configId, ownerId) {
+    const config = this.mappingConfigs.get(configId)
+    if (!config || ownerId === undefined || String(config.ownerId) === String(ownerId)) {
+      return config
+    }
+    return null
   }
 
   /**
    * 获取所有映射配置
    */
-  getAllMappingConfigs() {
+  getAllMappingConfigs(ownerId) {
     return Array.from(this.mappingConfigs.values())
+      .filter(config => ownerId === undefined || String(config.ownerId) === String(ownerId))
   }
 
   /**
    * 删除映射配置
    */
-  deleteMappingConfig(configId) {
-    const deleted = this.mappingConfigs.delete(configId)
+  deleteMappingConfig(configId, ownerId) {
+    const config = this.getMappingConfig(configId, ownerId)
+    const deleted = !!config && this.mappingConfigs.delete(configId)
     return {
       success: deleted,
       message: deleted ? '配置已删除' : '配置不存在'
@@ -310,13 +329,13 @@ class DatabaseSyncService {
   /**
    * 数据预检查（匹配检查）
    */
-  async preCheckSync(connectionId, configId, targetConnection) {
-    const config = this.getMappingConfig(configId)
+  async preCheckSync(connectionId, configId, targetConnection, ownerId) {
+    const config = this.getMappingConfig(configId, ownerId)
     if (!config) {
       throw new Error('映射配置不存在')
     }
 
-    const sourceConnection = this.getConnection(connectionId)
+    const sourceConnection = this.getConnection(connectionId, ownerId)
 
     try {
       const { sourceTable, targetTable, _fieldMappings, syncOptions } = config
@@ -380,19 +399,21 @@ class DatabaseSyncService {
   /**
    * 执行数据同步
    */
-  async executeSync(connectionId, configId, targetConnection, _user = null) {
-    const config = this.getMappingConfig(configId)
+  async executeSync(connectionId, configId, targetConnection, user = null) {
+    const ownerId = user?.id ?? user?.userId ?? user?.sub
+    const config = this.getMappingConfig(configId, ownerId)
     if (!config) {
       throw new Error('映射配置不存在')
     }
 
-    const sourceConnection = this.getConnection(connectionId)
+    const sourceConnection = this.getConnection(connectionId, ownerId)
     const syncId = `${configId}-${Date.now()}`
 
     try {
       // 初始化同步任务
       this.syncTasks.set(syncId, {
         status: 'processing',
+        ownerId: String(ownerId),
         progress: 0,
         message: '正在准备同步...',
         stats: {
@@ -856,24 +877,29 @@ class DatabaseSyncService {
   /**
    * 获取同步进度
    */
-  getSyncProgress(syncId) {
-    return this.syncTasks.get(syncId)
+  getSyncProgress(syncId, ownerId) {
+    const task = this.syncTasks.get(syncId)
+    if (!task || (ownerId !== undefined && String(task.ownerId) !== String(ownerId))) {
+      return null
+    }
+    return task
   }
 
   /**
    * 智能字段映射建议
    */
-  async suggestFieldMapping(connectionId, sourceTable, targetTable, targetConnection) {
-    const _sourceConnection = this.getConnection(connectionId)
+  async suggestFieldMapping(connectionId, sourceTable, targetTable, targetConnection, ownerId) {
+    const _sourceConnection = this.getConnection(connectionId, ownerId)
 
     try {
       // 获取源表结构
-      const sourceStructure = await this.getTableStructure(connectionId, sourceTable)
+      const sourceStructure = await this.getTableStructure(connectionId, sourceTable, ownerId)
 
       // 获取目标表结构
       const targetStructure = await this.getTableStructure(
         null,
         targetTable,
+        ownerId,
         targetConnection
       )
 

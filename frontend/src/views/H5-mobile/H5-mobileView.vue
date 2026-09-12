@@ -205,7 +205,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getPublicConfig } from '@/api/shop-public'
@@ -359,16 +359,21 @@ const copyWechat = () => {
   }
 }
 
+const handleCartStorageChange = (event: StorageEvent) => {
+  if (event.key !== 'h5_cart_count') return
+  cartCount.value = event.newValue ? parseInt(event.newValue, 10) || 0 : 0
+}
+
 onMounted(() => {
   loadConfig()
   updateCartCount()
 
   // 监听购物车变化
-  window.addEventListener('storage', (e) => {
-    if (e.key === 'h5_cart_count') {
-      cartCount.value = e.newValue ? parseInt(e.newValue) : 0
-    }
-  })
+  window.addEventListener('storage', handleCartStorageChange)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('storage', handleCartStorageChange)
 })
 
 // 暴露方法供子组件调用

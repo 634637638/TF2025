@@ -8,13 +8,14 @@ import { PermissionMapper } from './permissionMapper'
 import { globalErrorLogger } from './error-logger'
 import { ErrorLevel, ErrorType } from './error-boundary'
 import { clearPersistedAuthData, setBackendDisconnectedState } from './auth-session'
-import { showElementError, showElementLoading, showElementNotification, showElementSuccess, showElementWarning } from './element-feedback'
+import { showElementError, showElementNotification, showElementSuccess, showElementWarning } from './element-feedback'
 import { storage } from '@/services/storage'
 import { AUTH_STORAGE_KEYS, ROUTER_STORAGE_KEYS, SECURITY_STORAGE_KEYS } from '@/constants/storage'
 import type { ApiResponse as GlobalApiResponse } from '@/types'
 import logger from '@/utils/logger'
 import { clearCache as clearPageCache } from '@/composables/usePageCache'
-import type { LoadingInstance } from './element-feedback'
+import type { CacheScope } from '@/composables/page-cache-store'
+import { useLoadingStore } from '@/stores/loading'
 
 // API基础配置
 const DEFAULT_READ_TIMEOUT = 30000
@@ -41,6 +42,7 @@ export interface RequestConfig extends AxiosRequestConfig {
   successMessage?: string
   useCache?: boolean
   cacheTTL?: number
+  cacheInvalidationScope?: CacheScope | CacheScope[] | false
   metadata?: {
     requestId: string
     startTime: number
@@ -56,15 +58,13 @@ export interface RequestConfig extends AxiosRequestConfig {
 // 第三方/旧接口响应结构在运行时动态变化；以 JSON.parse 的运行时结果作为单一动态边界。
 type DynamicResponse = ReturnType<typeof JSON.parse>
 export type ApiResponse<T = DynamicResponse> = GlobalApiResponse<T>
-
 /**
  * 统一API管理器
  */
 class UnifiedApiManager {
   private instance: AxiosInstance
-  private loadingInstance: LoadingInstance | null = null
-  private loadingPromise: Promise<void> | null = null
   private requestCount = 0
+  private readonly apiLoadingOperationId = 'unified-api-global'
   private cache = new Map<string, { data: unknown, timestamp: number, ttl: number }>()
   private cacheGeneration = 0
   private refreshPromise: Promise<boolean> | null = null
@@ -169,6 +169,9 @@ class UnifiedApiManager {
 
     // 如果是缓存响应，直接返回
     if (requestConfig.cachedResponse) {
+      if (requestConfig.showLoading) {
+        this.hideLoading()
+      }
       return requestConfig.cachedResponse as AxiosResponse
     }
 
@@ -179,7 +182,13 @@ class UnifiedApiManager {
 
     // 写操作成功后统一失效读取缓存，确保页面紧接着重载时获得最新数据。
     if (this.isMutationMethod(method) && response.data?.success !== false) {
-      this.invalidateReadCache()
+      const scope = requestConfig.cacheInvalidationScope === undefined
+        ? this.getDefaultMutationCacheScope(requestConfig.url)
+        : requestConfig.cacheInvalidationScope
+
+      if (scope !== false) {
+        this.invalidateReadCache(scope)
+      }
     }
 
     // 只缓存当前代次的GET响应，避免写操作前发出的慢请求回填旧数据。
@@ -258,17 +267,11 @@ class UnifiedApiManager {
 
     const recoveredResponse = await this.tryRecoverAuthError(error)
     if (recoveredResponse) {
-      if (requestConfig?.showLoading) {
-        this.hideLoading()
-      }
       return recoveredResponse
     }
 
     const csrfRecoveredResponse = await this.tryRecoverCSRFError(error)
     if (csrfRecoveredResponse) {
-      if (requestConfig?.showLoading) {
-        this.hideLoading()
-      }
       return csrfRecoveredResponse
     }
 
@@ -1151,21 +1154,8 @@ class UnifiedApiManager {
    */
   private showLoading(): void {
     this.requestCount++
-    if (!this.loadingInstance && !this.loadingPromise) {
-      this.loadingPromise = showElementLoading({
-        lock: true,
-        text: '加载中...',
-        background: 'rgba(0, 0, 0, 0.7)'
-      }).then((instance) => {
-        this.loadingPromise = null
-
-        if (this.requestCount > 0 && !this.loadingInstance) {
-          this.loadingInstance = instance
-          return
-        }
-
-        instance.close()
-      })
+    if (this.requestCount === 1) {
+      useLoadingStore().startLoading('加载中...', this.apiLoadingOperationId)
     }
   }
 
@@ -1174,9 +1164,8 @@ class UnifiedApiManager {
    */
   private hideLoading(): void {
     this.requestCount = Math.max(0, this.requestCount - 1)
-    if (this.requestCount === 0 && this.loadingInstance) {
-      this.loadingInstance.close()
-      this.loadingInstance = null
+    if (this.requestCount === 0) {
+      useLoadingStore().stopLoading(this.apiLoadingOperationId)
     }
   }
 
@@ -1199,10 +1188,71 @@ class UnifiedApiManager {
     return method === 'post' || method === 'put' || method === 'patch' || method === 'delete'
   }
 
-  private invalidateReadCache(): void {
+  private invalidateReadCache(scope?: CacheScope | CacheScope[]): void {
     this.cacheGeneration += 1
-    this.cache.clear()
-    clearPageCache()
+
+    if (!scope) {
+      this.cache.clear()
+      clearPageCache()
+      return
+    }
+
+    const scopes = Array.isArray(scope) ? scope : [scope]
+    const matches = (key: string): boolean => {
+      return scopes.some(item => {
+        if (item instanceof RegExp) {
+          item.lastIndex = 0
+          return item.test(key)
+        }
+        return key.includes(item)
+      })
+    }
+
+    for (const key of this.cache.keys()) {
+      if (matches(key)) {
+        this.cache.delete(key)
+      }
+    }
+
+    clearPageCache(scope)
+  }
+
+  private getDefaultMutationCacheScope(url?: string): CacheScope[] | undefined {
+    const path = this.normalizeUrlPath(url)
+    const [moduleName] = path.split('/').filter(Boolean)
+    if (!moduleName) return undefined
+
+    const scopeDependencies: Record<string, string[]> = {
+      attendance: ['/attendance', '/dashboard', '/analytics'],
+      customers: ['/customers', '/dashboard', '/analytics'],
+      'data-check': ['/data-check', '/phones', '/dashboard', '/analytics', '/query'],
+      employees: ['/employees', '/users', '/dashboard', '/analytics'],
+      inventory: ['/inventory', '/phones', '/dashboard', '/analytics', '/query'],
+      menus: ['/menus'],
+      payments: ['/payments', '/dashboard', '/analytics'],
+      phones: ['/phones', '/inventory', '/dashboard', '/analytics', '/query'],
+      'price-list': ['/price-list', '/phones', '/inventory', '/sales', '/query'],
+      preorders: ['/preorders', '/phones', '/dashboard', '/analytics'],
+      repairs: ['/repairs', '/dashboard', '/analytics'],
+      sales: ['/sales', '/phones', '/customers', '/dashboard', '/analytics', '/salary', '/query'],
+      'salary-records': ['/salary-records', '/employees', '/dashboard', '/analytics'],
+      'system-settings': ['/system-settings', '/shop', '/dashboard'],
+      users: ['/users', '/employees', '/permissions'],
+      shop: ['/shop', '/home']
+    }
+
+    return scopeDependencies[moduleName] || [`/${moduleName}`]
+  }
+
+  private normalizeUrlPath(url?: string): string {
+    if (!url) return ''
+
+    try {
+      return new URL(url, window.location.origin).pathname.replace(/^\/api(?=\/)/, '')
+    } catch (error) {
+      const pathOnly = url.split('?')[0] || ''
+      return pathOnly.replace(/^https?:\/\/[^/]+/i, '').replace(/^\/api(?=\/)/, '')
+    }
   }
 
   /**
@@ -1401,8 +1451,8 @@ class UnifiedApiManager {
   /**
    * 清除缓存
    */
-  clearCache(): void {
-    this.invalidateReadCache()
+  clearCache(scope?: CacheScope | CacheScope[]): void {
+    this.invalidateReadCache(scope)
   }
 
   /**

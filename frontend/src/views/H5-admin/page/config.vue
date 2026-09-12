@@ -443,7 +443,7 @@ const ensureEditPermission = () => {
 
 // 刷新配置
 const handleRefresh = async () => {
-  unifiedApi.clearCache()
+  unifiedApi.clearCache('/shop')
   await cleanupTempImages()
   await loadConfigs()
 }

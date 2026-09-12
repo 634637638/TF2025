@@ -8,7 +8,7 @@
 
 | 文件 | 位置 | 说明 |
 |------|------|------|
-| `api-cache.ts` | `src/composables/` | 全局缓存管理器核心 |
+| `page-cache-store.ts` | `src/composables/` | 页面缓存存储核心 |
 | `usePageCache.ts` | `src/composables/` | 页面级缓存工具（推荐使用） |
 
 ---

@@ -25,11 +25,12 @@
           </template>
         </el-input>
       </template>
-      <template #actions>
+      <template #actions="{ loading: searchLoading }">
         <el-button
           type="primary"
           size="small"
-          :disabled="loading"
+          :loading="searchLoading"
+          :aria-busy="searchLoading"
           @click="emit('search')"
         >
           <i class="fas fa-search" />搜索
@@ -37,6 +38,7 @@
         <el-button
           type="default"
           size="small"
+          :disabled="searchLoading"
           @click="emit('reset')"
         >
           <i class="fas fa-redo" />重置
@@ -120,6 +122,17 @@
           >
             <template #default="{ row }">
               <div class="mobile-row-actions">
+                <el-button
+                  v-if="canCreate"
+                  v-permission="'salary-records:create'"
+                  size="small"
+                  :type="row.payoutRecord ? 'warning' : 'primary'"
+                  class="mobile-action-btn mobile-action-btn-status"
+                  @click.stop="row.payoutRecord ? emit('recalculate', row) : emit('settle', row)"
+                >
+                  <i :class="row.payoutRecord ? 'fas fa-rotate' : 'fas fa-check'" />
+                  <span>{{ row.payoutRecord ? '重算' : '结算' }}</span>
+                </el-button>
                 <el-button
                   v-if="row.payoutRecord && canEdit"
                   v-permission="'salary-records:edit'"
@@ -380,17 +393,6 @@
               >
                 未结算
               </el-tag>
-              <el-button
-                v-if="canCreate"
-                v-permission="'salary-records:create'"
-                class="payout-action-button"
-                size="small"
-                :type="row.payoutRecord ? 'warning' : 'primary'"
-                plain
-                @click.stop="row.payoutRecord ? emit('recalculate', row) : emit('settle', row)"
-              >
-                {{ row.payoutRecord ? '重算' : '结算' }}
-              </el-button>
             </template>
           </el-table-column>
           <el-table-column
@@ -440,6 +442,18 @@
           >
             <template #default="{ row }">
               <div class="payout-action-buttons action-buttons">
+                <el-button
+                  v-if="canCreate"
+                  v-permission="'salary-records:create'"
+                  class="payout-action-button"
+                  size="small"
+                  :type="row.payoutRecord ? 'warning' : 'primary'"
+                  plain
+                  @click.stop="row.payoutRecord ? emit('recalculate', row) : emit('settle', row)"
+                >
+                  <i :class="row.payoutRecord ? 'fas fa-rotate' : 'fas fa-check'" />
+                  {{ row.payoutRecord ? '重算' : '结算' }}
+                </el-button>
                 <el-button
                   v-if="row.payoutRecord && canEdit"
                   v-permission="'salary-records:edit'"
@@ -540,11 +554,11 @@ const props = defineProps<{
 
 const showActionColumn = computed(() => shouldShowActionColumn(
   props.canViewField('salary_salaryrecordsview', 'actions'),
-  [props.canEdit, props.canDelete]
+  [props.canCreate, props.canEdit, props.canDelete]
 ))
 const showStatusColumn = computed(() => shouldShowActionColumn(
   props.canViewField('salary_salaryrecordsview', 'salary_status'),
-  [props.canCreate]
+  []
 ))
 
 const emit = defineEmits<{

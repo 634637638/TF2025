@@ -68,7 +68,7 @@ walk(sourceRoot.pathname)
 const unifiedApiSource = readFileSync(unifiedApiPath, 'utf8')
 const requiredGuards = [
   'private cacheGeneration = 0',
-  'this.invalidateReadCache()',
+  'this.invalidateReadCache(scope)',
   'metadata?.cacheGeneration === this.cacheGeneration'
 ]
 
@@ -83,8 +83,8 @@ if (!pageCacheSource.includes('requestGeneration === cacheGeneration')) {
   violations.push('src/composables/usePageCache.ts missing stale response generation guard')
 }
 
-if (!unifiedApiSource.includes('clearPageCache()')) {
-  violations.push('src/utils/unified-api.ts does not invalidate page cache after mutations')
+if (!unifiedApiSource.includes('clearPageCache(scope)')) {
+  violations.push('src/utils/unified-api.ts does not invalidate scoped page cache after mutations')
 }
 
 if (violations.length) {

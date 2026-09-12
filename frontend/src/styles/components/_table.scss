@@ -56,6 +56,7 @@
   border-bottom: 2px solid var(--admin-data-table-header-border, var(--tf-color-border-subtle)) !important;
   position: relative !important;
   white-space: nowrap !important;
+  -webkit-user-select: none;
   user-select: none;
   text-transform: uppercase;
   letter-spacing: var(--admin-data-table-header-letter-spacing, 0);
@@ -154,6 +155,18 @@
   tr:last-child td:last-child {
     border-bottom-right-radius: var(--admin-data-table-radius, 8px) !important;
   }
+
+  &.is-admin-table-row-framed::after {
+    content: '';
+    position: absolute;
+    top: var(--admin-table-active-row-top, 0);
+    left: var(--admin-table-active-row-left, 0);
+    z-index: 5;
+    width: 1px;
+    height: var(--admin-table-active-row-height, 0);
+    background: var(--admin-data-table-row-hover-border, var(--tf-color-slate-400));
+    pointer-events: none;
+  }
 }
 
 .el-table__body tr {
@@ -171,8 +184,7 @@
   }
 
   // 悬停效果：整行使用统一外包围，避免每个单元格分别浮起。
-  &:hover,
-  &.hover-row {
+  &.is-admin-table-row-hover {
     position: relative;
     z-index: 2;
     outline: 1px solid var(--admin-data-table-row-hover-border, var(--tf-color-slate-400));
@@ -181,8 +193,7 @@
     box-shadow: none;
   }
 
-  &:hover > td,
-  &.hover-row > td {
+  &.is-admin-table-row-hover > td {
     background: var(--admin-data-table-row-hover-bg, var(--tf-color-violet-100)) !important;
   }
 
@@ -207,34 +218,58 @@
     background: var(--admin-data-table-row-even-bg, var(--tf-color-surface-muted));
   }
 
-  &.el-table__row--striped:hover > td,
-  &.el-table__row--striped.hover-row > td {
+  &.el-table__row--striped.is-admin-table-row-hover > td {
     background: var(--admin-data-table-row-hover-bg, var(--tf-color-violet-100)) !important;
   }
 }
 
 // Element Plus 的滚动层可能裁剪行 outline；将四边线绘制到单元格内部，
-// 让 hover 和 hover-row 状态都保持稳定可见，同时不改变列宽和行高。
-.el-table__body tr:hover > td.el-table__cell,
-.el-table__body tr.hover-row > td.el-table__cell {
+// 让真实 hover 和脚本 hover 状态都保持稳定可见，同时不改变列宽和行高。
+.el-table__body tr.is-admin-table-row-hover > td.el-table__cell {
   box-shadow: inset 0 1px 0 var(--admin-data-table-row-hover-border, var(--tf-color-slate-400)),
     inset 0 -1px 0 var(--admin-data-table-row-hover-border, var(--tf-color-slate-400));
 }
 
-.el-table__body tr:not(.row-selected):is(:hover, .hover-row) > td.el-table__cell:first-child {
+.el-table__body tr:not(.row-selected).is-admin-table-row-hover > td.el-table__cell:first-child {
   box-shadow: inset 1px 0 0 var(--admin-data-table-row-hover-border, var(--tf-color-slate-400)),
     inset 0 1px 0 var(--admin-data-table-row-hover-border, var(--tf-color-slate-400)),
     inset 0 -1px 0 var(--admin-data-table-row-hover-border, var(--tf-color-slate-400));
 }
 
-.el-table__body tr:not(.row-selected):is(:hover, .hover-row) > td.el-table__cell:last-child {
+.el-table__body tr:not(.row-selected).is-admin-table-row-hover > td.el-table__cell:last-child {
   box-shadow: inset -1px 0 0 var(--admin-data-table-row-hover-border, var(--tf-color-slate-400)),
     inset 0 1px 0 var(--admin-data-table-row-hover-border, var(--tf-color-slate-400)),
     inset 0 -1px 0 var(--admin-data-table-row-hover-border, var(--tf-color-slate-400));
 }
 
-.el-table__body tr.row-selected:is(:hover, .hover-row) > td.el-table__cell:first-child {
+.el-table__body tr.row-selected.is-admin-table-row-hover > td.el-table__cell:first-child {
   box-shadow: inset 3px 0 0 var(--admin-data-table-row-selected-accent, var(--tf-color-blue-700)),
+    inset 0 1px 0 var(--admin-data-table-row-hover-border, var(--tf-color-slate-400)),
+    inset 0 -1px 0 var(--admin-data-table-row-hover-border, var(--tf-color-slate-400));
+}
+
+// 统一点击/当前行的四边框。选中行也必须保留右、上、下边线。
+.el-table__body tr:is(.row-selected, .current-row) > td.el-table__cell {
+  box-shadow: inset 0 1px 0 var(--admin-data-table-row-hover-border, var(--tf-color-slate-400)),
+    inset 0 -1px 0 var(--admin-data-table-row-hover-border, var(--tf-color-slate-400));
+}
+
+.el-table__body tr:is(.row-selected, .current-row) > td.el-table__cell:first-child:not(:last-child) {
+  box-shadow: inset 3px 0 0 var(--admin-data-table-row-selected-accent, var(--tf-color-blue-700)),
+    inset 0 1px 0 var(--admin-data-table-row-hover-border, var(--tf-color-slate-400)),
+    inset 0 -1px 0 var(--admin-data-table-row-hover-border, var(--tf-color-slate-400));
+}
+
+.el-table__body tr:is(.row-selected, .current-row) > td.el-table__cell:last-child {
+  box-shadow: inset -1px 0 0 var(--admin-data-table-row-hover-border, var(--tf-color-slate-400)),
+    inset 0 1px 0 var(--admin-data-table-row-hover-border, var(--tf-color-slate-400)),
+    inset 0 -1px 0 var(--admin-data-table-row-hover-border, var(--tf-color-slate-400));
+}
+
+.el-table__body tr.row-selected > td.el-table__cell:first-child:last-child,
+.el-table__body tr.current-row > td.el-table__cell:first-child:last-child {
+  box-shadow: inset 3px 0 0 var(--admin-data-table-row-selected-accent, var(--tf-color-blue-700)),
+    inset -1px 0 0 var(--admin-data-table-row-hover-border, var(--tf-color-slate-400)),
     inset 0 1px 0 var(--admin-data-table-row-hover-border, var(--tf-color-slate-400)),
     inset 0 -1px 0 var(--admin-data-table-row-hover-border, var(--tf-color-slate-400));
 }
@@ -245,13 +280,39 @@
   background: var(--admin-data-table-wholesale-bg, var(--tf-color-indigo-50)) !important;
 }
 
-.el-table__body tr.admin-row--peer-transfer:not(.row-selected):hover > td.el-table__cell,
-.el-table__body tr.admin-row--peer-transfer.hover-row:not(.row-selected) > td.el-table__cell {
+.el-table__body tr.admin-row--peer-transfer.is-admin-table-row-hover:not(.row-selected) > td.el-table__cell {
   background: var(--admin-data-table-wholesale-hover-bg, var(--tf-color-indigo-100)) !important;
 }
 
 .el-table__body tr.admin-row--peer-transfer:not(.row-selected) > td.el-table__cell:first-child {
   box-shadow: inset 3px 0 0 var(--admin-data-table-wholesale-accent, var(--tf-color-indigo-brand));
+}
+
+.el-table__body tr.admin-row--peer-transfer:not(.row-selected).is-admin-table-row-hover > td.el-table__cell:first-child {
+  box-shadow: inset 3px 0 0 var(--admin-data-table-wholesale-accent, var(--tf-color-indigo-brand)),
+    inset 0 1px 0 var(--admin-data-table-row-hover-border, var(--tf-color-slate-400)),
+    inset 0 -1px 0 var(--admin-data-table-row-hover-border, var(--tf-color-slate-400));
+}
+
+// 滚轮滚动时浏览器可能把 :hover 留在旧 DOM 行上；只有脚本确认的当前行才保留 hover 视觉。
+.el-table__body tr:is(:hover, .hover-row):not(.is-admin-table-row-hover):not(.row-selected):not(.current-row):not(.admin-row--peer-transfer) > td.el-table__cell {
+  background: var(--admin-data-table-bg, var(--color-bg-white)) !important;
+  border-bottom-color: var(--admin-data-table-cell-border, var(--tf-color-border-muted)) !important;
+  box-shadow: none;
+}
+
+.el-table__body tr.el-table__row--striped:is(:hover, .hover-row):not(.is-admin-table-row-hover):not(.row-selected):not(.current-row):not(.admin-row--peer-transfer) > td.el-table__cell {
+  background: var(--admin-data-table-row-even-bg, var(--tf-color-surface-muted)) !important;
+}
+
+.el-table__body tr.admin-row--peer-transfer:is(:hover, .hover-row):not(.is-admin-table-row-hover):not(.row-selected) > td.el-table__cell {
+  background: var(--admin-data-table-wholesale-bg, var(--tf-color-indigo-50)) !important;
+  border-bottom-color: var(--admin-data-table-cell-border, var(--tf-color-border-muted)) !important;
+  box-shadow: none !important;
+}
+
+.el-table__body tr.admin-row--peer-transfer:is(:hover, .hover-row):not(.is-admin-table-row-hover):not(.row-selected) > td.el-table__cell:first-child {
+  box-shadow: inset 3px 0 0 var(--admin-data-table-wholesale-accent, var(--tf-color-indigo-brand)) !important;
 }
 
 .admin-wholesale-text {
@@ -264,7 +325,7 @@
 .el-table__empty-block {
   background: var(--admin-data-table-bg, var(--color-bg-white)) !important;
   padding: 40px 0 !important;
-  min-height: auto !important;
+  min-height: 0 !important;
   width: 100%;
 
   .el-table__empty-text {
@@ -651,7 +712,6 @@ body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table
 .data-table .el-scrollbar__wrap,
 .admin-data-table .el-scrollbar__wrap {
   overflow-x: auto !important;
-  scrollbar-width: none;
   -ms-overflow-style: none;
   cursor: grab;
 }
@@ -679,6 +739,7 @@ body :where(.action-buttons, .mobile-row-actions, .mobile-inline-actions, .table
 body.is-admin-table-dragging,
 body.is-admin-table-dragging * {
   cursor: grabbing !important;
+  -webkit-user-select: none !important;
   user-select: none !important;
 }
 
@@ -795,9 +856,7 @@ body.is-admin-table-dragging * {
     .el-table .el-scrollbar__wrap {
       overflow-x: auto !important;
       overflow-y: auto !important;
-      -webkit-overflow-scrolling: touch;
       overscroll-behavior-x: contain;
-      scrollbar-width: none;
     }
 
     .el-table .el-scrollbar__wrap::-webkit-scrollbar {

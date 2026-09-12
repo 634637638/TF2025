@@ -143,6 +143,7 @@
     @brand-change="onEditBrandChange"
     @close="closeEditModal"
     @format-imei="formatEditIMEI"
+    @model-change="onEditModelChange"
     @open-config="showPublishToH5Modal = true"
     @publish-change="handleQuickPublishChange"
     @submit="submitEdit"
@@ -174,6 +175,7 @@ import { extractResponseData } from '@/utils/api-response'
 import { normalizePermissionList } from '@/utils/permissionList'
 import { getAdaptiveActionColumnWidth, getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 import { toCanonicalPhoneUpdatePayload } from '@/utils/phone-update-payload'
+import { resolvePhoneReferenceIds } from '@/utils/phone-reference-ids'
 import { useAuthStore } from '@/stores/auth'
 import { logger } from '@/utils/logger'
 import { useLoadingStore } from '@/stores/loading'
@@ -546,6 +548,8 @@ const editIsNoIMEIMode = ref(false)
 
 // 编辑弹窗专用的品牌型号数据
 const editBrandModels = ref<string[]>([])
+// 编辑弹窗展示型号名称，但提交接口要求数据库 model_id；保留名称到 ID 的映射。
+const editModelIdsByName = ref<Record<string, number>>({})
 const modelSearchLoading = ref(false)
 
 // 上架商品模态框
@@ -593,6 +597,11 @@ const remoteSearchModel = async (query: string) => {
         .filter((m: any) => m && m.name)
         .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
         .map((m: any) => String(m.name || '').trim())
+      editModelIdsByName.value = Object.fromEntries(
+        modelsData
+          .filter((m: any) => m && m.name && Number.isInteger(Number(m.id)))
+          .map((m: any) => [String(m.name).trim(), Number(m.id)])
+      )
 
     } else {
       editBrandModels.value = []
@@ -1201,11 +1210,20 @@ const formatEditIMEI = () => {
 // 编辑弹窗的品牌变更处理
 const onEditBrandChange = async () => {
   editForm.model = ''
+  editForm.model_id = null
+  const selectedBrand = brands.value.find(brand => brand.name === editForm.brand)
+  editForm.brand_id = selectedBrand?.id ?? null
   if (editForm.brand) {
     await fetchEditBrandModels(editForm.brand)
   } else {
     editBrandModels.value = []
+    editModelIdsByName.value = {}
   }
+}
+
+const onEditModelChange = (modelName: string) => {
+  const normalizedName = String(modelName || '').trim()
+  editForm.model_id = editModelIdsByName.value[normalizedName] ?? null
 }
 
 // 获取编辑弹窗品牌对应的型号列表
@@ -1239,6 +1257,11 @@ const fetchEditBrandModels = async (brandName: string) => {
         .filter((m: any) => m && m.name)
         .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
         .map((m: any) => String(m.name || '').trim())
+      editModelIdsByName.value = Object.fromEntries(
+        modelsData
+          .filter((m: any) => m && m.name && Number.isInteger(Number(m.id)))
+          .map((m: any) => [String(m.name).trim(), Number(m.id)])
+      )
 
     } else {
       editBrandModels.value = []
@@ -1269,13 +1292,27 @@ const submitEdit = async () => {
       return
     }
 
-    // 构建更新数据
-    const updateData = {
-      ...toCanonicalPhoneUpdatePayload({
+    let referenceIds
+    try {
+      referenceIds = await resolvePhoneReferenceIds({
         brand_id: editForm.brand_id,
         model_id: editForm.model_id,
         color_id: editForm.color_id,
         memory_id: editForm.memory_id,
+        brand: editForm.brand,
+        model: editForm.model,
+        color: editForm.color,
+        memory: editForm.memory
+      }, selectedPhoneForEdit.value || {})
+    } catch (referenceError) {
+      error(referenceError instanceof Error ? referenceError.message : '品牌、型号、颜色和内存必须选择有效数据')
+      return
+    }
+
+    // 构建更新数据
+    const updateData = {
+      ...toCanonicalPhoneUpdatePayload({
+        ...referenceIds,
         brand: editForm.brand,
         model: editForm.model,
         color: editForm.color,
@@ -1416,7 +1453,8 @@ const handleStockInSuccess = () => {
 
 // 刷新库存数据（用于入库成功后刷新）
 const refreshInventory = async () => {
-  await loadInventoryData()
+  // 编辑后强制读取数据库，避免列表缓存回填修改前的型号/规格名称。
+  await loadInventoryData({}, { useCache: false })
 }
 
 // 入库取消回调

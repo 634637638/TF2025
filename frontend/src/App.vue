@@ -15,7 +15,6 @@ import { useRouter } from 'vue-router'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { useAuthStore } from '@/stores/auth'
 import { clearPersistedAuthData, getBackendDisconnectInfo } from '@/utils/auth-session'
-import { storage } from '@/services/storage'
 import logger from '@/utils/logger'
 import GlobalLoading from '@/components/GlobalLoading.vue'
 
@@ -38,15 +37,13 @@ onMounted(async () => {
       return
     }
 
-    const sessionToken = storage.getToken()
-    const localAuth = storage.getAuth()
-
-    if (sessionToken || localAuth) {
+    // 登录页是公开路由，路由守卫不会主动恢复认证。
+    // 这里只处理“已有会话打开登录页”的场景，其他恢复统一由 auth store 完成。
+    if (currentRoute.path === '/login') {
       await authStore.loadPersistedAuthData()
-    }
-
-    if (authStore.isAuthenticated && router.currentRoute.value.path === '/login') {
-      await router.push('/dashboard')
+      if (authStore.isAuthenticated && router.currentRoute.value.path === '/login') {
+        await router.replace('/dashboard')
+      }
     }
   } catch (error) {
     logger.error('App 启动时认证状态检查失败', error)

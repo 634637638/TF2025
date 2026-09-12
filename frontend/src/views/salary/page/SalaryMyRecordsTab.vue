@@ -159,7 +159,7 @@
                 v-if="row.payment_method"
                 class="text-regular"
               >
-                {{ getSalaryPaymentMethodName(row.payment_method) }}
+                {{ getPaymentMethodLabel(row.payment_method) }}
               </span>
               <span
                 v-else
@@ -326,6 +326,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { shouldShowActionColumn } from '@/composables/useFieldPermissions'
+import { getPaymentMethodLabel } from '@/constants/paymentMethods'
 import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
@@ -335,8 +336,7 @@ import {
   formatSalaryMonth,
   formatSalaryOvertimeHours,
   formatSalaryPayoutTime,
-  formatSalaryWorkDays,
-  getSalaryPaymentMethodName
+  formatSalaryWorkDays
 } from '../salary-formatters'
 
 interface SalaryEmployeeOption {

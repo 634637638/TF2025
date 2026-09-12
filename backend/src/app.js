@@ -70,7 +70,15 @@ const uploadStaticMiddleware = (req, res, next) => {
     log.error('URL 解码失败:', error)
   }
 
-  if (req.path.startsWith('/subsidy/') || req.path.startsWith('/shared/') || req.path.startsWith('/rentals/')) {
+  // 导入、分享、补贴和租赁文件只能通过各自的鉴权接口访问，
+  // 不能因为挂载了通用静态目录而被直接下载。
+  if (
+    req.path.startsWith('/import/') ||
+    req.path.startsWith('/temp/') ||
+    req.path.startsWith('/subsidy/') ||
+    req.path.startsWith('/shared/') ||
+    req.path.startsWith('/rentals/')
+  ) {
     return res.status(404).json({
       success: false,
       message: '资源不存在'

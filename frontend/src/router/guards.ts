@@ -29,30 +29,6 @@ interface PageVisitData {
   userAgent: string
 }
 
-function normalizeStoredStrings(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === 'string' && item.length > 0)
-    : []
-}
-
-function normalizeStoredPermissions(value: unknown): string[] {
-  if (Array.isArray(value)) return normalizeStoredStrings(value)
-  if (!value || typeof value !== 'object') return []
-  return normalizeStoredStrings((value as Record<string, unknown>).userPermissions)
-}
-
-function normalizeStoredRoles(value: unknown): string[] {
-  if (!Array.isArray(value)) return []
-
-  return Array.from(new Set(value.flatMap((role) => {
-    if (typeof role === 'string') return role.split(',').map((item) => item.trim()).filter(Boolean)
-    if (!role || typeof role !== 'object') return []
-    const record = role as Record<string, unknown>
-    return [record.roleName, record.name, record.role_name, record.roleCode, record.code, record.role_code]
-      .filter((item): item is string => typeof item === 'string' && item.length > 0)
-  })))
-}
-
 function isLocalDevelopmentHost(): boolean {
   const hostname = window.location.hostname
   return hostname === 'localhost' ||
@@ -292,37 +268,9 @@ export class RouteGuards {
         const appStore = useAppStore()
         const loadingStore = useLoadingStore()
 
-        // 🔧 确保 auth store 完全初始化
-        // 如果 store 中没有 token 或 user，显式调用 loadPersistedAuthData
-        if (!authStore.token || !authStore.user) {
+        // 确保认证恢复完成，所有入口共享 auth store 内的同一个恢复任务。
+        if (!authStore.token || !authStore.user || authStore.isAuthenticating) {
           await authStore.loadPersistedAuthData()
-        }
-
-        // 🔧 额外检查：如果 store 仍然没有数据，尝试从存储恢复
-        if (!authStore.token || !authStore.user) {
-          // 1. 首先尝试从 sessionStorage 获取 token
-          const sessionToken = storage.get<string>(AUTH_STORAGE_KEYS.TOKEN, 'session')
-          if (sessionToken && sessionToken.length > 10) {
-            authStore.token = sessionToken
-          }
-
-          // 2. 从 localStorage 获取完整认证数据
-          const savedAuth = storage.getAuth()
-          if (savedAuth) {
-            try {
-              if (savedAuth.token && savedAuth.token.length > 10 && savedAuth.user) {
-                authStore.token = savedAuth.token
-                authStore.refreshToken = savedAuth.refreshToken || ''
-                authStore.user = savedAuth.user
-                authStore.permissions = normalizeStoredPermissions(savedAuth.permissions)
-                authStore.roles = normalizeStoredRoles(savedAuth.roles)
-                // 同步到 sessionStorage
-                storage.setToken(savedAuth.token)
-              }
-            } catch (e) {
-              // 解析 localStorage 失败，忽略
-            }
-          }
         }
 
         // 开发环境 dev-token 特权默认禁用，只有显式环境开关才允许本地启用

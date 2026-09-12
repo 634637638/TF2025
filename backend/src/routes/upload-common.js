@@ -92,7 +92,7 @@ router.post('/delete-temp-files', unifiedAuth, requireTempFilePermissions, async
         }
 
         // 删除文件
-      if (fs.existsSync(filePath)) {
+        if (fs.existsSync(filePath)) {
           const stats = fs.statSync(filePath)
           if (!stats.isFile() || Date.now() - stats.mtimeMs > MAX_TEMP_FILE_AGE_MS) {
             log.warn(`⚠️ 拒绝删除非近期临时文件: ${relativePath}`)

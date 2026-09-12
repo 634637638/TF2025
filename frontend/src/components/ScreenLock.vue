@@ -114,7 +114,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, nextTick, watch } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { unifiedApi } from '@/utils/unified-api'
 import { useNotification } from '@/composables/useNotification'
 import Image from './Image.vue'
@@ -242,14 +242,20 @@ watch(() => props.isLocked, (newVal) => {
 })
 
 // 键盘事件处理
+const handleGlobalKeydown = (event: KeyboardEvent) => {
+  if (event.ctrlKey && event.key.toLowerCase() === 'l') {
+    event.preventDefault()
+    emit('update:isLocked', true)
+  }
+}
+
 onMounted(() => {
   // Ctrl+L 快速锁定（可选）
-  document.addEventListener('keydown', (e) => {
-    if (e.ctrlKey && e.key === 'l') {
-      e.preventDefault()
-      emit('update:isLocked', true)
-    }
-  })
+  document.addEventListener('keydown', handleGlobalKeydown)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleGlobalKeydown)
 })
 </script>
 

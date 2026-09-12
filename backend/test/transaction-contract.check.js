@@ -146,10 +146,14 @@ test('phone edits require canonical database IDs', () => {
   const handler = source.slice(start, end > start ? end : undefined);
 
   assert.ok(start >= 0 && end > start, '手机编辑路由不存在');
-  assert.match(handler, /const brandId = Number\(brand_id\)/);
-  assert.match(handler, /const modelId = Number\(model_id\)/);
-  assert.match(handler, /const colorId = Number\(color_id\)/);
-  assert.match(handler, /const memoryId = Number\(memory_id\)/);
+  assert.match(handler, /const effectiveBrandId = valueOrCurrent\(brand_id, currentPhone\.brand_id\)/);
+  assert.match(handler, /const effectiveModelId = valueOrCurrent\(model_id, currentPhone\.model_id\)/);
+  assert.match(handler, /const effectiveColorId = valueOrCurrent\(color_id, currentPhone\.color_id\)/);
+  assert.match(handler, /const effectiveMemoryId = valueOrCurrent\(memory_id, currentPhone\.memory_id\)/);
+  assert.match(handler, /const brandId = Number\(effectiveBrandId\)/);
+  assert.match(handler, /const modelId = Number\(effectiveModelId\)/);
+  assert.match(handler, /const colorId = Number\(effectiveColorId\)/);
+  assert.match(handler, /const memoryId = Number\(effectiveMemoryId\)/);
   assert.match(handler, /every\(Number\.isInteger\)/);
   assert.doesNotMatch(handler, /SELECT id FROM (?:brands|models|colors|memories) WHERE (?:name|size) = \?/);
 });

@@ -169,13 +169,6 @@
   --admin-data-table-badge-radius: 999px;
 }
 
-/* Keep the viewport width stable when switching between short and long TAB panels. */
-@media (min-width: 769px) {
-  html {
-    scrollbar-gutter: stable;
-  }
-}
-
 @media (max-width: 768px) {
   :root {
     --admin-page-gap-x: 6px;
@@ -458,8 +451,6 @@
   border-radius: var(--admin-data-table-radius) !important;
   border: 1px solid var(--admin-data-table-container-border) !important;
   box-shadow: var(--admin-data-table-container-shadow) !important;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
   -ms-overflow-style: none;
 }
 
@@ -579,8 +570,6 @@
   background: var(--admin-data-table-row-even-bg) !important;
 }
 
-.admin-page .admin-data-table tbody tr:hover,
-.admin-page .devices-table tbody tr:hover,
 .admin-page table.data-table tbody tr:hover,
 .admin-page table.table tbody tr:hover,
 .admin-page .table-section .table-responsive > table tbody tr:hover {
@@ -591,8 +580,8 @@
   z-index: 2;
 }
 
-/* Element Plus keeps hover-row synchronized across main and fixed-column tables. */
-.admin-page .el-table__body tr.hover-row {
+/* The script-owned hover class is synchronized across main and fixed-column tables. */
+.admin-page .el-table__body tr.is-admin-table-row-hover {
   position: relative !important;
   outline: 1px solid var(--admin-data-table-row-hover-border) !important;
   outline-offset: -1px;
@@ -600,12 +589,10 @@
   z-index: 2;
 }
 
-.admin-page .el-table__body tr.hover-row > td.el-table__cell {
+.admin-page .el-table__body tr.is-admin-table-row-hover > td.el-table__cell {
   background: var(--admin-data-table-row-hover-bg) !important;
 }
 
-.admin-page .admin-data-table tbody tr:hover td,
-.admin-page .devices-table tbody tr:hover td,
 .admin-page table.data-table tbody tr:hover td,
 .admin-page table.table tbody tr:hover td,
 .admin-page .table-section .table-responsive > table tbody tr:hover td {
@@ -613,41 +600,33 @@
 }
 
 /* Draw the hover frame inside cells so Element Plus scroll wrappers cannot clip it. */
-.admin-page .admin-data-table tbody tr:hover > td.el-table__cell,
-.admin-page .devices-table tbody tr:hover > td.el-table__cell,
 .admin-page table.data-table tbody tr:hover > td.el-table__cell,
 .admin-page table.table tbody tr:hover > td.el-table__cell,
 .admin-page .table-section .table-responsive > table tbody tr:hover > td.el-table__cell,
-.admin-page .el-table__body tr.hover-row > td.el-table__cell {
+.admin-page .el-table__body tr.is-admin-table-row-hover > td.el-table__cell {
   box-shadow: inset 0 1px 0 var(--admin-data-table-row-hover-border),
     inset 0 -1px 0 var(--admin-data-table-row-hover-border);
 }
 
-.admin-page .admin-data-table tbody tr:not(.row-selected):is(:hover, .hover-row) > td.el-table__cell:first-child,
-.admin-page .devices-table tbody tr:not(.row-selected):is(:hover, .hover-row) > td.el-table__cell:first-child,
-.admin-page table.data-table tbody tr:not(.row-selected):is(:hover, .hover-row) > td.el-table__cell:first-child,
-.admin-page table.table tbody tr:not(.row-selected):is(:hover, .hover-row) > td.el-table__cell:first-child,
-.admin-page .el-table__body tr:not(.row-selected):is(:hover, .hover-row) > td.el-table__cell:first-child {
+.admin-page table.data-table tbody tr:not(.row-selected):is(:hover, .is-admin-table-row-hover) > td.el-table__cell:first-child,
+.admin-page table.table tbody tr:not(.row-selected):is(:hover, .is-admin-table-row-hover) > td.el-table__cell:first-child,
+.admin-page .el-table__body tr:not(.row-selected).is-admin-table-row-hover > td.el-table__cell:first-child {
   box-shadow: inset 1px 0 0 var(--admin-data-table-row-hover-border),
     inset 0 1px 0 var(--admin-data-table-row-hover-border),
     inset 0 -1px 0 var(--admin-data-table-row-hover-border);
 }
 
-.admin-page .admin-data-table tbody tr:not(.row-selected):is(:hover, .hover-row) > td.el-table__cell:last-child,
-.admin-page .devices-table tbody tr:not(.row-selected):is(:hover, .hover-row) > td.el-table__cell:last-child,
-.admin-page table.data-table tbody tr:not(.row-selected):is(:hover, .hover-row) > td.el-table__cell:last-child,
-.admin-page table.table tbody tr:not(.row-selected):is(:hover, .hover-row) > td.el-table__cell:last-child,
-.admin-page .el-table__body tr:not(.row-selected):is(:hover, .hover-row) > td.el-table__cell:last-child {
+.admin-page table.data-table tbody tr:not(.row-selected):is(:hover, .is-admin-table-row-hover) > td.el-table__cell:last-child,
+.admin-page table.table tbody tr:not(.row-selected):is(:hover, .is-admin-table-row-hover) > td.el-table__cell:last-child,
+.admin-page .el-table__body tr:not(.row-selected).is-admin-table-row-hover > td.el-table__cell:last-child {
   box-shadow: inset -1px 0 0 var(--admin-data-table-row-hover-border),
     inset 0 1px 0 var(--admin-data-table-row-hover-border),
     inset 0 -1px 0 var(--admin-data-table-row-hover-border);
 }
 
-.admin-page .admin-data-table tbody tr.row-selected:is(:hover, .hover-row) > td.el-table__cell:first-child,
-.admin-page .devices-table tbody tr.row-selected:is(:hover, .hover-row) > td.el-table__cell:first-child,
-.admin-page table.data-table tbody tr.row-selected:is(:hover, .hover-row) > td.el-table__cell:first-child,
-.admin-page table.table tbody tr.row-selected:is(:hover, .hover-row) > td.el-table__cell:first-child,
-.admin-page .el-table__body tr.row-selected:is(:hover, .hover-row) > td.el-table__cell:first-child {
+.admin-page table.data-table tbody tr.row-selected:is(:hover, .is-admin-table-row-hover) > td.el-table__cell:first-child,
+.admin-page table.table tbody tr.row-selected:is(:hover, .is-admin-table-row-hover) > td.el-table__cell:first-child,
+.admin-page .el-table__body tr.row-selected.is-admin-table-row-hover > td.el-table__cell:first-child {
   box-shadow: inset 3px 0 0 var(--admin-data-table-row-selected-accent),
     inset 0 1px 0 var(--admin-data-table-row-hover-border),
     inset 0 -1px 0 var(--admin-data-table-row-hover-border);
@@ -698,6 +677,18 @@
 
 :is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__inner-wrapper::before {
   background-color: var(--admin-data-table-cell-border) !important;
+}
+
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body-wrapper.is-admin-table-row-framed::after {
+  content: '';
+  position: absolute;
+  top: var(--admin-table-active-row-top, 0);
+  left: var(--admin-table-active-row-left, 0);
+  z-index: 5;
+  width: 1px;
+  height: var(--admin-table-active-row-height, 0);
+  background: var(--admin-data-table-row-hover-border);
+  pointer-events: none;
 }
 
 :is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__header th {
@@ -761,6 +752,11 @@
   border-bottom-color: var(--admin-data-table-header-border) !important;
 }
 
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body tr.is-admin-table-row-hover > td {
+  background: var(--admin-data-table-row-hover-bg) !important;
+  border-bottom-color: var(--admin-data-table-header-border) !important;
+}
+
 :is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body tr.row-selected > td {
   background: var(--admin-data-table-row-selected-bg) !important;
 }
@@ -769,8 +765,45 @@
   background: var(--admin-data-table-row-selected-hover-bg) !important;
 }
 
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body tr.row-selected.is-admin-table-row-hover > td {
+  background: var(--admin-data-table-row-selected-hover-bg) !important;
+}
+
 :is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body tr.row-selected > td:first-child {
   box-shadow: inset 3px 0 0 var(--admin-data-table-row-selected-accent) !important;
+}
+
+/* 最终统一规则：真实 hover、脚本 hover、点击选中和当前行都绘制完整四边框。 */
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body tr:is(.is-admin-table-row-hover, .row-selected, .current-row) > td.el-table__cell {
+  box-shadow: inset 0 1px 0 var(--admin-data-table-row-hover-border),
+    inset 0 -1px 0 var(--admin-data-table-row-hover-border) !important;
+}
+
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body tr:is(.is-admin-table-row-hover, .row-selected, .current-row) > td.el-table__cell:first-child:not(:last-child) {
+  box-shadow: inset 1px 0 0 var(--admin-data-table-row-hover-border),
+    inset 0 1px 0 var(--admin-data-table-row-hover-border),
+    inset 0 -1px 0 var(--admin-data-table-row-hover-border) !important;
+}
+
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body tr.row-selected > td.el-table__cell:first-child:not(:last-child),
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body tr.current-row > td.el-table__cell:first-child:not(:last-child) {
+  box-shadow: inset 3px 0 0 var(--admin-data-table-row-selected-accent),
+    inset 0 1px 0 var(--admin-data-table-row-hover-border),
+    inset 0 -1px 0 var(--admin-data-table-row-hover-border) !important;
+}
+
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body tr:is(.is-admin-table-row-hover, .row-selected, .current-row) > td.el-table__cell:last-child {
+  box-shadow: inset -1px 0 0 var(--admin-data-table-row-hover-border),
+    inset 0 1px 0 var(--admin-data-table-row-hover-border),
+    inset 0 -1px 0 var(--admin-data-table-row-hover-border) !important;
+}
+
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body tr.row-selected > td.el-table__cell:first-child:last-child,
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body tr.current-row > td.el-table__cell:first-child:last-child {
+  box-shadow: inset 3px 0 0 var(--admin-data-table-row-selected-accent),
+    inset -1px 0 0 var(--admin-data-table-row-hover-border),
+    inset 0 1px 0 var(--admin-data-table-row-hover-border),
+    inset 0 -1px 0 var(--admin-data-table-row-hover-border) !important;
 }
 
 /* 调货/同行批发行：选择态优先，其余状态保持统一紫蓝识别色。 */
@@ -782,7 +815,38 @@
   background: var(--admin-data-table-wholesale-hover-bg) !important;
 }
 
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body tr.admin-row--peer-transfer.is-admin-table-row-hover:not(.row-selected) > td {
+  background: var(--admin-data-table-wholesale-hover-bg) !important;
+}
+
 :is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body tr.admin-row--peer-transfer:not(.row-selected) > td:first-child {
+  box-shadow: inset 3px 0 0 var(--admin-data-table-wholesale-accent) !important;
+}
+
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body tr.admin-row--peer-transfer:not(.row-selected).is-admin-table-row-hover > td.el-table__cell:first-child {
+  box-shadow: inset 3px 0 0 var(--admin-data-table-wholesale-accent),
+    inset 0 1px 0 var(--admin-data-table-row-hover-border),
+    inset 0 -1px 0 var(--admin-data-table-row-hover-border) !important;
+}
+
+/* 滚轮滚动后旧行可能残留 :hover/hover-row；只有脚本确认的当前行保留 hover 视觉。 */
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body tr:is(:hover, .hover-row):not(.is-admin-table-row-hover):not(.row-selected):not(.current-row):not(.admin-row--peer-transfer) > td.el-table__cell {
+  background: var(--admin-data-table-bg) !important;
+  border-bottom-color: var(--admin-data-table-cell-border) !important;
+  box-shadow: none !important;
+}
+
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body tr.el-table__row--striped:is(:hover, .hover-row):not(.is-admin-table-row-hover):not(.row-selected):not(.current-row):not(.admin-row--peer-transfer) > td.el-table__cell {
+  background: var(--admin-data-table-row-even-bg) !important;
+}
+
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body tr.admin-row--peer-transfer:is(:hover, .hover-row):not(.is-admin-table-row-hover):not(.row-selected) > td.el-table__cell {
+  background: var(--admin-data-table-wholesale-bg) !important;
+  border-bottom-color: var(--admin-data-table-cell-border) !important;
+  box-shadow: none !important;
+}
+
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body tr.admin-row--peer-transfer:is(:hover, .hover-row):not(.is-admin-table-row-hover):not(.row-selected) > td.el-table__cell:first-child {
   box-shadow: inset 3px 0 0 var(--admin-data-table-wholesale-accent) !important;
 }
 
@@ -825,6 +889,7 @@
   height: 24px;
   color: var(--tf-color-neutral-400);
   cursor: grab;
+  -webkit-user-select: none;
   user-select: none;
 }
 
@@ -1040,9 +1105,7 @@
   .admin-page .table-responsive {
     overflow-x: auto !important;
     overflow-y: hidden !important;
-    -webkit-overflow-scrolling: touch;
     overscroll-behavior-x: contain;
-    scrollbar-width: none;
     width: 100%;
     max-width: 100%;
   }

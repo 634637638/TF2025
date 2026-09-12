@@ -53,16 +53,18 @@
             </el-input>
           </template>
 
-          <template #actions>
+          <template #actions="{ loading: searchLoading }">
             <el-button
               type="primary"
-              :loading="loading"
+              :loading="searchLoading"
+              :aria-busy="searchLoading"
               @click="handleSearch"
             >
               查询
             </el-button>
             <el-button
               type="default"
+              :disabled="searchLoading"
               @click="handleReset"
             >
               重置
@@ -78,6 +80,7 @@
               format="YYYY-MM-DD"
               value-format="YYYY-MM-DD"
               :clearable="true"
+              @change="handleSearch"
             />
           </div>
           <div class="form-group filter-item">
@@ -88,6 +91,7 @@
               format="YYYY-MM-DD"
               value-format="YYYY-MM-DD"
               :clearable="true"
+              @change="handleSearch"
             />
           </div>
           <!-- 快捷选择 -->
@@ -150,6 +154,7 @@
               v-model="filterStoreId"
               placeholder="全部店铺"
               clearable
+              @change="handleSearch"
             >
               <el-option
                 label="全部店铺"
@@ -170,6 +175,7 @@
               placeholder="全部供应商"
               clearable
               filterable
+              @change="handleSearch"
             >
               <el-option
                 label="全部供应商"
@@ -246,6 +252,7 @@
 </template>
 
 <script setup lang="ts">
+import '@/styles/analytics-cards.css'
 import { computed, defineAsyncComponent, ref, watch, onMounted } from 'vue'
 import {
   Refresh,
@@ -621,7 +628,7 @@ const refreshData = async () => {
 
   refreshing.value = true
   try {
-    unifiedApi.clearCache()
+    unifiedApi.clearCache('/analytics')
     if (activeAnalyticsRef.value?.refreshSilently) {
       await activeAnalyticsRef.value.refreshSilently()
     }

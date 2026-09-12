@@ -1,3 +1,5 @@
+import { getPaymentMethodLabel } from '@/constants/paymentMethods'
+
 export type SalaryTagType = 'success' | 'warning' | 'info' | 'primary' | 'danger'
 
 export const formatSalarySaleTime = (time: string) => {
@@ -22,16 +24,7 @@ export const formatSalaryPayoutTime = (time: string) => {
   return `${year}-${month}-${day}`
 }
 
-export const getSalaryPaymentMethodName = (method: string) => {
-  const paymentMethodMap: Record<string, string> = {
-    cash: '现金',
-    bank_transfer: '银行转账',
-    wechat: '微信支付',
-    alipay: '支付宝',
-    other: '其他'
-  }
-  return paymentMethodMap[method] || method || '-'
-}
+export const getSalaryPaymentMethodName = (method: string) => getPaymentMethodLabel(method)
 
 export const formatSalaryWorkDays = (days: unknown) => {
   const numericDays = Number(days)

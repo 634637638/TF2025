@@ -6,8 +6,8 @@ const DatabaseSyncService = require('./database-sync.service')
 const log = require('../utils/log')
 
 class SmartSyncService {
-  constructor() {
-    this.syncService = new DatabaseSyncService()
+  constructor(syncService = new DatabaseSyncService()) {
+    this.syncService = syncService
   }
 
   /**

@@ -7,8 +7,8 @@ const DatabaseSyncService = require('./database-sync.service')
 const log = require('../utils/log')
 
 class LocalToCloudSyncService {
-  constructor() {
-    this.syncService = new DatabaseSyncService()
+  constructor(syncService = new DatabaseSyncService()) {
+    this.syncService = syncService
   }
 
   /**
@@ -16,7 +16,7 @@ class LocalToCloudSyncService {
    * @param {string} connectionId - 云端数据库连接ID
    * @param {object} options - 同步选项
    */
-  async syncLocalToCloud(connectionId, options = {}) {
+  async syncLocalToCloud(connectionId, options = {}, user = null) {
     const {
       tables = ['phones', 'customers', 'sales', 'brands', 'models', 'colors', 'memories'],
       _syncMode = 'update', // update: 只更新已存在的，upsert: 更新或插入
@@ -24,7 +24,8 @@ class LocalToCloudSyncService {
       _dryRun = false // 预演模式，不实际执行
     } = options
 
-    const cloudConnection = this.syncService.getConnection(connectionId)
+    const ownerId = user?.id ?? user?.userId ?? user?.sub
+    const cloudConnection = this.syncService.getConnection(connectionId, ownerId)
     const localConnection = await require('../config/database').getDatabase().getConnection()
 
     try {

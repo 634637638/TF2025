@@ -887,33 +887,13 @@
                 class="info-row payment-method-row"
               >
                 <label><i class="fas fa-credit-card" />打款方式</label>
-                <el-select
+                <PaymentMethodSelect
                   v-model="paymentForm.payment_method"
+                  variant="settlement"
                   placeholder="请选择打款方式"
                   class="form-control el-select-form-control w-48"
                   :disabled="!canEditPaymentField('payment_method')"
-                >
-                  <el-option
-                    label="银行转账"
-                    value="bank_transfer"
-                  />
-                  <el-option
-                    label="现金"
-                    value="cash"
-                  />
-                  <el-option
-                    label="支付宝"
-                    value="alipay"
-                  />
-                  <el-option
-                    label="微信"
-                    value="wechat"
-                  />
-                  <el-option
-                    label="其他"
-                    value="other"
-                  />
-                </el-select>
+                />
               </div>
               <div
                 v-if="canViewPaymentField('payment_time')"
@@ -1218,33 +1198,13 @@
                 class="info-row payment-method-row"
               >
                 <label><i class="fas fa-credit-card" />打款方式</label>
-                <el-select
+                <PaymentMethodSelect
                   v-model="paymentForm.payment_method"
+                  variant="settlement"
                   placeholder="请选择打款方式"
                   class="form-control el-select-form-control w-48"
                   :disabled="!canEditPaymentField('payment_method')"
-                >
-                  <el-option
-                    label="银行转账"
-                    value="bank_transfer"
-                  />
-                  <el-option
-                    label="现金"
-                    value="cash"
-                  />
-                  <el-option
-                    label="支付宝"
-                    value="alipay"
-                  />
-                  <el-option
-                    label="微信"
-                    value="wechat"
-                  />
-                  <el-option
-                    label="其他"
-                    value="other"
-                  />
-                </el-select>
+                />
               </div>
               <div
                 v-if="canViewPaymentField('payment_time')"
@@ -1656,32 +1616,12 @@
                 label="打款方式"
                 prop="payment_method"
               >
-                <el-select
+                <PaymentMethodSelect
                   v-model="editPaymentForm.payment_method"
+                  variant="settlement"
                   placeholder="请选择打款方式"
                   :disabled="!canEditPaymentField('payment_method')"
-                >
-                  <el-option
-                    label="银行转账"
-                    value="bank_transfer"
-                  />
-                  <el-option
-                    label="现金"
-                    value="cash"
-                  />
-                  <el-option
-                    label="支付宝"
-                    value="alipay"
-                  />
-                  <el-option
-                    label="微信"
-                    value="wechat"
-                  />
-                  <el-option
-                    label="其他"
-                    value="other"
-                  />
-                </el-select>
+                />
               </el-form-item>
 
               <el-form-item
@@ -1747,6 +1687,7 @@ import { ElMessageBox } from 'element-plus'
 import unifiedApi from '@/utils/unified-api'
 import logger from '@/utils/logger'
 import { getPhoneStatusLabel } from '@/constants/phoneStatuses'
+import { getPaymentMethodLabel } from '@/constants/paymentMethods'
 import { useNotification } from '@/composables/useNotification'
 import { useImportExport } from '@/composables/useImportExport'
 import { usePagePermissions } from '@/composables/usePagePermissions'
@@ -1757,6 +1698,7 @@ import { useAuthStore } from '@/stores/auth'
 import Pagination from '@/components/Pagination.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
+import { PaymentMethodSelect } from '@/components/payment'
 import InlineLoading from '@/components/InlineLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { PageHeader, PermissionGate } from '@/components/base'
@@ -3373,7 +3315,7 @@ const refreshData = async (options: { showSuccess?: boolean } = {}) => {
 
   refreshing.value = true
   try {
-    unifiedApi.clearCache()
+    unifiedApi.clearCache('/payments')
     await Promise.all([
       loadSummaryStatistics(),
       loadStatistics(false),
@@ -3433,18 +3375,6 @@ const formatDateTimeBeijing = (dateString: string | null) => {
   const seconds = String(beijingTime.getSeconds()).padStart(2, '0')
 
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
-}
-
-// 获取支付方式标签
-const getPaymentMethodLabel = (method: string) => {
-  const methodMap: Record<string, string> = {
-    'bank_transfer': '银行转账',
-    'cash': '现金',
-    'alipay': '支付宝',
-    'wechat': '微信',
-    'other': '其他'
-  }
-  return methodMap[method] || method || '-'
 }
 
 // 格式化为北京时间（将 UTC 时间转换为北京时间 UTC+8，只显示年月日）

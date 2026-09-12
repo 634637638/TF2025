@@ -88,6 +88,7 @@ import { ElMessage } from 'element-plus'
 import Image from './Image.vue'
 import type { ModelValueProps, UpdateModelValueEmits } from '@/types/component'
 import { logger } from '@/utils/logger'
+import { unifiedApi } from '@/utils/unified-api'
 
 interface MemoryTemplate {
   id: number
@@ -172,8 +173,15 @@ const loadMemoryOptions = async () => {
 
   try {
     // 调用后端API获取模板下的商品列表（按内存分组）
-    const response = await fetch(`/api/public/templates/${props.template.id}/phones`)
-    const data = await response.json() as TemplatePhonesResponse
+    const data = await unifiedApi.get<TemplatePhonesResponse>(
+      `/public/templates/${props.template.id}/phones`,
+      {
+        showLoading: false,
+        showError: false,
+        useCache: true,
+        cacheTTL: 10000
+      }
+    )
 
     if (data.success !== false && Array.isArray(data.data)) {
       // 按内存分组并合并相同内存的商品

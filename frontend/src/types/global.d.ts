@@ -63,7 +63,6 @@ declare global {
         stopAll: () => void
         isLoading?: boolean
       }
-      loadingManager?: any
       messageManager?: any
       notification?: {
         success: (message: string, options?: any) => void

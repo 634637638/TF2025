@@ -517,7 +517,10 @@
 }
 
 // ==================== 禁用选择 ====================
-.select-none { user-select: none; }
+.select-none {
+  -webkit-user-select: none;
+  user-select: none;
+}
 
 // ==================== 指针事件 ====================
 .pointer-events-none { pointer-events: none; }

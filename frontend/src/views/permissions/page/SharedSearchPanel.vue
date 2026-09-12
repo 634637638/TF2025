@@ -6,6 +6,7 @@
     <UnifiedSearchPanel
       v-if="ctx.activeTab === 'roles'"
       v-model:expanded="ctx.roleSearchExpanded"
+      :loading="ctx.rolesLoading"
       @search="ctx.searchRoles"
       @reset="ctx.resetRoleSearch"
     >
@@ -39,6 +40,7 @@
     <UnifiedSearchPanel
       v-else-if="ctx.activeTab === 'userRoles'"
       v-model:expanded="ctx.userSearchExpanded"
+      :loading="ctx.usersLoading"
       @search="ctx.searchUsers"
       @reset="ctx.resetUserSearch"
     >
@@ -82,6 +84,7 @@
     <UnifiedSearchPanel
       v-else-if="ctx.activeTab === 'storeBindings'"
       v-model:expanded="ctx.storeBindingSearchExpanded"
+      :loading="ctx.storeBindingsLoading"
       @search="ctx.searchStoreBindings"
       @reset="ctx.resetStoreBindingSearch"
     >
@@ -155,6 +158,7 @@
     <UnifiedSearchPanel
       v-else-if="ctx.activeTab === 'logs'"
       v-model:expanded="ctx.logSearchExpanded"
+      :loading="ctx.logsLoading"
       @search="ctx.searchLogs"
       @reset="ctx.resetLogSearch"
     >

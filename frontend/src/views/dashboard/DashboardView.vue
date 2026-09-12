@@ -383,7 +383,7 @@ const refreshData = async () => {
   isRefreshing.value = true
 
   try {
-    unifiedApi.clearCache()
+    unifiedApi.clearCache('/dashboard')
     await loadDashboardData(false)
     // 刷新待审批提醒
     if (pendingApprovementsRef.value?.refresh) {

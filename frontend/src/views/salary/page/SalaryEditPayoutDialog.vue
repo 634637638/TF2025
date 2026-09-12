@@ -140,30 +140,13 @@
           class="form-group"
         >
           <label>支付方式</label>
-          <select
+          <PaymentMethodSelect
             v-model="paymentMethod"
+            variant="settlement"
             class="form-control"
             :disabled="!canEditField('salary_salaryrecordsview', 'payment_method')"
-          >
-            <option value="">
-              请选择支付方式
-            </option>
-            <option value="cash">
-              现金
-            </option>
-            <option value="bank_transfer">
-              银行转账
-            </option>
-            <option value="wechat">
-              微信支付
-            </option>
-            <option value="alipay">
-              支付宝
-            </option>
-            <option value="other">
-              其他
-            </option>
-          </select>
+            placeholder="请选择支付方式"
+          />
         </div>
       </div>
     </form>
@@ -200,6 +183,7 @@
 import { computed } from 'vue'
 import InlineLoading from '@/components/InlineLoading.vue'
 import MobileDialog from '@/components/MobileDialog.vue'
+import { PaymentMethodSelect } from '@/components/payment'
 
 export interface SalaryEditPayoutForm {
   id: number | null

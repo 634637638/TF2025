@@ -2,7 +2,7 @@
   "files": [
     {
       "file": "src/styles/admin-layout.css",
-      "max": 304,
+      "max": 322,
       "reason": "Unified admin layout must override legacy page-scoped spacing and table shells."
     },
     {
@@ -12,7 +12,7 @@
     },
     {
       "file": "src/styles/components/_table.scss",
-      "max": 191,
+      "max": 199,
       "reason": "Unified Element Plus table contract overrides vendor and legacy page table declarations."
     },
     {

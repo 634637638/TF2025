@@ -201,12 +201,13 @@ export const useSalesBaseOptions = () => {
       }
 
       const response = await api.get<SalesModelRecord[]>(`/brands/${brandId}/models`)
-      brandModels.value = response.success
-        ? response.data
-          .filter(model => model.status === 1)
-          .sort((left, right) => left.sort_order - right.sort_order)
-          .map(model => ({ id: model.id, name: model.name } as PhoneModel))
+      const modelRecords = response.success
+        ? extractResponseData<SalesModelRecord[]>(response)
         : []
+      brandModels.value = (Array.isArray(modelRecords) ? modelRecords : [])
+        .filter(model => model && model.status === 1 && model.name)
+        .sort((left, right) => (left.sort_order || 0) - (right.sort_order || 0))
+        .map(model => ({ id: model.id, name: model.name } as PhoneModel))
     } catch (error) {
       logger.error('获取品牌型号失败:', error)
       brandModels.value = []
@@ -240,12 +241,14 @@ export const useSalesBaseOptions = () => {
       }
 
       const modelsResponse = await api.get<SalesModelRecord[]>(`/brands/${brand.id}/models`)
-      editBrandModels.value = modelsResponse.success
-        ? modelsResponse.data
-          .filter(model => model.status === 1)
-          .sort((left, right) => left.sort_order - right.sort_order)
-          .map(model => model.name)
+      // 品牌型号接口使用统一响应格式，兼容 data 直接数组和包装数组两种历史返回。
+      const modelRecords = modelsResponse.success
+        ? extractResponseData<SalesModelRecord[]>(modelsResponse)
         : []
+      editBrandModels.value = (Array.isArray(modelRecords) ? modelRecords : [])
+        .filter(model => model && model.status === 1 && model.name)
+        .sort((left, right) => (left.sort_order || 0) - (right.sort_order || 0))
+        .map(model => String(model.name).trim())
     } catch (error) {
       logger.error('编辑弹窗获取品牌型号失败:', error)
       editBrandModels.value = []

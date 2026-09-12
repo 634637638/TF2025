@@ -1,5 +1,6 @@
 <template>
   <div
+    ref="paginationRef"
     class="tf-pagination"
     :class="{
       'is-mobile': isMobile,
@@ -110,8 +111,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useMobile } from '@/composables/mobile'
+import {
+  SEARCH_PAGINATION_RESET_EVENT,
+  getSearchPaginationScope,
+  type SearchPaginationScope
+} from '@/utils/search-pagination'
 
 interface Props {
   current?: number
@@ -153,6 +159,7 @@ const emit = defineEmits<Emits>()
 const { isMobile, isTablet, screenSize } = useMobile()
 
 // 响应式数据
+const paginationRef = ref<HTMLElement | null>(null)
 const currentPage = ref(props.current)
 const currentPageSize = ref(props.pageSize || 100)
 const jumpPage = ref(props.current)
@@ -178,6 +185,16 @@ const effectiveShowTotal = computed(() => props.showTotal)
 const effectiveShowRange = computed(() => props.showRange && !isCompact.value)
 const effectiveShowPageSizes = computed(() => props.showPageSizes && !isCompact.value)
 const effectiveShowQuickJumper = computed(() => props.showQuickJumper && !isMobile.value)
+
+let searchPaginationScope: SearchPaginationScope | null = null
+
+const resetFromSearch = () => {
+  if (currentPage.value === 1 && jumpPage.value === 1) return
+
+  currentPage.value = 1
+  jumpPage.value = 1
+  emit('update:current', 1)
+}
 
 const visiblePages = computed(() => {
   const current = currentPage.value
@@ -281,6 +298,16 @@ watch(() => props.total, () => {
   if (currentPage.value > totalPages.value && totalPages.value > 0) {
     handleCurrentChange(totalPages.value)
   }
+})
+
+onMounted(() => {
+  searchPaginationScope = getSearchPaginationScope(paginationRef.value)
+  searchPaginationScope?.addEventListener(SEARCH_PAGINATION_RESET_EVENT, resetFromSearch)
+})
+
+onUnmounted(() => {
+  searchPaginationScope?.removeEventListener(SEARCH_PAGINATION_RESET_EVENT, resetFromSearch)
+  searchPaginationScope = null
 })
 </script>
 

@@ -92,7 +92,7 @@ if (!/\binitAdminTableDragScroll\s*\(\s*\)/.test(mainSource)) {
 }
 
 const dragScrollRequirements = [
-  [/TABLE_SELECTOR\s*=\s*['"]\.data-table, \.admin-data-table['"]/, '拖动功能必须覆盖 data-table 和 admin-data-table'],
+  [/TABLE_SELECTOR\s*=\s*['"]\.data-table, \.admin-data-table(?:, \.devices-table)?['"]/, '拖动功能必须覆盖 data-table 和 admin-data-table'],
   [/scrollWidth\s*>\s*scroller\.clientWidth/, '无超宽内容时不得错误启动拖动'],
   [/table\.querySelectorAll<HTMLElement>\(SCROLLER_SELECTOR\)/, '表头和表体非交互区域必须共同定位 Element 内部实际滚动层'],
   [/\.el-table__header-wrapper, \.el-table__footer-wrapper/, '横向移动必须同步表头和汇总行'],

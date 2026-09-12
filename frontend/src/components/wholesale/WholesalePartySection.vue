@@ -194,30 +194,14 @@
             label="支付方式"
             prop="payment_method"
           >
-            <el-select
+            <PaymentMethodSelect
               v-model="formData.payment_method"
+              variant="sale"
               placeholder="请选择"
               clearable
               class="w-full"
               @change="handlePaymentMethodChange"
-            >
-              <el-option
-                label="现金支付"
-                value="cash"
-              />
-              <el-option
-                label="移动支付"
-                value="mobile"
-              />
-              <el-option
-                label="银行卡"
-                value="bank_card"
-              />
-              <el-option
-                label="国补刷卡"
-                value="subsidy_card"
-              />
-            </el-select>
+            />
           </el-form-item>
         </el-col>
         <el-col :span="8">
@@ -226,40 +210,14 @@
             label="支付渠道"
             prop="payment_channel"
           >
-            <el-select
+            <PaymentChannelSelect
               v-model="formData.payment_channel"
+              :payment-method="formData.payment_method"
               placeholder="请选择"
               clearable
               class="w-full"
               @change="handlePaymentChannelChange"
-            >
-              <template v-if="formData.payment_method === 'mobile'">
-                <el-option
-                  label="微信"
-                  value="wechat"
-                />
-                <el-option
-                  label="支付宝"
-                  value="alipay"
-                />
-              </template>
-              <template v-if="formData.payment_method === 'bank_card'">
-                <el-option
-                  label="刷卡消费"
-                  value="card_consumption"
-                />
-                <el-option
-                  label="银行转账"
-                  value="bank_transfer"
-                />
-              </template>
-              <template v-if="formData.payment_method === 'subsidy_card'">
-                <el-option
-                  label="国补刷卡"
-                  value="subsidy_card"
-                />
-              </template>
-            </el-select>
+            />
           </el-form-item>
         </el-col>
         <el-col :span="8">
@@ -486,6 +444,7 @@
 
 <script setup lang="ts">
 import InlineLoading from '@/components/InlineLoading.vue'
+import { PaymentChannelSelect, PaymentMethodSelect } from '@/components/payment'
 import type { Store, User } from '@/types'
 import type { WholesaleCustomerSearchItem, WholesaleFormData } from './types'
 

@@ -892,7 +892,7 @@ const refreshData = async () => {
   if (refreshing.value) return
   refreshing.value = true
   try {
-    unifiedApi.clearCache()
+    unifiedApi.clearCache('/repairs')
     await Promise.all([loadRepairs(), loadOptions()])
     success('数据刷新成功')
   } catch (err) {

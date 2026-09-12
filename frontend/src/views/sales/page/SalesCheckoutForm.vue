@@ -223,74 +223,32 @@
           class="form-group"
         >
           <label class="form-label required">支付方式</label>
-          <el-select
+          <PaymentMethodSelect
             v-model="saleForm.payment_method"
+            variant="sale"
             placeholder="请选择支付方式"
             class="w-full"
             clearable
             teleported
             popper-class="tf2025-form-popper"
             @change="emit('payment-method-change')"
-          >
-            <el-option
-              label="现金支付"
-              value="cash"
-            />
-            <el-option
-              label="移动支付"
-              value="mobile"
-            />
-            <el-option
-              label="银行卡"
-              value="bank_card"
-            />
-            <el-option
-              label="国补刷卡"
-              value="subsidy_card"
-            />
-          </el-select>
+          />
         </div>
         <div
           v-if="canViewField('payment_method') && ['mobile', 'bank_card', 'subsidy_card'].includes(saleForm.payment_method)"
           class="form-group"
         >
           <label class="form-label">支付渠道</label>
-          <el-select
+          <PaymentChannelSelect
             v-model="saleForm.payment_channel"
+            :payment-method="saleForm.payment_method"
             placeholder="请选择支付渠道"
             class="w-full"
             clearable
             teleported
             popper-class="tf2025-form-popper"
             @change="emit('payment-channel-change')"
-          >
-            <template v-if="saleForm.payment_method === 'mobile'">
-              <el-option
-                label="微信"
-                value="wechat"
-              />
-              <el-option
-                label="支付宝"
-                value="alipay"
-              />
-            </template>
-            <template v-if="saleForm.payment_method === 'bank_card'">
-              <el-option
-                label="刷卡消费"
-                value="card_consumption"
-              />
-              <el-option
-                label="银行转账"
-                value="bank_transfer"
-              />
-            </template>
-            <template v-if="saleForm.payment_method === 'subsidy_card'">
-              <el-option
-                label="国补刷卡"
-                value="subsidy_card"
-              />
-            </template>
-          </el-select>
+          />
         </div>
       </div>
 
@@ -358,6 +316,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import InlineLoading from '@/components/InlineLoading.vue'
+import { PaymentChannelSelect, PaymentMethodSelect } from '@/components/payment'
 import { formatNumber } from '@/utils/format'
 import type { Operator, Phone, Store } from '@/types'
 import type { SalesCheckoutFormData, SalesCustomer } from '../types'

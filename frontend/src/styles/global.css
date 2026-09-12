@@ -19,10 +19,7 @@
 
 html {
   font-size: 14px;
-  -webkit-text-size-adjust: none;
-  text-size-adjust: none;
   -webkit-tap-highlight-color: transparent;
-  -webkit-overflow-scrolling: touch; /* 平滑滚动 */
 }
 
 /* 移动端触摸优化 */
@@ -40,8 +37,6 @@ body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   font-size: 14px;
-  -webkit-text-size-adjust: none;
-  text-size-adjust: none;
   line-height: 1.5;
   color: var(--text-primary);
   background-color: var(--tf-color-surface-soft);
@@ -53,7 +48,7 @@ body {
   margin: 0 auto;
   padding: 0 8px;
 
-  // 移动端进一步减小左右内边距
+  /* 移动端进一步减小左右内边距 */
   @media (max-width: 768px) {
     padding: 0 4px;
   }
@@ -515,7 +510,6 @@ body {
   /* 移动端表格优化 */
   .responsive-table {
     overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
   }
 
   .responsive-table table {
@@ -569,11 +563,6 @@ body {
 
 /* iOS Safari 特定优化 */
 @supports (-webkit-touch-callout: none) {
-  /* iOS Safari滚动优化 */
-  body {
-    -webkit-overflow-scrolling: touch;
-  }
-
   /* iOS Safari表单优化 */
   input[type="text"],
   input[type="password"],
@@ -582,12 +571,14 @@ body {
   textarea,
   select {
     -webkit-appearance: none;
+    appearance: none;
     border-radius: 0;
   }
 
   /* iOS Safari按钮优化 */
   .btn {
     -webkit-appearance: none;
+    appearance: none;
   }
 }
 
@@ -719,8 +710,6 @@ table th .vue-component {
     font-size: 14px;
   }
 
-  table button {
-  }
 }
 
 /* El-Plus Table 点击区域修复 */

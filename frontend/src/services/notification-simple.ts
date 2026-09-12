@@ -4,6 +4,8 @@
  */
 
 import { logger } from '@/utils/logger'
+import { getActivePinia } from 'pinia'
+import { useLoadingStore } from '@/stores/loading'
 import {
   closeAllElementMessages,
   loadElementPlus,
@@ -382,6 +384,16 @@ class SimpleNotificationService {
    * 加载状态通知
    */
   public loading(message: string = '加载中...'): () => void {
+    if (getActivePinia()) {
+      const operationId = `notification-loading-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+      const loadingStore = useLoadingStore()
+      loadingStore.startLoading(message, operationId)
+
+      return () => {
+        loadingStore.stopLoading(operationId)
+      }
+    }
+
     let closeRequested = false
     let loadingInstance: { close: () => void } | null = null
 

@@ -34,7 +34,7 @@ const REMINDER_RESPONSE_KEYS = {
   'execution_info.ignored_count': ['ignored_count', 'ignored_at'], 'execution_info.scheduled_at': ['scheduled_at'],
   'execution_info.recipient_user': ['user_id', 'user_name', 'username'],
   'execution_info.recipient_status': ['recipient_status', 'read_at', 'snoozed_until'],
-  'execution_info.action_at': ['action_at'], 'status_info.status': ['status'],
+  'execution_info.action_at': ['action_at', 'completed_at'], 'status_info.status': ['status'],
   'operator_info.creator_name': ['created_by', 'creator_name'], 'time_info.created_at': ['created_at'],
   'time_info.updated_at': ['updated_at']
 }
@@ -89,6 +89,18 @@ const canManageReminders = req => {
 router.get('/my/pending', requireVisibleReminderField('execution_info.recipient_status'), async (req, res) => {
   try { return ApiResponse.success(res, await maskReminderPayload(await reminderService.pending(req.user.id), req), '获取待办提醒成功') }
   catch (error) { log.error('获取待办提醒失败:', error); return handleError(res, error, '获取待办提醒失败') }
+})
+
+router.get('/completed/pending', requirePermission('reminders:manage'), async (req, res) => {
+  try { return ApiResponse.success(res, await maskReminderPayload(await reminderService.pendingCompletions(req.user.id), req), '获取完成提醒成功') }
+  catch (error) { log.error('获取完成提醒失败:', error); return handleError(res, error, '获取完成提醒失败') }
+})
+
+router.post('/completed/:occurrenceId/acknowledge', requirePermission('reminders:manage'), async (req, res) => {
+  try {
+    await reminderService.acknowledgeCompletion(req.user.id, Number(req.params.occurrenceId))
+    return ApiResponse.success(res, null, '完成提醒已确认')
+  } catch (error) { log.error('确认完成提醒失败:', error); return handleError(res, error, '确认完成提醒失败') }
 })
 
 router.post('/occurrences/:occurrenceId/:action', requireVisibleReminderField('execution_info.recipient_status'), async (req, res) => {

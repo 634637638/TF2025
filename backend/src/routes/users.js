@@ -123,7 +123,7 @@ router.get('/employees', unifiedAuth, requireAnyPermission(['attendance:view', '
 
     let users
     if (isAdmin) {
-      // 考勤管理用户或有综合查询权限：查看所有员工
+      // 默认只返回在职员工；编辑历史销售记录时由前端额外补回当前历史员工。
       [users] = await db.execute(
         `SELECT id, username, name, status
          FROM users

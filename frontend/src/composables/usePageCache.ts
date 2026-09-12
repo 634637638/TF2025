@@ -3,7 +3,7 @@
  * 提供统一的缓存管理，避免重复请求
  */
 
-import { globalApiCache } from '@/composables/api-cache'
+import { globalApiCache, type CacheScope } from '@/composables/page-cache-store'
 import { logger } from '@/utils/logger'
 
 // 默认 TTL 配置（毫秒）
@@ -88,19 +88,32 @@ export async function useCachedRequest<T>(
  * 获取过期缓存（用于后备）
  */
 function getStaleCache(key: string): unknown {
-  // 直接从缓存管理器内部获取（绕过 TTL 检查）
-  const cache = (globalApiCache as unknown as { cache?: Map<string, { data: unknown }> }).cache
-  return cache?.get(key)?.data || null
+  // 请求失败时允许使用当前条目的过期值作为后备。
+  return globalApiCache.getStale(key)
 }
 
 /**
- * 清除指定键的缓存
+ * 清除页面级缓存。
+ * key 为字符串时按包含关系清理，支持一次清掉同一模块的多个派生 key。
  */
-export function clearCache(key?: string): void {
+export function clearCache(key?: CacheScope | CacheScope[]): void {
   cacheGeneration += 1
   if (key) {
-    globalApiCache.delete(key)
-    pendingRequests.delete(key)
+    const scopes = Array.isArray(key) ? key : [key]
+    scopes.forEach(scope => globalApiCache.deleteByScope(scope))
+
+    Array.from(pendingRequests.keys()).forEach(requestKey => {
+      const matches = scopes.some(scope => {
+        if (scope instanceof RegExp) {
+          scope.lastIndex = 0
+          return scope.test(requestKey)
+        }
+        return requestKey.includes(scope)
+      })
+      if (matches) {
+        pendingRequests.delete(requestKey)
+      }
+    })
   } else {
     globalApiCache.clear()
     pendingRequests.clear()

@@ -213,6 +213,7 @@
                     placeholder="员工"
                     clearable
                     filterable
+                    @change="loadData"
                   >
                     <el-option
                       v-for="emp in employees"
@@ -233,6 +234,7 @@
                     v-model="filters.record_type"
                     placeholder="类型"
                     clearable
+                    @change="loadData"
                   >
                     <el-option
                       label="休假"
@@ -259,6 +261,7 @@
                     v-model="filters.status"
                     placeholder="状态"
                     clearable
+                    @change="loadData"
                   >
                     <el-option
                       label="待审批"
@@ -625,6 +628,7 @@
                     v-model="myFilters.record_type"
                     placeholder="类型"
                     clearable
+                    @change="loadMyData"
                   >
                     <el-option
                       label="休假"
@@ -651,6 +655,7 @@
                     v-model="myFilters.status"
                     placeholder="状态"
                     clearable
+                    @change="loadMyData"
                   >
                     <el-option
                       label="待审批"
@@ -2844,7 +2849,7 @@ const refreshData = async () => {
 
   refreshing.value = true
   try {
-    unifiedApi.clearCache()
+    unifiedApi.clearCache('/attendance')
     if (activeTab.value === 'all') {
       await loadData(false)
     } else if (activeTab.value === 'my') {

@@ -239,7 +239,10 @@
                 }"
                 @click="previewImage(image)"
               />
-              <div v-if="isVideoMedia(image)" class="media-type-badge">
+              <div
+                v-if="isVideoMedia(image)"
+                class="media-type-badge"
+              >
                 <i class="fas fa-play" />
                 视频
               </div>

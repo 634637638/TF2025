@@ -1298,7 +1298,7 @@ const refreshData = async () => {
 
   // 实现静默刷新，避免页面抖动
   try {
-    unifiedApi.clearCache()
+    unifiedApi.clearCache('/menus')
     await refresh(async () => {
       await loadMenus(true, false, false)
     })

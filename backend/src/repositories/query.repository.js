@@ -2,6 +2,10 @@ const BaseRepository = require('./base.repository')
 const { hasColumn, hasTable } = require('../services/schemaInspector.service')
 const log = require('../utils/log')
 
+const normalizedModelSql = column => (
+  `LOWER(REPLACE(REPLACE(REPLACE(TRIM(${column}), ' ', ''), '　', ''), '-', ''))`
+)
+
 class QueryRepository extends BaseRepository {
   constructor() {
     super('phones')
@@ -125,13 +129,15 @@ class QueryRepository extends BaseRepository {
     }
 
     if (brand) {
-      whereConditions.push('b.name LIKE ?')
+      whereConditions.push('COALESCE(b.name, model_brand.name) LIKE ?')
       whereParams.push(`%${brand}%`)
     }
 
     if (model) {
-      whereConditions.push('m.name LIKE ?')
-      whereParams.push(`%${model}%`)
+      whereConditions.push(
+        `${normalizedModelSql('m.name')} LIKE CONCAT('%', ${normalizedModelSql('?')}, '%')`
+      )
+      whereParams.push(model)
     }
 
     if (color) {
@@ -197,8 +203,8 @@ class QueryRepository extends BaseRepository {
       sale_time: 'p.sale_time',
       sale_price: 'p.sale_price',
       purchase_cost: 'p.purchase_cost',
-      brand: 'b.name',
-      brand_name: 'b.name',
+      brand: 'COALESCE(b.name, model_brand.name)',
+      brand_name: 'COALESCE(b.name, model_brand.name)',
       model: 'm.name',
       model_name: 'm.name',
       price: 'p.sale_price',
@@ -231,7 +237,7 @@ class QueryRepository extends BaseRepository {
         p.model_id,
         p.color_id,
         p.memory_id,
-        b.name as brand,
+        COALESCE(b.name, model_brand.name) as brand,
         -- 🔥 在SQL层面直接标准化型号名称（去除空格变体）
         CASE
           -- iPad 系列：统一为 "iPad XX" 格式
@@ -312,6 +318,7 @@ class QueryRepository extends BaseRepository {
       FROM phones p
       LEFT JOIN brands b ON p.brand_id = b.id
       LEFT JOIN models m ON p.model_id = m.id
+      LEFT JOIN brands model_brand ON m.brand_id = model_brand.id
       LEFT JOIN colors co ON p.color_id = co.id
       LEFT JOIN memories mem ON p.memory_id = mem.id
       LEFT JOIN suppliers supp ON p.supplier_id = supp.id
@@ -335,11 +342,18 @@ class QueryRepository extends BaseRepository {
 
     try {
       const filterJoins = []
+      const needsModelJoin = Boolean(
+        brand ||
+        model ||
+        validSortField === 'brand' ||
+        validSortField === 'model'
+      )
+      if (needsModelJoin) {
+        filterJoins.push('LEFT JOIN models m ON p.model_id = m.id')
+      }
       if (brand || validSortField === 'brand') {
         filterJoins.push('LEFT JOIN brands b ON p.brand_id = b.id')
-      }
-      if (model || validSortField === 'model') {
-        filterJoins.push('LEFT JOIN models m ON p.model_id = m.id')
+        filterJoins.push('LEFT JOIN brands model_brand ON m.brand_id = model_brand.id')
       }
       if (color) {
         filterJoins.push('LEFT JOIN colors co ON p.color_id = co.id')
@@ -454,13 +468,15 @@ class QueryRepository extends BaseRepository {
     }
 
     if (brand) {
-      whereConditions.push('b.name LIKE ?')
+      whereConditions.push('COALESCE(b.name, model_brand.name) LIKE ?')
       whereParams.push(`%${brand}%`)
     }
 
     if (model) {
-      whereConditions.push('m.name LIKE ?')
-      whereParams.push(`%${model}%`)
+      whereConditions.push(
+        `${normalizedModelSql('m.name')} LIKE CONCAT('%', ${normalizedModelSql('?')}, '%')`
+      )
+      whereParams.push(model)
     }
 
     const normalizedStatus = this.normalizeStatus(status)
@@ -544,6 +560,7 @@ class QueryRepository extends BaseRepository {
       FROM phones p
       LEFT JOIN brands b ON p.brand_id = b.id
       LEFT JOIN models m ON p.model_id = m.id
+      LEFT JOIN brands model_brand ON m.brand_id = model_brand.id
       ${latestSaleJoin}
       ${whereClause}
     `
@@ -1133,8 +1150,10 @@ class QueryRepository extends BaseRepository {
     }
 
     if (model) {
-      whereConditions.push('m.name LIKE ?')
-      whereParams.push(`%${model}%`)
+      whereConditions.push(
+        `${normalizedModelSql('m.name')} LIKE CONCAT('%', ${normalizedModelSql('?')}, '%')`
+      )
+      whereParams.push(model)
     }
 
     if (color) {

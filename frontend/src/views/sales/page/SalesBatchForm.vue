@@ -236,44 +236,25 @@
             class="form-group"
           >
             <label class="form-label required">支付方式</label>
-            <select
+            <PaymentMethodSelect
               v-model="batchSaleForm.payment_method"
+              variant="batch-sale"
               class="form-control"
+              placeholder="请选择支付方式"
               required
-            >
-              <option value="">
-                请选择支付方式
-              </option>
-              <option value="cash">
-                现金
-              </option>
-              <option value="mobile">
-                移动支付
-              </option>
-              <option value="transfer">
-                银行转账
-              </option>
-            </select>
+            />
           </div>
           <div
             v-if="canViewField('payment_method') && (batchSaleForm.payment_method === 'mobile' || batchSaleForm.payment_method === 'transfer')"
             class="form-group"
           >
             <label class="form-label">支付渠道</label>
-            <select
+            <PaymentChannelSelect
               v-model="batchSaleForm.payment_channel"
+              :payment-method="batchSaleForm.payment_method"
               class="form-control"
-            >
-              <option value="">
-                请选择支付渠道
-              </option>
-              <option value="wechat">
-                微信
-              </option>
-              <option value="alipay">
-                支付宝
-              </option>
-            </select>
+              placeholder="请选择支付渠道"
+            />
           </div>
         </div>
         <div
@@ -352,6 +333,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import InlineLoading from '@/components/InlineLoading.vue'
+import { PaymentChannelSelect, PaymentMethodSelect } from '@/components/payment'
 import type { Operator, Store } from '@/types'
 import type { BatchCustomer, BatchSaleFormData } from '../types'
 

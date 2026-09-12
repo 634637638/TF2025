@@ -133,6 +133,7 @@
               v-model="filters.type_id"
               clearable
               placeholder="事项类型"
+              @change="handleSearch"
             >
               <el-option
                 v-for="item in activeTypes"
@@ -150,6 +151,7 @@
               v-model="filters.status"
               clearable
               placeholder="状态"
+              @change="handleSearch"
             >
               <el-option
                 label="启用中"
@@ -511,15 +513,15 @@
           </el-form-item>
           <el-form-item
             v-if="canViewReminderField('start_at') && (!canViewReminderField('repeat_type') || ['once', 'monthly', 'yearly'].includes(form.repeat_type))"
-            label="提醒时间"
+            label="执行时间"
             prop="start_at"
           >
             <el-date-picker
               v-model="form.start_at"
-              type="date"
-              value-format="YYYY-MM-DD"
-              format="YYYY-MM-DD"
-              placeholder="选择日期"
+              type="datetime"
+              value-format="YYYY-MM-DD HH:mm:ss"
+              format="YYYY-MM-DD HH:mm"
+              placeholder="选择执行时间"
               @change="syncRepeatRuleFromStart"
             />
           </el-form-item>
@@ -983,8 +985,10 @@ const typeSortColumnWidth = computed(() => getTextColumnMinWidth(
 
 const pad = (value:number) => String(value).padStart(2,'0')
 const localDate = (date:Date) => `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`
+const localDateTime = (date:Date) => `${localDate(date)} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
 const parseDate = (value:any) => {if(!value)return null;const raw=String(value).trim();return new Date(/^\d{4}-\d{2}-\d{2}$/.test(raw)?`${raw}T00:00:00`:raw.replace(' ','T'))}
 const formatDate = (value:any) => { const date=parseDate(value); return date && !Number.isNaN(date.getTime()) ? localDate(date) : '-' }
+const formatDateTime = (value:any) => { const date=parseDate(value); return date && !Number.isNaN(date.getTime()) ? localDateTime(date) : '' }
 
 const repeatLabel = (row:any) => { if(row.repeat_type==='once') return '不重复'; if(row.repeat_type==='daily') return `每 ${row.interval_value||1} 天`; if(row.repeat_type==='monthly') return `每 ${row.interval_value||1} 月第 ${row.month_day} 日`; if(row.repeat_type==='yearly')return `${Number(row.interval_value||1)===1?'每年':`每 ${row.interval_value} 年`} ${row.year_month||1} 月 ${row.month_day||1} 日`; let days:number[]=[]; try{days=JSON.parse(row.weekdays_json||'[]')}catch{} return `每 ${row.interval_value||1} 周 ${days.map(day=>weekdayOptions.find(item=>item.value===day)?.label).filter(Boolean).join('、')}` }
 const typeBadgeStyle = (row:any) => { const color=canViewReminderField('type_color')?(row.type_color||row.color||'#409EFF'):'#409EFF';return { color,borderColor:`${color}66`,backgroundColor:`${color}14` } }
@@ -1014,11 +1018,11 @@ const loadUsers = async () => { if(!canViewReminderField('target_users')||(!canC
 const loadReminders = async () => { loading.value=true; try{ const params:Record<string,unknown>={ page:pagination.page,page_size:pagination.page_size };if((canViewReminderField('title')||canViewReminderField('content'))&&filters.keyword)params.keyword=filters.keyword;if(canViewReminderField('type_name')&&filters.type_id)params.type_id=filters.type_id;if(canViewReminderField('status')&&filters.status)params.status=filters.status;const response:any=await api.get('/reminders',{ params }); if(response.success){reminders.value=Array.isArray(response.data)?response.data:[];pagination.total=Number(response.pagination?.total||0)} }catch(error){logger.error('加载待办失败',error);ElMessage.error('加载待办失败')}finally{loading.value=false} }
 const handleSearch=()=>{pagination.page=1;loadReminders()}; const resetSearch=()=>{filters.keyword='';filters.type_id='';filters.status='';handleSearch()}; const handlePageChange=(page:number,size:number)=>{pagination.page=page;pagination.page_size=size;loadReminders()}
 const resetForm=()=>Object.assign(form,defaultForm())
-const openCreateDialog=()=>{editingId.value=null;resetForm();form.start_at=localDate(new Date());formVisible.value=true}
-const openEditDialog=async(row:ReminderRow)=>{const response:any=await api.get(`/reminders/${row.id}`);if(!response.success)return;const data=response.data;editingId.value=row.id;const getters:Record<string,()=>unknown>={ type_id:()=>data.type_id||'',title:()=>data.title||'',content:()=>data.content||'',priority:()=>data.priority||'normal',target_mode:()=>data.target_mode||'specific',target_user_ids:()=>Array.isArray(data.targets)?data.targets.map((item:any)=>item.id):[],repeat_type:()=>data.repeat_type||'once',interval_value:()=>Number(data.interval_value||1),weekdays:()=>{try{return JSON.parse(data.weekdays_json||'[]')}catch{return[1]}},year_month:()=>Number(data.year_month||1),month_day:()=>Number(data.month_day||1),missing_day_policy:()=>data.missing_day_policy||'last-day',start_at:()=>formatDate(data.start_at),remind_before_days:()=>Number(data.remind_before_days||0),end_type:()=>data.end_type||'never',end_at:()=>data.end_at?formatDate(data.end_at):'',occurrence_limit:()=>Number(data.occurrence_limit||10) };Object.entries(getters).forEach(([key,getter])=>{const field=reminderPayloadFieldMap[key];if(field&&canViewReminderField(field))(form as Record<string,unknown>)[key]=getter()});formVisible.value=true}
+const openCreateDialog=()=>{editingId.value=null;resetForm();form.start_at=localDateTime(new Date());formVisible.value=true}
+const openEditDialog=async(row:ReminderRow)=>{const response:any=await api.get(`/reminders/${row.id}`);if(!response.success)return;const data=response.data;editingId.value=row.id;const getters:Record<string,()=>unknown>={ type_id:()=>data.type_id||'',title:()=>data.title||'',content:()=>data.content||'',priority:()=>data.priority||'normal',target_mode:()=>data.target_mode||'specific',target_user_ids:()=>Array.isArray(data.targets)?data.targets.map((item:any)=>item.id):[],repeat_type:()=>data.repeat_type||'once',interval_value:()=>Number(data.interval_value||1),weekdays:()=>{try{return JSON.parse(data.weekdays_json||'[]')}catch{return[1]}},year_month:()=>Number(data.year_month||1),month_day:()=>Number(data.month_day||1),missing_day_policy:()=>data.missing_day_policy||'last-day',start_at:()=>formatDateTime(data.start_at),remind_before_days:()=>Number(data.remind_before_days||0),end_type:()=>data.end_type||'never',end_at:()=>data.end_at?formatDate(data.end_at):'',occurrence_limit:()=>Number(data.occurrence_limit||10) };Object.entries(getters).forEach(([key,getter])=>{const field=reminderPayloadFieldMap[key];if(field&&canViewReminderField(field))(form as Record<string,unknown>)[key]=getter()});formVisible.value=true}
 const handleTypeChange=(id:any)=>{if(editingId.value)return;const type=types.value.find(item=>item.id===id);if(type)form.remind_before_days=Number(type.default_remind_days||0)}
 const syncRepeatRuleFromStart=()=>{if(!['monthly','yearly'].includes(form.repeat_type))return;const start=parseDate(form.start_at);if(!start)return;form.month_day=start.getDate();form.missing_day_policy='last-day';if(form.repeat_type==='yearly')form.year_month=start.getMonth()+1}
-const normalizeRepeatFields=()=>{if(form.repeat_type==='once')form.end_type='never';if(['daily','weekly'].includes(form.repeat_type))form.start_at=localDate(new Date());if(form.repeat_type==='weekly'&&!form.weekdays.length)form.weekdays=[1];syncRepeatRuleFromStart()}
+const normalizeRepeatFields=()=>{if(form.repeat_type==='once')form.end_type='never';if(['daily','weekly'].includes(form.repeat_type))form.start_at=localDateTime(new Date());if(form.repeat_type==='weekly'&&!form.weekdays.length)form.weekdays=[1];syncRepeatRuleFromStart()}
 const saveReminder=async()=>{if(!formRef.value||!canSaveReminder.value)return;if(canViewReminderField('repeat_type')&&canViewReminderField('start_at'))syncRepeatRuleFromStart();await formRef.value.validate();saving.value=true;try{const source={ ...form,target_user_ids:form.target_mode==='all'?[]:form.target_user_ids,end_at:form.end_type==='date'?form.end_at:null,occurrence_limit:form.end_type==='count'?form.occurrence_limit:null };const payload=pickVisibleReminderFields(source,reminderPayloadFieldMap);const response:any=editingId.value?await api.put(`/reminders/${editingId.value}`,payload):await api.post('/reminders',payload);if(response.success){ElMessage.success(editingId.value?'待办已更新':'待办已创建');formVisible.value=false;pagination.page=1;await loadReminders()}}catch(error:any){logger.error('保存待办失败',error);ElMessage.error(error?.response?.data?.message||'保存待办失败')}finally{saving.value=false}}
 const deleteReminder=async(row:ReminderRow)=>{try{const target=canViewReminderField('title')?`“${row.title}”`:'';await ElMessageBox.confirm(`确定删除待办${target}吗？历史执行记录将保留。`,'删除确认',{ type:'warning' });const response:any=await api.delete(`/reminders/${row.id}`);if(response.success){ElMessage.success('待办已删除');loadReminders()}}catch(error){if(error!=='cancel')logger.error('删除待办失败',error)}}
 const openDetail=async(row:ReminderRow)=>{const response:any=await api.get(`/reminders/${row.id}`);if(response.success){detail.value=response.data;detailVisible.value=true}}

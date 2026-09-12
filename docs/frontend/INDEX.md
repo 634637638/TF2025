@@ -17,6 +17,7 @@
 - [通知标准](notification-standards.md) - 消息通知规范
 - [全局加载动画统一规范](global-loading-standard.md) - 页面切换、局部加载，以及“首屏加载 / 顶部静默刷新”规范
 - [全局空状态统一规范](empty-state-standard.md) - 无数据、筛选无结果、请求失败、无权限和等待操作的统一入口
+- [全站支付方式统一标准](payment-method-standard.md) - 支付方式配置、选择组件、渠道组件和历史值显示规范
 - [菜单图标管理规范](menu-icon-management-standard.md) - 菜单图标在线检索、本地缓存、统一渲染规范
 - [前端最新请求规范](latest-request-standard.md) - 搜索、筛选、分页请求取消与旧响应防覆盖规范
 - [前端数据实时刷新规范](data-freshness-standard.md) - 新增、编辑、删除后缓存失效和列表即时刷新规范

@@ -380,6 +380,9 @@
           <UnifiedSearchPanel
             v-if="canViewField('products.product_search')"
             :expanded="true"
+            :loading="productSearchLoading"
+            @search="loadAvailableProducts"
+            @reset="resetProductSearch"
           >
             <template #primary>
               <el-autocomplete
@@ -418,6 +421,7 @@
                 placeholder="商品类型"
                 class="w-28"
                 :disabled="!canEdit"
+                @change="loadAvailableProducts"
               >
                 <el-option
                   label="全部"
@@ -648,6 +652,7 @@ const saving = ref(false)
 const savingProducts = ref(false)
 const searchKeyword = ref('')
 const productType = ref<'all' | 'new' | 'used'>('all')
+const productSearchLoading = ref(false)
 const availableProducts = ref<SearchProduct[]>([])
 const canEditSectionForm = computed(() => editingSection.value ? canEdit.value : canCreate.value)
 
@@ -893,15 +898,22 @@ const loadAvailableProducts = async () => {
     return
   }
 
+  productSearchLoading.value = true
   try {
-    // 获取前50个商品作为可选商品
-    const response = await apiSearchProducts('', productType.value)
+    const response = await apiSearchProducts(searchKeyword.value.trim(), productType.value)
     const data = response.data || response || []
     availableProducts.value = Array.isArray(data) ? data.slice(0, 50) : []
   } catch (error) {
     logger.error('加载可选商品失败:', error)
     availableProducts.value = []
+  } finally {
+    productSearchLoading.value = false
   }
+}
+
+const resetProductSearch = async () => {
+  searchKeyword.value = ''
+  await loadAvailableProducts()
 }
 
 // 检查商品是否已添加
@@ -966,6 +978,7 @@ const searchProducts = (queryString: string, cb: (_data: any[]) => void) => {
     return
   }
 
+  productSearchLoading.value = true
   apiSearchProducts(queryString, productType.value)
     .then(response => {
       const data = response.data || response || []
@@ -975,6 +988,9 @@ const searchProducts = (queryString: string, cb: (_data: any[]) => void) => {
     .catch(error => {
       logger.error('搜索商品失败:', error)
       cb([])
+    })
+    .finally(() => {
+      productSearchLoading.value = false
     })
 }
 

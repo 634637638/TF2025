@@ -4,9 +4,12 @@
  */
 
 import { ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { useNotification } from './useNotification'
 import logger from '@/utils/logger'
 import { unifiedApi } from '@/utils/unified-api'
+
+type RefreshCacheScope = string | RegExp | false
 
 export interface RefreshDataOptions {
   /** 成功提示消息 */
@@ -21,6 +24,10 @@ export interface RefreshDataOptions {
   onBeforeRefresh?: () => void | Promise<void>
   /** 刷新后的回调 */
   onAfterRefresh?: () => void | Promise<void>
+  /** 刷新前清理的缓存范围；false 表示不主动清缓存 */
+  cacheScope?: RefreshCacheScope
+  /** 是否在刷新前清理缓存 */
+  clearCache?: boolean
 }
 
 interface UseRefreshDataReturn {
@@ -83,6 +90,20 @@ interface UseRefreshDataReturn {
 export function useRefreshData(): UseRefreshDataReturn {
   const refreshing = ref(false)
   const { success, error } = useNotification()
+  const route = useRoute()
+
+  const getDefaultCacheScope = (): string | undefined => {
+    const [section] = route.path.split('/').filter(Boolean)
+    if (!section) return undefined
+
+    const routeCacheScopes: Record<string, string> = {
+      inventory: '/phones',
+      query: '/phones',
+      menu: '/menus'
+    }
+
+    return routeCacheScopes[section] || `/${section}`
+  }
 
   /**
    * 刷新数据（完整版）
@@ -97,14 +118,18 @@ export function useRefreshData(): UseRefreshDataReturn {
       showSuccess = true,
       showError = true,
       onBeforeRefresh,
-      onAfterRefresh
+      onAfterRefresh,
+      cacheScope = getDefaultCacheScope(),
+      clearCache = true
     } = options
 
     refreshing.value = true
 
     try {
-      // 手动刷新必须绕过统一 API 缓存和页面缓存，确保看到最新数据库状态。
-      unifiedApi.clearCache()
+      // 手动刷新按页面模块清理缓存，确保当前页面看到最新数据库状态。
+      if (clearCache && cacheScope !== false) {
+        unifiedApi.clearCache(cacheScope)
+      }
       // 刷新前回调
       await onBeforeRefresh?.()
 

@@ -272,25 +272,25 @@ watch(
   { deep: true }
 )
 
+// 监听全局权限更新事件，并在组件卸载时可靠移除。
+const handlePermissionsUpdate = async (_event) => {
+  await authStore.fetchUserInfo()
+  await loadUserMenus()
+}
+
 // Lifecycle
 onMounted(async () => {
   await refreshUserInfo()
   await loadUserMenus()
-
-  // 监听全局权限更新事件
-  const handlePermissionsUpdate = async (_event) => {
-    // 刷新用户信息和权限
-    await authStore.fetchUserInfo()
-    // 重新加载菜单
-    await loadUserMenus()
-  }
-
   window.addEventListener('tf2025:permissions:updated', handlePermissionsUpdate)
+})
 
-  // 组件卸载时移除事件监听
-  onUnmounted(() => {
-    window.removeEventListener('tf2025:permissions:updated', handlePermissionsUpdate)
-  })
+onUnmounted(() => {
+  if (authStoreWatchTimer) {
+    clearTimeout(authStoreWatchTimer)
+    authStoreWatchTimer = null
+  }
+  window.removeEventListener('tf2025:permissions:updated', handlePermissionsUpdate)
 })
 
 // Expose methods for parent component

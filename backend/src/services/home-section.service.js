@@ -173,7 +173,7 @@ class HomeSectionService {
       sectionKey.includes('liangji') ||
       sectionName.includes('靓机')
     )
-      ? `AND (h5.condition_grade = '靓机' OR p.quality_grade = 'A')`
+      ? 'AND (h5.condition_grade = \'靓机\' OR p.quality_grade = \'A\')'
       : ''
     const autoQuery = `
       SELECT

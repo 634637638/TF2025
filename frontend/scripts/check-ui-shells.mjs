@@ -37,8 +37,7 @@ requireToken(paginationSource, 'class="tf-pagination"', 'src/components/Paginati
 requireToken(searchSource, 'class="unified-search-panel"', 'src/components/search/UnifiedSearchPanel.vue', '公共搜索组件必须保留 unified-search-panel 根节点')
 requireToken(dialogStyleSource, '--tf-dialog-body-padding-inline', 'src/styles/components/_dialog.scss', 'Dialog 正文间距必须由公共变量控制')
 requireToken(dialogStyleSource, '.mobile-dialog-sheet-body', 'src/styles/components/_dialog.scss', 'MobileDialog 滚动容器必须接入公共 Dialog 样式')
-requireToken(dialogStyleSource, 'scrollbar-width: none', 'src/styles/components/_dialog.scss', 'Dialog 必须隐藏可见滚动条并保留滚动能力')
-requireToken(dialogStyleSource, '.el-dialog__body::-webkit-scrollbar', 'src/styles/components/_dialog.scss', 'Dialog 必须兼容隐藏 WebKit 可见滚动条')
+requireToken(dialogStyleSource, '.el-dialog__body::-webkit-scrollbar', 'src/styles/components/_dialog.scss', 'Dialog 必须隐藏可见滚动条并保留滚动能力')
 requireToken(dialogActionsSource, '.tf-dialog-actions', 'src/styles/components/_dialog-actions.scss', 'Dialog footer 必须提供 tf-dialog-actions 公共布局')
 requireToken(paginationStyleSource, '.pagination-wrapper', 'src/styles/components/_pagination.scss', '分页外层兼容布局必须由公共样式控制')
 

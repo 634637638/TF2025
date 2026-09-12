@@ -283,12 +283,21 @@ const handlePaginationChange = (page: number, size: number) => {
   emit('refresh')
 }
 
+const resetToFirstPage = () => {
+  if (currentPage.value === 1) return
+
+  currentPage.value = 1
+  emit('update:current', 1)
+}
+
 const handleSearch = () => {
+  resetToFirstPage()
   emit('search', searchKeyword.value)
 }
 
 const handleSearchClear = () => {
   searchKeyword.value = ''
+  resetToFirstPage()
   emit('search', '')
 }
 

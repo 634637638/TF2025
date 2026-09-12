@@ -14,10 +14,10 @@ export const BREAKPOINTS = {
 
   // 平板端断点
   TABLET_MIN: 768,
-  TABLET_MAX: 1023,
+  TABLET_MAX: 1024,
 
   // 桌面端断点
-  DESKTOP_MIN: 1024,
+  DESKTOP_MIN: 1025,
   WIDE_MIN: 1200,
   ULTRA_WIDE_MIN: 1440
 } as const
@@ -106,6 +106,13 @@ export const deviceType = {
   isUltraWide: (width: number) => width >= BREAKPOINTS.ULTRA_WIDE_MIN
 } as const
 
+// 管理后台在 1024px 及以下使用抽屉菜单，1025px 以上使用固定侧栏。
+export const isDesktopNavigationViewport = (width: number): boolean =>
+  width >= BREAKPOINTS.DESKTOP_MIN
+
+export const isDrawerNavigationViewport = (width: number): boolean =>
+  width < BREAKPOINTS.DESKTOP_MIN
+
 // 导出默认值
 export default {
   BREAKPOINTS,
@@ -114,5 +121,7 @@ export default {
   mediaQueries,
   generateCSSVariables,
   getBreakpoint,
-  deviceType
+  deviceType,
+  isDesktopNavigationViewport,
+  isDrawerNavigationViewport
 }

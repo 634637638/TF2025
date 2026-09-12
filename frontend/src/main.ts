@@ -8,8 +8,6 @@ import 'dayjs/locale/zh-cn'
 import './styles.scss'
 import './styles/responsive.scss'
 import './styles/permission-toast.scss'
-import './styles/admin-layout.css'
-import './styles/analytics-cards.css'
 import './styles/components/_dialog.scss'
 import './styles/components/_dialog-actions.scss'
 
@@ -30,9 +28,6 @@ const installSecurityDirectives = (app: VueApp) => {
   app.directive('sanitize', vSanitize)
   app.directive('escape-html', vEscapeHtml)
 }
-
-// 导入全局Loading系统
-import { LoadingPlugin } from '@/utils/loading'
 
 // 导入全局时间工具
 import { TimePlugin } from '@/utils/time'
@@ -103,16 +98,6 @@ setupPermissionTipDirective(app)
 
 // 安装安全指令
 installSecurityDirectives(app)
-
-// 安装全局Loading系统
-app.use(LoadingPlugin, {
-  maxConcurrent: 10,
-  enableGlobalLoading: true,
-  enableProgress: true,
-  defaultDelay: 0,
-  defaultMinDuration: 0,
-  taskTimeout: 60000
-})
 
 // 安装全局时间工具
 app.use(TimePlugin)

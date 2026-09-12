@@ -25,18 +25,20 @@
           </template>
         </el-input>
       </template>
-      <template #actions>
+      <template #actions="{ loading: searchLoading }">
         <el-button
           type="primary"
           size="small"
-          :disabled="loading"
+          :loading="searchLoading"
+          :aria-busy="searchLoading"
           @click="emit('refresh')"
         >
-          <i class="fas fa-sync-alt" />刷新
+          <i class="fas fa-search" />搜索
         </el-button>
         <el-button
           type="default"
           size="small"
+          :disabled="searchLoading"
           @click="emit('reset')"
         >
           <i class="fas fa-redo" />重置
@@ -67,6 +69,7 @@
           placeholder="工资模板"
           clearable
           @update:model-value="emit('update:templateFilter', $event)"
+          @change="emit('refresh')"
         >
           <el-option
             v-for="template in templateOptions"

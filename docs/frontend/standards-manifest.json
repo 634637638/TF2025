@@ -16,6 +16,7 @@
     { "document": "notification-standards.md", "checks": ["check:ui", "check:loading"], "publicSources": ["frontend/src/plugins/notification.ts", "frontend/src/composables/useNotification.ts"] },
     { "document": "page-structure-standards.md", "checks": ["check:ui", "check:tabs", "check:tables"], "publicSources": ["frontend/src/styles/admin-layout.css", "frontend/src/components/base/PageHeader.vue"] },
     { "document": "pagination-standards.md", "checks": ["check:ui"], "publicSources": ["frontend/src/components/Pagination.vue", "frontend/src/styles/components/_pagination.scss"] },
+    { "document": "payment-method-standard.md", "checks": ["check:payment-methods"], "publicSources": ["frontend/src/constants/paymentMethods.ts", "frontend/src/components/payment/PaymentMethodSelect.vue", "frontend/src/components/payment/PaymentChannelSelect.vue", "frontend/src/components/payment/PaymentMethodText.vue", "frontend/scripts/check-payment-methods.mjs"] },
     { "document": "permission-capability-standards.md", "checks": ["check:permissions"], "publicSources": ["backend/src/config/module-permission-capabilities.json", "backend/src/config/module-permission-actions.js", "frontend/src/composables/usePagePermissions.ts"] },
     { "document": "reminder-standards.md", "checks": ["check:ui", "check:buttons", "check:tables", "check:data-freshness"], "publicSources": ["frontend/src/views/reminders/ReminderView.vue"] },
     { "document": "search-standards.md", "checks": ["check:ui"], "publicSources": ["frontend/src/components/search/UnifiedSearchPanel.vue"] },

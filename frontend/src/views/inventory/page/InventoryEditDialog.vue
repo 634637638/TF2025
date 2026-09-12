@@ -243,6 +243,7 @@
               :loading="modelSearchLoading"
               :disabled="!canEditField('model')"
               class="w-full"
+              @change="emit('model-change', editForm.model)"
             >
               <el-option
                 v-for="model in brandModels"
@@ -258,6 +259,7 @@
               clearable
               :disabled="!canEditField('model')"
               class="w-full"
+              @change="emit('model-change', editForm.model)"
             />
           </div>
 
@@ -512,6 +514,7 @@ const emit = defineEmits<{
   'brand-change': []
   close: []
   'format-imei': []
+  'model-change': [value: string]
   'open-config': []
   'publish-change': [value: number]
   submit: []
@@ -523,4 +526,3 @@ const handlePublishChange = (value: string | number | boolean) => {
   emit('publish-change', Number(value))
 }
 </script>
-

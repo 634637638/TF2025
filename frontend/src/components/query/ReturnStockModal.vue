@@ -212,34 +212,14 @@
           </el-form-item>
 
           <el-form-item label="退款方式">
-            <el-select
+            <PaymentMethodSelect
               v-model="formData.refund_method"
+              variant="refund"
               placeholder="请选择退款方式"
               clearable
               teleported
               popper-class="tf2025-form-popper"
-            >
-              <el-option
-                label="现金退款"
-                value="现金退款"
-              />
-              <el-option
-                label="原路退回"
-                value="原路退回"
-              />
-              <el-option
-                label="银行转账"
-                value="银行转账"
-              />
-              <el-option
-                label="支付宝"
-                value="支付宝"
-              />
-              <el-option
-                label="微信支付"
-                value="微信支付"
-              />
-            </el-select>
+            />
           </el-form-item>
 
           <el-form-item
@@ -277,6 +257,7 @@ import { ValidationRules } from '@/composables'
 import { unifiedApi } from '@/utils/unified-api'
 import { TimeUtil } from '@/utils/time'
 import MobileDialog from '@/components/MobileDialog.vue'
+import { PaymentMethodSelect } from '@/components/payment'
 import { useMobile } from '@/composables/mobile'
 import { logger } from '@/utils/logger'
 import type { ModelValueProps, ReturnDeviceInfo as DeviceInfo, SuccessEmits, UpdateModelValueEmits } from '@/types'

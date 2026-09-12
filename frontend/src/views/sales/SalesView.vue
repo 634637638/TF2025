@@ -349,6 +349,7 @@ import { logger } from '@/utils/logger'
 import { storage } from '@/services/storage'
 import { loadHtml2Canvas } from '@/utils/html2canvas'
 import { toCanonicalPhoneUpdatePayload } from '@/utils/phone-update-payload'
+import { resolvePhoneReferenceIds } from '@/utils/phone-reference-ids'
 import { sortAvailableSalesPhones } from './sales-sort'
 import { isCurrentMobileViewport } from '@/utils/device-detection'
 import { useSalesBaseOptions } from './useSalesBaseOptions'
@@ -1433,8 +1434,14 @@ const handleBrandChange = async () => {
 const onEditBrandChange = async () => {
   // 清空型号选择
   editForm.model = ''
+  editForm.brand_id = null
+  editForm.model_id = null
 
   if (editForm.brand) {
+    const selectedBrand = brands.value.find(brand => (
+      String(brand.name).trim().toLocaleLowerCase() === String(editForm.brand).trim().toLocaleLowerCase()
+    ))
+    editForm.brand_id = selectedBrand?.id ?? null
     await fetchEditBrandModels(editForm.brand)
   } else {
     editBrandModels.value = []
@@ -1505,13 +1512,27 @@ const submitEdit = async () => {
       return
     }
 
-    // 构建更新数据，包含所有可编辑字段（不包括销售价格）
-    const updateData = {
-      ...toCanonicalPhoneUpdatePayload({
+    let referenceIds
+    try {
+      referenceIds = await resolvePhoneReferenceIds({
         brand_id: editForm.brand_id,
         model_id: editForm.model_id,
         color_id: editForm.color_id,
         memory_id: editForm.memory_id,
+        brand: editForm.brand,
+        model: editForm.model,
+        color: editForm.color,
+        memory: editForm.memory
+      }, selectedPhoneForEdit.value || {})
+    } catch (referenceError) {
+      showError(referenceError instanceof Error ? referenceError.message : '品牌、型号、颜色和内存必须选择有效数据')
+      return
+    }
+
+    // 构建更新数据，包含所有可编辑字段（不包括销售价格）
+    const updateData = {
+      ...toCanonicalPhoneUpdatePayload({
+        ...referenceIds,
         serial_number: editForm.serial_number,
         imei: editForm.imei,
         purchase_cost: editForm.purchase_cost,
@@ -1538,7 +1559,7 @@ const submitEdit = async () => {
     if (response.success) {
       showSuccess('更新成功')
       showEditModal.value = false
-      await loadAvailablePhones() // 刷新列表
+      await loadAvailablePhones(true) // 编辑后绕过缓存，读取最新型号和规格
     } else {
       showError(response.message || '更新失败')
     }

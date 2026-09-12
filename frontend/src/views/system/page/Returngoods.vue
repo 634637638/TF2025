@@ -78,6 +78,7 @@
           value-format="YYYY-MM-DD"
           placeholder="开始日期"
           clearable
+          @change="handleSearch"
         />
       </div>
 
@@ -91,6 +92,7 @@
           value-format="YYYY-MM-DD"
           placeholder="结束日期"
           clearable
+          @change="handleSearch"
         />
       </div>
     </UnifiedSearchPanel>

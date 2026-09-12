@@ -75,6 +75,7 @@ export const useAuthStore = defineStore('auth', () => {
   const backendDisconnected = ref(false) // 新增：后端失联状态
   const backendHealthFailureCount = ref(0)
   let fetchUserInfoPromise: Promise<void> | null = null
+  let authRestorePromise: Promise<void> | null = null
 
   // =========== 计算属性 ===========
   const isAuthenticated = computed(() => {
@@ -83,11 +84,13 @@ export const useAuthStore = defineStore('auth', () => {
       return false
     }
 
-    // 更宽松的认证检查：只要有token就认为是已认证状态
-    // 用户信息可能在异步加载中，但这不影响已认证的状态
+    // 认证状态必须同时拥有有效令牌和用户资料。
+    // 仅凭令牌进入业务页面会让权限和菜单在恢复期间处于不确定状态。
     const hasToken = !!token.value && token.value.length > 10
-    return hasToken
+    return hasToken && !!user.value
   })
+
+  const isAuthReady = computed(() => isAuthenticated.value && !isAuthenticating.value)
 
   const userRoles = computed<string[]>(() => {
     const roleSource = user.value?.roles ?? roles.value
@@ -652,13 +655,8 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  const loadPersistedAuthData = async (): Promise<void> => {
+  const restorePersistedAuthData = async (): Promise<void> => {
     try {
-      // 防止重复加载
-      if (isAuthenticating.value && token.value) {
-        return
-      }
-
       isAuthenticating.value = true
 
       // 增加延迟确保 sessionStorage 已准备就绪（解决页面刷新时序问题）
@@ -702,18 +700,19 @@ export const useAuthStore = defineStore('auth', () => {
               roles.value = restoredRoles
 
               
-              // 异步刷新权限数据（不阻塞）
-              fetchUserInfo().then(() => {
+              // 等待服务端确认最新用户和权限，避免恢复未完成就放行路由。
+              try {
+                await fetchUserInfo()
                 if (user.value) {
                   persistAuthData()
                 }
-              }).catch((_error) => {
+              } catch (_error) {
                 // 不清除已恢复的权限数据
-              })
+              }
 
               startSessionMonitor()
               isAuthenticating.value = false
-              return // 直接返回，使用恢复的权限数据
+              return
             }
           } catch {
             storage.remove(AUTH_STORAGE_KEYS.AUTH, 'local')
@@ -721,15 +720,14 @@ export const useAuthStore = defineStore('auth', () => {
         }
 
         // 如果没有保存的权限数据或解析失败，异步获取
-        fetchUserInfo().then(() => {
+        try {
+          await fetchUserInfo()
           if (user.value) {
             persistAuthData()
           }
-        }).catch((_error) => {
+        } catch (_error) {
           // 用户信息获取失败，忽略
-        }).finally(() => {
-          isAuthenticating.value = false
-        })
+        }
 
         startSessionMonitor()
         isAuthenticating.value = false
@@ -779,13 +777,14 @@ export const useAuthStore = defineStore('auth', () => {
             )
 
             if (!hasValidUserData) {
-              fetchUserInfo().then(() => {
+              try {
+                await fetchUserInfo()
                 if (user.value) {
                   persistAuthData()
                 }
-              }).catch((_error) => {
+              } catch (_error) {
                 // 用户信息刷新失败，忽略
-              })
+              }
             } else {
               // 额外的安全检查：确保user对象有role字段
               if (user.value && !user.value.role && roles.value.length > 0) {
@@ -811,6 +810,20 @@ export const useAuthStore = defineStore('auth', () => {
       clearAuth(false)
     } finally {
       isAuthenticating.value = false
+    }
+  }
+
+  // 所有入口共享同一次恢复任务，避免 App、路由守卫和布局组件并发读取认证状态。
+  const loadPersistedAuthData = async (): Promise<void> => {
+    if (authRestorePromise) {
+      return authRestorePromise
+    }
+
+    authRestorePromise = restorePersistedAuthData()
+    try {
+      await authRestorePromise
+    } finally {
+      authRestorePromise = null
     }
   }
 
@@ -1251,6 +1264,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     // 计算属性
     isAuthenticated,
+    isAuthReady,
     userRole,
     userRoles,
     userPermissions,

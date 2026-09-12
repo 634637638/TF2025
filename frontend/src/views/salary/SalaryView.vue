@@ -1530,9 +1530,6 @@ const handleEmployeeMonthChange = async () => {
 
   // 重新加载员工数据（传入选择的月份，以便计算该月的工龄底薪）
   await loadEmployeeList(employeeSalaryMonth.value)
-  // 重新加载考勤和销售数据（根据新选择的月份）
-  await loadAllEmployeesAttendance(employeeSalaryMonth.value)
-  await loadAllEmployeesSales(employeeSalaryMonth.value)
 }
 
 // 员工薪资页面：刷新数据
@@ -1540,8 +1537,6 @@ const handleRefreshEmployeeData = async () => {
   if (!canViewSalaryRecords.value) return
 
   await loadEmployeeList(employeeSalaryMonth.value)
-  await loadAllEmployeesAttendance(employeeSalaryMonth.value)
-  await loadAllEmployeesSales(employeeSalaryMonth.value)
 }
 
 // 获取模板相关信息的辅助方法

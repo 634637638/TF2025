@@ -126,6 +126,7 @@
 </template>
 
 <script setup lang="ts">
+import '@/styles/admin-layout.css'
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import ResponsiveMenu from '@/components/ResponsiveMenu.vue'
 import SimpleSidebar from '@/components/SimpleSidebar.vue'
@@ -144,7 +145,7 @@ import { useTabsStore } from '@/stores/tabs'
 import { storeToRefs } from 'pinia'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { MenuItem } from '@/types/menu'
-import { BREAKPOINTS } from '@/config/breakpoints'
+import { isDesktopNavigationViewport } from '@/config/breakpoints'
 import { TimeUtil } from '@/utils/time'
 import { storage } from '@/services/storage'
 import { canAccessRoutePath } from '@/constants/routePermissions'
@@ -166,10 +167,10 @@ const getRouteCacheKey = (path: string) => `${path}:${tabsStore.tabRefreshVersio
 const isRefreshingCurrentRoute = (path: string) => tabsStore.refreshingPath === path
 
 // 移动端检测
-const { isMobile, isTablet, isDesktop, screenWidth } = useMobile()
+const { isDesktop, screenWidth } = useMobile()
 const isDesktopLayout = computed(() => (
   isDesktop.value &&
-  screenWidth.value > BREAKPOINTS.DESKTOP_MIN
+  isDesktopNavigationViewport(screenWidth.value)
 ))
 
 // 使用菜单宽度组合式函数
