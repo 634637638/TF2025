@@ -1,5 +1,5 @@
 <template>
-  <div class="error-dashboard">
+  <div class="error-dashboard admin-page">
     <!-- 错误统计卡片 -->
     <el-row
       :gutter="20"
@@ -7,11 +7,11 @@
     >
       <el-col :span="6">
         <el-card
-          class="stat-card"
+          class="stat-card stat-card--danger"
           shadow="hover"
         >
           <div class="stat-content">
-            <div class="stat-value error-total">
+            <div class="stat-value stat-value--danger error-total">
               {{ statistics.total }}
             </div>
             <div class="stat-label">
@@ -21,7 +21,6 @@
           <el-icon
             class="stat-icon"
             :size="32"
-            color="#f56c6c"
           >
             <WarningFilled />
           </el-icon>
@@ -30,11 +29,11 @@
 
       <el-col :span="6">
         <el-card
-          class="stat-card"
+          class="stat-card stat-card--warning"
           shadow="hover"
         >
           <div class="stat-content">
-            <div class="stat-value error-unresolved">
+            <div class="stat-value stat-value--pending error-unresolved">
               {{ statistics.unresolved }}
             </div>
             <div class="stat-label">
@@ -44,7 +43,6 @@
           <el-icon
             class="stat-icon"
             :size="32"
-            color="#e6a23c"
           >
             <Clock />
           </el-icon>
@@ -53,11 +51,11 @@
 
       <el-col :span="6">
         <el-card
-          class="stat-card"
+          class="stat-card stat-card--info"
           shadow="hover"
         >
           <div class="stat-content">
-            <div class="stat-value error-rate">
+            <div class="stat-value stat-value--info error-rate">
               {{ statistics.errorRate.toFixed(2) }}%
             </div>
             <div class="stat-label">
@@ -67,7 +65,6 @@
           <el-icon
             class="stat-icon"
             :size="32"
-            color="#409eff"
           >
             <TrendCharts />
           </el-icon>
@@ -76,11 +73,11 @@
 
       <el-col :span="6">
         <el-card
-          class="stat-card"
+          class="stat-card stat-card--success"
           shadow="hover"
         >
           <div class="stat-content">
-            <div class="stat-value error-reported">
+            <div class="stat-value stat-value--success error-reported">
               {{ statistics.reported }}
             </div>
             <div class="stat-label">
@@ -90,7 +87,6 @@
           <el-icon
             class="stat-icon"
             :size="32"
-            color="#67c23a"
           >
             <Upload />
           </el-icon>

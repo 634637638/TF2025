@@ -44,15 +44,15 @@
           <div class="stats-grid stats-cards">
             <div
               v-if="canViewField('stats.today_sales')"
-              class="stat-card"
+              class="stat-card stat-card--income"
               @click="showDetails('sales')"
             >
-              <div class="stat-icon sales">
+              <div class="stat-icon">
                 <i class="fas fa-shopping-cart" />
               </div>
               <div class="stat-content">
                 <h3>今日销售</h3>
-                <p class="stat-number">
+                <p class="stat-number stat-value--income">
                   ¥{{ todaySales }}
                 </p>
               </div>
@@ -60,10 +60,10 @@
 
             <div
               v-if="canViewField('stats.total_customers')"
-              class="stat-card"
+              class="stat-card stat-card--info"
               @click="showDetails('customers')"
             >
-              <div class="stat-icon customers">
+              <div class="stat-icon">
                 <i class="fas fa-users" />
               </div>
               <div class="stat-content">
@@ -76,10 +76,10 @@
 
             <div
               v-if="canViewField('stats.total_products')"
-              class="stat-card"
+              class="stat-card stat-card--primary"
               @click="showDetails('inventory')"
             >
-              <div class="stat-icon inventory">
+              <div class="stat-icon">
                 <i class="fas fa-boxes" />
               </div>
               <div class="stat-content">
@@ -99,10 +99,10 @@
 
             <div
               v-if="canViewField('stats.pending_repairs')"
-              class="stat-card"
+              class="stat-card stat-card--warning"
               @click="showDetails('repairs')"
             >
-              <div class="stat-icon repairs">
+              <div class="stat-icon">
                 <i class="fas fa-tools" />
               </div>
               <div class="stat-content">
@@ -600,78 +600,9 @@ onUnmounted(() => {
   gap: 30px;
 }
 
-/* 统计卡片 */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
-}
-
-.stat-card {
-  background: white;
-  padding: 25px;
-  border-radius: 12px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-  display: flex;
-  align-items: center;
-  transition: all 0.3s ease;
+/* 统计卡片可点击，具体尺寸和颜色由后台公共卡片规范统一管理。 */
+.dashboard-grid .stat-card {
   cursor: pointer;
-  position: relative;
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-}
-
-.stat-icon {
-  width: 60px;
-  height: 60px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 20px;
-  font-size: 24px;
-  flex-shrink: 0;
-}
-
-.stat-icon.sales {
-  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
-  color: white;
-}
-
-.stat-icon.customers {
-  background: linear-gradient(135deg, var(--tf-color-pink-gradient) 0%, var(--tf-color-coral-gradient) 100%);
-  color: white;
-}
-
-.stat-icon.inventory {
-  background: linear-gradient(135deg, var(--tf-color-sky-gradient) 0%, var(--tf-color-cyan-gradient) 100%);
-  color: white;
-}
-
-.stat-icon.repairs {
-  background: linear-gradient(135deg, var(--tf-color-green-gradient) 0%, var(--tf-color-teal-gradient) 100%);
-  color: white;
-}
-
-.stat-content {
-  flex: 1;
-}
-
-.stat-content h3 {
-  font-size: 14px;
-  color: var(--tf-color-gray-cool-500);
-  margin-bottom: 8px;
-  font-weight: 500;
-}
-
-.stat-number {
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--tf-color-heading);
-  margin-bottom: 4px;
 }
 
 .stat-change {
@@ -886,10 +817,6 @@ onUnmounted(() => {
 
 /* 平板优化 */
 @media (max-width: 1200px) {
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
   .actions-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -932,34 +859,6 @@ onUnmounted(() => {
     padding: 8px 12px;
     font-size: 12px;
     white-space: nowrap;
-  }
-
-  /* 统计卡片 - 2列网格 */
-  .stats-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-    margin-bottom: 0;
-    padding: 0;
-  }
-
-  .stat-card {
-    padding: 14px 12px;
-    flex-direction: row;
-  }
-
-  .stat-icon {
-    width: 40px;
-    height: 40px;
-    font-size: 18px;
-    margin-right: 12px;
-  }
-
-  .stat-number {
-    font-size: 18px;
-  }
-
-  .stat-content h3 {
-    font-size: 12px;
   }
 
   .stat-change {
@@ -1053,24 +952,6 @@ onUnmounted(() => {
     font-size: 16px;
   }
 
-  .stats-grid {
-    gap: 8px;
-  }
-
-  .stat-card {
-    padding: 12px 10px;
-  }
-
-  .stat-icon {
-    width: 36px;
-    height: 36px;
-    font-size: 16px;
-  }
-
-  .stat-number {
-    font-size: 16px;
-  }
-
   .action-btn {
     padding: 12px 10px;
     font-size: 11px;
@@ -1083,30 +964,18 @@ onUnmounted(() => {
 
 /* 超小屏幕 */
 @media (max-width: 375px) {
-  .stats-grid,
   .actions-grid {
     gap: 8px;
   }
 
-  .stat-card,
   .action-btn {
     padding: 10px 8px;
   }
 
-  .stat-icon {
-    width: 32px;
-    height: 32px;
-    font-size: 14px;
-  }
 }
 
 /* 横屏优化 */
 @media (max-width: 767px) and (orientation: landscape) {
-  .stats-grid {
-    grid-template-columns: repeat(4, 1fr);
-    gap: 10px;
-  }
-
   .actions-grid {
     grid-template-columns: repeat(3, 1fr);
   }

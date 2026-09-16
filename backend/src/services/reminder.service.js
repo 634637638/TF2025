@@ -447,6 +447,17 @@ class ReminderService {
       : 'LEFT JOIN reminder_records rr ON rr.reminder_id=r.id AND rr.user_id=?'
     const row_params = can_manage ? params : [current_user_id, ...params]
     const [count] = await db.query(`SELECT COUNT(*) total FROM reminders r WHERE ${where}`, params)
+    const [summaryRows] = await db.query(
+      `SELECT
+         COUNT(DISTINCT r.id) total,
+         COUNT(DISTINCT CASE WHEN r.status='active' THEN r.id END) active_count,
+         COUNT(CASE WHEN rr.status='completed' THEN 1 END) completed_count,
+         COUNT(CASE WHEN rr.status='ignored' THEN 1 END) ignored_count
+       FROM reminders r
+       ${record_join}
+       WHERE ${where}`,
+      row_params
+    )
     const [rows] = await db.query(
       `SELECT ${REMINDER_ALIASED_COLUMNS},rt.name type_name,rt.color type_color,creator.name creator_name,
         COUNT(CASE WHEN rr.status='completed' THEN 1 END) completed_count,
@@ -463,6 +474,7 @@ class ReminderService {
       row_params
     )
     const total = Number(count[0]?.total || 0)
+    const summaryRow = summaryRows[0] || {}
     const total_pages = Math.ceil(total / page_size_number)
 
     return {
@@ -480,6 +492,12 @@ class ReminderService {
         total_pages,
         has_next: page_number < total_pages,
         has_prev: page_number > 1
+      },
+      summary: {
+        total: Number(summaryRow.total) || 0,
+        active_count: Number(summaryRow.active_count) || 0,
+        completed_count: Number(summaryRow.completed_count) || 0,
+        ignored_count: Number(summaryRow.ignored_count) || 0
       }
     }
   }

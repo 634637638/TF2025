@@ -123,6 +123,10 @@ app.use(NotificationPlugin, {
 // 简化的应用初始化 - 专注于动态路由
 const initializeApp = async () => {
   try {
+    // 日期组件按需加载，避免完整 DatePicker 实现进入首屏包。
+    const { configureElementPlusDatePicker } = await import('@/utils/element-plus-defaults')
+    configureElementPlusDatePicker()
+
     // 先挂载应用，避免跨服务器部署时 API/CORS 暂时不可用导致首屏空白。
     // 站点名称和 Logo 使用 store 的稳定默认值，接口返回后会自动更新。
     app.mount('#app')

@@ -333,6 +333,13 @@ export interface InventoryItem {
   status?: string
   is_new?: number | boolean | string
   is_preordered?: number | boolean
+  preorder_id?: number | null
+  preorder_customer_id?: number | null
+  preorder_customer_name?: string
+  preorder_customer_phone?: string
+  preorder_deposit_amount?: number | null
+  preorder_total_price?: number | null
+  preorder_actual_price?: number | null
   created_at?: string
   updated_at?: string
   purchase_number?: string
@@ -371,6 +378,7 @@ export interface QueryBasicInfo {
   condition_type?: string
   status?: string
   status_code?: string
+  is_preordered?: number | boolean
   quality_grade?: string
   is_new?: number
   remarks?: string
@@ -563,9 +571,16 @@ export interface Phone {
   store_id?: number
   supplier_id?: number
   inventory_operator_id?: number
-  status: 'available' | 'sold' | 'reserved' | 'maintenance' | 'returned' | 'in_stock'
+  status: 'available' | 'sold' | 'reserved' | 'maintenance' | 'repair' | 'rented' | 'lost' | 'damaged' | 'returned' | 'in_stock' | 'peer_transfer' | 'supplier_proxy'
   is_new?: boolean
   is_preordered?: boolean
+  preorder_id?: number | null
+  preorder_customer_id?: number | null
+  preorder_customer_name?: string
+  preorder_customer_phone?: string
+  preorder_deposit_amount?: number | null
+  preorder_total_price?: number | null
+  preorder_actual_price?: number | null
   remarks?: string
   purchase_number?: string
   purchase_date?: string

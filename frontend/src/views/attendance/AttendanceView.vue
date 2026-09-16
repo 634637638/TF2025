@@ -49,9 +49,9 @@
             <!-- 上月统计 -->
             <div
               v-if="canViewAttendanceField(attendanceStatsModuleKey, 'stats_last_month_leave')"
-              class="stat-card"
+              class="stat-card stat-card--info"
             >
-              <div class="stat-icon blue">
+              <div class="stat-icon">
                 <i class="fas fa-calendar-minus" />
               </div>
               <div class="stat-content">
@@ -65,9 +65,9 @@
             </div>
             <div
               v-if="canViewAttendanceField(attendanceStatsModuleKey, 'stats_last_month_overtime')"
-              class="stat-card"
+              class="stat-card stat-card--accent"
             >
-              <div class="stat-icon purple">
+              <div class="stat-icon">
                 <i class="fas fa-clock" />
               </div>
               <div class="stat-content">
@@ -83,9 +83,9 @@
             <!-- 本月统计 -->
             <div
               v-if="canViewAttendanceField(attendanceStatsModuleKey, 'stats_current_month_leave')"
-              class="stat-card"
+              class="stat-card stat-card--success"
             >
-              <div class="stat-icon success">
+              <div class="stat-icon">
                 <i class="fas fa-calendar-check" />
               </div>
               <div class="stat-content">
@@ -109,9 +109,9 @@
             </div>
             <div
               v-if="canViewAttendanceField(attendanceStatsModuleKey, 'stats_current_month_unpaid_leave')"
-              class="stat-card"
+              class="stat-card stat-card--warning"
             >
-              <div class="stat-icon warning">
+              <div class="stat-icon">
                 <i class="fas fa-calendar-times" />
               </div>
               <div class="stat-content">
@@ -125,9 +125,9 @@
             </div>
             <div
               v-if="canViewAttendanceField(attendanceStatsModuleKey, 'stats_current_month_overtime')"
-              class="stat-card"
+              class="stat-card stat-card--info"
             >
-              <div class="stat-icon info">
+              <div class="stat-icon">
                 <i class="fas fa-hourglass-half" />
               </div>
               <div class="stat-content">
@@ -142,9 +142,9 @@
             <!-- 本月费用卡片 - 显示加班费和请假扣款汇总 -->
             <div
               v-if="canViewAttendanceField(attendanceStatsModuleKey, 'stats_pending_settlement')"
-              class="stat-card"
+              class="stat-card stat-card--warning"
             >
-              <div class="stat-icon orange">
+              <div class="stat-icon">
                 <i class="fas fa-coins" />
               </div>
               <div class="stat-content">
@@ -284,10 +284,8 @@
                   class="form-group filter-item"
                   data-field="date"
                 >
-                  <el-date-picker
+                  <DateRangePicker
                     v-model="dateRange"
-                    type="daterange"
-                    range-separator="至"
                     start-placeholder="开始日期"
                     end-placeholder="结束日期"
                     value-format="YYYY-MM-DD"
@@ -678,10 +676,8 @@
                   class="form-group filter-item"
                   data-field="date"
                 >
-                  <el-date-picker
+                  <DateRangePicker
                     v-model="myDateRange"
-                    type="daterange"
-                    range-separator="至"
                     start-placeholder="开始日期"
                     end-placeholder="结束日期"
                     value-format="YYYY-MM-DD"
@@ -1501,6 +1497,7 @@ import { getActionColumnMinWidth, getAdaptiveActionColumnWidth, getTextColumnMin
 import Pagination from '@/components/Pagination.vue'
 import InlineLoading from '@/components/InlineLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
+import DateRangePicker from '@/components/DateRangePicker.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { PageHeader, PermissionGate } from '@/components/base'
 import { TimeUtil } from '@/utils/time'
@@ -2977,70 +2974,6 @@ onMounted(async () => {
 }
 
 /* 注意：不再使用的通用按钮样式已删除，改用 el-button */
-
-/* 统计卡片 */
-.stats-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 20px;
-  margin-bottom: 24px;
-}
-
-.stat-card {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 24px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
-  border: 1px solid var(--tf-color-border-cool);
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
-}
-
-.stat-icon {
-  width: 56px;
-  height: 56px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 12px;
-  font-size: 24px;
-  color: white;
-}
-
-.stat-icon.blue {
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--tf-color-blue-element-light) 100%);
-}
-
-.stat-icon.purple {
-  background: linear-gradient(135deg, var(--tf-color-purple-material) 0%, var(--tf-color-purple-material-300) 100%);
-}
-
-.stat-icon.warning {
-  background: linear-gradient(135deg, var(--color-warning) 0%, var(--tf-color-amber-light) 100%);
-}
-
-.stat-icon.success {
-  background: linear-gradient(135deg, var(--color-success) 0%, var(--tf-color-green-element-light) 100%);
-}
-
-.stat-icon.info {
-  background: linear-gradient(135deg, var(--color-info) 0%, var(--tf-color-gray-element-placeholder) 100%);
-}
-
-.stat-icon.orange {
-  background: linear-gradient(135deg, var(--tf-color-accent-orange) 0%, var(--color-warning) 100%);
-}
-
-.stat-icon.danger {
-  background: linear-gradient(135deg, var(--color-danger) 0%, var(--tf-color-red-element-pale) 100%);
-}
 
 .stat-content {
   flex: 1;

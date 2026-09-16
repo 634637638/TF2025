@@ -2,9 +2,9 @@
   <div class="stats-cards">
     <div
       v-if="canViewField(moduleKey, 'stats_pending_salary')"
-      class="stat-card"
+      class="stat-card stat-card--expense-pending"
     >
-      <div class="stat-icon success">
+      <div class="stat-icon">
         <i class="fas fa-coins" />
       </div>
       <div class="stat-content">
@@ -25,9 +25,9 @@
 
     <div
       v-if="canViewField(moduleKey, 'stats_rest_summary')"
-      class="stat-card"
+      class="stat-card stat-card--warning"
     >
-      <div class="stat-icon warning">
+      <div class="stat-icon">
         <i class="fas fa-umbrella-beach" />
       </div>
       <div class="stat-content">
@@ -53,9 +53,9 @@
 
     <div
       v-if="canViewField(moduleKey, 'stats_leave_summary')"
-      class="stat-card"
+      class="stat-card stat-card--danger"
     >
-      <div class="stat-icon danger">
+      <div class="stat-icon">
         <i class="fas fa-user-clock" />
       </div>
       <div class="stat-content">
@@ -81,9 +81,9 @@
 
     <div
       v-if="canViewField(moduleKey, 'stats_overtime_summary')"
-      class="stat-card"
+      class="stat-card stat-card--info"
     >
-      <div class="stat-icon info">
+      <div class="stat-icon">
         <i class="fas fa-clock" />
       </div>
       <div class="stat-content">
@@ -137,18 +137,6 @@ defineProps<{
 </script>
 
 <style scoped lang="scss">
-.stat-icon.success {
-  background: linear-gradient(135deg, var(--color-success) 0%, var(--tf-color-green-element-light) 100%);
-}
-
-.stat-icon.warning {
-  background: linear-gradient(135deg, var(--color-warning) 0%, var(--tf-color-amber-light) 100%);
-}
-
-.stat-icon.danger {
-  background: linear-gradient(135deg, var(--color-danger) 0%, var(--tf-color-red-element-pale) 100%);
-}
-
 .stat-desc {
   color: var(--color-text-placeholder);
   margin-top: 2px;

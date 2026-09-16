@@ -127,7 +127,7 @@ router.get('/', unifiedAuth, devPermissionCheck('colors:view'), cacheMiddleware(
 })
 
 // 获取单个颜色详情
-router.get('/:id', unifiedAuth, requirePermission('colors:view'), async (req, res) => {
+router.get('/:id(\\d+)', unifiedAuth, requirePermission('colors:view'), async (req, res) => {
   try {
     if (!isConnected()) {
       return ApiResponse.error(res, '数据库未连接', 500)
@@ -336,15 +336,34 @@ router.get('/stats/overview', unifiedAuth, requirePermission('colors:view'), asy
     }
 
     const pool = getDatabase()
+    const conditions = []
+    const params = []
+    const name = String(req.query.name || '').trim()
+    const status = String(req.query.status ?? '').trim()
+    if (name) {
+      conditions.push('c.name LIKE ?')
+      params.push(`%${name}%`)
+    }
+    if (status !== '') {
+      conditions.push('c.status = ?')
+      params.push(Number(status) === 1 ? 1 : 0)
+    }
+    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
     const [[colorStats], [phoneStats]] = await Promise.all([
       pool.execute(`
         SELECT
           COUNT(*) AS total,
-          SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) AS active,
-          SUM(CASE WHEN status <> 1 OR status IS NULL THEN 1 ELSE 0 END) AS inactive
-        FROM colors
-      `),
-      pool.execute('SELECT COUNT(*) AS related_phones FROM phones WHERE color_id IS NOT NULL')
+          SUM(CASE WHEN c.status = 1 THEN 1 ELSE 0 END) AS active,
+          SUM(CASE WHEN c.status <> 1 OR c.status IS NULL THEN 1 ELSE 0 END) AS inactive
+        FROM colors c
+        ${whereClause}
+      `, params),
+      pool.execute(`
+        SELECT COUNT(*) AS related_phones
+        FROM phones p
+        INNER JOIN colors c ON c.id = p.color_id
+        ${whereClause}
+      `, params)
     ])
 
     const stats = {

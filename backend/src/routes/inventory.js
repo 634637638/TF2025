@@ -7,6 +7,11 @@ const { validateImei } = require('../utils/imei')
 const { normalizeDateTime } = require('../utils/time')
 const { generateMemberNumber } = require('../utils/member-number')
 const log = require('../utils/log')
+const {
+  COMPLETED_TRANSACTION_STATUSES,
+  getEffectivePhoneStatusSql
+} = require('../utils/phone-status')
+const COMPLETED_TRANSACTION_STATUS_SQL = `COALESCE(status, '') NOT IN (${COMPLETED_TRANSACTION_STATUSES.map(() => '?').join(', ')})`
 
 const ADMIN_ROLE_CODES = new Set(['super_admin', 'webadmin', 'admin'])
 const isAdministrator = req => (req.user?.role_codes || []).some(code => ADMIN_ROLE_CODES.has(String(code).toLowerCase()))
@@ -28,8 +33,10 @@ const buildInventoryStatsWhere = query => {
     date_end
   } = query
 
-  const whereConditions = ["p.status IN ('in_stock','repair','rented')"]
-  const queryParams = []
+  const effectiveStatusSql = getEffectivePhoneStatusSql('p')
+  // 库存页展示所有尚未销售的设备；业务状态由状态字段和预订标记共同决定。
+  const whereConditions = [`COALESCE(p.status, '') NOT IN (${COMPLETED_TRANSACTION_STATUSES.map(() => '?').join(', ')})`]
+  const queryParams = [...COMPLETED_TRANSACTION_STATUSES]
 
   if (store_id) {
     whereConditions.push('p.store_id = ?')
@@ -44,7 +51,7 @@ const buildInventoryStatsWhere = query => {
     queryParams.push(parseInt(operator_id))
   }
   if (status) {
-    whereConditions.push('p.status = ?')
+    whereConditions.push(`${effectiveStatusSql} = ?`)
     queryParams.push(status)
   }
   if (brand) {
@@ -94,21 +101,22 @@ const buildInventoryStatsWhere = query => {
       whereConditions.push('UPPER(mem.size) LIKE ?')
       queryParams.push(`%${searchStr.toUpperCase()}%`)
     } else if (['available', 'sold', 'reserved', 'repair', 'rented', 'lost'].includes(searchStr.toLowerCase())) {
-      whereConditions.push('p.status = ?')
+      whereConditions.push(`${effectiveStatusSql} = ?`)
       queryParams.push(searchStr.toLowerCase())
-    } else if (['可用', '可售', '已售', '预定', '维修', '租赁', '丢失', '在库'].includes(searchStr)) {
+    } else if (['可用', '可售', '已售', '预定', '预订', '维修', '租赁', '丢失', '在库'].includes(searchStr)) {
       const statusMap = {
         '可用': 'available',
         '可售': 'in_stock',
         '已售': 'sold',
         '预定': 'reserved',
+        '预订': 'reserved',
         '维修': 'repair',
         '租赁': 'rented',
         '丢失': 'lost',
         // “在库” is the user-facing label for the canonical sellable state.
         '在库': 'in_stock'
       }
-      whereConditions.push('p.status = ?')
+      whereConditions.push(`${effectiveStatusSql} = ?`)
       queryParams.push(statusMap[searchStr])
     } else if (['new', 'used', '全新', '二手'].includes(searchStr.toLowerCase())) {
       const isNew = ['new', '全新'].includes(searchStr.toLowerCase())
@@ -195,8 +203,10 @@ router.get('/list', unifiedAuth, requirePermission('inventory:view'), async (req
     const offset = (validPage - 1) * validLimit
 
     // 构建WHERE条件
-    const whereConditions = ["p.status IN ('in_stock','repair','rented')"]
-    const queryParams = []
+    const effectiveStatusSql = getEffectivePhoneStatusSql('p')
+    // 不隐藏维修、租赁、丢失、损坏等状态，库存页需要保留完整设备台账。
+    const whereConditions = [`COALESCE(p.status, '') NOT IN (${COMPLETED_TRANSACTION_STATUSES.map(() => '?').join(', ')})`]
+    const queryParams = [...COMPLETED_TRANSACTION_STATUSES]
 
     // 店铺筛选
     if (store_id) {
@@ -218,7 +228,7 @@ router.get('/list', unifiedAuth, requirePermission('inventory:view'), async (req
 
     // 状态筛选
     if (status) {
-      whereConditions.push('p.status = ?')
+      whereConditions.push(`${effectiveStatusSql} = ?`)
       queryParams.push(status)
     }
 
@@ -318,22 +328,23 @@ router.get('/list', unifiedAuth, requirePermission('inventory:view'), async (req
       }
       // 状态匹配 (英文状态)
       else if (['available', 'sold', 'reserved', 'repair', 'rented', 'lost'].includes(searchStr.toLowerCase())) {
-        whereConditions.push('p.status = ?')
+        whereConditions.push(`${effectiveStatusSql} = ?`)
         queryParams.push(searchStr.toLowerCase())
       }
       // 状态匹配 (中文状态)
-      else if (['可用', '可售', '已售', '预定', '维修', '租赁', '丢失', '在库'].includes(searchStr)) {
+      else if (['可用', '可售', '已售', '预定', '预订', '维修', '租赁', '丢失', '在库'].includes(searchStr)) {
         const statusMap = {
           '可用': 'available',
           '可售': 'in_stock',
           '已售': 'sold',
           '预定': 'reserved',
+          '预订': 'reserved',
           '维修': 'repair',
           '租赁': 'rented',
           '丢失': 'lost',
           '在库': 'in_stock'
         }
-        whereConditions.push('p.status = ?')
+        whereConditions.push(`${effectiveStatusSql} = ?`)
         queryParams.push(statusMap[searchStr])
       }
       // 成色匹配
@@ -405,7 +416,7 @@ router.get('/list', unifiedAuth, requirePermission('inventory:view'), async (req
         p.sale_price,
         p.store_id,
         p.supplier_id,
-        p.status,
+        ${effectiveStatusSql} AS status,
         p.is_new,
         p.is_preordered,
         p.inventory_time AS inventory_time,
@@ -415,7 +426,14 @@ router.get('/list', unifiedAuth, requirePermission('inventory:view'), async (req
         st.name as store_name,
         p.purchase_number as purchase_number,
         p.inventory_operator_id,
-        inv_op.name as inventory_operator_name
+        inv_op.name as inventory_operator_name,
+        preorder.id as preorder_id,
+        preorder.customer_id as preorder_customer_id,
+        preorder_customer.name as preorder_customer_name,
+        preorder_customer.phone as preorder_customer_phone,
+        preorder.deposit_amount as preorder_deposit_amount,
+        preorder.total_price as preorder_total_price,
+        preorder.actual_price as preorder_actual_price
       FROM phones p
       LEFT JOIN brands b ON p.brand_id = b.id
       LEFT JOIN models m ON p.model_id = m.id
@@ -424,6 +442,10 @@ router.get('/list', unifiedAuth, requirePermission('inventory:view'), async (req
       LEFT JOIN suppliers s ON p.supplier_id = s.id
       LEFT JOIN stores st ON p.store_id = st.id
       LEFT JOIN users inv_op ON p.inventory_operator_id = inv_op.id
+      LEFT JOIN preorders preorder
+        ON preorder.matched_phone_id = p.id
+       AND preorder.status = 'arrived'
+      LEFT JOIN customers preorder_customer ON preorder_customer.id = preorder.customer_id
       WHERE ${whereClause}
       ORDER BY p.inventory_time DESC
       LIMIT ${validLimit} OFFSET ${offset}
@@ -483,6 +505,19 @@ router.get('/list', unifiedAuth, requirePermission('inventory:view'), async (req
       remarks: item.remarks || '',
       status: item.status,
       is_preordered: item.is_preordered === 1,
+      preorder_id: item.preorder_id || null,
+      preorder_customer_id: item.preorder_customer_id || null,
+      preorder_customer_name: item.preorder_customer_name || '',
+      preorder_customer_phone: item.preorder_customer_phone || '',
+      preorder_deposit_amount: item.preorder_deposit_amount === null || item.preorder_deposit_amount === undefined
+        ? null
+        : Number(item.preorder_deposit_amount),
+      preorder_total_price: item.preorder_total_price === null || item.preorder_total_price === undefined
+        ? null
+        : Number(item.preorder_total_price),
+      preorder_actual_price: item.preorder_actual_price === null || item.preorder_actual_price === undefined
+        ? null
+        : Number(item.preorder_actual_price),
       is_new: item.is_new,
       created_at: item.inventory_time
     }))
@@ -611,23 +646,23 @@ router.get('/stats', unifiedAuth, requirePermission('inventory:view'), async (re
     const pool = getDatabase()
 
     // 获取总数（在库的商品）
-    const [totalResult] = await pool.execute('SELECT COUNT(*) as total FROM phones WHERE status = ?', ['in_stock'])
+    const [totalResult] = await pool.execute(`SELECT COUNT(*) as total FROM phones WHERE ${COMPLETED_TRANSACTION_STATUS_SQL}`, COMPLETED_TRANSACTION_STATUSES)
     const total = totalResult[0].total
 
     // 获取全新机数量（在库且全新）
-    const [inStockResult] = await pool.execute('SELECT COUNT(*) as inStock FROM phones WHERE status = ? AND is_new = 1', ['in_stock'])
+    const [inStockResult] = await pool.execute(`SELECT COUNT(*) as inStock FROM phones WHERE ${COMPLETED_TRANSACTION_STATUS_SQL} AND is_new = 1`, COMPLETED_TRANSACTION_STATUSES)
     const inStock = inStockResult[0].inStock
 
     // 获取二手机数量（在库且二手）
-    const [soldResult] = await pool.execute('SELECT COUNT(*) as sold FROM phones WHERE status = ? AND is_new = 0', ['in_stock'])
+    const [soldResult] = await pool.execute(`SELECT COUNT(*) as sold FROM phones WHERE ${COMPLETED_TRANSACTION_STATUS_SQL} AND is_new = 0`, COMPLETED_TRANSACTION_STATUSES)
     const sold = soldResult[0].sold
 
     // 获取库存总值（在库商品的采购价格总和）
     const [valueResult] = await pool.execute(`
       SELECT COALESCE(SUM(purchase_cost), 0) as totalValue
       FROM phones
-      WHERE status = 'in_stock'
-    `)
+      WHERE ${COMPLETED_TRANSACTION_STATUS_SQL}
+    `, COMPLETED_TRANSACTION_STATUSES)
     const totalValue = parseFloat(valueResult[0].totalValue) || 0
 
     log.debug('📊 库存统计数据:', {
@@ -677,7 +712,7 @@ router.get('/:id', unifiedAuth, requirePermission('inventory:view'), async (req,
         p.id, p.brand_id, p.model_id, p.color_id, p.memory_id,
         p.imei, p.serial_number, p.purchase_cost, p.sale_price,
         p.supplier_id, p.store_id, p.inventory_time, p.sale_time,
-        p.quality_grade, p.remarks as purchase_remarks, p.is_new, p.status,
+        p.quality_grade, p.remarks as purchase_remarks, p.is_new, p.status, p.is_preordered,
         b.name as brand,
         m.name as model,
         co.name as color,
@@ -728,7 +763,8 @@ router.get('/:id', unifiedAuth, requirePermission('inventory:view'), async (req,
       purchase_remarks: item.purchase_remarks || '',
       remarks: item.purchase_remarks || '',
       is_new: item.is_new,
-      status: item.status,
+      status: item.status === 'in_stock' && Number(item.is_preordered) === 1 ? 'reserved' : item.status,
+      is_preordered: Number(item.is_preordered) === 1,
       sale_time: item.sale_time,
       supplier_name: item.supplier_name || '',
       store_name: item.store_name || '',
@@ -831,7 +867,7 @@ router.put('/:id', unifiedAuth, requirePermission('inventory:edit'), async (req,
 
     // 检查商品是否存在
     const [existingItems] = await connection.execute(
-      'SELECT id, imei, status FROM phones WHERE id = ?',
+      'SELECT id, imei, status, is_preordered FROM phones WHERE id = ?',
       [id]
     )
 
@@ -1065,7 +1101,7 @@ router.delete('/:id', unifiedAuth, requirePermission('inventory:delete'), async 
 
     // 检查商品是否存在
     const [existingItems] = await connection.execute(
-      'SELECT id, imei, status FROM phones WHERE id = ?',
+      'SELECT id, imei, status, is_preordered FROM phones WHERE id = ?',
       [id]
     )
 
@@ -1078,9 +1114,11 @@ router.delete('/:id', unifiedAuth, requirePermission('inventory:delete'), async 
     log.debug(`找到商品: ${item.brand || ''} ${item.model || ''} (${item.imei || '无IMEI'})`)
 
     // 检查商品状态，只有 'in_stock' 状态的商品才能删除
-    if (item.status !== 'in_stock') {
+    if (item.status !== 'in_stock' || Number(item.is_preordered) === 1) {
       await connection.rollback()
-      return ApiResponse.badRequest(res, '只能删除库存状态为"在库"的商品')
+      return ApiResponse.badRequest(res, Number(item.is_preordered) === 1
+        ? '预订设备不能直接删除，请先取消或重新匹配预定单'
+        : '只能删除库存状态为“在库”的商品')
     }
 
     // 检查外键约束 - 查看是否有关联的记录

@@ -48,7 +48,7 @@
         >
           <div
             v-if="canViewField('stats_total_colors')"
-            class="stat-card"
+            class="stat-card stat-card--primary"
           >
             <div class="stat-icon">
               <i class="fas fa-palette" />
@@ -64,9 +64,9 @@
           </div>
           <div
             v-if="canViewField('stats_active_colors')"
-            class="stat-card"
+            class="stat-card stat-card--success"
           >
-            <div class="stat-icon active">
+            <div class="stat-icon">
               <i class="fas fa-check-circle" />
             </div>
             <div class="stat-content">
@@ -80,9 +80,9 @@
           </div>
           <div
             v-if="canViewField('stats_inactive_colors')"
-            class="stat-card"
+            class="stat-card stat-card--danger"
           >
-            <div class="stat-icon inactive">
+            <div class="stat-icon">
               <i class="fas fa-pause-circle" />
             </div>
             <div class="stat-content">
@@ -96,7 +96,7 @@
           </div>
           <div
             v-if="canViewField('stats_related_phones')"
-            class="stat-card"
+            class="stat-card stat-card--info"
           >
             <div class="stat-icon">
               <i class="fas fa-mobile-alt" />
@@ -773,7 +773,7 @@ const loadColors = async (_bustCache = false, silentError = false, _showLoadingS
 
 const searchColors = () => {
   pagination.value.page = 1
-  loadColors(true) // 搜索时破坏缓存
+  void Promise.all([loadColors(true), loadStats()]) // 搜索时同步刷新筛选统计
 }
 
 const resetSearch = () => {
@@ -782,7 +782,7 @@ const resetSearch = () => {
     status: ''
   }
   pagination.value.page = 1
-  loadColors(true) // 重置时破坏缓存
+  void Promise.all([loadColors(true), loadStats()]) // 重置时同步刷新统计
 }
 
 const _changePage = (page: number) => {
@@ -1062,7 +1062,10 @@ const formatDate = (dateString: string) => {
 
 const loadStats = async () => {
   try {
-    const response = await unifiedApi.get('/colors/stats/overview')
+    const params: Record<string, string> = {}
+    if (searchForm.value.name) params.name = searchForm.value.name.trim()
+    if (searchForm.value.status !== '') params.status = searchForm.value.status
+    const response = await unifiedApi.get('/colors/stats/overview', { params })
     if (response.success) {
       const data = response.data || {}
       stats.value = {
@@ -1220,68 +1223,6 @@ onBeforeUnmount(() => {
 
 .action-buttons {
   display: flex;
-}
-
-/* 统计卡片样式 */
-.stats-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 20px;
-  margin-bottom: 24px;
-}
-
-.stat-card {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-  transition: all 0.3s ease;
-  border: 1px solid var(--tf-color-border-cool);
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0,0,0,0.12);
-}
-
-.stat-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  background: linear-gradient(135deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand));
-  color: white;
-}
-
-.stat-icon.active {
-  background: linear-gradient(135deg, var(--success-color), var(--tf-color-teal-500));
-}
-
-.stat-icon.inactive {
-  background: linear-gradient(135deg, var(--danger-color), var(--tf-color-orange-bootstrap));
-}
-
-.stat-content {
-  flex: 1;
-}
-
-.stat-value {
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--tf-color-heading);
-  margin-bottom: 4px;
-}
-
-.stat-label {
-  font-size: 14px;
-  color: var(--tf-color-muted);
-  font-weight: 500;
 }
 
 .section-title {
@@ -1685,10 +1626,6 @@ onBeforeUnmount(() => {
     gap: 16px;
   }
 
-  .stats-cards {
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  }
-
 }
 
 @media (max-width: 1023px) {
@@ -1706,11 +1643,6 @@ onBeforeUnmount(() => {
     order: 1;
     width: 100%;
     justify-content: center;
-  }
-
-  .stats-cards {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
   }
 
   .form-actions {
@@ -1731,17 +1663,6 @@ onBeforeUnmount(() => {
     display: flex;
     flex-direction: row;
     width: auto;
-  }
-
-  .stats-cards {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-    margin-bottom: 16px;
-    padding: 0 4px;
-  }
-
-  .stat-card {
-    padding: 14px 12px;
   }
 
   .form-actions {
@@ -1811,27 +1732,6 @@ onBeforeUnmount(() => {
     width: 100%;
   }
 
-  .stats-cards {
-    gap: 12px;
-  }
-
-  .stat-card {
-    padding: 16px;
-    flex-direction: column;
-    text-align: center;
-    gap: 12px;
-  }
-
-  .stat-icon {
-    width: 56px;
-    height: 56px;
-    font-size: 24px;
-  }
-
-  .stat-value {
-    font-size: 20px;
-  }
-
   .table-section {
     padding: 16px;
   }
@@ -1874,33 +1774,6 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 767px) {
-  .colors-view .stats-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-    margin-bottom: 16px;
-    padding: 0 4px;
-  }
-
-  .colors-view .stat-card {
-    padding: 14px 12px;
-    border-radius: 16px;
-    gap: 12px;
-  }
-
-  .colors-view .stat-icon {
-    width: 40px;
-    height: 40px;
-    font-size: 16px;
-  }
-
-  .colors-view .stat-value {
-    font-size: 20px;
-  }
-
-  .colors-view .stat-label {
-    font-size: 12px;
-  }
-
   .colors-view .table-section {
     margin: 0;
     padding: 14px 10px;
@@ -1984,34 +1857,6 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 480px) {
-  .colors-view .stats-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-    margin: 0 0 12px 0;
-    padding: 0;
-  }
-
-  .colors-view .stat-card {
-    padding: 12px 10px;
-    gap: 10px;
-    flex-direction: row;
-    text-align: left;
-  }
-
-  .colors-view .stat-icon {
-    width: 36px;
-    height: 36px;
-    font-size: 15px;
-  }
-
-  .colors-view .stat-value {
-    font-size: 18px;
-  }
-
-  .colors-view .stat-label {
-    font-size: 11px;
-  }
-
   .mobile-action-row td {
     padding: 6px 4px 10px !important;
     background: linear-gradient(180deg, var(--tf-color-surface-blue) 0%, var(--tf-color-indigo-surface-alt) 100%);

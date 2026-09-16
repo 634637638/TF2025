@@ -105,7 +105,8 @@ class DataMaskingService {
         memory_size: ['memory_size', 'product_name'],
         expected_arrival: ['expected_arrival', 'arrival_date', 'days_remaining'],
         deposit_amount: ['deposit_amount', 'deposit_paid'],
-        matchable_sale_price: ['sale_price']
+        // 保留既有权限字段 ID，实际控制匹配候选设备的入库价。
+        matchable_sale_price: ['purchase_cost']
       }
 
       // 同时处理扁平 API 字段和嵌套对象字段。

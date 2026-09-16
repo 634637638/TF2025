@@ -540,6 +540,21 @@ class PriceListController {
   }
 
   /**
+   * 获取同步日志统计
+   */
+  async getSyncLogStatistics(req, res) {
+    try {
+      initDb()
+      const priceListService = getPriceListService()
+      const result = await priceListService.getSyncLogStatistics()
+      return ApiResponse.success(res, result.data, result.message)
+    } catch (error) {
+      log.error('获取同步日志统计失败:', error)
+      return ApiResponse.error(res, '获取统计失败', 500)
+    }
+  }
+
+  /**
    * 删除同步日志
    */
   async deleteSyncLog(req, res) {

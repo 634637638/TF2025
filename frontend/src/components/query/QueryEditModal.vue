@@ -328,52 +328,15 @@
                 @clear="handleCustomerClear"
               />
 
-              <div
-                v-if="editShowCustomerSearchResults && (editCustomerOptions.length > 0 || editCustomerLookupLoading || (formData.customer_phone.length >= 11 && !editFoundCustomer && !editCustomerLookupLoading))"
-                class="customer-search-results"
-              >
-                <div
-                  v-if="editCustomerLookupLoading"
-                  class="search-loading"
-                >
-                  <InlineLoading
-                    text="搜索中..."
-                    size="small"
-                  />
-                </div>
-                <template v-else>
-                  <div
-                    v-for="customer in editCustomerOptions"
-                    :key="customer.id"
-                    class="customer-item"
-                    @mousedown.prevent="selectCustomer(customer)"
-                  >
-                    <div class="customer-info">
-                      <div class="customer-headline">
-                        <div class="customer-name">
-                          {{ customer.name }}
-                        </div>
-                        <span
-                          v-if="customer.member_number"
-                          class="member-number"
-                        >{{ customer.member_number }}</span>
-                      </div>
-                      <div class="customer-subline">
-                        <span class="customer-phone">{{ customer.phone }}</span>
-                        <span class="vip-badge">{{ getVipLabel(customer.vip_level) }}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div
-                    v-if="formData.customer_phone.length >= 11 && editCustomerOptions.length === 0 && !editFoundCustomer"
-                    class="create-new-customer"
-                    @mousedown.prevent="createNewCustomer"
-                  >
-                    <i class="fas fa-user-plus" />
-                    点击创建该用户
-                  </div>
-                </template>
-              </div>
+              <CustomerSearchDropdown
+                :items="editCustomerOptions"
+                :loading="editCustomerLookupLoading"
+                :visible="editShowCustomerSearchResults && !editFoundCustomer"
+                :keyword="formData.customer_phone"
+                :min-query-length="11"
+                @select="selectCustomer($event as CustomerOption)"
+                @create="createNewCustomer"
+              />
             </div>
           </el-form-item>
 
@@ -571,6 +534,7 @@ import type { FormInstance } from 'element-plus'
 import { ValidationRules } from '@/composables'
 import { useNotification } from '@/composables/useNotification'
 import MobileDialog from '@/components/MobileDialog.vue'
+import CustomerSearchDropdown from '@/components/common/CustomerSearchDropdown.vue'
 import { PaymentChannelSelect, PaymentMethodSelect } from '@/components/payment'
 import SectionLoading from '@/components/SectionLoading.vue'
 import { useMobile } from '@/composables/mobile'
@@ -1289,17 +1253,6 @@ const showProfit = computed(() => {
 const showPaymentChannel = computed(() => {
   return ['mobile', 'bank_card', 'subsidy_card'].includes(formData.payment_method)
 })
-
-const getVipLabel = (vipLevel?: string) => {
-  const labels: Record<string, string> = {
-    normal: '普通',
-    silver: '银卡',
-    gold: '金卡',
-    platinum: '白金'
-  }
-
-  return labels[vipLevel || 'normal'] || '普通'
-}
 
 const resetFormState = () => {
   Object.assign(formData, defaultFormState())

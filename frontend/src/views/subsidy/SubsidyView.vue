@@ -58,7 +58,7 @@
         >
           <div
             v-if="canViewField('stats_total_and_handler')"
-            class="stat-card total-card"
+            class="stat-card stat-card--warning"
           >
             <div class="stat-card__glow" />
             <div class="stat-card__head stat-card__head--with-progress">
@@ -119,7 +119,7 @@
           </div>
           <div
             v-if="canViewField('stats_approval_progress')"
-            class="stat-card approval-card"
+            class="stat-card stat-card--info"
           >
             <div class="stat-card__glow" />
             <div class="stat-card__head stat-card__head--with-progress">
@@ -180,7 +180,7 @@
           </div>
           <div
             v-if="canViewField('stats_amount_progress')"
-            class="stat-card amount-card"
+            class="stat-card stat-card--income"
           >
             <div class="stat-card__glow" />
             <div class="stat-card__head stat-card__head--with-progress">
@@ -238,7 +238,7 @@
           </div>
           <div
             v-if="canViewField('stats_store_overview')"
-            class="stat-card handler-card"
+            class="stat-card stat-card--accent"
           >
             <div class="stat-card__glow" />
             <div class="stat-card__head stat-card__head--with-progress">
@@ -312,6 +312,7 @@
         <UnifiedSearchPanel
           v-model:expanded="searchExpanded"
           :loading="loading"
+          :auto-reset-pagination="false"
           @search="handleSearch"
           @reset="resetFilters"
         >
@@ -334,11 +335,11 @@
           <div
             v-if="canViewField('status')"
             class="form-group filter-item"
-            data-field="status"
+            data-field="approval_status"
           >
             <el-select
-              v-model="filters.status"
-              placeholder="状态"
+              v-model="filters.approval_status"
+              placeholder="审批状态"
               clearable
               @change="handleSearch"
             >
@@ -348,15 +349,29 @@
               />
               <el-option
                 label="已审批"
-                value="completed"
+                value="approved"
               />
+            </el-select>
+          </div>
+
+          <div
+            v-if="canViewField('status')"
+            class="form-group filter-item"
+            data-field="arrival_status"
+          >
+            <el-select
+              v-model="filters.arrival_status"
+              placeholder="到账状态"
+              clearable
+              @change="handleSearch"
+            >
               <el-option
                 label="未到账"
                 value="unarrived"
               />
               <el-option
                 label="已到账"
-                value="approved"
+                value="arrived"
               />
             </el-select>
           </div>
@@ -387,10 +402,8 @@
             class="form-group filter-item"
             data-field="sale_time"
           >
-            <el-date-picker
+            <DateRangePicker
               v-model="saleDateRange"
-              type="daterange"
-              range-separator="至"
               start-placeholder="销售开始"
               end-placeholder="销售结束"
               format="YYYY-MM-DD"
@@ -405,10 +418,8 @@
             class="form-group filter-item"
             data-field="apply_time"
           >
-            <el-date-picker
+            <DateRangePicker
               v-model="submitDateRange"
-              type="daterange"
-              range-separator="至"
               start-placeholder="提交开始"
               end-placeholder="提交结束"
               format="YYYY-MM-DD"
@@ -424,10 +435,8 @@
             class="form-group filter-item"
             data-field="arrival_time"
           >
-            <el-date-picker
+            <DateRangePicker
               v-model="arriveDateRange"
-              type="daterange"
-              range-separator="至"
               start-placeholder="到账开始"
               end-placeholder="到账结束"
               format="YYYY-MM-DD"
@@ -650,6 +659,7 @@ import { useCachedRequest, DEFAULT_CACHE_TTL } from '@/composables/usePageCache'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { isCurrentMobileViewport } from '@/utils/device-detection'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
+import DateRangePicker from '@/components/DateRangePicker.vue'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import InlineLoading from '@/components/InlineLoading.vue'
 import { PageHeader, PermissionGate } from '@/components/base'
@@ -922,7 +932,8 @@ const topStoreRate = computed(() => {
 
 const filters = reactive({
   search: '',
-  status: '',
+  approval_status: '',
+  arrival_status: '',
   store_id: '',
   sale_date_start: '',
   sale_date_end: '',
@@ -1081,7 +1092,8 @@ const buildQueryParams = (includePagination: boolean) => {
     params.sort_order = 'desc'
   }
 
-  if (filters.status) params.status = filters.status
+  if (filters.approval_status) params.approval_status = filters.approval_status
+  if (filters.arrival_status) params.arrival_status = filters.arrival_status
 
   if (filters.search) {
     searchableFields.forEach((field) => {
@@ -1667,7 +1679,8 @@ const handleArriveDateChange = (value: [string, string] | null) => {
 // 重置筛选
 const resetFilters = () => {
   filters.search = ''
-  filters.status = ''
+  filters.approval_status = ''
+  filters.arrival_status = ''
   filters.store_id = ''
   filters.sale_date_start = ''
   filters.sale_date_end = ''
@@ -1804,62 +1817,19 @@ onUnmounted(() => {
 
 .content {
   .stats-cards {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 12px;
-
-    @media (max-width: 768px) {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
-    }
-
     .stat-card {
-      --card-accent: #2563eb;
       position: relative;
-      background:
-        radial-gradient(circle at top right, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.98) 42%, rgba(255, 255, 255, 1) 100%),
-        linear-gradient(160deg, rgba(37, 99, 235, 0.08), rgba(37, 99, 235, 0.01));
-      border-radius: 14px;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
-      box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
-      transition: all 0.3s ease;
-      border: 1px solid rgba(148, 163, 184, 0.18);
       overflow: hidden;
       min-height: 118px;
-      padding: 15px;
       gap: 12px;
       justify-content: flex-start;
 
       @media (max-width: 768px) {
-        border-radius: 12px;
-        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.1);
+        flex-direction: column;
       }
 
-      &:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 16px 28px rgba(15, 23, 42, 0.12);
-
-        @media (max-width: 768px) {
-          transform: translateY(-1px);
-        }
-      }
-
-      &.total-card {
-        --card-accent: #f97316;
-      }
-
-      &.approval-card {
-        --card-accent: #2563eb;
-      }
-
-      &.amount-card {
-        --card-accent: #059669;
-      }
-
-      &.handler-card {
-        --card-accent: #7c3aed;
-      }
 
       .stat-card__glow {
         position: absolute;
@@ -1898,7 +1868,7 @@ onUnmounted(() => {
       .stat-card__head-progress-fill {
         height: 100%;
         border-radius: inherit;
-        background: linear-gradient(90deg, var(--card-accent), color-mix(in srgb, var(--card-accent) 54%, white 46%));
+        background: var(--card-accent);
         transition: width 0.35s ease;
       }
 
@@ -1953,8 +1923,6 @@ onUnmounted(() => {
         place-items: center;
         color: white;
         font-size: 15px;
-        background: linear-gradient(145deg, var(--card-accent), color-mix(in srgb, var(--card-accent) 70%, black 30%));
-        box-shadow: 0 12px 24px color-mix(in srgb, var(--card-accent) 24%, transparent);
       }
 
       .stat-card__head-copy {
@@ -2069,7 +2037,7 @@ onUnmounted(() => {
       .stat-progress__fill {
         height: 100%;
         border-radius: inherit;
-        background: linear-gradient(90deg, var(--card-accent), color-mix(in srgb, var(--card-accent) 55%, white 45%));
+        background: var(--card-accent);
         transition: width 0.35s ease;
       }
 
@@ -2202,7 +2170,7 @@ onUnmounted(() => {
           font-size: clamp(1.18rem, 5vw, 1.48rem);
         }
 
-        &.amount-card {
+        &.stat-card--income {
           .stat-card__value {
             font-size: clamp(0.98rem, 4.2vw, 1.25rem);
           }
@@ -3556,10 +3524,6 @@ onUnmounted(() => {
     gap: 8px;
   }
 
-  .stats-cards {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
   /* 移动端卡片列表 */
   .mobile-card-list {
     display: flex;
@@ -3967,10 +3931,6 @@ onUnmounted(() => {
 }
 
 @media (max-width: 480px) {
-  .stats-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .search-row {
     flex-direction: column;
 

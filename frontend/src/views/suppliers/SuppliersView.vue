@@ -52,7 +52,7 @@
         >
           <div
             v-if="canViewField('stats_total_suppliers')"
-            class="stat-card"
+            class="stat-card stat-card--primary"
           >
             <div class="stat-icon">
               <i class="fas fa-users" />
@@ -68,9 +68,9 @@
           </div>
           <div
             v-if="canViewField('stats_active_suppliers')"
-            class="stat-card"
+            class="stat-card stat-card--success"
           >
-            <div class="stat-icon active">
+            <div class="stat-icon">
               <i class="fas fa-check-circle" />
             </div>
             <div class="stat-content">
@@ -84,9 +84,9 @@
           </div>
           <div
             v-if="canViewField('stats_inactive_suppliers')"
-            class="stat-card"
+            class="stat-card stat-card--danger"
           >
-            <div class="stat-icon inactive">
+            <div class="stat-icon">
               <i class="fas fa-pause-circle" />
             </div>
             <div class="stat-content">
@@ -100,7 +100,7 @@
           </div>
           <div
             v-if="canViewField('stats_phone_completion')"
-            class="stat-card"
+            class="stat-card stat-card--info"
           >
             <div class="stat-icon">
               <i class="fas fa-phone" />
@@ -749,7 +749,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
@@ -851,29 +851,39 @@ const showStatsCards = computed(() => (
   canViewField('stats_inactive_suppliers') ||
   canViewField('stats_phone_completion')
 ))
-const supplierStats = computed(() => {
-  let active = 0
-  let inactive = 0
-  let phoneCompletion = 0
-
-  suppliers.value.forEach((supplier) => {
-    if (isSupplierActive(supplier.status)) {
-      active++
-    } else {
-      inactive++
-    }
-
-    if (supplier.phone) {
-      phoneCompletion++
-    }
-  })
-
-  return {
-    active,
-    inactive,
-    phoneCompletion
-  }
+const supplierStats = reactive({
+  active: 0,
+  inactive: 0,
+  phoneCompletion: 0
 })
+
+const resetSupplierStats = () => {
+  supplierStats.active = 0
+  supplierStats.inactive = 0
+  supplierStats.phoneCompletion = 0
+}
+
+const loadSupplierStats = async () => {
+  try {
+    const params: Record<string, string> = {}
+    if (searchForm.value.name.trim()) params.name = searchForm.value.name.trim()
+    if (searchForm.value.status !== '') params.status = searchForm.value.status
+
+    const response = await unifiedApi.get('/suppliers/stats', { params, useCache: false })
+    if (!response.success) {
+      resetSupplierStats()
+      return
+    }
+
+    const data = response.data || {}
+    supplierStats.active = Number(data.active) || 0
+    supplierStats.inactive = Number(data.inactive) || 0
+    supplierStats.phoneCompletion = Number(data.phone_completion) || 0
+  } catch (error) {
+    logger.error('获取供应商统计失败:', error)
+    resetSupplierStats()
+  }
+}
 const authStore = useAuthStore()
 
 const normalizedSupplierPermissions = computed<string[]>(() => {
@@ -1027,6 +1037,7 @@ const loadSuppliers = async (bustCache: boolean = false, silentError: boolean = 
 
       // 按 sort_order 排序，确保序号和排序值一致
       suppliers.value.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+      await loadSupplierStats()
     } else {
       logger.error('API返回失败:', response.message)
       suppliers.value = []
@@ -1038,6 +1049,7 @@ const loadSuppliers = async (bustCache: boolean = false, silentError: boolean = 
         has_next: false,
         has_prev: false
       }
+      resetSupplierStats()
       if (!silentError) {
         error(response.message || '获取供应商列表失败')
       }
@@ -1057,6 +1069,7 @@ const loadSuppliers = async (bustCache: boolean = false, silentError: boolean = 
       has_next: false,
       has_prev: false
     }
+    resetSupplierStats()
 
     if (!silentError) {
       // 使用统一的错误处理
@@ -1579,68 +1592,6 @@ onUnmounted(() => {
   min-height: 100vh;
 }
 
-/* 统计卡片样式 */
-.stats-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 20px;
-  margin-bottom: 24px;
-}
-
-.stat-card {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-  transition: all 0.3s ease;
-  border: 1px solid var(--tf-color-border-cool);
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0,0,0,0.12);
-}
-
-.stat-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  background: linear-gradient(135deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand));
-  color: white;
-}
-
-.stat-icon.active {
-  background: linear-gradient(135deg, var(--success-color), var(--tf-color-teal-500));
-}
-
-.stat-icon.inactive {
-  background: linear-gradient(135deg, var(--danger-color), var(--tf-color-orange-bootstrap));
-}
-
-.stat-content {
-  flex: 1;
-}
-
-.stat-value {
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--tf-color-heading);
-  margin-bottom: 4px;
-}
-
-.stat-label {
-  font-size: 14px;
-  color: var(--tf-color-muted);
-  font-weight: 500;
-}
-
 .section-title {
   display: flex;
   align-items: center;
@@ -2134,13 +2085,6 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 20px;
-}
-
-.stat-card {
-  background: var(--tf-color-surface-muted);
-  padding: 20px;
-  border-radius: 8px;
-  text-align: center;
 }
 
 .stat-value {

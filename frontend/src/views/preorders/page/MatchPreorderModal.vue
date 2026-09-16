@@ -1,7 +1,7 @@
 <template>
   <MobileDialog
     v-model="dialogVisible"
-    title="匹配库存设备"
+    :title="isRematch ? '更换匹配设备' : '匹配库存设备'"
     width="880px"
     :show-default-footer="false"
     :close-on-click-modal="!submitting"
@@ -38,8 +38,7 @@
 
       <el-alert
         class="match-scope-alert"
-        title="匹配仅预留库存，不会直接出库销售"
-        description="匹配成功后设备仍保持在库状态。完成销售请在已匹配列表中点击“交付”，并在销售页面完成结算。"
+        title="选择对应商品绑定匹配"
         type="info"
         :closable="false"
         show-icon
@@ -74,6 +73,22 @@
             </template>
           </el-table-column>
           <el-table-column
+            v-if="isRematch"
+            label="绑定状态"
+            width="92"
+            align="center"
+          >
+            <template #default="{ row }">
+              <el-tag
+                v-if="row.is_current"
+                type="warning"
+                size="small"
+              >
+                当前绑定
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column
             v-if="canViewPreorderField('imei')"
             prop="imei"
             label="IMEI"
@@ -100,6 +115,16 @@
             </template>
           </el-table-column>
           <el-table-column
+            v-if="canViewPreorderField('matchable_sale_price')"
+            label="入库价"
+            min-width="96"
+            align="center"
+          >
+            <template #default="{ row }">
+              {{ row.purchase_cost === null || row.purchase_cost === undefined ? '-' : `¥${formatPrice(row.purchase_cost)}` }}
+            </template>
+          </el-table-column>
+          <el-table-column
             v-if="canViewPreorderField('store_name')"
             prop="store_name"
             label="店铺"
@@ -107,16 +132,6 @@
           >
             <template #default="{ row }">
               {{ row.store_name || '-' }}
-            </template>
-          </el-table-column>
-          <el-table-column
-            v-if="canViewPreorderField('matchable_sale_price')"
-            label="销售价"
-            min-width="96"
-            align="center"
-          >
-            <template #default="{ row }">
-              {{ row.sale_price === null || row.sale_price === undefined ? '-' : `¥${formatPrice(row.sale_price)}` }}
             </template>
           </el-table-column>
         </el-table>
@@ -135,7 +150,7 @@
           :disabled="loading || selectedPhoneId === null"
           @click="submitMatch"
         >
-          确定匹配
+          {{ isRematch ? '确认更换' : '确定匹配' }}
         </el-button>
       </div>
     </div>
@@ -168,6 +183,7 @@ const phones = ref<MatchablePhone[]>([])
 const selectedPhoneId = ref<number | null>(null)
 const loading = ref(false)
 const submitting = ref(false)
+const isRematch = computed(() => props.preorder.status === 'arrived')
 
 const productFieldNames = ['brand_name', 'model_name', 'color_name', 'memory_size'] as const
 const showProductField = computed(() => productFieldNames.some(canViewPreorderField))
@@ -211,7 +227,7 @@ const submitMatch = async () => {
   submitting.value = true
   try {
     await preorderApi.matchPreorder(props.preorder.id, { phone_id: selectedPhoneId.value })
-    ElMessage.success('预定单匹配成功，库存已预留，尚未出库')
+    ElMessage.success(isRematch.value ? '匹配设备更换成功' : '预定单匹配成功，库存已预留，尚未出库')
     emit('success')
     dialogVisible.value = false
   } catch (error) {

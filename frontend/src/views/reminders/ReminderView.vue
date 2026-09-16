@@ -45,14 +45,14 @@
         >
           <div
             v-if="canViewReminderField('stats_total')"
-            class="stat-card"
+            class="stat-card stat-card--primary"
           >
             <div class="stat-icon">
               <i class="fas fa-list-check" />
             </div>
             <div class="stat-content">
               <div class="stat-value">
-                {{ pagination.total }}
+                {{ reminderSummary.total }}
               </div><div class="stat-label">
                 待办总数
               </div>
@@ -60,9 +60,9 @@
           </div>
           <div
             v-if="canViewReminderField('stats_active_count')"
-            class="stat-card"
+            class="stat-card stat-card--success"
           >
-            <div class="stat-icon active">
+            <div class="stat-icon">
               <i class="fas fa-bell" />
             </div>
             <div class="stat-content">
@@ -75,9 +75,9 @@
           </div>
           <div
             v-if="canViewReminderField('stats_completed_count')"
-            class="stat-card"
+            class="stat-card stat-card--info"
           >
-            <div class="stat-icon completed">
+            <div class="stat-icon">
               <i class="fas fa-circle-check" />
             </div>
             <div class="stat-content">
@@ -90,9 +90,9 @@
           </div>
           <div
             v-if="canViewReminderField('stats_ignored_count')"
-            class="stat-card"
+            class="stat-card stat-card--danger"
           >
-            <div class="stat-icon ignored">
+            <div class="stat-icon">
               <i class="fas fa-eye-slash" />
             </div>
             <div class="stat-content">
@@ -925,6 +925,7 @@ interface ReminderRow { id:number; title:string; content?:string; type_id?:numbe
 const { canView, canCreate, canEdit, canDelete, canManage } = usePagePermissions('reminders')
 const loading = ref(false), saving = ref(false), typeSaving = ref(false), searchExpanded = ref(false)
 const reminders = ref<ReminderRow[]>([]), types = ref<ReminderType[]>([]), users = ref<ReminderUser[]>([])
+const reminderSummary = reactive({ total: 0, active_count: 0, completed_count: 0, ignored_count: 0 })
 const formVisible = ref(false), detailVisible = ref(false), typeManagerVisible = ref(false), typeFormVisible = ref(false)
 const editingId = ref<number|null>(null), detail = ref<any>(null), formRef = ref<FormInstance>()
 const filters = reactive({ keyword:'', type_id:'' as string|number, status:'' })
@@ -947,9 +948,9 @@ const formRules: FormRules = { title:[{ required:true,message:'请输入事项�
 
 const activeTypes = computed(() => types.value.filter(item => !canViewReminderField('type_is_active') || Boolean(item.is_active)))
 const activeUsers = computed(() => users.value.filter(user => user.status === undefined || user.status === 1 || user.status === '1' || user.status === 'active'))
-const activeCount = computed(() => canViewReminderField('status') ? reminders.value.filter(item => item.status==='active').length : 0)
-const completedCount = computed(() => canViewReminderField('completed_count') ? reminders.value.reduce((sum,item)=>sum+Number(item.completed_count||0),0) : 0)
-const ignoredCount = computed(() => canViewReminderField('ignored_count') ? reminders.value.reduce((sum,item)=>sum+Number(item.ignored_count||0),0) : 0)
+const activeCount = computed(() => canViewReminderField('status') ? reminderSummary.active_count : 0)
+const completedCount = computed(() => canViewReminderField('completed_count') ? reminderSummary.completed_count : 0)
+const ignoredCount = computed(() => canViewReminderField('ignored_count') ? reminderSummary.ignored_count : 0)
 const showStats = computed(() => ['stats_total','stats_active_count','stats_completed_count','stats_ignored_count'].some(field => canViewReminderField(field as ReminderFieldName)))
 const showSearch = computed(() => ['title','content','type_name','status'].some(field => canViewReminderField(field as ReminderFieldName)))
 const showExecutionSummary = computed(() => canViewReminderField('completed_count') || canViewReminderField('ignored_count'))
@@ -1015,7 +1016,7 @@ const detailActionAtColumnWidth = computed(() => getTextColumnMinWidth(
 
 const loadTypes = async () => { if(!canViewReminderField('type_name')&&!canManage.value)return;const response:any=await api.get('/reminders/types'); if(response.success) types.value=Array.isArray(response.data)?response.data:[] }
 const loadUsers = async () => { if(!canViewReminderField('target_users')||(!canCreate.value&&!canManage.value)) return; const response:any=await api.get('/reminders/users'); if(response.success) users.value=Array.isArray(response.data)?response.data:[] }
-const loadReminders = async () => { loading.value=true; try{ const params:Record<string,unknown>={ page:pagination.page,page_size:pagination.page_size };if((canViewReminderField('title')||canViewReminderField('content'))&&filters.keyword)params.keyword=filters.keyword;if(canViewReminderField('type_name')&&filters.type_id)params.type_id=filters.type_id;if(canViewReminderField('status')&&filters.status)params.status=filters.status;const response:any=await api.get('/reminders',{ params }); if(response.success){reminders.value=Array.isArray(response.data)?response.data:[];pagination.total=Number(response.pagination?.total||0)} }catch(error){logger.error('加载待办失败',error);ElMessage.error('加载待办失败')}finally{loading.value=false} }
+const loadReminders = async () => { loading.value=true; try{ const params:Record<string,unknown>={ page:pagination.page,page_size:pagination.page_size };if((canViewReminderField('title')||canViewReminderField('content'))&&filters.keyword)params.keyword=filters.keyword;if(canViewReminderField('type_name')&&filters.type_id)params.type_id=filters.type_id;if(canViewReminderField('status')&&filters.status)params.status=filters.status;const response:any=await api.get('/reminders',{ params }); if(response.success){reminders.value=Array.isArray(response.data)?response.data:[];pagination.total=Number(response.pagination?.total||0);Object.assign(reminderSummary,{ total:Number(response.summary?.total||0),active_count:Number(response.summary?.active_count||0),completed_count:Number(response.summary?.completed_count||0),ignored_count:Number(response.summary?.ignored_count||0) })} }catch(error){logger.error('加载待办失败',error);ElMessage.error('加载待办失败')}finally{loading.value=false} }
 const handleSearch=()=>{pagination.page=1;loadReminders()}; const resetSearch=()=>{filters.keyword='';filters.type_id='';filters.status='';handleSearch()}; const handlePageChange=(page:number,size:number)=>{pagination.page=page;pagination.page_size=size;loadReminders()}
 const resetForm=()=>Object.assign(form,defaultForm())
 const openCreateDialog=()=>{editingId.value=null;resetForm();form.start_at=localDateTime(new Date());formVisible.value=true}
@@ -1038,7 +1039,6 @@ onMounted(async()=>{await fieldPermissions.init();await Promise.all([loadTypes()
 
 <style scoped lang="scss">
 .reminder-view { min-height:100%; }
-.reminder-stats .stat-icon.active { background:var(--tf-color-emerald-50);color:var(--tf-color-emerald-600); }.reminder-stats .stat-icon.completed { background:var(--tf-color-blue-tailwind-50);color:var(--tf-color-blue-600); }.reminder-stats .stat-icon.ignored { background:var(--tf-color-orange-50);color:var(--tf-color-orange-material-900); }
 .reminder-title { border:0;background:none;color:var(--tf-color-neutral-800);font:inherit;font-weight:700;cursor:pointer;white-space:nowrap; }.reminder-title:hover{color:var(--tf-color-blue-600);}
 .type-badge { display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border:1px solid;border-radius:999px;font-weight:700;white-space:nowrap; }
 .execution-summary{font-variant-numeric:tabular-nums;color:var(--tf-color-slate-600);}.user-option-meta{float:right;margin-left:16px;color:var(--tf-color-slate-400);}.input-suffix{margin-left:8px;color:var(--tf-color-slate-500);}

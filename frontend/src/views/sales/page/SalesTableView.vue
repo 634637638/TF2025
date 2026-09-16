@@ -181,7 +181,7 @@
           <template #default="{ row: phone }">
             <div class="action-buttons">
               <el-button
-                v-if="canCreate"
+                v-if="canCreate && isPhoneSaleActionAvailable(phone)"
                 type="success"
                 size="small"
                 title="销售出库"
@@ -218,12 +218,12 @@
           <TableLoadingRow
             v-if="loading"
             mode="block"
-            text="加载可销售设备..."
+            text="加载设备列表..."
           />
           <DataEmptyState
             v-else
             :state="hasActiveFilters ? 'filtered' : 'empty'"
-            :description="hasActiveFilters ? '未找到匹配的设备' : '暂无可销售设备'"
+            :description="hasActiveFilters ? '未找到匹配的设备' : '暂无设备数据'"
           >
             <el-button
               v-if="hasActiveFilters"
@@ -252,7 +252,8 @@ import {
   formatSalesDate as formatDate,
   getNewConditionLabel,
   getSaleStatusClass,
-  getSaleStatusLabel
+  getSaleStatusLabel,
+  isPhoneSaleActionAvailable
 } from '../sales-phone-helpers'
 
 type OperationMode = 'wholesale' | 'proxy' | null

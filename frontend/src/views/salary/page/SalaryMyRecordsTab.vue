@@ -53,12 +53,11 @@
         class="form-group filter-item"
         data-field="period"
       >
-        <el-date-picker
+        <DateRangePicker
           :model-value="periodRange"
-          type="monthrange"
-          range-separator="至"
           start-placeholder="开始月份"
           end-placeholder="结束月份"
+          picker-type="month"
           value-format="YYYY-MM"
           @update:model-value="emit('update:periodRange', $event)"
           @change="emit('periodChange')"
@@ -330,6 +329,7 @@ import { getPaymentMethodLabel } from '@/constants/paymentMethods'
 import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
+import DateRangePicker from '@/components/DateRangePicker.vue'
 import {
   formatSalaryAmount,
   formatSalaryLeaveDays,
@@ -364,7 +364,7 @@ const props = defineProps<{
   loading: boolean
   page: number
   pageSize: number
-  periodRange: [string, string] | null
+  periodRange: [string, string] | [] | null
   records: SalaryRecordRow[]
   recordsSearchExpanded: boolean
   selectedEmployeeName: string
@@ -385,7 +385,7 @@ const emit = defineEmits<{
   search: []
   'update:page': [value: number]
   'update:pageSize': [value: number]
-  'update:periodRange': [value: [string, string] | null]
+  'update:periodRange': [value: [string, string] | [] | null]
   'update:recordsSearchExpanded': [value: boolean]
   'update:selectedViewEmployeeId': [value: number | undefined]
   viewRecord: [row: SalaryRecordRow]

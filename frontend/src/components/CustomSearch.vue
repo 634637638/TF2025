@@ -93,19 +93,13 @@
           v-else-if="filter.type === 'daterange'"
           class="daterange-filter"
         >
-          <input
-            v-model="dateRangeStart[filter.key]"
-            type="date"
-            class="date-input"
+          <DateRangePicker
+            :model-value="getDateRangeValue(filter.key)"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            @update:model-value="updateDateRange(filter.key, $event)"
             @change="handleDateRangeChange(filter)"
-          >
-          <span class="date-separator">至</span>
-          <input
-            v-model="dateRangeEnd[filter.key]"
-            type="date"
-            class="date-input"
-            @change="handleDateRangeChange(filter)"
-          >
+          />
         </div>
       </div>
 
@@ -311,19 +305,13 @@
             v-else-if="filter.type === 'daterange'"
             class="mobile-daterange"
           >
-            <input
-              v-model="dateRangeStart[filter.key]"
-              type="date"
-              class="mobile-date-input"
+            <DateRangePicker
+              :model-value="getDateRangeValue(filter.key)"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              @update:model-value="updateDateRange(filter.key, $event)"
               @change="handleDateRangeChange(filter)"
-            >
-            <span class="mobile-date-separator">至</span>
-            <input
-              v-model="dateRangeEnd[filter.key]"
-              type="date"
-              class="mobile-date-input"
-              @change="handleDateRangeChange(filter)"
-            >
+            />
           </div>
         </div>
 
@@ -358,6 +346,7 @@ import type {
   UpdateStringModelValueEmits
 } from '@/types/component'
 import { logger } from '@/utils/logger'
+import DateRangePicker from '@/components/DateRangePicker.vue'
 
 interface FilterOption {
   label: string
@@ -624,6 +613,19 @@ const handleDateRangeChange = (filter: FilterConfig) => {
   handleFilterChange()
 }
 
+type DateRangeValue = [string, string] | [] | null
+
+const getDateRangeValue = (key: string): DateRangeValue => {
+  const start = dateRangeStart[key] || ''
+  const end = dateRangeEnd[key] || ''
+  return start || end ? [start, end] : null
+}
+
+const updateDateRange = (key: string, value: DateRangeValue) => {
+  dateRangeStart[key] = value?.[0] || ''
+  dateRangeEnd[key] = value?.[1] || ''
+}
+
 const getFilterOptions = (filter: FilterConfig): string[] => {
   if (filter.type === 'editable-select' && filter.editableOptions) {
     try {
@@ -789,25 +791,6 @@ watch(() => props.filterValues, (newValues) => {
     display: flex;
     align-items: center;
     gap: 4px;
-
-    .date-input {
-      height: 32px;
-      padding: 0 8px;
-      border: 1px solid var(--color-border);
-      border-radius: 4px;
-      font-size: 14px;
-      min-width: 100px;
-
-      &:focus {
-        outline: none;
-        border-color: var(--color-primary);
-      }
-    }
-
-    .date-separator {
-      font-size: 14px;
-      color: var(--color-info);
-    }
   }
 }
 
@@ -989,8 +972,7 @@ watch(() => props.filterValues, (newValues) => {
     font-weight: 500;
   }
 
-  .mobile-filter-select,
-  .mobile-date-input {
+  .mobile-filter-select {
     width: 100%;
     height: 44px;
     padding: 0 12px;
@@ -1008,15 +990,6 @@ watch(() => props.filterValues, (newValues) => {
     display: flex;
     align-items: center;
     gap: 8px;
-
-    .mobile-date-input {
-      flex: 1;
-    }
-
-    .mobile-date-separator {
-      font-size: 14px;
-      color: var(--color-info);
-    }
   }
 }
 

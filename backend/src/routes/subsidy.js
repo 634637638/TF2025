@@ -397,6 +397,8 @@ const upload = multer({
 const buildSubsidyFilters = (query) => {
   const {
     status,
+    approval_status,
+    arrival_status,
     customer_phone,
     customer_name,
     customer_idcard,
@@ -424,20 +426,36 @@ const buildSubsidyFilters = (query) => {
   const whereConditions = ['1=1']
   const queryParams = []
 
-  // 状态筛选
-  if (status) {
+  // 审批状态和到账状态是两个独立维度，分别筛选后用 AND 组合。
+  if (approval_status) {
+    if (approval_status === 'approved' || approval_status === 'completed') {
+      whereConditions.push('apply_time IS NOT NULL')
+    } else if (approval_status === 'pending') {
+      whereConditions.push('apply_time IS NULL')
+    } else {
+      whereConditions.push('apply_status = ?')
+      queryParams.push(approval_status)
+    }
+  }
+
+  if (arrival_status) {
+    if (arrival_status === 'arrived' || arrival_status === 'approved') {
+      whereConditions.push('arrival_time IS NOT NULL')
+    } else if (arrival_status === 'unarrived') {
+      whereConditions.push('arrival_time IS NULL')
+    }
+  }
+
+  // 兼容旧版调用方使用的单一 status 参数。
+  if (!approval_status && !arrival_status && status) {
     if (status === 'completed') {
-      // 已审批（前端现有语义更接近“已提交申请”）
       whereConditions.push('apply_time IS NOT NULL')
     } else if (status === 'approved') {
-      // 已到账
       whereConditions.push('arrival_time IS NOT NULL')
     } else if (status === 'unarrived') {
-      // 未到账：已经提交申请，但补贴尚未到账
       whereConditions.push('apply_time IS NOT NULL')
       whereConditions.push('arrival_time IS NULL')
     } else if (status === 'pending') {
-      // 未审批（当前业务实际期望：尚未提交申请）
       whereConditions.push('apply_time IS NULL')
     } else {
       whereConditions.push('apply_status = ?')

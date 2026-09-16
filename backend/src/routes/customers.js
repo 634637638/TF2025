@@ -293,36 +293,79 @@ router.get('/stats', unifiedAuth, requirePermission('customers:view'), async (re
   try {
     const { getDatabase } = require('../config/database')
     const db = getDatabase()
+    const conditions = []
+    const params = []
+    const {
+      customer_type,
+      vip_level,
+      search,
+      search_fields,
+      register_date_start,
+      register_date_end,
+      status
+    } = req.query
 
-    // 查询总客户数
-    const [totalResult] = await db.query('SELECT COUNT(*) as total FROM customers WHERE status = 1')
-    const total_customers = totalResult[0].total
-
-    // 查询活跃客户数（有消费记录的客户）
-    const [activeResult] = await db.query(`
-      SELECT COUNT(DISTINCT c.id) as active
-      FROM customers c
-      LEFT JOIN sales s ON c.id = s.customer_id
-      WHERE c.status = 1 AND s.id IS NOT NULL
-    `)
-    const active_customers = activeResult[0].active
-
-    // 查询新客户数（本月新增）
-    const [newResult] = await db.query(`
-      SELECT COUNT(*) as new_customers
-      FROM customers
-      WHERE status = 1
-        AND created_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01')
-    `)
-    const new_customers = newResult[0].new_customers
-
-    // 查询VIP客户数（非普通会员）
-    const [premiumResult] = await db.query(`
-      SELECT COUNT(*) as premium
-      FROM customers
-      WHERE status = 1 AND vip_level IN ('silver', 'gold', 'platinum')
-    `)
-    const premium_customers = premiumResult[0].premium
+    if (customer_type) {
+      conditions.push('c.customer_type = ?')
+      params.push(customer_type)
+    }
+    if (vip_level) {
+      conditions.push('c.vip_level = ?')
+      params.push(vip_level)
+    }
+    if (register_date_start) {
+      conditions.push('c.register_date >= ?')
+      params.push(`${register_date_start} 00:00:00`)
+    }
+    if (register_date_end) {
+      conditions.push('c.register_date <= ?')
+      params.push(`${register_date_end} 23:59:59`)
+    }
+    if (status === '') {
+      // 空字符串表示不过滤状态，与客户列表保持一致。
+    } else if (status !== undefined) {
+      conditions.push('c.status = ?')
+      params.push(parseInt(status) === 0 ? 0 : 1)
+    } else {
+      conditions.push('c.status = ?')
+      params.push(1)
+    }
+    if (search) {
+      const fieldMap = {
+        name: 'c.name', phone: 'c.phone', email: 'c.email', id_card: 'c.id_card',
+        member_number: 'c.member_number', company_name: 'c.name',
+        contact_person: 'c.name', address: 'c.address', remark: 'c.remarks', remarks: 'c.remarks'
+      }
+      const fields = String(search_fields || 'name,phone,email,id_card,member_number,company_name,contact_person,address,remarks')
+        .split(',')
+        .map(field => fieldMap[field.trim()])
+        .filter(Boolean)
+      if (fields.length) {
+        conditions.push(`(${fields.map(field => `${field} LIKE ?`).join(' OR ')})`)
+        params.push(...fields.map(() => `%${search}%`))
+      }
+    }
+    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
+    const queryParams = [params, params, params, params]
+    const [totalResult, activeResult, newResult, premiumResult] = await Promise.all([
+      db.query(`SELECT COUNT(*) AS total FROM customers c ${whereClause}`, queryParams[0]),
+      db.query(`
+        SELECT COUNT(DISTINCT CASE WHEN s.id IS NOT NULL THEN c.id END) AS active
+        FROM customers c LEFT JOIN sales s ON c.id = s.customer_id ${whereClause}
+      `, queryParams[1]),
+      db.query(`
+        SELECT COUNT(*) AS new_customers FROM customers c
+        ${whereClause} ${whereClause ? 'AND' : 'WHERE'} c.created_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01')
+      `, queryParams[2]),
+      db.query(`
+        SELECT COUNT(*) AS premium FROM customers c
+        ${whereClause} ${whereClause ? 'AND' : 'WHERE'} c.vip_level IN ('silver', 'gold', 'platinum')
+      `, queryParams[3])
+    ])
+    const total_customers = totalResult[0][0]?.total
+    const active_customers = activeResult[0][0]?.active
+    const new_customers = newResult[0][0]?.new_customers
+    const premium_customers = premiumResult[0][0]?.premium
 
     const stats = {
       total_customers: Number(total_customers) || 0,

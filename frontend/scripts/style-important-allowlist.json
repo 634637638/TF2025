@@ -2,8 +2,8 @@
   "files": [
     {
       "file": "src/styles/admin-layout.css",
-      "max": 322,
-      "reason": "Unified admin layout must override legacy page-scoped spacing and table shells."
+      "max": 361,
+      "reason": "Unified admin layout must override legacy page-scoped spacing, table shells, and statistic card colors."
     },
     {
       "file": "src/styles.scss",

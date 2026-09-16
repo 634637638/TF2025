@@ -313,12 +313,11 @@
             v-if="canViewField('banner.display_time')"
             label="展示时间"
           >
-            <el-date-picker
+            <DateRangePicker
               v-model="timeRange"
-              type="datetimerange"
-              range-separator="至"
               start-placeholder="开始时间"
               end-placeholder="结束时间"
+              picker-type="datetime"
               value-format="YYYY-MM-DD HH:mm:ss"
             />
             <template #tip>
@@ -365,6 +364,7 @@ import { fieldPermissions, shouldShowActionColumn } from '@/composables/useField
 import { deleteTempFiles } from '@/utils/temp-file-cleaner'
 import type { ShopBanner } from '@/api/shop'
 import { logger } from '@/utils/logger'
+import DateRangePicker from '@/components/DateRangePicker.vue'
 import type { HeaderAction } from '@/types'
 const authStore = useAuthStore()
 const bannerPermissions = usePagePermissions('h5-admin-banners')

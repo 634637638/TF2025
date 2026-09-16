@@ -10,7 +10,6 @@
       <PageHeader
         icon="fas fa-screwdriver-wrench"
         title="维修管理"
-        description="管理手机维修记录和进度"
       >
         <template #actions>
           <el-button
@@ -53,9 +52,9 @@
         >
           <div
             v-if="canViewRepairField('stats_pending')"
-            class="stat-card"
+            class="stat-card stat-card--warning"
           >
-            <div class="stat-icon pending">
+            <div class="stat-icon">
               <i class="fas fa-clock" />
             </div>
             <div class="stat-content">
@@ -69,9 +68,9 @@
           </div>
           <div
             v-if="canViewRepairField('stats_processing')"
-            class="stat-card"
+            class="stat-card stat-card--info"
           >
-            <div class="stat-icon processing">
+            <div class="stat-icon">
               <i class="fas fa-screwdriver-wrench" />
             </div>
             <div class="stat-content">
@@ -85,9 +84,9 @@
           </div>
           <div
             v-if="canViewRepairField('stats_completed')"
-            class="stat-card"
+            class="stat-card stat-card--success"
           >
-            <div class="stat-icon completed">
+            <div class="stat-icon">
               <i class="fas fa-circle-check" />
             </div>
             <div class="stat-content">
@@ -101,9 +100,9 @@
           </div>
           <div
             v-if="canViewRepairField('stats_monthly_revenue')"
-            class="stat-card"
+            class="stat-card stat-card--income"
           >
-            <div class="stat-icon revenue">
+            <div class="stat-icon">
               <i class="fas fa-yen-sign" />
             </div>
             <div class="stat-content">
@@ -740,14 +739,17 @@ const getStatusText = (status: RepairStatus) => ({
 const loadRepairs = async () => {
   loading.value = true
   try {
+    const filterParams = {
+      search: showRepairSearchField.value ? filters.search || undefined : undefined,
+      status: canViewRepairField('status') ? filters.status : undefined
+    }
     const [listResponse, statsResponse] = await Promise.all([
       repairsApi.list({
         page: pagination.page,
         page_size: pagination.page_size,
-        search: showRepairSearchField.value ? filters.search || undefined : undefined,
-        status: canViewRepairField('status') ? filters.status : undefined
+        ...filterParams
       }),
-      repairsApi.stats()
+      repairsApi.stats(filterParams)
     ])
     repairs.value = Array.isArray(listResponse?.data) ? listResponse.data : []
     pagination.page = Number(listResponse.pagination.page)
@@ -961,22 +963,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.stat-icon.pending {
-  background: var(--el-color-warning);
-}
-
-.stat-icon.processing {
-  background: var(--el-color-primary);
-}
-
-.stat-icon.completed {
-  background: var(--el-color-success);
-}
-
-.stat-icon.revenue {
-  background: var(--el-color-danger);
-}
-
 .repair-number,
 .amount-value,
 .time-value {

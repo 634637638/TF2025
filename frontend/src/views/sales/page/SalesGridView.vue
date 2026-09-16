@@ -8,7 +8,7 @@
     <DataEmptyState
       v-else-if="phones.length === 0"
       :state="hasActiveFilters ? 'filtered' : 'empty'"
-      :title="hasActiveFilters ? '未找到匹配的设备' : '暂无可销售设备'"
+      :title="hasActiveFilters ? '未找到匹配的设备' : '暂无设备数据'"
       :description="hasActiveFilters ? '尝试调整筛选条件或清空部分筛选条件' : '调整筛选条件或添加新的库存设备'"
     >
       <el-button
@@ -132,7 +132,7 @@
             class="card-actions"
           >
             <el-button
-              v-if="canCreate"
+              v-if="canCreate && isPhoneSaleActionAvailable(phone)"
               type="success"
               title="销售出库"
               size="small"
@@ -173,6 +173,7 @@ import Image from '@/components/Image.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import type { Phone } from '@/types'
+import { isPhoneSaleActionAvailable } from '../sales-phone-helpers'
 
 defineProps<{
   phones: Phone[]

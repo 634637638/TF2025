@@ -54,7 +54,7 @@
         <div class="table-section admin-panel admin-table-panel">
           <div class="section-title">
             <i class="fas fa-list" />
-            可销售设备列表
+            设备列表
             <span class="record-count">共 {{ pagination.total || 0 }} 条记录</span>
           </div>
 
@@ -123,7 +123,7 @@
             :get-phone-image-src="getPhoneImageSrc"
             :format-number="formatNumber"
             :format-date="formatDate"
-            @sale="openSaleModal"
+            @sale="handleSaleAction"
             @edit="editPhone"
             @delete="deletePhone"
             @reset-filters="resetFilters"
@@ -212,6 +212,7 @@
             v-model:show-customer-search="showCustomerSearch"
             :form="saleForm"
             :selected-customer="selectedCustomer"
+            :preorder-delivery="isPreorderDelivery"
             :customer-search-results="customerSearchResults"
             :customer-searching="customerSearching"
             :customer-creating="customerCreating"
@@ -839,7 +840,8 @@ const {
   clearBatchSelection,
   setDefaultOperator,
   submitBatchSale,
-  handleSale
+  handleSale,
+  isPreorderDelivery
 } = useSalesCheckout({
   saleForm,
   batchSaleForm,
@@ -930,14 +932,8 @@ const debounceLoadAvailablePhones = () => {
 // 加载统计数据（今日出库、平均利润率等）
 const loadSalesStats = async () => {
   try {
-    // 构建查询参数（与筛选条件一致）
-    const params: any = {}
-    if (canViewSaleField('supplier_name') && filters.supplier_id) params.supplier_id = filters.supplier_id
-    if (canViewSaleField('store_name') && filters.store_id) params.store_id = filters.store_id
-    if (canViewSaleField('brand') && filters.brand) params.brand = filters.brand
-    if (canViewSaleField('model') && filters.model) params.model = filters.model
-    if (canViewSaleField('color') && filters.color) params.color = filters.color
-    if (canViewSaleField('memory') && filters.memory) params.memory = filters.memory
+    // 使用与库存列表完全相同的筛选参数。
+    const params = buildAvailablePhoneParams(false)
 
     const response = await api.get('/sales/phones/available/stats', { params })
     if (response.success && response.data) {
@@ -961,6 +957,14 @@ const buildAvailablePhoneParams = (includePagination = true) => {
   const routePhoneId = String(route.query.sale_phone_id || '').trim()
   if (routePhoneId) {
     params.phone_id = routePhoneId
+    return params
+  }
+
+  const routePreorderId = String(route.query.preorder_id || '').trim()
+  const routeImei = String(route.query.imei || '').trim()
+  if (routePreorderId && routeImei) {
+    params.preorder_id = routePreorderId
+    params.search = routeImei
     return params
   }
 
@@ -1382,11 +1386,14 @@ const loadAvailablePhones = async (_bustCache = false, silentError = false, show
           const nextQuery = { ...route.query }
           delete nextQuery.imei
           delete nextQuery.preorder_id
+          delete nextQuery.sale_phone_id
+          delete nextQuery.auto_open_sale
           delete nextQuery.customer_id
           delete nextQuery.customer_name
           delete nextQuery.customer_phone
           delete nextQuery.expected_price
           delete nextQuery.advance_payment
+          clearStoredAutoOpenSalePhoneId()
           router.replace({ path: route.path, query: nextQuery })
         }
       }

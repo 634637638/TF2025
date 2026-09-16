@@ -95,8 +95,9 @@ export interface MatchablePhone {
   color_name?: string
   memory_size?: string
   store_name?: string
-  sale_price?: number
+  purchase_cost?: number
   is_new: number
+  is_current?: boolean
 }
 
 // 交付预定单参数
@@ -142,6 +143,11 @@ export async function getPreorders(params?: {
   page_size?: number
   status?: PreorderStatus
   customer_id?: number
+  store_id?: number
+  brand_id?: number
+  model_id?: number
+  color_id?: number
+  memory_id?: number
   search?: string
   start_date?: string
   end_date?: string

@@ -113,6 +113,49 @@ router.get('/', requirePermission('suppliers:view'), async (req, res) => {
   }
 })
 
+// 获取供应商汇总统计。统计条件必须与列表保持一致，但不受分页影响。
+router.get('/stats', requirePermission('suppliers:view'), async (req, res) => {
+  try {
+    if (!isConnected()) return ApiResponse.error(res, '数据库未连接', 500)
+
+    const normalizedName = normalizeNullableString(req.query.name)
+    const statusValue = parseStatus(req.query.status)
+    if (statusValue === undefined) return ApiResponse.badRequest(res, '供应商状态只能是0或1')
+
+    const conditions = []
+    const params = []
+    if (normalizedName) {
+      conditions.push('name LIKE ?')
+      params.push(`%${normalizedName}%`)
+    }
+    if (statusValue !== null) {
+      conditions.push('status = ?')
+      params.push(statusValue)
+    }
+
+    const whereClause = conditions.length ? ` WHERE ${conditions.join(' AND ')}` : ''
+    const [rows] = await getDatabase().execute(
+      `SELECT
+         COUNT(*) AS total,
+         SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) AS active,
+         SUM(CASE WHEN status = 0 THEN 1 ELSE 0 END) AS inactive,
+         SUM(CASE WHEN phone IS NOT NULL AND TRIM(phone) <> '' THEN 1 ELSE 0 END) AS phone_completion
+       FROM suppliers${whereClause}`,
+      params
+    )
+    const row = rows[0] || {}
+    return ApiResponse.success(res, {
+      total: Number(row.total) || 0,
+      active: Number(row.active) || 0,
+      inactive: Number(row.inactive) || 0,
+      phone_completion: Number(row.phone_completion) || 0
+    }, '获取供应商统计成功')
+  } catch (error) {
+    log.error('获取供应商统计失败:', error)
+    return ApiResponse.error(res, '获取供应商统计失败', 500)
+  }
+})
+
 // 导出供应商
 router.get('/export', requirePermission('suppliers:export'), async (req, res) => {
   try {

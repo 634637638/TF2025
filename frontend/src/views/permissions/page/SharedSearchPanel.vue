@@ -231,10 +231,8 @@
         v-if="ctx.canViewPermissionsField('logs.created_at')"
         class="form-group filter-item"
       >
-        <el-date-picker
+        <DateRangePicker
           v-model="ctx.logSearchForm.dateRange"
-          type="daterange"
-          range-separator="至"
           start-placeholder="开始日期"
           end-placeholder="结束日期"
           format="YYYY-MM-DD"
@@ -250,6 +248,7 @@
 
 <script setup lang="ts">
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
+import DateRangePicker from '@/components/DateRangePicker.vue'
 import { usePermissionsPageContext } from './context'
 
 const ctx = usePermissionsPageContext()

@@ -189,7 +189,7 @@ import InventorySearchFilters from './page/InventorySearchFilters.vue'
 import InventoryEditDialog from './page/InventoryEditDialog.vue'
 import { useInventoryBaseOptions } from './useInventoryBaseOptions'
 import { useInventoryData } from './useInventoryData'
-import { PHONE_STATUS_OPTIONS, getPhoneStatusClass, getPhoneStatusLabel, normalizePhoneStatus } from '@/constants/phoneStatuses'
+import { PHONE_STATUS_OPTIONS, getPhoneStatusClass, getPhoneStatusLabel, normalizePhoneStatus, getEffectivePhoneStatus } from '@/constants/phoneStatuses'
 import type { InventoryItem } from '@/types'
 
 const InventoryDetailModal = defineAsyncComponent(() => import('@/components/InventoryDetailModal.vue'))
@@ -489,9 +489,9 @@ const inventoryActionColumnWidth = computed(() => getAdaptiveActionColumnWidth(
   inventory.value,
   [
     true,
-    item => canCreate.value && item.status === 'in_stock',
-    item => canEdit.value && item.status === 'in_stock',
-    item => canDelete.value && item.status === 'in_stock'
+    item => canCreate.value && ['in_stock', 'reserved'].includes(getEffectivePhoneStatus(item)),
+    item => canEdit.value && ['in_stock', 'reserved'].includes(getEffectivePhoneStatus(item)),
+    item => canDelete.value && ['in_stock', 'reserved'].includes(getEffectivePhoneStatus(item))
   ]
 ))
 
@@ -650,35 +650,35 @@ const showStatsCards = computed(() => (
 const statCards = computed(() => ([
   {
     key: 'total',
+    accentClass: 'stat-card--primary',
     permission: 'stats_total_phones',
     label: '手机总数',
     value: statsAvailable.value ? stats.total : '暂无数据',
-    icon: 'fas fa-mobile-alt',
-    iconClass: ''
+    icon: 'fas fa-mobile-alt'
   },
   {
     key: 'inStock',
+    accentClass: 'stat-card--new',
     permission: 'stats_new_phones',
     label: '全新机数量',
     value: statsAvailable.value ? stats.inStock : '暂无数据',
-    icon: 'fas fa-box',
-    iconClass: 'in-stock'
+    icon: 'fas fa-box'
   },
   {
     key: 'sold',
+    accentClass: 'stat-card--used',
     permission: 'stats_used_phones',
     label: '二手机数量',
     value: statsAvailable.value ? stats.sold : '暂无数据',
-    icon: 'fas fa-check-circle',
-    iconClass: 'sold'
+    icon: 'fas fa-check-circle'
   },
   {
     key: 'totalValue',
+    accentClass: 'stat-card--money',
     permission: 'stats_inventory_value',
     label: '库存总值',
     value: statsAvailable.value ? `¥${formatNumber(stats.totalValue)}` : '暂无数据',
-    icon: 'fas fa-dollar-sign',
-    iconClass: ''
+    icon: 'fas fa-dollar-sign'
   }
 ]).filter(stat => canViewField(stat.permission)))
 
@@ -1034,7 +1034,7 @@ const editItem = async (item: InventoryItem) => {
   }
 
   // 维修中和租赁中的设备由对应业务模块维护；全局管理员可应急修正。
-  if (item.status !== 'in_stock' && !authStore.isAdmin) {
+  if (!['in_stock', 'reserved'].includes(getEffectivePhoneStatus(item)) && !authStore.isAdmin) {
     error('只有在库状态的商品才能编辑')
     return
   }
@@ -1469,8 +1469,14 @@ const quickSaleItem = (item: InventoryItem) => {
     return
   }
 
-  if (item.status !== 'in_stock') {
-    warning('只有在库商品才能出库')
+  const effectiveStatus = getEffectivePhoneStatus(item)
+  if (!['in_stock', 'reserved'].includes(effectiveStatus)) {
+    warning('当前状态不能销售出库')
+    return
+  }
+
+  if (effectiveStatus === 'reserved' && !item.preorder_id) {
+    warning('该设备已预订，但未找到有效预定单，请先核对预定记录')
     return
   }
 
@@ -1484,7 +1490,18 @@ const quickSaleItem = (item: InventoryItem) => {
     path: '/sales',
     query: {
       sale_phone_id: String(item.id),
-      auto_open_sale: '1'
+      auto_open_sale: '1',
+      ...(effectiveStatus === 'reserved'
+        ? {
+            imei: item.imei || '',
+            preorder_id: String(item.preorder_id),
+            customer_id: String(item.preorder_customer_id || ''),
+            customer_name: item.preorder_customer_name || '',
+            customer_phone: item.preorder_customer_phone || '',
+            expected_price: String(item.preorder_actual_price || item.preorder_total_price || ''),
+            advance_payment: String(item.preorder_deposit_amount || '')
+          }
+        : {})
     }
   })
 }
@@ -1500,23 +1517,11 @@ const _getStatusText = (status: string) => {
 
 // 销售状态（综合判断）
 const getSaleStatusClass = (item: InventoryItem) => {
-  if (item.is_preordered) return 'reserved'
-  if (item.status === 'repair') return 'repair'
-  if (item.status === 'rented') return 'rented'
-  if (item.status === 'sold') return 'sold'
-  if (item.status === 'reserved') return 'reserved'
-  if (item.status === 'lost') return 'lost'
-  return 'in-stock' // 可售
+  return getPhoneStatusClass(getEffectivePhoneStatus(item)) || 'in-stock'
 }
 
 const getSaleStatusLabel = (item: InventoryItem) => {
-  if (item.is_preordered) return '已预订'
-  if (item.status === 'repair') return '维修'
-  if (item.status === 'rented') return '租赁'
-  if (item.status === 'sold') return '已售'
-  if (item.status === 'reserved') return '预定'
-  if (item.status === 'lost') return '丢失'
-  return '可售'
+  return getPhoneStatusLabel(getEffectivePhoneStatus(item)) || '可售'
 }
 
 const formatDate = (dateString?: string) => {
@@ -3052,47 +3057,6 @@ const _handleSelect = (item: InventoryItem) => {
 
 .user-info-section {
   margin-right: 16px;
-}
-
-.stat-icon.in-stock {
-  background: var(--tf-button-success-bg);
-}
-
-.stat-icon.sold {
-  background: var(--tf-button-danger-bg);
-}
-
-/* 为每个统计卡片设置不同的图标颜色和顶部边框 */
-.stat-card:nth-child(1) {
-  --card-accent: var(--tf-button-primary-bg);
-}
-
-.stat-card:nth-child(1) .stat-icon {
-  background: var(--tf-button-primary-bg);
-}
-
-.stat-card:nth-child(2) {
-  --card-accent: var(--tf-button-success-bg);
-}
-
-.stat-card:nth-child(2) .stat-icon {
-  background: var(--tf-button-success-bg);
-}
-
-.stat-card:nth-child(3) {
-  --card-accent: var(--tf-button-warning-bg);
-}
-
-.stat-card:nth-child(3) .stat-icon {
-  background: var(--tf-button-warning-bg);
-}
-
-.stat-card:nth-child(4) {
-  --card-accent: var(--tf-button-transfer-bg);
-}
-
-.stat-card:nth-child(4) .stat-icon {
-  background: var(--tf-button-transfer-bg);
 }
 
 /* 基础表单组样式 */

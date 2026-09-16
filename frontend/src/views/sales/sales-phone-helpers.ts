@@ -1,6 +1,11 @@
 import type { Phone } from '@/types'
 import { generateProductPlaceholder } from '@/utils/format'
 import { logger } from '@/utils/logger'
+import {
+  getEffectivePhoneStatus,
+  isPhoneSaleActionAvailable,
+  isPhoneSellable
+} from '@/constants/phoneStatuses'
 
 // API responses include a few operational statuses that are not part of the
 // canonical Phone type (for example repair/rented/lost). Keep this display
@@ -15,23 +20,32 @@ const placeholderCache = new Map<string, string>()
 export const getNewConditionLabel = (isNew: boolean): string => isNew ? '全新' : '二手'
 
 export const getSaleStatusClass = (phone: SalesStatusPhone): string => {
-  if (phone.is_preordered || phone.status === 'reserved') return 'reserved'
-  if (phone.status === 'repair') return 'repair'
-  if (phone.status === 'rented') return 'rented'
-  if (phone.status === 'sold') return 'sold'
-  if (phone.status === 'lost') return 'lost'
+  const status = getEffectivePhoneStatus(phone)
+  if (status === 'reserved') return 'reserved'
+  if (status === 'repair') return 'repair'
+  if (status === 'rented') return 'rented'
+  if (status === 'sold') return 'sold'
+  if (status === 'lost') return 'lost'
+  if (status === 'damaged') return 'damaged'
+  if (status === 'peer_transfer') return 'peer-transfer'
+  if (status === 'supplier_proxy') return 'supplier-proxy'
   return 'in-stock'
 }
 
 export const getSaleStatusLabel = (phone: SalesStatusPhone): string => {
-  if (phone.is_preordered) return '已预订'
-  if (phone.status === 'repair') return '维修'
-  if (phone.status === 'rented') return '租赁'
-  if (phone.status === 'sold') return '已售'
-  if (phone.status === 'reserved') return '预定'
-  if (phone.status === 'lost') return '丢失'
+  const status = getEffectivePhoneStatus(phone)
+  if (status === 'reserved') return '预订'
+  if (status === 'repair') return '维修'
+  if (status === 'rented') return '租赁'
+  if (status === 'sold') return '已售'
+  if (status === 'lost') return '丢失'
+  if (status === 'damaged') return '损坏'
+  if (status === 'peer_transfer') return '调货'
+  if (status === 'supplier_proxy') return '划拨'
   return '可售'
 }
+
+export { isPhoneSaleActionAvailable, isPhoneSellable }
 
 export const findPhoneByRouteId = (
   records: readonly Phone[],

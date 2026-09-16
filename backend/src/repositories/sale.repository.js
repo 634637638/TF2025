@@ -277,6 +277,7 @@ class SaleRepository extends BaseRepository {
       const query = `
         UPDATE phones
         SET status = 'sold',
+            is_preordered = 0,
             sale_id = ?,
             sale_operator_id = ?,
             sale_price = ?,
@@ -754,6 +755,7 @@ class SaleRepository extends BaseRepository {
       const query = `
         UPDATE phones
         SET status = 'sold',
+            is_preordered = 0,
             sale_id = CASE id ${saleIdCases} END,
             sale_operator_id = CASE id ${saleOperatorIdCases} END,
             sale_time = CURRENT_TIMESTAMP

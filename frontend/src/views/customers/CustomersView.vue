@@ -61,7 +61,7 @@
           >
             <div
               v-if="canViewField('stats_total_customers')"
-              class="stat-card"
+              class="stat-card stat-card--primary"
             >
               <div class="stat-icon">
                 <i class="fas fa-users" />
@@ -77,9 +77,9 @@
             </div>
             <div
               v-if="canViewField('stats_active_customers')"
-              class="stat-card"
+              class="stat-card stat-card--success"
             >
-              <div class="stat-icon active">
+              <div class="stat-icon">
                 <i class="fas fa-user-check" />
               </div>
               <div class="stat-content">
@@ -93,9 +93,9 @@
             </div>
             <div
               v-if="canViewField('stats_new_customers')"
-              class="stat-card"
+              class="stat-card stat-card--success"
             >
-              <div class="stat-icon recent">
+              <div class="stat-icon">
                 <i class="fas fa-clock" />
               </div>
               <div class="stat-content">
@@ -109,9 +109,9 @@
             </div>
             <div
               v-if="canViewField('stats_premium_customers')"
-              class="stat-card"
+              class="stat-card stat-card--accent"
             >
-              <div class="stat-icon premium">
+              <div class="stat-icon">
                 <i class="fas fa-crown" />
               </div>
               <div class="stat-content">
@@ -230,10 +230,8 @@
               class="form-group filter-item"
               data-field="register_date"
             >
-              <el-date-picker
+              <DateRangePicker
                 v-model="register_date_range"
-                type="daterange"
-                range-separator="至"
                 start-placeholder="注册开始日期"
                 end-placeholder="注册结束日期"
                 value-format="YYYY-MM-DD"
@@ -1373,7 +1371,7 @@
                     v-if="canViewField('balance')"
                     class="stat-item"
                   >
-                    <div class="stat-icon balance">
+                    <div class="stat-icon stat-icon--success">
                       <i class="fas fa-wallet" />
                     </div>
                     <div class="stat-content">
@@ -1389,7 +1387,7 @@
                     v-if="canViewField('points')"
                     class="stat-item"
                   >
-                    <div class="stat-icon points">
+                    <div class="stat-icon stat-icon--warning">
                       <i class="fas fa-star" />
                     </div>
                     <div class="stat-content">
@@ -1405,7 +1403,7 @@
                     v-if="canViewField('total_spent')"
                     class="stat-item"
                   >
-                    <div class="stat-icon spent">
+                    <div class="stat-icon stat-icon--danger">
                       <i class="fas fa-shopping-cart" />
                     </div>
                     <div class="stat-content">
@@ -1421,7 +1419,7 @@
                     v-if="canViewField('purchase_count')"
                     class="stat-item"
                   >
-                    <div class="stat-icon count">
+                    <div class="stat-icon stat-icon--info">
                       <i class="fas fa-shopping-bag" />
                     </div>
                     <div class="stat-content">
@@ -1674,7 +1672,6 @@ import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useLoadingState } from '@/composables'
 import { useImportExport } from '@/composables/useImportExport'
 import { useRefreshData } from '@/composables/useRefreshData'
-import { useCachedRequest, DEFAULT_CACHE_TTL } from '@/composables/usePageCache'
 import { useSearchHighlight } from '@/composables/useSearchHighlight'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { unifiedApi } from '@/utils/unified-api'
@@ -1683,6 +1680,7 @@ import { ElButton, ElMessageBox, ElTable } from 'element-plus'
 import Pagination from '../../components/Pagination.vue'
 import CitySelector from '../../components/CitySelector.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
+import DateRangePicker from '@/components/DateRangePicker.vue'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { PermissionGate, PageHeader } from '@/components/base'
@@ -2578,11 +2576,6 @@ const loadCustomers = async (showLoadingState = true) => {
   }
 }
 
-// 缓存键
-const CACHE_KEYS = {
-  customerStats: '/customers/stats'
-}
-
 const loadStats = async () => {
   if (!canView.value) {
     Object.assign(stats, {
@@ -2595,8 +2588,17 @@ const loadStats = async () => {
   }
 
   try {
-    const response = await useCachedRequest(CACHE_KEYS.customerStats, () =>
-      unifiedApi.get('/customers/stats'), DEFAULT_CACHE_TTL.STATIC)
+    const params: Record<string, string> = {}
+    if (searchKeyword.value) {
+      params.search = searchKeyword.value.trim()
+      params.search_fields = 'name,phone,email,member_number,company_name,contact_person,address,remark'
+    }
+    if (filterValues.customer_type) params.customer_type = filterValues.customer_type
+    if (filterValues.status) params.status = filterValues.status
+    if (filterValues.vip_level) params.vip_level = filterValues.vip_level
+    if (filterValues.register_date_start) params.register_date_start = filterValues.register_date_start
+    if (filterValues.register_date_end) params.register_date_end = filterValues.register_date_end
+    const response = await unifiedApi.get('/customers/stats', { params, useCache: false })
     if (response.success) {
       const data = response.data || {}
       Object.assign(stats, {
@@ -3208,23 +3210,6 @@ onUnmounted(() => {
   }
 }
 
-.stat-icon {
-  background: linear-gradient(135deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand));
-  color: white;
-
-  &.active {
-    background: linear-gradient(135deg, var(--success-color), var(--tf-color-teal-500));
-  }
-
-  &.recent {
-    background: linear-gradient(135deg, var(--warning-color), var(--tf-color-orange-material-500));
-  }
-
-  &.premium {
-    background: linear-gradient(135deg, var(--danger-color), var(--tf-color-orange-bootstrap));
-  }
-}
-
 .customers-data-table {
   .account-info,
   .location-info,
@@ -3772,25 +3757,6 @@ onUnmounted(() => {
           justify-content: center;
           font-size: 18px;
 
-          &.balance {
-            background: linear-gradient(135deg, var(--tf-color-green-700), var(--tf-color-teal-500));
-            color: white;
-          }
-
-          &.points {
-            background: linear-gradient(135deg, var(--tf-color-orange-bootstrap), var(--warning-color));
-            color: white;
-          }
-
-          &.spent {
-            background: linear-gradient(135deg, var(--danger-color), var(--tf-color-red-legacy));
-            color: white;
-          }
-
-          &.count {
-            background: linear-gradient(135deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand));
-            color: white;
-          }
         }
 
         .stat-content {

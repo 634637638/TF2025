@@ -47,9 +47,9 @@
           <!-- 主要统计 - 3个关键指标 -->
           <div
             v-if="canViewPaymentField('stats_unpaid_count')"
-            class="stat-card stat-card-unpaid"
+            class="stat-card stat-card--warning"
           >
-            <div class="stat-icon-primary unpaid-icon">
+            <div class="stat-icon">
               <i class="fas fa-clock" />
             </div>
             <div class="stat-content">
@@ -72,9 +72,9 @@
 
           <div
             v-if="canViewPaymentField('stats_paid_count')"
-            class="stat-card stat-card-paid"
+            class="stat-card stat-card--income"
           >
-            <div class="stat-icon-primary paid-icon">
+            <div class="stat-icon">
               <i class="fas fa-check-double" />
             </div>
             <div class="stat-content">
@@ -97,9 +97,9 @@
 
           <div
             v-if="canViewPaymentField('stats_total_count')"
-            class="stat-card stat-card-total"
+            class="stat-card stat-card--primary"
           >
-            <div class="stat-icon-primary total-icon">
+            <div class="stat-icon">
               <i class="fas fa-mobile-alt" />
             </div>
             <div class="stat-content">
@@ -122,9 +122,9 @@
 
           <div
             v-if="canViewPaymentField('supplier_name')"
-            class="stat-card stat-card-supplier"
+            class="stat-card stat-card--info"
           >
-            <div class="stat-icon-primary supplier-icon">
+            <div class="stat-icon">
               <i class="fas fa-truck-loading" />
             </div>
             <div class="stat-content">
@@ -1777,6 +1777,7 @@ interface SupplierPaymentSummary {
   total_unpaid_amount: number | string
   total_paid_count: number
   total_paid_amount: number | string
+  supplier_count: number
 }
 
 interface SupplierPaymentPhone {
@@ -2170,7 +2171,8 @@ const summaryStatistics = ref<SupplierPaymentSummary>({
   total_unpaid_count: 0,
   total_unpaid_amount: 0,
   total_paid_count: 0,
-  total_paid_amount: 0
+  total_paid_amount: 0,
+  supplier_count: 0
 })
 const phones = ref<SupplierPaymentPhone[]>([])
 const paymentActionColumnWidth = computed(() => getAdaptiveActionColumnWidth(
@@ -2423,32 +2425,14 @@ const editPaymentForm = reactive({
 })
 
 // 计算卡片统计数据：根据当前筛选条件动态计算
-const currentSupplierStats = computed(() => {
-  if (!filters.supplier_id) return null
-  return statistics.value.find((supplierStat) => supplierStat.supplier_id === Number.parseInt(filters.supplier_id, 10)) || null
-})
-
 const currentSupplierCount = computed(() => {
-  const statsList = Array.isArray(statistics.value) ? statistics.value : []
-
-  if (filters.supplier_id && currentSupplierStats.value) {
-    return 1
-  }
-
-  if (filters.payment_status === 'paid') {
-    return statsList.filter((item) => Number(item?.paid_count || 0) > 0).length
-  }
-
-  if (filters.payment_status === 'unpaid') {
-    return statsList.filter((item) => Number(item?.unpaid_count || 0) > 0).length
-  }
-
-  return statsList.length
+  return Number(summaryStatistics.value.supplier_count || 0)
 })
 
 const currentSupplierMeta = computed(() => {
-  if (filters.supplier_id && currentSupplierStats.value?.supplier_name) {
-    return currentSupplierStats.value.supplier_name
+  if (filters.supplier_id) {
+    const supplier = statistics.value.find((item) => item.supplier_id === Number.parseInt(filters.supplier_id, 10))
+    if (supplier?.supplier_name) return supplier.supplier_name
   }
 
   if (filters.payment_status === 'paid') {
@@ -2464,14 +2448,8 @@ const currentSupplierMeta = computed(() => {
 
 // 当前筛选条件下的统计数据 - 使用实际加载数据
 const currentTotalCount = computed(() => {
-  if (hasFilters.value) {
-    // 有筛选条件时，使用实际分页的总数
-    return pagination.total
-  } else {
-    // 无筛选条件时，使用全局统计数据
-    return Number(summaryStatistics.value.total_unpaid_count || 0)
-      + Number(summaryStatistics.value.total_paid_count || 0)
-  }
+  return Number(summaryStatistics.value.total_unpaid_count || 0)
+    + Number(summaryStatistics.value.total_paid_count || 0)
 })
 
 const togglePaymentMobileActions = (phoneId: number) => {
@@ -2509,124 +2487,25 @@ const getPaymentDialogRowClassName = ({ row }: { row: SupplierPaymentPhone }) =>
 const getPaymentDialogCellClassName = () => 'complete-text-column'
 
 const currentTotalAmount = computed(() => {
-  if (hasFilters.value) {
-    // 有筛选条件时，根据当前筛选的手机列表计算总金额
-    return phones.value.reduce((sum: number, phone) => {
-      return sum + toNumber(phone?.purchase_cost)
-    }, 0)
-  } else {
-    // 无筛选条件时，使用全局统计数据
-    return Number(summaryStatistics.value.total_unpaid_amount || 0)
-      + Number(summaryStatistics.value.total_paid_amount || 0)
-  }
-})
-
-// 检查是否有筛选条件（除了默认的 'all' 值）
-const hasFilters = computed(() => {
-  return !!(
-    (showPaymentSearchKeyword.value && filters.keyword) ||
-    (canViewPaymentField('sale_time') && filters.start_date) ||
-    (canViewPaymentField('sale_time') && filters.end_date) ||
-    (canViewPaymentField('sale_status') && filters.sale_status !== 'all')
-  )
+  return Number(summaryStatistics.value.total_unpaid_amount || 0)
+    + Number(summaryStatistics.value.total_paid_amount || 0)
 })
 
 // 基于实际加载数据计算当前筛选条件下的统计
 const currentUnpaidCount = computed(() => {
-  if (hasFilters.value) {
-    // 有筛选条件时，使用当前页面的数据
-    return phones.value.filter((phone) => phone.payment_status === 'unpaid').length
-  } else {
-    // 无筛选条件或只筛选供应商/打款状态时，使用统计数据
-    if (filters.supplier_id && currentSupplierStats.value) {
-      // 按供应商筛选时，如果还按打款状态筛选，需要相应调整
-      if (filters.payment_status === 'paid') {
-        return 0
-      }
-      return Number(currentSupplierStats.value.unpaid_count || 0)
-    }
-    // 按打款状态筛选时使用全局统计
-    if (filters.payment_status === 'unpaid') {
-      return Number(summaryStatistics.value.total_unpaid_count || 0)
-    } else if (filters.payment_status === 'paid') {
-      return 0 // 如果选了"已打款"但这里要显示"待打款"，返回0
-    }
-    // 默认显示全部未打款
-    return Number(summaryStatistics.value.total_unpaid_count || 0)
-  }
+  return Number(summaryStatistics.value.total_unpaid_count || 0)
 })
 
 const currentUnpaidAmount = computed(() => {
-  if (hasFilters.value) {
-    // 有筛选条件时，使用当前页面的数据
-    return phones.value
-      .filter((phone) => phone.payment_status === 'unpaid')
-      .reduce((sum: number, phone) => sum + toNumber(phone?.purchase_cost), 0)
-  } else {
-    // 无筛选条件或只筛选供应商/打款状态时，使用统计数据
-    if (filters.supplier_id && currentSupplierStats.value) {
-      // 按供应商筛选时，如果还按打款状态筛选，需要相应调整
-      if (filters.payment_status === 'paid') {
-        return 0
-      }
-      return Number(currentSupplierStats.value.unpaid_amount || 0)
-    }
-    // 按打款状态筛选时使用全局统计
-    if (filters.payment_status === 'unpaid') {
-      return Number(summaryStatistics.value.total_unpaid_amount || 0)
-    } else if (filters.payment_status === 'paid') {
-      return 0
-    }
-    return Number(summaryStatistics.value.total_unpaid_amount || 0)
-  }
+  return Number(summaryStatistics.value.total_unpaid_amount || 0)
 })
 
 const currentPaidCount = computed(() => {
-  if (hasFilters.value) {
-    // 有筛选条件时，使用当前页面的数据
-    return phones.value.filter((phone) => phone.payment_status === 'paid').length
-  } else {
-    // 无筛选条件或只筛选供应商/打款状态时，使用统计数据
-    if (filters.supplier_id && currentSupplierStats.value) {
-      // 按供应商筛选时，如果还按打款状态筛选，需要相应调整
-      if (filters.payment_status === 'unpaid') {
-        return 0
-      }
-      return Number(currentSupplierStats.value.paid_count || 0)
-    }
-    // 按打款状态筛选时使用全局统计
-    if (filters.payment_status === 'paid') {
-      return Number(summaryStatistics.value.total_paid_count || 0)
-    } else if (filters.payment_status === 'unpaid') {
-      return 0
-    }
-    return Number(summaryStatistics.value.total_paid_count || 0)
-  }
+  return Number(summaryStatistics.value.total_paid_count || 0)
 })
 
 const currentPaidAmount = computed(() => {
-  if (hasFilters.value) {
-    // 有筛选条件时，使用当前页面的数据
-    return phones.value
-      .filter((phone) => phone.payment_status === 'paid')
-      .reduce((sum: number, phone) => sum + toNumber(phone?.purchase_cost), 0)
-  } else {
-    // 无筛选条件或只筛选供应商/打款状态时，使用统计数据
-    if (filters.supplier_id && currentSupplierStats.value) {
-      // 按供应商筛选时，如果还按打款状态筛选，需要相应调整
-      if (filters.payment_status === 'unpaid') {
-        return 0
-      }
-      return Number(currentSupplierStats.value.paid_amount || 0)
-    }
-    // 按打款状态筛选时使用全局统计
-    if (filters.payment_status === 'paid') {
-      return Number(summaryStatistics.value.total_paid_amount || 0)
-    } else if (filters.payment_status === 'unpaid') {
-      return 0
-    }
-    return Number(summaryStatistics.value.total_paid_amount || 0)
-  }
+  return Number(summaryStatistics.value.total_paid_amount || 0)
 })
 
 // 保留旧的计算属性以兼容现有代码
@@ -2702,9 +2581,7 @@ const loadStatistics = async (showLoadingState = true) => {
 const loadSummaryStatistics = async () => {
   try {
     const response = await unifiedApi.get('/supplier-payments/summary-statistics', {
-      params: {
-        sale_status: canViewPaymentField('sale_status') ? filters.sale_status : 'all'
-      }
+      params: buildPaymentListParams(false)
     }) as SupplierPaymentApiResponse<Partial<SupplierPaymentSummary>>
 
     if (response.success) {
@@ -2712,7 +2589,8 @@ const loadSummaryStatistics = async () => {
         total_unpaid_count: Number(response.data?.total_unpaid_count || 0),
         total_unpaid_amount: response.data?.total_unpaid_amount || 0,
         total_paid_count: Number(response.data?.total_paid_count || 0),
-        total_paid_amount: response.data?.total_paid_amount || 0
+        total_paid_amount: response.data?.total_paid_amount || 0,
+        supplier_count: Number(response.data?.supplier_count || 0)
       }
     }
   } catch (err: unknown) {
@@ -3472,179 +3350,12 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .supplier-phone-payments-view {
-  // 统计卡片样式
-  .stats-cards {
-    .stat-card {
-      background: var(--color-bg-white);
-      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-      border: 1px solid var(--tf-color-border-cool);
-      transition: all 0.3s ease;
-
-      &:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
-      }
-
-      .stat-icon-primary {
-        width: 48px;
-        height: 48px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 20px;
-        flex-shrink: 0;
-
-        &.unpaid-icon {
-          background: linear-gradient(135deg, var(--danger-color), var(--tf-color-orange-bootstrap));
-          color: white;
-        }
-
-        &.paid-icon {
-          background: linear-gradient(135deg, var(--success-color), var(--tf-color-teal-500));
-          color: white;
-        }
-
-        &.total-icon {
-          background: linear-gradient(135deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand));
-          color: white;
-        }
-
-        &.supplier-icon {
-          background: linear-gradient(135deg, var(--tf-color-sky-500), var(--tf-color-teal-tailwind-500));
-          color: white;
-        }
-      }
-
-      .stat-content {
-        flex: 1;
-
-        .stat-main-line {
-          display: flex;
-          align-items: baseline;
-          justify-content: space-between;
-          gap: 8px;
-          margin-bottom: 6px;
-        }
-
-        .stat-value-primary {
-          font-size: 24px;
-          font-weight: 700;
-          color: var(--tf-color-heading);
-          line-height: 1.1;
-          margin-bottom: 0;
-          white-space: nowrap;
-        }
-
-        .stat-label {
-          font-size: 14px;
-          color: var(--tf-color-gray-cool-500);
-          margin-bottom: 0;
-          font-weight: 500;
-          white-space: nowrap;
-        }
-
-        .stat-sub {
-          font-size: 13px;
-          color: var(--color-info);
-          font-weight: 700;
-        }
-      }
-    }
-  }
-
-  @media (max-width: 768px) {
-    .stats-cards {
-      .stat-card {
-        position: relative;
-        overflow: hidden;
-      }
-
-      .stat-card:hover {
-        transform: none;
-      }
-
-      .stat-card .stat-icon-primary {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        width: 24px;
-        height: 24px;
-        border-radius: 8px;
-        font-size: 11px;
-        opacity: 0.18;
-      }
-
-      .stat-card .stat-content {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        justify-content: flex-start;
-        width: 100%;
-        padding-right: 16px;
-      }
-
-      .stat-card .stat-content .stat-main-line {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        justify-content: flex-start;
-        gap: 4px;
-        margin-bottom: 4px;
-      }
-
-      .stat-card .stat-content .stat-label {
-        font-size: 11px;
-        line-height: 1.25;
-        white-space: nowrap;
-      }
-
-      .stat-card .stat-content .stat-value-primary {
-        font-size: 18px;
-        line-height: 1.1;
-        white-space: nowrap;
-      }
-
-      .stat-card .stat-content .stat-sub {
-        display: block;
-        font-size: 10px;
-        line-height: 1.2;
-        white-space: nowrap;
-      }
-    }
-  }
-
-  @media (max-width: 480px) {
-    .stats-cards {
-      .stat-card .stat-icon-primary {
-        top: 8px;
-        right: 8px;
-        width: 22px;
-        height: 22px;
-        border-radius: 7px;
-        font-size: 10px;
-      }
-
-      .stat-card .stat-content {
-        padding-right: 14px;
-      }
-
-      .stat-card .stat-content .stat-main-line {
-        gap: 2px;
-      }
-
-      .stat-card .stat-content .stat-label {
-        font-size: 10px;
-      }
-
-      .stat-card .stat-content .stat-value-primary {
-        font-size: 16px;
-      }
-
-      .stat-card .stat-content .stat-sub {
-        font-size: 9px;
-      }
-    }
+  .stat-main-line {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 6px;
   }
 
   .table-section {

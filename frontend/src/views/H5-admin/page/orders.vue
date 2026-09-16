@@ -10,7 +10,7 @@
     module-name="商城订单"
     permission-code="h5-orders:view"
   >
-    <div class="sales-management-page admin-page-content">
+    <div class="sales-management-page admin-page admin-page-content">
       <!-- 统计卡片 -->
       <div
         v-if="showStatsCards"
@@ -18,10 +18,10 @@
       >
         <div
           v-if="canViewOrderField('stats_total_orders')"
-          class="stat-card"
+          class="stat-card stat-card--primary"
           @click="filterByStatus('')"
         >
-          <div class="stat-icon bg-gradient-pending">
+          <div class="stat-icon">
             <i class="fas fa-shopping-cart" />
           </div>
           <div class="stat-content">
@@ -35,10 +35,10 @@
         </div>
         <div
           v-if="canViewOrderField('stats_pending_orders')"
-          class="stat-card"
+          class="stat-card stat-card--warning"
           @click="filterByStatus('pending')"
         >
-          <div class="stat-icon bg-gradient-processing">
+          <div class="stat-icon">
             <i class="fas fa-clock" />
           </div>
           <div class="stat-content">
@@ -52,10 +52,10 @@
         </div>
         <div
           v-if="canViewOrderField('stats_paid_orders')"
-          class="stat-card"
+          class="stat-card stat-card--info"
           @click="filterByStatus('paid')"
         >
-          <div class="stat-icon bg-gradient-shipped">
+          <div class="stat-icon">
             <i class="fas fa-hourglass-half" />
           </div>
           <div class="stat-content">
@@ -69,10 +69,10 @@
         </div>
         <div
           v-if="canViewOrderField('stats_confirmed_orders')"
-          class="stat-card"
+          class="stat-card stat-card--info"
           @click="filterByStatus('confirmed')"
         >
-          <div class="stat-icon bg-gradient-completed">
+          <div class="stat-icon">
             <i class="fas fa-check-circle" />
           </div>
           <div class="stat-content">
@@ -86,10 +86,10 @@
         </div>
         <div
           v-if="canViewOrderField('stats_shipped_orders')"
-          class="stat-card"
+          class="stat-card stat-card--success"
           @click="filterByStatus('shipped')"
         >
-          <div class="stat-icon bg-gradient-refunded">
+          <div class="stat-icon">
             <i class="fas fa-truck" />
           </div>
           <div class="stat-content">
@@ -103,10 +103,10 @@
         </div>
         <div
           v-if="canViewOrderField('stats_completed_orders')"
-          class="stat-card"
+          class="stat-card stat-card--success"
           @click="filterByStatus('completed')"
         >
-          <div class="stat-icon bg-gradient-cancelled">
+          <div class="stat-icon">
             <i class="fas fa-check-double" />
           </div>
           <div class="stat-content">
@@ -210,10 +210,8 @@
             v-if="canViewOrderField('filter_date_range')"
             label="下单时间"
           >
-            <el-date-picker
+            <DateRangePicker
               v-model="dateRange"
-              type="daterange"
-              range-separator="至"
               start-placeholder="开始日期"
               end-placeholder="结束日期"
               format="YYYY-MM-DD"
@@ -1073,6 +1071,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
 import { PermissionGate } from '@/components/base'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
+import DateRangePicker from '@/components/DateRangePicker.vue'
 import Pagination from '@/components/Pagination.vue'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
@@ -1119,7 +1118,7 @@ interface OrderStatistics {
   total?: { total_orders?: number }
   by_status?: Array<{ status: string; count: number }>
 }
-type OrderDateRange = [string, string] | []
+type OrderDateRange = [string, string] | [] | null
 
 const orderPermissions = usePagePermissions('h5-admin-orders')
 const { handleNoPermission } = orderPermissions
@@ -1223,6 +1222,19 @@ const ensureOrderViewPermission = () => {
   return false
 }
 
+const buildOrderQueryParams = (): Record<string, unknown> => {
+  const params: Record<string, unknown> = {}
+  if (filters.status) params.status = filters.status
+  if (filters.customer_name) params.customer_name = filters.customer_name
+  if (filters.customer_phone) params.customer_phone = filters.customer_phone
+  if (filters.order_number) params.order_number = filters.order_number
+  if (dateRange.value?.length === 2) {
+    params.start_date = dateRange.value[0]
+    params.end_date = dateRange.value[1]
+  }
+  return params
+}
+
 // 获取订单列表
 const loadOrders = async () => {
   if (!canView.value) {
@@ -1236,16 +1248,8 @@ const loadOrders = async () => {
   try {
     const params: Record<string, unknown> = {
       page: pagination.page,
-      page_size: pagination.page_size
-    }
-
-    if (filters.status) params.status = filters.status
-    if (filters.customer_name) params.customer_name = filters.customer_name
-    if (filters.customer_phone) params.customer_phone = filters.customer_phone
-    if (filters.order_number) params.order_number = filters.order_number
-    if (dateRange.value?.length === 2) {
-      params.start_date = dateRange.value[0]
-      params.end_date = dateRange.value[1]
+      page_size: pagination.page_size,
+      ...buildOrderQueryParams()
     }
 
     const response = await api.get('/sales-management/h5-orders', { params })
@@ -1272,11 +1276,7 @@ const loadStatistics = async () => {
   }
 
   try {
-    const params: Record<string, unknown> = {}
-    if (dateRange.value?.length === 2) {
-      params.start_date = dateRange.value[0]
-      params.end_date = dateRange.value[1]
-    }
+    const params = buildOrderQueryParams()
 
     const response = await api.get('/sales-management/h5-orders/statistics', { params })
     statistics.value = response.data
@@ -1728,63 +1728,6 @@ onUnmounted(() => {
   min-width: 0;
 }
 
-// 统计卡片
-.stats-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 16px;
-  margin-bottom: 20px;
-
-  .stat-card {
-    background: var(--color-bg-white);
-    border-radius: 12px;
-    padding: 20px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    transition: all 0.3s;
-
-    &:hover {
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-      transform: translateY(-2px);
-    }
-
-    .stat-icon {
-      width: 56px;
-      height: 56px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--color-bg-white);
-      font-size: 24px;
-
-      i {
-        font-size: 24px;
-      }
-    }
-
-    .stat-content {
-      flex: 1;
-
-      .stat-value {
-        font-size: 24px;
-        font-weight: 600;
-        color: var(--text-primary);
-        line-height: 1;
-      }
-
-      .stat-label {
-        font-size: 13px;
-        color: var(--text-muted);
-        margin-top: 4px;
-      }
-    }
-  }
-}
-
 // 筛选卡片
 .filter-card {
   margin-bottom: 16px;
@@ -2063,43 +2006,6 @@ onUnmounted(() => {
     width: 100%;
     padding: 0;
     overflow: hidden;
-  }
-
-  .stats-cards {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-    margin-bottom: 12px;
-
-    .stat-card {
-      gap: 9px;
-      min-width: 0;
-      padding: 10px;
-      border-radius: 14px;
-
-      .stat-icon {
-        width: 34px;
-        height: 34px;
-        flex: 0 0 34px;
-        border-radius: 10px;
-        font-size: 14px;
-
-        i {
-          font-size: 14px;
-        }
-      }
-
-      .stat-content {
-        min-width: 0;
-
-        .stat-value {
-          font-size: 18px;
-        }
-
-        .stat-label {
-          font-size: 11px;
-        }
-      }
-    }
   }
 
   .filter-card,

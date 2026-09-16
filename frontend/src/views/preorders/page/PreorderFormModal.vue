@@ -36,48 +36,15 @@
                 @keyup.enter="handleCustomerEnter"
                 @focus="showCustomerSearch = true"
               />
-              <!-- 客户搜索结果（仅创建模式显示） -->
-              <div
-                v-if="!isEditMode && showCustomerSearch && (customerSearchResults.length > 0 || customerSearching || (formData.customer_phone.length >= 3 && !selectedCustomer && !customerSearching))"
-                class="customer-search-results"
-              >
-                <div
-                  v-if="customerSearching"
-                  class="search-loading"
-                >
-                  <InlineLoading
-                    text="搜索中..."
-                    size="small"
-                  />
-                </div>
-                <template v-else>
-                  <div
-                    v-for="customer in customerSearchResults"
-                    :key="customer.id"
-                    class="customer-item"
-                    @click="selectCustomer(customer)"
-                  >
-                    <div class="customer-info">
-                      <div class="customer-name">
-                        {{ customer.name }}
-                      </div>
-                      <div class="customer-phone">
-                        {{ customer.phone }}
-                      </div>
-                    </div>
-                    <div class="customer-select">
-                      <i class="fas fa-check" />
-                    </div>
-                  </div>
-                  <div
-                    v-if="customerSearchResults.length === 0 && !selectedCustomer && !customerSearching && formData.customer_phone.length >= 3"
-                    class="no-customer-hint"
-                  >
-                    <i class="fas fa-info-circle" />
-                    未找到匹配的客户，请输入姓名创建新客户
-                  </div>
-                </template>
-              </div>
+              <CustomerSearchDropdown
+                :items="customerSearchResults"
+                :loading="customerSearching"
+                :visible="!isEditMode && showCustomerSearch && !selectedCustomer"
+                :keyword="formData.customer_phone"
+                :min-query-length="3"
+                @select="selectCustomer"
+                @create="prepareNewCustomer"
+              />
             </div>
           </el-form-item>
         </el-col>
@@ -115,6 +82,7 @@
         prop="customer_name"
       >
         <el-input
+          ref="customerNameInputRef"
           v-model="formData.customer_name"
           placeholder="请输入客户姓名"
           :disabled="isEditMode || !!selectedCustomer"
@@ -410,7 +378,7 @@ import {
 } from '../preorder-field-permissions'
 import { unifiedApi } from '@/utils/unified-api'
 import { sortOptionsByOrder } from '@/utils/option-sort'
-import InlineLoading from '@/components/InlineLoading.vue'
+import CustomerSearchDropdown from '@/components/common/CustomerSearchDropdown.vue'
 import { logger } from '@/utils/logger'
 import type { ModalProps, SuccessEmits, UpdateVisibleEmits } from '@/types'
 
@@ -435,6 +403,7 @@ const dialogVisible = computed({
 
 const formRef = ref<FormInstance>()
 const modelSelectRef = ref()
+const customerNameInputRef = ref()
 const submitting = ref(false)
 const customerSearching = ref(false)
 const showCustomerSearch = ref(false)
@@ -742,6 +711,11 @@ const selectCustomer = (customer: any) => {
     formRef.value?.clearValidate('customer_phone')
     formRef.value?.clearValidate('customer_name')
   })
+}
+
+const prepareNewCustomer = () => {
+  showCustomerSearch.value = false
+  nextTick(() => customerNameInputRef.value?.focus())
 }
 
 // 清除选择的客户

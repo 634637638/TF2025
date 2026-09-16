@@ -83,52 +83,15 @@
                 @focus="showCustomerSearch = true"
                 @blur="emit('phone-blur')"
               >
-              <div
-                v-if="showCustomerSearch && (customerSearchResults.length > 0 || customerSearching || (batchSaleForm.customer_phone.length >= 11 && !selectedCustomer && !customerSearching))"
-                class="customer-search-results"
-              >
-                <div
-                  v-if="customerSearching"
-                  class="search-loading"
-                >
-                  <InlineLoading
-                    text="搜索中..."
-                    size="small"
-                  />
-                </div>
-                <template v-else>
-                  <div
-                    v-for="customer in customerSearchResults"
-                    :key="customer.id"
-                    class="customer-item"
-                    @click="emit('select-customer', customer)"
-                  >
-                    <div class="customer-info">
-                      <div class="customer-name">
-                        {{ customer.name }}
-                      </div>
-                      <div class="customer-phone">
-                        {{ customer.phone }}
-                      </div>
-                      <div
-                        v-if="customer.apple_id"
-                        class="customer-meta"
-                      >
-                        <i class="fas fa-apple" />
-                        {{ customer.apple_id }}
-                      </div>
-                    </div>
-                  </div>
-                  <div
-                    v-if="batchSaleForm.customer_phone.length >= 11 && customerSearchResults.length === 0 && !selectedCustomer"
-                    class="create-new-customer"
-                    @click="emit('create-customer')"
-                  >
-                    <i class="fas fa-user-plus" />
-                    点击创建该用户
-                  </div>
-                </template>
-              </div>
+              <CustomerSearchDropdown
+                :items="customerSearchResults"
+                :loading="customerSearching"
+                :visible="showCustomerSearch && !selectedCustomer"
+                :keyword="batchSaleForm.customer_phone"
+                :min-query-length="11"
+                @select="emit('select-customer', $event as BatchCustomer)"
+                @create="emit('create-customer')"
+              />
             </div>
           </div>
         </div>
@@ -332,7 +295,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import InlineLoading from '@/components/InlineLoading.vue'
+import CustomerSearchDropdown from '@/components/common/CustomerSearchDropdown.vue'
 import { PaymentChannelSelect, PaymentMethodSelect } from '@/components/payment'
 import type { Operator, Store } from '@/types'
 import type { BatchCustomer, BatchSaleFormData } from '../types'

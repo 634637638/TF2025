@@ -150,7 +150,10 @@ router.get('/', requireAnyPermission(['reminders:view', 'reminders:manage']), as
     const search_fields = [['basic_info.title', 'title'], ['basic_info.content', 'content']].filter(([fieldId]) => !hiddenFields.has(fieldId)).map(([, field]) => field)
     if (req.query.keyword && !search_fields.length) return res.status(403).json({ success: false, message: '没有可用的待办搜索字段', code: 'FIELD_PERMISSION_DENIED' })
     const result = await reminderService.list({ page: req.query.page, page_size: req.query.page_size, keyword: req.query.keyword, search_fields, status: req.query.status, type_id: req.query.type_id, user_id: req.user.id, can_manage: canManageReminders(req) })
-    return ApiResponse.success(res, maskReminderPayloadWithPermissions(result.rows, permissions), '获取待办列表成功', 200, { pagination: result.pagination })
+    return ApiResponse.success(res, maskReminderPayloadWithPermissions(result.rows, permissions), '获取待办列表成功', 200, {
+      pagination: result.pagination,
+      summary: result.summary
+    })
   } catch (error) { log.error('获取待办列表失败:', error); return handleError(res, error, '获取待办列表失败') }
 })
 

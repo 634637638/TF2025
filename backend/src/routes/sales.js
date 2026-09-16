@@ -13,6 +13,11 @@ const {
 } = require('../services/customer-points.service')
 const XLSX = require('xlsx')
 const log = require('../utils/log')
+const {
+  COMPLETED_TRANSACTION_STATUSES,
+  getEffectivePhoneStatusSql
+} = require('../utils/phone-status')
+const COMPLETED_TRANSACTION_STATUS_SQL = `COALESCE(p.status, '') NOT IN (${COMPLETED_TRANSACTION_STATUSES.map(() => '?').join(', ')})`
 
 const buildAvailablePhonesExportFilters = async (query = {}) => {
   const db = getDatabase()
@@ -41,8 +46,12 @@ const buildAvailablePhonesExportFilters = async (query = {}) => {
     price_range
   } = query
 
-  const whereConditions = ['p.status = ?']
-  const queryParams = [status || 'in_stock']
+  const whereConditions = [COMPLETED_TRANSACTION_STATUS_SQL]
+  const queryParams = [...COMPLETED_TRANSACTION_STATUSES]
+  if (status) {
+    whereConditions.push(`${getEffectivePhoneStatusSql('p')} = ?`)
+    queryParams.push(status)
+  }
 
   if (phone_id) {
     whereConditions.push('p.id = ?')
@@ -225,13 +234,13 @@ const buildAvailablePhonesExportFilters = async (query = {}) => {
   if (sale_status) {
     switch (sale_status) {
     case 'available':
-      whereConditions.push('p.status = \'in_stock\' AND NOT EXISTS (SELECT 1 FROM sales_orders so WHERE so.phone_id = p.id AND so.status != \'cancelled\')')
+      whereConditions.push(`${getEffectivePhoneStatusSql('p')} = 'in_stock' AND NOT EXISTS (SELECT 1 FROM sales_orders so WHERE so.phone_id = p.id AND so.status != 'cancelled')`)
       break
     case 'reserved':
-      whereConditions.push('EXISTS (SELECT 1 FROM sales_orders so WHERE so.phone_id = p.id AND so.status = \'reserved\')')
+      whereConditions.push(`${getEffectivePhoneStatusSql('p')} = 'reserved'`)
       break
     case 'sold':
-      whereConditions.push('p.status = \'sold\'')
+      whereConditions.push(`${getEffectivePhoneStatusSql('p')} = 'sold'`)
       break
     case 'shipped':
       whereConditions.push('EXISTS (SELECT 1 FROM sales_orders so WHERE so.phone_id = p.id AND so.status = \'shipped\')')
@@ -240,7 +249,7 @@ const buildAvailablePhonesExportFilters = async (query = {}) => {
       whereConditions.push('EXISTS (SELECT 1 FROM sales_orders so WHERE so.phone_id = p.id AND so.status = \'completed\')')
       break
     default:
-      whereConditions.push('p.status = \'in_stock\'')
+      whereConditions.push(`${getEffectivePhoneStatusSql('p')} = 'in_stock'`)
     }
   }
 
@@ -308,7 +317,7 @@ const buildAvailablePhonesSelectQuery = (whereConditions, paginationClause = '')
     p.inventory_time AS inventory_time,
     p.sale_time AS sale_time,
     p.remarks,
-    p.status,
+    ${getEffectivePhoneStatusSql('p')} AS status,
     CASE
       WHEN p.is_new = 1 THEN '全新'
       ELSE '二手'
@@ -337,7 +346,7 @@ const getSalesStatusLabel = (status) => {
   const mapping = {
     in_stock: '可售',
     sold: '已售',
-    reserved: '预定',
+    reserved: '预订',
     repair: '维修',
     rented: '租赁',
     lost: '丢失',
@@ -416,7 +425,8 @@ router.get('/phones/available', unifiedAuth, requirePermission('sales:view'), as
       customer_id,
       sale_status,
       salesman_id,
-      price_range
+      price_range,
+      preorder_id
     } = req.query
 
     const requestedPage = Number.parseInt(String(page), 10)
@@ -428,10 +438,43 @@ router.get('/phones/available', unifiedAuth, requirePermission('sales:view'), as
       return ApiResponse.badRequest(res, '每页数量必须为 1-500')
     }
 
-    // 构建查询条件
-    const whereConditions = ['p.status = ?']
-    const queryParams = []
-    queryParams.push(status || 'in_stock')
+    // 销售页展示所有未完成交易的设备；预定交付可按预定单精确加载匹配设备。
+    const normalizedPreorderId = preorder_id ? Number.parseInt(String(preorder_id), 10) : null
+    let preorderDeliveryPhoneId = null
+    if (preorder_id && (!Number.isSafeInteger(normalizedPreorderId) || normalizedPreorderId < 1)) {
+      return ApiResponse.badRequest(res, '预定单参数无效')
+    }
+
+    if (normalizedPreorderId) {
+      const [preorderRows] = await getDatabase().execute(
+        `SELECT matched_phone_id, status
+         FROM preorders
+         WHERE id = ?
+         LIMIT 1`,
+        [normalizedPreorderId]
+      )
+
+      if (preorderRows.length === 0) {
+        return ApiResponse.notFound(res, '预定单不存在')
+      }
+      if (preorderRows[0].status !== 'arrived' || !preorderRows[0].matched_phone_id) {
+        return ApiResponse.badRequest(res, '只有已匹配的预定单可以交付')
+      }
+
+      preorderDeliveryPhoneId = Number(preorderRows[0].matched_phone_id)
+    }
+
+    const whereConditions = [COMPLETED_TRANSACTION_STATUS_SQL]
+    const queryParams = [...COMPLETED_TRANSACTION_STATUSES]
+    if (status) {
+      whereConditions.push(`${getEffectivePhoneStatusSql('p')} = ?`)
+      queryParams.push(status)
+    }
+    if (preorderDeliveryPhoneId) {
+      whereConditions.push("p.status IN ('in_stock', 'reserved')")
+      whereConditions.push('p.id = ?')
+      queryParams.push(preorderDeliveryPhoneId)
+    }
 
     if (phone_id) {
       whereConditions.push('p.id = ?')
@@ -645,13 +688,13 @@ router.get('/phones/available', unifiedAuth, requirePermission('sales:view'), as
     if (sale_status) {
       switch (sale_status) {
       case 'available':
-        whereConditions.push('p.status = \'in_stock\' AND NOT EXISTS (SELECT 1 FROM sales_orders so WHERE so.phone_id = p.id AND so.status != \'cancelled\')')
+        whereConditions.push(`${getEffectivePhoneStatusSql('p')} = 'in_stock' AND NOT EXISTS (SELECT 1 FROM sales_orders so WHERE so.phone_id = p.id AND so.status != 'cancelled')`)
         break
       case 'reserved':
-        whereConditions.push('EXISTS (SELECT 1 FROM sales_orders so WHERE so.phone_id = p.id AND so.status = \'reserved\')')
+        whereConditions.push(`${getEffectivePhoneStatusSql('p')} = 'reserved'`)
         break
       case 'sold':
-        whereConditions.push('p.status = \'sold\'')
+        whereConditions.push(`${getEffectivePhoneStatusSql('p')} = 'sold'`)
         break
       case 'shipped':
         whereConditions.push('EXISTS (SELECT 1 FROM sales_orders so WHERE so.phone_id = p.id AND so.status = \'shipped\')')
@@ -660,7 +703,7 @@ router.get('/phones/available', unifiedAuth, requirePermission('sales:view'), as
         whereConditions.push('EXISTS (SELECT 1 FROM sales_orders so WHERE so.phone_id = p.id AND so.status = \'completed\')')
         break
       default:
-        whereConditions.push('p.status = \'in_stock\'')
+        whereConditions.push(`${getEffectivePhoneStatusSql('p')} = 'in_stock'`)
       }
     }
 
@@ -736,7 +779,14 @@ router.get('/phones/available', unifiedAuth, requirePermission('sales:view'), as
         p.inventory_time AS inventory_time,
         p.sale_time AS sale_time,
         p.remarks,
-        p.status,
+        ${getEffectivePhoneStatusSql('p')} AS status,
+        preorder.id AS preorder_id,
+        preorder.customer_id AS preorder_customer_id,
+        preorder_customer.name AS preorder_customer_name,
+        preorder_customer.phone AS preorder_customer_phone,
+        preorder.deposit_amount AS preorder_deposit_amount,
+        preorder.total_price AS preorder_total_price,
+        preorder.actual_price AS preorder_actual_price,
         CASE
           WHEN p.is_new = 1 THEN '全新'
           ELSE '二手'
@@ -749,6 +799,10 @@ router.get('/phones/available', unifiedAuth, requirePermission('sales:view'), as
       LEFT JOIN stores s ON p.store_id = s.id
       LEFT JOIN suppliers supp ON p.supplier_id = supp.id
       LEFT JOIN users u ON p.inventory_operator_id = u.id
+      LEFT JOIN preorders preorder
+        ON preorder.matched_phone_id = p.id
+       AND preorder.status = 'arrived'
+      LEFT JOIN customers preorder_customer ON preorder_customer.id = preorder.customer_id
       WHERE ${whereConditions.join(' AND ')}
       ORDER BY p.inventory_time DESC
       LIMIT ${limitNum} OFFSET ${offsetNum}
@@ -990,9 +1044,44 @@ router.post('/phone', unifiedAuth, requirePermission('sales:create'), requirePre
         })
       }
 
+      // 无论从预定、库存还是销售页面进入，预定交付都在事务内校验三者一致。
+      let preorderForDelivery = null
+      if (preorder_id) {
+        if (isBatchSale) {
+          await conn.rollback()
+          return res.status(400).json({ success: false, message: '预定交付只能销售一台已匹配设备' })
+        }
+
+        const [preorderRows] = await conn.execute(
+          `SELECT id, customer_id, deposit_amount, matched_phone_id, status
+           FROM preorders
+           WHERE id = ?
+           FOR UPDATE`,
+          [parseInt(preorder_id)]
+        )
+        preorderForDelivery = preorderRows[0]
+
+        if (!preorderForDelivery) {
+          await conn.rollback()
+          return res.status(404).json({ success: false, message: '预定单不存在' })
+        }
+        if (preorderForDelivery.status !== 'arrived') {
+          await conn.rollback()
+          return res.status(400).json({ success: false, message: '只有已匹配的预定单可以交付' })
+        }
+        if (
+          Number(preorderForDelivery.matched_phone_id) !== Number(phoneIds[0]) ||
+          Number(preorderForDelivery.customer_id) !== Number(customerId)
+        ) {
+          await conn.rollback()
+          return res.status(400).json({ success: false, message: '预定客户或交付设备与预定单不一致' })
+        }
+      }
+
       // 检查每个设备的状态
       for (const phoneCheck of phoneChecks) {
-        if (phoneCheck.status !== 'in_stock') {
+        const isReservedDelivery = Boolean(preorder_id) && phoneCheck.status === 'reserved'
+        if (phoneCheck.status !== 'in_stock' && !isReservedDelivery) {
           await conn.rollback()
           return res.status(400).json({
             success: false,
@@ -1002,7 +1091,19 @@ router.post('/phone', unifiedAuth, requirePermission('sales:create'), requirePre
 
         // 检查是否已被预订，如果已预订则只能销售给预订的客户
         if (phoneCheck.is_preordered === 1) {
-          if (!phoneCheck.preorder_customer_id || phoneCheck.preorder_customer_id !== customerId) {
+          if (!preorder_id) {
+            await conn.rollback()
+            return res.status(400).json({
+              success: false,
+              message: `设备ID ${phoneCheck.id} 已被预订，销售时必须使用关联预定客户`
+            })
+          }
+          if (
+            !phoneCheck.preorder_customer_id ||
+            Number(phoneCheck.preorder_customer_id) !== Number(customerId) ||
+            !preorderForDelivery ||
+            Number(preorderForDelivery.matched_phone_id) !== Number(phoneCheck.id)
+          ) {
             await conn.rollback()
             return res.status(400).json({
               success: false,
@@ -1197,13 +1298,14 @@ router.post('/phone', unifiedAuth, requirePermission('sales:create'), requirePre
         return conn.execute(
           `UPDATE phones SET
             status = 'sold',
+            is_preordered = 0,
             sale_price = ?,
             purchase_cost = ?,
             supplier_id = ?,
             remarks = ?,
             sale_time = ?,
             sale_operator_id = ?
-          WHERE id = ? AND status = 'in_stock'`,
+          WHERE id = ? AND status IN ('in_stock', 'reserved')`,
           [
             parseFloat(phone.sale_price),
             phone.resolved_purchase_cost, // 未显式传值时回退为设备原始入库成本，避免被写成 null
@@ -1230,30 +1332,12 @@ router.post('/phone', unifiedAuth, requirePermission('sales:create'), requirePre
 
       // 7. 处理预订单关联（从预定页面跳转销售时）
       if (preorder_id) {
-        // 获取预订单信息
-        const [preorderInfo] = await conn.execute(
-          `SELECT id, customer_id, deposit_amount, matched_phone_id, status
-           FROM preorders
-           WHERE id = ?
-           FOR UPDATE`,
-          [parseInt(preorder_id)]
-        )
-
-        if (preorderInfo.length === 0) {
-          await conn.rollback()
-          return res.status(404).json({ success: false, message: '预定单不存在' })
-        }
-
-        const preorder = preorderInfo[0]
-        if (preorder.status !== 'arrived') {
-          await conn.rollback()
-          return res.status(400).json({ success: false, message: '只有已匹配的预定单可以交付' })
-        }
+        const preorder = preorderForDelivery
 
         const deliveredPhone = finalizedPhonesToSell[0]
         if (
           finalizedPhonesToSell.length !== 1 ||
-          Number(preorder.matched_phone_id) !== Number(deliveredPhone.phone_id)
+          !preorder || Number(preorder.matched_phone_id) !== Number(deliveredPhone.phone_id)
         ) {
           await conn.rollback()
           return res.status(400).json({ success: false, message: '交付设备与预定单已匹配设备不一致' })
@@ -1347,9 +1431,9 @@ router.get('/stats', unifiedAuth, requirePermission('sales:view'), async (req, r
     const [stats] = await getDatabase().execute(`
       SELECT
         COUNT(*) as total_phones,
-        COUNT(CASE WHEN status = 'in_stock' THEN 1 END) as available_phones,
+        COUNT(CASE WHEN status = 'in_stock' AND COALESCE(is_preordered, 0) = 0 THEN 1 END) as available_phones,
         COUNT(CASE WHEN status = 'sold' THEN 1 END) as sold_phones,
-        COUNT(CASE WHEN status = 'reserved' THEN 1 END) as reserved_phones
+        COUNT(CASE WHEN status = 'reserved' OR (status = 'in_stock' AND COALESCE(is_preordered, 0) = 1) THEN 1 END) as reserved_phones
       FROM phones
     `)
 
@@ -1401,8 +1485,8 @@ router.get('/phones/available/stats', unifiedAuth, requirePermission('sales:view
     } = req.query
 
     // 构建查询条件（与/phones/available相同的逻辑）
-    const whereConditions = ['p.status = "in_stock"']
-    const queryParams = []
+    const whereConditions = [COMPLETED_TRANSACTION_STATUS_SQL]
+    const queryParams = [...COMPLETED_TRANSACTION_STATUSES]
 
     if (search) {
       // 判断是否为纯数字（可能是价格或纯数字 IMEI/序列号）
@@ -1537,17 +1621,14 @@ router.get('/phones/available/stats', unifiedAuth, requirePermission('sales:view
     const todayStart = new Date()
     todayStart.setHours(0, 0, 0, 0)
 
+    // 今日销售也应用库存列表的全部筛选条件，避免卡片与列表口径不一致。
+    const todayConditions = whereConditions.slice(1)
+    todayConditions.push("p.status = 'sold'", 'p.sale_time >= ?')
     const [todaySoldResult] = await getDatabase().execute(`
       SELECT COUNT(*) as today_sold
-      FROM phones
-      WHERE status = 'sold'
-        AND sale_time >= ?
-        ${supplier_id ? 'AND supplier_id = ?' : ''}
-        ${store_id ? 'AND store_id = ?' : ''}
-    `, supplier_id || store_id
-      ? [todayStart, ...(supplier_id ? [supplier_id] : []), ...(store_id ? [store_id] : [])]
-      : [todayStart]
-    )
+      FROM phones p
+      WHERE ${todayConditions.join(' AND ')}
+    `, [...queryParams.slice(COMPLETED_TRANSACTION_STATUSES.length), todayStart])
 
     // 3. 平均利润率（根据销售价和成本价计算）
     const [profitMarginResult] = await getDatabase().execute(`
@@ -1736,8 +1817,8 @@ router.get('/inventory-summary', unifiedAuth, requirePermission('sales:view'), a
     }
 
     // 构建查询条件
-    const whereConditions = ['p.status = "in_stock"']
-    const queryParams = []
+    const whereConditions = [COMPLETED_TRANSACTION_STATUS_SQL]
+    const queryParams = [...COMPLETED_TRANSACTION_STATUSES]
 
     if (normalizedStoreId) {
       whereConditions.push('p.store_id = ?')
@@ -1983,8 +2064,8 @@ router.get('/inventory-detail', unifiedAuth, requirePermission('sales:view'), as
     }
 
     // 构建动态查询条件
-    const conditions = ["p.status = 'in_stock'"]
-    const queryParams = []
+    const conditions = [COMPLETED_TRANSACTION_STATUS_SQL]
+    const queryParams = [...COMPLETED_TRANSACTION_STATUSES]
 
     // supplier_id 条件
     if (numericSupplierId !== null && !isNaN(numericSupplierId)) {

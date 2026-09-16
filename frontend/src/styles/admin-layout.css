@@ -31,7 +31,24 @@
   --admin-stat-icon-size: 48px;
   --admin-stat-icon-font-size: 20px;
   --admin-stat-icon-radius: 12px;
-  --admin-stat-icon-bg: linear-gradient(135deg, #667eea, #764ba2);
+  /* 统计卡片语义色：页面只声明 --card-accent，不直接维护颜色。 */
+  --admin-stat-color-primary: #2563eb;
+  --admin-stat-color-success: #059669;
+  --admin-stat-color-warning: #d97706;
+  --admin-stat-color-danger: #dc2626;
+  --admin-stat-color-info: #0891b2;
+  --admin-stat-color-accent: #7c3aed;
+  --admin-stat-color-neutral: #64748b;
+  /* 商品成色语义色：同一业务含义在所有后台页面保持一致。 */
+  --admin-stat-color-new: var(--admin-stat-color-success);
+  --admin-stat-color-used: var(--admin-stat-color-warning);
+  --admin-stat-color-new-money: var(--admin-stat-color-new);
+  --admin-stat-color-used-money: var(--admin-stat-color-used);
+  --admin-stat-color-income: var(--admin-stat-color-success);
+  --admin-stat-color-expense: var(--admin-stat-color-danger);
+  --admin-stat-color-pending: var(--admin-stat-color-warning);
+  --admin-stat-color-money: var(--admin-stat-color-primary);
+  --admin-stat-icon-bg: var(--admin-stat-color-primary);
   --admin-stat-icon-color: #ffffff;
   --admin-stat-icon-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   --admin-stat-value-size: 22px;
@@ -322,7 +339,160 @@
   box-shadow: var(--admin-stat-icon-shadow);
 }
 
+/* 统计卡片颜色唯一入口。页面通过卡片级语义类声明业务含义。 */
+.admin-page .stat-card {
+  --card-accent: var(--admin-stat-color-primary) !important;
+}
+
+.admin-page .stat-card.stat-card--primary {
+  --card-accent: var(--admin-stat-color-primary) !important;
+}
+
+.admin-page .stat-card.stat-card--success {
+  --card-accent: var(--admin-stat-color-success) !important;
+}
+
+.admin-page .stat-card.stat-card--info {
+  --card-accent: var(--admin-stat-color-info) !important;
+}
+
+.admin-page .stat-card.stat-card--warning {
+  --card-accent: var(--admin-stat-color-warning) !important;
+}
+
+.admin-page .stat-card.stat-card--danger {
+  --card-accent: var(--admin-stat-color-danger) !important;
+}
+
+.admin-page .stat-card.stat-card--accent {
+  --card-accent: var(--admin-stat-color-accent) !important;
+}
+
+.admin-page .stat-card.stat-card--neutral {
+  --card-accent: var(--admin-stat-color-neutral) !important;
+}
+
+/* 商品成色语义覆盖：全新、二手及其金额不再由页面自行选择通用状态色。 */
+.admin-page .stat-card.stat-card--new {
+  --card-accent: var(--admin-stat-color-new) !important;
+}
+
+.admin-page .stat-card.stat-card--used {
+  --card-accent: var(--admin-stat-color-used) !important;
+}
+
+.admin-page .stat-card.stat-card--new-money {
+  --card-accent: var(--admin-stat-color-new-money) !important;
+}
+
+.admin-page .stat-card.stat-card--used-money {
+  --card-accent: var(--admin-stat-color-used-money) !important;
+}
+
+/* 金额与业务状态的卡片级语义覆盖。 */
+.admin-page .stat-card.stat-card--expense-pending {
+  --card-accent: var(--admin-stat-color-pending) !important;
+}
+
+.admin-page .stat-card.stat-card--income {
+  --card-accent: var(--admin-stat-color-income) !important;
+}
+
+.admin-page .stat-card.stat-card--money {
+  --card-accent: var(--admin-stat-color-money) !important;
+}
+
+.admin-page .stat-card .stat-icon,
+.admin-page .stat-card .stat-icon-primary,
+.admin-page .stat-card .stat-card__icon {
+  background: var(--card-accent, var(--admin-stat-icon-bg)) !important;
+  color: var(--admin-stat-icon-color) !important;
+}
+
+/* 非标准统计容器中的图标也使用同一套语义色。 */
+.admin-page .stat-icon.stat-icon--primary {
+  background: var(--admin-stat-color-primary) !important;
+  color: var(--admin-stat-icon-color) !important;
+}
+
+.admin-page .stat-icon.stat-icon--success {
+  background: var(--admin-stat-color-success) !important;
+  color: var(--admin-stat-icon-color) !important;
+}
+
+.admin-page .stat-icon.stat-icon--info {
+  background: var(--admin-stat-color-info) !important;
+  color: var(--admin-stat-icon-color) !important;
+}
+
+.admin-page .stat-icon.stat-icon--warning {
+  background: var(--admin-stat-color-warning) !important;
+  color: var(--admin-stat-icon-color) !important;
+}
+
+.admin-page .stat-icon.stat-icon--danger {
+  background: var(--admin-stat-color-danger) !important;
+  color: var(--admin-stat-icon-color) !important;
+}
+
+.admin-page .stat-icon.stat-icon--accent {
+  background: var(--admin-stat-color-accent) !important;
+  color: var(--admin-stat-icon-color) !important;
+}
+
+.admin-page .stat-card .stat-value--income,
+.admin-page .stat-card .stat-value.income,
+.admin-page .stat-card .amount-value--income,
+.admin-page .stat-card.stat-card--income .stat-value,
+.admin-page .stat-card.stat-card--income .stat-card__value {
+  color: var(--admin-stat-color-income) !important;
+}
+
+.admin-page .stat-card .stat-value--money,
+.admin-page .stat-card .stat-value.money,
+.admin-page .stat-card .amount-value {
+  color: var(--admin-stat-color-money) !important;
+}
+
+.admin-page .stat-card .stat-value--expense,
+.admin-page .stat-card .amount-value--expense,
+.admin-page .stat-card.stat-card--expense .stat-value {
+  color: var(--admin-stat-color-expense) !important;
+}
+
+.admin-page .stat-card .stat-value--pending,
+.admin-page .stat-card.stat-card--expense-pending .stat-value {
+  color: var(--admin-stat-color-pending) !important;
+}
+
+.admin-page .stat-card .stat-value--primary {
+  color: var(--admin-stat-color-primary) !important;
+}
+
+.admin-page .stat-card .stat-value--success {
+  color: var(--admin-stat-color-success) !important;
+}
+
+.admin-page .stat-card .stat-value--info {
+  color: var(--admin-stat-color-info) !important;
+}
+
+.admin-page .stat-card .stat-value--danger {
+  color: var(--admin-stat-color-danger) !important;
+}
+
+.admin-page .stat-card.stat-card--new .stat-value,
+.admin-page .stat-card.stat-card--new-money .stat-value {
+  color: var(--admin-stat-color-new) !important;
+}
+
+.admin-page .stat-card.stat-card--used .stat-value,
+.admin-page .stat-card.stat-card--used-money .stat-value {
+  color: var(--admin-stat-color-used) !important;
+}
+
 .admin-page .stat-card .stat-value,
+.admin-page .stat-card .stat-number,
 .admin-page .stat-card .number,
 .admin-page .stat-card .stat-value-primary,
 .admin-page .module-stat-card .stat-value {
@@ -334,6 +504,7 @@
 }
 
 .admin-page .stat-card .stat-label,
+.admin-page .stat-card .stat-content h3,
 .admin-page .stat-card .stat-sub,
 .admin-page .module-stat-card .stat-label {
   color: var(--admin-stat-label-color) !important;
@@ -1010,8 +1181,7 @@
     align-items: center !important;
   }
 
-  .admin-page .stats-cards > .stat-card:not(.total-card):not(.approval-card):not(.amount-card):not(.handler-card),
-  .admin-page .stats-cards > .el-card.stat-card {
+  .admin-page .stat-card {
     display: flex !important;
     flex-direction: row !important;
     justify-content: space-between !important;

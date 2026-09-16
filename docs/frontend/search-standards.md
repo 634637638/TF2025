@@ -453,6 +453,12 @@ const quickTags = [
 - 合理使用快捷标签（3-5个为宜）
 - 加载状态及时反馈
 
+### 4. 日期选择统一规范
+- 日期范围筛选统一使用 `frontend/src/components/DateRangePicker.vue`，开始日期和结束日期是两个独立输入框，点击哪个只打开对应的一个日期面板。
+- 页面不再使用 Element Plus 的 `daterange`、`monthrange` 或 `datetimerange` 双面板控件。
+- 单日期、月份和日期时间控件由 `frontend/src/utils/element-plus-defaults.ts` 统一设置为从输入框底部展开；业务页面不要自行改为 `top` 或复制日期定位样式。
+- 范围值继续使用页面原有数组格式，查询回调只在范围完整或清空时触发，避免选择开始日期时发出不完整查询。
+
 ## 📚 相关文档
 
 - [组件开发规范](./component-standards.md)

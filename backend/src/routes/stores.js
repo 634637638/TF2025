@@ -438,36 +438,39 @@ router.get('/stats', unifiedAuth, requirePermission('stores:view'), async (req, 
     }
 
     const pool = getDatabase()
+    const conditions = []
+    const params = []
+    const name = String(req.query.name || '').trim()
+    const status = String(req.query.status ?? '').trim()
+    if (name) {
+      conditions.push('s.name LIKE ?')
+      params.push(`%${name}%`)
+    }
+    if (status !== '') {
+      conditions.push('s.status = ?')
+      params.push(Number(status) === 1 ? 1 : 0)
+    }
+    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
 
-    // 总店铺数
-    const [totalResult] = await pool.execute('SELECT COUNT(*) as total FROM stores')
-    const total = totalResult[0].total
-
-    // 正常营业的店铺数
-    const [activeResult] = await pool.execute('SELECT COUNT(*) as active FROM stores WHERE status = 1')
-    const active = activeResult[0].active
-
-    // 禁用的店铺数
-    const [inactiveResult] = await pool.execute('SELECT COUNT(*) as inactive FROM stores WHERE status = 0')
-    const inactive = inactiveResult[0].inactive
-
-    // 有管理员的店铺数
-    const [withManagerResult] = await pool.execute('SELECT COUNT(*) as with_manager FROM stores WHERE manager_id IS NOT NULL AND manager_id != ""')
-    const withManager = withManagerResult[0].with_manager
-
-    // 最近创建的店铺（最近7天）
-    const [recentResult] = await pool.execute(`
-      SELECT COUNT(*) as recent FROM stores
-      WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-    `)
-    const recent = recentResult[0].recent
+    const [result] = await pool.execute(`
+      SELECT COUNT(*) AS total,
+        SUM(s.status = 1) AS active,
+        SUM(s.status = 0) AS inactive,
+        SUM(s.manager_id IS NOT NULL AND s.manager_id != '') AS with_manager,
+        SUM(s.phone IS NOT NULL AND s.phone != '') AS with_phone,
+        SUM(s.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)) AS recent
+      FROM stores s
+      ${whereClause}
+    `, params)
+    const row = result[0] || {}
 
     const stats = {
-      total: parseInt(total) || 0,
-      active: parseInt(active) || 0,
-      inactive: parseInt(inactive) || 0,
-      with_manager: parseInt(withManager) || 0,
-      recent: parseInt(recent) || 0
+      total: parseInt(row.total) || 0,
+      active: parseInt(row.active) || 0,
+      inactive: parseInt(row.inactive) || 0,
+      with_manager: parseInt(row.with_manager) || 0,
+      with_phone: parseInt(row.with_phone) || 0,
+      recent: parseInt(row.recent) || 0
     }
 
     ApiResponse.success(res, stats)

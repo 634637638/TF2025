@@ -188,14 +188,48 @@ router.get('/', unifiedAuth, requirePermission('repairs:view'), async (req, res)
 router.get('/stats', unifiedAuth, requirePermission('repairs:view'), async (req, res) => {
   try {
     const db = await getDb()
+    const hiddenFields = await getRepairHiddenFields(req)
+    const search = String(req.query.search || '').trim()
+    const status = String(req.query.status || '').trim()
+    if (status && status !== 'all' && hiddenFields.has('status_info.status')) {
+      return res.status(403).json({ success: false, message: '不能使用已隐藏的状态筛选字段', code: 'FIELD_PERMISSION_DENIED' })
+    }
+    if (status && status !== 'all' && !VALID_STATUSES.has(status)) {
+      return ApiResponse.badRequest(res, '维修状态无效')
+    }
+
+    const conditions = []
+    const params = []
+    if (status && status !== 'all') {
+      conditions.push('r.status = ?')
+      params.push(status)
+    }
+    if (search) {
+      const searchableColumns = [
+        ['basic_info.order_no', 'r.order_no'],
+        ['customer_info.customer_name', 'c.name'],
+        ['customer_info.customer_phone', 'c.phone'],
+        ['device_info.phone_model', 'r.phone_model'],
+        ['device_info.imei', 'r.imei']
+      ].filter(([fieldId]) => !hiddenFields.has(fieldId))
+      if (searchableColumns.length === 0) {
+        return res.status(403).json({ success: false, message: '没有可用的维修搜索字段', code: 'FIELD_PERMISSION_DENIED' })
+      }
+      const pattern = `%${search}%`
+      conditions.push(`(${searchableColumns.map(([, column]) => `${column} LIKE ?`).join(' OR ')})`)
+      params.push(...searchableColumns.map(() => pattern))
+    }
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
     const [rows] = await db.execute(`
       SELECT
-        COALESCE(SUM(status = 'pending'), 0) AS pending,
-        COALESCE(SUM(status = 'processing'), 0) AS processing,
-        COALESCE(SUM(status = 'completed'), 0) AS completed,
-        COALESCE(SUM(CASE WHEN status = 'completed' AND created_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01') THEN COALESCE(actual_cost, estimated_cost, 0) ELSE 0 END), 0) AS monthly_revenue
-      FROM repairs
-    `)
+        COALESCE(SUM(r.status = 'pending'), 0) AS pending,
+        COALESCE(SUM(r.status = 'processing'), 0) AS processing,
+        COALESCE(SUM(r.status = 'completed'), 0) AS completed,
+        COALESCE(SUM(CASE WHEN r.status = 'completed' AND r.created_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01') THEN COALESCE(r.actual_cost, r.estimated_cost, 0) ELSE 0 END), 0) AS monthly_revenue
+      FROM repairs r
+      LEFT JOIN customers c ON c.id = r.customer_id
+      ${where}
+    `, params)
     if (!rows.length) throw new Error('维修统计查询未返回结果')
     return ApiResponse.success(res, await maskRepairItem({
       pending: Number(rows[0].pending),

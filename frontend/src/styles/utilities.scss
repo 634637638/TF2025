@@ -471,27 +471,27 @@
 
 // ==================== 订单统计卡片渐变 ====================
 .bg-gradient-pending {
-  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
+  background: var(--admin-stat-color-pending, var(--tf-color-amber-600));
 }
 
 .bg-gradient-processing {
-  background: linear-gradient(135deg, var(--tf-color-pink-gradient) 0%, var(--tf-color-coral-gradient) 100%);
+  background: var(--admin-stat-color-pending, var(--tf-color-amber-600));
 }
 
 .bg-gradient-shipped {
-  background: linear-gradient(135deg, var(--tf-color-amber-ant) 0%, var(--tf-color-orange-dark) 100%);
+  background: var(--admin-stat-color-info, var(--tf-color-cyan-600));
 }
 
 .bg-gradient-completed {
-  background: linear-gradient(135deg, var(--tf-color-blue-material-400) 0%, var(--tf-color-blue-legacy) 100%);
+  background: var(--admin-stat-color-success, var(--tf-color-emerald-600));
 }
 
 .bg-gradient-refunded {
-  background: linear-gradient(135deg, var(--tf-color-transfer-chart-teal) 0%, var(--tf-color-blue-material-400) 100%);
+  background: var(--admin-stat-color-info, var(--tf-color-cyan-600));
 }
 
 .bg-gradient-cancelled {
-  background: linear-gradient(135deg, var(--tf-color-green-material-400) 0%, var(--tf-color-green-material) 100%);
+  background: var(--admin-stat-color-danger, var(--tf-color-red-600));
 }
 
 // ==================== 图标背景色 ====================

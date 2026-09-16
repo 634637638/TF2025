@@ -90,10 +90,10 @@
               :data-aos-delay="index * 100"
               :data-stat-key="stat.key"
               class="stat-card"
+              :class="stat.accentClass"
             >
               <div
                 class="stat-icon"
-                :class="stat.iconClass"
               >
                 <i :class="stat.icon" />
               </div>
@@ -320,36 +320,19 @@
               </el-select>
             </div>
 
-            <!-- 开始日期 -->
+            <!-- 日期范围：开始和结束日期使用公共单面板组件 -->
             <div
               class="form-group filter-item"
-              data-field="start_date"
+              data-field="date_range"
             >
-              <el-date-picker
-                v-model="filters.start_date"
-                type="date"
-                placeholder="开始日期"
+              <DateRangePicker
+                :model-value="queryDateRange"
+                start-placeholder="开始日期"
+                end-placeholder="结束日期"
                 format="YYYY-MM-DD"
                 value-format="YYYY-MM-DD"
                 clearable
-                style="width: 140px"
-                @change="triggerLoadQueryData"
-              />
-            </div>
-
-            <!-- 结束日期 -->
-            <div
-              class="form-group filter-item"
-              data-field="end_date"
-            >
-              <el-date-picker
-                v-model="filters.end_date"
-                type="date"
-                placeholder="结束日期"
-                format="YYYY-MM-DD"
-                value-format="YYYY-MM-DD"
-                clearable
-                style="width: 140px"
+                @update:model-value="updateQueryDateRange"
                 @change="triggerLoadQueryData"
               />
             </div>
@@ -419,7 +402,7 @@
                       class="status-cell clickable-cell"
                       @dblclick.stop="handleCellDoubleClick(row, column)"
                     >
-                      <span :class="['status-badge', getStatusBadgeClass(row.基本信息?.status_code)]">
+                      <span :class="['status-badge', getStatusBadgeClass(row.基本信息)]">
                         {{ getCellValue(row, column) }}
                       </span>
                     </span>
@@ -751,6 +734,7 @@ import draggable from 'vuedraggable'
 import Pagination from '../../components/Pagination.vue'
 import InlineLoading from '@/components/InlineLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
+import DateRangePicker from '@/components/DateRangePicker.vue'
 import { PageHeader, PermissionGate } from '@/components/base'
 import Image from '@/components/Image.vue'
 import MediaPreviewViewer from '@/components/MediaPreviewViewer.vue'
@@ -758,7 +742,7 @@ import SalesReceipt from '@/components/query/SalesReceipt.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import { refreshScrollAnimations } from '@/utils/scrollAnimation'
-import { PHONE_STATUS_OPTIONS, getPhoneStatusClass, getPhoneStatusLabel } from '@/constants/phoneStatuses'
+import { PHONE_STATUS_OPTIONS, getPhoneStatusClass, getPhoneStatusLabel, getEffectivePhoneStatus } from '@/constants/phoneStatuses'
 import { normalizeAppleId, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
 import { logger } from '@/utils/logger'
 import { isVideoMedia, type MediaPreviewItem } from '@/utils/media'
@@ -919,11 +903,11 @@ const queryData = ref<QueryItem[]>([])
 
 // 统计卡片配置
 const statsConfig = [
-  { key: 'total_phones', label: '总设备数', icon: 'fas fa-boxes', iconClass: '', fieldId: 'stats.total_phones' },
-  { key: 'in_stock_count', label: '在库数量', icon: 'fas fa-warehouse', iconClass: 'in-stock', fieldId: 'stats.in_stock_count' },
-  { key: 'sold_count', label: '已售数量', icon: 'fas fa-shopping-cart', iconClass: 'sold', fieldId: 'stats.sold_count' },
-  { key: 'new_count', label: '全新设备', icon: 'fas fa-gem', iconClass: 'new', fieldId: 'stats.new_count' },
-  { key: 'used_count', label: '二手设备', icon: 'fas fa-history', iconClass: 'used', fieldId: 'stats.used_count' }
+  { key: 'total_phones', label: '总设备数', icon: 'fas fa-boxes', accentClass: 'stat-card--primary', fieldId: 'stats.total_phones' },
+  { key: 'in_stock_count', label: '在库数量', icon: 'fas fa-warehouse', accentClass: 'stat-card--success', fieldId: 'stats.in_stock_count' },
+  { key: 'sold_count', label: '已售数量', icon: 'fas fa-shopping-cart', accentClass: 'stat-card--info', fieldId: 'stats.sold_count' },
+  { key: 'new_count', label: '全新设备', icon: 'fas fa-gem', accentClass: 'stat-card--new', fieldId: 'stats.new_count' },
+  { key: 'used_count', label: '二手设备', icon: 'fas fa-history', accentClass: 'stat-card--used', fieldId: 'stats.used_count' }
 ]
 
 const statistics = ref<Statistics>({
@@ -1001,6 +985,18 @@ const filters = reactive({
   end_date: '',
   search_term: ''
 })
+
+type QueryDateRange = [string, string] | [] | null
+
+const queryDateRange = computed<QueryDateRange>(() => {
+  if (!filters.start_date && !filters.end_date) return null
+  return [filters.start_date, filters.end_date]
+})
+
+const updateQueryDateRange = (value: QueryDateRange) => {
+  filters.start_date = value?.[0] || ''
+  filters.end_date = value?.[1] || ''
+}
 
 // 分页信息
 const paginationData = usePagination({
@@ -2041,13 +2037,19 @@ const deleteAllImages = async () => {
 }
 
 // 状态文本转换函数
-const getStatusText = (status: string) => {
-  return getPhoneStatusLabel(status)
+const getStatusText = (basicInfo?: QueryItem['基本信息']) => {
+  return getPhoneStatusLabel(getEffectivePhoneStatus({
+    status: basicInfo?.status_code || basicInfo?.status,
+    is_preordered: basicInfo?.is_preordered
+  }))
 }
 
 // 状态徽章样式类名转换函数
-const getStatusBadgeClass = (status: string) => {
-  return getPhoneStatusClass(status)
+const getStatusBadgeClass = (basicInfo?: QueryItem['基本信息']) => {
+  return getPhoneStatusClass(getEffectivePhoneStatus({
+    status: basicInfo?.status_code || basicInfo?.status,
+    is_preordered: basicInfo?.is_preordered
+  }))
 }
 
 // 获取单元格内容
@@ -2095,7 +2097,7 @@ const getCellValue = (item: QueryItem, column: any) => {
   case 'basic_info.is_new':
     return Number(item.基本信息?.is_new) === 1 ? '全新' : '二手'
   case 'basic_info.status':
-    return getStatusText(item.基本信息?.status)
+    return getStatusText(item.基本信息)
   default:
     return '-'
   }
@@ -2869,49 +2871,6 @@ onUnmounted(() => {
 
 .form-actions .btn {
   margin: 0;
-}
-
-.stat-card {
-  background: white;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-  transition: all 0.3s ease;
-  border: 1px solid var(--tf-color-border-cool);
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0,0,0,0.12);
-}
-
-.stat-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  color: white;
-}
-
-.stat-icon {
-  background: linear-gradient(135deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand));
-}
-
-.stat-icon.in-stock {
-  background: linear-gradient(135deg, var(--success-color), var(--tf-color-teal-500));
-}
-
-.stat-icon.sold {
-  background: linear-gradient(135deg, var(--warning-color), var(--tf-color-orange-bootstrap));
-}
-
-.stat-icon.new {
-  background: linear-gradient(135deg, var(--success-color), var(--tf-color-teal-500));
-}
-
-.stat-icon.used {
-  background: linear-gradient(135deg, var(--tf-color-orange-bootstrap), var(--danger-color));
 }
 
 .stat-content {

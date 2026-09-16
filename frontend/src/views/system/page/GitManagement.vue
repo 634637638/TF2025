@@ -72,7 +72,7 @@
           >
             <div
               v-if="canViewGitField('stats_current_branch')"
-              class="stat-card"
+              class="stat-card stat-card--primary"
             >
               <div class="stat-icon">
                 <i class="fas fa-code-branch" />
@@ -88,7 +88,7 @@
             </div>
             <div
               v-if="canViewGitField('stats_changed_files')"
-              class="stat-card"
+              class="stat-card stat-card--success"
             >
               <div
                 class="stat-icon"
@@ -107,7 +107,7 @@
             </div>
             <div
               v-if="canViewGitField('stats_workspace_status')"
-              class="stat-card"
+              class="stat-card stat-card--info"
             >
               <div class="stat-icon">
                 <i class="fas fa-check-circle" />
@@ -123,7 +123,7 @@
             </div>
             <div
               v-if="canViewGitField('stats_commit_count')"
-              class="stat-card"
+              class="stat-card stat-card--warning"
             >
               <div class="stat-icon">
                 <i class="fas fa-history" />
@@ -1164,39 +1164,6 @@ watch(canView, async (value) => {
   max-width: 1600px;
   margin: 0 auto;
   padding: 24px 32px;
-}
-
-.stats-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 20px;
-  margin-bottom: 24px;
-}
-
-.stat-card {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-}
-
-.stat-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  color: white;
-}
-
-.stat-icon.active {
-  background: linear-gradient(135deg, var(--tf-color-pink-gradient) 0%, var(--tf-color-coral-gradient) 100%);
 }
 
 .stat-value {

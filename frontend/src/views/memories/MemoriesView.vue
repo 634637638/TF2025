@@ -46,7 +46,7 @@
         >
           <div
             v-if="canViewField('stats_total_memories')"
-            class="stat-card"
+            class="stat-card stat-card--primary"
           >
             <div class="stat-icon">
               <i class="fas fa-memory" />
@@ -62,9 +62,9 @@
           </div>
           <div
             v-if="canViewField('stats_active_memories')"
-            class="stat-card"
+            class="stat-card stat-card--success"
           >
-            <div class="stat-icon active">
+            <div class="stat-icon">
               <i class="fas fa-check-circle" />
             </div>
             <div class="stat-content">
@@ -78,9 +78,9 @@
           </div>
           <div
             v-if="canViewField('stats_inactive_memories')"
-            class="stat-card"
+            class="stat-card stat-card--danger"
           >
-            <div class="stat-icon inactive">
+            <div class="stat-icon">
               <i class="fas fa-pause-circle" />
             </div>
             <div class="stat-content">
@@ -94,7 +94,7 @@
           </div>
           <div
             v-if="canViewField('stats_related_phones')"
-            class="stat-card"
+            class="stat-card stat-card--info"
           >
             <div class="stat-icon">
               <i class="fas fa-mobile-alt" />
@@ -757,7 +757,7 @@ const loadMemories = async (bustCache: boolean = false, silentError: boolean = f
 
 const searchMemories = () => {
   pagination.value.page = 1
-  loadMemories()
+  void Promise.all([loadMemories(true), loadStats()])
 }
 
 const resetSearch = () => {
@@ -766,7 +766,7 @@ const resetSearch = () => {
     status: ''
   }
   pagination.value.page = 1
-  loadMemories()
+  void Promise.all([loadMemories(true), loadStats()])
 }
 
 const _changePage = (page: number) => {
@@ -957,7 +957,10 @@ const formatDate = (dateString: string | null) => {
 
 const loadStats = async () => {
   try {
-    const response = await unifiedApi.get('/memories/stats/overview')
+    const params: Record<string, string> = {}
+    if (searchForm.value.size) params.size = searchForm.value.size.trim()
+    if (searchForm.value.status !== '') params.status = searchForm.value.status
+    const response = await unifiedApi.get('/memories/stats/overview', { params })
     if (response.success) {
       const data = response.data || {}
       stats.value = {
@@ -1067,68 +1070,6 @@ onMounted(() => {
 
 .action-buttons {
   display: flex;
-}
-
-/* 统计卡片样式 */
-.stats-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 20px;
-  margin-bottom: 24px;
-}
-
-.stat-card {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-  transition: all 0.3s ease;
-  border: 1px solid var(--tf-color-border-cool);
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0,0,0,0.12);
-}
-
-.stat-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  background: linear-gradient(135deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand));
-  color: white;
-}
-
-.stat-icon.active {
-  background: linear-gradient(135deg, var(--success-color), var(--tf-color-teal-500));
-}
-
-.stat-icon.inactive {
-  background: linear-gradient(135deg, var(--danger-color), var(--tf-color-orange-bootstrap));
-}
-
-.stat-content {
-  flex: 1;
-}
-
-.stat-value {
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--tf-color-heading);
-  margin-bottom: 4px;
-}
-
-.stat-label {
-  font-size: 14px;
-  color: var(--tf-color-muted);
-  font-weight: 500;
 }
 
 .section-title {

@@ -236,7 +236,7 @@ router.get('/stats/overview', unifiedAuth, requirePermission('models:view'), asy
       return ApiResponse.error(res, '数据库未连接', 500)
     }
 
-    const { brand_id } = req.query
+    const { brand_id, name, status } = req.query
     const pool = getDatabase()
     const conditions = []
     const queryParams = []
@@ -244,6 +244,15 @@ router.get('/stats/overview', unifiedAuth, requirePermission('models:view'), asy
     if (brand_id) {
       conditions.push('m.brand_id = ?')
       queryParams.push(parseInt(brand_id))
+    }
+    if (String(name || '').trim()) {
+      conditions.push('m.name LIKE ?')
+      queryParams.push(`%${String(name).trim()}%`)
+    }
+    const statusFilter = parseStatusFilter(status)
+    if (statusFilter !== null) {
+      conditions.push('m.status = ?')
+      queryParams.push(statusFilter)
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''

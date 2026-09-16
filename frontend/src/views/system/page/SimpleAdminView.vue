@@ -789,57 +789,6 @@ onUnmounted(() => {
   font-size: 22px;
 }
 
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
-}
-
-.stat-card {
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-}
-
-.stat-icon {
-  width: 50px;
-  height: 50px;
-  background: var(--color-primary);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 16px;
-  flex-shrink: 0;
-}
-
-.stat-icon i {
-  color: white;
-  font-size: 20px;
-}
-
-.stat-content h3 {
-  margin: 0 0 4px 0;
-  color: var(--tf-color-heading);
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.stat-content p {
-  margin: 0;
-  color: var(--tf-color-gray-cool-500);
-  font-size: 14px;
-}
-
 .placeholder-content {
   background: white;
   padding: 40px;
@@ -869,10 +818,6 @@ onUnmounted(() => {
   .main-content {
     margin-left: 0 !important;
     padding-bottom: max(0px, env(safe-area-inset-bottom));
-  }
-
-  .stats-grid {
-    grid-template-columns: 1fr;
   }
 
   .content-area {

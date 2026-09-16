@@ -154,6 +154,15 @@ const normalizePreorderStatus = (status) => {
   return PREORDER_STATUS_VALUES.has(normalizedStatus) ? normalizedStatus : null
 }
 
+const normalizeOptionalQueryValue = (value) => {
+  if (value === undefined || value === null) return null
+
+  const normalizedValue = String(value).trim()
+  return normalizedValue === '' || normalizedValue === 'null' || normalizedValue === 'undefined'
+    ? null
+    : normalizedValue
+}
+
 /**
  * 获取预定单列表
  * GET /api/preorders
@@ -164,11 +173,16 @@ router.get('/', unifiedAuth, requirePermission('preorders:view'), async (req, re
     // 处理查询参数，确保正确处理 undefined
     const page = req.query.page && req.query.page !== 'undefined' ? req.query.page : 1
     const pageSize = req.query.page_size ?? 20
-    const status = req.query.status && req.query.status !== 'undefined' && req.query.status !== 'null' ? req.query.status : null
-    const customer_id = req.query.customer_id && req.query.customer_id !== 'undefined' ? req.query.customer_id : null
-    const search = req.query.search && req.query.search !== 'undefined' ? req.query.search : null
-    const startDate = req.query.start_date && req.query.start_date !== 'undefined' ? req.query.start_date : null
-    const endDate = req.query.end_date && req.query.end_date !== 'undefined' ? req.query.end_date : null
+    const status = normalizeOptionalQueryValue(req.query.status)
+    const customer_id = normalizeOptionalQueryValue(req.query.customer_id)
+    const store_id = normalizeOptionalQueryValue(req.query.store_id)
+    const brand_id = normalizeOptionalQueryValue(req.query.brand_id)
+    const model_id = normalizeOptionalQueryValue(req.query.model_id)
+    const color_id = normalizeOptionalQueryValue(req.query.color_id)
+    const memory_id = normalizeOptionalQueryValue(req.query.memory_id)
+    const search = normalizeOptionalQueryValue(req.query.search)
+    const startDate = normalizeOptionalQueryValue(req.query.start_date)
+    const endDate = normalizeOptionalQueryValue(req.query.end_date)
 
     if ((startDate && !isValidDateOnly(startDate)) || (endDate && !isValidDateOnly(endDate))) {
       return ApiResponse.badRequest(res, '日期格式必须为 YYYY-MM-DD')
@@ -205,24 +219,46 @@ router.get('/', unifiedAuth, requirePermission('preorders:view'), async (req, re
       params.push(customer_id)
     }
 
-    // 搜索功能（客户姓名、预定单号、手机型号）
+    const referenceFilters = [
+      ['store_id', store_id, 'p.store_id'],
+      ['brand_id', brand_id, 'p.brand_id'],
+      ['model_id', model_id, 'p.model_id'],
+      ['color_id', color_id, 'p.color_id'],
+      ['memory_id', memory_id, 'p.memory_id']
+    ]
+    for (const [fieldName, value, column] of referenceFilters) {
+      if (!value) continue
+      const parsedValue = Number.parseInt(String(value), 10)
+      if (!Number.isSafeInteger(parsedValue) || parsedValue < 1) {
+        return ApiResponse.badRequest(res, `${fieldName} 编号无效`)
+      }
+      whereConditions.push(`${column} = ?`)
+      params.push(parsedValue)
+    }
+
+    // 搜索功能（客户、预定单号、商品规格、IMEI、序列号）
     if (search) {
       whereConditions.push(`(
-        c.name LIKE ? OR
-        c.phone LIKE ? OR
-        p.preorder_number LIKE ? OR
-        CONCAT(
-          COALESCE(br.name, ''),
-          ' ',
-          COALESCE(mo.name, ''),
-          ' ',
-          COALESCE(co.name, ''),
-          ' ',
+        (CONVERT(c.name USING utf8mb4) COLLATE utf8mb4_unicode_ci)
+          LIKE (CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci) OR
+        (CONVERT(c.phone USING utf8mb4) COLLATE utf8mb4_unicode_ci)
+          LIKE (CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci) OR
+        (CONVERT(p.preorder_number USING utf8mb4) COLLATE utf8mb4_unicode_ci)
+          LIKE (CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci) OR
+        (CONVERT(ph.imei USING utf8mb4) COLLATE utf8mb4_unicode_ci)
+          LIKE (CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci) OR
+        (CONVERT(ph.serial_number USING utf8mb4) COLLATE utf8mb4_unicode_ci)
+          LIKE (CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci) OR
+        (CONVERT(CONCAT(
+          COALESCE(br.name, ''), ' ',
+          COALESCE(mo.name, ''), ' ',
+          COALESCE(co.name, ''), ' ',
           COALESCE(me.size, '')
-        ) LIKE ?
+        ) USING utf8mb4) COLLATE utf8mb4_unicode_ci)
+          LIKE (CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci)
       )`)
       const searchParam = `%${search}%`
-      params.push(searchParam, searchParam, searchParam, searchParam)
+      params.push(searchParam, searchParam, searchParam, searchParam, searchParam, searchParam)
     }
 
     // 日期范围筛选
@@ -247,6 +283,7 @@ router.get('/', unifiedAuth, requirePermission('preorders:view'), async (req, re
       LEFT JOIN models mo ON p.model_id = mo.id
       LEFT JOIN colors co ON p.color_id = co.id
       LEFT JOIN memories me ON p.memory_id = me.id
+      LEFT JOIN phones ph ON p.matched_phone_id = ph.id
       WHERE ${whereClause}
     `
 
@@ -523,8 +560,8 @@ router.get('/:id/matchable-phones', unifiedAuth, requirePermission('preorders:ma
     }
 
     const preorder = preorders[0]
-    if (preorder.status !== PREORDER_STATUS.PENDING) {
-      return ApiResponse.badRequest(res, '只有待匹配的预定单可以选择设备')
+    if (![PREORDER_STATUS.PENDING, PREORDER_STATUS.MATCHED].includes(preorder.status)) {
+      return ApiResponse.badRequest(res, '只有待匹配或已匹配且未交付的预定单可以选择设备')
     }
 
     const [phones] = await connection.execute(
@@ -532,8 +569,9 @@ router.get('/:id/matchable-phones', unifiedAuth, requirePermission('preorders:ma
          p.id,
          p.imei,
          p.serial_number,
-         p.sale_price,
+         p.purchase_cost,
          p.is_new,
+         CASE WHEN p.id = ? THEN 1 ELSE 0 END AS is_current,
          b.name AS brand_name,
          m.name AS model_name,
          c.name AS color_name,
@@ -546,7 +584,7 @@ router.get('/:id/matchable-phones', unifiedAuth, requirePermission('preorders:ma
        LEFT JOIN memories mem ON p.memory_id = mem.id
        LEFT JOIN stores st ON p.store_id = st.id
        WHERE p.status = 'in_stock'
-         AND COALESCE(p.is_preordered, 0) = 0
+         AND (COALESCE(p.is_preordered, 0) = 0 OR p.id = ?)
          AND p.brand_id = ?
          AND p.model_id = ?
          AND p.color_id = ?
@@ -555,6 +593,8 @@ router.get('/:id/matchable-phones', unifiedAuth, requirePermission('preorders:ma
        ORDER BY p.inventory_time ASC, p.id ASC
        LIMIT 100`,
       [
+        preorder.matched_phone_id || 0,
+        preorder.matched_phone_id || 0,
         preorder.brand_id,
         preorder.model_id,
         preorder.color_id,
@@ -868,7 +908,7 @@ router.post('/', unifiedAuth, requirePermission('preorders:create'), rejectHidde
 })
 
 /**
- * 匹配预定单（将手机分配给预定单）
+ * 匹配预定单（将手机分配给预定单；已匹配且未交付时可更换设备）
  * PUT /api/preorders/:id/match
  */
 router.put('/:id/match', unifiedAuth, requirePermission('preorders:match'), rejectHiddenPreorderWriteFields, async (req, res) => {
@@ -901,10 +941,12 @@ router.put('/:id/match', unifiedAuth, requirePermission('preorders:match'), reje
     }
 
     const preorder = preorderResult[0]
-    if (preorder.status !== PREORDER_STATUS.PENDING) {
+    if (![PREORDER_STATUS.PENDING, PREORDER_STATUS.MATCHED].includes(preorder.status)) {
       await connection.rollback()
-      return ApiResponse.badRequest(res, '只有待匹配的预定单可以匹配设备')
+      return ApiResponse.badRequest(res, '只有待匹配或已匹配且未交付的预定单可以更换设备')
     }
+
+    const previousPhoneId = preorder.matched_phone_id ? Number(preorder.matched_phone_id) : null
 
     const phoneWhere = phone_id ? 'p.id = ?' : 'p.imei = ?'
     const phoneValue = phone_id || String(imei).trim()
@@ -927,9 +969,32 @@ router.put('/:id/match', unifiedAuth, requirePermission('preorders:match'), reje
     }
 
     const phone = phoneResult[0]
-    if (phone.status !== 'in_stock' || Number(phone.is_preordered) === 1) {
+    const isSamePhone = previousPhoneId !== null && previousPhoneId === Number(phone.id)
+    if (phone.status !== 'in_stock' || (Number(phone.is_preordered) === 1 && !isSamePhone)) {
       await connection.rollback()
       return ApiResponse.badRequest(res, '设备已售出或已被其他预定单占用')
+    }
+
+    // 更换前锁定并确认旧设备仍未出库。旧设备已销售时不能再更换，
+    // 否则会让已完成销售的设备重新进入预定关系。
+    if (previousPhoneId !== null && !isSamePhone) {
+      const [previousPhoneResult] = await connection.execute(
+        `SELECT id, status, is_preordered
+         FROM phones
+         WHERE id = ?
+         FOR UPDATE`,
+        [previousPhoneId]
+      )
+
+      if (previousPhoneResult.length === 0 || previousPhoneResult[0].status !== 'in_stock') {
+        await connection.rollback()
+        return ApiResponse.badRequest(res, '原匹配设备已销售或已出库，不能更换匹配设备')
+      }
+
+      if (Number(previousPhoneResult[0].is_preordered) !== 1) {
+        await connection.rollback()
+        return ApiResponse.badRequest(res, '原匹配设备的预定状态异常，请刷新后重试')
+      }
     }
 
     const exactMatch =
@@ -958,6 +1023,20 @@ router.put('/:id/match', unifiedAuth, requirePermission('preorders:match'), reje
     const remainingAmount = Math.max(0, finalPrice - depositAmount)
     const resolvedModel = actual_model || [phone.brand_name, phone.model_name].filter(Boolean).join(' ')
 
+    if (previousPhoneId !== null && !isSamePhone) {
+      const [releaseResult] = await connection.execute(
+        `UPDATE phones
+         SET is_preordered = 0
+         WHERE id = ? AND status = 'in_stock' AND COALESCE(is_preordered, 0) = 1`,
+        [previousPhoneId]
+      )
+
+      if (releaseResult.affectedRows !== 1) {
+        await connection.rollback()
+        return ApiResponse.badRequest(res, '原匹配设备无法释放，请刷新后重试')
+      }
+    }
+
     await connection.execute(
       `UPDATE preorders SET
          status = '${PREORDER_STATUS.MATCHED}',
@@ -975,8 +1054,8 @@ router.put('/:id/match', unifiedAuth, requirePermission('preorders:match'), reje
     const [phoneUpdate] = await connection.execute(
       `UPDATE phones
        SET is_preordered = 1
-       WHERE id = ? AND status = 'in_stock' AND COALESCE(is_preordered, 0) = 0`,
-      [phone.id]
+       WHERE id = ? AND status = 'in_stock' AND (COALESCE(is_preordered, 0) = 0 OR id = ?)`,
+      [phone.id, phone.id]
     )
 
     if (phoneUpdate.affectedRows !== 1) {
@@ -994,7 +1073,11 @@ router.put('/:id/match', unifiedAuth, requirePermission('preorders:match'), reje
       actual_price: finalPrice,
       remaining_amount: remainingAmount
     }, req)
-    return ApiResponse.success(res, visiblePreorder, '预定单匹配成功，库存已预留，尚未出库')
+    return ApiResponse.success(
+      res,
+      visiblePreorder,
+      isSamePhone ? '匹配设备未变更' : previousPhoneId ? '匹配设备更换成功，库存已重新预留' : '预定单匹配成功，库存已预留，尚未出库'
+    )
 
   } catch (error) {
     if (connection) {
@@ -1012,86 +1095,13 @@ router.put('/:id/match', unifiedAuth, requirePermission('preorders:match'), reje
 /**
  * 完成交付（标记为已交付）
  * PUT /api/preorders/:id/deliver
+ *
+ * 预定交付必须通过销售页面完成。销售接口会在同一事务中创建销售记录、
+ * 更新设备状态、写入销售时间并完成预定单；保留这个地址仅用于给旧客户端
+ * 返回明确提示，不能让旧流程绕过销售记录直接改库存状态。
  */
 router.put('/:id/deliver', unifiedAuth, requirePermission('preorders:deliver'), rejectHiddenPreorderWriteFields, async (req, res) => {
-  let connection
-  try {
-    const { id } = req.params
-    const { actual_price, remarks } = req.body
-
-    const pool = require('../config/database').getDatabase()
-    connection = await pool.getConnection()
-
-    await connection.beginTransaction()
-
-    try {
-      // 检查预定单状态
-      const [preorderResult] = await connection.execute(
-        `SELECT ${PREORDER_CORE_FIELDS.join(', ')} FROM preorders WHERE id = ?`,
-        [id]
-      )
-
-      if (preorderResult.length === 0) {
-        await connection.rollback()
-        return ApiResponse.notFound(res, '预定单不存在')
-      }
-
-      const preorder = preorderResult[0]
-
-      if (preorder.status !== PREORDER_STATUS.MATCHED) {
-        await connection.rollback()
-        return ApiResponse.badRequest(res, '只有已匹配的预定单可以交付')
-      }
-
-      // 如果有IMEI，更新对应的手机状态为已售出
-      if (preorder.imei) {
-        await connection.execute(
-          `UPDATE phones SET
-            status = 'sold',
-            sale_time = NOW()
-          WHERE imei = ? AND status = 'in_stock'`,
-          [preorder.imei]
-        )
-      }
-
-      const finalPrice = actual_price || preorder.actual_price || preorder.total_price
-
-      // 更新预定单状态
-      await connection.execute(
-        `UPDATE preorders SET
-          status = '${PREORDER_STATUS.DELIVERED}',
-          actual_price = ?,
-          remarks = ?,
-          updated_at = NOW()
-        WHERE id = ?`,
-        [finalPrice, remarks || preorder.remarks, id]
-      )
-
-      await connection.commit()
-
-      const visiblePreorder = await maskPreorderItem({
-        id: parseInt(id),
-        actual_price: finalPrice,
-        message: '预定单交付成功'
-      }, req)
-      ApiResponse.success(res, visiblePreorder, '预定单交付成功')
-
-    } catch (dbError) {
-      await connection.rollback()
-      throw dbError
-    }
-
-  } catch (error) {
-    if (connection) {
-      await connection.rollback()
-    }
-    log.error('完成预定单交付失败:', error)
-    ApiResponse.serverError(res, '完成预定单交付失败', error)
-  } finally {
-    if (connection) {
-      connection.release()
-    }
-  }
+  return ApiResponse.error(res, '预定交付请从预定管理点击“交付”，在销售页面完成出库', 409)
 })
 
 /**

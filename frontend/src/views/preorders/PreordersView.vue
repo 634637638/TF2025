@@ -16,9 +16,11 @@
             @click="openCreateModal"
           >
             <i class="fas fa-plus" />
-            新增预定
+            新增
           </el-button>
           <el-button
+            type="info"
+            class="tf-button--refresh"
             :loading="refreshing"
             :disabled="refreshing"
             @click="handleRefresh"
@@ -36,10 +38,10 @@
       >
         <el-card
           v-if="canViewPreorderField('stats_pending_count')"
-          class="stat-card"
+          class="stat-card stat-card--warning"
         >
           <div class="stat-content">
-            <div class="stat-icon pending">
+            <div class="stat-icon">
               <i class="fas fa-clock" />
             </div>
             <div class="stat-info">
@@ -54,10 +56,10 @@
         </el-card>
         <el-card
           v-if="canViewPreorderField('stats_matched_count')"
-          class="stat-card"
+          class="stat-card stat-card--info"
         >
           <div class="stat-content">
-            <div class="stat-icon matched">
+            <div class="stat-icon">
               <i class="fas fa-link" />
             </div>
             <div class="stat-info">
@@ -72,10 +74,10 @@
         </el-card>
         <el-card
           v-if="canViewPreorderField('stats_delivered_count')"
-          class="stat-card"
+          class="stat-card stat-card--success"
         >
           <div class="stat-content">
-            <div class="stat-icon delivered">
+            <div class="stat-icon">
               <i class="fas fa-check-circle" />
             </div>
             <div class="stat-info">
@@ -90,10 +92,10 @@
         </el-card>
         <el-card
           v-if="canViewPreorderField('stats_cancelled_count')"
-          class="stat-card"
+          class="stat-card stat-card--danger"
         >
           <div class="stat-content">
-            <div class="stat-icon cancelled">
+            <div class="stat-icon">
               <i class="fas fa-times-circle" />
             </div>
             <div class="stat-info">
@@ -107,6 +109,143 @@
           </div>
         </el-card>
       </div>
+
+      <UnifiedSearchPanel
+        v-model:expanded="searchExpanded"
+        :loading="loading"
+        @search="handlePreorderSearch"
+        @reset="resetPreorderSearch"
+      >
+        <template #primary>
+          <el-input
+            v-model="searchKeyword"
+            placeholder="搜索预定单号、客户、型号、IMEI、序列号"
+            clearable
+            @input="schedulePreorderSearch"
+            @keyup.enter="handlePreorderSearch"
+            @click.stop
+          >
+            <template #prefix>
+              <i class="fas fa-search" />
+            </template>
+          </el-input>
+        </template>
+
+        <div
+          v-if="canViewPreorderField('store_name')"
+          class="form-group filter-item"
+          data-field="store_id"
+        >
+          <el-select
+            v-model="searchStoreId"
+            placeholder="预定店铺"
+            clearable
+            filterable
+            @change="handlePreorderSearch"
+          >
+            <el-option
+              v-for="store in searchOptions.stores"
+              :key="store.id"
+              :label="store.name"
+              :value="store.id"
+            />
+          </el-select>
+        </div>
+
+        <div
+          class="form-group filter-item"
+          data-field="brand_id"
+        >
+          <el-select
+            v-model="searchBrandId"
+            placeholder="品牌"
+            clearable
+            filterable
+            @change="handleBrandSearchChange"
+          >
+            <el-option
+              v-for="brand in searchOptions.brands"
+              :key="brand.id"
+              :label="brand.name"
+              :value="brand.id"
+            />
+          </el-select>
+        </div>
+
+        <div
+          class="form-group filter-item"
+          data-field="model_id"
+        >
+          <el-select
+            v-model="searchModelId"
+            placeholder="型号"
+            clearable
+            filterable
+            @change="handlePreorderSearch"
+          >
+            <el-option
+              v-for="model in searchModels"
+              :key="model.id"
+              :label="model.name"
+              :value="model.id"
+            />
+          </el-select>
+        </div>
+
+        <div
+          class="form-group filter-item"
+          data-field="color_id"
+        >
+          <el-select
+            v-model="searchColorId"
+            placeholder="颜色"
+            clearable
+            filterable
+            @change="handlePreorderSearch"
+          >
+            <el-option
+              v-for="color in searchOptions.colors"
+              :key="color.id"
+              :label="color.name"
+              :value="color.id"
+            />
+          </el-select>
+        </div>
+
+        <div
+          class="form-group filter-item"
+          data-field="memory_id"
+        >
+          <el-select
+            v-model="searchMemoryId"
+            placeholder="内存"
+            clearable
+            filterable
+            @change="handlePreorderSearch"
+          >
+            <el-option
+              v-for="memory in searchOptions.memories"
+              :key="memory.id"
+              :label="memory.size"
+              :value="memory.id"
+            />
+          </el-select>
+        </div>
+
+        <div
+          class="form-group filter-item"
+          data-field="created_at"
+        >
+          <DateRangePicker
+            v-model="searchDateRange"
+            value-format="YYYY-MM-DD"
+            start-placeholder="创建开始日期"
+            end-placeholder="创建结束日期"
+            clearable
+            @change="handlePreorderSearch"
+          />
+        </div>
+      </UnifiedSearchPanel>
 
       <!-- TAB切换 -->
       <el-tabs
@@ -303,15 +442,6 @@
                       >
                         {{ row.status_text }}
                       </el-tag>
-                      <el-button
-                        v-if="canCancel"
-                        type="danger"
-                        size="small"
-                        @click.stop="cancelPreorder(row)"
-                      >
-                        <i class="fas fa-times" />
-                        取消
-                      </el-button>
                     </div>
                   </template>
                 </el-table-column>
@@ -325,15 +455,6 @@
                       <span v-if="canViewPreorderField('matched_time')">
                         {{ getMatchedTimeText(row) }}
                       </span>
-                      <el-button
-                        v-if="canMatch"
-                        type="success"
-                        size="small"
-                        @click.stop="openMatchModal(row)"
-                      >
-                        <i class="fas fa-link" />
-                        匹配
-                      </el-button>
                     </div>
                   </template>
                 </el-table-column>
@@ -360,10 +481,31 @@
                         v-if="canEdit"
                         type="primary"
                         size="small"
+                        class="table-action table-action--edit"
                         @click.stop="editPreorder(row)"
                       >
                         <i class="fas fa-edit" />
                         编辑
+                      </el-button>
+                      <el-button
+                        v-if="canMatch"
+                        type="success"
+                        size="small"
+                        class="table-action table-action--success"
+                        @click.stop="openMatchModal(row)"
+                      >
+                        <i class="fas fa-link" />
+                        匹配
+                      </el-button>
+                      <el-button
+                        v-if="canCancel"
+                        type="danger"
+                        size="small"
+                        class="table-action table-action--delete"
+                        @click.stop="cancelPreorder(row)"
+                      >
+                        <i class="fas fa-times" />
+                        取消
                       </el-button>
                     </div>
                   </template>
@@ -470,6 +612,15 @@
                         </el-button>
                       </template>
                       <template v-if="row.status === 'arrived'">
+                        <el-button
+                          v-if="canMatch"
+                          type="warning"
+                          size="small"
+                          @click.stop="openMatchModal(row)"
+                        >
+                          <i class="fas fa-exchange-alt" />
+                          <span>更换设备</span>
+                        </el-button>
                         <el-button
                           v-if="canDeliver"
                           type="success"
@@ -646,24 +797,6 @@
                       >
                         {{ row.status_text }}
                       </el-tag>
-                      <el-button
-                        v-if="canCancel && ['pending', 'arrived'].includes(row.status)"
-                        type="danger"
-                        size="small"
-                        @click.stop="cancelMatchedPreorder(row)"
-                      >
-                        <i class="fas fa-times" />
-                        取消
-                      </el-button>
-                      <el-button
-                        v-if="canEdit && row.status === 'cancelled'"
-                        type="warning"
-                        size="small"
-                        @click.stop="restorePreorder(row)"
-                      >
-                        <i class="fas fa-undo" />
-                        恢复
-                      </el-button>
                     </div>
                   </template>
                 </el-table-column>
@@ -681,15 +814,6 @@
                       >
                         {{ getMatchedTimeText(row) }}
                       </span>
-                      <el-button
-                        v-if="canMatch && row.status === 'pending'"
-                        type="success"
-                        size="small"
-                        @click.stop="openMatchModal(row)"
-                      >
-                        <i class="fas fa-link" />
-                        匹配
-                      </el-button>
                     </div>
                   </template>
                 </el-table-column>
@@ -703,15 +827,6 @@
                       <span v-if="canViewPreorderField('delivered_time')">
                         {{ row.delivered_time ? formatDateTime(row.delivered_time) : '-' }}
                       </span>
-                      <el-button
-                        v-if="canDeliver && row.status === 'arrived'"
-                        type="success"
-                        size="small"
-                        @click.stop="deliverPreorder(row)"
-                      >
-                        <i class="fas fa-check" />
-                        交付
-                      </el-button>
                     </div>
                   </template>
                 </el-table-column>
@@ -729,17 +844,81 @@
                           v-if="canEdit"
                           type="primary"
                           size="small"
+                          class="table-action table-action--edit"
                           @click.stop="editMatchedPreorder(row)"
                         >
                           <i class="fas fa-edit" />
                           编辑
                         </el-button>
+                        <el-button
+                          v-if="canMatch"
+                          type="success"
+                          size="small"
+                          class="table-action table-action--success"
+                          @click.stop="openMatchModal(row)"
+                        >
+                          <i class="fas fa-link" />
+                          匹配
+                        </el-button>
+                        <el-button
+                          v-if="canCancel"
+                          type="danger"
+                          size="small"
+                          class="table-action table-action--delete"
+                          @click.stop="cancelMatchedPreorder(row)"
+                        >
+                          <i class="fas fa-times" />
+                          取消
+                        </el-button>
+                      </template>
+                      <template v-if="row.status === 'arrived'">
+                        <el-button
+                          v-if="canMatch"
+                          type="warning"
+                          size="small"
+                          class="table-action table-action--warning"
+                          @click.stop="openMatchModal(row)"
+                        >
+                          <i class="fas fa-exchange-alt" />
+                          更换设备
+                        </el-button>
+                        <el-button
+                          v-if="canDeliver"
+                          type="success"
+                          size="small"
+                          class="table-action table-action--success"
+                          @click.stop="deliverPreorder(row)"
+                        >
+                          <i class="fas fa-check" />
+                          交付
+                        </el-button>
+                        <el-button
+                          v-if="canCancel"
+                          type="danger"
+                          size="small"
+                          class="table-action table-action--delete"
+                          @click.stop="cancelMatchedPreorder(row)"
+                        >
+                          <i class="fas fa-times" />
+                          取消
+                        </el-button>
                       </template>
                       <template v-if="row.status === 'cancelled'">
+                        <el-button
+                          v-if="canEdit"
+                          type="warning"
+                          size="small"
+                          class="table-action table-action--warning"
+                          @click.stop="restorePreorder(row)"
+                        >
+                          <i class="fas fa-undo" />
+                          恢复
+                        </el-button>
                         <el-button
                           v-if="canDelete"
                           type="danger"
                           size="small"
+                          class="table-action table-action--delete"
                           @click.stop="deletePreorder(row)"
                         >
                           <i class="fas fa-trash" />
@@ -971,6 +1150,7 @@
                         v-if="canDelete"
                         type="danger"
                         size="small"
+                        class="table-action table-action--delete"
                         @click.stop="deletePreorder(row)"
                       >
                         <i class="fas fa-trash" />
@@ -1024,9 +1204,11 @@ import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { canViewPreorderField } from './preorder-field-permissions'
 import { useLoadingState } from '@/composables'
-import { preorderApi, Preorder, PreorderStatus } from '@/api/preorder'
+import { preorderApi, Preorder, PreorderOptions, PreorderStatus } from '@/api/preorder'
 import { unifiedApi } from '@/utils/unified-api'
 import { PageHeader, PermissionGate } from '@/components/base'
+import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
+import DateRangePicker from '@/components/DateRangePicker.vue'
 import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { logger } from '@/utils/logger'
@@ -1073,14 +1255,49 @@ loading.value = true
 const refreshing = ref(false)
 const matchedStatus = ref('all')
 const isMobile = ref(isCurrentMobileViewport())
-const showPendingStatusField = computed(() => shouldShowActionColumn(
-  canViewPreorderField('status'),
-  [canCancel.value]
+const searchExpanded = ref(false)
+const searchKeyword = ref('')
+type SearchId = number | string | null | undefined
+
+const searchStoreId = ref<SearchId>('')
+const searchBrandId = ref<SearchId>('')
+const searchModelId = ref<SearchId>('')
+const searchColorId = ref<SearchId>('')
+const searchMemoryId = ref<SearchId>('')
+const searchDateRange = ref<[string, string] | null>(null)
+const searchOptions = ref<PreorderOptions>({
+  stores: [],
+  brands: [],
+  models: [],
+  colors: [],
+  memories: []
+})
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+const searchModels = computed(() => (
+  normalizeSearchId(searchBrandId.value) === undefined
+    ? searchOptions.value.models
+    : searchOptions.value.models.filter(model => Number(model.brand_id) === Number(searchBrandId.value))
 ))
-const showPendingMatchedTimeField = computed(() => shouldShowActionColumn(
-  canViewPreorderField('matched_time'),
-  [canMatch.value]
-))
+
+const normalizeSearchId = (value: SearchId): number | undefined => {
+  if (
+    value === null ||
+    value === undefined ||
+    value === '' ||
+    value === 'null' ||
+    value === 'undefined'
+  ) {
+    return undefined
+  }
+
+  const normalizedValue = Number(value)
+  return Number.isSafeInteger(normalizedValue) && normalizedValue > 0
+    ? normalizedValue
+    : undefined
+}
+
+const showPendingStatusField = computed(() => canViewPreorderField('status'))
+const showPendingMatchedTimeField = computed(() => canViewPreorderField('matched_time'))
 const showMatchedStatusField = computed(() => shouldShowActionColumn(
   canViewPreorderField('status'),
   []
@@ -1096,13 +1313,13 @@ const showMatchedDeliveryField = computed(() => shouldShowActionColumn(
 const showPendingActionField = computed(() => (
   !isMobile.value && shouldShowActionColumn(
     canViewPreorderField('operations'),
-    [canEdit.value]
+    [canEdit.value, canMatch.value, canCancel.value]
   )
 ))
 const showMatchedActionField = computed(() => (
   !isMobile.value && shouldShowActionColumn(
     canViewPreorderField('operations'),
-    [canEdit.value, canDelete.value]
+    [canEdit.value, canMatch.value, canCancel.value, canDeliver.value, canDelete.value]
   )
 ))
 const showDeliveredActionField = computed(() => (
@@ -1132,6 +1349,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', handleResize)
+  if (searchTimer) clearTimeout(searchTimer)
 })
 
 // 统计数据
@@ -1156,13 +1374,20 @@ const deliveredPreorders = ref<Preorder[]>([])
 const pendingPreorderActionColumnWidth = computed(() => getAdaptiveActionColumnWidth(
   pendingPreorders.value,
   [
-    { label: '编辑', visible: canEdit.value }
+    { label: '编辑', visible: canEdit.value },
+    { label: '匹配', visible: canMatch.value },
+    { label: '取消', visible: canCancel.value }
   ]
 ))
 const matchedPreorderActionColumnWidth = computed(() => getAdaptiveActionColumnWidth(
   matchedPreorders.value,
   [
     { label: '编辑', visible: row => canEdit.value && row.status === 'pending' },
+    { label: '匹配', visible: row => canMatch.value && row.status === 'pending' },
+    { label: '更换设备', visible: row => canMatch.value && row.status === 'arrived' },
+    { label: '取消', visible: row => canCancel.value && ['pending', 'arrived'].includes(row.status) },
+    { label: '交付', visible: row => canDeliver.value && row.status === 'arrived' },
+    { label: '恢复', visible: row => canEdit.value && row.status === 'cancelled' },
     { label: '删除', visible: row => canDelete.value && row.status === 'cancelled' }
   ]
 ))
@@ -1197,6 +1422,88 @@ const loadStats = async () => {
   }
 }
 
+const getPreorderSearchParams = () => {
+  const params: {
+    search?: string
+    store_id?: number
+    brand_id?: number
+    model_id?: number
+    color_id?: number
+    memory_id?: number
+    start_date?: string
+    end_date?: string
+  } = {}
+
+  const search = searchKeyword.value.trim()
+  if (search) params.search = search
+
+  const idParams = {
+    store_id: normalizeSearchId(searchStoreId.value),
+    brand_id: normalizeSearchId(searchBrandId.value),
+    model_id: normalizeSearchId(searchModelId.value),
+    color_id: normalizeSearchId(searchColorId.value),
+    memory_id: normalizeSearchId(searchMemoryId.value)
+  }
+
+  for (const [field, value] of Object.entries(idParams)) {
+    if (value !== undefined) {
+      params[field as keyof typeof idParams] = value
+    }
+  }
+
+  if (searchDateRange.value?.[0]) params.start_date = searchDateRange.value[0]
+  if (searchDateRange.value?.[1]) params.end_date = searchDateRange.value[1]
+
+  return params
+}
+
+const loadSearchOptions = async () => {
+  try {
+    const options = await preorderApi.getPreorderOptions()
+    if (options) searchOptions.value = options
+  } catch (err) {
+    logger.error('加载预定检索选项失败:', err)
+  }
+}
+
+const loadActivePreorders = async (showLoadingState = true) => {
+  if (activeTab.value === 'new') return loadPendingPreorders(showLoadingState)
+  if (activeTab.value === 'matched') return loadMatchedPreorders(showLoadingState)
+  return loadDeliveredPreorders(showLoadingState)
+}
+
+const handlePreorderSearch = async () => {
+  if (searchTimer) {
+    clearTimeout(searchTimer)
+    searchTimer = null
+  }
+  pagination.page = 1
+  await loadActivePreorders()
+}
+
+const schedulePreorderSearch = () => {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    void handlePreorderSearch()
+  }, 350)
+}
+
+const handleBrandSearchChange = () => {
+  searchModelId.value = ''
+  void handlePreorderSearch()
+}
+
+const resetPreorderSearch = async () => {
+  searchKeyword.value = ''
+  searchStoreId.value = ''
+  searchBrandId.value = ''
+  searchModelId.value = ''
+  searchColorId.value = ''
+  searchMemoryId.value = ''
+  searchDateRange.value = null
+  await handlePreorderSearch()
+}
+
 // 加载待匹配预定单
 const loadPendingPreorders = async (showLoadingState = true) => {
   if (showLoadingState) {
@@ -1206,7 +1513,8 @@ const loadPendingPreorders = async (showLoadingState = true) => {
     const data = await preorderApi.getPreorders({
       page: pagination.page,
       page_size: pagination.page_size,
-      status: PreorderStatus.PENDING
+      status: PreorderStatus.PENDING,
+      ...getPreorderSearchParams()
     })
     pendingPreorders.value = data.records
     pagination.total = data.pagination.total
@@ -1240,7 +1548,8 @@ const loadMatchedPreorders = async (showLoadingState = true) => {
     const data = await preorderApi.getPreorders({
       page: pagination.page,
       page_size: pagination.page_size,
-      status
+      status,
+      ...getPreorderSearchParams()
     })
     matchedPreorders.value = data.records
     pagination.total = data.pagination.total
@@ -1262,7 +1571,8 @@ const loadDeliveredPreorders = async (showLoadingState = true) => {
     const data = await preorderApi.getPreorders({
       page: pagination.page,
       page_size: pagination.page_size,
-      status: PreorderStatus.DELIVERED
+      status: PreorderStatus.DELIVERED,
+      ...getPreorderSearchParams()
     })
     deliveredPreorders.value = data.records
     pagination.total = data.pagination.total
@@ -1436,8 +1746,8 @@ const deliverPreorder = (preorder: Preorder) => {
       customer_id: preorder.customer_id,
       customer_name: preorder.customer_name,
       customer_phone: preorder.customer_phone,
-      total_price: preorder.total_price || preorder.deposit_amount || '',
-      deposit_amount: preorder.deposit_amount
+      expected_price: preorder.actual_price || preorder.total_price || preorder.deposit_amount || '',
+      advance_payment: preorder.deposit_amount || ''
     }
   })
 }
@@ -1570,11 +1880,12 @@ const formatNumber = (num: number | string | null | undefined) => {
 const formatDateTime = (dateStr: string) => {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
-  return date.toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  })
+  if (Number.isNaN(date.getTime())) return '-'
+
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 // 获取状态标签类型
@@ -1629,8 +1940,7 @@ onMounted(async () => {
   }
 
   await fieldPermissions.init()
-  loadStats()
-  loadPendingPreorders()
+  await Promise.all([loadStats(), loadPendingPreorders(), loadSearchOptions()])
 })
 </script>
 
@@ -1638,108 +1948,6 @@ onMounted(async () => {
 <style scoped lang="scss">
 .preorders-view {
   padding: 20px;
-
-  .stats-cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 16px;
-    margin-bottom: 24px;
-
-    .stat-card {
-      background: var(--color-bg-white);
-      border-radius: 8px;
-      padding: 20px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-      transition: all 0.3s ease;
-      position: relative;
-      overflow: hidden;
-
-      &::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 4px;
-      }
-
-      &:nth-child(1)::before {
-        background: linear-gradient(90deg, var(--tf-color-orange-ant), var(--color-warning));
-      }
-
-      &:nth-child(2)::before {
-        background: linear-gradient(90deg, var(--tf-color-blue-ant), var(--tf-color-blue-ant-light));
-      }
-
-      &:nth-child(3)::before {
-        background: linear-gradient(90deg, var(--tf-color-green-ant), var(--color-success));
-      }
-
-      &:nth-child(4)::before {
-        background: linear-gradient(90deg, var(--tf-color-red-ant-600), var(--tf-color-red-ant));
-      }
-
-      &:hover {
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        transform: translateY(-2px);
-      }
-
-      .stat-content {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-
-        .stat-icon {
-          width: 56px;
-          height: 56px;
-          border-radius: 12px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 24px;
-          flex-shrink: 0;
-
-          &.pending {
-            background: linear-gradient(135deg, var(--tf-color-orange-ant-surface) 0%, var(--tf-color-orange-material-100) 100%);
-            color: var(--tf-color-orange-ant);
-          }
-
-          &.matched {
-            background: linear-gradient(135deg, var(--tf-color-cyan-ant-50) 0%, var(--tf-color-blue-ant-100) 100%);
-            color: var(--tf-color-blue-ant);
-          }
-
-          &.delivered {
-            background: linear-gradient(135deg, var(--tf-color-green-ant-50) 0%, var(--tf-color-green-material-100) 100%);
-            color: var(--tf-color-green-ant);
-          }
-
-          &.cancelled {
-            background: linear-gradient(135deg, var(--tf-color-red-ant-surface) 0%, var(--tf-color-red-200) 100%);
-            color: var(--tf-color-red-ant-600);
-          }
-        }
-
-        .stat-info {
-          flex: 1;
-
-          .stat-value {
-            font-size: 28px;
-            font-weight: 700;
-            color: var(--color-text-primary);
-            line-height: 1.2;
-            margin-bottom: 4px;
-          }
-
-          .stat-label {
-            font-size: 14px;
-            color: var(--color-info);
-            font-weight: 500;
-          }
-        }
-      }
-    }
-  }
 
   .preorders-tabs {
     .actions-bar,
@@ -1757,15 +1965,6 @@ onMounted(async () => {
         justify-content: flex-end;
         padding-top: 16px;
         border-top: 1px solid var(--color-border-light);
-    }
-
-      // 操作按钮容器样式
-    .action-buttons {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        padding: 0 4px;
-
     }
 
       // 修复表格固定列按钮被遮挡的问题
@@ -1838,40 +2037,6 @@ onMounted(async () => {
   @media (max-width: 768px) {
     padding: 0;
 
-    .stats-cards {
-      gap: 8px;
-      margin-bottom: 16px;
-      grid-template-columns: repeat(2, 1fr);
-
-      .stat-card {
-        padding: 12px;
-
-        :deep(.el-card__body) {
-          padding: 0;
-        }
-
-        .stat-content {
-          gap: 10px;
-
-          .stat-icon {
-            width: 40px;
-            height: 40px;
-            font-size: 18px;
-          }
-
-          .stat-info {
-            .stat-value {
-              font-size: 20px;
-            }
-
-            .stat-label {
-              font-size: 12px;
-            }
-          }
-        }
-      }
-    }
-
     .preorders-tabs {
       .actions-bar,
       .filter-bar {
@@ -1889,34 +2054,6 @@ onMounted(async () => {
 
   @media (max-width: 480px) {
     padding: 0;
-
-    .stats-cards {
-      gap: 6px;
-
-      .stat-card {
-        padding: 10px;
-
-        .stat-content {
-          gap: 8px;
-
-          .stat-icon {
-            width: 36px;
-            height: 36px;
-            font-size: 16px;
-          }
-
-          .stat-info {
-            .stat-value {
-              font-size: 18px;
-            }
-
-            .stat-label {
-              font-size: 11px;
-            }
-          }
-        }
-      }
-    }
 
   }
 }

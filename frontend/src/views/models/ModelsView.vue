@@ -48,14 +48,14 @@
         >
           <div
             v-if="canViewField('stats_total_models')"
-            class="stat-card"
+            class="stat-card stat-card--primary"
           >
             <div class="stat-icon">
               <i class="fas fa-mobile-alt" />
             </div>
             <div class="stat-content">
               <div class="stat-value">
-                {{ pagination.total }}
+                {{ modelStats.total }}
               </div>
               <div class="stat-label">
                 型号总数
@@ -64,14 +64,14 @@
           </div>
           <div
             v-if="canViewField('stats_active_models')"
-            class="stat-card"
+            class="stat-card stat-card--success"
           >
-            <div class="stat-icon active">
+            <div class="stat-icon">
               <i class="fas fa-check-circle" />
             </div>
             <div class="stat-content">
               <div class="stat-value">
-                {{ models.filter(m => m.status === 1).length }}
+                {{ modelStats.active }}
               </div>
               <div class="stat-label">
                 启用型号
@@ -80,14 +80,14 @@
           </div>
           <div
             v-if="canViewField('stats_inactive_models')"
-            class="stat-card"
+            class="stat-card stat-card--danger"
           >
-            <div class="stat-icon inactive">
+            <div class="stat-icon">
               <i class="fas fa-pause-circle" />
             </div>
             <div class="stat-content">
               <div class="stat-value">
-                {{ models.filter(m => m.status === 0).length }}
+                {{ modelStats.inactive }}
               </div>
               <div class="stat-label">
                 禁用型号
@@ -96,14 +96,14 @@
           </div>
           <div
             v-if="canViewField('stats_related_brands')"
-            class="stat-card"
+            class="stat-card stat-card--info"
           >
             <div class="stat-icon">
               <i class="fas fa-cog" />
             </div>
             <div class="stat-content">
               <div class="stat-value">
-                {{ brands.length }}
+                {{ modelStats.related_brands }}
               </div>
               <div class="stat-label">
                 关联品牌
@@ -611,6 +611,7 @@ const tableLoading = ref(true)
 const submitting = ref(false)
 const savingOrder = ref(false)
 const models = ref<Model[]>([])
+const modelStats = ref({ total: 0, active: 0, inactive: 0, related_brands: 0 })
 const showTableLoadingOverlay = computed(() => tableLoading.value && models.value.length > 0)
 const getModelRowKey = (model: Model) => String(model.id)
 const brands = ref<Brand[]>([])
@@ -643,6 +644,29 @@ const pagination = ref({
   has_next: false,
   has_prev: false
 })
+
+const loadModelStats = async () => {
+  try {
+    const params: Record<string, string | number> = {}
+    const name = searchForm.value.name.trim()
+    if (name) params.name = name
+    if (searchForm.value.brand_id !== null) params.brand_id = searchForm.value.brand_id
+    if (searchForm.value.status !== '') params.status = searchForm.value.status
+    const response = await unifiedApi.get('/models/stats/overview', { params })
+    if (response.success) {
+      const data = response.data || {}
+      modelStats.value = {
+        total: Number(data.total) || 0,
+        active: Number(data.active) || 0,
+        inactive: Number(data.inactive) || 0,
+        related_brands: Number(data.related_brands) || 0
+      }
+    }
+  } catch (err) {
+    logger.error('获取型号统计失败:', err)
+    modelStats.value = { total: 0, active: 0, inactive: 0, related_brands: 0 }
+  }
+}
 
 // 模态框显示状态
 const dialogVisible = computed({
@@ -796,6 +820,7 @@ const loadModels = async (_bustCache = false, silentError = false, _showLoadingS
         has_next: Boolean(paginationData.has_next),
         has_prev: Boolean(paginationData.has_prev)
       }
+      await loadModelStats()
 
     } else {
       logger.error('API返回失败:', response.message)
@@ -842,7 +867,7 @@ const loadModels = async (_bustCache = false, silentError = false, _showLoadingS
 
 const searchModels = () => {
   pagination.value.page = 1
-  loadModels()
+  void loadModels()
 }
 
 const resetSearch = () => {
@@ -852,7 +877,7 @@ const resetSearch = () => {
     status: ''
   }
   pagination.value.page = 1
-  loadModels()
+  void loadModels()
 }
 
 const _changePage = (page: number) => {
@@ -1292,68 +1317,6 @@ onMounted(async () => {
   min-height: 100vh;
 }
 
-/* 统计卡片样式 */
-.stats-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 20px;
-  margin-bottom: 24px;
-}
-
-.stat-card {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-  transition: all 0.3s ease;
-  border: 1px solid var(--tf-color-border-cool);
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0,0,0,0.12);
-}
-
-.stat-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  background: linear-gradient(135deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand));
-  color: white;
-}
-
-.stat-icon.active {
-  background: linear-gradient(135deg, var(--success-color), var(--tf-color-teal-500));
-}
-
-.stat-icon.inactive {
-  background: linear-gradient(135deg, var(--danger-color), var(--tf-color-orange-bootstrap));
-}
-
-.stat-content {
-  flex: 1;
-}
-
-.stat-value {
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--tf-color-heading);
-  margin-bottom: 4px;
-}
-
-.stat-label {
-  font-size: 14px;
-  color: var(--tf-color-muted);
-  font-weight: 500;
-}
-
 .section-title {
   display: flex;
   align-items: center;
@@ -1666,13 +1629,6 @@ onMounted(async () => {
     width: auto;
   }
 
-  .stats-cards {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-    margin-bottom: 16px;
-    padding: 0 4px;
-  }
-
   .form-actions {
     flex-direction: column;
   }
@@ -1701,33 +1657,6 @@ onMounted(async () => {
 }
 
 @media (max-width: 767px) {
-  .models-view .stats-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-    margin-bottom: 16px;
-    padding: 0 4px;
-  }
-
-  .models-view .stat-card {
-    padding: 14px 12px;
-    border-radius: 16px;
-    gap: 12px;
-  }
-
-  .models-view .stat-icon {
-    width: 40px;
-    height: 40px;
-    font-size: 16px;
-  }
-
-  .models-view .stat-value {
-    font-size: 20px;
-  }
-
-  .models-view .stat-label {
-    font-size: 12px;
-  }
-
   .models-view .table-section {
     margin: 0;
     padding: 14px 10px;
@@ -1816,32 +1745,6 @@ onMounted(async () => {
 }
 
 @media (max-width: 480px) {
-  .models-view .stats-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-    margin: 0 0 12px 0;
-    padding: 0;
-  }
-
-  .models-view .stat-card {
-    padding: 12px 10px;
-    gap: 10px;
-  }
-
-  .models-view .stat-icon {
-    width: 36px;
-    height: 36px;
-    font-size: 15px;
-  }
-
-  .models-view .stat-value {
-    font-size: 18px;
-  }
-
-  .models-view .stat-label {
-    font-size: 11px;
-  }
-
   .mobile-action-row td {
     padding: 6px 4px 10px !important;
     background: linear-gradient(180deg, var(--tf-color-surface-blue) 0%, var(--tf-color-indigo-surface-alt) 100%);

@@ -29,55 +29,15 @@
               </template>
             </el-input>
 
-            <div
-              v-if="showCustomerSearch && (customerSearchResults.length > 0 || customerSearching || (formData.customer_phone.length >= 11 && !selectedCustomer && !customerSearching))"
-              class="customer-search-results"
-            >
-              <div
-                v-if="customerSearching"
-                class="searching"
-              >
-                <InlineLoading
-                  text="搜索中..."
-                  size="small"
-                />
-              </div>
-              <div
-                v-else-if="customerSearchResults.length > 0"
-                class="results-list"
-              >
-                <div
-                  v-for="customer in customerSearchResults"
-                  :key="customer.id"
-                  class="customer-item"
-                  @click="selectCustomer(customer)"
-                >
-                  <div class="customer-info">
-                    <div class="customer-headline">
-                      <div class="customer-name">
-                        {{ customer.name }}
-                      </div>
-                      <span
-                        v-if="customer.member_number"
-                        class="member-number"
-                      >{{ customer.member_number }}</span>
-                    </div>
-                    <div class="customer-subline">
-                      <span class="customer-phone">{{ customer.phone }}</span>
-                      <span class="vip-badge">{{ getVipLabel(customer.vip_level) }}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div
-                v-else-if="formData.customer_phone.length >= 11 && !selectedCustomer && !customerSearching"
-                class="create-new-customer"
-                @click="autoCreateCustomer"
-              >
-                <i class="fas fa-user-plus" />
-                点击创建该用户
-              </div>
-            </div>
+            <CustomerSearchDropdown
+              :items="customerSearchResults"
+              :loading="customerSearching"
+              :visible="showCustomerSearch && !selectedCustomer"
+              :keyword="formData.customer_phone"
+              :min-query-length="11"
+              @select="selectCustomer($event)"
+              @create="autoCreateCustomer"
+            />
           </el-form-item>
         </el-col>
         <el-col :span="12">
@@ -342,55 +302,15 @@
               </template>
             </el-input>
 
-            <div
-              v-if="showCustomerSearch && (customerSearchResults.length > 0 || customerSearching || (formData.customer_phone.length >= 11 && !selectedCustomer && !customerSearching))"
-              class="customer-search-results"
-            >
-              <div
-                v-if="customerSearching"
-                class="searching"
-              >
-                <InlineLoading
-                  text="搜索中..."
-                  size="small"
-                />
-              </div>
-              <div
-                v-else-if="customerSearchResults.length > 0"
-                class="results-list"
-              >
-                <div
-                  v-for="customer in customerSearchResults"
-                  :key="customer.id"
-                  class="customer-item"
-                  @click="selectCustomer(customer)"
-                >
-                  <div class="customer-info">
-                    <div class="customer-headline">
-                      <div class="customer-name">
-                        {{ customer.name }}
-                      </div>
-                      <span
-                        v-if="customer.member_number"
-                        class="member-number"
-                      >{{ customer.member_number }}</span>
-                    </div>
-                    <div class="customer-subline">
-                      <span class="customer-phone">{{ customer.phone }}</span>
-                      <span class="vip-badge">{{ getVipLabel(customer.vip_level) }}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div
-                v-else-if="formData.customer_phone.length >= 11 && !selectedCustomer && !customerSearching"
-                class="create-new-customer"
-                @click="autoCreateCustomer"
-              >
-                <i class="fas fa-user-plus" />
-                点击创建该用户
-              </div>
-            </div>
+            <CustomerSearchDropdown
+              :items="customerSearchResults"
+              :loading="customerSearching"
+              :visible="showCustomerSearch && !selectedCustomer"
+              :keyword="formData.customer_phone"
+              :min-query-length="11"
+              @select="selectCustomer($event)"
+              @create="autoCreateCustomer"
+            />
           </el-form-item>
         </el-col>
         <el-col :span="12">
@@ -443,7 +363,7 @@
 </template>
 
 <script setup lang="ts">
-import InlineLoading from '@/components/InlineLoading.vue'
+import CustomerSearchDropdown from '@/components/common/CustomerSearchDropdown.vue'
 import { PaymentChannelSelect, PaymentMethodSelect } from '@/components/payment'
 import type { Store, User } from '@/types'
 import type { WholesaleCustomerSearchItem, WholesaleFormData } from './types'
@@ -478,16 +398,6 @@ interface Props {
 
 defineProps<Props>()
 
-const getVipLabel = (vipLevel?: string) => {
-  const labels: Record<string, string> = {
-    normal: '普通',
-    silver: '银卡',
-    gold: '金卡',
-    platinum: '白金'
-  }
-
-  return labels[vipLevel || 'normal'] || '普通'
-}
 </script>
 
 <style lang="scss" scoped>

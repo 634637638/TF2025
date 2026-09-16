@@ -2415,11 +2415,11 @@ export const MODULE_FIELDS = {
       },
       {
         id: 'price_info.matchable_sale_price',
-        name: '匹配设备销售价',
+        name: '匹配设备入库价',
         group: '价格信息',
         type: FIELD_TYPES.CURRENCY,
         sensitivity: SENSITIVITY_LEVELS.CONFIDENTIAL,
-        description: '匹配候选设备的库存销售价'
+        description: '匹配候选设备的库存入库价'
       },
       {
         id: 'price_info.actual_price',

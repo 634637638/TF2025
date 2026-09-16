@@ -2,7 +2,7 @@
   <div class="stats-cards">
     <div
       v-if="showAvailableInventory"
-      class="stat-card"
+      class="stat-card stat-card--primary"
     >
       <div class="stat-icon">
         <i class="fas fa-boxes" />
@@ -19,9 +19,9 @@
 
     <div
       v-if="showTodaySales"
-      class="stat-card"
+      class="stat-card stat-card--success"
     >
-      <div class="stat-icon active">
+      <div class="stat-icon">
         <i class="fas fa-calendar-day" />
       </div>
       <div class="stat-content">
@@ -36,7 +36,7 @@
 
     <div
       v-if="showNewInventoryValue"
-      class="stat-card"
+      class="stat-card stat-card--new-money"
     >
       <div class="stat-icon">
         <i class="fas fa-dollar-sign" />
@@ -53,9 +53,9 @@
 
     <div
       v-if="showUsedInventoryValue"
-      class="stat-card"
+      class="stat-card stat-card--used-money"
     >
-      <div class="stat-icon inactive">
+      <div class="stat-icon">
         <i class="fas fa-chart-line" />
       </div>
       <div class="stat-content">
@@ -82,16 +82,3 @@ defineProps<{
   showUsedInventoryValue: boolean
 }>()
 </script>
-
-<style scoped>
-/* Dimensions remain governed by the shared admin card contract. */
-.stat-card {
-  --admin-stat-icon-bg: var(--tf-button-success-bg);
-  --card-accent: var(--tf-button-success-bg);
-}
-
-.stat-card:nth-child(4) {
-  --admin-stat-icon-bg: var(--tf-button-danger-bg);
-  --card-accent: var(--tf-button-danger-bg);
-}
-</style>

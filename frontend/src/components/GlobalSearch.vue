@@ -74,25 +74,13 @@
             <!-- 日期范围类型筛选 -->
             <template v-else-if="filter.type === 'daterange'">
               <label class="filter-label">{{ filter.label }}</label>
-              <div class="daterange-inputs">
-                <input
-                  :model-value="filterValues['__daterange_' + filter.key + '_start__']"
-                  type="date"
-                  class="form-control form-control-sm"
-                  placeholder="开始日期"
-                  @input="updateDaterangeStart(filter.key, $event)"
-                  @change="handleSearch"
-                >
-                <span class="daterange-separator">至</span>
-                <input
-                  :model-value="filterValues['__daterange_' + filter.key + '_end__']"
-                  type="date"
-                  class="form-control form-control-sm"
-                  placeholder="结束日期"
-                  @input="updateDaterangeEnd(filter.key, $event)"
-                  @change="handleSearch"
-                >
-              </div>
+              <DateRangePicker
+                :model-value="getDateRangeValue(filter.key)"
+                start-placeholder="开始日期"
+                end-placeholder="结束日期"
+                @update:model-value="updateDateRange(filter.key, $event)"
+                @change="handleSearch"
+              />
             </template>
 
             <!-- 远程搜索类型筛选 -->
@@ -263,6 +251,7 @@ import type {
   UpdateStringModelValueEmits
 } from '@/types/component'
 import InlineLoading from '@/components/InlineLoading.vue'
+import DateRangePicker from '@/components/DateRangePicker.vue'
 import { logger } from '@/utils/logger'
 
 
@@ -598,14 +587,19 @@ const selectRemoteOption = (filter: FilterConfig, option: FilterOption) => {
 }
 
 
-const updateDaterangeStart = (key: string, event: Event) => {
-  const value = (event.target as HTMLInputElement).value
-  localFilterValues['__daterange_' + key + '_start__'] = value
+type DateRangeValue = [string, string] | [] | null
+
+const getDateRangeValue = (key: string): DateRangeValue => {
+  const start = localFilterValues[`__daterange_${key}_start__`]
+  const end = localFilterValues[`__daterange_${key}_end__`]
+  const startValue = typeof start === 'string' ? start : ''
+  const endValue = typeof end === 'string' ? end : ''
+  return startValue || endValue ? [startValue, endValue] : null
 }
 
-const updateDaterangeEnd = (key: string, event: Event) => {
-  const value = (event.target as HTMLInputElement).value
-  localFilterValues['__daterange_' + key + '_end__'] = value
+const updateDateRange = (key: string, value: DateRangeValue) => {
+  localFilterValues[`__daterange_${key}_start__`] = value?.[0] || ''
+  localFilterValues[`__daterange_${key}_end__`] = value?.[1] || ''
 }
 
 
@@ -1149,8 +1143,7 @@ onBeforeUnmount(() => {
       
       &.filter-select,
       &.filter-daterange {
-        .form-control-sm,
-        .daterange-inputs input {
+        .form-control-sm {
           font-size: 14px; /* Prevent iOS zoom, slightly smaller for 3-column layout */
           height: 40px;
           padding: 8px;
@@ -1608,22 +1601,6 @@ onBeforeUnmount(() => {
 
   .form-control-sm {
     font-size: 13px;
-  }
-}
-
-
-.daterange-inputs {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-
-  .form-control-sm {
-    flex: 1;
-  }
-
-  .daterange-separator {
-    font-size: 12px;
-    color: var(--el-text-color-placeholder);
   }
 }
 

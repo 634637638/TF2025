@@ -8,12 +8,10 @@
       v-for="(stat, index) in stats"
       :key="stat.key"
       class="stat-card"
+      :class="stat.accentClass"
       :style="{ 'animation-delay': `${index * 100}ms` }"
     >
-      <div
-        class="stat-icon"
-        :class="stat.iconClass"
-      >
+      <div class="stat-icon">
         <i :class="stat.icon" />
       </div>
       <div class="stat-content">
@@ -30,8 +28,8 @@
 
 <script setup lang="ts">
 export interface InventoryStatCard {
+  accentClass: string
   icon: string
-  iconClass: string
   key: string
   label: string
   value: number | string

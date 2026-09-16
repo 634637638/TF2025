@@ -16,58 +16,21 @@
               v-model="saleForm.customer_phone"
               placeholder="请输入用户手机号"
               maxlength="11"
-              clearable
-              :readonly="selectedCustomer !== null"
-              :class="{ locked: selectedCustomer !== null }"
+              :clearable="!preorderDelivery"
+              :readonly="selectedCustomer !== null || preorderDelivery"
+              :class="{ locked: selectedCustomer !== null || preorderDelivery }"
               @input="emit('customer-search', $event)"
               @focus="showCustomerSearch = true"
             />
-            <div
-              v-if="showCustomerSearch && (customerSearchResults.length > 0 || customerSearching || (saleForm.customer_phone.length >= 11 && !selectedCustomer && !customerSearching))"
-              class="customer-search-results"
-            >
-              <div
-                v-if="customerSearching"
-                class="search-loading"
-              >
-                <InlineLoading
-                  text="搜索中..."
-                  size="small"
-                />
-              </div>
-              <template v-else>
-                <div
-                  v-for="customer in customerSearchResults"
-                  :key="customer.id"
-                  class="customer-item"
-                  @click="emit('select-customer', customer)"
-                >
-                  <div class="customer-info">
-                    <div class="customer-headline">
-                      <div class="customer-name">
-                        {{ customer.name }}
-                      </div>
-                      <span
-                        v-if="customer.member_number"
-                        class="member-number"
-                      >{{ customer.member_number }}</span>
-                    </div>
-                    <div class="customer-subline">
-                      <span class="customer-phone">{{ customer.phone }}</span>
-                      <span class="vip-badge">{{ getVipLabel(customer.vip_level) }}</span>
-                    </div>
-                  </div>
-                </div>
-                <div
-                  v-if="saleForm.customer_phone.length >= 11 && customerSearchResults.length === 0 && !selectedCustomer"
-                  class="create-new-customer"
-                  @click="emit('create-customer')"
-                >
-                  <i class="fas fa-user-plus" />
-                  点击创建该用户
-                </div>
-              </template>
-            </div>
+            <CustomerSearchDropdown
+              :items="customerSearchResults"
+              :loading="customerSearching"
+              :visible="!preorderDelivery && showCustomerSearch && !selectedCustomer"
+              :keyword="saleForm.customer_phone"
+              :min-query-length="11"
+              @select="emit('select-customer', $event as SalesCustomer)"
+              @create="emit('create-customer')"
+            />
           </div>
         </div>
         <div
@@ -81,13 +44,13 @@
               v-model="saleForm.customer_name"
               name="sale-customer-name"
               placeholder=""
-              :readonly="!selectedCustomer && !customerCreating ? true : !customerNameEditing"
-              :class="{ editable: selectedCustomer || customerCreating }"
-              @dblclick="emit('enable-name-edit', $event)"
-              @touchend="emit('name-touch-end', $event)"
-              @input="emit('name-input', $event)"
-              @blur="emit('name-blur')"
-              @keyup.enter="emit('save-name')"
+              :readonly="preorderDelivery || (!selectedCustomer && !customerCreating ? true : !customerNameEditing)"
+              :class="{ editable: !preorderDelivery && (selectedCustomer || customerCreating), locked: preorderDelivery }"
+              @dblclick="!preorderDelivery && emit('enable-name-edit', $event)"
+              @touchend="!preorderDelivery && emit('name-touch-end', $event)"
+              @input="!preorderDelivery && emit('name-input', $event)"
+              @blur="!preorderDelivery && emit('name-blur')"
+              @keyup.enter="!preorderDelivery && emit('save-name')"
             />
             <el-button
               v-if="customerNameEditing"
@@ -100,7 +63,7 @@
               <i class="fas fa-lock-open" />
             </el-button>
             <el-button
-              v-if="selectedCustomer !== null && !customerNameEditing"
+              v-if="selectedCustomer !== null && !customerNameEditing && !preorderDelivery"
               class="customer-lock-button"
               type="info"
               plain
@@ -122,7 +85,9 @@
           <el-input
             v-model="saleForm.customer_apple_id"
             placeholder="客户Apple ID（可选）"
-            clearable
+            :clearable="!preorderDelivery"
+            :readonly="preorderDelivery"
+            :class="{ locked: preorderDelivery }"
             @input="emit('apple-id-input', $event)"
           />
         </div>
@@ -315,7 +280,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import InlineLoading from '@/components/InlineLoading.vue'
+import CustomerSearchDropdown from '@/components/common/CustomerSearchDropdown.vue'
 import { PaymentChannelSelect, PaymentMethodSelect } from '@/components/payment'
 import { formatNumber } from '@/utils/format'
 import type { Operator, Phone, Store } from '@/types'
@@ -329,6 +294,7 @@ interface CustomerNameInputInstance {
 const props = defineProps<{
   form: SalesCheckoutFormData
   selectedCustomer: SalesCustomer | null
+  preorderDelivery: boolean
   customerSearchResults: SalesCustomer[]
   customerSearching: boolean
   showCustomerSearch: boolean
@@ -371,16 +337,6 @@ const showCustomerSearch = computed({
   get: () => props.showCustomerSearch,
   set: value => emit('update:showCustomerSearch', value)
 })
-
-const getVipLabel = (vipLevel?: string) => {
-  const labels: Record<string, string> = {
-    normal: '普通',
-    silver: '银卡',
-    gold: '金卡',
-    platinum: '白金'
-  }
-  return labels[vipLevel || 'normal'] || '普通'
-}
 
 defineExpose({ input: customerNameInput })
 </script>

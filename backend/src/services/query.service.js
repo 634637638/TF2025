@@ -146,6 +146,7 @@ class QueryService {
             color: item.color,
             memory: item.memory,
             is_new: item.is_new,  // 直接返回数字值：1=全新，0=二手
+            is_preordered: item.is_preordered,
             quality_grade: item.quality_grade,
             status: this.getStatusText(item.status),  // 中文状态（用于显示）
             status_code: item.status,  // 英文状态码（用于样式判断）
@@ -222,11 +223,14 @@ class QueryService {
         store_id: filters.store_id ? parseInt(filters.store_id) : undefined,
         brand: filters.brand ? filters.brand.trim() : undefined,
         model: filters.model ? filters.model.trim() : undefined,
+        color: filters.color ? filters.color.trim() : undefined,
+        memory: filters.memory ? filters.memory.trim() : undefined,
         status: filters.status ? filters.status.trim() : undefined,
         is_new: filters.is_new !== undefined ? (filters.is_new === 'true' || filters.is_new === true) : undefined,
         sale_operator_id: filters.sale_operator_id ? parseInt(filters.sale_operator_id) : undefined,
         start_date: filters.start_date ? filters.start_date.trim() : undefined,
-        end_date: filters.end_date ? filters.end_date.trim() : undefined
+        end_date: filters.end_date ? filters.end_date.trim() : undefined,
+        search_term: filters.search_term ? filters.search_term.trim() : undefined
       }
 
       // 店铺权限控制（与查询方法保持一致）
@@ -395,7 +399,7 @@ class QueryService {
     const statusMap = {
       'in_stock': '可售',
       'sold': '已售',
-      'reserved': '预定',
+      'reserved': '预订',
       'repair': '维修',
       'rented': '租赁',
       'lost': '丢失',

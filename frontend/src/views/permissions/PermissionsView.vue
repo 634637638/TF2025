@@ -111,9 +111,9 @@
         >
           <div
             v-if="canViewPermissionsField('stats_total_roles')"
-            class="stat-card"
+            class="stat-card stat-card--accent"
           >
-            <div class="stat-icon roles">
+            <div class="stat-icon">
               <i class="fas fa-user-tag" />
             </div>
             <div class="stat-content">
@@ -128,9 +128,9 @@
 
           <div
             v-if="canViewPermissionsField('stats_total_users')"
-            class="stat-card"
+            class="stat-card stat-card--info"
           >
-            <div class="stat-icon users">
+            <div class="stat-icon">
               <i class="fas fa-users" />
             </div>
             <div class="stat-content">
@@ -145,9 +145,9 @@
 
           <div
             v-if="canViewPermissionsField('stats_system_roles')"
-            class="stat-card"
+            class="stat-card stat-card--accent"
           >
-            <div class="stat-icon system-roles">
+            <div class="stat-icon">
               <i class="fas fa-cog" />
             </div>
             <div class="stat-content">
@@ -162,9 +162,9 @@
 
           <div
             v-if="canViewPermissionsField('stats_business_roles')"
-            class="stat-card"
+            class="stat-card stat-card--accent"
           >
-            <div class="stat-icon business-roles">
+            <div class="stat-icon">
               <i class="fas fa-briefcase" />
             </div>
             <div class="stat-content">
@@ -179,11 +179,11 @@
 
           <div
             v-if="canViewPermissionsField('stats_total_modules')"
-            class="stat-card"
+            class="stat-card stat-card--info"
             style="cursor: pointer;"
             @click="goToModuleManagement"
           >
-            <div class="stat-icon modules">
+            <div class="stat-icon">
               <i class="fas fa-cube" />
             </div>
             <div class="stat-content">
@@ -198,11 +198,11 @@
 
           <div
             v-if="canViewPermissionsField('stats_unregistered_modules')"
-            class="stat-card"
+            class="stat-card stat-card--warning"
             style="cursor: pointer;"
             @click="goToModuleManagement"
           >
-            <div class="stat-icon unregistered">
+            <div class="stat-icon">
               <i class="fas fa-exclamation-triangle" />
             </div>
             <div class="stat-content">

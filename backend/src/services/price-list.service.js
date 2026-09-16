@@ -4192,6 +4192,33 @@ class PriceListService {
     }
   }
 
+  /**
+   * 获取同步日志汇总统计，避免前端为了计算卡片拉取全部日志。
+   */
+  async getSyncLogStatistics() {
+    try {
+      const [rows] = await this.db.query(`
+        SELECT
+          COALESCE(SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END), 0) AS success_count,
+          COALESCE(SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END), 0) AS fail_count,
+          COALESCE(SUM(total_count), 0) AS total_records,
+          COALESCE(ROUND(AVG(CASE WHEN end_time IS NOT NULL AND start_time IS NOT NULL
+            THEN TIMESTAMPDIFF(SECOND, start_time, end_time) END)), 0) AS avg_duration
+        FROM price_sync_log
+      `)
+      const row = rows[0] || {}
+      return this.createSuccessResponse('获取统计成功', {
+        success_count: Number(row.success_count) || 0,
+        fail_count: Number(row.fail_count) || 0,
+        total_records: Number(row.total_records) || 0,
+        avg_duration: Number(row.avg_duration) || 0
+      })
+    } catch (error) {
+      log.error('获取同步日志统计失败:', error)
+      return this.createErrorResponse('获取统计失败')
+    }
+  }
+
   // ==================== 价格历史 ====================
 
   /**

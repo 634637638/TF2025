@@ -128,7 +128,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
-import { getPhoneStatusClass } from '@/constants/phoneStatuses'
+import { getEffectivePhoneStatusClass } from '@/constants/phoneStatuses'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import type { QueryItem } from '@/types'
 
@@ -172,7 +172,10 @@ const formatDate = (dateString?: string) => {
 const formatPrice = (price?: number | null) => price === null || price === undefined ? '-' : `¥${price}`
 
 const getStatusBadgeClass = (status?: string) => {
-  return getPhoneStatusClass(status)
+  return getEffectivePhoneStatusClass({
+    status,
+    is_preordered: props.detailItem?.基本信息?.is_preordered
+  })
 }
 </script>
 

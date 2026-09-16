@@ -67,7 +67,7 @@
                 查看
               </el-button>
               <el-button
-                v-if="canCreate && item.status === 'in_stock'"
+                v-if="canCreate && isPhoneSaleActionAvailable(item)"
                 type="warning"
                 size="small"
                 title="商品出库"
@@ -77,7 +77,7 @@
                 出库
               </el-button>
               <el-button
-                v-if="canEdit && item.status === 'in_stock'"
+                v-if="canEdit && isPhoneSaleActionAvailable(item)"
                 type="success"
                 size="small"
                 title="编辑"
@@ -87,7 +87,7 @@
                 编辑
               </el-button>
               <el-button
-                v-if="canDelete && item.status === 'in_stock'"
+                v-if="canDelete && isPhoneSaleActionAvailable(item)"
                 type="danger"
                 size="small"
                 title="删除"
@@ -136,6 +136,7 @@ import { toRefs } from 'vue'
 import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import type { InventoryItem } from '@/types'
+import { isPhoneSaleActionAvailable } from '@/constants/phoneStatuses'
 
 interface InventoryColumn {
   key: string

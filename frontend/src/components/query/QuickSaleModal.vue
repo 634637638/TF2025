@@ -309,57 +309,17 @@
                 @clear="handleCustomerClear"
               />
 
-              <!-- 客户搜索结果面板 -->
-              <Teleport to="body">
-                <div
-                  v-if="showCustomerSearchResults && (customerOptions.length > 0 || customerLookupLoading || (formData.customer_phone.length >= 11 && !foundCustomer && !customerLookupLoading))"
-                  class="customer-search-results customer-search-results--floating"
-                  :style="customerSearchResultsStyle"
-                >
-                  <div
-                    v-if="customerLookupLoading"
-                    class="search-loading"
-                  >
-                    <InlineLoading
-                      text="搜索中..."
-                      size="small"
-                    />
-                  </div>
-                  <template v-else>
-                    <div
-                      v-for="customer in customerOptions"
-                      :key="customer.id"
-                      class="customer-item"
-                      @mousedown.prevent="selectCustomer(customer)"
-                    >
-                      <div class="customer-info">
-                        <div class="customer-headline">
-                          <div class="customer-name">
-                            {{ customer.name }}
-                          </div>
-                          <span
-                            v-if="customer.member_number"
-                            class="member-number"
-                          >{{ customer.member_number }}</span>
-                        </div>
-                        <div class="customer-subline">
-                          <span class="customer-phone">{{ customer.phone }}</span>
-                          <span class="vip-badge">{{ getVipLabel(customer.vip_level) }}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <!-- 创建新客户提示 -->
-                    <div
-                      v-if="formData.customer_phone.length >= 11 && customerOptions.length === 0 && !foundCustomer"
-                      class="create-new-customer"
-                      @mousedown.prevent="createNewCustomer"
-                    >
-                      <i class="fas fa-user-plus" />
-                      点击创建该用户
-                    </div>
-                  </template>
-                </div>
-              </Teleport>
+              <CustomerSearchDropdown
+                :items="customerOptions"
+                :loading="customerLookupLoading"
+                :visible="showCustomerSearchResults && !foundCustomer"
+                :keyword="formData.customer_phone"
+                :min-query-length="11"
+                teleport-target="body"
+                :floating-style="customerSearchResultsStyle"
+                @select="selectCustomer($event as CustomerOption)"
+                @create="createNewCustomer"
+              />
             </div>
           </el-form-item>
 
@@ -561,8 +521,8 @@ import unifiedApi from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import { useAuthStore } from '@/stores/auth'
 import MobileDialog from '@/components/MobileDialog.vue'
+import CustomerSearchDropdown from '@/components/common/CustomerSearchDropdown.vue'
 import { PaymentChannelSelect, PaymentMethodSelect } from '@/components/payment'
-import InlineLoading from '@/components/InlineLoading.vue'
 import { useMobile } from '@/composables/mobile'
 import { onMounted, onUnmounted } from 'vue'
 import { isValidMobilePhone, normalizeAppleId, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
@@ -661,7 +621,16 @@ const updateCustomerSearchResultsLayout = () => {
   }
 
   const container = customerSearchContainerRef.value
-  if (!container) return
+  if (!container) {
+    customerSearchResultsStyle.value = {
+      position: 'fixed',
+      top: '16px',
+      left: '16px',
+      width: 'min(460px, calc(100vw - 32px))',
+      maxHeight: '300px'
+    }
+    return
+  }
 
   const rect = container.getBoundingClientRect()
   const viewportWidth = window.visualViewport?.width ?? window.innerWidth
@@ -743,17 +712,6 @@ const showProfit = computed(() => {
 const currentUserName = computed(() => {
   return authStore.user?.name || authStore.user?.username || ''
 })
-
-const getVipLabel = (vipLevel?: string) => {
-  const labels: Record<string, string> = {
-    normal: '普通',
-    silver: '银卡',
-    gold: '金卡',
-    platinum: '白金'
-  }
-
-  return labels[vipLevel || 'normal'] || '普通'
-}
 
 // ==================== 表单验证规则 ====================
 
@@ -1421,7 +1379,7 @@ watch(() => formData.sale_price, () => {
 const handleClickOutside = (event: MouseEvent) => {
   const target = event.target as HTMLElement
   const searchContainer = target.closest('.customer-search-container')
-  const searchResults = target.closest('.customer-search-results')
+  const searchResults = target.closest('.customer-search-results, .customer-search-dropdown')
 
   // 如果点击的是搜索容器内的元素，不关闭
   if (searchContainer || searchResults) {

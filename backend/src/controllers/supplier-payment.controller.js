@@ -44,9 +44,15 @@ class SupplierPaymentController {
    */
   async getSummaryStatistics(req, res) {
     try {
-      const { sale_status } = req.query
+      const { supplier_id, store_id, payment_status, sale_status, keyword, start_date, end_date } = req.query
       const summary = await supplierPaymentService.getSummaryStatistics({
-        sale_status: sale_status || 'all'
+        supplier_id: supplier_id ? Number.parseInt(supplier_id, 10) : null,
+        store_id: store_id ? Number.parseInt(store_id, 10) : null,
+        payment_status: payment_status || 'all',
+        sale_status: sale_status || 'all',
+        keyword: keyword?.trim(),
+        start_date,
+        end_date
       })
 
       res.json({

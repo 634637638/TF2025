@@ -2948,7 +2948,7 @@ class ShopPublicService {
       const [stockResult] = await connection.query(
         `UPDATE phones p
          INNER JOIN H5_order_items oi ON p.id = oi.phone_id
-         SET p.status = 'sold'
+         SET p.status = 'sold', p.is_preordered = 0
          WHERE oi.order_id = ? AND p.status = 'in_stock'`,
         [orderId]
       )
@@ -3144,17 +3144,44 @@ class ShopPublicService {
   /**
    * 获取订单统计数据
    */
-  async getH5OrderStatistics({ start_date, end_date }) {
+  async getH5OrderStatistics({
+    status,
+    customer_name,
+    customer_phone,
+    order_number,
+    start_date,
+    end_date
+  }) {
     const conditions = []
     const params = []
 
+    if (status) {
+      conditions.push('o.status = ?')
+      params.push(status)
+    }
+
+    if (customer_name) {
+      conditions.push('o.customer_name LIKE ?')
+      params.push(`%${customer_name}%`)
+    }
+
+    if (customer_phone) {
+      conditions.push('o.customer_phone LIKE ?')
+      params.push(`%${customer_phone}%`)
+    }
+
+    if (order_number) {
+      conditions.push('o.order_number LIKE ?')
+      params.push(`%${order_number}%`)
+    }
+
     if (start_date) {
-      conditions.push('DATE(created_at) >= ?')
+      conditions.push('DATE(o.created_at) >= ?')
       params.push(start_date)
     }
 
     if (end_date) {
-      conditions.push('DATE(created_at) <= ?')
+      conditions.push('DATE(o.created_at) <= ?')
       params.push(end_date)
     }
 
@@ -3166,9 +3193,9 @@ class ShopPublicService {
         status,
         COUNT(*) as count,
         SUM(total_amount) as total_amount
-      FROM H5_orders
+      FROM H5_orders o
       ${whereClause}
-      GROUP BY status
+      GROUP BY o.status
     `, params)
 
     // 查询总订单数和总金额
@@ -3176,7 +3203,7 @@ class ShopPublicService {
       SELECT
         COUNT(*) as total_orders,
         SUM(total_amount) as total_amount
-      FROM H5_orders
+      FROM H5_orders o
       ${whereClause}
     `, params)
 

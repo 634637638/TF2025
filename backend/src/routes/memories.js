@@ -143,7 +143,7 @@ router.get('/', unifiedAuth, devPermissionCheck('memories:view'), cacheMiddlewar
 })
 
 // 获取单个内存规格详情
-router.get('/:id', unifiedAuth, requirePermission('memories:view'), async (req, res) => {
+router.get('/:id(\\d+)', unifiedAuth, requirePermission('memories:view'), async (req, res) => {
   try {
     log.debug('获取内存规格详情请求，ID:', req.params.id)
 
@@ -423,16 +423,40 @@ router.get('/stats/overview', unifiedAuth, requirePermission('memories:view'), a
     }
 
     const pool = getDatabase()
+    const conditions = []
+    const params = []
+    const size = String(req.query.size || '').trim()
+    const storageUnit = String(req.query.storage_unit || '').trim()
+    const status = String(req.query.status ?? '').trim()
+    if (storageUnit) {
+      conditions.push('m.size LIKE ?')
+      params.push(`%${storageUnit}`)
+    }
+    if (status !== '') {
+      conditions.push('m.status = ?')
+      params.push(Number(status) === 1 ? 1 : 0)
+    }
+    if (size) {
+      conditions.push('m.size LIKE ?')
+      params.push(`%${size}%`)
+    }
+    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
 
     const [[memoryStats], [phoneStats]] = await Promise.all([
       pool.execute(`
         SELECT
           COUNT(*) AS total,
-          SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) AS active,
-          SUM(CASE WHEN status <> 1 OR status IS NULL THEN 1 ELSE 0 END) AS inactive
-        FROM memories
-      `),
-      pool.execute('SELECT COUNT(*) AS related_phones FROM phones WHERE memory_id IS NOT NULL')
+          SUM(CASE WHEN m.status = 1 THEN 1 ELSE 0 END) AS active,
+          SUM(CASE WHEN m.status <> 1 OR m.status IS NULL THEN 1 ELSE 0 END) AS inactive
+        FROM memories m
+        ${whereClause}
+      `, params),
+      pool.execute(`
+        SELECT COUNT(*) AS related_phones
+        FROM phones p
+        INNER JOIN memories m ON m.id = p.memory_id
+        ${whereClause}
+      `, params)
     ])
 
     const stats = {

@@ -4,6 +4,7 @@
   "referenceRoots": ["docs/standards", "docs/components", "docs/guides"],
   "standards": [
     { "document": "admin-table-standards.md", "checks": ["check:tables"], "publicSources": ["frontend/src/styles/admin-layout.css", "frontend/src/styles/components/_table.scss", "frontend/src/utils/admin-table-drag-scroll.ts"] },
+    { "document": "admin-stat-card-color-standard.md", "checks": ["check:ui", "check:style-debt"], "publicSources": ["frontend/src/styles/admin-layout.css", "frontend/src/styles/utilities.scss", "frontend/scripts/check-style-debt.mjs"] },
     { "document": "button-standards.md", "checks": ["check:buttons"], "publicSources": ["frontend/src/styles/components/_buttons.scss", "frontend/src/styles/components/_dialog-actions.scss"] },
     { "document": "crud-standards.md", "checks": ["check:data-freshness", "check:buttons"], "publicSources": ["frontend/src/utils/unified-api.ts"] },
     { "document": "data-freshness-standard.md", "checks": ["check:data-freshness"], "publicSources": ["frontend/src/utils/unified-api.ts", "frontend/src/composables/usePageCache.ts"] },

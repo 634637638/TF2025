@@ -35,9 +35,20 @@ router.use(unifiedAuth)
 router.get('/h5-orders/statistics', requireAnyPermission(H5_ORDER_VIEW_PERMISSIONS), async (req, res) => {
   try {
     log.debug('[SalesManagement] 收到统计请求:', req.query, req.path)
-    const { start_date, end_date } = req.query
+    const {
+      status,
+      customer_name,
+      customer_phone,
+      order_number,
+      start_date,
+      end_date
+    } = req.query
 
     const stats = await shopPublicService.getH5OrderStatistics({
+      status,
+      customer_name,
+      customer_phone,
+      order_number,
       start_date,
       end_date
     })

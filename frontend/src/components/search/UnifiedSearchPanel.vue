@@ -61,11 +61,13 @@ import { requestPaginationReset } from '@/utils/search-pagination'
 interface Props {
   expanded?: boolean
   loading?: boolean
+  autoResetPagination?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   expanded: false,
-  loading: false
+  loading: false,
+  autoResetPagination: true
 })
 
 interface Emits {
@@ -78,6 +80,7 @@ const emit = defineEmits<Emits>()
 const panelRef = ref<HTMLElement | null>(null)
 
 const resetPagination = () => {
+  if (!props.autoResetPagination) return
   requestPaginationReset(panelRef.value)
 }
 
@@ -149,7 +152,12 @@ const handlePanelClick = (event: MouseEvent) => {
 }
 
 .unified-search-panel__main {
-  display: contents;
+  display: flex;
+  flex: 1 1 100%;
+  width: 100%;
+  min-width: 0;
+  gap: 8px;
+  align-items: center;
 }
 
 .unified-search-panel__primary {
@@ -209,9 +217,27 @@ const handlePanelClick = (event: MouseEvent) => {
   box-sizing: border-box;
 }
 
-@media (min-width: 769px) {
+/* Tablet and iPad layouts may need more than one filter row. */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .unified-search-panel__form {
+    flex-wrap: wrap;
+  }
+
+  .unified-search-panel__form.is-expanded :deep(.filter-item) {
+    display: block;
+    flex: 1 1 220px;
+    min-width: 180px;
+  }
+}
+
+/* Desktop keeps the original single-row search layout. */
+@media (min-width: 1025px) {
   .unified-search-panel__form {
     flex-wrap: nowrap;
+  }
+
+  .unified-search-panel__main {
+    display: contents;
   }
 
   .unified-search-panel__form.is-expanded :deep(.filter-item) {

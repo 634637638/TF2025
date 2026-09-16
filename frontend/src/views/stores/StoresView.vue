@@ -58,7 +58,7 @@
         >
           <div
             v-if="canViewField('stats_total_stores')"
-            class="stat-card"
+            class="stat-card stat-card--primary"
           >
             <div class="stat-icon">
               <i class="fas fa-store" />
@@ -74,9 +74,9 @@
           </div>
           <div
             v-if="canViewField('stats_active_stores')"
-            class="stat-card"
+            class="stat-card stat-card--success"
           >
-            <div class="stat-icon active">
+            <div class="stat-icon">
               <i class="fas fa-check-circle" />
             </div>
             <div class="stat-content">
@@ -90,9 +90,9 @@
           </div>
           <div
             v-if="canViewField('stats_inactive_stores')"
-            class="stat-card"
+            class="stat-card stat-card--danger"
           >
-            <div class="stat-icon inactive">
+            <div class="stat-icon">
               <i class="fas fa-pause-circle" />
             </div>
             <div class="stat-content">
@@ -106,7 +106,7 @@
           </div>
           <div
             v-if="canViewField('stats_phone_completion')"
-            class="stat-card"
+            class="stat-card stat-card--info"
           >
             <div class="stat-icon">
               <i class="fas fa-phone" />
@@ -960,7 +960,7 @@ const loadStores = async () => {
       stores.value = storesData
       pagination.total = Number(responseData?.pagination?.total) || storesData.length
       pagination.total_pages = Number(responseData?.pagination?.total_pages) || 1
-      updateStats()
+      await loadStats()
     } else {
       stores.value = []
       pagination.total = 0
@@ -1047,7 +1047,7 @@ const loadStoresSilent = async () => {
       stores.value = storesData
       pagination.total = Number(responseData?.pagination?.total) || storesData.length
       pagination.total_pages = Number(responseData?.pagination?.total_pages) || 1
-      updateStats()
+      await loadStats()
     }
   } catch (error) {
     if (storeListRequest.isCanceledError(error)) {
@@ -1308,20 +1308,23 @@ const handleRefresh = async () => {
   showSuccess('数据刷新成功')
 }
 
-const updateStats = () => {
-  // 确保 stores.value 是数组
-  const storesArray = Array.isArray(stores.value) ? stores.value : []
-
-  stats.total = storesArray.length
-  stats.active = storesArray.filter(store => isStoreActive(store.status)).length
-  stats.inactive = storesArray.filter(store => !isStoreActive(store.status)).length
-  stats.withPhone = storesArray.filter(store => Boolean(store.phone?.trim())).length
-
-  // 最近创建的门店（7天内）
-  const sevenDaysAgo = TimeUtil.subtract(TimeUtil.now(), 7, 'day')
-  stats.recent = storesArray.filter(store =>
-    store.created_at && TimeUtil.parse(store.created_at).isAfter(sevenDaysAgo)
-  ).length
+const loadStats = async () => {
+  try {
+    const params: Record<string, string> = {}
+    if (searchForm.name) params.name = searchForm.name.trim()
+    if (searchForm.status !== '') params.status = searchForm.status
+    const response = await unifiedApi.get('/stores/stats', { params })
+    if (response.success) {
+      const data = response.data || {}
+      stats.total = Number(data.total) || 0
+      stats.active = Number(data.active) || 0
+      stats.inactive = Number(data.inactive) || 0
+      stats.withPhone = Number(data.with_phone) || 0
+      stats.recent = Number(data.recent) || 0
+    }
+  } catch (err) {
+    logger.error('获取门店统计失败:', err)
+  }
 }
 
 const isStoreActive = (status: Store['status']) => status === 1 || status === 'active'
@@ -1486,68 +1489,6 @@ onUnmounted(() => {
   background: var(--tf-color-slate-50);
   min-height: 100vh;
 }
-/* 统计卡片样式 */
-.stats-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 20px;
-  margin-bottom: 24px;
-}
-
-.stat-card {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-  transition: all 0.3s ease;
-  border: 1px solid var(--tf-color-border-cool);
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0,0,0,0.12);
-}
-
-.stat-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  background: linear-gradient(135deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand));
-  color: white;
-}
-
-.stat-icon.active {
-  background: linear-gradient(135deg, var(--success-color), var(--tf-color-teal-500));
-}
-
-.stat-icon.inactive {
-  background: linear-gradient(135deg, var(--danger-color), var(--tf-color-orange-bootstrap));
-}
-
-.stat-content {
-  flex: 1;
-}
-
-.stat-value {
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--tf-color-heading);
-  margin-bottom: 4px;
-}
-
-.stat-label {
-  font-size: 14px;
-  color: var(--tf-color-muted);
-  font-weight: 500;
-}
-
 /* 区域标题样式 */
 .section-title {
   display: flex;

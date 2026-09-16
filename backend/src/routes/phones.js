@@ -1739,10 +1739,10 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
              AND p.model_id = ?
              AND p.color_id = ?
              AND p.memory_id = ?
-             AND p.store_id = ?
+             AND p.is_new = ?
            ORDER BY p.created_at ASC
            LIMIT 1`,
-          [brandId, modelId, colorId, memoryId, storeId]
+          [brandId, modelId, colorId, memoryId, nextIsNew]
         )
 
         if (matchablePreorders.length > 0) {

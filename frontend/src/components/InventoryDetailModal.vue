@@ -179,7 +179,7 @@
         class="detail-modal-footer"
       >
         <el-button
-          v-if="canCreate && item.status === 'in_stock'"
+          v-if="canCreate && isPhoneSaleActionAvailable(item)"
           type="warning"
           @click="emit('quick-sale')"
         >
@@ -187,7 +187,7 @@
           出库
         </el-button>
         <el-button
-          v-if="canEdit && item.status === 'in_stock'"
+          v-if="canEdit && isPhoneSaleActionAvailable(item)"
           type="primary"
           @click="emit('edit')"
         >
@@ -195,7 +195,7 @@
           编辑
         </el-button>
         <el-button
-          v-if="canDelete && item.status === 'in_stock'"
+          v-if="canDelete && isPhoneSaleActionAvailable(item)"
           type="danger"
           @click="emit('delete')"
         >
@@ -211,7 +211,7 @@
 import { computed } from 'vue'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
 import MobileDialog from '@/components/MobileDialog.vue'
-import { getPhoneStatusLabel } from '@/constants/phoneStatuses'
+import { getEffectivePhoneStatusLabel, isPhoneSaleActionAvailable } from '@/constants/phoneStatuses'
 import type { InventoryItem } from '@/types'
 import type { ModelValueProps, UpdateModelValueEmits, CloseEmits } from '@/types/component'
 
@@ -275,7 +275,7 @@ const conditionText = computed(() => normalizeCondition(props.item?.is_new) ? '�
 const conditionClass = computed(() => normalizeCondition(props.item?.is_new) ? 'is-new' : 'is-used')
 
 const statusText = computed(() => {
-  return getPhoneStatusLabel(props.item?.status)
+  return getEffectivePhoneStatusLabel(props.item)
 })
 
 const productTitle = computed(() => {

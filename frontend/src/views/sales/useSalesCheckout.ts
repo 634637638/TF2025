@@ -2,6 +2,7 @@ import { computed, nextTick, ref, type Ref } from 'vue'
 import { isValidMobilePhone, normalizeAppleId, normalizePersonName } from '@/utils/security'
 import { unifiedApi as api } from '@/utils/unified-api'
 import { logger } from '@/utils/logger'
+import { getEffectivePhoneStatus, isPhoneSellable } from '@/constants/phoneStatuses'
 import type { Operator, Phone } from '@/types'
 import type { BatchSaleFormData, SalesCheckoutFormData, SalesCustomer } from './types'
 
@@ -69,6 +70,7 @@ export const useSalesCheckout = ({
   showSuccess
 }: UseSalesCheckoutOptions) => {
   const currentPreorderInfo = ref<{ preorder_id: string; advance_payment: number } | null>(null)
+  const isPreorderDelivery = computed(() => currentPreorderInfo.value !== null)
   const saleCompleted = ref(false)
 
   const profit = computed(() => {
@@ -176,6 +178,21 @@ export const useSalesCheckout = ({
       return false
     }
 
+    if (getEffectivePhoneStatus(phone) === 'reserved') {
+      if (!phone.preorder_id || !phone.preorder_customer_id) {
+        showError('该设备已被预订，但未找到有效预定信息')
+        return false
+      }
+      return openSaleModalWithPreorder(phone, {
+        preorder_id: String(phone.preorder_id),
+        customer_id: String(phone.preorder_customer_id),
+        customer_name: phone.preorder_customer_name || '',
+        customer_phone: phone.preorder_customer_phone || '',
+        expected_price: String(phone.preorder_actual_price || phone.preorder_total_price || ''),
+        advance_payment: String(phone.preorder_deposit_amount || '')
+      })
+    }
+
     showSearchSection.value = false
     selectedPhone.value = phone
     saleForm.sale_price = ''
@@ -233,13 +250,21 @@ export const useSalesCheckout = ({
   }
 
   const togglePhoneSelection = (phone: Phone) => {
+    if (getEffectivePhoneStatus(phone) === 'reserved') {
+      openSaleModal(phone)
+      return
+    }
+    if (!isPhoneSellable(phone)) {
+      showError('当前状态设备不能加入批量销售')
+      return
+    }
     const index = selectedPhones.value.findIndex(selected => selected.id === phone.id)
     if (index > -1) {
       selectedPhones.value.splice(index, 1)
     } else {
       selectedPhones.value.push(phone)
     }
-    selectAll.value = selectedPhones.value.length === availablePhones.value.length
+    selectAll.value = selectedPhones.value.length === availablePhones.value.filter(item => getEffectivePhoneStatus(item) === 'in_stock').length
   }
 
   const handleSaleAction = (phone: Phone) => {
@@ -251,7 +276,9 @@ export const useSalesCheckout = ({
   }
 
   const toggleSelectAll = async () => {
-    selectedPhones.value = selectAll.value ? [...availablePhones.value] : []
+    selectedPhones.value = selectAll.value
+      ? availablePhones.value.filter(phone => getEffectivePhoneStatus(phone) === 'in_stock')
+      : []
     await nextTick()
   }
 
@@ -496,6 +523,7 @@ export const useSalesCheckout = ({
     profit,
     profitMargin,
     profitClass,
+    isPreorderDelivery,
     getTotalCost,
     getTotalProfit,
     isCurrentUser,

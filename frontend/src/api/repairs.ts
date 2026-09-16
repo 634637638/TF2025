@@ -23,7 +23,9 @@ export const repairsApi = {
   list: (params: RepairOrderFilters = {}) => (
     unifiedApi.get<RepairOrder[]>('/repairs', { params, useCache: false }) as Promise<RepairListResponse>
   ),
-  stats: () => unifiedApi.get<RepairStats>('/repairs/stats'),
+  stats: (params: Pick<RepairOrderFilters, 'search' | 'status'> = {}) => (
+    unifiedApi.get<RepairStats>('/repairs/stats', { params })
+  ),
   options: () => unifiedApi.get<RepairOptions>('/repairs/options'),
   detail: (id: number) => unifiedApi.get<RepairOrder>(`/repairs/${id}`),
   create: (data: RepairOrderForm) => unifiedApi.post<RepairOrder>('/repairs', data),

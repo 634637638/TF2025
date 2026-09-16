@@ -52,14 +52,14 @@
         >
           <div
             v-if="canViewField('stats_total_employees')"
-            class="stat-card"
+            class="stat-card stat-card--primary"
           >
             <div class="stat-icon">
               <i class="fas fa-users" />
             </div>
             <div class="stat-content">
               <div class="stat-value">
-                {{ employees.length }}
+                {{ employeeStats.total }}
               </div>
               <div class="stat-label">
                 员工总数
@@ -68,14 +68,14 @@
           </div>
           <div
             v-if="canViewField('stats_active_employees')"
-            class="stat-card"
+            class="stat-card stat-card--success"
           >
-            <div class="stat-icon active">
+            <div class="stat-icon">
               <i class="fas fa-check-circle" />
             </div>
             <div class="stat-content">
               <div class="stat-value">
-                {{ activeEmployees }}
+                {{ employeeStats.active }}
               </div>
               <div class="stat-label">
                 在职员工
@@ -84,14 +84,14 @@
           </div>
           <div
             v-if="canViewField('stats_inactive_employees')"
-            class="stat-card"
+            class="stat-card stat-card--danger"
           >
-            <div class="stat-icon inactive">
+            <div class="stat-icon">
               <i class="fas fa-pause-circle" />
             </div>
             <div class="stat-content">
               <div class="stat-value">
-                {{ inactiveEmployees }}
+                {{ employeeStats.inactive }}
               </div>
               <div class="stat-label">
                 离职员工
@@ -100,14 +100,14 @@
           </div>
           <div
             v-if="canViewField('stats_phone_completion')"
-            class="stat-card"
+            class="stat-card stat-card--info"
           >
             <div class="stat-icon">
               <i class="fas fa-phone" />
             </div>
             <div class="stat-content">
               <div class="stat-value">
-                {{ employeesWithPhone }}
+                {{ employeeStats.withPhone }}
               </div>
               <div class="stat-label">
                 已留电话
@@ -165,7 +165,7 @@
           <div class="section-title">
             <i class="fas fa-list" />
             员工列表
-            <span class="record-count">共 {{ filteredEmployees.length }} 条记录</span>
+            <span class="record-count">共 {{ employeeTotal }} 条记录</span>
           </div>
 
           <div class="table-responsive">
@@ -426,7 +426,7 @@
             v-if="filteredEmployees.length > 0"
             v-model:current="page"
             v-model:page-size="page_size"
-            :total="filteredEmployees.length"
+            :total="employeeTotal"
             :page-sizes="[10, 20, 50, 100]"
             :show-total="true"
             :show-range="true"
@@ -1023,6 +1023,8 @@ const { isMobile } = useMobile()
 
 // 响应式数据
 const employees = ref<Employee[]>([])
+const employeeTotal = ref(0)
+const employeeStats = ref({ total: 0, active: 0, inactive: 0, withPhone: 0 })
 const { loading } = useLoadingState()
 loading.value = true
 const { loading: submitting } = useLoadingState()
@@ -1199,44 +1201,41 @@ const roleDialogVisible = computed({
 const isEditMode = computed(() => showEditModal.value)
 
 // 计算属性
-const filteredEmployees = computed(() => {
-  let filtered = employees.value
-
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(emp => 
-      emp.name.toLowerCase().includes(query) ||
-      emp.username.toLowerCase().includes(query) ||
-      emp.phone?.includes(query)
-    )
-  }
-
-  if (statusFilter.value !== '') {
-    filtered = filtered.filter(emp => emp.status === parseInt(statusFilter.value))
-  }
-
-  return filtered
-})
+// 搜索和分页由后端处理，避免只在前 100 条员工数据中筛选。
+const filteredEmployees = computed(() => employees.value)
 
 const paginatedEmployees = computed(() => {
-  const start = (page.value - 1) * page_size.value
-  const end = start + page_size.value
-  return filteredEmployees.value.slice(start, end)
+  return employees.value
 })
 
 const handlePaginationChange = (current_page, page_size_value) => {
   page.value = current_page
   page_size.value = page_size_value
-  // 本地分页不需要重新加载数据
+  loadEmployees()
 }
 
-// 统计计算属性
-const _totalEmployees = computed(() => employees.value.length)
-const activeEmployees = computed(() => employees.value.filter(e => e.status === 1).length)
-const inactiveEmployees = computed(() => employees.value.filter(e => e.status === 0).length)
-const employeesWithPhone = computed(() => employees.value.filter(e => e.phone).length)
-
 // 方法
+const loadEmployeeStats = async () => {
+  const params: Record<string, string> = {}
+  if (searchQuery.value.trim()) params.search = searchQuery.value.trim()
+  if (statusFilter.value !== '') params.status = statusFilter.value
+  try {
+    const response = await unifiedApi.get('/employees/stats/overview', { params })
+    if (response.success) {
+      const data = response.data || {}
+      employeeStats.value = {
+        total: Number(data.total) || 0,
+        active: Number(data.active) || 0,
+        inactive: Number(data.inactive) || 0,
+        withPhone: Number(data.with_phone) || 0
+      }
+    }
+  } catch (err) {
+    logger.error('获取员工统计失败:', err)
+    employeeStats.value = { total: 0, active: 0, inactive: 0, withPhone: 0 }
+  }
+}
+
 const loadEmployees = async (bustCache: boolean = false, silentError: boolean = false, showLoadingState: boolean = true) => {
   if (!canView.value) {
     employees.value = []
@@ -1248,17 +1247,25 @@ const loadEmployees = async (bustCache: boolean = false, silentError: boolean = 
     loading.value = true
   }
   try {
-    const params: any = { page: 1, page_size: 100 }
+    const params: any = { page: page.value, page_size: page_size.value }
+    if (searchQuery.value.trim()) params.search = searchQuery.value.trim()
+    if (statusFilter.value !== '') params.status = statusFilter.value
     if (bustCache) {
       params._t = Date.now()
     }
     const response = await unifiedApi.get('/employees', { params })
     if (response.success) {
       employees.value = response.data.employees || []
+      const apiPagination = response.data.pagination || {}
+      page.value = Number(apiPagination.page) || page.value
+      page_size.value = Number(apiPagination.page_size) || page_size.value
+      employeeTotal.value = Number(apiPagination.total) || 0
+      await loadEmployeeStats()
     }
   } catch (error: any) {
     logger.error('加载员工列表失败:', error)
     employees.value = []
+    employeeTotal.value = 0
 
     // 静默处理页面卸载导致的取消错误
     if (error.name === 'CanceledError') {
@@ -1285,12 +1292,14 @@ const handleRefresh = async () => {
 
 const handleSearch = () => {
   page.value = 1
+  loadEmployees()
 }
 
 const resetFilters = () => {
   searchQuery.value = ''
   statusFilter.value = ''
   page.value = 1
+  loadEmployees()
 }
 
 const openAddEmployee = async () => {
@@ -1921,68 +1930,6 @@ onMounted(async () => {
   padding: 24px;
   background: var(--tf-color-surface);
   min-height: 100vh;
-}
-
-/* 统计卡片样式 */
-.stats-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 20px;
-  margin-bottom: 24px;
-}
-
-.stat-card {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-  transition: all 0.3s ease;
-  border: 1px solid var(--tf-color-border-cool);
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0,0,0,0.12);
-}
-
-.stat-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  background: linear-gradient(135deg, var(--tf-color-purple-bootstrap), var(--tf-color-purple-brand));
-  color: white;
-}
-
-.stat-icon.active {
-  background: linear-gradient(135deg, var(--success-color), var(--tf-color-teal-500));
-}
-
-.stat-icon.inactive {
-  background: linear-gradient(135deg, var(--danger-color), var(--tf-color-orange-bootstrap));
-}
-
-.stat-content {
-  flex: 1;
-}
-
-.stat-value {
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--tf-color-heading);
-  margin-bottom: 4px;
-}
-
-.stat-label {
-  font-size: 14px;
-  color: var(--tf-color-muted);
-  font-weight: 500;
 }
 
 /* 用户信息区域和操作按钮区域样式 */

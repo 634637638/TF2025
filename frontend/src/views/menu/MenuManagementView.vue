@@ -73,7 +73,7 @@
         >
           <div
             v-if="canViewMenuField('stats_total_menus')"
-            class="stat-card"
+            class="stat-card stat-card--primary"
           >
             <div class="stat-icon">
               <i class="fas fa-sitemap" />
@@ -89,9 +89,9 @@
           </div>
           <div
             v-if="canViewMenuField('stats_active_menus')"
-            class="stat-card"
+            class="stat-card stat-card--success"
           >
-            <div class="stat-icon active">
+            <div class="stat-icon">
               <i class="fas fa-check-circle" />
             </div>
             <div class="stat-content">
@@ -105,9 +105,9 @@
           </div>
           <div
             v-if="canViewMenuField('stats_inactive_menus')"
-            class="stat-card"
+            class="stat-card stat-card--danger"
           >
-            <div class="stat-icon inactive">
+            <div class="stat-icon">
               <i class="fas fa-pause-circle" />
             </div>
             <div class="stat-content">
@@ -121,7 +121,7 @@
           </div>
           <div
             v-if="canViewMenuField('stats_root_menus')"
-            class="stat-card"
+            class="stat-card stat-card--info"
           >
             <div class="stat-icon">
               <i class="fas fa-layer-group" />
@@ -2113,71 +2113,6 @@ onMounted(async () => {
   flex-wrap: wrap;
 }
 
-/* ===== 统计卡片样式 ===== */
-.stats-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
-  margin-bottom: 24px;
-}
-
-.stat-card {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  transition: all 0.3s ease;
-  border: 1px solid var(--tf-color-border-muted);
-}
-
-.stat-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
-}
-
-.stat-icon {
-  width: 60px;
-  height: 60px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  background: linear-gradient(135deg, var(--tf-color-blue-100), var(--tf-color-blue-material-100));
-  color: var(--tf-color-blue-material-700);
-}
-
-.stat-icon.active {
-  background: linear-gradient(135deg, var(--tf-color-surface-green-alt), var(--tf-color-green-material-100));
-  color: var(--tf-color-green-material-700);
-}
-
-.stat-icon.inactive {
-  background: linear-gradient(135deg, var(--tf-color-orange-material-50), var(--tf-color-orange-material-100));
-  color: var(--tf-color-orange-material-700);
-}
-
-.stat-content {
-  flex: 1;
-}
-
-.stat-value {
-  font-size: 32px;
-  font-weight: 700;
-  color: var(--tf-color-heading);
-  line-height: 1;
-  margin-bottom: 4px;
-}
-
-.stat-label {
-  font-size: 14px;
-  color: var(--tf-color-muted);
-  font-weight: 500;
-}
-
 /* 表单组 */
 .form-group {
   display: flex;
@@ -3093,17 +3028,6 @@ onMounted(async () => {
     margin-bottom: 16px;
   }
 
-  .stats-cards {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-    margin-bottom: 16px;
-    padding: 0 4px;
-  }
-
-  .stat-card {
-    padding: 14px 12px;
-  }
-
   .menu-header-actions {
     width: 100%;
     flex-wrap: wrap;
@@ -3253,10 +3177,6 @@ onMounted(async () => {
 }
 
 @media (max-width: 480px) {
-  .stats-cards {
-    gap: 12px;
-  }
-
   .menu-widths-setting {
     padding: 16px;
     margin: 16px 0;
@@ -3292,20 +3212,6 @@ onMounted(async () => {
     -webkit-tap-highlight-color: transparent;
   }
 
-  .stat-card {
-    padding: 16px;
-  }
-
-  .stat-icon {
-    width: 48px;
-    height: 48px;
-    font-size: 20px;
-  }
-
-  .stat-value {
-    font-size: 24px;
-  }
-
   .form-actions {
     flex-direction: column;
     width: 100%;
@@ -3326,12 +3232,6 @@ onMounted(async () => {
   .tree-container {
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
-  }
-
-  /* 移动端统计卡片优化 */
-  .stats-cards {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
   }
 
   /* 移动端按钮组优化 */

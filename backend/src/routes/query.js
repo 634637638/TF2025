@@ -40,6 +40,7 @@ router.get('/comprehensive', requirePermission('query:view', 'business'), cacheM
  * @desc 获取统计信息
  * @access Private
  * @param {Object} query - 统计参数
+ * @param {string} query.search_term - 与综合查询列表相同的关键词条件
  */
 router.get('/statistics', requirePermission('query:view', 'business'), cacheMiddleware({ ttl: CACHE_TTL.DISABLED }), queryController.getStatistics.bind(queryController))
 

@@ -673,7 +673,7 @@ router.delete('/:employeeId/roles/:roleId', unifiedAuth, requirePermission('empl
 // ==================== 员工详情相关路由 ====================
 
 // 获取员工详情
-router.get('/:id', unifiedAuth, requirePermission('employee:view'), async (req, res) => {
+router.get('/:id(\\d+)', unifiedAuth, requirePermission('employee:view'), async (req, res) => {
   try {
     const { id } = req.params
 
@@ -1108,6 +1108,25 @@ router.get('/stats/overview', unifiedAuth, requirePermission('employee:view'), a
   try {
     const db = getDatabase()
 
+    const conditions = []
+    const params = []
+    const status = String(req.query.status ?? '').trim()
+    const search = String(req.query.search || '').trim()
+    if (status !== '') {
+      conditions.push('u.status = ?')
+      params.push(parseInt(status) === 0 ? 0 : 1)
+    }
+    if (search) {
+      const pattern = `%${search}%`
+      conditions.push(`(
+        (CONVERT(u.name USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ? OR
+        (CONVERT(u.username USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ? OR
+        (CONVERT(u.phone USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ? OR
+        (CONVERT(u.email USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ?
+      )`)
+      params.push(pattern, pattern, pattern, pattern)
+    }
+    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
     const statsQuery = `
       SELECT
         COUNT(*) as total,
@@ -1116,10 +1135,11 @@ router.get('/stats/overview', unifiedAuth, requirePermission('employee:view'), a
         SUM(CASE WHEN phone IS NOT NULL AND phone != '' THEN 1 ELSE 0 END) as with_phone,
         SUM(CASE WHEN email IS NOT NULL AND email != '' THEN 1 ELSE 0 END) as with_email,
         SUM(CASE WHEN salary_template_id IS NOT NULL THEN 1 ELSE 0 END) as with_salary_template
-      FROM users
+      FROM users u
+      ${whereClause}
     `
 
-    const [stats] = await db.execute(statsQuery)
+    const [stats] = await db.execute(statsQuery, params)
 
     // 按角色统计 - 基于user_roles表
     const roleQuery = `

@@ -1,6 +1,7 @@
 const BaseRepository = require('./base.repository')
 const { hasColumn, hasTable } = require('../services/schemaInspector.service')
 const log = require('../utils/log')
+const { getEffectivePhoneStatusSql } = require('../utils/phone-status')
 
 const normalizedModelSql = column => (
   `LOWER(REPLACE(REPLACE(REPLACE(TRIM(${column}), ' ', ''), '　', ''), '-', ''))`
@@ -48,7 +49,11 @@ class QueryRepository extends BaseRepository {
       return this.isSalesRelatedStatus(normalizedStatus) ? 'p.sale_time' : 'p.inventory_time'
     }
 
-    return 'p.sale_time'
+    // 未选择状态时查询全部设备：销售类记录按销售时间，其余记录按入库时间。
+    return `CASE
+      WHEN p.status IN ('sold', 'peer_transfer', 'supplier_proxy') THEN p.sale_time
+      ELSE p.inventory_time
+    END`
   }
 
   /**
@@ -77,6 +82,7 @@ class QueryRepository extends BaseRepository {
     } = filters
 
     const normalizedStatus = this.normalizeStatus(status)
+    const effectiveStatusSql = getEffectivePhoneStatusSql('p')
 
     // 如果查询状态是 reserved（预订），则查询预订表
     if (normalizedStatus === 'reserved') {
@@ -153,11 +159,8 @@ class QueryRepository extends BaseRepository {
     const businessTimeExpression = this.getBusinessTimeExpression(normalizedStatus)
 
     if (normalizedStatus) {
-      whereConditions.push('p.status = ?')
+      whereConditions.push(`${effectiveStatusSql} = ?`)
       whereParams.push(normalizedStatus)
-    } else if (!phone_id) {
-      whereConditions.push('p.status IN (?, ?, ?)')
-      whereParams.push('sold', 'peer_transfer', 'supplier_proxy')
     }
 
     if (is_new !== undefined) {
@@ -168,11 +171,20 @@ class QueryRepository extends BaseRepository {
     // 人员筛选：
     // 1. 销售类状态按 sales.operator_id 过滤
     // 2. 在库/维修等非销售状态按 phones.inventory_operator_id 过滤
-    // 3. 默认列表只展示销售类状态，因此默认按销售员过滤
+    // 3. 未选择状态时，销售类按销售员过滤，其他状态按入库员过滤
     if (sale_operator_id) {
       if (normalizedStatus && !this.isSalesRelatedStatus(normalizedStatus)) {
         whereConditions.push('p.inventory_operator_id = ?')
         whereParams.push(sale_operator_id)
+      } else if (!normalizedStatus) {
+        whereConditions.push(`(
+          (p.status IN ('sold', 'peer_transfer', 'supplier_proxy')
+            AND EXISTS (SELECT 1 FROM sales s WHERE s.phone_id = p.id AND s.operator_id = ?))
+          OR
+          (p.status NOT IN ('sold', 'peer_transfer', 'supplier_proxy')
+            AND p.inventory_operator_id = ?)
+        )`)
+        whereParams.push(sale_operator_id, sale_operator_id)
       } else {
         whereConditions.push('EXISTS (SELECT 1 FROM sales s WHERE s.phone_id = p.id AND s.operator_id = ?)')
         whereParams.push(sale_operator_id)
@@ -190,7 +202,12 @@ class QueryRepository extends BaseRepository {
     }
 
     if (search_term) {
-      whereConditions.push('(p.imei LIKE ? OR p.serial_number LIKE ? OR c.name LIKE ? OR c.phone LIKE ?)')
+      whereConditions.push(`(
+        (CONVERT(p.imei USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ? OR
+        (CONVERT(p.serial_number USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ? OR
+        (CONVERT(c.name USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ? OR
+        (CONVERT(c.phone USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ?
+      )`)
       whereParams.push(`%${search_term}%`, `%${search_term}%`, `%${search_term}%`, `%${search_term}%`)
     }
 
@@ -266,7 +283,7 @@ class QueryRepository extends BaseRepository {
         pl.retail_price,
         p.is_new,
         p.is_preordered,
-        p.status,
+        ${effectiveStatusSql} as status,
         p.quality_grade,
         p.remarks,
         p.purchase_number,
@@ -441,11 +458,14 @@ class QueryRepository extends BaseRepository {
       store_ids,  // 新增：支持多门店ID数组
       brand,
       model,
+      color,
+      memory,
       status,
       is_new,
       sale_operator_id,
       start_date,
-      end_date
+      end_date,
+      search_term
     } = filters
 
     // 构建WHERE条件
@@ -479,19 +499,33 @@ class QueryRepository extends BaseRepository {
       whereParams.push(model)
     }
 
+    if (color) {
+      whereConditions.push('co.name LIKE ?')
+      whereParams.push(`%${color}%`)
+    }
+
+    if (memory) {
+      whereConditions.push('mem.size LIKE ?')
+      whereParams.push(`%${memory}%`)
+    }
+
+    if (search_term) {
+      whereConditions.push(`(
+        (CONVERT(p.imei USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ? OR
+        (CONVERT(p.serial_number USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ? OR
+        (CONVERT(c.name USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ? OR
+        (CONVERT(c.phone USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ?
+      )`)
+      whereParams.push(`%${search_term}%`, `%${search_term}%`, `%${search_term}%`, `%${search_term}%`)
+    }
+
     const normalizedStatus = this.normalizeStatus(status)
-    const statisticsTimeExpression = normalizedStatus
-      ? this.getBusinessTimeExpression(normalizedStatus)
-      : `COALESCE(
-          CASE
-            WHEN p.status IN ('sold', 'peer_transfer', 'supplier_proxy') THEN p.sale_time
-            ELSE NULL
-          END,
-          p.inventory_time
-        )`
+    const effectiveStatusSql = getEffectivePhoneStatusSql('p')
+    // The statistics date scope must match the comprehensive list exactly.
+    const statisticsTimeExpression = this.getBusinessTimeExpression(normalizedStatus)
 
     if (normalizedStatus) {
-      whereConditions.push('p.status = ?')
+      whereConditions.push(`${effectiveStatusSql} = ?`)
       whereParams.push(normalizedStatus)
     }
 
@@ -538,30 +572,35 @@ class QueryRepository extends BaseRepository {
 
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : ''
 
-    // 如果使用了店铺筛选，需要包含 latest_sale 子查询
-    const needsLatestSale = store_id || (store_ids && store_ids.length > 0)
-    const latestSaleJoin = needsLatestSale ? `
-      LEFT JOIN (
-        SELECT phone_id, store_id, MAX(id) as max_id
-        FROM sales
-        GROUP BY phone_id
-      ) latest_sale ON p.id = latest_sale.phone_id
-    ` : ''
+    // 统计必须与列表使用相同的最新销售记录，否则门店和客户关键词会统计错。
+    const latestSaleJoin = `
+      LEFT JOIN sales latest_sale ON latest_sale.id = (
+        SELECT s.id
+        FROM sales s
+        WHERE s.phone_id = p.id
+        ORDER BY s.created_at DESC, s.id DESC
+        LIMIT 1
+      )
+    `
 
     const query = `
       SELECT
         COUNT(*) as total_phones,
-        SUM(CASE WHEN p.status = 'in_stock' THEN 1 ELSE 0 END) as in_stock_count,
+        SUM(CASE WHEN ${effectiveStatusSql} = 'in_stock' THEN 1 ELSE 0 END) as in_stock_count,
         SUM(CASE WHEN p.status = 'sold' THEN 1 ELSE 0 END) as sold_count,
+        SUM(CASE WHEN ${effectiveStatusSql} = 'reserved' THEN 1 ELSE 0 END) as reserved_count,
         SUM(CASE WHEN p.is_new = 1 THEN 1 ELSE 0 END) as new_count,
         SUM(CASE WHEN p.is_new = 0 THEN 1 ELSE 0 END) as used_count,
         SUM(p.purchase_cost) as total_purchase_cost,
-        SUM(CASE WHEN p.status = 'sold' THEN p.sale_price ELSE 0 END) as total_sales_revenue
+        SUM(CASE WHEN ${effectiveStatusSql} = 'sold' THEN p.sale_price ELSE 0 END) as total_sales_revenue
       FROM phones p
       LEFT JOIN brands b ON p.brand_id = b.id
       LEFT JOIN models m ON p.model_id = m.id
       LEFT JOIN brands model_brand ON m.brand_id = model_brand.id
+      LEFT JOIN colors co ON p.color_id = co.id
+      LEFT JOIN memories mem ON p.memory_id = mem.id
       ${latestSaleJoin}
+      LEFT JOIN customers c ON latest_sale.customer_id = c.id
       ${whereClause}
     `
 

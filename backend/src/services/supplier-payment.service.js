@@ -73,10 +73,27 @@ class SupplierPaymentService {
    * 只排除划拨（supplier_proxy）的手机，批发（peer_transfer）的手机需要正常打款
    */
   async getSummaryStatistics(filters = {}) {
-    const { sale_status = 'all' } = filters
+    const {
+      supplier_id, store_id, payment_status = 'all', sale_status = 'all',
+      keyword, start_date, end_date
+    } = filters
 
     let whereClause = 'WHERE p.supplier_id IS NOT NULL AND p.status != \'supplier_proxy\''
     const params = []
+
+    if (supplier_id) {
+      whereClause += ' AND p.supplier_id = ?'
+      params.push(supplier_id)
+    }
+    if (store_id) {
+      whereClause += ' AND p.store_id = ?'
+      params.push(store_id)
+    }
+    if (payment_status === 'unpaid') {
+      whereClause += ' AND (p.payment_status IS NULL OR p.payment_status != \'paid\')'
+    } else if (payment_status === 'paid') {
+      whereClause += ' AND p.payment_status = \'paid\''
+    }
 
     // 销售状态筛选 - status 字段是字符串类型
     // 'sold' 包括正常销售(sold)和批发销售(peer_transfer)，但不包括划拨(supplier_proxy)
@@ -87,14 +104,37 @@ class SupplierPaymentService {
       whereClause += ' AND p.status = \'in_stock\''
     }
 
+    if (start_date) {
+      whereClause += sale_status === 'sold' ? ' AND DATE(p.sale_time) >= ?' : ' AND DATE(p.inventory_time) >= ?'
+      params.push(start_date)
+    }
+    if (end_date) {
+      whereClause += sale_status === 'sold' ? ' AND DATE(p.sale_time) <= ?' : ' AND DATE(p.inventory_time) <= ?'
+      params.push(end_date)
+    }
+    if (keyword && keyword.trim()) {
+      const searchTerm = `%${keyword.trim()}%`
+      whereClause += ` AND (
+        (CONVERT(p.imei USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ? OR
+        (CONVERT(p.serial_number USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ? OR
+        (CONVERT(br.name USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ? OR
+        (CONVERT(m.name USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ? OR
+        (CONVERT(CONCAT(br.name, ' ', m.name) USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ?
+      )`
+      params.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm)
+    }
+
     // 直接统计总数
     const summary = await executeQuery(`
       SELECT
         COUNT(CASE WHEN (p.payment_status IS NULL OR p.payment_status != 'paid') THEN 1 END) as total_unpaid_count,
         COALESCE(SUM(CASE WHEN (p.payment_status IS NULL OR p.payment_status != 'paid') THEN p.purchase_cost ELSE 0 END), 0) as total_unpaid_amount,
         COUNT(CASE WHEN p.payment_status = 'paid' THEN 1 END) as total_paid_count,
-        COALESCE(SUM(CASE WHEN p.payment_status = 'paid' THEN p.purchase_cost ELSE 0 END), 0) as total_paid_amount
+        COALESCE(SUM(CASE WHEN p.payment_status = 'paid' THEN p.purchase_cost ELSE 0 END), 0) as total_paid_amount,
+        COUNT(DISTINCT p.supplier_id) as supplier_count
       FROM phones p
+      LEFT JOIN brands br ON p.brand_id = br.id
+      LEFT JOIN models m ON p.model_id = m.id
       ${whereClause}
     `, params)
 
@@ -102,7 +142,8 @@ class SupplierPaymentService {
       total_unpaid_count: parseInt(summary[0]?.total_unpaid_count) || 0,
       total_unpaid_amount: parseFloat(summary[0]?.total_unpaid_amount) || 0,
       total_paid_count: parseInt(summary[0]?.total_paid_count) || 0,
-      total_paid_amount: parseFloat(summary[0]?.total_paid_amount) || 0
+      total_paid_amount: parseFloat(summary[0]?.total_paid_amount) || 0,
+      supplier_count: parseInt(summary[0]?.supplier_count) || 0
     }
   }
 
@@ -191,11 +232,11 @@ class SupplierPaymentService {
     // 关键词搜索：IMEI、序列号、品牌、型号
     if (keyword && keyword.trim()) {
       const searchCondition = `(
-        p.imei LIKE ? OR
-        p.serial_number LIKE ? OR
-        br.name LIKE ? OR
-        m.name LIKE ? OR
-        CONCAT(br.name, ' ', m.name) LIKE ?
+        (CONVERT(p.imei USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ? OR
+        (CONVERT(p.serial_number USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ? OR
+        (CONVERT(br.name USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ? OR
+        (CONVERT(m.name USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ? OR
+        (CONVERT(CONCAT(br.name, ' ', m.name) USING utf8mb4) COLLATE utf8mb4_unicode_ci) LIKE ?
       )`
       const searchTerm = `%${keyword.trim()}%`
       params.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm)

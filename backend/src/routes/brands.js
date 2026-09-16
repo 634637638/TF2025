@@ -21,14 +21,28 @@ router.get('/stats/overview', unifiedAuth, requirePermission('brands:view'), asy
   try {
     if (!isConnected()) return ApiResponse.error(res, '数据库未连接', 500)
     const pool = getDatabase()
+    const conditions = []
+    const params = []
+    const name = String(req.query.name || '').trim()
+    const status = String(req.query.status ?? '').trim()
+    if (name) {
+      conditions.push('b.name LIKE ?')
+      params.push(`%${name}%`)
+    }
+    if (status !== '') {
+      conditions.push('b.status = ?')
+      params.push(Number(status) === 1 ? 1 : 0)
+    }
+    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
     const [[stats]] = await pool.execute(`
       SELECT
         COUNT(*) AS total,
         SUM(CASE WHEN b.status = 1 THEN 1 ELSE 0 END) AS active,
         SUM(CASE WHEN b.status <> 1 OR b.status IS NULL THEN 1 ELSE 0 END) AS inactive,
-        COALESCE((SELECT COUNT(*) FROM phones p WHERE p.brand_id IS NOT NULL), 0) AS related_phones
+        COALESCE(SUM((SELECT COUNT(*) FROM phones p WHERE p.brand_id = b.id)), 0) AS related_phones
       FROM brands b
-    `)
+      ${whereClause}
+    `, params)
     return ApiResponse.success(res, {
       total: Number(stats.total) || 0,
       active: Number(stats.active) || 0,

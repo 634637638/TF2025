@@ -150,6 +150,13 @@ export function getSyncLogs(params?: unknown) {
 }
 
 /**
+ * 获取同步日志汇总统计
+ */
+export function getSyncLogStatistics() {
+  return unifiedApi.get('/price-list/sync/logs/statistics', { useCache: false })
+}
+
+/**
  * 删除同步日志
  */
 export function deleteSyncLog(id: number) {

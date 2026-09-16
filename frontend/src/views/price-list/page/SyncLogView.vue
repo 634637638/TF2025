@@ -39,9 +39,9 @@
       >
         <div
           v-if="canViewSyncLogField('stats_success_count')"
-          class="stat-card"
+          class="stat-card stat-card--success"
         >
-          <div class="stat-icon success">
+          <div class="stat-icon">
             <i class="fas fa-check-circle" />
           </div>
           <div class="stat-content">
@@ -55,9 +55,9 @@
         </div>
         <div
           v-if="canViewSyncLogField('stats_fail_count')"
-          class="stat-card"
+          class="stat-card stat-card--danger"
         >
-          <div class="stat-icon error">
+          <div class="stat-icon">
             <i class="fas fa-times-circle" />
           </div>
           <div class="stat-content">
@@ -71,9 +71,9 @@
         </div>
         <div
           v-if="canViewSyncLogField('stats_total_records')"
-          class="stat-card"
+          class="stat-card stat-card--info"
         >
-          <div class="stat-icon info">
+          <div class="stat-icon">
             <i class="fas fa-database" />
           </div>
           <div class="stat-content">
@@ -87,9 +87,9 @@
         </div>
         <div
           v-if="canViewSyncLogField('stats_avg_duration')"
-          class="stat-card"
+          class="stat-card stat-card--warning"
         >
-          <div class="stat-icon warning">
+          <div class="stat-icon">
             <i class="fas fa-clock" />
           </div>
           <div class="stat-content">
@@ -634,7 +634,7 @@
 import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getSyncLogs, deleteSyncLog, clearSyncLogs } from '@/api/price-list'
+import { getSyncLogs, getSyncLogStatistics, deleteSyncLog, clearSyncLogs } from '@/api/price-list'
 import { usePagination } from '@/composables'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
@@ -698,7 +698,6 @@ loading.value = true
 const clearLoading = ref(false)
 const deleteLoading = ref(false)
 const logList = ref<any[]>([])
-const allLogs = ref<any[]>([]) // 存储所有日志用于统计计算
 
 // 统计数据
 const stats = ref({
@@ -813,44 +812,27 @@ const handlePaginationChange = (page: number, limit: number) => {
   handlePageChange(page)
 }
 
-// 获取所有日志用于统计计算
-const fetchAllLogsForStats = async () => {
+// 获取后端汇总统计，不把全部日志下载到浏览器再计算。
+const fetchLogStats = async () => {
   if (!canView.value) {
-    allLogs.value = []
-    calculateStats()
+    stats.value = { successCount: 0, failCount: 0, totalRecords: 0, avgDuration: 0 }
     return
   }
 
   try {
-    // 获取所有日志（设置大的limit）
-    const res = await getSyncLogs({
-      page: 1,
-      limit: 10000 // 获取所有日志用于统计
-    })
+    const res = await getSyncLogStatistics()
 
     if (res.success && res.data) {
-      allLogs.value = res.data.list || []
-      calculateStats()
+      stats.value = {
+        successCount: Number(res.data.success_count) || 0,
+        failCount: Number(res.data.fail_count) || 0,
+        totalRecords: Number(res.data.total_records) || 0,
+        avgDuration: Number(res.data.avg_duration) || 0
+      }
     }
   } catch (error) {
     logger.error('获取统计数据失败:', error)
   }
-}
-
-// 计算统计数据（基于所有日志）
-const calculateStats = () => {
-  const logs = allLogs.value
-  stats.value = {
-    successCount: logs.filter((log: any) => log.status === 'success').length,
-    failCount: logs.filter((log: any) => log.status === 'failed').length,
-    totalRecords: logs.reduce((sum: number, log: any) => sum + (log.total_count || 0), 0),
-    avgDuration: 0
-  }
-
-  const completedLogs = logs.filter((log: any) => log.duration)
-  stats.value.avgDuration = completedLogs.length > 0
-    ? Math.round(completedLogs.reduce((sum: number, log: any) => sum + log.duration, 0) / completedLogs.length)
-    : 0
 }
 
 // 查看详情
@@ -888,7 +870,7 @@ const handleDeleteLog = async (row: any) => {
     if (res.success !== false) {
       ElMessage.success('删除成功')
       fetchLogs()
-      fetchAllLogsForStats() // 重新获取统计数据
+      fetchLogStats() // 重新获取统计数据
     } else {
       ElMessage.error(res.message || '删除失败')
     }
@@ -926,7 +908,7 @@ const handleClearLogs = async () => {
     if (res.success !== false) {
       ElMessage.success('清空成功')
       fetchLogs()
-      fetchAllLogsForStats() // 重新获取统计数据
+      fetchLogStats() // 重新获取统计数据
     } else {
       ElMessage.error(res.message || '清空失败')
     }
@@ -1027,7 +1009,7 @@ onMounted(async () => {
 
   await fieldPermissions.init()
   fetchLogs()
-  fetchAllLogsForStats()
+  fetchLogStats()
 })
 
 onUnmounted(() => {
@@ -1040,71 +1022,6 @@ onUnmounted(() => {
 <style scoped lang="scss">
 .sync-log-view {
   padding: 20px;
-}
-
-// 统计卡片
-.stats-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin-bottom: 20px;
-
-  .stat-card {
-    background: white;
-    border-radius: 12px;
-    padding: 20px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-
-    .stat-icon {
-      width: 50px;
-      height: 50px;
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 24px;
-
-      &.success {
-        background: var(--tf-color-blue-50);
-        color: var(--color-success);
-      }
-
-      &.error {
-        background: var(--tf-color-danger-surface-element);
-        color: var(--color-danger);
-      }
-
-      &.info {
-        background: var(--tf-color-zinc-100);
-        color: var(--color-info);
-      }
-
-      &.warning {
-        background: var(--tf-color-warning-surface-element);
-        color: var(--color-warning);
-      }
-    }
-
-    .stat-content {
-      flex: 1;
-
-      .stat-value {
-        font-size: 24px;
-        font-weight: 600;
-        color: var(--color-text-primary);
-        line-height: 1;
-        margin-bottom: 4px;
-      }
-
-      .stat-label {
-        font-size: 12px;
-        color: var(--color-info);
-      }
-    }
-  }
 }
 
 .table-card {
@@ -1323,32 +1240,6 @@ onUnmounted(() => {
     padding: 12px;
   }
 
-  .stats-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-
-    .stat-card {
-      padding: 14px 12px;
-      gap: 10px;
-
-      .stat-icon {
-        width: 40px;
-        height: 40px;
-        font-size: 18px;
-      }
-
-      .stat-content {
-        .stat-value {
-          font-size: 18px;
-        }
-
-        .stat-label {
-          font-size: 11px;
-        }
-      }
-    }
-  }
-
   .table-card {
     border-radius: 16px;
 
@@ -1395,8 +1286,5 @@ onUnmounted(() => {
     grid-row: 2;
   }
 
-  .stats-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 </style>

@@ -30,31 +30,39 @@
       <div class="rentals-content admin-page-content">
         <div
           v-if="showStats"
-          class="stats-grid"
+          class="stats-grid stats-cards"
         >
           <div
             v-if="canViewRentalField('stats_active_count')"
-            class="stat-card"
+            class="stat-card stat-card--success"
           >
-            <strong>{{ summary.active }}</strong><span>进行中合同</span>
+            <div class="stat-content">
+              <strong class="stat-value">{{ summary.active }}</strong><span class="stat-label">进行中合同</span>
+            </div>
           </div>
           <div
             v-if="canViewRentalField('stats_device_count')"
-            class="stat-card"
+            class="stat-card stat-card--info"
           >
-            <strong>{{ summary.devices }}</strong><span>租赁设备</span>
+            <div class="stat-content">
+              <strong class="stat-value">{{ summary.devices }}</strong><span class="stat-label">租赁设备</span>
+            </div>
           </div>
           <div
             v-if="canViewRentalField('stats_receivable_amount')"
-            class="stat-card"
+            class="stat-card stat-card--warning"
           >
-            <strong>¥{{ formatMoney(summary.receivable) }}</strong><span>待付租金</span>
+            <div class="stat-content">
+              <strong class="stat-value stat-value--pending">¥{{ formatMoney(summary.receivable) }}</strong><span class="stat-label">待付租金</span>
+            </div>
           </div>
           <div
             v-if="canViewRentalField('stats_deposit_amount')"
-            class="stat-card"
+            class="stat-card stat-card--money"
           >
-            <strong>¥{{ formatMoney(summary.deposits) }}</strong><span>在租押金</span>
+            <div class="stat-content">
+              <strong class="stat-value stat-value--money">¥{{ formatMoney(summary.deposits) }}</strong><span class="stat-label">在租押金</span>
+            </div>
           </div>
         </div>
 

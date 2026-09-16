@@ -238,6 +238,13 @@ router.post('/update-iphone16-is-collect', unifiedAuth, requirePermission('price
 router.get('/sync/logs', unifiedAuth, requirePermission('price-list-sync-logs:view'), priceListController.getSyncLogs)
 
 /**
+ * @route   GET /api/price-list/sync/logs/statistics
+ * @desc    获取同步日志统计
+ * @access  Private
+ */
+router.get('/sync/logs/statistics', unifiedAuth, requirePermission('price-list-sync-logs:view'), priceListController.getSyncLogStatistics)
+
+/**
  * @route   DELETE /api/price-list/sync/logs/:id
  * @desc    删除同步日志
  * @access  Private
