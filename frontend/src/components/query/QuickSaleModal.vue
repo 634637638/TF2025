@@ -328,43 +328,21 @@
             prop="customer_name"
             class="customer-name-item"
           >
-            <div class="customer-name-group">
-              <el-input
-                ref="customerNameInputRef"
-                v-model="formData.customer_name"
-                name="quick-sale-customer-name"
-                placeholder=""
-                :readonly="!foundCustomer && !customerCreating ? true : !customerNameEditing"
-                :class="{ 'editable': foundCustomer || customerCreating }"
-                clearable
-                data-field="customer_name"
-                @dblclick="enableCustomerNameEdit"
-                @touchend="handleCustomerNameTouchEnd"
-                @input="formatCustomerName"
-                @blur="handleCustomerNameBlur"
-                @keyup.enter="saveCustomerNameEdit"
-              />
-              <el-button
-                v-if="customerNameEditing"
-                class="customer-lock-button"
-                type="success"
-                plain
-                title="当前已解锁，点击保存并锁定"
-                @click="saveCustomerNameEdit"
-              >
-                <i class="fas fa-lock-open" />
-              </el-button>
-              <el-button
-                v-if="foundCustomer !== null && !customerNameEditing"
-                class="customer-lock-button"
-                type="info"
-                plain
-                title="当前已锁定，点击清除客户选择"
-                @click="clearSelectedCustomer"
-              >
-                <i class="fas fa-lock" />
-              </el-button>
-            </div>
+            <CustomerNameLockInput
+              ref="customerNameInputRef"
+              v-model="formData.customer_name"
+              name="quick-sale-customer-name"
+              data-field="customer_name"
+              :selected="foundCustomer !== null"
+              :editing="customerNameEditing"
+              :creating="customerCreating"
+              @unlock="enableCustomerNameEdit"
+              @touchend="handleCustomerNameTouchEnd"
+              @input="formatCustomerName"
+              @blur="handleCustomerNameBlur"
+              @save="saveCustomerNameEdit"
+              @clear="clearSelectedCustomer"
+            />
             <div class="input-hint">
               只允许中文和英文
             </div>
@@ -521,6 +499,7 @@ import unifiedApi from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import { useAuthStore } from '@/stores/auth'
 import MobileDialog from '@/components/MobileDialog.vue'
+import CustomerNameLockInput from '@/components/common/CustomerNameLockInput.vue'
 import CustomerSearchDropdown from '@/components/common/CustomerSearchDropdown.vue'
 import { PaymentChannelSelect, PaymentMethodSelect } from '@/components/payment'
 import { useMobile } from '@/composables/mobile'
@@ -1086,10 +1065,14 @@ const saveCustomerNameEdit = async () => {
     return
   }
 
+  if (formData.customer_name === normalizePersonName(foundCustomer.value.name, 20)) {
+    customerNameEditing.value = false
+    return
+  }
+
   try {
     const response = await unifiedApi.put(`/customers/${foundCustomer.value.id}`, {
-      name: formData.customer_name,
-      apple_id: normalizeAppleId(formData.apple_id) || null
+      name: formData.customer_name
     })
 
     if (!response.success) {
@@ -1097,8 +1080,7 @@ const saveCustomerNameEdit = async () => {
     }
 
     foundCustomer.value.name = formData.customer_name
-    foundCustomer.value.apple_id = normalizeAppleId(formData.apple_id)
-    showSuccess('客户信息更新成功')
+    showSuccess('客户姓名更新成功')
   } catch (err) {
     logger.error('更新客户失败:', err)
     showError(err instanceof Error ? err.message : '更新客户失败')
@@ -1916,42 +1898,6 @@ watch(
   }
 }
 
-.customer-name-group {
-  display: flex;
-  align-items: stretch;
-}
-
-.customer-name-group :deep(.el-input) {
-  flex: 1;
-}
-
-.customer-name-group:has(.customer-lock-button) :deep(.el-input__wrapper) {
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
-}
-
-.customer-lock-button {
-  width: 36px !important;
-  min-width: 36px !important;
-  height: 36px !important;
-  padding: 0 !important;
-  flex: 0 0 36px !important;
-  border-top-left-radius: 0 !important;
-  border-bottom-left-radius: 0 !important;
-}
-
-.customer-lock-button :deep(.el-button__content) {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.customer-lock-button i {
-  font-size: 14px;
-}
-
 .lookup-loading {
   display: flex;
   align-items: center;
@@ -2057,17 +2003,6 @@ watch(
     width: 100%;
     gap: 6px;
 
-  }
-
-  .customer-lock-button {
-    width: 32px !important;
-    min-width: 32px !important;
-    height: 32px !important;
-    flex-basis: 32px !important;
-  }
-
-  .customer-lock-button i {
-    font-size: 13px;
   }
 
 }

@@ -1,4 +1,6 @@
-# TF2025 搜索组件规范
+# TF2025 搜索组件规范（历史参考）
+
+> 本文档记录旧版 `GlobalSearch` 方案，不再作为开发依据。当前权威规范请查看 [后台列表检索统一规范](../frontend/search-standards.md)。新页面不得继续使用 `GlobalSearch` 或 `CustomSearch`。
 
 ## 📝 概述
 

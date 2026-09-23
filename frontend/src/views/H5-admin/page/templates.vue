@@ -7,33 +7,26 @@
     permission-code="h5-templates:view"
   >
     <div class="template-management-page">
-      <el-card
-        class="toolbar-card"
-        shadow="never"
+      <UnifiedSearchPanel
+        :expanded="true"
+        :loading="loading"
+        @search="handleTemplateSearch"
+        @reset="resetTemplateSearch"
       >
-        <div class="toolbar search-toolbar">
-          <div class="search-panel">
-            <div class="search-panel-main">
-              <el-input
-                v-model="keyword"
-                placeholder="输入品牌、型号或颜色关键词"
-                clearable
-                class="search-input"
-                size="large"
-              >
-                <template #prefix>
-                  <i class="fas fa-search" />
-                </template>
-              </el-input>
-
-              <div class="search-panel-meta">
-                <span>当前共 {{ groupedTemplates.length }} 组母模板</span>
-                <span v-if="keyword">匹配 {{ filteredGroups.length }} 组结果</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </el-card>
+        <template #primary>
+          <el-input
+            v-model="keyword"
+            placeholder="输入品牌、型号或颜色关键词"
+            clearable
+            @keyup.enter="handleTemplateSearch"
+            @click.stop
+          >
+            <template #prefix>
+              <i class="fas fa-search" />
+            </template>
+          </el-input>
+        </template>
+      </UnifiedSearchPanel>
 
       <el-card
         class="table-card"
@@ -344,6 +337,9 @@
         v-model="showDialog"
         :title="dialogTitle"
         width="1240px"
+        :close-on-click-modal="false"
+        :close-on-press-escape="false"
+        :show-close="false"
         dialog-class="template-dialog"
         :show-default-footer="false"
         destroy-on-close
@@ -480,6 +476,7 @@
                     v-if="canDelete || canWriteDialog"
                     type="danger"
                     plain
+                    :disabled="saving || imageUploading"
                     @click="handleRemoveChild(currentChild)"
                   >
                     删除当前颜色
@@ -561,29 +558,38 @@
                             />
                           </el-select>
                           <div class="markup-row">
-                            <el-input-number
-                              :model-value="currentChild.price_markup_type === 'fixed' ? currentChild.price_markup : undefined"
-                              :disabled="currentChild.price_markup_type !== 'fixed'"
-                              :min="0"
-                              :precision="2"
-                              :step="100"
-                              class="markup-input"
-                              @update:model-value="handleFixedMarkupChange(currentChild, $event)"
-                            />
-                            <el-input-number
-                              :model-value="currentChild.price_markup_type === 'percentage' ? currentChild.price_markup : undefined"
-                              :disabled="currentChild.price_markup_type !== 'percentage'"
-                              :min="0"
-                              :max="100"
-                              :precision="2"
-                              :step="1"
-                              class="markup-input"
-                              @update:model-value="handlePercentageMarkupChange(currentChild, $event)"
+                            <div
+                              v-if="currentChild.price_markup_type === 'fixed'"
+                              class="markup-input-frame"
                             >
-                              <template #suffix>
-                                %
-                              </template>
-                            </el-input-number>
+                              <el-input-number
+                                :model-value="currentChild.price_markup"
+                                :min="0"
+                                :precision="2"
+                                :step="100"
+                                class="markup-input"
+                                @update:model-value="handleFixedMarkupChange(currentChild, $event)"
+                              >
+                                <template #prefix>
+                                  ¥
+                                </template>
+                              </el-input-number>
+                            </div>
+                            <div
+                              v-else
+                              class="markup-input-frame markup-input-with-unit"
+                            >
+                              <el-input-number
+                                :model-value="currentChild.price_markup"
+                                :min="0"
+                                :max="100"
+                                :precision="2"
+                                :step="1"
+                                class="markup-input"
+                                @update:model-value="handlePercentageMarkupChange(currentChild, $event)"
+                              />
+                              <span class="markup-unit">%</span>
+                            </div>
                           </div>
                         </div>
                       </el-form-item>
@@ -624,7 +630,7 @@
                       <div class="block-title">
                         图片 / 视频管理
                       </div>
-                      <p>支持多选上传图片和视频，媒体仍按颜色子模板 ID 独立保存</p>
+                      <p>支持多选上传图片和视频，按颜色子模板 ID 独立保存</p>
                     </div>
                     <el-upload
                       :show-file-list="false"
@@ -753,7 +759,8 @@
         <template #footer>
           <el-button
             type="default"
-            @click="showDialog = false"
+            :disabled="saving || imageUploading"
+            @click="handleCancelDialog"
           >
             取消
           </el-button>
@@ -761,6 +768,7 @@
             v-if="canWriteDialog"
             type="primary"
             :loading="saving"
+            :disabled="imageUploading"
             @click="handleSaveGroup"
           >
             保存母模板
@@ -779,12 +787,12 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import draggable from 'vuedraggable'
 import { PermissionGate } from '@/components/base/index'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
+import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useLoadingState } from '@/composables'
 import { formatImageUrl } from '@/utils/format'
 import { isVideoMedia } from '@/utils/media'
-import { createTempFileTracker, type TempFileTracker } from '@/utils/temp-file-cleaner'
 import {
   getTemplates,
   createTemplate,
@@ -792,6 +800,8 @@ import {
   deleteTemplate,
   reorderTemplates,
   uploadTemplateImage,
+  commitTemplateImageUploads,
+  discardTemplateImageUploads,
   deleteTemplateImage,
   setTemplatePrimaryImage,
   reorderTemplateImages,
@@ -859,8 +869,8 @@ const models = ref<Model[]>([])
 const colors = ref<Color[]>([])
 const memories = ref<Memory[]>([])
 
-// 临时文件跟踪器
-let tempFileTracker: TempFileTracker | null = null
+const pendingMediaUploads = new Map<number, number[]>()
+const pendingPrimaryMedia = new Map<number, number>()
 
 const groupForm = ref({
   brand_id: undefined as number | undefined,
@@ -985,6 +995,14 @@ const filteredGroups = computed(() => {
     return groupText.includes(text)
   })
 })
+
+const handleTemplateSearch = () => {
+  keyword.value = keyword.value.trim()
+}
+
+const resetTemplateSearch = () => {
+  keyword.value = ''
+}
 
 const parseMemoryIds = (value: NewTemplate['memory_ids']): number[] => {
   if (!value) {
@@ -1158,17 +1176,7 @@ const loadPageData = async () => {
   }
 }
 
-const resetDialogState = async () => {
-  // 取消时清理所有新上传的临时文件
-  if (tempFileTracker) {
-    try {
-      await tempFileTracker.cleanup()
-    } catch (error) {
-      logger.error('清理临时文件失败:', error)
-    }
-    tempFileTracker = null
-  }
-
+const clearDialogFormState = () => {
   groupForm.value = {
     brand_id: undefined,
     model_id: undefined
@@ -1179,23 +1187,43 @@ const resetDialogState = async () => {
   isEditMode.value = false
 }
 
-const openCreateDialog = () => {
+const resetDialogState = async () => {
+  try {
+    await cleanupPendingMediaUploads()
+  } catch (error) {
+    logger.error('对话框关闭时清理未保存模板媒体失败:', error)
+  }
+  clearDialogFormState()
+}
+
+const prepareDialog = async () => {
+  if (saving.value || imageUploading.value) return false
+  try {
+    await cleanupPendingMediaUploads()
+    clearDialogFormState()
+    return true
+  } catch (error: any) {
+    logger.error('清理上次未保存模板媒体失败:', error)
+    ElMessage.error(error?.message || '清理上次未保存媒体失败')
+    return false
+  }
+}
+
+const openCreateDialog = async () => {
   if (!ensureTemplatePermission('create')) {
     return
   }
 
-  resetDialogState()
-  // 初始化临时文件跟踪器
-  tempFileTracker = createTempFileTracker()
+  if (!await prepareDialog()) return
   showDialog.value = true
 }
 
-const openEditDialog = (group: TemplateGroup) => {
+const openEditDialog = async (group: TemplateGroup) => {
   if (!ensureTemplatePermission('edit')) {
     return
   }
 
-  resetDialogState()
+  if (!await prepareDialog()) return
   isEditMode.value = true
   groupForm.value = {
     brand_id: group.brand_id,
@@ -1203,9 +1231,34 @@ const openEditDialog = (group: TemplateGroup) => {
   }
   childDrafts.value = group.templates.map(cloneChildDraft)
   selectedChildKey.value = childDrafts.value[0]?.localKey || ''
-  // 初始化临时文件跟踪器（编辑模式下也跟踪新上传的文件）
-  tempFileTracker = createTempFileTracker()
   showDialog.value = true
+}
+
+const cleanupPendingMediaUploads = async (templateId?: number) => {
+  const entries = [...pendingMediaUploads.entries()]
+    .filter(([id]) => templateId === undefined || id === templateId)
+
+  const discardEntries = entries
+    .filter(([, imageIds]) => imageIds.length > 0)
+    .map(([id, imageIds]) => ({ template_id: id, image_ids: imageIds }))
+  if (discardEntries.length > 0) {
+    await discardTemplateImageUploads(discardEntries)
+  }
+  for (const [id] of entries) {
+    pendingMediaUploads.delete(id)
+    pendingPrimaryMedia.delete(id)
+  }
+}
+
+const handleCancelDialog = async () => {
+  if (saving.value || imageUploading.value) return
+  try {
+    await cleanupPendingMediaUploads()
+    showDialog.value = false
+  } catch (error: any) {
+    logger.error('清理未保存模板媒体失败:', error)
+    ElMessage.error(error?.message || '未保存媒体清理失败，请重试')
+  }
 }
 
 const handleBrandChange = () => {
@@ -1266,6 +1319,7 @@ const handleRemoveChild = async (child: EditableChildTemplate) => {
 
   if (child.id) {
     try {
+      await cleanupPendingMediaUploads(child.id)
       await deleteTemplate(child.id)
       ElMessage.success('颜色子模板已删除')
     } catch (error: any) {
@@ -1307,6 +1361,7 @@ const handleDeleteGroup = async (group: TemplateGroup) => {
   try {
     for (const child of group.templates) {
       if (child.id) {
+        await cleanupPendingMediaUploads(child.id)
         await deleteTemplate(child.id)
       }
     }
@@ -1396,7 +1451,7 @@ const validateGroupBeforeSave = () => {
 }
 
 const handleSaveGroup = async () => {
-  if (saving.value) return
+  if (saving.value || imageUploading.value) return
 
   if (!canWriteDialog.value) {
     handleNoPermission(isEditMode.value ? 'edit' : 'create')
@@ -1444,13 +1499,49 @@ const handleSaveGroup = async () => {
       if (child.id) {
         await updateTemplate(child.id, payload as unknown as NewTemplate)
       } else {
-        await createTemplate(payload as unknown as NewTemplate)
+        const createdTemplate = await createTemplate(payload as unknown as NewTemplate)
+        child.id = Number(createdTemplate.id)
       }
     }
 
-    // 保存成功后清除临时文件跟踪器（不再需要清理这些文件）
-    tempFileTracker?.clear()
-    tempFileTracker = null
+    const mediaCommitEntries = childDrafts.value.flatMap(child => {
+      if (!child.id) return []
+      const draftImages = child.images
+        .filter(image => image.is_draft && pendingMediaUploads.get(child.id as number)?.includes(Number(image.id)))
+      const imageIds = draftImages.map(image => Number(image.id))
+      return imageIds.length > 0
+        ? [{
+          template_id: child.id,
+          image_ids: imageIds,
+          primary_image_id: pendingPrimaryMedia.get(child.id),
+          orders: child.images.map((image, sort_order) => ({
+            id: Number(image.id),
+            is_draft: image.is_draft === true,
+            sort_order
+          }))
+        }]
+        : []
+    })
+    if (mediaCommitEntries.length > 0) {
+      const response = await commitTemplateImageUploads(mediaCommitEntries)
+      const savedDrafts = unwrapResponseData<Array<{ draft_id: number; image_id: number; image_url: string }>>(response, [])
+      const savedByDraftId = new Map(savedDrafts.map(item => [Number(item.draft_id), item]))
+      for (const child of childDrafts.value) {
+        child.images = child.images.map(image => {
+          const saved = savedByDraftId.get(Number(image.id))
+          return saved
+            ? { ...image, id: Number(saved.image_id), image_url: saved.image_url, is_draft: false }
+            : image
+        })
+        if (child.id) {
+          pendingMediaUploads.delete(child.id)
+          pendingPrimaryMedia.delete(child.id)
+        }
+      }
+    }
+
+    pendingMediaUploads.clear()
+    pendingPrimaryMedia.clear()
 
     ElMessage.success('母模板已保存')
     showDialog.value = false
@@ -1522,8 +1613,9 @@ const handleImageUpload = async (options: any) => {
         sort_order: Number(image.sort_order ?? child.images.length)
       }
     ])
-    // 跟踪新上传的文件（用于取消时清理）
-    tempFileTracker?.addUploadedFile(image.image_url)
+    const pendingIds = pendingMediaUploads.get(child.id) || []
+    pendingIds.push(Number(image.id))
+    pendingMediaUploads.set(child.id, pendingIds)
     ElMessage.success(isVideoMedia(image) ? '视频上传成功' : '图片上传成功')
     options.onSuccess?.(image)
   } catch (error: any) {
@@ -1554,7 +1646,19 @@ const handleDeleteImage = async (child: EditableChildTemplate, image: TemplateIm
   }
 
   try {
-    await deleteTemplateImage(child.id, image.id)
+    const pendingIds = pendingMediaUploads.get(child.id) || []
+    if (image.is_draft && pendingIds.includes(Number(image.id))) {
+      await discardTemplateImageUploads([{
+        template_id: child.id,
+        image_ids: [Number(image.id)]
+      }])
+      pendingMediaUploads.set(child.id, pendingIds.filter(id => id !== Number(image.id)))
+      if (pendingPrimaryMedia.get(child.id) === Number(image.id)) {
+        pendingPrimaryMedia.delete(child.id)
+      }
+    } else {
+      await deleteTemplateImage(child.id, image.id)
+    }
     syncChildImageState(child, child.images.filter(item => item.id !== image.id))
     ElMessage.success(isVideoMedia(image) ? '视频已删除' : '图片已删除')
   } catch (error: any) {
@@ -1572,7 +1676,13 @@ const handleSetPrimaryImage = async (child: EditableChildTemplate, image: Templa
   }
 
   try {
-    await setTemplatePrimaryImage(child.id, image.id)
+    const isDraft = image.is_draft === true && (pendingMediaUploads.get(child.id) || []).includes(Number(image.id))
+    if (isDraft) {
+      pendingPrimaryMedia.set(child.id, Number(image.id))
+    } else {
+      await setTemplatePrimaryImage(child.id, image.id)
+      pendingPrimaryMedia.delete(child.id)
+    }
     syncChildImageState(
       child,
       child.images.map(item => ({
@@ -1600,13 +1710,16 @@ const handleImageDragEnd = async (child: EditableChildTemplate) => {
     sort_order: idx
   }))
 
-  const orders = reordered.map((item) => ({
-    id: item.id,
-    sort_order: item.sort_order
-  }))
+  const pendingIds = new Set(pendingMediaUploads.get(child.id) || [])
+  const orders = reordered
+    .filter(item => !pendingIds.has(Number(item.id)))
+    .map(item => ({
+      id: item.id,
+      sort_order: item.sort_order
+    }))
 
   try {
-    await reorderTemplateImages(child.id, orders)
+    if (orders.length > 0) await reorderTemplateImages(child.id, orders)
     syncChildImageState(child, reordered)
   } catch (error: any) {
     ElMessage.error(error?.message || '媒体排序更新失败')
@@ -1676,14 +1789,20 @@ onActivated(() => {
 
 // 路由守卫：页面离开时清理临时文件
 onBeforeRouteLeave(async () => {
-  if (tempFileTracker) {
-    await tempFileTracker.cleanup()
-    tempFileTracker = null
+  try {
+    await cleanupPendingMediaUploads()
+    return true
+  } catch (error: any) {
+    logger.error('离开模板编辑页时清理未保存媒体失败:', error)
+    ElMessage.error(error?.message || '未保存媒体清理失败，请重试')
+    return false
   }
-  return true
 })
 
 onUnmounted(() => {
+  void cleanupPendingMediaUploads().catch(error => {
+    logger.error('卸载模板编辑页时清理未保存媒体失败:', error)
+  })
   if (clearHeaderActions) {
     clearHeaderActions()
   }
@@ -1695,7 +1814,6 @@ onUnmounted(() => {
   padding: 20px;
 }
 
-.toolbar-card,
 .table-card {
   margin-bottom: 16px;
 }
@@ -1773,39 +1891,6 @@ onUnmounted(() => {
 
 .center {
   text-align: center;
-}
-
-.toolbar {
-  display: flex;
-}
-
-.search-toolbar {
-  width: 100%;
-}
-
-.search-panel {
-  width: 100%;
-  display: block;
-  padding: 4px 0;
-}
-
-.search-panel-main {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  min-width: 0;
-}
-
-.search-input {
-  width: 100%;
-}
-
-.search-panel-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  font-size: 12px;
-  color: var(--tf-color-neutral-500);
 }
 
 .product-cell {
@@ -2026,17 +2111,63 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  width: 100%;
+  min-width: 0;
+  align-items: stretch;
 }
 
 .markup-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+  min-width: 0;
 }
 
 .markup-type-select,
 .markup-input {
   width: 100%;
+  min-width: 0;
+}
+
+:deep(.markup-type-select.el-select),
+:deep(.markup-input.el-input-number) {
+  width: 100%;
+  min-width: 0;
+}
+
+.markup-input-with-unit {
+  position: relative;
+}
+
+.markup-input-frame {
+  width: 100%;
+  min-width: 0;
+}
+
+.markup-input-frame .markup-input {
+  width: 100%;
+}
+
+.markup-input-with-unit :deep(.markup-input.el-input-number) {
+  width: 100%;
+  min-width: 0;
+}
+
+.markup-unit {
+  position: absolute;
+  top: 50%;
+  right: 42px;
+  z-index: 2;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--tf-color-neutral-600);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.markup-input-with-unit :deep(.el-input__inner) {
+  padding-right: 22px;
 }
 
 .block-title {
@@ -2222,7 +2353,6 @@ onUnmounted(() => {
     overflow: hidden;
   }
 
-  .toolbar-card,
   .table-card {
     margin-bottom: 12px;
     border-radius: 14px;
@@ -2230,30 +2360,8 @@ onUnmounted(() => {
     box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
   }
 
-  .toolbar-card :deep(.el-card__body),
   .table-card :deep(.el-card__body) {
     padding: 12px;
-  }
-
-  .toolbar {
-    justify-content: stretch;
-  }
-
-  .search-input {
-    width: 100%;
-  }
-
-  .search-panel {
-    padding: 0;
-  }
-
-  .search-panel-main {
-    gap: 8px;
-  }
-
-  .search-panel-meta {
-    gap: 8px;
-    font-size: 11px;
   }
 
   .sort-tip {
@@ -2578,6 +2686,10 @@ onUnmounted(() => {
   :deep(.template-dialog .el-select),
   :deep(.template-dialog .el-input-number),
   :deep(.template-dialog .el-textarea) {
+    width: 100%;
+  }
+
+  .markup-input-frame {
     width: 100%;
   }
 }

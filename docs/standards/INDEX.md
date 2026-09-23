@@ -29,6 +29,7 @@
 ### 🔧 专项功能指南 (优先级: ⭐⭐)
 - **[对话框/编辑框规范](./dialog-standards.md)** ✅ - 统一的弹窗和编辑框标准
 - **[搜索组件规范](./search-standards.md)** ✅ - 统一的搜索组件标准
+- **[客户检索与姓名保护规范](../frontend/customer-search-standard.md)** ✅ - 客户下拉、姓名锁定、修改与更换客户标准
 - **[移动端开发规范](./mobile-development-standards.md)** ✅ - 移动端适配开发标准
 - **[移动端组件示例](./mobile-component-examples.md)** ✅ - 移动端页面模板示例
 - **[通知系统规范](./notification-standards.md)** ✅ - 通知服务使用
@@ -115,7 +116,7 @@ A: 参考 [移动端组件示例](./mobile-component-examples.md)，查看完整
 A: 参考 [对话框/编辑框规范](./dialog-standards.md)，使用统一的弹窗组件
 
 ### Q: 如何实现搜索功能？
-A: 参考 [搜索组件规范](./search-standards.md)，使用 GlobalSearch 组件
+A: 参考 [搜索组件规范](../frontend/search-standards.md)，使用 UnifiedSearchPanel 和 DateRangePicker 公共组件
 
 ---
 

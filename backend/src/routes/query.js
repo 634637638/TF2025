@@ -108,7 +108,7 @@ router.delete('/:id', requirePermission('inventory:delete', 'business'), queryCo
  * @desc 清除查询缓存
  * @access Private
  */
-router.delete('/cache', (req, res) => {
+router.delete('/cache', requirePermission('query:view', 'business'), (req, res) => {
   try {
     const { clearCache } = require('../middleware/cache')
     clearCache('comprehensive')

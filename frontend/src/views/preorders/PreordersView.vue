@@ -138,7 +138,7 @@
         >
           <el-select
             v-model="searchStoreId"
-            placeholder="预定店铺"
+            placeholder="销售店铺"
             clearable
             filterable
             @change="handlePreorderSearch"
@@ -233,7 +233,7 @@
         </div>
 
         <div
-          class="form-group filter-item"
+          class="form-group filter-item filter-item--date-range"
           data-field="created_at"
         >
           <DateRangePicker
@@ -343,7 +343,7 @@
                 <el-table-column
                   v-if="canViewPreorderField('store_name')"
                   prop="store_name"
-                  label="店铺"
+                  label="销售店铺"
                   min-width="80"
                 />
                 <el-table-column
@@ -468,6 +468,12 @@
                     {{ formatDateTime(row.created_at) }}
                   </template>
                 </el-table-column>
+                <el-table-column
+                  v-if="canViewPreorderField('preorder_person_name')"
+                  prop="preorder_person_name"
+                  label="预定人"
+                  min-width="85"
+                />
                 <el-table-column
                   v-if="showPendingActionField"
                   label="操作"
@@ -613,6 +619,15 @@
                       </template>
                       <template v-if="row.status === 'arrived'">
                         <el-button
+                          v-if="canEdit"
+                          type="primary"
+                          size="small"
+                          @click.stop="editMatchedPreorder(row)"
+                        >
+                          <i class="fas fa-edit" />
+                          <span>编辑</span>
+                        </el-button>
+                        <el-button
                           v-if="canMatch"
                           type="warning"
                           size="small"
@@ -684,7 +699,7 @@
                 <el-table-column
                   v-if="canViewPreorderField('store_name')"
                   prop="store_name"
-                  label="店铺"
+                  label="销售店铺"
                   min-width="80"
                 />
                 <el-table-column
@@ -831,6 +846,12 @@
                   </template>
                 </el-table-column>
                 <el-table-column
+                  v-if="canViewPreorderField('preorder_person_name')"
+                  prop="preorder_person_name"
+                  label="预定人"
+                  min-width="85"
+                />
+                <el-table-column
                   v-if="showMatchedActionField"
                   label="操作"
                   :width="matchedPreorderActionColumnWidth"
@@ -872,6 +893,16 @@
                         </el-button>
                       </template>
                       <template v-if="row.status === 'arrived'">
+                        <el-button
+                          v-if="canEdit"
+                          type="primary"
+                          size="small"
+                          class="table-action table-action--edit"
+                          @click.stop="editMatchedPreorder(row)"
+                        >
+                          <i class="fas fa-edit" />
+                          编辑
+                        </el-button>
                         <el-button
                           v-if="canMatch"
                           type="warning"
@@ -1016,7 +1047,7 @@
                 <el-table-column
                   v-if="canViewPreorderField('store_name')"
                   prop="store_name"
-                  label="店铺"
+                  label="销售店铺"
                   min-width="80"
                 />
                 <el-table-column
@@ -1132,9 +1163,15 @@
                   </template>
                 </el-table-column>
                 <el-table-column
+                  v-if="canViewPreorderField('preorder_person_name')"
+                  prop="preorder_person_name"
+                  label="预定人"
+                  min-width="85"
+                />
+                <el-table-column
                   v-if="canViewPreorderField('operator_name')"
-                  prop="operator_name"
-                  label="操作员"
+                  prop="sales_operator_name"
+                  label="销售员"
                   min-width="85"
                 />
                 <el-table-column
@@ -1382,7 +1419,7 @@ const pendingPreorderActionColumnWidth = computed(() => getAdaptiveActionColumnW
 const matchedPreorderActionColumnWidth = computed(() => getAdaptiveActionColumnWidth(
   matchedPreorders.value,
   [
-    { label: '编辑', visible: row => canEdit.value && row.status === 'pending' },
+    { label: '编辑', visible: row => canEdit.value && ['pending', 'arrived'].includes(row.status) },
     { label: '匹配', visible: row => canMatch.value && row.status === 'pending' },
     { label: '更换设备', visible: row => canMatch.value && row.status === 'arrived' },
     { label: '取消', visible: row => canCancel.value && ['pending', 'arrived'].includes(row.status) },
@@ -1797,15 +1834,17 @@ const restorePreorder = async (preorder: Preorder) => {
   }
 
   try {
-    await ElMessageBox.confirm('确定要恢复此预定单吗？恢复后将变为待匹配状态。', '恢复预定单', {
+    await ElMessageBox.confirm('确定要恢复此预定单吗？系统会按当前商品规格自动匹配库存；没有库存时将保持待匹配，后续入库后自动匹配。', '恢复预定单', {
       confirmButtonText: '确定恢复',
       cancelButtonText: '取消',
       type: 'info'
     })
 
     // 调用专门的恢复API
-    await preorderApi.restorePreorder(preorder.id)
-    success('预定单已恢复')
+    const restoredPreorder = await preorderApi.restorePreorder(preorder.id)
+    success(restoredPreorder.status === PreorderStatus.MATCHED
+      ? '预定单已恢复，并已自动匹配库存'
+      : '预定单已恢复，当前无库存，后续入库后将自动匹配')
     loadMatchedPreorders()
     loadStats()
   } catch (err: any) {

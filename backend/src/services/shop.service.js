@@ -7,8 +7,9 @@ const db = require('../config/database')
 const fs = require('fs').promises
 const path = require('path')
 const log = require('../utils/log')
-const { getUploadsRoot } = require('../utils/upload-paths')
-const { archiveShopTemplateUpload, relocateShopTemplateMedia } = require('../utils/shop-media-storage')
+const { getUploadsRoot, getRelativeUploadPathFromUrl, getUploadPathFromUrl } = require('../utils/upload-paths')
+const { archiveShopTemplateUpload, stageShopTemplateUpload, relocateShopTemplateMedia } = require('../utils/shop-media-storage')
+const { ensureShopTemplateMediaSchema } = require('../utils/shop-template-media-schema')
 
 const H5_ORDER_FIELDS = [
   'id', 'order_number', 'customer_name', 'customer_phone', 'customer_address',
@@ -1265,6 +1266,7 @@ class ShopService {
     const pool = db.getDatabase()
     const connection = await pool.getConnection()
     let imageUrls = []
+    let draftUrls = []
 
     try {
       await connection.beginTransaction()
@@ -1273,6 +1275,14 @@ class ShopService {
         [templateId]
       )
       imageUrls = images.map(image => image.image_url).filter(Boolean)
+      const [drafts] = await connection.query(
+        'SELECT image_url FROM h5_template_media_drafts WHERE template_id = ? FOR UPDATE',
+        [templateId]
+      )
+      draftUrls = drafts.map(image => image.image_url).filter(Boolean)
+      if (drafts.length > 0) {
+        await connection.query('DELETE FROM h5_template_media_drafts WHERE template_id = ?', [templateId])
+      }
 
       const [result] = await connection.query(
         'DELETE FROM H5_newtemplates WHERE id = ?',
@@ -1290,7 +1300,7 @@ class ShopService {
       connection.release()
     }
 
-    for (const imageUrl of imageUrls) {
+    for (const imageUrl of [...imageUrls, ...draftUrls]) {
       await this.deletePhysicalFile(imageUrl)
     }
   }
@@ -1302,57 +1312,258 @@ class ShopService {
     if (!file) {
       throw new Error('请选择要上传的文件')
     }
-
-    log.debug('[uploadTemplateImage] 上传媒体到模板:', templateId, '文件:', file.filename)
-
+    if (!userId) throw new Error('上传用户信息无效')
+    await ensureShopTemplateMediaSchema()
     const isVideo = file.mimetype?.startsWith('video/')
     const mediaType = isVideo ? 'video' : 'other'
     const pool = db.getDatabase()
-    const imageUrl = await archiveShopTemplateUpload({
-      file,
-      templateId,
-      database: pool
-    })
     const connection = await pool.getConnection()
+    let imageUrl = ''
 
     try {
       await connection.beginTransaction()
-
-      // 仅当当前模板还没有图片类媒体时，首张图片自动设为主图；视频不允许成为主图。
-      const [existingImages] = await connection.query(
-        'SELECT COUNT(*) as count FROM h5_newimages WHERE template_id = ? AND image_type <> ?',
-        [templateId, 'video']
-      )
-      const [existingMedia] = await connection.query(
-        'SELECT COUNT(*) as count FROM h5_newimages WHERE template_id = ?',
+      const [templates] = await connection.query(
+        'SELECT id FROM H5_newtemplates WHERE id = ? FOR UPDATE',
         [templateId]
       )
+      if (templates.length === 0) {
+        throw new Error('商品模板不存在')
+      }
 
-      const isPrimary = !isVideo && existingImages[0].count === 0
-      const sortOrder = Number(existingMedia[0]?.count || 0)
-      log.debug('[uploadTemplateImage] 是否设为主图:', isPrimary)
-
+      imageUrl = await stageShopTemplateUpload({ file, templateId, database: connection })
       const [result] = await connection.query(`
-        INSERT INTO h5_newimages (template_id, image_url, image_type, is_primary, sort_order, uploaded_by)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `, [templateId, imageUrl, mediaType, isPrimary, sortOrder, userId])
-
-      await this.ensurePrimaryTemplateImage(templateId, connection)
-
-      const [newImage] = await connection.query(
-        'SELECT * FROM h5_newimages WHERE id = ?',
-        [result.insertId]
+        INSERT INTO h5_template_media_drafts
+          (template_id, image_url, original_name, image_type, uploaded_by)
+        VALUES (?, ?, ?, ?, ?)
+      `, [templateId, imageUrl, file.originalname, mediaType, userId])
+      const [[counts]] = await connection.query(
+        `SELECT
+           (SELECT COUNT(*) FROM h5_newimages WHERE template_id = ?) +
+           (SELECT COUNT(*) FROM h5_template_media_drafts WHERE template_id = ?) AS media_count`,
+        [templateId, templateId]
       )
       await connection.commit()
 
-      log.debug('[uploadTemplateImage] 媒体已保存到数据库，ID:', result.insertId)
-      return newImage[0]
+      return {
+        id: result.insertId,
+        template_id: Number(templateId),
+        image_url: imageUrl,
+        image_type: mediaType,
+        is_primary: false,
+        sort_order: Math.max(0, Number(counts.media_count || 1) - 1),
+        is_draft: true
+      }
+    } catch (error) {
+      await connection.rollback().catch(() => {})
+      await this.deletePhysicalFile(imageUrl)
+      if (!imageUrl && file.path) await fs.unlink(file.path).catch(() => {})
+      throw error
+    } finally {
+      connection.release()
+    }
+  }
+
+  normalizeTemplateMediaDraftEntries(entries = []) {
+    return (Array.isArray(entries) ? entries : []).flatMap(entry => {
+      const templateId = Number(entry?.template_id)
+      const imageIds = [...new Set((Array.isArray(entry?.image_ids) ? entry.image_ids : [])
+        .map(Number)
+        .filter(id => Number.isSafeInteger(id) && id > 0))]
+      if (!Number.isSafeInteger(templateId) || templateId <= 0 || imageIds.length === 0) return []
+      return [{
+        templateId,
+        imageIds,
+        primaryImageId: Number(entry.primary_image_id) || null,
+        orders: Array.isArray(entry.orders) ? entry.orders.flatMap(item => {
+          const id = Number(item?.id)
+          const sortOrder = Number(item?.sort_order)
+          if (!Number.isSafeInteger(id) || id <= 0 || !Number.isSafeInteger(sortOrder) || sortOrder < 0) return []
+          return [{ id, isDraft: item.is_draft === true, sortOrder }]
+        }) : []
+      }]
+    })
+  }
+
+  async commitTemplateImageUploads(entries, userId) {
+    const normalized = this.normalizeTemplateMediaDraftEntries(entries)
+    if (!userId) throw new Error('上传用户信息无效')
+    if (normalized.length === 0) return []
+    await ensureShopTemplateMediaSchema()
+
+    const pool = db.getDatabase()
+    const connection = await pool.getConnection()
+    const movedFiles = []
+
+    try {
+      await connection.beginTransaction()
+      const templateIds = [...new Set(normalized.map(entry => entry.templateId))].sort((a, b) => a - b)
+      const [templates] = await connection.query(
+        'SELECT id FROM H5_newtemplates WHERE id IN (?) ORDER BY id FOR UPDATE',
+        [templateIds]
+      )
+      if (templates.length !== templateIds.length) throw new Error('商品模板不存在')
+
+      const savedMedia = []
+      for (const entry of normalized) {
+        const [draftRows] = await connection.query(
+          `SELECT id, image_url, original_name, image_type
+           FROM h5_template_media_drafts
+           WHERE template_id = ? AND uploaded_by = ? AND id IN (?)
+           FOR UPDATE`,
+          [entry.templateId, userId, entry.imageIds]
+        )
+        const draftsById = new Map(draftRows.map(draft => [Number(draft.id), draft]))
+        const drafts = entry.imageIds.map(id => draftsById.get(id)).filter(Boolean)
+        if (drafts.length !== entry.imageIds.length) {
+          throw new Error('部分待保存媒体已失效，请重新上传')
+        }
+
+        const [[counts]] = await connection.query(
+          `SELECT
+             COUNT(*) AS media_count,
+             COALESCE(SUM(image_type <> 'video'), 0) AS image_count
+           FROM h5_newimages WHERE template_id = ?`,
+          [entry.templateId]
+        )
+        let sortOrder = Number(counts.media_count || 0)
+        let hasImage = Number(counts.image_count || 0) > 0
+        const primaryDraftId = drafts.some(draft => Number(draft.id) === entry.primaryImageId && draft.image_type !== 'video')
+          ? entry.primaryImageId
+          : null
+        const insertedForTemplate = []
+
+        for (const draft of drafts) {
+          const relativePath = getRelativeUploadPathFromUrl(draft.image_url)
+          if (!relativePath.startsWith(`shop/template-staging/${entry.templateId}/`)) {
+            throw new Error('待保存媒体路径无效')
+          }
+          const stagedPath = getUploadPathFromUrl(draft.image_url)
+          const file = {
+            path: stagedPath,
+            filename: path.basename(relativePath),
+            originalname: draft.original_name
+          }
+          const imageUrl = await archiveShopTemplateUpload({
+            file,
+            templateId: entry.templateId,
+            database: connection
+          })
+          movedFiles.push({ stagedPath, finalPath: file.path })
+
+          const requestedOrder = entry.orders.find(order => order.isDraft && order.id === Number(draft.id))
+          const isPrimary = draft.image_type !== 'video' && (
+            primaryDraftId !== null
+              ? Number(draft.id) === Number(primaryDraftId)
+              : !hasImage
+          )
+          const [insertResult] = await connection.query(`
+            INSERT INTO h5_newimages (template_id, image_url, image_type, is_primary, sort_order, uploaded_by)
+            VALUES (?, ?, ?, ?, ?, ?)
+          `, [entry.templateId, imageUrl, draft.image_type, isPrimary, requestedOrder?.sortOrder ?? sortOrder, userId])
+          await connection.query('DELETE FROM h5_template_media_drafts WHERE id = ?', [draft.id])
+          const savedItem = { draftId: Number(draft.id), imageId: insertResult.insertId }
+          insertedForTemplate.push(savedItem)
+          savedMedia.push({ draft_id: savedItem.draftId, image_id: savedItem.imageId, image_url: imageUrl })
+          sortOrder += 1
+          if (draft.image_type !== 'video') hasImage = true
+        }
+
+        for (const order of entry.orders.filter(item => !item.isDraft)) {
+          await connection.query(
+            'UPDATE h5_newimages SET sort_order = ? WHERE id = ? AND template_id = ?',
+            [order.sortOrder, order.id, entry.templateId]
+          )
+        }
+
+        if (primaryDraftId !== null) {
+          const primaryImageId = insertedForTemplate.find(item => item.draftId === Number(primaryDraftId))?.imageId
+          await connection.query(
+            'UPDATE h5_newimages SET is_primary = CASE WHEN id = ? THEN 1 ELSE 0 END WHERE template_id = ?',
+            [primaryImageId, entry.templateId]
+          )
+        } else {
+          await this.ensurePrimaryTemplateImage(entry.templateId, connection)
+        }
+      }
+
+      await connection.commit()
+      return savedMedia
+    } catch (error) {
+      await connection.rollback().catch(() => {})
+      for (const moved of movedFiles.reverse()) {
+        await fs.mkdir(path.dirname(moved.stagedPath), { recursive: true }).catch(() => {})
+        await fs.rename(moved.finalPath, moved.stagedPath).catch(rollbackError => {
+          log.error('模板媒体文件回滚失败:', rollbackError)
+        })
+      }
+      throw error
+    } finally {
+      connection.release()
+    }
+  }
+
+  async discardTemplateImageUploads(entries, userId) {
+    const normalized = this.normalizeTemplateMediaDraftEntries(entries)
+    if (!userId || normalized.length === 0) return 0
+    await ensureShopTemplateMediaSchema()
+
+    const pool = db.getDatabase()
+    const connection = await pool.getConnection()
+    const imageUrls = []
+    try {
+      await connection.beginTransaction()
+      for (const entry of normalized) {
+        const [drafts] = await connection.query(
+          `SELECT id, image_url
+           FROM h5_template_media_drafts
+           WHERE template_id = ? AND uploaded_by = ? AND id IN (?)
+           FOR UPDATE`,
+          [entry.templateId, userId, entry.imageIds]
+        )
+        for (const draft of drafts) {
+          const relativePath = getRelativeUploadPathFromUrl(draft.image_url)
+          if (!relativePath.startsWith(`shop/template-staging/${entry.templateId}/`)) {
+            throw new Error('待清理媒体路径无效')
+          }
+          const filePath = getUploadPathFromUrl(draft.image_url)
+          try {
+            await fs.unlink(filePath)
+          } catch (error) {
+            if (error.code !== 'ENOENT') throw error
+          }
+          imageUrls.push(draft.image_url)
+
+          const shopDirectory = path.resolve(getUploadsRoot(), 'shop')
+          let currentDirectory = path.dirname(filePath)
+          while (currentDirectory !== shopDirectory && currentDirectory.startsWith(`${shopDirectory}${path.sep}`)) {
+            const directoryEntries = await fs.readdir(currentDirectory).catch(error => {
+              if (error.code === 'ENOENT') return []
+              throw error
+            })
+            if (directoryEntries.length > 0) break
+            await fs.rmdir(currentDirectory).catch(error => {
+              if (error.code !== 'ENOENT') throw error
+            })
+            currentDirectory = path.dirname(currentDirectory)
+          }
+        }
+        if (drafts.length > 0) {
+          await connection.query(
+            'DELETE FROM h5_template_media_drafts WHERE uploaded_by = ? AND id IN (?)',
+            [userId, drafts.map(draft => draft.id)]
+          )
+        }
+      }
+      await connection.commit()
     } catch (error) {
       await connection.rollback().catch(() => {})
       throw error
     } finally {
       connection.release()
     }
+
+    for (const imageUrl of imageUrls) await this.deletePhysicalFile(imageUrl)
+    return imageUrls.length
   }
 
   /**

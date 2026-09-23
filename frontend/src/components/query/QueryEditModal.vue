@@ -341,43 +341,21 @@
           </el-form-item>
 
           <el-form-item label="客户姓名">
-            <div class="customer-name-group">
-              <el-input
-                ref="customerNameInputRef"
-                v-model="formData.customer_name"
-                name="query-edit-customer-name"
-                placeholder=""
-                :readonly="!editFoundCustomer && !customerCreating ? true : !customerNameEditing"
-                clearable
-                data-field="customer_name"
-                :class="{ 'editable': editFoundCustomer || customerCreating }"
-                @dblclick="enableCustomerNameEdit"
-                @touchend="handleCustomerNameTouchEnd"
-                @input="formatCustomerName"
-                @blur="handleCustomerNameBlur"
-                @keyup.enter="saveCustomerNameEdit"
-              />
-              <el-button
-                v-if="customerNameEditing"
-                class="customer-lock-button"
-                type="success"
-                plain
-                title="当前已解锁，点击保存并锁定"
-                @click="saveCustomerNameEdit"
-              >
-                <i class="fas fa-lock-open" />
-              </el-button>
-              <el-button
-                v-if="editFoundCustomer !== null && !customerNameEditing"
-                class="customer-lock-button"
-                type="info"
-                plain
-                title="当前已锁定，点击清除客户选择"
-                @click="clearSelectedCustomer"
-              >
-                <i class="fas fa-lock" />
-              </el-button>
-            </div>
+            <CustomerNameLockInput
+              ref="customerNameInputRef"
+              v-model="formData.customer_name"
+              name="query-edit-customer-name"
+              data-field="customer_name"
+              :selected="editFoundCustomer !== null"
+              :editing="customerNameEditing"
+              :creating="customerCreating"
+              @unlock="enableCustomerNameEdit"
+              @touchend="handleCustomerNameTouchEnd"
+              @input="formatCustomerName"
+              @blur="handleCustomerNameBlur"
+              @save="saveCustomerNameEdit"
+              @clear="clearSelectedCustomer"
+            />
           </el-form-item>
 
           <el-form-item label="Apple ID">
@@ -534,6 +512,7 @@ import type { FormInstance } from 'element-plus'
 import { ValidationRules } from '@/composables'
 import { useNotification } from '@/composables/useNotification'
 import MobileDialog from '@/components/MobileDialog.vue'
+import CustomerNameLockInput from '@/components/common/CustomerNameLockInput.vue'
 import CustomerSearchDropdown from '@/components/common/CustomerSearchDropdown.vue'
 import { PaymentChannelSelect, PaymentMethodSelect } from '@/components/payment'
 import SectionLoading from '@/components/SectionLoading.vue'
@@ -701,10 +680,6 @@ const cloneOptions = (source: EditModalOptions): EditModalOptions => ({
   users: [...source.users]
 })
 
-const sortByOrder = <T extends { sort_order?: number; id?: string | number }>(items: T[]) => {
-  return sortOptionsByOrder(items)
-}
-
 const toRecord = (value: unknown): Record<string, unknown> | null => {
   return typeof value === 'object' && value !== null ? value as Record<string, unknown> : null
 }
@@ -762,7 +737,7 @@ const extractNestedList = (data: unknown, keys: string[]) => {
 const normalizeNameList = (data: unknown, keyCandidates: string[] = ['name']) => {
   const raw = extractNestedList(data, ['data', 'colors', 'memories'])
 
-  return sortByOrder(
+  return sortOptionsByOrder(
     raw
       .map((item) => {
         if (typeof item === 'string') return { id: 0, name: item, sort_order: 0 }
@@ -777,7 +752,7 @@ const normalizeNameList = (data: unknown, keyCandidates: string[] = ['name']) =>
 const normalizeModels = (data: unknown): ModelOption[] => {
   const raw = extractNestedList(data, ['data', 'models'])
 
-  return sortByOrder(
+  return sortOptionsByOrder(
     raw
       .map((item) => {
         const rawItem = toRecord(item) as RawLookupItem | null
@@ -835,7 +810,7 @@ const fetchEditOptions = async (): Promise<EditModalOptions> => {
 
         const options: EditModalOptions = {
           suppliers: suppliersRes.success && Array.isArray(suppliersRes.data)
-            ? sortByOrder(
+            ? sortOptionsByOrder(
               suppliersRes.data.map((item) => ({
                 id: Number(item.id || 0),
                 name: item.name,
@@ -844,7 +819,7 @@ const fetchEditOptions = async (): Promise<EditModalOptions> => {
             )
             : [],
           stores: storesRes.success && Array.isArray(storesRes.data)
-            ? sortByOrder(
+            ? sortOptionsByOrder(
               storesRes.data.map((item) => ({
                 id: Number(item.id || 0),
                 name: item.name,
@@ -852,7 +827,7 @@ const fetchEditOptions = async (): Promise<EditModalOptions> => {
               }))
             )
             : [],
-          brands: sortByOrder(
+          brands: sortOptionsByOrder(
             brandsRaw
               .map((item) => {
                 const rawItem = toRecord(item) as RawLookupItem | null
@@ -864,7 +839,7 @@ const fetchEditOptions = async (): Promise<EditModalOptions> => {
               })
               .filter((item) => item.name)
           ).map(item => item.name),
-          brandItems: sortByOrder(
+          brandItems: sortOptionsByOrder(
             brandsRaw
               .map((item) => {
                 const rawItem = toRecord(item) as RawLookupItem | null
@@ -879,7 +854,7 @@ const fetchEditOptions = async (): Promise<EditModalOptions> => {
           models: modelsRes.success ? normalizeModels(modelsRes.data) : [],
           colors: colorsRes.success ? normalizeNameList(colorsRes.data) : [],
           colorItems: colorsRes.success
-            ? sortByOrder(
+            ? sortOptionsByOrder(
               extractNestedList(colorsRes.data, ['data', 'colors'])
                 .map((item): OptionItem | null => {
                   if (typeof item === 'string') return null
@@ -893,7 +868,7 @@ const fetchEditOptions = async (): Promise<EditModalOptions> => {
             : [],
           memories: memoriesRes.success ? normalizeNameList(memoriesRes.data, ['size', 'capacity', 'name']) : [],
           memoryItems: memoriesRes.success
-            ? sortByOrder(
+            ? sortOptionsByOrder(
               extractNestedList(memoriesRes.data, ['data', 'memories'])
                 .map((item): OptionItem | null => {
                   if (typeof item === 'string') return null
@@ -1545,18 +1520,20 @@ const saveCustomerNameEdit = async () => {
   }
 
   formatCustomerName()
-  formatAppleId()
 
   if (!formData.customer_name) {
     showError('客户姓名不能为空')
     return
   }
 
+  if (formData.customer_name === normalizePersonName(editFoundCustomer.value.name, 20)) {
+    customerNameEditing.value = false
+    return
+  }
+
   try {
     const response = await unifiedApi.put(`/customers/${editFoundCustomer.value.id}`, {
-      name: formData.customer_name,
-      apple_id: normalizeAppleId(formData.apple_id) || null,
-      email: resolveAppleAccountEmail(normalizeAppleId(formData.apple_id))
+      name: formData.customer_name
     })
 
     if (!response.success) {
@@ -1564,8 +1541,7 @@ const saveCustomerNameEdit = async () => {
     }
 
     editFoundCustomer.value.name = formData.customer_name
-    editFoundCustomer.value.apple_id = normalizeAppleId(formData.apple_id)
-    showSuccess('客户信息更新成功')
+    showSuccess('客户姓名更新成功')
   } catch (error: unknown) {
     showError(error instanceof Error ? error.message : '更新客户失败')
   } finally {
@@ -2290,42 +2266,6 @@ onBeforeUnmount(() => {
   }
 }
 
-.customer-name-group {
-  display: flex;
-  align-items: stretch;
-}
-
-.customer-name-group :deep(.el-input) {
-  flex: 1;
-}
-
-.customer-name-group:has(.customer-lock-button) :deep(.el-input__wrapper) {
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
-}
-
-.customer-lock-button {
-  width: 36px !important;
-  min-width: 36px !important;
-  height: 36px !important;
-  padding: 0 !important;
-  flex: 0 0 36px !important;
-  border-top-left-radius: 0 !important;
-  border-bottom-left-radius: 0 !important;
-}
-
-.customer-lock-button :deep(.el-button__content) {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.customer-lock-button i {
-  font-size: 14px;
-}
-
 :deep(.el-form-item) {
   margin-bottom: 14px;
 }
@@ -2419,17 +2359,6 @@ onBeforeUnmount(() => {
     :deep(.el-button [class*='fa-']) {
       margin-right: 4px;
     }
-  }
-
-  .customer-lock-button {
-    width: 32px !important;
-    min-width: 32px !important;
-    height: 32px !important;
-    flex-basis: 32px !important;
-  }
-
-  .customer-lock-button i {
-    font-size: 13px;
   }
 
   :deep(.el-input__wrapper),

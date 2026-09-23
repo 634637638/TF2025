@@ -3,12 +3,6 @@
     class="admin-container"
     :class="{ 'compact-device': !isDesktopLayout }"
   >
-    <!-- Font Awesome -->
-    <link
-      rel="stylesheet"
-      href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-    >
-
     <!-- 屏幕锁定覆盖层 -->
     <ScreenLock
       :is-locked="isLocked"

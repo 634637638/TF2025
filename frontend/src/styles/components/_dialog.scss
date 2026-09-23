@@ -1,5 +1,37 @@
-/* Unified dialog body and form spacing. Keep dialog content aligned on both sides. */
+/*
+ * Unified dialog contract.
+ *
+ * Keep dialog chrome here so pages only own their business layout. The
+ * legacy --dialog-* aliases are intentionally retained for existing dialog
+ * classes while new code should use the --tf-dialog-* tokens.
+ */
 :root {
+  --tf-dialog-overlay-bg: rgba(15, 23, 42, 0.52);
+  --tf-dialog-surface: #ffffff;
+  --tf-dialog-surface-soft: #f8f7ff;
+  --tf-dialog-border: rgba(124, 58, 237, 0.14);
+  --tf-dialog-shadow: 0 24px 60px rgba(76, 29, 149, 0.22);
+  --tf-dialog-radius: 16px;
+  --tf-dialog-header-bg: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 48%, #6d28d9 100%);
+  --tf-dialog-header-text: #ffffff;
+  --tf-dialog-body-text: #334155;
+  --tf-dialog-footer-bg: linear-gradient(180deg, #fcfbff 0%, #f4f1ff 100%);
+  --tf-dialog-close-bg: rgba(255, 255, 255, 0.16);
+  --tf-dialog-close-bg-hover: rgba(255, 255, 255, 0.24);
+  --tf-dialog-side-gap: 32px;
+  --tf-dialog-width: 680px;
+  --tf-dialog-max-width: 880px;
+  --tf-dialog-message-width: 420px;
+  --tf-dialog-header-padding-y: 18px;
+  --tf-dialog-header-padding-x: 22px;
+  --tf-dialog-header-padding-right: 64px;
+  --tf-dialog-title-size: 18px;
+  --tf-dialog-title-weight: 600;
+  --tf-dialog-title-line-height: 1.5;
+  --tf-dialog-close-size: 32px;
+  --tf-dialog-close-top: 18px;
+  --tf-dialog-close-right: 16px;
+  --tf-dialog-close-icon-size: 18px;
   --tf-image-viewer-z-index: 12000;
   --tf-dialog-body-padding-inline: 24px;
   --tf-dialog-body-padding-block: 24px;
@@ -7,6 +39,51 @@
   --tf-dialog-body-padding-inline-mobile: 16px;
   --tf-dialog-body-padding-block-mobile: 16px;
   --tf-dialog-form-label-width-mobile: 62px;
+  --tf-dialog-footer-padding-block-start: 16px;
+  --tf-dialog-footer-padding-inline: 20px;
+  --tf-dialog-footer-padding-block-end: 20px;
+  --tf-dialog-footer-gap: 12px;
+  --tf-dialog-mobile-side-gap: 4px;
+  --tf-dialog-mobile-footer-padding-block-start: 12px;
+  --tf-dialog-mobile-footer-padding-inline: 12px;
+  --tf-dialog-mobile-footer-padding-block-end: calc(12px + env(safe-area-inset-bottom, 0px));
+  --tf-dialog-mobile-radius: var(--tf-dialog-radius);
+  --tf-dialog-sheet-header-min-height: 72px;
+  --tf-dialog-sheet-title-size: 16px;
+
+  /* Backwards-compatible aliases for existing page-level variants. */
+  --dialog-overlay-bg: var(--tf-dialog-overlay-bg);
+  --dialog-surface: var(--tf-dialog-surface);
+  --dialog-surface-soft: var(--tf-dialog-surface-soft);
+  --dialog-border: var(--tf-dialog-border);
+  --dialog-shadow: var(--tf-dialog-shadow);
+  --dialog-radius: var(--tf-dialog-radius);
+  --dialog-header-bg: var(--tf-dialog-header-bg);
+  --dialog-header-text: var(--tf-dialog-header-text);
+  --dialog-body-text: var(--tf-dialog-body-text);
+  --dialog-footer-bg: var(--tf-dialog-footer-bg);
+  --dialog-muted-bg: var(--tf-dialog-close-bg);
+  --dialog-muted-bg-hover: var(--tf-dialog-close-bg-hover);
+  --dialog-side-gap: var(--tf-dialog-side-gap);
+  --dialog-default-width: var(--tf-dialog-width);
+  --dialog-max-width: var(--tf-dialog-max-width);
+  --dialog-message-width: var(--tf-dialog-message-width);
+}
+
+/* Width variants only change the workspace width; dialog chrome stays shared. */
+.crud-dialog-sm {
+  --el-dialog-width: 500px;
+  --dialog-max-width: 500px;
+}
+
+.crud-dialog-md {
+  --el-dialog-width: 600px;
+  --dialog-max-width: 600px;
+}
+
+.crud-dialog-lg {
+  --el-dialog-width: 800px;
+  --dialog-max-width: 800px;
 }
 
 /* Image preview must sit above dialogs and their overlays. */
@@ -14,9 +91,195 @@
   z-index: var(--tf-image-viewer-z-index) !important;
 }
 
-.el-dialog__body {
+/* Element Plus and message-box share the same dialog chrome. */
+.el-overlay.el-overlay-dialog,
+.el-overlay-dialog,
+.el-overlay-message-box {
+  position: fixed !important;
+  inset: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: auto !important;
+  padding: clamp(12px, 2vw, 24px) !important;
+  background: var(--tf-dialog-overlay-bg) !important;
+}
+
+.el-dialog__wrapper,
+.el-message-box__wrapper {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  padding: 0 !important;
+  overflow: auto !important;
+}
+
+.el-overlay-message-box {
+  z-index: 10000 !important;
+}
+
+/* Form poppers must stay above teleported dialogs. */
+.el-popper,
+.el-select__popper,
+.el-picker__popper,
+.el-cascader__dropdown,
+.el-autocomplete-suggestion,
+.el-tooltip__popper {
+  z-index: 4005 !important;
+}
+
+.el-dialog,
+.el-message-box {
+  position: relative !important;
+  align-self: center !important;
+  overflow: hidden !important;
+  outline: none !important;
+  border: none !important;
+  border-radius: var(--tf-dialog-radius) !important;
+  background: var(--tf-dialog-surface) !important;
+  box-shadow: var(--tf-dialog-shadow) !important;
+}
+
+.el-dialog:not(.is-fullscreen) {
+  --el-dialog-margin-top: 0px !important;
+  width: min(var(--el-dialog-width, var(--tf-dialog-width)), calc(100vw - var(--dialog-side-gap, var(--tf-dialog-side-gap)))) !important;
+  max-width: min(var(--dialog-max-width, var(--tf-dialog-max-width)), calc(100vw - var(--dialog-side-gap, var(--tf-dialog-side-gap)))) !important;
+  max-height: calc(100vh - 32px) !important;
+  margin: auto !important;
+  padding: 0 !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+}
+
+.el-message-box {
+  width: min(var(--dialog-message-width, var(--tf-dialog-message-width)), calc(100vw - var(--dialog-side-gap, var(--tf-dialog-side-gap)))) !important;
+  max-width: calc(100vw - var(--dialog-side-gap, var(--tf-dialog-side-gap))) !important;
+  margin: auto !important;
+}
+
+.el-dialog__header,
+.el-message-box__header {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  margin: 0 !important;
+  padding: var(--tf-dialog-header-padding-y) var(--tf-dialog-header-padding-x) !important;
+  padding-right: var(--tf-dialog-header-padding-right) !important;
+  border-bottom: none !important;
+  background: var(--tf-dialog-header-bg) !important;
+}
+
+.el-dialog__title,
+.el-message-box__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--tf-dialog-header-text) !important;
+  font-size: var(--tf-dialog-title-size) !important;
+  font-weight: var(--tf-dialog-title-weight) !important;
+  line-height: var(--tf-dialog-title-line-height) !important;
+}
+
+.el-dialog__headerbtn,
+.el-message-box__headerbtn {
+  position: absolute !important;
+  top: var(--tf-dialog-close-top) !important;
+  right: var(--tf-dialog-close-right) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: var(--tf-dialog-close-size) !important;
+  height: var(--tf-dialog-close-size) !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  border-radius: 999px !important;
+  background: var(--tf-dialog-close-bg) !important;
+  line-height: 1 !important;
+  transform: none !important;
+  transition: background-color 0.18s ease, transform 0.18s ease !important;
+}
+
+.el-dialog__headerbtn:hover,
+.el-message-box__headerbtn:hover {
+  background: var(--tf-dialog-close-bg-hover) !important;
+  transform: rotate(90deg) !important;
+}
+
+.el-dialog__close,
+.el-message-box__headerbtn .el-message-box__close {
+  display: block !important;
+  color: var(--tf-dialog-header-text) !important;
+  font-size: var(--tf-dialog-close-icon-size) !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+}
+
+.el-dialog__body,
+.el-message-box__content {
   box-sizing: border-box !important;
   padding: var(--tf-dialog-body-padding-block) var(--tf-dialog-body-padding-inline) !important;
+  margin: 0 !important;
+  background: var(--tf-dialog-surface) !important;
+  color: var(--tf-dialog-body-text) !important;
+  box-shadow: none !important;
+}
+
+.el-dialog__body {
+  overflow-y: auto !important;
+  min-height: 0 !important;
+  max-height: calc(100vh - 220px) !important;
+}
+
+.el-dialog__footer,
+.el-message-box__btns {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: var(--tf-dialog-footer-gap) !important;
+  flex-wrap: nowrap !important;
+  padding: var(--tf-dialog-footer-padding-block-start) var(--tf-dialog-footer-padding-inline) var(--tf-dialog-footer-padding-block-end) !important;
+  border-top: 1px solid var(--tf-dialog-border) !important;
+  background: var(--tf-dialog-footer-bg) !important;
+  box-shadow: none !important;
+}
+
+.el-message-box__message {
+  color: var(--tf-dialog-body-text) !important;
+  font-size: 15px !important;
+  line-height: 1.6 !important;
+  word-break: break-word !important;
+  white-space: pre-wrap !important;
+}
+
+.el-overlay-message-box .el-message-box__content {
+  padding-top: 28px !important;
+}
+
+.el-overlay-message-box .el-message-box__container {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 12px !important;
+}
+
+.el-overlay-message-box .el-message-box__status {
+  position: static !important;
+  flex: 0 0 auto !important;
+  margin: 2px 0 0 !important;
+}
+
+.el-overlay-message-box .el-message-box__message {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+}
+
+.el-overlay-message-box .el-message-box__message p {
+  margin: 0 !important;
 }
 
 /*
@@ -78,6 +341,43 @@
 }
 
 @media (max-width: 768px) {
+  :root {
+    --tf-dialog-side-gap: 4px;
+    --tf-dialog-max-width: calc(100vw - 8px);
+    --tf-dialog-body-padding-inline: 16px;
+    --tf-dialog-body-padding-block: 16px;
+    --tf-dialog-footer-padding-block-start: 12px;
+    --tf-dialog-footer-padding-inline: 12px;
+    --tf-dialog-footer-padding-block-end: calc(12px + env(safe-area-inset-bottom, 0px));
+    --tf-dialog-footer-gap: 8px;
+  }
+
+  .el-overlay.el-overlay-dialog,
+  .el-overlay-dialog,
+  .el-overlay-message-box {
+    padding: var(--tf-dialog-mobile-side-gap) !important;
+  }
+
+  .el-dialog:not(.is-fullscreen) {
+    width: calc(100vw - 8px) !important;
+    max-width: calc(100vw - 8px) !important;
+  }
+
+  .el-dialog__footer,
+  .el-message-box__btns,
+  .mobile-dialog-footer,
+  .default-footer,
+  .dialog-footer,
+  .modal-footer {
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    gap: var(--tf-dialog-footer-gap) !important;
+  }
+
+  .el-dialog__footer {
+    padding: var(--tf-dialog-footer-padding-block-start) var(--tf-dialog-footer-padding-inline) var(--tf-dialog-footer-padding-block-end) !important;
+  }
+
   .el-dialog__body {
     padding: var(--tf-dialog-body-padding-block-mobile) var(--tf-dialog-body-padding-inline-mobile) !important;
   }
@@ -91,10 +391,60 @@
   }
 }
 
+@media (max-width: 767px) {
+  .crud-dialog-sm,
+  .crud-dialog-md,
+  .crud-dialog-lg {
+    --dialog-side-gap: 4px;
+    --dialog-vertical-gap: 12px;
+    --dialog-max-width: calc(100vw - 8px);
+    --mobile-dialog-body-padding: 10px 6px 8px;
+    --mobile-dialog-footer-padding: 0 6px 8px;
+  }
+
+  .mobile-dialog-sheet-overlay.crud-dialog-sm,
+  .mobile-dialog-sheet-overlay.crud-dialog-md,
+  .mobile-dialog-sheet-overlay.crud-dialog-lg {
+    padding: 12px 4px !important;
+  }
+
+  .mobile-dialog-sheet-panel.crud-dialog-sm,
+  .mobile-dialog-sheet-panel.crud-dialog-md,
+  .mobile-dialog-sheet-panel.crud-dialog-lg {
+    width: calc(100vw - 8px) !important;
+    max-width: calc(100vw - 8px) !important;
+    max-height: calc(100dvh - 24px) !important;
+    border-radius: var(--tf-dialog-mobile-radius) !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .crud-dialog-sm,
+  .crud-dialog-md,
+  .crud-dialog-lg {
+    --mobile-dialog-body-padding: 8px 6px 6px;
+    --mobile-dialog-footer-padding: 0 6px 6px;
+  }
+}
+
 @media (max-width: 480px) {
   :root {
+    --tf-dialog-header-padding-y: 14px;
+    --tf-dialog-header-padding-x: 16px;
+    --tf-dialog-header-padding-right: 56px;
+    --tf-dialog-title-size: 16px;
+    --tf-dialog-close-top: 14px;
+    --tf-dialog-close-right: 12px;
+    --tf-dialog-close-size: 30px;
     --tf-dialog-body-padding-inline-mobile: 12px;
     --tf-dialog-body-padding-block-mobile: 12px;
     --tf-dialog-form-label-width-mobile: 58px;
+    --tf-dialog-footer-padding-block-start: 10px;
+    --tf-dialog-footer-padding-inline: 10px;
+    --tf-dialog-footer-padding-block-end: calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .el-dialog__footer {
+    padding: var(--tf-dialog-footer-padding-block-start) var(--tf-dialog-footer-padding-inline) var(--tf-dialog-footer-padding-block-end) !important;
   }
 }

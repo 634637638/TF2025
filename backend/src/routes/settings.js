@@ -4,7 +4,7 @@
 const express = require('express')
 const router = express.Router()
 const SettingsController = require('../controllers/settings.controller')
-const { unifiedAuth, _requirePermission } = require('../middleware/unified-auth')
+const { unifiedAuth, requirePermission } = require('../middleware/unified-auth')
 
 const settingsController = new SettingsController()
 
@@ -16,23 +16,23 @@ router.get('/public/menu-widths', settingsController.getAllMenuWidths)
 router.use(unifiedAuth)
 
 // 菜单宽度专用接口（必须在 /:settingKey 之前）
-router.get('/menu-width', settingsController.getMenuWidth)
-router.post('/menu-width', settingsController.setMenuWidth)
+router.get('/menu-width', requirePermission('system:view'), settingsController.getMenuWidth)
+router.post('/menu-width', requirePermission('system:edit'), settingsController.setMenuWidth)
 
 // PC和手机端菜单宽度接口（需要认证）
-router.get('/menu-widths', settingsController.getAllMenuWidths)
-router.post('/menu-widths', settingsController.setBothMenuWidths)
+router.get('/menu-widths', requirePermission('system:view'), settingsController.getAllMenuWidths)
+router.post('/menu-widths', requirePermission('system:edit'), settingsController.setBothMenuWidths)
 
 // 获取所有设置
-router.get('/', settingsController.getAllSettings)
+router.get('/', requirePermission('system:view'), settingsController.getAllSettings)
 
 // 批量设置
-router.post('/', settingsController.setMultipleSettings)
+router.post('/', requirePermission('system:edit'), settingsController.setMultipleSettings)
 
 // 获取单个设置
-router.get('/:settingKey', settingsController.getSetting)
+router.get('/:settingKey', requirePermission('system:view'), settingsController.getSetting)
 
 // 设置单个设置
-router.post('/:settingKey', settingsController.setSetting)
+router.post('/:settingKey', requirePermission('system:edit'), settingsController.setSetting)
 
 module.exports = router

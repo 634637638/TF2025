@@ -194,30 +194,16 @@
 
     <div
       v-if="canViewField('inventory_time')"
-      class="form-group filter-item"
+      class="form-group filter-item filter-item--date-range"
+      data-field="date_range"
     >
-      <el-date-picker
-        v-model="filters.date_start"
-        type="date"
-        placeholder="开始日期"
+      <DateRangePicker
+        v-model="dateRange"
+        start-placeholder="开始日期"
+        end-placeholder="结束日期"
         format="YYYY-MM-DD"
         value-format="YYYY-MM-DD"
-        :clearable="true"
-        @change="emit('filter-change')"
-      />
-    </div>
-
-    <div
-      v-if="canViewField('inventory_time')"
-      class="form-group filter-item"
-    >
-      <el-date-picker
-        v-model="filters.date_end"
-        type="date"
-        placeholder="结束日期"
-        format="YYYY-MM-DD"
-        value-format="YYYY-MM-DD"
-        :clearable="true"
+        clearable
         @change="emit('filter-change')"
       />
     </div>
@@ -225,6 +211,8 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+import DateRangePicker from '@/components/DateRangePicker.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 
 export interface InventoryFilters {
@@ -247,7 +235,7 @@ interface NamedOption {
   username?: string
 }
 
-defineProps<{
+const props = defineProps<{
   brandModels: Array<{ id: number; name: string }>
   brands: Array<{ id: number; name: string }>
   canViewField: (_field: string) => boolean
@@ -261,6 +249,19 @@ defineProps<{
   stores: NamedOption[]
   suppliers: NamedOption[]
 }>()
+
+type SearchDateRange = [string, string] | [] | null
+
+const dateRange = computed<SearchDateRange>({
+  get: () => {
+    if (!props.filters.date_start && !props.filters.date_end) return null
+    return [props.filters.date_start, props.filters.date_end] as [string, string]
+  },
+  set: value => {
+    props.filters.date_start = value?.[0] || ''
+    props.filters.date_end = value?.[1] || ''
+  }
+})
 
 const emit = defineEmits<{
   'brand-change': []

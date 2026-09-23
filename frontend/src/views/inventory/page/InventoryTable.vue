@@ -67,7 +67,7 @@
                 查看
               </el-button>
               <el-button
-                v-if="canCreate && isPhoneSaleActionAvailable(item)"
+                v-if="canSell && isPhoneSaleActionAvailable(item)"
                 type="warning"
                 size="small"
                 title="商品出库"
@@ -150,7 +150,7 @@ interface InventoryPagination {
 }
 
 const props = defineProps<{
-  canCreate: boolean
+  canSell: boolean
   canDelete: boolean
   canEdit: boolean
   columns: InventoryColumn[]
@@ -182,7 +182,7 @@ const handleRowClick = (item: InventoryItem, column: unknown, event: MouseEvent)
 }
 
 const {
-  canCreate,
+  canSell,
   canDelete,
   canEdit,
   columns,

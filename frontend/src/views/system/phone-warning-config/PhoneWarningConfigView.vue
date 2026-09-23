@@ -5,11 +5,33 @@
       description="当前账号暂无库存预警配置查看权限"
     />
 
-    <el-card
-      v-else
-      shadow="never"
-      class="config-card"
-    >
+    <template v-else>
+      <UnifiedSearchPanel
+        :expanded="true"
+        :loading="loading"
+        @search="handleSearch"
+        @reset="resetSearch"
+      >
+        <template #primary>
+          <el-input
+            v-if="canViewField('filters.search')"
+            v-model="searchKeyword"
+            placeholder="搜索品牌、型号、模板名"
+            clearable
+            @keyup.enter="handleSearch"
+            @click.stop
+          >
+            <template #prefix>
+              <i class="fas fa-search" />
+            </template>
+          </el-input>
+        </template>
+      </UnifiedSearchPanel>
+
+      <el-card
+        shadow="never"
+        class="config-card"
+      >
       <template #header>
         <div class="card-toolbar">
           <div>
@@ -20,13 +42,6 @@
               展开后查看并维护颜色 / 内存 / 库存类型子模板
             </div>
           </div>
-          <el-input
-            v-if="canViewField('filters.search')"
-            v-model="searchKeyword"
-            placeholder="搜索品牌、型号、模板名"
-            clearable
-            class="search-input"
-          />
         </div>
       </template>
 
@@ -421,7 +436,8 @@
           </template>
         </el-table-column>
       </el-table>
-    </el-card>
+      </el-card>
+    </template>
 
     <MobileDialog
       v-model="dialogVisible"
@@ -761,6 +777,7 @@ import { useLoadingState } from '@/composables'
 import phoneStockWarningsApi from '@/api/phone-stock-warnings'
 import { baseDataApi } from '@/api/base-data'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
+import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 
 const { success, error } = useNotification()
 const {
@@ -908,6 +925,14 @@ const filteredGroupedConfigs = computed(() => {
     return haystack.includes(keyword)
   })
 })
+
+const handleSearch = () => {
+  searchKeyword.value = searchKeyword.value.trim()
+}
+
+const resetSearch = () => {
+  searchKeyword.value = ''
+}
 
 const _filteredChildConfigCount = computed(() => {
   return filteredGroupedConfigs.value.reduce((total, group) => total + group.children.length, 0)
@@ -1406,10 +1431,6 @@ defineExpose({
     font-size: 13px;
   }
 
-  .search-input {
-    width: 300px;
-  }
-
   .template-name__title {
     font-weight: 700;
     color: var(--tf-color-neutral-800);
@@ -1610,10 +1631,6 @@ defineExpose({
     .variant-editor__header {
       flex-direction: column;
       align-items: flex-start;
-    }
-
-    .search-input {
-      width: 100%;
     }
 
     :deep(.warning-dialog .el-dialog) {

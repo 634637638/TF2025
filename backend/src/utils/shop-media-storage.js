@@ -89,6 +89,20 @@ async function archiveShopTemplateUpload({ file, templateId, database } = {}) {
   return moveUploadedShopFile(file, ['h5_newimages', directoryName])
 }
 
+async function stageShopTemplateUpload({ file, templateId, database } = {}) {
+  if (!database || typeof database.query !== 'function') {
+    throw new Error('缺少数据库连接')
+  }
+  const [templates] = await database.query(
+    'SELECT id FROM H5_newtemplates WHERE id = ?',
+    [templateId]
+  )
+  if (templates.length === 0) {
+    throw new Error('商品模板不存在')
+  }
+  return moveUploadedShopFile(file, ['template-staging', String(templateId)])
+}
+
 async function relocateShopTemplateMedia({ templateId, database } = {}) {
   if (!database || typeof database.query !== 'function') {
     throw new Error('缺少数据库连接')
@@ -172,6 +186,7 @@ module.exports = {
   buildShopTemplateDirectoryName,
   archiveShopAssetUpload,
   archiveShopTemplateUpload,
+  stageShopTemplateUpload,
   getShopTemplateDirectoryName,
   relocateShopTemplateMedia
 }

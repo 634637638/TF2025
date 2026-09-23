@@ -179,7 +179,7 @@
         class="detail-modal-footer"
       >
         <el-button
-          v-if="canCreate && isPhoneSaleActionAvailable(item)"
+          v-if="canSell && isPhoneSaleActionAvailable(item)"
           type="warning"
           @click="emit('quick-sale')"
         >
@@ -217,7 +217,7 @@ import type { ModelValueProps, UpdateModelValueEmits, CloseEmits } from '@/types
 
 interface Props extends ModelValueProps {
   item: InventoryItem | null
-  canCreate?: boolean
+  canSell?: boolean
   canEdit?: boolean
   canDelete?: boolean
 }

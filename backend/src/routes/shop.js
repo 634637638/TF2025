@@ -16,6 +16,7 @@ const log = require('../utils/log')
 const { getUploadsRoot, getUploadSubdir } = require('../utils/upload-paths')
 const { archivePhoneMediaUpload } = require('../utils/phone-media-storage')
 const { archiveShopAssetUpload } = require('../utils/shop-media-storage')
+const { ensureShopTemplateMediaSchema } = require('../utils/shop-template-media-schema')
 const { validateUploadedFileSignature, removeUploadedFiles } = require('../utils/upload-file-validation')
 
 const shopService = new ShopService()
@@ -702,6 +703,7 @@ router.post('/migrate/condition-grade',
 
 router.post('/migrate/sale-price',
   unifiedAuth,
+  requireAdmin,
   async (req, res) => {
     try {
       await shopService.migrateSalePrice()
@@ -862,6 +864,7 @@ router.post('/templates/:id/images',
   handleMulterError,
   async (req, res) => {
     try {
+      await ensureShopTemplateMediaSchema()
       log.debug('[上传模板图片] 模板ID:', req.params.id)
       log.debug('[上传模板图片] 用户ID:', req.user?.id)
       log.debug('[上传模板图片] 文件信息:', req.file ? {
@@ -906,6 +909,34 @@ router.delete('/templates/:id/images/:imageId',
     } catch (error) {
       log.error('删除图片失败:', error)
       ApiResponse.error(res, error.message || '删除失败', 500)
+    }
+  }
+)
+
+router.post('/templates/media/commit-drafts',
+  unifiedAuth,
+  requireAnyPermission(H5_TEMPLATE_EDIT_PERMISSIONS),
+  async (req, res) => {
+    try {
+      const result = await shopService.commitTemplateImageUploads(req.body?.entries, req.user?.id)
+      ApiResponse.success(res, result, '模板媒体已保存')
+    } catch (error) {
+      log.error('保存模板媒体失败:', error)
+      ApiResponse.error(res, error.message || '保存模板媒体失败', 500)
+    }
+  }
+)
+
+router.post('/templates/media/discard-drafts',
+  unifiedAuth,
+  requireAnyPermission(H5_TEMPLATE_EDIT_PERMISSIONS),
+  async (req, res) => {
+    try {
+      const deletedCount = await shopService.discardTemplateImageUploads(req.body?.entries, req.user?.id)
+      ApiResponse.success(res, { deleted_count: deletedCount }, '未保存媒体已清理')
+    } catch (error) {
+      log.error('清理未保存模板媒体失败:', error)
+      ApiResponse.error(res, error.message || '清理未保存媒体失败', 500)
     }
   }
 )

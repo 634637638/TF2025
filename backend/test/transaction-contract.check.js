@@ -1007,6 +1007,77 @@ test('preorder edit form sends customer_id instead of retired customer snapshot 
   assert.match(form, /params:\s*\{\s*search: keyword, page_size: 10/);
 });
 
+test('preorder customer can be corrected before delivery without changing matched product fields', () => {
+  const route = read('src/routes/preorders.js');
+  const form = read('../frontend/src/views/preorders/page/PreorderFormModal.vue');
+  const page = read('../frontend/src/views/preorders/PreordersView.vue');
+
+  assert.match(route, /\[PREORDER_STATUS\.PENDING, PREORDER_STATUS\.MATCHED\]\.includes\(preorder\.status\)/);
+  assert.match(route, /SELECT id FROM customers WHERE id = \?/);
+  assert.match(route, /const matchedLockedFields = \['brand_id', 'model_id', 'color_id', 'memory_id', 'is_new'\]/);
+  assert.match(form, /const isMatchedEdit = computed/);
+  assert.match(form, /\.\.\.\(!isMatchedEdit\.value \? \{/);
+  assert.match(page, /\['pending', 'arrived'\]\.includes\(row\.status\)/);
+});
+
+test('customer search forms share locked-name editing and customer replacement contracts', () => {
+  const lockInput = fs.readFileSync(
+    path.join(root, '../frontend/src/components/common/CustomerNameLockInput.vue'),
+    'utf8'
+  );
+  const formPaths = [
+    '../frontend/src/views/sales/page/SalesCheckoutForm.vue',
+    '../frontend/src/views/sales/page/SalesBatchForm.vue',
+    '../frontend/src/components/query/QuickSaleModal.vue',
+    '../frontend/src/components/query/QueryEditModal.vue',
+    '../frontend/src/components/wholesale/WholesalePartySection.vue',
+    '../frontend/src/views/preorders/page/PreorderFormModal.vue'
+  ];
+
+  assert.match(lockInput, /if \(props\.selected\) return !props\.editing/);
+  assert.match(lockInput, /@dblclick="handleUnlock"/);
+  assert.match(lockInput, /title="更换客户"/);
+  assert.match(lockInput, /@click="emit\('clear'\)"/);
+
+  for (const formPath of formPaths) {
+    const form = fs.readFileSync(path.join(root, formPath), 'utf8');
+    assert.match(form, /<CustomerNameLockInput/);
+    assert.match(form, /@clear="(?:emit\('clear-customer'\)|clearSelectedCustomer)"/);
+    assert.doesNotMatch(form, /customer-lock-button|customer-name-group/);
+  }
+
+  const preorderForm = fs.readFileSync(
+    path.join(root, '../frontend/src/views/preorders/page/PreorderFormModal.vue'),
+    'utf8'
+  );
+  assert.match(preorderForm, /unifiedApi\.put\(`\/customers\/\$\{selectedCustomer\.value\.id\}`/);
+  assert.match(preorderForm, /selectedCustomer\.value\.name = normalizedName/);
+  assert.match(preorderForm, /selectedCustomer\.value = null[\s\S]*formData\.customer_id = null[\s\S]*formData\.customer_phone = ''/);
+  assert.match(preorderForm, /selectedCustomer\.value = customer[\s\S]*formData\.customer_id = customer\.id/);
+
+  const nameEditors = [
+    '../frontend/src/views/sales/useSalesCustomers.ts',
+    '../frontend/src/components/query/QuickSaleModal.vue',
+    '../frontend/src/components/query/QueryEditModal.vue',
+    '../frontend/src/components/WholesaleModal.vue',
+    '../frontend/src/views/preorders/page/PreorderFormModal.vue'
+  ];
+  for (const editorPath of nameEditors) {
+    const editor = fs.readFileSync(path.join(root, editorPath), 'utf8');
+    assert.match(editor, /normalizedCustomerName === normalizePersonName|formData\.customer_name === normalizePersonName|normalizedName === normalizePersonName/);
+  }
+
+  const salesCustomers = fs.readFileSync(
+    path.join(root, '../frontend/src/views/sales/useSalesCustomers.ts'),
+    'utf8'
+  );
+  const singleSave = salesCustomers.slice(
+    salesCustomers.indexOf('const saveCustomerNameEdit'),
+    salesCustomers.indexOf('const handleCustomerNameTouchEnd')
+  );
+  assert.doesNotMatch(singleSave, /apple_id|email/);
+});
+
 test('repair routes use canonical fields and never migrate schema during requests', () => {
   const route = read('src/routes/repairs.js');
   const view = read('../frontend/src/views/repairs/RepairsView.vue');

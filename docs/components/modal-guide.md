@@ -1,6 +1,6 @@
 # TF2025 模态框使用指南
 
-> **文档说明**：本指南介绍 TF2025 项目中模态框组件的使用方法，包括 MobileDialog、BaseModal 和 el-dialog 的使用规范
+> **文档说明**：本指南介绍 TF2025 项目中 `MobileDialog` 和 `el-dialog` 的统一使用规范
 >
 > **最后更新**：2025-12-20
 > **版本**：v1.1.0
@@ -8,22 +8,20 @@
 
 ## 概述
 
-TF2025项目提供了完整的模态框解决方案，支持从移动端到桌面端的全设备适配。系统包含三种模态框类型：
+TF2025 项目提供统一的模态框方案，支持从移动端到桌面端的全设备适配。系统包含两种入口：
 
 1. **MobileDialog** - 基于Element Plus的增强版对话框组件（推荐）
-2. **BaseModal** - 自定义模态框组件
-3. **Element Plus Dialog** - 原生组件配合响应式样式
+2. **Element Plus Dialog** - 原生组件配合全局统一样式
 
 ## 组件对比
 
-| 特性 | MobileDialog | BaseModal | El-Dialog |
-|------|--------------|-----------|------------|
-| 响应式适配 | ✅ 自动适配 | ✅ 基础适配 | ⚠️ 需手动配置 |
-| 移动端优化 | ✅ 完整支持 | ✅ 基础支持 | ⚠️ 依赖样式 |
-| PC端功能 | ✅ 拖拽、大小调整 | ✅ 基础功能 | ✅ 完整功能 |
-| 全屏模式 | ✅ 自动全屏 | ✅ 支持全屏 | ✅ 支持全屏 |
-| 自定义性 | ✅ 高度可定制 | ✅ 完全自定义 | ✅ 标准插槽 |
-| 推荐场景 | 通用场景 | 特殊样式需求 | 简单场景 |
+| 特性 | MobileDialog | El-Dialog |
+|------|--------------|-----------|
+| 响应式适配 | ✅ 自动适配 | ✅ 由全局样式适配 |
+| 移动端优化 | ✅ 完整支持 | ✅ 由全局样式适配 |
+| PC端功能 | ✅ 拖拽、大小调整 | ✅ Element Plus 原生能力 |
+| 全屏模式 | ✅ 支持 | ✅ 支持 |
+| 推荐场景 | 通用业务弹窗 | 已有原生弹窗或特殊插槽 |
 
 ## MobileDialog 组件（推荐）
 
@@ -190,9 +188,9 @@ const { isMobile } = useResponsive()
 ### 移动端适配
 
 1. **尺寸调整**
-   - 自动宽度：95vw
-   - 超小屏（<480px）：98vw
-   - 内边距：16px
+   - 弹窗宽度、边界间距和圆角由 `_dialog.scss` 的令牌统一控制
+   - 超小屏（<480px）由同一文件收紧标题、正文和 footer 间距
+   - 正文和底部操作自动避开安全区域
 
 2. **交互优化**
    - 按钮最小高度：44px（iOS标准）
@@ -200,7 +198,7 @@ const { isMobile } = useResponsive()
    - 触摸优化间距
 
 3. **布局调整**
-   - 底部按钮垂直排列
+   - 底部按钮保持同一行等宽排列
    - 表格转换为卡片式
    - 滚动优化：-webkit-overflow-scrolling: touch
 
@@ -218,34 +216,13 @@ const { isMobile } = useResponsive()
 
 ## 样式覆盖指南
 
-### Element Plus Dialog 样式
+弹窗外壳统一维护在 `src/styles/components/_dialog.scss`，底部按钮统一维护在
+`src/styles/components/_dialog-actions.scss`。两个文件由 `main.ts` 全局加载，并通过同一套
+CSS 令牌和媒体查询覆盖 PC、iPad 与手机端。
 
-在 `responsive.scss` 中已定义了全局样式：
-
-```scss
-/* 移动端通用适配 - 375px及以上所有手机 */
-@media (max-width: 767px) {
-  .el-dialog {
-    width: 95vw !important;
-    max-width: 95vw !important;
-    margin: 0 auto !important;
-    border-radius: 12px;
-  }
-}
-```
-
-### 自定义模态框样式
-
-使用 BaseModal 时，样式在 `modal-styles.scss` 中：
-
-```scss
-@media (max-width: 767px) {
-  .modal-content {
-    width: 95vw;
-    max-width: 95vw;
-  }
-}
-```
+页面只能维护业务内容布局、图片/表格工作区和必要的宽度变体；不得在页面或
+`responsive.scss` 中重复定义 `.el-dialog__header/body/footer`、通用圆角、阴影、正文间距或
+footer 间距。不得新增 `modal-styles.scss`、`BaseModal` 或另一套弹窗主题。
 
 ## 最佳实践
 
@@ -358,18 +335,11 @@ const isSmallScreen = computed(() => screenWidth.value < 600)
 </MobileDialog>
 ```
 
-### 从 BaseModal 迁移
+### 历史自定义弹窗迁移
 
 ```vue
 <!-- 原代码 -->
-<BaseModal
-  v-model:visible="visible"
-  title="标题"
-  :show-default-footer="true"
-  @confirm="handleConfirm"
->
-  <div>内容</div>
-</BaseModal>
+<!-- 历史自定义弹窗统一迁移为 MobileDialog -->
 
 <!-- 迁移后 -->
 <MobileDialog
@@ -411,8 +381,7 @@ A: 使用响应式宽度：
 ```vue
 <MobileDialog
   v-model="visible"
-  :width="isMobile ? '95vw' : '1200px'"
-  :fullscreen="isMobile"
+  :width="1200"
 >
   <!-- 内容 -->
 </MobileDialog>
@@ -430,7 +399,7 @@ A: 设置 `draggable` 为 `false`：
 ## 总结
 
 1. **新项目**：直接使用 MobileDialog 组件
-2. **现有项目**：逐步从 el-dialog/BaseModal 迁移到 MobileDialog
+2. **现有项目**：逐步将自定义外壳迁移到 MobileDialog
 3. **统一标准**：保持组件使用的一致性
 4. **响应式优先**：始终考虑移动端体验
 

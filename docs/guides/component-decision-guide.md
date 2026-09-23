@@ -18,7 +18,7 @@
 |------|----------|------|------|
 | 通用业务弹窗 | **MobileDialog** | 响应式设计、功能完整、自动适配移动端 | [示例](#mobiledialog-示例) |
 | 简单确认框 | **ElMessageBox** | Element Plus 内置、快速实现 | [示例](#elmessagebox-示例) |
-| 复杂自定义弹窗 | **BaseModal** | 完全自定义控制 | [示例](#basemodal-示例) |
+| 复杂内容弹窗 | **MobileDialog** + 业务内容变体 | 复用统一外壳，内容布局可定制 | [对话框规范](../frontend/dialog-standards.md) |
 | 表单弹窗 | **MobileDialog + MobileForm** | 移动端优化、响应式布局 | [示例](#表单弹窗-示例) |
 | 详情查看弹窗 | **MobileDialog** | 支持拖拽、自动全屏 | [示例](#详情弹窗-示例) |
 | 确认删除弹窗 | **ElMessageBox.confirm** | 标准确认流程 | [示例](#确认弹窗-示例) |

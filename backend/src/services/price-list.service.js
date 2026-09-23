@@ -32,6 +32,12 @@ class PriceListService {
     this.puppeteerService = new PuppeteerLoginService()
     // HTTP登录服务（作为备选方案，不依赖Chrome）
     this.httpLoginService = HttpLoginService
+    // 颜色标准来自 colors 表；没有数据库时使用当前系统的兼容兜底列表。
+    this.standardColors = [
+      '橙色', '白色', '黑色', '蓝色', '紫色', '原色', '粉色',
+      '金色', '红色', '绿色', '深青色', '群青色', '黄色'
+    ]
+    this.standardColorsLoadedAt = 0
 
     /**
      * 生成时间字符串格式
@@ -59,6 +65,7 @@ class PriceListService {
       '青雾蓝色': '蓝色',
       '天青蓝': '蓝色',
       '蓝色': '蓝色',
+      '冰川蓝色': '蓝色',
 
       // 紫色系
       '浅紫色': '紫色',
@@ -84,10 +91,12 @@ class PriceListService {
       '星岩黑': '黑色',
       '深空灰': '黑色',
       '深空灰色': '黑色',
+      '天空灰': '黑色',
+      '天空灰色': '黑色',
       '午夜色': '黑色',
       '银灰色': '黑色',
       '黑色钛金属': '黑色',
-      '灰色': '灰色',
+      '灰色': '黑色',
       '黑色': '黑色',
 
       // 金色系
@@ -108,6 +117,22 @@ class PriceListService {
       // 绿色系
       '鼠尾草绿色': '绿色',
       '青柠绿': '绿色',
+      '草绿色': '绿色',
+      '草绿': '绿色',
+      '深绿色': '绿色',
+      '深绿': '绿色',
+      '浅绿色': '绿色',
+      '浅绿': '绿色',
+      '墨绿色': '绿色',
+      '墨绿': '绿色',
+      '翠绿色': '绿色',
+      '翠绿': '绿色',
+      '薄荷绿色': '绿色',
+      '薄荷绿': '绿色',
+      '橄榄绿色': '绿色',
+      '橄榄绿': '绿色',
+      '青绿色': '绿色',
+      '青绿': '绿色',
       '绿色': '绿色',
 
       // 其他颜色
@@ -115,8 +140,57 @@ class PriceListService {
       '粉色': '粉色',
       '黄色': '黄色',
       '红色': '红色',
+      '酒红': '红色',
+      '酒红色': '红色',
+      '大红': '红色',
+      '大红色': '红色',
+      '勃艮第酒红色': '红色',
       '青色': '青色'
     }
+  }
+
+  /**
+   * 加载颜色管理中的启用颜色，供报价采集统一归一化。
+   * 同步开始时强制刷新，确保刚在颜色管理中调整的标准颜色立即生效；
+   * 同一轮解析中的后续调用仍使用缓存，避免按行重复查询。
+   */
+  async loadStandardColors(force = false) {
+    const cacheTtl = 5 * 60 * 1000
+    if (!force && this.standardColorsLoadedAt && Date.now() - this.standardColorsLoadedAt < cacheTtl) {
+      return this.standardColors
+    }
+
+    if (!this.db) return this.standardColors
+
+    try {
+      const [rows] = await this.db.query(`
+        SELECT name
+        FROM colors
+        WHERE status = 1 OR status IS NULL
+        ORDER BY sort_order, id
+      `)
+      const names = rows
+        .map(row => String(row.name || '').trim())
+        .filter(Boolean)
+      if (names.length > 0) {
+        this.standardColors = [...new Set(names)]
+      }
+      this.standardColorsLoadedAt = Date.now()
+    } catch (error) {
+      log.warn('加载颜色管理标准失败，使用内置颜色标准:', error.message)
+    }
+
+    return this.standardColors
+  }
+
+  /**
+   * 在颜色管理标准中查找目标颜色。
+   * 例如颜色管理只有“绿色”时，草绿、深绿、浅绿都会归一为“绿色”。
+   */
+  findStandardColor(target) {
+    if (!target) return null
+    const normalizedTarget = String(target).trim().toLowerCase()
+    return this.standardColors.find(color => color.toLowerCase() === normalizedTarget) || null
   }
 
   /**
@@ -128,57 +202,80 @@ class PriceListService {
 
     const normalized = colorName.trim()
 
+    // 颜色管理中的标准名称优先，避免把“深青色”等已配置颜色错误归并。
+    const exactStandardColor = this.findStandardColor(normalized)
+    if (exactStandardColor) return exactStandardColor
+
     // 优先使用显式颜色映射，处理星光色/深空灰色等命名差异
     if (this.colorMapping[normalized]) {
-      return this.colorMapping[normalized]
+      return this.findStandardColor(this.colorMapping[normalized]) || this.colorMapping[normalized]
     }
 
     // 🔥 智能映射规则：按优先级从高到低匹配
     // 包含特定关键字 → 映射到标准颜色
     // 注意：匹配顺序很重要，先匹配更具体的组合词
 
-    // 黑色系（包含 黑、乌、墨、灰、碳、石墨 等）
-    if (/黑|乌|墨|灰|碳|石墨|午夜|深空|子夜|星岩|深黑/.test(normalized)) return '黑色'
+    // 黑色系：本站颜色管理将灰色、天空灰、深空灰等作为黑色系统一维护。
+    if (/黑|乌|墨|灰|碳|石墨|午夜|深空|天空灰|子夜|星岩|深黑/.test(normalized)) return this.findStandardColor('黑色') || '黑色'
 
     // 白色系（包含 银、白、霜、雪、云、雾 等）- 必须先匹配"银色"
-    if (/银色/.test(normalized)) return '白色'
-    if (/银|霜|雪|云|雾|流金白|星辉白|星光色|月光|冰霜/.test(normalized)) return '白色'
-    if (/白/.test(normalized)) return '白色'
+    if (/银色/.test(normalized)) return this.findStandardColor('白色') || '白色'
+    if (/银|霜|雪|云|雾|流金白|星辉白|星光色|月光|冰霜/.test(normalized)) return this.findStandardColor('白色') || '白色'
+    if (/白/.test(normalized)) return this.findStandardColor('白色') || '白色'
 
     // 蓝色系（排除"银色"中的"青"字，避免误匹配）
-    if (/蓝[^青]|深蓝|水蓝|丹宁|靛|天蓝[^青]/.test(normalized)) return '蓝色'
+    if (/蓝|冰川|深蓝|水蓝|丹宁|靛|天蓝/.test(normalized)) return this.findStandardColor('蓝色') || '蓝色'
 
     // 紫色系（包含 紫、罗兰、薰衣草 等）
-    if (/紫|罗兰|薰衣草|葡萄|丁香|浅紫|曙光|烟霞/.test(normalized)) return '紫色'
+    if (/紫|罗兰|薰衣草|葡萄|丁香|浅紫|曙光|烟霞/.test(normalized)) return this.findStandardColor('紫色') || '紫色'
 
     // 绿色系
-    if (/绿|翠|碧|青绿|橄榄|薄荷|草|鼠尾草|青柠/.test(normalized)) return '绿色'
+    if (/绿|翠|碧|青绿|橄榄|薄荷|草|鼠尾草|青柠/.test(normalized)) return this.findStandardColor('绿色') || '绿色'
 
     // 橙色系
-    if (/橙|橘|星宇/.test(normalized)) return '橙色'
+    if (/橙|橘|星宇/.test(normalized)) return this.findStandardColor('橙色') || '橙色'
     // 特别处理"星宇橙色" -> "橙色"
-    if (/星宇橙色/.test(normalized)) return '橙色'
+    if (/星宇橙色/.test(normalized)) return this.findStandardColor('橙色') || '橙色'
 
     // 粉色系
-    if (/粉|桃|樱|蔷薇|玫瑰|牡丹|玫瑰金/.test(normalized)) return '粉色'
+    if (/粉|桃|樱|蔷薇|玫瑰|牡丹|玫瑰金/.test(normalized)) return this.findStandardColor('粉色') || '粉色'
 
     // 金色系
-    if (/金|铜|钛金|茶|沙漠/.test(normalized)) return '金色'
+    if (/金|铜|钛金|茶|沙漠/.test(normalized)) return this.findStandardColor('金色') || '金色'
 
     // 原色系
-    if (/原色|钛金属/.test(normalized)) return '原色'
+    if (/原色|钛金属/.test(normalized)) return this.findStandardColor('原色') || '原色'
 
     // 黄色系
-    if (/黄/.test(normalized)) return '黄色'
+    if (/黄/.test(normalized)) return this.findStandardColor('黄色') || '黄色'
 
     // 红色系
-    if (/红/.test(normalized)) return '红色'
+    if (/红/.test(normalized)) return this.findStandardColor('红色') || '红色'
 
     // 青色系
-    if (/青色|深青/.test(normalized)) return '青色'
+    if (/深青/.test(normalized)) return this.findStandardColor('深青色') || this.findStandardColor('青色') || '青色'
+    if (/青色/.test(normalized)) return this.findStandardColor('青色') || this.findStandardColor('深青色') || '青色'
 
-    // 如果没有匹配，返回原始颜色
+    // 如果没有匹配，返回原始颜色。未知颜色不强行映射，等待颜色管理新增标准后再归类。
     return normalized
+  }
+
+  /** 从外部描述提取颜色原名，最终统一由 normalizeColor 映射到颜色管理。 */
+  extractColorFromText(text) {
+    if (!text) return ''
+    const colorPatterns = [
+      '勃艮第酒红色', '原色钛金属', '沙漠色钛金属', '白色钛金属', '黑色钛金属',
+      '鼠尾草绿色', '冰川蓝色', '薰衣草紫色', '星宇橙色', '青雾蓝色', '深空灰色',
+      '深空黑色', '午夜色', '银灰色', '天空灰色', '天空灰', '星辉白', '星光色', '流金白', '云白色',
+      '云雾白', '雪松白', '丹宁色', '星岩黑', '子夜黑', '天青蓝', '深蓝色',
+      '水蓝色', '浅紫色', '曙光紫', '钛金色', '深黑色', '烟霞紫', '深青色',
+      '群青色', '玫瑰金', '酒红色', '酒红', '大红色', '大红', '草绿色', '草绿', '深绿色', '深绿', '浅绿色', '浅绿',
+      '墨绿色', '墨绿', '翠绿色', '翠绿', '薄荷绿色', '薄荷绿', '橄榄绿色',
+      '橄榄绿', '青绿色', '青绿', '青柠绿', '深空灰', '浅金色', '黑色', '白色',
+      '蓝色', '红色', '绿色', '黄色', '紫色', '粉色', '金色', '银色', '灰色',
+      '青色', '橙色', '原色', '茶色'
+    ]
+    return colorPatterns.find(pattern => String(text).includes(pattern)) || ''
   }
 
   /**
@@ -320,7 +417,9 @@ class PriceListService {
     const model = productLike.model || productLike.model_number || ''
 
     const modelText = String(model).toLowerCase()
-    if (!modelText.includes('iphone')) return false
+    // 库存型号可能使用 18promax 这类简写，不能因为没有 iphone 前缀而跳过同城规则。
+    const isIPhoneLike = modelText.includes('iphone') || /^\d{2}(?:[a-z]|$)/.test(modelText.replace(/\s+/g, ''))
+    if (!isIPhoneLike) return false
 
     const isAppleLike = brand.includes('苹果') || brand.includes('apple') || modelText.includes('iphone')
     if (!isAppleLike) return false
@@ -929,16 +1028,18 @@ class PriceListService {
         wholesale_price,
         _cost_price,
         stock_quantity = 0,
-        status = 1,
-        is_collect = 1,
+        status,
+        is_collect,
         show_price,
         last_sync_time = null,
         remark = ''
       } = data
       const hasStockQuantity = Object.prototype.hasOwnProperty.call(data, 'stock_quantity')
 
-      // is_collect: 0=不采集, 1=采集
-      const inputIsCollect = is_collect !== undefined ? is_collect : 1
+      const hasStatus = Object.prototype.hasOwnProperty.call(data, 'status')
+      const hasIsCollect = Object.prototype.hasOwnProperty.call(data, 'is_collect')
+      const inputStatus = hasStatus ? Number(status) : undefined
+      const inputIsCollect = hasIsCollect ? Number(is_collect) : undefined
 
       log.debug('📝 upsertPriceItem 接收到的完整数据:', JSON.stringify({
         brand_name,
@@ -1017,7 +1118,8 @@ class PriceListService {
 
       let priceItemId
       let changeType = 'create'
-      let finalIsCollect = inputIsCollect
+      let finalStatus = inputStatus ?? 1
+      let finalIsCollect = inputIsCollect ?? 1
 
       // 判断是否是手动编辑（有传入 last_sync_time 参数）还是自动同步
       // 手动编辑时 last_sync_time 可能是 null（清空）或具体时间
@@ -1138,7 +1240,7 @@ class PriceListService {
 
         // 🔥 只在价格真正变化时才记录历史和更新价格
         // 价格变化检测：需要至少有一个价格字段发生实际变化
-        if (priceChanged || isCollectChanged || isManualEdit) {
+        if (priceChanged || isCollectChanged || hasStatus || isManualEdit) {
           // 价格、采集模式有变化，或者手动编辑，记录历史（仅在价格变化时）并更新
 
           // 只在价格真正变化时才记录历史
@@ -1171,7 +1273,8 @@ class PriceListService {
           // - 自动同步时：如果没有传入采集模式，保持数据库中原有的采集模式不变
           // - 自动同步时：不更新 show_price，保持原有值不变
           // - 手动编辑只更新 show_price 时，不更新价格字段
-          const shouldUpdateCollectMode = isManualEdit || inputIsCollect !== undefined
+          const shouldUpdateStatus = hasStatus
+          const shouldUpdateCollectMode = hasIsCollect
           const shouldUpdateShowPrice = isManualEdit && show_price !== undefined
           const shouldUpdateStockQuantity = hasStockQuantity
           const hasLastSyncTime = data.hasOwnProperty('last_sync_time') // 是否传入了 last_sync_time
@@ -1184,7 +1287,7 @@ class PriceListService {
           const updateQuery = `UPDATE price_list
             SET retail_price = ${onlyUpdatingShowPrice ? 'retail_price' : (isManualEdit ? '?' : 'COALESCE(?, retail_price)')},
                 wholesale_price = ${onlyUpdatingShowPrice ? 'wholesale_price' : (isManualEdit ? '?' : 'COALESCE(?, wholesale_price)')},
-                stock_quantity = ${shouldUpdateStockQuantity ? '?' : 'stock_quantity'}, status = ?,
+                stock_quantity = ${shouldUpdateStockQuantity ? '?' : 'stock_quantity'}, status = ${shouldUpdateStatus ? '?' : 'status'},
                 is_collect = ${shouldUpdateCollectMode ? '?' : 'is_collect'},
                 remark = ?,
                 external_model = ?,
@@ -1209,7 +1312,9 @@ class PriceListService {
           if (shouldUpdateStockQuantity) {
             updateParams.push(stock_quantity)
           }
-          updateParams.push(status)
+          if (shouldUpdateStatus) {
+            updateParams.push(inputStatus)
+          }
 
           // 只有在需要更新采集模式时才添加该参数
           if (shouldUpdateCollectMode) {
@@ -1225,7 +1330,8 @@ class PriceListService {
           }
 
           // 根据是否需要更新时间来添加参数
-          if (hasLastSyncTime || !isManualEdit) {
+          const hasLastSyncTimeValue = hasLastSyncTime && !(isManualEdit && finalSyncTime === null)
+          if (hasLastSyncTimeValue || !isManualEdit) {
             // 需要更新时间：要么传入了 last_sync_time，要么是自动同步
             updateParams.push(finalSyncTime)
           }
@@ -1286,7 +1392,7 @@ class PriceListService {
             finalRetailPrice || null,
             wholesale_price || null,
             stock_quantity,
-            status,
+            finalStatus,
             finalIsCollect,
             show_price !== undefined ? show_price : 0,
             remark,
@@ -1990,11 +2096,12 @@ class PriceListService {
 
       // price_list 中启用采集的苹果型号也必须参与搜索，不能只依赖 phones 库存
       const [collectedPriceListModels] = await this.db.query(`
-        SELECT DISTINCT mo.name AS model_number
+        SELECT mo.name AS model_number, MAX(NULLIF(p.external_model, '')) AS external_model
         FROM price_list p
         JOIN models mo ON p.model_id = mo.id
         JOIN brands b ON p.brand_id = b.id
         WHERE b.name = '苹果' AND COALESCE(p.is_collect, 1) = 1
+        GROUP BY mo.id, mo.name
         ORDER BY mo.name
       `)
       log.debug('📦 price_list 中开启采集的苹果型号:', collectedPriceListModels.map(m => m.model_number))
@@ -2025,6 +2132,9 @@ class PriceListService {
         'iphone17pro': 'A3524',
         'iphone17promax': 'A3527',
         'iphone17e': 'A3635',
+        'iphone18pro': 'A3715',
+        // 已从外部同城数据确认：iPhone 18 Pro Max 使用 A3718。
+        'iphone18promax': 'A3718',
         'iphone16': 'A3288',
         'iphone16plus': 'A3291',
         'iphone16pro': 'A3294',
@@ -2047,7 +2157,11 @@ class PriceListService {
         '16promax': 'iphone16promax',
         // 其他数字开头的型号
         '15pro': 'iphone15pro',
-        '16pro': 'iphone16pro'
+        '16pro': 'iphone16pro',
+        '18promax': 'iphone18promax',
+        '18pro': 'iphone18pro',
+        '18duo': 'iphone18duo',
+        'iphoneduo': 'iphone18duo'
       }
 
       // 步骤1: 先获取通用搜索数据
@@ -2112,7 +2226,18 @@ class PriceListService {
 
         // 步骤2: 找出缺失的型号，进行单独搜索
         // 对于iPhone 16及以上，即使通用数据中有型号代码，也要单独搜索以确保获取完整数据
-        const alwaysSearchModels = ['iphone16', 'iphone16plus', 'iphone16pro', 'iphone16promax', 'iphone16e', 'iphone17air', 'iphone17', 'iphone17e', 'iphone17pro', 'iphone17promax']
+        const alwaysSearchModels = ['iphone16', 'iphone16plus', 'iphone16pro', 'iphone16promax', 'iphone16e', 'iphone17air', 'iphone17', 'iphone17e', 'iphone17pro', 'iphone17promax', 'iphone18pro', 'iphone18promax', 'iphone18duo']
+
+        const formatModelSearchTerm = (modelNumber, modelKey) => {
+          if (modelNumber && /iphone/i.test(modelNumber)) return modelNumber
+          const suffix = modelKey.replace(/^iphone/, '')
+            .replace(/promax$/, ' Pro Max')
+            .replace(/pro$/, ' Pro')
+            .replace(/plus$/, ' Plus')
+            .replace(/duo$/, ' Duo')
+            .replace(/air$/, ' Air')
+          return modelKey.startsWith('iphone') ? `iPhone ${suffix}` : (modelNumber || modelKey)
+        }
 
         // 🔥 关键修复：如果是无库采集模式，强制搜索所有重要型号，即使库存中没有
         const missingModels = searchSourceModels
@@ -2130,23 +2255,36 @@ class PriceListService {
             }
 
             log.debug(`  转换型号: ${m.model_number} -> ${modelKey}`)
-            return modelKey
+            return {
+              modelKey,
+              modelNumber: m.model_number,
+              externalModel: m.external_model || ''
+            }
           })
-          .filter(modelKey => {
+          .filter(target => {
+            const { modelKey } = target
             // 🔥 特殊处理iPad：iPad总是需要单独搜索
             if (modelKey.includes('ipad')) {
               log.debug(`  ${modelKey} 是iPad产品，需要单独搜索`)
               return true
             }
 
-            // 如果没有型号代码映射，跳过（除了iPad）
-            if (!modelCodeMappings[modelKey]) return false
+            // 没有静态型号代码时，使用 external_model 或型号名称搜索。
+            // 不能直接跳过，否则新增的 18 系列永远不会请求外部数据。
 
             // 对于iPhone 16及以上，总是进行单独搜索
-            if (alwaysSearchModels.includes(modelKey)) {
+            if (alwaysSearchModels.includes(modelKey) || target.externalModel) {
               log.debug(`  ${modelKey} 是iPhone 16+系列，强制单独搜索`)
               return true
             }
+
+            const generation = this.extractIPhoneGeneration(modelKey)
+            if (modelKey.startsWith('iphone') && generation !== null && generation >= 16) {
+              log.debug(`  ${modelKey} 是新款 iPhone，按型号名称单独搜索`)
+              return true
+            }
+
+            if (!modelCodeMappings[modelKey]) return false
 
             // 其他型号：只在通用数据中没有时才搜索
             // 例外：AirPods 和 iPad 产品总是单独搜索
@@ -2170,10 +2308,10 @@ class PriceListService {
 
           // 添加库存中没有但需要搜索的型号
           alwaysSearchModels.forEach(modelKey => {
-            if (!inventoryModelKeys.has(modelKey) && !missingModels.includes(modelKey)) {
+            if (!inventoryModelKeys.has(modelKey) && !missingModels.some(target => target.modelKey === modelKey)) {
               const reason = inventoryModels.length === 0 ? '库存为空' : `库存较少(${inventoryModels.length}个)`
               log.debug(`🔥 ${reason}，强制搜索 ${modelKey}`)
-              missingModels.push(modelKey)
+              missingModels.push({ modelKey, modelNumber: modelKey, externalModel: '' })
             }
           })
         }
@@ -2182,9 +2320,9 @@ class PriceListService {
           log.debug('📡 步骤2: 以下型号需要单独搜索:', missingModels)
 
           // 🔥 优化：如果有iPad型号，只搜索一次"iPad"即可
-          const hasIPad = missingModels.some(m => m.includes('ipad'))
-          const hasAirPods = missingModels.some(m => m.includes('airpods'))
-          const nonIPadAndAirPodsModels = missingModels.filter(m => !m.includes('ipad') && !m.includes('airpods'))
+          const hasIPad = missingModels.some(target => target.modelKey.includes('ipad'))
+          const hasAirPods = missingModels.some(target => target.modelKey.includes('airpods'))
+          const nonIPadAndAirPodsModels = missingModels.filter(target => !target.modelKey.includes('ipad') && !target.modelKey.includes('airpods'))
 
           // 先搜索iPad（如果有）
           if (hasIPad) {
@@ -2233,20 +2371,25 @@ class PriceListService {
           }
 
           // 再搜索其他型号
-          for (const modelKey of nonIPadAndAirPodsModels) {
+          for (const target of nonIPadAndAirPodsModels) {
+            const { modelKey, modelNumber, externalModel } = target
             const modelCode = modelCodeMappings[modelKey]
 
             // 🔥 关键修复：对于 iPhone 16 系列，使用产品名称搜索而不是型号代码
             // 因为外部网站搜索 "iPhone 16" 会返回所有 16 系列产品（包括 Plus、Pro、Pro Max）
-            let searchTerm = modelCode
+            // 已确认的 iPhone 型号代码优先于 price_list 中历史保存的 external_model。
+            // 旧记录可能保存成“17promax”“iPhone17pro”等展示名称，直接拿它们检索外部站点会返回空表；
+            // A3518/A3521/A3524/A3527/A3635 等代码才是数据源稳定识别型号的入口。
+            let searchTerm = modelCode || externalModel || formatModelSearchTerm(modelNumber, modelKey)
             if (modelKey === 'iphone16') {
               searchTerm = 'iPhone 16' // 搜索 "iPhone 16" 会返回所有 16 系列产品
               log.debug(`  正在搜索 ${modelKey} (使用搜索词: "${searchTerm}")...`)
             } else {
-              log.debug(`  正在搜索 ${modelKey} (${modelCode})...`)
+              log.debug(`  正在搜索 ${modelKey} (使用搜索词: "${searchTerm}")...`)
             }
 
-            const searchUrl = `${EXTERNAL_PRICE.BASE_URL}/quoteList.action?km=&pp=%E8%8B%B9%E6%9E%9C&network=&arg_name=${searchTerm}&s_jg=&e_jg=&policyid=&tykhgsdm=&isqh=0`
+            const encodedSearchTerm = encodeURIComponent(searchTerm)
+            const searchUrl = `${EXTERNAL_PRICE.BASE_URL}/quoteList.action?km=&pp=%E8%8B%B9%E6%9E%9C&network=&arg_name=${encodedSearchTerm}&s_jg=&e_jg=&policyid=&tykhgsdm=&isqh=0`
 
             try {
               log.debug(`  请求URL: ${searchUrl}`)
@@ -2266,7 +2409,7 @@ class PriceListService {
               if (table.length > 0) {
                 const rowCount = $('tr').length
                 combinedRows += table.html()
-                log.debug(`  ✓ ${modelKey} (${modelCode}) 数据获取成功，行数: ${rowCount}`)
+                log.debug(`  ✓ ${modelKey} (${searchTerm}) 数据获取成功，行数: ${rowCount}`)
               } else {
                 log.debug(`  ⚠️ ${modelKey} (${modelCode}) 响应中没有找到表格`)
                 log.debug(`     页面标题: ${$('title').text()}`)
@@ -2344,6 +2487,8 @@ class PriceListService {
    * @param {string} syncTime - 统一同步时间（北京时间）
    */
   async parseJsonData(jsonData, syncTime = null, changeReason = 'sync') {
+    await this.loadStandardColors(true)
+
     // 如果没有传入时间，生成统一的当前时间（北京时间）
     if (!syncTime) {
       syncTime = this.getBeijingTime()
@@ -2361,6 +2506,7 @@ class PriceListService {
       SELECT DISTINCT
         b.name as brand_name,
         mo.name as model_number,
+        p.external_model,
         c.name as color_name,
         mem.size as memory
       FROM price_list p
@@ -2455,6 +2601,8 @@ class PriceListService {
    */
   async parseHtmlData(html, syncTime = null, changeReason = 'sync') {
     try {
+      await this.loadStandardColors(true)
+
       // 如果没有传入时间，生成统一的当前时间（北京时间）
       if (!syncTime) {
         syncTime = this.getBeijingTime()
@@ -2525,6 +2673,7 @@ class PriceListService {
         SELECT DISTINCT
           b.name as brand_name,
           mo.name as model_number,
+          p.external_model,
           c.name as color_name,
           mem.size as memory
         FROM price_list p
@@ -2815,10 +2964,13 @@ class PriceListService {
         iphone17: 'A3521',
         iphone17pro: 'A3524',
         iphone17promax: 'A3527',
-        iphone17e: 'A3635'
+        iphone17e: 'A3635',
+        iphone18pro: 'A3715',
+        iphone18promax: 'A3718'
       }
 
       const possibleNames = [
+        String(inventoryItem.external_model || '').trim(),
         `${inventoryItem.brand_name} ${inventoryItem.model_number}`.trim(),
         String(inventoryItem.model_number || '').trim(),
         inventoryModel
@@ -2850,7 +3002,7 @@ class PriceListService {
       const brandModelKey = `${inventoryItem.brand_name}-${inventoryModel}`.toLowerCase().replace(/\s+/g, '')
 
       // 使用型号代码进行匹配（优先），如果没有型号代码则使用型号名称
-      const externalModelForMatch = modelCode || inventoryItem.model_number || ''
+      const externalModelForMatch = inventoryItem.external_model || modelCode || inventoryItem.model_number || ''
       const requiresStrictModelCodeMatch = Boolean(modelCode) && /^iphone/.test(inventoryModel)
       const hasCompatibleModelCode = (priceData) => {
         if (!requiresStrictModelCodeMatch) return true
@@ -2950,7 +3102,7 @@ class PriceListService {
             const priceData = {
               brand_name: inventoryItem.brand_name,
               model_number: inventoryItem.model_number,
-              external_model: inventoryItem.model_number,
+              external_model: modelCode || matchedPrice.modelCode || inventoryItem.external_model || null,
               color_name: inventoryItem.color_name,
               memory: inventoryItem.memory,
               retail_price: null,
@@ -3074,7 +3226,7 @@ class PriceListService {
           const priceData = {
             brand_name: inventoryItem.brand_name,
             model_number: inventoryItem.model_number,
-            external_model: inventoryItem.model_number,
+            external_model: modelCode || matchedPrice.modelCode || inventoryItem.external_model || null,
             color_name: inventoryItem.color_name,
             memory: inventoryItem.memory,
             retail_price: null,
@@ -3298,7 +3450,7 @@ class PriceListService {
         const priceData = {
           brand_name: inventoryItem.brand_name,
           model_number: inventoryItem.model_number,
-          external_model: inventoryItem.model_number,
+          external_model: modelCode || matchedPrice.modelCode || inventoryItem.external_model || null,
           color_name: inventoryItem.color_name,
           memory: inventoryItem.memory,
           retail_price: null,
@@ -3779,14 +3931,8 @@ class PriceListService {
         }
       }
 
-      // 提取颜色 - 扩展颜色模式以支持所有变体
-      const colorPatterns = ['深空灰色', '深空灰', '午夜色', '银灰色', '黑色', '白色', '蓝色', '红色', '绿色', '黄色', '紫色', '粉色', '金色', '银色', '灰色', '星光色', '橙色', '星宇橙色', '原色', '原色钛金属', '深蓝色', '青雾蓝色', '水蓝色', '浅紫色', '曙光紫', '流金白', '云白色', '云雾白', '雪松白', '丹宁色', '星岩黑', '子夜黑', '天青蓝', '钛金色', '深黑色', '沙漠色钛金属', '青柠绿', '烟霞紫', '茶色', '深青色', '鼠尾草绿色', '玫瑰金']
-      for (const colorPattern of colorPatterns) {
-        if (str.includes(colorPattern)) {
-          color = colorPattern
-          break
-        }
-      }
+      // 使用统一颜色解析，颜色最终由颜色管理标准归一化。
+      color = this.extractColorFromText(str)
 
       memory = this.extractMemoryFromText(str)
 
@@ -3822,14 +3968,8 @@ class PriceListService {
         }
       }
 
-      // 提取颜色 - 扩展颜色模式以支持所有变体
-      const colorPatterns = ['深空灰色', '深空灰', '午夜色', '银灰色', '黑色', '白色', '蓝色', '红色', '绿色', '黄色', '紫色', '粉色', '金色', '银色', '灰色', '星光色', '橙色', '星宇橙色', '原色', '原色钛金属', '深蓝色', '青雾蓝色', '水蓝色', '浅紫色', '曙光紫', '流金白', '云白色', '云雾白', '雪松白', '丹宁色', '星岩黑', '子夜黑', '天青蓝', '钛金色', '深黑色', '沙漠色钛金属', '青柠绿', '烟霞紫', '茶色', '深青色', '鼠尾草绿色', '玫瑰金']
-      for (const colorPattern of colorPatterns) {
-        if (str.includes(colorPattern)) {
-          color = colorPattern
-          break
-        }
-      }
+      // 使用统一颜色解析，颜色最终由颜色管理标准归一化。
+      color = this.extractColorFromText(str)
 
       memory = this.extractMemoryFromText(str)
 
@@ -4519,14 +4659,8 @@ class PriceListService {
         continue
       }
 
-      // 检查是否是颜色（中文）
-      const colorPatterns = ['黑色', '白色', '蓝色', '红色', '绿色', '黄色', '紫色', '粉色', '金色', '银色', '灰色', '青色', '橙色', '茶色', '青柠绿', '星光色', '星辉白', '子夜黑', '天青蓝', '雪松白', '烟霞紫', '流金白', '云白色', '丹宁色', '水蓝色', '浅紫色', '曙光紫', '星岩黑', '云雾白', '钛金色', '原色', '深黑色']
-      for (const colorPattern of colorPatterns) {
-        if (part.includes(colorPattern)) {
-          color = colorPattern
-          break
-        }
-      }
+      // 使用统一颜色解析，最终由颜色管理标准归一化。
+      color = this.extractColorFromText(part)
 
       // 如果还没有型号，且这部分不是颜色、内存、网络，可能是型号的一部分
       if (!model && !memory && !color && part !== '5G' && part !== '4G') {

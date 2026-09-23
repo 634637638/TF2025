@@ -322,7 +322,7 @@
 
             <!-- 日期范围：开始和结束日期使用公共单面板组件 -->
             <div
-              class="form-group filter-item"
+              class="form-group filter-item filter-item--date-range"
               data-field="date_range"
             >
               <DateRangePicker
@@ -722,7 +722,7 @@ import { useLoadingState } from '@/composables'
 import unifiedApi from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import { formatImageUrl } from '@/utils/format'
-import { sortOptionsByOrder } from '@/utils/option-sort'
+import { getOptionLabel, sortOptionsByOrder } from '@/utils/option-sort'
 import {
   getAdaptiveActionColumnWidth,
   getIdentifierColumnMinWidth,
@@ -1440,21 +1440,10 @@ const loadQueryOptions = async () => {
 
     const data = response.success && response.data ? response.data : {}
 
-    // 供应商 - 按 sort_order 排序，相同时按 id 排序确保一致性
+    // 基础选项统一使用公共排序：sort_order、名称自然顺序、ID
     const suppliersRaw = Array.isArray(data.suppliers) ? data.suppliers : []
-    const suppliers = suppliersRaw
-      .filter((item: any) => item.status === 1 || item.status === undefined)
-      .map((item: any) => ({
-        id: item.id,
-        name: item.name,
-        sort_order: item.sort_order || 0
-      }))
-      .sort((a: any, b: any) => {
-        if (a.sort_order !== b.sort_order) {
-          return a.sort_order - b.sort_order
-        }
-        return a.id - b.id
-      })
+    const sortedSuppliers = sortOptionsByOrder<any>(suppliersRaw
+      .filter((item: any) => item.status === 1 || item.status === undefined))
 
     // 店铺（根据用户门店权限过滤）- 按 sort_order 排序，相同时按 id 排序确保一致性
     const storesRaw = Array.isArray(data.stores) ? data.stores : []
@@ -1466,30 +1455,14 @@ const loadQueryOptions = async () => {
     } else if (userStoreId) {
       filteredStores = storesRaw.filter((store: any) => store.id === userStoreId)
     }
-    const stores = filteredStores
-      .map((item: any) => ({
-        id: item.id,
-        name: item.name,
-        sort_order: item.sort_order || 0
-      }))
-      .sort((a: any, b: any) => {
-        if (a.sort_order !== b.sort_order) {
-          return a.sort_order - b.sort_order
-        }
-        return a.id - b.id
-      })
+    const stores = sortOptionsByOrder<any>(filteredStores)
 
     // 品牌 - 按 sort_order 排序，相同时按 id 排序确保一致性
     const brandsRaw = Array.isArray(data.brands) ? data.brands : []
-    const brands = brandsRaw
-      .map((brand: any) => (typeof brand === 'string' ? { name: brand, sort_order: 0, id: 0 } : { name: brand.name, sort_order: brand.sort_order || 0, id: brand.id || 0 }))
-      .sort((a: any, b: any) => {
-        if (a.sort_order !== b.sort_order) {
-          return a.sort_order - b.sort_order
-        }
-        return a.id - b.id
-      })
-      .map((item: any) => item.name)
+    const brands = sortOptionsByOrder(brandsRaw.map((brand: any) =>
+      typeof brand === 'string' ? { name: brand, sort_order: 0, id: 0 } : brand
+    ))
+      .map((item: any) => getOptionLabel(item, ['name']))
       .filter(Boolean)
 
     // 型号 - 保留完整信息包括 brand_name 用于联动筛选，按 sort_order 排序，相同时按 id 排序确保一致性
@@ -1507,42 +1480,25 @@ const loadQueryOptions = async () => {
         } : null
       })
       .filter(Boolean) as Array<any>
-    // 按 sort_order 排序型号，相同时按 id 排序确保一致性
-    models.sort((a: any, b: any) => {
-      if (a.sort_order !== b.sort_order) {
-        return a.sort_order - b.sort_order
-      }
-      return a.id - b.id
-    })
+    const sortedModels = sortOptionsByOrder(models)
 
     // 保存完整型号列表用于筛选
-    allModelsList.value = models
+    allModelsList.value = sortedModels
 
     // 颜色 - 按 sort_order 排序，相同时按 id 排序确保一致性
     const colorsRaw = Array.isArray(data.colors) ? data.colors : []
-    const colors = colorsRaw
-      .map((color: any) => (typeof color === 'string' ? { name: color, sort_order: 0, id: 0 } : { name: color.name, sort_order: color.sort_order || 0, id: color.id || 0 }))
-      .sort((a: any, b: any) => {
-        if (a.sort_order !== b.sort_order) {
-          return a.sort_order - b.sort_order
-        }
-        return a.id - b.id
-      })
-      .map((item: any) => item.name)
+    const colors = sortOptionsByOrder(colorsRaw.map((color: any) =>
+      typeof color === 'string' ? { name: color, sort_order: 0, id: 0 } : color
+    ))
+      .map((item: any) => getOptionLabel(item, ['name']))
       .filter(Boolean)
 
     // 内存 - 按 sort_order 排序，相同时按 id 排序确保一致性
     const memoriesRaw = Array.isArray(data.memories) ? data.memories : []
-    const memories = memoriesRaw
-      .map((memory: any) => (typeof memory === 'string' ? { name: memory, sort_order: 0, id: 0 } : { name: memory.name, sort_order: memory.sort_order || 0, id: memory.id || 0 }))
-      .sort((a: any, b: any) => {
-        // 先按 sort_order 排序，相同时按 id 排序确保一致性
-        if (a.sort_order !== b.sort_order) {
-          return a.sort_order - b.sort_order
-        }
-        return a.id - b.id
-      })
-      .map((item: any) => item.name)
+    const memories = sortOptionsByOrder(memoriesRaw.map((memory: any) =>
+      typeof memory === 'string' ? { name: memory, sort_order: 0, id: 0 } : memory
+    ), { labelKeys: ['size', 'capacity', 'name'] })
+      .map((item: any) => getOptionLabel(item, ['size', 'capacity', 'name']))
       .filter(Boolean)
 
     // 使用后端返回的状态选项，如果为空则使用默认值
@@ -1555,7 +1511,7 @@ const loadQueryOptions = async () => {
     ]
 
     options.value = {
-      suppliers,
+      suppliers: sortedSuppliers,
       stores,
       brands,
       models: [],  // 初始化为空，只有选择品牌后才显示对应型号

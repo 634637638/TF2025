@@ -7,6 +7,8 @@ const mainSource = readFileSync(join(root, 'src/main.ts'), 'utf8')
 const stylesSource = readFileSync(join(root, 'src/styles.scss'), 'utf8')
 const paginationSource = readFileSync(join(root, 'src/components/Pagination.vue'), 'utf8')
 const searchSource = readFileSync(join(root, 'src/components/search/UnifiedSearchPanel.vue'), 'utf8')
+const dateRangeSource = readFileSync(join(root, 'src/components/DateRangePicker.vue'), 'utf8')
+const customerNameLockSource = readFileSync(join(root, 'src/components/common/CustomerNameLockInput.vue'), 'utf8')
 const dialogStyleSource = readFileSync(join(root, 'src/styles/components/_dialog.scss'), 'utf8')
 const dialogActionsSource = readFileSync(join(root, 'src/styles/components/_dialog-actions.scss'), 'utf8')
 const paginationStyleSource = readFileSync(join(root, 'src/styles/components/_pagination.scss'), 'utf8')
@@ -35,6 +37,10 @@ requireToken(mainSource, "import './styles/components/_dialog-actions.scss'", 's
 requireToken(stylesSource, "@use './styles/components/_pagination.scss' as *;", 'src/styles.scss', '必须全局加载统一分页样式')
 requireToken(paginationSource, 'class="tf-pagination"', 'src/components/Pagination.vue', '公共分页组件必须保留 tf-pagination 根节点')
 requireToken(searchSource, 'class="unified-search-panel"', 'src/components/search/UnifiedSearchPanel.vue', '公共搜索组件必须保留 unified-search-panel 根节点')
+requireToken(searchSource, '.filter-item--date-range', 'src/components/search/UnifiedSearchPanel.vue', '公共搜索组件必须统一维护日期范围筛选宽度')
+requireToken(dateRangeSource, 'placement="bottom-start"', 'src/components/DateRangePicker.vue', '公共日期范围组件必须从输入框下方展开')
+requireToken(customerNameLockSource, 'class="customer-name-lock-input"', 'src/components/common/CustomerNameLockInput.vue', '公共客户姓名组件必须保留 customer-name-lock-input 根节点')
+requireToken(customerNameLockSource, 'title="更换客户"', 'src/components/common/CustomerNameLockInput.vue', '客户姓名锁定与更换客户必须保持独立操作')
 requireToken(dialogStyleSource, '--tf-dialog-body-padding-inline', 'src/styles/components/_dialog.scss', 'Dialog 正文间距必须由公共变量控制')
 requireToken(dialogStyleSource, '.mobile-dialog-sheet-body', 'src/styles/components/_dialog.scss', 'MobileDialog 滚动容器必须接入公共 Dialog 样式')
 requireToken(dialogStyleSource, '.el-dialog__body::-webkit-scrollbar', 'src/styles/components/_dialog.scss', 'Dialog 必须隐藏可见滚动条并保留滚动能力')
@@ -53,8 +59,41 @@ for (const file of walk(sourceRoot)) {
   )
   const isPublicImplementation = [
     'src/components/Pagination.vue',
-    'src/components/search/UnifiedSearchPanel.vue'
+    'src/components/search/UnifiedSearchPanel.vue',
+    'src/components/DateRangePicker.vue',
+    'src/components/common/CustomerNameLockInput.vue'
   ].includes(relativeFile)
+
+  if (source.includes('<CustomerSearchDropdown') && source.includes('customer_name') && !source.includes('<CustomerNameLockInput')) {
+    findings.push(`${relativeFile}:1 使用客户检索并展示客户姓名时必须接入 CustomerNameLockInput`)
+  }
+
+  if (relativeFile !== 'src/components/common/CustomerNameLockInput.vue' && /customer-lock-button|customer-name-group/.test(source)) {
+    findings.push(`${relativeFile}:1 不得复制客户姓名锁控件，必须使用 CustomerNameLockInput`)
+  }
+
+  if (relativeFile.startsWith('src/views/') && /(?:GlobalSearch|CustomSearch)/.test(source)) {
+    findings.push(`${relativeFile}:1 后台列表不得使用已废弃的 GlobalSearch/CustomSearch，必须接入 UnifiedSearchPanel`)
+  }
+
+  for (const panel of source.matchAll(/<UnifiedSearchPanel\b[^>]*>([\s\S]*?)<\/UnifiedSearchPanel>/gi)) {
+    const panelSource = panel[1]
+    const panelStart = panel.index + panel[0].indexOf(panelSource)
+
+    for (const rangePicker of panelSource.matchAll(/<DateRangePicker\b/gi)) {
+      const beforePicker = panelSource.slice(0, rangePicker.index)
+      const parentStart = beforePicker.lastIndexOf('<div')
+      const parentEnd = parentStart >= 0 ? beforePicker.indexOf('>', parentStart) : -1
+      const parentTag = parentEnd >= 0 ? beforePicker.slice(parentStart, parentEnd + 1) : ''
+      if (!/class=["'][^"']*\bfilter-item--date-range\b/i.test(parentTag)) {
+        findings.push(`${relativeFile}:${lineNumber(source, panelStart + rangePicker.index)} DateRangePicker 的筛选项必须声明 filter-item--date-range`)
+      }
+    }
+
+    for (const nativeRange of panelSource.matchAll(/<el-date-picker\b[^>]*\btype=["'](?:daterange|datetimerange|monthrange|dates)["']/gi)) {
+      findings.push(`${relativeFile}:${lineNumber(source, panelStart + nativeRange.index)} 日期范围筛选必须使用公共 DateRangePicker`)
+    }
+  }
 
   if (!relativeFile.endsWith('components/Pagination.vue')) {
     for (const match of source.matchAll(/<el-pagination\b/gi)) {

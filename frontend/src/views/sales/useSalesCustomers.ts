@@ -319,25 +319,27 @@ export const useSalesCustomers = ({
     }
 
     const normalizedCustomerName = normalizePersonName(saleForm.customer_name, 20)
-    const normalizedAppleId = normalizeAppleId(saleForm.customer_apple_id)
     if (!normalizedCustomerName) {
       showError('客户姓名不能为空')
+      return
+    }
+
+    if (normalizedCustomerName === normalizePersonName(selectedCustomer.value.name, 20)) {
+      saleForm.customer_name = normalizedCustomerName
+      customerNameEditing.value = false
       return
     }
 
     customerEditSubmitting.value = true
     try {
       const response = await api.put(`/customers/${selectedCustomer.value.id}`, {
-        name: normalizedCustomerName,
-        apple_id: normalizedAppleId || null
+        name: normalizedCustomerName
       })
 
       if (response.success) {
         selectedCustomer.value.name = normalizedCustomerName
-        selectedCustomer.value.apple_id = normalizedAppleId || ''
         saleForm.customer_name = normalizedCustomerName
-        saleForm.customer_apple_id = normalizedAppleId || ''
-        showSuccess('客户信息更新成功')
+        showSuccess('客户姓名更新成功')
       } else {
         showError(response.message || '更新失败')
       }
@@ -555,25 +557,27 @@ export const useSalesCustomers = ({
     }
 
     const normalizedCustomerName = normalizePersonName(batchSaleForm.customer_name, 20)
-    const normalizedAppleId = normalizeAppleId(batchSaleForm.apple_id)
     if (!normalizedCustomerName) {
       showError('客户姓名不能为空')
+      return
+    }
+
+    if (normalizedCustomerName === normalizePersonName(selectedBatchCustomer.value.name, 20)) {
+      batchSaleForm.customer_name = normalizedCustomerName
+      batchCustomerNameEditing.value = false
       return
     }
 
     customerEditSubmitting.value = true
     try {
       const response = await api.put(`/customers/${selectedBatchCustomer.value.id}`, {
-        name: normalizedCustomerName,
-        apple_id: normalizedAppleId || null
+        name: normalizedCustomerName
       })
 
       if (response.success) {
         selectedBatchCustomer.value.name = normalizedCustomerName
-        selectedBatchCustomer.value.apple_id = normalizedAppleId || ''
         batchSaleForm.customer_name = normalizedCustomerName
-        batchSaleForm.apple_id = normalizedAppleId || ''
-        showSuccess('客户信息更新成功')
+        showSuccess('客户姓名更新成功')
       } else {
         showError(response.message || '更新失败')
       }

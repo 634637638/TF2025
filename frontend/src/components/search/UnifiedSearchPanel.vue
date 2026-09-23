@@ -183,6 +183,12 @@ const handlePanelClick = (event: MouseEvent) => {
   min-width: 0;
 }
 
+/* 日期范围由两个输入框组成，必须保留完整的可读宽度。 */
+.unified-search-panel__form :deep(.filter-item--date-range) {
+  flex: 1 1 260px;
+  min-width: 260px;
+}
+
 .unified-search-panel__form :deep(.el-input),
 .unified-search-panel__form :deep(.el-select),
 .unified-search-panel__form :deep(.el-date-picker),
@@ -228,6 +234,11 @@ const handlePanelClick = (event: MouseEvent) => {
     flex: 1 1 220px;
     min-width: 180px;
   }
+
+  .unified-search-panel__form.is-expanded :deep(.filter-item--date-range) {
+    flex-basis: 260px;
+    min-width: 260px;
+  }
 }
 
 /* Desktop keeps the original single-row search layout. */
@@ -244,6 +255,11 @@ const handlePanelClick = (event: MouseEvent) => {
     display: block;
     flex: 1 1 auto;
     min-width: 120px;
+  }
+
+  .unified-search-panel__form.is-expanded :deep(.filter-item--date-range) {
+    flex-basis: 260px;
+    min-width: 260px;
   }
 }
 
@@ -358,6 +374,11 @@ const handlePanelClick = (event: MouseEvent) => {
     display: block;
     flex: 1 1 calc(50% - 4px);
     min-width: calc(50% - 4px);
+  }
+
+  .unified-search-panel__form.is-expanded :deep(.filter-item--date-range) {
+    flex-basis: 100%;
+    min-width: 100%;
   }
 }
 

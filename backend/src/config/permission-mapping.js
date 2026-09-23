@@ -17,6 +17,7 @@ module.exports = Object.freeze({
   // 库存权限映射
   'inventory:view': ['inventory_inventoryview:view'],
   'inventory:create': ['inventory_inventoryview:create'],
+  'inventory:sell': ['inventory_inventoryview:sell'],
   'inventory:edit': ['inventory_inventoryview:edit'],
   'inventory:delete': ['inventory_inventoryview:delete'],
 
@@ -28,6 +29,7 @@ module.exports = Object.freeze({
   // 销售权限映射
   'sales:view': ['sales_salesview:view', 'sales_phonesaleview:view'],
   'sales:create': ['sales_salesview:create', 'sales_phonesaleview:create'],
+  'sales:sell': ['sales_salesview:sell', 'sales_phonesaleview:sell'],
   'sales:wholesale': ['sales_salesview:wholesale'],
   'sales:proxy-transfer': ['sales_salesview:proxy-transfer'],
   'sales:edit': ['sales_salesview:edit', 'sales_phonesaleview:edit'],

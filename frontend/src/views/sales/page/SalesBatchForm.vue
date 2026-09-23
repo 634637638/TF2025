@@ -22,43 +22,20 @@
             class="form-group"
           >
             <label class="form-label required">客户姓名</label>
-            <div class="input-group">
-              <input
-                ref="customerNameInputRef"
-                v-model="batchSaleForm.customer_name"
-                type="text"
-                class="form-control"
-                name="batch-customer-name"
-                placeholder=""
-                :readonly="!selectedCustomer && !customerCreating ? true : !customerNameEditing"
-                :class="{ editable: selectedCustomer || customerCreating }"
-                :title="selectedCustomer ? '双击编辑客户信息' : (customerCreating ? '输入姓名后，点击其他地方自动创建客户' : '请先按手机号选择客户')"
-                @dblclick="emit('enable-name-edit', $event)"
-                @touchend="emit('name-touch-end', $event)"
-                @input="emit('name-input', $event)"
-                @blur="emit('disable-name-edit')"
-              >
-              <el-button
-                v-if="customerNameEditing"
-                class="customer-lock-button"
-                type="success"
-                plain
-                title="当前已解锁，点击保存并锁定"
-                @click="emit('save-name')"
-              >
-                <i class="fas fa-lock-open" />
-              </el-button>
-              <el-button
-                v-if="selectedCustomer !== null && !customerNameEditing"
-                class="customer-lock-button"
-                type="info"
-                plain
-                title="当前已锁定，点击清除客户选择"
-                @click="emit('clear-customer')"
-              >
-                <i class="fas fa-lock" />
-              </el-button>
-            </div>
+            <CustomerNameLockInput
+              ref="customerNameInputRef"
+              v-model="batchSaleForm.customer_name"
+              name="batch-customer-name"
+              :selected="selectedCustomer !== null"
+              :editing="customerNameEditing"
+              :creating="customerCreating"
+              @unlock="emit('enable-name-edit', $event)"
+              @touchend="emit('name-touch-end', $event)"
+              @input="emit('name-input', $event)"
+              @blur="emit('disable-name-edit')"
+              @save="emit('save-name')"
+              @clear="emit('clear-customer')"
+            />
             <small
               v-if="selectedCustomer && !customerNameEditing"
               class="form-hint"
@@ -295,6 +272,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import CustomerNameLockInput from '@/components/common/CustomerNameLockInput.vue'
 import CustomerSearchDropdown from '@/components/common/CustomerSearchDropdown.vue'
 import { PaymentChannelSelect, PaymentMethodSelect } from '@/components/payment'
 import type { Operator, Store } from '@/types'
@@ -324,7 +302,7 @@ const emit = defineEmits<{
   'clear-selection': []
   'enable-name-edit': [event: MouseEvent]
   'name-touch-end': [event: TouchEvent]
-  'name-input': [event: Event]
+  'name-input': [value: string]
   'disable-name-edit': []
   'save-name': []
   'clear-customer': []

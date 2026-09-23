@@ -120,26 +120,38 @@
         </div>
       </div>
 
-      <!-- 筛选栏 -->
-      <el-card
-        class="filter-card admin-panel"
-        shadow="never"
+      <UnifiedSearchPanel
+        v-model:expanded="searchExpanded"
+        :loading="loading"
+        @search="handleFilterChange"
+        @reset="resetFilters"
       >
-        <el-form
-          :model="filters"
-          :inline="true"
-          class="filter-form"
-        >
-          <el-form-item
-            v-if="canViewOrderField('filter_status')"
-            label="订单状态"
+        <template #primary>
+          <el-input
+            v-if="canViewOrderField('filter_order_number')"
+            v-model="filters.order_number"
+            placeholder="搜索订单号"
+            clearable
+            @keyup.enter="handleFilterChange"
+            @click.stop
           >
-            <el-select
+            <template #prefix>
+              <i class="fas fa-search" />
+            </template>
+          </el-input>
+        </template>
+
+        <div
+          v-if="canViewOrderField('filter_status')"
+          class="form-group filter-item"
+          data-field="status"
+        >
+          <el-select
               v-model="filters.status"
               placeholder="全部状态"
               clearable
               @change="handleFilterChange"
-            >
+          >
               <el-option
                 label="全部"
                 value=""
@@ -168,72 +180,48 @@
                 label="已取消"
                 value="cancelled"
               />
-            </el-select>
-          </el-form-item>
-          <el-form-item
-            v-if="canViewOrderField('filter_customer_name')"
-            label="客户姓名"
-          >
-            <el-input
+          </el-select>
+        </div>
+        <div
+          v-if="canViewOrderField('filter_customer_name')"
+          class="form-group filter-item"
+          data-field="customer_name"
+        >
+          <el-input
               v-model="filters.customer_name"
               placeholder="输入客户姓名"
               clearable
-              class="w-36"
               @keyup.enter="handleFilterChange"
-            />
-          </el-form-item>
-          <el-form-item
-            v-if="canViewOrderField('filter_customer_phone')"
-            label="客户电话"
-          >
-            <el-input
+          />
+        </div>
+        <div
+          v-if="canViewOrderField('filter_customer_phone')"
+          class="form-group filter-item"
+          data-field="customer_phone"
+        >
+          <el-input
               v-model="filters.customer_phone"
               placeholder="输入电话"
               clearable
-              class="w-36"
               @keyup.enter="handleFilterChange"
-            />
-          </el-form-item>
-          <el-form-item
-            v-if="canViewOrderField('filter_order_number')"
-            label="订单号"
-          >
-            <el-input
-              v-model="filters.order_number"
-              placeholder="输入订单号"
-              clearable
-              class="w-44"
-              @keyup.enter="handleFilterChange"
-            />
-          </el-form-item>
-          <el-form-item
-            v-if="canViewOrderField('filter_date_range')"
-            label="下单时间"
-          >
-            <DateRangePicker
+          />
+        </div>
+        <div
+          v-if="canViewOrderField('filter_date_range')"
+          class="form-group filter-item filter-item--date-range"
+          data-field="date_range"
+        >
+          <DateRangePicker
               v-model="dateRange"
               start-placeholder="开始日期"
               end-placeholder="结束日期"
               format="YYYY-MM-DD"
               value-format="YYYY-MM-DD"
               clearable
-              class="w-60"
               @change="handleFilterChange"
-            />
-          </el-form-item>
-          <el-form-item>
-            <el-button
-              type="primary"
-              @click="handleFilterChange"
-            >
-              搜索
-            </el-button>
-            <el-button @click="resetFilters">
-              重置
-            </el-button>
-          </el-form-item>
-        </el-form>
-      </el-card>
+          />
+        </div>
+      </UnifiedSearchPanel>
 
       <!-- 订单列表 -->
       <el-card
@@ -1072,6 +1060,7 @@ import { Refresh } from '@element-plus/icons-vue'
 import { PermissionGate } from '@/components/base'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import DateRangePicker from '@/components/DateRangePicker.vue'
+import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import Pagination from '@/components/Pagination.vue'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
@@ -1155,6 +1144,7 @@ const pagination = reactive({
   page_size: 20,
   total: 0
 })
+const searchExpanded = ref(false)
 
 // 筛选条件
 const filters = reactive({
@@ -1728,17 +1718,6 @@ onUnmounted(() => {
   min-width: 0;
 }
 
-// 筛选卡片
-.filter-card {
-  margin-bottom: 16px;
-}
-
-.filter-form {
-  .el-form-item {
-    margin-bottom: 0;
-  }
-}
-
 // 表格卡片
 .table-card {
   .amount {
@@ -2008,61 +1987,14 @@ onUnmounted(() => {
     overflow: hidden;
   }
 
-  .filter-card,
   .table-card {
     border-radius: 14px;
     border: 1px solid rgba(226, 232, 240, 0.88);
     box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
   }
 
-  .filter-card {
-    margin-bottom: 12px;
-  }
-
-  .filter-card :deep(.el-card__body),
   .table-card :deep(.el-card__body) {
     padding: 12px;
-  }
-
-  .filter-form {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 10px;
-
-    .el-form-item {
-      display: block;
-      margin-right: 0;
-      margin-bottom: 0;
-
-      .el-form-item__label {
-        width: 100% !important;
-        height: auto;
-        margin-bottom: 7px;
-        padding: 0 !important;
-        color: var(--tf-color-slate-700);
-        font-size: 13px;
-        font-weight: 700;
-        line-height: 1.4;
-        text-align: left;
-      }
-
-      .el-form-item__content {
-        width: 100%;
-      }
-
-      .el-input,
-      .el-select,
-      .el-date-editor {
-        width: 100% !important;
-      }
-    }
-
-    .el-form-item:last-child :deep(.el-form-item__content) {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
-
-    }
   }
 
   .table-card {

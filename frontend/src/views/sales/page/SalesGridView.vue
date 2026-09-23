@@ -128,11 +128,11 @@
             </div>
           </div>
           <div
-            v-if="shouldShowActionColumn(canViewField('actions'), [canCreate, canEdit, canDelete])"
+            v-if="shouldShowActionColumn(canViewField('actions'), [canSell, canEdit, canDelete])"
             class="card-actions"
           >
             <el-button
-              v-if="canCreate && isPhoneSaleActionAvailable(phone)"
+              v-if="canSell && isPhoneSaleActionAvailable(phone)"
               type="success"
               title="销售出库"
               size="small"
@@ -181,7 +181,7 @@ defineProps<{
   hasActiveFilters: boolean
   canViewField: (_fieldName: string) => boolean
   canViewPrice: boolean
-  canCreate: boolean
+  canSell: boolean
   canEdit: boolean
   canDelete: boolean
   getPhoneImageSrc: (_phone: Phone) => string

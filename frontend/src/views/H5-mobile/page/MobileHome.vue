@@ -493,6 +493,7 @@ import type { HomeSection } from '@/api/home-sections'
 import { formatSafeImageUrl, generateProductPlaceholder } from '@/utils/format'
 import { storage } from '@/services/storage'
 import { logger } from '@/utils/logger'
+import { sortOptionsByOrder } from '@/utils/option-sort'
 import { buildTencentMapScriptUrl, ensureTencentMapKey } from '@/utils/tencent-map'
 // 滚动位置存储键前缀
 const SCROLL_POSITION_PREFIX = 'scroll-pos_'
@@ -678,14 +679,7 @@ const loadBanners = async () => {
 const loadBrands = async () => {
   try {
     const publicBrands = await baseDataApi.getPublicBrands()
-    brands.value = [...publicBrands].sort((a: any, b: any) => {
-      const left = Number.isFinite(Number(a?.sort_order)) ? Number(a.sort_order) : Number.MAX_SAFE_INTEGER
-      const right = Number.isFinite(Number(b?.sort_order)) ? Number(b.sort_order) : Number.MAX_SAFE_INTEGER
-      if (left !== right) {
-        return left - right
-      }
-      return Number(a?.id || 0) - Number(b?.id || 0)
-    })
+    brands.value = sortOptionsByOrder(publicBrands)
   } catch (error) {
     logger.error('获取品牌列表失败:', error)
   }
@@ -698,14 +692,7 @@ const loadColors = async () => {
 
   try {
     const publicColors = await baseDataApi.getPublicColors()
-    colors.value = [...publicColors].sort((a: any, b: any) => {
-      const left = Number.isFinite(Number(a?.sort_order)) ? Number(a.sort_order) : Number.MAX_SAFE_INTEGER
-      const right = Number.isFinite(Number(b?.sort_order)) ? Number(b.sort_order) : Number.MAX_SAFE_INTEGER
-      if (left !== right) {
-        return left - right
-      }
-      return Number(a?.id || 0) - Number(b?.id || 0)
-    })
+    colors.value = sortOptionsByOrder(publicColors)
   } catch (error) {
     logger.error('获取颜色列表失败:', error)
   }
@@ -718,14 +705,7 @@ const loadMemories = async () => {
 
   try {
     const publicMemories = await baseDataApi.getPublicMemories()
-    memories.value = [...publicMemories].sort((a: any, b: any) => {
-      const left = Number.isFinite(Number(a?.sort_order)) ? Number(a.sort_order) : Number.MAX_SAFE_INTEGER
-      const right = Number.isFinite(Number(b?.sort_order)) ? Number(b.sort_order) : Number.MAX_SAFE_INTEGER
-      if (left !== right) {
-        return left - right
-      }
-      return Number(a?.id || 0) - Number(b?.id || 0)
-    })
+    memories.value = sortOptionsByOrder(publicMemories, { labelKeys: ['size', 'capacity', 'name'] })
   } catch (error) {
     logger.error('获取内存列表失败:', error)
   }
@@ -739,14 +719,7 @@ const loadBrandModels = async (brandId: number) => {
 
   try {
     const publicModels = await baseDataApi.getPublicModels(brandId)
-    const sortedModels = [...publicModels].sort((a: any, b: any) => {
-      const left = Number.isFinite(Number(a?.sort_order)) ? Number(a.sort_order) : Number.MAX_SAFE_INTEGER
-      const right = Number.isFinite(Number(b?.sort_order)) ? Number(b.sort_order) : Number.MAX_SAFE_INTEGER
-      if (left !== right) {
-        return left - right
-      }
-      return Number(a?.id || 0) - Number(b?.id || 0)
-    })
+    const sortedModels = sortOptionsByOrder(publicModels)
     modelCache.set(brandId, sortedModels)
     brandModels.value = sortedModels
   } catch (error) {

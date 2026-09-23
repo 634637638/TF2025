@@ -244,7 +244,7 @@ const ACTION_DISPLAY_NAMES: Record<string, string> = {
   manage: '管理',
   export: '导出',
   import: '导入',
-  sell: '销售',
+  sell: '出库',
   sync: '同步',
   'return-to-stock': '退库',
   wholesale: '同行调货',

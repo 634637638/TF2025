@@ -8,7 +8,7 @@
       <SalesPageHeader
         :batch-mode="batchMode"
         :selected-count="selectedPhones.length"
-        :can-create="canCreate"
+        :can-sell="canSell"
         :can-export="canExport"
         :export-loading="exportingAvailablePhones"
         :refreshing="refreshing"
@@ -117,7 +117,7 @@
             :has-active-filters="hasActiveFilters"
             :can-view-field="canViewSaleField"
             :can-view-price="canViewPrice"
-            :can-create="canCreate"
+            :can-sell="canSell"
             :can-edit="canEdit"
             :can-delete="canDelete"
             :get-phone-image-src="getPhoneImageSrc"
@@ -151,7 +151,7 @@
           :compact="isMobile || isTablet"
           :can-view-field="canViewSaleField"
           :can-view-price="canViewPrice"
-          :can-create="canCreate"
+          :can-sell="canSell"
           :can-edit="canEdit"
           :can-delete="canDelete"
           @update:select-all="selectAll = $event"
@@ -386,6 +386,7 @@ const { error: showError, warning: showWarning, success: showSuccess, info: show
 const {
   canView,
   canCreate,
+  canSell,
   canEdit,
   canDelete,
   canExport,
@@ -858,7 +859,7 @@ const {
   todaySold,
   getTodayDate,
   getCurrentUser: () => authStore.user,
-  canCreate: () => canCreate.value,
+  canSell: () => canSell.value,
   handleNoPermission,
   normalizeCustomerPhone,
   resetCustomerForm,
@@ -937,7 +938,8 @@ const loadSalesStats = async () => {
 
     const response = await api.get('/sales/phones/available/stats', { params })
     if (response.success && response.data) {
-      todaySold.value = response.data.today_sold || 0
+      // 兼容旧接口或代理层仍返回字符串的情况，保持组件 prop 为 number。
+      todaySold.value = Number(response.data.today_sold) || 0
     }
   } catch (error) {
     logger.error('加载统计数据失败:', error)

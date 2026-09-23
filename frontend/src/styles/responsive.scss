@@ -5,8 +5,7 @@
    最后更新: 2025-12-20
    ================================ */
 
-/* 导入旧版自定义模态框的结构样式；按钮视觉由 _buttons.scss 统一控制。 */
-@use '../assets/css/modal-styles.scss' as *;
+/* Dialog chrome is centralized in _dialog.scss; this file owns page layout only. */
 
 /* 基础断点定义 */
 :root {
@@ -118,16 +117,6 @@ body {
     overflow-x: auto;
   }
 
-  /* 模态框统一样式 - 保持居中 */
-  .modal,
-  .el-dialog {
-    width: 95vw !important;
-    max-width: none !important;
-    margin: auto !important;
-    border-radius: 12px;
-    position: relative !important;
-  }
-
   /* 导航栏统一 */
   .navbar {
     height: 56px;
@@ -185,66 +174,6 @@ body {
 /* ================================
    3. 组件响应式规则
    ================================ */
-
-/* 3.1 模态框 - 通用响应式适配 */
-.modal,
-.el-dialog,
-.modern-modal {
-  /* 移动端通用适配 - 375px及以上所有手机 */
-  @media (max-width: 767px) {
-    width: 95vw !important;
-    max-width: none !important;
-    max-height: 90vh;
-    margin: auto !important;
-    border-radius: 12px;
-
-    .modal-header,
-    .el-dialog__header,
-    .modern-modal-header {
-      padding: 16px 20px;
-    }
-
-    .modal-body,
-    .el-dialog__body,
-    .modern-modal-body {
-      padding: 16px 20px;
-      max-height: calc(90vh - 140px);
-      overflow-y: auto;
-    }
-
-    .modal-footer,
-    .el-dialog__footer,
-    .modern-modal-footer {
-      padding: 16px 20px;
-    }
-  }
-
-  /* 小屏手机 - 375px到480px */
-  @media (max-width: 479px) {
-    width: 98vw !important;
-    max-height: 92vh;
-    border-radius: 8px;
-
-    .modal-header,
-    .el-dialog__header,
-    .modern-modal-header {
-      padding: 12px 16px;
-    }
-
-    .modal-body,
-    .el-dialog__body,
-    .modern-modal-body {
-      padding: 12px 16px;
-      max-height: calc(92vh - 120px);
-    }
-
-    .modal-footer,
-    .el-dialog__footer,
-    .modern-modal-footer {
-      padding: 12px 16px;
-    }
-  }
-}
 
 /* 3.2 表单 */
 .form-container {
@@ -425,51 +354,7 @@ body {
    5. Element Plus 组件适配
    ================================ */
 
-/* 5.1 Dialog - 移动端通用适配 */
-@media (max-width: 767px) {
-  .el-dialog {
-    width: 95vw !important;
-    max-width: none !important;
-    margin: auto !important;
-    border-radius: 12px;
-  }
-
-  .el-dialog__header {
-    padding: 16px 20px !important;
-  }
-
-  .el-dialog__body {
-    padding: 20px !important;
-    max-height: calc(90vh - 140px);
-    overflow-y: auto;
-  }
-
-  .el-dialog__footer {
-    padding: 16px 20px !important;
-  }
-}
-
-/* 小屏手机特定适配 */
-@media (max-width: 479px) {
-  .el-dialog {
-    width: 98vw !important;
-    border-radius: 8px;
-  }
-
-  .el-dialog__header {
-    padding: 12px 16px !important;
-  }
-
-  .el-dialog__body {
-    padding: 16px !important;
-  }
-
-  .el-dialog__footer {
-    padding: 12px 16px !important;
-  }
-}
-
-/* 5.2 Form - 移动端通用适配 */
+/* 5.1 Form - 移动端通用适配 */
 @media (max-width: 767px) {
   html,
   body,
@@ -646,15 +531,6 @@ body {
    ================================ */
 
 @media (max-width: 844px) and (orientation: landscape) {
-  /* iPhone SE 横屏适配 */
-  .modal {
-    max-height: 100vh;
-
-    .modal-body {
-      max-height: calc(100vh - 120px);
-    }
-  }
-
   .navbar {
     height: 48px;
   }

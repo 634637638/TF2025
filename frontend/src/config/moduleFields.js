@@ -2480,11 +2480,11 @@ export const MODULE_FIELDS = {
       },
       {
         id: 'operator_info.operator_name',
-        name: '操作员',
+        name: '销售员/预定人',
         group: '操作员信息',
         type: FIELD_TYPES.TEXT,
         sensitivity: SENSITIVITY_LEVELS.INTERNAL,
-        description: '预定业务操作员'
+        description: '预定创建人和交付销售员；已交付记录显示销售员，创建预定时显示预定人'
       },
       {
         id: 'other_info.remarks',

@@ -56,7 +56,7 @@
           @click="$emit('create')"
         >
           <i class="fas fa-user-plus" />
-          {{ emptyCreateText }}
+          <span class="customer-search-dropdown__create-text">{{ emptyCreateText }}</span>
         </button>
       </template>
     </div>
@@ -92,7 +92,7 @@ const props = withDefaults(defineProps<{
   keyword: '',
   minQueryLength: 1,
   allowCreate: true,
-  emptyCreateText: '未找到客户，请创建新客户',
+  emptyCreateText: '暂无数据，点击创建新客户！',
   teleportTarget: '',
   floatingStyle: undefined
 })
@@ -122,6 +122,9 @@ const vipLabel = (level: string) => ({
 
 <style scoped lang="scss">
 .customer-search-dropdown {
+  box-sizing: border-box;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   position: absolute;
   z-index: 1001;
   top: calc(100% + 4px);
@@ -157,10 +160,11 @@ const vipLabel = (level: string) => ({
 
 .customer-search-dropdown__item,
 .customer-search-dropdown__create {
+  box-sizing: border-box;
   display: block;
   width: 100%;
   border: 0;
-  font: inherit;
+  font-family: inherit;
   text-align: left;
   cursor: pointer;
 }
@@ -256,11 +260,30 @@ const vipLabel = (level: string) => ({
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
   padding: 12px 14px;
   background: var(--tf-button-success-soft-bg);
   color: var(--tf-button-success-soft-color);
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.customer-search-dropdown__create > i {
+  flex: 0 0 16px;
+  width: 16px;
+  text-align: center;
+}
+
+.customer-search-dropdown__create-text {
+  min-width: 0;
+  overflow: hidden;
+  font-size: inherit !important;
+  line-height: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .customer-search-dropdown__create:hover,
@@ -276,11 +299,25 @@ const vipLabel = (level: string) => ({
 
   .customer-search-dropdown--floating {
     width: min(460px, calc(100vw - 24px));
+    max-width: calc(100vw - 24px);
   }
 
   .customer-search-dropdown__item,
   .customer-search-dropdown__create {
-    padding: 12px 14px;
+    padding: 10px 12px;
+  }
+
+  .customer-search-dropdown__create {
+    gap: 5px;
+    padding-inline: 10px;
+    font-size: 10px !important;
+    line-height: 1.35;
+  }
+
+  .customer-search-dropdown__create > i {
+    flex-basis: 14px;
+    width: 14px;
+    font-size: 11px;
   }
 
   .customer-search-dropdown__line--subline {

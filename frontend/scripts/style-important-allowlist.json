@@ -7,7 +7,7 @@
     },
     {
       "file": "src/styles.scss",
-      "max": 299,
+      "max": 131,
       "reason": "Global Element Plus poppers, teleported dialogs, loading states and mobile safe-area contracts."
     },
     {
@@ -22,7 +22,7 @@
     },
     {
       "file": "src/styles/responsive.scss",
-      "max": 84,
+      "max": 66,
       "reason": "Global mobile breakpoints, safe-area rules and Safari phone fallbacks must win over desktop legacy declarations."
     },
     {
@@ -46,13 +46,8 @@
       "reason": "Global accessibility and application shell state overrides."
     },
     {
-      "file": "src/assets/css/modal-styles.scss",
-      "max": 9,
-      "reason": "Legacy modal bridge for teleported dialogs while pages migrate to MobileDialog."
-    },
-    {
       "file": "src/styles/components/_dialog.scss",
-      "max": 12,
+      "max": 128,
       "reason": "Element Plus dialog structure and viewport boundary overrides."
     },
     {
@@ -107,7 +102,7 @@
     },
     {
       "file": "src/views/sales/styles/sales-view-base.scss",
-      "max": 16,
+      "max": 5,
       "reason": "Sales table states, compact input actions and mobile checkout override shared table and button contracts."
     },
     {
@@ -142,13 +137,18 @@
     },
     {
       "file": "src/components/query/QueryEditModal.vue",
-      "max": 27,
+      "max": 16,
       "reason": "Query editor fixed label widths, teleported dialog surface and compact input actions override shared contracts."
     },
     {
       "file": "src/components/MobileDialog.vue",
-      "max": 25,
+      "max": 24,
       "reason": "Core dialog component must control Element Plus teleported dimensions, safe areas and transition state."
+    },
+    {
+      "file": "src/components/common/CustomerSearchDropdown.vue",
+      "max": 4,
+      "reason": "Customer search dropdown keeps compact mobile labels and selected-state affordances readable across teleported form surfaces."
     },
     {
       "file": "src/components/DynamicSidebar.vue",
@@ -167,7 +167,7 @@
     },
     {
       "file": "src/components/wholesale/WholesalePartySection.vue",
-      "max": 19,
+      "max": 8,
       "reason": "Wholesale party inputs and compact action buttons override Element Plus grid and button dimensions."
     },
     {
@@ -182,7 +182,7 @@
     },
     {
       "file": "src/components/query/QuickSaleModal.vue",
-      "max": 13,
+      "max": 2,
       "reason": "Quick-sale dialog and input action buttons override teleported and Element Plus dimensions."
     },
     {
@@ -207,7 +207,7 @@
     },
     {
       "file": "src/views/H5-admin/page/orders.vue",
-      "max": 10,
+      "max": 7,
       "reason": "H5 order editor mobile form and safe-area footer override desktop dialog layout."
     },
     {

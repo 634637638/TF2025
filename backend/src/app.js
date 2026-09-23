@@ -6,6 +6,10 @@ const log = require('./utils/log')
 const { getUploadsRoot } = require('./utils/upload-paths')
 const { ensureRentalSchema } = require('./utils/rental-schema')
 const { ensureSupplierPaymentSchema } = require('./utils/supplier-payment-schema')
+const {
+  ensureShopTemplateMediaSchema,
+  cleanupExpiredShopTemplateMediaDrafts
+} = require('./utils/shop-template-media-schema')
 const { refreshExpiredRentalStatuses } = require('./services/rental-status.service')
 const { ensureRateLimitLogTable } = require('./middleware/rate-limit')
 
@@ -132,6 +136,19 @@ async function initializeApp() {
           await ensureSupplierPaymentSchema()
         } catch (supplierPaymentError) {
           log.warn('供应商打款字段启动检查失败:', supplierPaymentError.message)
+        }
+
+        try {
+          await ensureShopTemplateMediaSchema()
+          await cleanupExpiredShopTemplateMediaDrafts()
+          const templateMediaDraftCleanupTimer = setInterval(() => {
+            cleanupExpiredShopTemplateMediaDrafts().catch(error => {
+              log.warn('清理过期商城模板媒体失败:', error.message)
+            })
+          }, 60 * 60 * 1000)
+          templateMediaDraftCleanupTimer.unref?.()
+        } catch (shopMediaSchemaError) {
+          log.warn('商城模板媒体结构检查失败:', shopMediaSchemaError.message)
         }
       }
     } catch (dbError) {

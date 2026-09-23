@@ -1440,6 +1440,7 @@ import { logger } from '@/utils/logger'
 import { useLoadingState } from '@/composables'
 import { getAdaptiveActionColumnWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 import { isCurrentMobileViewport } from '@/utils/device-detection'
+import { sortOptionsByOrder } from '@/utils/option-sort'
 
 const PriceMarkupConfig = defineAsyncComponent(() => import('@/components/PriceMarkupConfig.vue'))
 
@@ -1960,12 +1961,14 @@ const loadEditOptions = async () => {
       api.get('/public/memories')
     ])
 
-    // unifiedApi 返回 response.data，即 { success: true, data: [...], message: "..." }
-    // 所以我们需要取 .data 字段
-    editOptions.brands = brandsRes.data || []
-    editOptions.models = modelsRes.data || []
-    editOptions.colors = colorsRes.data || []
-    editOptions.memories = memoriesRes.data || []
+    // 新增/编辑弹窗与检索共用同一套基础选项排序，兼容数组和包装响应。
+    editOptions.brands = sortOptionsByOrder(extractResponseData<any[]>(brandsRes))
+    editOptions.models = sortOptionsByOrder(extractResponseData<any[]>(modelsRes))
+    editOptions.colors = sortOptionsByOrder(extractResponseData<any[]>(colorsRes))
+    editOptions.memories = sortOptionsByOrder(
+      extractResponseData<any[]>(memoriesRes),
+      { labelKeys: ['size', 'capacity', 'name'] }
+    )
   } catch (error) {
     logger.error('加载编辑选项失败:', error)
     // 确保即使失败也是数组
@@ -1989,7 +1992,7 @@ const handleBrandChangeInEdit = async (brandId: number) => {
       const modelsRes = await api.get('/public/models', {
         params: { brand_id: brandId, include_empty: 'true' }
       })
-      editOptions.models = extractResponseData<any[]>(modelsRes)
+      editOptions.models = sortOptionsByOrder(extractResponseData<any[]>(modelsRes))
     } catch (error) {
       logger.error('加载型号失败:', error)
       editOptions.models = []
@@ -2163,9 +2166,9 @@ const handleSave = async () => {
       external_model: editForm.external_model,
       wholesale_price: editForm.wholesale_price,
       last_sync_time: editForm.last_sync_time,
-      is_collect: editForm.is_collect,
-      status: editForm.status,
-      show_price: editForm.show_price,
+      is_collect: Number(editForm.is_collect) === 1 ? 1 : 0,
+      status: Number(editForm.status) === 1 ? 1 : 0,
+      show_price: Number(editForm.show_price) === 1 ? 1 : 0,
       remark: editForm.remark,
       is_manual_edit: true
     }
@@ -2199,6 +2202,8 @@ const handleSave = async () => {
       ElMessage.success('保存成功')
       showEditDialog.value = false
       fetchPriceList()
+    } else {
+      ElMessage.error(res.message || '保存失败，请重试')
     }
   } catch (error) {
     logger.error('保存失败:', error)
@@ -2991,27 +2996,24 @@ const loadFilterOptions = async () => {
 
     // 处理品牌数据
     if (brandsRes.success) {
-      options.brands = extractResponseData<any[]>(brandsRes)
-        .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
+      options.brands = sortOptionsByOrder(extractResponseData<any[]>(brandsRes))
         .map((brand: any) => brand.name)
     }
 
     // 处理型号数据（存储完整数据用于品牌联动）
     if (modelsRes.success) {
-      options.allModels = extractResponseData<any[]>(modelsRes)
+      options.allModels = sortOptionsByOrder(extractResponseData<any[]>(modelsRes))
     }
 
     // 处理颜色数据
     if (colorsRes.success) {
-      options.colors = extractResponseData<any[]>(colorsRes)
-        .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
+      options.colors = sortOptionsByOrder(extractResponseData<any[]>(colorsRes))
         .map((color: any) => color.name)
     }
 
     // 处理内存数据
     if (memoriesRes.success) {
-      options.memories = extractResponseData<any[]>(memoriesRes)
-        .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
+      options.memories = sortOptionsByOrder(extractResponseData<any[]>(memoriesRes), { labelKeys: ['size', 'capacity', 'name'] })
         .map((memory: any) => memory.size)
         .filter(Boolean)
     }
@@ -3044,7 +3046,7 @@ const handleBrandChange = async () => {
     // 调试：输出品牌名称和型号数据
 
     // 根据选择的品牌筛选型号 - 尝试多种匹配方式
-    const filteredModels = options.allModels
+    const filteredModels = sortOptionsByOrder(options.allModels
       .filter((model: any) => {
         // 尝试匹配 brand_name 字段
         if (model.brand_name === searchForm.brand_name) return true
@@ -3053,8 +3055,7 @@ const handleBrandChange = async () => {
         // 尝试包含匹配（处理可能的大小写或空格问题）
         if (model.brand_name && model.brand_name.includes(searchForm.brand_name)) return true
         return false
-      })
-      .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
+      }))
 
     options.models = filteredModels.map((model: any) => model.name)
 

@@ -478,44 +478,20 @@ onUnmounted(() => {
 
 <style lang="scss" scoped>
 :global(.mobile-dialog-overlay) {
-  background: rgba(15, 23, 42, 0.42) !important;
+  background: var(--tf-dialog-overlay-bg) !important;
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
 }
 
 .mobile-dialog {
-  // 桌面端最大宽度限制
   :deep(.el-dialog) {
-    max-width: min(var(--dialog-max-width, var(--dialog-base-max-width, 880px)), calc(100vw - var(--dialog-side-gap, 32px))) !important;
+    max-width: min(var(--dialog-max-width, var(--dialog-base-max-width, 880px)), calc(100vw - var(--tf-dialog-side-gap, 32px))) !important;
     margin: auto !important;
-  }
-
-  // 平板端样式
-  &.is-tablet {
-    :deep(.el-dialog) {
-      margin: auto !important;
-
-      .el-dialog__header {
-        padding: 18px 24px;
-
-        .el-dialog__title {
-          font-size: 20px;
-        }
-      }
-
-      .el-dialog__body {
-        padding: 24px;
-      }
-
-      .el-dialog__footer {
-        padding: 18px 24px;
-      }
-    }
   }
 }
 
 .mobile-dialog-sheet-overlay {
-  --mobile-dialog-effective-side-gap: var(--dialog-side-gap, 4px);
+  --mobile-dialog-effective-side-gap: var(--dialog-side-gap, var(--tf-dialog-mobile-side-gap, 4px));
   --mobile-dialog-effective-vertical-gap: var(--dialog-vertical-gap, 24px);
   position: fixed;
   inset: 0;
@@ -538,10 +514,10 @@ onUnmounted(() => {
   max-height: calc(100dvh - var(--mobile-dialog-effective-vertical-gap));
   display: flex;
   flex-direction: column;
-  border-radius: 24px;
+  border-radius: var(--tf-dialog-mobile-radius, var(--dialog-radius, 24px));
   overflow: hidden;
   background: var(--color-bg-white);
-  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.22);
+  box-shadow: var(--tf-dialog-shadow);
 }
 
 .mobile-dialog-sheet-header {
@@ -549,9 +525,9 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: calc(72px + env(safe-area-inset-top));
+  min-height: calc(var(--tf-dialog-sheet-header-min-height, 72px) + env(safe-area-inset-top));
   padding: calc(12px + env(safe-area-inset-top)) 56px 12px 16px;
-  background: var(--dialog-header-bg);
+  background: var(--tf-dialog-header-bg, var(--dialog-header-bg));
 }
 
 .mobile-dialog-sheet-header-content,
@@ -565,7 +541,7 @@ onUnmounted(() => {
 
 .mobile-dialog-sheet-title {
   color: var(--color-bg-white);
-  font-size: 16px;
+  font-size: var(--tf-dialog-sheet-title-size, 16px);
   font-weight: 700;
   line-height: 1.35;
   text-align: center;
@@ -575,21 +551,21 @@ onUnmounted(() => {
   position: absolute;
   top: calc(12px + env(safe-area-inset-top));
   right: 14px;
-  width: 38px;
-  height: 38px;
+  width: var(--tf-dialog-close-size, 38px);
+  height: var(--tf-dialog-close-size, 38px);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border: 0;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.18);
-  color: var(--color-bg-white);
+  background: var(--tf-dialog-close-bg, rgba(255, 255, 255, 0.18));
+  color: var(--tf-dialog-header-text, var(--color-bg-white));
 }
 
 .mobile-dialog-sheet-close .el-icon,
 .mobile-dialog-sheet-close .el-dialog__close {
-  width: 18px;
-  height: 18px;
+  width: var(--tf-dialog-close-icon-size, 18px);
+  height: var(--tf-dialog-close-icon-size, 18px);
 }
 
 .mobile-dialog-sheet-body {
@@ -599,7 +575,7 @@ onUnmounted(() => {
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  background: var(--color-bg-white);
+  background: var(--tf-dialog-surface, var(--color-bg-white));
 }
 
 .mobile-dialog-sheet-footer {
@@ -609,12 +585,12 @@ onUnmounted(() => {
 
 .mobile-dialog-sheet-footer :deep(.el-button) {
   min-height: 42px;
-  font-size: 15px;
+  font-size: var(--tf-button-font-size, 15px);
 }
 
 .mobile-dialog-sheet-footer :deep(.el-button.el-button--large) {
   min-height: 44px;
-  font-size: 16px;
+  font-size: var(--tf-button-font-size, 16px);
 }
 
 .mobile-dialog-sheet-panel :deep(.el-form-item) {
@@ -701,7 +677,7 @@ onUnmounted(() => {
 // 响应式对话框宽度调整
 @media (max-width: 480px) {
   .mobile-dialog-sheet-overlay {
-    --mobile-dialog-effective-side-gap: var(--dialog-side-gap, 4px);
+    --mobile-dialog-effective-side-gap: var(--dialog-side-gap, var(--tf-dialog-mobile-side-gap, 4px));
     --mobile-dialog-effective-vertical-gap: var(--dialog-vertical-gap, 24px);
     padding: var(--mobile-dialog-effective-side-gap) !important;
   }
@@ -716,7 +692,7 @@ onUnmounted(() => {
       var(--dialog-max-width, var(--dialog-base-max-width, 880px))
     );
     max-height: calc(100dvh - var(--mobile-dialog-effective-vertical-gap));
-    border-radius: 24px;
+    border-radius: var(--tf-dialog-mobile-radius, var(--dialog-radius, 24px));
   }
 
   .mobile-dialog-sheet-header {
@@ -725,7 +701,7 @@ onUnmounted(() => {
   }
 
   .mobile-dialog-sheet-title {
-    font-size: 16px;
+    font-size: var(--tf-dialog-sheet-title-size, 16px);
   }
 
   .mobile-dialog-sheet-panel :deep(.el-form-item__label) {
@@ -736,7 +712,7 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
   .mobile-dialog-sheet-overlay {
-    --mobile-dialog-effective-side-gap: var(--dialog-side-gap, 4px);
+    --mobile-dialog-effective-side-gap: var(--dialog-side-gap, var(--tf-dialog-mobile-side-gap, 4px));
     padding: var(--mobile-dialog-effective-side-gap) !important;
   }
 
@@ -749,7 +725,7 @@ onUnmounted(() => {
 @media (min-width: 1200px) {
   .mobile-dialog {
     :deep(.el-dialog) {
-      max-width: min(var(--dialog-max-width, var(--dialog-base-max-width, 880px)), calc(100vw - var(--dialog-side-gap, 32px))) !important;
+      max-width: min(var(--dialog-max-width, var(--dialog-base-max-width, 880px)), calc(100vw - var(--tf-dialog-side-gap, 32px))) !important;
     }
   }
 }

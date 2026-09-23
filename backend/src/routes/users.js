@@ -260,7 +260,13 @@ router.get('/profile', unifiedAuth, requirePermission('users:view'), async (req,
  * GET /api/users/operators
  * 注意：必须放在 /:id 路由之前，否则 operators 会被当作 :id 参数处理
  */
-router.get('/operators', unifiedAuth, async (req, res) => {
+router.get('/operators', unifiedAuth, requireAnyPermission([
+  'users:view',
+  'sales:view',
+  'inventory:view',
+  'preorders:view',
+  'return-goods:view'
+]), async (req, res) => {
   try {
     const db = getDatabase()
 

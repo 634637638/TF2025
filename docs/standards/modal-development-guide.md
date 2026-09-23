@@ -1,4 +1,6 @@
-# 模态框开发问题记录与解决方案
+# 模态框开发指南
+
+> 本文档保留历史问题背景；当前实施规范以 [`../frontend/dialog-standards.md`](../frontend/dialog-standards.md) 为准。
 
 ## 问题概述
 
@@ -83,37 +85,14 @@ Element Plus 的 `el-dialog` 组件会创建多个嵌套的包装元素：
 ```
 
 #### 方案2：修复 el-dialog 样式
-如果必须使用 `el-dialog`，在全局样式文件中添加覆盖样式：
+如果必须使用 `el-dialog`，直接复用全局入口，不要在页面或其他全局文件中新增覆盖：
 
-**文件：`/frontend/src/styles.css`**
-```css
-/* 修复 Element Plus 对话框白色边框问题 */
-.el-overlay,
-.el-dialog__wrapper,
-.el-overlay-dialog {
-  background-color: rgba(0, 0, 0, 0.5) !important;
-  background: rgba(0, 0, 0, 0.5) !important;
-  border: none !important;
-  outline: none !important;
-  box-shadow: none !important;
-}
+- 外壳、响应式尺寸、标题、正文和安全区：`frontend/src/styles/components/_dialog.scss`
+- 底部操作区：`frontend/src/styles/components/_dialog-actions.scss`
+- 按钮语义：`frontend/src/styles/components/_buttons.scss`
 
-.el-dialog {
-  background: white !important;
-  border: none !important;
-  outline: none !important;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2) !important;
-  border-radius: 12px !important;
-  overflow: hidden !important;
-}
-
-.el-dialog__header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-  border: none !important;
-  outline: none !important;
-  border-radius: 12px 12px 0 0 !important;
-}
-```
+新增视觉规则时只修改上述公共文件，并同步更新
+`docs/frontend/dialog-standards.md`。
 
 ---
 
@@ -207,24 +186,22 @@ const setCurrentTime = (field: string) => {
 
 ### ✅ 推荐做法
 
-1. **优先使用自定义模态框**
-   - 使用项目中的 `BaseModal` 组件
-   - 或参考 `/src/views/salary/SalaryView.vue` 的实现
-   - 完全可控样式，无白色边框问题
+1. **优先使用统一弹窗组件**
+   - 使用项目中的 `MobileDialog` 组件
+   - 原生 `el-dialog` 必须复用 `_dialog.scss`
+   - 复杂内容只定义业务布局，不复制弹窗外壳
 
 2. **模态框样式放在非 scoped 块**
    - 使用 `<style lang="scss">` 而非 `<style lang="scss" scoped>`
    - 或提取到全局样式文件
 
 3. **统一视觉风格**
-   - 头部渐变色：`linear-gradient(135deg, #667eea 0%, #764ba2 100%)`
-   - 遮罩层：`rgba(0, 0, 0, 0.5)`
-   - 圆角：`12px`
-   - 白色内容背景
+   - 头部、遮罩、圆角、阴影和正文背景统一读取 `_dialog.scss` 令牌
+   - 不在业务页面复制具体颜色、圆角或间距
 
 4. **全局配置**
    - 在 `main.ts` 中配置 Element Plus 中文语言包
-   - 在 `styles.css` 中添加 el-dialog 样式修复（备用）
+   - 由 `main.ts` 全局加载 `_dialog.scss` 和 `_dialog-actions.scss`
 
 ### ❌ 避免做法
 
@@ -237,9 +214,9 @@ const setCurrentTime = (field: string) => {
 
 ## 相关文件
 
-- **统一模态框样式**: `/frontend/src/assets/css/modal-styles.scss`
-- **BaseModal 组件**: `/frontend/src/components/BaseModal.vue`
-- **全局样式文件**: `/frontend/src/styles.css`
+- **统一模态框结构**: `/frontend/src/components/MobileDialog.vue`
+- **统一模态框样式**: `/frontend/src/styles/components/_dialog.scss`
+- **统一底部按钮**: `/frontend/src/styles/components/_dialog-actions.scss`
 - **参考实现**: `/frontend/src/views/salary/SalaryView.vue`
 - **本次修复**: `/frontend/src/views/subsidy/SubsidyView.vue`
 
@@ -249,7 +226,7 @@ const setCurrentTime = (field: string) => {
 
 当开发新的模态框时，确保：
 
-- [ ] 使用自定义模态框或 BaseModal 组件
+- [ ] 使用 MobileDialog 或统一 el-dialog
 - [ ] 模态框样式在非 scoped style 块中
 - [ ] 头部使用渐变色背景
 - [ ] 遮罩层为半透明黑色

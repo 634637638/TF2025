@@ -146,99 +146,14 @@
 ```
 
 ### 2. 模态框规范
+弹窗统一由 `frontend/src/components/MobileDialog.vue` 和
+`frontend/src/styles/components/_dialog.scss` 维护。该入口统一处理 PC、iPad、手机的宽度边界、
+标题栏、正文滚动、footer、安全区和按钮布局。底部操作使用
+`frontend/src/styles/components/_dialog-actions.scss`，页面只负责业务内容布局。
 
-#### 移动端 (375px - 767px)
-```scss
-.modal,
-.el-dialog,
-.modern-modal {
-  /* 移动端通用适配 */
-  @media (max-width: 767px) {
-    width: 95vw;
-    max-height: 90vh;
-    margin: 0 auto;
-    border-radius: 12px;
-
-    .modal-header,
-    .el-dialog__header,
-    .modern-modal-header {
-      padding: 16px 20px;
-      position: sticky;
-      top: 0;
-      z-index: 10;
-    }
-
-    .modal-body,
-    .el-dialog__body,
-    .modern-modal-body {
-      padding: 16px 20px;
-      max-height: calc(90vh - 140px);
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-    }
-
-    .modal-footer,
-    .el-dialog__footer,
-    .modern-modal-footer {
-      padding: 16px 20px;
-      position: sticky;
-      bottom: 0;
-    }
-  }
-
-  /* 统一移动端优化 - 所有手机 */
-  @media (max-width: 767px) {
-    width: 95vw;
-    max-height: 90vh;
-    border-radius: 12px;
-
-    .modal-header,
-    .el-dialog__header,
-    .modern-modal-header {
-      padding: 16px 20px;
-    }
-
-    .modal-body,
-    .el-dialog__body,
-    .modern-modal-body {
-      padding: 16px 20px;
-      max-height: calc(90vh - 140px);
-    }
-
-    .modal-footer,
-    .el-dialog__footer,
-    .modern-modal-footer {
-      padding: 16px 20px;
-    }
-  }
-
-  /* 小屏手机特殊优化 */
-  @media (max-width: 479px) {
-    width: 98vw;
-    max-height: 92vh;
-    border-radius: 8px;
-
-    .modal-header,
-    .el-dialog__header,
-    .modern-modal-header {
-      padding: 12px 16px;
-    }
-
-    .modal-body,
-    .el-dialog__body,
-    .modern-modal-body {
-      padding: 12px 16px;
-      max-height: calc(92vh - 120px);
-    }
-
-    .modal-footer,
-    .el-dialog__footer,
-    .modern-modal-footer {
-      padding: 12px 16px;
-    }
-  }
-}
-```
+不要在 `responsive.scss`、页面 `<style>` 或新组件中复制 `.el-dialog`、`.modal` 的通用外壳规则。
+新建弹窗请优先使用 `MobileDialog`；必须使用 `el-dialog` 时直接复用全局样式，并在移动端验证
+正文可滚动、footer 可操作和按钮不被安全区遮挡。
 
 ### 3. 表单规范
 

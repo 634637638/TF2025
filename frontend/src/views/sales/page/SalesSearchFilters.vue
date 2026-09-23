@@ -197,31 +197,16 @@
 
     <div
       v-if="canViewField('inventory_time')"
-      class="form-group filter-item"
+      class="form-group filter-item filter-item--date-range"
+      data-field="date_range"
     >
-      <el-date-picker
-        v-model="filters.start_date"
-        type="date"
-        placeholder="开始日期"
+      <DateRangePicker
+        v-model="dateRange"
+        start-placeholder="开始日期"
+        end-placeholder="结束日期"
         format="YYYY-MM-DD"
         value-format="YYYY-MM-DD"
-        :clearable="true"
-        style="width: 140px"
-        @change="emit('search')"
-      />
-    </div>
-
-    <div
-      v-if="canViewField('inventory_time')"
-      class="form-group filter-item"
-    >
-      <el-date-picker
-        v-model="filters.end_date"
-        type="date"
-        placeholder="结束日期"
-        format="YYYY-MM-DD"
-        value-format="YYYY-MM-DD"
-        :clearable="true"
+        clearable
         @change="emit('search')"
       />
     </div>
@@ -230,6 +215,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import DateRangePicker from '@/components/DateRangePicker.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import type { PhoneBrand, PhoneModel } from '@/types'
 import type {
@@ -277,6 +263,17 @@ const brandModels = computed(() => props.brandModels)
 const colors = computed(() => props.colors)
 const memories = computed(() => props.memories)
 const canViewField = (fieldName: string) => props.canViewField(fieldName)
+
+const dateRange = computed<[string, string] | [] | null>({
+  get: () => {
+    if (!props.filters.start_date && !props.filters.end_date) return null
+    return [props.filters.start_date, props.filters.end_date] as [string, string]
+  },
+  set: value => {
+    props.filters.start_date = value?.[0] || ''
+    props.filters.end_date = value?.[1] || ''
+  }
+})
 </script>
 
 <style scoped lang="scss">

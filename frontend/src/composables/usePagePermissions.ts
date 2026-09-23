@@ -106,6 +106,7 @@ export const usePagePermissions = (module: string) => {
   // 常用权限检查方法
   const canView = computed(() => hasPermission('view'))
   const canCreate = computed(() => hasPermission('create'))
+  const canSell = computed(() => hasPermission('sell'))
   const canEdit = computed(() => hasPermission('edit'))
   const canUpdate = computed(() => hasPermission('edit')) // edit 的语义别名，不创建 update 权限
   const canDelete = computed(() => hasPermission('delete'))
@@ -194,6 +195,7 @@ export const usePagePermissions = (module: string) => {
     // 权限状态（计算属性）
     canView,
     canCreate,
+    canSell,
     canEdit,
     canUpdate,
     canDelete,

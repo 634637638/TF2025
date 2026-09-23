@@ -51,7 +51,7 @@ import { initCSRFProtection } from '@/utils/csrf'
 import { initializeSiteSettings } from '@/stores/siteSettings'
 
 // 导入 Iconify 工具
-import { waitForIconify } from '@/utils/iconify'
+import { ensureIconAssets } from '@/utils/iconify'
 import { enhanceGlobalMessageBox } from '@/utils/message-box'
 import logger from '@/utils/logger'
 import { initAdminTableDragScroll } from '@/utils/admin-table-drag-scroll'
@@ -137,16 +137,6 @@ const initializeApp = async () => {
       logger.warn('站点设置初始化失败，使用公共默认配置', error)
     })
 
-    // 非关键初始化延后执行
-    setTimeout(async () => {
-      try {
-        // 等待 Iconify 加载
-        await waitForIconify(5000)
-      } catch (error) {
-        // Iconify 加载失败，静默处理
-      }
-    }, 100)
-
     // 初始化 Composable 工具集。该入口会导出较多工具，延后加载避免撑大首屏包。
     setTimeout(async () => {
       try {
@@ -218,6 +208,15 @@ const initializeApp = async () => {
         // 滚动动画初始化失败，静默处理
       }
     }, 400)
+
+    // 图标 CDN 只在离开登录页后加载，避免登录首屏产生无关外部请求。
+    const loadRouteIconAssets = (path: string) => {
+      if (path !== '/login' && !path.startsWith('/m/login')) {
+        void ensureIconAssets()
+      }
+    }
+    loadRouteIconAssets(router.currentRoute.value.path)
+    router.afterEach((to) => loadRouteIconAssets(to.path))
 
     // 添加到全局状态
     if (window.__TF2025__) {

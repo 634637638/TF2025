@@ -72,25 +72,14 @@
           </template>
 
           <!-- 日期范围 -->
-          <div class="form-group filter-item">
-            <el-date-picker
-              v-model="filterStartDate"
-              type="date"
-              placeholder="开始日期"
+          <div class="form-group filter-item filter-item--date-range" data-field="date_range">
+            <DateRangePicker
+              v-model="filterDateRange"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
               format="YYYY-MM-DD"
               value-format="YYYY-MM-DD"
-              :clearable="true"
-              @change="handleSearch"
-            />
-          </div>
-          <div class="form-group filter-item">
-            <el-date-picker
-              v-model="filterEndDate"
-              type="date"
-              placeholder="结束日期"
-              format="YYYY-MM-DD"
-              value-format="YYYY-MM-DD"
-              :clearable="true"
+              clearable
               @change="handleSearch"
             />
           </div>
@@ -265,6 +254,7 @@ import { unifiedApi } from '@/utils/unified-api'
 import { useImportExport } from '@/composables/useImportExport'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
 import { PermissionGate, PageHeader } from '@/components/base'
+import DateRangePicker from '@/components/DateRangePicker.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
@@ -288,6 +278,16 @@ const ANALYTICS_MODULE_KEY = 'analytics_analyticsview'
 const searchExpanded = ref(false)
 const filterStartDate = ref('')
 const filterEndDate = ref('')
+const filterDateRange = computed<[string, string] | [] | null>({
+  get: () => {
+    if (!filterStartDate.value && !filterEndDate.value) return null
+    return [filterStartDate.value, filterEndDate.value] as [string, string]
+  },
+  set: value => {
+    filterStartDate.value = value?.[0] || ''
+    filterEndDate.value = value?.[1] || ''
+  }
+})
 const filterQuickSelect = ref('')
 const filterStoreId = ref('')
 const filterSupplierId = ref('')

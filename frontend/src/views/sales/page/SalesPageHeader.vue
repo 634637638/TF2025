@@ -7,7 +7,7 @@
       <el-button
         :type="batchMode ? 'success' : 'primary'"
         :plain="!batchMode"
-        :disabled="!canCreate"
+        :disabled="!canSell"
         @click="emit('toggle-batch-mode')"
       >
         <i :class="batchMode ? 'fas fa-check-square' : 'fas fa-mobile-alt'" />
@@ -58,7 +58,7 @@ import { PageHeader } from '@/components/base'
 defineProps<{
   batchMode: boolean
   selectedCount: number
-  canCreate: boolean
+  canSell: boolean
   canExport: boolean
   exportLoading: boolean
   refreshing: boolean

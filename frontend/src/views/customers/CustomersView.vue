@@ -227,7 +227,7 @@
             <!-- 注册日期范围筛选 -->
             <div
               v-if="canViewField('created_at')"
-              class="form-group filter-item"
+              class="form-group filter-item filter-item--date-range"
               data-field="register_date"
             >
               <DateRangePicker

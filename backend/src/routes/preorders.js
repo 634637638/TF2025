@@ -56,6 +56,7 @@ const getPreorderHiddenFields = async (req) => {
 }
 
 const PREORDER_WRITE_FIELD_IDS = {
+  created_by: 'operator_info.operator_name',
   customer_id: 'customer_info.customer_name',
   store_id: 'store_info.store_name',
   brand_id: 'product_info.brand_name',
@@ -300,7 +301,9 @@ router.get('/', unifiedAuth, requirePermission('preorders:view'), async (req, re
         ${PREORDER_RESPONSE_FIELDS.map(field => `p.${field}`).join(',\n        ')},
         c.name as customer_name,
         c.phone as customer_phone,
-        u.name as operator_name,
+        COALESCE(creator.name, creator.username) as preorder_person_name,
+        COALESCE(sale_operator.name, sale_operator.username) as sales_operator_name,
+        COALESCE(sale_operator.name, sale_operator.username) as operator_name,
         st.name as store_name,
         br.name as brand_name,
         mo.name as model_name,
@@ -322,7 +325,8 @@ router.get('/', unifiedAuth, requirePermission('preorders:view'), async (req, re
         END as remaining_amount
       FROM preorders p
       LEFT JOIN customers c ON p.customer_id = c.id
-      LEFT JOIN users u ON p.operator_id = u.id
+      LEFT JOIN users creator ON p.created_by = creator.id
+      LEFT JOIN users sale_operator ON p.operator_id = sale_operator.id
       LEFT JOIN stores st ON p.store_id = st.id
       LEFT JOIN brands br ON p.brand_id = br.id
       LEFT JOIN models mo ON p.model_id = mo.id
@@ -512,10 +516,13 @@ router.get('/matchable', unifiedAuth, requirePermission('preorders:match'), asyn
         p.total_price,
         p.created_at,
         DATEDIFF(COALESCE(p.expected_arrival, DATE_ADD(p.created_at, INTERVAL 30 DAY)), CURDATE()) as days_remaining,
-        u.name as operator_name
+        COALESCE(creator.name, creator.username) as preorder_person_name,
+        COALESCE(sale_operator.name, sale_operator.username) as sales_operator_name,
+        COALESCE(sale_operator.name, sale_operator.username) as operator_name
       FROM preorders p
       LEFT JOIN customers c ON p.customer_id = c.id
-      LEFT JOIN users u ON p.operator_id = u.id
+      LEFT JOIN users creator ON p.created_by = creator.id
+      LEFT JOIN users sale_operator ON p.operator_id = sale_operator.id
       LEFT JOIN brands br ON p.brand_id = br.id
       LEFT JOIN models mo ON p.model_id = mo.id
       LEFT JOIN colors co ON p.color_id = co.id
@@ -549,7 +556,7 @@ router.get('/:id/matchable-phones', unifiedAuth, requirePermission('preorders:ma
     connection = await pool.getConnection()
 
     const [preorders] = await connection.execute(
-      `SELECT id, status, brand_id, model_id, color_id, memory_id, is_new
+      `SELECT id, status, matched_phone_id, brand_id, model_id, color_id, memory_id, is_new
        FROM preorders
        WHERE id = ?`,
       [req.params.id]
@@ -583,8 +590,15 @@ router.get('/:id/matchable-phones', unifiedAuth, requirePermission('preorders:ma
        LEFT JOIN colors c ON p.color_id = c.id
        LEFT JOIN memories mem ON p.memory_id = mem.id
        LEFT JOIN stores st ON p.store_id = st.id
-       WHERE p.status = 'in_stock'
+       WHERE p.status IN ('in_stock', 'reserved')
          AND (COALESCE(p.is_preordered, 0) = 0 OR p.id = ?)
+         AND NOT EXISTS (
+           SELECT 1
+           FROM preorders active_preorder
+           WHERE active_preorder.matched_phone_id = p.id
+             AND active_preorder.status IN ('pending', 'arrived')
+             AND active_preorder.id <> ?
+         )
          AND p.brand_id = ?
          AND p.model_id = ?
          AND p.color_id = ?
@@ -595,6 +609,7 @@ router.get('/:id/matchable-phones', unifiedAuth, requirePermission('preorders:ma
       [
         preorder.matched_phone_id || 0,
         preorder.matched_phone_id || 0,
+        preorder.id,
         preorder.brand_id,
         preorder.model_id,
         preorder.color_id,
@@ -631,7 +646,9 @@ router.get('/:id', unifiedAuth, requirePermission('preorders:view'), async (req,
         ${PREORDER_RESPONSE_FIELDS.map(field => `p.${field}`).join(',\n        ')},
         c.name as customer_name,
         c.phone as customer_phone,
-        u.name as operator_name,
+        COALESCE(creator.name, creator.username) as preorder_person_name,
+        COALESCE(sale_operator.name, sale_operator.username) as sales_operator_name,
+        COALESCE(sale_operator.name, sale_operator.username) as operator_name,
         br.name as brand_name,
         mo.name as model_name,
         co.name as color_name,
@@ -650,7 +667,8 @@ router.get('/:id', unifiedAuth, requirePermission('preorders:view'), async (req,
         END as remaining_amount
       FROM preorders p
       LEFT JOIN customers c ON p.customer_id = c.id
-      LEFT JOIN users u ON p.operator_id = u.id
+      LEFT JOIN users creator ON p.created_by = creator.id
+      LEFT JOIN users sale_operator ON p.operator_id = sale_operator.id
       LEFT JOIN brands br ON p.brand_id = br.id
       LEFT JOIN models mo ON p.model_id = mo.id
       LEFT JOIN colors co ON p.color_id = co.id
@@ -685,6 +703,7 @@ router.post('/', unifiedAuth, requirePermission('preorders:create'), rejectHidde
     const {
       customer_id,
       store_id,
+      created_by,
       brand_id,
       model_id,
       color_id,
@@ -778,6 +797,21 @@ router.post('/', unifiedAuth, requirePermission('preorders:create'), rejectHidde
 
     // 获取当前用户ID和店铺ID
     const userId = req.user?.sub || req.user?.id
+    const preorderPersonId = created_by === undefined || created_by === null || created_by === ''
+      ? userId
+      : Number(created_by)
+
+    if (!Number.isSafeInteger(Number(preorderPersonId)) || Number(preorderPersonId) <= 0) {
+      return ApiResponse.badRequest(res, '预定人编号无效')
+    }
+
+    const [preorderPersonRows] = await connection.execute(
+      'SELECT id FROM users WHERE id = ? AND status = 1',
+      [preorderPersonId]
+    )
+    if (preorderPersonRows.length === 0) {
+      return ApiResponse.badRequest(res, '预定人不存在或已停用')
+    }
     await connection.beginTransaction()
 
     try {
@@ -799,8 +833,14 @@ router.post('/', unifiedAuth, requirePermission('preorders:create'), rejectHidde
            AND color_id = ?
            AND memory_id = ?
            AND is_new = ?
-           AND status = 'in_stock'
+           AND status IN ('in_stock', 'reserved')
            AND COALESCE(is_preordered, 0) = 0
+           AND NOT EXISTS (
+             SELECT 1
+             FROM preorders active_preorder
+             WHERE active_preorder.matched_phone_id = phones.id
+               AND active_preorder.status IN ('pending', 'arrived')
+           )
          ORDER BY id ASC
          LIMIT 1
          FOR UPDATE`,
@@ -831,8 +871,8 @@ router.post('/', unifiedAuth, requirePermission('preorders:create'), rejectHidde
         // 标记手机为已预定
         const [phoneUpdate] = await connection.execute(
           `UPDATE phones
-           SET is_preordered = 1
-           WHERE id = ? AND status = 'in_stock' AND COALESCE(is_preordered, 0) = 0`,
+           SET status = 'in_stock', is_preordered = 1
+           WHERE id = ? AND status IN ('in_stock', 'reserved') AND COALESCE(is_preordered, 0) = 0`,
           [matchedPhoneId]
         )
 
@@ -866,8 +906,8 @@ router.post('/', unifiedAuth, requirePermission('preorders:create'), rejectHidde
           normalizedExpectedArrival,
           initialStatus,
           remarks || null,
-          userId,
-          userId,
+          null,
+          preorderPersonId,
           matchedPhoneId,
           matchedImei,
           initialStatus === PREORDER_STATUS.MATCHED ? new Date() : null
@@ -970,9 +1010,24 @@ router.put('/:id/match', unifiedAuth, requirePermission('preorders:match'), reje
 
     const phone = phoneResult[0]
     const isSamePhone = previousPhoneId !== null && previousPhoneId === Number(phone.id)
-    if (phone.status !== 'in_stock' || (Number(phone.is_preordered) === 1 && !isSamePhone)) {
+    if (!['in_stock', 'reserved'].includes(phone.status) || (Number(phone.is_preordered) === 1 && !isSamePhone)) {
       await connection.rollback()
       return ApiResponse.badRequest(res, '设备已售出或已被其他预定单占用')
+    }
+
+    const [otherActivePreorders] = await connection.execute(
+      `SELECT id
+       FROM preorders
+       WHERE matched_phone_id = ?
+         AND status IN ('pending', 'arrived')
+         AND id <> ?
+       LIMIT 1
+       FOR UPDATE`,
+      [phone.id, id]
+    )
+    if (otherActivePreorders.length > 0) {
+      await connection.rollback()
+      return ApiResponse.badRequest(res, '设备已被其他预定单占用')
     }
 
     // 更换前锁定并确认旧设备仍未出库。旧设备已销售时不能再更换，
@@ -986,7 +1041,7 @@ router.put('/:id/match', unifiedAuth, requirePermission('preorders:match'), reje
         [previousPhoneId]
       )
 
-      if (previousPhoneResult.length === 0 || previousPhoneResult[0].status !== 'in_stock') {
+      if (previousPhoneResult.length === 0 || !['in_stock', 'reserved'].includes(previousPhoneResult[0].status)) {
         await connection.rollback()
         return ApiResponse.badRequest(res, '原匹配设备已销售或已出库，不能更换匹配设备')
       }
@@ -1027,7 +1082,7 @@ router.put('/:id/match', unifiedAuth, requirePermission('preorders:match'), reje
       const [releaseResult] = await connection.execute(
         `UPDATE phones
          SET is_preordered = 0
-         WHERE id = ? AND status = 'in_stock' AND COALESCE(is_preordered, 0) = 1`,
+         WHERE id = ? AND status IN ('in_stock', 'reserved') AND COALESCE(is_preordered, 0) = 1`,
         [previousPhoneId]
       )
 
@@ -1053,8 +1108,8 @@ router.put('/:id/match', unifiedAuth, requirePermission('preorders:match'), reje
 
     const [phoneUpdate] = await connection.execute(
       `UPDATE phones
-       SET is_preordered = 1
-       WHERE id = ? AND status = 'in_stock' AND (COALESCE(is_preordered, 0) = 0 OR id = ?)`,
+         SET is_preordered = 1
+       WHERE id = ? AND status IN ('in_stock', 'reserved') AND (COALESCE(is_preordered, 0) = 0 OR id = ?)`,
       [phone.id, phone.id]
     )
 
@@ -1122,7 +1177,7 @@ router.put('/:id/cancel', unifiedAuth, requirePermission('preorders:cancel'), as
     try {
       // 检查预定单状态
       const [preorderResult] = await connection.execute(
-        `SELECT ${PREORDER_CORE_FIELDS.join(', ')} FROM preorders WHERE id = ?`,
+        `SELECT ${PREORDER_CORE_FIELDS.join(', ')} FROM preorders WHERE id = ? FOR UPDATE`,
         [id]
       )
 
@@ -1145,16 +1200,36 @@ router.put('/:id/cancel', unifiedAuth, requirePermission('preorders:cancel'), as
 
       // 如果已匹配手机，释放手机（通过 matched_phone_id）
       if (preorder.matched_phone_id) {
-        await connection.execute(
-          'UPDATE phones SET is_preordered = 0 WHERE id = ?',
-          [preorder.matched_phone_id]
+        const [releaseResult] = await connection.execute(
+          `UPDATE phones
+           SET status = 'in_stock', is_preordered = 0
+           WHERE id = ?
+             AND status IN ('in_stock', 'reserved')
+             AND NOT EXISTS (
+               SELECT 1
+               FROM preorders active_preorder
+               WHERE active_preorder.matched_phone_id = phones.id
+                 AND active_preorder.status IN ('pending', 'arrived')
+                 AND active_preorder.id <> ?
+             )`,
+          [preorder.matched_phone_id, id]
         )
+        if (releaseResult.affectedRows !== 1) {
+          await connection.rollback()
+          return ApiResponse.badRequest(res, '匹配设备仍被其他预定单占用，无法取消')
+        }
       }
 
       // 更新预定单状态
       await connection.execute(
         `UPDATE preorders SET
           status = '${PREORDER_STATUS.CANCELLED}',
+          matched_phone_id = NULL,
+          imei = NULL,
+          matched_time = NULL,
+          arrival_date = NULL,
+          actual_model = NULL,
+          actual_price = NULL,
           cancelled_at = NOW(),
           cancel_reason = ?,
           updated_at = NOW()
@@ -1198,22 +1273,26 @@ router.put('/:id', unifiedAuth, requirePermission('preorders:edit'), rejectHidde
 
     const pool = require('../config/database').getDatabase()
     connection = await pool.getConnection()
+    await connection.beginTransaction()
 
-    // 检查预定单是否存在
+    // 锁定订单，避免编辑和匹配/取消并发覆盖绑定关系。
     const [existingRecords] = await connection.execute(
-      'SELECT id, status FROM preorders WHERE id = ?',
+      `SELECT id, status, matched_phone_id, brand_id, model_id, color_id, memory_id, is_new
+       FROM preorders WHERE id = ? FOR UPDATE`,
       [id]
     )
 
     if (existingRecords.length === 0) {
+      await connection.rollback()
       return ApiResponse.notFound(res, '预定单不存在')
     }
 
     const preorder = existingRecords[0]
 
-    // 只允许编辑待匹配状态的预定单
-    if (preorder.status !== PREORDER_STATUS.PENDING) {
-      return ApiResponse.badRequest(res, '只能编辑待匹配状态的预定单')
+    // 交付前允许修正客户和商品规格；规格变化会释放旧设备并重新进入待匹配。
+    if (![PREORDER_STATUS.PENDING, PREORDER_STATUS.MATCHED].includes(preorder.status)) {
+      await connection.rollback()
+      return ApiResponse.badRequest(res, '只能编辑待匹配或已匹配的预定单')
     }
 
     const updateData = req.body
@@ -1223,20 +1302,24 @@ router.put('/:id', unifiedAuth, requirePermission('preorders:edit'), rejectHidde
     const legacyFields = ['expected_price', 'advance_payment', 'deposit', 'phone_model', 'color', 'storage', 'notes', 'customer_name', 'customer_phone']
     const receivedLegacyField = legacyFields.find(field => Object.prototype.hasOwnProperty.call(updateData || {}, field))
     if (receivedLegacyField) {
+      await connection.rollback()
       return ApiResponse.badRequest(res, `字段 ${receivedLegacyField} 已废弃，请使用统一字段`)
     }
 
     if (updateData.expected_arrival && !isValidDateOnly(updateData.expected_arrival)) {
+      await connection.rollback()
       return ApiResponse.badRequest(res, '预计到货日期格式必须为 YYYY-MM-DD')
     }
 
     if (updateData.is_new !== undefined && ![0, 1].includes(Number(updateData.is_new))) {
+      await connection.rollback()
       return ApiResponse.badRequest(res, '机况必须为全新或二手')
     }
 
     if (updateData.deposit_amount !== undefined) {
       const normalizedDepositAmount = Number(updateData.deposit_amount)
       if (!Number.isFinite(normalizedDepositAmount) || normalizedDepositAmount <= 0) {
+        await connection.rollback()
         return ApiResponse.badRequest(res, '请输入有效的定金金额')
       }
       updateData.deposit_amount = normalizedDepositAmount
@@ -1245,14 +1328,41 @@ router.put('/:id', unifiedAuth, requirePermission('preorders:edit'), rejectHidde
     if (updateData.total_price !== undefined && updateData.total_price !== null && updateData.total_price !== '') {
       const normalizedTotalPrice = Number(updateData.total_price)
       if (!Number.isFinite(normalizedTotalPrice) || normalizedTotalPrice < 0) {
+        await connection.rollback()
         return ApiResponse.badRequest(res, '销售价格格式不正确')
       }
       updateData.total_price = normalizedTotalPrice
     }
 
+    if (updateData.customer_id !== undefined) {
+      const normalizedCustomerId = Number(updateData.customer_id)
+      if (!Number.isInteger(normalizedCustomerId) || normalizedCustomerId <= 0) {
+        await connection.rollback()
+        return ApiResponse.badRequest(res, '客户编号无效')
+      }
+
+      const [customerRecords] = await connection.execute(
+        'SELECT id FROM customers WHERE id = ?',
+        [normalizedCustomerId]
+      )
+      if (customerRecords.length === 0) {
+        await connection.rollback()
+        return ApiResponse.notFound(res, '客户不存在')
+      }
+      updateData.customer_id = normalizedCustomerId
+    }
+
+    const specificationFields = ['brand_id', 'model_id', 'color_id', 'memory_id', 'is_new']
+    const specificationChanged = preorder.status === PREORDER_STATUS.MATCHED && specificationFields.some(field => (
+      updateData[field] !== undefined && Number(updateData[field]) !== Number(preorder[field])
+    ))
+    const staleMatchNeedsClearing = specificationChanged || (
+      preorder.status === PREORDER_STATUS.PENDING && Boolean(preorder.matched_phone_id)
+    )
+
     // 只允许统一字段进入预定 CRUD。
     const allowedFields = [
-      'customer_id', 'store_id', 'brand_id', 'model_id', 'color_id', 'memory_id', 'is_new',
+      'customer_id', 'store_id', 'created_by', 'brand_id', 'model_id', 'color_id', 'memory_id', 'is_new',
       'expected_arrival', 'total_price', 'deposit_amount', 'remarks'
     ]
 
@@ -1263,8 +1373,58 @@ router.put('/:id', unifiedAuth, requirePermission('preorders:edit'), rejectHidde
       }
     }
 
+    if (updateData.created_by !== undefined) {
+      const normalizedCreatedBy = Number(updateData.created_by)
+      if (!Number.isSafeInteger(normalizedCreatedBy) || normalizedCreatedBy <= 0) {
+        await connection.rollback()
+        return ApiResponse.badRequest(res, '预定人编号无效')
+      }
+      const [creatorRows] = await connection.execute(
+        'SELECT id FROM users WHERE id = ? AND status = 1',
+        [normalizedCreatedBy]
+      )
+      if (creatorRows.length === 0) {
+        await connection.rollback()
+        return ApiResponse.badRequest(res, '预定人不存在或已停用')
+      }
+      updateData.created_by = normalizedCreatedBy
+    }
+
     if (updateFields.length === 0) {
+      await connection.rollback()
       return ApiResponse.badRequest(res, '没有提供要更新的字段')
+    }
+
+    if (staleMatchNeedsClearing) {
+      if (preorder.matched_phone_id) {
+        const [releaseResult] = await connection.execute(
+          `UPDATE phones
+           SET status = 'in_stock', is_preordered = 0
+           WHERE id = ?
+             AND status IN ('in_stock', 'reserved')
+             AND NOT EXISTS (
+               SELECT 1
+               FROM preorders active_preorder
+               WHERE active_preorder.matched_phone_id = phones.id
+                 AND active_preorder.status IN ('pending', 'arrived')
+                 AND active_preorder.id <> ?
+             )`,
+          [preorder.matched_phone_id, id]
+        )
+        if (releaseResult.affectedRows !== 1 && preorder.status === PREORDER_STATUS.MATCHED) {
+          await connection.rollback()
+          return ApiResponse.badRequest(res, '原匹配设备无法释放，请刷新后重试')
+        }
+      }
+      updateFields.push(
+        `status = '${PREORDER_STATUS.PENDING}'`,
+        'matched_phone_id = NULL',
+        'imei = NULL',
+        'matched_time = NULL',
+        'arrival_date = NULL',
+        'actual_model = NULL',
+        'actual_price = NULL'
+      )
     }
 
     updateFields.push('updated_at = NOW()')
@@ -1277,14 +1437,22 @@ router.put('/:id', unifiedAuth, requirePermission('preorders:edit'), rejectHidde
     `
 
     await connection.execute(updateQuery, updateValues)
+    await connection.commit()
 
     // 获取更新后的记录
     const [updatedRecords] = await connection.execute(`
       SELECT ${PREORDER_CORE_FIELDS.join(', ')} FROM preorders WHERE id = ?
     `, [id])
 
-    ApiResponse.success(res, await maskPreorderItem(updatedRecords[0], req), '预定单更新成功')
+    ApiResponse.success(
+      res,
+      await maskPreorderItem(updatedRecords[0], req),
+      staleMatchNeedsClearing ? '原匹配已解除，请按当前商品规格重新匹配库存' : '预定单更新成功'
+    )
   } catch (error) {
+    if (connection) {
+      try { await connection.rollback() } catch (rollbackError) {}
+    }
     log.error('更新预定单失败:', error)
     ApiResponse.serverError(res, '更新预定单失败', error)
   } finally {
@@ -1305,14 +1473,20 @@ router.put('/:id/restore', unifiedAuth, requirePermission('preorders:edit'), asy
 
     const pool = require('../config/database').getDatabase()
     connection = await pool.getConnection()
+    await connection.beginTransaction()
 
-    // 检查预定单是否存在
+    // 锁定订单，恢复时必须把历史匹配关系一起清理。
     const [existingRecords] = await connection.execute(
-      'SELECT id, status, preorder_number FROM preorders WHERE id = ?',
+      `SELECT id, status, matched_phone_id, preorder_number,
+              brand_id, model_id, color_id, memory_id, is_new
+       FROM preorders
+       WHERE id = ?
+       FOR UPDATE`,
       [id]
     )
 
     if (existingRecords.length === 0) {
+      await connection.rollback()
       return ApiResponse.notFound(res, '预定单不存在')
     }
 
@@ -1320,14 +1494,108 @@ router.put('/:id/restore', unifiedAuth, requirePermission('preorders:edit'), asy
 
     // 只允许恢复已取消的预定单
     if (preorder.status !== PREORDER_STATUS.CANCELLED) {
+      await connection.rollback()
       return ApiResponse.badRequest(res, '只能恢复已取消状态的预定单')
     }
 
-    // 恢复预定单状态为待匹配
-    await connection.execute(
-      `UPDATE preorders SET status = '${PREORDER_STATUS.PENDING}', cancelled_at = NULL, cancel_reason = NULL, updated_at = NOW() WHERE id = ?`,
-      [id]
+    // 取消期间如果设备仍保持库存状态，释放它的预定占用；无论设备当前状态如何，
+    // 订单上的历史绑定都必须清空，恢复后只能按当前规格重新匹配。
+    if (preorder.matched_phone_id) {
+      await connection.execute(
+        `UPDATE phones
+         SET status = 'in_stock', is_preordered = 0
+         WHERE id = ?
+           AND status IN ('in_stock', 'reserved')
+           AND NOT EXISTS (
+             SELECT 1
+             FROM preorders active_preorder
+             WHERE active_preorder.matched_phone_id = phones.id
+               AND active_preorder.status IN ('pending', 'arrived')
+               AND active_preorder.id <> ?
+           )`,
+        [preorder.matched_phone_id, id]
+      )
+    }
+
+    // 恢复后按订单当前规格重新寻找库存。只要没有被其他有效预定占用，
+    // 即使历史状态是 reserved，也允许作为可匹配库存重新使用。
+    const [matchingPhones] = await connection.execute(
+      `SELECT
+         p.id,
+         p.imei,
+         b.name AS brand_name,
+         m.name AS model_name
+       FROM phones p
+       LEFT JOIN brands b ON b.id = p.brand_id
+       LEFT JOIN models m ON m.id = p.model_id
+       WHERE p.status IN ('in_stock', 'reserved')
+         AND COALESCE(p.is_preordered, 0) = 0
+         AND NOT EXISTS (
+           SELECT 1
+           FROM preorders active_preorder
+           WHERE active_preorder.matched_phone_id = p.id
+             AND active_preorder.status IN ('pending', 'arrived')
+         )
+         AND p.brand_id = ?
+         AND p.model_id = ?
+         AND p.color_id = ?
+         AND p.memory_id = ?
+         AND p.is_new = ?
+       ORDER BY p.inventory_time ASC, p.id ASC
+       LIMIT 1
+       FOR UPDATE`,
+      [
+        preorder.brand_id,
+        preorder.model_id,
+        preorder.color_id,
+        preorder.memory_id,
+        Number(preorder.is_new) === 0 ? 0 : 1
+      ]
     )
+
+    const matchedPhone = matchingPhones[0] || null
+    if (matchedPhone) {
+      const [phoneUpdate] = await connection.execute(
+        `UPDATE phones
+         SET status = 'in_stock', is_preordered = 1
+         WHERE id = ?
+           AND status IN ('in_stock', 'reserved')
+           AND COALESCE(is_preordered, 0) = 0`,
+        [matchedPhone.id]
+      )
+
+      if (phoneUpdate.affectedRows !== 1) {
+        await connection.rollback()
+        return ApiResponse.badRequest(res, '库存设备刚刚被占用，请重新恢复')
+      }
+    }
+
+    // 恢复预定单时清除历史绑定，并写入按当前规格重新匹配的结果。
+    await connection.execute(
+      `UPDATE preorders SET
+         status = ?,
+         matched_phone_id = ?,
+         imei = ?,
+         matched_time = CASE WHEN ? IS NULL THEN NULL ELSE NOW() END,
+         arrival_date = CASE WHEN ? IS NULL THEN NULL ELSE CURDATE() END,
+         actual_model = ?,
+         actual_price = NULL,
+         cancelled_at = NULL,
+         cancel_reason = NULL,
+         updated_at = NOW()
+       WHERE id = ?`,
+      [
+        matchedPhone ? PREORDER_STATUS.MATCHED : PREORDER_STATUS.PENDING,
+        matchedPhone?.id || null,
+        matchedPhone?.imei || null,
+        matchedPhone?.id || null,
+        matchedPhone?.id || null,
+        matchedPhone ? [matchedPhone.brand_name, matchedPhone.model_name].filter(Boolean).join(' ') : null,
+        id
+      ]
+    )
+
+    await connection.commit()
 
     // 获取更新后的记录
     const [updatedRecords] = await connection.execute(`
@@ -1335,7 +1603,9 @@ router.put('/:id/restore', unifiedAuth, requirePermission('preorders:edit'), asy
         ${PREORDER_RESPONSE_FIELDS.map(field => `p.${field}`).join(',\n        ')},
         c.name as customer_name,
         c.phone as customer_phone,
-        u.name as operator_name,
+        COALESCE(creator.name, creator.username) as preorder_person_name,
+        COALESCE(sale_operator.name, sale_operator.username) as sales_operator_name,
+        COALESCE(sale_operator.name, sale_operator.username) as operator_name,
         st.name as store_name,
         br.name as brand_name,
         mo.name as model_name,
@@ -1352,7 +1622,8 @@ router.put('/:id/restore', unifiedAuth, requirePermission('preorders:edit'), asy
         END as status_text
       FROM preorders p
       LEFT JOIN customers c ON p.customer_id = c.id
-      LEFT JOIN users u ON p.operator_id = u.id
+      LEFT JOIN users creator ON p.created_by = creator.id
+      LEFT JOIN users sale_operator ON p.operator_id = sale_operator.id
       LEFT JOIN stores st ON p.store_id = st.id
       LEFT JOIN brands br ON p.brand_id = br.id
       LEFT JOIN models mo ON p.model_id = mo.id
@@ -1363,8 +1634,15 @@ router.put('/:id/restore', unifiedAuth, requirePermission('preorders:edit'), asy
       WHERE p.id = ?
     `, [id])
 
-    ApiResponse.success(res, await maskPreorderItem(updatedRecords[0], req), '预定单已恢复')
+    ApiResponse.success(
+      res,
+      await maskPreorderItem(updatedRecords[0], req),
+      matchedPhone ? '预定单已恢复，并已按当前商品规格自动匹配库存' : '预定单已恢复，当前无可用库存，后续入库后将自动匹配'
+    )
   } catch (error) {
+    if (connection) {
+      try { await connection.rollback() } catch (rollbackError) {}
+    }
     log.error('恢复预定单失败:', error)
     ApiResponse.serverError(res, '恢复预定单失败', error)
   } finally {

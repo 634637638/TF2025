@@ -831,11 +831,11 @@ class ShopPublicService {
 
   async getBrands(includeEmpty = false) {
     let query = `
-      SELECT b.id, b.name,
+      SELECT b.id, b.name, b.sort_order,
              COUNT(DISTINCT p.id) as product_count
       FROM brands b
       LEFT JOIN phones p ON b.id = p.brand_id AND p.status = 'in_stock'
-      GROUP BY b.id
+      GROUP BY b.id, b.name, b.sort_order
     `
 
     // 只在有商品时过滤
@@ -844,7 +844,7 @@ class ShopPublicService {
     }
 
     query += `
-      ORDER BY b.sort_order ASC, b.name ASC
+      ORDER BY b.sort_order ASC, b.name ASC, b.id ASC
     `
     const [brands] = await db.getDatabase().query(query)
     return brands
@@ -852,7 +852,7 @@ class ShopPublicService {
 
   async getModels(brandId = null, includeEmpty = false) {
     let query = `
-      SELECT m.id, m.name, m.brand_id,
+      SELECT m.id, m.name, m.brand_id, m.sort_order,
              COUNT(DISTINCT p.id) as product_count
       FROM models m
       LEFT JOIN phones p ON m.id = p.model_id AND p.status = 'in_stock'
@@ -866,7 +866,7 @@ class ShopPublicService {
     }
 
     query += `
-      GROUP BY m.id
+      GROUP BY m.id, m.name, m.brand_id, m.sort_order
     `
 
     // 只在有商品时过滤
@@ -875,7 +875,7 @@ class ShopPublicService {
     }
 
     query += `
-      ORDER BY m.name ASC
+      ORDER BY m.sort_order ASC, m.name ASC, m.id ASC
     `
 
     const [models] = await db.getDatabase().query(query, params)
@@ -884,11 +884,11 @@ class ShopPublicService {
 
   async getColors(includeEmpty = false) {
     let query = `
-      SELECT c.id, c.name,
+      SELECT c.id, c.name, c.sort_order,
              COUNT(DISTINCT p.id) as product_count
       FROM colors c
       LEFT JOIN phones p ON c.id = p.color_id AND p.status = 'in_stock'
-      GROUP BY c.id
+      GROUP BY c.id, c.name, c.sort_order
     `
 
     // 只在有商品时过滤
@@ -897,7 +897,7 @@ class ShopPublicService {
     }
 
     query += `
-      ORDER BY c.sort_order ASC, c.name ASC
+      ORDER BY c.sort_order ASC, c.name ASC, c.id ASC
     `
     const [colors] = await db.getDatabase().query(query)
     return colors
@@ -905,9 +905,9 @@ class ShopPublicService {
 
   async getMemories() {
     const query = `
-      SELECT m.id, m.size as name
+      SELECT m.id, m.size as name, m.sort_order
       FROM memories m
-      ORDER BY m.sort_order ASC, m.size ASC
+      ORDER BY m.sort_order ASC, m.size ASC, m.id ASC
     `
     const [memories] = await db.getDatabase().query(query)
     return memories

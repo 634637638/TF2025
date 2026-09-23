@@ -265,32 +265,16 @@
 
           <div
             v-if="canViewPaymentField('sale_time')"
-            class="form-group filter-item"
-            data-field="start_date"
+            class="form-group filter-item filter-item--date-range"
+            data-field="date_range"
           >
-            <el-date-picker
-              v-model="filters.start_date"
-              type="date"
-              placeholder="开始日期"
-              format="YYYY-M-D"
-              value-format="YYYY-M-D"
-              :clearable="true"
-              @change="handleFilterChange"
-            />
-          </div>
-
-          <div
-            v-if="canViewPaymentField('sale_time')"
-            class="form-group filter-item"
-            data-field="end_date"
-          >
-            <el-date-picker
-              v-model="filters.end_date"
-              type="date"
-              placeholder="结束日期"
-              format="YYYY-M-D"
-              value-format="YYYY-M-D"
-              :clearable="true"
+            <DateRangePicker
+              v-model="paymentDateRange"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              format="YYYY-MM-DD"
+              value-format="YYYY-MM-DD"
+              clearable
               @change="handleFilterChange"
             />
           </div>
@@ -1696,6 +1680,7 @@ import { useMobile } from '@/composables/mobile'
 import { useLoadingState } from '@/composables'
 import { useAuthStore } from '@/stores/auth'
 import Pagination from '@/components/Pagination.vue'
+import DateRangePicker from '@/components/DateRangePicker.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import { PaymentMethodSelect } from '@/components/payment'
@@ -2316,6 +2301,17 @@ const filters = reactive({
   payment_status: 'all',  // 默认显示全部（已打款和未打款）
   start_date: '',  // 开始时间
   end_date: ''     // 结束时间
+})
+
+const paymentDateRange = computed<[string, string] | [] | null>({
+  get: () => {
+    if (!filters.start_date && !filters.end_date) return null
+    return [filters.start_date, filters.end_date] as [string, string]
+  },
+  set: value => {
+    filters.start_date = value?.[0] || ''
+    filters.end_date = value?.[1] || ''
+  }
 })
 
 const hasPaymentFilterValue = (value: unknown) => value !== undefined && value !== null && String(value).trim() !== ''

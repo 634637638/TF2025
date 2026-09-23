@@ -281,7 +281,7 @@
                 <!-- 日期范围筛选 -->
                 <div
                   v-if="canViewAttendanceField('attendance_attendanceview', 'record_date')"
-                  class="form-group filter-item"
+                  class="form-group filter-item filter-item--date-range"
                   data-field="date"
                 >
                   <DateRangePicker
@@ -673,7 +673,7 @@
                 <!-- 日期范围筛选 -->
                 <div
                   v-if="canViewAttendanceField('attendance_myattendanceview', 'record_date')"
-                  class="form-group filter-item"
+                  class="form-group filter-item filter-item--date-range"
                   data-field="date"
                 >
                   <DateRangePicker

@@ -37,7 +37,9 @@
 // 页面权限格式：module_viewname:action
 'sales_salesview:view'
 'sales_salesview:create'
+'sales_salesview:sell' // 销售出库
 'inventory_inventoryview:edit'
+'inventory_inventoryview:sell' // 库存出库
 'permissions_permissionsview:manage'
 
 // 菜单权限格式

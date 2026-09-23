@@ -1,6 +1,6 @@
 const express = require('express')
 const router = express.Router()
-const { unifiedAuth, requirePermission } = require('../middleware/unified-auth')
+const { unifiedAuth, requirePermission, requireAnyPermission } = require('../middleware/unified-auth')
 const { getDatabase } = require('../config/database')
 const { generateInvoiceNumber } = require('../utils/invoice-number')
 const { normalizeDateTime } = require('../utils/time')
@@ -899,16 +899,10 @@ router.get('/phones/available/export', unifiedAuth, requirePermission('sales:exp
   }
 })
 
-const requirePreorderDeliveryWhenLinked = (req, res, next) => {
-  if (!req.body?.preorder_id) {
-    return next()
-  }
-
-  return requirePermission('preorders:deliver')(req, res, next)
-}
-
 // 手机销售出库（支持单个和批量销售）
-router.post('/phone', unifiedAuth, requirePermission('sales:create'), requirePreorderDeliveryWhenLinked, async (req, res) => {
+// 预定设备从销售、库存或预定页面均可出库；统一使用 sales:create 权限。
+// 预定客户、匹配设备和预定状态仍在事务内严格校验，不能通过权限放宽绕过绑定关系。
+router.post('/phone', unifiedAuth, requireAnyPermission(['sales:sell', 'inventory:sell']), async (req, res) => {
   try {
     const {
       phone_id,  // 单个设备ID（兼容性）
@@ -1354,6 +1348,7 @@ router.post('/phone', unifiedAuth, requirePermission('sales:create'), requirePre
              actual_price = ?,
              delivered_time = ?,
              operator_id = ?,
+             sale_id = ?,
              remaining_amount = ?,
              updated_at = NOW()
            WHERE id = ?`,
@@ -1361,6 +1356,7 @@ router.post('/phone', unifiedAuth, requirePermission('sales:create'), requirePre
             actualPrice,
             saleTimeStr,
             operator_id || req.user.id,
+            saleId,
             remainingAmount,
             parseInt(preorder_id)
           ]
@@ -1656,7 +1652,8 @@ router.get('/phones/available/stats', unifiedAuth, requirePermission('sales:view
       message: '获取统计数据成功',
       data: {
         total_value: parseFloat(totalValueResult[0].total_value) || 0,
-        today_sold: todaySoldResult[0].today_sold || 0,
+        // mysql2 可能将 COUNT(*) 返回为字符串，接口契约统一输出 number。
+        today_sold: Number(todaySoldResult[0].today_sold) || 0,
         avg_profit_margin: avgProfitMargin
       }
     })

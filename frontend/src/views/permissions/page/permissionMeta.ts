@@ -210,8 +210,8 @@ const PERMISSION_META_MAP: Record<string, PermissionMeta> = {
   },
   sell: {
     icon: 'fas fa-cash-register',
-    name: '销售',
-    description: '执行销售操作'
+    name: '出库',
+    description: '执行销售出库操作'
   },
   sync: {
     icon: 'fas fa-rotate',

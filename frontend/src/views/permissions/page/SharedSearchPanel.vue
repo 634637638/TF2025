@@ -229,7 +229,7 @@
 
       <div
         v-if="ctx.canViewPermissionsField('logs.created_at')"
-        class="form-group filter-item"
+        class="form-group filter-item filter-item--date-range"
       >
         <DateRangePicker
           v-model="ctx.logSearchForm.dateRange"

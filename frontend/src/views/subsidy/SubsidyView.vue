@@ -399,7 +399,7 @@
 
           <div
             v-if="canViewField('sale_time')"
-            class="form-group filter-item"
+            class="form-group filter-item filter-item--date-range"
             data-field="sale_time"
           >
             <DateRangePicker
@@ -415,7 +415,7 @@
 
           <div
             v-if="canViewField('apply_time')"
-            class="form-group filter-item"
+            class="form-group filter-item filter-item--date-range"
             data-field="apply_time"
           >
             <DateRangePicker
@@ -432,7 +432,7 @@
           <!-- 到账时间 -->
           <div
             v-if="canViewField('arrival_time')"
-            class="form-group filter-item"
+            class="form-group filter-item filter-item--date-range"
             data-field="arrival_time"
           >
             <DateRangePicker

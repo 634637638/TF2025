@@ -28,21 +28,25 @@ router.get('/stats/summary', requirePermission('attendance:view:all'),
 
 // 获取考勤仪表盘汇总统计 - 所有认证用户
 router.get('/stats/dashboard',
+  requireAnyPermission(['attendance:view', 'attendance:view:own', 'attendance:view:all']),
   AttendanceController.getDashboardStats.bind(AttendanceController)
 )
 
 // 获取待审批统计 - 仪表盘使用
 router.get('/pending-stats',
+  requireAnyPermission(['attendance:view', 'attendance:view:own', 'attendance:view:all']),
   AttendanceController.getPendingStats.bind(AttendanceController)
 )
 
 // 获取用户休假余额 - 所有认证用户
 router.get('/leave-balance',
+  requireAnyPermission(['attendance:view', 'attendance:view:own', 'attendance:view:all']),
   AttendanceController.getUserLeaveBalance.bind(AttendanceController)
 )
 
 // 获取休假配置 - 所有认证用户
 router.get('/leave-config',
+  requireAnyPermission(['attendance:view', 'attendance:view:own', 'attendance:view:all']),
   AttendanceController.getLeaveConfig.bind(AttendanceController)
 )
 
@@ -69,6 +73,7 @@ router.delete('/:id', requirePermission('attendance:delete'),
 
 // 取消考勤申请（所有认证用户 - 只能取消自己待审批的申请）
 router.post('/:id/cancel',
+  requireAnyPermission(['attendance:create', 'attendance:view', 'attendance:view:own']),
   AttendanceController.cancelAttendanceRequest.bind(AttendanceController)
 )
 

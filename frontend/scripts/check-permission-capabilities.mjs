@@ -212,7 +212,8 @@ const actionByCapability = {
   Sync: 'sync',
   Match: 'match',
   Deliver: 'deliver',
-  Cancel: 'cancel'
+  Cancel: 'cancel',
+  Sell: 'sell'
 }
 
 const walkSourceFiles = (directory, files = []) => {
@@ -244,14 +245,14 @@ for (const sourcePath of walkSourceFiles(resolve(frontendRoot, 'src'))) {
     .map(match => match[1])
 
   for (const match of source.matchAll(/const\s*\{([\s\S]*?)\}\s*=\s*usePagePermissions\(\s*['"]([^'"]+)['"]\s*\)/g)) {
-    for (const capability of match[1].matchAll(/\bcan(View|Create|Edit|Update|Delete|Export|Import|Approve|Manage|Sync|Match|Deliver|Cancel)\b/g)) {
+    for (const capability of match[1].matchAll(/\bcan(View|Create|Edit|Update|Delete|Export|Import|Approve|Manage|Sync|Match|Deliver|Cancel|Sell)\b/g)) {
       validateActionUse(match[2], actionByCapability[capability[1]], sourcePath)
     }
   }
 
   for (const match of source.matchAll(/const\s+(\w+)\s*=\s*usePagePermissions\(\s*['"]([^'"]+)['"]\s*\)/g)) {
     const variable = match[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    const capabilityPattern = new RegExp(`\\b${variable}\\.can(View|Create|Edit|Update|Delete|Export|Import|Approve|Manage|Sync|Match|Deliver|Cancel)\\b`, 'g')
+    const capabilityPattern = new RegExp(`\\b${variable}\\.can(View|Create|Edit|Update|Delete|Export|Import|Approve|Manage|Sync|Match|Deliver|Cancel|Sell)\\b`, 'g')
     for (const capability of source.matchAll(capabilityPattern)) {
       validateActionUse(match[2], actionByCapability[capability[1]], sourcePath)
     }
@@ -272,6 +273,13 @@ for (const sourcePath of walkSourceFiles(resolve(projectRoot, 'backend/src/route
     const action = match[2].split(':')[0]
     // permissions:admin 是后端现有的组合授权别名，不是页面按钮能力。
     if (modules[moduleKey] && actionDefinitions[action]) validateActionUse(match[1], action, sourcePath)
+  }
+  for (const match of source.matchAll(/requireAnyPermission\(\s*\[([\s\S]*?)\]/g)) {
+    for (const permission of match[1].matchAll(/['"]([^:'"]+):([^'"]+)['"]/g)) {
+      const moduleKey = resolveModuleKey(permission[1])
+      const action = permission[2].split(':')[0]
+      if (modules[moduleKey] && actionDefinitions[action]) validateActionUse(permission[1], action, sourcePath)
+    }
   }
 }
 

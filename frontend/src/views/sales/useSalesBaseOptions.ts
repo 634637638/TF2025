@@ -204,9 +204,8 @@ export const useSalesBaseOptions = () => {
       const modelRecords = response.success
         ? extractResponseData<SalesModelRecord[]>(response)
         : []
-      brandModels.value = (Array.isArray(modelRecords) ? modelRecords : [])
-        .filter(model => model && model.status === 1 && model.name)
-        .sort((left, right) => (left.sort_order || 0) - (right.sort_order || 0))
+      brandModels.value = sortOptionsByOrder((Array.isArray(modelRecords) ? modelRecords : [])
+        .filter(model => model && model.status === 1 && model.name))
         .map(model => ({ id: model.id, name: model.name } as PhoneModel))
     } catch (error) {
       logger.error('获取品牌型号失败:', error)
@@ -245,9 +244,8 @@ export const useSalesBaseOptions = () => {
       const modelRecords = modelsResponse.success
         ? extractResponseData<SalesModelRecord[]>(modelsResponse)
         : []
-      editBrandModels.value = (Array.isArray(modelRecords) ? modelRecords : [])
-        .filter(model => model && model.status === 1 && model.name)
-        .sort((left, right) => (left.sort_order || 0) - (right.sort_order || 0))
+      editBrandModels.value = sortOptionsByOrder((Array.isArray(modelRecords) ? modelRecords : [])
+        .filter(model => model && model.status === 1 && model.name))
         .map(model => String(model.name).trim())
     } catch (error) {
       logger.error('编辑弹窗获取品牌型号失败:', error)

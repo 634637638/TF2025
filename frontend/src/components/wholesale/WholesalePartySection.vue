@@ -46,43 +46,24 @@
             prop="customer_name"
             required
           >
-            <div class="customer-name-group">
-              <el-input
-                :ref="customerNameInputRef"
-                v-model="formData.customer_name"
-                name="wholesale-customer-name"
-                placeholder=""
-                :readonly="!selectedCustomer && !customerCreating ? true : !customerNameEditing"
-                @dblclick="enableCustomerNameEdit"
-                @touchend="handleCustomerNameTouchEnd"
-                @input="handleCustomerNameInput"
-                @blur="handleCustomerNameBlur"
-              >
-                <template #prefix>
-                  <i class="fas fa-user" />
-                </template>
-              </el-input>
-              <el-button
-                v-if="customerNameEditing"
-                class="customer-lock-button"
-                type="success"
-                plain
-                title="当前已解锁，点击保存并锁定"
-                @click="saveCustomerNameEdit"
-              >
-                <i class="fas fa-lock-open" />
-              </el-button>
-              <el-button
-                v-if="selectedCustomer !== null && !customerNameEditing"
-                class="customer-lock-button"
-                type="info"
-                plain
-                title="当前已锁定，点击清除客户选择"
-                @click="clearSelectedCustomer"
-              >
-                <i class="fas fa-lock" />
-              </el-button>
-            </div>
+            <CustomerNameLockInput
+              :ref="customerNameInputRef"
+              v-model="formData.customer_name"
+              name="wholesale-customer-name"
+              :selected="selectedCustomer !== null"
+              :editing="customerNameEditing"
+              :creating="customerCreating"
+              @unlock="enableCustomerNameEdit"
+              @touchend="handleCustomerNameTouchEnd"
+              @input="handleCustomerNameInput"
+              @blur="handleCustomerNameBlur"
+              @save="saveCustomerNameEdit"
+              @clear="clearSelectedCustomer"
+            >
+              <template #prefix>
+                <i class="fas fa-user" />
+              </template>
+            </CustomerNameLockInput>
           </el-form-item>
         </el-col>
       </el-row>
@@ -318,43 +299,24 @@
             label="客户姓名"
             prop="customer_name"
           >
-            <div class="customer-name-group">
-              <el-input
-                :ref="customerNameInputRef"
-                v-model="formData.customer_name"
-                name="wholesale-customer-name"
-                placeholder=""
-                :readonly="!selectedCustomer && !customerCreating ? true : !customerNameEditing"
-                @dblclick="enableCustomerNameEdit"
-                @touchend="handleCustomerNameTouchEnd"
-                @input="handleCustomerNameInput"
-                @blur="handleCustomerNameBlur"
-              >
-                <template #prefix>
-                  <i class="fas fa-user" />
-                </template>
-              </el-input>
-              <el-button
-                v-if="customerNameEditing"
-                class="customer-lock-button"
-                type="success"
-                plain
-                title="当前已解锁，点击保存并锁定"
-                @click="saveCustomerNameEdit"
-              >
-                <i class="fas fa-lock-open" />
-              </el-button>
-              <el-button
-                v-if="selectedCustomer !== null && !customerNameEditing"
-                class="customer-lock-button"
-                type="info"
-                plain
-                title="当前已锁定，点击清除客户选择"
-                @click="clearSelectedCustomer"
-              >
-                <i class="fas fa-lock" />
-              </el-button>
-            </div>
+            <CustomerNameLockInput
+              :ref="customerNameInputRef"
+              v-model="formData.customer_name"
+              name="wholesale-customer-name"
+              :selected="selectedCustomer !== null"
+              :editing="customerNameEditing"
+              :creating="customerCreating"
+              @unlock="enableCustomerNameEdit"
+              @touchend="handleCustomerNameTouchEnd"
+              @input="handleCustomerNameInput"
+              @blur="handleCustomerNameBlur"
+              @save="saveCustomerNameEdit"
+              @clear="clearSelectedCustomer"
+            >
+              <template #prefix>
+                <i class="fas fa-user" />
+              </template>
+            </CustomerNameLockInput>
           </el-form-item>
         </el-col>
       </el-row>
@@ -363,6 +325,7 @@
 </template>
 
 <script setup lang="ts">
+import CustomerNameLockInput from '@/components/common/CustomerNameLockInput.vue'
 import CustomerSearchDropdown from '@/components/common/CustomerSearchDropdown.vue'
 import { PaymentChannelSelect, PaymentMethodSelect } from '@/components/payment'
 import type { Store, User } from '@/types'
@@ -537,42 +500,6 @@ defineProps<Props>()
   background: var(--tf-color-border-muted);
 }
 
-.customer-name-group {
-  display: flex;
-  align-items: stretch;
-}
-
-.customer-name-group :deep(.el-input) {
-  flex: 1;
-}
-
-.customer-name-group :deep(.el-input__wrapper) {
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
-}
-
-.customer-lock-button {
-  width: 36px !important;
-  min-width: 36px !important;
-  height: 36px !important;
-  padding: 0 !important;
-  flex: 0 0 36px !important;
-  border-top-left-radius: 0 !important;
-  border-bottom-left-radius: 0 !important;
-}
-
-.customer-lock-button :deep(.el-button__content) {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.customer-lock-button i {
-  font-size: 14px;
-}
-
 :deep(.customer-search-form-item) .el-form-item__content {
   position: relative !important;
 }
@@ -600,17 +527,6 @@ defineProps<Props>()
   }
 
   :deep(.el-form-item__label) {
-    font-size: 13px;
-  }
-
-  .customer-lock-button {
-    width: 32px !important;
-    min-width: 32px !important;
-    height: 32px !important;
-    flex-basis: 32px !important;
-  }
-
-  .customer-lock-button i {
     font-size: 13px;
   }
 

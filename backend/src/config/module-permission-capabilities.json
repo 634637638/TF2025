@@ -6,6 +6,7 @@
   "actionOrder": [
     "view",
     "create",
+    "sell",
     "return-to-stock",
     "wholesale",
     "proxy-transfer",
@@ -20,7 +21,6 @@
     "manage",
     "export",
     "import",
-    "sell",
     "sync"
   ],
   "actionDefinitions": {
@@ -82,7 +82,7 @@
     "backup_backupview": ["view", "create", "delete"],
     "data_optimization_dataoptimizationview": ["view", "create", "edit", "delete"],
     "menu_menumanagementview": ["view", "create", "edit", "delete", "export", "import"],
-    "sales_salesview": ["view", "create", "wholesale", "proxy-transfer", "edit", "delete", "export"],
+    "sales_salesview": ["view", "create", "sell", "wholesale", "proxy-transfer", "edit", "delete", "export"],
     "models_modelsview": ["view", "create", "edit", "delete"],
     "colors_colorsview": ["view", "create", "edit", "delete"],
     "memories_memoriesview": ["view", "create", "edit", "delete"],
@@ -91,7 +91,7 @@
     "employees_employeesview": ["view", "create", "edit", "delete", "export"],
     "customers_customersview": ["view", "create", "edit", "delete", "manage", "export"],
     "accessories_accessoriesview": ["view", "create", "edit", "delete"],
-    "inventory_inventoryview": ["view", "create", "edit", "delete", "export"],
+    "inventory_inventoryview": ["view", "create", "sell", "edit", "delete", "export"],
     "query_queryview": ["view", "create", "return-to-stock", "edit", "delete", "export"],
     "permissions_permissionsview": ["view", "create", "edit", "delete"],
     "permissions_modulemanagementview": ["view", "create", "edit", "delete"],

@@ -15,11 +15,14 @@
       label-width="100px"
       class="preorder-form"
     >
-      <!-- 手机号 + 店铺 -->
+      <!-- 客户、销售店铺、预定人 -->
       <el-row :gutter="20">
         <el-col
+          :xs="12"
+          :sm="12"
+          :md="12"
+          class="preorder-top-field"
           v-if="canViewPreorderField('customer_phone')"
-          :span="12"
         >
           <el-form-item
             label="手机号"
@@ -31,7 +34,7 @@
                 type="tel"
                 placeholder="请输入手机号"
                 maxlength="11"
-                :disabled="isEditMode"
+                :readonly="selectedCustomer !== null"
                 @input="handleCustomerInput"
                 @keyup.enter="handleCustomerEnter"
                 @focus="showCustomerSearch = true"
@@ -39,7 +42,7 @@
               <CustomerSearchDropdown
                 :items="customerSearchResults"
                 :loading="customerSearching"
-                :visible="!isEditMode && showCustomerSearch && !selectedCustomer"
+                :visible="showCustomerSearch && !selectedCustomer"
                 :keyword="formData.customer_phone"
                 :min-query-length="3"
                 @select="selectCustomer"
@@ -50,11 +53,48 @@
         </el-col>
 
         <el-col
-          v-if="canViewPreorderField('store_name')"
-          :span="12"
+          :xs="12"
+          :sm="12"
+          :md="12"
+          class="preorder-top-field"
+          v-if="canViewPreorderField('customer_name')"
         >
           <el-form-item
-            label="预定店铺"
+            label="姓名"
+            prop="customer_name"
+          >
+            <CustomerNameLockInput
+              ref="customerNameInputRef"
+              v-model="formData.customer_name"
+              name="preorder-customer-name"
+              placeholder="请输入客户姓名"
+              maxlength="20"
+              show-word-limit
+              :selected="selectedCustomer !== null"
+              :editing="customerNameEditing"
+              :allow-unselected-edit="selectedCustomer === null"
+              @unlock="enableCustomerNameEdit"
+              @touchend="handleCustomerNameTouchEnd"
+              @input="handleNameInput"
+              @blur="handleCustomerNameBlur"
+              @save="saveCustomerNameEdit"
+              @clear="clearSelectedCustomer"
+            />
+          </el-form-item>
+        </el-col>
+
+      </el-row>
+
+      <el-row :gutter="20">
+        <el-col
+          :xs="12"
+          :sm="12"
+          :md="12"
+          class="preorder-top-field"
+          v-if="canViewPreorderField('store_name')"
+        >
+          <el-form-item
+            label="销售店铺"
             prop="store_id"
           >
             <el-select
@@ -73,56 +113,34 @@
             </el-select>
           </el-form-item>
         </el-col>
-      </el-row>
-
-      <!-- 姓名 -->
-      <el-form-item
-        v-if="canViewPreorderField('customer_name')"
-        label="姓名"
-        prop="customer_name"
-      >
-        <el-input
-          ref="customerNameInputRef"
-          v-model="formData.customer_name"
-          placeholder="请输入客户姓名"
-          :disabled="isEditMode || !!selectedCustomer"
-          maxlength="20"
-          show-word-limit
-          @input="handleNameInput"
+        <el-col
+          :xs="12"
+          :sm="12"
+          :md="12"
+          class="preorder-top-field"
+          v-if="canViewPreorderField('operator_name')"
         >
-          <template
-            v-if="selectedCustomer"
-            #suffix
+          <el-form-item
+            label="预定人"
+            prop="created_by"
           >
-            <el-tag
-              type="success"
-              size="small"
+            <el-select
+              v-model="formData.created_by"
+              placeholder="请选择预定人"
+              class="w-full"
+              filterable
+              clearable
             >
-              已选择客户
-            </el-tag>
-          </template>
-        </el-input>
-        <div
-          v-if="selectedCustomer && !isEditMode"
-          class="text-secondary text-xs"
-        >
-          已选择：{{ selectedCustomer.name }} ({{ selectedCustomer.phone }})
-          <el-link
-            type="danger"
-            class="ml-2"
-            @click="clearSelectedCustomer"
-          >
-            清除
-          </el-link>
-        </div>
-        <div
-          v-else-if="!isEditMode && formData.customer_phone.length >= 3 && customerSearchResults.length === 0 && !customerSearching"
-          class="text-success text-xs"
-        >
-          <i class="fas fa-user-plus" />
-          输入姓名后将自动创建新客户
-        </div>
-      </el-form-item>
+              <el-option
+                v-for="operator in operators"
+                :key="operator.id"
+                :label="operator.name || operator.username"
+                :value="operator.id"
+              />
+            </el-select>
+          </el-form-item>
+        </el-col>
+      </el-row>
 
       <!-- 品牌 + 型号 -->
       <el-row :gutter="20">
@@ -337,7 +355,7 @@
               v-model="formData.remarks"
               placeholder="请输入备注信息"
               :type="isEditMode ? 'textarea' : 'text'"
-              :rows="isEditMode ? 3 : undefined"
+              :autosize="isEditMode ? { minRows: 1, maxRows: 4 } : undefined"
             />
           </el-form-item>
         </el-col>
@@ -378,6 +396,8 @@ import {
 } from '../preorder-field-permissions'
 import { unifiedApi } from '@/utils/unified-api'
 import { sortOptionsByOrder } from '@/utils/option-sort'
+import { useAuthStore } from '@/stores/auth'
+import CustomerNameLockInput from '@/components/common/CustomerNameLockInput.vue'
 import CustomerSearchDropdown from '@/components/common/CustomerSearchDropdown.vue'
 import { logger } from '@/utils/logger'
 import type { ModalProps, SuccessEmits, UpdateVisibleEmits } from '@/types'
@@ -392,6 +412,7 @@ const props = withDefaults(defineProps<Props>(), {
   preorder: null
 })
 const emit = defineEmits<UpdateVisibleEmits & SuccessEmits>()
+const authStore = useAuthStore()
 
 const isEditMode = computed(() => props.mode === 'edit')
 const modalTitle = computed(() => isEditMode.value ? '编辑预定单' : '新建预定单')
@@ -410,6 +431,8 @@ const showCustomerSearch = ref(false)
 
 const customerSearchResults = ref<any[]>([])
 const selectedCustomer = ref<any>(null)
+const customerNameEditing = ref(false)
+const customerNameLastTapAt = ref(0)
 const customerSearchTimeout = ref<number | null>(null)
 const latestSearchKeyword = ref('')
 const baseDataLoaded = ref(false)
@@ -445,12 +468,14 @@ const brands = ref<any[]>([])
 const models = ref<any[]>([])
 const colors = ref<any[]>([])
 const memories = ref<any[]>([])
+const operators = ref<any[]>([])
 
 const formData = reactive<any>({
   customer_id: null,
   customer_phone: '',
   customer_name: '',
   store_id: null,
+  created_by: null,
   brand_id: null,
   model_id: null,
   color_id: null,
@@ -490,7 +515,7 @@ const formRules = {
     ValidationRules.required('请输入手机号'),
     {
       validator: (_rule: any, value: string, callback: any) => {
-        if (isEditMode.value || selectedCustomer.value) {
+        if (selectedCustomer.value) {
           callback()
           return
         }
@@ -509,7 +534,7 @@ const formRules = {
     ValidationRules.required('请输入客户姓名'),
     {
       validator: (_rule: any, value: string, callback: any) => {
-        if (isEditMode.value || selectedCustomer.value) {
+        if (selectedCustomer.value && !isEditMode.value) {
           callback()
           return
         }
@@ -594,12 +619,23 @@ const loadBaseData = async () => {
     const modelsData = Array.isArray(options?.models) ? options.models : []
     const colorsData = Array.isArray(options?.colors) ? options.colors : []
     const memoriesData = Array.isArray(options?.memories) ? options.memories : []
+    const operatorResponse = await unifiedApi.get('/users/operators')
+    const operatorData = Array.isArray(operatorResponse.data) ? operatorResponse.data : []
+    const currentUser = authStore.user
+    if (currentUser?.id && !operatorData.some((operator: any) => Number(operator.id) === Number(currentUser.id))) {
+      operatorData.push({
+        id: currentUser.id,
+        name: currentUser.name || currentUser.username,
+        username: currentUser.username
+      })
+    }
 
     stores.value = sortOptionsByOrder(storesData)
     brands.value = sortOptionsByOrder(brandsData)
     models.value = sortOptionsByOrder(Array.isArray(modelsData) ? modelsData : [])
     colors.value = sortOptionsByOrder(Array.isArray(colorsData) ? colorsData : [])
     memories.value = sortOptionsByOrder(Array.isArray(memoriesData) ? memoriesData : [], { labelKeys: ['size', 'capacity', 'name'] })
+    operators.value = sortOptionsByOrder(operatorData)
     baseDataLoaded.value = true
   } catch (err) {
     logger.error('加载基础数据失败:', err)
@@ -608,6 +644,7 @@ const loadBaseData = async () => {
     models.value = []
     colors.value = []
     memories.value = []
+    operators.value = []
     ElMessage.error('预订单选项加载失败，请刷新后重试')
   }
 }
@@ -627,8 +664,6 @@ const handleModelChange = () => {
 
 // 客户输入处理
 const handleCustomerInput = (value: string) => {
-  if (isEditMode.value) return
-
   const cleanedValue = normalizeCustomerPhone(value)
   formData.customer_phone = cleanedValue
 
@@ -657,13 +692,62 @@ const handleCustomerInput = (value: string) => {
 
 // 姓名输入处理
 const handleNameInput = (value: string) => {
-  if (isEditMode.value) return
   formData.customer_name = normalizePersonName(value, 20)
+}
+
+const enableCustomerNameEdit = () => {
+  if (!selectedCustomer.value) return
+  customerNameEditing.value = true
+  nextTick(() => customerNameInputRef.value?.focus())
+}
+
+const handleCustomerNameTouchEnd = () => {
+  const now = Date.now()
+  const interval = now - customerNameLastTapAt.value
+  customerNameLastTapAt.value = now
+  if (interval > 0 && interval < 320) enableCustomerNameEdit()
+}
+
+const handleCustomerNameBlur = () => {
+  if (customerNameEditing.value && selectedCustomer.value) {
+    void saveCustomerNameEdit()
+  }
+}
+
+const saveCustomerNameEdit = async () => {
+  if (!selectedCustomer.value) {
+    customerNameEditing.value = false
+    return
+  }
+
+  const normalizedName = normalizePersonName(formData.customer_name, 20)
+  if (!normalizedName) {
+    ElMessage.warning('客户姓名不能为空')
+    return
+  }
+
+  if (normalizedName === normalizePersonName(selectedCustomer.value.name || '', 20)) {
+    customerNameEditing.value = false
+    return
+  }
+
+  try {
+    const response = await unifiedApi.put(`/customers/${selectedCustomer.value.id}`, {
+      name: normalizedName
+    })
+    if (!response.success) throw new Error(response.message || '更新客户失败')
+    formData.customer_name = normalizedName
+    selectedCustomer.value.name = normalizedName
+    ElMessage.success('客户姓名更新成功')
+  } catch (error: any) {
+    ElMessage.error(error?.response?.data?.message || error?.message || '更新客户失败')
+  } finally {
+    customerNameEditing.value = false
+  }
 }
 
 // 客户回车搜索
 const handleCustomerEnter = () => {
-  if (isEditMode.value) return
   if (formData.customer_phone.length >= 3) {
     searchCustomers(formData.customer_phone)
   }
@@ -698,14 +782,13 @@ const searchCustomers = async (keyword: string) => {
 
 // 选择客户
 const selectCustomer = (customer: any) => {
-  if (isEditMode.value) return
-
   selectedCustomer.value = customer
   formData.customer_id = customer.id
   formData.customer_name = normalizePersonName(customer.name, 20)
   formData.customer_phone = normalizeCustomerPhone(customer.phone)
   showCustomerSearch.value = false
   customerSearchResults.value = []
+  customerNameEditing.value = false
 
   nextTick(() => {
     formRef.value?.clearValidate('customer_phone')
@@ -720,14 +803,13 @@ const prepareNewCustomer = () => {
 
 // 清除选择的客户
 const clearSelectedCustomer = () => {
-  if (isEditMode.value) return
-
   selectedCustomer.value = null
   formData.customer_id = null
   formData.customer_name = ''
   formData.customer_phone = ''
   showCustomerSearch.value = false
   customerSearchResults.value = []
+  customerNameEditing.value = false
 }
 
 // 重置表单
@@ -737,12 +819,15 @@ const resetForm = () => {
     customerSearchTimeout.value = null
   }
   latestSearchKeyword.value = ''
+  customerNameEditing.value = false
+  customerNameLastTapAt.value = 0
 
   Object.assign(formData, {
     customer_id: null,
     customer_phone: '',
     customer_name: '',
     store_id: null,
+    created_by: authStore.user?.id || null,
     brand_id: null,
     model_id: null,
     color_id: null,
@@ -762,6 +847,7 @@ const resetForm = () => {
 const fillFormData = (preorder: Preorder) => {
   Object.assign(formData, {
     store_id: preorder.store_id || null,
+    created_by: preorder.created_by || preorder.preorder_person_id || authStore.user?.id || null,
     customer_id: preorder.customer_id || null,
     customer_name: normalizePersonName(preorder.customer_name || '', 20),
     customer_phone: normalizeCustomerPhone(preorder.customer_phone || ''),
@@ -775,6 +861,11 @@ const fillFormData = (preorder: Preorder) => {
     expected_arrival: preorder.expected_arrival || preorder.arrival_date || null,
     remarks: preorder.remarks || ''
   })
+  selectedCustomer.value = preorder.customer_id ? {
+    id: preorder.customer_id,
+    name: normalizePersonName(preorder.customer_name || '', 20),
+    phone: normalizeCustomerPhone(preorder.customer_phone || '')
+  } : null
 }
 
 // 提交表单
@@ -838,6 +929,7 @@ const handleCreateSubmit = async () => {
   const payload = pickVisiblePreorderFields({
     customer_id: customerId,
     store_id: formData.store_id,
+    created_by: formData.created_by,
     brand_id: formData.brand_id,
     model_id: formData.model_id,
     color_id: formData.color_id,
@@ -858,7 +950,8 @@ const handleCreateSubmit = async () => {
     total_price: 'total_price',
     deposit_amount: 'deposit_amount',
     expected_arrival: 'expected_arrival',
-    remarks: 'remarks'
+    remarks: 'remarks',
+    created_by: 'operator_name'
   })
 
   await preorderApi.createPreorder(payload as CreatePreorderParams)
@@ -907,9 +1000,10 @@ const handleEditSubmit = async () => {
     throw new Error('客户信息保存失败')
   }
 
-  const payload = pickVisiblePreorderFields({
+  const editableValues = {
     customer_id: customerId,
     store_id: formData.store_id,
+    created_by: formData.created_by,
     brand_id: formData.brand_id,
     model_id: formData.model_id,
     color_id: formData.color_id,
@@ -919,7 +1013,9 @@ const handleEditSubmit = async () => {
     deposit_amount: formData.deposit_amount,
     expected_arrival: formatDateOnly(formData.expected_arrival),
     remarks: formData.remarks
-  }, {
+  }
+
+  const payload = pickVisiblePreorderFields(editableValues, {
     customer_id: 'customer_name',
     store_id: 'store_name',
     brand_id: 'brand_name',
@@ -930,7 +1026,8 @@ const handleEditSubmit = async () => {
     total_price: 'total_price',
     deposit_amount: 'deposit_amount',
     expected_arrival: 'expected_arrival',
-    remarks: 'remarks'
+    remarks: 'remarks',
+    created_by: 'operator_name'
   })
 
   await preorderApi.updatePreorder(props.preorder.id, payload)

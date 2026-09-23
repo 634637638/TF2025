@@ -1,7 +1,7 @@
 const express = require('express')
 const router = express.Router()
 const crypto = require('crypto')
-const { getDatabase } = require('../config/database')
+const { getDatabase, isConnected } = require('../config/database')
 const { verifyToken } = require('../middleware/jwt-blacklist')
 const log = require('../utils/log')
 
@@ -424,6 +424,11 @@ function optionalCSRFValidation(req, res, next) {
  * 清理数据库中的所有过期 Token
  */
 async function cleanupAllExpiredTokens() {
+  if (!isConnected()) {
+    log.debug('数据库尚未连接，跳过本轮 CSRF Token 清理')
+    return
+  }
+
   try {
     const db = getDatabase()
     const [result] = await db.execute(
@@ -438,14 +443,13 @@ async function cleanupAllExpiredTokens() {
 }
 
 // 启动定期清理任务（每30分钟清理一次）
-setInterval(cleanupAllExpiredTokens, CSRF_CONFIG.CLEANUP_INTERVAL)
+const csrfCleanupTimer = setInterval(cleanupAllExpiredTokens, CSRF_CONFIG.CLEANUP_INTERVAL)
+csrfCleanupTimer.unref?.()
 
 // 启动时立即执行一次清理
 setTimeout(() => {
   log.debug('🔄 CSRF Token 定期清理任务已启动，每30分钟清理一次过期数据')
-  cleanupAllExpiredTokens().catch(err => {
-    log.warn('启动时CSRF Token清理失败（非致命错误）:', err.message)
-  })
+  cleanupAllExpiredTokens()
 }, 5000)
 
 module.exports = {

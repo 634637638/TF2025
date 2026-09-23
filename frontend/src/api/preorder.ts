@@ -48,6 +48,11 @@ export interface Preorder {
   remarks?: string
   operator_id?: number
   operator_name?: string
+  preorder_person_id?: number
+  preorder_person_name?: string
+  sales_operator_id?: number
+  sales_operator_name?: string
+  created_by?: number
   matched_phone_id?: number
   cancelled_at?: string
   matched_time?: string
@@ -75,6 +80,7 @@ export interface CreatePreorderParams {
   deposit_amount: number
   remarks?: string
   expected_arrival?: string
+  created_by?: number
 }
 
 // 匹配预定单参数

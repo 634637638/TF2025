@@ -38,41 +38,22 @@
           class="form-group"
         >
           <label class="form-label">客户姓名</label>
-          <div class="input-group">
-            <el-input
-              ref="customerNameInputRef"
-              v-model="saleForm.customer_name"
-              name="sale-customer-name"
-              placeholder=""
-              :readonly="preorderDelivery || (!selectedCustomer && !customerCreating ? true : !customerNameEditing)"
-              :class="{ editable: !preorderDelivery && (selectedCustomer || customerCreating), locked: preorderDelivery }"
-              @dblclick="!preorderDelivery && emit('enable-name-edit', $event)"
-              @touchend="!preorderDelivery && emit('name-touch-end', $event)"
-              @input="!preorderDelivery && emit('name-input', $event)"
-              @blur="!preorderDelivery && emit('name-blur')"
-              @keyup.enter="!preorderDelivery && emit('save-name')"
-            />
-            <el-button
-              v-if="customerNameEditing"
-              class="customer-lock-button"
-              type="success"
-              plain
-              title="当前已解锁，点击保存并锁定"
-              @click="emit('save-name')"
-            >
-              <i class="fas fa-lock-open" />
-            </el-button>
-            <el-button
-              v-if="selectedCustomer !== null && !customerNameEditing && !preorderDelivery"
-              class="customer-lock-button"
-              type="info"
-              plain
-              title="当前已锁定，点击清除客户选择"
-              @click="emit('clear-customer')"
-            >
-              <i class="fas fa-lock" />
-            </el-button>
-          </div>
+          <CustomerNameLockInput
+            ref="customerNameInputRef"
+            v-model="saleForm.customer_name"
+            name="sale-customer-name"
+            :selected="selectedCustomer !== null"
+            :editing="customerNameEditing"
+            :creating="customerCreating"
+            :locked="preorderDelivery"
+            :clearable="!preorderDelivery"
+            @unlock="emit('enable-name-edit', $event)"
+            @touchend="emit('name-touch-end', $event)"
+            @input="emit('name-input', $event)"
+            @blur="emit('name-blur')"
+            @save="emit('save-name')"
+            @clear="emit('clear-customer')"
+          />
         </div>
       </div>
 
@@ -280,6 +261,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import CustomerNameLockInput from '@/components/common/CustomerNameLockInput.vue'
 import CustomerSearchDropdown from '@/components/common/CustomerSearchDropdown.vue'
 import { PaymentChannelSelect, PaymentMethodSelect } from '@/components/payment'
 import { formatNumber } from '@/utils/format'

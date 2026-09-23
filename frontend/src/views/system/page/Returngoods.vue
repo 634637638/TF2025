@@ -70,27 +70,15 @@
 
       <div
         v-if="canViewField('filters.date_range')"
-        class="filter-item"
+        class="form-group filter-item filter-item--date-range"
+        data-field="date_range"
       >
-        <el-date-picker
-          v-model="searchForm.start_date"
-          type="date"
+        <DateRangePicker
+          v-model="returnDateRange"
+          start-placeholder="开始日期"
+          end-placeholder="结束日期"
+          format="YYYY-MM-DD"
           value-format="YYYY-MM-DD"
-          placeholder="开始日期"
-          clearable
-          @change="handleSearch"
-        />
-      </div>
-
-      <div
-        v-if="canViewField('filters.date_range')"
-        class="filter-item"
-      >
-        <el-date-picker
-          v-model="searchForm.end_date"
-          type="date"
-          value-format="YYYY-MM-DD"
-          placeholder="结束日期"
           clearable
           @change="handleSearch"
         />
@@ -510,6 +498,7 @@ import InlineLoading from '@/components/InlineLoading.vue'
 import SectionLoading from '@/components/SectionLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import Pagination from '@/components/Pagination.vue'
+import DateRangePicker from '@/components/DateRangePicker.vue'
 import { ElMessageBox } from 'element-plus'
 import { PHONE_STATUS_OPTIONS, getPhoneStatusLabel, normalizePhoneStatus } from '@/constants/phoneStatuses'
 
@@ -570,6 +559,17 @@ const searchForm = reactive({
   keyword: '',
   start_date: '',
   end_date: ''
+})
+
+const returnDateRange = computed<[string, string] | [] | null>({
+  get: () => {
+    if (!searchForm.start_date && !searchForm.end_date) return null
+    return [searchForm.start_date, searchForm.end_date] as [string, string]
+  },
+  set: value => {
+    searchForm.start_date = value?.[0] || ''
+    searchForm.end_date = value?.[1] || ''
+  }
 })
 
 const editForm = reactive({

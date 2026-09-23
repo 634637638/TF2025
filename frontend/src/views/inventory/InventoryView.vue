@@ -71,7 +71,7 @@
         />
 
         <InventoryTable
-          :can-create="canCreate"
+          :can-sell="canSell"
           :can-delete="canDelete"
           :can-edit="canEdit"
           :columns="tableColumns"
@@ -99,7 +99,7 @@
           v-if="showDetailsModal"
           v-model="showDetailsModal"
           :item="selectedItem"
-          :can-create="canCreate"
+          :can-sell="canSell"
           :can-edit="canEdit"
           :can-delete="canDelete"
           @close="handleCloseDetails"
@@ -172,6 +172,7 @@ import { fieldPermissions, shouldShowActionColumn } from '@/composables/useField
 import { useRefreshData } from '@/composables/useRefreshData'
 import { unifiedApi as api } from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
+import { sortOptionsByOrder } from '@/utils/option-sort'
 import { normalizePermissionList } from '@/utils/permissionList'
 import { getAdaptiveActionColumnWidth, getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 import { toCanonicalPhoneUpdatePayload } from '@/utils/phone-update-payload'
@@ -210,6 +211,7 @@ const { success, error, warning } = useNotification()
 const {
   canView,
   canCreate,
+  canSell,
   canEdit,
   canDelete,
   canExport,
@@ -225,12 +227,6 @@ const initialTableLoading = ref(true)
 
 // 搜索相关状态
 const searchExpanded = ref(false) // 搜索区域展开状态（移动端默认折叠）
-const showAdvancedSearch = ref(false)
-const showDesktopSearch = ref(false) // 桌面端搜索区域显示状态，默认折叠
-const simpleSearchQuery = ref('') // 简化搜索框的查询内容
-
-// 实时搜索防抖
-let searchDebounceTimer: any = null
 
 // 触摸事件相关状态（用于移动端双击检测）
 const touchTimers = ref<Map<string, ReturnType<typeof setTimeout>>>(new Map())
@@ -359,7 +355,7 @@ const tableColumns = computed(() => {
     if (column.key === 'actions') {
       return shouldShowActionColumn(
         canViewField('actions'),
-        [canCreate.value, canEdit.value, canDelete.value]
+        [canSell.value, canEdit.value, canDelete.value]
       )
     }
 
@@ -489,7 +485,7 @@ const inventoryActionColumnWidth = computed(() => getAdaptiveActionColumnWidth(
   inventory.value,
   [
     true,
-    item => canCreate.value && ['in_stock', 'reserved'].includes(getEffectivePhoneStatus(item)),
+    item => canSell.value && ['in_stock', 'reserved'].includes(getEffectivePhoneStatus(item)),
     item => canEdit.value && ['in_stock', 'reserved'].includes(getEffectivePhoneStatus(item)),
     item => canDelete.value && ['in_stock', 'reserved'].includes(getEffectivePhoneStatus(item))
   ]
@@ -593,9 +589,8 @@ const remoteSearchModel = async (query: string) => {
     if (response.success) {
       const modelsData = extractResponseData<any[]>(response)
 
-      editBrandModels.value = modelsData
-        .filter((m: any) => m && m.name)
-        .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
+      editBrandModels.value = sortOptionsByOrder(modelsData
+        .filter((m: any) => m && m.name))
         .map((m: any) => String(m.name || '').trim())
       editModelIdsByName.value = Object.fromEntries(
         modelsData
@@ -694,103 +689,9 @@ const filters = reactive({
   is_new: '',
   status: '',        // 库存状态
   phone_condition: '', // 手机成色
-  date_range: '',
-  date_start: '', // 移动端开始日期
-  date_end: '',   // 移动端结束日期
+  date_start: '',
+  date_end: '',
   search: ''
-})
-
-// CustomSearch 组件的筛选条件配置 - 与销售页面保持一致的顺序
-const searchFilters = computed(() => {
-  // 按照要求的顺序配置筛选条件：品牌、型号、颜色、内存、供应商、店铺、入库员、 成色、入库日期
-  return [
-    {
-      key: 'brand',
-      label: '品牌',
-      type: 'editable-select',
-      placeholder: '请输入或选择品牌',
-      editableOptions: () => brands.value,
-      showOptions: true, // 默认显示选项
-      highlightedIndex: -1,
-      onOptionsChange: async (filter, value) => {
-        // 品牌变化时，获取对应的型号列表
-        await fetchBrandModels(value)
-      }
-    },
-    {
-      key: 'model',
-      label: '型号',
-      type: 'editable-select',
-      placeholder: '请输入或选择型号',
-      editableOptions: () => brandModels.value,
-      showOptions: true, // 默认显示选项
-      highlightedIndex: -1
-    },
-    {
-      key: 'color',
-      label: '颜色',
-      type: 'editable-select',
-      placeholder: '请输入或选择颜色',
-      editableOptions: () => colors.value.length > 0 ? colors.value : [],
-      showOptions: true, // 默认显示选项
-      highlightedIndex: -1
-    },
-    {
-      key: 'memory',
-      label: '内存',
-      type: 'editable-select',
-      placeholder: '请输入或选择内存',
-      editableOptions: () => memories.value.length > 0 ? memories.value : [],
-      showOptions: true, // 默认显示选项
-      highlightedIndex: -1
-    },
-    {
-      key: 'supplier_id',
-      label: '供应商',
-      type: 'select',
-      placeholder: '选择供应商',
-      options: suppliers.value.map(supplier => ({
-        label: supplier.name,
-        value: supplier.id
-      }))
-    },
-    {
-      key: 'store_id',
-      label: '店铺',
-      type: 'select',
-      placeholder: '选择店铺',
-      options: stores.value.map(store => ({
-        label: store.name,
-        value: store.id
-      }))
-    },
-    {
-      key: 'operator_id',
-      label: '入库员',
-      type: 'select',
-      placeholder: '选择入库员',
-      options: operators.value.map(operator => ({
-        label: operator.name || operator.username,
-        value: operator.id
-      }))
-    },
-    {
-      key: 'is_new',
-      label: '成色',
-      type: 'select',
-      placeholder: '选择成色',
-      options: [
-        { label: '全新', value: true },
-        { label: '二手', value: false }
-      ]
-    },
-    {
-      key: 'date_range',
-      label: '入库日期',
-      type: 'daterange',
-      placeholder: '选择日期范围'
-    }
-  ]
 })
 
 // ==================== 数据排序辅助函数 ====================
@@ -911,22 +812,8 @@ const resetFilters = () => {
     memory: '',
     store_id: '',
     status: '',
-    date_range: '',
     date_start: '',
     date_end: '',
-    search: ''
-  })
-
-  // 重置CustomSearch的筛选条件
-  Object.assign(searchFilters, {
-    supplier_id: '',
-    brand: '',
-    model: '',
-    color: '',
-    memory: '',
-    store_id: '',
-    status: '',
-    date_range: '',
     search: ''
   })
 
@@ -1253,9 +1140,8 @@ const fetchEditBrandModels = async (brandName: string) => {
     if (response.success) {
       const modelsData = extractResponseData<any[]>(response)
 
-      editBrandModels.value = modelsData
-        .filter((m: any) => m && m.name)
-        .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
+      editBrandModels.value = sortOptionsByOrder(modelsData
+        .filter((m: any) => m && m.name))
         .map((m: any) => String(m.name || '').trim())
       editModelIdsByName.value = Object.fromEntries(
         modelsData
@@ -1464,8 +1350,8 @@ const handleStockInCancel = () => {
 }
 
 const quickSaleItem = (item: InventoryItem) => {
-  if (!canCreate.value) {
-    handleNoPermission('create')
+  if (!canSell.value) {
+    handleNoPermission('sell')
     return
   }
 
@@ -1647,616 +1533,6 @@ const exportInventory = async () => {
     }
   })
 }
-
-
-// GlobalSearch 事件处理方法（增强版 - 智能识别搜索内容）
-const _handleGlobalSearch = async (query: string, filterValues: Record<string, any>) => {
-
-  // 清空当前页码，从第1页开始显示结果
-  pagination.page = 1
-
-  // 智能分析搜索查询并自动填充筛选条件
-  const intelligentFilters = await analyzeSearchQuery(query)
-
-  // 合并筛选条件：用户选择的 + 智能识别的
-  Object.assign(filters, filterValues, intelligentFilters)
-
-
-  // 构建API参数 - 包含所有筛选条件
-  const apiParams: any = {
-    page: pagination.page,
-    page_size: pagination.size
-  }
-
-  // 添加品牌筛选
-  if (filters.brand && filters.brand.trim()) {
-    apiParams.brand = filters.brand.trim()
-  }
-
-  // 添加型号筛选
-  if (filters.model && filters.model.trim()) {
-    apiParams.model = filters.model.trim()
-  }
-
-  // 添加颜色筛选
-  if (filters.color && filters.color.trim()) {
-    apiParams.color = filters.color.trim()
-  }
-
-  // 添加内存筛选
-  if (filters.memory && filters.memory.trim()) {
-    apiParams.memory = filters.memory.trim()
-  }
-
-  // 添加店铺筛选
-  if (filters.store_id) {
-    apiParams.store_id = filters.store_id
-  }
-
-  // 添加状态筛选
-  if (filters.phone_condition) {
-    apiParams.status = filters.phone_condition
-  }
-
-  // 如果还有未识别的通用搜索查询，也添加到API参数
-  const remainingQuery = getRemainingSearchQuery(query, filters)
-  if (remainingQuery && remainingQuery.trim()) {
-    apiParams.search = remainingQuery.trim()
-  }
-
-
-  // 执行API调用
-  await loadInventoryData(apiParams)
-}
-
-// 智能分析搜索查询的函数
-const analyzeSearchQuery = async (query: string) => {
-  const detectedFilters: Record<string, any> = {}
-
-  if (!query || !query.trim()) {
-    return detectedFilters
-  }
-
-
-  // 品牌别名映射表
-  const brandAliases: Record<string, string> = {
-    '苹果': 'Apple',
-    '苹果公司': 'Apple',
-    'iphone': 'Apple',
-    '华为': 'Huawei',
-    '荣耀': 'Honor',
-    '小米': 'Xiaomi',
-    '米': 'Xiaomi',
-    '红米': 'Redmi',
-    'oppo': 'OPPO',
-    'vivo': 'vivo',
-    '步步高': 'vivo',
-    '三星': 'Samsung',
-    '萨姆': 'Samsung',
-    'oneplus': 'OnePlus',
-    '一加': 'OnePlus',
-    'plus': 'OnePlus',
-    '魅族': 'Meizu',
-    '美图': 'Meitu',
-    '锤子': 'Smartisan',
-    '坚果': 'Smartisan',
-    '摩托罗拉': 'Motorola',
-    ' moto': 'Motorola',
-    '联想': 'Lenovo',
-    'zuk': 'Lenovo',
-    '中兴': 'ZTE',
-    '努比亚': 'Nubia',
-    '酷派': 'Coolpad',
-    '乐视': 'LeEco',
-    '360': 'Qiku',
-    '奇酷': 'Qiku',
-    '谷歌': 'Google',
-    'pixel': 'Google',
-    'htc': 'HTC',
-    'lg': 'LG',
-    '索尼': 'Sony',
-    '索爱': 'Sony',
-    '诺基亚': 'Nokia',
-    '微软': 'Microsoft',
-    'lumia': 'Microsoft'
-  }
-
-  // 颜色别名映射表
-  const colorAliases: Record<string, string> = {
-    '红': '红色',
-    '红红': '红色',
-    '蓝': '蓝色',
-    '蓝蓝': '蓝色',
-    '黑': '黑色',
-    '黑黑': '黑色',
-    '白': '白色',
-    '白白': '白色',
-    '金': '金色',
-    '黄金': '金色',
-    '银': '银色',
-    '银色': '银色',
-    '灰': '灰色',
-    '灰色': '灰色',
-    '粉': '粉色',
-    '粉红': '粉色',
-    '玫瑰金': '粉色',
-    '紫': '紫色',
-    '绿': '绿色',
-    '青': '青色',
-    '橙': '橙色',
-    '黄': '黄色',
-    '棕': '棕色',
-    '咖啡色': '棕色',
-    '透明': '透明色'
-  }
-
-  // 内存规格映射表
-  const memoryAliases: Record<string, string> = {
-    '128': '128GB',
-    '256': '256GB',
-    '512': '512GB',
-    '1t': '1TB',
-    '1tb': '1TB',
-    '1000': '1TB',
-    '1024': '1TB',
-    '2t': '2TB',
-    '2tb': '2TB',
-    '2000': '2TB',
-    '2048': '2TB',
-    '64': '64GB',
-    '32': '32GB',
-    '16': '16GB',
-    '8': '8GB',
-    '4': '4GB'
-  }
-
-  // 分词处理 - 支持中英文混合，按空格和常见分隔符分割
-  const searchTerms = query.toLowerCase()
-    .split(/[\s，,、]+/)
-    .filter(term => term.trim())
-    .map(term => term.trim())
-
-
-  // 逐个分析搜索词
-  for (const term of searchTerms) {
-    // 检测品牌
-    if (!detectedFilters.brand) {
-      // 首先检查别名映射
-      const mappedBrand = brandAliases[term]
-      let matchedBrand = null
-
-      if (mappedBrand) {
-        matchedBrand = brands.value.find(brand =>
-          (typeof brand === 'string' ? brand : brand.name).toLowerCase() === mappedBrand.toLowerCase()
-        )
-      } else {
-        // 直接匹配品牌列表
-        matchedBrand = brands.value.find(brand => {
-          const brandName = typeof brand === 'string' ? brand : brand.name
-          return brandName.toLowerCase() === term ||
-            brandName.toLowerCase().includes(term) ||
-            term.includes(brandName.toLowerCase()) ||
-            brandName.toLowerCase().replace(/\s+/g, '') === term ||
-            term.replace(/\s+/g, '') === brandName.toLowerCase()
-        })
-      }
-
-      if (matchedBrand) {
-        detectedFilters.brand = matchedBrand
-
-        // 如果识别到品牌，提前加载对应型号
-        await fetchBrandModels(matchedBrand)
-        continue
-      }
-    }
-
-    // 检测颜色
-    if (!detectedFilters.color) {
-      // 首先检查别名映射
-      const mappedColor = colorAliases[term]
-      let matchedColor = null
-
-      if (mappedColor) {
-        matchedColor = colors.value.find(color =>
-          color.toLowerCase() === mappedColor.toLowerCase()
-        )
-      } else {
-        // 直接匹配颜色列表
-        matchedColor = colors.value.find(color =>
-          color.toLowerCase() === term ||
-          color.toLowerCase().includes(term) ||
-          term.includes(color.toLowerCase())
-        )
-      }
-
-      if (matchedColor) {
-        detectedFilters.color = matchedColor
-        continue
-      }
-    }
-
-    // 检测内存
-    if (!detectedFilters.memory) {
-      // 首先检查别名映射
-      const mappedMemory = memoryAliases[term]
-      let matchedMemory = null
-
-      if (mappedMemory) {
-        matchedMemory = memories.value.find(memory =>
-          memory.toLowerCase() === mappedMemory.toLowerCase()
-        )
-      } else {
-        // 直接匹配内存列表，支持多种格式
-        matchedMemory = memories.value.find(memory =>
-          memory.toLowerCase() === term ||
-          memory.toLowerCase().includes(term) ||
-          term.includes(memory.toLowerCase()) ||
-          (term.includes('gb') && memory.toLowerCase().includes('gb')) ||
-          (term.includes('tb') && memory.toLowerCase().includes('tb')) ||
-          (memory.includes('GB') && term === memory.replace('GB', '')) ||
-          (memory.includes('TB') && term === memory.replace('TB', ''))
-        )
-      }
-
-      if (matchedMemory) {
-        detectedFilters.memory = matchedMemory
-        continue
-      }
-    }
-
-    // 检测型号（在品牌型号列表或全局型号列表中查找）
-    if (!detectedFilters.model) {
-      const allModels = [...brandModels.value, ...models.value]
-      const matchedModel = allModels.find(model => {
-        const modelName = typeof model === 'string' ? model : model.name
-        return modelName.toLowerCase() === term ||
-          modelName.toLowerCase().includes(term) ||
-          term.includes(modelName.toLowerCase()) ||
-          modelName.toLowerCase().replace(/\s+/g, '') === term ||
-          term.replace(/\s+/g, '') === modelName.toLowerCase() ||
-          // 支持常见的型号格式变体
-          modelName.toLowerCase().replace(/[-\s]/g, '') === term.replace(/[-\s]/g, '') ||
-          term.replace(/[-\s]/g, '') === modelName.toLowerCase().replace(/[-\s]/g, '')
-      })
-
-      if (matchedModel) {
-        detectedFilters.model = matchedModel
-        continue
-      }
-    }
-  }
-
-  return detectedFilters
-}
-
-// 获取剩余的未识别搜索查询
-const getRemainingSearchQuery = (query: string, filters: Record<string, any>) => {
-  if (!query || !query.trim()) {
-    return ''
-  }
-
-  let remainingQuery = query
-
-  // 品牌别名反向映射（用于从识别的品牌找到可能的搜索词）
-  const brandReverseAliases: Record<string, string[]> = {
-    'Apple': ['苹果', '苹果公司', 'iphone'],
-    'Huawei': ['华为'],
-    'Honor': ['荣耀'],
-    'Xiaomi': ['小米', '米', '红米'],
-    'OPPO': ['oppo'],
-    'vivo': ['vivo', '步步高'],
-    'Samsung': ['三星', '萨姆'],
-    'OnePlus': ['oneplus', '一加', 'plus'],
-    'Meizu': ['魅族'],
-    'Meitu': ['美图'],
-    'Smartisan': ['锤子', '坚果'],
-    'Motorola': ['摩托罗拉', 'moto'],
-    'Lenovo': ['联想', 'zuk'],
-    'ZTE': ['中兴'],
-    'Nubia': ['努比亚'],
-    'Coolpad': ['酷派'],
-    'LeEco': ['乐视'],
-    'Qiku': ['360', '奇酷'],
-    'Google': ['谷歌', 'pixel'],
-    'HTC': ['htc'],
-    'LG': ['lg'],
-    'Sony': ['索尼', '索爱'],
-    'Nokia': ['诺基亚'],
-    'Microsoft': ['微软', 'lumia']
-  }
-
-  // 颜色别名反向映射
-  const colorReverseAliases: Record<string, string[]> = {
-    '红色': ['红', '红红'],
-    '蓝色': ['蓝', '蓝蓝'],
-    '黑色': ['黑', '黑黑'],
-    '白色': ['白', '白白'],
-    '金色': ['金', '黄金'],
-    '银色': ['银', '银色'],
-    '灰色': ['灰', '灰色'],
-    '粉色': ['粉', '粉红', '玫瑰金'],
-    '紫色': ['紫'],
-    '绿色': ['绿'],
-    '青色': ['青'],
-    '橙色': ['橙'],
-    '黄色': ['黄'],
-    '棕色': ['棕', '咖啡色'],
-    '透明色': ['透明']
-  }
-
-  // 内存别名反向映射
-  const memoryReverseAliases: Record<string, string[]> = {
-    '128GB': ['128'],
-    '256GB': ['256'],
-    '512GB': ['512'],
-    '1TB': ['1t', '1tb', '1000', '1024'],
-    '2TB': ['2t', '2tb', '2000', '2048'],
-    '64GB': ['64'],
-    '32GB': ['32'],
-    '16GB': ['16'],
-    '8GB': ['8'],
-    '4GB': ['4']
-  }
-
-  // 移除已识别的筛选条件（包括别名）
-  if (filters.brand) {
-    const brandTerms = [filters.brand.toLowerCase()]
-    if (brandReverseAliases[filters.brand]) {
-      brandTerms.push(...brandReverseAliases[filters.brand])
-    }
-
-    for (const term of brandTerms) {
-      remainingQuery = remainingQuery.replace(new RegExp(term, 'gi'), '').trim()
-    }
-  }
-
-  if (filters.model) {
-    remainingQuery = remainingQuery.replace(new RegExp(filters.model, 'gi'), '').trim()
-  }
-
-  if (filters.color) {
-    const colorTerms = [filters.color.toLowerCase()]
-    if (colorReverseAliases[filters.color]) {
-      colorTerms.push(...colorReverseAliases[filters.color])
-    }
-
-    for (const term of colorTerms) {
-      remainingQuery = remainingQuery.replace(new RegExp(term, 'gi'), '').trim()
-    }
-  }
-
-  if (filters.memory) {
-    const memoryTerms = [filters.memory.toLowerCase()]
-    if (memoryReverseAliases[filters.memory]) {
-      memoryTerms.push(...memoryReverseAliases[filters.memory])
-    }
-
-    for (const term of memoryTerms) {
-      remainingQuery = remainingQuery.replace(new RegExp(term, 'gi'), '').trim()
-    }
-  }
-
-  // 清理多余的分隔符和空格
-  remainingQuery = remainingQuery
-    .replace(/[\s，,、]+/g, ' ')
-    .trim()
-
-  return remainingQuery
-}
-
-// 切换高级搜索显示状态
-const _toggleAdvancedSearch = () => {
-  // 如果在桌面端，切换桌面端搜索状态
-  if (!mobileDetection.isMobile) {
-    showDesktopSearch.value = !showDesktopSearch.value
-  } else {
-    // 移动端切换移动端搜索状态
-    showAdvancedSearch.value = !showAdvancedSearch.value
-  }
-}
-
-const handleGlobalReset = () => {
-  // 重置所有筛选条件
-  Object.keys(filters).forEach(key => {
-    filters[key] = ''
-  })
-
-  // 清空品牌型号联动数据
-  brandModels.value = []
-
-  // 重置分页并重新加载数据
-  pagination.page = 1
-  loadInventoryData()
-}
-
-// 实时搜索输入处理方法（带防抖）
-const _handleSimpleSearchInput = () => {
-  // 清除之前的防抖定时器
-  if (searchDebounceTimer) {
-    clearTimeout(searchDebounceTimer)
-  }
-
-  // 设置新的防抖定时器（500ms后执行搜索）
-  searchDebounceTimer = setTimeout(async () => {
-    await handleSimpleSearch()
-  }, 500)
-}
-
-// 简化搜索处理方法
-const handleSimpleSearch = async () => {
-  if (!simpleSearchQuery.value || !simpleSearchQuery.value.trim()) {
-    // 如果搜索框为空，重置搜索
-    clearSimpleSearch()
-    return
-  }
-
-
-  // 清空当前页码，从第1页开始显示结果
-  pagination.page = 1
-
-  // 使用智能分析来识别搜索内容
-  const intelligentFilters = await analyzeSearchQuery(simpleSearchQuery.value)
-
-  // 如果有识别到的筛选条件，使用筛选搜索；否则使用通用搜索
-  if (Object.keys(intelligentFilters).length > 0) {
-
-    // 清空其他筛选条件，只使用智能识别的
-    Object.keys(filters).forEach(key => {
-      filters[key] = intelligentFilters[key] || ''
-    })
-
-    // 构建API参数
-    const apiParams: any = {
-      page: pagination.page,
-      page_size: pagination.size
-    }
-
-    // 添加识别的筛选条件
-    Object.keys(intelligentFilters).forEach(key => {
-      if (intelligentFilters[key]) {
-        apiParams[key] = intelligentFilters[key]
-      }
-    })
-
-    // 获取剩余的未识别搜索查询
-    const remainingQuery = getRemainingSearchQuery(simpleSearchQuery.value, intelligentFilters)
-    if (remainingQuery && remainingQuery.trim()) {
-      apiParams.search = remainingQuery.trim()
-    }
-
-    await loadInventoryData(apiParams)
-  } else {
-
-    // 通用搜索
-    const apiParams = {
-      page: pagination.page,
-      page_size: pagination.size,
-      search: simpleSearchQuery.value.trim()
-    }
-
-    await loadInventoryData(apiParams)
-  }
-}
-
-// 清空简化搜索
-const clearSimpleSearch = () => {
-  simpleSearchQuery.value = ''
-
-  // 重置所有筛选条件并重新加载数据
-  handleGlobalReset()
-}
-
-const _handleFilterChange = (key: string, value: any) => {
-
-  // 更新对应的筛选值
-  if (key === 'batch') {
-    // 批量更新
-    Object.assign(filters, value)
-  } else {
-    filters[key] = value
-  }
-
-  // 处理品牌型号联动
-  if (key === 'brand' || key === 'brand-changed') {
-    const brandValue = key === 'brand-changed' ? value : (value.brand || value)
-    filters.model = ''
-
-    // 获取该品牌对应的型号列表
-    if (brandValue) {
-      fetchBrandModels(brandValue)
-    } else {
-      brandModels.value = []
-    }
-  }
-
-
-  // 如果是移动端，不自动触发搜索，让用户手动点击应用筛选
-  if (!mobileDetection.isMobile) {
-    // 重置分页并重新加载数据以应用筛选条件
-    pagination.page = 1
-    loadInventoryData()
-  } else {
-  }
-}
-
-// 移动端筛选方法
-const _resetMobileFilters = () => {
-
-  // 重置所有筛选条件
-  Object.assign(filters, {
-    brand: '',
-    model: '',
-    color: '',
-    memory: '',
-    supplier_id: '',
-    store_id: '',
-    operator_id: '',
-    is_new: '',
-    date_range: '',
-    date_start: '',
-    date_end: '',
-    search: ''
-  })
-
-  // 清空品牌型号联动数据
-  brandModels.value = []
-
-  // 重新加载数据
-  pagination.page = 1
-  loadInventoryData()
-
-  // 关闭高级搜索
-  showAdvancedSearch.value = false
-}
-
-const _applyMobileFilters = () => {
-
-  // 重置分页并重新加载数据
-  pagination.page = 1
-  loadInventoryData()
-
-  // 关闭高级搜索
-  showAdvancedSearch.value = false
-}
-
-const _handleDateRangeChange = () => {
-  // 日期变化后自动触发搜索
-  pagination.page = 1
-  loadInventoryData()
-}
-
-const _handleQuickSearch = () => {
-
-  if (!filters.search || !filters.search.trim()) {
-    // 如果搜索框为空，重置搜索
-    resetFilters()
-    return
-  }
-
-  // 重置分页
-  pagination.page = 1
-
-  // 直接使用搜索词，后端会进行智能识别
-  const searchQuery = filters.search.trim()
-
-  // 构建API参数
-  const apiParams = {
-    page: pagination.page,
-    page_size: pagination.size,
-    search: searchQuery
-  }
-
-  // 添加筛选条件（除了搜索外的其他筛选）
-  Object.keys(filters).forEach(key => {
-    if (filters[key] && key !== 'search') {
-      // 直接传递 date_start 和 date_end，不合并为 date_range
-      apiParams[key] = filters[key]
-    }
-  })
-
-  loadInventoryData(apiParams)
-}
-
 
 
 // 生命周期

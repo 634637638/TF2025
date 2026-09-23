@@ -32,6 +32,16 @@ TF2025 当前权限系统统一采用数据库驱动 RBAC，设计原则如下�
 - 前端只消费后端返回的权限结果，负责菜单、页面、按钮和字段渲染。
 - 后端接口必须做同样的权限校验，前端显示控制不能替代接口鉴权。
 
+### 安全边界
+
+- 未登录请求业务接口必须先经过 `unifiedAuth`，由后端校验 Bearer JWT、签名、有效期和用户状态。
+- 已登录请求仍必须经过对应的 `requirePermission`、`requireAnyPermission` 或等价的业务权限中间件；只通过 JWT 不代表可以调用业务接口。
+- 角色只是权限的来源，后端以当前有效角色汇总出的操作权限作为最终判断，并在业务服务中继续校验数据归属、门店范围和状态流转。
+- 前端 `router` 守卫只负责页面跳转和用户体验，不能作为安全边界。直接调用 `/api`、篡改前端按钮或绕过页面都必须由后端拒绝。
+- 公开接口必须明确登记并只返回公开数据，例如健康检查、登录/刷新令牌、CSRF、站点公开配置、公开报价和 H5 用户端接口；后台业务接口不得为了方便加入公开白名单。
+
+新增或修改接口后，至少运行 `npm run check:backend-security` 和 `npm run check:permissions`，并验证无令牌返回 `401`、有令牌但无操作权限返回 `403`。
+
 ## 核心表结构
 
 当前权限体系以数据库结构为准，核心表如下。
@@ -164,7 +174,9 @@ module_key:action
 ```text
 sales_salesview:view
 sales_salesview:create
+sales_salesview:sell
 inventory_inventoryview:edit
+inventory_inventoryview:sell
 permissions_permissionsview:manage
 stores_storesview:menu_view
 ```

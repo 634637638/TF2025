@@ -8,6 +8,53 @@ interface IconifyApi {
   loadIcon?: (name: string | null) => unknown
 }
 
+const FONT_AWESOME_CSS = 'https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css'
+const ICONIFY_SCRIPT = 'https://code.iconify.design/3/3.1.0/iconify.min.js'
+
+let iconAssetsPromise: Promise<void> | null = null
+
+/**
+ * Load external icon assets only after entering a page that renders them.
+ * Login does not use these assets, so it should not pay the CDN request cost.
+ */
+export function ensureIconAssets(): Promise<void> {
+  if (typeof document === 'undefined') return Promise.resolve()
+  if (iconAssetsPromise) return iconAssetsPromise
+
+  iconAssetsPromise = new Promise((resolve) => {
+    const head = document.head
+    const fontAwesome = head.querySelector<HTMLLinkElement>(`link[href="${FONT_AWESOME_CSS}"]`)
+    if (!fontAwesome) {
+      const link = document.createElement('link')
+      link.rel = 'stylesheet'
+      link.href = FONT_AWESOME_CSS
+      link.crossOrigin = 'anonymous'
+      head.appendChild(link)
+    }
+
+    if (getIconify()) {
+      resolve()
+      return
+    }
+
+    const existingScript = head.querySelector<HTMLScriptElement>(`script[src="${ICONIFY_SCRIPT}"]`)
+    if (existingScript) {
+      existingScript.addEventListener('load', () => resolve(), { once: true })
+      existingScript.addEventListener('error', () => resolve(), { once: true })
+      return
+    }
+
+    const script = document.createElement('script')
+    script.src = ICONIFY_SCRIPT
+    script.crossOrigin = 'anonymous'
+    script.onload = () => resolve()
+    script.onerror = () => resolve()
+    head.appendChild(script)
+  })
+
+  return iconAssetsPromise
+}
+
 const getIconify = (): IconifyApi | undefined => {
   if (typeof window === 'undefined') return undefined
   return (window as Window & { Iconify?: IconifyApi }).Iconify

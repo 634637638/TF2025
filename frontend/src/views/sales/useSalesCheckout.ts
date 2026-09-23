@@ -36,7 +36,7 @@ interface UseSalesCheckoutOptions {
   todaySold: Ref<number>
   getTodayDate: () => string
   getCurrentUser: () => AuthUserIdentity | null | undefined
-  canCreate: () => boolean
+  canSell: () => boolean
   handleNoPermission: (_action: string) => unknown
   normalizeCustomerPhone: (_phone: unknown) => string
   resetCustomerForm: () => void
@@ -61,7 +61,7 @@ export const useSalesCheckout = ({
   todaySold,
   getTodayDate,
   getCurrentUser,
-  canCreate,
+  canSell,
   handleNoPermission,
   normalizeCustomerPhone,
   resetCustomerForm,
@@ -173,8 +173,8 @@ export const useSalesCheckout = ({
   }
 
   const openSaleModal = (phone: Phone) => {
-    if (!canCreate()) {
-      handleNoPermission('create')
+    if (!canSell()) {
+      handleNoPermission('sell')
       return false
     }
 
@@ -205,8 +205,8 @@ export const useSalesCheckout = ({
   }
 
   const openSaleModalWithPreorder = (phone: Phone, preorderInfo: SalesPreorderInfo) => {
-    if (!canCreate()) {
-      handleNoPermission('create')
+    if (!canSell()) {
+      handleNoPermission('sell')
       return false
     }
 
@@ -237,8 +237,8 @@ export const useSalesCheckout = ({
   }
 
   const toggleBatchMode = () => {
-    if (!canCreate()) {
-      handleNoPermission('create')
+    if (!canSell()) {
+      handleNoPermission('sell')
       return
     }
 
@@ -394,8 +394,8 @@ export const useSalesCheckout = ({
     const normalizedCustomerName = normalizePersonName(saleForm.customer_name, 20)
     const normalizedAppleId = normalizeAppleId(saleForm.customer_apple_id)
 
-    if (!canCreate()) {
-      handleNoPermission('create')
+    if (!canSell()) {
+      handleNoPermission('sell')
       return
     }
     if (!normalizedCustomerName) {

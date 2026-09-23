@@ -27,7 +27,7 @@ src/components/
 ├── common/              # 通用组件
 │   ├── BaseButton.vue  # 基础按钮
 │   ├── BaseInput.vue   # 基础输入框
-│   └── BaseModal.vue   # 基础模态框
+│   └── MobileDialog.vue # 统一响应式弹窗
 ├── business/           # 业务组件
 │   ├── UserSelector.vue
 │   ├── OrderForm.vue
@@ -748,7 +748,7 @@ const props = defineProps({
 
 **可以使用其他场景：**
 - ⚠️ 简单提示框（使用 ElMessageBox）
-- ⚠️ 特殊自定义弹窗（使用 BaseModal）
+- ⚠️ 特殊内容弹窗（仍使用 MobileDialog，仅定义业务内容布局）
 
 ```vue
 <!-- ✅ 标准：业务弹窗 -->
@@ -762,13 +762,10 @@ const props = defineProps({
 <!-- ✅ 例外：简单确认 -->
 <ElMessageBox.confirm />
 
-<!-- ✅ 例外：特殊需求 -->
-<BaseModal
-  v-model="visible"
-  :show-default-footer="false"
->
-  <!-- 完全自定义内容 -->
-</BaseModal>
+<!-- ✅ 复杂内容仍复用统一外壳 -->
+<MobileDialog v-model="visible" :show-default-footer="false">
+  <!-- 业务内容布局 -->
+</MobileDialog>
 ```
 
 ### 2. 表格组件标准

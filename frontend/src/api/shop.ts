@@ -86,6 +86,7 @@ export interface TemplateImage {
   sort_order: number
   uploaded_by?: number
   created_at?: string
+  is_draft?: boolean
 }
 
 export interface TemplatePhone {
@@ -297,6 +298,21 @@ export function uploadTemplateImage(templateId: number, file: File) {
  */
 export function deleteTemplateImage(templateId: number, imageId: number) {
   return unifiedApi.delete(`/shop/templates/${templateId}/images/${imageId}`)
+}
+
+export function commitTemplateImageUploads(entries: Array<{
+  template_id: number
+  image_ids: number[]
+  primary_image_id?: number
+  orders: Array<{ id: number; is_draft: boolean; sort_order: number }>
+}>) {
+  return unifiedApi.post('/shop/templates/media/commit-drafts', {
+    entries
+  })
+}
+
+export function discardTemplateImageUploads(entries: Array<{ template_id: number; image_ids: number[] }>) {
+  return unifiedApi.post('/shop/templates/media/discard-drafts', { entries })
 }
 
 /**

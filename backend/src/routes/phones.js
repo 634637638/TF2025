@@ -1444,6 +1444,17 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
       [id]
     )
 
+    // 预定交付后，销售管理或综合查询修改销售员时同步回预定单。
+    // 预定页只读这条销售员关系，避免三个页面显示不一致。
+    if (existingSales.length > 0 && saleOperatorId !== null && saleOperatorId !== undefined) {
+      await connection.execute(
+        `UPDATE preorders
+         SET operator_id = ?, sale_id = ?, updated_at = NOW()
+         WHERE matched_phone_id = ? AND status = 'completed'`,
+        [saleOperatorId, existingSales[0].id, id]
+      )
+    }
+
     // 🔥 如果提供了客户信息但没有销售记录，创建一条销售记录
     if ((finalCustomerId || customer_name || customer_phone) && existingSales.length === 0) {
       log.debug('🔥 没有销售记录但提供了客户信息，创建销售记录')

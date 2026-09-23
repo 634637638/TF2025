@@ -30,6 +30,8 @@ export const PREORDER_FIELD_IDS = {
   matched_time: 'time_info.matched_time',
   delivered_time: 'time_info.delivered_time',
   operator_name: 'operator_info.operator_name',
+  preorder_person_name: 'operator_info.operator_name',
+  sales_operator_name: 'operator_info.operator_name',
   remarks: 'other_info.remarks',
   operations: 'system_info.operations'
 } as const

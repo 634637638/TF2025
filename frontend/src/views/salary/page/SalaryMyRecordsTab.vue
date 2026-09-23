@@ -50,7 +50,7 @@
 
       <div
         v-if="canViewField('salary_mysalaryview', 'period_start')"
-        class="form-group filter-item"
+        class="form-group filter-item filter-item--date-range"
         data-field="period"
       >
         <DateRangePicker

@@ -443,6 +443,12 @@ const saveCustomerNameEdit = async () => {
     return
   }
 
+  if (normalizedCustomerName === normalizePersonName(selectedCustomer.value.name, 20)) {
+    formData.value.customer_name = normalizedCustomerName
+    customerNameEditing.value = false
+    return
+  }
+
   try {
     const response = await unifiedApi.put(`/customers/${selectedCustomer.value.id}`, {
       name: normalizedCustomerName

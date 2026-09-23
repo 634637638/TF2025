@@ -181,7 +181,7 @@
           <template #default="{ row: phone }">
             <div class="action-buttons">
               <el-button
-                v-if="canCreate && isPhoneSaleActionAvailable(phone)"
+                v-if="canSell && isPhoneSaleActionAvailable(phone)"
                 type="success"
                 size="small"
                 title="销售出库"
@@ -269,7 +269,7 @@ const props = defineProps<{
   compact: boolean
   canViewField: (_fieldName: string) => boolean
   canViewPrice: boolean
-  canCreate: boolean
+  canSell: boolean
   canEdit: boolean
   canDelete: boolean
 }>()
@@ -290,12 +290,12 @@ const showActionColumn = computed(() => (
   && !props.operationMode
   && shouldShowActionColumn(
     props.canViewField('actions'),
-    [props.canCreate, props.canEdit, props.canDelete]
+    [props.canSell, props.canEdit, props.canDelete]
   )
 ))
 const actionColumnWidth = computed(() => getAdaptiveActionColumnWidth(
   props.phones,
-  [props.canCreate, props.canEdit, props.canDelete]
+  [props.canSell, props.canEdit, props.canDelete]
 ))
 
 const isPhoneSelected = (phone: Phone) => selectedPhoneIdSet.value.has(String(phone.id))

@@ -976,8 +976,20 @@ function matchProductName(externalName) {
 
   // iPhone 关键字匹配 - 返回数据库中实际使用的型号名称
   if (normalizedInput.includes('iphone')) {
+    if (normalizedInput.includes('duo')) {
+      return { brand: '苹果', model: 'iPhone Duo', external_model: null, category: 'phone' }
+    }
+    // iPhone 18 系列。Pro Max 的外部代码已从数据源确认，其他型号在确认代码前按名称匹配。
+    if (normalizedInput.includes('18')) {
+      if (normalizedInput.includes('pro') && normalizedInput.includes('max')) {
+        return { brand: '苹果', model: '18promax', external_model: 'A3718', category: 'phone' }
+      }
+      if (normalizedInput.includes('pro')) {
+        return { brand: '苹果', model: 'iPhone18 Pro', external_model: 'A3715', category: 'phone' }
+      }
+    }
     // iPhone 17E - 必须在 17 之前检查，使用精确匹配避免被 17 覆盖
-    if (/17e[^a-z0-9]|^17e$/i.test(normalizedInput)) {
+    if (normalizedInput === 'iphone17e' || normalizedInput === '17e' || /17e[^a-z0-9]/i.test(normalizedInput)) {
       return { brand: '苹果', model: 'iphone 17E', external_model: 'A3635', category: 'phone' }
     }
     if (normalizedInput.includes('16e') || normalizedInput.includes('a3410')) {
@@ -992,7 +1004,7 @@ function matchProductName(externalName) {
         return { brand: '苹果', model: 'iphone17pro', external_model: 'A3524', category: 'phone' }
       } else {
         // 精确匹配 "17"，不匹配 "17e" 等变体
-        if (/17[^a-z0-9]|^17$/i.test(normalizedInput)) {
+        if (normalizedInput === 'iphone17' || normalizedInput === '17' || /17[^a-z0-9]/i.test(normalizedInput)) {
           return { brand: '苹果', model: 'iphone17', external_model: 'A3521', category: 'phone' }
         }
       }
@@ -1024,9 +1036,20 @@ function matchProductName(externalName) {
   // 🔥 数字开头的关键字匹配（如 17promax, 17pro, 17, 16pro 等）
   // 这些是库存表中使用的简写型号，直接返回数据库中的型号名称
   if (/^\d/.test(normalizedInput)) {
+    if (normalizedInput.includes('18')) {
+      if (normalizedInput.includes('duo')) {
+        return { brand: '苹果', model: 'iPhone Duo', external_model: null, category: 'phone' }
+      }
+      if (normalizedInput.includes('promax') || (normalizedInput.includes('pro') && normalizedInput.includes('max'))) {
+        return { brand: '苹果', model: '18promax', external_model: 'A3718', category: 'phone' }
+      }
+      if (normalizedInput.includes('pro')) {
+        return { brand: '苹果', model: 'iPhone18 Pro', external_model: 'A3715', category: 'phone' }
+      }
+    }
     // 17E 系列 - 必须在 17 之前匹配，否则会被 17 覆盖
     // 使用正则精确匹配 "17e" 后面不跟其他数字，避免匹配 17/17pro/17promax
-    if (/17e[^0-9]|^17e$/.test(normalizedInput)) {
+    if (normalizedInput === 'iphone17e' || normalizedInput === '17e' || /17e[^0-9]/.test(normalizedInput)) {
       return { brand: '苹果', model: 'iphone 17E', external_model: 'A3635', category: 'phone' }
     }
     if (normalizedInput.includes('16e') || normalizedInput.includes('a3410')) {
@@ -1044,7 +1067,7 @@ function matchProductName(externalName) {
         return { brand: '苹果', model: 'iphone17air', external_model: 'A3518', category: 'phone' }
       }
       // 精确匹配 "17"，不匹配 "17e"、"17pro" 等变体
-      if (/17[^a-z0-9]|^17$/.test(normalizedInput)) {
+      if (normalizedInput === 'iphone17' || normalizedInput === '17' || /17[^a-z0-9]/.test(normalizedInput)) {
         return { brand: '苹果', model: 'iphone17', external_model: 'A3521', category: 'phone' }
       }
     }

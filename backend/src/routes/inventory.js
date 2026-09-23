@@ -1200,7 +1200,7 @@ router.delete('/:id', unifiedAuth, requirePermission('inventory:delete'), async 
 })
 
 // 快速出库接口 - 直接创建已销售记录，跳过入库流程
-router.post('/quick-sale', unifiedAuth, requirePermission('inventory:create'), async (req, res) => {
+router.post('/quick-sale', unifiedAuth, requirePermission('inventory:sell'), async (req, res) => {
   let connection
   try {
     log.debug('🔍 快速出库API: 收到快速出库请求')
@@ -1459,7 +1459,7 @@ router.post('/quick-sale', unifiedAuth, requirePermission('inventory:create'), a
 })
 
 // 添加根路由，重定向到 /list
-router.get('/', unifiedAuth, (req, res) => {
+router.get('/', unifiedAuth, requirePermission('inventory:view'), (req, res) => {
   res.redirect(301, '/list')
 })
 
