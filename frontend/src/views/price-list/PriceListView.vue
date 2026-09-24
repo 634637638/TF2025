@@ -85,6 +85,7 @@
             </el-dropdown>
             <el-button
               v-if="canSync"
+              :disabled="syncing"
               type="warning"
               :loading="syncing"
               @click="handleSync"
@@ -417,6 +418,9 @@
                     v-else
                     class="text-gray"
                   >-</span>
+                  <div class="text-secondary text-xs">
+                    {{ row.source_name || '默认来源' }}
+                  </div>
                 </template>
               </el-table-column>
               <el-table-column
@@ -760,6 +764,28 @@
               外部型号用于匹配采集系统的价格数据，不影响本地数据
             </div>
           </el-form-item>
+          <el-form-item label="采集来源">
+            <el-select
+              v-model="editForm.source_config_id"
+              class="w-full"
+              clearable
+              placeholder="跟随默认采集源"
+            >
+              <el-option
+                :value="null"
+                label="跟随默认采集源"
+              />
+              <el-option
+                v-for="source in syncConfigsList"
+                :key="source.id"
+                :label="formatPriceSourceLabel(source)"
+                :value="source.id"
+              />
+            </el-select>
+            <div class="mt-1 text-secondary text-xs">
+              未指定时使用默认来源；指定后仅该商品采用对应来源价格。公开未登录来源需先在“同步设置”中新增。
+            </div>
+          </el-form-item>
           <el-row :gutter="16">
             <el-col :span="12">
               <el-form-item label="采集价">
@@ -908,6 +934,16 @@
               label-width="100px"
               class="config-form"
             >
+              <el-form-item label="来源类型">
+                <el-radio-group v-model="syncConfig.source_type">
+                  <el-radio value="account">
+                    登录账户
+                  </el-radio>
+                  <el-radio value="public">
+                    公开未登录
+                  </el-radio>
+                </el-radio-group>
+              </el-form-item>
               <el-row :gutter="16">
                 <el-col :span="12">
                   <el-form-item label="配置名称">
@@ -938,7 +974,10 @@
                 />
               </el-form-item>
 
-              <el-form-item label="登录URL">
+              <el-form-item
+                v-if="syncConfig.source_type === 'account'"
+                label="登录URL"
+              >
                 <el-input
                   v-model="syncConfig.login_url"
                   placeholder="请输入登录URL（可选）"
@@ -947,7 +986,10 @@
 
               <el-row :gutter="16">
                 <el-col :span="12">
-                  <el-form-item label="用户名">
+                  <el-form-item
+                    v-if="syncConfig.source_type === 'account'"
+                    label="用户名"
+                  >
                     <el-input
                       v-model="syncConfig.login_username"
                       placeholder="请输入登录用户名"
@@ -955,7 +997,10 @@
                   </el-form-item>
                 </el-col>
                 <el-col :span="12">
-                  <el-form-item label="密码">
+                  <el-form-item
+                    v-if="syncConfig.source_type === 'account'"
+                    label="密码"
+                  >
                     <el-input
                       v-model="syncConfig.login_password"
                       type="password"
@@ -1002,6 +1047,14 @@
                 label="配置名称"
                 width="130"
               />
+              <el-table-column
+                label="来源"
+                width="100"
+              >
+                <template #default="{ row }">
+                  {{ row.source_type === 'public' ? '公开未登录' : (row.login_username || '登录账户') }}
+                </template>
+              </el-table-column>
               <el-table-column
                 prop="login_username"
                 label="用户名"
@@ -1550,6 +1603,7 @@ const editForm = reactive({
   status: 1,
   show_price: 0,
   remark: '',
+  source_config_id: null as number | null,
   is_manual_edit: false
 })
 
@@ -1578,6 +1632,7 @@ const resetEditForm = () => {
     status: 1,
     show_price: 0,
     remark: '',
+    source_config_id: null,
     is_manual_edit: false
   })
   editOptions.stockCount = 0
@@ -1601,6 +1656,7 @@ const syncConfig = reactive({
   id: null as number | null,
   is_default: false,
   config_name: '',
+  source_type: 'account',
   source_url: '',
   login_url: '',
   login_username: '',
@@ -1774,6 +1830,11 @@ const fetchPriceList = async () => {
         is_collect: item.is_collect !== undefined ? Number(item.is_collect) : 1,
         status: item.status !== undefined ? Number(item.status) : 1,
         show_price: item.show_price !== undefined && item.show_price !== null ? Number(item.show_price) : 0,
+        source_config_id: item.source_config_id !== null && item.source_config_id !== undefined
+          ? Number(item.source_config_id)
+          : null,
+        source_name: item.source_name || '默认来源',
+        source_type: item.source_type === 'public' ? 'public' : 'account',
         id: item.price_list_id || item.id || null,
         price_list_id: item.price_list_id || item.id || null
       }))
@@ -2061,7 +2122,7 @@ const handleEdit = async (row: any) => {
   resetEditForm()
 
   // 先加载选项数据
-  await loadEditOptions()
+  await Promise.all([loadEditOptions(), fetchSyncConfigsList()])
 
   // 确保数据是数组
   if (!Array.isArray(editOptions.brands)) editOptions.brands = []
@@ -2108,7 +2169,8 @@ const handleEdit = async (row: any) => {
     is_collect: row.is_collect !== undefined ? row.is_collect : 1,
     status: row.status !== undefined ? row.status : 1,
     show_price: row.show_price !== undefined ? row.show_price : 1,
-    remark: row.remark || ''
+    remark: row.remark || '',
+    source_config_id: row.source_config_id ?? null
   })
   editOptions.stockCount = Number(row.stock_quantity) || 0
   showEditDialog.value = true
@@ -2121,7 +2183,7 @@ const handleCreate = async () => {
   }
 
   resetEditForm()
-  await loadEditOptions()
+  await Promise.all([loadEditOptions(), fetchSyncConfigsList()])
   showEditDialog.value = true
 }
 
@@ -2170,6 +2232,7 @@ const handleSave = async () => {
       status: Number(editForm.status) === 1 ? 1 : 0,
       show_price: Number(editForm.show_price) === 1 ? 1 : 0,
       remark: editForm.remark,
+      source_config_id: editForm.source_config_id,
       is_manual_edit: true
     }
 
@@ -2280,9 +2343,9 @@ const handleSync = async () => {
 
   syncing.value = true
   try {
-    const res = await triggerSync()
+    const res = await triggerSync('all')
     if (res.success) {
-      ElMessage.success(`同步完成：共${res.data.total}条，成功${res.data.success}条`)
+      ElMessage.success(`全部来源同步完成：共${res.data.total}条，成功${res.data.success}条`)
       fetchPriceList()
     }
   } catch (error) {
@@ -2397,8 +2460,12 @@ const handleSaveConfig = async () => {
   }
 
   // 验证必填字段
-  if (!syncConfig.config_name || !syncConfig.login_username) {
-    ElMessage.warning('请填写配置名称和用户名')
+  if (!syncConfig.config_name || !syncConfig.source_url) {
+    ElMessage.warning('请填写配置名称和数据源URL')
+    return
+  }
+  if (syncConfig.source_type === 'account' && !syncConfig.login_username) {
+    ElMessage.warning('登录来源请填写用户名')
     return
   }
 
@@ -2412,10 +2479,15 @@ const handleSaveConfig = async () => {
     }
 
     // 如果是添加新配置，必须有密码
-    if (!dataToSend.id && !dataToSend.login_password) {
+    if (dataToSend.source_type === 'account' && !dataToSend.id && !dataToSend.login_password) {
       ElMessage.warning('请填写登录密码')
       savingConfig.value = false
       return
+    }
+    if (dataToSend.source_type === 'public') {
+      dataToSend.login_url = ''
+      dataToSend.login_username = ''
+      dataToSend.login_password = ''
     }
 
     let res
@@ -2452,11 +2524,22 @@ const fetchSyncConfigsList = async () => {
   try {
     const res = await getAllSyncConfigs()
     if (res.success) {
-      syncConfigsList.value = res.data || []
+      syncConfigsList.value = (Array.isArray(res.data) ? res.data : []).map((source: any) => ({
+        ...source,
+        id: Number(source.id),
+        source_type: source.source_type === 'public' ? 'public' : 'account'
+      }))
     }
   } catch (error) {
     logger.error('获取同步配置列表失败', error)
   }
+}
+
+const formatPriceSourceLabel = (source: any) => {
+  if (source?.source_type === 'public') {
+    return `${source.config_name || '公开来源'}（公开未登录）`
+  }
+  return `${source?.config_name || '登录来源'}（${source?.login_username || '登录账户'}）`
 }
 
 // 设置默认同步配置
@@ -2525,6 +2608,7 @@ const handleEditConfig = async (row: any) => {
         id: res.data.id,
         is_default: res.data.is_default,
         config_name: res.data.config_name || '',
+        source_type: res.data.source_type === 'public' ? 'public' : 'account',
         source_url: res.data.source_url || '',
         login_url: res.data.login_url || '',
         login_username: res.data.login_username || '',
@@ -2538,6 +2622,7 @@ const handleEditConfig = async (row: any) => {
         id: row.id,
         is_default: row.is_default,
         config_name: row.config_name,
+        source_type: row.source_type === 'public' ? 'public' : 'account',
         source_url: row.source_url,
         login_url: row.login_url,
         login_username: row.login_username,
@@ -2557,6 +2642,7 @@ const resetConfigForm = () => {
     id: null,
     is_default: false,
     config_name: '',
+    source_type: 'account',
     source_url: '',
     login_url: '',
     login_username: '',

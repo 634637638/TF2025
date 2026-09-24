@@ -12,7 +12,9 @@ const getNonCompletedTransactionStatusSql = (alias = 'p') => (
 // 设备对外展示的有效状态。
 // 预订只是库存设备上的业务占用标记，不能覆盖已售、维修、租赁等实体状态。
 const getEffectivePhoneStatus = (status, isPreordered) => {
-  const rawStatus = String(status || '').trim()
+  const rawValue = String(status || '').trim()
+  // `available` was the historical name for the sellable stock state.
+  const rawStatus = rawValue === 'available' ? 'in_stock' : rawValue
 
   if (rawStatus === 'sold') return 'sold'
   if (rawStatus === 'reserved') return 'reserved'

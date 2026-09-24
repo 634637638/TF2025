@@ -211,9 +211,8 @@ class QueryController {
           { value: 'repair', label: '维修' },
           { value: 'rented', label: '租赁' },
           { value: 'lost', label: '丢失' },
-          { value: 'returned', label: '已退货' },
-          { value: 'damaged', label: '损坏' },
-          { value: 'available', label: '可用' }
+          { value: 'returned', label: '退货' },
+          { value: 'damaged', label: '损坏' }
         ],
         conditions: [
           { value: 'true', label: '全新' },

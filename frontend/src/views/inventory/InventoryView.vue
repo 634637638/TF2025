@@ -135,7 +135,7 @@
     :memories="memories"
     :model-search-loading="modelSearchLoading"
     :no-imei-mode="editIsNoIMEIMode"
-    :phone-status-options="PHONE_STATUS_OPTIONS"
+    :phone-status-options="PHONE_EDIT_STATUS_OPTIONS"
     :remote-search-model="remoteSearchModel"
     :stores="stores"
     :submitting="submitting"
@@ -190,7 +190,7 @@ import InventorySearchFilters from './page/InventorySearchFilters.vue'
 import InventoryEditDialog from './page/InventoryEditDialog.vue'
 import { useInventoryBaseOptions } from './useInventoryBaseOptions'
 import { useInventoryData } from './useInventoryData'
-import { PHONE_STATUS_OPTIONS, getPhoneStatusClass, getPhoneStatusLabel, normalizePhoneStatus, getEffectivePhoneStatus } from '@/constants/phoneStatuses'
+import { PHONE_EDIT_STATUS_OPTIONS, getPhoneStatusClass, getPhoneStatusLabel, normalizePhoneStatus, getEffectivePhoneStatus } from '@/constants/phoneStatuses'
 import type { InventoryItem } from '@/types'
 
 const InventoryDetailModal = defineAsyncComponent(() => import('@/components/InventoryDetailModal.vue'))
@@ -355,7 +355,7 @@ const tableColumns = computed(() => {
     if (column.key === 'actions') {
       return shouldShowActionColumn(
         canViewField('actions'),
-        [canSell.value, canEdit.value, canDelete.value]
+        [true, canSell.value, canEdit.value, canDelete.value]
       )
     }
 
@@ -485,9 +485,9 @@ const inventoryActionColumnWidth = computed(() => getAdaptiveActionColumnWidth(
   inventory.value,
   [
     true,
-    item => canSell.value && ['in_stock', 'reserved'].includes(getEffectivePhoneStatus(item)),
-    item => canEdit.value && ['in_stock', 'reserved'].includes(getEffectivePhoneStatus(item)),
-    item => canDelete.value && ['in_stock', 'reserved'].includes(getEffectivePhoneStatus(item))
+    () => canSell.value,
+    () => canEdit.value,
+    () => canDelete.value
   ]
 ))
 
@@ -917,12 +917,6 @@ const toDateInputValue = (dateString?: string | null) => {
 const editItem = async (item: InventoryItem) => {
   if (!canEdit.value) {
     handleNoPermission('edit')
-    return
-  }
-
-  // 维修中和租赁中的设备由对应业务模块维护；全局管理员可应急修正。
-  if (!['in_stock', 'reserved'].includes(getEffectivePhoneStatus(item)) && !authStore.isAdmin) {
-    error('只有在库状态的商品才能编辑')
     return
   }
 

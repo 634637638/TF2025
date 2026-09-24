@@ -13,9 +13,18 @@ export const PHONE_STATUS_OPTIONS: PhoneStatusOption[] = [
   { value: 'rented', label: '租赁' },
   { value: 'lost', label: '丢失' },
   { value: 'returned', label: '退货' },
-  { value: 'damaged', label: '损坏' },
-  { value: 'available', label: '可用' }
+  { value: 'damaged', label: '损坏' }
 ]
+
+// 编辑库存和销售设备时，只允许选择尚未完成交易的状态。
+// 历史查询页面仍应使用完整的 PHONE_STATUS_OPTIONS。
+export const COMPLETED_TRANSACTION_STATUSES = ['sold', 'peer_transfer', 'supplier_proxy'] as const
+
+export const PHONE_EDIT_STATUS_OPTIONS = PHONE_STATUS_OPTIONS.filter((option) => (
+  !COMPLETED_TRANSACTION_STATUSES.includes(
+    option.value as typeof COMPLETED_TRANSACTION_STATUSES[number]
+  )
+))
 
 export const PHONE_STATUS_LABEL_MAP: Record<string, string> = PHONE_STATUS_OPTIONS.reduce((acc, item) => {
   acc[item.value] = item.label
@@ -32,8 +41,7 @@ export const PHONE_STATUS_CLASS_MAP: Record<string, string> = {
   rented: 'rented',
   lost: 'lost',
   returned: 'returned',
-  damaged: 'damaged',
-  available: 'available'
+  damaged: 'damaged'
 }
 
 export const normalizePhoneStatus = (value?: string | null) => {
@@ -60,7 +68,9 @@ export const normalizePhoneStatus = (value?: string | null) => {
     丢失: 'lost',
     已退货: 'returned',
     损坏: 'damaged',
-    可用: 'available'
+    // 旧数据曾使用 available 表示可售，统一归并到唯一的可售状态。
+    available: 'in_stock',
+    可用: 'in_stock'
   }
 
   if (legacyMap[raw]) {
@@ -80,8 +90,6 @@ export const getPhoneStatusClass = (value?: string | null) => {
   const normalized = normalizePhoneStatus(value)
   return PHONE_STATUS_CLASS_MAP[normalized] || ''
 }
-
-export const COMPLETED_TRANSACTION_STATUSES = ['sold', 'peer_transfer', 'supplier_proxy'] as const
 
 export const isCompletedTransactionStatus = (value?: string | null) => (
   COMPLETED_TRANSACTION_STATUSES.includes(

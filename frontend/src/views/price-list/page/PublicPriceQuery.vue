@@ -418,7 +418,6 @@
 
     <!-- 在库查询结果弹窗 -->
     <InventoryResultDialog
-      v-if="showInventoryResult"
       v-model="showInventoryResult"
       :product="selectedProduct"
       :query-token="inventoryQueryToken"
@@ -484,7 +483,7 @@ import { parsePublicPriceContacts, formatPublicPriceWatermark } from '@/utils/pu
 const InventoryResultDialog = defineAsyncComponent(() => import('@/components/InventoryResultDialog.vue'))
 // 状态
 const { loading } = useLoadingState()
-const { isMobile } = useMobile()
+const { isMobile, isTablet, isTouchDevice } = useMobile()
 const siteSettingsStore = useSiteSettingsStore()
 const priceContacts = computed(() => {
   const configured = parsePublicPriceContacts(siteSettingsStore.settings.publicPriceContacts)
@@ -563,9 +562,21 @@ const toggleInStockFilter = () => {
   applyInventoryFilter()
 }
 
-// 移动端双击检测
+// 触屏设备双击检测。iPad 在部分 Safari 版本不会可靠触发 row-dblclick，
+// 因此统一保留 row-click 兜底；桌面端仍直接使用 row-dblclick。
 let lastTapTime = 0
-let lastTapRowIndex = -1
+let lastTapRowKey = ''
+let lastOpenedRowKey = ''
+let lastOpenedAt = 0
+
+const isTouchInteraction = computed(() => isMobile.value || isTablet.value || isTouchDevice.value)
+
+const getProductRowKey = (row: any) => (
+  [row?.brand_id, row?.model_id, row?.color_id, row?.memory_id,
+    row?.brand_name, row?.model_number, row?.color_name, row?.memory]
+    .map(value => String(value ?? '').trim())
+    .join(':')
+)
 
 // 加载所有数据
 const loadAllData = async () => {
@@ -1037,48 +1048,45 @@ const downloadAsImage = async () => {
 }
 
 // 表格行双击处理
-const handleRowDoubleClick = (row: any) => {
-  if (isMobile.value) return
-
-  // 只有已验证密码才显示在库信息
+const handleRowDoubleClick = (row: any, _column?: any, event?: Event) => {
+  if (isTouchInteraction.value) return
   if (passwordVerified.value) {
     showInventoryResultDialog(row)
+    event?.stopPropagation()
   }
-  // 未验证时不做任何提示，保持静默
 }
 
-// 表格行点击处理（支持移动端双击）
+// 表格行点击处理（支持手机、iPad 及其他触屏浏览器双击）
 const handleRowClick = (row: any, _column: any, event: Event) => {
-  if (!isMobile.value) return
+  if (!isTouchInteraction.value) return
 
   const currentTime = Date.now()
   const tapInterval = currentTime - lastTapTime
-
-  // 找到当前行的索引
-  const rowIndex = searchResults.value.findIndex(r =>
-    r.brand_name === row.brand_name &&
-    r.model_number === row.model_number &&
-    r.color_name === row.color_name &&
-    r.memory === row.memory
-  )
+  const rowKey = getProductRowKey(row)
 
   // 检测双击（400ms内的两次点击同一行）
-  if (tapInterval < 400 && tapInterval > 0 && lastTapRowIndex === rowIndex) {
+  if (tapInterval < 450 && tapInterval > 0 && lastTapRowKey === rowKey) {
     if (passwordVerified.value) {
       showInventoryResultDialog(row)
     }
     // 重置
     lastTapTime = 0
-    lastTapRowIndex = -1
+    lastTapRowKey = ''
     event?.stopPropagation()
   } else {
     lastTapTime = currentTime
-    lastTapRowIndex = rowIndex
+    lastTapRowKey = rowKey
   }
 }
 
 // 显示在库查询结果弹窗
 const showInventoryResultDialog = (row: any) => {
+  const rowKey = getProductRowKey(row)
+  const now = Date.now()
+  if (rowKey === lastOpenedRowKey && now - lastOpenedAt < 450) return
+  lastOpenedRowKey = rowKey
+  lastOpenedAt = now
+
   selectedProduct.value = {
     brand_id: Number(row.brand_id),
     model_id: Number(row.model_id),

@@ -38,8 +38,8 @@ class QueryService {
       '已退货': 'returned',
       damaged: 'damaged',
       '损坏': 'damaged',
-      available: 'available',
-      '可用': 'available'
+      available: 'in_stock',
+      '可用': 'in_stock'
     }
 
     return mapping[raw] || raw
@@ -405,7 +405,7 @@ class QueryService {
       'lost': '丢失',
       'peer_transfer': '调货',
       'supplier_proxy': '划拨',
-      'returned': '已退货'
+      'returned': '退货'
     }
     return statusMap[status] || status
   }
@@ -481,7 +481,7 @@ class QueryService {
     }
 
     // 验证状态参数 - 使用数据库中实际的状态值
-    const validStatuses = ['in_stock', 'sold', 'peer_transfer', 'supplier_proxy', 'reserved', 'repair', 'lost', 'damaged', 'available', 'returned']
+    const validStatuses = ['in_stock', 'sold', 'peer_transfer', 'supplier_proxy', 'reserved', 'repair', 'lost', 'damaged', 'returned']
     if (filters.status && !validStatuses.includes(filters.status)) {
       errors.push(`状态参数无效，有效值为: ${validStatuses.join(', ')}`)
     }

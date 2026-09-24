@@ -571,7 +571,7 @@ export interface Phone {
   store_id?: number
   supplier_id?: number
   inventory_operator_id?: number
-  status: 'available' | 'sold' | 'reserved' | 'maintenance' | 'repair' | 'rented' | 'lost' | 'damaged' | 'returned' | 'in_stock' | 'peer_transfer' | 'supplier_proxy'
+  status: 'sold' | 'reserved' | 'maintenance' | 'repair' | 'rented' | 'lost' | 'damaged' | 'returned' | 'in_stock' | 'peer_transfer' | 'supplier_proxy'
   is_new?: boolean
   is_preordered?: boolean
   preorder_id?: number | null

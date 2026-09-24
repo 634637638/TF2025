@@ -9,9 +9,6 @@ const log = require('../utils/log')
 const { PAGINATION } = require('../config/constants')
 const { requireInventoryQueryToken } = require('../utils/inventory-query-token')
 
-const ADMIN_ROLE_CODES = new Set(['super_admin', 'webadmin', 'admin'])
-const isAdministrator = req => (req.user?.role_codes || []).some(code => ADMIN_ROLE_CODES.has(String(code).toLowerCase()))
-
 // 获取手机列表
 router.get('/', unifiedAuth, requirePermission('inventory:view'), async (req, res) => {
   try {
@@ -109,19 +106,19 @@ router.get('/', unifiedAuth, requirePermission('inventory:view'), async (req, re
           queryParams.push(`%${searchStr.toUpperCase()}%`)
         }
         // 状态匹配 (英文状态)
-        else if (['available', 'sold', 'reserved', 'repair', 'lost'].includes(searchStr.toLowerCase())) {
+        else if (['available', 'in_stock', 'sold', 'reserved', 'repair', 'lost'].includes(searchStr.toLowerCase())) {
           whereConditions.push('p.status = ?')
-          queryParams.push(searchStr.toLowerCase())
+          queryParams.push(searchStr.toLowerCase() === 'available' ? 'in_stock' : searchStr.toLowerCase())
         }
         // 状态匹配 (中文状态)
         else if (['可用', '已售', '预定', '维修', '丢失', '在库'].includes(searchStr)) {
           const statusMap = {
-            '可用': 'available',
+            '可用': 'in_stock',
             '已售': 'sold',
             '预定': 'reserved',
             '维修': 'repair',
             '丢失': 'lost',
-            '在库': 'available'
+            '在库': 'in_stock'
           }
           whereConditions.push('p.status = ?')
           queryParams.push(statusMap[searchStr])
@@ -1135,10 +1132,6 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
       store_id: effectiveStoreId,
       imei: normalizedImei
     })
-
-    if (['repair', 'rented'].includes(currentPhone.status) && !isAdministrator(req)) {
-      return ApiResponse.forbidden(res, existingPhones[0].status === 'rented' ? '租赁中的设备仅管理员可编辑' : '维修中的设备仅管理员可编辑')
-    }
 
     // 检查IMEI是否重复（排除当前手机）
     // 只有当同一客户拥有相同IMEI时才报错，不同客户可以有相同IMEI

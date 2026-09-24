@@ -9,7 +9,8 @@ const log = require('../utils/log')
 
 class PriceSyncScheduler {
   constructor() {
-    this.isRunning = false
+    this.runningConfigIds = new Set()
+    this.executionQueue = Promise.resolve()
     this.timers = new Map()
     this.db = null
     this.initialized = false
@@ -242,14 +243,13 @@ class PriceSyncScheduler {
         return
       }
 
-      // 明确只启动 is_default = 1 的配置
+      // 每个来源都可以独立定时采集；商品是否使用该来源由 price_list.source_config_id 决定。
       const [configs] = await this.db.query(`
         SELECT * FROM price_sync_config
-        WHERE is_default = 1
-        AND sync_interval > 0
+        WHERE sync_interval > 0
       `)
 
-      log.info(`找到 ${configs.length} 个默认配置需要启动定时任务`)
+      log.info(`找到 ${configs.length} 个采集来源需要启动定时任务`)
 
       for (const config of configs) {
         log.debug(`启动配置: ID=${config.id}, 名称=${config.config_name}, 账户=${config.login_username}`)
@@ -277,7 +277,7 @@ class PriceSyncScheduler {
         return
       }
 
-      // 启动默认配置的任务
+      // 启动所有已启用来源的任务
       await this.startAllJobs()
 
       log.success(`重启了 ${this.timers.size} 个价格同步定时任务`)
@@ -392,7 +392,7 @@ class PriceSyncScheduler {
 
       const config = configs[0]
 
-      if (config.is_default && config.sync_interval > 0) {
+      if (config.sync_interval > 0) {
         await this.startJob(config)
       } else {
         this.stopJob(configId)
@@ -406,35 +406,37 @@ class PriceSyncScheduler {
    * 执行同步
    */
   async executeSync(config) {
-    if (this.isRunning) {
-      log.info('价格同步正在进行中，跳过本次执行')
+    const configId = Number(config.id)
+    if (this.runningConfigIds.has(configId)) {
+      log.info(`该来源已在等待或执行，跳过重复定时触发: configId=${configId}`)
       return
     }
 
-    let lockHandle = null
+    this.runningConfigIds.add(configId)
+    const run = async () => {
+      let lockHandle = null
+      try {
+        lockHandle = await this.acquireExecutionLock(config.id)
+        if (!lockHandle) {
+          log.info(`检测到其他实例已持有同步锁，跳过本次执行: ${config.config_name} (configId=${config.id})`)
+          return
+        }
 
-    this.isRunning = true
-
-    try {
-      lockHandle = await this.acquireExecutionLock(config.id)
-      if (!lockHandle) {
-        log.info(`检测到其他实例已持有同步锁，跳过本次执行: ${config.config_name} (configId=${config.id})`)
-        return
+        log.start(`执行价格同步: ${config.config_name}`)
+        const startTime = Date.now()
+        const result = await priceListService.executeSync(config.id, 'auto', null)
+        const duration = ((Date.now() - startTime) / 1000).toFixed(2)
+        log.success(`价格同步完成: ${config.config_name} (耗时: ${duration}秒)`, result)
+      } catch (error) {
+        log.error(`价格同步失败: ${config.config_name}`, error.message)
+      } finally {
+        await this.releaseExecutionLock(lockHandle)
+        this.runningConfigIds.delete(configId)
       }
-
-      log.start(`执行价格同步: ${config.config_name}`)
-      const startTime = Date.now()
-
-      const result = await priceListService.executeSync(config.id, 'auto', null)
-
-      const duration = ((Date.now() - startTime) / 1000).toFixed(2)
-      log.success(`价格同步完成: ${config.config_name} (耗时: ${duration}秒)`, result)
-    } catch (error) {
-      log.error(`价格同步失败: ${config.config_name}`, error.message)
-    } finally {
-      await this.releaseExecutionLock(lockHandle)
-      this.isRunning = false
     }
+
+    this.executionQueue = this.executionQueue.then(run, run)
+    return this.executionQueue
   }
 
   /**

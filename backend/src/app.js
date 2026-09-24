@@ -12,6 +12,7 @@ const {
 } = require('./utils/shop-template-media-schema')
 const { refreshExpiredRentalStatuses } = require('./services/rental-status.service')
 const { ensureRateLimitLogTable } = require('./middleware/rate-limit')
+const { ensurePriceSourceSchema } = require('./utils/price-source-schema')
 
 // 导入路由
 const routes = require('./routes')
@@ -149,6 +150,12 @@ async function initializeApp() {
           templateMediaDraftCleanupTimer.unref?.()
         } catch (shopMediaSchemaError) {
           log.warn('商城模板媒体结构检查失败:', shopMediaSchemaError.message)
+        }
+
+        try {
+          await ensurePriceSourceSchema()
+        } catch (priceSourceSchemaError) {
+          log.warn('报价采集来源结构检查失败:', priceSourceSchemaError.message)
         }
       }
     } catch (dbError) {

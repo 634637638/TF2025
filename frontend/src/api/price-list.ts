@@ -138,8 +138,8 @@ export function updateSyncConfig(data: unknown) {
 /**
  * 手动触发同步
  */
-export function triggerSync() {
-  return unifiedApi.post('/price-list/sync/trigger')
+export function triggerSync(configId?: number | 'all') {
+  return unifiedApi.post('/price-list/sync/trigger', configId ? { configId } : undefined)
 }
 
 /**

@@ -22,6 +22,7 @@ const salesFieldMap: Record<string, string> = {
   inventory_operator_name: 'sale.operator_id',
   is_new: 'sale.condition',
   condition: 'sale.condition',
+  status: 'sale.condition',
   inventory_time: 'sale.inventory_time',
   remarks: 'sale.remarks',
   customer_name: 'sale.customer_name',

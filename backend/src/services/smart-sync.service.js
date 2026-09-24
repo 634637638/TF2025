@@ -439,6 +439,8 @@ class SmartSyncService {
                               existing.customer_id
               const cloudAvailable = incoming.sale_status === 'available' ||
                                      incoming.status === 'available' ||
+                                     incoming.sale_status === 'in_stock' ||
+                                     incoming.status === 'in_stock' ||
                                      (!incoming.sold_date && !incoming.customer_id)
               return localSold && cloudAvailable
             },

@@ -32,7 +32,8 @@ class QueryRepository extends BaseRepository {
       '划拨': 'supplier_proxy',
       '已退货': 'returned',
       '损坏': 'damaged',
-      '可用': 'available'
+      '可用': 'in_stock',
+      available: 'in_stock'
     }
 
     return statusMapping[status] || status

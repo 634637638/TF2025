@@ -181,11 +181,12 @@
           <template #default="{ row: phone }">
             <div class="action-buttons">
               <el-button
-                v-if="canSell && isPhoneSaleActionAvailable(phone)"
+                v-if="canSell"
                 type="success"
                 size="small"
-                title="销售出库"
-                @click.stop="emit('sale', phone)"
+                :disabled="!isPhoneSaleActionAvailable(phone)"
+                :title="isPhoneSaleActionAvailable(phone) ? '销售出库' : '当前状态不可销售出库'"
+                @click.stop="isPhoneSaleActionAvailable(phone) && emit('sale', phone)"
               >
                 <i class="fas fa-shopping-cart" />
                 出库

@@ -112,6 +112,7 @@ class PriceListController {
         显示状态: Number(item.show_price) === 1 ? '显示' : '隐藏',
         状态: Number(item.status) === 1 ? '启用' : '停用',
         外部型号: item.external_model || '',
+        采集来源: item.source_name || '默认来源',
         最后同步时间: item.last_sync_time || ''
       }))
 
@@ -488,7 +489,48 @@ class PriceListController {
       const userId = req.user?.id || null
       const priceListService = getPriceListService()
 
-      // 获取当前默认的配置ID（使用 is_default 字段）
+      const requestedConfigId = req.body?.configId || req.query?.configId
+      if (requestedConfigId === 'all') {
+        const syncTime = new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Shanghai' }).replace('T', ' ')
+        const syncBatchId = `manual-${Date.now()}`
+        const [configs] = await getDatabase().query(
+          'SELECT id FROM price_sync_config ORDER BY is_default DESC, id'
+        )
+        const results = []
+        for (const config of configs) {
+          results.push(await priceListService.executeSync(
+            config.id,
+            'manual',
+            userId,
+            { syncTime, syncBatchId }
+          ))
+        }
+        const successful = results.filter(result => result.success)
+        const sourceResults = results.map((result, index) => ({
+          configId: configs[index].id,
+          success: result.success,
+          message: result.message,
+          total: Number(result.data?.total || 0),
+          successCount: Number(result.data?.success || 0),
+          failedCount: Number(result.data?.failed || (result.success ? 0 : 1))
+        }))
+        return ApiResponse.success(res, {
+          total: results.reduce((sum, result) => sum + Number(result.data?.total || 0), 0),
+          success: successful.reduce((sum, result) => sum + Number(result.data?.success || 0), 0),
+          failed: sourceResults.reduce((sum, result) => sum + result.failedCount, 0),
+          sources: sourceResults
+        }, '全部来源同步完成')
+      }
+
+      if (requestedConfigId && Number.isInteger(Number(requestedConfigId))) {
+        const result = await priceListService.executeSync(Number(requestedConfigId), 'manual', userId)
+        if (result.success) {
+          return ApiResponse.success(res, result.data, result.message)
+        }
+        return ApiResponse.error(res, result.message, 400)
+      }
+
+      // 未指定时保持兼容：同步默认配置
       const db = getDatabase()
       const [configs] = await db.query(`
         SELECT id, config_name, login_username

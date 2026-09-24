@@ -13,9 +13,6 @@ const {
 } = require('../utils/phone-status')
 const COMPLETED_TRANSACTION_STATUS_SQL = `COALESCE(status, '') NOT IN (${COMPLETED_TRANSACTION_STATUSES.map(() => '?').join(', ')})`
 
-const ADMIN_ROLE_CODES = new Set(['super_admin', 'webadmin', 'admin'])
-const isAdministrator = req => (req.user?.role_codes || []).some(code => ADMIN_ROLE_CODES.has(String(code).toLowerCase()))
-
 // 统计卡片使用与库存列表相同的筛选条件，确保统计结果和列表保持一致。
 const buildInventoryStatsWhere = query => {
   const {
@@ -100,12 +97,12 @@ const buildInventoryStatsWhere = query => {
     } else if (/^(\d+[Gg][Bb]|1[Tt][Bb])$/.test(searchStr)) {
       whereConditions.push('UPPER(mem.size) LIKE ?')
       queryParams.push(`%${searchStr.toUpperCase()}%`)
-    } else if (['available', 'sold', 'reserved', 'repair', 'rented', 'lost'].includes(searchStr.toLowerCase())) {
+    } else if (['available', 'in_stock', 'sold', 'reserved', 'repair', 'rented', 'lost'].includes(searchStr.toLowerCase())) {
       whereConditions.push(`${effectiveStatusSql} = ?`)
-      queryParams.push(searchStr.toLowerCase())
+      queryParams.push(searchStr.toLowerCase() === 'available' ? 'in_stock' : searchStr.toLowerCase())
     } else if (['可用', '可售', '已售', '预定', '预订', '维修', '租赁', '丢失', '在库'].includes(searchStr)) {
       const statusMap = {
-        '可用': 'available',
+        '可用': 'in_stock',
         '可售': 'in_stock',
         '已售': 'sold',
         '预定': 'reserved',
@@ -327,14 +324,14 @@ router.get('/list', unifiedAuth, requirePermission('inventory:view'), async (req
         queryParams.push(`%${searchStr.toUpperCase()}%`)
       }
       // 状态匹配 (英文状态)
-      else if (['available', 'sold', 'reserved', 'repair', 'rented', 'lost'].includes(searchStr.toLowerCase())) {
+      else if (['available', 'in_stock', 'sold', 'reserved', 'repair', 'rented', 'lost'].includes(searchStr.toLowerCase())) {
         whereConditions.push(`${effectiveStatusSql} = ?`)
-        queryParams.push(searchStr.toLowerCase())
+        queryParams.push(searchStr.toLowerCase() === 'available' ? 'in_stock' : searchStr.toLowerCase())
       }
       // 状态匹配 (中文状态)
       else if (['可用', '可售', '已售', '预定', '预订', '维修', '租赁', '丢失', '在库'].includes(searchStr)) {
         const statusMap = {
-          '可用': 'available',
+          '可用': 'in_stock',
           '可售': 'in_stock',
           '已售': 'sold',
           '预定': 'reserved',
@@ -879,11 +876,6 @@ router.put('/:id', unifiedAuth, requirePermission('inventory:edit'), async (req,
     const item = existingItems[0]
     log.debug(`找到商品: ${item.brand || ''} ${item.model || ''} (${item.imei || '无IMEI'})`)
 
-    if (['repair', 'rented'].includes(item.status) && !isAdministrator(req)) {
-      await connection.rollback()
-      return ApiResponse.forbidden(res, item.status === 'rented' ? '租赁中的设备仅管理员可编辑' : '维修中的设备仅管理员可编辑')
-    }
-
     // 检查IMEI冲突（如果要更新的IMEI与现有其他商品冲突）
     if (updateData.imei && updateData.imei !== item.imei) {
       const [imeiConflict] = await connection.execute(
@@ -1113,12 +1105,12 @@ router.delete('/:id', unifiedAuth, requirePermission('inventory:delete'), async 
     const item = existingItems[0]
     log.debug(`找到商品: ${item.brand || ''} ${item.model || ''} (${item.imei || '无IMEI'})`)
 
-    // 检查商品状态，只有 'in_stock' 状态的商品才能删除
-    if (item.status !== 'in_stock' || Number(item.is_preordered) === 1) {
+    // 已完成交易和预订设备不能从库存台账删除；其他未完成状态继续进入关联记录校验。
+    if (COMPLETED_TRANSACTION_STATUSES.includes(item.status) || Number(item.is_preordered) === 1) {
       await connection.rollback()
       return ApiResponse.badRequest(res, Number(item.is_preordered) === 1
         ? '预订设备不能直接删除，请先取消或重新匹配预定单'
-        : '只能删除库存状态为“在库”的商品')
+        : '已完成交易的商品不能从库存台账删除')
     }
 
     // 检查外键约束 - 查看是否有关联的记录

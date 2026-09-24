@@ -183,11 +183,32 @@
             >
               <el-option
                 label="全新"
-                value="全新"
+                value="new"
               />
               <el-option
                 label="二手"
-                value="二手"
+                value="used"
+              />
+            </el-select>
+          </div>
+
+          <div>
+            <label class="sales-edit-field-label">状态</label>
+            <el-select
+              v-model="editForm.status"
+              placeholder="选择状态"
+              filterable
+              teleported
+              fit-input-width
+              popper-class="tf2025-form-popper"
+              class="full-width"
+              :disabled="!canEditField('condition')"
+            >
+              <el-option
+                v-for="option in phoneStatusOptions"
+                :key="option.value"
+                :label="option.label"
+                :value="option.value"
               />
             </el-select>
           </div>
@@ -408,6 +429,7 @@ import type {
   SalesStoreOption,
   SalesSupplierOption
 } from '../types'
+import type { PhoneStatusOption } from '@/constants/phoneStatuses'
 
 const props = defineProps<{
   modelValue: boolean
@@ -418,6 +440,7 @@ const props = defineProps<{
   editBrandModels: string[]
   colors: string[]
   memories: string[]
+  phoneStatusOptions: readonly PhoneStatusOption[]
   isNoImeiMode: boolean
   canViewField: (_fieldName: string) => boolean
   canEditField: (_fieldName: string) => boolean

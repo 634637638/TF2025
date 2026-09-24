@@ -179,15 +179,17 @@
         class="detail-modal-footer"
       >
         <el-button
-          v-if="canSell && isPhoneSaleActionAvailable(item)"
+          v-if="canSell"
           type="warning"
-          @click="emit('quick-sale')"
+          :disabled="!isPhoneSaleActionAvailable(item)"
+          :title="isPhoneSaleActionAvailable(item) ? '商品出库' : '当前状态不可销售出库'"
+          @click="isPhoneSaleActionAvailable(item) && emit('quick-sale')"
         >
           <i class="fas fa-shopping-cart" />
           出库
         </el-button>
         <el-button
-          v-if="canEdit && isPhoneSaleActionAvailable(item)"
+          v-if="canEdit"
           type="primary"
           @click="emit('edit')"
         >
@@ -195,7 +197,7 @@
           编辑
         </el-button>
         <el-button
-          v-if="canDelete && isPhoneSaleActionAvailable(item)"
+          v-if="canDelete"
           type="danger"
           @click="emit('delete')"
         >

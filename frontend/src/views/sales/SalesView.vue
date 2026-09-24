@@ -288,6 +288,7 @@
       :edit-brand-models="editBrandModels"
       :colors="colors"
       :memories="memories"
+      :phone-status-options="PHONE_EDIT_STATUS_OPTIONS"
       :is-no-imei-mode="editIsNoIMEIMode"
       :can-view-field="canViewSaleField"
       :can-edit-field="canEditSaleField"
@@ -351,6 +352,7 @@ import { storage } from '@/services/storage'
 import { loadHtml2Canvas } from '@/utils/html2canvas'
 import { toCanonicalPhoneUpdatePayload } from '@/utils/phone-update-payload'
 import { resolvePhoneReferenceIds } from '@/utils/phone-reference-ids'
+import { PHONE_EDIT_STATUS_OPTIONS } from '@/constants/phoneStatuses'
 import { sortAvailableSalesPhones } from './sales-sort'
 import { isCurrentMobileViewport } from '@/utils/device-detection'
 import { useSalesBaseOptions } from './useSalesBaseOptions'
@@ -1481,11 +1483,6 @@ const editPhone = async (phone: any) => {
     return
   }
 
-  if (['repair', 'rented'].includes(phone.status) && !authStore.isAdmin) {
-    showError(phone.status === 'rented' ? '租赁中的设备仅管理员可编辑' : '维修中的设备仅管理员可编辑')
-    return
-  }
-
   // 列表接口可能来自旧缓存或旧后端版本，打开编辑时重新读取详情以取得规范 ID 字段。
   let editRecord = phone
   try {
@@ -1549,6 +1546,7 @@ const submitEdit = async () => {
         supplier_id: editForm.supplier_id,
         store_id: editForm.store_id,
         condition: editForm.condition,
+        status: editForm.status,
         inventory_time: editForm.inventory_time,
         remarks: editForm.remarks
       })
@@ -1754,7 +1752,9 @@ watch(showEditModal, async (newVal) => {
       store_id: phone.store_id || null,
       operator_id: phone.inventory_operator_id === null || phone.inventory_operator_id === undefined ? '' : String(phone.inventory_operator_id),
       operator_name: operatorName,
-      condition: phone.condition || '',
+      condition: phone.condition === 'new' || phone.condition === '全新' || Number(phone.is_new) === 1
+        ? 'new'
+        : 'used',
       status: phone.status || '',
       inventory_time: phone.inventory_time
         ? new Date(phone.inventory_time).toISOString().slice(0, 10)

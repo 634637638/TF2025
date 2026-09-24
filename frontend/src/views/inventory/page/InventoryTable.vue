@@ -67,17 +67,18 @@
                 查看
               </el-button>
               <el-button
-                v-if="canSell && isPhoneSaleActionAvailable(item)"
+                v-if="canSell"
                 type="warning"
                 size="small"
-                title="商品出库"
-                @click.stop="emit('quick-sale', item)"
+                :disabled="!isPhoneSaleActionAvailable(item)"
+                :title="isPhoneSaleActionAvailable(item) ? '商品出库' : '当前状态不可销售出库'"
+                @click.stop="isPhoneSaleActionAvailable(item) && emit('quick-sale', item)"
               >
                 <i class="fas fa-shopping-cart" />
                 出库
               </el-button>
               <el-button
-                v-if="canEdit && isPhoneSaleActionAvailable(item)"
+                v-if="canEdit"
                 type="success"
                 size="small"
                 title="编辑"
@@ -87,7 +88,7 @@
                 编辑
               </el-button>
               <el-button
-                v-if="canDelete && isPhoneSaleActionAvailable(item)"
+                v-if="canDelete"
                 type="danger"
                 size="small"
                 title="删除"

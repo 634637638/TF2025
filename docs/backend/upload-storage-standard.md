@@ -2,8 +2,8 @@
 
 > **文档说明**：定义业务上传文件的目录命名、数据库关联、生命周期、迁移和部署要求
 >
-> **最后更新**：2026-08-30
-> **版本**：v1.0.0
+> **最后更新**：2026-09-24
+> **版本**：v1.1.0
 > **维护者**：TF2025 开发团队
 
 ## 适用范围
@@ -107,6 +107,18 @@ uploads/shop/h5_newimages/苹果-17promax-橙色/
 - 配置页和轮播图页上传时必须显式提交模块名，后端仅接受
   `h5_config` 和 `h5_banners`。
 
+模板媒体采用“暂存上传、保存时归档”两个阶段，两个阶段写入不同目录：
+
+1. 上传接口先写入 `uploads/shop`，随后将文件移入
+   `uploads/shop/template-staging/<颜色子模板ID>` 并记录草稿。
+2. 点击保存母模板后，后端再创建
+   `uploads/shop/h5_newimages/品牌-型号-颜色`，将暂存文件归档并写入正式媒体表。
+
+因此，上传成功不等于正式归档目录也有写权限。若部署日志出现
+`EACCES: permission denied, mkdir .../uploads/shop/h5_newimages/...`，通常是
+Node 进程能写暂存目录，但不能在 `h5_newimages` 下创建正式目录。其他模块（例如
+国补照片写入 `uploads/subsidy/...`）正常，也不能证明商城这两个目录均可写。
+
 公共归档工具：`backend/src/utils/shop-media-storage.js`。
 
 ## 媒体预览规范
@@ -190,6 +202,42 @@ npm run migrate:shop-media -- --apply
 
 只部署代码、不部署重组后的文件，会导致新数据库 URL 指向不存在的服务器路径。
 
+### 上传目录权限
+
+后端必须以固定的非 root 服务用户运行，并且该用户对业务上传目录具有创建目录、写入、重命名和删除文件的权限。不要用 `chmod 777` 规避权限问题。
+
+以 Node/PM2 用户为 `www:www`、项目位于 `/www/wwwroot/api2025.com/backend` 为例，首次部署或修复目录权限时执行：
+
+```bash
+cd /www/wwwroot/api2025.com/backend
+
+install -d -o www -g www -m 775 \
+  uploads/shop \
+  uploads/shop/template-staging \
+  uploads/shop/h5_newimages
+
+chown -R www:www uploads/shop/template-staging uploads/shop/h5_newimages
+find uploads/shop -type d -exec chmod 775 {} \;
+find uploads/shop -type f -exec chmod 664 {} \;
+```
+
+如配置了 `UPLOAD_PATH`，以上路径应替换为该变量实际指向的上传根目录。执行前应先确认服务用户和上传根目录：
+
+```bash
+ps -eo user,group,pid,args | grep '[n]ode'
+```
+
+保存报 `EACCES` 时，检查从上传根目录到目标目录的每一级权限，并用实际服务用户验证父目录可写：
+
+```bash
+namei -l /www/wwwroot/api2025.com/backend/uploads/shop/h5_newimages
+sudo -u www test -w /www/wwwroot/api2025.com/backend/uploads/shop/h5_newimages \
+  && echo '商城模板归档目录可写' \
+  || echo '商城模板归档目录不可写'
+```
+
+目录修复后可以重新保存；通常无需重启 Node。若服务使用容器、挂载卷或独立 `UPLOAD_PATH`，还需确保挂载目标本身允许该服务用户写入。
+
 ## 当前迁移记录
 
 截至 2026-08-30，本地文件与当前配置数据库已完成以下迁移：
@@ -219,6 +267,11 @@ npm run migrate:shop-media -- --apply
 - [ ] 前端类型检查与媒体存储专项测试通过。
 
 ## 更新日志
+
+### 2026-09-24 - v1.1.0
+
+- 说明 H5 模板媒体上传暂存和保存归档是两个不同写目录阶段。
+- 补充部署 Node 服务用户目录权限、`EACCES` 诊断及修复命令。
 
 ### 2026-08-30 - v1.0.0
 

@@ -352,7 +352,7 @@ const getSalesStatusLabel = (status) => {
     lost: '丢失',
     peer_transfer: '调货',
     supplier_proxy: '划拨',
-    returned: '已退货',
+    returned: '退货',
     damaged: '损坏'
   }
 

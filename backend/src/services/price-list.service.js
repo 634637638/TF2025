@@ -20,6 +20,7 @@ const SystemSettingsService = require('./system-settings.service')
 const { matchProductName } = require('../config/product-name-mapping')
 const log = require('../utils/log')
 const { DEFAULT_BROWSER_USER_AGENT, EXTERNAL_PRICE, TIMEOUTS } = require('../config/constants')
+const { ensurePriceSourceSchema } = require('../utils/price-source-schema')
 
 class PriceListService {
   constructor() {
@@ -474,7 +475,29 @@ class PriceListService {
         AND (pls.show_price = 1 OR pls.show_price IS NULL)
         AND COALESCE(pls.wholesale_price, 0) > 0
         AND pls.last_sync_time IS NOT NULL
+        AND COALESCE(pls.source_config_id, 0) = COALESCE(p.source_config_id, 0)
     )`
+  }
+
+  async getPriceSourceContext(configId) {
+    if (!configId) return null
+    const [rows] = await this.db.query(
+      'SELECT id, is_default FROM price_sync_config WHERE id = ? LIMIT 1',
+      [configId]
+    )
+    if (rows.length === 0) return null
+    return { id: Number(rows[0].id), isDefault: Number(rows[0].is_default) === 1 }
+  }
+
+  getPriceSourceFilter(sourceContext, alias = 'p') {
+    if (!sourceContext?.id) return { sql: '', params: [] }
+    if (sourceContext.isDefault) {
+      return {
+        sql: `AND (${alias}.source_config_id = ? OR ${alias}.source_config_id IS NULL)`,
+        params: [sourceContext.id]
+      }
+    }
+    return { sql: `AND ${alias}.source_config_id = ?`, params: [sourceContext.id] }
   }
 
   buildLatestPublishedWholesaleFilters(alias = 'p') {
@@ -497,6 +520,7 @@ class PriceListService {
         AND (pls.show_price = 1 OR pls.show_price IS NULL)
         AND COALESCE(pls.retail_price, 0) > 0
         AND pls.last_sync_time IS NOT NULL
+        AND COALESCE(pls.source_config_id, 0) = COALESCE(p.source_config_id, 0)
     )`
   }
 
@@ -520,6 +544,7 @@ class PriceListService {
    */
   async getPriceList(params = {}) {
     try {
+      await ensurePriceSourceSchema()
       const {
         search,
         brand_name,
@@ -625,6 +650,9 @@ class PriceListService {
           COALESCE(pl.is_collect, 1) as is_collect,
           COALESCE(pl.show_price, 0) as show_price,
           pl.external_model,
+          pl.source_config_id,
+          COALESCE(selected_source.config_name, default_source.config_name, '默认来源') as source_name,
+          COALESCE(selected_source.source_type, default_source.source_type, 'account') as source_type,
           -- 提取型号数字用于排序
           CAST(REGEXP_SUBSTR(mo.name, '[0-9]+') AS UNSIGNED) as model_sort_num,
           -- 提取内存数值用于排序
@@ -640,6 +668,8 @@ class PriceListService {
         JOIN models mo ON pl.model_id = mo.id
         LEFT JOIN colors c ON pl.color_id = c.id
         LEFT JOIN memories mem ON pl.memory_id = mem.id
+        LEFT JOIN price_sync_config selected_source ON selected_source.id = pl.source_config_id
+        LEFT JOIN price_sync_config default_source ON default_source.is_default = 1
         LEFT JOIN (
           SELECT
             ph.brand_id,
@@ -1014,7 +1044,10 @@ class PriceListService {
     try {
       const {
         allowCreate = true,  // 默认允许创建新记录
-        changeReason = null
+        changeReason = null,
+        sourceConfigId = null,
+        syncBatchId = null,
+        setSourceConfig = false
       } = options
       let { isManualEdit = false } = options
 
@@ -1034,6 +1067,10 @@ class PriceListService {
         last_sync_time = null,
         remark = ''
       } = data
+      const hasSourceConfigId = Object.prototype.hasOwnProperty.call(data, 'source_config_id')
+      const inputSourceConfigId = hasSourceConfigId && data.source_config_id !== null && data.source_config_id !== ''
+        ? Number(data.source_config_id)
+        : null
       const hasStockQuantity = Object.prototype.hasOwnProperty.call(data, 'stock_quantity')
 
       const hasStatus = Object.prototype.hasOwnProperty.call(data, 'status')
@@ -1284,6 +1321,7 @@ class PriceListService {
             wholesale_price === undefined
 
           // 分步构建 SQL 和参数，避免模板字符串变量求值问题
+          const shouldUpdateSourceConfig = setSourceConfig || (isManualEdit && hasSourceConfigId)
           const updateQuery = `UPDATE price_list
             SET retail_price = ${onlyUpdatingShowPrice ? 'retail_price' : (isManualEdit ? '?' : 'COALESCE(?, retail_price)')},
                 wholesale_price = ${onlyUpdatingShowPrice ? 'wholesale_price' : (isManualEdit ? '?' : 'COALESCE(?, wholesale_price)')},
@@ -1291,6 +1329,7 @@ class PriceListService {
                 is_collect = ${shouldUpdateCollectMode ? '?' : 'is_collect'},
                 remark = ?,
                 external_model = ?,
+                ${shouldUpdateSourceConfig ? 'source_config_id = ?,' : ''}
                 ${shouldUpdateShowPrice ? 'show_price = ?' : 'show_price = show_price'},
                 ${hasLastSyncTime && isManualEdit && finalSyncTime === null ? 'last_sync_time = NULL' : (isManualEdit && !hasLastSyncTime ? 'last_sync_time = last_sync_time' : 'last_sync_time = ?')},
                 updated_at = ?
@@ -1323,6 +1362,9 @@ class PriceListService {
 
           updateParams.push(remark)
           updateParams.push(external_model)
+          if (shouldUpdateSourceConfig) {
+            updateParams.push(setSourceConfig ? Number(sourceConfigId) : inputSourceConfigId)
+          }
 
           // 只有在手动编辑且传入了 show_price 时才更新该字段
           if (shouldUpdateShowPrice) {
@@ -1379,9 +1421,9 @@ class PriceListService {
           // 新增 - 使用 ID 关联
           const insertQuery = `
             INSERT INTO price_list
-            (brand_id, model_id, color_id, memory_id, external_model, retail_price, wholesale_price,
+            (brand_id, model_id, color_id, memory_id, external_model, source_config_id, retail_price, wholesale_price,
              stock_quantity, status, is_collect, show_price, remark, last_sync_time, updated_at, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `
           const [result] = await this.db.query(insertQuery, [
             brand_id,
@@ -1389,6 +1431,9 @@ class PriceListService {
             color_id,
             memory_id,
             external_model,
+            setSourceConfig || hasSourceConfigId
+              ? (setSourceConfig ? Number(sourceConfigId) : inputSourceConfigId)
+              : null,
             finalRetailPrice || null,
             wholesale_price || null,
             stock_quantity,
@@ -1422,6 +1467,18 @@ class PriceListService {
           log.debug(`  ⏭️  跳过创建新记录（allowCreate=false）: ${brand_name} ${model_number} ${external_model || ''} ${color_name || ''} ${memory || ''}`)
           return this.createErrorResponse('记录不存在且不允许创建', { skipped: true })
         }
+      }
+
+      if (sourceConfigId && priceItemId) {
+        await this.saveSourcePrice({
+          priceListId: priceItemId,
+          sourceConfigId,
+          wholesalePrice: wholesale_price,
+          retailPrice: retail_price,
+          externalModel: external_model,
+          fetchedAt: syncTime || this.getBeijingTime(),
+          syncBatchId: syncBatchId || syncTime || this.getBeijingTime()
+        })
       }
 
       return this.createSuccessResponse('保存成功', { id: priceItemId, changeType })
@@ -1476,6 +1533,7 @@ class PriceListService {
    */
   async getSyncConfig(hidePassword = true) {
     try {
+      await ensurePriceSourceSchema()
       // 同步主链路统一只认默认配置
       const query = 'SELECT * FROM price_sync_config WHERE is_default = 1 LIMIT 1'
       const [rows] = await this.db.query(query)
@@ -1514,6 +1572,7 @@ class PriceListService {
    */
   async getSyncConfigById(configId) {
     try {
+      await ensurePriceSourceSchema()
       const query = 'SELECT * FROM price_sync_config WHERE id = ?'
       const [rows] = await this.db.query(query, [configId])
 
@@ -1522,6 +1581,8 @@ class PriceListService {
       }
 
       const config = rows[0]
+
+      config.source_type = config.source_type === 'public' ? 'public' : 'account'
 
       // 解密密码返回真实密码（用于编辑显示）
       if (config.login_password) {
@@ -1546,6 +1607,7 @@ class PriceListService {
    */
   async getSyncConfigWithPassword(configId) {
     try {
+      await ensurePriceSourceSchema()
       const query = 'SELECT * FROM price_sync_config WHERE id = ?'
       const [rows] = await this.db.query(query, [configId])
 
@@ -1554,6 +1616,8 @@ class PriceListService {
       }
 
       const config = rows[0]
+
+      config.source_type = config.source_type === 'public' ? 'public' : 'account'
 
       // 解密密码返回真实密码
       if (config.login_password) {
@@ -1577,14 +1641,24 @@ class PriceListService {
    */
   async updateSyncConfig(configData) {
     try {
+      await ensurePriceSourceSchema()
       const {
         config_name,
         source_url,
         login_url,
         login_username,
         login_password,
+        source_type = 'account',
         sync_interval
       } = configData
+
+      const normalizedSourceType = source_type === 'public' ? 'public' : 'account'
+      if (!config_name || !source_url) {
+        return this.createErrorResponse('请填写配置名称和数据源URL')
+      }
+      if (normalizedSourceType === 'account' && !login_username) {
+        return this.createErrorResponse('登录来源必须填写用户名')
+      }
 
       // 只更新当前默认配置，避免 is_active 和 is_default 口径混用
       const [currentConfigs] = await this.db.query(
@@ -1606,22 +1680,37 @@ class PriceListService {
         encryptedPassword = this.encryptPassword(login_password)
       }
 
+      const [existingRows] = await this.db.query(
+        'SELECT login_password FROM price_sync_config WHERE id = ? LIMIT 1',
+        [configId]
+      )
+      if (existingRows.length === 0) return this.createErrorResponse('配置不存在')
+      const storedPassword = normalizedSourceType === 'public'
+        ? null
+        : (shouldUpdatePassword ? encryptedPassword : existingRows[0].login_password)
+
       const query = `
         UPDATE price_sync_config
         SET config_name = ?,
+            source_type = ?,
             source_url = ?,
             login_url = ?,
             login_username = ?,
-            ${shouldUpdatePassword ? 'login_password = ?,' : ''}
+            login_password = ?,
             sync_interval = ?
         WHERE id = ?
       `
 
-      const params = [config_name, source_url, login_url, login_username]
-      if (shouldUpdatePassword) {
-        params.push(encryptedPassword)
-      }
-      params.push(sync_interval, configId)
+      const params = [
+        config_name,
+        normalizedSourceType,
+        source_url,
+        normalizedSourceType === 'public' ? null : login_url,
+        normalizedSourceType === 'public' ? null : login_username,
+        storedPassword,
+        sync_interval,
+        configId
+      ]
 
       await this.db.query(query, params)
 
@@ -1637,7 +1726,8 @@ class PriceListService {
    */
   async getAllSyncConfigs() {
     try {
-      const query = 'SELECT id, config_name, login_username, source_url, is_default, last_sync_time, last_sync_status FROM price_sync_config ORDER BY is_default DESC, id'
+      await ensurePriceSourceSchema()
+      const query = 'SELECT id, config_name, source_type, login_username, source_url, sync_interval, is_default, last_sync_time, last_sync_status FROM price_sync_config ORDER BY is_default DESC, id'
       const [rows] = await this.db.query(query)
 
       return this.createSuccessResponse('获取成功', rows)
@@ -1658,11 +1748,22 @@ class PriceListService {
         login_url,
         login_username,
         login_password,
+        source_type = 'account',
         sync_interval = 60
       } = configData
 
-      // 加密密码
-      const encryptedPassword = this.encryptPassword(login_password)
+      const normalizedSourceType = source_type === 'public' ? 'public' : 'account'
+      if (!config_name || !source_url) {
+        return this.createErrorResponse('请填写配置名称和数据源URL')
+      }
+      if (normalizedSourceType === 'account' && (!login_username || !login_password)) {
+        return this.createErrorResponse('登录来源必须填写用户名和密码')
+      }
+
+      const encryptedPassword = normalizedSourceType === 'account'
+        ? this.encryptPassword(login_password)
+        : null
+      await ensurePriceSourceSchema()
 
       // 如果这是第一个配置，设置为默认
       const [countResult] = await this.db.query('SELECT COUNT(*) as count FROM price_sync_config')
@@ -1670,15 +1771,16 @@ class PriceListService {
 
       const query = `
         INSERT INTO price_sync_config
-        (config_name, source_url, login_url, login_username, login_password, sync_interval, is_default)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        (config_name, source_type, source_url, login_url, login_username, login_password, sync_interval, is_default)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `
 
       await this.db.query(query, [
         config_name,
+        normalizedSourceType,
         source_url,
-        login_url,
-        login_username,
+        normalizedSourceType === 'public' ? null : login_url,
+        normalizedSourceType === 'public' ? null : login_username,
         encryptedPassword,
         sync_interval,
         isFirst ? 1 : 0
@@ -1725,6 +1827,14 @@ class PriceListService {
         return this.createErrorResponse('不能删除默认配置，请先设置其他配置为默认')
       }
 
+      await this.db.query(
+        'UPDATE price_list SET source_config_id = NULL WHERE source_config_id = ?',
+        [configId]
+      )
+      await this.db.query(
+        'DELETE FROM price_source_prices WHERE source_config_id = ?',
+        [configId]
+      )
       await this.db.query('DELETE FROM price_sync_config WHERE id = ?', [configId])
 
       return this.createSuccessResponse('删除成功')
@@ -1739,14 +1849,24 @@ class PriceListService {
    */
   async updateSyncConfigById(configId, configData) {
     try {
+      await ensurePriceSourceSchema()
       const {
         config_name,
         source_url,
         login_url,
         login_username,
         login_password,
+        source_type = 'account',
         sync_interval
       } = configData
+
+      const normalizedSourceType = source_type === 'public' ? 'public' : 'account'
+      if (!config_name || !source_url) {
+        return this.createErrorResponse('请填写配置名称和数据源URL')
+      }
+      if (normalizedSourceType === 'account' && !login_username) {
+        return this.createErrorResponse('登录来源必须填写用户名')
+      }
 
       // 只有当密码不是占位符且有值时才更新密码
       const shouldUpdatePassword = login_password && login_password !== '••••••••' && login_password !== '******'
@@ -1757,22 +1877,37 @@ class PriceListService {
         encryptedPassword = this.encryptPassword(login_password)
       }
 
+      const [existingRows] = await this.db.query(
+        'SELECT login_password FROM price_sync_config WHERE id = ? LIMIT 1',
+        [configId]
+      )
+      if (existingRows.length === 0) return this.createErrorResponse('配置不存在')
+      const storedPassword = normalizedSourceType === 'public'
+        ? null
+        : (shouldUpdatePassword ? encryptedPassword : existingRows[0].login_password)
+
       const query = `
         UPDATE price_sync_config
         SET config_name = ?,
+            source_type = ?,
             source_url = ?,
             login_url = ?,
             login_username = ?,
-            ${shouldUpdatePassword ? 'login_password = ?,' : ''}
+            login_password = ?,
             sync_interval = ?
         WHERE id = ?
       `
 
-      const params = [config_name, source_url, login_url, login_username]
-      if (shouldUpdatePassword) {
-        params.push(encryptedPassword)
-      }
-      params.push(sync_interval, configId)
+      const params = [
+        config_name,
+        normalizedSourceType,
+        source_url,
+        normalizedSourceType === 'public' ? null : login_url,
+        normalizedSourceType === 'public' ? null : login_username,
+        storedPassword,
+        sync_interval,
+        configId
+      ]
 
       await this.db.query(query, params)
 
@@ -1788,7 +1923,7 @@ class PriceListService {
   /**
    * 执行同步（核心功能）
    */
-  async executeSync(configId = null, syncType = 'manual', userId = null) {
+  async executeSync(configId = null, syncType = 'manual', userId = null, syncOptions = {}) {
     // 🔍 检查数据库是否已初始化
     if (!this.db) {
       log.error('❌ 数据库未初始化，无法执行同步')
@@ -1826,7 +1961,7 @@ class PriceListService {
       })
 
       // 如果有登录信息，先登录
-      if (syncConfig.login_url && syncConfig.login_username) {
+      if (syncConfig.source_type !== 'public' && syncConfig.login_url && syncConfig.login_username) {
         // 清除该配置的旧cookie，确保每次都重新登录
         const cookieKeys = [syncConfig.id, `${syncConfig.id}_array`]
         cookieKeys.forEach(key => {
@@ -1853,14 +1988,17 @@ class PriceListService {
       log.debug('✅ 数据抓取完成')
 
       // 生成统一的同步时间（北京时间）
-      const syncTime = this.getBeijingTime()
+      const syncTime = syncOptions.syncTime || this.getBeijingTime()
       log.debug(`🕐 统一同步时间: ${syncTime}`)
 
       // 解析并保存数据
       log.debug('📊 开始解析和保存数据...')
       // 注意：只更新 price_list 表中 is_collect = 1 的记录
       const changeReason = syncType === 'manual' ? 'manual' : 'sync'
-      const results = await this.parseAndSavePrices(prices, syncTime, changeReason)
+      const results = await this.parseAndSavePrices(prices, syncTime, changeReason, {
+        sourceConfigId: Number(syncConfig.id),
+        syncBatchId: syncOptions.syncBatchId || `${syncTime}-${syncConfig.id}`
+      })
       log.debug('✅ 数据解析和保存完成:', results)
 
       // 构建详细的同步结果
@@ -2046,6 +2184,11 @@ class PriceListService {
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
         'Connection': 'keep-alive'
+      }
+
+      if (config.source_type === 'public') {
+        this.cookies.delete(config.id)
+        this.cookies.delete(`${config.id}_array`)
       }
 
       // 使用登录后的cookies（必须在executeSync中先登录）
@@ -2458,7 +2601,7 @@ class PriceListService {
    * @param {string|object} data - HTML字符串或JSON对象
    * @param {string} syncTime - 统一同步时间（北京时间）
    */
-  async parseAndSavePrices(data, syncTime = null, changeReason = 'sync') {
+  async parseAndSavePrices(data, syncTime = null, changeReason = 'sync', sourceOptions = {}) {
     try {
       // 如果没有传入时间，生成统一的当前时间（北京时间）
       if (!syncTime) {
@@ -2470,10 +2613,10 @@ class PriceListService {
 
       if (isJsonData) {
         log.debug('📊 检测到JSON数据，使用JSON解析方式')
-        return await this.parseJsonData(data, syncTime, changeReason)
+        return await this.parseJsonData(data, syncTime, changeReason, sourceOptions)
       } else {
         log.debug('📄 检测到HTML数据，使用HTML解析方式')
-        return await this.parseHtmlData(data, syncTime, changeReason)
+        return await this.parseHtmlData(data, syncTime, changeReason, sourceOptions)
       }
     } catch (error) {
       log.error('解析数据失败:', error)
@@ -2481,12 +2624,36 @@ class PriceListService {
     }
   }
 
+  async saveSourcePrice({ priceListId, sourceConfigId, wholesalePrice, retailPrice, externalModel, fetchedAt, syncBatchId }) {
+    if (!priceListId || !sourceConfigId) return
+    await ensurePriceSourceSchema()
+    await this.db.query(`
+      INSERT INTO price_source_prices
+        (price_list_id, source_config_id, wholesale_price, retail_price, external_model, fetched_at, sync_batch_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        wholesale_price = VALUES(wholesale_price),
+        retail_price = VALUES(retail_price),
+        external_model = VALUES(external_model),
+        fetched_at = VALUES(fetched_at),
+        sync_batch_id = VALUES(sync_batch_id)
+    `, [
+      priceListId,
+      sourceConfigId,
+      wholesalePrice ?? null,
+      retailPrice ?? null,
+      externalModel ?? null,
+      fetchedAt,
+      String(syncBatchId || fetchedAt).slice(0, 64)
+    ])
+  }
+
   /**
    * 解析JSON格式的价格数据
    * @param {object} jsonData - JSON数据对象
    * @param {string} syncTime - 统一同步时间（北京时间）
    */
-  async parseJsonData(jsonData, syncTime = null, changeReason = 'sync') {
+  async parseJsonData(jsonData, syncTime = null, changeReason = 'sync', sourceOptions = {}) {
     await this.loadStandardColors(true)
 
     // 如果没有传入时间，生成统一的当前时间（北京时间）
@@ -2502,6 +2669,12 @@ class PriceListService {
 
     // 步骤1: 从 price_list 表中获取需要采集的记录（is_collect = 1）
     log.debug('🔍 查询 price_list 表中需要采集的记录...')
+    const sourceContext = await this.getPriceSourceContext(sourceOptions.sourceConfigId)
+    const sourceFilter = sourceContext
+      ? (sourceContext.isDefault
+        ? { sql: 'AND (p.source_config_id = ? OR p.source_config_id IS NULL)', params: [sourceContext.id] }
+        : { sql: 'AND p.source_config_id = ?', params: [sourceContext.id] })
+      : { sql: '', params: [] }
     const [inventoryItems] = await this.db.query(`
       SELECT DISTINCT
         b.name as brand_name,
@@ -2515,8 +2688,9 @@ class PriceListService {
       LEFT JOIN colors c ON p.color_id = c.id
       LEFT JOIN memories mem ON p.memory_id = mem.id
       WHERE COALESCE(p.is_collect, 1) = 1
+      ${sourceFilter.sql}
       ORDER BY b.name, mo.name, c.name, mem.size
-    `)
+    `, sourceFilter.params)
 
     log.debug(`📦 price_list 表中有 ${inventoryItems.length} 条价格记录需要更新`)
 
@@ -2591,7 +2765,7 @@ class PriceListService {
     }
 
     // 步骤3: 匹配库存产品与外部价格（复用现有逻辑）
-    return await this.matchInventoryWithPrices(inventoryItems, externalPrices, syncTime, changeReason)
+    return await this.matchInventoryWithPrices(inventoryItems, externalPrices, syncTime, changeReason, sourceOptions)
   }
 
   /**
@@ -2599,7 +2773,7 @@ class PriceListService {
    * @param {string} html - HTML内容
    * @param {string} syncTime - 统一同步时间（北京时间）
    */
-  async parseHtmlData(html, syncTime = null, changeReason = 'sync') {
+  async parseHtmlData(html, syncTime = null, changeReason = 'sync', sourceOptions = {}) {
     try {
       await this.loadStandardColors(true)
 
@@ -2669,6 +2843,12 @@ class PriceListService {
       // 步骤1: 获取需要采集价格的产品列表
       // 🔥 只查询 price_list 表中 is_collect = 1 的记录（需要采集）
       log.debug('🔍 查询 price_list 表中需要采集的记录...')
+      const sourceContext = await this.getPriceSourceContext(sourceOptions.sourceConfigId)
+      const sourceFilter = sourceContext
+        ? (sourceContext.isDefault
+          ? { sql: 'AND (p.source_config_id = ? OR p.source_config_id IS NULL)', params: [sourceContext.id] }
+          : { sql: 'AND p.source_config_id = ?', params: [sourceContext.id] })
+        : { sql: '', params: [] }
       const [priceListItems] = await this.db.query(`
         SELECT DISTINCT
           b.name as brand_name,
@@ -2682,8 +2862,9 @@ class PriceListService {
         LEFT JOIN colors c ON p.color_id = c.id
         LEFT JOIN memories mem ON p.memory_id = mem.id
         WHERE COALESCE(p.is_collect, 1) = 1
+        ${sourceFilter.sql}
         ORDER BY b.name, mo.name, c.name, mem.size
-      `)
+      `, sourceFilter.params)
       const inventoryItems = priceListItems
       log.debug(`📦 price_list 表中有 ${inventoryItems.length} 条价格记录需要更新`)
 
@@ -2895,7 +3076,7 @@ class PriceListService {
       }
 
       // 步骤3: 使用共享的匹配方法
-      const matchResult = await this.matchInventoryWithPrices(inventoryItems, externalPrices, syncTime, changeReason)
+      const matchResult = await this.matchInventoryWithPrices(inventoryItems, externalPrices, syncTime, changeReason, sourceOptions)
 
       return matchResult
     } catch (error) {
@@ -2911,7 +3092,7 @@ class PriceListService {
    * @param {Map} externalPrices - 外部价格数据
    * @param {string} syncTime - 可选的统一同步时间（北京时间）
    */
-  async matchInventoryWithPrices(inventoryItems, externalPrices, syncTime = null, changeReason = 'sync') {
+  async matchInventoryWithPrices(inventoryItems, externalPrices, syncTime = null, changeReason = 'sync', sourceOptions = {}) {
     let successCount = 0
     let failedCount = 0
 
@@ -3114,7 +3295,7 @@ class PriceListService {
               remark: '从外部同步（完整外部名称匹配）'
             }
 
-            const result = await this.upsertPriceItem(priceData, syncTime, { allowCreate: false, isManualEdit: false, changeReason })
+            const result = await this.upsertPriceItem(priceData, syncTime, { allowCreate: false, isManualEdit: false, changeReason, sourceConfigId: sourceOptions.sourceConfigId, syncBatchId: sourceOptions.syncBatchId })
             if (result.success) {
               successCount++
               successItems.push({
@@ -3238,7 +3419,7 @@ class PriceListService {
             remark: '从外部同步'
           }
 
-          const result = await this.upsertPriceItem(priceData, syncTime, { allowCreate: false, isManualEdit: false, changeReason })
+          const result = await this.upsertPriceItem(priceData, syncTime, { allowCreate: false, isManualEdit: false, changeReason, sourceConfigId: sourceOptions.sourceConfigId, syncBatchId: sourceOptions.syncBatchId })
           if (result.success) {
             successCount++
             successItems.push({
@@ -3462,7 +3643,7 @@ class PriceListService {
           remark: '从外部同步'
         }
 
-        const result = await this.upsertPriceItem(priceData, syncTime, { changeReason })
+        const result = await this.upsertPriceItem(priceData, syncTime, { changeReason, sourceConfigId: sourceOptions.sourceConfigId, syncBatchId: sourceOptions.syncBatchId })
         if (result.success) {
           successCount++
           successItems.push({
