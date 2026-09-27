@@ -374,6 +374,7 @@ export const useSalesCheckout = ({
         const pointsEarned = Number(response.data?.points_earned) || 0
         showSuccess(`批量销售成功！共销售 ${selectedCount} 台设备${pointsEarned > 0 ? `，本单获得 ${pointsEarned} 积分` : ''}`)
         clearBatchSelection()
+        // 销售完成后设备已不再属于候选列表，必须读取数据库最新结果。
         await loadAvailablePhones()
         todaySold.value += selectedCount
       } else {
@@ -506,6 +507,7 @@ export const useSalesCheckout = ({
           selectedPhones.value = []
           selectAll.value = false
         }
+        // 销售完成后设备已不再属于候选列表，必须读取数据库最新结果。
         await loadAvailablePhones()
         todaySold.value += batchMode.value ? batchCount : 1
       } else {

@@ -239,8 +239,8 @@
           <DateRangePicker
             v-model="searchDateRange"
             value-format="YYYY-MM-DD"
-            start-placeholder="创建开始日期"
-            end-placeholder="创建结束日期"
+            start-placeholder="预定开始日期"
+            end-placeholder="预定结束日期"
             clearable
             @change="handlePreorderSearch"
           />
@@ -1150,6 +1150,16 @@
                 >
                   <template #default="{ row }">
                     ¥{{ formatNumber(row.remaining_amount || 0) }}
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="canViewPreorderField('created_at')"
+                  prop="created_at"
+                  label="预定时间"
+                  min-width="140"
+                >
+                  <template #default="{ row }">
+                    {{ formatDateTime(row.created_at) }}
                   </template>
                 </el-table-column>
                 <el-table-column

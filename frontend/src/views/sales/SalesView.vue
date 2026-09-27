@@ -609,7 +609,8 @@ const openWholesaleModal = () => {
 const handleTransferSuccess = (data?: { success_count: number; total_count: number; message: string }) => {
   operationMode.value = null
   clearBatchSelection()
-  loadAvailablePhones()
+  // 调货/划拨会把设备移出销售候选，必须绕过 GET 缓存重新加载剩余设备。
+  void loadAvailablePhones(true, false, true)
 
   // 如果没有传递数据，显示默认消息
   if (!data) {
@@ -865,6 +866,7 @@ const {
   handleNoPermission,
   normalizeCustomerPhone,
   resetCustomerForm,
+  // 出库完成后必须绕过列表 GET 缓存，立即展示剩余商品。
   loadAvailablePhones: () => loadAvailablePhones(true, false, true),
   showError,
   showSuccess
@@ -1353,9 +1355,12 @@ const loadAvailablePhones = async (_bustCache = false, silentError = false, show
       setTotal(responseTotal)
 
       // 当前页在销售后可能已经超过最后一页，回到有效页并重新读取。
-      if (records.length === 0 && responseTotal > 0 && requestedPage !== pagination.page) {
-        await loadAvailablePhones(true, silentError, showLoadingState)
-        return
+      if (records.length === 0 && responseTotal > 0) {
+        // setTotal 已经将页码修正到最后一页；仅在页码发生变化时补发请求。
+        if (requestedPage !== pagination.page) {
+          await loadAvailablePhones(true, silentError, showLoadingState)
+          return
+        }
       }
 
       // 从后端获取全新和二手库存金额统计
@@ -1508,6 +1513,7 @@ const editPhone = async (phone: any) => {
 // 提交编辑
 const submitEdit = async () => {
   if (submitting.value) return
+  submitting.value = true
   try {
     // 验证必填字段
     // 对于手机设备（品牌包含iPhone、华为、小米等），IMEI必须是15位
@@ -1581,6 +1587,8 @@ const submitEdit = async () => {
     showError(typeof backendMessage === 'string' && backendMessage.trim()
       ? backendMessage
       : '更新失败，请重试')
+  } finally {
+    submitting.value = false
   }
 }
 

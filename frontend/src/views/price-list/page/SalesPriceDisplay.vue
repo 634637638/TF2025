@@ -257,6 +257,8 @@ import { ElMessage } from 'element-plus'
 import { loadHtml2Canvas } from '@/utils/html2canvas'
 import { useSiteSettingsStore } from '@/stores/siteSettings'
 import { parsePublicPriceContacts, formatPublicPriceWatermark } from '@/utils/publicPriceSettings'
+
+const IMAGE_CAPTURE_WIDTH = 430
 // 状态
 const { loading } = useLoadingState()
 const siteSettingsStore = useSiteSettingsStore()
@@ -511,6 +513,75 @@ const applyContactImageStyles = (clonedDocument: Document) => {
   })
 }
 
+// Safari 对 html2canvas 克隆后的表格布局会重新计算，显式固定生成图宽度和五列宽度，避免价格列被裁切。
+const applyPriceTableImageStyles = (clonedDocument: Document) => {
+  const results = clonedDocument.querySelector<HTMLElement>('.results-list.generating-image')
+  const tableWrapper = results?.querySelector<HTMLElement>('.table-wrapper')
+  const table = tableWrapper?.querySelector<HTMLElement>('.el-table')
+  if (!results || !tableWrapper || !table) return
+
+  const width = `${IMAGE_CAPTURE_WIDTH}px`
+  let ancestor = results.parentElement
+  while (ancestor && ancestor !== clonedDocument.documentElement) {
+    ancestor.style.setProperty('overflow', 'visible', 'important')
+    if (ancestor.matches('.container, .results-section, .public-price-query, #app')) {
+      ancestor.style.setProperty('width', width, 'important')
+      ancestor.style.setProperty('min-width', width, 'important')
+      ancestor.style.setProperty('max-width', 'none', 'important')
+    }
+    if (ancestor.matches('.public-price-query')) {
+      ancestor.style.setProperty('position', 'static', 'important')
+      ancestor.style.setProperty('height', 'auto', 'important')
+      ancestor.style.setProperty('min-height', '0', 'important')
+    }
+    ancestor = ancestor.parentElement
+  }
+
+  clonedDocument.documentElement.style.setProperty('overflow', 'visible', 'important')
+  clonedDocument.body.style.setProperty('overflow', 'visible', 'important')
+  results.style.setProperty('width', width, 'important')
+  results.style.setProperty('min-width', width, 'important')
+  results.style.setProperty('max-width', width, 'important')
+  results.style.setProperty('overflow', 'visible', 'important')
+  tableWrapper.style.setProperty('width', width, 'important')
+  tableWrapper.style.setProperty('overflow', 'visible', 'important')
+  table.style.setProperty('display', 'block', 'important')
+  table.style.setProperty('width', width, 'important')
+  table.style.setProperty('min-width', width, 'important')
+  table.style.setProperty('overflow', 'visible', 'important')
+
+  table.querySelectorAll<HTMLElement>('.el-table__inner-wrapper, .el-table__header-wrapper, .el-table__body-wrapper').forEach((wrapper) => {
+    wrapper.style.setProperty('width', width, 'important')
+    wrapper.style.setProperty('overflow', 'visible', 'important')
+  })
+
+  const columnWidths = ['14%', '27%', '14%', '16%', '29%']
+  table.querySelectorAll<HTMLTableElement>('table').forEach((innerTable) => {
+    innerTable.style.setProperty('display', 'table', 'important')
+    innerTable.style.setProperty('width', width, 'important')
+    innerTable.style.setProperty('min-width', width, 'important')
+    innerTable.style.setProperty('table-layout', 'fixed', 'important')
+    innerTable.querySelectorAll<HTMLTableColElement>('col').forEach((column, index) => {
+      const columnWidth = columnWidths[index]
+      if (!columnWidth) return
+      column.style.setProperty('width', columnWidth, 'important')
+      column.style.setProperty('min-width', '0', 'important')
+    })
+  })
+
+  table.querySelectorAll<HTMLElement>('.el-table__header, .el-table__body').forEach((innerTable) => {
+    innerTable.style.setProperty('display', 'table', 'important')
+    innerTable.style.setProperty('width', width, 'important')
+  })
+  table.querySelectorAll<HTMLElement>('.el-table__cell, .cell, .price').forEach((cell) => {
+    cell.style.setProperty('box-sizing', 'border-box', 'important')
+    cell.style.setProperty('white-space', 'nowrap', 'important')
+    cell.style.setProperty('word-break', 'keep-all', 'important')
+    cell.style.setProperty('overflow', 'visible', 'important')
+    cell.style.setProperty('text-overflow', 'clip', 'important')
+  })
+}
+
 // 下载为图片
 const downloadAsImage = async () => {
   if (isGenerating.value) return
@@ -559,15 +630,23 @@ const downloadAsImage = async () => {
     await new Promise(resolve => setTimeout(resolve, 150))
 
     const html2canvas = await loadHtml2Canvas()
+    const captureWidth = Math.max(IMAGE_CAPTURE_WIDTH, Math.ceil(element.scrollWidth))
+    const captureHeight = Math.ceil(element.scrollHeight)
 
     // 使用 html2canvas 生成图片（完整捕获）
     const canvas = await html2canvas(element, {
       scale: 3, // 提高清晰度，适配手机
+      width: captureWidth,
+      height: captureHeight,
+      windowWidth: captureWidth,
       useCORS: true, // 支持跨域图片
       backgroundColor: '#ffffff',
       logging: false,
       allowTaint: true,
-      onclone: applyContactImageStyles
+      onclone: (clonedDocument) => {
+        applyContactImageStyles(clonedDocument)
+        applyPriceTableImageStyles(clonedDocument)
+      }
     })
 
     // 裁剪画布移除底部白色空白
@@ -1493,8 +1572,9 @@ onBeforeUnmount(() => {
 
 // 生成图片时使用手机响应式样式
 .results-list.generating-image {
-  width: 100% !important;
-  min-width: 375px !important;
+  // 生成图使用固定安全宽度，避免 375px 等小屏设备裁掉最右侧价格。
+  width: 430px !important;
+  min-width: 430px !important;
   max-width: 430px !important;
   padding: 0 !important;
   border-radius: 0 !important;
@@ -1550,16 +1630,21 @@ onBeforeUnmount(() => {
     overflow-x: visible !important;
 
     :deep(.el-table) {
-      width: 100% !important;
+      width: 430px !important;
+      min-width: 430px !important;
       font-size: 12px !important;
       border-radius: 0 !important;
       border-left: none !important;
       border-right: none !important;
-      display: table !important;
+      display: block !important;
+      overflow: visible !important;
 
+      .el-table__inner-wrapper,
       .el-table__header-wrapper,
       .el-table__body-wrapper {
+        width: 430px !important;
         overflow-x: visible !important;
+        overflow-y: visible !important;
       }
 
       .el-table__header th {
@@ -1579,11 +1664,11 @@ onBeforeUnmount(() => {
         padding: 8px 4px !important;
       }
 
-      // 确保所有列都显示
+      // header/body 都是独立 table，Safari 下不能把 body 当作 table-header-group。
       .el-table__header,
       .el-table__body {
-        width: 100% !important;
-        display: table-header-group !important;
+        width: 430px !important;
+        display: table !important;
       }
 
       .el-table__body tr {
@@ -1591,7 +1676,8 @@ onBeforeUnmount(() => {
       }
 
       table {
-        width: 100% !important;
+        width: 430px !important;
+        min-width: 430px !important;
         display: table !important;
         table-layout: fixed !important;
       }
@@ -1606,32 +1692,27 @@ onBeforeUnmount(() => {
 
       // 品牌列
       col:nth-child(1) {
-        width: 15% !important;
-        min-width: 50px !important;
+        width: 14% !important;
       }
 
       // 型号列
       col:nth-child(2) {
-        width: 25% !important;
-        min-width: 80px !important;
+        width: 27% !important;
       }
 
       // 颜色列
       col:nth-child(3) {
-        width: 15% !important;
-        min-width: 45px !important;
+        width: 14% !important;
       }
 
       // 内存列
       col:nth-child(4) {
-        width: 15% !important;
-        min-width: 50px !important;
+        width: 16% !important;
       }
 
       // 价格列
       col:nth-child(5) {
-        width: 20% !important;
-        min-width: 60px !important;
+        width: 29% !important;
       }
 
       // 确保表格内容不换行但完整显示
@@ -1641,8 +1722,17 @@ onBeforeUnmount(() => {
 
       // 确保所有单元格内容可见
       .cell {
+        box-sizing: border-box !important;
         overflow: visible !important;
         text-overflow: clip !important;
+        white-space: nowrap !important;
+        word-break: keep-all !important;
+      }
+
+      .price {
+        display: inline-block !important;
+        min-width: max-content !important;
+        white-space: nowrap !important;
       }
     }
   }
