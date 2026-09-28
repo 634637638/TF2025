@@ -89,6 +89,9 @@
               v-model="formData.model"
               placeholder="请选择"
               filterable
+              remote
+              :remote-method="handleModelRemoteSearch"
+              :loading="modelOptionsLoading"
               teleported
               popper-class="tf2025-form-popper"
               :disabled="!formData.brand || availableModels.length === 0"
@@ -482,6 +485,7 @@
                 :key="option.value"
                 :label="option.label"
                 :value="option.value"
+                :disabled="option.value === 'rented' && formData.status !== 'rented'"
               />
             </el-select>
           </el-form-item>
@@ -523,9 +527,18 @@ import { extractResponseData } from '@/utils/api-response'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { isValidMobilePhone, normalizeAppleId, normalizePersonName, normalizePhoneDigits, resolveAppleAccountEmail } from '@/utils/security'
 import { sortOptionsByOrder } from '@/utils/option-sort'
+import {
+  getCachedBrands,
+  getCachedColors,
+  getCachedEmployees,
+  getCachedMemories,
+  getCachedModelsByBrand,
+  getCachedStores,
+  getCachedSuppliers
+} from '@/services/reference-options'
 import { PHONE_STATUS_OPTIONS } from '@/constants/phoneStatuses'
 import type { Customer } from '@/types/order'
-import type { IdNameOption, ModelOption, ModelValueProps, SuccessEmits, UpdateModelValueEmits, UserOption } from '@/types'
+import type { IdNameOption, MemoryOption, ModelOption, ModelValueProps, SuccessEmits, UpdateModelValueEmits, UserOption } from '@/types'
 
 // ==================== 本地类型定义 ====================
 
@@ -539,6 +552,16 @@ interface EditModalOptions {
   colorItems: IdNameOption[]
   memories: string[]
   memoryItems: IdNameOption[]
+  users: UserOption[]
+}
+
+interface SharedEditModalOptions {
+  suppliers: IdNameOption[]
+  stores: IdNameOption[]
+  brands: Array<{ id: number; name: string; sort_order?: number }>
+  models: ModelOption[]
+  colors: Array<{ id: number; name: string; sort_order?: number }>
+  memories: MemoryOption[]
   users: UserOption[]
 }
 
@@ -749,29 +772,6 @@ const normalizeNameList = (data: unknown, keyCandidates: string[] = ['name']) =>
   ).map(item => item.name)
 }
 
-const normalizeModels = (data: unknown): ModelOption[] => {
-  const raw = extractNestedList(data, ['data', 'models'])
-
-  return sortOptionsByOrder(
-    raw
-      .map((item) => {
-        const rawItem = toRecord(item) as RawLookupItem | null
-        if (!rawItem) return null
-        const name = rawItem.name || rawItem.model || rawItem.model_name
-        if (!name) return null
-        return {
-          id: Number(rawItem.id || 0),
-          name,
-          brand_id: rawItem.brand_id !== undefined && rawItem.brand_id !== null ? Number(rawItem.brand_id) : null,
-          brand_name: rawItem.brand_name || rawItem.brand || '',
-          brand: rawItem.brand || '',
-          sort_order: Number(rawItem.sort_order || 0)
-        }
-      })
-      .filter(Boolean) as ModelOption[]
-  )
-}
-
 const normalizeLookupValue = (value?: string | number | null) => {
   return String(value || '')
     .trim()
@@ -792,18 +792,16 @@ const fetchEditOptions = async (): Promise<EditModalOptions> => {
           suppliersRes,
           storesRes,
           brandsRes,
-          modelsRes,
           colorsRes,
           memoriesRes,
           usersRes
         ] = await Promise.all([
-          unifiedApi.get('/suppliers?page_size=10000'),
-          unifiedApi.get('/stores?all=true'),
-          unifiedApi.get('/brands?status=1&page_size=10000'),
-          unifiedApi.get('/models?page_size=10000'),
-          unifiedApi.get('/colors?page_size=10000'),
-          unifiedApi.get('/memories?page_size=10000'),
-          unifiedApi.get('/users/employees?page_size=10000')
+          getCachedSuppliers(),
+          getCachedStores(),
+          getCachedBrands(),
+          getCachedColors(),
+          getCachedMemories(),
+          getCachedEmployees()
         ])
 
         const brandsRaw = extractNestedList(brandsRes?.data, ['data'])
@@ -813,7 +811,7 @@ const fetchEditOptions = async (): Promise<EditModalOptions> => {
             ? sortOptionsByOrder(
               suppliersRes.data.map((item) => ({
                 id: Number(item.id || 0),
-                name: item.name,
+                name: String(item.name || ''),
                 sort_order: Number(item.sort_order || 0)
               }))
             )
@@ -822,7 +820,7 @@ const fetchEditOptions = async (): Promise<EditModalOptions> => {
             ? sortOptionsByOrder(
               storesRes.data.map((item) => ({
                 id: Number(item.id || 0),
-                name: item.name,
+                name: String(item.name || ''),
                 sort_order: Number(item.sort_order || 0)
               }))
             )
@@ -851,7 +849,7 @@ const fetchEditOptions = async (): Promise<EditModalOptions> => {
               })
               .filter((item) => item.name)
           ),
-          models: modelsRes.success ? normalizeModels(modelsRes.data) : [],
+          models: [],
           colors: colorsRes.success ? normalizeNameList(colorsRes.data) : [],
           colorItems: colorsRes.success
             ? sortOptionsByOrder(
@@ -884,7 +882,7 @@ const fetchEditOptions = async (): Promise<EditModalOptions> => {
           users: usersRes.success && Array.isArray(usersRes.data?.employees)
             ? sortOptionsByOrder(usersRes.data.employees.map((item) => ({
               id: Number(item.id || 0),
-              name: item.name,
+              name: String(item.name || item.username || ''),
               status: Number(item.status)
             })))
             : []
@@ -1081,6 +1079,7 @@ const ensureHistoricalUserOption = (userId: unknown, userName: unknown) => {
 
 const props = defineProps<ModelValueProps & {
   phoneId: number | null
+  sharedOptions?: SharedEditModalOptions
 }>()
 
 const emit = defineEmits<UpdateModelValueEmits & SuccessEmits>()
@@ -1112,8 +1111,10 @@ const editShowCustomerSearchResults = ref(false)
 const editCustomerSearchTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
 const customerNameInputRef = ref<any>(null)
 const customerNameLastTapAt = ref(0)
+const modelOptionsLoading = ref(false)
 let lastLoadToken = 0
 let salePriceDebounceTimer: ReturnType<typeof setTimeout> | null = null
+let modelSearchSequence = 0
 
 const formRules = {
   brand: [ValidationRules.required('请选择品牌')],
@@ -1216,6 +1217,59 @@ const availableModels = computed(() => {
   })
 })
 
+const normalizeRemoteModels = (items: RawLookupItem[]): ModelOption[] => sortOptionsByOrder(
+  items
+    .map(item => {
+      const name = item.name || item.model || item.model_name
+      if (!name) return null
+      return {
+        id: Number(item.id || 0),
+        name: String(name),
+        brand_id: item.brand_id === undefined || item.brand_id === null ? null : Number(item.brand_id),
+        brand_name: String(item.brand_name || item.brand || formData.brand || ''),
+        brand: String(item.brand || item.brand_name || formData.brand || ''),
+        sort_order: Number(item.sort_order || 0)
+      }
+    })
+    .filter(Boolean) as ModelOption[]
+)
+
+const loadModelsForBrand = async (keyword = '', includeCurrent = true) => {
+  if (!formData.brand_id) {
+    options.models = []
+    return
+  }
+
+  const sequence = ++modelSearchSequence
+  modelOptionsLoading.value = true
+  try {
+    const response = await getCachedModelsByBrand(
+      formData.brand_id,
+      keyword,
+      includeCurrent ? formData.model_id : null
+    )
+    if (sequence !== modelSearchSequence) return
+
+    const models = normalizeRemoteModels(
+      Array.isArray(response.data) ? response.data as RawLookupItem[] : []
+    )
+    if (formData.model && !models.some(model => normalizeLookupValue(model.name) === normalizeLookupValue(formData.model))) {
+      models.unshift({
+        id: formData.model_id || -1,
+        name: formData.model,
+        brand_id: formData.brand_id,
+        brand_name: formData.brand
+      })
+    }
+    options.models = models
+  } catch (error) {
+    if (sequence === modelSearchSequence) options.models = []
+    showError(getErrorMessage(error, '加载型号失败，请稍后重试'))
+  } finally {
+    if (sequence === modelSearchSequence) modelOptionsLoading.value = false
+  }
+}
+
 const profit = computed(() => {
   if (!formData.purchase_cost || !formData.sale_price) return 0
   return formData.sale_price - formData.purchase_cost
@@ -1243,6 +1297,22 @@ const resetFormState = () => {
   editShowCustomerSearchResults.value = false
 }
 
+const normalizeSharedOptions = (source: SharedEditModalOptions): EditModalOptions => ({
+  suppliers: [...source.suppliers],
+  stores: [...source.stores],
+  brands: source.brands.map(item => item.name),
+  brandItems: [...source.brands],
+  models: [...source.models],
+  colors: source.colors.map(item => item.name),
+  colorItems: [...source.colors],
+  memories: source.memories.map(item => String(item.size || item.name || '')),
+  memoryItems: source.memories.map(item => ({
+    id: item.id,
+    name: String(item.size || item.name || '')
+  })),
+  users: [...source.users]
+})
+
 const loadDialogData = async () => {
   if (!dialogVisible.value || !props.phoneId) return
 
@@ -1251,7 +1321,9 @@ const loadDialogData = async () => {
 
   try {
     const [loadedOptions, response] = await Promise.all([
-      fetchEditOptions(),
+      props.sharedOptions && props.sharedOptions.brands.length > 0
+        ? Promise.resolve(normalizeSharedOptions(props.sharedOptions))
+        : fetchEditOptions(),
       unifiedApi.get(`/query/phone/${props.phoneId}`)
     ])
 
@@ -1316,6 +1388,7 @@ const loadDialogData = async () => {
     )
 
     syncCatalogSelections()
+    await loadModelsForBrand('', true)
 
     originalEditValues.value = {
       customer_id: formData.customer_id,
@@ -1353,15 +1426,21 @@ const handleBrandChange = (brandName: string) => {
   if (!currentModel || brandChanged) {
     formData.model = ''
     formData.model_id = null
+    void loadModelsForBrand()
     return
   }
 
   formData.model_id = currentModel.id || null
+  void loadModelsForBrand('', true)
 }
 
 const handleModelChange = (modelName: string) => {
   formData.model = modelName
   syncModelId()
+}
+
+const handleModelRemoteSearch = (query: string) => {
+  void loadModelsForBrand(query, true)
 }
 
 const handleColorChange = (colorName: string) => {

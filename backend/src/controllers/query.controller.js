@@ -236,6 +236,21 @@ class QueryController {
     }
   }
 
+  async getQueryModels(req, res) {
+    try {
+      const models = await this.queryService.getQueryModels({
+        brand_id: req.query.brand_id,
+        name: req.query.name,
+        include_id: req.query.include_id,
+        page_size: req.query.page_size
+      })
+      return ApiResponse.success(res, '获取型号成功', models)
+    } catch (error) {
+      log.error('QueryController: 获取型号失败:', error)
+      return ApiResponse.serverError(res, '获取型号失败', error)
+    }
+  }
+
   /**
    * 批量操作
    */

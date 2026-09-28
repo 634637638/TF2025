@@ -213,7 +213,7 @@ import { useForm, ValidationRules, useLoadingState } from '@/composables'
 import { getOrdersByPhone } from '@/api/shop-public'
 import { getUserOrders, userManager, tokenManager, type AuthUser } from '@/api/auth'
 import SectionLoading from '@/components/SectionLoading.vue'
-import { formatImageUrl } from '@/utils/format'
+import { formatDateTime as formatGlobalDateTime, formatImageUrl } from '@/utils/format'
 import { normalizePhoneDigits } from '@/utils/security'
 import { logger } from '@/utils/logger'
 import { storage } from '@/services/storage'
@@ -483,13 +483,7 @@ const getPaymentText = (method: string) => {
 // 格式化时间
 const formatTime = (time: string) => {
   if (!time) return ''
-  return new Date(time).toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+  return formatGlobalDateTime(time, 'YYYY-MM-DD HH:mm')
 }
 
 // 获取订单商品预览（最多显示2个）

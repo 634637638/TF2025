@@ -456,6 +456,7 @@ import type { CustomerSegment, CustomerInsight, CustomerDetail } from '@/types/a
 import type { CustomerAnalyticsProps } from '@/types/component'
 import { useAnalyticsFieldVisibility } from './useAnalyticsFieldVisibility'
 import { logger } from '@/utils/logger'
+import { formatDate as formatGlobalDate } from '@/utils/format'
 
 const props = withDefaults(defineProps<CustomerAnalyticsProps>(), {
   loading: false,
@@ -617,7 +618,7 @@ const formatMoney = (amount: number): string => {
 }
 
 const formatDate = (date: string): string => {
-  return new Date(date).toLocaleDateString('zh-CN')
+  return formatGlobalDate(date)
 }
 
 const getSegmentTagType = (segment: string): 'success' | 'warning' | 'info' | 'primary' | 'danger' => {

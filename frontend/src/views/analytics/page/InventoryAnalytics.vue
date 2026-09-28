@@ -711,6 +711,7 @@ import { useAnalyticsFieldVisibility } from './useAnalyticsFieldVisibility'
 import echarts, { ECharts } from '@/utils/echarts'
 import { buildCsvContent } from '@/utils/csv-export'
 import { logger } from '@/utils/logger'
+import { formatDate as formatGlobalDate } from '@/utils/format'
 
 const props = withDefaults(defineProps<InventoryAnalyticsProps>(), {
   loading: false,
@@ -1003,11 +1004,7 @@ const formatDecimal = (num?: number | null) => {
 
 const formatDate = (date: string | null) => {
   if (!date) return '-'
-  return new Date(date).toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  })
+  return formatGlobalDate(date)
 }
 
 const getStockTagType = (stock: number, reorderPoint: number) => {

@@ -72,7 +72,7 @@
           @change="ctx.searchUsers"
         >
           <el-option
-            v-for="role in ctx.rolesData"
+            v-for="role in ctx.roleOptions"
             :key="role.id"
             :label="role.name"
             :value="role.id"

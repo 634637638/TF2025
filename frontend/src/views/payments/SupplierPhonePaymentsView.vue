@@ -1944,14 +1944,15 @@ const paymentTimeColors = [
 const getPaymentTimeColorIndex = (paymentTime: string): number => {
   if (!paymentTime) return 0
 
-  const date = new Date(paymentTime)
+  const date = TimeUtil.parse(paymentTime)
+  if (!date?.isValid()) return 0
   // 使用年月日时分钟作为种子，精确到分钟
   // 使用质数乘数来增加随机性，避免相邻时间使用相近颜色
-  const seed = (date.getFullYear() * 997 +
-               (date.getMonth() + 1) * 101 +
-               date.getDate() * 73 +
-               date.getHours() * 37 +
-               date.getMinutes() * 17) % 1000000007 // 使用大质数取模
+  const seed = (date.year() * 997 +
+               (date.month() + 1) * 101 +
+               date.date() * 73 +
+               date.hour() * 37 +
+               date.minute() * 17) % 1000000007 // 使用大质数取模
 
   return Math.abs(seed) % paymentTimeColors.length
 }
@@ -3218,57 +3219,25 @@ const resetFilters = () => {
 
 const formatDate = (dateString: string | null) => {
   if (!dateString) return '-'
-  const date = new Date(dateString)
-  return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`
+  return TimeUtil.toDateInputValue(dateString) || '-'
 }
 
 const _formatDateTime = (dateString: string | null) => {
   if (!dateString) return '-'
-  const date = new Date(dateString)
-  return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`
+  return TimeUtil.format(dateString, TIME_FORMATS.DATETIME)
 }
 
 // 格式化为北京时间（将 UTC 时间转换为北京时间 UTC+8）
 const formatDateTimeBeijing = (dateString: string | null) => {
   if (!dateString) return '-'
-
-  const date = new Date(dateString)
-
-  // 检查日期是否有效
-  if (isNaN(date.getTime())) return '-'
-
-  // 转换为北京时间（UTC+8）
-  const utcTime = date.getTime()
-  const beijingTime = new Date(utcTime + (8 * 60 * 60 * 1000))
-
-  const year = beijingTime.getFullYear()
-  const month = String(beijingTime.getMonth() + 1).padStart(2, '0')
-  const day = String(beijingTime.getDate()).padStart(2, '0')
-  const hours = String(beijingTime.getHours()).padStart(2, '0')
-  const minutes = String(beijingTime.getMinutes()).padStart(2, '0')
-  const seconds = String(beijingTime.getSeconds()).padStart(2, '0')
-
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+  const parsed = TimeUtil.parse(dateString)
+  return parsed?.isValid() ? TimeUtil.format(parsed, TIME_FORMATS.DATETIME) : '-'
 }
 
 // 格式化为北京时间（将 UTC 时间转换为北京时间 UTC+8，只显示年月日）
 const formatDateBeijing = (dateString: string | null) => {
   if (!dateString) return '-'
-
-  const date = new Date(dateString)
-
-  // 检查日期是否有效
-  if (isNaN(date.getTime())) return '-'
-
-  // 转换为北京时间（UTC+8）
-  const utcTime = date.getTime()
-  const beijingTime = new Date(utcTime + (8 * 60 * 60 * 1000))
-
-  const year = beijingTime.getFullYear()
-  const month = String(beijingTime.getMonth() + 1).padStart(2, '0')
-  const day = String(beijingTime.getDate()).padStart(2, '0')
-
-  return `${year}-${month}-${day}`
+  return TimeUtil.toDateInputValue(dateString) || '-'
 }
 
 const getPaymentDialogColumnWidth = (

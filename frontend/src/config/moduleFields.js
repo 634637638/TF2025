@@ -2743,6 +2743,14 @@ export const MODULE_FIELDS = {
         description: '送修设备品牌'
       },
       {
+        id: 'device_info.phone_id',
+        name: '关联库存设备',
+        group: '设备信息',
+        type: FIELD_TYPES.NUMBER,
+        sensitivity: SENSITIVITY_LEVELS.INTERNAL,
+        description: '维修记录关联的库存设备'
+      },
+      {
         id: 'device_info.phone_model',
         name: '手机型号',
         group: '设备信息',
@@ -2761,12 +2769,45 @@ export const MODULE_FIELDS = {
         searchable: true
       },
       {
+        id: 'device_info.serial_number',
+        name: '序列号',
+        group: '设备信息',
+        type: FIELD_TYPES.TEXT,
+        sensitivity: SENSITIVITY_LEVELS.SENSITIVE,
+        description: '送修设备序列号',
+        searchable: true
+      },
+      {
+        id: 'device_info.color_name',
+        name: '颜色',
+        group: '设备信息',
+        type: FIELD_TYPES.TEXT,
+        sensitivity: SENSITIVITY_LEVELS.PUBLIC,
+        description: '送修设备颜色'
+      },
+      {
+        id: 'device_info.memory_size',
+        name: '内存',
+        group: '设备信息',
+        type: FIELD_TYPES.TEXT,
+        sensitivity: SENSITIVITY_LEVELS.PUBLIC,
+        description: '送修设备内存规格'
+      },
+      {
         id: 'repair_info.problem_description',
-        name: '故障描述',
+        name: '故障',
         group: '维修信息',
         type: FIELD_TYPES.TEXT,
         sensitivity: SENSITIVITY_LEVELS.SENSITIVE,
-        description: '客户描述的设备故障'
+        description: '客户维修故障项目，允许多选并补充自定义项目'
+      },
+      {
+        id: 'repair_info.photos',
+        name: '维修照片和视频',
+        group: '维修信息',
+        type: FIELD_TYPES.TEXT,
+        sensitivity: SENSITIVITY_LEVELS.SENSITIVE,
+        description: '维修过程及设备状况的图片、视频证据'
       },
       {
         id: 'repair_info.technician_name',
@@ -2775,14 +2816,6 @@ export const MODULE_FIELDS = {
         type: FIELD_TYPES.TEXT,
         sensitivity: SENSITIVITY_LEVELS.INTERNAL,
         description: '负责维修的员工'
-      },
-      {
-        id: 'price_info.estimated_cost',
-        name: '预计费用',
-        group: '价格信息',
-        type: FIELD_TYPES.CURRENCY,
-        sensitivity: SENSITIVITY_LEVELS.CONFIDENTIAL,
-        description: '维修预计收费金额'
       },
       {
         id: 'price_info.actual_cost',
@@ -2811,27 +2844,11 @@ export const MODULE_FIELDS = {
       },
       {
         id: 'time_info.created_at',
-        name: '创建时间',
+        name: '维修时间',
         group: '时间信息',
         type: FIELD_TYPES.DATETIME,
         sensitivity: SENSITIVITY_LEVELS.INTERNAL,
-        description: '维修单创建时间'
-      },
-      {
-        id: 'time_info.updated_at',
-        name: '更新时间',
-        group: '时间信息',
-        type: FIELD_TYPES.DATETIME,
-        sensitivity: SENSITIVITY_LEVELS.INTERNAL,
-        description: '维修单最后更新时间'
-      },
-      {
-        id: 'time_info.completed_at',
-        name: '完成时间',
-        group: '时间信息',
-        type: FIELD_TYPES.DATETIME,
-        sensitivity: SENSITIVITY_LEVELS.INTERNAL,
-        description: '维修完成时间'
+        description: '客户送修或维修发生的时间；与维修单实际创建时间分开保存'
       },
       {
         id: 'system_info.operations',
@@ -2839,7 +2856,7 @@ export const MODULE_FIELDS = {
         group: '系统信息',
         type: FIELD_TYPES.TEXT,
         sensitivity: SENSITIVITY_LEVELS.INTERNAL,
-        description: '详情和编辑操作的列容器；状态更新归属维修状态字段'
+        description: '详情、编辑和删除操作的列容器；状态更新归属维修状态字段'
       }
     ]
   },

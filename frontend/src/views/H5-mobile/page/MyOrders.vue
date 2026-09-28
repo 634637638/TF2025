@@ -178,6 +178,7 @@ import { useLoadingState } from '@/composables'
 import { logger } from '@/utils/logger'
 import { storage } from '@/services/storage'
 import { H5_STORAGE_KEYS } from '@/constants/storage'
+import { formatDateTime as formatGlobalDateTime } from '@/utils/format'
 const router = useRouter()
 
 const customer_phone = ref('')
@@ -298,13 +299,7 @@ const getPaymentText = (method: string) => {
 // 格式化时间
 const formatTime = (time: string) => {
   if (!time) return ''
-  return new Date(time).toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+  return formatGlobalDateTime(time, 'YYYY-MM-DD HH:mm')
 }
 
 // 获取前几个商品预览

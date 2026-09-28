@@ -13,6 +13,7 @@ const TEMP_DIRECTORY_PERMISSIONS = {
   accessories: ['accessories:create', 'accessories:edit'],
   phones: ['inventory:edit'],
   videos: ['inventory:edit'],
+  repairs: ['repairs:create', 'repairs:edit'],
   'screen-lock': ['system:edit'],
   import: ['data-import:upload'],
   shop: [

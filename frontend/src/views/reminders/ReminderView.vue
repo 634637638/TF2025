@@ -917,6 +917,7 @@ import { unifiedApi as api } from '@/utils/unified-api'
 import { logger } from '@/utils/logger'
 import { getActionColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 import { canViewReminderField, pickVisibleReminderFields, type ReminderFieldName } from './reminder-field-permissions'
+import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 
 interface ReminderType { id:number; code:string; name:string; default_remind_days:number; color:string; icon:string; sort_order:number; is_active:number|boolean }
 interface ReminderUser { id:number; username:string; name?:string; phone?:string; email?:string; status?:number|string }
@@ -932,7 +933,7 @@ const filters = reactive({ keyword:'', type_id:'' as string|number, status:'' })
 const pagination = reactive({ page:1, page_size:20, total:0 })
 const weekdayOptions = [{ value:1,label:'周一' },{ value:2,label:'周二' },{ value:3,label:'周三' },{ value:4,label:'周四' },{ value:5,label:'周五' },{ value:6,label:'周六' },{ value:7,label:'周日' }]
 const targetModeOptions = [{ label:'指定员工',value:'specific' },{ label:'全体员工',value:'all' }]
-const defaultForm = () => ({ type_id:'' as string|number, title:'', content:'', priority:'normal', target_mode:'specific', target_user_ids:[] as number[], repeat_type:'once', interval_value:1, weekdays:[1] as number[], year_month:new Date().getMonth()+1, month_day:new Date().getDate(), missing_day_policy:'last-day', start_at:'', remind_before_days:7, end_type:'never', end_at:'', occurrence_limit:10 })
+const defaultForm = () => ({ type_id:'' as string|number, title:'', content:'', priority:'normal', target_mode:'specific', target_user_ids:[] as number[], repeat_type:'once', interval_value:1, weekdays:[1] as number[], year_month:TimeUtil.now().month()+1, month_day:TimeUtil.now().date(), missing_day_policy:'last-day', start_at:'', remind_before_days:7, end_type:'never', end_at:'', occurrence_limit:10 })
 const form = reactive(defaultForm())
 const typeForm = reactive({ id:0, name:'', default_remind_days:7, color:'#409EFF', sort_order:0 })
 const reminderPayloadFieldMap: Record<string, ReminderFieldName> = {
@@ -984,12 +985,11 @@ const typeSortColumnWidth = computed(() => getTextColumnMinWidth(
   { minWidth: 72, horizontalPadding: 28 }
 ))
 
-const pad = (value:number) => String(value).padStart(2,'0')
-const localDate = (date:Date) => `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`
-const localDateTime = (date:Date) => `${localDate(date)} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
-const parseDate = (value:any) => {if(!value)return null;const raw=String(value).trim();return new Date(/^\d{4}-\d{2}-\d{2}$/.test(raw)?`${raw}T00:00:00`:raw.replace(' ','T'))}
-const formatDate = (value:any) => { const date=parseDate(value); return date && !Number.isNaN(date.getTime()) ? localDate(date) : '-' }
-const formatDateTime = (value:any) => { const date=parseDate(value); return date && !Number.isNaN(date.getTime()) ? localDateTime(date) : '' }
+const localDate = (date:Date) => TimeUtil.format(date, TIME_FORMATS.DATE)
+const localDateTime = (date:Date) => TimeUtil.format(date, TIME_FORMATS.DATETIME)
+const parseDate = (value:any) => value ? TimeUtil.parse(String(value))?.toDate() || null : null
+const formatDate = (value:any) => { const date=parseDate(value); return date ? localDate(date) : '-' }
+const formatDateTime = (value:any) => { const date=parseDate(value); return date ? localDateTime(date) : '' }
 
 const repeatLabel = (row:any) => { if(row.repeat_type==='once') return '不重复'; if(row.repeat_type==='daily') return `每 ${row.interval_value||1} 天`; if(row.repeat_type==='monthly') return `每 ${row.interval_value||1} 月第 ${row.month_day} 日`; if(row.repeat_type==='yearly')return `${Number(row.interval_value||1)===1?'每年':`每 ${row.interval_value} 年`} ${row.year_month||1} 月 ${row.month_day||1} 日`; let days:number[]=[]; try{days=JSON.parse(row.weekdays_json||'[]')}catch{} return `每 ${row.interval_value||1} 周 ${days.map(day=>weekdayOptions.find(item=>item.value===day)?.label).filter(Boolean).join('、')}` }
 const typeBadgeStyle = (row:any) => { const color=canViewReminderField('type_color')?(row.type_color||row.color||'#409EFF'):'#409EFF';return { color,borderColor:`${color}66`,backgroundColor:`${color}14` } }

@@ -82,7 +82,8 @@ const uploadStaticMiddleware = (req, res, next) => {
     req.path.startsWith('/temp/') ||
     req.path.startsWith('/subsidy/') ||
     req.path.startsWith('/shared/') ||
-    req.path.startsWith('/rentals/')
+    req.path.startsWith('/rentals/') ||
+    req.path.startsWith('/repairs/')
   ) {
     return res.status(404).json({
       success: false,

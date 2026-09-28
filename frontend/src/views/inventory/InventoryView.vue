@@ -180,6 +180,7 @@ import { resolvePhoneReferenceIds } from '@/utils/phone-reference-ids'
 import { useAuthStore } from '@/stores/auth'
 import { logger } from '@/utils/logger'
 import { useLoadingStore } from '@/stores/loading'
+import { TimeUtil } from '@/utils/time'
 import Toast from '../../components/Toast.vue'
 import InlineLoading from '@/components/InlineLoading.vue'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
@@ -885,34 +886,6 @@ const viewDetails = (item: InventoryItem) => {
   showDetailsModal.value = true
 }
 
-const toDateInputValue = (dateString?: string | null) => {
-  if (!dateString) return null
-
-  const rawValue = String(dateString).trim()
-  if (!rawValue) return null
-
-  const directMatch = rawValue.match(/^(\d{4}-\d{2}-\d{2})/)
-  if (directMatch) {
-    return directMatch[1]
-  }
-
-  const normalizedValue = rawValue.replace(' ', 'T')
-  const normalizedMatch = normalizedValue.match(/^(\d{4}-\d{2}-\d{2})/)
-  if (normalizedMatch) {
-    return normalizedMatch[1]
-  }
-
-  const parsedDate = new Date(rawValue)
-  if (Number.isNaN(parsedDate.getTime())) {
-    return null
-  }
-
-  const year = parsedDate.getFullYear()
-  const month = String(parsedDate.getMonth() + 1).padStart(2, '0')
-  const day = String(parsedDate.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
 // 编辑项目 - 统一使用 watch 填充数据
 const editItem = async (item: InventoryItem) => {
   if (!canEdit.value) {
@@ -920,8 +893,10 @@ const editItem = async (item: InventoryItem) => {
     return
   }
 
-  // 列表可能来自缓存或旧接口，打开编辑时读取最新规范字段（各类 *_id、IMEI 等）。
-  let editItemData: InventoryItem = item
+  // 先打开弹窗反馈点击，再后台读取最新规范字段（各类 *_id、IMEI 等）。
+  selectedPhoneForEdit.value = item
+  showEditModal.value = true
+
   try {
     const response = await api.get(`/inventory/${item.id}`, {
       useCache: false,
@@ -930,16 +905,13 @@ const editItem = async (item: InventoryItem) => {
     if (response.success) {
       const detail = extractResponseData<InventoryItem>(response)
       if (detail && typeof detail === 'object' && !Array.isArray(detail)) {
-        editItemData = { ...item, ...detail }
+        selectedPhoneForEdit.value = { ...item, ...detail }
       }
     }
   } catch (detailError) {
     logger.warn('读取库存详情失败，使用列表数据打开编辑:', detailError)
   }
 
-  // 设置选中的设备并打开弹窗（数据填充通过 watch 自动完成）
-  selectedPhoneForEdit.value = editItemData
-  showEditModal.value = true
 }
 
 // 上架商品成功回调
@@ -982,9 +954,9 @@ const handleQuickSaleFromModal = () => {
 }
 
 // 监听编辑弹窗打开，填充表单数据（与销售页面保持一致）
-watch(showEditModal, async (newVal) => {
-  if (newVal && selectedPhoneForEdit.value) {
-    const phone = selectedPhoneForEdit.value as any
+watch([showEditModal, selectedPhoneForEdit], async ([newVal, selectedPhone]) => {
+  if (newVal && selectedPhone) {
+    const phone = selectedPhone as any
 
     // 打印原始数据用于调试
 
@@ -1015,7 +987,7 @@ watch(showEditModal, async (newVal) => {
       store_id: phone.store_id || null,
       condition: isNewInventoryValue(phone.is_new) ? '全新' : '二手',
       status: normalizePhoneStatus(phone.status) || 'in_stock',
-      inventory_time: toDateInputValue(phone.inventory_time),
+      inventory_time: TimeUtil.toDateInputValue(phone.inventory_time),
       remarks: phone.remarks || '',
       is_published: phone.is_published ?? 1  // H5上架状态，默认1（上架）
     })
@@ -1406,17 +1378,7 @@ const getSaleStatusLabel = (item: InventoryItem) => {
 
 const formatDate = (dateString?: string) => {
   if (!dateString) return '-'
-
-  const date = new Date(dateString)
-  if (Number.isNaN(date.getTime())) {
-    const matched = String(dateString).match(/^(\d{4})-(\d{1,2})-(\d{1,2})/)
-    if (matched) {
-      return `${matched[1]}-${Number(matched[2])}-${Number(matched[3])}`
-    }
-    return '-'
-  }
-
-  return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`
+  return TimeUtil.toDateInputValue(dateString) || '-'
 }
 
 const formatNumber = (num?: number) => {

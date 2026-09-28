@@ -3,6 +3,7 @@ import { extractResponseData } from '@/utils/api-response'
 import { unifiedApi } from '@/utils/unified-api'
 import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import { sortOptionsByOrder } from '@/utils/option-sort'
+import { getCachedOperators, getCachedStores, getCachedSuppliers } from '@/services/reference-options'
 import type { User } from '@/types'
 import type { Store, Supplier } from '@/types/system'
 import type {
@@ -180,24 +181,7 @@ export const formatWholesalePrice = (price: number): string => {
 
 export const formatWholesaleDate = (date: string | null | undefined): string => {
   if (!date) return '-'
-
-  let parsedDate: Date
-  const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(date)
-
-  if (isDateOnly) {
-    parsedDate = new Date(`${date}T00:00:00`)
-  } else if (date.includes(' ')) {
-    parsedDate = new Date(date.replace(' ', 'T'))
-  } else {
-    parsedDate = new Date(date)
-  }
-
-  if (isNaN(parsedDate.getTime())) return '-'
-
-  const year = parsedDate.getFullYear()
-  const month = String(parsedDate.getMonth() + 1).padStart(2, '0')
-  const day = String(parsedDate.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+  return TimeUtil.toDateInputValue(date) || '-'
 }
 
 export const resolveWholesaleErrorMessage = (
@@ -328,9 +312,7 @@ export const searchWholesaleCustomers = async (
 }
 
 export const loadWholesaleSuppliers = async (): Promise<Supplier[]> => {
-  const response = await unifiedApi.get('/suppliers', {
-    params: { page: 1, page_size: 1000 }
-  })
+  const response = await getCachedSuppliers()
 
   return response.success && Array.isArray(response.data)
     ? response.data as Supplier[]
@@ -338,27 +320,31 @@ export const loadWholesaleSuppliers = async (): Promise<Supplier[]> => {
 }
 
 export const loadWholesaleStores = async (): Promise<Store[]> => {
-  const response = await unifiedApi.get('/stores', {
-    params: { page: 1, page_size: 1000, all: true }
-  })
+  const response = await getCachedStores()
 
   return response.success && Array.isArray(response.data)
-    ? sortOptionsByOrder(response.data as Store[])
+    ? sortOptionsByOrder(response.data.map(item => ({
+      id: Number(item.id || 0),
+      name: String(item.name || ''),
+      code: String(item.code || item.name || ''),
+      status: Number(item.status || 1)
+    })) as unknown as Store[])
     : []
 }
 
 export const loadWholesaleUsers = async (): Promise<User[]> => {
-  const response = await unifiedApi.get('/users/operators')
+  const response = await getCachedOperators()
   if (!response.success) {
     return []
   }
 
-  if (Array.isArray(response.data?.users)) {
-    return sortOptionsByOrder(response.data.users as User[])
-  }
-
   return Array.isArray(response.data)
-    ? sortOptionsByOrder(response.data as User[])
+    ? sortOptionsByOrder(response.data.map(item => ({
+      id: Number(item.id || 0),
+      username: String(item.username || ''),
+      name: String(item.name || item.username || ''),
+      status: Number(item.status) === 1 ? 'active' : 'inactive'
+    })) as unknown as User[])
     : []
 }
 

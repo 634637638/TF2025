@@ -1488,7 +1488,7 @@ import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import { canAccessRoutePath } from '@/constants/routePermissions'
-import { TimeUtil } from '@/utils/time'
+import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import { logger } from '@/utils/logger'
 import { useLoadingState } from '@/composables'
 import { getAdaptiveActionColumnWidth, getTextColumnMinWidth } from '@/utils/table-layout'
@@ -2133,14 +2133,7 @@ const handleEdit = async (row: any) => {
   // 转换时间为北京时间格式
   const formatDateTimeForEdit = (dateStr: string) => {
     if (!dateStr) return ''
-    const date = new Date(dateStr)
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    const hours = String(date.getHours()).padStart(2, '0')
-    const minutes = String(date.getMinutes()).padStart(2, '0')
-    const seconds = String(date.getSeconds()).padStart(2, '0')
-    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+    return TimeUtil.format(dateStr, TIME_FORMATS.DATETIME)
   }
 
   // 查找对应的ID（通过名称匹配）
@@ -2886,11 +2879,7 @@ const loadPriceTrends = async (list: any[], seq: number) => {
 // 格式化入库时间
 const formatInventoryDate = (dateStr: string) => {
   if (!dateStr) return '-'
-  const date = new Date(dateStr)
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+  return TimeUtil.toDateInputValue(dateStr) || '-'
 }
 
 // 获取在库天数对应的样式类
@@ -3013,23 +3002,8 @@ const getChangeReasonTagType = (reason: string): 'success' | 'warning' | 'info' 
 // 格式化时间
 const formatDateTime = (dateStr: string) => {
   if (!dateStr) return '-'
-
-  const date = new Date(dateStr)
-
-  // 检查是否是有效日期
-  if (isNaN(date.getTime())) return '-'
-
-  // 转换为北京时间（UTC+8）
-  const beijingTime = new Date(date.getTime() + (8 * 60 * 60 * 1000))
-
-  const year = beijingTime.getUTCFullYear()
-  const month = String(beijingTime.getUTCMonth() + 1).padStart(2, '0')
-  const day = String(beijingTime.getUTCDate()).padStart(2, '0')
-  const hours = String(beijingTime.getUTCHours()).padStart(2, '0')
-  const minutes = String(beijingTime.getUTCMinutes()).padStart(2, '0')
-  const seconds = String(beijingTime.getUTCSeconds()).padStart(2, '0')
-
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+  const parsed = TimeUtil.parse(dateStr)
+  return parsed?.isValid() ? TimeUtil.format(parsed, TIME_FORMATS.DATETIME) : '-'
 }
 
 // 格式化数据源URL - 精简显示
@@ -3074,10 +3048,10 @@ const loadFilterOptions = async () => {
   try {
     // 并行加载所有选项数据
     const [brandsRes, modelsRes, colorsRes, memoriesRes] = await Promise.all([
-      api.get('/brands?status=1&page_size=10000'),
-      api.get('/models?page_size=10000'),
-      api.get('/colors?page_size=10000'),
-      api.get('/memories?page_size=10000')
+      api.get('/brands?status=1&page_size=100'),
+      api.get('/models?page_size=100'),
+      api.get('/colors?page_size=100'),
+      api.get('/memories?page_size=100')
     ])
 
     // 处理品牌数据

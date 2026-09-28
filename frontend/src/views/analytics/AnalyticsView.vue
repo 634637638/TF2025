@@ -72,7 +72,10 @@
           </template>
 
           <!-- 日期范围 -->
-          <div class="form-group filter-item filter-item--date-range" data-field="date_range">
+          <div
+            class="form-group filter-item filter-item--date-range"
+            data-field="date_range"
+          >
             <DateRangePicker
               v-model="filterDateRange"
               start-placeholder="开始日期"
@@ -597,7 +600,7 @@ const loadStoreList = async () => {
 const loadSupplierList = async () => {
   try {
     const { unifiedApi } = await import('@/utils/unified-api')
-    const response = await unifiedApi.get('/suppliers', { params: { page: 1, page_size: 10000 } })
+    const response = await unifiedApi.get('/suppliers', { params: { page: 1, page_size: 500 } })
     if (response.success) {
       const suppliers = extractResponseData<any[]>(response)
       supplierList.value = Array.isArray(suppliers) ? sortOptionsByOrder(suppliers) : []

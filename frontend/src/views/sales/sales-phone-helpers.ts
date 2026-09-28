@@ -1,6 +1,7 @@
 import type { Phone } from '@/types'
 import { generateProductPlaceholder } from '@/utils/format'
 import { logger } from '@/utils/logger'
+import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import {
   getEffectivePhoneStatus,
   isPhoneSaleActionAvailable,
@@ -102,13 +103,8 @@ export const formatSalesDate = (dateValue?: string): string => {
   if (!dateValue) return '-'
 
   try {
-    const date = new Date(dateValue)
-    if (Number.isNaN(date.getTime())) return '-'
-
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day}`
+    const formatted = TimeUtil.format(dateValue, TIME_FORMATS.DATE)
+    return formatted === 'Invalid Date' ? '-' : formatted
   } catch (error) {
     logger.error(`日期格式化错误: ${String(dateValue)}`, error)
     return '-'

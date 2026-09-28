@@ -15,6 +15,12 @@ export type RepairType = 'screen' | 'battery' | 'camera' | 'charging' | 'speaker
  */
 export type RepairStatus = 'pending' | 'processing' | 'completed' | 'cancelled'
 
+export interface RepairMedia {
+  url: string
+  type: 'image' | 'video' | string
+  name?: string
+}
+
 /**
  * 设备类型
  */
@@ -51,20 +57,24 @@ export interface RepairOrder {
   customer_id: number
   customer_name: string
   customer_phone: string
+  phone_id?: number | null
   brand_id?: number
   brand_name?: string
   phone_model?: string
   imei?: string
+  serial_number?: string
+  color_id?: number | null
+  color_name?: string
+  memory_id?: number | null
+  memory_size?: string
   problem_description: string
-  estimated_cost?: number
   actual_cost?: number
   technician_id?: number
   technician_name?: string
   status: RepairStatus
   remarks?: string
-  created_at: string
-  updated_at: string
-  completed_at?: string
+  repair_time: string
+  photos?: RepairMedia[]
 }
 
 /**
@@ -83,14 +93,37 @@ export interface PartsUsed {
  */
 export interface RepairOrderForm {
   customer_id?: number | null
+  phone_id?: number | null
   brand_id?: number | null
   phone_model: string
   imei?: string
+  serial_number?: string
+  color_id?: number | null
+  memory_id?: number | null
   problem_description: string
-  estimated_cost?: number
   actual_cost?: number
   technician_id?: number | null
   remarks?: string
+  repair_time?: string
+  photos?: RepairMedia[]
+}
+
+export interface RepairDeviceSearchResult {
+  phone_id: number
+  imei?: string | null
+  serial_number?: string | null
+  brand_id?: number | null
+  brand_name?: string | null
+  model_id?: number | null
+  model_name?: string | null
+  color_id?: number | null
+  color_name?: string | null
+  memory_id?: number | null
+  memory_size?: string | null
+  customer_id?: number | null
+  customer_name?: string | null
+  customer_phone?: string | null
+  display_label?: string
 }
 
 /**

@@ -471,6 +471,7 @@ import { useLatestRequest } from '@/composables/useLatestRequest'
 import { logger } from '@/utils/logger'
 import { useElementTableSortable } from '@/composables/useElementTableSortable'
 import { getTextColumnMinWidth } from '@/utils/table-layout'
+import { formatDateTime as formatGlobalDateTime } from '@/utils/format'
 
 // 获取路由实例
 const _router = useRouter()
@@ -952,7 +953,7 @@ const closeModal = () => {
 
 const formatDate = (dateString: string | null) => {
   if (!dateString) return '-'
-  return new Date(dateString).toLocaleString('zh-CN')
+  return formatGlobalDateTime(dateString)
 }
 
 const loadStats = async () => {

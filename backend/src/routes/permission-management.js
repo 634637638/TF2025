@@ -26,6 +26,10 @@ const { normalizeFieldConfig } = require('../utils/field-permission-normalizer')
 const { clearCache } = require('../middleware/cache')
 const log = require('../utils/log')
 
+// 权限页面只需要分页展示；角色选项在分配弹窗中允许一次加载，但不应回退到一万条。
+const PERMISSION_LIST_DEFAULT_PAGE_SIZE = 50
+const PERMISSION_LIST_MAX_PAGE_SIZE = 500
+
 const ENSURED_PERMISSION_MODULE_KEYS = [
   'attendance_attendanceview',
   'attendance_myattendanceview',
@@ -1271,12 +1275,13 @@ router.get('/user-permissions', async (req, res) => {
  */
 router.get('/roles', requirePermission('permissions:admin'), async (req, res) => {
   try {
+    const search = String(req.query.search || '').trim().slice(0, 100)
     const normalizedPage = Number.parseInt(req.query.page, 10)
     const normalizedLimit = Number.parseInt(req.query.page_size, 10)
     const page = Number.isInteger(normalizedPage) && normalizedPage > 0 ? normalizedPage : 1
     const limit = Number.isInteger(normalizedLimit) && normalizedLimit > 0
-      ? Math.min(normalizedLimit, 10000)
-      : 10000
+      ? Math.min(normalizedLimit, PERMISSION_LIST_MAX_PAGE_SIZE)
+      : PERMISSION_LIST_DEFAULT_PAGE_SIZE
     const offset = (page - 1) * limit
 
     const pool = getDatabase()
@@ -1293,8 +1298,26 @@ router.get('/roles', requirePermission('permissions:admin'), async (req, res) =>
       ...(supportsRoleIsActive ? ['r.is_active'] : [])
     ].join(', ')
 
+    const roleWhereParts = []
+    const roleParams = []
+    if (search) {
+      const searchPattern = `%${search}%`
+      roleWhereParts.push(supportsRoleCode
+        ? '(r.name LIKE ? OR r.code LIKE ? OR r.description LIKE ?)'
+        : '(r.name LIKE ? OR r.description LIKE ?)')
+      roleParams.push(searchPattern)
+      if (supportsRoleCode) roleParams.push(searchPattern)
+      roleParams.push(searchPattern)
+    }
+    const roleWhere = roleWhereParts.length > 0
+      ? `WHERE ${roleWhereParts.join(' AND ')}`
+      : ''
+
     // 获取角色总数
-    const [countResult] = await pool.execute('SELECT COUNT(*) as total FROM roles')
+    const [countResult] = await pool.execute(
+      `SELECT COUNT(*) as total FROM roles r ${roleWhere}`,
+      roleParams
+    )
     const total = countResult[0].total
 
     // LIMIT/OFFSET 经过严格整数校验后直接内联，规避部分 MySQL 环境下预处理分页参数异常
@@ -1310,11 +1333,12 @@ router.get('/roles', requirePermission('permissions:admin'), async (req, res) =>
         COUNT(ur.user_id) as user_count
       FROM roles r
       LEFT JOIN user_roles ur ON r.id = ur.role_id
+      ${roleWhere}
       GROUP BY ${groupByColumns}
       ORDER BY r.created_at DESC
       LIMIT ${limit} OFFSET ${offset}
     `
-    const [roles] = await pool.query(rolesQuery)
+    const [roles] = await pool.query(rolesQuery, roleParams)
 
     res.json({
       success: true,
@@ -1352,13 +1376,15 @@ router.get('/roles', requirePermission('permissions:admin'), async (req, res) =>
  */
 router.get('/users-with-roles', requirePermission('permissions:admin'), async (req, res) => {
   try {
+    const search = String(req.query.search || '').trim().slice(0, 100)
+    const requestedRoleId = Number.parseInt(String(req.query.role_id || ''), 10)
     // 安全参数验证：强制转换为正整数并限制范围
     const normalizedPage = Number.parseInt(req.query.page, 10)
     const normalizedLimit = Number.parseInt(req.query.page_size, 10)
     const page = Number.isInteger(normalizedPage) && normalizedPage > 0 ? normalizedPage : 1
     const limit = Number.isInteger(normalizedLimit) && normalizedLimit > 0
-      ? Math.min(normalizedLimit, 10000)
-      : 10000
+      ? Math.min(normalizedLimit, PERMISSION_LIST_MAX_PAGE_SIZE)
+      : PERMISSION_LIST_DEFAULT_PAGE_SIZE
     const offset = (page - 1) * limit
 
     const pool = getDatabase()
@@ -1376,8 +1402,37 @@ router.get('/users-with-roles', requirePermission('permissions:admin'), async (r
       'u.updated_at'
     ].join(', ')
 
+    const userWhereParts = []
+    const userParams = []
+    if (search) {
+      const searchPattern = `%${search}%`
+      userWhereParts.push('(u.username LIKE ? OR u.name LIKE ? OR u.email LIKE ?)')
+      userParams.push(searchPattern, searchPattern, searchPattern)
+    }
+    if (Number.isInteger(requestedRoleId) && requestedRoleId > 0) {
+      userWhereParts.push('EXISTS (SELECT 1 FROM user_roles filter_ur WHERE filter_ur.user_id = u.id AND filter_ur.role_id = ?)')
+      userParams.push(requestedRoleId)
+    }
+    const requestedStoreId = Number.parseInt(String(req.query.store_id || ''), 10)
+    if (Number.isInteger(requestedStoreId) && requestedStoreId > 0) {
+      userWhereParts.push('EXISTS (SELECT 1 FROM user_stores filter_us WHERE filter_us.user_id = u.id AND filter_us.store_id = ?)')
+      userParams.push(requestedStoreId)
+    }
+    const hasStore = String(req.query.has_store || '')
+    if (hasStore === 'true') {
+      userWhereParts.push('EXISTS (SELECT 1 FROM user_stores filter_us WHERE filter_us.user_id = u.id)')
+    } else if (hasStore === 'false') {
+      userWhereParts.push('NOT EXISTS (SELECT 1 FROM user_stores filter_us WHERE filter_us.user_id = u.id)')
+    }
+    const userWhere = userWhereParts.length > 0
+      ? `WHERE ${userWhereParts.join(' AND ')}`
+      : ''
+
     // 获取用户总数
-    const [countResult] = await pool.execute('SELECT COUNT(*) as total FROM users')
+    const [countResult] = await pool.execute(
+      `SELECT COUNT(*) as total FROM users u ${userWhere}`,
+      userParams
+    )
     const total = countResult[0].total
 
     // LIMIT/OFFSET 经过严格整数校验后直接内联，规避部分 MySQL 环境下预处理分页参数异常
@@ -1391,15 +1446,53 @@ router.get('/users-with-roles', requirePermission('permissions:admin'), async (r
         ${selectLastLoginColumn},
         u.created_at,
         u.updated_at,
-        GROUP_CONCAT(r.name SEPARATOR ', ') as roles
+        GROUP_CONCAT(r.name SEPARATOR ', ') as roles,
+        GROUP_CONCAT(r.id SEPARATOR ',') as role_ids
       FROM users u
       LEFT JOIN user_roles ur ON u.id = ur.user_id
       LEFT JOIN roles r ON ur.role_id = r.id
+      ${userWhere}
       GROUP BY ${groupByColumns}
       ORDER BY u.created_at DESC
       LIMIT ${limit} OFFSET ${offset}
     `
-    const [users] = await pool.query(usersQuery)
+    const [users] = await pool.query(usersQuery, userParams)
+
+    // 仅门店绑定页面需要关联数据；其他权限页面保持轻量用户列表响应。
+    if (req.query.include_stores === 'true' && users.length > 0) {
+      const userIds = users.map(user => Number(user.id)).filter(Number.isInteger)
+      const placeholders = userIds.map(() => '?').join(',')
+      const [storeRows] = await pool.execute(`
+        SELECT
+          us.user_id,
+          us.id,
+          us.store_id,
+          us.is_primary,
+          us.assigned_at,
+          s.name AS store_name,
+          s.location AS store_address,
+          s.phone AS store_phone,
+          s.manager_id,
+          manager.name AS manager_name
+        FROM user_stores us
+        INNER JOIN stores s ON us.store_id = s.id
+        LEFT JOIN users manager ON s.manager_id = manager.id
+        WHERE us.user_id IN (${placeholders})
+        ORDER BY us.is_primary DESC, us.assigned_at DESC
+      `, userIds)
+
+      const storesByUserId = new Map()
+      for (const store of storeRows) {
+        const key = Number(store.user_id)
+        const current = storesByUserId.get(key) || []
+        current.push(store)
+        storesByUserId.set(key, current)
+      }
+
+      users.forEach(user => {
+        user.stores = storesByUserId.get(Number(user.id)) || []
+      })
+    }
 
     // 调试：检查查询结果中的last_login字段
     log.debug('🔍 权限管理页面用户查询调试:')

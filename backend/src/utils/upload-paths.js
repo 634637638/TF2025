@@ -4,7 +4,8 @@ const DEFAULT_UPLOADS_DIR = path.resolve(__dirname, '../../uploads')
 const UPLOADS_URL_PREFIX = '/uploads'
 const PROTECTED_UPLOAD_URL_PREFIXES = [
   { urlPrefix: '/api/subsidy/files', uploadPrefix: '' },
-  { urlPrefix: '/api/shared/files', uploadPrefix: 'shared' }
+  { urlPrefix: '/api/shared/files', uploadPrefix: 'shared' },
+  { urlPrefix: '/api/repairs/media', uploadPrefix: 'repairs' }
 ]
 
 function getUploadsRoot() {

@@ -59,6 +59,7 @@ router.delete('/returngoods/:id', requirePermission('return-goods:delete'), quer
  * @access Private
  */
 router.get('/options', requirePermission('query:view', 'business'), cacheMiddleware({ ttl: CACHE_TTL.NEAR_REALTIME }), queryController.getQueryOptions.bind(queryController))
+router.get('/models', requirePermission('query:view', 'business'), cacheMiddleware({ ttl: CACHE_TTL.SHORT }), queryController.getQueryModels.bind(queryController))
 
 /**
  * @route POST /api/query/batch

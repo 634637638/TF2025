@@ -238,6 +238,7 @@ module.exports = Object.freeze({
   'repairs:view': ['repairs_repairsview:view'],
   'repairs:create': ['repairs_repairsview:create'],
   'repairs:edit': ['repairs_repairsview:edit'],
+  'repairs:delete': ['repairs_repairsview:delete'],
 
   // 国补管理权限映射
   'subsidy:view': ['subsidy_subsidyview:view', 'subsidy:view'],

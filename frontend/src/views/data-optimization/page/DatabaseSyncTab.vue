@@ -749,6 +749,7 @@ import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { ValidationRules } from '@/composables'
 import { logger } from '@/utils/logger'
+import { formatDateTime as formatGlobalDateTime } from '@/utils/format'
 
 const { canView, canCreate, canEdit, canDelete, handleNoPermission } = usePagePermissions('data-optimization')
 const showActionColumn = computed(() => shouldShowActionColumn(
@@ -898,7 +899,7 @@ const syncModeText = computed(() => {
 
 // 方法
 const formatDateTime = (date: string) => {
-  return new Date(date).toLocaleString('zh-CN')
+  return formatGlobalDateTime(date)
 }
 
 const handleCreateConnection = async () => {

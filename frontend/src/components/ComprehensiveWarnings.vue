@@ -515,6 +515,7 @@ import { ElMessage } from 'element-plus'
 import { unifiedApi } from '@/utils/unified-api'
 import { useAuthStore } from '@/stores/auth'
 import { canAccessRoutePath } from '@/constants/routePermissions'
+import { formatDate as formatGlobalDate } from '@/utils/format'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -633,8 +634,7 @@ const formatNumber = (num: number) => {
 // 格式化日期
 const formatDate = (dateStr: string) => {
   if (!dateStr) return '-'
-  const date = new Date(dateStr)
-  return `${date.getMonth() + 1}/${date.getDate()}`
+  return formatGlobalDate(dateStr).slice(5).replace('-', '/')
 }
 
 const guardedPush = (target: string | { path: string; query?: Record<string, string> }) => {

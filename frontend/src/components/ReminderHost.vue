@@ -165,6 +165,7 @@ import { unifiedApi as api } from '@/utils/unified-api'
 import { logger } from '@/utils/logger'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
 import { canViewReminderField } from '@/views/reminders/reminder-field-permissions'
+import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 
 interface ReminderAlert {
   kind: 'reminder'
@@ -230,23 +231,16 @@ const canUseCompletionNotice = computed(() => (
   canViewReminderField('recipient_user')
 ))
 
-const pad = (value: number) => String(value).padStart(2, '0')
 const parseDate = (value: unknown) => {
   if (!value) return null
   if (value instanceof Date) return new Date(value.getTime())
-  const date = new Date(String(value).replace(' ', 'T'))
-  return Number.isNaN(date.getTime()) ? null : date
-}
-const formatDate = (value: unknown) => {
-  const date = parseDate(value)
-  return date ? `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` : '-'
+  return TimeUtil.parse(String(value))?.toDate() || null
 }
 const formatDateTime = (value: unknown) => {
-  const date = parseDate(value)
-  return date ? `${formatDate(date)} ${pad(date.getHours())}:${pad(date.getMinutes())}` : '-'
+  return value ? TimeUtil.format(value as string | Date, 'YYYY-MM-DD HH:mm') : '-'
 }
 const toLocalDateTime = (date: Date) => (
-  `${formatDate(date)} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+  TimeUtil.format(date, TIME_FORMATS.DATETIME)
 )
 const typeStyle = (row: ReminderAlert) => {
   const color = canViewReminderField('type_color') ? (row.type_color || '#2563eb') : '#2563eb'

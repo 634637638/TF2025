@@ -104,7 +104,7 @@
     "salary_salarytemplatesview": ["view", "create", "edit", "delete"],
     "subsidy_subsidyview": ["view", "create", "edit", "delete", "approve", "arrival", "upload", "export"],
     "rentals_rentalsview": ["view", "create", "edit"],
-    "repairs_repairsview": ["view", "create", "edit"],
+    "repairs_repairsview": ["view", "create", "edit", "delete"],
     "price_list_pricelistview": ["view", "create", "edit", "delete", "export", "import", "sync"],
     "price_list_synclogview": ["view", "delete"],
     "marketing_marketingmanagementview": ["view", "create", "edit", "delete"],

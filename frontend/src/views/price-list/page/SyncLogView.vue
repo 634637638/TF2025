@@ -646,6 +646,7 @@ import SectionLoading from '@/components/SectionLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { logger } from '@/utils/logger'
 import { isCurrentMobileViewport } from '@/utils/device-detection'
+import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 const router = useRouter()
 const { canView, canDelete, handleNoPermission } = usePagePermissions('price-list-sync-logs')
 
@@ -925,23 +926,8 @@ const handleClearLogs = async () => {
 // 格式化时间
 const formatDateTime = (dateStr: string) => {
   if (!dateStr) return '-'
-
-  const date = new Date(dateStr)
-
-  // 检查是否是有效日期
-  if (isNaN(date.getTime())) return '-'
-
-  // 转换为北京时间（UTC+8）
-  const beijingTime = new Date(date.getTime() + (8 * 60 * 60 * 1000))
-
-  const year = beijingTime.getUTCFullYear()
-  const month = String(beijingTime.getUTCMonth() + 1).padStart(2, '0')
-  const day = String(beijingTime.getUTCDate()).padStart(2, '0')
-  const hours = String(beijingTime.getUTCHours()).padStart(2, '0')
-  const minutes = String(beijingTime.getUTCMinutes()).padStart(2, '0')
-  const seconds = String(beijingTime.getUTCSeconds()).padStart(2, '0')
-
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+  const parsed = TimeUtil.parse(dateStr)
+  return parsed?.isValid() ? TimeUtil.format(parsed, TIME_FORMATS.DATETIME) : '-'
 }
 
 // 格式化JSON

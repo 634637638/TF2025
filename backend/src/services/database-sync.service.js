@@ -4,6 +4,7 @@
  */
 const mysql = require('mysql2/promise')
 const log = require('../utils/log')
+const { isSellablePhoneStatus, normalizePhoneStatus } = require('../utils/phone-status')
 
 class DatabaseSyncService {
   constructor() {
@@ -512,6 +513,14 @@ class DatabaseSyncService {
       }
     }
 
+    if (table === 'phones') {
+      for (const field of ['status', 'sale_status']) {
+        if (targetRow[field] !== undefined && targetRow[field] !== null) {
+          targetRow[field] = normalizePhoneStatus(targetRow[field])
+        }
+      }
+    }
+
     const mode = syncOptions.mode || 'insert'
     const keyFields = syncOptions.keyFields || []
 
@@ -991,10 +1000,8 @@ class DatabaseSyncService {
                               existing.status === 'sold' ||
                               existing.sold_date ||
                               existing.customer_id
-              const cloudAvailable = incoming.sale_status === 'available' ||
-                                     incoming.status === 'available' ||
-                                     incoming.sale_status === 'in_stock' ||
-                                     incoming.status === 'in_stock' ||
+              const cloudAvailable = isSellablePhoneStatus(incoming.sale_status) ||
+                                     isSellablePhoneStatus(incoming.status) ||
                                      (!incoming.sold_date && !incoming.customer_id)
               return localSold && cloudAvailable
             },

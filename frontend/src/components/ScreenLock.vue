@@ -119,7 +119,7 @@ import { unifiedApi } from '@/utils/unified-api'
 import { useNotification } from '@/composables/useNotification'
 import Image from './Image.vue'
 import InlineLoading from '@/components/InlineLoading.vue'
-import { formatImageUrl } from '@/utils/format'
+import { formatDateTime as formatGlobalDateTime, formatImageUrl } from '@/utils/format'
 
 const { success, error: _error } = useNotification({ debounce: true })
 
@@ -159,14 +159,7 @@ const lockSettings = reactive({
 
 // 格式化时间
 const formatTime = (date: Date) => {
-  return new Date(date).toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  })
+  return formatGlobalDateTime(date)
 }
 
 // 加载锁定设置

@@ -112,8 +112,8 @@
     },
     {
       "file": "src/views/subsidy/SubsidyView.vue",
-      "max": 62,
-      "reason": "Subsidy teleported dialogs, table state cells and compact actions override global dialog, table and button contracts."
+      "max": 65,
+      "reason": "Subsidy teleported dialogs, table state cells, compact actions and responsive stat-card layout override global dialog, table, button and mobile-card contracts."
     },
     {
       "file": "src/views/payments/SupplierPhonePaymentsView.vue",

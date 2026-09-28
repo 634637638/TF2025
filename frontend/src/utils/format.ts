@@ -84,47 +84,9 @@ export const formatDateTime = (
   if (!date) {
     return '-'
   }
-
-  let dateObj: Date
-
-  if (typeof date === 'string') {
-    // 检查是否是纯日期格式 (YYYY-MM-DD)，不包含时间部分
-    const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(date)
-
-    if (isDateOnly) {
-      // 纯日期格式，使用本地时区解析（已经是北京时间）
-      dateObj = new Date(date + 'T00:00:00')
-    } else if (date.includes('T')) {
-      // ISO 格式 (带时区信息)，直接解析
-      dateObj = new Date(date)
-    } else {
-      // MySQL DATETIME 格式 (YYYY-MM-DD HH:mm:ss)
-      // 数据库存储的是北京时间，使用本地时区解析
-      dateObj = new Date(date.replace(' ', 'T'))
-    }
-  } else {
-    dateObj = date
-  }
-
-  if (isNaN(dateObj.getTime())) {
-    return '-'
-  }
-
-  // 使用本地时区（北京时间）格式化
-  const year = dateObj.getFullYear()
-  const month = String(dateObj.getMonth() + 1).padStart(2, '0')
-  const day = String(dateObj.getDate()).padStart(2, '0')
-  const hours = String(dateObj.getHours()).padStart(2, '0')
-  const minutes = String(dateObj.getMinutes()).padStart(2, '0')
-  const seconds = String(dateObj.getSeconds()).padStart(2, '0')
-
-  return format
-    .replace('YYYY', String(year))
-    .replace('MM', month)
-    .replace('DD', day)
-    .replace('HH', hours)
-    .replace('mm', minutes)
-    .replace('ss', seconds)
+  const parsed = typeof date === 'string' ? TimeUtil.parse(date) : TimeUtil.toBeijing(date)
+  if (!parsed?.isValid()) return '-'
+  return TimeUtil.format(parsed, format)
 }
 
 /**
@@ -155,10 +117,9 @@ export const formatRelativeTime = (date: string | Date): string => {
     return '-'
   }
 
-  const dateStr = typeof date === 'string' ? date : date.toISOString()
-  const dateObj = TimeUtil.parse(dateStr)
+  const dateObj = typeof date === 'string' ? TimeUtil.parse(date) : TimeUtil.toBeijing(date)
 
-  if (!dateObj.isValid()) {
+  if (!dateObj?.isValid()) {
     return '-'
   }
 
@@ -176,7 +137,7 @@ export const formatRelativeTime = (date: string | Date): string => {
   } else if (diffInDays < 7) {
     return `${Math.floor(diffInDays)}天前`
   } else {
-    return formatDate(dateObj.toISOString())
+    return TimeUtil.format(dateObj, 'YYYY-MM-DD')
   }
 }
 

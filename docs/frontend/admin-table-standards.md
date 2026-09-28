@@ -402,6 +402,23 @@ Element Plus 弹窗默认可能通过 Teleport 挂载到 `body`，不再位于�
 
 “对库”库存详情弹窗不继承后台主列表的 `1200px` 最小宽度。各列先根据当前内容计算紧凑的最小宽度，再由 Element Plus 分配剩余空间填满整行，避免尾部空白或过度拉伸。字段总宽度超过弹窗时仍允许表头和内容同步横向滑动，但隐藏可见滚动条。
 
+### 报价查询保存图片规则
+
+`/price-query` 及复用报价表的公开查询组件，保存图片时只允许在 `html2canvas` 的克隆文档中调整布局；正常页面的表格宽度、滚动方式、字体和行高不得因导出逻辑改变。导出态必须遵守以下规则：
+
+- 表格外层、Element Plus 的表头表格、内容表格和内部滚动容器使用同一固定截图宽度，并统一使用 `box-sizing: border-box`，避免按浏览器滚动条宽度产生尾部空白槽。
+- 清理 `.gutter` 及滚动条补偿节点，隐藏导出态滚动条；表头和内容仍保持同一列宽比例，不能因 Safari 的滚动容器实现差异错位。
+- 表头底线只保留一条，必须清除表头及其子节点的下边框、阴影和伪元素，再由表头包装器绘制唯一底线；禁止同时叠加 Element Plus 伪元素、单元格边框和导出补线。
+- 表格最右侧必须由外层容器补出一条从表头到表体连续的完整竖线。最后一列保留右侧边框，但不能额外生成独立空白列或短横线。
+- 这些规则只适用于导出克隆节点，不能在页面样式中为报价表增加另一套固定宽度或边框方案。重点回归 Safari 和 iOS Safari，随后再验证 Chromium。
+
+当前实现位置：
+
+- `frontend/src/views/price-list/page/PublicPriceQuery.vue` 的 `applyPriceTableImageStyles`
+- `frontend/src/views/price-list/page/SalesPriceDisplay.vue` 的 `applyPriceTableImageStyles`
+
+后续修改导出逻辑后，至少执行 `npm run build`，并手工验证正常查看与“保存图片”预览的列宽、表头底线、左右边框和最后一列边界完全一致。
+
 ### 基础资料页规则
 
 品牌 `/brands`、型号 `/models`、颜色 `/colors`、内存 `/memories`、门店 `/stores`、供应商 `/suppliers`、员工 `/employees`、客户 `/customers`、配件 `/accessories` 的根节点必须同时使用 `.admin-page.admin-unified-base-data-page`，主列表统一使用 `el-table.data-table.devices-table.base-data-table`。

@@ -192,6 +192,7 @@
                 :key="option.value"
                 :label="option.label"
                 :value="option.value"
+                :disabled="option.value === 'rented' && editForm.status !== 'rented'"
               />
             </el-select>
           </div>
@@ -231,7 +232,6 @@
               placeholder="选择型号或输入搜索"
               filterable
               clearable
-              allow-create
               remote
               reserve-keyword
               default-first-option

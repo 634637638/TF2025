@@ -515,6 +515,7 @@ import { logger } from '@/utils/logger'
 import { useMobile } from '@/composables/mobile'
 import { useLatestRequest } from '@/composables/useLatestRequest'
 import { sortOptionsByOrder } from '@/utils/option-sort'
+import { formatDateTime as formatGlobalDateTime } from '@/utils/format'
 import { useElementTableSortable } from '@/composables/useElementTableSortable'
 import type { Brand, Model } from '@/types'
 
@@ -1173,7 +1174,7 @@ const closeModal = () => {
 
 const formatDate = (dateString: string) => {
   if (!dateString) return '-'
-  return new Date(dateString).toLocaleString('zh-CN')
+  return formatGlobalDateTime(dateString)
 }
 
 // 处理新增型号

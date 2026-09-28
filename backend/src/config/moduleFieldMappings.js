@@ -85,10 +85,13 @@ const moduleFieldMappings = {
   // 维修管理页面 - repairs_repairsview
   'repairs_repairsview': {
     'repairs': ['id', 'order_no', 'phone_id', 'customer_id', 'brand_id', 'phone_model',
-      'imei', 'problem_description', 'estimated_cost', 'actual_cost', 'status',
-      'technician_id', 'remarks', 'created_at', 'updated_at', 'completed_at'],
+      'imei', 'serial_number', 'color_id', 'memory_id', 'photos', 'problem_description', 'actual_cost', 'status',
+      'technician_id', 'remarks', 'created_at', 'repair_time', 'updated_at', 'completed_at'],
     'customers': ['id', 'name', 'phone'],
-    'brands': ['id', 'name']
+    'brands': ['id', 'name'],
+    'models': ['id', 'name', 'brand_id'],
+    'colors': ['id', 'name'],
+    'memories': ['id', 'size']
   },
 
   // 租赁管理页面 - rentals_rentalsview

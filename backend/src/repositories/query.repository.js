@@ -1,7 +1,15 @@
 const BaseRepository = require('./base.repository')
 const { hasColumn, hasTable } = require('../services/schemaInspector.service')
 const log = require('../utils/log')
-const { getEffectivePhoneStatusSql } = require('../utils/phone-status')
+const {
+  COMPLETED_TRANSACTION_STATUSES,
+  getEffectivePhoneStatusSql,
+  normalizePhoneStatus
+} = require('../utils/phone-status')
+const QUERY_STATS_DEFAULT_STATUSES = Object.freeze([
+  ...COMPLETED_TRANSACTION_STATUSES,
+  'in_stock'
+])
 
 const normalizedModelSql = column => (
   `LOWER(REPLACE(REPLACE(REPLACE(TRIM(${column}), ' ', ''), '　', ''), '-', ''))`
@@ -13,30 +21,7 @@ class QueryRepository extends BaseRepository {
   }
 
   normalizeStatus(status) {
-    if (!status) {
-      return undefined
-    }
-
-    const statusMapping = {
-      '在库': 'in_stock',
-      '可售': 'in_stock',
-      '已售': 'sold',
-      '预订': 'reserved',
-      '预定': 'reserved',
-      '维修中': 'repair',
-      '维修': 'repair',
-      '租赁': 'rented',
-      '租赁中': 'rented',
-      '丢失': 'lost',
-      '调货': 'peer_transfer',
-      '划拨': 'supplier_proxy',
-      '已退货': 'returned',
-      '损坏': 'damaged',
-      '可用': 'in_stock',
-      available: 'in_stock'
-    }
-
-    return statusMapping[status] || status
+    return normalizePhoneStatus(status) || undefined
   }
 
   isSalesRelatedStatus(status) {
@@ -50,7 +35,7 @@ class QueryRepository extends BaseRepository {
       return this.isSalesRelatedStatus(normalizedStatus) ? 'p.sale_time' : 'p.inventory_time'
     }
 
-    // 未选择状态时查询全部设备：销售类记录按销售时间，其余记录按入库时间。
+    // 销售类记录按销售时间筛选，其余状态按入库时间筛选。
     return `CASE
       WHEN p.status IN ('sold', 'peer_transfer', 'supplier_proxy') THEN p.sale_time
       ELSE p.inventory_time
@@ -162,6 +147,10 @@ class QueryRepository extends BaseRepository {
     if (normalizedStatus) {
       whereConditions.push(`${effectiveStatusSql} = ?`)
       whereParams.push(normalizedStatus)
+    } else {
+      const placeholders = COMPLETED_TRANSACTION_STATUSES.map(() => '?').join(', ')
+      whereConditions.push(`${effectiveStatusSql} IN (${placeholders})`)
+      whereParams.push(...COMPLETED_TRANSACTION_STATUSES)
     }
 
     if (is_new !== undefined) {
@@ -522,12 +511,16 @@ class QueryRepository extends BaseRepository {
 
     const normalizedStatus = this.normalizeStatus(status)
     const effectiveStatusSql = getEffectivePhoneStatusSql('p')
-    // The statistics date scope must match the comprehensive list exactly.
+    // Each status bucket uses its corresponding business timestamp for date filters.
     const statisticsTimeExpression = this.getBusinessTimeExpression(normalizedStatus)
 
     if (normalizedStatus) {
       whereConditions.push(`${effectiveStatusSql} = ?`)
       whereParams.push(normalizedStatus)
+    } else {
+      const placeholders = QUERY_STATS_DEFAULT_STATUSES.map(() => '?').join(', ')
+      whereConditions.push(`${effectiveStatusSql} IN (${placeholders})`)
+      whereParams.push(...QUERY_STATS_DEFAULT_STATUSES)
     }
 
     if (is_new !== undefined) {
@@ -1049,29 +1042,13 @@ class QueryRepository extends BaseRepository {
    */
   async getQueryOptionsData() {
     try {
-      log.info('获取查询选项数据（直接从数据库查询）')
-
       const db = this.getConnection()
-
-      // 先检查数据库中是否有数据
-      const [countCheck] = await db.query(`
-        SELECT
-          (SELECT COUNT(*) FROM suppliers WHERE status = 1 OR status IS NULL) as suppliers,
-          (SELECT COUNT(*) FROM stores WHERE status = 1 OR status IS NULL) as stores,
-          (SELECT COUNT(*) FROM brands WHERE status = 1 OR status IS NULL) as brands,
-          (SELECT COUNT(*) FROM models WHERE status = 1 OR status IS NULL) as models,
-          (SELECT COUNT(*) FROM colors WHERE status = 1 OR status IS NULL) as colors,
-          (SELECT COUNT(*) FROM memories WHERE status = 1 OR status IS NULL) as memories
-      `)
-
-      log.info('数据库数据统计:', countCheck[0])
 
       // 并行查询所有选项数据
       const [
         suppliersResult,
         storesResult,
         brandsResult,
-        modelsResult,
         colorsResult,
         memoriesResult
       ] = await Promise.all([
@@ -1081,14 +1058,6 @@ class QueryRepository extends BaseRepository {
         db.query('SELECT id, name, sort_order FROM stores WHERE (status = 1 OR status IS NULL) ORDER BY sort_order, id'),
         // 品牌
         db.query('SELECT id, name, sort_order FROM brands WHERE (status = 1 OR status IS NULL) ORDER BY sort_order, id'),
-        // 型号（包含品牌信息用于联动）
-        db.query(`
-          SELECT m.id, m.name, m.brand_id, m.sort_order, b.name as brand_name
-          FROM models m
-          LEFT JOIN brands b ON m.brand_id = b.id
-          WHERE (m.status = 1 OR m.status IS NULL)
-          ORDER BY m.sort_order, m.id
-        `),
         // 颜色
         db.query('SELECT id, name, sort_order FROM colors WHERE (status = 1 OR status IS NULL) ORDER BY sort_order, id'),
         // 内存
@@ -1098,32 +1067,14 @@ class QueryRepository extends BaseRepository {
       const suppliers = suppliersResult[0] || []
       const stores = storesResult[0] || []
       const brands = brandsResult[0] || []
-      const models = modelsResult[0] || []
       const colors = colorsResult[0] || []
       const memories = memoriesResult[0] || []
-
-      log.info('查询选项数据获取成功', {
-        suppliers: suppliers.length,
-        stores: stores.length,
-        brands: brands.length,
-        models: models.length,
-        colors: colors.length,
-        memories: memories.length
-      })
-
-      // 如果没有数据，输出调试信息
-      if (suppliers.length === 0) log.warn('供应商数据为空')
-      if (stores.length === 0) log.warn('店铺数据为空')
-      if (brands.length === 0) log.warn('品牌数据为空')
-      if (models.length === 0) log.warn('型号数据为空')
-      if (colors.length === 0) log.warn('颜色数据为空')
-      if (memories.length === 0) log.warn('内存数据为空')
 
       return {
         suppliers,
         stores,
         brands,
-        models,
+        models: [],
         colors,
         memories
       }
@@ -1132,6 +1083,45 @@ class QueryRepository extends BaseRepository {
       log.error('获取查询选项数据失败:', error)
       throw error
     }
+  }
+
+  async getQueryModels({ brand_id, name = '', include_id = null, page_size = 50 } = {}) {
+    const brandId = Number.parseInt(String(brand_id), 10)
+    if (!Number.isSafeInteger(brandId) || brandId <= 0) return []
+
+    const safePageSize = Math.min(Math.max(Number.parseInt(String(page_size), 10) || 50, 1), 50)
+    const keyword = String(name || '').trim()
+    const includeId = Number.parseInt(String(include_id || ''), 10)
+    const conditions = [
+      'm.brand_id = ?',
+      '(m.status = 1 OR m.status IS NULL)'
+    ]
+    const params = [brandId]
+
+    if (keyword) {
+      if (Number.isSafeInteger(includeId) && includeId > 0) {
+        conditions.push('(m.name LIKE ? OR m.id = ?)')
+        params.push(`%${keyword}%`, includeId)
+      } else {
+        conditions.push('m.name LIKE ?')
+        params.push(`%${keyword}%`)
+      }
+    }
+
+    const db = this.getConnection()
+    const orderSql = Number.isSafeInteger(includeId) && includeId > 0
+      ? `CASE WHEN m.id = ${includeId} THEN 0 ELSE 1 END, m.sort_order ASC, m.name ASC, m.id ASC`
+      : 'm.sort_order ASC, m.name ASC, m.id ASC'
+    const [rows] = await db.execute(`
+      SELECT m.id, m.name, m.brand_id, m.sort_order, b.name AS brand_name
+      FROM models m
+      LEFT JOIN brands b ON b.id = m.brand_id
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY ${orderSql}
+      LIMIT ${safePageSize}
+    `, params)
+
+    return rows
   }
 
   /**

@@ -216,6 +216,7 @@ import MobileDialog from '@/components/MobileDialog.vue'
 import { getEffectivePhoneStatusLabel, isPhoneSaleActionAvailable } from '@/constants/phoneStatuses'
 import type { InventoryItem } from '@/types'
 import type { ModelValueProps, UpdateModelValueEmits, CloseEmits } from '@/types/component'
+import { TimeUtil } from '@/utils/time'
 
 interface Props extends ModelValueProps {
   item: InventoryItem | null
@@ -303,14 +304,7 @@ const inventoryTimeText = computed(() => {
   const raw = props.item?.inventory_time || props.item?.created_at
   if (!raw) return '-'
 
-  const matched = String(raw).match(/^(\d{4})-(\d{1,2})-(\d{1,2})/)
-  if (matched) {
-    return `${matched[1]}-${Number(matched[2])}-${Number(matched[3])}`
-  }
-
-  const date = new Date(raw)
-  if (Number.isNaN(date.getTime())) return '-'
-  return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`
+  return TimeUtil.toDateInputValue(String(raw)) || '-'
 })
 </script>
 

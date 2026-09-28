@@ -849,6 +849,15 @@ chore: 更新依赖包
 
 **所有时间处理必须使用统一的 `TimeUtil` 工具，禁止直接使用 `new Date()`。**
 
+日期输入字段的值也必须通过 `TimeUtil.toDateInputValue()` 归一化。后端返回的
+`YYYY-MM-DD` 是日历日期，不是 UTC 时间戳，禁止使用
+`new Date(value).toISOString().slice(0, 10)`，否则在北京时间等时区可能回退一天。
+日期显示统一使用 `TimeUtil.format()` 或 `src/utils/format.ts` 中的 `formatDate()` /
+`formatDateTime()`；数据库无时区的 `YYYY-MM-DD HH:mm:ss` 按北京时间解释，带 `Z`
+或明确时区偏移的 ISO 时间按实际时刻转换。业务页面不得自行调用
+`toLocaleString()`、手工加减 UTC+8 或单独拼装年月日。`Date.now()` 仅用于耗时、缓存
+过期和节流等时间戳计算，不用于用户可见日期格式。
+
 ##### 为什么使用 TimeUtil
 | 问题 | `new Date()` | `TimeUtil` |
 |------|-------------|-----------|

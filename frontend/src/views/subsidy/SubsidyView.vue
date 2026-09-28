@@ -1969,10 +1969,10 @@ onUnmounted(() => {
       }
 
       .stat-card__value {
-        font-size: clamp(1.55rem, 2.1vw, 2rem);
+        font-size: 30px;
         line-height: 1;
         font-weight: 800;
-        letter-spacing: -0.04em;
+        letter-spacing: 0;
         color: var(--tf-color-slate-950);
         word-break: break-word;
       }
@@ -2100,11 +2100,23 @@ onUnmounted(() => {
         color: color-mix(in srgb, var(--card-accent) 74%, var(--tf-color-slate-900) 26%);
       }
 
+      @media (max-width: 1024px) {
+        flex-direction: column !important;
+        align-items: stretch !important;
+
+        .stat-card__body-row {
+          grid-template-columns: minmax(0, 1fr);
+        }
+
+        .stat-card__facts {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
       @media (max-width: 768px) {
-        min-height: 112px;
+        min-height: 0;
         padding: 10px;
         gap: 8px;
-        flex-direction: column;
 
         .stat-card__body-row {
           grid-template-columns: 1fr;
@@ -2167,12 +2179,12 @@ onUnmounted(() => {
         }
 
         .stat-card__value {
-          font-size: clamp(1.18rem, 5vw, 1.48rem);
+          font-size: 24px;
         }
 
         &.stat-card--income {
           .stat-card__value {
-            font-size: clamp(0.98rem, 4.2vw, 1.25rem);
+            font-size: 18px;
           }
         }
 
@@ -2209,6 +2221,10 @@ onUnmounted(() => {
           font-size: 11px;
         }
       }
+    }
+
+    @media (max-width: 768px) {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     }
   }
 

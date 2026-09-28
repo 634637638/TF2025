@@ -462,6 +462,7 @@ import { usePermissionToast } from '@/utils/permissionToastSimple'
 import { handleApiErrorWithPermission } from '@/utils/apiPermissionError'
 import { useMobile } from '@/composables/mobile'
 import { useLatestRequest } from '@/composables/useLatestRequest'
+import { formatDateTime as formatGlobalDateTime } from '@/utils/format'
 import { useElementTableSortable } from '@/composables/useElementTableSortable'
 import { logger } from '@/utils/logger'
 import type { Brand } from '@/types'
@@ -983,7 +984,7 @@ const closeModal = () => {
 
 const formatDate = (dateString: string) => {
   if (!dateString) return '-'
-  return new Date(dateString).toLocaleString('zh-CN')
+  return formatGlobalDateTime(dateString)
 }
 
 const loadStats = async () => {

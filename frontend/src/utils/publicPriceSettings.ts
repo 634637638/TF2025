@@ -1,3 +1,5 @@
+import { TIME_FORMATS, TimeUtil } from '@/utils/time'
+
 export interface PublicPriceContact {
   name: string
   phone: string
@@ -22,6 +24,6 @@ export const formatPublicPriceWatermark = (template: string | undefined, contact
   if (!value) return ''
   const withoutLegacyTime = value.replace(/\s*\{time\}\s*/g, ' ').trim()
   return includeTime
-    ? `${withoutLegacyTime} ${new Date().toLocaleString('zh-CN', { hour12: false })}`.trim()
+    ? `${withoutLegacyTime} ${TimeUtil.nowFormatted(TIME_FORMATS.DATETIME)}`.trim()
     : withoutLegacyTime
 }

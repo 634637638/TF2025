@@ -234,7 +234,8 @@ export const useInventoryData = ({
         }
       }
 
-      await updateStats(params)
+      // 列表是主内容，先结束列表加载；统计卡片在后台更新，避免统计慢时阻塞整页交互。
+      void updateStats(params)
     } catch (error) {
       logger.error('获取库存数据失败:', error)
       const status = readErrorStatus(error)

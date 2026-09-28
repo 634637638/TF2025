@@ -592,6 +592,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { unifiedApi } from '@/utils/unified-api'
+import { getCachedPhoneOptions, getCachedSuppliers } from '@/services/reference-options'
 import { deleteTempFiles } from '@/utils/temp-file-cleaner'
 import { formatImageUrl } from '@/utils/format'
 import { sortOptionsByOrder } from '@/utils/option-sort'
@@ -790,7 +791,7 @@ const triggerUpload = () => {
 const loadBrands = async () => {
   if (!canViewAccessoryField('brand_name')) return
   try {
-    const response = await unifiedApi.get('/options/phone-options')
+    const response = await getCachedPhoneOptions()
     brands.value = sortOptionsByOrder(response.data?.brands || [])
   } catch (err) {
     logger.error('加载品牌失败', err)
@@ -800,7 +801,7 @@ const loadBrands = async () => {
 const loadModels = async () => {
   if (!canViewAccessoryField('model_name')) return
   try {
-    const response = await unifiedApi.get('/options/phone-options')
+    const response = await getCachedPhoneOptions()
     models.value = sortOptionsByOrder(response.data?.models || [])
   } catch (err) {
     logger.error('加载型号失败', err)
@@ -810,7 +811,7 @@ const loadModels = async () => {
 const loadColors = async () => {
   if (!canViewAccessoryField('color_name')) return
   try {
-    const response = await unifiedApi.get('/options/phone-options')
+    const response = await getCachedPhoneOptions()
     colors.value = sortOptionsByOrder(response.data?.colors || [])
   } catch (err) {
     logger.error('加载颜色失败', err)
@@ -820,9 +821,7 @@ const loadColors = async () => {
 const loadSuppliers = async () => {
   if (!canViewAccessoryField('supplier_name')) return
   try {
-    const response = await unifiedApi.get('/suppliers', {
-      params: { page: 1, page_size: 10000 }
-    })
+    const response = await getCachedSuppliers()
     suppliers.value = (response.data || [])
       .filter(s => s.status === 1)
     suppliers.value = sortOptionsByOrder(suppliers.value)
@@ -834,7 +833,7 @@ const loadSuppliers = async () => {
 const loadStores = async () => {
   if (!canViewAccessoryField('distribution')) return
   try {
-    const response = await unifiedApi.get('/options/phone-options')
+    const response = await getCachedPhoneOptions()
     const storeOptions = (response.data?.stores || [])
 
     stores.value = sortOptionsByOrder(storeOptions)

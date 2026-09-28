@@ -4,6 +4,7 @@
  */
 const DatabaseSyncService = require('./database-sync.service')
 const log = require('../utils/log')
+const { isSellablePhoneStatus } = require('../utils/phone-status')
 
 class SmartSyncService {
   constructor(syncService = new DatabaseSyncService()) {
@@ -437,10 +438,8 @@ class SmartSyncService {
                               existing.status === 'sold' ||
                               existing.sold_date ||
                               existing.customer_id
-              const cloudAvailable = incoming.sale_status === 'available' ||
-                                     incoming.status === 'available' ||
-                                     incoming.sale_status === 'in_stock' ||
-                                     incoming.status === 'in_stock' ||
+              const cloudAvailable = isSellablePhoneStatus(incoming.sale_status) ||
+                                     isSellablePhoneStatus(incoming.status) ||
                                      (!incoming.sold_date && !incoming.customer_id)
               return localSold && cloudAvailable
             },

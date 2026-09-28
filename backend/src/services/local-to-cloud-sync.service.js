@@ -5,6 +5,7 @@
  */
 const DatabaseSyncService = require('./database-sync.service')
 const log = require('../utils/log')
+const { normalizePhoneStatus } = require('../utils/phone-status')
 
 class LocalToCloudSyncService {
   constructor(syncService = new DatabaseSyncService()) {
@@ -255,8 +256,8 @@ class LocalToCloudSyncService {
           purchase_cost: localPhone.purchase_cost ?? localPhone.purchase_price,
 
           // 状态字段（以本地为准）
-          sale_status: localPhone.sale_status || (localPhone.sold_date ? 'sold' : 'in_stock'),
-          status: localPhone.status === 'available' ? 'in_stock' : (localPhone.status || (localPhone.sold_date ? 'sold' : 'in_stock')),
+          sale_status: normalizePhoneStatus(localPhone.sale_status || (localPhone.sold_date ? 'sold' : 'in_stock')),
+          status: normalizePhoneStatus(localPhone.status || (localPhone.sold_date ? 'sold' : 'in_stock')),
           sold_date: localPhone.sold_date,
           sale_time: localPhone.sale_date || localPhone.salestime || localPhone.sold_date,
 

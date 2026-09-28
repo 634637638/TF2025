@@ -33,13 +33,84 @@ test('permission-management role assignment validates IDs and rolls back failure
   assert.match(handler, /normalizedRoleIds\s*\n?\s*\)/);
 });
 
+test('phone statuses normalize aliases centrally and preserve the canonical in_stock value', async () => {
+  const phoneStatus = require('../src/utils/phone-status');
+  const QueryService = require('../src/services/query.service');
+  const inventoryRoute = read('src/routes/inventory.js');
+  const phonesRoute = read('src/routes/phones.js');
+  const queryRepository = read('src/repositories/query.repository.js');
+  const queryService = read('src/services/query.service.js');
+  const databaseSync = read('src/services/database-sync.service.js');
+  const localToCloudSync = read('src/services/local-to-cloud-sync.service.js');
+
+  assert.equal(phoneStatus.normalizePhoneStatus(' AVAILABLE '), 'in_stock');
+  assert.equal(phoneStatus.normalizePhoneStatus('Available'), 'in_stock');
+  assert.equal(phoneStatus.normalizePhoneStatus('可用'), 'in_stock');
+  assert.equal(phoneStatus.normalizePhoneStatus('可售'), 'in_stock');
+  assert.equal(phoneStatus.normalizePhoneStatus('零售'), 'sold');
+  assert.equal(phoneStatus.normalizePhoneStatus('toString'), 'toString');
+  assert.equal(phoneStatus.isPhoneStatusAlias('AVAILABLE'), true);
+  assert.equal(phoneStatus.isSellablePhoneStatus('available'), true);
+  assert.equal(phoneStatus.getEffectivePhoneStatus('available', 1), 'reserved');
+  assert.match(phoneStatus.getEffectivePhoneStatusSql('p'), /LOWER\(TRIM\(COALESCE\(p\.status, ''\)\)\) = 'available'/);
+  const queryServiceInstance = new QueryService();
+  assert.doesNotThrow(() => queryServiceInstance.validateQueryFilters({ status: 'available' }));
+  assert.doesNotThrow(() => queryServiceInstance.validateQueryFilters({ status: '可用' }));
+
+  for (const source of [inventoryRoute, phonesRoute]) {
+    assert.match(source, /isPhoneStatusAlias\(searchStr\)/);
+    assert.match(source, /normalizePhoneStatus\(searchStr\)/);
+    assert.doesNotMatch(source, /searchStr\.toLowerCase\(\)\s*===\s*'available'/);
+  }
+  assert.match(queryRepository, /normalizePhoneStatus\(status\)/);
+  assert.match(queryService, /normalizePhoneStatus\(raw\)/);
+  assert.match(phonesRoute, /const effectiveStatus = normalizePhoneStatus\(valueOrCurrent\(status, currentPhone\.status\)\)/);
+  assert.match(phonesRoute, /updateValues\.push\(effectiveStatus\)/);
+  assert.match(databaseSync, /targetRow\[field\] = normalizePhoneStatus\(targetRow\[field\]\)/);
+  assert.match(localToCloudSync, /status: normalizePhoneStatus\(/);
+
+  const frontendStatuses = fs.readFileSync(path.join(root, '../frontend/src/constants/phoneStatuses.ts'), 'utf8');
+  assert.match(frontendStatuses, /available:\s*'in_stock'/);
+  assert.match(frontendStatuses, /PHONE_STATUS_ALIASES\[raw\.toLowerCase\(\)\]/);
+});
+
+test('permission management role and user lists use bounded server-side search and pagination', () => {
+  const route = read('src/routes/permission-management.js');
+  const rolesStart = route.indexOf("router.get('/roles'");
+  const usersStart = route.indexOf("router.get('/users-with-roles'");
+  const rolesHandler = route.slice(rolesStart, usersStart);
+  const usersEnd = route.indexOf("router.post('/roles'");
+  const usersHandler = route.slice(usersStart, usersEnd);
+  const view = fs.readFileSync(path.join(root, '../frontend/src/views/permissions/PermissionsView.vue'), 'utf8');
+
+  assert.ok(rolesStart >= 0 && usersStart > rolesStart, '权限角色列表路由不存在');
+  assert.ok(usersEnd > usersStart, '权限用户列表路由不存在');
+  for (const handler of [rolesHandler, usersHandler]) {
+    assert.match(handler, /PERMISSION_LIST_DEFAULT_PAGE_SIZE = 50|PERMISSION_LIST_DEFAULT_PAGE_SIZE/);
+    assert.match(handler, /PERMISSION_LIST_MAX_PAGE_SIZE\)/);
+    assert.doesNotMatch(handler, /Math\.min\(normalizedLimit, 10000\)|:\s*10000/);
+    assert.match(handler, /COUNT\(\*\) as total/);
+    assert.match(handler, /LIMIT \$\{limit\} OFFSET \$\{offset\}/);
+  }
+  assert.match(rolesHandler, /r\.name LIKE \?/);
+  assert.match(usersHandler, /u\.username LIKE \?/);
+  assert.match(usersHandler, /u\.name LIKE \?/);
+  assert.match(usersHandler, /u\.email LIKE \?/);
+  assert.match(usersHandler, /EXISTS \(SELECT 1 FROM user_roles filter_ur/);
+  assert.match(usersHandler, /GROUP_CONCAT\(r\.id SEPARATOR ','\) as role_ids/);
+  assert.match(usersHandler, /EXISTS \(SELECT 1 FROM user_stores filter_us/);
+  assert.match(view, /loadRoleOptions/);
+  assert.match(view, /page_size:\s*storeBindingsPagination\.page_size/);
+  assert.match(view, /role_ids/);
+});
+
 test('sales trend route keeps both canonical and legacy paths', () => {
   const source = read('src/routes/analytics.js');
   assert.match(source, /router\.get\(\[\s*['"]\/sales\/trends['"]\s*,\s*['"]\/sales-trends['"]\s*\]/);
   assert.match(source, /db\.execute\(\`[\s\S]*FROM sales s[\s\S]*INNER JOIN phones p/);
 });
 
-test('sales inventory checks lock rows and update only in-stock devices', () => {
+test('sales inventory checks lock rows and allow only valid stock or preorder deliveries', () => {
   const source = read('src/routes/sales.js');
   const start = source.indexOf("router.post('/phone'");
   const end = source.indexOf("router.post('/batch'");
@@ -48,7 +119,10 @@ test('sales inventory checks lock rows and update only in-stock devices', () => 
   assert.ok(start >= 0, '手机销售路由不存在');
   assert.match(handler, /WHERE p\.id IN \(\$\{phoneIds\.map\(\(\) => '\?'\)\.join\(','\)\}\)/);
   assert.match(handler, /FOR UPDATE/);
-  assert.match(handler, /WHERE id = \? AND status = 'in_stock'/);
+  assert.match(handler, /WHERE id = \? AND status IN \('in_stock', 'reserved'\)/);
+  assert.match(handler, /if \(phoneCheck\.status !== 'in_stock' && !isReservedDelivery\)/);
+  assert.match(handler, /已被预订，销售时必须使用关联预定客户/);
+  assert.match(handler, /预定客户或交付设备与预定单不一致/);
   assert.match(handler, /beginTransaction\(\)/);
   assert.match(handler, /commit\(\)/);
   assert.match(handler, /rollback\(\)/);
@@ -155,7 +229,22 @@ test('phone edits require canonical database IDs', () => {
   assert.match(handler, /const colorId = Number\(effectiveColorId\)/);
   assert.match(handler, /const memoryId = Number\(effectiveMemoryId\)/);
   assert.match(handler, /every\(Number\.isInteger\)/);
+  assert.match(handler, /effectiveStatus === 'rented'[\s\S]{0,180}请在租赁管理创建按天租赁合同/);
+  assert.match(handler, /normalizePhoneStatus\(currentPhone\.status\) === 'rented'[\s\S]{0,180}租赁管理完成归还/);
   assert.doesNotMatch(handler, /SELECT id FROM (?:brands|models|colors|memories) WHERE (?:name|size) = \?/);
+});
+
+test('rental contract mode drives the phone status and buyout sale record', () => {
+  const route = read('src/routes/rentals.js');
+  const createStart = route.indexOf("router.post('/', requirePermission('rentals:create')");
+  const updateStart = route.indexOf("router.put('/:id', requirePermission('rentals:edit')");
+  const createHandler = route.slice(createStart, updateStart);
+
+  assert.ok(createStart >= 0 && updateStart > createStart, '租赁合同创建路由不存在');
+  assert.match(createHandler, /if \(billingMode === 'buyout'\)/);
+  assert.match(createHandler, /INSERT INTO sales[\s\S]{0,800}'retail'/);
+  assert.match(createHandler, /UPDATE phones SET status=\\?'sold/);
+  assert.match(createHandler, /if \(billingMode === 'daily'\) await connection\.execute\("UPDATE phones SET status='rented'/);
 });
 
 test('stock-in accepts only canonical inventory fields', () => {
@@ -315,8 +404,36 @@ test('query module uses canonical page_size and safe controller errors', () => {
   assert.match(controller, /ApiResponse\.serverError\(res, '综合查询失败', error\)/);
   assert.match(controller, /page_size: PAGINATION\.DEFAULT_LIMIT/);
   assert.match(frontend, /page_size: 100/);
-  assert.match(frontend, /page_size=10000/);
+  assert.match(frontend, /getCachedQueryOptions/);
+  assert.match(frontend, /getCachedEmployees/);
+  assert.doesNotMatch(frontend, /page_size[=:]\s*10000/);
   assert.doesNotMatch(frontend, /brands: \['Apple'/);
+});
+
+test('comprehensive query list defaults to completed sales while statistics also include sellable stock', () => {
+  const repository = read('src/repositories/query.repository.js');
+  const listStart = repository.indexOf('async getComprehensivePhoneQuery');
+  const statisticsStart = repository.indexOf('async getQueryStatistics');
+  const returnGoodsStart = repository.indexOf('async getReturnGoodsRecords');
+  const list = repository.slice(listStart, statisticsStart);
+  const statistics = repository.slice(statisticsStart, returnGoodsStart);
+
+  assert.match(list, /whereParams\.push\(\.\.\.COMPLETED_TRANSACTION_STATUSES\)/);
+  assert.doesNotMatch(list, /QUERY_STATS_DEFAULT_STATUSES/);
+  assert.match(statistics, /QUERY_STATS_DEFAULT_STATUSES/);
+  assert.match(repository, /\.\.\.COMPLETED_TRANSACTION_STATUSES,[\s\S]{0,40}'in_stock'/);
+  assert.match(statistics, /SUM\(CASE WHEN \$\{effectiveStatusSql\} = 'in_stock' THEN 1 ELSE 0 END\) as in_stock_count/);
+  assert.match(statistics, /store_ids[\s\S]{0,350}COALESCE\(latest_sale\.store_id, p\.store_id\)/);
+});
+
+test('comprehensive query accepts rented status in the validated status filter', () => {
+  const serviceSource = read('src/services/query.service.js');
+  const serviceModule = require('../src/services/query.service');
+  const service = new serviceModule();
+
+  assert.match(serviceSource, /validStatuses = \[[^\]]*'rented'/);
+  assert.doesNotThrow(() => service.validateQueryFilters({ status: 'rented' }));
+  assert.throws(() => service.validateQueryFilters({ status: 'unknown_status' }), /状态参数无效/);
 });
 
 test('accessory writes use an explicit canonical payload', () => {
@@ -845,7 +962,8 @@ test('H5 sold products uses canonical fields without runtime aliases or fake val
   assert.match(service, /await connection\.beginTransaction\(\)/);
   assert.match(service, /await connection\.commit\(\)/);
   assert.match(service, /await connection\.rollback\(\)/);
-  assert.doesNotMatch(service, /\bimageIds\b/);
+  assert.match(service, /entry\?\.image_ids/);
+  assert.doesNotMatch(service, /entry\?\.imageIds/);
   assert.match(queryView, /\{ image_ids \}/);
   assert.doesNotMatch(queryView, /\bimageIds\b/);
   assert.match(view, /formatDate\(product\.sale_time\)/);
@@ -1007,16 +1125,19 @@ test('preorder edit form sends customer_id instead of retired customer snapshot 
   assert.match(form, /params:\s*\{\s*search: keyword, page_size: 10/);
 });
 
-test('preorder customer can be corrected before delivery without changing matched product fields', () => {
+test('preorder customer and product can be corrected before delivery and stale matches are released', () => {
   const route = read('src/routes/preorders.js');
   const form = read('../frontend/src/views/preorders/page/PreorderFormModal.vue');
   const page = read('../frontend/src/views/preorders/PreordersView.vue');
 
   assert.match(route, /\[PREORDER_STATUS\.PENDING, PREORDER_STATUS\.MATCHED\]\.includes\(preorder\.status\)/);
   assert.match(route, /SELECT id FROM customers WHERE id = \?/);
-  assert.match(route, /const matchedLockedFields = \['brand_id', 'model_id', 'color_id', 'memory_id', 'is_new'\]/);
-  assert.match(form, /const isMatchedEdit = computed/);
-  assert.match(form, /\.\.\.\(!isMatchedEdit\.value \? \{/);
+  assert.match(route, /const specificationFields = \['brand_id', 'model_id', 'color_id', 'memory_id', 'is_new'\]/);
+  assert.match(route, /const specificationChanged = preorder\.status === PREORDER_STATUS\.MATCHED/);
+  assert.match(route, /if \(staleMatchNeedsClearing\)/);
+  assert.match(route, /matched_phone_id = NULL/);
+  assert.match(route, /SET status = 'in_stock', is_preordered = 0/);
+  assert.doesNotMatch(form, /const isMatchedEdit = computed/);
   assert.match(page, /\['pending', 'arrived'\]\.includes\(row\.status\)/);
 });
 
@@ -1080,9 +1201,14 @@ test('customer search forms share locked-name editing and customer replacement c
 
 test('repair routes use canonical fields and never migrate schema during requests', () => {
   const route = read('src/routes/repairs.js');
+  const migration = read('scripts/migrate-repair-device-fields.js');
   const view = read('../frontend/src/views/repairs/RepairsView.vue');
   const api = read('../frontend/src/api/repairs.ts');
+  const fieldRegistry = read('../frontend/src/config/moduleFields.js');
   const schemaBlock = route.slice(route.indexOf('const ensureRepairsSchema'), route.indexOf('const getDb'));
+  const repairFieldStart = fieldRegistry.indexOf('repairs: {');
+  const repairFieldEnd = fieldRegistry.indexOf('\n  menu: {', repairFieldStart);
+  const repairFields = fieldRegistry.slice(repairFieldStart, repairFieldEnd);
 
   assert.match(schemaBlock, /SHOW COLUMNS FROM repairs/);
   assert.match(schemaBlock, /missingColumns/);
@@ -1093,10 +1219,45 @@ test('repair routes use canonical fields and never migrate schema during request
   assert.match(route, /total_pages,/);
   assert.match(route, /has_next:/);
   assert.match(route, /has_prev:/);
+  assert.match(route, /router\.delete\('\/:id', unifiedAuth, requirePermission\('repairs:delete'\)/);
+  assert.match(route, /status = 'cancelled' WHERE id = \? AND status != 'completed'/);
+  assert.match(route, /router\.get\('\/devices\/search'/);
+  assert.match(route, /serial_number/);
+  assert.match(route, /color_id/);
+  assert.match(route, /memory_id/);
+  assert.match(view, /prop="imei"\s+label="IMEI"/);
+  assert.match(view, /prop="serial_number"\s+label="序列号"/);
+  assert.doesNotMatch(view, /label="IMEI\/序列号"/);
+  assert.match(view, /IMEI：\{\{ item\.imei \|\| '-' \}\}/);
+  assert.match(view, /序列号：\{\{ item\.serial_number \|\| '-' \}\}/);
+  assert.match(route, /'phone_id',[\s\S]*?'photos'/);
+  assert.match(migration, /name: 'phone_id', definition: 'INT NULL'/);
+  assert.match(migration, /name: 'photos', definition: 'LONGTEXT NULL'/);
+  assert.match(migration, /name: 'repair_time', definition: 'DATETIME NULL'/);
+  assert.match(migration, /UPDATE repairs SET repair_time = created_at WHERE repair_time IS NULL/);
+  assert.match(migration, /const apply = process\.argv\.includes\('--apply'\)/);
+  assert.match(route, /COALESCE\(r\.repair_time, r\.created_at\) AS repair_time/);
+  assert.ok(route.includes("updates.push('repair_time = ?')"));
+  assert.doesNotMatch(route, /updates\.push\('created_at = \?'\)/);
+  assert.match(route, /created_at, repair_time, status/);
+  assert.match(read('src/services/dataMaskingService.js'), /created_at: \['created_at', 'repair_time'\]/);
+  assert.match(view, /v-if="canViewRepairField\('repair_time'\)"[\s\S]{0,120}label="维修时间"/);
+  assert.doesNotMatch(view, /label="(?:更新时间|完成时间)"/);
+  assert.match(view, /repair_time: 'time_info\.created_at'/);
+  assert.doesNotMatch(route.slice(route.indexOf('const listQuery'), route.indexOf("router.get('/',")), /r\.updated_at|r\.completed_at/);
+  assert.ok(repairFieldStart >= 0 && repairFieldEnd > repairFieldStart);
+  assert.doesNotMatch(repairFields, /time_info\.(?:updated_at|completed_at)/);
   assert.doesNotMatch(view, /\b(?:monthlyRevenue|totalPages|pageSize)\b/);
   assert.match(view, /stats\.monthly_revenue/);
   assert.match(view, /pagination\.page_size/);
+  assert.match(view, /v-if="canDelete"/);
+  assert.match(view, /row\.status === 'completed'/);
+  assert.match(view, /searchDeviceSuggestions/);
+  assert.match(view, /handleDeviceSelect/);
+  assert.match(view, /await repairsApi\.cancel\(repair\.id\)/);
+  assert.match(read('src/config/permission-mapping.js'), /'repairs:delete': \['repairs_repairsview:delete'\]/);
   assert.match(api, /RepairOrderFilters/);
+  assert.match(api, /searchDevices/);
 });
 
 test('store list exposes canonical snake_case pagination metadata', () => {
@@ -1245,19 +1406,25 @@ test('preorder field controls cover business data, forms, responses and semantic
   const pendingOperationStart = page.indexOf('v-if="showPendingActionField"');
   const pendingOperation = page.slice(pendingOperationStart, page.indexOf('</el-table-column>', pendingOperationStart));
   assert.match(pendingOperation, /editPreorder/);
-  assert.doesNotMatch(pendingOperation, /openMatchModal|cancelPreorder/);
+  assert.match(pendingOperation, /openMatchModal/);
+  assert.match(pendingOperation, /canCancel[\s\S]{0,180}cancelPreorder/);
   const matchedOperationStart = page.indexOf('v-if="showMatchedActionField"');
   const matchedOperation = page.slice(matchedOperationStart, page.indexOf('</el-table-column>', matchedOperationStart));
-  assert.doesNotMatch(matchedOperation, /openMatchModal|deliverPreorder|cancelMatchedPreorder|restorePreorder/);
-  assert.match(page, /v-if="showMatchedStatusField"[\s\S]{0,1300}cancelMatchedPreorder\(row\)[\s\S]{0,700}restorePreorder\(row\)/);
-  assert.match(page, /v-if="showMatchedTimeField"[\s\S]{0,700}openMatchModal\(row\)/);
-  assert.match(page, /v-if="showMatchedDeliveryField"[\s\S]{0,700}deliverPreorder\(row\)/);
+  assert.match(matchedOperation, /canMatch[\s\S]{0,220}openMatchModal/);
+  assert.match(matchedOperation, /canDeliver[\s\S]{0,220}deliverPreorder/);
+  assert.match(matchedOperation, /canCancel[\s\S]{0,220}cancelMatchedPreorder/);
+  assert.match(matchedOperation, /canEdit[\s\S]{0,220}restorePreorder/);
+  assert.match(page, /v-if="showMatchedStatusField"/);
+  assert.match(page, /v-if="showMatchedTimeField"/);
+  assert.match(page, /v-if="showMatchedDeliveryField"/);
 
   assert.match(route, /const PREORDER_WRITE_FIELD_IDS =/);
   assert.match(route, /rejectHiddenPreorderWriteFields/);
   assert.match(route, /maskPreorderList\(records, req\)/);
   assert.match(route, /maskPreorderItem\(records\[0\], req\)/);
-  assert.doesNotMatch(route, /p\.purchase_cost,[\s\S]{0,120}p\.is_new/);
+  const coreFields = route.match(/const PREORDER_CORE_FIELDS = \[([\s\S]*?)\]/)?.[1] || '';
+  assert.ok(coreFields.length > 0, '预定核心响应字段未定义');
+  assert.doesNotMatch(coreFields, /purchase_cost/);
 });
 
 test('data-check merge payloads use canonical snake_case IDs', () => {
@@ -1378,6 +1545,9 @@ test('model routes and callers use canonical fields and explicit response column
   assert.match(route, /total_pages/);
   assert.match(route, /has_next: pageNum < total_pages/);
   assert.match(route, /has_prev: pageNum > 1/);
+  assert.match(route, /router\.get\('\/brand\/:brandId'/);
+  assert.match(route, /name/);
+  assert.match(route, /page_size/);
   assert.match(route, /if \(sort_order !== undefined\)[\s\S]*updateFields\.push\('sort_order = \?'\)/);
   assert.ok(
     route.indexOf("router.get('/stats/overview'") < route.indexOf("router.get('/:id'"),
@@ -1388,6 +1558,8 @@ test('model routes and callers use canonical fields and explicit response column
   for (const caller of [stockIn, queryEdit, priceList]) {
     assert.doesNotMatch(caller, /\/models\?[^'"\n]*\blimit=/);
   }
+  assert.doesNotMatch(stockIn, /page_size=10000|page_size:\s*10000/);
+  assert.doesNotMatch(queryEdit, /page_size=10000|page_size:\s*10000/);
   assert.match(remoteSearch, /params\.append\('name', query\.trim\(\)\)/);
   assert.match(remoteSearch, /params\.append\('page_size', '50'\)/);
   assert.doesNotMatch(remoteSearch, /params\.append\('(?:search|limit)'/);
@@ -1719,13 +1891,14 @@ test('field-aware action columns use field-or-action visibility without hiding a
   assert.doesNotMatch(attendanceOperation, /canApprove|handleApprove/);
 
   const salaryPayout = read('../frontend/src/views/salary/page/SalaryPayoutTab.vue');
-  assert.match(salaryPayout, /const showStatusColumn = computed\(\(\) => shouldShowActionColumn\([\s\S]{0,180}\[props\.canCreate\]/);
+  assert.match(salaryPayout, /const showStatusColumn = computed\(\(\) => shouldShowActionColumn\([\s\S]*?\[\]\s*\)\)/);
   const salaryStatusStart = salaryPayout.indexOf('v-if="showStatusColumn"');
   const salaryStatus = salaryPayout.slice(salaryStatusStart, salaryPayout.indexOf("canViewField('salary_salaryrecordsview', 'paid_at')", salaryStatusStart));
-  assert.match(salaryStatus, /v-if="canCreate"[\s\S]{0,320}emit\('recalculate', row\) : emit\('settle', row\)/);
+  assert.match(salaryStatus, /canViewField\('salary_salaryrecordsview', 'salary_status'\)/);
+  assert.doesNotMatch(salaryStatus, /emit\('(recalculate|settle)'/);
   const salaryOperationStart = salaryPayout.indexOf('v-if="!isMobile && showActionColumn"');
   const salaryOperation = salaryPayout.slice(salaryOperationStart, salaryPayout.indexOf('</el-table>', salaryOperationStart));
-  assert.doesNotMatch(salaryOperation, /canCreate|emit\('settle'|emit\('recalculate'/);
+  assert.match(salaryOperation, /v-if="canCreate"[\s\S]{0,320}emit\('recalculate', row\) : emit\('settle', row\)/);
 
   const salesGrid = read('../frontend/src/views/sales/page/SalesGridView.vue');
   assert.doesNotMatch(salesGrid, /can(?:Create|Edit|Delete) && canViewField\('actions'\)/);

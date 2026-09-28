@@ -1,27 +1,16 @@
 import { getPaymentMethodLabel } from '@/constants/paymentMethods'
+import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 
 export type SalaryTagType = 'success' | 'warning' | 'info' | 'primary' | 'danger'
 
 export const formatSalarySaleTime = (time: string) => {
   if (!time) return '-'
-  try {
-    return new Date(time).toLocaleDateString('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    })
-  } catch {
-    return time
-  }
+  return TimeUtil.format(time, TIME_FORMATS.DATE)
 }
 
 export const formatSalaryPayoutTime = (time: string) => {
   if (!time) return '-'
-  const date = new Date(time)
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+  return TimeUtil.toDateInputValue(time) || '-'
 }
 
 export const getSalaryPaymentMethodName = (method: string) => getPaymentMethodLabel(method)
@@ -52,8 +41,7 @@ export const formatSalaryAmount = (amount: unknown) => {
 
 export const formatSalaryMonth = (periodStart: string) => {
   if (!periodStart) return '-'
-  const date = new Date(periodStart)
-  return `${date.getFullYear()}-${date.getMonth() + 1}月`
+  return TimeUtil.format(periodStart, 'YYYY-M月')
 }
 
 export const formatSalaryNumber = (value: number | string): string => {

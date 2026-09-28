@@ -397,12 +397,6 @@
                   >
                     ¥{{ formatMoney(item.sale_price) }}
                   </span>
-                  <span
-                    v-if="fieldVisibility.subsidy_amount"
-                    class="mobile-price mobile-price--subsidy"
-                  >
-                    补后 ¥{{ formatMoney(getSubsidyFinalPrice(item)) }}
-                  </span>
                 </div>
 
                 <div
@@ -414,7 +408,7 @@
                     v-if="fieldVisibility.apply_time || canApprove"
                     class="mobile-workflow-field"
                   >
-                    <span class="mobile-workflow-label">国补提交</span>
+                    <span class="mobile-workflow-label">提交</span>
                     <span
                       v-if="hasApplyTime(item)"
                       class="mobile-action-status is-approved"
@@ -439,7 +433,7 @@
                     v-if="fieldVisibility.arrival_time || canArrival"
                     class="mobile-workflow-field"
                   >
-                    <span class="mobile-workflow-label">国补到账</span>
+                    <span class="mobile-workflow-label">到账</span>
                     <span
                       v-if="hasArrivalTime(item)"
                       class="mobile-action-status is-arrived"
@@ -1190,8 +1184,8 @@ onUnmounted(() => {
   .mobile-card-shell {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
-    gap: 10px;
-    padding: 12px 12px 12px 14px;
+    gap: 8px;
+    padding: 9px 10px 9px 12px;
   }
 
   .mobile-select-cell {
@@ -1205,7 +1199,7 @@ onUnmounted(() => {
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
   }
 
   .mobile-card-head,
@@ -1228,6 +1222,7 @@ onUnmounted(() => {
   .mobile-meta-line {
     flex: 1 1 auto;
     min-width: 0;
+    flex-wrap: wrap;
     gap: 6px;
   }
 
@@ -1239,10 +1234,9 @@ onUnmounted(() => {
   }
 
   .mobile-store {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    min-width: min(100%, 120px);
+    overflow-wrap: anywhere;
+    white-space: normal;
     color: var(--tf-color-slate-900);
     font-size: 13px;
     font-weight: 700;
@@ -1263,17 +1257,20 @@ onUnmounted(() => {
   .mobile-device-line {
     flex-wrap: wrap;
     justify-content: flex-start;
-    align-items: stretch;
-    gap: 6px;
+    align-items: flex-start;
+    gap: 4px 6px;
     min-width: 0;
-    padding: 2px 0;
+    padding: 0 0 2px;
   }
 
   .mobile-person-line {
-    justify-content: flex-start;
-    flex-wrap: nowrap;
-    gap: 10px;
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.4fr) minmax(0, 0.8fr);
+    align-items: center;
+    gap: 4px 8px;
     min-width: 0;
+    padding: 0 0 5px;
+    border-bottom: 1px solid var(--tf-color-slate-200);
   }
 
   .mobile-action-mark {
@@ -1329,11 +1326,12 @@ onUnmounted(() => {
     align-items: center;
     border: 1px solid transparent;
     border-radius: 999px;
-    white-space: nowrap;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   .mobile-brand-text {
-    flex: 0 0 auto;
+    flex: 0 1 auto;
     padding: 0 8px;
     background: linear-gradient(135deg, var(--tf-color-blue-tailwind-50), var(--tf-color-blue-tailwind-100));
     border-color: var(--tf-color-blue-tailwind-200);
@@ -1344,7 +1342,7 @@ onUnmounted(() => {
   }
 
   .mobile-model-title {
-    flex: 0 0 auto;
+    flex: 0 1 auto;
     padding: 0 10px;
     background: var(--color-bg-white);
     border-color: var(--tf-color-slate-300);
@@ -1356,7 +1354,7 @@ onUnmounted(() => {
   }
 
   .mobile-spec-text {
-    flex: 0 0 auto;
+    flex: 0 1 auto;
     padding: 0 8px;
     background: var(--tf-color-slate-50);
     border-color: var(--tf-color-slate-200);
@@ -1366,49 +1364,48 @@ onUnmounted(() => {
   }
 
   .mobile-price {
-    flex-shrink: 0;
-    margin-left: auto;
+    min-width: 0;
+    overflow-wrap: anywhere;
     color: var(--tf-color-red-600);
     font-size: 13px;
     font-weight: 800;
   }
 
-  .mobile-price--subsidy {
-    color: var(--tf-color-green-600);
-    font-size: 12px;
-  }
-
   .mobile-name,
   .mobile-phone {
-    display: inline-flex;
+    min-width: 0;
+    display: flex;
     align-items: center;
+    align-self: start;
     gap: 4px;
     color: var(--tf-color-slate-600);
     font-size: 12px;
     font-weight: 700;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+    white-space: normal;
   }
 
   .mobile-name {
-    flex: 0 1 auto;
-    max-width: 34%;
-    min-width: 0;
+    max-width: 100%;
   }
 
   .mobile-phone {
-    flex: 1 1 auto;
-    min-width: 0;
     color: var(--tf-color-slate-500);
+  }
+
+  .mobile-phone i,
+  .mobile-name i {
+    flex: 0 0 auto;
+    margin-top: 2px;
   }
 
   .mobile-workflow-fields {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-    margin-top: 2px;
-    padding-top: 8px;
+    gap: 6px;
+    margin-top: 0;
+    padding-top: 6px;
     border-top: 1px dashed var(--tf-color-slate-200);
   }
 
@@ -1417,34 +1414,60 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 6px;
+    gap: 4px;
+    padding: 4px 6px;
+    border: 1px solid var(--tf-color-slate-200);
+    border-radius: 6px;
+    background: var(--tf-color-slate-50);
   }
 
   .mobile-workflow-label {
-    min-width: 0;
+    flex: 0 0 auto;
     color: var(--tf-color-slate-600);
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 700;
     white-space: nowrap;
   }
 
+  .mobile-workflow-field :deep(.el-button) {
+    height: 26px;
+    min-width: 0;
+    margin: 0;
+    padding: 0 7px;
+    font-size: 11px;
+  }
+
   .mobile-card-actions {
     align-items: center;
-    flex-wrap: nowrap;
-    gap: 4px;
-    margin-top: 2px;
-    padding-top: 8px;
+    display: grid;
+    grid-template-columns: 40px repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 0;
+    padding-top: 6px;
     border-top: 1px dashed var(--tf-color-slate-200);
+  }
+
+  .mobile-card-actions :deep(.el-button) {
+    width: 100%;
+    min-width: 0;
+    height: 34px;
+    margin: 0;
+  }
+
+  .mobile-card-actions .mobile-action-mark {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
   }
 
   .mobile-action-status {
     flex-shrink: 0;
     display: inline-flex;
     align-items: center;
-    height: 28px;
-    padding: 0 9px;
+    height: 24px;
+    padding: 0 6px;
     border-radius: 999px;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 700;
   }
 

@@ -311,7 +311,7 @@
           v-model:search-query="roleSearchQuery"
           v-model:selected-role-ids="selectedUserRoleIds"
           :get-role-card-badge-class="getRoleCardBadgeClass"
-          :roles="rolesData"
+          :roles="roleOptions"
           :saving="savingUserRoles"
           :user="currentUser"
           @close="closeUserRoleDialog"
@@ -383,6 +383,7 @@ import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useRefreshData } from '@/composables/useRefreshData'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useAuthStore } from '@/stores/auth'
+import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import { useMenuStore } from '@/stores/menu'
 import { getModuleFieldGroups } from '@/config/moduleFields.js'
 import { PermissionGate, PageHeader } from '@/components/base'
@@ -433,6 +434,8 @@ const { success, error, warning, info, handleApiError, confirm } = useNotificati
 // 角色相关状态
 const rolesLoading = ref(false)
 const rolesData = ref<Role[]>([])
+// 角色表格是分页数据；角色分配、用户角色筛选使用独立的完整选项集。
+const roleOptions = ref<Role[]>([])
 const rolesPagination = reactive({
   page: 1,
   page_size: 10,
@@ -676,9 +679,24 @@ const parseRoles = (roles: string | Role[] | null) => {
   return {
     names: roleNames,
     ids: roleNames
-      .map((roleName) => rolesData.value.find((role) => role.name === roleName)?.id ?? null)
+      .map((roleName) => (
+        roleOptions.value.find((role) => role.name === roleName)?.id ??
+        rolesData.value.find((role) => role.name === roleName)?.id ??
+        null
+      ))
       .filter((id): id is number => id !== null && id !== undefined)
   }
+}
+
+const parseUserRoleIds = (user: PermissionUser): number[] => {
+  const roleIds: unknown = (user as unknown as Record<string, unknown>).role_ids
+  if (Array.isArray(roleIds)) {
+    return roleIds.map(Number).filter(id => Number.isInteger(id) && id > 0)
+  }
+  if (typeof roleIds === 'string' && roleIds.trim()) {
+    return roleIds.split(',').map(Number).filter(id => Number.isInteger(id) && id > 0)
+  }
+  return parseRoles(user.roles).ids
 }
 
 const updatePaginationState = (
@@ -766,49 +784,19 @@ const currentTabHeader = computed(() => {
 
 // 计算属性
 const filteredRoles = computed(() => {
-  let filtered = rolesData.value
-
-  if (roleSearchForm.name.trim() !== '') {
-    const keyword = roleSearchForm.name.trim().toLowerCase()
-    filtered = filtered.filter(role =>
-      role.name.toLowerCase().includes(keyword) ||
-      (role.code && role.code.toLowerCase().includes(keyword)) ||
-      (role.description && role.description.toLowerCase().includes(keyword))
-    )
-  }
-
-  return filtered
+  return rolesData.value
 })
 
 const paginatedRoles = computed(() => {
-  const start = (rolesPagination.page - 1) * rolesPagination.page_size
-  const end = start + rolesPagination.page_size
-  return filteredRoles.value.slice(start, end)
+  return rolesData.value
 })
 
 const filteredUsers = computed(() => {
-  let filtered = usersData.value
-
-  if (userSearchForm.username !== '') {
-    filtered = filtered.filter(user =>
-      user.username.toLowerCase().includes(userSearchForm.username.toLowerCase())
-    )
-  }
-
-  if (userSearchForm.role_id !== '') {
-    filtered = filtered.filter(user => {
-      const roleIds = getUserRoleIds(user.roles)
-      return roleIds.includes(parseInt(userSearchForm.role_id))
-    })
-  }
-
-  return filtered
+  return usersData.value
 })
 
 const paginatedUsers = computed(() => {
-  const start = (usersPagination.page - 1) * usersPagination.page_size
-  const end = start + usersPagination.page_size
-  return filteredUsers.value.slice(start, end)
+  return usersData.value
 })
 
 
@@ -919,6 +907,21 @@ const loadStats = async () => {
   }
 }
 
+const loadRoleOptions = async () => {
+  try {
+    const response = await unifiedApi.get('/permissions/roles', {
+      params: { page: 1, page_size: 500 }
+    })
+    if (response.success) {
+      const responseData = response.data || {}
+      roleOptions.value = sortOptionsByOrder(responseData.roles || [])
+    }
+  } catch (err) {
+    logger.warn('加载角色选项失败:', err)
+    roleOptions.value = []
+  }
+}
+
 const loadRoles = async (showLoading = true, showSuccess = false) => {
   try {
     if (showLoading) {
@@ -1010,8 +1013,8 @@ const loadUsers = async (showLoading = true, showSuccess = false) => {
       const pagination = responseData.pagination || {}
 
       // 使用后端返回的分页信息
-      usersPagination.total = pagination.total || users.length
-      usersPagination.page = pagination.page || 1
+      usersPagination.total = Number(responseData.total ?? pagination.total ?? users.length)
+      usersPagination.page = Number(responseData.page ?? pagination.page ?? 1)
 
       if (users.length === 0) {
         usersData.value = []
@@ -1146,25 +1149,25 @@ const toggleLogSearch = () => {
 
 const searchRoles = () => {
   rolesPagination.page = 1
-  // 客户端搜索，不需要重新加载
+  void loadRoles(false, false)
 }
 
 const resetRoleSearch = () => {
   roleSearchForm.name = ''
   rolesPagination.page = 1
-  // 客户端搜索，不需要重新加载
+  void loadRoles(false, false)
 }
 
 const searchUsers = () => {
   usersPagination.page = 1
-  // 客户端搜索，不需要重新加载
+  void loadUsers(false, false)
 }
 
 const resetUserSearch = () => {
   userSearchForm.username = ''
   userSearchForm.role_id = ''
   usersPagination.page = 1
-  // 客户端搜索，不需要重新加载
+  void loadUsers(false, false)
 }
 
 const refreshCurrentPage = async () => {
@@ -1299,6 +1302,7 @@ const saveRole = async () => {
       closeRoleDialog()
       // 重新加载角色和统计数据
       await loadRoles()
+      await loadRoleOptions()
       await loadUsers() // 用户列表也需要刷新，因为可能影响用户的角色显示
       await loadStats()
 
@@ -1351,6 +1355,7 @@ const handleDeleteRole = async (role: Role) => {
       success('角色删除成功')
       // 重新加载角色和用户列表，因为删除角色可能影响用户的角色显示
       await loadRoles()
+      await loadRoleOptions()
       await loadUsers()
       await loadStats()
     } else {
@@ -1410,6 +1415,7 @@ const toggleRoleStatus = async (role: Role) => {
         // 并行加载以提高性能
         await Promise.all([
           loadRoles(),
+          loadRoleOptions(),
           loadUsers(),
           loadStats()
         ])
@@ -1824,13 +1830,13 @@ const toggleAllDialogMenuPermissions = async (show = true) => {
 }
 
 const getUserRoleNames = (roles: string | Role[] | null) => parseRoles(roles).names
-const getUserRoleIds = (roles: string | Role[] | null) => parseRoles(roles).ids
 const getRoleTagClass = (roleName: string) => getRoleVisualMeta(roleName).tagClass
 const getRoleCardBadgeClass = (roleName: string) => getRoleVisualMeta(roleName).cardBadgeClass
 
 const handleEditUserRoles = (user: PermissionUser) => {
+  if (roleOptions.value.length === 0) void loadRoleOptions()
   currentUser.value = user
-  selectedUserRoleIds.value = getUserRoleIds(user.roles)
+  selectedUserRoleIds.value = parseUserRoleIds(user)
   roleSearchQuery.value = ''
   userRoleDialogVisible.value = true
 }
@@ -2048,26 +2054,8 @@ const formatDate = (dateString: string | undefined) => {
   if (!dateString) return ''
 
   try {
-    // 创建日期对象
-    const date = new Date(dateString)
-
-    // 检查日期是否有效
-    if (isNaN(date.getTime())) {
-      return '无效日期'
-    }
-
-    // 转换为中国时区时间
-    const chinaTime = new Date(date.getTime() + (8 * 60 * 60 * 1000) + (date.getTimezoneOffset() * 60 * 1000))
-
-    // 格式化日期时间
-    const year = chinaTime.getFullYear()
-    const month = String(chinaTime.getMonth() + 1).padStart(2, '0')
-    const day = String(chinaTime.getDate()).padStart(2, '0')
-    const hours = String(chinaTime.getHours()).padStart(2, '0')
-    const minutes = String(chinaTime.getMinutes()).padStart(2, '0')
-    const seconds = String(chinaTime.getSeconds()).padStart(2, '0')
-
-    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+    const parsed = TimeUtil.parse(dateString)
+    return parsed?.isValid() ? TimeUtil.format(parsed, TIME_FORMATS.DATETIME) : '无效日期'
   } catch (err) {
     logger.error('日期格式化错误:', { err, dateString })
     return '格式错误'
@@ -2287,36 +2275,27 @@ const loadStoreList = async () => {
 const loadStoreBindings = async () => {
   storeBindingsLoading.value = true
   try {
-    // 使用带角色信息的用户列表API（与角色分配使用相同的API）
+    // 门店绑定沿用服务端分页和筛选，避免用户规模超过单次响应上限时漏人。
     const response = await unifiedApi.get('/permissions/users-with-roles', {
-      params: { page_size: 10000 }  // 获取所有用户
+      params: {
+        page: storeBindingsPagination.page,
+        page_size: storeBindingsPagination.page_size,
+        search: storeBindingSearchForm.user_name || undefined,
+        store_id: storeBindingSearchForm.store_id || undefined,
+        has_store: storeBindingSearchForm.has_store || undefined,
+        include_stores: true
+      }
     })
 
     if (response.success && response.data?.users) {
-      // 为每个用户获取完整的门店关联信息
-      const usersWithStores = await Promise.all(
-        response.data.users.map(async (user: any) => {
-          try {
-            // 调用 user-stores API 获取用户的所有门店
-            const storesResponse = await unifiedApi.get(`/user-stores/user/${user.id}`)
-            // 将 full_name 映射为 name 字段以保持一致性
-            return {
-              ...user,
-              name: user.full_name || user.name,
-              stores: storesResponse.data || []
-            }
-          } catch (err) {
-            logger.error(`获取用户 ${user.username} 门店信息失败:`, err)
-            return {
-              ...user,
-              name: user.full_name || user.name,
-              stores: []
-            }
-          }
-        })
-      )
+      // 后端已批量返回门店绑定，避免按用户逐条请求造成 N+1。
+      const usersWithStores = response.data.users.map((user: any) => ({
+        ...user,
+        name: user.full_name || user.name,
+        stores: Array.isArray(user.stores) ? user.stores : []
+      }))
       storeBindingsData.value = usersWithStores
-      storeBindingsPagination.total = usersWithStores.length
+      storeBindingsPagination.total = Number(response.data.total) || usersWithStores.length
     } else {
       storeBindingsData.value = []
       storeBindingsPagination.total = 0
@@ -2331,47 +2310,13 @@ const loadStoreBindings = async () => {
   }
 }
 
-// 过滤后的门店绑定数据
-const filteredStoreBindings = computed(() => {
-  let filtered = [...storeBindingsData.value]
-
-  // 按姓名筛选
-  if (storeBindingSearchForm.user_name) {
-    const keyword = storeBindingSearchForm.user_name.toLowerCase()
-    filtered = filtered.filter((user: any) =>
-      (user.name && user.name.toLowerCase().includes(keyword)) ||
-      (user.username && user.username.toLowerCase().includes(keyword))
-    )
-  }
-
-  // 按门店筛选（检查用户是否关联该门店）
-  if (storeBindingSearchForm.store_id) {
-    const storeId = parseInt(storeBindingSearchForm.store_id)
-    filtered = filtered.filter((user: any) =>
-      user.stores && user.stores.some((s: any) => s.store_id === storeId)
-    )
-  }
-
-  // 按绑定状态筛选
-  if (storeBindingSearchForm.has_store === 'true') {
-    filtered = filtered.filter((user: any) => user.stores && user.stores.length > 0)
-  } else if (storeBindingSearchForm.has_store === 'false') {
-    filtered = filtered.filter((user: any) => !user.stores || user.stores.length === 0)
-  }
-
-  return filtered
-})
-
-// 分页后的门店绑定数据
-const paginatedStoreBindings = computed(() => {
-  const start = (storeBindingsPagination.page - 1) * storeBindingsPagination.page_size
-  const end = start + storeBindingsPagination.page_size
-  return filteredStoreBindings.value.slice(start, end)
-})
+const filteredStoreBindings = computed(() => storeBindingsData.value)
+const paginatedStoreBindings = computed(() => storeBindingsData.value)
 
 // 搜索门店绑定
 const searchStoreBindings = () => {
   storeBindingsPagination.page = 1
+  void loadStoreBindings()
 }
 
 // 重置门店绑定搜索
@@ -2380,6 +2325,7 @@ const resetStoreBindingSearch = () => {
   storeBindingSearchForm.store_id = ''
   storeBindingSearchForm.has_store = ''
   storeBindingsPagination.page = 1
+  void loadStoreBindings()
 }
 
 // 打开门店绑定对话框
@@ -2460,7 +2406,7 @@ const unbindStore = async (user: any) => {
 
 // 门店绑定分页处理
 const handleStoreBindingsPaginationChange = (page: number, pageSize: number) =>
-  updatePaginationState(storeBindingsPagination, page, pageSize)
+  updatePaginationState(storeBindingsPagination, page, pageSize, () => loadStoreBindings())
 
 Object.assign(permissionsPageContext, {
   activeTab,
@@ -2472,6 +2418,7 @@ Object.assign(permissionsPageContext, {
   stats,
   rolesLoading,
   rolesData,
+  roleOptions,
   rolesPagination,
   roleSearchForm,
   roleSearchExpanded,
@@ -2560,7 +2507,9 @@ watch(activeTab, async (newTab) => {
   }
 
   if (newTab === 'userRoles' && usersData.value.length === 0) {
-    await loadUsers(false, false)
+    await Promise.all([loadUsers(false, false), loadRoleOptions()])
+  } else if (newTab === 'userRoles' && roleOptions.value.length === 0) {
+    await loadRoleOptions()
   }
 
   if (newTab === 'logs' && logsData.value.length === 0) {

@@ -450,7 +450,7 @@ test('repairs contract has no runtime compatibility after read-only database ver
   }
   for (const field of [
     'customer_id', 'brand_id', 'phone_model', 'problem_description',
-    'estimated_cost', 'actual_cost', 'technician_id', 'remarks', 'status',
+    'photos', 'actual_cost', 'technician_id', 'remarks', 'status',
     'page_size', 'total_pages', 'has_next', 'has_prev', 'monthly_revenue'
   ]) {
     assert.ok(contract.canonical.includes(field), `repairs 缺少 ${field} 规范字段`);
@@ -462,6 +462,19 @@ test('repairs contract has no runtime compatibility after read-only database ver
   assert.equal(contract.verification.relation_integrity, 'passed');
   assert.equal(contract.verification.canonical_pagination, 'passed');
   assert.equal(contract.verification.write_operations, 0);
+});
+
+test('repairs supports remote customer lookup/create and multi-item fault records', () => {
+  const repairsRoute = fs.readFileSync(path.join(root, 'backend/src/routes/repairs.js'), 'utf8');
+  const repairsView = fs.readFileSync(path.join(root, 'frontend/src/views/repairs/RepairsView.vue'), 'utf8');
+
+  assert.match(repairsRoute, /router\.get\('\/customers\/search'/);
+  assert.match(repairsRoute, /router\.post\('\/customers'/);
+  assert.match(repairsRoute, /requirePermission\('repairs:create'\)/);
+  assert.match(repairsView, /multiple\s+filterable\s+allow-create/);
+  for (const fault of ['换屏幕', '换电池', '维修主板', '换框', '更换相机', '维修尾插', '换听筒', '换扬声器']) {
+    assert.ok(repairsView.includes(fault), `维修故障选项缺少 ${fault}`);
+  }
 });
 
 test('data-check contract retires request and response aliases after read-only verification', () => {

@@ -1764,9 +1764,7 @@ watch(showEditModal, async (newVal) => {
         ? 'new'
         : 'used',
       status: phone.status || '',
-      inventory_time: phone.inventory_time
-        ? new Date(phone.inventory_time).toISOString().slice(0, 10)
-        : null,
+      inventory_time: TimeUtil.toDateInputValue(phone.inventory_time),
       remarks: phone.remarks || ''
     })
 

@@ -15,6 +15,7 @@
     { "document": "field-consistency-standards.md", "checks": ["check:fields"], "publicSources": ["config/field-contracts.json", "frontend/scripts/check-field-consistency.mjs"] },
     { "document": "latest-request-standard.md", "checks": ["check:data-freshness"], "publicSources": ["frontend/src/composables/useLatestRequest.ts"] },
     { "document": "menu-icon-management-standard.md", "checks": ["check:ui"], "publicSources": ["frontend/src/components/IconPicker.vue", "frontend/src/components/IconRenderer.vue"] },
+    { "document": "model-search-standard.md", "checks": ["check:ui"], "publicSources": ["frontend/src/services/reference-options.ts"] },
     { "document": "notification-standards.md", "checks": ["check:ui", "check:loading"], "publicSources": ["frontend/src/plugins/notification.ts", "frontend/src/composables/useNotification.ts"] },
     { "document": "page-structure-standards.md", "checks": ["check:ui", "check:tabs", "check:tables"], "publicSources": ["frontend/src/styles/admin-layout.css", "frontend/src/components/base/PageHeader.vue"] },
     { "document": "pagination-standards.md", "checks": ["check:ui"], "publicSources": ["frontend/src/components/Pagination.vue", "frontend/src/styles/components/_pagination.scss"] },

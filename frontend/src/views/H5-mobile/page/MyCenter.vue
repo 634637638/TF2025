@@ -484,7 +484,7 @@ import { userManager, getUserSales, logout as authLogout, updateProfile, getUser
 import { storage } from '@/services/storage'
 import { H5_STORAGE_KEYS } from '@/constants/storage'
 import { normalizeAppleId, normalizeIdCard, normalizePersonName } from '@/utils/security'
-import { formatImageUrl } from '@/utils/format'
+import { formatDate as formatGlobalDate, formatImageUrl } from '@/utils/format'
 import { logger } from '@/utils/logger'
 import SectionLoading from '@/components/SectionLoading.vue'
 const router = useRouter()
@@ -600,7 +600,7 @@ const handleProfileAppleIdInput = (value: string) => {
 // 格式化日期
 const formatDate = (date: string | null) => {
   if (!date) return ''
-  return new Date(date).toLocaleDateString('zh-CN')
+  return formatGlobalDate(date)
 }
 
 const formatSalePrice = (price: number | null) => (

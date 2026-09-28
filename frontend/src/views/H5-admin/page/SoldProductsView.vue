@@ -304,7 +304,7 @@ import { ref, reactive, computed, onMounted, onUnmounted, onActivated, inject, w
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
 import { unifiedApi as api } from '@/utils/unified-api'
-import { formatImageUrl } from '@/utils/format'
+import { formatDate as formatGlobalDate, formatImageUrl } from '@/utils/format'
 import { useLoadingState } from '@/composables'
 import InlineLoading from '@/components/InlineLoading.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
@@ -585,7 +585,7 @@ const getImageUrl = (url: string) => {
 // 格式化日期
 const formatDate = (date: string | null) => {
   if (!date) return '-'
-  return new Date(date).toLocaleDateString('zh-CN')
+  return formatGlobalDate(date)
 }
 
 const initializePageData = async () => {

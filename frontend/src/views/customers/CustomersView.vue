@@ -1685,6 +1685,7 @@ import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { PermissionGate, PageHeader } from '@/components/base'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
+import { formatDate as formatGlobalDate } from '@/utils/format'
 import { getActionColumnMinWidth, getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 import { isValidAppleAccount, isValidIdCard, isValidMobilePhone, normalizeAppleId, normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
 import { logger } from '@/utils/logger'
@@ -2987,7 +2988,7 @@ const handleExport = async () => {
 // 工具方法
 const formatDate = (dateString: string) => {
   if (!dateString) return '-'
-  return new Date(dateString).toLocaleDateString('zh-CN')
+  return formatGlobalDate(dateString)
 }
 
 const getCustomerTypeTagType = (type: string): 'success' | 'warning' | 'info' | 'primary' | 'danger' => {

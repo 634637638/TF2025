@@ -246,6 +246,7 @@ import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { PermissionGate, PageHeader } from '@/components/base'
+import { formatDateTime as formatGlobalDateTime } from '@/utils/format'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 
 const { success, error, loading } = useNotification()
@@ -460,14 +461,7 @@ const cleanupBackups = async () => {
 // 格式化时间
 const formatDateTime = (dateStr: string) => {
   if (!dateStr) return '-'
-  const date = new Date(dateStr)
-  return date.toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+  return formatGlobalDateTime(dateStr, 'YYYY-MM-DD HH:mm')
 }
 
 // 初始化

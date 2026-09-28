@@ -3,7 +3,7 @@
     <div class="section-title">
       <i class="fas fa-list" />
       用户列表
-      <span class="record-count">共 {{ ctx.filteredUsers.length }} 条记录</span>
+      <span class="record-count">共 {{ ctx.usersPagination.total }} 条记录</span>
     </div>
 
     <div class="table-responsive">

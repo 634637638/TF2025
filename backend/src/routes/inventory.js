@@ -9,7 +9,9 @@ const { generateMemberNumber } = require('../utils/member-number')
 const log = require('../utils/log')
 const {
   COMPLETED_TRANSACTION_STATUSES,
-  getEffectivePhoneStatusSql
+  getEffectivePhoneStatusSql,
+  isPhoneStatusAlias,
+  normalizePhoneStatus
 } = require('../utils/phone-status')
 const COMPLETED_TRANSACTION_STATUS_SQL = `COALESCE(status, '') NOT IN (${COMPLETED_TRANSACTION_STATUSES.map(() => '?').join(', ')})`
 
@@ -49,7 +51,7 @@ const buildInventoryStatsWhere = query => {
   }
   if (status) {
     whereConditions.push(`${effectiveStatusSql} = ?`)
-    queryParams.push(status)
+    queryParams.push(normalizePhoneStatus(status))
   }
   if (brand) {
     whereConditions.push('b.name = ?')
@@ -97,24 +99,9 @@ const buildInventoryStatsWhere = query => {
     } else if (/^(\d+[Gg][Bb]|1[Tt][Bb])$/.test(searchStr)) {
       whereConditions.push('UPPER(mem.size) LIKE ?')
       queryParams.push(`%${searchStr.toUpperCase()}%`)
-    } else if (['available', 'in_stock', 'sold', 'reserved', 'repair', 'rented', 'lost'].includes(searchStr.toLowerCase())) {
+    } else if (isPhoneStatusAlias(searchStr)) {
       whereConditions.push(`${effectiveStatusSql} = ?`)
-      queryParams.push(searchStr.toLowerCase() === 'available' ? 'in_stock' : searchStr.toLowerCase())
-    } else if (['可用', '可售', '已售', '预定', '预订', '维修', '租赁', '丢失', '在库'].includes(searchStr)) {
-      const statusMap = {
-        '可用': 'in_stock',
-        '可售': 'in_stock',
-        '已售': 'sold',
-        '预定': 'reserved',
-        '预订': 'reserved',
-        '维修': 'repair',
-        '租赁': 'rented',
-        '丢失': 'lost',
-        // “在库” is the user-facing label for the canonical sellable state.
-        '在库': 'in_stock'
-      }
-      whereConditions.push(`${effectiveStatusSql} = ?`)
-      queryParams.push(statusMap[searchStr])
+      queryParams.push(normalizePhoneStatus(searchStr))
     } else if (['new', 'used', '全新', '二手'].includes(searchStr.toLowerCase())) {
       const isNew = ['new', '全新'].includes(searchStr.toLowerCase())
       whereConditions.push('p.is_new = ?')
@@ -226,7 +213,7 @@ router.get('/list', unifiedAuth, requirePermission('inventory:view'), async (req
     // 状态筛选
     if (status) {
       whereConditions.push(`${effectiveStatusSql} = ?`)
-      queryParams.push(status)
+      queryParams.push(normalizePhoneStatus(status))
     }
 
     // 品牌筛选
@@ -323,26 +310,10 @@ router.get('/list', unifiedAuth, requirePermission('inventory:view'), async (req
         whereConditions.push('UPPER(mem.size) LIKE ?')
         queryParams.push(`%${searchStr.toUpperCase()}%`)
       }
-      // 状态匹配 (英文状态)
-      else if (['available', 'in_stock', 'sold', 'reserved', 'repair', 'rented', 'lost'].includes(searchStr.toLowerCase())) {
+      // 状态别名统一通过 phone-status 归一化，数据库筛选只使用规范值。
+      else if (isPhoneStatusAlias(searchStr)) {
         whereConditions.push(`${effectiveStatusSql} = ?`)
-        queryParams.push(searchStr.toLowerCase() === 'available' ? 'in_stock' : searchStr.toLowerCase())
-      }
-      // 状态匹配 (中文状态)
-      else if (['可用', '可售', '已售', '预定', '预订', '维修', '租赁', '丢失', '在库'].includes(searchStr)) {
-        const statusMap = {
-          '可用': 'in_stock',
-          '可售': 'in_stock',
-          '已售': 'sold',
-          '预定': 'reserved',
-          '预订': 'reserved',
-          '维修': 'repair',
-          '租赁': 'rented',
-          '丢失': 'lost',
-          '在库': 'in_stock'
-        }
-        whereConditions.push(`${effectiveStatusSql} = ?`)
-        queryParams.push(statusMap[searchStr])
+        queryParams.push(normalizePhoneStatus(searchStr))
       }
       // 成色匹配
       else if (['new', 'used', '全新', '二手'].includes(searchStr.toLowerCase())) {

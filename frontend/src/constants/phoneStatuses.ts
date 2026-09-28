@@ -44,6 +44,21 @@ export const PHONE_STATUS_CLASS_MAP: Record<string, string> = {
   damaged: 'damaged'
 }
 
+const PHONE_STATUS_ALIASES: Record<string, string> = {
+  available: 'in_stock',
+  '在库': 'in_stock',
+  '可售': 'in_stock',
+  '可用': 'in_stock',
+  retail: 'sold',
+  '零售': 'sold',
+  wholesale: 'peer_transfer',
+  '批发': 'peer_transfer',
+  '预定': 'reserved',
+  '维修中': 'repair',
+  '租赁中': 'rented',
+  '已退货': 'returned'
+}
+
 export const normalizePhoneStatus = (value?: string | null) => {
   const raw = String(value || '').trim()
   if (!raw) return ''
@@ -52,29 +67,9 @@ export const normalizePhoneStatus = (value?: string | null) => {
     return raw
   }
 
-  const legacyMap: Record<string, string> = {
-    零售: 'sold',
-    retail: 'sold',
-    批发: 'peer_transfer',
-    wholesale: 'peer_transfer',
-    预定: 'reserved',
-    维修: 'repair',
-    租赁: 'rented',
-    租赁中: 'rented',
-    在库: 'in_stock',
-    已售: 'sold',
-    调货: 'peer_transfer',
-    划拨: 'supplier_proxy',
-    丢失: 'lost',
-    已退货: 'returned',
-    损坏: 'damaged',
-    // 旧数据曾使用 available 表示可售，统一归并到唯一的可售状态。
-    available: 'in_stock',
-    可用: 'in_stock'
-  }
-
-  if (legacyMap[raw]) {
-    return legacyMap[raw]
+  const normalizedAlias = PHONE_STATUS_ALIASES[raw.toLowerCase()] || PHONE_STATUS_ALIASES[raw]
+  if (normalizedAlias) {
+    return normalizedAlias
   }
 
   const matched = PHONE_STATUS_OPTIONS.find((item) => item.label === raw)

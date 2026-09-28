@@ -986,6 +986,7 @@ import { useCachedRequest, DEFAULT_CACHE_TTL } from '@/composables/usePageCache'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useAuthStore } from '@/stores/auth'
 import { logger } from '@/utils/logger'
+import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import type { Employee, EmployeeForm, Role } from '@/types/employee'
 import Pagination from '../../components/Pagination.vue'
 import InlineLoading from '@/components/InlineLoading.vue'
@@ -1655,33 +1656,12 @@ const formatDate = (dateString: string | undefined, showTime = true) => {
   if (!dateString) return ''
 
   try {
-    // 创建日期对象
-    const date = new Date(dateString)
-
-    // 检查日期是否有效
-    if (isNaN(date.getTime())) {
+    const parsed = TimeUtil.parse(dateString)
+    if (!parsed?.isValid()) {
       logger.warn('无效的日期格式:', dateString)
       return '无效日期'
     }
-
-    // 转换为中国时区时间
-    const chinaTime = new Date(date.getTime() + (8 * 60 * 60 * 1000) + (date.getTimezoneOffset() * 60 * 1000))
-
-    // 格式化日期时间
-    const year = chinaTime.getFullYear()
-    const month = String(chinaTime.getMonth() + 1).padStart(2, '0')
-    const day = String(chinaTime.getDate()).padStart(2, '0')
-
-    // 如果只需要日期部分
-    if (!showTime) {
-      return `${year}-${month}-${day}`
-    }
-
-    const hours = String(chinaTime.getHours()).padStart(2, '0')
-    const minutes = String(chinaTime.getMinutes()).padStart(2, '0')
-    const seconds = String(chinaTime.getSeconds()).padStart(2, '0')
-
-    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+    return TimeUtil.format(parsed, showTime ? TIME_FORMATS.DATETIME : TIME_FORMATS.DATE)
   } catch (error) {
     logger.error('日期格式化错误:', { error, dateString })
     return '格式错误'

@@ -97,6 +97,7 @@ class DataMaskingService {
         model: ['model', 'phone_model'],
         color: ['color', 'phone_color'],
         memory: ['memory', 'phone_memory'],
+        created_at: ['created_at', 'repair_time'],
         imei1: ['imei1', 'imei'],
         status: ['status', 'status_text', 'apply_status'],
         brand_name: ['brand_name', 'product_name'],

@@ -702,6 +702,7 @@ import { useRefreshData } from '@/composables/useRefreshData'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useAuthStore } from '@/stores/auth'
 import { usePageState } from '@/composables/usePageState'
+import { formatDateTime as formatGlobalDateTime } from '@/utils/format'
 import { PageHeader, PermissionGate } from '@/components/base'
 import { usePermissionToast } from '@/utils/permissionToastSimple'
 import { handleApiErrorWithPermission } from '@/utils/apiPermissionError'
@@ -709,7 +710,6 @@ import { useMobile } from '@/composables/mobile'
 import { useLatestRequest } from '@/composables/useLatestRequest'
 import type { Store, StoreFormData } from '@/types/system'
 import type { User } from '@/types'
-import { TimeUtil } from '@/utils/time'
 import { logger } from '@/utils/logger'
 import { useElementTableSortable } from '@/composables/useElementTableSortable'
 
@@ -1343,7 +1343,7 @@ const getManagerName = (managerId: string | number | null) => {
 
 const formatDate = (dateString: string) => {
   if (!dateString) return '-'
-  return new Date(dateString).toLocaleString('zh-CN')
+  return formatGlobalDateTime(dateString)
 }
 
 const _changePage = (page: number) => {

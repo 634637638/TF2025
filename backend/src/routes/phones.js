@@ -8,6 +8,11 @@ const { validateImei } = require('../utils/imei')
 const log = require('../utils/log')
 const { PAGINATION } = require('../config/constants')
 const { requireInventoryQueryToken } = require('../utils/inventory-query-token')
+const {
+  getEffectivePhoneStatusSql,
+  isPhoneStatusAlias,
+  normalizePhoneStatus
+} = require('../utils/phone-status')
 
 // 获取手机列表
 router.get('/', unifiedAuth, requirePermission('inventory:view'), async (req, res) => {
@@ -62,8 +67,8 @@ router.get('/', unifiedAuth, requirePermission('inventory:view'), async (req, re
 
       // 状态筛选
       if (status) {
-        whereConditions.push('p.status = ?')
-        queryParams.push(status)
+        whereConditions.push(`${getEffectivePhoneStatusSql('p')} = ?`)
+        queryParams.push(normalizePhoneStatus(status))
       }
 
       // 成色筛选 (is_new字段)
@@ -105,23 +110,10 @@ router.get('/', unifiedAuth, requirePermission('inventory:view'), async (req, re
           whereConditions.push('UPPER(mem.size) LIKE ?')
           queryParams.push(`%${searchStr.toUpperCase()}%`)
         }
-        // 状态匹配 (英文状态)
-        else if (['available', 'in_stock', 'sold', 'reserved', 'repair', 'lost'].includes(searchStr.toLowerCase())) {
-          whereConditions.push('p.status = ?')
-          queryParams.push(searchStr.toLowerCase() === 'available' ? 'in_stock' : searchStr.toLowerCase())
-        }
-        // 状态匹配 (中文状态)
-        else if (['可用', '已售', '预定', '维修', '丢失', '在库'].includes(searchStr)) {
-          const statusMap = {
-            '可用': 'in_stock',
-            '已售': 'sold',
-            '预定': 'reserved',
-            '维修': 'repair',
-            '丢失': 'lost',
-            '在库': 'in_stock'
-          }
-          whereConditions.push('p.status = ?')
-          queryParams.push(statusMap[searchStr])
+        // 状态别名统一通过 phone-status 归一化，数据库筛选只使用规范值。
+        else if (isPhoneStatusAlias(searchStr)) {
+          whereConditions.push(`${getEffectivePhoneStatusSql('p')} = ?`)
+          queryParams.push(normalizePhoneStatus(searchStr))
         }
         // 成色匹配
         else if (['new', 'used', '全新', '二手'].includes(searchStr.toLowerCase())) {
@@ -1101,8 +1093,17 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
     const effectiveSalePrice = valueOrCurrent(sale_price, currentPhone.sale_price)
     const effectiveInventoryTime = valueOrCurrent(inventory_time, currentPhone.inventory_time)
     const effectiveSaleTime = valueOrCurrent(sale_time, currentPhone.sale_time)
-    const effectiveStatus = valueOrCurrent(status, currentPhone.status)
+    const effectiveStatus = normalizePhoneStatus(valueOrCurrent(status, currentPhone.status))
     const finalNotes = valueOrCurrent(remarks, currentPhone.remarks) ?? ''
+
+    if (status && effectiveStatus !== normalizePhoneStatus(currentPhone.status)) {
+      if (effectiveStatus === 'rented') {
+        return ApiResponse.badRequest(res, '请在租赁管理创建按天租赁合同后设置租赁状态')
+      }
+      if (normalizePhoneStatus(currentPhone.status) === 'rented') {
+        return ApiResponse.badRequest(res, '租赁中的设备请在租赁管理完成归还后再修改状态')
+      }
+    }
 
     if (!effectiveBrandId || !effectiveModelId || !effectiveColorId || !effectiveMemoryId) {
       return ApiResponse.badRequest(res, '品牌、型号、颜色和内存必须使用有效的数据库 ID')
@@ -1265,7 +1266,7 @@ router.put('/:id', unifiedAuth, requireAnyPermission(['phones:edit', 'sales-edit
 
     // 如果提供了status字段，添加到更新值
     if (status) {
-      updateValues.push(status)
+      updateValues.push(effectiveStatus)
     }
 
     // 添加id作为最后一个参数

@@ -81,7 +81,7 @@ export const useInventoryBaseOptions = ({
   const loadSuppliers = async () => {
     try {
       const response = await useCachedRequest(CACHE_KEYS.suppliers, () =>
-        api.get('/suppliers?page=1&page_size=1000'), DEFAULT_CACHE_TTL.STATIC)
+        api.get('/suppliers?page=1&page_size=500'), DEFAULT_CACHE_TTL.STATIC)
       if (response.success) {
         const suppliersArray = response.data?.data || response.data || []
         suppliers.value = sortOptionsByOrder(suppliersArray)
@@ -235,7 +235,7 @@ export const useInventoryBaseOptions = ({
   const loadMemories = async () => {
     try {
       const response = await useCachedRequest(CACHE_KEYS.memories, () =>
-        api.get('/memories', { params: { page_size: 10000 } }), DEFAULT_CACHE_TTL.STATIC)
+        api.get('/memories', { params: { page_size: 100 } }), DEFAULT_CACHE_TTL.STATIC)
       if (response.success && response.data) {
         const memoryList = extractResponseData<unknown[]>(response)
         const memoryLabels = sortOptionsByOrder(memoryList, { labelKeys: ['size', 'capacity', 'name'] })

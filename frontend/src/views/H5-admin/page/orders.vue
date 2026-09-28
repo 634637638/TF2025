@@ -1069,6 +1069,7 @@ import { api } from '@/utils/unified-api'
 import logger from '@/utils/logger'
 import { getAdaptiveActionColumnWidth } from '@/utils/table-layout'
 import type { HeaderAction } from '@/types'
+import { formatDateTime as formatGlobalDateTime } from '@/utils/format'
 
 // 注入父组件提供的注册方法
 const registerHeaderActions = inject<(_actions: HeaderAction[]) => void>('registerHeaderActions')
@@ -1412,8 +1413,7 @@ const getPaymentMethodText = (method: string) => {
 // 格式化时间
 const formatTime = (time: string) => {
   if (!time) return ''
-  const date = new Date(time)
-  return date.toLocaleString('zh-CN')
+  return formatGlobalDateTime(time)
 }
 
 // 查看订单详情

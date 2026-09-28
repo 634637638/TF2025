@@ -1585,8 +1585,8 @@ const getSalaryRecalculationNotice = (employeeId: number) => {
   }
 
   const leaveDateText = stats.latest_leave_record_date ? `请假日期：${stats.latest_leave_record_date}` : '存在后补请假'
-  const activityText = dayjs(stats.latest_leave_activity_at).isValid()
-    ? dayjs(stats.latest_leave_activity_at).format('YYYY-MM-DD HH:mm')
+  const activityText = TimeUtil.isValid(stats.latest_leave_activity_at)
+    ? TimeUtil.format(stats.latest_leave_activity_at, 'YYYY-MM-DD HH:mm')
     : stats.latest_leave_activity_at
 
   return {
@@ -1890,8 +1890,7 @@ const handleEditPayoutByEmployee = (employee: any) => {
     // 将 datetime 格式转换为 date 格式（用于 date 输入框）
     let paidAtDate = null
     if (record.paid_at) {
-      const date = new Date(record.paid_at)
-      paidAtDate = date.toISOString().slice(0, 10) // YYYY-MM-DD
+      paidAtDate = TimeUtil.toDateInputValue(record.paid_at)
     }
 
     editPayoutForm.value = {

@@ -2,6 +2,13 @@ import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import { extractResponseData } from '@/utils/api-response'
 import { unifiedApi } from '@/utils/unified-api'
 import { sortOptionsByOrder } from '@/utils/option-sort'
+import {
+  getCachedBrands,
+  getCachedColors,
+  getCachedMemories,
+  getCachedStores,
+  getCachedSuppliers
+} from '@/services/reference-options'
 import type { Brand, Color, MemoryOption, Model } from '@/types'
 import type { Store, Supplier } from '@/types/system'
 import type { StockInFormModel, StockInPhoneItem } from './types'
@@ -438,25 +445,31 @@ export interface StockInDropdownData {
 
 export const loadStockInDropdownData = async (): Promise<StockInDropdownData> => {
   const results = await Promise.all([
-    unifiedApi.get('/suppliers?page_size=10000'),
-    unifiedApi.get('/stores?all=true'),
-    unifiedApi.get('/brands?status=1&page_size=100'),
-    unifiedApi.get('/models?status=1&page_size=100'),
-    unifiedApi.get('/colors?page_size=100'),
-    unifiedApi.get('/memories?page_size=100')
+    getCachedSuppliers(),
+    getCachedStores(),
+    getCachedBrands(),
+    getCachedColors(),
+    getCachedMemories()
   ])
 
-  const [suppliersRes, storesRes, brandsRes, modelsRes, colorsRes, memoriesRes] = results
+  const [suppliersRes, storesRes, brandsRes, colorsRes, memoriesRes] = results
 
   const suppliers = suppliersRes.success
-    ? sortBySortOrder((suppliersRes.data || []) as Supplier[])
+    ? sortBySortOrder((suppliersRes.data || []).map(item => ({
+      id: Number(item.id || 0),
+      name: String(item.name || ''),
+      status: Number(item.status || 0)
+    })) as Supplier[])
     : []
 
-  const storesSource = Array.isArray(storesRes.data)
-    ? storesRes.data
-    : (storesRes.data?.stores || storesRes.data?.data || [])
+  const storesSource = Array.isArray(storesRes.data) ? storesRes.data : []
   const stores = storesRes.success
-    ? sortBySortOrder(storesSource as Store[])
+    ? sortBySortOrder(storesSource.map(item => ({
+      id: Number(item.id || 0),
+      name: String(item.name || ''),
+      code: String(item.code || item.name || ''),
+      status: Number(item.status || 1)
+    })) as unknown as Store[])
     : []
 
   const brands = brandsRes.success
@@ -464,15 +477,6 @@ export const loadStockInDropdownData = async (): Promise<StockInDropdownData> =>
       .map((brand) => ({
         id: brand.id,
         name: brand.name
-      }))
-    : []
-
-  const models = modelsRes.success
-    ? sortBySortOrder(extractResponseData<Array<{ id: number; name: string; brand_id?: number; sort_order?: number }>>(modelsRes))
-      .map((model) => ({
-        id: model.id,
-        name: model.name,
-        brand_id: model.brand_id
       }))
     : []
 
@@ -496,7 +500,7 @@ export const loadStockInDropdownData = async (): Promise<StockInDropdownData> =>
     suppliers,
     stores,
     brands,
-    models,
+    models: [],
     colors,
     memories
   }

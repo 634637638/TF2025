@@ -314,7 +314,7 @@ import 'swiper/css'
 import 'swiper/css/pagination'
 import { getProductDetail, getPublicConfig, getProducts } from '@/api/shop-public'
 import { useCart } from '@/composables'
-import { formatImageUrl } from '@/utils/format'
+import { formatDate as formatGlobalDate, formatImageUrl } from '@/utils/format'
 import Image from '@/components/Image.vue'
 import type { ProductDetail } from '@/api/shop-public'
 import { storage } from '@/services/storage'
@@ -540,8 +540,7 @@ const inspectionEmptyText = computed(() => {
 
 // 格式化日期
 const formatDate = (dateStr: string) => {
-  const date = new Date(dateStr)
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+  return formatGlobalDate(dateStr)
 }
 
 // 格式化电池健康度

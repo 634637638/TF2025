@@ -62,6 +62,31 @@ export const TIME_FORMATS: TimeFormats = {
  */
 export class TimeUtil {
   /**
+   * Convert a backend date value to an HTML date input value.
+   *
+   * A date-only string is a calendar date, not a UTC timestamp. Keep its
+   * date part intact instead of passing it through `toISOString()`, which can
+   * move it to the previous day in some timezones.
+   */
+  static toDateInputValue(date?: TimeInput | null): string | null {
+    if (date === null || date === undefined) return null
+
+    if (typeof date === 'string') {
+      const rawValue = date.trim()
+      if (!rawValue) return null
+
+      const dateOnlyMatch = rawValue.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/)
+      if (dateOnlyMatch) {
+        const [, year, month, day] = dateOnlyMatch
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+      }
+    }
+
+    const formatted = this.format(date, TIME_FORMATS.DATE)
+    return formatted === 'Invalid Date' ? null : formatted
+  }
+
+  /**
    * 获取当前北京时间
    */
   static now(): dayjs.Dayjs {
@@ -86,6 +111,14 @@ export class TimeUtil {
    * 将任意时间转换为北京时间
    */
   static toBeijing(date: Date | string | number | dayjs.Dayjs): dayjs.Dayjs {
+    if (typeof date === 'string') {
+      const rawValue = date.trim()
+      const localDateTime = rawValue.match(/^\d{4}-\d{2}-\d{2}(?:[ T]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?)?$/)
+      if (localDateTime) {
+        return dayjs.tz(rawValue.replace(' ', 'T'), BEIJING_TIMEZONE)
+      }
+    }
+
     return dayjs(date).tz(BEIJING_TIMEZONE)
   }
 
@@ -362,7 +395,7 @@ export class TimeUtil {
     format?: string
   ): dayjs.Dayjs | null {
     try {
-      return format ? dayjs(dateString, format) : dayjs(dateString)
+      return format ? dayjs(dateString, format) : this.toBeijing(dateString)
     } catch (error) {
       logger.error('时间解析失败:', error)
       return null
@@ -502,7 +535,8 @@ export function useTime() {
     getDayName: (date?: TimeInput) => TimeUtil.getDayName(date),
     getMonthName: (date?: TimeInput) => TimeUtil.getMonthName(date),
     getFriendlyTime: (date: TimeInput, showDate?: boolean) => TimeUtil.getFriendlyTime(date, showDate),
-    getCountdown: (date: TimeInput) => TimeUtil.getCountdown(date)
+    getCountdown: (date: TimeInput) => TimeUtil.getCountdown(date),
+    toDateInputValue: (date?: TimeInput | null) => TimeUtil.toDateInputValue(date)
   }
 }
 

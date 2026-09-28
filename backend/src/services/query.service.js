@@ -1,6 +1,7 @@
 const QueryRepository = require('../repositories/query.repository')
 const _ApiResponse = require('../utils/response')
 const XLSX = require('xlsx')
+const { normalizePhoneStatus } = require('../utils/phone-status')
 
 class QueryService {
   constructor() {
@@ -10,39 +11,7 @@ class QueryService {
   normalizeReturnGoodsType(value) {
     const raw = String(value || '').trim()
     if (!raw) return null
-
-    const mapping = {
-      in_stock: 'in_stock',
-      '在库': 'in_stock',
-      '可售': 'in_stock',
-      sold: 'sold',
-      '已售': 'sold',
-      retail: 'sold',
-      '零售': 'sold',
-      peer_transfer: 'peer_transfer',
-      '调货': 'peer_transfer',
-      supplier_proxy: 'supplier_proxy',
-      '划拨': 'supplier_proxy',
-      reserved: 'reserved',
-      '预订': 'reserved',
-      '预定': 'reserved',
-      repair: 'repair',
-      '维修中': 'repair',
-      '维修': 'repair',
-      rented: 'rented',
-      '租赁': 'rented',
-      '租赁中': 'rented',
-      lost: 'lost',
-      '丢失': 'lost',
-      returned: 'returned',
-      '已退货': 'returned',
-      damaged: 'damaged',
-      '损坏': 'damaged',
-      available: 'in_stock',
-      '可用': 'in_stock'
-    }
-
-    return mapping[raw] || raw
+    return normalizePhoneStatus(raw)
   }
 
   /**
@@ -481,8 +450,9 @@ class QueryService {
     }
 
     // 验证状态参数 - 使用数据库中实际的状态值
-    const validStatuses = ['in_stock', 'sold', 'peer_transfer', 'supplier_proxy', 'reserved', 'repair', 'lost', 'damaged', 'returned']
-    if (filters.status && !validStatuses.includes(filters.status)) {
+    const validStatuses = ['in_stock', 'sold', 'peer_transfer', 'supplier_proxy', 'reserved', 'repair', 'rented', 'lost', 'damaged', 'returned']
+    const normalizedStatus = normalizePhoneStatus(filters.status)
+    if (filters.status && !validStatuses.includes(normalizedStatus)) {
       errors.push(`状态参数无效，有效值为: ${validStatuses.join(', ')}`)
     }
 
@@ -570,6 +540,10 @@ class QueryService {
     } catch (error) {
       throw new Error('获取查询选项失败: ' + error.message)
     }
+  }
+
+  async getQueryModels(filters = {}) {
+    return this.queryRepository.getQueryModels(filters)
   }
 }
 

@@ -629,6 +629,7 @@ import { useAuthStore } from '@/stores/auth'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { canViewSharedField, pickVisibleSharedFields, type SharedFieldName } from './shared-field-permissions'
+import { formatDateTime as formatGlobalDateTime } from '@/utils/format'
 
 const WangEditor = defineAsyncComponent(() => import('@wangeditor/editor-for-vue').then(module => module.Editor))
 const WangToolbar = defineAsyncComponent(() => import('@wangeditor/editor-for-vue').then(module => module.Toolbar))
@@ -732,7 +733,7 @@ const renderRichText = (content:string) => {
   return container.innerHTML
 }
 const formatSize = (bytes:number) => { if(!bytes)return '0 B'; const units=['B','KB','MB','GB']; const index=Math.min(Math.floor(Math.log(bytes)/Math.log(1024)),units.length-1); return `${(bytes/Math.pow(1024,index)).toFixed(index?1:0)} ${units[index]}` }
-const formatDateTime = (value:string) => value ? new Date(String(value).replace(' ','T')).toLocaleString('zh-CN',{ year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false }) : '-'
+const formatDateTime = (value:string) => value ? formatGlobalDateTime(value, 'YYYY-MM-DD HH:mm') : '-'
 const fileUrl = (url:string) => {
   if (!url.startsWith('/uploads/shared/')) return url.startsWith('http') ? url : url.startsWith('/') ? url : `/${url}`
   const filename=url.split('/').pop()||''

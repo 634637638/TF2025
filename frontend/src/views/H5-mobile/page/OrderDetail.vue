@@ -451,6 +451,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getOrderByNumber, getPublicConfig, cancelOrder, confirmPayment } from '@/api/shop-public'
 import { TimeUtil } from '@/utils/time'
+import { formatDateTime as formatGlobalDateTime } from '@/utils/format'
 import Image from '@/components/Image.vue'
 import SectionLoading from '@/components/SectionLoading.vue'
 import { formatImageUrl } from '@/utils/format'
@@ -577,13 +578,7 @@ const formatTime = (time: string | number) => {
 
   // 如果是字符串，作为日期时间处理
   if (!time) return ''
-  return new Date(time).toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+  return formatGlobalDateTime(time, 'YYYY-MM-DD HH:mm')
 }
 
 // 返回

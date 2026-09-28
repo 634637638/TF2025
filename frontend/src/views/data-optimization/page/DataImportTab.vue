@@ -602,6 +602,7 @@ import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import InlineLoading from '@/components/InlineLoading.vue'
 import { logger } from '@/utils/logger'
+import { formatDate as formatGlobalDate } from '@/utils/format'
 
 let importProgressTimer: ReturnType<typeof setInterval> | null = null
 
@@ -1054,25 +1055,8 @@ const getImportHistory = async () => {
 
 const formatDateTime = (timestamp: string) => {
   if (!timestamp) return '-'
-
   try {
-    const date = new Date(timestamp)
-
-    // 检查日期是否有效
-    if (isNaN(date.getTime())) {
-      logger.warn('无效的日期格式:', timestamp)
-      return '-'
-    }
-
-    // 只显示年月日（北京时间）
-    const options: Intl.DateTimeFormatOptions = {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      timeZone: 'Asia/Shanghai'
-    }
-
-    return date.toLocaleString('zh-CN', options)
+    return formatGlobalDate(timestamp)
   } catch (error) {
     logger.error('日期格式化失败', { error, timestamp })
     return '-'

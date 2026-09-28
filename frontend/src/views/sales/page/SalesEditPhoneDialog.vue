@@ -209,6 +209,7 @@
                 :key="option.value"
                 :label="option.label"
                 :value="option.value"
+                :disabled="option.value === 'rented' && editForm.status !== 'rented'"
               />
             </el-select>
           </div>

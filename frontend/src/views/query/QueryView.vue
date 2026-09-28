@@ -524,6 +524,7 @@
       v-if="showEditModal"
       v-model="showEditModal"
       :phone-id="selectedEditPhoneId"
+      :shared-options="editModalOptions"
       @success="handleEditSuccess"
     />
 
@@ -723,6 +724,7 @@ import unifiedApi from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
 import { formatImageUrl } from '@/utils/format'
 import { getOptionLabel, sortOptionsByOrder } from '@/utils/option-sort'
+import { getCachedEmployees, getCachedModelsByBrand, getCachedQueryOptions } from '@/services/reference-options'
 import {
   getAdaptiveActionColumnWidth,
   getIdentifierColumnMinWidth,
@@ -949,6 +951,8 @@ const options = ref<Options>({
 
 // 保存完整的型号列表，用于品牌筛选
 const allModelsList = ref<Array<any>>([])
+const queryBrandIds = new Map<string, number>()
+let queryModelSearchSequence = 0
 const queryDataCache = new Map<string, QueryDataCacheEntry>()
 const queryStatsCache = new Map<string, QueryStatsCacheEntry>()
 let latestQueryRequestId = 0
@@ -965,7 +969,6 @@ const editModalOptions = reactive({
 })
 const editModalOptionsLoaded = ref(false)
 const editModalOptionsLoading = ref(false)
-let editModalWarmupTimer: ReturnType<typeof setTimeout> | null = null
 const employeesPromise = ref<Promise<any[]> | null>(null)
 
 // 筛选条件
@@ -980,7 +983,7 @@ const filters = reactive({
   memory: '',
   is_new: '',
   sale_operator_id: '', // 销售员ID筛选
-  status: '', // 默认显示所有状态数据
+  status: '', // 留空时由后端默认限定为已完成交易状态
   start_date: '',
   end_date: '',
   search_term: ''
@@ -1436,9 +1439,11 @@ const loadQueryData = async (force = false, showLoadingState = true) => {
 const loadQueryOptions = async () => {
   try {
     // 从后端API获取查询选项（包含完整的状态列表）
-    const response = await unifiedApi.get('/query/options')
+    const response = await getCachedQueryOptions()
 
-    const data = response.success && response.data ? response.data : {}
+    const data = response.success && response.data
+      ? response.data as import('@/services/reference-options').QueryOptionsPayload
+      : {} as import('@/services/reference-options').QueryOptionsPayload
 
     // 基础选项统一使用公共排序：sort_order、名称自然顺序、ID
     const suppliersRaw = Array.isArray(data.suppliers) ? data.suppliers : []
@@ -1459,9 +1464,14 @@ const loadQueryOptions = async () => {
 
     // 品牌 - 按 sort_order 排序，相同时按 id 排序确保一致性
     const brandsRaw = Array.isArray(data.brands) ? data.brands : []
+    queryBrandIds.clear()
     const brands = sortOptionsByOrder(brandsRaw.map((brand: any) =>
       typeof brand === 'string' ? { name: brand, sort_order: 0, id: 0 } : brand
     ))
+      .filter((item: any) => {
+        if (item.name && Number(item.id) > 0) queryBrandIds.set(item.name, Number(item.id))
+        return Boolean(item.name)
+      })
       .map((item: any) => getOptionLabel(item, ['name']))
       .filter(Boolean)
 
@@ -1502,9 +1512,17 @@ const loadQueryOptions = async () => {
       .filter(Boolean)
 
     // 使用后端返回的状态选项，如果为空则使用默认值
-    const apiStatuses = Array.isArray(data.statuses) ? data.statuses : []
+    const apiStatuses = Array.isArray(data.statuses)
+      ? data.statuses
+        .map(item => ({ value: String(item.value || ''), label: String(item.label || '') }))
+        .filter(item => item.value && item.label)
+      : []
     const statuses = apiStatuses.length > 0 ? apiStatuses : PHONE_STATUS_OPTIONS
-    const apiConditions = Array.isArray(data.conditions) ? data.conditions : []
+    const apiConditions = Array.isArray(data.conditions)
+      ? data.conditions
+        .map(item => ({ value: String(item.value || ''), label: String(item.label || '') }))
+        .filter(item => item.value && item.label)
+      : []
     const conditions = apiConditions.length > 0 ? apiConditions : [
       { value: 'true', label: '全新' },
       { value: 'false', label: '二手' }
@@ -1567,7 +1585,7 @@ const loadSalesUsers = async () => {
 
   try {
     employeesPromise.value = (async () => {
-      const usersRes = await unifiedApi.get('/users/employees?page_size=10000')
+      const usersRes = await getCachedEmployees()
       return usersRes.success && usersRes.data?.employees ? sortOptionsByOrder(usersRes.data.employees) : []
     })()
 
@@ -1586,67 +1604,58 @@ const loadEditModalOptions = async () => {
   editModalOptionsLoading.value = true
   try {
     // 并行调用 API，使用规范 page_size 获取基础选项。
-    const [
-      suppliersRes,
-      storesRes,
-      brandsRes,
-      modelsRes,
-      colorsRes,
-      memoriesRes,
-      usersRes
-    ] = await Promise.all([
-      unifiedApi.get('/suppliers?page_size=10000'),
-      unifiedApi.get('/stores?all=true&page_size=10000'),
-      unifiedApi.get('/brands?status=1&page_size=10000'),
-      unifiedApi.get('/models?page_size=10000'),
-      unifiedApi.get('/colors?page_size=10000'),
-      unifiedApi.get('/memories?page_size=10000'),
-      unifiedApi.get('/users/employees?page_size=10000')
+    const [optionsRes, usersRes] = await Promise.all([
+      getCachedQueryOptions(),
+      getCachedEmployees()
     ])
+    const baseOptions = optionsRes.success && optionsRes.data
+      ? optionsRes.data as import('@/services/reference-options').QueryOptionsPayload
+      : {} as import('@/services/reference-options').QueryOptionsPayload
 
-    // 更新编辑模态框选项 - 按 sort_order 排序，相同时按 id 排序确保一致性
-    // 供应商按 sort_order 排序，相同时按 id 排序
-    editModalOptions.suppliers = suppliersRes.success && suppliersRes.data
-      ? sortOptionsByOrder(suppliersRes.data || [])
+    // Reuse the complete option payload used by the page instead of issuing
+    // separate large-page requests for every reference table.
+    editModalOptions.suppliers = sortOptionsByOrder((baseOptions.suppliers || []).map(item => ({
+      id: Number(item.id || 0),
+      name: String(item.name || ''),
+      sort_order: Number(item.sort_order || 0)
+    })))
+    editModalOptions.stores = sortOptionsByOrder((baseOptions.stores || []).map(item => ({
+      id: Number(item.id || 0),
+      name: String(item.name || ''),
+      sort_order: Number(item.sort_order || 0)
+    })))
+    editModalOptions.brands = sortOptionsByOrder((baseOptions.brands || []).map(item => ({
+      id: Number(item.id || 0),
+      name: String(item.name || ''),
+      sort_order: Number(item.sort_order || 0)
+    })))
+    editModalOptions.models = sortOptionsByOrder((baseOptions.models || []).map(item => ({
+      id: Number(item.id || 0),
+      name: String(item.name || ''),
+      brand_id: item.brand_id === null || item.brand_id === undefined ? undefined : Number(item.brand_id),
+      brand_name: String(item.brand_name || item.brand || ''),
+      brand: String(item.brand || item.brand_name || ''),
+      sort_order: Number(item.sort_order || 0)
+    })))
+    editModalOptions.colors = sortOptionsByOrder((baseOptions.colors || []).map(item => ({
+      id: Number(item.id || 0),
+      name: String(item.name || ''),
+      sort_order: Number(item.sort_order || 0)
+    })))
+    editModalOptions.memories = sortOptionsByOrder((baseOptions.memories || []).map(item => ({
+      id: Number(item.id || 0),
+      name: String(item.size || item.name || item.capacity || ''),
+      size: String(item.size || item.name || item.capacity || ''),
+      sort_order: Number(item.sort_order || 0)
+    })), { labelKeys: ['size', 'capacity', 'name'] })
+    editModalOptions.users = usersRes.success && usersRes.data?.employees
+      ? sortOptionsByOrder(usersRes.data.employees)
       : []
 
-    // 店铺数据
-    editModalOptions.stores = storesRes.success ? sortOptionsByOrder(extractResponseData<any[]>(storesRes)) : []
-
-    // 品牌按 sort_order 排序，相同时按 id 排序
-    if (brandsRes.success) {
-      editModalOptions.brands = sortOptionsByOrder(extractResponseData<Brand[]>(brandsRes))
-    } else {
-      editModalOptions.brands = []
-    }
-
-    // 型号按 sort_order 排序，相同时按 id 排序
-    if (modelsRes.success) {
-      editModalOptions.models = sortOptionsByOrder(extractResponseData<Model[]>(modelsRes))
-    } else {
-      editModalOptions.models = []
-    }
-
-    // 颜色按 sort_order 排序，相同时按 id 排序
-    if (colorsRes.success) {
-      editModalOptions.colors = sortOptionsByOrder(extractResponseData<Color[]>(colorsRes))
-    } else {
-      editModalOptions.colors = []
-    }
-
-    // 内存按 sort_order 排序，相同时按 id 排序确保一致性
-    if (memoriesRes.success) {
-      editModalOptions.memories = sortOptionsByOrder(extractResponseData<MemoryOption[]>(memoriesRes), { labelKeys: ['size', 'capacity', 'name'] })
-    } else {
-      editModalOptions.memories = []
-    }
-
-    // users接口返回 { employees, total, isAdmin } 结构，需要提取 employees 数组
-    editModalOptions.users = usersRes.success && usersRes.data?.employees ? sortOptionsByOrder(usersRes.data.employees) : []
-    editModalOptionsLoaded.value = true
     if (options.value.users.length === 0) {
       options.value.users = editModalOptions.users
     }
+    editModalOptionsLoaded.value = true
   } catch (error) {
     editModalOptions.suppliers = []
     editModalOptions.stores = []
@@ -1664,12 +1673,6 @@ const loadEditModalOptions = async () => {
 const ensureEditModalOptionsLoaded = async () => {
   if (editModalOptionsLoaded.value) return
   await loadEditModalOptions()
-}
-
-const warmupEditModalOptions = () => {
-  ensureEditModalOptionsLoaded().catch(error => {
-    logger.error('❌ 编辑弹窗选项预热失败:', error)
-  })
 }
 
 // 导出Excel
@@ -1741,20 +1744,35 @@ const handlePaginationChange = (page: number, pageSize: number) => {
   loadQueryData()
 }
 
-// 品牌筛选变化处理 - 从本地数据筛选对应的型号列表
-const handleFilterBrandChange = () => {
+// 品牌筛选变化处理 - 只加载当前品牌的型号
+const handleFilterBrandChange = async () => {
   // 清空型号选择
   filters.model = ''
 
   if (filters.brand) {
-    // 从完整的型号列表中筛选该品牌的型号
-    const filteredModels = allModelsList.value.filter((model: any) => {
-      const modelBrandName = model.brand_name || ''
-      return modelBrandName === filters.brand
-    })
-
-    // 更新显示的型号列表
-    options.value.models = filteredModels
+    const brandId = queryBrandIds.get(filters.brand)
+    const sequence = ++queryModelSearchSequence
+    if (!brandId) {
+      options.value.models = []
+    } else {
+      try {
+        const response = await getCachedModelsByBrand(brandId)
+        if (sequence === queryModelSearchSequence) {
+          options.value.models = sortOptionsByOrder(
+            (Array.isArray(response.data) ? response.data : []).map((model: any) => ({
+              id: Number(model.id || 0),
+              name: String(model.name || ''),
+              brand_id: model.brand_id === null || model.brand_id === undefined ? undefined : Number(model.brand_id),
+              brand_name: String(model.brand_name || ''),
+              sort_order: Number(model.sort_order || 0)
+            })).filter(model => model.name)
+          )
+        }
+      } catch (error) {
+        logger.error('加载品牌型号失败:', error)
+        if (sequence === queryModelSearchSequence) options.value.models = []
+      }
+    }
   } else {
     // 没有选择品牌，清空型号列表
     options.value.models = []
@@ -2129,7 +2147,7 @@ const openQuickSaleModal = () => {
     return
   }
 
-  ensureEditModalOptionsLoaded().finally(() => {
+  void ensureEditModalOptionsLoaded().finally(() => {
     showQuickSaleModal.value = true
   })
 }
@@ -2684,12 +2702,8 @@ onMounted(async () => {
     logger.error('❌ 查询选项加载失败:', error)
   })
 
-  // 编辑弹窗选项延后预热，避免首屏和综合查询抢占连接
   initialQueryPromise.finally(() => {
     void refreshQueryAnimations()
-    editModalWarmupTimer = setTimeout(() => {
-      warmupEditModalOptions()
-    }, 1200)
   })
 
   await refreshQueryAnimations()
@@ -2715,10 +2729,6 @@ onBeforeRouteLeave(async () => {
 onUnmounted(() => {
   if (debounceTimer) {
     clearTimeout(debounceTimer)
-  }
-
-  if (editModalWarmupTimer) {
-    clearTimeout(editModalWarmupTimer)
   }
 
   // 清理所有触摸定时器
